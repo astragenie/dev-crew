@@ -34,7 +34,11 @@ function parseArgs(argv) {
     id: null,
     body: null,
     features: null,
-    version: null
+    version: null,
+    since: null,
+    spanDays: null,
+    until: null,
+    by: null
   };
   const positionals = [];
 
@@ -80,6 +84,10 @@ function parseArgs(argv) {
     if (value === "--body") { flags.body = rest[index + 1]; index += 1; continue; }
     if (value === "--features") { flags.features = rest[index + 1]; index += 1; continue; }
     if (value === "--version") { flags.version = rest[index + 1]; index += 1; continue; }
+    if (value === "--since") { flags.since = rest[index + 1]; index += 1; continue; }
+    if (value === "--span-days") { flags.spanDays = rest[index + 1]; index += 1; continue; }
+    if (value === "--until") { flags.until = rest[index + 1]; index += 1; continue; }
+    if (value === "--by") { flags.by = rest[index + 1]; index += 1; continue; }
     if (value.startsWith("--")) {
       throw new Error(`Unknown argument: ${value}`);
     }
@@ -139,6 +147,18 @@ async function main() {
     result = await runSliceSubcommand(repoPath, positionals, flags);
   } else if (command === "decisions") {
     result = await runDecisionsSubcommand(repoPath, positionals, flags);
+  } else if (command === "retrospective") {
+    const { writeRetrospective } = await import("./lib/retrospective.mjs");
+    result = await writeRetrospective(repoPath, {
+      since: flags.since,
+      spanDays: flags.spanDays,
+      until: flags.until
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "retrospective", since: flags.since, span_days: flags.spanDays });
+  } else if (command === "brief") {
+    const { buildBrief } = await import("./lib/brief.mjs");
+    result = await buildBrief(repoPath);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
@@ -331,6 +351,14 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
     const dec = await showDecision(repoPath, decId);
     if (!dec) throw new Error(`Decision not found: ${decId}`);
     return dec;
+  }
+  if (sub === "supersede") {
+    const { supersedeDecision } = await import("./lib/decisions-store.mjs");
+    if (!flags.id || !flags.by) throw new Error("decisions supersede requires --id DEC-OLD --by DEC-NEW");
+    const out = await supersedeDecision(repoPath, { oldId: flags.id, newId: flags.by });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "decisions supersede", old: flags.id, new: flags.by });
+    return out;
   }
   throw new Error(`Unknown decisions subcommand: ${sub}`);
 }

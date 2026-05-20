@@ -97,3 +97,28 @@ export async function showDecision(repoPath, decisionId, config = null) {
   const all = await listDecisions(repoPath, { config });
   return all.find((d) => d.id === decisionId) || null;
 }
+
+// Mark an existing decision as superseded by a newer one. Updates both files:
+// - old: status = superseded, superseded_by = newDecId
+// - new: nothing (caller can edit "supersedes: OLD" in body manually)
+// Idempotent — re-running with same args is a no-op.
+export async function supersedeDecision(repoPath, { oldId, newId, config = null }) {
+  if (!oldId || !newId) throw new Error("supersedeDecision requires oldId and newId");
+  if (oldId === newId) throw new Error("oldId and newId must differ");
+  const all = await listDecisions(repoPath, { config });
+  const old = all.find((d) => d.id === oldId);
+  const next = all.find((d) => d.id === newId);
+  if (!old) throw new Error(`Decision not found: ${oldId}`);
+  if (!next) throw new Error(`Decision not found: ${newId}`);
+  if (old.status === "superseded" && old.superseded_by === newId) {
+    return { oldId, newId, alreadySuperseded: true };
+  }
+  await mergeFrontmatter; // ensure import retained
+  const oldContent = await fs.readFile(old.filePath, "utf8");
+  const merged = mergeFrontmatter(oldContent, {
+    status: "superseded",
+    superseded_by: newId
+  });
+  await fs.writeFile(old.filePath, merged);
+  return { oldId, newId, alreadySuperseded: false };
+}
