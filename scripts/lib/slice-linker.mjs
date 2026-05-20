@@ -240,13 +240,95 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     handoff = { error: err.message };
   }
 
+  // Crew final-synthesis artifact closes the workflow run from autonomous-loop's
+  // side. Embeds the grade summary + decisions if a grade file already exists
+  // (i.e. agent followed the recommended order: grade THEN complete). Otherwise
+  // the synthesis flags "grade missing" so reviewer of synthesis sees gap.
+  let synthesis = null;
+  try {
+    synthesis = await writeCrewFinalSynthesis(repoPath, {
+      sliceId, slicePath: targetSlicePath, featureId, featureResult, specChanges
+    });
+  } catch (err) {
+    synthesis = { error: err.message };
+  }
+
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
     feature: featureResult,
     specStatusChanges: specChanges,
     handoff,
+    synthesis,
     nextAction: `Run /autonomous-loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
+}
+
+async function writeCrewFinalSynthesis(repoPath, { sliceId, slicePath, featureId, featureResult, specChanges }) {
+  const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
+  await ensureDir(runsDir);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const filename = `${stamp}-${sliceId.toLowerCase()}-final-synthesis.md`;
+  const target = path.join(runsDir, filename);
+
+  // Load grade if it exists
+  const { findGradeForSlice, SCORE_DIMENSIONS } = await import("./grade-parser.mjs");
+  const grade = await findGradeForSlice(repoPath, sliceId);
+  const today = new Date().toISOString().slice(0, 10);
+  const fm = {
+    kind: "final-synthesis",
+    slice: sliceId,
+    feature: featureId || null,
+    grade: grade ? `GRADE-${sliceId}` : null,
+    decisions: grade?.frontmatter?.decisions || [],
+    created_at: today
+  };
+
+  const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
+  const featureRel = featureResult?.to
+    ? path.relative(repoPath, featureResult.to).replace(/\\/g, "/")
+    : null;
+  const scoresBlock = grade
+    ? SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n")
+    : "_(no grade yet — run `/autonomous-loop:slice grade --id " + sliceId + "`)_";
+  const decisionsBlock = grade?.frontmatter?.decisions?.length
+    ? grade.frontmatter.decisions.map((d) => `- ${d}`).join("\n")
+    : "_(no decisions captured)_";
+
+  const body = [
+    `# Final synthesis — ${sliceId}`,
+    "",
+    "## What shipped",
+    "",
+    `- Slice: \`${sliceRel}\` (completed)`,
+    featureRel ? `- Feature: \`${featureRel}\` (done)` : "",
+    specChanges?.length > 0
+      ? `- Spec status changes: ${specChanges.map((c) => `${c.id} → ${c.to}`).join(", ")}`
+      : "",
+    "",
+    "## Grade",
+    "",
+    scoresBlock,
+    "",
+    "## Decisions captured",
+    "",
+    decisionsBlock,
+    "",
+    "## Continuity hooks",
+    "",
+    "- Next slice selection follows Cross-Slice Continuation HARD RULE",
+    "- Researcher planning next slice should read this synthesis + recent grades for lessons-feed-forward",
+    "",
+    "## References",
+    "",
+    grade
+      ? `- Grade file: \`docs/grades/${sliceId}-grade.md\``
+      : "- Grade missing — synthesis is incomplete",
+    `- Slice handoff: \`.claude/artifacts/crew/handoffs/<timestamp>-${sliceId.toLowerCase()}-complete.md\``,
+    ""
+  ].filter(Boolean).join("\n");
+  const { serializeFrontmatter } = await import("./frontmatter.mjs");
+  await fs.writeFile(target, serializeFrontmatter(fm, body));
+  return { synthesisPath: target, hasGrade: Boolean(grade) };
 }
 
 async function writeCrewHandoff(repoPath, { sliceId, slicePath, featureId, featureResult, specChanges }) {

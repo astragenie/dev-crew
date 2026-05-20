@@ -296,11 +296,20 @@ export async function runPhaseGate(repoPath, options = {}) {
   // score trends / decisions over the window since the previous phase-gate
   // artifact (default span 30 days if no prior gate found).
   let retrospective = null;
+  let deployHandoffs = [];
   if (overallStatus === "PASS") {
     try {
       retrospective = await runRetrospectiveSincePreviousGate(repoPath, phase);
     } catch (err) {
       retrospective = { error: err.message };
+    }
+    // After retrospective, scan for any release where all targeted features
+    // are done — if found, write a handoff to crew deployer surfacing the
+    // ready-to-cut version. Best-effort; failures don't break phase-gate.
+    try {
+      deployHandoffs = await emitDeployHandoffsForReadyReleases(repoPath);
+    } catch (err) {
+      deployHandoffs = [{ error: err.message }];
     }
   }
 
@@ -318,8 +327,87 @@ export async function runPhaseGate(repoPath, options = {}) {
       ok: s.skipped ? null : s.ok,
       failingCount: (s.runs || []).filter((r) => !r.ok).length
     })),
-    retrospective
+    retrospective,
+    deployHandoffs
   };
+}
+
+// Scans backlog for releases (target_release values) where every targeted
+// feature is in done/. For each, writes a handoff to crew deployer in
+// .claude/artifacts/crew/handoffs/. Idempotent — checks for existing
+// "ready-to-deploy-<version>" handoff before writing again.
+async function emitDeployHandoffsForReadyReleases(repoPath) {
+  const { listBacklog } = await import("./backlog-parser.mjs");
+  const backlog = await listBacklog(repoPath);
+  const byRelease = new Map();
+  for (const f of backlog) {
+    const tr = f.frontmatter.target_release;
+    if (!tr) continue;
+    if (!byRelease.has(tr)) byRelease.set(tr, []);
+    byRelease.get(tr).push(f);
+  }
+  const handoffsDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
+  await fs.mkdir(handoffsDir, { recursive: true });
+  const existing = await fs.readdir(handoffsDir).catch(() => []);
+  const written = [];
+  for (const [version, features] of byRelease) {
+    if (features.length === 0) continue;
+    const allDone = features.every((f) => f.state === "done");
+    if (!allDone) continue;
+    const versionSlug = version.toLowerCase().replace(/[^a-z0-9.]/g, "-");
+    const stub = `ready-to-deploy-${versionSlug}`;
+    if (existing.some((name) => name.includes(stub))) continue;
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const filename = `${stamp}-${stub}.md`;
+    const target = path.join(handoffsDir, filename);
+    const today = new Date().toISOString().slice(0, 10);
+    const { serializeFrontmatter } = await import("./frontmatter.mjs");
+    const fm = {
+      kind: "handoff",
+      objective: `Deploy release ${version} — all targeted features complete`,
+      owner: "deployer",
+      release: version,
+      feature_count: features.length,
+      created_at: today,
+      confidence: "high",
+      next_handoff: "deployment-evidence"
+    };
+    const featureList = features.map((f) => `- ${f.id}: \`${path.relative(repoPath, f.filePath).replace(/\\/g, "/")}\``).join("\n");
+    const body = [
+      `# Handoff — Release ${version} ready to deploy`,
+      "",
+      "## Objective",
+      "",
+      `Phase-gate PASSed. All ${features.length} feature(s) targeting \`${version}\` are in \`done/\`. Cut + deploy the release.`,
+      "",
+      "## Allowed scope",
+      "",
+      `1. Run \`/autonomous-loop:release plan --version ${version}\` to refresh \`docs/releases/${version}.md\` with current status.`,
+      `2. \`git tag ${version} && git push origin ${version}\` once the release notes look right.`,
+      "3. Run the deployer agent / scripts per repo deployment guidance.",
+      "4. Capture deployment evidence via crew `write-deployment-result`.",
+      "",
+      "## Forbidden scope",
+      "",
+      "- Production promotion without explicit user approval (per crew constitution).",
+      "",
+      "## Features in this release",
+      "",
+      featureList,
+      "",
+      "## Confidence",
+      "",
+      "High — all features in done/, phase-gate passed.",
+      "",
+      "## Risks or open questions",
+      "",
+      "- Verify no in-progress slices still touch the same area (`/autonomous-loop:brief` for in-flight state).",
+      ""
+    ].join("\n");
+    await fs.writeFile(target, serializeFrontmatter(fm, body));
+    written.push({ release: version, handoffPath: target, featureCount: features.length });
+  }
+  return written;
 }
 
 // Look back at docs/<phaseGateArtifactDir> for the previous phase-N-gate-*.md

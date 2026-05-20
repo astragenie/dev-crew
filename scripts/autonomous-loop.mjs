@@ -167,6 +167,17 @@ async function main() {
   } else if (command === "brief") {
     const { buildBrief } = await import("./lib/brief.mjs");
     result = await buildBrief(repoPath);
+  } else if (command === "snapshot-memory") {
+    const { writeMemorySnapshot } = await import("./lib/memory-snapshot.mjs");
+    result = await writeMemorySnapshot(repoPath);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "snapshot-memory", grades: result.counts.grades });
+  } else if (command === "lessons") {
+    const [sub] = positionals;
+    if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
+    const { recentLessons } = await import("./lib/lessons-feed.mjs");
+    const limit = positionals[1] ? Number(positionals[1]) : 5;
+    result = await recentLessons(repoPath, { limit });
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
