@@ -1,0 +1,29 @@
+{
+  "presetName": "dotnet-react",
+  "description": "C# .NET backend + React/Vite frontend. Standalone repo with one solution and one dashboard. Fits AstraGenie.MemoryService-style projects.",
+  "loop": {
+    "aiLoopRoot": "docs/architecture/ai-loop",
+    "backlogPath": "docs/architecture/ai-loop/backlog",
+    "slicesRoot": "docs/architecture/ai-loop/slices",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
+  },
+  "stack": {
+    "build": [
+      { "cmd": "dotnet", "args": ["build", "-c", "Release", "--nologo"] }
+    ],
+    "test": [
+      { "cmd": "dotnet", "args": ["test", "-c", "Release", "--nologo"] }
+    ],
+    "frontendBuild": { "cmd": "npm", "args": ["run", "build"] },
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": { "ladder": ["A", "B"] },
+  "mandatoryDocs": [
+    "docs/architecture/platform-overview.md"
+  ],
+  "productName": "Untitled product",
+  "productDescription": "Override productName and productDescription in .claude/autonomous-loop.json after install.",
+  "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- React + Vite + TypeScript dashboard\n- xUnit for backend tests\n- pgvector / Postgres for storage when configured"
+}

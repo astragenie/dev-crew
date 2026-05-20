@@ -45,12 +45,25 @@ function renderTemplate(template, tokens) {
 }
 
 function buildTokens(config) {
-  const mandatoryDocsList = (config.mandatoryDocs || [])
-    .map((doc, index) => `${index + 2}. \`${doc}\``)
+  // Build a fully-numbered mandatory-reading list that includes the three
+  // loop-control docs at the end. Item 1 is always CLAUDE.md (handled by the
+  // template). Repo-specific mandatoryDocs entries fill the middle. The three
+  // loop-control entries are always last so an agent reads them last.
+  const aiLoopRoot = config.loop?.aiLoopRoot || "docs/architecture/ai-loop";
+  const repoDocs = (config.mandatoryDocs || []).map((doc) => `\`${doc}\``);
+  const loopControlDocs = [
+    `\`${aiLoopRoot}/01-loop-control/WIGGIN_LOOP.md\``,
+    `\`${aiLoopRoot}/01-loop-control/EVIDENCE_RULES.md\``,
+    `\`${aiLoopRoot}/01-loop-control/STOP_CONDITIONS.md\``
+  ];
+  const allDocs = [...repoDocs, ...loopControlDocs];
+  // Start numbering at 2 because item 1 (CLAUDE.md) is in the template body.
+  const mandatoryDocsList = allDocs
+    .map((entry, index) => `${index + 2}. ${entry}`)
     .join("\n");
 
   return {
-    aiLoopRoot: config.loop?.aiLoopRoot || "docs/architecture/ai-loop",
+    aiLoopRoot,
     backlogPath: config.loop?.backlogPath || "docs/architecture/ai-loop/backlog",
     slicesRoot: config.loop?.slicesRoot || "docs/architecture/ai-loop/slices",
     phaseGateArtifactDir: config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations",

@@ -1,0 +1,29 @@
+{
+  "presetName": "dotnet-vue",
+  "description": "C# .NET backend + Vue 3 / Vite frontend + .NET Aspire orchestration. Fits LoopBrain-style projects.",
+  "loop": {
+    "aiLoopRoot": "docs/architecture/ai-loop",
+    "backlogPath": "docs/architecture/ai-loop/backlog",
+    "slicesRoot": "docs/architecture/ai-loop/slices",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
+  },
+  "stack": {
+    "build": [
+      { "cmd": "dotnet", "args": ["build", "-c", "Release", "--nologo"] }
+    ],
+    "test": [
+      { "cmd": "dotnet", "args": ["test", "-c", "Release", "--nologo"] }
+    ],
+    "frontendBuild": { "cmd": "npm", "args": ["run", "build"] },
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": { "ladder": ["A", "B"] },
+  "mandatoryDocs": [
+    "docs/architecture/platform-overview.md"
+  ],
+  "productName": "Untitled product",
+  "productDescription": "Override productName and productDescription in .claude/autonomous-loop.json after install.",
+  "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- Vue 3 + Vite + TypeScript + Pinia + Tailwind dashboard\n- .NET Aspire AppHost for local orchestration\n- xUnit, FluentAssertions for backend tests"
+}

@@ -1,0 +1,27 @@
+{
+  "presetName": "python-only",
+  "description": "Pure Python project (LangGraph, FastAPI, or library). No C# / no frontend / no Aspire. Phase gate runs pytest only.",
+  "loop": {
+    "aiLoopRoot": "docs/architecture/ai-loop",
+    "backlogPath": "docs/architecture/ai-loop/backlog",
+    "slicesRoot": "docs/architecture/ai-loop/slices",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
+  },
+  "stack": {
+    "build": [],
+    "test": [
+      { "cmd": "pytest", "args": [] }
+    ],
+    "frontendBuild": null,
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": { "ladder": ["A", "B"] },
+  "mandatoryDocs": [
+    "README.md"
+  ],
+  "productName": "Untitled product",
+  "productDescription": "Override productName and productDescription in .claude/autonomous-loop.json after install.",
+  "stackDescription": "- Python 3 (LangGraph / FastAPI / library depending on the project)\n- pytest for tests\n- pip-managed dependencies"
+}

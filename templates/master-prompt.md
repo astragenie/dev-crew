@@ -21,9 +21,6 @@ better state than you found it.
 
 1. `CLAUDE.md` — repo memory, hard rules, anti-patterns
 {{mandatoryDocsList}}
-6. `{{aiLoopRoot}}/01-loop-control/WIGGIN_LOOP.md`
-7. `{{aiLoopRoot}}/01-loop-control/EVIDENCE_RULES.md`
-8. `{{aiLoopRoot}}/01-loop-control/STOP_CONDITIONS.md`
 
 ## First-response checklist
 
