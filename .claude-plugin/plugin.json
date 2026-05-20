@@ -1,0 +1,17 @@
+{
+  "name": "autonomous-loop",
+  "version": "0.1.0",
+  "description": "Wiggin-Loop methodology layer for Claude Code: HARD RULE blocks, slice scaffold, phase-gate runner. Stack-agnostic; per-repo config selects what test commands run at phase boundaries. Depends on the `crew` plugin for artifact writers.",
+  "author": {
+    "name": "shishkosv"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "wiggin-loop",
+    "autonomous",
+    "slice-methodology",
+    "phase-gate"
+  ]
+}

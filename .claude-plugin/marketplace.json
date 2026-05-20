@@ -1,0 +1,20 @@
+{
+  "name": "autonomous-loop-dev",
+  "metadata": {
+    "description": "Development marketplace for the autonomous-loop Claude Code plugin. The plugin is also registered in the crew-dev marketplace so a single install picks up both crew and autonomous-loop."
+  },
+  "owner": {
+    "name": "shishkosv"
+  },
+  "plugins": [
+    {
+      "name": "autonomous-loop",
+      "description": "Wiggin-Loop methodology layer for Claude Code with HARD RULE blocks, slice scaffold, and phase-gate runner",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "shishkosv"
+      }
+    }
+  ]
+}
