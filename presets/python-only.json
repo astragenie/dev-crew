@@ -2,9 +2,9 @@
   "presetName": "python-only",
   "description": "Pure Python project (LangGraph, FastAPI, or library). No C# / no frontend / no Aspire. Phase gate runs pytest only.",
   "loop": {
-    "aiLoopRoot": "docs/architecture/ai-loop",
-    "backlogPath": "docs/architecture/ai-loop/backlog",
-    "slicesRoot": "docs/architecture/ai-loop/slices",
+    "aiLoopRoot": "docs/ai-loop",
+    "backlogPath": "docs/ai-loop/backlog",
+    "slicesRoot": "docs/ai-loop/slices",
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
   },
   "stack": {

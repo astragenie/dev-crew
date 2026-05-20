@@ -55,7 +55,7 @@ test(
     assert.ok(claudeMd.includes("Cross-Slice Continuation — HARD RULE"));
     assert.ok(claudeMd.includes("Phase Completion Gate — HARD RULE"));
 
-    const loopRoot = path.join(repo, "docs", "architecture", "ai-loop");
+    const loopRoot = path.join(repo, "docs", "ai-loop");
     for (const rel of [
       "01-loop-control/WIGGIN_LOOP.md",
       "01-loop-control/EVIDENCE_RULES.md",

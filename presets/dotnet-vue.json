@@ -2,9 +2,9 @@
   "presetName": "dotnet-vue",
   "description": "C# .NET backend + Vue 3 / Vite frontend + .NET Aspire orchestration. Fits LoopBrain-style projects.",
   "loop": {
-    "aiLoopRoot": "docs/architecture/ai-loop",
-    "backlogPath": "docs/architecture/ai-loop/backlog",
-    "slicesRoot": "docs/architecture/ai-loop/slices",
+    "aiLoopRoot": "docs/ai-loop",
+    "backlogPath": "docs/ai-loop/backlog",
+    "slicesRoot": "docs/ai-loop/slices",
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
   },
   "stack": {
