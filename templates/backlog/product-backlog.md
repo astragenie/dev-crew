@@ -1,15 +1,15 @@
-# Product Backlog — {{productName}}
+# Product Backlog (legacy — superseded)
 
-Unmet product requirements that have not yet been broken down into slices.
+This file is preserved as historical reference. The active product backlog
+lives in **`docs/backlog/`** as one markdown file per feature
+(`FEAT-NNN.md` in `pending/` → `triaged/` → `in-progress/` → `done/`).
 
-The Cross-Slice Continuation HARD RULE in `CLAUDE.md` requires that when
-`approved-slices.md` runs empty but this file still has unmet requirements,
-the agent must derive the next slice into `../slices/pending/`, run Reviewer A
-+ Reviewer B, append to `approved-slices.md`, and implement — without user
-confirmation.
+See `docs/backlog/README.md` for the schema.
 
-## Unmet requirements
+Cross-Slice Continuation HARD RULE in `CLAUDE.md` scans `docs/backlog/` for
+the next unit of work; this file is no longer read by the loop.
 
-_Populate this section as product direction crystallizes. Each entry should
-state the user-visible outcome, not the implementation path. The agent
-derives the slice path when picking the requirement up._
+Migrate any unfinished entries from this file into per-feature files via
+`/autonomous-loop:backlog add` or the one-off
+`scripts/migrate-product-backlog.mjs` migration script shipped with the
+plugin.

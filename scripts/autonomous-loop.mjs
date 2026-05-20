@@ -33,7 +33,8 @@ function parseArgs(argv) {
     title: null,
     id: null,
     body: null,
-    features: null
+    features: null,
+    version: null
   };
   const positionals = [];
 
@@ -78,6 +79,7 @@ function parseArgs(argv) {
     if (value === "--id") { flags.id = rest[index + 1]; index += 1; continue; }
     if (value === "--body") { flags.body = rest[index + 1]; index += 1; continue; }
     if (value === "--features") { flags.features = rest[index + 1]; index += 1; continue; }
+    if (value === "--version") { flags.version = rest[index + 1]; index += 1; continue; }
     if (value.startsWith("--")) {
       throw new Error(`Unknown argument: ${value}`);
     }
@@ -131,6 +133,10 @@ async function main() {
     result = await runBacklogSubcommand(repoPath, positionals, flags);
   } else if (command === "spec") {
     result = await runSpecSubcommand(repoPath, positionals, flags);
+  } else if (command === "release") {
+    result = await runReleaseSubcommand(repoPath, positionals, flags);
+  } else if (command === "slice") {
+    result = await runSliceSubcommand(repoPath, positionals, flags);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
@@ -251,6 +257,33 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
     return { satisfaction: before, statusChanges: reconciled };
   }
   throw new Error(`Unknown spec subcommand: ${sub}`);
+}
+
+async function runReleaseSubcommand(repoPath, positionals, flags) {
+  const [sub] = positionals;
+  if (!sub) throw new Error("release requires a subcommand: plan | status");
+  const { planRelease, releaseStatus } = await import("./lib/release-planner.mjs");
+  if (sub === "plan") {
+    if (!flags.version) throw new Error("release plan requires --version vX.Y.Z");
+    return await planRelease(repoPath, { version: flags.version });
+  }
+  if (sub === "status") {
+    if (!flags.version) throw new Error("release status requires --version vX.Y.Z");
+    return await releaseStatus(repoPath, { version: flags.version });
+  }
+  throw new Error(`Unknown release subcommand: ${sub}`);
+}
+
+async function runSliceSubcommand(repoPath, positionals, flags) {
+  const [sub, ...rest] = positionals;
+  if (!sub) throw new Error("slice requires a subcommand: from-feature");
+  if (sub === "from-feature") {
+    const featureId = flags.id || rest[0];
+    if (!featureId) throw new Error("slice from-feature requires --id FEAT-NNN.");
+    const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
+    return await sliceFromFeature(repoPath, featureId);
+  }
+  throw new Error(`Unknown slice subcommand: ${sub}`);
 }
 
 main().catch((error) => {
