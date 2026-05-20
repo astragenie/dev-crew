@@ -89,7 +89,24 @@ export async function moveFeature(filePath, toState, updates = {}) {
   await ensureDir(targetDir);
   const targetPath = path.join(targetDir, filename);
   const content = await fs.readFile(filePath, "utf8");
-  const merged = mergeFrontmatter(content, { ...updates, status: toState, updated: nowIsoDate() });
+  const { frontmatter: existingFm } = parseFrontmatter(content);
+  // Lifecycle timestamps. Set started_at the FIRST time a feature enters
+  // in-progress; completed_at the FIRST time it enters done. Idempotent —
+  // don't overwrite values already set (so re-entering a state preserves
+  // the original timeline).
+  const lifecycle = {};
+  if (toState === "in-progress" && !existingFm.started_at) {
+    lifecycle.started_at = nowIsoDate();
+  }
+  if (toState === "done" && !existingFm.completed_at) {
+    lifecycle.completed_at = nowIsoDate();
+  }
+  const merged = mergeFrontmatter(content, {
+    ...updates,
+    ...lifecycle,
+    status: toState,
+    updated: nowIsoDate()
+  });
   await fs.writeFile(targetPath, merged);
   if (targetPath !== filePath) {
     await fs.unlink(filePath);

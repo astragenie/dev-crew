@@ -167,3 +167,92 @@ export async function sliceFromFeature(repoPath, featureId, { config = null } = 
     }
   };
 }
+
+// Closes a slice. Atomic:
+//   1. Move the slice file from <slicesRoot>/pending/ -> completed/ (if
+//      nested layout); flat layout updates frontmatter only.
+//   2. Update slice frontmatter status: "pending"|"active" -> "completed"
+//      and stamp completed_at.
+//   3. Find linked feature via slice.feature frontmatter; move feature
+//      from in-progress/ -> done/. backlog-writer auto-stamps completed_at.
+//   4. Run reconcileSpecStatus so any spec whose features all reached done
+//      auto-rolls to satisfied.
+//   5. Return paths + a hint that the agent should run `slice grade` next.
+export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
+  if (!sliceId) throw new Error("completeSlice requires a sliceId.");
+  const resolved = config || await resolveConfig(repoPath);
+  const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
+
+  // Locate slice file recursively
+  const sliceFile = await locateSliceFile(slicesRoot, sliceId);
+  if (!sliceFile) throw new Error(`Slice file not found for ${sliceId} under ${slicesRoot}`);
+
+  const sliceContent = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter: sliceFm, body: sliceBody } = parseFrontmatter(sliceContent);
+  const featureId = sliceFm.feature || null;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Decide target path. If slice file currently lives in a state subdir
+  // (pending/active), move to completed/. Else update in place (flat).
+  const parentDir = path.basename(path.dirname(sliceFile));
+  let targetSlicePath = sliceFile;
+  if (parentDir === "pending" || parentDir === "active") {
+    const completedDir = path.join(slicesRoot, "completed");
+    await ensureDir(completedDir);
+    targetSlicePath = path.join(completedDir, path.basename(sliceFile));
+  }
+
+  const updatedSliceContent = mergeFrontmatter(sliceContent, {
+    status: "completed",
+    completed_at: sliceFm.completed_at || today,
+    updated: today
+  });
+  await fs.writeFile(targetSlicePath, updatedSliceContent);
+  if (targetSlicePath !== sliceFile) {
+    await fs.unlink(sliceFile);
+  }
+
+  // Move linked feature -> done/, stamp completed_at
+  let featureResult = null;
+  if (featureId) {
+    const { findFeatureById, moveFeature } = await import("./backlog-writer.mjs");
+    const feat = await findFeatureById(repoPath, featureId, config);
+    if (feat && feat.state !== "done") {
+      const moved = await moveFeature(feat.filePath, "done");
+      featureResult = { id: featureId, from: moved.from, to: moved.to };
+    } else if (feat) {
+      featureResult = { id: featureId, alreadyDone: true, path: feat.filePath };
+    }
+  }
+
+  // Reconcile parent spec status
+  const { reconcileSpecStatus } = await import("./linkage.mjs");
+  const specChanges = await reconcileSpecStatus(repoPath, config);
+
+  return {
+    slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
+    feature: featureResult,
+    specStatusChanges: specChanges,
+    nextAction: `Run /autonomous-loop:slice grade --id ${sliceId} to capture lessons + decisions.`
+  };
+}
+
+async function locateSliceFile(slicesRoot, sliceId) {
+  if (!(await pathExists(slicesRoot))) return null;
+  const slicePattern = sliceId.replace("-", "[_-]");
+  const re = new RegExp(`^${slicePattern}(_|$)`, "i");
+  const stack = [slicesRoot];
+  while (stack.length > 0) {
+    const dir = stack.pop();
+    let entries;
+    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { stack.push(full); continue; }
+      if (re.test(e.name)) return full;
+    }
+  }
+  return null;
+}
+
+import { mergeFrontmatter } from "./frontmatter.mjs";

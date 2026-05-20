@@ -323,6 +323,20 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
     const { writeGrade } = await import("./lib/grade-writer.mjs");
     return await writeGrade(repoPath, sliceId);
   }
+  if (sub === "complete") {
+    const sliceId = flags.id || rest[0];
+    if (!sliceId) throw new Error("slice complete requires --id SLICE-NN.");
+    const { completeSlice } = await import("./lib/slice-linker.mjs");
+    const out = await completeSlice(repoPath, sliceId);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "slice complete",
+      slice: sliceId,
+      feature: out.feature?.id || null,
+      spec_status_changes: out.specStatusChanges?.length || 0
+    });
+    return out;
+  }
   throw new Error(`Unknown slice subcommand: ${sub}`);
 }
 

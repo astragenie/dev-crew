@@ -292,6 +292,18 @@ export async function runPhaseGate(repoPath, options = {}) {
     artifactPath
   );
 
+  // Auto-invoke retrospective when phase gate PASSes. Captures lessons /
+  // score trends / decisions over the window since the previous phase-gate
+  // artifact (default span 30 days if no prior gate found).
+  let retrospective = null;
+  if (overallStatus === "PASS") {
+    try {
+      retrospective = await runRetrospectiveSincePreviousGate(repoPath, phase);
+    } catch (err) {
+      retrospective = { error: err.message };
+    }
+  }
+
   return {
     mode: "phase-gate",
     status: overallStatus,
@@ -305,6 +317,40 @@ export async function runPhaseGate(repoPath, options = {}) {
       skipped: Boolean(s.skipped),
       ok: s.skipped ? null : s.ok,
       failingCount: (s.runs || []).filter((r) => !r.ok).length
-    }))
+    })),
+    retrospective
+  };
+}
+
+// Look back at docs/<phaseGateArtifactDir> for the previous phase-N-gate-*.md
+// artifact and use its date as the retrospective lower bound. Falls back to
+// 30 days if no prior gate exists.
+async function runRetrospectiveSincePreviousGate(repoPath, phase) {
+  const config = await resolveConfig(repoPath);
+  const dir = path.resolve(repoPath, config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations");
+  let entries;
+  try { entries = await fs.readdir(dir); } catch { entries = []; }
+  const phaseRe = /^phase-(.+)-gate-(\d{8})T\d+Z?\.md$/;
+  const prior = entries
+    .map((name) => name.match(phaseRe))
+    .filter((m) => m)
+    .map((m) => ({ phase: m[1], stamp: m[2] }))
+    .filter((e) => e.phase !== String(phase))
+    .sort((a, b) => b.stamp.localeCompare(a.stamp));
+  const sinceDate = prior.length > 0
+    ? `${prior[0].stamp.slice(0, 4)}-${prior[0].stamp.slice(4, 6)}-${prior[0].stamp.slice(6, 8)}`
+    : null;
+  const { writeRetrospective } = await import("./retrospective.mjs");
+  const result = await writeRetrospective(repoPath, sinceDate ? { since: sinceDate } : { spanDays: 30 });
+  return {
+    artifactPath: result.artifactPath,
+    sincePreviousGate: sinceDate,
+    spanFallbackDays: sinceDate ? null : 30,
+    summary: {
+      gradesInWindow: result.report.counts.gradesInWindow,
+      decisionsInWindow: result.report.counts.decisionsInWindow,
+      featuresDoneInWindow: result.report.counts.featuresDoneInWindow,
+      dimensionsBelowThreshold: result.report.dimensionsBelowThreshold
+    }
   };
 }
