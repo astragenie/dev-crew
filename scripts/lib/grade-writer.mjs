@@ -76,6 +76,10 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
     }
   }
 
+  // Auto-prefill scores from crew artifacts mentioning this slice.
+  const { inferScoresForSlice } = await import("./score-inference.mjs");
+  const inference = await inferScoresForSlice(repoPath, sliceId);
+
   let tpl = await readTemplate("grades/grade-template.md");
   // Token substitutions
   tpl = tpl
@@ -84,6 +88,26 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
     .replace(/\bSLICE-NN\b/g, sliceId)
     .replace(/FEAT-NNN/g, featureId || "null")
     .replace(/YYYY-MM-DD/g, today());
+
+  // Apply inferred scores to both the frontmatter scores: block AND the
+  // mirror list in the body. Leave dimensions without inference at 0.00
+  // so the agent's eye is drawn to them.
+  for (const [dim, value] of Object.entries(inference.scores)) {
+    const fixed = value.toFixed(2);
+    tpl = tpl.replace(new RegExp(`^(  ${dim}): 0$`, "m"), `$1: ${fixed}`);
+    tpl = tpl.replace(new RegExp(`(- ${dim}): 0\\.00`), `$1: ${fixed}`);
+  }
+  // Append a note about inference sources so the agent knows which artifacts
+  // contributed; agent can override any score with confidence.
+  if (Object.keys(inference.scores).length > 0) {
+    const sourceLines = Object.entries(inference.sources)
+      .map(([dim, srcs]) => `- ${dim}: ${srcs.join(", ")}`)
+      .join("\n");
+    tpl = tpl.replace(
+      "(Update both the frontmatter `scores:` map and this list. The frontmatter\nis what plugin commands read; the list is for human review.)",
+      `(Scores prefilled from crew artifacts where signals were available. Override any value if your honest assessment differs.)\n\n### Inference sources\n\n${sourceLines}`
+    );
+  }
 
   // Patch frontmatter with resolved values via simple regex on the template
   tpl = tpl
