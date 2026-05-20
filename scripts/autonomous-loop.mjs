@@ -178,6 +178,14 @@ async function main() {
     const { recentLessons } = await import("./lib/lessons-feed.mjs");
     const limit = positionals[1] ? Number(positionals[1]) : 5;
     result = await recentLessons(repoPath, { limit });
+  } else if (command === "sync-claims") {
+    const { syncClaims } = await import("./lib/claims-sync.mjs");
+    result = await syncClaims(repoPath);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
+  } else if (command === "stop-check") {
+    const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
+    result = await checkStopConditions(repoPath);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
