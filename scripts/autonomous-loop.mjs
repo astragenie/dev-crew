@@ -137,6 +137,8 @@ async function main() {
     result = await runReleaseSubcommand(repoPath, positionals, flags);
   } else if (command === "slice") {
     result = await runSliceSubcommand(repoPath, positionals, flags);
+  } else if (command === "decisions") {
+    result = await runDecisionsSubcommand(repoPath, positionals, flags);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
@@ -276,14 +278,61 @@ async function runReleaseSubcommand(repoPath, positionals, flags) {
 
 async function runSliceSubcommand(repoPath, positionals, flags) {
   const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("slice requires a subcommand: from-feature");
+  if (!sub) throw new Error("slice requires a subcommand: from-feature | grade | grade-write");
   if (sub === "from-feature") {
     const featureId = flags.id || rest[0];
     if (!featureId) throw new Error("slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
-    return await sliceFromFeature(repoPath, featureId);
+    const out = await sliceFromFeature(repoPath, featureId);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "slice from-feature", feature: featureId, slice: out.slice.id });
+    return out;
+  }
+  if (sub === "grade") {
+    const sliceId = flags.id || rest[0];
+    if (!sliceId) throw new Error("slice grade requires --id SLICE-NN.");
+    const { createGradeFile } = await import("./lib/grade-writer.mjs");
+    const out = await createGradeFile(repoPath, sliceId);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "slice grade", slice: sliceId, created: out.created });
+    return out;
+  }
+  if (sub === "grade-write") {
+    const sliceId = flags.id || rest[0];
+    if (!sliceId) throw new Error("slice grade-write requires --id SLICE-NN.");
+    const { writeGrade } = await import("./lib/grade-writer.mjs");
+    return await writeGrade(repoPath, sliceId);
   }
   throw new Error(`Unknown slice subcommand: ${sub}`);
+}
+
+async function runDecisionsSubcommand(repoPath, positionals, flags) {
+  const [sub, ...rest] = positionals;
+  if (!sub) throw new Error("decisions requires a subcommand: list | show");
+  const { listDecisions, showDecision } = await import("./lib/decisions-store.mjs");
+  if (sub === "list") {
+    const decisions = await listDecisions(repoPath, { status: flags.status });
+    return {
+      count: decisions.length,
+      decisions: decisions.map((d) => ({
+        id: d.id,
+        title: d.title,
+        status: d.status,
+        introduced_by_slice: d.introduced_by_slice,
+        introduced_at: d.introduced_at,
+        superseded_by: d.superseded_by,
+        filePath: d.filePath
+      }))
+    };
+  }
+  if (sub === "show") {
+    const decId = flags.id || rest[0];
+    if (!decId) throw new Error("decisions show requires --id DEC-NNN.");
+    const dec = await showDecision(repoPath, decId);
+    if (!dec) throw new Error(`Decision not found: ${decId}`);
+    return dec;
+  }
+  throw new Error(`Unknown decisions subcommand: ${sub}`);
 }
 
 main().catch((error) => {

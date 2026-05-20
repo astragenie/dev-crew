@@ -233,6 +233,38 @@ async function writeBacklogStateMachine(repoPath, writes) {
   }
 }
 
+async function writeGradesScaffold(repoPath, writes) {
+  const root = path.join(repoPath, "docs", "grades");
+  await ensureDir(root);
+  const items = [
+    { template: "grades/README.md", target: "README.md" },
+    { template: "grades/grade-template.md", target: "grade-template.md" }
+  ];
+  for (const { template, target } of items) {
+    const targetPath = path.join(root, target);
+    if (await pathExists(targetPath)) continue;
+    const tpl = await readTemplate(template);
+    await fs.writeFile(targetPath, tpl);
+    writes.push(path.relative(repoPath, targetPath));
+  }
+}
+
+async function writeDecisionsScaffold(repoPath, writes) {
+  const root = path.join(repoPath, "docs", "decisions");
+  await ensureDir(root);
+  const items = [
+    { template: "decisions/README.md", target: "README.md" },
+    { template: "decisions/decision-template.md", target: "decision-template.md" }
+  ];
+  for (const { template, target } of items) {
+    const targetPath = path.join(root, target);
+    if (await pathExists(targetPath)) continue;
+    const tpl = await readTemplate(template);
+    await fs.writeFile(targetPath, tpl);
+    writes.push(path.relative(repoPath, targetPath));
+  }
+}
+
 async function writeSpecsScaffold(repoPath, writes) {
   const root = path.join(repoPath, "docs", "specs");
   await ensureDir(root);
@@ -299,6 +331,8 @@ export async function installLoop(repoPath, options = {}) {
   await writeBacklogScaffold(repoPath, tokens, writes);
   await writeBacklogStateMachine(repoPath, writes);
   await writeSpecsScaffold(repoPath, writes);
+  await writeGradesScaffold(repoPath, writes);
+  await writeDecisionsScaffold(repoPath, writes);
 
   const configResult = await writeConfigIfMissing(repoPath, {
     preset: config.preset,
