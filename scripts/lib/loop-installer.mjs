@@ -198,6 +198,61 @@ async function writeBacklogScaffold(repoPath, tokens, writes) {
   }
 }
 
+// Product-tier scaffolds: docs/backlog/ (state-machine dir for FEAT-NNN
+// files) and docs/specs/ (flat dir for SPEC-NNN files). These live OUTSIDE
+// the ai-loop tree because they're PM/strategic surfaces, not methodology.
+// Only-if-missing per file — never clobber user content.
+const BACKLOG_STATES = ["pending", "triaged", "in-progress", "done"];
+
+async function writeBacklogStateMachine(repoPath, writes) {
+  const root = path.join(repoPath, "docs", "backlog");
+  await ensureDir(root);
+  // Top-level README explaining the dir
+  const readmePath = path.join(root, "README.md");
+  if (!(await pathExists(readmePath))) {
+    const tpl = await readTemplate("backlog/README.md");
+    await fs.writeFile(readmePath, tpl);
+    writes.push(path.relative(repoPath, readmePath));
+  }
+  // feature-template.md as reference
+  const templatePath = path.join(root, "feature-template.md");
+  if (!(await pathExists(templatePath))) {
+    const tpl = await readTemplate("backlog/feature-template.md");
+    await fs.writeFile(templatePath, tpl);
+    writes.push(path.relative(repoPath, templatePath));
+  }
+  // Four state dirs with .gitkeep
+  for (const state of BACKLOG_STATES) {
+    const dir = path.join(root, state);
+    await ensureDir(dir);
+    const keep = path.join(dir, ".gitkeep");
+    if (!(await pathExists(keep))) {
+      await fs.writeFile(keep, "");
+      writes.push(path.relative(repoPath, keep));
+    }
+  }
+}
+
+async function writeSpecsScaffold(repoPath, writes) {
+  const root = path.join(repoPath, "docs", "specs");
+  await ensureDir(root);
+  const items = [
+    { template: "specs/README.md", target: "README.md" },
+    { template: "specs/prd-template.md", target: "prd-template.md" },
+    { template: "specs/user-journey-template.md", target: "user-journey-template.md" },
+    { template: "specs/sre-template.md", target: "sre-template.md" },
+    { template: "specs/research-template.md", target: "research-template.md" },
+    { template: "specs/adr-template.md", target: "adr-template.md" }
+  ];
+  for (const { template, target } of items) {
+    const targetPath = path.join(root, target);
+    if (await pathExists(targetPath)) continue;
+    const tpl = await readTemplate(template);
+    await fs.writeFile(targetPath, tpl);
+    writes.push(path.relative(repoPath, targetPath));
+  }
+}
+
 export async function installLoop(repoPath, options = {}) {
   if (!(await pathExists(repoPath))) {
     throw new Error(`Repository path does not exist: ${repoPath}`);
@@ -242,6 +297,8 @@ export async function installLoop(repoPath, options = {}) {
   await updateClaudeMd(repoPath, tokens, writes);
   await writeLoopControlFiles(repoPath, tokens, writes);
   await writeBacklogScaffold(repoPath, tokens, writes);
+  await writeBacklogStateMachine(repoPath, writes);
+  await writeSpecsScaffold(repoPath, writes);
 
   const configResult = await writeConfigIfMissing(repoPath, {
     preset: config.preset,

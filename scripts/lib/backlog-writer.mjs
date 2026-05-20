@@ -1,0 +1,103 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
+import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backlog-parser.mjs";
+
+function nowIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function ensureBacklogScaffold(repoPath, config) {
+  const root = backlogRoot(repoPath, config);
+  for (const state of BACKLOG_STATES) {
+    const dir = path.join(root, state);
+    await ensureDir(dir);
+    const keep = path.join(dir, ".gitkeep");
+    if (!(await pathExists(keep))) {
+      await fs.writeFile(keep, "");
+    }
+  }
+  return root;
+}
+
+export async function addFeature(repoPath, { title, body = "", priority = null, category = null, target_release = null, derived_from = null, config = null } = {}) {
+  if (!title || typeof title !== "string") {
+    throw new Error("addFeature requires a non-empty title.");
+  }
+  const root = await ensureBacklogScaffold(repoPath, config);
+  const id = await nextFeatureId(repoPath, { config });
+  const today = nowIsoDate();
+  const frontmatter = {
+    id,
+    status: "pending",
+    priority,
+    category,
+    target_release,
+    created: today,
+    updated: today,
+    depends_on: [],
+    slices: [],
+    derived_from: derived_from || null
+  };
+  const docBody = body || [
+    `# ${id}: ${title}`,
+    "",
+    "## Description",
+    "",
+    "(describe the feature in PM-friendly language)",
+    "",
+    "## Acceptance hints",
+    "",
+    "- bullet 1",
+    "- bullet 2",
+    ""
+  ].join("\n");
+  const fullBody = docBody.startsWith("#") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
+  const contents = serializeFrontmatter(frontmatter, fullBody);
+  const filePath = path.join(root, "pending", `${id}.md`);
+  await fs.writeFile(filePath, contents);
+  return { id, filePath, frontmatter };
+}
+
+export async function updateFeatureFrontmatter(filePath, updates) {
+  const content = await fs.readFile(filePath, "utf8");
+  const merged = mergeFrontmatter(content, { ...updates, updated: nowIsoDate() });
+  await fs.writeFile(filePath, merged);
+  return parseFrontmatter(merged).frontmatter;
+}
+
+export async function moveFeature(filePath, toState, updates = {}) {
+  if (!BACKLOG_STATES.includes(toState)) {
+    throw new Error(`Unknown backlog state: ${toState}`);
+  }
+  const filename = path.basename(filePath);
+  const targetDir = path.join(path.dirname(path.dirname(filePath)), toState);
+  await ensureDir(targetDir);
+  const targetPath = path.join(targetDir, filename);
+  const content = await fs.readFile(filePath, "utf8");
+  const merged = mergeFrontmatter(content, { ...updates, status: toState, updated: nowIsoDate() });
+  await fs.writeFile(targetPath, merged);
+  if (targetPath !== filePath) {
+    await fs.unlink(filePath);
+  }
+  return { from: filePath, to: targetPath };
+}
+
+export async function findFeatureById(repoPath, featureId, config = null) {
+  const entries = await listBacklog(repoPath, { config });
+  return entries.find((e) => e.id === featureId) || null;
+}
