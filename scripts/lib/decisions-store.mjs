@@ -93,6 +93,40 @@ export async function writeDecisionFile(repoPath, { id, title, sliceId, rational
   return { id, filePath };
 }
 
+// Returns decisions whose `affects_files` frontmatter array matches any of
+// the supplied changed files. Match is literal path-suffix. Used by reviewer
+// to surface prior architectural decisions touching the same code.
+export async function findRelevantDecisions(repoPath, changedFiles, config = null) {
+  if (!Array.isArray(changedFiles) || changedFiles.length === 0) return [];
+  const all = await listDecisions(repoPath, { config });
+  const normalized = changedFiles.map((f) => f.replace(/\\/g, "/").toLowerCase());
+  const matched = [];
+  for (const d of all) {
+    const affects = Array.isArray(d.frontmatter.affects_files) ? d.frontmatter.affects_files : [];
+    if (affects.length === 0) continue;
+    const hits = [];
+    for (const a of affects) {
+      const normA = String(a).replace(/\\/g, "/").toLowerCase();
+      for (const c of normalized) {
+        if (c === normA || c.endsWith(`/${normA}`) || normA.endsWith(`/${c}`)) {
+          hits.push({ decisionFile: a, changedFile: c });
+        }
+      }
+    }
+    if (hits.length > 0) {
+      matched.push({
+        id: d.id,
+        title: d.title,
+        status: d.status,
+        introduced_by_slice: d.introduced_by_slice,
+        filePath: d.filePath,
+        hits
+      });
+    }
+  }
+  return matched;
+}
+
 export async function showDecision(repoPath, decisionId, config = null) {
   const all = await listDecisions(repoPath, { config });
   return all.find((d) => d.id === decisionId) || null;

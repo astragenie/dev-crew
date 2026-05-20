@@ -229,12 +229,94 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   const { reconcileSpecStatus } = await import("./linkage.mjs");
   const specChanges = await reconcileSpecStatus(repoPath, config);
 
+  // Best-effort crew handoff written to .claude/artifacts/crew/handoffs/.
+  // Failure (read-only fs, etc.) doesn't break complete operation.
+  let handoff = null;
+  try {
+    handoff = await writeCrewHandoff(repoPath, {
+      sliceId, slicePath: targetSlicePath, featureId, featureResult, specChanges
+    });
+  } catch (err) {
+    handoff = { error: err.message };
+  }
+
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
     feature: featureResult,
     specStatusChanges: specChanges,
+    handoff,
     nextAction: `Run /autonomous-loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
+}
+
+async function writeCrewHandoff(repoPath, { sliceId, slicePath, featureId, featureResult, specChanges }) {
+  const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
+  await ensureDir(handoffDir);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const filename = `${stamp}-${sliceId.toLowerCase()}-complete.md`;
+  const target = path.join(handoffDir, filename);
+  const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
+  const featureRel = featureResult?.to
+    ? path.relative(repoPath, featureResult.to).replace(/\\/g, "/")
+    : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const fm = {
+    kind: "handoff",
+    objective: `Slice ${sliceId} complete — grade + start next slice`,
+    owner: "lead",
+    slice: sliceId,
+    feature: featureId || null,
+    created_at: today,
+    confidence: "high",
+    next_handoff: "grade-and-continue"
+  };
+  const body = [
+    `# Handoff — ${sliceId} complete`,
+    "",
+    "## Objective",
+    "",
+    `Slice ${sliceId} closed with acceptance criteria PASS. Capture lessons + decisions via grading, then resume Cross-Slice Continuation.`,
+    "",
+    "## Allowed scope",
+    "",
+    `- Run \`/autonomous-loop:slice grade --id ${sliceId}\` to draft grade file.`,
+    `- Edit \`docs/grades/${sliceId}-grade.md\` (scores, lessons, decisions, narrative).`,
+    `- Run \`/autonomous-loop:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
+    "- Pick next slice via Cross-Slice Continuation HARD RULE.",
+    "",
+    "## Forbidden scope",
+    "",
+    "- Starting next slice before grade is written (loses self-improvement signal).",
+    "",
+    "## Deliverable",
+    "",
+    `- \`docs/grades/${sliceId}-grade.md\` populated + grade-write'd`,
+    "- Any extracted `docs/decisions/DEC-NNN.md` files",
+    "",
+    "## Changed files / evidence",
+    "",
+    `- slice file (completed): \`${sliceRel}\``,
+    featureRel ? `- feature file (done): \`${featureRel}\`` : "",
+    specChanges && specChanges.length > 0
+      ? `- spec status changes: ${specChanges.map((c) => `${c.id} → ${c.to}`).join(", ")}`
+      : "",
+    "",
+    "## Confidence",
+    "",
+    "High — slice + feature moves atomic; spec reconciliation idempotent.",
+    "",
+    "## Risks or open questions",
+    "",
+    "- Grading skipped → no retrospective signal for this slice.",
+    "",
+    "## Suggested next handoff",
+    "",
+    "After grade-write, lead picks next slice + opens new builder handoff.",
+    ""
+  ].filter(Boolean).join("\n");
+  const { serializeFrontmatter } = await import("./frontmatter.mjs");
+  await fs.writeFile(target, serializeFrontmatter(fm, body));
+  return { handoffPath: target };
 }
 
 async function locateSliceFile(slicesRoot, sliceId) {

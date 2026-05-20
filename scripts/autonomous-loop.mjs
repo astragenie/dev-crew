@@ -38,7 +38,11 @@ function parseArgs(argv) {
     since: null,
     spanDays: null,
     until: null,
-    by: null
+    by: null,
+    artifact: null,
+    kind: null,
+    files: null,
+    featuresJson: null
   };
   const positionals = [];
 
@@ -88,6 +92,10 @@ function parseArgs(argv) {
     if (value === "--span-days") { flags.spanDays = rest[index + 1]; index += 1; continue; }
     if (value === "--until") { flags.until = rest[index + 1]; index += 1; continue; }
     if (value === "--by") { flags.by = rest[index + 1]; index += 1; continue; }
+    if (value === "--artifact") { flags.artifact = rest[index + 1]; index += 1; continue; }
+    if (value === "--kind") { flags.kind = rest[index + 1]; index += 1; continue; }
+    if (value === "--files") { flags.files = rest[index + 1]; index += 1; continue; }
+    if (value === "--features-json") { flags.featuresJson = rest[index + 1]; index += 1; continue; }
     if (value.startsWith("--")) {
       throw new Error(`Unknown argument: ${value}`);
     }
@@ -265,12 +273,22 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
   if (sub === "decompose") {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
-    if (!flags.features) {
-      throw new Error('spec decompose requires --features "title1;title2;title3" (semicolon-separated).');
+    if (!flags.features && !flags.featuresJson) {
+      throw new Error('spec decompose requires --features "t1;t2" OR --features-json <JSON array>.');
     }
-    const titles = flags.features.split(";").map((s) => s.trim()).filter(Boolean);
+    let entries;
+    if (flags.featuresJson) {
+      try {
+        entries = JSON.parse(flags.featuresJson);
+      } catch (err) {
+        throw new Error(`--features-json must be valid JSON: ${err.message}`);
+      }
+      if (!Array.isArray(entries)) throw new Error("--features-json must be a JSON array");
+    } else {
+      entries = flags.features.split(";").map((s) => s.trim()).filter(Boolean);
+    }
     const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-    return await decomposeSpec(repoPath, specId, titles);
+    return await decomposeSpec(repoPath, specId, entries);
   }
   if (sub === "status") {
     const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
@@ -333,9 +351,26 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
       command: "slice complete",
       slice: sliceId,
       feature: out.feature?.id || null,
-      spec_status_changes: out.specStatusChanges?.length || 0
+      spec_status_changes: out.specStatusChanges?.length || 0,
+      handoff_written: Boolean(out.handoff?.handoffPath)
     });
     return out;
+  }
+  if (sub === "link") {
+    const sliceId = flags.id;
+    if (!sliceId) throw new Error("slice link requires --id SLICE-NN.");
+    if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
+    if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
+    const { linkArtifactToSlice } = await import("./lib/artifact-linkage.mjs");
+    return await linkArtifactToSlice(repoPath, {
+      sliceId, artifactPath: flags.artifact, kind: flags.kind
+    });
+  }
+  if (sub === "review-ladder") {
+    const sliceId = flags.id || rest[0];
+    if (!sliceId) throw new Error("slice review-ladder requires --id SLICE-NN.");
+    const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
+    return await buildReviewLadder(repoPath, sliceId);
   }
   throw new Error(`Unknown slice subcommand: ${sub}`);
 }
@@ -373,6 +408,13 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "decisions supersede", old: flags.id, new: flags.by });
     return out;
+  }
+  if (sub === "relevant") {
+    const { findRelevantDecisions } = await import("./lib/decisions-store.mjs");
+    if (!flags.files) throw new Error("decisions relevant requires --files \"a.cs,b.cs,...\"");
+    const files = flags.files.split(",").map((f) => f.trim()).filter(Boolean);
+    const matches = await findRelevantDecisions(repoPath, files);
+    return { count: matches.length, decisions: matches };
   }
   throw new Error(`Unknown decisions subcommand: ${sub}`);
 }

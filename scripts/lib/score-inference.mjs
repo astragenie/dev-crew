@@ -46,8 +46,29 @@ const INFERENCE_RULES = {
   ]
 };
 
+// Loads artifacts via frontmatter linkage (slice frontmatter arrays) when
+// available, falling back to body-scrape if no linkage exists. Linkage path
+// is preferred — it's deterministic and survives content edits.
+async function readLinkedOrScrapedArtifacts(repoPath, dirRelative, sliceId, kind) {
+  const { getLinkedArtifacts } = await import("./artifact-linkage.mjs");
+  const linked = await getLinkedArtifacts(repoPath, sliceId, kind);
+  if (linked.length > 0) {
+    const out = [];
+    for (const rel of linked) {
+      const full = path.isAbsolute(rel) ? rel : path.resolve(repoPath, rel);
+      try {
+        const content = await fs.readFile(full, "utf8");
+        out.push({ path: full, content, filename: path.basename(full) });
+      } catch { /* skip missing */ }
+    }
+    return out;
+  }
+  return readArtifactsMentioningSlice(repoPath, dirRelative, sliceId);
+}
+
 // Reads all .md files in a crew artifact dir whose body or filename mentions
 // the given slice id (e.g. "SLICE-52" or "SLICE_52"). Returns the file list.
+// Used as fallback when slice frontmatter has no linkage arrays.
 async function readArtifactsMentioningSlice(repoPath, dirRelative, sliceId) {
   const dir = path.join(repoPath, dirRelative);
   if (!(await pathExists(dir))) return [];
@@ -71,9 +92,9 @@ async function readArtifactsMentioningSlice(repoPath, dirRelative, sliceId) {
 export async function inferScoresForSlice(repoPath, sliceId) {
   if (!sliceId) return { scores: {}, sources: {} };
   const sources = {
-    reviews: await readArtifactsMentioningSlice(repoPath, ARTIFACT_DIRS.reviews, sliceId),
-    validations: await readArtifactsMentioningSlice(repoPath, ARTIFACT_DIRS.validations, sliceId),
-    deployments: await readArtifactsMentioningSlice(repoPath, ARTIFACT_DIRS.deployments, sliceId)
+    reviews: await readLinkedOrScrapedArtifacts(repoPath, ARTIFACT_DIRS.reviews, sliceId, "reviews"),
+    validations: await readLinkedOrScrapedArtifacts(repoPath, ARTIFACT_DIRS.validations, sliceId, "validations"),
+    deployments: await readLinkedOrScrapedArtifacts(repoPath, ARTIFACT_DIRS.deployments, sliceId, "deployments")
   };
 
   const contributions = {};
