@@ -94,6 +94,48 @@ test(
 );
 
 test(
+  "installLoop collapses stacked orphan start markers (regression: < 0.1.12 stacking bug)",
+  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  async () => {
+    const repo = await initGitRepo("al-install-orphans-");
+    // Simulate a CLAUDE.md that was corrupted by repeated installs from an
+    // earlier plugin version: many start markers stacked, no end marker.
+    const orphans = Array(7).fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`).join("\n");
+    await fs.writeFile(
+      path.join(repo, "CLAUDE.md"),
+      `# CLAUDE.md\n\n## Preserve me\n\nUser content above the bad block.\n\n${orphans}`
+    );
+
+    await installLoop(repo, { migrateAdhoc: false });
+
+    const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
+    const startCount = claudeMd.split(MARKER_START).length - 1;
+    const endCount = claudeMd.split(MARKER_END).length - 1;
+    assert.equal(startCount, 1, "stacked starts must collapse to one");
+    assert.equal(endCount, 1, "exactly one end marker after install");
+    assert.ok(claudeMd.includes("## Preserve me"), "user content above the bad block must survive");
+    assert.ok(claudeMd.includes("User content above the bad block."), "user prose above must survive");
+  }
+);
+
+test(
+  "installLoop is convergent: second run after orphan-collapse is a no-op",
+  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  async () => {
+    const repo = await initGitRepo("al-install-convergence-");
+    const orphans = Array(5).fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`).join("\n");
+    await fs.writeFile(path.join(repo, "CLAUDE.md"), `# CLAUDE.md\n\n${orphans}`);
+
+    await installLoop(repo, { migrateAdhoc: false });
+    const afterFirst = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
+    await installLoop(repo, { migrateAdhoc: false });
+    const afterSecond = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
+
+    assert.equal(afterFirst, afterSecond, "second install after collapse must produce identical bytes");
+  }
+);
+
+test(
   "installLoop preserves user content outside the marker block",
   { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
   async () => {

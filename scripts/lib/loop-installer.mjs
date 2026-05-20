@@ -76,17 +76,32 @@ function buildTokens(config) {
 
 // Replace the existing autonomous-loop marker block in CLAUDE.md, or append
 // a new one if none is present. Preserves all content outside the marker block.
+//
+// Tolerant of malformed state from earlier installs:
+// - Well-formed (single start + single end) → replace start-to-end.
+// - Stacked starts + single end (field-observed bug from < 0.1.12) → replace
+//   from FIRST start to LAST end, collapsing everything between.
+// - Orphan start with no end (interrupted install / older plugin version) →
+//   replace from FIRST start to EOF.
+// - End without start → undefined input; treat as no marker and append.
+//
+// Idempotency requirement: running this function twice with the same
+// renderedBlock must produce identical output on the second call.
 function applyMarkerBlock(existing, renderedBlock) {
-  const startIdx = existing.indexOf(MARKER_START);
-  const endIdx = existing.indexOf(MARKER_END);
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const before = existing.slice(0, startIdx).trimEnd();
-    const after = existing.slice(endIdx + MARKER_END.length).trimStart();
-    const parts = [before, renderedBlock];
-    if (after) parts.push(after);
-    return `${parts.join("\n\n")}\n`;
+  const firstStartIdx = existing.indexOf(MARKER_START);
+  if (firstStartIdx === -1) {
+    return `${existing.trimEnd()}\n\n${renderedBlock}\n`;
   }
-  return `${existing.trimEnd()}\n\n${renderedBlock}\n`;
+  const lastEndIdx = existing.lastIndexOf(MARKER_END);
+  const before = existing.slice(0, firstStartIdx).trimEnd();
+  const endCut =
+    lastEndIdx !== -1 && lastEndIdx > firstStartIdx
+      ? lastEndIdx + MARKER_END.length
+      : existing.length;
+  const after = existing.slice(endCut).trimStart();
+  const parts = [before, renderedBlock];
+  if (after) parts.push(after);
+  return `${parts.join("\n\n")}\n`;
 }
 
 async function updateClaudeMd(repoPath, tokens, writes) {
