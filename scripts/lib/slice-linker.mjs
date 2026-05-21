@@ -1,9 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFile as _execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 import { resolveConfig } from "./config-resolver.mjs";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
+
+const execFile = promisify(_execFile);
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
@@ -253,14 +257,54 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     synthesis = { error: err.message };
   }
 
+  // Best-effort cost-report via hero-crew. Computes Claude session $ for the
+  // slice window from workflow-state.json. Non-fatal on any failure.
+  let costReport = null;
+  try {
+    costReport = await tryWriteCostReport(repoPath, sliceId);
+  } catch (err) {
+    costReport = { error: err.message };
+  }
+
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
     feature: featureResult,
     specStatusChanges: specChanges,
     handoff,
     synthesis,
+    costReport,
     nextAction: `Run /autonomous-loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
+}
+
+async function findHeroCrewCli() {
+  if (process.env.HERO_CREW_PATH) {
+    const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
+    if (await pathExists(explicit)) return explicit;
+  }
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  const candidates = [
+    "C:/work/mega/hero-crew/scripts/crew.mjs",
+    home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
+    home ? `${home}/hero-crew/scripts/crew.mjs` : null,
+    home ? `${home}/.claude/plugins/cache/crew-dev/crew/0.1.0/scripts/crew.mjs` : null
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (await pathExists(candidate)) return candidate;
+  }
+  return null;
+}
+
+async function tryWriteCostReport(repoPath, sliceId) {
+  const cli = await findHeroCrewCli();
+  if (!cli) return { skipped: "hero-crew CLI not found" };
+  const args = [cli, "cost-slice", "--repo", repoPath, "--run-title", sliceId];
+  const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+  try {
+    return JSON.parse(stdout);
+  } catch {
+    return { stdout: stdout.slice(0, 500) };
+  }
 }
 
 async function writeCrewFinalSynthesis(repoPath, { sliceId, slicePath, featureId, featureResult, specChanges }) {
