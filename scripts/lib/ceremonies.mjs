@@ -5,7 +5,12 @@
  * @returns {CeremonyResult}
  */
 export function phaseStart(phase) {
-  return { type: "phase-start", id: phase.id, timestamp: new Date().toISOString(), status: "scaffold" };
+  return {
+    type: "phase-start",
+    id: phase.id,
+    timestamp: new Date().toISOString(),
+    status: "scaffold"
+  };
 }
 
 /**
@@ -13,7 +18,12 @@ export function phaseStart(phase) {
  * @returns {CeremonyResult}
  */
 export function phaseEnd(phase) {
-  return { type: "phase-end", id: phase.id, timestamp: new Date().toISOString(), status: "scaffold" };
+  return {
+    type: "phase-end",
+    id: phase.id,
+    timestamp: new Date().toISOString(),
+    status: "scaffold"
+  };
 }
 
 /**
@@ -21,7 +31,12 @@ export function phaseEnd(phase) {
  * @returns {CeremonyResult}
  */
 export function featureStart(feat) {
-  return { type: "feature-start", id: feat.id, timestamp: new Date().toISOString(), status: "scaffold" };
+  return {
+    type: "feature-start",
+    id: feat.id,
+    timestamp: new Date().toISOString(),
+    status: "scaffold"
+  };
 }
 
 /**
@@ -29,14 +44,19 @@ export function featureStart(feat) {
  * @returns {CeremonyResult}
  */
 export function featureEnd(feat) {
-  return { type: "feature-end", id: feat.id, timestamp: new Date().toISOString(), status: "scaffold" };
+  return {
+    type: "feature-end",
+    id: feat.id,
+    timestamp: new Date().toISOString(),
+    status: "scaffold"
+  };
 }
 
 /**
- * @param {Array<{ id: string, title: string, status: string, features: Array<{ id: string, title: string, status: string, slices: Array<{ id: string, title: string, status: string }> }> }>} phases
+ * @param {Array<{ id: string, title: string, status: string, features: Array<{ id: string, title: string, status: string, slices: Array<{ id: string, title: string, status: string }> }> }>} _phases
  * @returns {string}
  */
-export function renderTree(phases) {
+export function renderTree(_phases) {
   // stub — implemented in Task 4
   return "";
 }
