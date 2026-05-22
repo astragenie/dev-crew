@@ -2,6 +2,20 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.15 — 2026-05-22
+
+### Changed
+- **slice-linker split (Tier B-8)**: extracted the crew-CLI bridge into
+  `scripts/lib/slice-linker/crew-bridge.mjs` (216 lines). Exports
+  `tryWriteCostReport`, `writeCrewFinalSynthesis`, `writeCrewHandoff`.
+  slice-linker.mjs is now 330 lines (was 471). Public API unchanged.
+- **phase-gate split (Tier B-8)**: extracted command/stage runners into
+  `scripts/lib/phase-gate/runners.mjs` (185 lines). Exports `nowIso`,
+  `runStageList`, `runSingleStage`, `runAspireStage`. phase-gate.mjs
+  is now 338 lines (was 444). `runPhaseGate` public API unchanged.
+
+Tests: 142/142 pass.
+
 ## v0.1.14 — 2026-05-22
 
 ### Changed
