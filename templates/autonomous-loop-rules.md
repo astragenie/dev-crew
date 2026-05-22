@@ -31,7 +31,33 @@ Run, in order:
 1. **Identify the next slice.** If `docs/superpowers/plans/*.md` exists and has unchecked `## Task N: SLICE_NN — Title` headings, pick the first unchecked one. Otherwise fall back to Cross-Slice Continuation (scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/`).
 2. **`/autonomous-loop:slice start --id SLICE-NN`** — this rotates `currentRun` via `crew write-run-brief`, seeds the goal from the slice file's `## Objective` block when present, and rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` (or `runBrief.runBriefPath`) is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. If not, surface the error and stop — do not proceed with implementation against a stale run.
-4. **Then** begin the Wiggin Loop: acceptance criteria, evidence, review, validation. Close with the Slice Close Ceremony (next section).
+4. **Dispatch implementation via `/crew:build`.** The `slice start` return includes a `dispatchInstruction` — a literal prompt for a subagent. Hand it to a `crew:builder` (or generic `claude`) subagent. **Do not implement inline.** The loop's job is to pick slices, rotate state, and close them; the slice work itself runs through crew's `build.md` workflow (frame → implement → review → validate → synthesize) so it inherits the standard artifact protocol and gets its own bounded conversation context.
+5. **Wait for the subagent's completion report.** It will tell you what shipped, what was reviewed, what was validated. Then run the Slice Close Ceremony (next section).
+
+Exception: manual invocations may pass `--no-dispatch` (e.g., debugging the loop itself, or a tiny inline change you don't want to spawn a subagent for). The autonomous loop should never pass `--no-dispatch`.
+
+## Dispatch Discipline — HARD RULE
+
+The autonomous loop is an **orchestrator**, not an implementer. Every code-bearing unit of work runs through a crew subagent. Decision matrix:
+
+| Situation | Dispatch |
+|---|---|
+| Slice implementation (acceptance criteria work) | `/crew:build` subagent |
+| Bug found during slice (test fail, regression, integration error) | `/crew:fix` subagent |
+| Independent code review pass | `/crew:review` subagent (or the configured reviewer ladder) |
+| Behavior validation when something is runnable | `/crew:validate` subagent |
+| Deployment / shipping a reviewed change | `/crew:ship` subagent |
+| Trivial inline fixup (typo, fixture path, single-line patch) | Inline is fine — but log it in the run-brief |
+
+Pivot triggers — any of these during a slice means **stop, dispatch `/crew:fix`, then resume**:
+
+- A review_result with `status: needs_fix`
+- A validation_result with `status: fail`
+- A build/test failure that requires a root-cause hunt (not a one-line patch)
+
+When in doubt, prefer dispatch. A subagent run produces its own artifact trail; an inline patch hides in the loop's conversation and loses cost/grade attribution.
+
+## Build Entry Points
 
 For one-glance visibility into all slices in the active plan: `cat .claude/state/crew/slice-progress.md`. The dashboard is rewritten by start + close ceremonies; trust it over manual inspection of slice files or commits.
 

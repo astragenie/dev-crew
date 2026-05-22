@@ -71,6 +71,31 @@ test("startSlice tolerates missing plan and missing slice file", async () => {
   assert.ok(result.sliceProgress && !result.sliceProgress.error);
 });
 
+test("startSlice emits dispatchInstruction by default", async () => {
+  const repo = await tmpRepo("al-slice-start-dispatch-");
+  await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+  const feat = await addFeature(repo, { title: "Test feature" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await startSlice(repo, slice.id);
+  assert.ok(result.dispatchInstruction, "dispatchInstruction should be present by default");
+  assert.match(result.dispatchInstruction, /Dispatch \/crew:build subagent/);
+  assert.match(result.dispatchInstruction, new RegExp(slice.id));
+  assert.match(result.dispatchInstruction, /\/crew:fix/);
+  assert.match(
+    result.nextAction,
+    /Dispatch \/crew:build subagent/
+  );
+});
+
+test("startSlice with dispatch:false omits the instruction", async () => {
+  const repo = await tmpRepo("al-slice-start-nodispatch-");
+  const feat = await addFeature(repo, { title: "Manual" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await startSlice(repo, slice.id, { dispatch: false });
+  assert.equal(result.dispatchInstruction, null);
+  assert.match(result.nextAction, /Begin acceptance-criteria work/);
+});
+
 test("completeSlice also refreshes slice-progress", async () => {
   const repo = await tmpRepo("al-slice-progress-on-complete-");
   await writePlan(repo, [{ id: "SLICE-01", title: "Only one" }]);

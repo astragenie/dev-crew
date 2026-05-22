@@ -35,6 +35,7 @@ const FLAG_SPEC = {
   "--body": { key: "body" },
   "--features": { key: "features" },
   "--goal": { key: "goal" },
+  "--no-dispatch": { key: "noDispatch", boolean: true },
   "--version": { key: "version" },
   "--since": { key: "since" },
   "--span-days": { key: "spanDays" },
@@ -416,13 +417,17 @@ const SLICE_HANDLERS = {
   start: async (repoPath, flags, _rest, sliceId) => {
     requireId(sliceId, "slice start requires --id SLICE-NN.");
     const { startSlice } = await import("./lib/slice-linker.mjs");
-    const out = await startSlice(repoPath, sliceId, { goal: flags.goal || null });
+    const out = await startSlice(repoPath, sliceId, {
+      goal: flags.goal || null,
+      dispatch: flags.noDispatch !== true
+    });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
       command: "slice start",
       slice: sliceId,
       run_brief_written: Boolean(out.runBrief?.runBriefPath || out.runBrief?.artifactPath),
-      slice_progress_written: Boolean(out.sliceProgress?.path)
+      slice_progress_written: Boolean(out.sliceProgress?.path),
+      dispatch: out.dispatchInstruction ? "crew-build" : "inline"
     });
     return out;
   },

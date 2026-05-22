@@ -317,7 +317,18 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
 // then refreshes the slice-progress dashboard. Looks up the slice's
 // human-readable title from the active plan when possible. Goal text
 // is taken from the slice file's `Objective` block when present.
-export async function startSlice(repoPath, sliceId, { config = null, goal = null } = {}) {
+//
+// When { dispatch: true } (default), the returned object includes a
+// `dispatchInstruction` string — a literal prompt the loop agent
+// should hand to a subagent so the actual implementation runs through
+// `/crew:build` (per Dispatch Discipline HARD RULE in rules.md). Pass
+// dispatch: false for manual / debugging invocations where the agent
+// is doing the slice work in-conversation.
+export async function startSlice(
+  repoPath,
+  sliceId,
+  { config = null, goal = null, dispatch = true } = {}
+) {
   if (!sliceId) throw new Error("startSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
@@ -327,12 +338,15 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
   const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
 
   let resolvedGoal = goal;
-  if (!resolvedGoal) {
-    const sliceFile = await locateSliceFile(slicesRoot, sliceId);
-    if (sliceFile) {
-      const content = await fs.readFile(sliceFile, "utf8");
-      resolvedGoal = extractObjective(content);
-    }
+  let sliceFile = null;
+  try {
+    sliceFile = await locateSliceFile(slicesRoot, sliceId);
+  } catch {
+    sliceFile = null;
+  }
+  if (!resolvedGoal && sliceFile) {
+    const content = await fs.readFile(sliceFile, "utf8");
+    resolvedGoal = extractObjective(content);
   }
 
   const runBrief = await bestEffort(() =>
@@ -348,6 +362,10 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     });
   });
 
+  const dispatchInstruction = dispatch
+    ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal })
+    : null;
+
   return {
     slice: { id: sliceId, title },
     activePlan: activePlan.planPath
@@ -355,8 +373,24 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
       : null,
     runBrief,
     sliceProgress,
-    nextAction: `Begin acceptance-criteria work for ${sliceId}. Close with /autonomous-loop:slice complete --id ${sliceId}.`
+    dispatchInstruction,
+    nextAction: dispatch
+      ? `Dispatch /crew:build subagent for ${sliceId}; close with /autonomous-loop:slice complete --id ${sliceId}.`
+      : `Begin acceptance-criteria work for ${sliceId}. Close with /autonomous-loop:slice complete --id ${sliceId}.`
   };
+}
+
+function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal }) {
+  const rel = sliceFile
+    ? path.relative(repoPath, sliceFile).replace(/\\/g, "/")
+    : null;
+  const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
+  const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
+  return [
+    `Dispatch /crew:build subagent with this prompt:`,
+    "",
+    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /autonomous-loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.`
+  ].join("\n");
 }
 
 function extractObjective(sliceContent) {

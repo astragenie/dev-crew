@@ -28,8 +28,14 @@ Usage:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice start \
   --repo "$PWD" \
   --id SLICE-NN \
-  [--goal "<one-line goal override>"]
+  [--goal "<one-line goal override>"] \
+  [--no-dispatch]
 ```
+
+`--no-dispatch` opts out of the dispatch instruction (used for manual /
+debugging invocations where the agent is doing the slice work
+in-conversation). The autonomous loop should always omit this flag so
+implementation runs through a `/crew:build` subagent.
 
 Returns:
 
@@ -39,9 +45,12 @@ Returns:
   "activePlan": { "source": "superpowers", "path": "docs/superpowers/plans/2026-05-22-crew-monitor-phase-2.md" },
   "runBrief": { "artifactPath": ".claude/artifacts/crew/runs/<stamp>-run-brief-slice-18-...md" },
   "sliceProgress": { "path": ".claude/state/crew/slice-progress.md", "completedCount": 17, "totalCount": 19 },
-  "nextAction": "Begin acceptance-criteria work for SLICE-18. Close with /autonomous-loop:slice complete --id SLICE-18."
+  "dispatchInstruction": "Dispatch /crew:build subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /autonomous-loop:slice complete --id SLICE-18. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.",
+  "nextAction": "Dispatch /crew:build subagent for SLICE-18; close with /autonomous-loop:slice complete --id SLICE-18."
 }
 ```
+
+`dispatchInstruction` is null when `--no-dispatch` was passed.
 
 ## When to run
 
