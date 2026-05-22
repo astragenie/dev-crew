@@ -27,25 +27,34 @@ async function ensureDir(p) {
 }
 
 async function findHeroCrewCli() {
+  // Lookup order, most-specific-first:
+  // 1. $HERO_CREW_PATH env override (explicit user pin).
+  // 2. Local dev checkouts. These hold the LIVE source — features added
+  //    since the last plugin publish are present here but missing from the
+  //    cached install. Preferring the cache here causes recently-added
+  //    artifact schemas (e.g. the cost/ vs runs/ split) to silently
+  //    degrade when invoked from autonomous-loop.
+  // 3. Plugin cache (whatever version is installed).
   if (process.env.HERO_CREW_PATH) {
     const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
     if (await pathExists(explicit)) return explicit;
   }
 
-  // Preferred: discover from the plugin cache (handles any installed version).
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  const localCandidates = [
+    "C:/work/mega/hero-crew/scripts/crew.mjs",
+    home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
+    home ? `${home}/hero-crew/scripts/crew.mjs` : null
+  ].filter(Boolean);
+  for (const candidate of localCandidates) {
+    if (await pathExists(candidate)) return candidate;
+  }
+
+  // Fall back to the plugin cache (handles installs without a local checkout).
   const { findCrewCli } = await import("../plugin-identity.mjs");
   const cached = await findCrewCli();
   if (cached) return cached;
 
-  // Dev fallbacks for working out of a local checkout.
-  const home = process.env.HOME || process.env.USERPROFILE || "";
-  const candidates = [
-    home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
-    home ? `${home}/hero-crew/scripts/crew.mjs` : null
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (await pathExists(candidate)) return candidate;
-  }
   return null;
 }
 

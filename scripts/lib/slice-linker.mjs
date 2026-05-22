@@ -216,7 +216,7 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   // (pending/active), move to completed/. Else update in place (flat).
   const parentDir = path.basename(path.dirname(sliceFile));
   let targetSlicePath = sliceFile;
-  if (parentDir === "pending" || parentDir === "active") {
+  if (parentDir === "pending" || parentDir === "active" || parentDir === "in-progress") {
     const completedDir = path.join(slicesRoot, "completed");
     await ensureDir(completedDir);
     targetSlicePath = path.join(completedDir, path.basename(sliceFile));
