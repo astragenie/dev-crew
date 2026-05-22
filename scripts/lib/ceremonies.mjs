@@ -123,12 +123,19 @@ export async function readFeatureEndCeremony(repoPath, featureId) {
   const prefix = `feature-end-${featureId}-`;
   const matches = entries.filter((e) => e.startsWith(prefix) && e.endsWith(".json"));
   if (matches.length === 0) return null;
-  const ceremonies = await Promise.all(
-    matches.map(async (filename) => {
-      const raw = await fs.readFile(path.join(dir, filename), "utf8");
-      return JSON.parse(raw);
-    })
-  );
+  const ceremonies = (
+    await Promise.all(
+      matches.map(async (filename) => {
+        const raw = await fs.readFile(path.join(dir, filename), "utf8");
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      })
+    )
+  ).filter((c) => c !== null);
+  if (ceremonies.length === 0) return null;
   ceremonies.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return ceremonies[0];
 }
