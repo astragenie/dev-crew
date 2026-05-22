@@ -282,12 +282,17 @@ async function findHeroCrewCli() {
     const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
     if (await pathExists(explicit)) return explicit;
   }
+
+  // Preferred: discover from the plugin cache (handles any installed version).
+  const { findCrewCli } = await import("./plugin-identity.mjs");
+  const cached = await findCrewCli();
+  if (cached) return cached;
+
+  // Dev fallbacks for working out of a local checkout.
   const home = process.env.HOME || process.env.USERPROFILE || "";
   const candidates = [
-    "C:/work/mega/hero-crew/scripts/crew.mjs",
     home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
-    home ? `${home}/hero-crew/scripts/crew.mjs` : null,
-    home ? `${home}/.claude/plugins/cache/crew-dev/crew/0.1.0/scripts/crew.mjs` : null
+    home ? `${home}/hero-crew/scripts/crew.mjs` : null
   ].filter(Boolean);
   for (const candidate of candidates) {
     if (await pathExists(candidate)) return candidate;
