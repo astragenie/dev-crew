@@ -22,6 +22,28 @@ After all acceptance criteria for the current slice are PASS with evidence and a
 
 If `docs/backlog/pending/` and `docs/backlog/triaged/` are both empty AND `docs/specs/` has no undecomposed approved specs, the agent has reached either stop condition A (every spec satisfied — confirm with `/autonomous-loop:spec status`) or stop condition B (externally blocked). Surface which and stop. Never stop because the backlog "feels empty" — confirm via the explicit scan first.
 
+## Slice Start Ceremony — HARD RULE
+
+Open every slice through the canonical start command **before** beginning acceptance-criteria work. Skipping it leaves `workflow-state.json.currentRun` pinned to the previous slice (or a stale "verification" run), so the close ceremony's cost auto-emit attributes the new slice's spend to the wrong window.
+
+Run, in order:
+
+1. **Identify the next slice.** If `docs/superpowers/plans/*.md` exists and has unchecked `## Task N: SLICE_NN — Title` headings, pick the first unchecked one. Otherwise fall back to Cross-Slice Continuation (scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/`).
+2. **`/autonomous-loop:slice start --id SLICE-NN`** — this rotates `currentRun` via `crew write-run-brief`, seeds the goal from the slice file's `## Objective` block when present, and rewrites `.claude/state/crew/slice-progress.md`.
+3. **Inspect the return.** Confirm `runBrief.artifactPath` (or `runBrief.runBriefPath`) is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. If not, surface the error and stop — do not proceed with implementation against a stale run.
+4. **Then** begin the Wiggin Loop: acceptance criteria, evidence, review, validation. Close with the Slice Close Ceremony (next section).
+
+For one-glance visibility into all slices in the active plan: `cat .claude/state/crew/slice-progress.md`. The dashboard is rewritten by start + close ceremonies; trust it over manual inspection of slice files or commits.
+
+## Build Entry Points
+
+Two ways to start work in this repo. Pick one per session — do **not** mix.
+
+- **`/crew:build` (interactive, single slice or scoped task).** Lead-driven, lighter ceremony. No `slice start` required; no run-brief mandatory. Use when the user is at the keyboard and wants a single focused change. The Slice Close Ceremony **still applies** if the change closes a slice, but the start ceremony is optional.
+- **Autonomous loop (unattended, multi-slice).** Full ceremony required. Slice Start (run-brief + slice-progress) → Wiggin Loop → Slice Close (handoff + final-synthesis + cost auto-emit). Invoked via `/loop`, `ScheduleWakeup`, or `CronCreate`. Every slice must rotate `currentRun`.
+
+Never run both simultaneously against the same branch — they will race on `workflow-state.json` and the second writer wins.
+
 ## Slice Close Ceremony — HARD RULE
 
 When every acceptance criterion on the current slice is PASS with evidence, close the slice through the canonical ceremony **before** picking up the next slice. Manual file moves + a `docs(slice): mark SLICE_NN complete` commit are NOT a substitute — they bypass the artifact fan-out and leave `handoffs/`, `runs/`, `cost/`, and `cost-insights/` empty.

@@ -8,8 +8,10 @@ import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import {
   tryWriteCostReport,
   writeCrewFinalSynthesis,
-  writeCrewHandoff
+  writeCrewHandoff,
+  writeCrewRunBrief
 } from "./slice-linker/crew-bridge.mjs";
+import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-linker/slice-progress.mjs";
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
@@ -291,6 +293,12 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     bestEffort(() => tryWriteCostReport(repoPath, sliceId))
   ]);
 
+  const sliceProgress = await bestEffort(async () => {
+    const activePlan = await findActivePlan(repoPath);
+    const enriched = await detectSliceStatus(repoPath, activePlan.slices);
+    return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
+  });
+
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
     feature: featureResult,
@@ -298,8 +306,72 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     handoff,
     synthesis,
     costReport,
+    sliceProgress,
     nextAction: `Run /autonomous-loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
+}
+
+// Opens a new run for the given slice. Symmetric counterpart to
+// completeSlice: rotates workflow-state.currentRun via `crew
+// write-run-brief` so cost-emit windows attribute work to this slice,
+// then refreshes the slice-progress dashboard. Looks up the slice's
+// human-readable title from the active plan when possible. Goal text
+// is taken from the slice file's `Objective` block when present.
+export async function startSlice(repoPath, sliceId, { config = null, goal = null } = {}) {
+  if (!sliceId) throw new Error("startSlice requires a sliceId.");
+  const resolved = config || (await resolveConfig(repoPath));
+  const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
+
+  const activePlan = await findActivePlan(repoPath);
+  const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
+  const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
+
+  let resolvedGoal = goal;
+  if (!resolvedGoal) {
+    const sliceFile = await locateSliceFile(slicesRoot, sliceId);
+    if (sliceFile) {
+      const content = await fs.readFile(sliceFile, "utf8");
+      resolvedGoal = extractObjective(content);
+    }
+  }
+
+  const runBrief = await bestEffort(() =>
+    writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal })
+  );
+
+  const sliceProgress = await bestEffort(async () => {
+    const enriched = await detectSliceStatus(repoPath, activePlan.slices);
+    return writeSliceProgress(repoPath, {
+      activePlan,
+      slices: enriched,
+      currentSliceId: sliceId
+    });
+  });
+
+  return {
+    slice: { id: sliceId, title },
+    activePlan: activePlan.planPath
+      ? { source: activePlan.source, path: activePlan.planPath }
+      : null,
+    runBrief,
+    sliceProgress,
+    nextAction: `Begin acceptance-criteria work for ${sliceId}. Close with /autonomous-loop:slice complete --id ${sliceId}.`
+  };
+}
+
+function extractObjective(sliceContent) {
+  const lines = sliceContent.split(/\r?\n/);
+  const startIdx = lines.findIndex((l) => /^##\s+Objective\s*$/i.test(l));
+  if (startIdx === -1) return null;
+  const body = [];
+  for (let i = startIdx + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (/^##\s+/.test(line)) break;
+    if (line.trim().length === 0 && body.length === 0) continue;
+    body.push(line);
+  }
+  const text = body.join(" ").trim();
+  return text.length > 0 ? text.slice(0, 500) : null;
 }
 
 async function locateSliceFile(slicesRoot, sliceId) {

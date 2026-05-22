@@ -63,6 +63,35 @@ async function findHeroCrewCli() {
 // auto-emits. `--aggregate-all` mirrors maybeEmitCostReport's default in
 // crew.mjs so cross-repo sessions are captured. The advise step is
 // best-effort and reported in the return alongside the report.
+// Invokes `crew write-run-brief` to rotate workflow-state.currentRun to
+// the new slice. Best-effort: missing crew is a soft no-op so the agent
+// can still proceed; the loop driver inspects the return.
+export async function writeCrewRunBrief(repoPath, { sliceId, title, goal }) {
+  const cli = await findHeroCrewCli();
+  if (!cli) return { skipped: "hero-crew CLI not found" };
+  const args = [
+    cli,
+    "write-run-brief",
+    "--repo",
+    repoPath,
+    "--title",
+    title || sliceId,
+    "--owner",
+    "autonomous-loop"
+  ];
+  if (goal) args.push("--goal", goal);
+  try {
+    const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+    try {
+      return JSON.parse(stdout);
+    } catch {
+      return { stdout: stdout.slice(0, 500) };
+    }
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 export async function tryWriteCostReport(repoPath, sliceId) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };

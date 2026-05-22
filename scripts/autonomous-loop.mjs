@@ -34,6 +34,7 @@ const FLAG_SPEC = {
   "--id": { key: "id" },
   "--body": { key: "body" },
   "--features": { key: "features" },
+  "--goal": { key: "goal" },
   "--version": { key: "version" },
   "--since": { key: "since" },
   "--span-days": { key: "spanDays" },
@@ -412,6 +413,19 @@ const SLICE_HANDLERS = {
     });
     return out;
   },
+  start: async (repoPath, flags, _rest, sliceId) => {
+    requireId(sliceId, "slice start requires --id SLICE-NN.");
+    const { startSlice } = await import("./lib/slice-linker.mjs");
+    const out = await startSlice(repoPath, sliceId, { goal: flags.goal || null });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "slice start",
+      slice: sliceId,
+      run_brief_written: Boolean(out.runBrief?.runBriefPath || out.runBrief?.artifactPath),
+      slice_progress_written: Boolean(out.sliceProgress?.path)
+    });
+    return out;
+  },
   link: async (repoPath, flags) => {
     const sliceId = requireId(flags.id, "slice link requires --id SLICE-NN.");
     if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
@@ -432,7 +446,7 @@ const SLICE_HANDLERS = {
 
 async function runSliceSubcommand(repoPath, positionals, flags) {
   const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("slice requires a subcommand: from-feature | grade | grade-write");
+  if (!sub) throw new Error("slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder");
   const handler = SLICE_HANDLERS[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
   const id = flags.id || rest[0];
