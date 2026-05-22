@@ -2,6 +2,29 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.20 — 2026-05-22
+
+### Added (FEAT-005: snapshot iteration enrichment)
+
+- `writeMemorySnapshot` gains a "Loop telemetry" section in the
+  generated `docs/autonomous-loop-snapshot.md`:
+  - Iteration count + cap (from `getIterationStatus`)
+  - In-window cost trajectory: avg USD per cost-report (parsed from
+    cost-report frontmatter under `.claude/artifacts/crew/cost/` +
+    legacy `.claude/artifacts/crew/runs/`)
+  - Last cost-advisor verdict slot (n/a until populated upstream)
+- `renderLoopTelemetry` + `loadCostReportUSDValues` helpers match the
+  existing per-section helper pattern in the module.
+- Falls back gracefully: with no loop history the section renders
+  n/a values; snapshot stays valid for non-loop usage.
+- 8 new tests in `tests/memory-snapshot-telemetry.test.mjs`.
+
+### Notes
+
+- Tests: 176/176 pass (was 168 → 8 new). Lint + typecheck + format
+  clean.
+- FEAT-005 closed; backlog moved to `docs/backlog/done/`.
+
 ## v0.1.19 — 2026-05-22
 
 ### Added (FEAT-003: cost-advisor signal in stop-conditions)

@@ -5,6 +5,7 @@ import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 import { listSpecs } from "./spec-parser.mjs";
 import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
+import { getIterationStatus } from "./loop-iteration.mjs";
 
 // Writes a single durable snapshot of autonomous-loop state to
 // docs/autonomous-loop-snapshot.md. Designed to be `@`-referenced from
@@ -16,6 +17,69 @@ function avg(values) {
   const nums = values.filter((v) => typeof v === "number");
   if (nums.length === 0) return null;
   return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
+}
+
+// Parse frontmatter from markdown to extract metadata.
+function parseFrontmatter(text) {
+  if (!text.startsWith("---")) return { fm: null, body: text };
+  const end = text.indexOf("\n---", 3);
+  if (end < 0) return { fm: null, body: text };
+  const block = text.slice(3, end).trim();
+  const body = text.slice(end + 4);
+  const fm = {};
+  for (const line of block.split(/\r?\n/)) {
+    const m = line.match(/^([\w_]+):\s*(.*)$/);
+    if (!m) continue;
+    let v = m[2].trim();
+    // Try to parse as number (for usd field)
+    if (/^\d+(\.\d+)?$/.test(v)) {
+      v = Number(v);
+    }
+    fm[m[1]] = v;
+  }
+  return { fm, body };
+}
+
+// Load cost report USD values from the most recent cost reports.
+// Returns array of USD values for cost trajectory calculation.
+async function loadCostReportUSDValues(repoPath, limit = 20) {
+  const costDirParts = [".claude", "artifacts", "crew", "cost"];
+  const legacyDirParts = [".claude", "artifacts", "crew", "runs"];
+
+  const dirs = [path.join(repoPath, ...costDirParts), path.join(repoPath, ...legacyDirParts)];
+
+  const files = [];
+  for (const dir of dirs) {
+    let entries;
+    try {
+      entries = await fs.readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (/-cost-report-.+\.md$/.test(e)) files.push({ dir, name: e });
+    }
+  }
+
+  // Sort by basename desc (newest first via timestamp prefix)
+  files.sort((a, b) => b.name.localeCompare(a.name));
+  const top = files.slice(0, limit);
+
+  const usdValues = [];
+  for (const { dir, name } of top) {
+    const f = path.join(dir, name);
+    try {
+      const text = await fs.readFile(f, "utf8");
+      const { fm } = parseFrontmatter(text);
+      if (fm && typeof fm.usd === "number") {
+        usdValues.push(fm.usd);
+      }
+    } catch {
+      /* skip unreadable files silently */
+    }
+  }
+
+  return usdValues;
 }
 
 function renderSnapshotHeader(today) {
@@ -114,6 +178,32 @@ function renderDecisions(recentDecisions) {
   return out;
 }
 
+function renderLoopTelemetry(iterationStatus, costTrajectory) {
+  const out = ["## Loop telemetry", ""];
+
+  const iterCount = iterationStatus?.count ?? 0;
+  const iterCap = iterationStatus?.cap ?? 25;
+
+  out.push(`- Iteration count: ${iterCount} / ${iterCap}`);
+
+  if (costTrajectory.avgUSD === null) {
+    out.push("- In-window cost trajectory: n/a");
+  } else {
+    out.push(
+      `- In-window cost trajectory: $${costTrajectory.avgUSD.toFixed(3)} per iteration (${costTrajectory.count} reports)`
+    );
+  }
+
+  if (costTrajectory.lastCostAdvisorVerdict === null) {
+    out.push("- Last cost-advisor verdict: n/a");
+  } else {
+    out.push(`- Last cost-advisor verdict: ${costTrajectory.lastCostAdvisorVerdict}`);
+  }
+
+  out.push("");
+  return out;
+}
+
 function renderUsageFooter() {
   return [
     "## How to use this file",
@@ -125,12 +215,15 @@ function renderUsageFooter() {
 }
 
 export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
-  const [backlog, specs, grades, decisions] = await Promise.all([
-    listBacklog(repoPath, { config }),
-    listSpecs(repoPath, { config }),
-    listGrades(repoPath, { config }),
-    listDecisions(repoPath, { config })
-  ]);
+  const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues] =
+    await Promise.all([
+      listBacklog(repoPath, { config }),
+      listSpecs(repoPath, { config }),
+      listGrades(repoPath, { config }),
+      listDecisions(repoPath, { config }),
+      getIterationStatus(repoPath),
+      loadCostReportUSDValues(repoPath)
+    ]);
 
   const today = new Date().toISOString().slice(0, 10);
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
@@ -150,6 +243,13 @@ export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
   }
   const recentDecisions = decisions.slice(-5);
 
+  // Compute cost trajectory
+  const costTrajectory = {
+    avgUSD: avg(costReportUSDValues),
+    count: costReportUSDValues.length,
+    lastCostAdvisorVerdict: null // Would be populated if we had cost advisor verdicts
+  };
+
   const lines = [
     ...renderSnapshotHeader(today),
     ...renderBacklogState(backlog, inFlight),
@@ -158,6 +258,7 @@ export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
     ...renderSpecs(specs, specsByStatus),
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
+    ...renderLoopTelemetry(iterationStatus, costTrajectory),
     ...renderUsageFooter()
   ];
 
@@ -170,7 +271,8 @@ export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
       backlog: backlog.length,
       specs: specs.length,
       grades: grades.length,
-      decisions: decisions.length
+      decisions: decisions.length,
+      costReports: costReportUSDValues.length
     }
   };
 }
