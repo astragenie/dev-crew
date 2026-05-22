@@ -10,10 +10,36 @@ import path from "node:path";
 // The extracted commands NEVER execute during migration — they only seed the
 // config. Actual execution happens later through phase-gate's execFile path.
 
+// Canonical HARD RULE H2 header (what the installer writes today).
 const AUTONOMOUS_LOOP_HEADER = "## Autonomous Loop Instruction — HARD RULE";
+
+// Header variants observed in the wild from hand-pasted / drift installs.
+// The migrator anchors removal on the FIRST of these found in CLAUDE.md.
+// Anything matching a variant is treated as the start of the ad-hoc block.
+const ADHOC_HEADER_VARIANTS = [
+  AUTONOMOUS_LOOP_HEADER,
+  "## Autonomous Loop — HARD RULE",
+  "## HARD RULE — Loop Goal",
+  "## Autonomous Backlog + Wiggin Loop",
+  "## Autonomous Backlog System + How to Start the Loop"
+];
+
 const CROSS_SLICE_HEADER = "**Cross-Slice Continuation — HARD RULE";
 const PHASE_GATE_HEADER = "**Phase Completion Gate — HARD RULE";
 const FIRST_ACTION_HEADER = "## First Action — Starting the Loop";
+
+// Find the first variant present in content; return { header, index } or null.
+function findFirstAdhocHeader(content) {
+  let best = null;
+  for (const header of ADHOC_HEADER_VARIANTS) {
+    const idx = content.indexOf(header);
+    if (idx === -1) continue;
+    if (best === null || idx < best.index) {
+      best = { header, index: idx };
+    }
+  }
+  return best;
+}
 
 // Parse a backtick-quoted command line and split it into {cmd, args}.
 // Quote-aware split: respects single and double quotes so paths with spaces
@@ -117,8 +143,8 @@ export async function migrateAdhocInstall(repoPath) {
     throw error;
   }
 
-  const hasAdhoc = content.includes(AUTONOMOUS_LOOP_HEADER);
-  if (!hasAdhoc) {
+  const firstHeader = findFirstAdhocHeader(content);
+  if (!firstHeader) {
     return { extractedConfig: null, claudeMdRewritten: false, claudeMdPath: claudePath };
   }
 
@@ -146,27 +172,36 @@ export async function migrateAdhocInstall(repoPath) {
   }
   const extractedConfig = candidates.length > 0 ? { stack } : null;
 
-  // Range-delete the ad-hoc blocks. We delete from the Autonomous Loop header
-  // up through the next H2 that ISN'T one of the known loop headers — i.e.
-  // through the end of First Action if present, otherwise through end of the
-  // last known block.
-  const removalStart = content.indexOf(AUTONOMOUS_LOOP_HEADER);
-  let removalEnd = removalStart;
-  // Find the last loop-related header we recognize, then go to the next H2
-  // beyond it (or end of file).
-  const loopHeaders = [AUTONOMOUS_LOOP_HEADER, FIRST_ACTION_HEADER];
+  // Range-delete the ad-hoc blocks. We delete from the FIRST recognized
+  // loop header (any variant) up through the next H2 that ISN'T one of the
+  // known loop headers — i.e. through the end of First Action if present,
+  // otherwise through end of the last known block.
+  const removalStart = firstHeader.index;
+  let removalEnd = removalStart + firstHeader.header.length;
+  // Find the latest position covered by any known loop header (variants +
+  // First Action), then extend removalEnd to it.
+  const loopHeaders = [...ADHOC_HEADER_VARIANTS, FIRST_ACTION_HEADER];
   for (const header of loopHeaders) {
     const idx = content.indexOf(header);
-    if (idx !== -1 && idx >= removalEnd) {
-      removalEnd = idx + header.length;
+    if (idx !== -1 && idx >= removalStart) {
+      const endOfHeader = idx + header.length;
+      if (endOfHeader > removalEnd) removalEnd = endOfHeader;
     }
   }
   // Extend removalEnd to the next H2 that isn't a loop header, or EOF.
+  // Stop early if we hit the autonomous-loop marker block (the new install's
+  // own block must be preserved — only kill ad-hoc content BEFORE it).
   let scanFrom = removalEnd;
   while (true) {
     const nextH2 = content.indexOf("\n## ", scanFrom);
-    if (nextH2 === -1) {
+    const nextMarker = content.indexOf("<!-- autonomous-loop:start -->", scanFrom);
+    if (nextH2 === -1 && nextMarker === -1) {
       removalEnd = content.length;
+      break;
+    }
+    // If the marker block comes before the next H2, stop at the marker.
+    if (nextMarker !== -1 && (nextH2 === -1 || nextMarker < nextH2)) {
+      removalEnd = nextMarker;
       break;
     }
     const headerLine = content.slice(nextH2 + 1, content.indexOf("\n", nextH2 + 1));
