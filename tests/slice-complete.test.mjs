@@ -10,6 +10,7 @@ import { addSpec, updateSpecFrontmatter, findSpecById } from "../scripts/lib/spe
 import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { writeFeatureEndCeremony, featureEnd } from "../scripts/lib/ceremonies.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -95,4 +96,42 @@ test("moveFeature stamps started_at on first in-progress entry", async () => {
   assert.ok(done.frontmatter.completed_at);
   // started_at preserved across done move
   assert.equal(done.frontmatter.started_at, inProgress.frontmatter.started_at);
+});
+
+test("completeSlice blocked when featureEnd ceremony has simplifyRan: false", async () => {
+  const repo = await tmpRepo("al-slice-simplify-blocked-");
+  const feat = await addFeature(repo, { title: "Simplify gate test" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  // Write a ceremony with simplifyRan: false
+  const ceremony = featureEnd({ id: feat.id, title: "Simplify gate test", phase: "2" }, { simplifyRan: false });
+  await writeFeatureEndCeremony(repo, ceremony);
+  const result = await completeSlice(repo, slice.id);
+  // Slice still moves but feature is blocked
+  assert.match(result.slice.to, /completed[\\/]SLICE_/);
+  assert.equal(result.feature.skipped, true);
+  assert.ok(result.feature.reason.includes("simplify-gate"), `expected simplify-gate in reason, got: ${result.feature.reason}`);
+});
+
+test("completeSlice allowed when featureEnd ceremony has simplifyRan: true", async () => {
+  const repo = await tmpRepo("al-slice-simplify-allowed-");
+  const feat = await addFeature(repo, { title: "Simplify passed" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  // Write a ceremony with simplifyRan: true
+  const ceremony = featureEnd({ id: feat.id, title: "Simplify passed", phase: "2" }, { simplifyRan: true });
+  await writeFeatureEndCeremony(repo, ceremony);
+  const result = await completeSlice(repo, slice.id);
+  // Feature should move to done normally
+  assert.ok(!result.feature.skipped, "feature should not be skipped");
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+});
+
+test("completeSlice allowed when no featureEnd ceremony exists", async () => {
+  const repo = await tmpRepo("al-slice-simplify-no-ceremony-");
+  const feat = await addFeature(repo, { title: "No ceremony" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  // No ceremony written — feature is still in-progress
+  const result = await completeSlice(repo, slice.id);
+  // Should complete normally (no ceremony = no gate)
+  assert.ok(!result.feature.skipped, "no ceremony should not block");
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
 });

@@ -5,6 +5,7 @@ import { resolveConfig } from "./config-resolver.mjs";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { readFeatureEndCeremony } from "./ceremonies.mjs";
 import {
   tryWriteCostReport,
   writeCrewFinalSynthesis,
@@ -242,6 +243,30 @@ async function moveFeatureToDone(repoPath, featureId, config) {
   return { id: featureId, from: moved.from, to: moved.to };
 }
 
+// Compute featureResult based on blocking gates and simplify ceremony.
+async function computeFeatureResult(repoPath, featureId, blockingGates, config) {
+  const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
+  const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
+  const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
+
+  if (isBlocked || isSimplifyBlocked) {
+    const reason = isBlocked
+      ? blockingGates.escalated
+        ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
+        : `crew run blocked: ${blockingGates.blocked?.note || ""}`
+      : "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
+
+    return {
+      skipped: true,
+      reason,
+      blockingGates: isBlocked ? blockingGates : null,
+      simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null
+    };
+  }
+
+  return await moveFeatureToDone(repoPath, featureId, config);
+}
+
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
@@ -263,7 +288,6 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   // still complete (move + stamp), but the feature transition waits for
   // the human to clear the gate.
   const blockingGates = await readCrewBlockingGates(repoPath);
-  const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
 
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
@@ -272,15 +296,7 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     slicesRoot,
     today
   });
-  const featureResult = isBlocked
-    ? {
-        skipped: true,
-        reason: blockingGates.escalated
-          ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
-          : `crew run blocked: ${blockingGates.blocked?.note || ""}`,
-        blockingGates
-      }
-    : await moveFeatureToDone(repoPath, featureId, config);
+  const featureResult = await computeFeatureResult(repoPath, featureId, blockingGates, config);
 
   // Reconcile parent spec status
   const { reconcileSpecStatus } = await import("./linkage.mjs");
