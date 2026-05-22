@@ -2,13 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { mergeFrontmatter, parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
+import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById } from "./backlog-writer.mjs";
 import { findSpecById } from "./spec-parser.mjs";
 import {
   gradesRoot,
   gradeFilePath,
-  readGrade,
   parseScoresFromBody,
   parseDecisionsFromBody,
   validateScores
@@ -65,6 +64,75 @@ async function findSliceFile(repoPath, sliceId, config) {
   return null;
 }
 
+// Resolves feature/spec/phase/target_release for the prefill block. Each
+// field walks through whichever level (slice → feature → spec) carries it.
+async function readSlicePrefillFields(sliceFile) {
+  if (!sliceFile) return { featureId: null, phase: null, targetRelease: null };
+  const content = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  return {
+    featureId: frontmatter.feature || null,
+    phase: frontmatter.phase || null,
+    targetRelease: frontmatter.target_release || null
+  };
+}
+
+async function readFeaturePrefill(repoPath, featureId, config) {
+  if (!featureId) return { specId: null, targetRelease: null };
+  const feat = await findFeatureById(repoPath, featureId, config);
+  if (!feat) return { specId: null, targetRelease: null };
+  const df = feat.frontmatter.derived_from;
+  return {
+    specId: (Array.isArray(df) ? df[0] : df) || null,
+    targetRelease: feat.frontmatter.target_release || null
+  };
+}
+
+async function resolveGradePrefill(repoPath, sliceId, config) {
+  const sliceFile = await findSliceFile(repoPath, sliceId, config);
+  const fromSlice = await readSlicePrefillFields(sliceFile);
+  const fromFeature = await readFeaturePrefill(repoPath, fromSlice.featureId, config);
+  let targetRelease = fromSlice.targetRelease || fromFeature.targetRelease || null;
+  if (fromFeature.specId && !targetRelease) {
+    const spec = await findSpecById(repoPath, fromFeature.specId, config);
+    if (spec?.frontmatter?.target_release) targetRelease = spec.frontmatter.target_release;
+  }
+  return {
+    featureId: fromSlice.featureId,
+    specId: fromFeature.specId,
+    phase: fromSlice.phase,
+    targetRelease
+  };
+}
+
+function applyInferredScores(tpl, inference) {
+  let out = tpl;
+  for (const [dim, value] of Object.entries(inference.scores)) {
+    const fixed = value.toFixed(2);
+    out = out.replace(new RegExp(`^(  ${dim}): 0$`, "m"), `$1: ${fixed}`);
+    out = out.replace(new RegExp(`(- ${dim}): 0\\.00`), `$1: ${fixed}`);
+  }
+  if (Object.keys(inference.scores).length > 0) {
+    const sourceLines = Object.entries(inference.sources)
+      .map(([dim, srcs]) => `- ${dim}: ${srcs.join(", ")}`)
+      .join("\n");
+    out = out.replace(
+      "(Update both the frontmatter `scores:` map and this list. The frontmatter\nis what plugin commands read; the list is for human review.)",
+      `(Scores prefilled from crew artifacts where signals were available. Override any value if your honest assessment differs.)\n\n### Inference sources\n\n${sourceLines}`
+    );
+  }
+  return out;
+}
+
+function patchGradeFrontmatter(tpl, { featureId, specId, phase, targetRelease }) {
+  return tpl
+    .replace(/GRADE-SLICE-NN/g, `GRADE-${tpl.match(/SLICE-\d+/)?.[0] || "SLICE-NN"}`)
+    .replace(/^(spec):\s*null/m, `$1: ${specId || "null"}`)
+    .replace(/^(phase):\s*null/m, `$1: ${phase ?? "null"}`)
+    .replace(/^(target_release):\s*null/m, `$1: ${targetRelease || "null"}`)
+    .replace(/^(feature):\s*FEAT-NNN/m, `$1: ${featureId || "null"}`);
+}
+
 export async function createGradeFile(repoPath, sliceId, { config = null } = {}) {
   if (!sliceId) throw new Error("createGradeFile requires sliceId");
   const target = gradeFilePath(repoPath, sliceId, config);
@@ -73,79 +141,25 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
   }
   await ensureDir(gradesRoot(repoPath, config));
 
-  // Resolve linked feature + spec for prefill
-  const sliceFile = await findSliceFile(repoPath, sliceId, config);
-  let featureId = null;
-  let specId = null;
-  let phase = null;
-  let targetRelease = null;
-  if (sliceFile) {
-    const content = await fs.readFile(sliceFile, "utf8");
-    const { frontmatter } = parseFrontmatter(content);
-    featureId = frontmatter.feature || null;
-    phase = frontmatter.phase || null;
-    targetRelease = frontmatter.target_release || null;
-  }
-  if (featureId) {
-    const feat = await findFeatureById(repoPath, featureId, config);
-    if (feat) {
-      const df = feat.frontmatter.derived_from;
-      specId = (Array.isArray(df) ? df[0] : df) || null;
-      if (!targetRelease) targetRelease = feat.frontmatter.target_release || null;
-    }
-  }
-  if (specId) {
-    const spec = await findSpecById(repoPath, specId, config);
-    if (!targetRelease && spec?.frontmatter?.target_release) {
-      targetRelease = spec.frontmatter.target_release;
-    }
-  }
-
-  // Auto-prefill scores from crew artifacts mentioning this slice.
+  const prefill = await resolveGradePrefill(repoPath, sliceId, config);
   const { inferScoresForSlice } = await import("./score-inference.mjs");
   const inference = await inferScoresForSlice(repoPath, sliceId);
 
   let tpl = await readTemplate("grades/grade-template.md");
-  // Token substitutions
   tpl = tpl
     .replace(/GRADE-SLICE-NN/g, `GRADE-${sliceId}`)
     .replace(/SLICE-NN: <title>/g, `${sliceId}: <fill title>`)
     .replace(/\bSLICE-NN\b/g, sliceId)
-    .replace(/FEAT-NNN/g, featureId || "null")
+    .replace(/FEAT-NNN/g, prefill.featureId || "null")
     .replace(/YYYY-MM-DD/g, today());
-
-  // Apply inferred scores to both the frontmatter scores: block AND the
-  // mirror list in the body. Leave dimensions without inference at 0.00
-  // so the agent's eye is drawn to them.
-  for (const [dim, value] of Object.entries(inference.scores)) {
-    const fixed = value.toFixed(2);
-    tpl = tpl.replace(new RegExp(`^(  ${dim}): 0$`, "m"), `$1: ${fixed}`);
-    tpl = tpl.replace(new RegExp(`(- ${dim}): 0\\.00`), `$1: ${fixed}`);
-  }
-  // Append a note about inference sources so the agent knows which artifacts
-  // contributed; agent can override any score with confidence.
-  if (Object.keys(inference.scores).length > 0) {
-    const sourceLines = Object.entries(inference.sources)
-      .map(([dim, srcs]) => `- ${dim}: ${srcs.join(", ")}`)
-      .join("\n");
-    tpl = tpl.replace(
-      "(Update both the frontmatter `scores:` map and this list. The frontmatter\nis what plugin commands read; the list is for human review.)",
-      `(Scores prefilled from crew artifacts where signals were available. Override any value if your honest assessment differs.)\n\n### Inference sources\n\n${sourceLines}`
-    );
-  }
-
-  // Patch frontmatter with resolved values via simple regex on the template
-  tpl = tpl
-    .replace(/^(spec):\s*null/m, `$1: ${specId || "null"}`)
-    .replace(/^(phase):\s*null/m, `$1: ${phase ?? "null"}`)
-    .replace(/^(target_release):\s*null/m, `$1: ${targetRelease || "null"}`)
-    .replace(/^(feature):\s*FEAT-NNN/m, `$1: ${featureId || "null"}`);
+  tpl = applyInferredScores(tpl, inference);
+  tpl = patchGradeFrontmatter(tpl, prefill);
 
   await fs.writeFile(target, tpl);
   return {
     gradePath: target,
     created: true,
-    prefilled: { featureId, specId, phase, targetRelease }
+    prefilled: prefill
   };
 }
 

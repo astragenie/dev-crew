@@ -59,7 +59,6 @@ test("buildRetrospective summarizes counts and score averages", async () => {
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   await seedGradedSlice(repo, scores);
   await seedGradedSlice(repo, scores);
-  const report = (await buildRetrospective(repo)).report || (await buildRetrospective(repo));
   // buildRetrospective returns the structured report directly
   const r = await buildRetrospective(repo);
   assert.equal(r.counts.gradesInWindow, 2);

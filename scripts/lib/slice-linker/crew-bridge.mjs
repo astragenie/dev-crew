@@ -70,44 +70,29 @@ export async function tryWriteCostReport(repoPath, sliceId) {
   }
 }
 
-export async function writeCrewFinalSynthesis(
-  repoPath,
-  { sliceId, slicePath, featureId, featureResult, specChanges }
-) {
-  const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
-  await ensureDir(runsDir);
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
-  const filename = `${stamp}-${sliceId.toLowerCase()}-final-synthesis.md`;
-  const target = path.join(runsDir, filename);
+function renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS) {
+  if (!grade) {
+    return `_(no grade yet — run \`/autonomous-loop:slice grade --id ${sliceId}\`)_`;
+  }
+  return SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n");
+}
 
-  // Load grade if it exists
-  const { findGradeForSlice, SCORE_DIMENSIONS } = await import("../grade-parser.mjs");
-  const grade = await findGradeForSlice(repoPath, sliceId);
-  const today = new Date().toISOString().slice(0, 10);
-  const fm = {
-    kind: "final-synthesis",
-    slice: sliceId,
-    feature: featureId || null,
-    grade: grade ? `GRADE-${sliceId}` : null,
-    decisions: grade?.frontmatter?.decisions || [],
-    created_at: today
-  };
+function renderSynthesisDecisions(grade) {
+  const decisions = grade?.frontmatter?.decisions;
+  if (!decisions || decisions.length === 0) return "_(no decisions captured)_";
+  return decisions.map((d) => `- ${d}`).join("\n");
+}
 
-  const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
-  const featureRel = featureResult?.to
-    ? path.relative(repoPath, featureResult.to).replace(/\\/g, "/")
-    : null;
-  const scoresBlock = grade
-    ? SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n")
-    : "_(no grade yet — run `/autonomous-loop:slice grade --id " + sliceId + "`)_";
-  const decisionsBlock = grade?.frontmatter?.decisions?.length
-    ? grade.frontmatter.decisions.map((d) => `- ${d}`).join("\n")
-    : "_(no decisions captured)_";
-
-  const body = [
+function renderSynthesisBody({
+  sliceId,
+  sliceRel,
+  featureRel,
+  specChanges,
+  scoresBlock,
+  decisionsBlock,
+  grade
+}) {
+  return [
     `# Final synthesis — ${sliceId}`,
     "",
     "## What shipped",
@@ -141,6 +126,44 @@ export async function writeCrewFinalSynthesis(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export async function writeCrewFinalSynthesis(
+  repoPath,
+  { sliceId, slicePath, featureId, featureResult, specChanges }
+) {
+  const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
+  await ensureDir(runsDir);
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
+  const target = path.join(runsDir, `${stamp}-${sliceId.toLowerCase()}-final-synthesis.md`);
+
+  const { findGradeForSlice, SCORE_DIMENSIONS } = await import("../grade-parser.mjs");
+  const grade = await findGradeForSlice(repoPath, sliceId);
+  const fm = {
+    kind: "final-synthesis",
+    slice: sliceId,
+    feature: featureId || null,
+    grade: grade ? `GRADE-${sliceId}` : null,
+    decisions: grade?.frontmatter?.decisions || [],
+    created_at: new Date().toISOString().slice(0, 10)
+  };
+
+  const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
+  const featureRel = featureResult?.to
+    ? path.relative(repoPath, featureResult.to).replace(/\\/g, "/")
+    : null;
+  const body = renderSynthesisBody({
+    sliceId,
+    sliceRel,
+    featureRel,
+    specChanges,
+    scoresBlock: renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS),
+    decisionsBlock: renderSynthesisDecisions(grade),
+    grade
+  });
   const { serializeFrontmatter } = await import("../frontmatter.mjs");
   await fs.writeFile(target, serializeFrontmatter(fm, body));
   return { synthesisPath: target, hasGrade: Boolean(grade) };

@@ -1,7 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile as _execFile } from "node:child_process";
-import { promisify } from "node:util";
 
 import { resolveConfig } from "./config-resolver.mjs";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
@@ -11,8 +9,6 @@ import {
   writeCrewFinalSynthesis,
   writeCrewHandoff
 } from "./slice-linker/crew-bridge.mjs";
-
-const execFile = promisify(_execFile);
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
@@ -196,6 +192,53 @@ export async function sliceFromFeature(repoPath, featureId, { config = null } = 
 //   3. Find linked feature via slice.feature frontmatter; move feature
 //      from in-progress/ -> done/. backlog-writer auto-stamps completed_at.
 //   4. Run reconcileSpecStatus so any spec whose features all reached done
+// Wraps an async action so any thrown error becomes `{ error: msg }`. Used
+// by completeSlice for the three best-effort crew-bridge calls; one failing
+// must not block the others or the surrounding slice-complete operation.
+async function bestEffort(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+// Decides the target path (pending/active/in-progress -> completed; else
+// flat), stamps frontmatter, writes the updated file, removes the old one
+// if it moved. Returns the new path.
+async function moveAndStampSlice({ sliceFile, sliceContent, sliceFm, slicesRoot, today }) {
+  const parentDir = path.basename(path.dirname(sliceFile));
+  let targetSlicePath = sliceFile;
+  if (parentDir === "pending" || parentDir === "active" || parentDir === "in-progress") {
+    const completedDir = path.join(slicesRoot, "completed");
+    await ensureDir(completedDir);
+    targetSlicePath = path.join(completedDir, path.basename(sliceFile));
+  }
+  const updated = mergeFrontmatter(sliceContent, {
+    status: "completed",
+    completed_at: sliceFm.completed_at || today,
+    updated: today
+  });
+  await fs.writeFile(targetSlicePath, updated);
+  if (targetSlicePath !== sliceFile) await fs.unlink(sliceFile);
+  return targetSlicePath;
+}
+
+// Moves the slice's linked feature to done/ when present and not yet done.
+// Returns null when there is no linked feature, or a result object
+// describing the move (or the alreadyDone case).
+async function moveFeatureToDone(repoPath, featureId, config) {
+  if (!featureId) return null;
+  const { findFeatureById, moveFeature } = await import("./backlog-writer.mjs");
+  const feat = await findFeatureById(repoPath, featureId, config);
+  if (!feat) return null;
+  if (feat.state === "done") {
+    return { id: featureId, alreadyDone: true, path: feat.filePath };
+  }
+  const moved = await moveFeature(feat.filePath, "done");
+  return { id: featureId, from: moved.from, to: moved.to };
+}
+
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
@@ -208,87 +251,29 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   if (!sliceFile) throw new Error(`Slice file not found for ${sliceId} under ${slicesRoot}`);
 
   const sliceContent = await fs.readFile(sliceFile, "utf8");
-  const { frontmatter: sliceFm, body: sliceBody } = parseFrontmatter(sliceContent);
+  const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
   const featureId = sliceFm.feature || null;
   const today = new Date().toISOString().slice(0, 10);
 
-  // Decide target path. If slice file currently lives in a state subdir
-  // (pending/active), move to completed/. Else update in place (flat).
-  const parentDir = path.basename(path.dirname(sliceFile));
-  let targetSlicePath = sliceFile;
-  if (parentDir === "pending" || parentDir === "active" || parentDir === "in-progress") {
-    const completedDir = path.join(slicesRoot, "completed");
-    await ensureDir(completedDir);
-    targetSlicePath = path.join(completedDir, path.basename(sliceFile));
-  }
-
-  const updatedSliceContent = mergeFrontmatter(sliceContent, {
-    status: "completed",
-    completed_at: sliceFm.completed_at || today,
-    updated: today
+  const targetSlicePath = await moveAndStampSlice({
+    sliceFile,
+    sliceContent,
+    sliceFm,
+    slicesRoot,
+    today
   });
-  await fs.writeFile(targetSlicePath, updatedSliceContent);
-  if (targetSlicePath !== sliceFile) {
-    await fs.unlink(sliceFile);
-  }
-
-  // Move linked feature -> done/, stamp completed_at
-  let featureResult = null;
-  if (featureId) {
-    const { findFeatureById, moveFeature } = await import("./backlog-writer.mjs");
-    const feat = await findFeatureById(repoPath, featureId, config);
-    if (feat && feat.state !== "done") {
-      const moved = await moveFeature(feat.filePath, "done");
-      featureResult = { id: featureId, from: moved.from, to: moved.to };
-    } else if (feat) {
-      featureResult = { id: featureId, alreadyDone: true, path: feat.filePath };
-    }
-  }
+  const featureResult = await moveFeatureToDone(repoPath, featureId, config);
 
   // Reconcile parent spec status
   const { reconcileSpecStatus } = await import("./linkage.mjs");
   const specChanges = await reconcileSpecStatus(repoPath, config);
 
-  // Best-effort crew handoff written to .claude/artifacts/crew/handoffs/.
-  // Failure (read-only fs, etc.) doesn't break complete operation.
-  let handoff = null;
-  try {
-    handoff = await writeCrewHandoff(repoPath, {
-      sliceId,
-      slicePath: targetSlicePath,
-      featureId,
-      featureResult,
-      specChanges
-    });
-  } catch (err) {
-    handoff = { error: err.message };
-  }
-
-  // Crew final-synthesis artifact closes the workflow run from autonomous-loop's
-  // side. Embeds the grade summary + decisions if a grade file already exists
-  // (i.e. agent followed the recommended order: grade THEN complete). Otherwise
-  // the synthesis flags "grade missing" so reviewer of synthesis sees gap.
-  let synthesis = null;
-  try {
-    synthesis = await writeCrewFinalSynthesis(repoPath, {
-      sliceId,
-      slicePath: targetSlicePath,
-      featureId,
-      featureResult,
-      specChanges
-    });
-  } catch (err) {
-    synthesis = { error: err.message };
-  }
-
-  // Best-effort cost-report via hero-crew. Computes Claude session $ for the
-  // slice window from workflow-state.json. Non-fatal on any failure.
-  let costReport = null;
-  try {
-    costReport = await tryWriteCostReport(repoPath, sliceId);
-  } catch (err) {
-    costReport = { error: err.message };
-  }
+  const crewArgs = { sliceId, slicePath: targetSlicePath, featureId, featureResult, specChanges };
+  const [handoff, synthesis, costReport] = await Promise.all([
+    bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
+    bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
+    bestEffort(() => tryWriteCostReport(repoPath, sliceId))
+  ]);
 
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },

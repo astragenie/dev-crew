@@ -128,10 +128,6 @@ export async function buildRetrospective(
       withinWindow(f.frontmatter.completed_at || f.frontmatter.updated, sinceDate, untilDate)
   );
 
-  // Estimation accuracy: features with target_release we can compare to actual
-  // shipped (for v0.1.6 we use a coarse signal: features in done/ with target_release set)
-  const shippedWithTarget = movedToDone.filter((f) => f.frontmatter.target_release);
-
   // Specs satisfied in window (status changed to satisfied — coarse: just count)
   const specsSatisfied = specs.filter((s) => s.frontmatter.status === "satisfied");
 
@@ -170,72 +166,88 @@ export async function buildRetrospective(
   };
 }
 
-function renderMarkdown(report) {
-  const lines = [];
-  lines.push(`# Retrospective ${report.range.since ?? "(all time)"} → ${report.range.until}`);
-  lines.push("");
-  lines.push("## Summary");
-  lines.push(`- Slices graded: ${report.counts.gradesInWindow}`);
-  lines.push(`- Decisions captured: ${report.counts.decisionsInWindow}`);
-  lines.push(`- Features shipped (moved to done): ${report.counts.featuresDoneInWindow}`);
-  lines.push(`- Specs satisfied: ${report.counts.specsSatisfied}`);
+function renderRetroSummary(report) {
+  const lines = [
+    "## Summary",
+    `- Slices graded: ${report.counts.gradesInWindow}`,
+    `- Decisions captured: ${report.counts.decisionsInWindow}`,
+    `- Features shipped (moved to done): ${report.counts.featuresDoneInWindow}`,
+    `- Specs satisfied: ${report.counts.specsSatisfied}`
+  ];
   if (report.cadenceSlicesPerWeek !== null) {
     lines.push(`- Cadence: ${report.cadenceSlicesPerWeek} slices/week`);
   }
   lines.push("");
-  lines.push("## Score averages");
+  return lines;
+}
+
+function renderRetroScores(report) {
+  const out = ["## Score averages"];
   for (const [dim, value] of Object.entries(report.scoreAverages)) {
     const flag = report.dimensionsBelowThreshold.includes(dim) ? " ⚠ below 0.80" : "";
-    lines.push(`- ${dim}: ${value === null ? "n/a" : value}${flag}`);
+    out.push(`- ${dim}: ${value === null ? "n/a" : value}${flag}`);
   }
-  lines.push("");
-  if (report.dimensionsBelowThreshold.length > 0) {
-    lines.push("## Improvement opportunities");
-    for (const dim of report.dimensionsBelowThreshold) {
-      lines.push(
-        `- **${dim}** below threshold — consider authoring a SPEC (type=sre or type=adr) addressing the systemic gap.`
-      );
-    }
-    lines.push("");
+  out.push("");
+  return out;
+}
+
+function renderRetroDimensionGaps(report) {
+  if (report.dimensionsBelowThreshold.length === 0) return [];
+  const out = ["## Improvement opportunities"];
+  for (const dim of report.dimensionsBelowThreshold) {
+    out.push(
+      `- **${dim}** below threshold — consider authoring a SPEC (type=sre or type=adr) addressing the systemic gap.`
+    );
   }
-  if (report.topLessons.length > 0) {
-    lines.push("## Top recurring lessons");
-    for (const { key, count } of report.topLessons) {
-      lines.push(`- (${count}×) ${key}`);
-    }
-    lines.push("");
+  out.push("");
+  return out;
+}
+
+function renderRetroTopList(heading, items) {
+  if (items.length === 0) return [];
+  const out = [`## ${heading}`];
+  for (const { key, count } of items) {
+    out.push(`- (${count}×) ${key}`);
   }
-  if (report.topSurprises.length > 0) {
-    lines.push("## Top recurring surprises");
-    for (const { key, count } of report.topSurprises) {
-      lines.push(`- (${count}×) ${key}`);
-    }
-    lines.push("");
+  out.push("");
+  return out;
+}
+
+function renderRetroDecisions(report) {
+  if (report.decisionsList.length === 0) return [];
+  const out = ["## Decisions made"];
+  for (const d of report.decisionsList) {
+    out.push(`- **${d.id}**: ${d.title} _(from ${d.slice || "n/a"})_`);
   }
-  if (report.topFollowups.length > 0) {
-    lines.push("## Outstanding followups");
-    for (const { key, count } of report.topFollowups) {
-      lines.push(`- (${count}×) ${key}`);
-    }
-    lines.push("");
+  out.push("");
+  return out;
+}
+
+function renderRetroGrades(report) {
+  if (report.gradesList.length === 0) return [];
+  const out = ["## Slices graded"];
+  for (const g of report.gradesList) {
+    out.push(
+      `- **${g.slice}** (avg ${g.avg ?? "n/a"}) ${g.feature ? `← ${g.feature}` : ""} on ${g.gradedAt}`
+    );
   }
-  if (report.decisionsList.length > 0) {
-    lines.push("## Decisions made");
-    for (const d of report.decisionsList) {
-      lines.push(`- **${d.id}**: ${d.title} _(from ${d.slice || "n/a"})_`);
-    }
-    lines.push("");
-  }
-  if (report.gradesList.length > 0) {
-    lines.push("## Slices graded");
-    for (const g of report.gradesList) {
-      lines.push(
-        `- **${g.slice}** (avg ${g.avg ?? "n/a"}) ${g.feature ? `← ${g.feature}` : ""} on ${g.gradedAt}`
-      );
-    }
-    lines.push("");
-  }
-  return lines.join("\n");
+  out.push("");
+  return out;
+}
+
+function renderMarkdown(report) {
+  return [
+    `# Retrospective ${report.range.since ?? "(all time)"} → ${report.range.until}`,
+    "",
+    ...renderRetroSummary(report),
+    ...renderRetroScores(report),
+    ...renderRetroDimensionGaps(report),
+    ...renderRetroTopList("Top recurring lessons", report.topLessons),
+    ...renderRetroTopList("Top recurring surprises", report.topSurprises),
+    ...renderRetroTopList("Outstanding followups", report.topFollowups),
+    ...renderRetroDecisions(report),
+    ...renderRetroGrades(report)
+  ].join("\n");
 }
 
 export async function writeRetrospective(repoPath, options = {}) {

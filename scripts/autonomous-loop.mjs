@@ -266,24 +266,40 @@ async function runBacklogSubcommand(repoPath, positionals, flags) {
   throw new Error(`Unknown backlog subcommand: ${sub}`);
 }
 
-async function runSpecSubcommand(repoPath, positionals, flags) {
-  const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("spec requires a subcommand: add | list | decompose | status");
-  if (sub === "add") {
+function parseFeatureEntries(flags) {
+  if (flags.featuresJson) {
+    let entries;
+    try {
+      entries = JSON.parse(flags.featuresJson);
+    } catch (err) {
+      throw new Error(`--features-json must be valid JSON: ${err.message}`);
+    }
+    if (!Array.isArray(entries)) throw new Error("--features-json must be a JSON array");
+    return entries;
+  }
+  return flags.features
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const SPEC_HANDLERS = {
+  add: async (repoPath, flags, rest) => {
     const title = flags.title || rest.join(" ");
     if (!title) throw new Error("spec add requires a title (positional or --title).");
-    if (!flags.type)
+    if (!flags.type) {
       throw new Error("spec add requires --type prd|user-journey|sre|research|adr|other.");
+    }
     const { addSpec } = await import("./lib/spec-parser.mjs");
-    return await addSpec(repoPath, {
+    return addSpec(repoPath, {
       type: flags.type,
       title,
       priority: flags.priority,
       target_release: flags.targetRelease,
       body: flags.body || ""
     });
-  }
-  if (sub === "list") {
+  },
+  list: async (repoPath, flags) => {
     const { listSpecs, filterSpecs } = await import("./lib/spec-parser.mjs");
     const specs = await listSpecs(repoPath);
     const filtered = filterSpecs(specs, {
@@ -305,8 +321,8 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
         filePath: s.filePath
       }))
     };
-  }
-  if (sub === "decompose") {
+  },
+  decompose: async (repoPath, flags, rest) => {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
     if (!flags.features && !flags.featuresJson) {
@@ -314,30 +330,24 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
         'spec decompose requires --features "t1;t2" OR --features-json <JSON array>.'
       );
     }
-    let entries;
-    if (flags.featuresJson) {
-      try {
-        entries = JSON.parse(flags.featuresJson);
-      } catch (err) {
-        throw new Error(`--features-json must be valid JSON: ${err.message}`);
-      }
-      if (!Array.isArray(entries)) throw new Error("--features-json must be a JSON array");
-    } else {
-      entries = flags.features
-        .split(";")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    }
+    const entries = parseFeatureEntries(flags);
     const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-    return await decomposeSpec(repoPath, specId, entries);
-  }
-  if (sub === "status") {
+    return decomposeSpec(repoPath, specId, entries);
+  },
+  status: async (repoPath) => {
     const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
     const before = await specSatisfaction(repoPath);
     const reconciled = await reconcileSpecStatus(repoPath);
     return { satisfaction: before, statusChanges: reconciled };
   }
-  throw new Error(`Unknown spec subcommand: ${sub}`);
+};
+
+async function runSpecSubcommand(repoPath, positionals, flags) {
+  const [sub, ...rest] = positionals;
+  if (!sub) throw new Error("spec requires a subcommand: add | list | decompose | status");
+  const handler = SPEC_HANDLERS[sub];
+  if (!handler) throw new Error(`Unknown spec subcommand: ${sub}`);
+  return handler(repoPath, flags, rest);
 }
 
 async function runReleaseSubcommand(repoPath, positionals, flags) {
@@ -355,12 +365,16 @@ async function runReleaseSubcommand(repoPath, positionals, flags) {
   throw new Error(`Unknown release subcommand: ${sub}`);
 }
 
-async function runSliceSubcommand(repoPath, positionals, flags) {
-  const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("slice requires a subcommand: from-feature | grade | grade-write");
-  if (sub === "from-feature") {
-    const featureId = flags.id || rest[0];
-    if (!featureId) throw new Error("slice from-feature requires --id FEAT-NNN.");
+// Resolves a required ID flag/positional or throws. Centralizes the
+// "missing --id" error shape across slice subcommands.
+function requireId(value, errMsg) {
+  if (!value) throw new Error(errMsg);
+  return value;
+}
+
+const SLICE_HANDLERS = {
+  "from-feature": async (repoPath, _flags, _rest, featureId) => {
+    requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
     const out = await sliceFromFeature(repoPath, featureId);
     const { logEvent } = await import("./lib/telemetry.mjs");
@@ -370,25 +384,22 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
       slice: out.slice.id
     });
     return out;
-  }
-  if (sub === "grade") {
-    const sliceId = flags.id || rest[0];
-    if (!sliceId) throw new Error("slice grade requires --id SLICE-NN.");
+  },
+  grade: async (repoPath, _flags, _rest, sliceId) => {
+    requireId(sliceId, "slice grade requires --id SLICE-NN.");
     const { createGradeFile } = await import("./lib/grade-writer.mjs");
     const out = await createGradeFile(repoPath, sliceId);
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "slice grade", slice: sliceId, created: out.created });
     return out;
-  }
-  if (sub === "grade-write") {
-    const sliceId = flags.id || rest[0];
-    if (!sliceId) throw new Error("slice grade-write requires --id SLICE-NN.");
+  },
+  "grade-write": async (repoPath, _flags, _rest, sliceId) => {
+    requireId(sliceId, "slice grade-write requires --id SLICE-NN.");
     const { writeGrade } = await import("./lib/grade-writer.mjs");
-    return await writeGrade(repoPath, sliceId);
-  }
-  if (sub === "complete") {
-    const sliceId = flags.id || rest[0];
-    if (!sliceId) throw new Error("slice complete requires --id SLICE-NN.");
+    return writeGrade(repoPath, sliceId);
+  },
+  complete: async (repoPath, _flags, _rest, sliceId) => {
+    requireId(sliceId, "slice complete requires --id SLICE-NN.");
     const { completeSlice } = await import("./lib/slice-linker.mjs");
     const out = await completeSlice(repoPath, sliceId);
     const { logEvent } = await import("./lib/telemetry.mjs");
@@ -400,26 +411,32 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
       handoff_written: Boolean(out.handoff?.handoffPath)
     });
     return out;
-  }
-  if (sub === "link") {
-    const sliceId = flags.id;
-    if (!sliceId) throw new Error("slice link requires --id SLICE-NN.");
+  },
+  link: async (repoPath, flags) => {
+    const sliceId = requireId(flags.id, "slice link requires --id SLICE-NN.");
     if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
     if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
     const { linkArtifactToSlice } = await import("./lib/artifact-linkage.mjs");
-    return await linkArtifactToSlice(repoPath, {
+    return linkArtifactToSlice(repoPath, {
       sliceId,
       artifactPath: flags.artifact,
       kind: flags.kind
     });
-  }
-  if (sub === "review-ladder") {
-    const sliceId = flags.id || rest[0];
-    if (!sliceId) throw new Error("slice review-ladder requires --id SLICE-NN.");
+  },
+  "review-ladder": async (repoPath, _flags, _rest, sliceId) => {
+    requireId(sliceId, "slice review-ladder requires --id SLICE-NN.");
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
-    return await buildReviewLadder(repoPath, sliceId);
+    return buildReviewLadder(repoPath, sliceId);
   }
-  throw new Error(`Unknown slice subcommand: ${sub}`);
+};
+
+async function runSliceSubcommand(repoPath, positionals, flags) {
+  const [sub, ...rest] = positionals;
+  if (!sub) throw new Error("slice requires a subcommand: from-feature | grade | grade-write");
+  const handler = SLICE_HANDLERS[sub];
+  if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
+  const id = flags.id || rest[0];
+  return handler(repoPath, flags, rest, id);
 }
 
 async function runDecisionsSubcommand(repoPath, positionals, flags) {

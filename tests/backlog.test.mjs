@@ -57,7 +57,7 @@ test("listBacklog walks all four state dirs", async () => {
 test("filterBacklog filters by status and priority", async () => {
   const repo = await tmpRepo("al-backlog-filter-");
   const a = await addFeature(repo, { title: "A", priority: "P0" });
-  const b = await addFeature(repo, { title: "B", priority: "P2" });
+  await addFeature(repo, { title: "B", priority: "P2" });
   await moveFeature(a.filePath, "triaged", { priority: "P0" });
   const entries = await listBacklog(repo);
   const p0 = filterBacklog(entries, { priority: "P0" });

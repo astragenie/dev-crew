@@ -32,75 +32,80 @@ function statusBadge(state) {
   }
 }
 
-function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt }) {
+function groupFeaturesBySpec(features) {
   const grouped = new Map();
   for (const f of features) {
     const sid = f.frontmatter.derived_from || "_standalone_";
     if (!grouped.has(sid)) grouped.set(sid, []);
     grouped.get(sid).push(f);
   }
-
-  const lines = [];
-  lines.push(`# Release ${version}`);
-  lines.push("");
-  lines.push(`- Status: **${releaseStatus}**`);
-  lines.push(`- Generated: ${generatedAt}`);
-  lines.push(`- Features targeted: ${features.length}`);
-  lines.push(`- Shipped: ${features.filter((f) => f.state === "done").length}`);
-  lines.push(`- In flight: ${features.filter((f) => f.state !== "done").length}`);
-  lines.push("");
-
-  // Sort: specs first by id, _standalone_ last
-  const groupKeys = [...grouped.keys()].sort((a, b) => {
+  // _standalone_ last; specs in id order.
+  const keys = [...grouped.keys()].sort((a, b) => {
     if (a === "_standalone_") return 1;
     if (b === "_standalone_") return -1;
     return a.localeCompare(b);
   });
+  return { grouped, keys };
+}
 
-  for (const sid of groupKeys) {
+function renderGroupSection(sid, entries, specs) {
+  const lines = [];
+  if (sid === "_standalone_") {
+    lines.push("## Standalone features");
+  } else {
+    const spec = specs.find((s) => s.id === sid);
+    const title = spec?.frontmatter?.title || "(unknown spec)";
+    const total = spec?.frontmatter?.derived_features?.length || entries.length;
+    const done = entries.filter((e) => e.state === "done").length;
+    lines.push(`## ${sid}: ${title}`);
+    lines.push(`_Coverage in this release: ${done}/${total} done_`);
+  }
+  lines.push("");
+  for (const entry of entries) {
+    const title =
+      (entry.body || "")
+        .split("\n")
+        .find((l) => l.startsWith("# "))
+        ?.replace(/^#\s+[A-Z]+-\d+:\s*/, "") || entry.id;
+    lines.push(`- **${entry.id}** ${statusBadge(entry.state)} — ${title.trim()}`);
+  }
+  lines.push("");
+  return lines;
+}
+
+function renderReadyFooter(version) {
+  return [
+    "## Cutting the release",
+    "",
+    "All targeted features are in `done/`. Recommended next steps:",
+    "",
+    `1. Tag the commit: \`git tag ${version}\``,
+    `2. Push the tag: \`git push origin ${version}\``,
+    "3. Move the feature files from `done/` into a versioned subdir if you want to keep `done/` short:",
+    `   \`mkdir docs/backlog/done/${version} && git mv docs/backlog/done/FEAT-*.md docs/backlog/done/${version}/\``,
+    ""
+  ];
+}
+
+function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt }) {
+  const { grouped, keys } = groupFeaturesBySpec(features);
+  const lines = [
+    `# Release ${version}`,
+    "",
+    `- Status: **${releaseStatus}**`,
+    `- Generated: ${generatedAt}`,
+    `- Features targeted: ${features.length}`,
+    `- Shipped: ${features.filter((f) => f.state === "done").length}`,
+    `- In flight: ${features.filter((f) => f.state !== "done").length}`,
+    ""
+  ];
+  for (const sid of keys) {
     const entries = grouped.get(sid).sort((a, b) => a.idNumber - b.idNumber);
-    if (sid === "_standalone_") {
-      lines.push("## Standalone features");
-    } else {
-      const spec = specs.find((s) => s.id === sid);
-      const title = spec?.frontmatter?.title || "(unknown spec)";
-      const total = spec?.frontmatter?.derived_features?.length || entries.length;
-      const done = entries.filter((e) => e.state === "done").length;
-      lines.push(`## ${sid}: ${title}`);
-      lines.push(`_Coverage in this release: ${done}/${total} done_`);
-    }
-    lines.push("");
-    for (const entry of entries) {
-      const title =
-        (entry.body || "")
-          .split("\n")
-          .find((l) => l.startsWith("# "))
-          ?.replace(/^#\s+[A-Z]+-\d+:\s*/, "") || entry.id;
-      lines.push(`- **${entry.id}** ${statusBadge(entry.state)} — ${title.trim()}`);
-    }
-    lines.push("");
+    lines.push(...renderGroupSection(sid, entries, specs));
   }
-
   if (releaseStatus === "READY") {
-    lines.push("## Cutting the release");
-    lines.push("");
-    lines.push("All targeted features are in `done/`. Recommended next steps:");
-    lines.push("");
-    lines.push("1. Tag the commit: `git tag " + version + "`");
-    lines.push("2. Push the tag: `git push origin " + version + "`");
-    lines.push(
-      "3. Move the feature files from `done/` into a versioned subdir if you want to keep `done/` short:"
-    );
-    lines.push(
-      "   `mkdir docs/backlog/done/" +
-        version +
-        " && git mv docs/backlog/done/FEAT-*.md docs/backlog/done/" +
-        version +
-        "/`"
-    );
-    lines.push("");
+    lines.push(...renderReadyFooter(version));
   }
-
   return lines.join("\n");
 }
 

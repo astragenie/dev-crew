@@ -19,7 +19,7 @@ import {
   specSatisfaction,
   reconcileSpecStatus
 } from "../scripts/lib/linkage.mjs";
-import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
+import { moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 

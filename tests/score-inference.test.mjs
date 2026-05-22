@@ -124,7 +124,7 @@ test("createGradeFile injects inferred scores into template", async () => {
   const result = await createGradeFile(repo, slice.id);
   const content = await fs.readFile(result.gradePath, "utf8");
   // Both frontmatter and body list should have prefilled values
-  const { frontmatter, body } = parseFrontmatter(content);
+  const { body } = parseFrontmatter(content);
   assert.match(body, /Inference sources/);
   assert.match(body, /test_confidence: 0\.85/);
   assert.match(body, /Scores prefilled from crew artifacts/);

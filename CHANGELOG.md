@@ -2,6 +2,47 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.17 — 2026-05-22
+
+### Changed
+Lint cleanup pass — **24 warnings → 0**. Drops the autonomous-loop hygiene
+bar in line with hero-crew. Mostly cosmetic; one bug-shaped fix.
+
+- Removed dead code / unused imports: `CROSS_SLICE_HEADER` (no callers
+  after the bridge removal), `findFeatureById` from `claims-sync.mjs`,
+  `parseScoresFromBlock` from `grade-parser.mjs`, `mergeFrontmatter` +
+  `readGrade` from `grade-writer.mjs`, `shippedWithTarget` (unused
+  in retrospective accumulator), `execFile` from `slice-linker.mjs`
+  (also `sliceBody` — never consumed from the parsed slice file).
+- **bug-shaped** `retrospective.test.mjs`: shed a stray
+  `(await buildRetrospective(repo)).report ||` that read a field which
+  never existed; the second `buildRetrospective(repo)` call was the
+  one whose result the test actually used.
+- Complexity reductions via the same table / extracted-helper pattern
+  that cleared hero-crew:
+  - `runSpecSubcommand` 17 → `SPEC_HANDLERS` table + `parseFeatureEntries`.
+  - `runSliceSubcommand` 26 → `SLICE_HANDLERS` table + `requireId`.
+  - `extractPhaseGateCommands` 20 → `HINT_PATTERNS` table +
+    `classifyCommandHint` + `applyLineHintOverride`.
+  - `migrateAdhocInstall` 26 → `buildStackFromCandidates` +
+    `extendCursorPastLoopHeaders` + `findContentCutPoint` +
+    `computeRemovalEnd`.
+  - `createGradeFile` 27 → `resolveGradePrefill` +
+    `applyInferredScores` + `patchGradeFrontmatter`.
+  - `resolveGradePrefill` 16 → `readSlicePrefillFields` +
+    `readFeaturePrefill`.
+  - `writeMemorySnapshot` 22 → eight named `renderSnapshot*` helpers.
+  - `detectPatterns` 17 → five `detect*Alerts` helpers.
+  - `buildReleaseBody` 18 → `groupFeaturesBySpec` +
+    `renderGroupSection` + `renderReadyFooter`.
+  - `renderMarkdown` 21 (retrospective) → six `renderRetro*` helpers.
+  - `completeSlice` 21 → `moveAndStampSlice` + `moveFeatureToDone`
+    + `bestEffort` (three concurrent crew-bridge calls).
+  - `writeCrewFinalSynthesis` 17 → `renderSynthesisScores` +
+    `renderSynthesisDecisions` + `renderSynthesisBody`.
+
+Tests: **142/142 pass**. Lint output now empty.
+
 ## v0.1.16 — 2026-05-22
 
 ### Added

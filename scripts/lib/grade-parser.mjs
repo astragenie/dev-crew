@@ -28,19 +28,6 @@ export function gradesRoot(repoPath, config = null) {
   return path.join(repoPath, config?.grades?.root || "docs/grades");
 }
 
-function parseScoresFromBlock(frontmatter) {
-  const raw = frontmatter.scores;
-  if (raw === null || raw === undefined) return null;
-  // The current frontmatter parser handles only flat keys + inline arrays.
-  // For `scores:` we expect a block-mapping which the parser leaves as
-  // `null` (empty value) with the children NOT captured. So we must
-  // re-extract the score block from the raw text. Workaround: caller
-  // passes raw content to parseScoresFromBody; this stub returns null
-  // when only frontmatter is available.
-  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
-  return null;
-}
-
 // Parse the "## Scores" section out of the markdown body. Returns
 // { dimension: value } object. Used because the simple frontmatter parser
 // doesn't handle nested mappings.

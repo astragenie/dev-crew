@@ -57,10 +57,6 @@ Unacceptable: "implemented conceptually", "should work", "TODO added",
 Every meaningful action emits a Crew artifact:
 
 - run brief at the start of a substantial slice → `crew write-run-brief`
-- review pass → `crew write-review-result` (or auto via commit bridge)
+- review pass → `crew write-review-result`
 - validation → `crew write-validation-result` (or `/autonomous-loop:phase-gate`)
 - final synthesis when the slice closes → `crew write-final-synthesis`
-
-If a commit bridge is installed (`crew install-commit-bridge`), most
-review-result artifacts emit automatically. Validation and final-synthesis
-remain explicit.

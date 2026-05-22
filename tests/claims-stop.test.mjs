@@ -123,7 +123,7 @@ test("checkStopConditions: shouldStop=false when work exists", async () => {
 test("checkStopConditions: shouldStop=true when warn alerts present", async () => {
   const repo = await tmpRepo("al-v111-stop-alerts-");
   // Trigger orphan alert + keep backlog non-empty
-  const f1 = await addFeature(repo, { title: "queued" });
+  await addFeature(repo, { title: "queued" });
   const f2 = await addFeature(repo, { title: "orphan" });
   await moveFeature(f2.filePath, "in-progress");
   const out = await checkStopConditions(repo);

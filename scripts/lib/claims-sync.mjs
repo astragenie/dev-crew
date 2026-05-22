@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
-import { findFeatureById, moveFeature } from "./backlog-writer.mjs";
+import { moveFeature } from "./backlog-writer.mjs";
 
 // Reconciles crew claims state (.claude/state/crew/claims.json) with
 // autonomous-loop backlog state-machine position. Two directions:

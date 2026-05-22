@@ -24,7 +24,7 @@ const ADHOC_HEADER_VARIANTS = [
   "## Autonomous Backlog System + How to Start the Loop"
 ];
 
-const CROSS_SLICE_HEADER = "**Cross-Slice Continuation — HARD RULE";
+const _CROSS_SLICE_HEADER = "**Cross-Slice Continuation — HARD RULE";
 const PHASE_GATE_HEADER = "**Phase Completion Gate — HARD RULE";
 const FIRST_ACTION_HEADER = "## First Action — Starting the Loop";
 
@@ -91,26 +91,41 @@ function extractBacktickContent(line) {
 // shell-quoted commands. Returns an array of stage candidates:
 //   { hint: "build" | "test" | "frontendBuild" | "infraPlan" | "aspireBoot" | "other",
 //     command: {cmd, args} }
+// Pattern-based hint resolution. First match wins; line-level overrides
+// (e.g. "aspire" / "frontend" mentions in the surrounding prose) get
+// resolved by classifyLineHint below.
+const HINT_PATTERNS = [
+  { hint: "build", match: (p) => p.cmd === "dotnet" && p.args[0] === "build" },
+  { hint: "test", match: (p) => p.cmd === "dotnet" && p.args[0] === "test" },
+  { hint: "test", match: (p) => p.cmd === "pytest" },
+  { hint: "frontendBuild", match: (p) => p.cmd === "npm" && p.args.includes("build") },
+  { hint: "infraPlan", match: (p) => p.cmd === "terraform" && p.args[0] === "plan" },
+  { hint: "aspireBoot", match: (p) => p.cmd === "dotnet" && p.args[0] === "run" }
+];
+
+function classifyCommandHint(parsed) {
+  return HINT_PATTERNS.find((p) => p.match(parsed))?.hint || "other";
+}
+
+function applyLineHintOverride(hint, parsed, line) {
+  const lower = line.toLowerCase();
+  if (lower.includes("aspire") && parsed.cmd === "dotnet" && parsed.args[0] === "run") {
+    return "aspireBoot";
+  }
+  if (lower.includes("frontend") && parsed.cmd === "npm") {
+    return "frontendBuild";
+  }
+  return hint;
+}
+
 function extractPhaseGateCommands(blockText) {
   const candidates = [];
-  const lines = blockText.split("\n");
-  for (const line of lines) {
+  for (const line of blockText.split("\n")) {
     const cmdString = extractBacktickContent(line);
     if (!cmdString) continue;
     const parsed = parseCommandLine(cmdString);
     if (!parsed) continue;
-    const lower = line.toLowerCase();
-    let hint = "other";
-    if (parsed.cmd === "dotnet" && parsed.args[0] === "build") hint = "build";
-    else if (parsed.cmd === "dotnet" && parsed.args[0] === "test") hint = "test";
-    else if (parsed.cmd === "pytest") hint = "test";
-    else if (parsed.cmd === "npm" && parsed.args.includes("build")) hint = "frontendBuild";
-    else if (parsed.cmd === "terraform" && parsed.args[0] === "plan") hint = "infraPlan";
-    else if (parsed.cmd === "dotnet" && parsed.args[0] === "run") hint = "aspireBoot";
-    // Line-level keyword hints can override when the line text suggests the stage.
-    if (lower.includes("aspire") && parsed.cmd === "dotnet" && parsed.args[0] === "run")
-      hint = "aspireBoot";
-    if (lower.includes("frontend") && parsed.cmd === "npm") hint = "frontendBuild";
+    const hint = applyLineHintOverride(classifyCommandHint(parsed), parsed, line);
     candidates.push({ hint, command: parsed });
   }
   return candidates;
@@ -127,6 +142,66 @@ function findBlockRange(content, startHeader) {
   if (candidates.length === 0) return { start: startIdx, end: content.length };
   const end = Math.min(...candidates);
   return { start: startIdx, end };
+}
+
+// Folds extracted phase-gate commands into the structured stack config.
+// Push-many for build/test; first-wins for the single-slot stages.
+function buildStackFromCandidates(candidates) {
+  const stack = {
+    build: [],
+    test: [],
+    frontendBuild: null,
+    infraPlan: null,
+    aspireBoot: null,
+    healthchecks: []
+  };
+  for (const c of candidates) {
+    if (c.hint === "build") stack.build.push(c.command);
+    else if (c.hint === "test") stack.test.push(c.command);
+    else if (c.hint === "frontendBuild" && !stack.frontendBuild) stack.frontendBuild = c.command;
+    else if (c.hint === "infraPlan" && !stack.infraPlan) stack.infraPlan = c.command;
+    else if (c.hint === "aspireBoot" && !stack.aspireBoot) stack.aspireBoot = c.command;
+  }
+  return stack;
+}
+
+// Extends an initial cursor past every known loop header occurrence in
+// `content`. Used so the deletion range covers the LAST loop-headed block
+// (any of ADHOC_HEADER_VARIANTS or FIRST_ACTION_HEADER).
+function extendCursorPastLoopHeaders(content, initialEnd, loopHeaders, removalStart) {
+  let cursor = initialEnd;
+  for (const header of loopHeaders) {
+    const idx = content.indexOf(header);
+    if (idx !== -1 && idx >= removalStart) {
+      const endOfHeader = idx + header.length;
+      if (endOfHeader > cursor) cursor = endOfHeader;
+    }
+  }
+  return cursor;
+}
+
+// Scans forward from `startFrom` and returns the cut point: either the
+// next non-loop H2, or the start of the autonomous-loop marker block
+// (whichever comes first), or EOF.
+function findContentCutPoint(content, startFrom, loopHeaders) {
+  let scanFrom = startFrom;
+  for (;;) {
+    const nextH2 = content.indexOf("\n## ", scanFrom);
+    const nextMarker = content.indexOf("<!-- autonomous-loop:start -->", scanFrom);
+    if (nextH2 === -1 && nextMarker === -1) return content.length;
+    if (nextMarker !== -1 && (nextH2 === -1 || nextMarker < nextH2)) return nextMarker;
+    const headerLine = content.slice(nextH2 + 1, content.indexOf("\n", nextH2 + 1));
+    if (loopHeaders.some((h) => headerLine.startsWith(h))) {
+      scanFrom = nextH2 + 1;
+      continue;
+    }
+    return nextH2 + 1;
+  }
+}
+
+function computeRemovalEnd(content, initialEnd, loopHeaders) {
+  const extended = extendCursorPastLoopHeaders(content, initialEnd, loopHeaders, initialEnd);
+  return findContentCutPoint(content, extended, loopHeaders);
 }
 
 // Returns { extractedConfig, claudeMdRewritten, claudeMdPath, originalLength,
@@ -155,63 +230,20 @@ export async function migrateAdhocInstall(repoPath) {
     : "";
   const candidates = extractPhaseGateCommands(phaseGateText);
 
-  const stack = {
-    build: [],
-    test: [],
-    frontendBuild: null,
-    infraPlan: null,
-    aspireBoot: null,
-    healthchecks: []
-  };
-  for (const c of candidates) {
-    if (c.hint === "build") stack.build.push(c.command);
-    else if (c.hint === "test") stack.test.push(c.command);
-    else if (c.hint === "frontendBuild" && !stack.frontendBuild) stack.frontendBuild = c.command;
-    else if (c.hint === "infraPlan" && !stack.infraPlan) stack.infraPlan = c.command;
-    else if (c.hint === "aspireBoot" && !stack.aspireBoot) stack.aspireBoot = c.command;
-  }
-  const extractedConfig = candidates.length > 0 ? { stack } : null;
+  const extractedConfig =
+    candidates.length > 0 ? { stack: buildStackFromCandidates(candidates) } : null;
 
   // Range-delete the ad-hoc blocks. We delete from the FIRST recognized
   // loop header (any variant) up through the next H2 that ISN'T one of the
   // known loop headers — i.e. through the end of First Action if present,
   // otherwise through end of the last known block.
   const removalStart = firstHeader.index;
-  let removalEnd = removalStart + firstHeader.header.length;
-  // Find the latest position covered by any known loop header (variants +
-  // First Action), then extend removalEnd to it.
   const loopHeaders = [...ADHOC_HEADER_VARIANTS, FIRST_ACTION_HEADER];
-  for (const header of loopHeaders) {
-    const idx = content.indexOf(header);
-    if (idx !== -1 && idx >= removalStart) {
-      const endOfHeader = idx + header.length;
-      if (endOfHeader > removalEnd) removalEnd = endOfHeader;
-    }
-  }
-  // Extend removalEnd to the next H2 that isn't a loop header, or EOF.
-  // Stop early if we hit the autonomous-loop marker block (the new install's
-  // own block must be preserved — only kill ad-hoc content BEFORE it).
-  let scanFrom = removalEnd;
-  while (true) {
-    const nextH2 = content.indexOf("\n## ", scanFrom);
-    const nextMarker = content.indexOf("<!-- autonomous-loop:start -->", scanFrom);
-    if (nextH2 === -1 && nextMarker === -1) {
-      removalEnd = content.length;
-      break;
-    }
-    // If the marker block comes before the next H2, stop at the marker.
-    if (nextMarker !== -1 && (nextH2 === -1 || nextMarker < nextH2)) {
-      removalEnd = nextMarker;
-      break;
-    }
-    const headerLine = content.slice(nextH2 + 1, content.indexOf("\n", nextH2 + 1));
-    if (loopHeaders.some((h) => headerLine.startsWith(h))) {
-      scanFrom = nextH2 + 1;
-      continue;
-    }
-    removalEnd = nextH2 + 1; // keep the next non-loop H2
-    break;
-  }
+  const removalEnd = computeRemovalEnd(
+    content,
+    removalStart + firstHeader.header.length,
+    loopHeaders
+  );
 
   // Strip trailing horizontal rule that often immediately precedes the next H2.
   const before = content.slice(0, removalStart).trimEnd();
