@@ -2,6 +2,41 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.21 — 2026-05-22
+
+### Added (FEAT-002: mirror blocked + escalated_to_human in slice flow)
+
+Consumes the new crew workflow badges (hero-crew FEAT-006, v0.1.26):
+
+- New `scripts/lib/crew-workflow-reader.mjs`: tolerant reader for
+  `.claude/state/crew/workflow-state.json` (+ legacy
+  `engineering-os/` path). Returns `{ blocked, escalated }` from the
+  current run's gates.
+- `slice-linker.mjs::completeSlice` refuses to roll the parent
+  feature to `done/` while either gate is set. The slice itself
+  still moves + stamps; only the feature transition waits for the
+  human to clear the gate. Returns `featureResult.skipped: true` +
+  a reason field so callers can act on it.
+- `stop-conditions.mjs::checkStopConditions` treats either gate as a
+  hard stop. `escalated_to_human` is described as a hard stop in
+  the reason text; `blocked` includes `blockedBy` when present.
+  Snapshot gains `crewBlocked` + `crewEscalated` booleans.
+- `brief.mjs::buildBrief` surfaces `crewGates` in its output so the
+  autonomous-loop summary block reflects the crew state.
+- 7 new tests in `tests/crew-blocking-gates.test.mjs` cover: missing
+  state file (graceful), each gate read individually, stop on
+  escalation, stop on blocked, clean snapshot booleans, brief
+  surfacing.
+
+### Notes
+
+- Tests: 183/183 pass (was 176 → 7 new). typecheck + lint + format
+  clean.
+- FEAT-002 closed; backlog moved to `docs/backlog/done/`.
+- FEAT-004 (cross-repo `parentRunId`) intentionally remains in
+  `pending/` per the FEAT's own "DO NOT BUILD until a concrete
+  cross-repo workflow is observed" note.
+
 ## v0.1.20 — 2026-05-22
 
 ### Added (FEAT-005: snapshot iteration enrichment)

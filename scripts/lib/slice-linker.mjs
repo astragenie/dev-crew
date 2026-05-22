@@ -4,6 +4,7 @@ import path from "node:path";
 import { resolveConfig } from "./config-resolver.mjs";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
+import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import {
   tryWriteCostReport,
   writeCrewFinalSynthesis,
@@ -255,6 +256,13 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   const featureId = sliceFm.feature || null;
   const today = new Date().toISOString().slice(0, 10);
 
+  // FEAT-002: refuse to roll the parent feature to done/ while the crew
+  // workflow run is blocked or escalated_to_human. The slice itself can
+  // still complete (move + stamp), but the feature transition waits for
+  // the human to clear the gate.
+  const blockingGates = await readCrewBlockingGates(repoPath);
+  const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
+
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
     sliceContent,
@@ -262,7 +270,15 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     slicesRoot,
     today
   });
-  const featureResult = await moveFeatureToDone(repoPath, featureId, config);
+  const featureResult = isBlocked
+    ? {
+        skipped: true,
+        reason: blockingGates.escalated
+          ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
+          : `crew run blocked: ${blockingGates.blocked?.note || ""}`,
+        blockingGates
+      }
+    : await moveFeatureToDone(repoPath, featureId, config);
 
   // Reconcile parent spec status
   const { reconcileSpecStatus } = await import("./linkage.mjs");

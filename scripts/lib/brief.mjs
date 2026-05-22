@@ -4,6 +4,7 @@ import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { readEvents } from "./telemetry.mjs";
+import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 
 // Standalone autonomous-loop situational report. Complements crew's brief-me;
 // surfaces backlog/specs/grades/decisions/alerts without modifying the
@@ -16,13 +17,14 @@ function avg(values) {
 }
 
 export async function buildBrief(repoPath, { config = null } = {}) {
-  const [backlog, specs, grades, decisions, alerts, recentEvents] = await Promise.all([
+  const [backlog, specs, grades, decisions, alerts, recentEvents, crewGates] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
     listGrades(repoPath, { config }),
     listDecisions(repoPath, { config }),
     detectPatterns(repoPath, { config }),
-    readEvents(repoPath, { limit: 10 })
+    readEvents(repoPath, { limit: 10 }),
+    readCrewBlockingGates(repoPath)
   ]);
 
   const backlogCounts = {
@@ -94,6 +96,12 @@ export async function buildBrief(repoPath, { config = null } = {}) {
       timestamp: e.timestamp,
       command: e.command,
       summary: e.slice || e.feature || e.version || null
-    }))
+    })),
+    crewGates: {
+      blocked: crewGates.blocked
+        ? { note: crewGates.blocked.note || null, blockedBy: crewGates.blocked.blockedBy || null }
+        : null,
+      escalated: crewGates.escalated ? { note: crewGates.escalated.note || null } : null
+    }
   };
 }

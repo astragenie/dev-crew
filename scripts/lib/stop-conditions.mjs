@@ -3,6 +3,7 @@ import { listSpecs } from "./spec-parser.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
+import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -76,18 +77,39 @@ function appendCostAlertSignals(costAlertCount, reasons, suggestions) {
   );
 }
 
+function appendCrewGateSignals(crewGates, reasons, suggestions) {
+  if (crewGates.escalated) {
+    reasons.push(
+      `crew run escalated_to_human: ${crewGates.escalated.note || "(no note)"} — hard stop`
+    );
+    suggestions.push(
+      "The crew workflow has been escalated to a human. Resolve the escalation and clear the badge before resuming the loop."
+    );
+  } else if (crewGates.blocked) {
+    reasons.push(
+      `crew run blocked: ${crewGates.blocked.note || "(no note)"}` +
+        (crewGates.blocked.blockedBy ? ` (blockedBy ${crewGates.blocked.blockedBy})` : "")
+    );
+    suggestions.push(
+      "The crew workflow is blocked. Unblock the run (clear the badge or write the missing artifact) before continuing."
+    );
+  }
+}
+
 export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
-  const [backlog, specs, alerts, costAlertCount] = await Promise.all([
+  const [backlog, specs, alerts, costAlertCount, crewGates] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
     detectPatterns(repoPath, { config }),
-    countHighSeverityCostAlerts(repoPath, 3)
+    countHighSeverityCostAlerts(repoPath, 3),
+    readCrewBlockingGates(repoPath)
   ]);
 
   const reasons = [];
   const blockers = [];
   const suggestions = [];
   let iterationCapReached = false;
+  appendCrewGateSignals(crewGates, reasons, suggestions);
 
   const backlogStats = computeBacklogStats(backlog, specs);
   appendBacklogExhaustedSignals(backlogStats, reasons, suggestions);
@@ -120,7 +142,9 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
       warnAlerts: warnAlerts.length,
       iterationCount: iterStatus.count,
       iterationCap: iterStatus.cap,
-      costAlerts: costAlertCount
+      costAlerts: costAlertCount,
+      crewBlocked: Boolean(crewGates.blocked),
+      crewEscalated: Boolean(crewGates.escalated)
     }
   };
 }
