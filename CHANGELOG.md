@@ -2,6 +2,29 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.14 — 2026-05-22
+
+### Changed
+- **Tooling**: ESLint 9 (flat config) + Prettier 3 added. CI now runs
+  `npm ci`, `validate-manifests`, `lint`, `format:check`, tests. New
+  `package.json` (devDependencies only) + `package-lock.json`.
+- **Code style swept**: prettier --write across `scripts/**/*.mjs` and
+  `tests/**/*.mjs`; no semantic changes.
+- **CLI registry refactor** (`scripts/autonomous-loop.mjs`):
+  - 24 hand-written `if (value === "--foo") { ... }` flag branches
+    collapsed into a single `FLAG_SPEC` table.
+  - 17-branch command `else if` chain collapsed into a `COMMANDS`
+    registry. Lazy imports stay per-handler (cheap startup).
+  - File size: 536 → 476 lines (-60).
+
+### Fixed
+- `scripts/lib/frontmatter.mjs`: redundant escape `\[` removed inside
+  YAML-unsafe character class (ESLint `no-useless-escape`).
+- `tests/loop-installer.test.mjs`: aligns happy-path assertion with the
+  post-`feat(install): split HARD RULES` template layout — HARD RULES
+  summary stays in CLAUDE.md; full rules text lives at
+  `.claude/autonomous-loop/rules.md`.
+
 ## v0.1.13 — 2026-05-22
 
 ### Fixed
