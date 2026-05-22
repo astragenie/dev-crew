@@ -6,7 +6,8 @@
 This repo runs the Wiggin Loop autonomously. Full rules: `.claude/autonomous-loop/rules.md`.
 
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
-- **Auto-continue.** After a slice closes, scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/` and promote the next item without asking.
+- **Slice close ceremony.** Every slice MUST close via `/autonomous-loop:slice complete --id SLICE-NN` (writes handoff + final-synthesis + cost-report + cost-advise) followed by `/autonomous-loop:slice grade*`. Manual file moves + a `docs(slice): mark ... complete` commit are NOT a substitute.
+- **Auto-continue.** After the ceremony, scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/` and promote the next item without asking.
 - **Phase gate.** When the last slice in a phase completes, run `/autonomous-loop:phase-gate` before starting the next phase.
 
 First action when starting the loop: read `.claude/autonomous-loop/rules.md` → `{{aiLoopRoot}}/00-entry/MASTER_PROMPT.md` → `{{backlogPath}}/approved-slices.md`.

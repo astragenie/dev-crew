@@ -18,9 +18,34 @@ After all acceptance criteria for the current slice are PASS with evidence and a
 
 4. **Begin the Wiggin Loop on the new slice.** Acceptance criteria, evidence, review per `{{aiLoopRoot}}/01-loop-control/`.
 
-5. **On slice close** — move the feature file from `docs/backlog/in-progress/` to `docs/backlog/done/`, update the slice file's `status: completed`, run `/autonomous-loop:spec status` to auto-roll any newly-satisfied parent SPEC.
+5. **On slice close** — run the Slice Close Ceremony (next section). Do NOT skip this and move on to the next slice — every artifact emitted by the ceremony is part of the slice's evidence record.
 
 If `docs/backlog/pending/` and `docs/backlog/triaged/` are both empty AND `docs/specs/` has no undecomposed approved specs, the agent has reached either stop condition A (every spec satisfied — confirm with `/autonomous-loop:spec status`) or stop condition B (externally blocked). Surface which and stop. Never stop because the backlog "feels empty" — confirm via the explicit scan first.
+
+## Slice Close Ceremony — HARD RULE
+
+When every acceptance criterion on the current slice is PASS with evidence, close the slice through the canonical ceremony **before** picking up the next slice. Manual file moves + a `docs(slice): mark SLICE_NN complete` commit are NOT a substitute — they bypass the artifact fan-out and leave `handoffs/`, `runs/`, `cost/`, and `cost-insights/` empty.
+
+Run, in order:
+
+1. **`/autonomous-loop:slice complete --id SLICE-NN`** — atomically moves the slice file to `completed/`, moves the linked feature to `done/`, reconciles parent SPEC status, AND fans out three artifacts in parallel:
+   - `.claude/artifacts/crew/handoffs/<timestamp>-slice-nn-complete.md`
+   - `.claude/artifacts/crew/runs/<timestamp>-slice-nn-final-synthesis.md` (auto-emits `cost-report` → `.claude/artifacts/crew/cost/` and `cost-advise` → `.claude/artifacts/crew/cost-insights/`)
+   - `cost-report` invoked via the hero-crew `cost-slice` CLI as a redundant safety net
+2. **`/autonomous-loop:slice grade --id SLICE-NN`** + **`/autonomous-loop:slice grade-write --id SLICE-NN`** — capture scores, lessons, decisions. Skipping grading loses the self-improvement signal for this slice.
+3. **Inspect the ceremony return** — verify `handoff.handoffPath`, `synthesis.synthesisPath`, and `costReport.usd` are all populated. If any returned `{ error: ... }`, surface the error and fix it before continuing; do not silently move on.
+4. **Then** apply Cross-Slice Continuation to pick the next unit of work.
+
+Expected artifact set per slice (all must exist before Cross-Slice Continuation):
+
+- `reviews/` — written during the slice via `crew write-review-result`
+- `validations/` — written during the slice via `crew write-validation-result` (per-slice runtime evidence, not just phase-gate)
+- `runs/run-brief-*.md` — opened at slice start via `crew write-run-brief`
+- `runs/final-synthesis-*.md` — emitted by the ceremony
+- `handoffs/*.md` — emitted by the ceremony
+- `cost/*-cost-report-*.md` + `cost-insights/*-cost-advise-*.md` — auto-emitted by the ceremony
+
+If any of these is missing for a closed slice, the close is incomplete. Re-run the ceremony or invoke the missing `crew write-*` command directly before continuing.
 
 ## Phase Completion Gate — HARD RULE
 

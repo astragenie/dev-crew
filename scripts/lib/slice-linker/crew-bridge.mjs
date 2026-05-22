@@ -58,16 +58,51 @@ async function findHeroCrewCli() {
   return null;
 }
 
+// Writes both cost-report (cost/) and cost-advise (cost-insights/) so the
+// slice-close artifact set matches what `crew write-final-synthesis`
+// auto-emits. `--aggregate-all` mirrors maybeEmitCostReport's default in
+// crew.mjs so cross-repo sessions are captured. The advise step is
+// best-effort and reported in the return alongside the report.
 export async function tryWriteCostReport(repoPath, sliceId) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
-  const args = [cli, "cost-slice", "--repo", repoPath, "--run-title", sliceId];
-  const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+
+  const reportArgs = [
+    cli,
+    "cost-slice",
+    "--repo",
+    repoPath,
+    "--run-title",
+    sliceId,
+    "--aggregate-all"
+  ];
+  let report;
   try {
-    return JSON.parse(stdout);
-  } catch {
-    return { stdout: stdout.slice(0, 500) };
+    const { stdout } = await execFile("node", reportArgs, { maxBuffer: 1024 * 1024 });
+    try {
+      report = JSON.parse(stdout);
+    } catch {
+      report = { stdout: stdout.slice(0, 500) };
+    }
+  } catch (err) {
+    report = { error: err.message };
   }
+
+  let advise = null;
+  try {
+    const { stdout } = await execFile("node", [cli, "cost-advise", "--repo", repoPath], {
+      maxBuffer: 1024 * 1024
+    });
+    try {
+      advise = JSON.parse(stdout);
+    } catch {
+      advise = { stdout: stdout.slice(0, 500) };
+    }
+  } catch (err) {
+    advise = { error: err.message };
+  }
+
+  return { ...report, advise };
 }
 
 function renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS) {
