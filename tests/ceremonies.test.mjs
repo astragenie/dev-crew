@@ -1,12 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import {
   phaseStart,
   phaseEnd,
   featureStart,
   featureEnd,
-  renderTree
+  renderTree,
+  writeFeatureEndCeremony,
+  readFeatureEndCeremony
 } from "../scripts/lib/ceremonies.mjs";
 
 // --- ceremony stubs ---
@@ -184,4 +189,48 @@ test("featureEnd with simplifyRan: false explicit preserves false", () => {
     { simplifyRan: false }
   );
   assert.equal(result.simplifyRan, false);
+});
+
+// --- writeFeatureEndCeremony / readFeatureEndCeremony ---
+
+test("writeFeatureEndCeremony writes JSON file at expected path", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-ceremonies-write-"));
+  const result = featureEnd({ id: "FEAT-005", title: "csharp", phase: "2" }, { simplifyRan: true });
+  const filePath = await writeFeatureEndCeremony(repo, result);
+  assert.ok(filePath.includes("feature-end-FEAT-005"), "filename contains feature id");
+  assert.ok(filePath.endsWith(".json"), "file is JSON");
+  const raw = await fs.readFile(filePath, "utf8");
+  const parsed = JSON.parse(raw);
+  assert.equal(parsed.id, "FEAT-005");
+  assert.equal(parsed.simplifyRan, true);
+});
+
+test("readFeatureEndCeremony returns null when no file exists", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-ceremonies-read-miss-"));
+  const result = await readFeatureEndCeremony(repo, "FEAT-005");
+  assert.equal(result, null);
+});
+
+test("readFeatureEndCeremony returns ceremony after write", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-ceremonies-read-"));
+  const result = featureEnd({ id: "FEAT-007", title: "flutter", phase: "2" }, { simplifyRan: true });
+  await writeFeatureEndCeremony(repo, result);
+  const read = await readFeatureEndCeremony(repo, "FEAT-007");
+  assert.ok(read !== null);
+  assert.equal(read.id, "FEAT-007");
+  assert.equal(read.simplifyRan, true);
+});
+
+test("readFeatureEndCeremony returns latest when multiple files exist", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-ceremonies-read-multi-"));
+  // Write older ceremony first (simplifyRan: false)
+  const older = featureEnd({ id: "FEAT-008", title: "ts", phase: "2" }, { simplifyRan: false });
+  await writeFeatureEndCeremony(repo, older);
+  // Small delay to ensure different timestamp
+  await new Promise((r) => setTimeout(r, 10));
+  // Write newer ceremony (simplifyRan: true)
+  const newer = featureEnd({ id: "FEAT-008", title: "ts", phase: "2" }, { simplifyRan: true });
+  await writeFeatureEndCeremony(repo, newer);
+  const read = await readFeatureEndCeremony(repo, "FEAT-008");
+  assert.equal(read.simplifyRan, true, "should return the latest ceremony");
 });

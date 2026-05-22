@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 /** @typedef {{ type: string, id: string, timestamp: string, status: 'scaffold' }} CeremonyResult */
 
 /**
@@ -87,4 +90,45 @@ export function renderTree(phases) {
   }
 
   return lines.join("\n");
+}
+
+/**
+ * @param {string} repoPath
+ * @param {{ type: string, id: string, timestamp: string, status: string, simplifyRan: boolean }} result
+ * @returns {Promise<string>} written file path
+ */
+export async function writeFeatureEndCeremony(repoPath, result) {
+  const dir = path.join(repoPath, ".claude", "artifacts", "crew", "ceremonies");
+  await fs.mkdir(dir, { recursive: true });
+  const stamp = result.timestamp.replace(/[^0-9]/g, "");
+  const filename = `feature-end-${result.id}-${stamp}.json`;
+  const filePath = path.join(dir, filename);
+  await fs.writeFile(filePath, JSON.stringify(result, null, 2));
+  return filePath;
+}
+
+/**
+ * @param {string} repoPath
+ * @param {string} featureId
+ * @returns {Promise<{ type: string, id: string, timestamp: string, status: string, simplifyRan: boolean } | null>}
+ */
+export async function readFeatureEndCeremony(repoPath, featureId) {
+  const dir = path.join(repoPath, ".claude", "artifacts", "crew", "ceremonies");
+  let entries;
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return null;
+  }
+  const prefix = `feature-end-${featureId}-`;
+  const matches = entries.filter((e) => e.startsWith(prefix) && e.endsWith(".json"));
+  if (matches.length === 0) return null;
+  const ceremonies = await Promise.all(
+    matches.map(async (filename) => {
+      const raw = await fs.readFile(path.join(dir, filename), "utf8");
+      return JSON.parse(raw);
+    })
+  );
+  ceremonies.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return ceremonies[0];
 }
