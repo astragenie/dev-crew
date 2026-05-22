@@ -60,10 +60,8 @@ test("renderTree single phase + single feature + no slices", () => {
       id: "2",
       title: "Domain build-out",
       status: "in-progress",
-      features: [
-        { id: "FEAT-005", title: "csharp-conventions", status: "in-progress", slices: [] },
-      ],
-    },
+      features: [{ id: "FEAT-005", title: "csharp-conventions", status: "in-progress", slices: [] }]
+    }
   ]);
   const lines = result.split("\n");
   assert.equal(lines[0], "Phase 2 — Domain build-out [in-progress]");
@@ -79,9 +77,9 @@ test("renderTree two features — first uses ├── last uses └──", () 
       status: "in-progress",
       features: [
         { id: "FEAT-005", title: "csharp-conventions", status: "in-progress", slices: [] },
-        { id: "FEAT-006", title: "flutter-conventions", status: "pending", slices: [] },
-      ],
-    },
+        { id: "FEAT-006", title: "flutter-conventions", status: "pending", slices: [] }
+      ]
+    }
   ]);
   const lines = result.split("\n");
   assert.equal(lines[1], "├── FEAT-005 csharp-conventions [in-progress]");
@@ -101,12 +99,12 @@ test("renderTree feature with two slices — first ├── last └── inde
           status: "in-progress",
           slices: [
             { id: "slice-001", title: "scaffold skill file", status: "done" },
-            { id: "slice-002", title: "write acceptance tests", status: "active" },
-          ],
+            { id: "slice-002", title: "write acceptance tests", status: "active" }
+          ]
         },
-        { id: "FEAT-006", title: "flutter-conventions", status: "pending", slices: [] },
-      ],
-    },
+        { id: "FEAT-006", title: "flutter-conventions", status: "pending", slices: [] }
+      ]
+    }
   ]);
   const lines = result.split("\n");
   assert.equal(lines[0], "Phase 2 — Domain build-out [in-progress]");
@@ -129,11 +127,11 @@ test("renderTree last feature with slices uses 4-space indent not │", () => {
           status: "in-progress",
           slices: [
             { id: "slice-001", title: "scaffold skill file", status: "done" },
-            { id: "slice-002", title: "write acceptance tests", status: "active" },
-          ],
-        },
-      ],
-    },
+            { id: "slice-002", title: "write acceptance tests", status: "active" }
+          ]
+        }
+      ]
+    }
   ]);
   const lines = result.split("\n");
   assert.equal(lines[1], "└── FEAT-005 csharp-conventions [in-progress]");
@@ -148,18 +146,14 @@ test("renderTree two phases separated by blank line", () => {
       id: "2",
       title: "Domain build-out",
       status: "in-progress",
-      features: [
-        { id: "FEAT-005", title: "csharp-conventions", status: "in-progress", slices: [] },
-      ],
+      features: [{ id: "FEAT-005", title: "csharp-conventions", status: "in-progress", slices: [] }]
     },
     {
       id: "3",
       title: "Workflow polish",
       status: "pending",
-      features: [
-        { id: "FEAT-008", title: "routing-table cadence", status: "pending", slices: [] },
-      ],
-    },
+      features: [{ id: "FEAT-008", title: "routing-table cadence", status: "pending", slices: [] }]
+    }
   ]);
   const lines = result.split("\n");
   // blank line between phases
