@@ -2,6 +2,24 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.16 — 2026-05-22
+
+### Added
+- **`docs/code-conventions.md`**: per-repo coding conventions adapted
+  from `Astragenie.Standards/typescript/coding-conventions.md` for
+  plain ESM. Points at the canonical version in hero-crew.
+
+### Changed
+- **Test files renamed** to drop release-version prefixes:
+  - `tests/v019-integrations.test.mjs` → `tests/integrations.test.mjs`
+  - `tests/v0110-synergy.test.mjs` → `tests/synergy.test.mjs`
+  - `tests/v0111-claims-stop.test.mjs` → `tests/claims-stop.test.mjs`
+- **`scripts/validate-manifests.mjs`**: exports `validateManifests()`
+  for in-process testing. Entry-point uses `process.exitCode` instead
+  of `process.exit(1)`.
+
+Tests: 142/142 pass.
+
 ## v0.1.15 — 2026-05-22
 
 ### Changed
