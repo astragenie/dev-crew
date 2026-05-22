@@ -17,6 +17,34 @@ function normalizeMsysPath(value) {
   return `${match[1].toUpperCase()}:/${match[2]}`;
 }
 
+// Flag schema. See hero-crew/scripts/crew.mjs for the same pattern.
+const FLAG_SPEC = {
+  "--help": { key: "help", boolean: true },
+  "-h": { key: "help", boolean: true },
+  "--repo": { key: "repo" },
+  "--preset": { key: "preset" },
+  "--phase": { key: "phase" },
+  "--note": { key: "note" },
+  "--status": { key: "status" },
+  "--priority": { key: "priority" },
+  "--category": { key: "category" },
+  "--target-release": { key: "targetRelease" },
+  "--type": { key: "type" },
+  "--title": { key: "title" },
+  "--id": { key: "id" },
+  "--body": { key: "body" },
+  "--features": { key: "features" },
+  "--version": { key: "version" },
+  "--since": { key: "since" },
+  "--span-days": { key: "spanDays" },
+  "--until": { key: "until" },
+  "--by": { key: "by" },
+  "--artifact": { key: "artifact" },
+  "--kind": { key: "kind" },
+  "--files": { key: "files" },
+  "--features-json": { key: "featuresJson" }
+};
+
 function parseArgs(argv) {
   const [command, ...rest] = argv;
   const flags = {
@@ -54,118 +82,14 @@ function parseArgs(argv) {
       }
       break;
     }
-    if (value === "--help" || value === "-h") {
-      flags.help = true;
-      continue;
-    }
-    if (value === "--repo") {
-      flags.repo = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--preset") {
-      flags.preset = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--phase") {
-      flags.phase = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--note") {
-      flags.note = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--status") {
-      flags.status = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--priority") {
-      flags.priority = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--category") {
-      flags.category = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--target-release") {
-      flags.targetRelease = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--type") {
-      flags.type = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--title") {
-      flags.title = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--id") {
-      flags.id = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--body") {
-      flags.body = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--features") {
-      flags.features = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--version") {
-      flags.version = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--since") {
-      flags.since = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--span-days") {
-      flags.spanDays = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--until") {
-      flags.until = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--by") {
-      flags.by = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--artifact") {
-      flags.artifact = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--kind") {
-      flags.kind = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--files") {
-      flags.files = rest[index + 1];
-      index += 1;
-      continue;
-    }
-    if (value === "--features-json") {
-      flags.featuresJson = rest[index + 1];
-      index += 1;
+    const spec = FLAG_SPEC[value];
+    if (spec) {
+      if (spec.boolean) {
+        flags[spec.key] = true;
+      } else {
+        flags[spec.key] = rest[index + 1];
+        index += 1;
+      }
       continue;
     }
     if (value.startsWith("--")) {
@@ -195,41 +119,35 @@ function usage() {
   ].join("\n");
 }
 
-async function main() {
-  const { command, flags, positionals } = parseArgs(process.argv.slice(2));
-  const repoPath = path.resolve(normalizeMsysPath(flags.repo));
-
-  if (command === "help") {
-    console.log(usage());
-    return;
-  }
-
-  let result;
-  if (command === "install") {
+// Command registry. Each handler returns the result that gets JSON-stringified
+// to stdout. Lazy imports stay per-handler to keep start-up cheap when a user
+// only invokes one command.
+const COMMANDS = {
+  install: async ({ repoPath, flags }) => {
     const { installLoop } = await import("./lib/loop-installer.mjs");
-    result = await installLoop(repoPath, { preset: flags.preset });
-  } else if (command === "phase-gate") {
+    return installLoop(repoPath, { preset: flags.preset });
+  },
+  "phase-gate": async ({ repoPath, flags }) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
-    result = await runPhaseGate(repoPath, { phase: flags.phase, note: flags.note });
-  } else if (command === "status") {
+    return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note });
+  },
+  status: async ({ repoPath }) => {
     const { reportStatus } = await import("./lib/loop-installer.mjs");
-    result = await reportStatus(repoPath);
-  } else if (command === "list-presets") {
+    return reportStatus(repoPath);
+  },
+  "list-presets": async () => {
     const { listPresets } = await import("./lib/config-resolver.mjs");
-    result = { presets: await listPresets() };
-  } else if (command === "backlog") {
-    result = await runBacklogSubcommand(repoPath, positionals, flags);
-  } else if (command === "spec") {
-    result = await runSpecSubcommand(repoPath, positionals, flags);
-  } else if (command === "release") {
-    result = await runReleaseSubcommand(repoPath, positionals, flags);
-  } else if (command === "slice") {
-    result = await runSliceSubcommand(repoPath, positionals, flags);
-  } else if (command === "decisions") {
-    result = await runDecisionsSubcommand(repoPath, positionals, flags);
-  } else if (command === "retrospective") {
+    return { presets: await listPresets() };
+  },
+  backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
+  spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
+  release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
+  slice: ({ repoPath, flags, positionals }) => runSliceSubcommand(repoPath, positionals, flags),
+  decisions: ({ repoPath, flags, positionals }) =>
+    runDecisionsSubcommand(repoPath, positionals, flags),
+  retrospective: async ({ repoPath, flags }) => {
     const { writeRetrospective } = await import("./lib/retrospective.mjs");
-    result = await writeRetrospective(repoPath, {
+    const result = await writeRetrospective(repoPath, {
       since: flags.since,
       spanDays: flags.spanDays,
       until: flags.until
@@ -240,32 +158,54 @@ async function main() {
       since: flags.since,
       span_days: flags.spanDays
     });
-  } else if (command === "brief") {
+    return result;
+  },
+  brief: async ({ repoPath }) => {
     const { buildBrief } = await import("./lib/brief.mjs");
-    result = await buildBrief(repoPath);
-  } else if (command === "snapshot-memory") {
+    return buildBrief(repoPath);
+  },
+  "snapshot-memory": async ({ repoPath }) => {
     const { writeMemorySnapshot } = await import("./lib/memory-snapshot.mjs");
-    result = await writeMemorySnapshot(repoPath);
+    const result = await writeMemorySnapshot(repoPath);
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "snapshot-memory", grades: result.counts.grades });
-  } else if (command === "lessons") {
+    return result;
+  },
+  lessons: async ({ repoPath, positionals }) => {
     const [sub] = positionals;
     if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
     const { recentLessons } = await import("./lib/lessons-feed.mjs");
     const limit = positionals[1] ? Number(positionals[1]) : 5;
-    result = await recentLessons(repoPath, { limit });
-  } else if (command === "sync-claims") {
+    return recentLessons(repoPath, { limit });
+  },
+  "sync-claims": async ({ repoPath }) => {
     const { syncClaims } = await import("./lib/claims-sync.mjs");
-    result = await syncClaims(repoPath);
+    const result = await syncClaims(repoPath);
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
-  } else if (command === "stop-check") {
+    return result;
+  },
+  "stop-check": async ({ repoPath }) => {
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    result = await checkStopConditions(repoPath);
-  } else {
+    return checkStopConditions(repoPath);
+  }
+};
+
+async function main() {
+  const { command, flags, positionals } = parseArgs(process.argv.slice(2));
+  const repoPath = path.resolve(normalizeMsysPath(flags.repo));
+
+  if (command === "help") {
+    console.log(usage());
+    return;
+  }
+
+  const handler = COMMANDS[command];
+  if (!handler) {
     throw new Error(`Unknown command: ${command}`);
   }
 
+  const result = await handler({ repoPath, flags, positionals });
   console.log(JSON.stringify(result, null, 2));
 }
 
