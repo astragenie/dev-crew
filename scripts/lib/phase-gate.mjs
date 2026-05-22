@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { resolveConfig } from "./config-resolver.mjs";
 import { findCrewCli } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
+import { incrementIteration } from "./loop-iteration.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -119,6 +120,14 @@ async function recordWithCrew(crewCli, repoPath, title, decision, summary, artif
   }
 }
 
+async function safeIncrementIteration(repoPath) {
+  try {
+    return await incrementIteration(repoPath);
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 export async function runPhaseGate(repoPath, options = {}) {
   const startedAt = nowIso();
   const config = await resolveConfig(repoPath);
@@ -165,6 +174,11 @@ export async function runPhaseGate(repoPath, options = {}) {
     artifactPath
   );
 
+  // Increment iteration counter on phase gate completion (FEAT-001).
+  // Tracks loop progress; enables runaway halting via checkStopConditions.
+  // Non-fatal: a counter write failure must not block phase-gate.
+  const iterationState = await safeIncrementIteration(repoPath);
+
   // Auto-invoke retrospective when phase gate PASSes. Captures lessons /
   // score trends / decisions over the window since the previous phase-gate
   // artifact (default span 30 days if no prior gate found).
@@ -201,7 +215,8 @@ export async function runPhaseGate(repoPath, options = {}) {
       failingCount: (s.runs || []).filter((r) => !r.ok).length
     })),
     retrospective,
-    deployHandoffs
+    deployHandoffs,
+    iterationState
   };
 }
 

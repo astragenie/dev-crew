@@ -9,6 +9,7 @@ import {
   compareSemver,
   MIN_CREW_VERSION
 } from "./plugin-identity.mjs";
+import { initializeIterationCounter } from "./loop-iteration.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
@@ -379,6 +380,9 @@ export async function installLoop(repoPath, options = {}) {
   await writeSpecsScaffold(repoPath, writes);
   await writeGradesScaffold(repoPath, writes);
   await writeDecisionsScaffold(repoPath, writes);
+
+  // Initialize loop iteration counter for runaway halting (FEAT-001).
+  await initializeIterationCounter(repoPath);
 
   const configResult = await writeConfigIfMissing(repoPath, {
     preset: config.preset,

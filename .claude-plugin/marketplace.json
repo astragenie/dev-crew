@@ -10,7 +10,7 @@
     {
       "name": "autonomous-loop",
       "description": "Wiggin-Loop methodology layer for Claude Code with HARD RULE blocks, slice scaffold, and phase-gate runner",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "source": "./",
       "author": {
         "name": "shishkosv"

@@ -2,6 +2,35 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.18 — 2026-05-22
+
+### Added (FEAT-001: loop iteration cap + runaway halt)
+
+- `scripts/lib/loop-iteration.mjs` — counter persisted under
+  `.claude/state/autonomous-loop/iteration.json`. Exports
+  `incrementIteration`, `getIterationStatus`, `resetIterationCounter`.
+- `scripts/lib/stop-conditions.mjs` consumes the counter. When the
+  iteration cap is reached it returns `shouldStop: true` with reason
+  `iteration_cap_reached`.
+- `phase-gate.mjs::runPhaseGate` increments the counter on every gate
+  completion (best-effort; counter write failures never block gate).
+- Config: `.claude/autonomous-loop.json::loop.maxIterations` (default
+  25). Resolved through `config-resolver.mjs`.
+- Installer seeds the counter file on `installLoop`.
+- `tests/loop-iteration.test.mjs` adds 15 tests covering: default cap,
+  config override, persistence across calls, stop-conditions
+  exhaustion, counter reset.
+
+### Notes
+
+- Counter lives in autonomous-loop's own state dir; intentionally not
+  written into crew's workflow-state JSON (keeps autonomous-loop
+  state out of crew's primary record).
+- Until hero-crew FEAT-006 lands (`blocked` badge), the loop emits the
+  cap-reached signal in `checkStopConditions` and the agent driving
+  the loop is expected to write a final-synthesis explaining the halt.
+- Tests: 157/157 pass (was 142 → 15 new). Lint: clean.
+
 ## v0.1.17 — 2026-05-22
 
 ### Changed

@@ -5,7 +5,8 @@
     "aiLoopRoot": "docs/ai-loop",
     "backlogPath": "docs/ai-loop/backlog",
     "slicesRoot": "docs/ai-loop/slices",
-    "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "maxIterations": 25
   },
   "stack": {
     "build": [
