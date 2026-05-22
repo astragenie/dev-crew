@@ -162,3 +162,26 @@ test("renderTree two phases separated by blank line", () => {
   assert.equal(lines[4], "└── FEAT-008 routing-table cadence [pending]");
   assert.equal(lines.length, 5);
 });
+
+// --- featureEnd opts ---
+
+test("featureEnd with no opts defaults simplifyRan to false", () => {
+  const result = featureEnd({ id: "FEAT-005", title: "csharp-conventions", phase: "2" });
+  assert.equal(result.simplifyRan, false);
+});
+
+test("featureEnd with simplifyRan: true forwards the flag", () => {
+  const result = featureEnd(
+    { id: "FEAT-005", title: "csharp-conventions", phase: "2" },
+    { simplifyRan: true }
+  );
+  assert.equal(result.simplifyRan, true);
+});
+
+test("featureEnd with simplifyRan: false explicit preserves false", () => {
+  const result = featureEnd(
+    { id: "FEAT-005", title: "csharp-conventions", phase: "2" },
+    { simplifyRan: false }
+  );
+  assert.equal(result.simplifyRan, false);
+});

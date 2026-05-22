@@ -41,14 +41,16 @@ export function featureStart(feat) {
 
 /**
  * @param {{ id: string, title: string, phase: string }} feat
- * @returns {CeremonyResult}
+ * @param {{ simplifyRan?: boolean }} [opts]
+ * @returns {{ type: string, id: string, timestamp: string, status: string, simplifyRan: boolean }}
  */
-export function featureEnd(feat) {
+export function featureEnd(feat, opts = {}) {
   return {
     type: "feature-end",
     id: feat.id,
     timestamp: new Date().toISOString(),
-    status: "scaffold"
+    status: "scaffold",
+    simplifyRan: opts.simplifyRan ?? false
   };
 }
 
