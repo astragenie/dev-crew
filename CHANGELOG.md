@@ -2,6 +2,35 @@
 
 All notable changes to the `autonomous-loop` plugin are documented here.
 
+## v0.1.19 — 2026-05-22
+
+### Added (FEAT-003: cost-advisor signal in stop-conditions)
+
+- `scripts/lib/cost-alert-loader.mjs` — reads the latest cost-report
+  artifacts under `.claude/artifacts/crew/runs/` and surfaces a count
+  of "high"-severity recommendations across the last N slices.
+- `scripts/lib/stop-conditions.mjs` consumes the count and returns
+  `shouldStop: true` with reason `cost_alert_high` when the count
+  meets `loop.costStopThreshold` (default 1).
+- Config: `.claude/autonomous-loop.json::loop.costStopThreshold`.
+- 11 new tests in `tests/cost-alert-stop.test.mjs`: low-severity does
+  not stop, ≥ threshold high-severity does stop, threshold override,
+  missing artifacts → no stop, severity casing tolerance, 3-slice
+  window respected.
+
+### Refactor
+
+- `checkStopConditions` complexity 18 → off list via
+  `computeBacklogStats`, `appendBacklogExhaustedSignals`,
+  `applyWarnAlertSignals`, `appendIterationCapSignals`,
+  `appendCostAlertSignals` helpers. Reason / suggestion / blocker
+  emission is now per-signal-type, not inline.
+
+### Notes
+
+- Tests: 168/168 pass (was 157 → 11 new). Lint: clean.
+- FEAT-003 closed; backlog moved to `docs/backlog/done/`.
+
 ## v0.1.18 — 2026-05-22
 
 ### Added (FEAT-001: loop iteration cap + runaway halt)

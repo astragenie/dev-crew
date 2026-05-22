@@ -23,7 +23,10 @@ test("initializeIterationCounter creates state file with count=0", async () => {
   assert.ok(state.initializedAt);
   // Verify file was written
   const stateFile = path.join(repo, ".claude/state/autonomous-loop/iteration.json");
-  const exists = await fs.access(stateFile).then(() => true).catch(() => false);
+  const exists = await fs
+    .access(stateFile)
+    .then(() => true)
+    .catch(() => false);
   assert.ok(exists, "iteration.json should be created");
 });
 
@@ -127,10 +130,7 @@ test("checkStopConditions returns iterationCapReached=true when cap exhausted", 
   await fs.mkdir(path.join(repo, "docs", "backlog", "pending"), { recursive: true });
   await fs.mkdir(path.join(repo, "docs", "specs"), { recursive: true });
   // Create minimal backlog
-  await fs.writeFile(
-    path.join(repo, "docs", "backlog", "pending", ".gitkeep"),
-    ""
-  );
+  await fs.writeFile(path.join(repo, "docs", "backlog", "pending", ".gitkeep"), "");
 
   // Initialize and max out iteration counter
   await initializeIterationCounter(repo);
@@ -152,10 +152,7 @@ test("checkStopConditions uses preset maxIterations from config", async () => {
   // Initialize bare structure
   await fs.mkdir(path.join(repo, "docs", "backlog", "pending"), { recursive: true });
   await fs.mkdir(path.join(repo, "docs", "specs"), { recursive: true });
-  await fs.writeFile(
-    path.join(repo, "docs", "backlog", "pending", ".gitkeep"),
-    ""
-  );
+  await fs.writeFile(path.join(repo, "docs", "backlog", "pending", ".gitkeep"), "");
 
   await initializeIterationCounter(repo);
   // Increment to 5
@@ -175,10 +172,7 @@ test("checkStopConditions defaults to maxIterations=25 when not in config", asyn
   const repo = await tmpRepo("al-stop-iter-default-");
   await fs.mkdir(path.join(repo, "docs", "backlog", "pending"), { recursive: true });
   await fs.mkdir(path.join(repo, "docs", "specs"), { recursive: true });
-  await fs.writeFile(
-    path.join(repo, "docs", "backlog", "pending", ".gitkeep"),
-    ""
-  );
+  await fs.writeFile(path.join(repo, "docs", "backlog", "pending", ".gitkeep"), "");
 
   await initializeIterationCounter(repo);
   for (let i = 0; i < 26; i++) {
@@ -197,10 +191,7 @@ test("checkStopConditions returns iterationCapReached=false when under cap", asy
   const repo = await tmpRepo("al-stop-iter-under-cap-");
   await fs.mkdir(path.join(repo, "docs", "backlog", "pending"), { recursive: true });
   await fs.mkdir(path.join(repo, "docs", "specs"), { recursive: true });
-  await fs.writeFile(
-    path.join(repo, "docs", "backlog", "pending", ".gitkeep"),
-    ""
-  );
+  await fs.writeFile(path.join(repo, "docs", "backlog", "pending", ".gitkeep"), "");
 
   await initializeIterationCounter(repo);
   for (let i = 0; i < 10; i++) {
@@ -217,10 +208,7 @@ test("stop-conditions keeps backward-compat: still checks backlog + alerts", asy
   const repo = await tmpRepo("al-stop-backward-compat-");
   await fs.mkdir(path.join(repo, "docs", "backlog", "pending"), { recursive: true });
   await fs.mkdir(path.join(repo, "docs", "specs"), { recursive: true });
-  await fs.writeFile(
-    path.join(repo, "docs", "backlog", "pending", ".gitkeep"),
-    ""
-  );
+  await fs.writeFile(path.join(repo, "docs", "backlog", "pending", ".gitkeep"), "");
 
   // Initialize iteration counter (won't trigger cap)
   await initializeIterationCounter(repo);
