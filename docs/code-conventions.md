@@ -2,10 +2,13 @@
 
 This plugin follows the same conventions as the companion `crew`
 plugin. The canonical reference is
-[`hero-crew/docs/code-conventions.md`](https://github.com/sergeymilashico/hero-crew/blob/main/docs/code-conventions.md).
+[`hero-crew/docs/standards/code-conventions.md`](https://github.com/sergeymilashico/hero-crew/blob/main/docs/standards/code-conventions.md).
 
-Adapted from `Astragenie.Standards/docs/typescript/coding-conventions.md`
-for plain Node ESM (`.mjs`).
+Mirrors
+[`Astragenie.Standards/docs/javascript/coding-conventions.md`](https://github.com/sergeymilashico/Astragenie.Standards/blob/main/docs/javascript/coding-conventions.md)
+when that repo is installed at a sibling path; otherwise self-contained.
+The Standards repo is provenance + cross-team alignment, not a runtime
+dependency.
 
 ## Lint and format
 
