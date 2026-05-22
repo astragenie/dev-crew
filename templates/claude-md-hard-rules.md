@@ -12,6 +12,7 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/autonomous-loo
 - **Build entry points.** `/crew:build` is the interactive single-slice path (lighter — no run-brief required). Autonomous loop is the unattended multi-slice path (full ceremony). Never run both against the same branch — they race on workflow-state.
 - **Auto-continue.** After the ceremony, scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/` and promote the next item without asking.
 - **Phase gate.** When the last slice in a phase completes, run `/autonomous-loop:phase-gate` before starting the next phase.
+- **Worktree parallelism.** Run parallel features in sibling git worktrees — each has its own `.claude/state/`. Cost attribution is auto-scoped per worktree. Use `crew fleet --repo "$PWD"` for a one-glance view. Never check out the same branch twice; never push from inside the loop.
 
 First action when starting the loop: read `.claude/autonomous-loop/rules.md` → `{{aiLoopRoot}}/00-entry/MASTER_PROMPT.md` → `{{backlogPath}}/approved-slices.md`.
 

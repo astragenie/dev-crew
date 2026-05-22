@@ -99,6 +99,34 @@ If any of these is missing for a closed slice, the close is incomplete. Re-run t
 
 When a phase of work completes (last slice in a phase marked COMPLETED in `approved-slices.md`), run the configured phase-gate suite by invoking `/autonomous-loop:phase-gate`. The plugin executes every stage configured in `.claude/autonomous-loop.json` (build, test, frontend build, infra plan, Aspire boot + healthchecks) via `execFile` — no shell interpretation, no injection surface — captures all output, and writes a single validation artifact under `{{phaseGateArtifactDir}}/phase-<N>-gate-<date>.md` through `crew write-validation-result`. Do NOT proceed to the next phase if the gate returns FAIL. Do NOT hand-author the gate artifact; let the plugin own it for evidence quality.
 
+## Worktree Parallelism — HARD RULE
+
+Multiple features can be developed concurrently by running an autonomous loop in each git worktree. Each worktree is an isolated working directory with its own `.claude/state/crew/workflow-state.json` and `slice-progress.md` — no state races.
+
+**Setup:**
+
+1. Create one worktree per feature branch: `git worktree add ../repo-feat-a feat-a`.
+2. Each worktree gets its own `.claude/autonomous-loop.json` (copy or git-tracked per branch).
+3. Run `/loop` independently in each worktree terminal pane or scheduled invocation.
+
+**Cost attribution in parallel mode:**
+
+`tryWriteCostReport` auto-detects the worktree topology at close time:
+- Linked worktree (git-common-dir ≠ git-dir) **or** multiple worktrees present → passes `--source-project <worktree-slug>` so cost windows do not bleed between sibling loops.
+- Single worktree → passes `--aggregate-all` to capture cross-repo session work.
+
+No manual flag needed — detection is automatic.
+
+**Fleet view:**
+
+Run `node hero-crew/scripts/crew.mjs fleet --repo "$PWD"` from any worktree to see all sibling active loops, their current IN_PROGRESS slice, and progress counts. The command scans the parent directory for `.claude/state/crew/slice-progress.md` files; no coordination required.
+
+**Constraints:**
+
+- Each worktree must be on its own branch. Checking out the same branch in two worktrees is a git error.
+- Never push from inside the autonomous loop. The user reviews + pushes per worktree; the only collision risk is two worktrees trying to push the same remote branch, which git will reject cleanly.
+- Do not run both `/crew:build` (interactive) and autonomous loop simultaneously on the same worktree — they race on `workflow-state.json`.
+
 ## First Action — Starting the Loop
 
 Read in this order, then pick the highest-priority PENDING slice:

@@ -92,19 +92,49 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal }) {
   }
 }
 
+// Cost attribution mode:
+// - "aggregate" (default): pass --aggregate-all so cross-repo session
+//   work is captured (mirrors maybeEmitCostReport in crew.mjs).
+// - "scoped": pass --source-project <repo-basename> so concurrent loops
+//   in sibling worktrees don't bleed into each other's cost windows.
+// Auto-detect: if this dir is a linked worktree OR git worktree list
+// returns more than one entry, use scoped; otherwise aggregate.
+async function detectCostMode(repoPath) {
+  try {
+    const { stdout: commonDir } = await execFile(
+      "git",
+      ["rev-parse", "--git-common-dir"],
+      { cwd: repoPath, maxBuffer: 64 * 1024 }
+    );
+    const { stdout: gitDir } = await execFile(
+      "git",
+      ["rev-parse", "--git-dir"],
+      { cwd: repoPath, maxBuffer: 64 * 1024 }
+    );
+    if (commonDir.trim() !== gitDir.trim()) return "scoped";
+    const { stdout: list } = await execFile(
+      "git",
+      ["worktree", "list", "--porcelain"],
+      { cwd: repoPath, maxBuffer: 256 * 1024 }
+    );
+    const count = list.split(/\r?\n/).filter((l) => l.startsWith("worktree ")).length;
+    return count > 1 ? "scoped" : "aggregate";
+  } catch {
+    return "aggregate";
+  }
+}
+
 export async function tryWriteCostReport(repoPath, sliceId) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
 
-  const reportArgs = [
-    cli,
-    "cost-slice",
-    "--repo",
-    repoPath,
-    "--run-title",
-    sliceId,
-    "--aggregate-all"
-  ];
+  const mode = await detectCostMode(repoPath);
+  const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", sliceId];
+  if (mode === "scoped") {
+    reportArgs.push("--source-project", path.basename(repoPath));
+  } else {
+    reportArgs.push("--aggregate-all");
+  }
   let report;
   try {
     const { stdout } = await execFile("node", reportArgs, { maxBuffer: 1024 * 1024 });
@@ -131,7 +161,7 @@ export async function tryWriteCostReport(repoPath, sliceId) {
     advise = { error: err.message };
   }
 
-  return { ...report, advise };
+  return { ...report, advise, costMode: mode };
 }
 
 function renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS) {
