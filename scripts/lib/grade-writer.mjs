@@ -176,7 +176,9 @@ export async function writeGrade(repoPath, sliceId, { config = null } = {}) {
   const scores = parseScoresFromBody(body);
   const scoreErrors = validateScores(scores);
   if (scoreErrors.length > 0) {
-    const err = new Error(`Score validation failed:\n  - ${scoreErrors.join("\n  - ")}`);
+    const err = /** @type {NodeJS.ErrnoException} */ (
+      new Error(`Score validation failed:\n  - ${scoreErrors.join("\n  - ")}`)
+    );
     err.code = "SCORE_VALIDATION";
     throw err;
   }

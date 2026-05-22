@@ -34,6 +34,18 @@ export async function ensureBacklogScaffold(repoPath, config) {
   return root;
 }
 
+/**
+ * @param {string} repoPath
+ * @param {{
+ *   title?: string,
+ *   body?: string,
+ *   priority?: string | null,
+ *   category?: string | null,
+ *   target_release?: string | null,
+ *   derived_from?: string | string[] | null,
+ *   config?: any
+ * }} [options]
+ */
 export async function addFeature(
   repoPath,
   {

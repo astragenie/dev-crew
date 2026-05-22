@@ -36,6 +36,14 @@ function parseScalar(raw) {
   return stripQuotes(v);
 }
 
+/**
+ * @typedef {Record<string, any>} Frontmatter
+ */
+
+/**
+ * @param {string} content
+ * @returns {{ frontmatter: Frontmatter, body: string }}
+ */
 export function parseFrontmatter(content) {
   if (typeof content !== "string") {
     return { frontmatter: {}, body: "" };
@@ -111,6 +119,10 @@ function serializeScalar(value) {
   return s;
 }
 
+/**
+ * @param {Frontmatter} frontmatter
+ * @param {string} [body]
+ */
 export function serializeFrontmatter(frontmatter, body = "") {
   const keys = Object.keys(frontmatter);
   const lines = ["---"];
@@ -122,6 +134,10 @@ export function serializeFrontmatter(frontmatter, body = "") {
   return `${lines.join("\n")}${body.replace(/^\n+/, "")}`;
 }
 
+/**
+ * @param {string} content
+ * @param {Frontmatter} updates
+ */
 export function mergeFrontmatter(content, updates) {
   const { frontmatter, body } = parseFrontmatter(content);
   const merged = { ...frontmatter, ...updates };

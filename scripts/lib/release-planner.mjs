@@ -109,6 +109,10 @@ function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt
   return lines.join("\n");
 }
 
+/**
+ * @param {string} repoPath
+ * @param {{ version?: string, config?: any }} [options]
+ */
 export async function planRelease(repoPath, { version, config = null } = {}) {
   const normalized = normalizeVersion(version);
   const [backlog, specs] = await Promise.all([
@@ -148,6 +152,10 @@ export async function planRelease(repoPath, { version, config = null } = {}) {
   };
 }
 
+/**
+ * @param {string} repoPath
+ * @param {{ version?: string, config?: any }} [options]
+ */
 export async function releaseStatus(repoPath, { version, config = null } = {}) {
   const normalized = normalizeVersion(version);
   const backlog = await listBacklog(repoPath, { config });

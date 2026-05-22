@@ -51,6 +51,10 @@ async function locateSliceFile(slicesRoot, sliceId) {
   return null;
 }
 
+/**
+ * @param {string} repoPath
+ * @param {{ sliceId?: string, artifactPath?: string, kind?: string, config?: any }} [options]
+ */
 export async function linkArtifactToSlice(
   repoPath,
   { sliceId, artifactPath, kind, config = null } = {}

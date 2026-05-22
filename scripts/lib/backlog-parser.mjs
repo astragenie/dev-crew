@@ -25,6 +25,22 @@ export function backlogRoot(repoPath, config) {
   return path.join(repoPath, config?.backlog?.root || "docs/backlog");
 }
 
+/**
+ * @typedef {object} BacklogEntry
+ * @property {string} id
+ * @property {number} idNumber
+ * @property {string} state
+ * @property {string} filePath
+ * @property {string} filename
+ * @property {import("./frontmatter.mjs").Frontmatter} frontmatter
+ * @property {string} body
+ */
+
+/**
+ * @param {string} filePath
+ * @param {string} state
+ * @returns {Promise<BacklogEntry | null>}
+ */
 async function readEntry(filePath, state) {
   const filename = path.basename(filePath);
   const match = filename.match(FEATURE_FILE_RE);

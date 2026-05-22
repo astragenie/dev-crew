@@ -159,7 +159,8 @@ export async function buildRetrospective(
       cadenceCount > 0 && sinceDate
         ? Number(
             (
-              cadenceCount / Math.max(1, (untilDate - sinceDate) / (7 * 24 * 60 * 60 * 1000))
+              cadenceCount /
+              Math.max(1, (untilDate.getTime() - sinceDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
             ).toFixed(2)
           )
         : null
