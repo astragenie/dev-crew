@@ -4,7 +4,12 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { nextDecisionId, writeDecisionFile, listDecisions, showDecision } from "../scripts/lib/decisions-store.mjs";
+import {
+  nextDecisionId,
+  writeDecisionFile,
+  listDecisions,
+  showDecision
+} from "../scripts/lib/decisions-store.mjs";
 
 async function tmpRepo(prefix) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -18,8 +23,18 @@ test("nextDecisionId returns DEC-001 in an empty repo", async () => {
 
 test("nextDecisionId increments past existing decisions", async () => {
   const repo = await tmpRepo("al-dec-mono-");
-  await writeDecisionFile(repo, { id: "DEC-001", title: "First", sliceId: "SLICE-01", rationale: "r" });
-  await writeDecisionFile(repo, { id: "DEC-005", title: "Skipped numbering", sliceId: "SLICE-05", rationale: "r" });
+  await writeDecisionFile(repo, {
+    id: "DEC-001",
+    title: "First",
+    sliceId: "SLICE-01",
+    rationale: "r"
+  });
+  await writeDecisionFile(repo, {
+    id: "DEC-005",
+    title: "Skipped numbering",
+    sliceId: "SLICE-05",
+    rationale: "r"
+  });
   const next = await nextDecisionId(repo);
   assert.equal(next, "DEC-006");
 });
@@ -60,7 +75,12 @@ test("listDecisions filters by status", async () => {
 
 test("showDecision returns the full parsed entry", async () => {
   const repo = await tmpRepo("al-dec-show-");
-  await writeDecisionFile(repo, { id: "DEC-001", title: "Test", sliceId: "SLICE-01", rationale: "r" });
+  await writeDecisionFile(repo, {
+    id: "DEC-001",
+    title: "Test",
+    sliceId: "SLICE-01",
+    rationale: "r"
+  });
   const dec = await showDecision(repo, "DEC-001");
   assert.ok(dec);
   assert.equal(dec.id, "DEC-001");

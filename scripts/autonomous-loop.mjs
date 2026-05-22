@@ -78,24 +78,96 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
-    if (value === "--status") { flags.status = rest[index + 1]; index += 1; continue; }
-    if (value === "--priority") { flags.priority = rest[index + 1]; index += 1; continue; }
-    if (value === "--category") { flags.category = rest[index + 1]; index += 1; continue; }
-    if (value === "--target-release") { flags.targetRelease = rest[index + 1]; index += 1; continue; }
-    if (value === "--type") { flags.type = rest[index + 1]; index += 1; continue; }
-    if (value === "--title") { flags.title = rest[index + 1]; index += 1; continue; }
-    if (value === "--id") { flags.id = rest[index + 1]; index += 1; continue; }
-    if (value === "--body") { flags.body = rest[index + 1]; index += 1; continue; }
-    if (value === "--features") { flags.features = rest[index + 1]; index += 1; continue; }
-    if (value === "--version") { flags.version = rest[index + 1]; index += 1; continue; }
-    if (value === "--since") { flags.since = rest[index + 1]; index += 1; continue; }
-    if (value === "--span-days") { flags.spanDays = rest[index + 1]; index += 1; continue; }
-    if (value === "--until") { flags.until = rest[index + 1]; index += 1; continue; }
-    if (value === "--by") { flags.by = rest[index + 1]; index += 1; continue; }
-    if (value === "--artifact") { flags.artifact = rest[index + 1]; index += 1; continue; }
-    if (value === "--kind") { flags.kind = rest[index + 1]; index += 1; continue; }
-    if (value === "--files") { flags.files = rest[index + 1]; index += 1; continue; }
-    if (value === "--features-json") { flags.featuresJson = rest[index + 1]; index += 1; continue; }
+    if (value === "--status") {
+      flags.status = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--priority") {
+      flags.priority = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--category") {
+      flags.category = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--target-release") {
+      flags.targetRelease = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--type") {
+      flags.type = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--title") {
+      flags.title = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--id") {
+      flags.id = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--body") {
+      flags.body = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--features") {
+      flags.features = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--version") {
+      flags.version = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--since") {
+      flags.since = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--span-days") {
+      flags.spanDays = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--until") {
+      flags.until = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--by") {
+      flags.by = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--artifact") {
+      flags.artifact = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--kind") {
+      flags.kind = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--files") {
+      flags.files = rest[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value === "--features-json") {
+      flags.featuresJson = rest[index + 1];
+      index += 1;
+      continue;
+    }
     if (value.startsWith("--")) {
       throw new Error(`Unknown argument: ${value}`);
     }
@@ -163,7 +235,11 @@ async function main() {
       until: flags.until
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
-    await logEvent(repoPath, { command: "retrospective", since: flags.since, span_days: flags.spanDays });
+    await logEvent(repoPath, {
+      command: "retrospective",
+      since: flags.since,
+      span_days: flags.spanDays
+    });
   } else if (command === "brief") {
     const { buildBrief } = await import("./lib/brief.mjs");
     result = await buildBrief(repoPath);
@@ -256,7 +332,8 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
   if (sub === "add") {
     const title = flags.title || rest.join(" ");
     if (!title) throw new Error("spec add requires a title (positional or --title).");
-    if (!flags.type) throw new Error("spec add requires --type prd|user-journey|sre|research|adr|other.");
+    if (!flags.type)
+      throw new Error("spec add requires --type prd|user-journey|sre|research|adr|other.");
     const { addSpec } = await import("./lib/spec-parser.mjs");
     return await addSpec(repoPath, {
       type: flags.type,
@@ -293,7 +370,9 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
     if (!flags.features && !flags.featuresJson) {
-      throw new Error('spec decompose requires --features "t1;t2" OR --features-json <JSON array>.');
+      throw new Error(
+        'spec decompose requires --features "t1;t2" OR --features-json <JSON array>.'
+      );
     }
     let entries;
     if (flags.featuresJson) {
@@ -304,7 +383,10 @@ async function runSpecSubcommand(repoPath, positionals, flags) {
       }
       if (!Array.isArray(entries)) throw new Error("--features-json must be a JSON array");
     } else {
-      entries = flags.features.split(";").map((s) => s.trim()).filter(Boolean);
+      entries = flags.features
+        .split(";")
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
     const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
     return await decomposeSpec(repoPath, specId, entries);
@@ -342,7 +424,11 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
     const out = await sliceFromFeature(repoPath, featureId);
     const { logEvent } = await import("./lib/telemetry.mjs");
-    await logEvent(repoPath, { command: "slice from-feature", feature: featureId, slice: out.slice.id });
+    await logEvent(repoPath, {
+      command: "slice from-feature",
+      feature: featureId,
+      slice: out.slice.id
+    });
     return out;
   }
   if (sub === "grade") {
@@ -382,7 +468,9 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
     if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
     const { linkArtifactToSlice } = await import("./lib/artifact-linkage.mjs");
     return await linkArtifactToSlice(repoPath, {
-      sliceId, artifactPath: flags.artifact, kind: flags.kind
+      sliceId,
+      artifactPath: flags.artifact,
+      kind: flags.kind
     });
   }
   if (sub === "review-ladder") {
@@ -422,7 +510,8 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
   }
   if (sub === "supersede") {
     const { supersedeDecision } = await import("./lib/decisions-store.mjs");
-    if (!flags.id || !flags.by) throw new Error("decisions supersede requires --id DEC-OLD --by DEC-NEW");
+    if (!flags.id || !flags.by)
+      throw new Error("decisions supersede requires --id DEC-OLD --by DEC-NEW");
     const out = await supersedeDecision(repoPath, { oldId: flags.id, newId: flags.by });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "decisions supersede", old: flags.id, new: flags.by });
@@ -430,8 +519,11 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
   }
   if (sub === "relevant") {
     const { findRelevantDecisions } = await import("./lib/decisions-store.mjs");
-    if (!flags.files) throw new Error("decisions relevant requires --files \"a.cs,b.cs,...\"");
-    const files = flags.files.split(",").map((f) => f.trim()).filter(Boolean);
+    if (!flags.files) throw new Error('decisions relevant requires --files "a.cs,b.cs,..."');
+    const files = flags.files
+      .split(",")
+      .map((f) => f.trim())
+      .filter(Boolean);
     const matches = await findRelevantDecisions(repoPath, files);
     return { count: matches.length, decisions: matches };
   }

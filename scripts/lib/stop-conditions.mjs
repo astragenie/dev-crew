@@ -31,17 +31,22 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
   const suggestions = [];
 
   // A: backlog + specs exhausted
-  const pendingOrTriaged = filterBacklog(backlog, { status: "pending" }).length
-    + filterBacklog(backlog, { status: "triaged" }).length;
+  const pendingOrTriaged =
+    filterBacklog(backlog, { status: "pending" }).length +
+    filterBacklog(backlog, { status: "triaged" }).length;
   const inProgress = filterBacklog(backlog, { status: "in-progress" }).length;
-  const approvedUndecomposed = specs.filter((s) =>
-    s.frontmatter.status === "approved" &&
-    (!Array.isArray(s.frontmatter.derived_features) || s.frontmatter.derived_features.length === 0)
+  const approvedUndecomposed = specs.filter(
+    (s) =>
+      s.frontmatter.status === "approved" &&
+      (!Array.isArray(s.frontmatter.derived_features) ||
+        s.frontmatter.derived_features.length === 0)
   ).length;
 
   if (pendingOrTriaged === 0 && inProgress === 0 && approvedUndecomposed === 0) {
     reasons.push("backlog empty + no undecomposed specs → no actionable work");
-    suggestions.push("Author a new SPEC or FEAT to continue. Run `/autonomous-loop:spec add` or `/autonomous-loop:backlog add`.");
+    suggestions.push(
+      "Author a new SPEC or FEAT to continue. Run `/autonomous-loop:spec add` or `/autonomous-loop:backlog add`."
+    );
   }
 
   // B: warn-severity alerts

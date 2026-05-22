@@ -28,11 +28,19 @@ export async function logEvent(repoPath, event) {
 export async function readEvents(repoPath, { limit = null } = {}) {
   const target = telemetryPath(repoPath);
   let content;
-  try { content = await fs.readFile(target, "utf8"); } catch { return []; }
+  try {
+    content = await fs.readFile(target, "utf8");
+  } catch {
+    return [];
+  }
   const lines = content.split("\n").filter((l) => l.trim());
   const events = [];
   for (const line of lines) {
-    try { events.push(JSON.parse(line)); } catch { /* skip malformed */ }
+    try {
+      events.push(JSON.parse(line));
+    } catch {
+      /* skip malformed */
+    }
   }
   if (limit) return events.slice(-limit);
   return events;

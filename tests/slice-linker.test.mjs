@@ -30,7 +30,11 @@ async function tmpRepo(prefix) {
 
 test("sliceFromFeature creates a SLICE file and cross-links the feature", async () => {
   const repo = await tmpRepo("al-slice-link-");
-  const feat = await addFeature(repo, { title: "Add login form", priority: "P1", target_release: "v1.0.0" });
+  const feat = await addFeature(repo, {
+    title: "Add login form",
+    priority: "P1",
+    target_release: "v1.0.0"
+  });
   const result = await sliceFromFeature(repo, feat.id);
   assert.equal(result.feature.id, feat.id);
   assert.equal(result.feature.toState, "in-progress");

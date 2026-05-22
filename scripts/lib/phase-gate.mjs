@@ -154,7 +154,12 @@ async function runAspireStage(repoPath, config) {
     for (const rawUrl of healthchecks) {
       const url = validateHealthcheckUrl(rawUrl);
       if (!url) {
-        results.push({ url: rawUrl, status: null, ok: false, error: "invalid url (must be http or https)" });
+        results.push({
+          url: rawUrl,
+          status: null,
+          ok: false,
+          error: "invalid url (must be http or https)"
+        });
         continue;
       }
       results.push(await pollHealthcheck(url));
@@ -163,7 +168,14 @@ async function runAspireStage(repoPath, config) {
     return {
       name: "aspireBoot",
       skipped: false,
-      runs: [{ cmd: aspire.cmd, args: aspire.args || [], cwd: path.relative(repoPath, cwd) || ".", ok: allOk }],
+      runs: [
+        {
+          cmd: aspire.cmd,
+          args: aspire.args || [],
+          cwd: path.relative(repoPath, cwd) || ".",
+          ok: allOk
+        }
+      ],
       healthchecks: results,
       ok: allOk
     };
@@ -174,7 +186,16 @@ async function runAspireStage(repoPath, config) {
   }
 }
 
-function renderReport(repoPath, config, phase, note, stageResults, overallStatus, startedAt, endedAt) {
+function renderReport(
+  repoPath,
+  config,
+  phase,
+  note,
+  stageResults,
+  overallStatus,
+  startedAt,
+  endedAt
+) {
   const lines = [];
   lines.push(`# Phase Gate Report — phase ${phase} — ${endedAt}`);
   lines.push("");
@@ -191,20 +212,28 @@ function renderReport(repoPath, config, phase, note, stageResults, overallStatus
   for (const stage of stageResults) {
     lines.push(`## ${stage.name}`);
     if (stage.skipped) {
-      lines.push(stage.reason ? `_skipped: ${stage.reason}_` : "_skipped (not configured for this preset/repo)_");
+      lines.push(
+        stage.reason
+          ? `_skipped: ${stage.reason}_`
+          : "_skipped (not configured for this preset/repo)_"
+      );
       lines.push("");
       continue;
     }
     if (stage.healthchecks) {
       for (const hc of stage.healthchecks) {
         const mark = hc.ok ? "PASS" : "FAIL";
-        lines.push(`- ${mark} \`${hc.url}\` ${hc.status !== null ? `(HTTP ${hc.status})` : ""} ${hc.error || ""}`.trim());
+        lines.push(
+          `- ${mark} \`${hc.url}\` ${hc.status !== null ? `(HTTP ${hc.status})` : ""} ${hc.error || ""}`.trim()
+        );
       }
       lines.push("");
     }
     for (const run of stage.runs) {
       const mark = run.ok ? "PASS" : "FAIL";
-      lines.push(`### ${mark} \`${run.cmd} ${(run.args || []).join(" ")}\` (cwd: ${run.cwd}, exit ${run.exit}, ${run.durationMs}ms)`);
+      lines.push(
+        `### ${mark} \`${run.cmd} ${(run.args || []).join(" ")}\` (cwd: ${run.cwd}, exit ${run.exit}, ${run.durationMs}ms)`
+      );
       lines.push("");
       if (run.stdout) {
         lines.push("```text");
@@ -226,9 +255,15 @@ function renderReport(repoPath, config, phase, note, stageResults, overallStatus
 }
 
 async function writeReport(repoPath, config, phase, body) {
-  const artifactDir = path.resolve(repoPath, config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations");
+  const artifactDir = path.resolve(
+    repoPath,
+    config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations"
+  );
   await fs.mkdir(artifactDir, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
   const filename = `phase-${phase}-gate-${stamp}.md`;
   const target = path.join(artifactDir, filename);
   await fs.writeFile(target, body);
@@ -237,20 +272,24 @@ async function writeReport(repoPath, config, phase, body) {
 
 async function recordWithCrew(crewCli, repoPath, title, decision, summary, artifactPath) {
   try {
-    await execFile("node", [
-      crewCli,
-      "write-validation-result",
-      "--repo",
-      repoPath,
-      "--title",
-      title,
-      "--decision",
-      decision,
-      "--summary",
-      summary,
-      "--evidence",
-      artifactPath
-    ], { maxBuffer: 1024 * 1024 });
+    await execFile(
+      "node",
+      [
+        crewCli,
+        "write-validation-result",
+        "--repo",
+        repoPath,
+        "--title",
+        title,
+        "--decision",
+        decision,
+        "--summary",
+        summary,
+        "--evidence",
+        artifactPath
+      ],
+      { maxBuffer: 1024 * 1024 }
+    );
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error.message };
@@ -265,7 +304,9 @@ export async function runPhaseGate(repoPath, options = {}) {
 
   const crewCli = await findCrewCli();
   if (!crewCli) {
-    throw new Error("Hard dependency missing: crew CLI not found in plugin cache. Install crew first.");
+    throw new Error(
+      "Hard dependency missing: crew CLI not found in plugin cache. Install crew first."
+    );
   }
 
   const stageResults = [];
@@ -279,7 +320,16 @@ export async function runPhaseGate(repoPath, options = {}) {
   const overallStatus = anyFailed ? "FAIL" : "PASS";
   const endedAt = nowIso();
 
-  const body = renderReport(repoPath, config, phase, note, stageResults, overallStatus, startedAt, endedAt);
+  const body = renderReport(
+    repoPath,
+    config,
+    phase,
+    note,
+    stageResults,
+    overallStatus,
+    startedAt,
+    endedAt
+  );
   const artifactPath = await writeReport(repoPath, config, phase, body);
 
   const summary = `phase ${phase} ${overallStatus} — preset ${config.preset} — ${stageResults.filter((s) => !s.skipped).length} stages run`;
@@ -357,7 +407,10 @@ async function emitDeployHandoffsForReadyReleases(repoPath) {
     const versionSlug = version.toLowerCase().replace(/[^a-z0-9.]/g, "-");
     const stub = `ready-to-deploy-${versionSlug}`;
     if (existing.some((name) => name.includes(stub))) continue;
-    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const stamp = new Date()
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d+Z$/, "Z");
     const filename = `${stamp}-${stub}.md`;
     const target = path.join(handoffsDir, filename);
     const today = new Date().toISOString().slice(0, 10);
@@ -372,7 +425,9 @@ async function emitDeployHandoffsForReadyReleases(repoPath) {
       confidence: "high",
       next_handoff: "deployment-evidence"
     };
-    const featureList = features.map((f) => `- ${f.id}: \`${path.relative(repoPath, f.filePath).replace(/\\/g, "/")}\``).join("\n");
+    const featureList = features
+      .map((f) => `- ${f.id}: \`${path.relative(repoPath, f.filePath).replace(/\\/g, "/")}\``)
+      .join("\n");
     const body = [
       `# Handoff — Release ${version} ready to deploy`,
       "",
@@ -415,9 +470,16 @@ async function emitDeployHandoffsForReadyReleases(repoPath) {
 // 30 days if no prior gate exists.
 async function runRetrospectiveSincePreviousGate(repoPath, phase) {
   const config = await resolveConfig(repoPath);
-  const dir = path.resolve(repoPath, config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations");
+  const dir = path.resolve(
+    repoPath,
+    config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations"
+  );
   let entries;
-  try { entries = await fs.readdir(dir); } catch { entries = []; }
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    entries = [];
+  }
   const phaseRe = /^phase-(.+)-gate-(\d{8})T\d+Z?\.md$/;
   const prior = entries
     .map((name) => name.match(phaseRe))
@@ -425,11 +487,15 @@ async function runRetrospectiveSincePreviousGate(repoPath, phase) {
     .map((m) => ({ phase: m[1], stamp: m[2] }))
     .filter((e) => e.phase !== String(phase))
     .sort((a, b) => b.stamp.localeCompare(a.stamp));
-  const sinceDate = prior.length > 0
-    ? `${prior[0].stamp.slice(0, 4)}-${prior[0].stamp.slice(4, 6)}-${prior[0].stamp.slice(6, 8)}`
-    : null;
+  const sinceDate =
+    prior.length > 0
+      ? `${prior[0].stamp.slice(0, 4)}-${prior[0].stamp.slice(4, 6)}-${prior[0].stamp.slice(6, 8)}`
+      : null;
   const { writeRetrospective } = await import("./retrospective.mjs");
-  const result = await writeRetrospective(repoPath, sinceDate ? { since: sinceDate } : { spanDays: 30 });
+  const result = await writeRetrospective(
+    repoPath,
+    sinceDate ? { since: sinceDate } : { spanDays: 30 }
+  );
   return {
     artifactPath: result.artifactPath,
     sincePreviousGate: sinceDate,

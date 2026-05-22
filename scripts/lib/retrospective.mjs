@@ -14,7 +14,9 @@ import { listSpecs } from "./spec-parser.mjs";
 //   { since: "YYYY-MM-DD" }            absolute lower bound
 //   { spanDays: N }                    rolling N days back from today
 
-function todayIso() { return new Date().toISOString().slice(0, 10); }
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function parseDate(iso) {
   if (!iso) return null;
@@ -48,7 +50,10 @@ function topRepeats(strings, limit = 5) {
     counts.set(key, (counts.get(key) || 0) + 1);
   }
   const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  return sorted.slice(0, limit).filter(([, count]) => count > 1).map(([key, count]) => ({ key, count }));
+  return sorted
+    .slice(0, limit)
+    .filter(([, count]) => count > 1)
+    .map(([key, count]) => ({ key, count }));
 }
 
 function parseListSection(body, sectionHeader) {
@@ -69,7 +74,10 @@ function parseListSection(body, sectionHeader) {
   return items;
 }
 
-export async function buildRetrospective(repoPath, { since = null, spanDays = null, until = null, config = null } = {}) {
+export async function buildRetrospective(
+  repoPath,
+  { since = null, spanDays = null, until = null, config = null } = {}
+) {
   const untilStr = until || todayIso();
   let sinceStr = since;
   if (!sinceStr && spanDays) {
@@ -88,8 +96,12 @@ export async function buildRetrospective(repoPath, { since = null, spanDays = nu
   ]);
 
   // Filter to window using frontmatter graded_at / introduced_at / updated / completed_at
-  const gradesInWindow = grades.filter((g) => withinWindow(g.frontmatter.graded_at, sinceDate, untilDate));
-  const decisionsInWindow = decisions.filter((d) => withinWindow(d.introduced_at, sinceDate, untilDate));
+  const gradesInWindow = grades.filter((g) =>
+    withinWindow(g.frontmatter.graded_at, sinceDate, untilDate)
+  );
+  const decisionsInWindow = decisions.filter((d) =>
+    withinWindow(d.introduced_at, sinceDate, untilDate)
+  );
 
   // Score averages per dimension
   const scoreAverages = {};
@@ -98,7 +110,7 @@ export async function buildRetrospective(repoPath, { since = null, spanDays = nu
   }
   const dimensionsBelowThreshold = SCORE_DIMENSIONS.filter((dim) => {
     const v = scoreAverages[dim];
-    return v !== null && v < 0.80;
+    return v !== null && v < 0.8;
   });
 
   // Aggregate lessons / surprises / followups from grade bodies
@@ -110,8 +122,10 @@ export async function buildRetrospective(repoPath, { since = null, spanDays = nu
   const cadenceCount = gradesInWindow.length;
 
   // Backlog flow during window: features that moved in / out
-  const movedToDone = backlog.filter((f) =>
-    f.state === "done" && withinWindow(f.frontmatter.completed_at || f.frontmatter.updated, sinceDate, untilDate)
+  const movedToDone = backlog.filter(
+    (f) =>
+      f.state === "done" &&
+      withinWindow(f.frontmatter.completed_at || f.frontmatter.updated, sinceDate, untilDate)
   );
 
   // Estimation accuracy: features with target_release we can compare to actual
@@ -134,16 +148,25 @@ export async function buildRetrospective(repoPath, { since = null, spanDays = nu
     topLessons: topRepeats(allLessons),
     topSurprises: topRepeats(allSurprises),
     topFollowups: topRepeats(allFollowups),
-    decisionsList: decisionsInWindow.map((d) => ({ id: d.id, title: d.title, slice: d.introduced_by_slice })),
+    decisionsList: decisionsInWindow.map((d) => ({
+      id: d.id,
+      title: d.title,
+      slice: d.introduced_by_slice
+    })),
     gradesList: gradesInWindow.map((g) => ({
       slice: g.frontmatter.slice,
       feature: g.frontmatter.feature,
       avg: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d])),
       gradedAt: g.frontmatter.graded_at
     })),
-    cadenceSlicesPerWeek: cadenceCount > 0 && sinceDate
-      ? Number((cadenceCount / Math.max(1, (untilDate - sinceDate) / (7 * 24 * 60 * 60 * 1000))).toFixed(2))
-      : null
+    cadenceSlicesPerWeek:
+      cadenceCount > 0 && sinceDate
+        ? Number(
+            (
+              cadenceCount / Math.max(1, (untilDate - sinceDate) / (7 * 24 * 60 * 60 * 1000))
+            ).toFixed(2)
+          )
+        : null
   };
 }
 
@@ -169,7 +192,9 @@ function renderMarkdown(report) {
   if (report.dimensionsBelowThreshold.length > 0) {
     lines.push("## Improvement opportunities");
     for (const dim of report.dimensionsBelowThreshold) {
-      lines.push(`- **${dim}** below threshold — consider authoring a SPEC (type=sre or type=adr) addressing the systemic gap.`);
+      lines.push(
+        `- **${dim}** below threshold — consider authoring a SPEC (type=sre or type=adr) addressing the systemic gap.`
+      );
     }
     lines.push("");
   }
@@ -204,7 +229,9 @@ function renderMarkdown(report) {
   if (report.gradesList.length > 0) {
     lines.push("## Slices graded");
     for (const g of report.gradesList) {
-      lines.push(`- **${g.slice}** (avg ${g.avg ?? "n/a"}) ${g.feature ? `← ${g.feature}` : ""} on ${g.gradedAt}`);
+      lines.push(
+        `- **${g.slice}** (avg ${g.avg ?? "n/a"}) ${g.feature ? `← ${g.feature}` : ""} on ${g.gradedAt}`
+      );
     }
     lines.push("");
   }

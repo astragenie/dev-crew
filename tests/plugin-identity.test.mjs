@@ -4,7 +4,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { compareSemver, getCrewVersion, MIN_CREW_VERSION } from "../scripts/lib/plugin-identity.mjs";
+import {
+  compareSemver,
+  getCrewVersion,
+  MIN_CREW_VERSION
+} from "../scripts/lib/plugin-identity.mjs";
 
 test("compareSemver orders versions correctly", () => {
   assert.equal(compareSemver("0.1.12", "0.1.12"), 0);
@@ -27,7 +31,10 @@ test("getCrewVersion reads plugin.json adjacent to a crew CLI path", async () =>
   await fs.mkdir(manifestDir, { recursive: true });
   const cliPath = path.join(scriptsDir, "crew.mjs");
   await fs.writeFile(cliPath, "// stub");
-  await fs.writeFile(path.join(manifestDir, "plugin.json"), JSON.stringify({ name: "crew", version: "0.9.9" }));
+  await fs.writeFile(
+    path.join(manifestDir, "plugin.json"),
+    JSON.stringify({ name: "crew", version: "0.9.9" })
+  );
 
   const version = await getCrewVersion(cliPath);
   assert.equal(version, "0.9.9");

@@ -63,7 +63,8 @@ export function filterSpecs(specs, filters = {}) {
     if (filters.status && spec.frontmatter.status !== filters.status) return false;
     if (filters.type && spec.frontmatter.type !== filters.type) return false;
     if (filters.priority && spec.frontmatter.priority !== filters.priority) return false;
-    if (filters.target_release && spec.frontmatter.target_release !== filters.target_release) return false;
+    if (filters.target_release && spec.frontmatter.target_release !== filters.target_release)
+      return false;
     return true;
   });
 }
@@ -81,7 +82,10 @@ export async function updateSpecFrontmatter(filePath, updates) {
   return parseFrontmatter(merged).frontmatter;
 }
 
-export async function addSpec(repoPath, { type, title, body = "", priority = null, target_release = null, owner = null, config = null }) {
+export async function addSpec(
+  repoPath,
+  { type, title, body = "", priority = null, target_release = null, owner = null, config = null }
+) {
   if (!type || !SPEC_TYPES.includes(type)) {
     throw new Error(`spec type must be one of: ${SPEC_TYPES.join(", ")}`);
   }
@@ -104,31 +108,33 @@ export async function addSpec(repoPath, { type, title, body = "", priority = nul
     owner,
     derived_features: []
   };
-  const docBody = body || [
-    `# ${id}: ${title}`,
-    "",
-    "## Problem",
-    "",
-    "(describe the problem in PM-friendly language)",
-    "",
-    "## Goals",
-    "",
-    "- bullet 1",
-    "- bullet 2",
-    "",
-    "## Non-goals",
-    "",
-    "- bullet 1",
-    "",
-    "## User stories / journeys",
-    "",
-    "(narrative)",
-    "",
-    "## Success metrics",
-    "",
-    "(narrative)",
-    ""
-  ].join("\n");
+  const docBody =
+    body ||
+    [
+      `# ${id}: ${title}`,
+      "",
+      "## Problem",
+      "",
+      "(describe the problem in PM-friendly language)",
+      "",
+      "## Goals",
+      "",
+      "- bullet 1",
+      "- bullet 2",
+      "",
+      "## Non-goals",
+      "",
+      "- bullet 1",
+      "",
+      "## User stories / journeys",
+      "",
+      "(narrative)",
+      "",
+      "## Success metrics",
+      "",
+      "(narrative)",
+      ""
+    ].join("\n");
   const fullBody = docBody.startsWith("#") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
   const contents = serializeFrontmatter(frontmatter, fullBody);
   const filePath = path.join(root, `${id}.md`);

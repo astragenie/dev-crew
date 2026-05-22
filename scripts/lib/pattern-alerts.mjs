@@ -7,7 +7,7 @@ import { listSpecs } from "./spec-parser.mjs";
 //
 // Each alert: { severity: "warn"|"info", category, message, suggested_action }.
 
-const SCORE_THRESHOLD = 0.80;
+const SCORE_THRESHOLD = 0.8;
 const TRAILING_SLICES = 3;
 
 export async function detectPatterns(repoPath, { config = null } = {}) {
@@ -53,7 +53,9 @@ export async function detectPatterns(repoPath, { config = null } = {}) {
   // 3. Specs in approved status but undecomposed
   for (const s of specs) {
     const status = s.frontmatter.status;
-    const derived = Array.isArray(s.frontmatter.derived_features) ? s.frontmatter.derived_features : [];
+    const derived = Array.isArray(s.frontmatter.derived_features)
+      ? s.frontmatter.derived_features
+      : [];
     if (status === "approved" && derived.length === 0) {
       alerts.push({
         severity: "info",

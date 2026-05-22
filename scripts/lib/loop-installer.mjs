@@ -3,7 +3,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveConfig, writeConfigIfMissing } from "./config-resolver.mjs";
-import { findCrewCli, getCrewVersion, compareSemver, MIN_CREW_VERSION } from "./plugin-identity.mjs";
+import {
+  findCrewCli,
+  getCrewVersion,
+  compareSemver,
+  MIN_CREW_VERSION
+} from "./plugin-identity.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
@@ -58,9 +63,7 @@ function buildTokens(config) {
   ];
   const allDocs = [...repoDocs, ...loopControlDocs];
   // Start numbering at 2 because item 1 (CLAUDE.md) is in the template body.
-  const mandatoryDocsList = allDocs
-    .map((entry, index) => `${index + 2}. ${entry}`)
-    .join("\n");
+  const mandatoryDocsList = allDocs.map((entry, index) => `${index + 2}. ${entry}`).join("\n");
 
   return {
     aiLoopRoot,
@@ -174,7 +177,12 @@ async function writeLoopControlFiles(repoPath, tokens, writes) {
     }
   ];
   // Slice template actually goes into 00-entry/:
-  targets[targets.length - 1].target = path.join(repoPath, loopRoot, "00-entry", "SLICE_TEMPLATE.md");
+  targets[targets.length - 1].target = path.join(
+    repoPath,
+    loopRoot,
+    "00-entry",
+    "SLICE_TEMPLATE.md"
+  );
 
   for (const { template, target, tokenize } of targets) {
     const tpl = await readTemplate(template);
@@ -328,14 +336,14 @@ export async function installLoop(repoPath, options = {}) {
   if (!crewCli) {
     throw new Error(
       "Hard dependency missing: the `crew` plugin is not installed in the Claude Code plugin cache. " +
-      "Install `crew` first (it lives in the crew-dev marketplace), then re-run /autonomous-loop:install."
+        "Install `crew` first (it lives in the crew-dev marketplace), then re-run /autonomous-loop:install."
     );
   }
   const installedCrewVersion = await getCrewVersion(crewCli);
   if (installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) < 0) {
     throw new Error(
       `Incompatible crew plugin: found v${installedCrewVersion}, need >= v${MIN_CREW_VERSION}. ` +
-      `Update crew (\`/plugin install crew@crew-dev\`) and retry.`
+        `Update crew (\`/plugin install crew@crew-dev\`) and retry.`
     );
   }
 
@@ -407,8 +415,12 @@ export async function reportStatus(repoPath) {
     slicesRoot: tokens.slicesRoot,
     phaseGateArtifactDir: tokens.phaseGateArtifactDir,
     hasMarkerBlock: claudeMd.includes(MARKER_START) && claudeMd.includes(MARKER_END),
-    hasApprovedSlices: await pathExists(path.join(repoPath, tokens.backlogPath, "approved-slices.md")),
-    hasMasterPrompt: await pathExists(path.join(repoPath, tokens.aiLoopRoot, "00-entry", "MASTER_PROMPT.md")),
+    hasApprovedSlices: await pathExists(
+      path.join(repoPath, tokens.backlogPath, "approved-slices.md")
+    ),
+    hasMasterPrompt: await pathExists(
+      path.join(repoPath, tokens.aiLoopRoot, "00-entry", "MASTER_PROMPT.md")
+    ),
     crewCli: await findCrewCli()
   };
 }

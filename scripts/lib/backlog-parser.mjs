@@ -71,7 +71,8 @@ export function filterBacklog(entries, filters = {}) {
     if (filters.status && entry.state !== filters.status) return false;
     if (filters.priority && entry.frontmatter.priority !== filters.priority) return false;
     if (filters.category && entry.frontmatter.category !== filters.category) return false;
-    if (filters.target_release && entry.frontmatter.target_release !== filters.target_release) return false;
+    if (filters.target_release && entry.frontmatter.target_release !== filters.target_release)
+      return false;
     if (filters.derived_from) {
       const df = entry.frontmatter.derived_from;
       const list = Array.isArray(df) ? df : df ? [df] : [];

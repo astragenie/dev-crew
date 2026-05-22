@@ -5,7 +5,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { detectPatterns } from "../scripts/lib/pattern-alerts.mjs";
-import { addFeature, updateFeatureFrontmatter, moveFeature } from "../scripts/lib/backlog-writer.mjs";
+import {
+  addFeature,
+  updateFeatureFrontmatter,
+  moveFeature
+} from "../scripts/lib/backlog-writer.mjs";
 import { addSpec, updateSpecFrontmatter } from "../scripts/lib/spec-parser.mjs";
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
 import { SCORE_DIMENSIONS } from "../scripts/lib/grade-parser.mjs";
@@ -51,12 +55,14 @@ test("detectPatterns warns when a dimension is consistently below 0.80", async (
   const repo = await tmpRepo("al-alerts-trend-");
   const lowObs = {};
   for (const dim of SCORE_DIMENSIONS) lowObs[dim] = 0.85;
-  lowObs.observability = 0.60;
+  lowObs.observability = 0.6;
   await seedGrade(repo, "SLICE-01", lowObs);
   await seedGrade(repo, "SLICE-02", lowObs);
   await seedGrade(repo, "SLICE-03", lowObs);
   const alerts = await detectPatterns(repo);
-  const trend = alerts.find((a) => a.category === "score-trend" && a.message.includes("observability"));
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("observability")
+  );
   assert.ok(trend, "expected an observability score-trend alert");
 });
 

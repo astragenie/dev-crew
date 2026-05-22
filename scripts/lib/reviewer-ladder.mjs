@@ -18,7 +18,14 @@ const DEFAULT_FOCUS = {
   B: "Production-readiness, observability (OTel spans / structured logs), security posture, edge cases. Check for hardcoded secrets, missing healthchecks, and absent error paths."
 };
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function locateSliceFile(slicesRoot, sliceId) {
   if (!(await pathExists(slicesRoot))) return null;
@@ -28,10 +35,17 @@ async function locateSliceFile(slicesRoot, sliceId) {
   while (stack.length > 0) {
     const dir = stack.pop();
     let entries;
-    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
     for (const e of entries) {
       const full = path.join(dir, e.name);
-      if (e.isDirectory()) { stack.push(full); continue; }
+      if (e.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
       if (re.test(e.name)) return full;
     }
   }
@@ -40,7 +54,7 @@ async function locateSliceFile(slicesRoot, sliceId) {
 
 export async function buildReviewLadder(repoPath, sliceId, { config = null } = {}) {
   if (!sliceId) throw new Error("buildReviewLadder requires sliceId");
-  const resolved = config || await resolveConfig(repoPath);
+  const resolved = config || (await resolveConfig(repoPath));
   const ladder = resolved.reviewers?.ladder || ["A", "B"];
   const focusOverrides = resolved.reviewers?.focus || {};
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
@@ -52,7 +66,10 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
   const slicePathRel = path.relative(repoPath, sliceFile).replace(/\\/g, "/");
 
   const tasks = ladder.map((reviewerId) => {
-    const focus = focusOverrides[reviewerId] || DEFAULT_FOCUS[reviewerId] || `Review ${sliceId} from your assigned perspective.`;
+    const focus =
+      focusOverrides[reviewerId] ||
+      DEFAULT_FOCUS[reviewerId] ||
+      `Review ${sliceId} from your assigned perspective.`;
     return {
       reviewer: reviewerId,
       subagent_type: "crew:reviewer",
@@ -77,7 +94,9 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
         `   \`/autonomous-loop:slice link --id ${sliceId} --kind reviews --artifact <path>\``,
         "",
         `**Verdict format**: \`PASS\` (no blockers) | \`PASS with minor\` (small fixups requested) | \`FAIL\` (blocker — list them).`
-      ].filter(Boolean).join("\n")
+      ]
+        .filter(Boolean)
+        .join("\n")
     };
   });
 

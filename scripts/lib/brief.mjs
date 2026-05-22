@@ -52,10 +52,14 @@ export async function buildBrief(repoPath, { config = null } = {}) {
   }));
 
   // Spec flow: approved + undecomposed
-  const specsToDecompose = specs.filter((s) =>
-    s.frontmatter.status === "approved" &&
-    (!Array.isArray(s.frontmatter.derived_features) || s.frontmatter.derived_features.length === 0)
-  ).map((s) => ({ id: s.id, type: s.frontmatter.type, title: s.frontmatter.title }));
+  const specsToDecompose = specs
+    .filter(
+      (s) =>
+        s.frontmatter.status === "approved" &&
+        (!Array.isArray(s.frontmatter.derived_features) ||
+          s.frontmatter.derived_features.length === 0)
+    )
+    .map((s) => ({ id: s.id, type: s.frontmatter.type, title: s.frontmatter.title }));
 
   // Score signal over last 5 grades
   const recentGrades = grades.slice(-5);

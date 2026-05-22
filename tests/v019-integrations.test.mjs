@@ -48,9 +48,17 @@ test("linkArtifactToSlice appends to slice frontmatter and is idempotent", async
   const feat = await addFeature(repo, { title: "x" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const artPath = await writeArtifact(repo, "reviews", "r1.md", "# review");
-  const r1 = await linkArtifactToSlice(repo, { sliceId: slice.id, artifactPath: artPath, kind: "reviews" });
+  const r1 = await linkArtifactToSlice(repo, {
+    sliceId: slice.id,
+    artifactPath: artPath,
+    kind: "reviews"
+  });
   assert.equal(r1.alreadyLinked, false);
-  const r2 = await linkArtifactToSlice(repo, { sliceId: slice.id, artifactPath: artPath, kind: "reviews" });
+  const r2 = await linkArtifactToSlice(repo, {
+    sliceId: slice.id,
+    artifactPath: artPath,
+    kind: "reviews"
+  });
   assert.equal(r2.alreadyLinked, true);
   const linked = await getLinkedArtifacts(repo, slice.id, "reviews");
   assert.equal(linked.length, 1);
@@ -62,31 +70,44 @@ test("score-inference prefers frontmatter linkage over body-scrape", async () =>
   const feat = await addFeature(repo, { title: "x" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Artifact does NOT mention the slice id in body — only linkage would surface it
-  const artPath = await writeArtifact(repo, "validations", "no-mention.md",
+  const artPath = await writeArtifact(
+    repo,
+    "validations",
+    "no-mention.md",
     "# Validation\n\n**Status:** PASS\n\nAll acceptance criteria PASS."
   );
   // Without linkage: regex fallback finds nothing (no slice id in body)
   const before = await inferScoresForSlice(repo, slice.id);
   assert.equal(before.artifactCounts.validations, 0);
   // After linkage: frontmatter walk picks it up
-  await linkArtifactToSlice(repo, { sliceId: slice.id, artifactPath: artPath, kind: "validations" });
+  await linkArtifactToSlice(repo, {
+    sliceId: slice.id,
+    artifactPath: artPath,
+    kind: "validations"
+  });
   const after = await inferScoresForSlice(repo, slice.id);
   assert.equal(after.artifactCounts.validations, 1);
-  assert.ok(after.scores.test_confidence >= 0.80);
+  assert.ok(after.scores.test_confidence >= 0.8);
 });
 
 test("findRelevantDecisions matches affects_files literally + by path-suffix", async () => {
   const repo = await tmpRepo("al-v19-dec-rel-");
-  await writeDecisionFile(repo, { id: "DEC-001", title: "Pagination", sliceId: "SLICE-01", rationale: "r" });
+  await writeDecisionFile(repo, {
+    id: "DEC-001",
+    title: "Pagination",
+    sliceId: "SLICE-01",
+    rationale: "r"
+  });
   // Patch in affects_files manually
   const decPath = path.join(repo, "docs/decisions/DEC-001.md");
   const content = await fs.readFile(decPath, "utf8");
-  await fs.writeFile(decPath, mergeFrontmatter(content, {
-    affects_files: ["src/auth/middleware.cs", "src/api/Controllers/AuthController.cs"]
-  }));
-  const matches = await findRelevantDecisions(repo, [
-    "astragenie/src/auth/middleware.cs"
-  ]);
+  await fs.writeFile(
+    decPath,
+    mergeFrontmatter(content, {
+      affects_files: ["src/auth/middleware.cs", "src/api/Controllers/AuthController.cs"]
+    })
+  );
+  const matches = await findRelevantDecisions(repo, ["astragenie/src/auth/middleware.cs"]);
   assert.equal(matches.length, 1);
   assert.equal(matches[0].id, "DEC-001");
   assert.equal(matches[0].hits[0].decisionFile, "src/auth/middleware.cs");
@@ -150,7 +171,12 @@ test("buildReviewLadder respects custom ladder + focus from config", async () =>
     path.join(repo, ".claude/autonomous-loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
-      loop: { aiLoopRoot: "docs/ai-loop", backlogPath: "docs/ai-loop/backlog", slicesRoot: "docs/ai-loop/slices", phaseGateArtifactDir: ".claude/artifacts/crew/validations" },
+      loop: {
+        aiLoopRoot: "docs/ai-loop",
+        backlogPath: "docs/ai-loop/backlog",
+        slicesRoot: "docs/ai-loop/slices",
+        phaseGateArtifactDir: ".claude/artifacts/crew/validations"
+      },
       stack: {},
       reviewers: { ladder: ["A", "Security"], focus: { Security: "Threat-model the new surface." } }
     })

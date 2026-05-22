@@ -21,7 +21,14 @@ import { findFeatureById, moveFeature } from "./backlog-writer.mjs";
 const CLAIMS_STATE = path.join(".claude", "state", "crew", "claims.json");
 const FEAT_RE = /\b(FEAT-\d+)\b/;
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function readClaimsState(repoPath) {
   const target = path.join(repoPath, CLAIMS_STATE);
@@ -60,13 +67,23 @@ export async function syncClaims(repoPath, { config = null, apply = true } = {})
   for (const featureId of claimedFeatureIds) {
     const entry = backlog.find((f) => f.id === featureId);
     if (!entry) {
-      actions.push({ type: "claim-without-feature", featureId, note: "Claim references FEAT id with no backlog file" });
+      actions.push({
+        type: "claim-without-feature",
+        featureId,
+        note: "Claim references FEAT id with no backlog file"
+      });
       continue;
     }
     if (entry.state === "in-progress" || entry.state === "done") continue;
     if (apply) {
       const moved = await moveFeature(entry.filePath, "in-progress");
-      actions.push({ type: "promote-to-in-progress", featureId, from: entry.state, to: "in-progress", path: moved.to });
+      actions.push({
+        type: "promote-to-in-progress",
+        featureId,
+        from: entry.state,
+        to: "in-progress",
+        path: moved.to
+      });
     } else {
       actions.push({ type: "would-promote", featureId, from: entry.state, to: "in-progress" });
     }

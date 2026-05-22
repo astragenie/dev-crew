@@ -5,7 +5,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
-import { parseScoresFromBody, parseDecisionsFromBody, validateScores, SCORE_DIMENSIONS, findGradeForSlice } from "../scripts/lib/grade-parser.mjs";
+import {
+  parseScoresFromBody,
+  parseDecisionsFromBody,
+  validateScores,
+  SCORE_DIMENSIONS,
+  findGradeForSlice
+} from "../scripts/lib/grade-parser.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { listDecisions } from "../scripts/lib/decisions-store.mjs";
@@ -68,7 +74,7 @@ test("parseScoresFromBody extracts the ## Scores section", () => {
   ].join("\n");
   const scores = parseScoresFromBody(body);
   assert.equal(scores.architecture_quality, 0.85);
-  assert.equal(scores.reliability, 0.80);
+  assert.equal(scores.reliability, 0.8);
   assert.equal(scores.not, undefined);
 });
 
@@ -118,7 +124,11 @@ test("createGradeFile is only-if-missing — does not clobber", async () => {
 
 test("createGradeFile prefills feature + spec links from slice file", async () => {
   const repo = await tmpRepo("al-grade-prefill-");
-  const feat = await addFeature(repo, { title: "Linked feature", target_release: "v1.0.0", priority: "P1" });
+  const feat = await addFeature(repo, {
+    title: "Linked feature",
+    target_release: "v1.0.0",
+    priority: "P1"
+  });
   await moveFeature(feat.filePath, "triaged");
   const sliceResult = await sliceFromFeature(repo, feat.id);
   const grade = await createGradeFile(repo, sliceResult.slice.id);

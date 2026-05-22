@@ -30,12 +30,19 @@ async function tmpRepo(prefix) {
 
 async function writeClaims(repo, claims) {
   const target = path.join(repo, ".claude/state/crew/claims.json");
-  await fs.writeFile(target, JSON.stringify({
-    version: "1.0",
-    updatedAt: new Date().toISOString(),
-    claims,
-    warnings: []
-  }, null, 2));
+  await fs.writeFile(
+    target,
+    JSON.stringify(
+      {
+        version: "1.0",
+        updatedAt: new Date().toISOString(),
+        claims,
+        warnings: []
+      },
+      null,
+      2
+    )
+  );
 }
 
 test("syncClaims promotes triaged feature to in-progress when claim references its file", async () => {

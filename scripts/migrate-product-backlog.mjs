@@ -24,8 +24,15 @@ import { serializeFrontmatter } from "./lib/frontmatter.mjs";
 function parseArgs(argv) {
   const flags = { repo: process.cwd(), dryRun: false };
   for (let i = 0; i < argv.length; i += 1) {
-    if (argv[i] === "--repo") { flags.repo = argv[i + 1]; i += 1; continue; }
-    if (argv[i] === "--dry-run") { flags.dryRun = true; continue; }
+    if (argv[i] === "--repo") {
+      flags.repo = argv[i + 1];
+      i += 1;
+      continue;
+    }
+    if (argv[i] === "--dry-run") {
+      flags.dryRun = true;
+      continue;
+    }
   }
   return flags;
 }
@@ -125,7 +132,9 @@ function buildFeatureFile(id, entry) {
     entry.section ? `Source section: **${entry.section}**.` : "",
     entry.slices.length > 0 ? `Linked slices: ${entry.slices.join(", ")}.` : "",
     ""
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   return serializeFrontmatter(frontmatter, body);
 }
 
@@ -151,17 +160,30 @@ async function main() {
     if (!dryRun) {
       await fs.writeFile(targetPath, contents);
     }
-    created.push({ id, title: entry.title, priority: entry.priority, category: entry.category, status: entry.done ? "done" : "pending", path: targetPath });
+    created.push({
+      id,
+      title: entry.title,
+      priority: entry.priority,
+      category: entry.category,
+      status: entry.done ? "done" : "pending",
+      path: targetPath
+    });
   }
-  console.log(JSON.stringify({
-    repo,
-    source: sourcePath,
-    entriesParsed: entries.length,
-    pending: created.filter((c) => c.status === "pending").length,
-    done: created.filter((c) => c.status === "done").length,
-    dryRun,
-    created
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        repo,
+        source: sourcePath,
+        entriesParsed: entries.length,
+        pending: created.filter((c) => c.status === "pending").length,
+        done: created.filter((c) => c.status === "done").length,
+        dryRun,
+        created
+      },
+      null,
+      2
+    )
+  );
 }
 
 main().catch((error) => {

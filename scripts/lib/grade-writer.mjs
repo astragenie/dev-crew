@@ -5,19 +5,37 @@ import { fileURLToPath } from "node:url";
 import { mergeFrontmatter, parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById } from "./backlog-writer.mjs";
 import { findSpecById } from "./spec-parser.mjs";
-import { gradesRoot, gradeFilePath, readGrade, parseScoresFromBody, parseDecisionsFromBody, validateScores } from "./grade-parser.mjs";
+import {
+  gradesRoot,
+  gradeFilePath,
+  readGrade,
+  parseScoresFromBody,
+  parseDecisionsFromBody,
+  validateScores
+} from "./grade-parser.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
-async function ensureDir(p) { await fs.mkdir(p, { recursive: true }); }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
 
 async function readTemplate(rel) {
   return fs.readFile(path.join(templateDir, rel), "utf8");
 }
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 async function findSliceFile(repoPath, sliceId, config) {
   // Slice files can live under <slicesRoot>/{pending,active,completed}/ or
@@ -30,10 +48,17 @@ async function findSliceFile(repoPath, sliceId, config) {
   while (stack.length > 0) {
     const dir = stack.pop();
     let entries;
-    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
     for (const e of entries) {
       const full = path.join(dir, e.name);
-      if (e.isDirectory()) { stack.push(full); continue; }
+      if (e.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
       if (re.test(e.name)) return full;
     }
   }
@@ -117,7 +142,11 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
     .replace(/^(feature):\s*FEAT-NNN/m, `$1: ${featureId || "null"}`);
 
   await fs.writeFile(target, tpl);
-  return { gradePath: target, created: true, prefilled: { featureId, specId, phase, targetRelease } };
+  return {
+    gradePath: target,
+    created: true,
+    prefilled: { featureId, specId, phase, targetRelease }
+  };
 }
 
 // Write back the grade after agent edits: validate scores, extract DEC-TBD
@@ -139,7 +168,13 @@ export async function writeGrade(repoPath, sliceId, { config = null } = {}) {
   }
 
   const decisions = parseDecisionsFromBody(body);
-  const { allocated, updatedBody } = await extractDecisions(repoPath, sliceId, body, decisions, config);
+  const { allocated, updatedBody } = await extractDecisions(
+    repoPath,
+    sliceId,
+    body,
+    decisions,
+    config
+  );
 
   // Build merged decisions list: existing IDs (already allocated) + newly allocated
   const existingIds = decisions.filter((d) => d.id !== "DEC-TBD").map((d) => d.id);
@@ -199,10 +234,7 @@ async function extractDecisions(repoPath, sliceId, body, decisions, config) {
       config
     });
     // Replace the first DEC-TBD occurrence in the body with the allocated id
-    updatedBody = updatedBody.replace(
-      /###\s+DEC-TBD\s*:\s*/,
-      `### ${id}: `
-    );
+    updatedBody = updatedBody.replace(/###\s+DEC-TBD\s*:\s*/, `### ${id}: `);
     allocated.push({ id, title: dec.title });
   }
   return { allocated, updatedBody };

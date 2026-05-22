@@ -4,9 +4,21 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { addSpec, listSpecs, filterSpecs, nextSpecId, findSpecById, updateSpecFrontmatter, SPEC_TYPES } from "../scripts/lib/spec-parser.mjs";
+import {
+  addSpec,
+  listSpecs,
+  filterSpecs,
+  nextSpecId,
+  findSpecById,
+  updateSpecFrontmatter,
+  SPEC_TYPES
+} from "../scripts/lib/spec-parser.mjs";
 import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
-import { linkFeatureToSpec, specSatisfaction, reconcileSpecStatus } from "../scripts/lib/linkage.mjs";
+import {
+  linkFeatureToSpec,
+  specSatisfaction,
+  reconcileSpecStatus
+} from "../scripts/lib/linkage.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
@@ -60,13 +72,14 @@ test("listSpecs + filterSpecs return matching entries", async () => {
 
 test("decomposeSpec creates FEAT files and updates spec frontmatter", async () => {
   const repo = await tmpRepo("al-spec-decompose-");
-  const s = await addSpec(repo, { type: "prd", title: "Test PRD", priority: "P0", target_release: "v1.0.0" });
+  const s = await addSpec(repo, {
+    type: "prd",
+    title: "Test PRD",
+    priority: "P0",
+    target_release: "v1.0.0"
+  });
   await updateSpecFrontmatter(s.filePath, { status: "approved" });
-  const result = await decomposeSpec(repo, s.id, [
-    "Feature one",
-    "Feature two",
-    "Feature three"
-  ]);
+  const result = await decomposeSpec(repo, s.id, ["Feature one", "Feature two", "Feature three"]);
   assert.equal(result.count, 3);
   assert.equal(result.created.length, 3);
   const updatedSpec = await findSpecById(repo, s.id);

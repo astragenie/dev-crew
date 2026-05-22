@@ -44,37 +44,49 @@ test("inferScoresForSlice returns empty when no artifacts exist", async () => {
 
 test("inferScoresForSlice picks up PASS validation as test_confidence baseline", async () => {
   const repo = await tmpRepo("al-infer-validation-");
-  await writeArtifact(repo, "validations", "20260520-slice52.md",
+  await writeArtifact(
+    repo,
+    "validations",
+    "20260520-slice52.md",
     `# Validation — SLICE-52\n\n**Status:** PASS\n\nAll acceptance criteria PASS with evidence.`
   );
   const out = await inferScoresForSlice(repo, "SLICE-52");
-  assert.ok(out.scores.test_confidence >= 0.80);
-  assert.ok(out.scores.product_completeness >= 0.80);
+  assert.ok(out.scores.test_confidence >= 0.8);
+  assert.ok(out.scores.product_completeness >= 0.8);
   assert.equal(out.artifactCounts.validations, 1);
 });
 
 test("inferScoresForSlice infers architecture_quality from review PASS", async () => {
   const repo = await tmpRepo("al-infer-review-");
-  await writeArtifact(repo, "reviews", "20260520-slice52.md",
+  await writeArtifact(
+    repo,
+    "reviews",
+    "20260520-slice52.md",
     `# Review — SLICE_52\n\n**Verdict:** PASS\n\nClean design. OTel spans added throughout.`
   );
   const out = await inferScoresForSlice(repo, "SLICE-52");
-  assert.ok(out.scores.architecture_quality >= 0.80);
-  assert.ok(out.scores.observability >= 0.80, "observability should pick up OTel mention");
+  assert.ok(out.scores.architecture_quality >= 0.8);
+  assert.ok(out.scores.observability >= 0.8, "observability should pick up OTel mention");
 });
 
 test("inferScoresForSlice penalises test_confidence on FAIL validation", async () => {
   const repo = await tmpRepo("al-infer-fail-");
-  await writeArtifact(repo, "validations", "20260520-slice52.md",
+  await writeArtifact(
+    repo,
+    "validations",
+    "20260520-slice52.md",
     `# Validation — SLICE-52\n\n**Status:** FAIL\n\nIntegration test broken.`
   );
   const out = await inferScoresForSlice(repo, "SLICE-52");
-  assert.ok(out.scores.test_confidence < 0.50);
+  assert.ok(out.scores.test_confidence < 0.5);
 });
 
 test("inferScoresForSlice ignores artifacts mentioning other slices", async () => {
   const repo = await tmpRepo("al-infer-other-");
-  await writeArtifact(repo, "validations", "20260520-slice17.md",
+  await writeArtifact(
+    repo,
+    "validations",
+    "20260520-slice17.md",
     `# Validation — SLICE-17\n\n**Status:** PASS`
   );
   const out = await inferScoresForSlice(repo, "SLICE-52");
@@ -83,21 +95,30 @@ test("inferScoresForSlice ignores artifacts mentioning other slices", async () =
 
 test("inferScoresForSlice handles SLICE-52 vs SLICE_52 vs SLICE 52 spellings", async () => {
   const repo = await tmpRepo("al-infer-spell-");
-  await writeArtifact(repo, "reviews", "slice52-review.md",
+  await writeArtifact(
+    repo,
+    "reviews",
+    "slice52-review.md",
     `# Review for SLICE_052\n\n**Verdict:** PASS\n\nLooks good.`
   );
   const out = await inferScoresForSlice(repo, "SLICE-52");
-  assert.ok(out.scores.architecture_quality >= 0.80);
+  assert.ok(out.scores.architecture_quality >= 0.8);
 });
 
 test("createGradeFile injects inferred scores into template", async () => {
   const repo = await tmpRepo("al-grade-prefill-scores-");
   const feat = await addFeature(repo, { title: "Demo" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  await writeArtifact(repo, "validations", `20260520-${slice.id.toLowerCase()}.md`,
+  await writeArtifact(
+    repo,
+    "validations",
+    `20260520-${slice.id.toLowerCase()}.md`,
     `# Validation — ${slice.id}\n\n**Status:** PASS\n\nAll AC PASS.`
   );
-  await writeArtifact(repo, "reviews", `20260520-${slice.id.toLowerCase()}.md`,
+  await writeArtifact(
+    repo,
+    "reviews",
+    `20260520-${slice.id.toLowerCase()}.md`,
     `# Review — ${slice.id}\n\n**Verdict:** PASS\n\nOTel spans look right.`
   );
   const result = await createGradeFile(repo, slice.id);

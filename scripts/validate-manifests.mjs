@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const failures = [];
-function fail(msg) { failures.push(msg); }
+function fail(msg) {
+  failures.push(msg);
+}
 
 async function readJson(p) {
   return JSON.parse(await fs.readFile(p, "utf8"));
@@ -34,19 +36,24 @@ for (const [label, manifest, requiredFields] of [
   }
 }
 
-if (!SEMVER_RE.test(plugin.version)) fail(`plugin.json: version "${plugin.version}" is not parseable semver`);
+if (!SEMVER_RE.test(plugin.version))
+  fail(`plugin.json: version "${plugin.version}" is not parseable semver`);
 
 const ownEntry = marketplace.plugins.find((entry) => entry.name === plugin.name);
 if (!ownEntry) {
   fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
 } else if (ownEntry.version !== plugin.version) {
-  fail(`marketplace.json: entry "${plugin.name}" version=${ownEntry.version} but plugin.json=${plugin.version}`);
+  fail(
+    `marketplace.json: entry "${plugin.name}" version=${ownEntry.version} but plugin.json=${plugin.version}`
+  );
 }
 
 for (const entry of marketplace.plugins) {
   if (!entry.name) fail(`marketplace.json: a plugins[] entry is missing "name"`);
   if (!entry.version || !SEMVER_RE.test(entry.version)) {
-    fail(`marketplace.json: entry "${entry.name}" version "${entry.version}" is not parseable semver`);
+    fail(
+      `marketplace.json: entry "${entry.name}" version "${entry.version}" is not parseable semver`
+    );
   }
   if (!entry.source) fail(`marketplace.json: entry "${entry.name}" missing "source"`);
 }

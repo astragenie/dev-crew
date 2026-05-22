@@ -19,11 +19,16 @@ function normalizeVersion(version) {
 
 function statusBadge(state) {
   switch (state) {
-    case "done": return "✓ shipped";
-    case "in-progress": return "● in flight";
-    case "triaged": return "○ triaged";
-    case "pending": return "○ pending";
-    default: return state;
+    case "done":
+      return "✓ shipped";
+    case "in-progress":
+      return "● in flight";
+    case "triaged":
+      return "○ triaged";
+    case "pending":
+      return "○ pending";
+    default:
+      return state;
   }
 }
 
@@ -66,7 +71,11 @@ function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt
     }
     lines.push("");
     for (const entry of entries) {
-      const title = (entry.body || "").split("\n").find((l) => l.startsWith("# "))?.replace(/^#\s+[A-Z]+-\d+:\s*/, "") || entry.id;
+      const title =
+        (entry.body || "")
+          .split("\n")
+          .find((l) => l.startsWith("# "))
+          ?.replace(/^#\s+[A-Z]+-\d+:\s*/, "") || entry.id;
       lines.push(`- **${entry.id}** ${statusBadge(entry.state)} — ${title.trim()}`);
     }
     lines.push("");
@@ -79,8 +88,16 @@ function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt
     lines.push("");
     lines.push("1. Tag the commit: `git tag " + version + "`");
     lines.push("2. Push the tag: `git push origin " + version + "`");
-    lines.push("3. Move the feature files from `done/` into a versioned subdir if you want to keep `done/` short:");
-    lines.push("   `mkdir docs/backlog/done/" + version + " && git mv docs/backlog/done/FEAT-*.md docs/backlog/done/" + version + "/`");
+    lines.push(
+      "3. Move the feature files from `done/` into a versioned subdir if you want to keep `done/` short:"
+    );
+    lines.push(
+      "   `mkdir docs/backlog/done/" +
+        version +
+        " && git mv docs/backlog/done/FEAT-*.md docs/backlog/done/" +
+        version +
+        "/`"
+    );
     lines.push("");
   }
 
@@ -94,9 +111,12 @@ export async function planRelease(repoPath, { version, config = null } = {}) {
     listSpecs(repoPath, { config })
   ]);
   const targeted = backlog.filter((f) => f.frontmatter.target_release === normalized);
-  const releaseStatus = targeted.length === 0
-    ? "EMPTY"
-    : (targeted.every((f) => f.state === "done") ? "READY" : "IN_PROGRESS");
+  const releaseStatus =
+    targeted.length === 0
+      ? "EMPTY"
+      : targeted.every((f) => f.state === "done")
+        ? "READY"
+        : "IN_PROGRESS";
 
   const generatedAt = new Date().toISOString();
   const body = buildReleaseBody({

@@ -82,7 +82,8 @@ function extractPhaseGateCommands(blockText) {
     else if (parsed.cmd === "terraform" && parsed.args[0] === "plan") hint = "infraPlan";
     else if (parsed.cmd === "dotnet" && parsed.args[0] === "run") hint = "aspireBoot";
     // Line-level keyword hints can override when the line text suggests the stage.
-    if (lower.includes("aspire") && parsed.cmd === "dotnet" && parsed.args[0] === "run") hint = "aspireBoot";
+    if (lower.includes("aspire") && parsed.cmd === "dotnet" && parsed.args[0] === "run")
+      hint = "aspireBoot";
     if (lower.includes("frontend") && parsed.cmd === "npm") hint = "frontendBuild";
     candidates.push({ hint, command: parsed });
   }
@@ -149,14 +150,11 @@ export async function migrateAdhocInstall(repoPath) {
   // up through the next H2 that ISN'T one of the known loop headers — i.e.
   // through the end of First Action if present, otherwise through end of the
   // last known block.
-  let removalStart = content.indexOf(AUTONOMOUS_LOOP_HEADER);
+  const removalStart = content.indexOf(AUTONOMOUS_LOOP_HEADER);
   let removalEnd = removalStart;
   // Find the last loop-related header we recognize, then go to the next H2
   // beyond it (or end of file).
-  const loopHeaders = [
-    AUTONOMOUS_LOOP_HEADER,
-    FIRST_ACTION_HEADER
-  ];
+  const loopHeaders = [AUTONOMOUS_LOOP_HEADER, FIRST_ACTION_HEADER];
   for (const header of loopHeaders) {
     const idx = content.indexOf(header);
     if (idx !== -1 && idx >= removalEnd) {
@@ -181,7 +179,7 @@ export async function migrateAdhocInstall(repoPath) {
   }
 
   // Strip trailing horizontal rule that often immediately precedes the next H2.
-  let before = content.slice(0, removalStart).trimEnd();
+  const before = content.slice(0, removalStart).trimEnd();
   let after = content.slice(removalEnd).trimStart();
   // Drop a leading "---" + blank line from `after` if present — it was the
   // separator that lived between the ad-hoc blocks and the next section.

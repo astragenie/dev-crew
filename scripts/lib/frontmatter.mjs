@@ -15,10 +15,7 @@ const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n*/;
 
 function stripQuotes(value) {
   const v = value.trim();
-  if (
-    (v.startsWith('"') && v.endsWith('"')) ||
-    (v.startsWith("'") && v.endsWith("'"))
-  ) {
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
     return v.slice(1, -1);
   }
   return v;
@@ -108,7 +105,7 @@ function serializeScalar(value) {
   const s = String(value);
   if (s === "") return '""';
   // Quote when the value contains characters that confuse the parser
-  if (/[:#\[\]{}'",]/.test(s) || /^\s/.test(s) || /\s$/.test(s)) {
+  if (/[:#[\]{}'",]/.test(s) || /^\s/.test(s) || /\s$/.test(s)) {
     return `"${s.replace(/"/g, '\\"')}"`;
   }
   return s;

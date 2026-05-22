@@ -11,8 +11,17 @@ const execFile = promisify(_execFile);
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
-async function ensureDir(p) { await fs.mkdir(p, { recursive: true }); }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
 
 // Walks slicesRoot recursively, returns the max numeric slice id found.
 async function maxSliceIdUnder(dir) {
@@ -71,7 +80,9 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
     "",
     "## Objective",
     "",
-    featureDescriptionLine ? featureDescriptionLine.trim() : "(restate the user-visible outcome of the parent feature)",
+    featureDescriptionLine
+      ? featureDescriptionLine.trim()
+      : "(restate the user-visible outcome of the parent feature)",
     "",
     "## In scope",
     "",
@@ -113,14 +124,14 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
 // Returns { slice: {id, path}, feature: {id, path, fromState, toState} }.
 export async function sliceFromFeature(repoPath, featureId, { config = null } = {}) {
   if (!featureId) throw new Error("sliceFromFeature requires a featureId.");
-  const resolved = config || await resolveConfig(repoPath);
+  const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
 
   const entry = await findFeatureById(repoPath, featureId);
   if (!entry) throw new Error(`Feature not found: ${featureId}`);
 
   // Move feature to in-progress if not already.
-  let movedFromState = entry.state;
+  const movedFromState = entry.state;
   let featureFilePath = entry.filePath;
   if (entry.state !== "in-progress") {
     const result = await moveFeature(entry.filePath, "in-progress");
@@ -184,7 +195,7 @@ export async function sliceFromFeature(repoPath, featureId, { config = null } = 
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
-  const resolved = config || await resolveConfig(repoPath);
+  const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
 
   // Locate slice file recursively
@@ -238,7 +249,11 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   let handoff = null;
   try {
     handoff = await writeCrewHandoff(repoPath, {
-      sliceId, slicePath: targetSlicePath, featureId, featureResult, specChanges
+      sliceId,
+      slicePath: targetSlicePath,
+      featureId,
+      featureResult,
+      specChanges
     });
   } catch (err) {
     handoff = { error: err.message };
@@ -251,7 +266,11 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
   let synthesis = null;
   try {
     synthesis = await writeCrewFinalSynthesis(repoPath, {
-      sliceId, slicePath: targetSlicePath, featureId, featureResult, specChanges
+      sliceId,
+      slicePath: targetSlicePath,
+      featureId,
+      featureResult,
+      specChanges
     });
   } catch (err) {
     synthesis = { error: err.message };
@@ -312,10 +331,16 @@ async function tryWriteCostReport(repoPath, sliceId) {
   }
 }
 
-async function writeCrewFinalSynthesis(repoPath, { sliceId, slicePath, featureId, featureResult, specChanges }) {
+async function writeCrewFinalSynthesis(
+  repoPath,
+  { sliceId, slicePath, featureId, featureResult, specChanges }
+) {
   const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
   await ensureDir(runsDir);
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
   const filename = `${stamp}-${sliceId.toLowerCase()}-final-synthesis.md`;
   const target = path.join(runsDir, filename);
 
@@ -374,16 +399,24 @@ async function writeCrewFinalSynthesis(repoPath, { sliceId, slicePath, featureId
       : "- Grade missing — synthesis is incomplete",
     `- Slice handoff: \`.claude/artifacts/crew/handoffs/<timestamp>-${sliceId.toLowerCase()}-complete.md\``,
     ""
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   const { serializeFrontmatter } = await import("./frontmatter.mjs");
   await fs.writeFile(target, serializeFrontmatter(fm, body));
   return { synthesisPath: target, hasGrade: Boolean(grade) };
 }
 
-async function writeCrewHandoff(repoPath, { sliceId, slicePath, featureId, featureResult, specChanges }) {
+async function writeCrewHandoff(
+  repoPath,
+  { sliceId, slicePath, featureId, featureResult, specChanges }
+) {
   const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
   await ensureDir(handoffDir);
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
   const filename = `${stamp}-${sliceId.toLowerCase()}-complete.md`;
   const target = path.join(handoffDir, filename);
   const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
@@ -444,7 +477,9 @@ async function writeCrewHandoff(repoPath, { sliceId, slicePath, featureId, featu
     "",
     "After grade-write, lead picks next slice + opens new builder handoff.",
     ""
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   const { serializeFrontmatter } = await import("./frontmatter.mjs");
   await fs.writeFile(target, serializeFrontmatter(fm, body));
   return { handoffPath: target };
@@ -458,10 +493,17 @@ async function locateSliceFile(slicesRoot, sliceId) {
   while (stack.length > 0) {
     const dir = stack.pop();
     let entries;
-    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
     for (const e of entries) {
       const full = path.join(dir, e.name);
-      if (e.isDirectory()) { stack.push(full); continue; }
+      if (e.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
       if (re.test(e.name)) return full;
     }
   }

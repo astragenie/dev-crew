@@ -13,14 +13,25 @@ export function decisionsRoot(repoPath, config = null) {
   return path.join(repoPath, config?.decisions?.root || "docs/decisions");
 }
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
-async function ensureDir(p) { await fs.mkdir(p, { recursive: true }); }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
 
 async function readTemplate(rel) {
   return fs.readFile(path.join(templateDir, rel), "utf8");
 }
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export async function listDecisions(repoPath, { config = null, status = null } = {}) {
   const root = decisionsRoot(repoPath, config);
@@ -61,7 +72,10 @@ export async function nextDecisionId(repoPath, config = null) {
   return `DEC-${String(max + 1).padStart(3, "0")}`;
 }
 
-export async function writeDecisionFile(repoPath, { id, title, sliceId, rationale = "", consequences = "", config = null }) {
+export async function writeDecisionFile(
+  repoPath,
+  { id, title, sliceId, rationale = "", consequences = "", config = null }
+) {
   if (!id || !title || !sliceId) {
     throw new Error("writeDecisionFile requires id, title, sliceId");
   }
@@ -85,7 +99,11 @@ export async function writeDecisionFile(repoPath, { id, title, sliceId, rational
     // Drop user-supplied consequences into the Positive bucket (agent can re-sort later)
     content = content.replace(
       /(### Positive\n\n)(- bullet\n)/,
-      `$1${consequences.split("\n").map((l) => (l.trim().startsWith("-") ? l : `- ${l.trim()}`)).filter((l) => l !== "- ").join("\n")}\n`
+      `$1${consequences
+        .split("\n")
+        .map((l) => (l.trim().startsWith("-") ? l : `- ${l.trim()}`))
+        .filter((l) => l !== "- ")
+        .join("\n")}\n`
     );
   }
   const filePath = path.join(root, `${id}.md`);

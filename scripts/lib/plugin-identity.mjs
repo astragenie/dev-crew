@@ -91,7 +91,12 @@ export const MIN_CREW_VERSION = "0.1.12";
 // Returns null if the manifest is missing or unreadable.
 export async function getCrewVersion(crewCliPath) {
   if (!crewCliPath) return null;
-  const manifestPath = path.resolve(path.dirname(crewCliPath), "..", ".claude-plugin", "plugin.json");
+  const manifestPath = path.resolve(
+    path.dirname(crewCliPath),
+    "..",
+    ".claude-plugin",
+    "plugin.json"
+  );
   try {
     const manifest = await readJson(manifestPath);
     return manifest?.version || null;
@@ -104,8 +109,12 @@ export async function getCrewVersion(crewCliPath) {
 // Sufficient for the plugin's pre-1.0 version line; does not parse pre-release
 // tags. If you ever ship `0.2.0-rc.1`, expand this.
 export function compareSemver(a, b) {
-  const pa = String(a).split(".").map((n) => parseInt(n, 10) || 0);
-  const pb = String(b).split(".").map((n) => parseInt(n, 10) || 0);
+  const pa = String(a)
+    .split(".")
+    .map((n) => parseInt(n, 10) || 0);
+  const pb = String(b)
+    .split(".")
+    .map((n) => parseInt(n, 10) || 0);
   for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
     const x = pa[i] || 0;
     const y = pb[i] || 0;

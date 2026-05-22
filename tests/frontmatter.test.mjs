@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { parseFrontmatter, serializeFrontmatter, mergeFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import {
+  parseFrontmatter,
+  serializeFrontmatter,
+  mergeFrontmatter
+} from "../scripts/lib/frontmatter.mjs";
 
 test("parseFrontmatter handles flat key:value", () => {
   const input = "---\nid: FEAT-001\nstatus: pending\npriority: P1\n---\n\nbody";
@@ -19,7 +23,8 @@ test("parseFrontmatter handles inline arrays", () => {
 });
 
 test("parseFrontmatter handles block arrays", () => {
-  const input = "---\nderived_features:\n  - FEAT-007\n  - FEAT-008\n  - FEAT-009\nstatus: decomposed\n---\nbody";
+  const input =
+    "---\nderived_features:\n  - FEAT-007\n  - FEAT-008\n  - FEAT-009\nstatus: decomposed\n---\nbody";
   const { frontmatter } = parseFrontmatter(input);
   assert.deepEqual(frontmatter.derived_features, ["FEAT-007", "FEAT-008", "FEAT-009"]);
   assert.equal(frontmatter.status, "decomposed");
@@ -48,7 +53,8 @@ test("parseFrontmatter returns empty when no frontmatter present", () => {
 });
 
 test("serializeFrontmatter round-trips a basic doc", () => {
-  const input = "---\nid: FEAT-001\nstatus: pending\nderived_features: [FEAT-007, FEAT-008]\n---\nbody text";
+  const input =
+    "---\nid: FEAT-001\nstatus: pending\nderived_features: [FEAT-007, FEAT-008]\n---\nbody text";
   const { frontmatter, body } = parseFrontmatter(input);
   const out = serializeFrontmatter(frontmatter, body);
   const reparse = parseFrontmatter(out);

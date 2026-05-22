@@ -71,6 +71,8 @@ function renderDigest(items) {
     }
   }
   lines.push("---");
-  lines.push("_Researcher: incorporate the above into acceptance criteria + risks for the new slice. Avoid repeating known mistakes._");
+  lines.push(
+    "_Researcher: incorporate the above into acceptance criteria + risks for the new slice. Avoid repeating known mistakes._"
+  );
   return lines.join("\n");
 }

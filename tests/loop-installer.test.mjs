@@ -6,8 +6,18 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
-import { installLoop, reportStatus, MARKER_START, MARKER_END } from "../scripts/lib/loop-installer.mjs";
-import { findCrewCli, getCrewVersion, compareSemver, MIN_CREW_VERSION } from "../scripts/lib/plugin-identity.mjs";
+import {
+  installLoop,
+  reportStatus,
+  MARKER_START,
+  MARKER_END
+} from "../scripts/lib/loop-installer.mjs";
+import {
+  findCrewCli,
+  getCrewVersion,
+  compareSemver,
+  MIN_CREW_VERSION
+} from "../scripts/lib/plugin-identity.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -37,14 +47,19 @@ test("installLoop errors when target is not a git repo", async () => {
 
 test("installLoop errors when target dir does not exist", async () => {
   await assert.rejects(
-    () => installLoop(path.join(os.tmpdir(), `al-nonexistent-${Date.now()}`), { migrateAdhoc: false }),
+    () =>
+      installLoop(path.join(os.tmpdir(), `al-nonexistent-${Date.now()}`), { migrateAdhoc: false }),
     /does not exist/
   );
 });
 
 test(
   "installLoop writes marker block, loop-control files, backlog scaffold, config",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-install-happy-");
     const result = await installLoop(repo, { migrateAdhoc: false });
@@ -55,9 +70,16 @@ test(
     const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
     assert.ok(claudeMd.includes(MARKER_START));
     assert.ok(claudeMd.includes(MARKER_END));
-    assert.ok(claudeMd.includes("Autonomous Loop Instruction — HARD RULE"));
-    assert.ok(claudeMd.includes("Cross-Slice Continuation — HARD RULE"));
-    assert.ok(claudeMd.includes("Phase Completion Gate — HARD RULE"));
+    // HARD RULES summary lives in CLAUDE.md; full text moved out-of-band to
+    // .claude/autonomous-loop/rules.md so the per-session prompt stays small.
+    assert.ok(claudeMd.includes("Autonomous Loop — HARD RULES (summary)"));
+    assert.match(claudeMd, /\.claude\/autonomous-loop\/rules\.md/);
+
+    const rulesPath = path.join(repo, ".claude", "autonomous-loop", "rules.md");
+    const rulesMd = await fs.readFile(rulesPath, "utf8");
+    assert.ok(rulesMd.includes("Autonomous Loop Instruction — HARD RULE"));
+    assert.ok(rulesMd.includes("Cross-Slice Continuation — HARD RULE"));
+    assert.ok(rulesMd.includes("Phase Completion Gate — HARD RULE"));
 
     const loopRoot = path.join(repo, "docs", "ai-loop");
     for (const rel of [
@@ -72,19 +94,28 @@ test(
       "slices/pending/.gitkeep"
     ]) {
       assert.ok(
-        await fs.access(path.join(loopRoot, rel)).then(() => true).catch(() => false),
+        await fs
+          .access(path.join(loopRoot, rel))
+          .then(() => true)
+          .catch(() => false),
         `expected file under ai-loop: ${rel}`
       );
     }
 
-    const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "autonomous-loop.json"), "utf8"));
+    const cfg = JSON.parse(
+      await fs.readFile(path.join(repo, ".claude", "autonomous-loop.json"), "utf8")
+    );
     assert.equal(cfg.preset, "dotnet-aspire-python");
   }
 );
 
 test(
   "installLoop is idempotent: re-running does not duplicate marker block",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-install-idempotent-");
     await installLoop(repo, { migrateAdhoc: false });
@@ -99,12 +130,18 @@ test(
 
 test(
   "installLoop collapses stacked orphan start markers (regression: < 0.1.12 stacking bug)",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-install-orphans-");
     // Simulate a CLAUDE.md that was corrupted by repeated installs from an
     // earlier plugin version: many start markers stacked, no end marker.
-    const orphans = Array(7).fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`).join("\n");
+    const orphans = Array(7)
+      .fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`)
+      .join("\n");
     await fs.writeFile(
       path.join(repo, "CLAUDE.md"),
       `# CLAUDE.md\n\n## Preserve me\n\nUser content above the bad block.\n\n${orphans}`
@@ -118,16 +155,25 @@ test(
     assert.equal(startCount, 1, "stacked starts must collapse to one");
     assert.equal(endCount, 1, "exactly one end marker after install");
     assert.ok(claudeMd.includes("## Preserve me"), "user content above the bad block must survive");
-    assert.ok(claudeMd.includes("User content above the bad block."), "user prose above must survive");
+    assert.ok(
+      claudeMd.includes("User content above the bad block."),
+      "user prose above must survive"
+    );
   }
 );
 
 test(
   "installLoop is convergent: second run after orphan-collapse is a no-op",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-install-convergence-");
-    const orphans = Array(5).fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`).join("\n");
+    const orphans = Array(5)
+      .fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`)
+      .join("\n");
     await fs.writeFile(path.join(repo, "CLAUDE.md"), `# CLAUDE.md\n\n${orphans}`);
 
     await installLoop(repo, { migrateAdhoc: false });
@@ -135,13 +181,21 @@ test(
     await installLoop(repo, { migrateAdhoc: false });
     const afterSecond = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
 
-    assert.equal(afterFirst, afterSecond, "second install after collapse must produce identical bytes");
+    assert.equal(
+      afterFirst,
+      afterSecond,
+      "second install after collapse must produce identical bytes"
+    );
   }
 );
 
 test(
   "installLoop preserves user content outside the marker block",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-install-preserve-");
     await fs.writeFile(
@@ -158,7 +212,11 @@ test(
 
 test(
   "installLoop migrates an ad-hoc HARD RULE block when migrateAdhoc is true",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-install-migrate-");
     await fs.writeFile(
@@ -171,14 +229,23 @@ test(
     assert.ok(!claudeMd.includes("**Run autonomously...**"), "ad-hoc block text should be removed");
     assert.ok(claudeMd.includes("## Other content"), "unrelated content must remain");
 
-    const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "autonomous-loop.json"), "utf8"));
-    assert.ok(cfg.stack.build.length > 0 || cfg.stack.test.length > 0, "extracted commands should land in the config");
+    const cfg = JSON.parse(
+      await fs.readFile(path.join(repo, ".claude", "autonomous-loop.json"), "utf8")
+    );
+    assert.ok(
+      cfg.stack.build.length > 0 || cfg.stack.test.length > 0,
+      "extracted commands should land in the config"
+    );
   }
 );
 
 test(
   "reportStatus reflects install state",
-  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
+  {
+    skip: crewAvailable
+      ? false
+      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+  },
   async () => {
     const repo = await initGitRepo("al-status-");
     await installLoop(repo, { migrateAdhoc: false });

@@ -4,7 +4,13 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { addFeature, moveFeature, ensureBacklogScaffold, findFeatureById, updateFeatureFrontmatter } from "../scripts/lib/backlog-writer.mjs";
+import {
+  addFeature,
+  moveFeature,
+  ensureBacklogScaffold,
+  findFeatureById,
+  updateFeatureFrontmatter
+} from "../scripts/lib/backlog-writer.mjs";
 import { listBacklog, filterBacklog, nextFeatureId } from "../scripts/lib/backlog-parser.mjs";
 import { triagePending, triageEntry } from "../scripts/lib/backlog-triage.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";

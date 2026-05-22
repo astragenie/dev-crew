@@ -5,7 +5,14 @@ import path from "node:path";
 // scores per Wiggin Loop dimension. Heuristic-only; agent overrides during
 // grade edit. Best-effort — missing artifacts mean no inference, no error.
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const ARTIFACT_DIRS = {
   reviews: ".claude/artifacts/crew/reviews",
@@ -18,32 +25,52 @@ const ARTIFACT_DIRS = {
 // to the dimension's contribution list. Final score = average of values.
 const INFERENCE_RULES = {
   test_confidence: [
-    { source: "validations", re: /(?:^|[\s*])(?:verdict|status|decision)[*\s]*[:=][*\s]*PASS\b/i, value: 0.85 },
-    { source: "validations", re: /(?:^|[\s*])(?:verdict|status|decision)[*\s]*[:=][*\s]*FAIL\b/i, value: 0.30 },
-    { source: "reviews", re: /\b\d+\s+tests?\b/i, value: 0.80 }
+    {
+      source: "validations",
+      re: /(?:^|[\s*])(?:verdict|status|decision)[*\s]*[:=][*\s]*PASS\b/i,
+      value: 0.85
+    },
+    {
+      source: "validations",
+      re: /(?:^|[\s*])(?:verdict|status|decision)[*\s]*[:=][*\s]*FAIL\b/i,
+      value: 0.3
+    },
+    { source: "reviews", re: /\b\d+\s+tests?\b/i, value: 0.8 }
   ],
   architecture_quality: [
-    { source: "reviews", re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*PASS\b/i, value: 0.85 },
-    { source: "reviews", re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*PASS with (?:minor|small)/i, value: 0.80 },
-    { source: "reviews", re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*FAIL\b/i, value: 0.40 }
+    {
+      source: "reviews",
+      re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*PASS\b/i,
+      value: 0.85
+    },
+    {
+      source: "reviews",
+      re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*PASS with (?:minor|small)/i,
+      value: 0.8
+    },
+    { source: "reviews", re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*FAIL\b/i, value: 0.4 }
   ],
   observability: [
-    { source: "reviews", re: /\b(OTel|trace|span|metric|log[s]? added|telemetry)\b/i, value: 0.80 },
-    { source: "validations", re: /\b(OTel|trace|span|metric|telemetry)\b/i, value: 0.80 }
+    { source: "reviews", re: /\b(OTel|trace|span|metric|log[s]? added|telemetry)\b/i, value: 0.8 },
+    { source: "validations", re: /\b(OTel|trace|span|metric|telemetry)\b/i, value: 0.8 }
   ],
   reliability: [
-    { source: "reviews", re: /\b(retry|circuit breaker|fallback|graceful|idempoten[ct])\b/i, value: 0.80 }
+    {
+      source: "reviews",
+      re: /\b(retry|circuit breaker|fallback|graceful|idempoten[ct])\b/i,
+      value: 0.8
+    }
   ],
-  security: [
-    { source: "reviews", re: /\b(auth|scope|audit|secret|key vault)\b/i, value: 0.80 }
-  ],
+  security: [{ source: "reviews", re: /\b(auth|scope|audit|secret|key vault)\b/i, value: 0.8 }],
   production_readiness: [
-    { source: "deployments", re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*PASS\b/i, value: 0.85 },
+    {
+      source: "deployments",
+      re: /(?:^|[\s*])(?:verdict|decision)[*\s]*[:=][*\s]*PASS\b/i,
+      value: 0.85
+    },
     { source: "deployments", re: /.+/s, value: 0.75 }
   ],
-  product_completeness: [
-    { source: "validations", re: /\bacceptance criteria.*PASS/i, value: 0.85 }
-  ]
+  product_completeness: [{ source: "validations", re: /\bacceptance criteria.*PASS/i, value: 0.85 }]
 };
 
 // Loads artifacts via frontmatter linkage (slice frontmatter arrays) when
@@ -59,7 +86,9 @@ async function readLinkedOrScrapedArtifacts(repoPath, dirRelative, sliceId, kind
       try {
         const content = await fs.readFile(full, "utf8");
         out.push({ path: full, content, filename: path.basename(full) });
-      } catch { /* skip missing */ }
+      } catch {
+        /* skip missing */
+      }
     }
     return out;
   }
@@ -92,9 +121,24 @@ async function readArtifactsMentioningSlice(repoPath, dirRelative, sliceId) {
 export async function inferScoresForSlice(repoPath, sliceId) {
   if (!sliceId) return { scores: {}, sources: {} };
   const sources = {
-    reviews: await readLinkedOrScrapedArtifacts(repoPath, ARTIFACT_DIRS.reviews, sliceId, "reviews"),
-    validations: await readLinkedOrScrapedArtifacts(repoPath, ARTIFACT_DIRS.validations, sliceId, "validations"),
-    deployments: await readLinkedOrScrapedArtifacts(repoPath, ARTIFACT_DIRS.deployments, sliceId, "deployments")
+    reviews: await readLinkedOrScrapedArtifacts(
+      repoPath,
+      ARTIFACT_DIRS.reviews,
+      sliceId,
+      "reviews"
+    ),
+    validations: await readLinkedOrScrapedArtifacts(
+      repoPath,
+      ARTIFACT_DIRS.validations,
+      sliceId,
+      "validations"
+    ),
+    deployments: await readLinkedOrScrapedArtifacts(
+      repoPath,
+      ARTIFACT_DIRS.deployments,
+      sliceId,
+      "deployments"
+    )
   };
 
   const contributions = {};

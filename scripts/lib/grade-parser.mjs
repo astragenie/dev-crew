@@ -16,7 +16,12 @@ export const SCORE_DIMENSIONS = [
 ];
 
 async function pathExists(p) {
-  try { await fs.access(p); return true; } catch { return false; }
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function gradesRoot(repoPath, config = null) {
@@ -45,7 +50,10 @@ export function parseScoresFromBody(body) {
   let inScores = false;
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^##\s+Scores\b/i.test(trimmed)) { inScores = true; continue; }
+    if (/^##\s+Scores\b/i.test(trimmed)) {
+      inScores = true;
+      continue;
+    }
     if (inScores && /^##\s+/.test(trimmed)) break;
     if (!inScores) continue;
     const m = trimmed.match(/^-\s+([a-z_]+)\s*:\s*([0-9]*\.?[0-9]+)/i);
@@ -97,7 +105,9 @@ export function parseDecisionsFromBody(body) {
     const text = buffer.join("\n");
     const rationaleMatch = text.match(/\*\*Rationale\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i);
     current.rationale = rationaleMatch ? rationaleMatch[1].trim() : "";
-    const consequencesMatch = text.match(/\*\*Consequences\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i);
+    const consequencesMatch = text.match(
+      /\*\*Consequences\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i
+    );
     current.consequences = consequencesMatch ? consequencesMatch[1].trim() : "";
     decisions.push(current);
     current = null;
@@ -106,7 +116,10 @@ export function parseDecisionsFromBody(body) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^##\s+Decisions\b/i.test(trimmed)) { inDecisions = true; continue; }
+    if (/^##\s+Decisions\b/i.test(trimmed)) {
+      inDecisions = true;
+      continue;
+    }
     if (inDecisions && /^##\s+/.test(trimmed)) {
       flush();
       break;
@@ -146,7 +159,9 @@ export async function listGrades(repoPath, options = {}) {
     const g = await readGrade(path.join(root, file));
     grades.push(g);
   }
-  return grades.sort((a, b) => (a.frontmatter.slice || "").localeCompare(b.frontmatter.slice || ""));
+  return grades.sort((a, b) =>
+    (a.frontmatter.slice || "").localeCompare(b.frontmatter.slice || "")
+  );
 }
 
 export async function findGradeForSlice(repoPath, sliceId, config = null) {

@@ -12,7 +12,14 @@ import { resolveConfig } from "./config-resolver.mjs";
 
 const SUPPORTED_KINDS = ["reviews", "validations", "deployments"];
 
-async function pathExists(p) { try { await fs.access(p); return true; } catch { return false; } }
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function relativize(repoPath, target) {
   const rel = path.relative(repoPath, target).replace(/\\/g, "/");
@@ -27,28 +34,40 @@ async function locateSliceFile(slicesRoot, sliceId) {
   while (stack.length > 0) {
     const dir = stack.pop();
     let entries;
-    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
     for (const e of entries) {
       const full = path.join(dir, e.name);
-      if (e.isDirectory()) { stack.push(full); continue; }
+      if (e.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
       if (re.test(e.name)) return full;
     }
   }
   return null;
 }
 
-export async function linkArtifactToSlice(repoPath, { sliceId, artifactPath, kind, config = null } = {}) {
+export async function linkArtifactToSlice(
+  repoPath,
+  { sliceId, artifactPath, kind, config = null } = {}
+) {
   if (!sliceId) throw new Error("linkArtifactToSlice requires sliceId");
   if (!artifactPath) throw new Error("linkArtifactToSlice requires artifactPath");
   if (!SUPPORTED_KINDS.includes(kind)) {
     throw new Error(`kind must be one of: ${SUPPORTED_KINDS.join(", ")}`);
   }
-  const resolved = config || await resolveConfig(repoPath);
+  const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
   if (!sliceFile) throw new Error(`Slice not found: ${sliceId}`);
 
-  const artifactAbs = path.isAbsolute(artifactPath) ? artifactPath : path.resolve(repoPath, artifactPath);
+  const artifactAbs = path.isAbsolute(artifactPath)
+    ? artifactPath
+    : path.resolve(repoPath, artifactPath);
   if (!(await pathExists(artifactAbs))) {
     throw new Error(`Artifact does not exist: ${artifactPath}`);
   }
@@ -70,7 +89,7 @@ export async function linkArtifactToSlice(repoPath, { sliceId, artifactPath, kin
 // Used by score-inference to walk frontmatter instead of scraping body text.
 export async function getLinkedArtifacts(repoPath, sliceId, kind, config = null) {
   if (!SUPPORTED_KINDS.includes(kind)) return [];
-  const resolved = config || await resolveConfig(repoPath);
+  const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
   if (!sliceFile) return [];

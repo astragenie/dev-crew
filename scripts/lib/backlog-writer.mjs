@@ -34,7 +34,18 @@ export async function ensureBacklogScaffold(repoPath, config) {
   return root;
 }
 
-export async function addFeature(repoPath, { title, body = "", priority = null, category = null, target_release = null, derived_from = null, config = null } = {}) {
+export async function addFeature(
+  repoPath,
+  {
+    title,
+    body = "",
+    priority = null,
+    category = null,
+    target_release = null,
+    derived_from = null,
+    config = null
+  } = {}
+) {
   if (!title || typeof title !== "string") {
     throw new Error("addFeature requires a non-empty title.");
   }
@@ -53,19 +64,21 @@ export async function addFeature(repoPath, { title, body = "", priority = null, 
     slices: [],
     derived_from: derived_from || null
   };
-  const docBody = body || [
-    `# ${id}: ${title}`,
-    "",
-    "## Description",
-    "",
-    "(describe the feature in PM-friendly language)",
-    "",
-    "## Acceptance hints",
-    "",
-    "- bullet 1",
-    "- bullet 2",
-    ""
-  ].join("\n");
+  const docBody =
+    body ||
+    [
+      `# ${id}: ${title}`,
+      "",
+      "## Description",
+      "",
+      "(describe the feature in PM-friendly language)",
+      "",
+      "## Acceptance hints",
+      "",
+      "- bullet 1",
+      "- bullet 2",
+      ""
+    ].join("\n");
   const fullBody = docBody.startsWith("#") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
   const contents = serializeFrontmatter(frontmatter, fullBody);
   const filePath = path.join(root, "pending", `${id}.md`);

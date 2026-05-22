@@ -17,7 +17,10 @@ test("parseCommandLine splits a simple invocation", () => {
 
 test("parseCommandLine respects double quotes for paths with spaces", () => {
   const parsed = parseCommandLine('dotnet test "C:/work/My Solution.slnx" -c Release');
-  assert.deepEqual(parsed, { cmd: "dotnet", args: ["test", "C:/work/My Solution.slnx", "-c", "Release"] });
+  assert.deepEqual(parsed, {
+    cmd: "dotnet",
+    args: ["test", "C:/work/My Solution.slnx", "-c", "Release"]
+  });
 });
 
 test("parseCommandLine returns null for empty input", () => {
@@ -35,7 +38,9 @@ test("migrateAdhocInstall is a no-op when CLAUDE.md has no ad-hoc block", async 
 
 test("migrateAdhocInstall extracts phase-gate commands + strips ad-hoc block", async () => {
   const repo = await tmpRepo("al-migrate-extract-");
-  await fs.writeFile(path.join(repo, "CLAUDE.md"), `# CLAUDE.md
+  await fs.writeFile(
+    path.join(repo, "CLAUDE.md"),
+    `# CLAUDE.md
 
 Some intro content.
 
@@ -64,17 +69,36 @@ Some intro content.
 ## Other content that should remain
 
 This section must survive migration.
-`);
+`
+  );
 
   const result = await migrateAdhocInstall(repo);
   assert.equal(result.claudeMdRewritten, true);
   assert.ok(result.extractedConfig, "should have extracted commands into a config");
-  assert.ok(result.extractedConfig.stack.build.some((c) => c.cmd === "dotnet" && c.args[0] === "build"));
-  assert.ok(result.extractedConfig.stack.test.some((c) => c.cmd === "pytest" || (c.cmd === "dotnet" && c.args[0] === "test")));
+  assert.ok(
+    result.extractedConfig.stack.build.some((c) => c.cmd === "dotnet" && c.args[0] === "build")
+  );
+  assert.ok(
+    result.extractedConfig.stack.test.some(
+      (c) => c.cmd === "pytest" || (c.cmd === "dotnet" && c.args[0] === "test")
+    )
+  );
 
   const newContent = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
-  assert.ok(!newContent.includes("Autonomous Loop Instruction — HARD RULE"), "ad-hoc Autonomous Loop block should be removed");
-  assert.ok(!newContent.includes("First Action — Starting the Loop"), "ad-hoc First Action block should be removed");
-  assert.ok(newContent.includes("## Other content that should remain"), "unrelated content must be preserved");
-  assert.ok(newContent.includes("Some intro content."), "content before the ad-hoc block must be preserved");
+  assert.ok(
+    !newContent.includes("Autonomous Loop Instruction — HARD RULE"),
+    "ad-hoc Autonomous Loop block should be removed"
+  );
+  assert.ok(
+    !newContent.includes("First Action — Starting the Loop"),
+    "ad-hoc First Action block should be removed"
+  );
+  assert.ok(
+    newContent.includes("## Other content that should remain"),
+    "unrelated content must be preserved"
+  );
+  assert.ok(
+    newContent.includes("Some intro content."),
+    "content before the ad-hoc block must be preserved"
+  );
 });
