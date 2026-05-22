@@ -83,6 +83,37 @@ export async function findCrewCli() {
   return null;
 }
 
+// Minimum compatible crew plugin version. Bump when this plugin starts to
+// depend on a crew capability that older versions don't have.
+export const MIN_CREW_VERSION = "0.1.12";
+
+// Read the crew plugin's version from the plugin.json next to a crew CLI path.
+// Returns null if the manifest is missing or unreadable.
+export async function getCrewVersion(crewCliPath) {
+  if (!crewCliPath) return null;
+  const manifestPath = path.resolve(path.dirname(crewCliPath), "..", ".claude-plugin", "plugin.json");
+  try {
+    const manifest = await readJson(manifestPath);
+    return manifest?.version || null;
+  } catch {
+    return null;
+  }
+}
+
+// Naive semver compare: returns -1/0/1 for a vs b. Treats missing parts as 0.
+// Sufficient for the plugin's pre-1.0 version line; does not parse pre-release
+// tags. If you ever ship `0.2.0-rc.1`, expand this.
+export function compareSemver(a, b) {
+  const pa = String(a).split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
 // Test-only helper.
 export function _resetCacheForTests() {
   cached = null;

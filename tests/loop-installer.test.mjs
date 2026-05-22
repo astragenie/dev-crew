@@ -7,7 +7,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 import { installLoop, reportStatus, MARKER_START, MARKER_END } from "../scripts/lib/loop-installer.mjs";
-import { findCrewCli } from "../scripts/lib/plugin-identity.mjs";
+import { findCrewCli, getCrewVersion, compareSemver, MIN_CREW_VERSION } from "../scripts/lib/plugin-identity.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -24,7 +24,11 @@ async function initGitRepo(prefix) {
   return repo;
 }
 
-const crewAvailable = await findCrewCli();
+const crewCliPath = await findCrewCli();
+const installedCrewVersion = await getCrewVersion(crewCliPath);
+const crewAvailable = Boolean(
+  crewCliPath && installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) >= 0
+);
 
 test("installLoop errors when target is not a git repo", async () => {
   const repo = await tmpRepo("al-install-no-git-");
@@ -40,7 +44,7 @@ test("installLoop errors when target dir does not exist", async () => {
 
 test(
   "installLoop writes marker block, loop-control files, backlog scaffold, config",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-install-happy-");
     const result = await installLoop(repo, { migrateAdhoc: false });
@@ -80,7 +84,7 @@ test(
 
 test(
   "installLoop is idempotent: re-running does not duplicate marker block",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-install-idempotent-");
     await installLoop(repo, { migrateAdhoc: false });
@@ -95,7 +99,7 @@ test(
 
 test(
   "installLoop collapses stacked orphan start markers (regression: < 0.1.12 stacking bug)",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-install-orphans-");
     // Simulate a CLAUDE.md that was corrupted by repeated installs from an
@@ -120,7 +124,7 @@ test(
 
 test(
   "installLoop is convergent: second run after orphan-collapse is a no-op",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-install-convergence-");
     const orphans = Array(5).fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`).join("\n");
@@ -137,7 +141,7 @@ test(
 
 test(
   "installLoop preserves user content outside the marker block",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-install-preserve-");
     await fs.writeFile(
@@ -154,7 +158,7 @@ test(
 
 test(
   "installLoop migrates an ad-hoc HARD RULE block when migrateAdhoc is true",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-install-migrate-");
     await fs.writeFile(
@@ -174,7 +178,7 @@ test(
 
 test(
   "reportStatus reflects install state",
-  { skip: crewAvailable ? false : "crew CLI not installed in plugin cache" },
+  { skip: crewAvailable ? false : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})` },
   async () => {
     const repo = await initGitRepo("al-status-");
     await installLoop(repo, { migrateAdhoc: false });

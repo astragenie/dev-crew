@@ -4,9 +4,20 @@ A Claude Code plugin that ships the Wiggin Loop methodology as a reusable
 layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
 safe phase-gate runner.
 
-Depends on the [`crew`](https://github.com/alex-radaev/engineering-os) plugin
-for artifact writers — autonomous-loop emits Crew `validation-result` artifacts
-through `crew write-validation-result`.
+Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
+(>= v0.1.12) for artifact writers — autonomous-loop emits Crew
+`validation-result` artifacts through `crew write-validation-result`.
+
+## Install
+
+```
+/plugin marketplace add https://github.com/sergeymilashico/hero-crew
+/plugin install crew@crew-dev
+/plugin install autonomous-loop@crew-dev
+```
+
+`crew` must be installed first. Pinned release: `v0.1.12`. See
+[ADOPTION.md](ADOPTION.md) for new-repo onboarding.
 
 ## What it does
 

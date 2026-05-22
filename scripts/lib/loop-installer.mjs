@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveConfig, writeConfigIfMissing } from "./config-resolver.mjs";
-import { findCrewCli } from "./plugin-identity.mjs";
+import { findCrewCli, getCrewVersion, compareSemver, MIN_CREW_VERSION } from "./plugin-identity.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
@@ -314,6 +314,13 @@ export async function installLoop(repoPath, options = {}) {
     throw new Error(
       "Hard dependency missing: the `crew` plugin is not installed in the Claude Code plugin cache. " +
       "Install `crew` first (it lives in the crew-dev marketplace), then re-run /autonomous-loop:install."
+    );
+  }
+  const installedCrewVersion = await getCrewVersion(crewCli);
+  if (installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) < 0) {
+    throw new Error(
+      `Incompatible crew plugin: found v${installedCrewVersion}, need >= v${MIN_CREW_VERSION}. ` +
+      `Update crew (\`/plugin install crew@crew-dev\`) and retry.`
     );
   }
 
