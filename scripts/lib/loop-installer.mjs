@@ -125,6 +125,21 @@ async function updateClaudeMd(repoPath, tokens, writes) {
   }
 }
 
+// Write the full HARD RULES out to a sibling file so the CLAUDE.md marker
+// block can stay lean (~10 lines instead of ~35). Agents follow the
+// reference and read this file when entering an autonomous loop run.
+async function writeAutonomousLoopRules(repoPath, tokens, writes) {
+  const tpl = await readTemplate("autonomous-loop-rules.md");
+  const contents = renderTemplate(tpl, tokens);
+  const target = path.join(repoPath, ".claude", "autonomous-loop", "rules.md");
+  await ensureDir(path.dirname(target));
+  const existing = await fs.readFile(target, "utf8").catch(() => null);
+  if (existing !== contents) {
+    await fs.writeFile(target, contents);
+    writes.push(path.relative(repoPath, target));
+  }
+}
+
 // Always overwrite plugin-owned loop-control files so version upgrades land
 // cleanly. User customization belongs in .claude/autonomous-loop.json, not in
 // these files.
@@ -349,6 +364,7 @@ export async function installLoop(repoPath, options = {}) {
   const tokens = buildTokens(config);
 
   await updateClaudeMd(repoPath, tokens, writes);
+  await writeAutonomousLoopRules(repoPath, tokens, writes);
   await writeLoopControlFiles(repoPath, tokens, writes);
   await writeBacklogScaffold(repoPath, tokens, writes);
   await writeBacklogStateMachine(repoPath, writes);
