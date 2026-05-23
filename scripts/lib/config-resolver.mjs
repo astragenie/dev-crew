@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Loads a per-repo config from .claude/autonomous-loop.json and merges it on
+// Loads a per-repo config from .claude/loop.json and merges it on
 // top of a built-in preset. Returns the fully-resolved config that downstream
 // modules (loop-installer, phase-gate) consume.
 //
@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const presetDir = path.resolve(scriptDir, "..", "..", "presets");
 
-export const CONFIG_FILENAME = ".claude/autonomous-loop.json";
+export const CONFIG_FILENAME = ".claude/loop.json";
 
 export async function listPresets() {
   const entries = await fs.readdir(presetDir);

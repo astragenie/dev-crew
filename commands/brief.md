@@ -1,11 +1,11 @@
 ---
-description: Standalone autonomous-loop situational report — backlog counts, top priorities, scores, decisions, pattern alerts. Complements crew brief-me.
+description: Standalone loop situational report — backlog counts, top priorities, scores, decisions, pattern alerts. Complements crew brief-me.
 ---
 
 # Autonomous Loop Brief
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" brief --repo "$PWD"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" brief --repo "$PWD"
 ```
 
 Returns JSON with:
@@ -36,8 +36,8 @@ Each alert has `severity`, `category`, `message`, `suggested_action`.
 ## Relationship to crew brief-me
 
 - `/crew:brief-me` covers Crew artifacts (runs, reviews, validations, workflow state)
-- `/autonomous-loop:brief` covers backlog, specs, grades, decisions, alerts
+- `/loop:brief` covers backlog, specs, grades, decisions, alerts
 
 Run both at session start when picking up an in-flight repo. Crew tells you
-"what's the active workflow run"; autonomous-loop tells you "what's next in
+"what's the active workflow run"; loop tells you "what's next in
 the product pipeline + how are we doing".

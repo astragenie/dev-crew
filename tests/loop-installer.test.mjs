@@ -64,18 +64,18 @@ test(
     const repo = await initGitRepo("al-install-happy-");
     const result = await installLoop(repo, { migrateAdhoc: false });
 
-    assert.equal(result.mode, "install-autonomous-loop");
+    assert.equal(result.mode, "install-loop");
     assert.equal(result.preset, "dotnet-aspire-python");
 
     const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
     assert.ok(claudeMd.includes(MARKER_START));
     assert.ok(claudeMd.includes(MARKER_END));
     // HARD RULES summary lives in CLAUDE.md; full text moved out-of-band to
-    // .claude/autonomous-loop/rules.md so the per-session prompt stays small.
+    // .claude/loop/rules.md so the per-session prompt stays small.
     assert.ok(claudeMd.includes("Autonomous Loop — HARD RULES (summary)"));
-    assert.match(claudeMd, /\.claude\/autonomous-loop\/rules\.md/);
+    assert.match(claudeMd, /\.claude\/loop\/rules\.md/);
 
-    const rulesPath = path.join(repo, ".claude", "autonomous-loop", "rules.md");
+    const rulesPath = path.join(repo, ".claude", "loop", "rules.md");
     const rulesMd = await fs.readFile(rulesPath, "utf8");
     assert.ok(rulesMd.includes("Autonomous Loop Instruction — HARD RULE"));
     assert.ok(rulesMd.includes("Cross-Slice Continuation — HARD RULE"));
@@ -102,9 +102,7 @@ test(
       );
     }
 
-    const cfg = JSON.parse(
-      await fs.readFile(path.join(repo, ".claude", "autonomous-loop.json"), "utf8")
-    );
+    const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
     assert.equal(cfg.preset, "dotnet-aspire-python");
   }
 );
@@ -140,7 +138,7 @@ test(
     // Simulate a CLAUDE.md that was corrupted by repeated installs from an
     // earlier plugin version: many start markers stacked, no end marker.
     const orphans = Array(7)
-      .fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`)
+      .fill(`${MARKER_START}\n<!-- Installed by /loop:install. -->\n`)
       .join("\n");
     await fs.writeFile(
       path.join(repo, "CLAUDE.md"),
@@ -172,7 +170,7 @@ test(
   async () => {
     const repo = await initGitRepo("al-install-convergence-");
     const orphans = Array(5)
-      .fill(`${MARKER_START}\n<!-- Installed by /autonomous-loop:install. -->\n`)
+      .fill(`${MARKER_START}\n<!-- Installed by /loop:install. -->\n`)
       .join("\n");
     await fs.writeFile(path.join(repo, "CLAUDE.md"), `# CLAUDE.md\n\n${orphans}`);
 
@@ -229,9 +227,7 @@ test(
     assert.ok(!claudeMd.includes("**Run autonomously...**"), "ad-hoc block text should be removed");
     assert.ok(claudeMd.includes("## Other content"), "unrelated content must remain");
 
-    const cfg = JSON.parse(
-      await fs.readFile(path.join(repo, ".claude", "autonomous-loop.json"), "utf8")
-    );
+    const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
     assert.ok(
       cfg.stack.build.length > 0 || cfg.stack.test.length > 0,
       "extracted commands should land in the config"

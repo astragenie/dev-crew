@@ -1,4 +1,4 @@
-# Code Conventions — autonomous-loop
+# Code Conventions — loop
 
 This plugin follows the same conventions as the companion `crew`
 plugin. The canonical reference is
@@ -33,7 +33,7 @@ Both enforced by CI:
 ## CLI
 
 - Subcommand dispatch via `COMMANDS` registry in
-  `scripts/autonomous-loop.mjs`.
+  `scripts/loop.mjs`.
 - Flag parsing via `FLAG_SPEC` table.
 - Per-command lazy `await import("./lib/...")` keeps startup fast
   when a single subcommand runs.

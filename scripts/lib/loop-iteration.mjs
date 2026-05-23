@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-// Iteration counter for autonomous-loop. Persists count in
-// .claude/state/autonomous-loop/iteration.json to track progress and
+// Iteration counter for the loop plugin. Persists count in
+// .claude/state/loop/iteration.json to track progress and
 // halt before unbounded token burn.
 
-const STATE_DIR = ".claude/state/autonomous-loop";
+const STATE_DIR = ".claude/state/loop";
 const ITERATION_FILE = "iteration.json";
 
 async function getIterationPath(repoPath) {

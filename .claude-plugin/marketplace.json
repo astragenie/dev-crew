@@ -1,16 +1,16 @@
 {
-  "name": "autonomous-loop-dev",
+  "name": "astra",
   "metadata": {
-    "description": "Development marketplace for the autonomous-loop Claude Code plugin. The plugin is also registered in the crew-dev marketplace so a single install picks up both crew and autonomous-loop."
+    "description": "Development marketplace for the loop Claude Code plugin. The plugin is also registered in the astra marketplace (parent repo) so a single install picks up both crew and loop."
   },
   "owner": {
     "name": "shishkosv"
   },
   "plugins": [
     {
-      "name": "autonomous-loop",
+      "name": "loop",
       "description": "Wiggin-Loop methodology layer for Claude Code with HARD RULE blocks, slice scaffold, and phase-gate runner",
-      "version": "0.1.21",
+      "version": "0.3.0",
       "source": "./",
       "author": {
         "name": "shishkosv"

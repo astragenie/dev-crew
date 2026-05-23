@@ -37,8 +37,8 @@ per `01-loop-control/EVIDENCE_RULES.md`.
 The slice is complete only when:
 
 - all acceptance criteria above are PASS with evidence
-- build passes per `.claude/autonomous-loop.json` `stack.build`
-- tests pass per `.claude/autonomous-loop.json` `stack.test`
+- build passes per `.claude/loop.json` `stack.build`
+- tests pass per `.claude/loop.json` `stack.test`
 - Crew `review-result` artifact written
 - Crew `final-synthesis` artifact written
 - entry appended to `../backlog/completed-slices.md`

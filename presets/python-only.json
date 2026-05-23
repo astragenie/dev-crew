@@ -22,6 +22,6 @@
     "README.md"
   ],
   "productName": "Untitled product",
-  "productDescription": "Override productName and productDescription in .claude/autonomous-loop.json after install.",
+  "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- Python 3 (LangGraph / FastAPI / library depending on the project)\n- pytest for tests\n- pip-managed dependencies"
 }

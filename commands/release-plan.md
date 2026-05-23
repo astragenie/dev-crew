@@ -11,7 +11,7 @@ targeting the given version: `done` features (shipped), plus
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" release plan \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" release plan \
   --repo "$PWD" \
   --version v1.1.0
 ```

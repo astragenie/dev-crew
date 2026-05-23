@@ -30,7 +30,7 @@ Before beginning any implementation work, run this checklist and report findings
    services are present? Match against what the slice expects.
 2. **Backlog state** — read `{{backlogPath}}/approved-slices.md`. Which is the
    highest-priority PENDING slice?
-3. **Configuration** — read `.claude/autonomous-loop.json`. Confirm the
+3. **Configuration** — read `.claude/loop.json`. Confirm the
    configured phase-gate commands still apply to the current repo state.
 4. **Gap analysis** — what is missing relative to the current slice's acceptance
    criteria?
@@ -44,8 +44,8 @@ A slice is complete only when:
 
 - code exists and is wired into the application
 - new tests cover new behavior (TDD per CLAUDE.md)
-- build passes (per `.claude/autonomous-loop.json` `stack.build`)
-- relevant test suites pass (per `.claude/autonomous-loop.json` `stack.test`)
+- build passes (per `.claude/loop.json` `stack.build`)
+- relevant test suites pass (per `.claude/loop.json` `stack.test`)
 - documentation is updated if architecture or interfaces changed
 - a Crew `review-result` artifact is written (auto via commit bridge or
   manually via `/crew:write-review-result`)

@@ -5,7 +5,7 @@ description: Print the full body + frontmatter of a single decision by id.
 # Decisions Show
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" decisions show \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" decisions show \
   --repo "$PWD" \
   --id DEC-001
 ```

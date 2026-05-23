@@ -16,7 +16,7 @@ async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
-    path.join(repo, ".claude/autonomous-loop.json"),
+    path.join(repo, ".claude/loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
@@ -103,13 +103,19 @@ test("completeSlice blocked when featureEnd ceremony has simplifyRan: false", as
   const feat = await addFeature(repo, { title: "Simplify gate test" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Write a ceremony with simplifyRan: false
-  const ceremony = featureEnd({ id: feat.id, title: "Simplify gate test", phase: "2" }, { simplifyRan: false });
+  const ceremony = featureEnd(
+    { id: feat.id, title: "Simplify gate test", phase: "2" },
+    { simplifyRan: false }
+  );
   await writeFeatureEndCeremony(repo, ceremony);
   const result = await completeSlice(repo, slice.id);
   // Slice still moves but feature is blocked
   assert.match(result.slice.to, /completed[\\/]SLICE_/);
   assert.equal(result.feature.skipped, true);
-  assert.ok(result.feature.reason.includes("simplify-gate"), `expected simplify-gate in reason, got: ${result.feature.reason}`);
+  assert.ok(
+    result.feature.reason.includes("simplify-gate"),
+    `expected simplify-gate in reason, got: ${result.feature.reason}`
+  );
 });
 
 test("completeSlice allowed when featureEnd ceremony has simplifyRan: true", async () => {
@@ -117,7 +123,10 @@ test("completeSlice allowed when featureEnd ceremony has simplifyRan: true", asy
   const feat = await addFeature(repo, { title: "Simplify passed" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Write a ceremony with simplifyRan: true
-  const ceremony = featureEnd({ id: feat.id, title: "Simplify passed", phase: "2" }, { simplifyRan: true });
+  const ceremony = featureEnd(
+    { id: feat.id, title: "Simplify passed", phase: "2" },
+    { simplifyRan: true }
+  );
   await writeFeatureEndCeremony(repo, ceremony);
   const result = await completeSlice(repo, slice.id);
   // Feature should move to done normally

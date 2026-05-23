@@ -44,7 +44,7 @@ function appendBacklogExhaustedSignals(stats, reasons, suggestions) {
   if (stats.pendingOrTriaged === 0 && stats.inProgress === 0 && stats.approvedUndecomposed === 0) {
     reasons.push("backlog empty + no undecomposed specs → no actionable work");
     suggestions.push(
-      "Author a new SPEC or FEAT to continue. Run `/autonomous-loop:spec add` or `/autonomous-loop:backlog add`."
+      "Author a new SPEC or FEAT to continue. Run `/loop:spec add` or `/loop:backlog add`."
     );
   }
 }
@@ -63,7 +63,7 @@ function appendIterationCapSignals(iterStatus, reasons, suggestions) {
   suggestions.push(
     `The autonomous loop has completed ${iterStatus.count} iterations without finishing. ` +
       `This is a safety limit to prevent unbounded token burn. ` +
-      `Increase loop.maxIterations in .claude/autonomous-loop.json if you need more cycles.`
+      `Increase loop.maxIterations in .claude/loop.json if you need more cycles.`
   );
 }
 
@@ -73,7 +73,7 @@ function appendCostAlertSignals(costAlertCount, reasons, suggestions) {
   );
   suggestions.push(
     "The cost trajectory has triggered a high-severity alert. Review the cost-advisor output and optimize before continuing. " +
-      "Adjust loop.costStopThreshold in .claude/autonomous-loop.json to change this behavior."
+      "Adjust loop.costStopThreshold in .claude/loop.json to change this behavior."
   );
 }
 

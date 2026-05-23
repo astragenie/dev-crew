@@ -103,8 +103,7 @@ export async function parseApprovedSlices(filePath) {
 // exists under slicesRoot and whether its frontmatter is status:
 // completed. Returns slices augmented with { exists, completed, slicePath }.
 export async function detectSliceStatus(repoPath, slices, { slicesRoot } = {}) {
-  const root =
-    slicesRoot || path.join(repoPath, "docs/ai-loop/04-implementation-slices");
+  const root = slicesRoot || path.join(repoPath, "docs/ai-loop/04-implementation-slices");
   const hasRoot = await pathExists(root);
   const filesByNumber = hasRoot ? await indexSliceFiles(root) : new Map();
   const completedFromGit = await sliceNumbersCompletedInGit(repoPath);
@@ -134,11 +133,10 @@ export async function detectSliceStatus(repoPath, slices, { slicesRoot } = {}) {
 async function sliceNumbersCompletedInGit(repoPath) {
   const out = new Set();
   try {
-    const { stdout } = await execFile(
-      "git",
-      ["log", "--pretty=%s", "--grep", "mark SLICE", "-i"],
-      { cwd: repoPath, maxBuffer: 1024 * 1024 }
-    );
+    const { stdout } = await execFile("git", ["log", "--pretty=%s", "--grep", "mark SLICE", "-i"], {
+      cwd: repoPath,
+      maxBuffer: 1024 * 1024
+    });
     for (const line of stdout.split(/\r?\n/)) {
       const m = line.match(/SLICE[_-]?(\d+)/i);
       if (m && /complete/i.test(line)) {
@@ -221,9 +219,7 @@ export async function writeSliceProgress(
       : slices.map((slice) =>
           renderRow({
             slice: { ...slice, repoPath },
-            isCurrent: currentSliceId
-              ? normalizeSliceId(currentSliceId) === slice.id
-              : false
+            isCurrent: currentSliceId ? normalizeSliceId(currentSliceId) === slice.id : false
           })
         );
 

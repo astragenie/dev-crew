@@ -10,10 +10,10 @@ import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
-  // Write a minimal .claude/autonomous-loop.json so config-resolver works.
+  // Write a minimal .claude/loop.json so config-resolver works.
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
-    path.join(repo, ".claude/autonomous-loop.json"),
+    path.join(repo, ".claude/loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {

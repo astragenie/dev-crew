@@ -24,7 +24,7 @@ Workflow:
 If `approved-slices.md` has no PENDING entries:
 
 - If `<backlogPath>/product-backlog.md` still has unmet requirements, fall
-  through to `/autonomous-loop:derive-slice`.
+  through to `/loop:derive-slice`.
 - If both are exhausted and all gate sets in `<aiLoopRoot>/02-acceptance-gates/`
   are PASS, the loop's stop condition A is satisfied — stop.
 - Otherwise the loop is in stop condition B (externally blocked) or the user

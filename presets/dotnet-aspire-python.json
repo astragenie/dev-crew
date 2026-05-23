@@ -25,6 +25,6 @@
     "docs/architecture/platform-overview.md"
   ],
   "productName": "Untitled product",
-  "productDescription": "Override productName and productDescription in .claude/autonomous-loop.json after install.",
+  "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- C# .NET (Aspire local orchestration when configured)\n- Python agents (LangGraph or FastAPI) when configured\n- Terraform for infrastructure when configured"
 }

@@ -10,12 +10,13 @@ import {
   MIN_CREW_VERSION
 } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
+import { migrateLegacyAutonomousLoop } from "./legacy-migrator.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
-export const MARKER_START = "<!-- autonomous-loop:start -->";
-export const MARKER_END = "<!-- autonomous-loop:end -->";
+export const MARKER_START = "<!-- loop:start -->";
+export const MARKER_END = "<!-- loop:end -->";
 
 async function pathExists(targetPath) {
   try {
@@ -78,7 +79,7 @@ function buildTokens(config) {
   };
 }
 
-// Replace the existing autonomous-loop marker block in CLAUDE.md, or append
+// Replace the existing loop marker block in CLAUDE.md, or append
 // a new one if none is present. Preserves all content outside the marker block.
 //
 // Tolerant of malformed state from earlier installs:
@@ -132,10 +133,10 @@ async function updateClaudeMd(repoPath, tokens, writes) {
 // Write the full HARD RULES out to a sibling file so the CLAUDE.md marker
 // block can stay lean (~10 lines instead of ~35). Agents follow the
 // reference and read this file when entering an autonomous loop run.
-async function writeAutonomousLoopRules(repoPath, tokens, writes) {
-  const tpl = await readTemplate("autonomous-loop-rules.md");
+async function writeLoopRules(repoPath, tokens, writes) {
+  const tpl = await readTemplate("loop-rules.md");
   const contents = renderTemplate(tpl, tokens);
-  const target = path.join(repoPath, ".claude", "autonomous-loop", "rules.md");
+  const target = path.join(repoPath, ".claude", "loop", "rules.md");
   await ensureDir(path.dirname(target));
   const existing = await fs.readFile(target, "utf8").catch(() => null);
   if (existing !== contents) {
@@ -145,7 +146,7 @@ async function writeAutonomousLoopRules(repoPath, tokens, writes) {
 }
 
 // Always overwrite plugin-owned loop-control files so version upgrades land
-// cleanly. User customization belongs in .claude/autonomous-loop.json, not in
+// cleanly. User customization belongs in .claude/loop.json, not in
 // these files.
 async function writeLoopControlFiles(repoPath, tokens, writes) {
   const loopRoot = tokens.aiLoopRoot;
@@ -324,6 +325,35 @@ async function writeSpecsScaffold(repoPath, writes) {
   }
 }
 
+function appendLegacyMigrationWrites(legacyMigration, writes) {
+  if (!legacyMigration?.migrated) return;
+  for (const step of legacyMigration.steps) {
+    if (step.action === "renamed") {
+      writes.push(`${step.from} -> ${step.to} (legacy rename)`);
+    } else if (step.action === "rewritten") {
+      writes.push(`${step.file} (legacy markers rewritten)`);
+    }
+  }
+}
+
+async function runAdhocMigration(repoPath, writes) {
+  try {
+    const { migrateAdhocInstall } = await import("./adhoc-migrator.mjs");
+    const migration = await migrateAdhocInstall(repoPath);
+    if (migration.extractedConfig) {
+      await writeConfigIfMissing(repoPath, migration.extractedConfig);
+    }
+    if (migration.claudeMdRewritten) {
+      writes.push("CLAUDE.md (ad-hoc HARD RULE blocks removed)");
+    }
+  } catch (error) {
+    // Module may not exist yet during bootstrap; that's fine.
+    if (!String(error.message || "").includes("Cannot find module")) {
+      throw error;
+    }
+  }
+}
+
 export async function installLoop(repoPath, options = {}) {
   if (!(await pathExists(repoPath))) {
     throw new Error(`Repository path does not exist: ${repoPath}`);
@@ -337,43 +367,37 @@ export async function installLoop(repoPath, options = {}) {
   if (!crewCli) {
     throw new Error(
       "Hard dependency missing: the `crew` plugin is not installed in the Claude Code plugin cache. " +
-        "Install `crew` first (it lives in the crew-dev marketplace), then re-run /autonomous-loop:install."
+        "Install `crew` first (it lives in the astra marketplace), then re-run /loop:install."
     );
   }
   const installedCrewVersion = await getCrewVersion(crewCli);
   if (installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) < 0) {
     throw new Error(
       `Incompatible crew plugin: found v${installedCrewVersion}, need >= v${MIN_CREW_VERSION}. ` +
-        `Update crew (\`/plugin install crew@crew-dev\`) and retry.`
+        `Update crew (\`/plugin install crew@astra\`) and retry.`
     );
   }
 
+  const writes = [];
+
+  // Migrate legacy `autonomous-loop` state from < v0.3.0 BEFORE any other
+  // install step runs. This renames the config file, rules dir, and CLAUDE.md
+  // markers so the rest of the installer operates on the new identifiers.
+  // Idempotent — re-running on an already-migrated repo is a no-op.
+  const legacyMigration = await migrateLegacyAutonomousLoop(repoPath);
+  appendLegacyMigrationWrites(legacyMigration, writes);
+
   // Optional ad-hoc migration. Imported lazily so installer also works in
   // tests that don't need it.
-  const writes = [];
   if (options.migrateAdhoc !== false) {
-    try {
-      const { migrateAdhocInstall } = await import("./adhoc-migrator.mjs");
-      const migration = await migrateAdhocInstall(repoPath);
-      if (migration.extractedConfig) {
-        await writeConfigIfMissing(repoPath, migration.extractedConfig);
-      }
-      if (migration.claudeMdRewritten) {
-        writes.push("CLAUDE.md (ad-hoc HARD RULE blocks removed)");
-      }
-    } catch (error) {
-      // Module may not exist yet during bootstrap; that's fine.
-      if (!String(error.message || "").includes("Cannot find module")) {
-        throw error;
-      }
-    }
+    await runAdhocMigration(repoPath, writes);
   }
 
   const config = await resolveConfig(repoPath, { preset: options.preset });
   const tokens = buildTokens(config);
 
   await updateClaudeMd(repoPath, tokens, writes);
-  await writeAutonomousLoopRules(repoPath, tokens, writes);
+  await writeLoopRules(repoPath, tokens, writes);
   await writeLoopControlFiles(repoPath, tokens, writes);
   await writeBacklogScaffold(repoPath, tokens, writes);
   await writeBacklogStateMachine(repoPath, writes);
@@ -399,11 +423,12 @@ export async function installLoop(repoPath, options = {}) {
   }
 
   return {
-    mode: "install-autonomous-loop",
+    mode: "install-loop",
     preset: config.preset,
     repoPath,
     crewCli,
-    writes
+    writes,
+    legacyMigration
   };
 }
 

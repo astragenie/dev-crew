@@ -1,4 +1,4 @@
-# autonomous-loop
+# loop
 
 [![test](https://github.com/sergeymilashico/hero-crew-autonomous-loop/actions/workflows/test.yml/badge.svg)](https://github.com/sergeymilashico/hero-crew-autonomous-loop/actions/workflows/test.yml)
 [![release](https://img.shields.io/github/v/tag/sergeymilashico/hero-crew-autonomous-loop?label=release&sort=semver)](https://github.com/sergeymilashico/hero-crew-autonomous-loop/releases)
@@ -9,15 +9,15 @@ layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
 safe phase-gate runner.
 
 Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
-(>= v0.1.12) for artifact writers — autonomous-loop emits Crew
+(>= v0.1.12) for artifact writers — loop emits Crew
 `validation-result` artifacts through `crew write-validation-result`.
 
 ## Install
 
 ```
 /plugin marketplace add https://github.com/sergeymilashico/hero-crew
-/plugin install crew@crew-dev
-/plugin install autonomous-loop@crew-dev
+/plugin install crew@astra
+/plugin install loop@astra
 ```
 
 `crew` must be installed first. Pinned release: `v0.1.12`. See
@@ -27,12 +27,12 @@ Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
 
 - Installs three HARD RULE blocks in your repo's CLAUDE.md (Autonomous Loop,
   Cross-Slice Continuation, Phase Completion Gate) inside a marker-bracketed
-  `<!-- autonomous-loop:start -->` block. Re-installing replaces the block in
+  `<!-- loop:start -->` block. Re-installing replaces the block in
   place; user content outside it is preserved.
 - Writes plugin-owned loop-control docs under `docs/architecture/ai-loop/`:
   `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`,
   `MASTER_PROMPT.md`, `SLICE_TEMPLATE.md`. Always overwritten on re-install —
-  customization lives in `.claude/autonomous-loop.json`, not in these files.
+  customization lives in `.claude/loop.json`, not in these files.
 - Scaffolds the backlog at `docs/architecture/ai-loop/backlog/`
   (`approved-slices.md`, `completed-slices.md`, `product-backlog.md`) — only
   written if missing.
@@ -48,27 +48,27 @@ Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
 In a repo with `crew` already installed:
 
 ```bash
-/autonomous-loop:install --preset dotnet-aspire-python
+/loop:install --preset dotnet-aspire-python
 ```
 
-Then edit `.claude/autonomous-loop.json` to set `productName`,
+Then edit `.claude/loop.json` to set `productName`,
 `productDescription`, and `stack.*` commands for the repo. Re-run install to
 regenerate `MASTER_PROMPT.md` from the updated config.
 
 Once configured:
 
 ```bash
-/autonomous-loop:status              # health check
-/autonomous-loop:start               # first action for a new session
-/autonomous-loop:next-slice          # pick highest-priority PENDING slice
-/autonomous-loop:derive-slice        # derive a slice from product-backlog
-/autonomous-loop:phase-gate --phase 4 --note "ingestion phase close"
-/autonomous-loop:list-presets        # see built-in presets
+/loop:status              # health check
+/loop:start               # first action for a new session
+/loop:next-slice          # pick highest-priority PENDING slice
+/loop:derive-slice        # derive a slice from product-backlog
+/loop:phase-gate --phase 4 --note "ingestion phase close"
+/loop:list-presets        # see built-in presets
 ```
 
 ## Configuration
 
-`.claude/autonomous-loop.json` schema:
+`.claude/loop.json` schema:
 
 ```jsonc
 {
@@ -114,7 +114,7 @@ More presets ship as new repo types surface. See `presets/` to author your own.
 
 ## Plugin architecture
 
-- `scripts/autonomous-loop.mjs` — CLI entry
+- `scripts/loop.mjs` — CLI entry
 - `scripts/lib/loop-installer.mjs` — template render + marker-block merge +
   scaffold writer
 - `scripts/lib/phase-gate.mjs` — `execFile`-only runner + markdown report
@@ -135,22 +135,22 @@ Code plugin cache skip cleanly when crew is not installed.
 
 ## Marketplace
 
-Registered as a second plugin in the `crew-dev` marketplace
-(`hero-crew/.claude-plugin/marketplace.json`). A single `crew-dev` install
-picks up both `crew` and `autonomous-loop`.
+Registered as a second plugin in the `astra` marketplace
+(`hero-crew/.claude-plugin/marketplace.json`). A single `astra` install
+picks up both `crew` and `loop`.
 
 For independent install, this repo also ships its own
-`.claude-plugin/marketplace.json` as `autonomous-loop-dev`.
+`.claude-plugin/marketplace.json` as `astra`.
 
 ## Hard dependency on `crew`
 
 The phase-gate runner writes its validation artifact through
 `crew write-validation-result`. Install errors with a clear message if the
-crew CLI is not discoverable in `~/.claude/plugins/cache/crew-dev/crew/*/`.
+crew CLI is not discoverable in `~/.claude/plugins/cache/astra/crew/*/`.
 
 If you install `crew` under a different marketplace name, set
 `CREW_MARKETPLACE_NAME` in the environment before invoking
-autonomous-loop CLI commands.
+loop CLI commands.
 
 ## What it doesn't do (v1 scope)
 

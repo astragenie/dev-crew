@@ -2,7 +2,7 @@
 
 import path from "node:path";
 
-// CLI for the autonomous-loop plugin. Mirrors scripts/crew.mjs argument-parsing
+// CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
 // the same way at the command line.
 
@@ -108,13 +108,13 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    "autonomous-loop CLI",
+    "loop CLI",
     "",
     "Usage:",
-    "  node scripts/autonomous-loop.mjs install --repo <path> [--preset <name>]",
-    "  node scripts/autonomous-loop.mjs phase-gate --repo <path> [--phase <N>] [--note <text>]",
-    "  node scripts/autonomous-loop.mjs status --repo <path>",
-    "  node scripts/autonomous-loop.mjs list-presets",
+    "  node scripts/loop.mjs install --repo <path> [--preset <name>]",
+    "  node scripts/loop.mjs phase-gate --repo <path> [--phase <N>] [--note <text>]",
+    "  node scripts/loop.mjs status --repo <path>",
+    "  node scripts/loop.mjs list-presets",
     "",
     "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
     "artifact through `crew write-validation-result`."
@@ -451,7 +451,10 @@ const SLICE_HANDLERS = {
 
 async function runSliceSubcommand(repoPath, positionals, flags) {
   const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder");
+  if (!sub)
+    throw new Error(
+      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder"
+    );
   const handler = SLICE_HANDLERS[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
   const id = flags.id || rest[0];

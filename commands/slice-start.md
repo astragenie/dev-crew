@@ -4,7 +4,7 @@ description: Open a slice — rotate workflow-state.currentRun via write-run-bri
 
 # Slice Start
 
-Symmetric counterpart to `/autonomous-loop:slice complete`. Run this
+Symmetric counterpart to `/loop:slice complete`. Run this
 **before** beginning acceptance-criteria work on a new slice so cost
 auto-emit windows attribute the session to the right slice.
 
@@ -25,7 +25,7 @@ What it does:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice start \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice start \
   --repo "$PWD" \
   --id SLICE-NN \
   [--goal "<one-line goal override>"] \
@@ -45,8 +45,8 @@ Returns:
   "activePlan": { "source": "superpowers", "path": "docs/superpowers/plans/2026-05-22-crew-monitor-phase-2.md" },
   "runBrief": { "artifactPath": ".claude/artifacts/crew/runs/<stamp>-run-brief-slice-18-...md" },
   "sliceProgress": { "path": ".claude/state/crew/slice-progress.md", "completedCount": 17, "totalCount": 19 },
-  "dispatchInstruction": "Dispatch /crew:build subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /autonomous-loop:slice complete --id SLICE-18. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.",
-  "nextAction": "Dispatch /crew:build subagent for SLICE-18; close with /autonomous-loop:slice complete --id SLICE-18."
+  "dispatchInstruction": "Dispatch /crew:build subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id SLICE-18. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.",
+  "nextAction": "Dispatch /crew:build subagent for SLICE-18; close with /loop:slice complete --id SLICE-18."
 }
 ```
 
@@ -54,7 +54,7 @@ Returns:
 
 ## When to run
 
-Per `Slice Start Ceremony — HARD RULE` in `.claude/autonomous-loop/rules.md`:
+Per `Slice Start Ceremony — HARD RULE` in `.claude/loop/rules.md`:
 at the top of every slice, before any TDD / implementation work. Do
 NOT begin a slice without rotating `currentRun` — a stale window makes
 the close ceremony's cost auto-emit attribute work to the wrong slice.
@@ -63,4 +63,4 @@ the close ceremony's cost auto-emit attribute work to the wrong slice.
 
 The returned `nextAction` is a literal prompt to follow: do the slice
 work (acceptance criteria, build + test PASS with evidence), then run
-`/autonomous-loop:slice complete --id SLICE-NN`.
+`/loop:slice complete --id SLICE-NN`.

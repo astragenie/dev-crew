@@ -5,17 +5,17 @@ import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 import { moveFeature } from "./backlog-writer.mjs";
 
 // Reconciles crew claims state (.claude/state/crew/claims.json) with
-// autonomous-loop backlog state-machine position. Two directions:
+// loop backlog state-machine position. Two directions:
 //
 //   1. Open claim on a FEAT-NNN file -> ensure feature is in in-progress/.
 //      Captures the case where agent claimed the file but forgot to run
-//      `/autonomous-loop:slice from-feature`.
+//      `/loop:slice from-feature`.
 //
 //   2. In-progress feature with no open claim -> emit a "claim suggested"
 //      warning so the agent acquires the claim before editing.
 //
 // Plugin does NOT write to claims.json — that's crew's state, owned by
-// crew. We only read it + adjust backlog files (the autonomous-loop side
+// crew. We only read it + adjust backlog files (the loop side
 // of the contract).
 
 const CLAIMS_STATE = path.join(".claude", "state", "crew", "claims.json");

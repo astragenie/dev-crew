@@ -19,12 +19,12 @@ phase: 3
 ## Description
 
 Once hero-crew FEAT-006 lands (`blocked`, `escalated_to_human`
-workflow badges in crew), surface them in autonomous-loop:
+workflow badges in crew), surface them in loop:
 
 - `completeSlice` recognizes them on the slice's parent run and refuses
   to roll the parent feature to `done/` while either is set.
 - `checkStopConditions` treats `escalated_to_human` as a hard-stop.
-- `brief` includes the badges in the autonomous-loop summary block.
+- `brief` includes the badges in the loop summary block.
 
 ## Acceptance hints
 

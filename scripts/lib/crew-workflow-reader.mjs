@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-// Read the crew plugin's workflow-state.json from inside the autonomous-loop
-// runtime. Crew owns the file; autonomous-loop is a downstream consumer of
+// Read the crew plugin's workflow-state.json from inside the loop
+// runtime. Crew owns the file; loop is a downstream consumer of
 // its badge state (FEAT-006 introduced `blocked` + `escalated_to_human`).
 //
 // Returns null when the file is missing or unparseable; callers must treat

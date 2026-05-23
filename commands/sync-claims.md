@@ -1,11 +1,11 @@
 ---
-description: Reconcile crew claims with autonomous-loop backlog state — promote claimed FEAT files to in-progress, warn on orphan in-progress without claim.
+description: Reconcile crew claims with loop backlog state — promote claimed FEAT files to in-progress, warn on orphan in-progress without claim.
 ---
 
 # Sync Claims
 
 Bridges crew's file-ownership claims (`.claude/state/crew/claims.json`)
-with autonomous-loop's backlog state machine. Two directions of drift:
+with loop's backlog state machine. Two directions of drift:
 
 1. **Agent claimed a FEAT file but didn't run slice from-feature**
    → claim references the file, but feature is still in `pending/` or
@@ -16,12 +16,12 @@ with autonomous-loop's backlog state machine. Two directions of drift:
    warning + suggests `crew claim <path>` command.
 
 Plugin does NOT write to `claims.json` (that's crew's state, owned by
-crew). Only adjusts the autonomous-loop side.
+crew). Only adjusts the loop side.
 
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" sync-claims \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" sync-claims \
   --repo "$PWD"
 ```
 

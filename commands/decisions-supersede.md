@@ -14,7 +14,7 @@ This command records the relationship:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" decisions supersede \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" decisions supersede \
   --repo "$PWD" \
   --id DEC-005 \
   --by DEC-009

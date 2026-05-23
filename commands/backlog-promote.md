@@ -14,12 +14,12 @@ Note: linking to a slice file in `ai-loop/slices/pending/` is a separate
 manual step in v0.1.3 — author the slice using
 `docs/ai-loop/00-entry/SLICE_TEMPLATE.md`, reference the FEAT id in the
 slice file, and edit the feature's `slices: [SLICE-NN]` frontmatter. v0.1.4
-will add `/autonomous-loop:slice from-feature FEAT-NNN` to automate this.
+will add `/loop:slice from-feature FEAT-NNN` to automate this.
 
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" backlog promote \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog promote \
   --repo "$PWD" \
   --id FEAT-007
 ```

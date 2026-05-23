@@ -33,7 +33,7 @@ async function findHeroCrewCli() {
   //    since the last plugin publish are present here but missing from the
   //    cached install. Preferring the cache here causes recently-added
   //    artifact schemas (e.g. the cost/ vs runs/ split) to silently
-  //    degrade when invoked from autonomous-loop.
+  //    degrade when invoked from loop.
   // 3. Plugin cache (whatever version is installed).
   if (process.env.HERO_CREW_PATH) {
     const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
@@ -77,7 +77,7 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal }) {
     "--title",
     title || sliceId,
     "--owner",
-    "autonomous-loop"
+    "loop"
   ];
   if (goal) args.push("--goal", goal);
   try {
@@ -101,22 +101,19 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal }) {
 // returns more than one entry, use scoped; otherwise aggregate.
 async function detectCostMode(repoPath) {
   try {
-    const { stdout: commonDir } = await execFile(
-      "git",
-      ["rev-parse", "--git-common-dir"],
-      { cwd: repoPath, maxBuffer: 64 * 1024 }
-    );
-    const { stdout: gitDir } = await execFile(
-      "git",
-      ["rev-parse", "--git-dir"],
-      { cwd: repoPath, maxBuffer: 64 * 1024 }
-    );
+    const { stdout: commonDir } = await execFile("git", ["rev-parse", "--git-common-dir"], {
+      cwd: repoPath,
+      maxBuffer: 64 * 1024
+    });
+    const { stdout: gitDir } = await execFile("git", ["rev-parse", "--git-dir"], {
+      cwd: repoPath,
+      maxBuffer: 64 * 1024
+    });
     if (commonDir.trim() !== gitDir.trim()) return "scoped";
-    const { stdout: list } = await execFile(
-      "git",
-      ["worktree", "list", "--porcelain"],
-      { cwd: repoPath, maxBuffer: 256 * 1024 }
-    );
+    const { stdout: list } = await execFile("git", ["worktree", "list", "--porcelain"], {
+      cwd: repoPath,
+      maxBuffer: 256 * 1024
+    });
     const count = list.split(/\r?\n/).filter((l) => l.startsWith("worktree ")).length;
     return count > 1 ? "scoped" : "aggregate";
   } catch {
@@ -166,7 +163,7 @@ export async function tryWriteCostReport(repoPath, sliceId) {
 
 function renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS) {
   if (!grade) {
-    return `_(no grade yet — run \`/autonomous-loop:slice grade --id ${sliceId}\`)_`;
+    return `_(no grade yet — run \`/loop:slice grade --id ${sliceId}\`)_`;
   }
   return SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n");
 }
@@ -299,9 +296,9 @@ export async function writeCrewHandoff(
     "",
     "## Allowed scope",
     "",
-    `- Run \`/autonomous-loop:slice grade --id ${sliceId}\` to draft grade file.`,
+    `- Run \`/loop:slice grade --id ${sliceId}\` to draft grade file.`,
     `- Edit \`docs/grades/${sliceId}-grade.md\` (scores, lessons, decisions, narrative).`,
-    `- Run \`/autonomous-loop:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
+    `- Run \`/loop:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
     "- Pick next slice via Cross-Slice Continuation HARD RULE.",
     "",
     "## Forbidden scope",

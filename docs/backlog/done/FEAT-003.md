@@ -31,6 +31,6 @@ trajectory, and points the human at `cost-advise` output.
 - `checkStopConditions` returns `shouldStop: true` + reason
   `cost_alert_high` when ≥1 high-severity advice fires across the last
   3 slices.
-- Pluggable threshold via `.claude/autonomous-loop.json`.
+- Pluggable threshold via `.claude/loop.json`.
 - Tests cover: low-severity alone does NOT stop; high-severity stops;
   threshold override works.

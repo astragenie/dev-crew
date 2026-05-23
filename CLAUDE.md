@@ -25,7 +25,7 @@ for this repo.
 
 This plugin requires the [`crew`](https://github.com/sergeymilashico/hero-crew)
 plugin at the version pinned in `scripts/lib/plugin-identity.mjs::MIN_CREW_VERSION`.
-`/autonomous-loop:install` refuses to run against an older crew.
+`/loop:install` refuses to run against an older crew.
 
 ## Local commands
 
@@ -58,7 +58,7 @@ GitHub Actions runs on every push and PR:
 
 Active backlog under `docs/backlog/{pending,triaged,in-progress,done}/`.
 Each FEAT has frontmatter declaring priority, status, and an
-`autonomous_safe` flag. The autonomous-loop only picks
+`autonomous_safe` flag. The loop only picks
 `autonomous_safe: true` items without per-slice human review; creative
 items still require a human in the loop on review.
 

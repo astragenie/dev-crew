@@ -7,7 +7,7 @@ description: Unified stop-condition resolver — should the autonomous loop halt
 Returns whether the autonomous loop has reached a stop condition:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" stop-check \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" stop-check \
   --repo "$PWD"
 ```
 
@@ -24,7 +24,7 @@ Returns:
     { "category": "score-trend", "message": "observability below 0.80 across last 3 slices", "suggestion": "Author a SPEC (type=sre or type=adr)..." }
   ],
   "suggestions": [
-    "Author a new SPEC or FEAT to continue. Run /autonomous-loop:spec add or /autonomous-loop:backlog add."
+    "Author a new SPEC or FEAT to continue. Run /loop:spec add or /loop:backlog add."
   ],
   "snapshot": { "pendingOrTriaged": 0, "inProgress": 0, "approvedUndecomposed": 0, "totalAlerts": 2, "warnAlerts": 2 }
 }

@@ -6,7 +6,7 @@ import path from "node:path";
 // don't crash the caller.
 
 export function telemetryPath(repoPath) {
-  return path.join(repoPath, ".claude", "logs", "autonomous-loop.jsonl");
+  return path.join(repoPath, ".claude", "logs", "loop.jsonl");
 }
 
 export async function logEvent(repoPath, event) {

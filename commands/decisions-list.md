@@ -10,7 +10,7 @@ with frontmatter parsed.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" decisions list \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" decisions list \
   --repo "$PWD" \
   [--status accepted|superseded|reverted]
 ```

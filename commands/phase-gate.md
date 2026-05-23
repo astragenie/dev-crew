@@ -25,14 +25,14 @@ Workflow:
 2. Run the gate:
    ```bash
    set -euo pipefail
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" phase-gate \
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" phase-gate \
      --repo "$PWD" \
      --phase <N> \
      --note "<optional short context>"
    ```
 3. Read the returned JSON. If `status` is `PASS`, append the entry in
    `<backlogPath>/completed-slices.md` for the closing slice with a link to
-   the new phase-gate artifact, then `/autonomous-loop:next-slice`.
+   the new phase-gate artifact, then `/loop:next-slice`.
 4. If `status` is `FAIL`, do NOT proceed to the next phase. Read the artifact
    under `<phaseGateArtifactDir>/` to see which stage failed and the
    stdout/stderr tail. Fix the failure, then re-run the gate.

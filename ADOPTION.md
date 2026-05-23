@@ -1,12 +1,12 @@
-# Adoption Checklist — autonomous-loop
+# Adoption Checklist — loop
 
-Run through this before invoking `/autonomous-loop:install` on a new repo or
+Run through this before invoking `/loop:install` on a new repo or
 re-running it on a repo that already has hand-pasted HARD RULE blocks.
 
 ## Prerequisites
 
 - `crew` plugin installed in Claude Code's plugin cache. Verify with
-  `node "$(ls -dt $HOME/.claude/plugins/cache/crew-dev/crew/*/scripts/crew.mjs | head -1)" --help`.
+  `node "$(ls -dt $HOME/.claude/plugins/cache/astra/crew/*/scripts/crew.mjs | head -1)" --help`.
 - Repo has a `.git/` directory. Install fails fast on non-git targets.
 - Repo has a `CLAUDE.md` (will be created if missing).
 
@@ -48,24 +48,24 @@ identify which backup matches which install pass.
 
 ## Step 3 — Pick a preset
 
-Run `/autonomous-loop:list-presets` to see the built-ins. v1 ships:
+Run `/loop:list-presets` to see the built-ins. v1 ships:
 
 - `dotnet-aspire-python` — C# .NET + Aspire local orchestration + Python
   LangGraph agents + Terraform infra
 
 If none match, install with the closest one and override stack commands in
-`.claude/autonomous-loop.json` afterward.
+`.claude/loop.json` afterward.
 
 ## Step 4 — Install
 
 ```bash
-/autonomous-loop:install --preset dotnet-aspire-python
+/loop:install --preset dotnet-aspire-python
 ```
 
 Or directly:
 
 ```bash
-node "$HOME/.claude/plugins/cache/autonomous-loop-dev/autonomous-loop/0.1.0/scripts/autonomous-loop.mjs" \
+node "$HOME/.claude/plugins/cache/astra/loop/0.3.0/scripts/loop.mjs" \
   install --repo "$PWD" --preset dotnet-aspire-python
 ```
 
@@ -75,7 +75,7 @@ If migration happened, the first entry is
 
 ## Step 5 — Configure
 
-Edit `.claude/autonomous-loop.json` and populate the repo-specific fields:
+Edit `.claude/loop.json` and populate the repo-specific fields:
 
 - `productName` — used in `MASTER_PROMPT.md` headings
 - `productDescription` — used in `MASTER_PROMPT.md` "Product" section
@@ -87,7 +87,7 @@ Edit `.claude/autonomous-loop.json` and populate the repo-specific fields:
 Then re-run install to regenerate `MASTER_PROMPT.md` from the updated config:
 
 ```bash
-/autonomous-loop:install
+/loop:install
 ```
 
 (The `--preset` flag is optional on re-run; the preset is read from the
@@ -96,7 +96,7 @@ existing config.)
 ## Step 6 — Verify
 
 ```bash
-/autonomous-loop:status
+/loop:status
 ```
 
 Should report:
@@ -108,12 +108,12 @@ Should report:
 
 Inspect the new files:
 
-- `CLAUDE.md` — should contain `<!-- autonomous-loop:start -->...<!-- autonomous-loop:end -->`
+- `CLAUDE.md` — should contain `<!-- loop:start -->...<!-- loop:end -->`
 - `docs/architecture/ai-loop/01-loop-control/{WIGGIN_LOOP,EVIDENCE_RULES,STOP_CONDITIONS}.md`
 - `docs/architecture/ai-loop/00-entry/{MASTER_PROMPT,SLICE_TEMPLATE}.md`
 - `docs/architecture/ai-loop/backlog/{approved-slices,completed-slices,product-backlog}.md`
 - `docs/architecture/ai-loop/slices/pending/.gitkeep`
-- `.claude/autonomous-loop.json`
+- `.claude/loop.json`
 
 ## Step 7 — First phase-gate run
 
@@ -121,7 +121,7 @@ Once you've completed a phase of work and your stack commands work in
 isolation:
 
 ```bash
-/autonomous-loop:phase-gate --phase 1 --note "initial scaffold"
+/loop:phase-gate --phase 1 --note "initial scaffold"
 ```
 
 The plugin runs each configured stage, captures all output, writes
@@ -134,8 +134,8 @@ stdout/stderr tail. Fix the failure, then re-run the gate.
 ## Step 8 — Commit
 
 ```bash
-git add CLAUDE.md docs/architecture/ai-loop/ .claude/autonomous-loop.json
-git commit -m "loop: install autonomous-loop@0.1.0 with <preset> preset"
+git add CLAUDE.md docs/architecture/ai-loop/ .claude/loop.json
+git commit -m "loop: install loop@0.1.0 with <preset> preset"
 ```
 
 Leave the `.claude.backup.*` directory locally for a few days, then delete

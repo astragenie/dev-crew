@@ -58,7 +58,7 @@ function detectSpecFlowAlerts(specs) {
         severity: "info",
         category: "spec-flow",
         message: `${s.id} is approved but not yet decomposed into features`,
-        suggested_action: `Run /autonomous-loop:spec decompose --id ${s.id} --features "title 1; title 2; ..."`
+        suggested_action: `Run /loop:spec decompose --id ${s.id} --features "title 1; title 2; ..."`
       });
     }
   }
@@ -73,7 +73,7 @@ function detectBacklogFlowAlerts(backlog) {
       severity: "info",
       category: "backlog-flow",
       message: `${pending.length} features pending triage`,
-      suggested_action: `Run /autonomous-loop:backlog triage to assign priority + category.`
+      suggested_action: `Run /loop:backlog triage to assign priority + category.`
     }
   ];
 }
@@ -87,7 +87,7 @@ function detectInProgressOrphanAlerts(backlog) {
         severity: "warn",
         category: "in-progress-orphan",
         message: `${f.id} is in-progress but has no linked slice`,
-        suggested_action: `Run /autonomous-loop:slice from-feature --id ${f.id}.`
+        suggested_action: `Run /loop:slice from-feature --id ${f.id}.`
       });
     }
   }

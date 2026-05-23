@@ -19,11 +19,11 @@ phase: 3
 ## Description
 
 Add `loop_iteration_count` and `loop_max_iterations` to the
-autonomous-loop runtime so an unattended loop self-halts before it
+loop runtime so an unattended loop self-halts before it
 burns unbounded tokens or destabilizes a repo.
 
 Default cap: 25 iterations (tunable via
-`.claude/autonomous-loop.json::loop.maxIterations`).
+`.claude/loop.json::loop.maxIterations`).
 
 When the cap is reached, the loop transitions to
 `blocked` with reason `iteration_cap_reached` (depends on hero-crew

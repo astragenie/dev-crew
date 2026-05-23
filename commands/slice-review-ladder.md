@@ -12,7 +12,7 @@ lead) reads the returned tasks and dispatches each via the Task tool with
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice review-ladder \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice review-ladder \
   --repo "$PWD" \
   --id SLICE-52
 ```
@@ -48,7 +48,7 @@ Returns:
 | A | Correctness, regressions, acceptance criteria coverage. Flag missing test cases. |
 | B | Production-readiness, observability (OTel/logs), security posture, edge cases. |
 
-Override per repo in `.claude/autonomous-loop.json`:
+Override per repo in `.claude/loop.json`:
 
 ```jsonc
 {
@@ -68,8 +68,8 @@ single `FAIL` blocks slice complete. Orchestrator (lead) collects verdicts
 + summarizes before grading.
 
 Each reviewer's prompt includes a step to:
-1. Find prior decisions relevant to changed files (`/autonomous-loop:decisions relevant --files`)
-2. Link their review artifact back to the slice (`/autonomous-loop:slice link`)
+1. Find prior decisions relevant to changed files (`/loop:decisions relevant --files`)
+2. Link their review artifact back to the slice (`/loop:slice link`)
 
 So the linkage arrays + decision-awareness build automatically as reviews
 happen.

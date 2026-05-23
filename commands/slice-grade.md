@@ -6,7 +6,7 @@ description: Generate a pre-filled grade template at slice close — agent then 
 
 Two-step ceremony for capturing what happened during a slice:
 
-1. **Generate template** — `/autonomous-loop:slice grade --id SLICE-NN`
+1. **Generate template** — `/loop:slice grade --id SLICE-NN`
    Plugin creates `docs/grades/SLICE-NN-grade.md` with frontmatter
    pre-filled from the linked feature + spec (target_release, phase,
    spec id). Body has section skeletons + score placeholders. Only-if-missing
@@ -22,13 +22,13 @@ Two-step ceremony for capturing what happened during a slice:
      block under `## Decisions` with **Rationale** + **Consequences**.
    - Fill narrative sections (What went well / wrong / differently).
 
-3. **Persist + extract** — `/autonomous-loop:slice grade-write --id SLICE-NN`
+3. **Persist + extract** — `/loop:slice grade-write --id SLICE-NN`
    (separate command — see slice-grade-write.md).
 
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice grade \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice grade \
   --repo "$PWD" \
   --id SLICE-52
 ```

@@ -1,6 +1,26 @@
 # Changelog
 
-All notable changes to the `autonomous-loop` plugin are documented here.
+All notable changes to the `loop` plugin are documented here. Versions
+prior to v0.3.0 shipped under the name `autonomous-loop`.
+
+## v0.3.0 — 2026-05-23
+
+### Breaking
+
+- Plugin renamed `autonomous-loop` → `loop`. Marketplace in this repo renamed `autonomous-loop-dev` → `astra`. New install: `/plugin install loop@astra` (via parent marketplace).
+- Slash command namespace `/autonomous-loop:*` → `/loop:*`.
+- Consumer-repo config file `.claude/autonomous-loop.json` → `.claude/loop.json`.
+- Consumer-repo rules dir `.claude/autonomous-loop/` → `.claude/loop/`.
+- HTML marker block `<!-- autonomous-loop:start -->` → `<!-- loop:start -->`.
+
+### Migrator
+
+- `/loop:install` auto-detects legacy `autonomous-loop` state in the target repo and migrates: renames config file, renames rules dir, rewrites CLAUDE.md markers in place. Idempotent.
+
+### Notes
+
+- `MIN_CREW_VERSION` unchanged (`0.1.12`).
+- Parent marketplace (`hero-crew`) bumps `crew-dev` → `astra` in a separate release.
 
 ## v0.1.21 — 2026-05-22
 

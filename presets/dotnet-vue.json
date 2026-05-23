@@ -24,6 +24,6 @@
     "docs/architecture/platform-overview.md"
   ],
   "productName": "Untitled product",
-  "productDescription": "Override productName and productDescription in .claude/autonomous-loop.json after install.",
+  "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- Vue 3 + Vite + TypeScript + Pinia + Tailwind dashboard\n- .NET Aspire AppHost for local orchestration\n- xUnit, FluentAssertions for backend tests"
 }

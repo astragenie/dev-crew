@@ -19,7 +19,7 @@ async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
-    path.join(repo, ".claude/autonomous-loop.json"),
+    path.join(repo, ".claude/loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
@@ -168,7 +168,7 @@ test("buildReviewLadder produces parallel tasks per reviewers.ladder", async () 
 test("buildReviewLadder respects custom ladder + focus from config", async () => {
   const repo = await tmpRepo("al-v19-ladder-custom-");
   await fs.writeFile(
-    path.join(repo, ".claude/autonomous-loop.json"),
+    path.join(repo, ".claude/loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {

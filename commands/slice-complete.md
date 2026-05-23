@@ -19,7 +19,7 @@ Atomic close ceremony at the end of a slice:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice complete \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice complete \
   --repo "$PWD" \
   --id SLICE-NN
 ```
@@ -31,7 +31,7 @@ Returns:
   "slice": { "id": "SLICE-52", "from": "docs/ai-loop/slices/pending/SLICE_52_X.md", "to": "docs/ai-loop/slices/completed/SLICE_52_X.md" },
   "feature": { "id": "FEAT-001", "from": "docs/backlog/in-progress/FEAT-001.md", "to": "docs/backlog/done/FEAT-001.md" },
   "specStatusChanges": [{ "id": "SPEC-001", "from": "decomposed", "to": "satisfied" }],
-  "nextAction": "Run /autonomous-loop:slice grade --id SLICE-52 to capture lessons + decisions."
+  "nextAction": "Run /loop:slice grade --id SLICE-52 to capture lessons + decisions."
 }
 ```
 
@@ -46,9 +46,9 @@ Wiggin Loop iteration to the next slice.
 The returned `nextAction` is a literal prompt:
 
 ```bash
-/autonomous-loop:slice grade --id SLICE-52
+/loop:slice grade --id SLICE-52
 # ...agent fills the grade...
-/autonomous-loop:slice grade-write --id SLICE-52
+/loop:slice grade-write --id SLICE-52
 ```
 
 Grading at slice close is what feeds the retrospective + pattern alerts.

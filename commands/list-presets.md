@@ -1,11 +1,11 @@
 ---
-description: Show built-in autonomous-loop presets with their stack defaults.
+description: Show built-in loop presets with their stack defaults.
 ---
 
 # List Autonomous Loop Presets
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" list-presets
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" list-presets
 ```
 
 Returns an array of `{ name, description }` for each `presets/*.json` shipped
@@ -18,7 +18,7 @@ v1 ships:
   monorepos.
 
 Pick the preset closest to the repo's stack at install time, then override
-specific stage commands in `.claude/autonomous-loop.json`. Each stage in
+specific stage commands in `.claude/loop.json`. Each stage in
 `stack.*` accepts a `{ cmd, args, cwd? }` triple — the args array is what
 makes the phase-gate runner injection-safe.
 

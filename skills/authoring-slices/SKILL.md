@@ -1,6 +1,6 @@
 ---
-name: autonomous-loop:authoring-slices
-description: Use when deriving a new slice from a product-backlog entry or authoring a slice file from scratch. Loads the canonical slice template structure and Reviewer A / Reviewer B review questions. Trigger when the user asks to "write a slice", "derive a slice", "add to backlog", or after `/autonomous-loop:derive-slice` is invoked.
+name: loop:authoring-slices
+description: Use when deriving a new slice from a product-backlog entry or authoring a slice file from scratch. Loads the canonical slice template structure and Reviewer A / Reviewer B review questions. Trigger when the user asks to "write a slice", "derive a slice", "add to backlog", or after `/loop:derive-slice` is invoked.
 ---
 
 # Authoring Slices

@@ -10,7 +10,7 @@ numeric id.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" spec list \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" spec list \
   --repo "$PWD" \
   [--status draft|approved|decomposed|satisfied|archived] \
   [--type prd|user-journey|sre|research|adr|other] \

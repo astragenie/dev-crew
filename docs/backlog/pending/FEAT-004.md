@@ -18,7 +18,7 @@ phase: 4
 ## Description
 
 Allow a final-synthesis in repo A to declare a child run in repo B.
-Useful when an autonomous-loop slice in one product repo triggers
+Useful when an loop slice in one product repo triggers
 a follow-on slice in a sibling product repo (e.g. backend slice
 triggers a frontend slice).
 

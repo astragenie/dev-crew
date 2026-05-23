@@ -78,11 +78,7 @@ test("findActivePlan prefers newest superpowers plan over approved-slices", asyn
     "docs/ai-loop/backlog/approved-slices.md",
     "- [ ] SLICE-01 — Approved fallback\n"
   );
-  await writeFile(
-    repo,
-    "docs/superpowers/plans/older.md",
-    "## Task 1: SLICE_02 — Older\n"
-  );
+  await writeFile(repo, "docs/superpowers/plans/older.md", "## Task 1: SLICE_02 — Older\n");
   // Sleep a tick then write a newer file so mtime ordering is reliable.
   await new Promise((r) => setTimeout(r, 25));
   const newPath = await writeFile(
@@ -146,11 +142,7 @@ test("refreshSliceProgress end-to-end against a superpowers plan + slice files",
   await writeFile(
     repo,
     "docs/superpowers/plans/plan.md",
-    [
-      "## Task 1: SLICE_17 — Auth",
-      "## Task 2: SLICE_18 — Sources",
-      ""
-    ].join("\n")
+    ["## Task 1: SLICE_17 — Auth", "## Task 2: SLICE_18 — Sources", ""].join("\n")
   );
   await writeFile(
     repo,

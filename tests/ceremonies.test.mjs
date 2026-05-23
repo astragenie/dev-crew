@@ -213,7 +213,10 @@ test("readFeatureEndCeremony returns null when no file exists", async () => {
 
 test("readFeatureEndCeremony returns ceremony after write", async () => {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-ceremonies-read-"));
-  const result = featureEnd({ id: "FEAT-007", title: "flutter", phase: "2" }, { simplifyRan: true });
+  const result = featureEnd(
+    { id: "FEAT-007", title: "flutter", phase: "2" },
+    { simplifyRan: true }
+  );
   await writeFeatureEndCeremony(repo, result);
   const read = await readFeatureEndCeremony(repo, "FEAT-007");
   assert.ok(read !== null);

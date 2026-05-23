@@ -23,7 +23,7 @@ Continuation HARD RULE. Atomic operation that:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice from-feature \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice from-feature \
   --repo "$PWD" \
   --id FEAT-007
 ```
@@ -31,7 +31,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice from-feature \
 Or positional:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice from-feature \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice from-feature \
   --repo "$PWD" -- FEAT-007
 ```
 
@@ -84,7 +84,7 @@ When acceptance criteria PASS:
    `<slicesRoot>/completed/` (or wherever your slice layout puts done work).
 3. Move the feature file from `docs/backlog/in-progress/` to
    `docs/backlog/done/` (manually via `git mv` or via a future
-   `/autonomous-loop:slice complete` command).
-4. Run `/autonomous-loop:spec status` to auto-roll parent SPEC to `satisfied`
+   `/loop:slice complete` command).
+4. Run `/loop:spec status` to auto-roll parent SPEC to `satisfied`
    if all its features are done.
 5. Write the Crew `final-synthesis` artifact.

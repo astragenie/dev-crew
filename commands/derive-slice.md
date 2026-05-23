@@ -32,7 +32,7 @@ Workflow:
    `<backlogPath>/approved-slices.md` with status `Approved`.
 6. Update the entry in `product-backlog.md` (strikethrough or remove) noting
    the slice number that now owns the requirement.
-7. Hand off to `/autonomous-loop:next-slice` (or just begin the loop
+7. Hand off to `/loop:next-slice` (or just begin the loop
    immediately per the Cross-Slice Continuation HARD RULE).
 
 Do NOT stop for user confirmation at any point in this derivation — the

@@ -87,11 +87,11 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
         "1. Read the slice file. List its acceptance criteria.",
         "2. Read the diff for the in-progress slice (git diff against base).",
         "3. For each acceptance criterion, evaluate PASS / FAIL / PARTIAL with one-line evidence.",
-        "4. Surface any prior decisions relevant to changed files (run `/autonomous-loop:decisions relevant --files <list>`).",
+        "4. Surface any prior decisions relevant to changed files (run `/loop:decisions relevant --files <list>`).",
         "5. Write your review verdict using the crew writer:",
         `   \`crew write-review-result --decision <PASS|FAIL> --summary "<one-line>" --evidence <path-to-detail-file>\``,
         `6. Link the review artifact to ${sliceId}:`,
-        `   \`/autonomous-loop:slice link --id ${sliceId} --kind reviews --artifact <path>\``,
+        `   \`/loop:slice link --id ${sliceId} --kind reviews --artifact <path>\``,
         "",
         `**Verdict format**: \`PASS\` (no blockers) | \`PASS with minor\` (small fixups requested) | \`FAIL\` (blocker — list them).`
       ]

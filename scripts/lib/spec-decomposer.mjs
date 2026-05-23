@@ -4,14 +4,14 @@ import { linkFeatureToSpec } from "./linkage.mjs";
 
 // Decomposition orchestration. The plugin doesn't make LLM calls itself;
 // the AGENT (Claude) does the semantic reasoning when running the
-// /autonomous-loop:spec decompose command. This helper exists for the
+// /loop:spec decompose command. This helper exists for the
 // programmatic / scripted path: given a list of features the caller has
 // already identified, it materializes the FEAT-NNN files and wires the
 // SPEC↔FEAT linkage.
 //
 // Typical use:
 //   1. Agent reads SPEC body, identifies discrete features
-//   2. Agent calls /autonomous-loop:spec decompose with the feature titles
+//   2. Agent calls /loop:spec decompose with the feature titles
 //   3. This module creates each FEAT in pending/ + links back to the spec
 
 export async function decomposeSpec(repoPath, specId, featureTitles, config = null) {

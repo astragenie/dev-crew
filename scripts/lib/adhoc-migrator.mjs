@@ -181,13 +181,13 @@ function extendCursorPastLoopHeaders(content, initialEnd, loopHeaders, removalSt
 }
 
 // Scans forward from `startFrom` and returns the cut point: either the
-// next non-loop H2, or the start of the autonomous-loop marker block
+// next non-loop H2, or the start of the loop marker block
 // (whichever comes first), or EOF.
 function findContentCutPoint(content, startFrom, loopHeaders) {
   let scanFrom = startFrom;
   for (;;) {
     const nextH2 = content.indexOf("\n## ", scanFrom);
-    const nextMarker = content.indexOf("<!-- autonomous-loop:start -->", scanFrom);
+    const nextMarker = content.indexOf("<!-- loop:start -->", scanFrom);
     if (nextH2 === -1 && nextMarker === -1) return content.length;
     if (nextMarker !== -1 && (nextH2 === -1 || nextMarker < nextH2)) return nextMarker;
     const headerLine = content.slice(nextH2 + 1, content.indexOf("\n", nextH2 + 1));

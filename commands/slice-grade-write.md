@@ -7,7 +7,7 @@ description: Validate grade scores, extract DEC-TBD decisions into docs/decision
 Persists an edited grade file and extracts retrospective decisions into
 `docs/decisions/`.
 
-Pre-requisites: agent has run `/autonomous-loop:slice grade --id SLICE-NN`
+Pre-requisites: agent has run `/loop:slice grade --id SLICE-NN`
 to generate the template and then edited the file to fill in real scores,
 lessons, decisions, surprises, and narrative.
 
@@ -26,7 +26,7 @@ What grade-write does:
 4. Updates grade frontmatter:
    - `decisions: [DEC-NNN, ...]` array of allocated + previously-allocated ids.
    - `graded_at` if not already set.
-5. Appends a telemetry event to `.claude/logs/autonomous-loop.jsonl`.
+5. Appends a telemetry event to `.claude/logs/loop.jsonl`.
 
 Idempotent: re-running only extracts blocks still marked `DEC-TBD`.
 Previously-allocated decisions stay where they are.
@@ -34,7 +34,7 @@ Previously-allocated decisions stay where they are.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice grade-write \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice grade-write \
   --repo "$PWD" \
   --id SLICE-52
 ```
@@ -59,5 +59,5 @@ the grade file and re-run.
 
 ## After grade-write
 
-- Inspect extracted decisions: `/autonomous-loop:decisions list`
+- Inspect extracted decisions: `/loop:decisions list`
 - Move on to the next slice via the Cross-Slice Continuation rule

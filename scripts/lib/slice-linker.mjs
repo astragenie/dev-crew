@@ -12,7 +12,11 @@ import {
   writeCrewHandoff,
   writeCrewRunBrief
 } from "./slice-linker/crew-bridge.mjs";
-import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-linker/slice-progress.mjs";
+import {
+  findActivePlan,
+  detectSliceStatus,
+  writeSliceProgress
+} from "./slice-linker/slice-progress.mjs";
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
@@ -106,7 +110,7 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
     "## Done When",
     "",
     "- all acceptance criteria PASS with evidence per `01-loop-control/EVIDENCE_RULES.md`",
-    "- build / test commands per `.claude/autonomous-loop.json` pass",
+    "- build / test commands per `.claude/loop.json` pass",
     `- feature ${featureId} moved from \`in-progress/\` to \`done/\``,
     "- Crew `final-synthesis` artifact written",
     "",
@@ -323,7 +327,7 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     synthesis,
     costReport,
     sliceProgress,
-    nextAction: `Run /autonomous-loop:slice grade --id ${sliceId} to capture lessons + decisions.`
+    nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
 }
 
@@ -391,21 +395,19 @@ export async function startSlice(
     sliceProgress,
     dispatchInstruction,
     nextAction: dispatch
-      ? `Dispatch /crew:build subagent for ${sliceId}; close with /autonomous-loop:slice complete --id ${sliceId}.`
-      : `Begin acceptance-criteria work for ${sliceId}. Close with /autonomous-loop:slice complete --id ${sliceId}.`
+      ? `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`
+      : `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`
   };
 }
 
 function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal }) {
-  const rel = sliceFile
-    ? path.relative(repoPath, sliceFile).replace(/\\/g, "/")
-    : null;
+  const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   return [
     `Dispatch /crew:build subagent with this prompt:`,
     "",
-    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /autonomous-loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.`
+    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.`
   ].join("\n");
 }
 

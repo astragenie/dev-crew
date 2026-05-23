@@ -27,7 +27,7 @@ left as `pending`.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" backlog triage \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog triage \
   --repo "$PWD"
 ```
 

@@ -46,12 +46,12 @@ export async function getPluginIdentity() {
 }
 
 // Returns the bash glob pattern used to locate the crew CLI inside Claude
-// Code's plugin cache. The crew plugin uses a fixed marketplace name
-// `crew-dev`, which we hardcode here because we depend on it. If the user
-// installs crew via a different marketplace, override CREW_MARKETPLACE_NAME
-// in the environment.
+// Code's plugin cache. The crew plugin lives in the `astra` marketplace
+// (renamed from `crew-dev` in v0.3.0), which we hardcode here because we
+// depend on it. If the user installs crew via a different marketplace,
+// override CREW_MARKETPLACE_NAME in the environment.
 export function getCrewCliCacheGlob() {
-  const marketplaceName = process.env.CREW_MARKETPLACE_NAME || "crew-dev";
+  const marketplaceName = process.env.CREW_MARKETPLACE_NAME || "astra";
   const pluginName = "crew";
   return `$HOME/.claude/plugins/cache/${marketplaceName}/${pluginName}/*/scripts/crew.mjs`;
 }
@@ -63,7 +63,7 @@ export async function findCrewCli() {
   if (!homedir) {
     return null;
   }
-  const marketplaceName = process.env.CREW_MARKETPLACE_NAME || "crew-dev";
+  const marketplaceName = process.env.CREW_MARKETPLACE_NAME || "astra";
   const pluginName = "crew";
   const cacheDir = path.join(homedir, ".claude", "plugins", "cache", marketplaceName, pluginName);
   try {

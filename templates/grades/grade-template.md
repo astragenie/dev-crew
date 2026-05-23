@@ -48,7 +48,7 @@ is what plugin commands read; the list is for human review.)
 - negative bullet
 
 (Drop one `### DEC-TBD:` block per decision. Plugin assigns real DEC-NNN
-ids on `/autonomous-loop:slice grade-write`.)
+ids on `/loop:slice grade-write`.)
 
 ## Surprises
 

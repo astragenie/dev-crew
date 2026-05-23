@@ -15,7 +15,7 @@ literal path-suffix:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" decisions relevant \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" decisions relevant \
   --repo "$PWD" \
   --files "src/auth/middleware.cs,src/api/Controllers/AuthController.cs"
 ```
@@ -63,7 +63,7 @@ via `decisions relevant`.
 
 ## Reviewer workflow integration
 
-The `/autonomous-loop:slice review-ladder` prompts include a step:
+The `/loop:slice review-ladder` prompts include a step:
 "surface prior decisions relevant to changed files via `decisions relevant`".
 Reviewers cite matching decisions in their verdict to prevent re-litigating
 solved problems.

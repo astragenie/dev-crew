@@ -6,7 +6,7 @@ decisions made, and surprises. Lives at `docs/grades/SLICE-NN-grade.md`.
 ## Lifecycle
 
 1. After slice acceptance criteria PASS:
-   `/autonomous-loop:slice grade --id SLICE-NN`
+   `/loop:slice grade --id SLICE-NN`
    Plugin generates a pre-filled template (file only — won't clobber an
    existing grade).
 2. Agent edits the grade inline:
@@ -16,7 +16,7 @@ decisions made, and surprises. Lives at `docs/grades/SLICE-NN-grade.md`.
      for retrospective decisions made during the slice.
    - Fills the narrative sections (What went well / wrong / differently).
 3. Persist + extract:
-   `/autonomous-loop:slice grade-write --id SLICE-NN`
+   `/loop:slice grade-write --id SLICE-NN`
    - Validates scores in [0, 1]
    - For each `### DEC-TBD: <title>` block, allocates `DEC-NNN` and writes
      a full ADR-style file under `docs/decisions/`

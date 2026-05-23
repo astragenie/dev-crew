@@ -1,7 +1,7 @@
-# autonomous-loop — Product Backlog
+# loop — Product Backlog
 
 Companion to `hero-crew/docs/architecture.md`. Items here are the
-runtime / safety / telemetry pieces the autonomous-loop plugin owns.
+runtime / safety / telemetry pieces the loop plugin owns.
 
 ## Phase 3 — Loop safety + telemetry
 

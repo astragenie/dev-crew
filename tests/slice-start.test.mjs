@@ -12,7 +12,7 @@ async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
-    path.join(repo, ".claude/autonomous-loop.json"),
+    path.join(repo, ".claude/loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
@@ -81,10 +81,7 @@ test("startSlice emits dispatchInstruction by default", async () => {
   assert.match(result.dispatchInstruction, /Dispatch \/crew:build subagent/);
   assert.match(result.dispatchInstruction, new RegExp(slice.id));
   assert.match(result.dispatchInstruction, /\/crew:fix/);
-  assert.match(
-    result.nextAction,
-    /Dispatch \/crew:build subagent/
-  );
+  assert.match(result.nextAction, /Dispatch \/crew:build subagent/);
 });
 
 test("startSlice with dispatch:false omits the instruction", async () => {

@@ -1,6 +1,6 @@
 ---
-name: autonomous-loop:loop-discipline
-description: Use at the start of substantive engineering work in any repo that has the autonomous-loop plugin installed. Loads the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) and reminds the agent not to pause for user confirmation mid-slice. Trigger automatically when starting a session in a repo whose CLAUDE.md contains `<!-- autonomous-loop:start -->`.
+name: loop:loop-discipline
+description: Use at the start of substantive engineering work in any repo that has the loop plugin installed. Loads the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) and reminds the agent not to pause for user confirmation mid-slice. Trigger automatically when starting a session in a repo whose CLAUDE.md contains `<!-- loop:start -->`.
 ---
 
 # Autonomous Loop Discipline
@@ -10,7 +10,7 @@ repo's CLAUDE.md.
 
 ## Read the rules
 
-The repo's CLAUDE.md contains a `<!-- autonomous-loop:start -->...<!-- autonomous-loop:end -->`
+The repo's CLAUDE.md contains a `<!-- loop:start -->...<!-- loop:end -->`
 block. Read it now. The three HARD RULE statements there govern this session.
 
 ## The three rules summarized
@@ -22,9 +22,9 @@ block. Read it now. The three HARD RULE statements there govern this session.
 2. **Cross-Slice Continuation** — When a slice closes, auto-pick the next
    PENDING slice from `approved-slices.md`. If the list is empty but
    `product-backlog.md` has unmet requirements, derive a new slice
-   (`/autonomous-loop:derive-slice`) and proceed.
+   (`/loop:derive-slice`) and proceed.
 3. **Phase Completion Gate** — At phase boundaries, invoke
-   `/autonomous-loop:phase-gate`. Do NOT hand-author the validation
+   `/loop:phase-gate`. Do NOT hand-author the validation
    artifact — let the plugin own it.
 
 ## Disallowed stop reasons
@@ -58,5 +58,5 @@ Every meaningful action emits a Crew artifact:
 
 - run brief at the start of a substantial slice → `crew write-run-brief`
 - review pass → `crew write-review-result`
-- validation → `crew write-validation-result` (or `/autonomous-loop:phase-gate`)
+- validation → `crew write-validation-result` (or `/loop:phase-gate`)
 - final synthesis when the slice closes → `crew write-final-synthesis`

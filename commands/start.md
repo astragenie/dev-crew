@@ -1,5 +1,5 @@
 ---
-description: First action for a fresh autonomous-loop session — read mandatory docs, pick highest-priority PENDING slice, run the first-response checklist.
+description: First action for a fresh loop session — read mandatory docs, pick highest-priority PENDING slice, run the first-response checklist.
 ---
 
 # Start Autonomous Loop Session
@@ -13,9 +13,9 @@ Workflow:
 1. Confirm the workspace and that the loop is installed:
    ```bash
    pwd
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" status --repo "$PWD"
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" status --repo "$PWD"
    ```
-2. If `status` reports no marker block, run `/autonomous-loop:install` first.
+2. If `status` reports no marker block, run `/loop:install` first.
 3. Read in this order:
    - `<aiLoopRoot>/00-entry/MASTER_PROMPT.md` (persona, stack, mandatory reading list)
    - `<backlogPath>/approved-slices.md` (pick highest-priority PENDING slice)
@@ -34,5 +34,5 @@ unmet requirements, follow the Cross-Slice Continuation HARD RULE: derive a
 new slice into `<slicesRoot>/pending/`, run Reviewer A and Reviewer B, append
 to `approved-slices.md`, then implement.
 
-The plugin commands `/autonomous-loop:next-slice` and `/autonomous-loop:derive-slice`
+The plugin commands `/loop:next-slice` and `/loop:derive-slice`
 are thin helpers around these flows.

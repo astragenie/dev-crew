@@ -16,7 +16,7 @@ it belongs.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" spec decompose \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" spec decompose \
   --repo "$PWD" \
   --id SPEC-001 \
   --features "Audio ingestion pipeline; Multi-tenant key scoping; Health propagation"
@@ -42,7 +42,7 @@ PM (or reviewer) flips status to approved
    ↓
 Agent reads SPEC-001 body, identifies 3-5 features
    ↓
-/autonomous-loop:spec decompose --id SPEC-001 --features "..."
+/loop:spec decompose --id SPEC-001 --features "..."
    ↓
 3-5 FEAT-NNN files appear in docs/backlog/pending/
    ↓

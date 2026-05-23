@@ -34,7 +34,7 @@ async function writeConfig(repo, stack) {
   const dir = path.join(repo, ".claude");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
-    path.join(dir, "autonomous-loop.json"),
+    path.join(dir, "loop.json"),
     JSON.stringify({
       preset: "dotnet-aspire-python",
       stack: {

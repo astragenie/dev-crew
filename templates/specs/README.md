@@ -29,13 +29,13 @@ stays uniform so plugin tooling can list / link without knowing the type.
 - `archived` — deprecated / no longer in scope
 
 Plugin auto-rolls `decomposed` → `satisfied` once all derived features are
-done (see `/autonomous-loop:spec status`).
+done (see `/loop:spec status`).
 
 ## Authoring
 
 Three ways:
 
-1. `/autonomous-loop:spec add --type prd "title"` — plugin creates a well-formed
+1. `/loop:spec add --type prd "title"` — plugin creates a well-formed
    draft file with frontmatter.
 2. Manually copy a `<type>-template.md` and fill in.
 3. From an external producer (same as backlog — any writer that drops a
@@ -46,7 +46,7 @@ Three ways:
 After a spec is `approved`:
 
 ```
-/autonomous-loop:spec decompose --id SPEC-NNN --features "feature 1; feature 2; feature 3"
+/loop:spec decompose --id SPEC-NNN --features "feature 1; feature 2; feature 3"
 ```
 
 Plugin creates `FEAT-NNN.md` files in `docs/backlog/pending/` with

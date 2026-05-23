@@ -11,7 +11,7 @@ linkage arrays instead of scraping artifact bodies for slice mentions.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" slice link \
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice link \
   --repo "$PWD" \
   --id SLICE-52 \
   --kind reviews \
@@ -38,9 +38,9 @@ Pattern crew agents should follow:
 
 ```
 1. write artifact via crew CLI -> get path
-2. /autonomous-loop:slice link --id SLICE-NN --kind <kind> --artifact <path>
+2. /loop:slice link --id SLICE-NN --kind <kind> --artifact <path>
 3. (optional) continue work
 ```
 
 Embedded in the Reviewer / Validator subagent prompts emitted by
-`/autonomous-loop:slice review-ladder`.
+`/loop:slice review-ladder`.

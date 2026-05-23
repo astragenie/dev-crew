@@ -12,7 +12,7 @@ next slice. Prevents repeating known mistakes.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-loop.mjs" lessons recent [N]
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" lessons recent [N]
 ```
 
 Default `N = 5`. Returns:

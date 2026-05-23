@@ -22,7 +22,7 @@ test("initializeIterationCounter creates state file with count=0", async () => {
   assert.equal(state.count, 0);
   assert.ok(state.initializedAt);
   // Verify file was written
-  const stateFile = path.join(repo, ".claude/state/autonomous-loop/iteration.json");
+  const stateFile = path.join(repo, ".claude/state/loop/iteration.json");
   const exists = await fs
     .access(stateFile)
     .then(() => true)
@@ -65,7 +65,7 @@ test("incrementIteration persists count across calls", async () => {
   const state = await incrementIteration(repo);
   assert.equal(state.count, 4);
   // Read from disk again to verify persistence
-  const stateFile = path.join(repo, ".claude/state/autonomous-loop/iteration.json");
+  const stateFile = path.join(repo, ".claude/state/loop/iteration.json");
   const raw = await fs.readFile(stateFile, "utf8");
   const parsed = JSON.parse(raw);
   assert.equal(parsed.count, 4);
