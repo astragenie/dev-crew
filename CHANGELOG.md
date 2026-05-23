@@ -3,6 +3,17 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.3.1 — 2026-05-23 — Author rebrand
+
+### Marketplace
+
+- Author rebrand consolidated to `astra` across `marketplace.json` and
+  `plugin.json` (parent `astra` marketplace pin moves to `loop@0.3.1`).
+
+### Notes
+
+- No consumer-repo migration required. No code or skill changes.
+
 ## v0.3.0 — 2026-05-23
 
 ### Breaking
