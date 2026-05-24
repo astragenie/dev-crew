@@ -15,63 +15,75 @@
 // silently so legacy slices (without `feature:` or `phase:`) keep emitting
 // the bare `slice-NN` form.
 
-const SAFE = /[^a-z0-9-]+/g;
-
-// Normalize an identifier (FEAT-021 / SLICE-36 / "Phase 3 alpha") into a
-// filename-safe lowercase segment. Whitespace and unsafe punctuation
-// collapse to a single `-`. Leading/trailing dashes are trimmed.
-function slugSegment(value) {
+// Compact a value into an alphanumeric-only segment. Strips dashes,
+// whitespace, and any other punctuation — `FEAT-021` → `feat021`,
+// `SLICE-36` → `slice36`, `"3 alpha"` → `3alpha`. Tight segments keep
+// filenames short and uniform between the two filename surfaces:
+//   - Repo-owned filenames built directly from buildArtifactSlug.
+//   - Crew-owned filenames built by crew's slugifier from the title
+//     emitted by buildArtifactTitle. Tight uppercase tags survive crew
+//     slugify as the same tight lowercase segments.
+function tight(value) {
   if (value === null || value === undefined) return "";
   return String(value)
     .toLowerCase()
-    .replace(SAFE, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function tightUpper(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "");
 }
 
 // Build the slug fragment used between artifact kind and any trailing
 // per-kind suffix. Segments follow the standard wide→narrow decomposition
 // hierarchy: phase (milestone) → feature → slice (story). phase / featureId
-// are nullable; their segments drop out. sliceId is required.
+// are nullable; their segments drop out. sliceId is required. Each segment
+// is internally tight (no dashes within `feat021`); the joining dash sits
+// between segments only.
 //
 // buildArtifactSlug({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36" })
-//   → "phase-3-feat-021-slice-36"
+//   → "phase3-feat021-slice36"
 // buildArtifactSlug({ featureId: null, phase: null, sliceId: "SLICE-36" })
-//   → "slice-36"
+//   → "slice36"
 export function buildArtifactSlug({ featureId, phase, sliceId } = {}) {
   if (!sliceId) {
     throw new Error("buildArtifactSlug requires sliceId");
   }
   const segments = [];
-  const ph = slugSegment(phase);
-  if (ph) segments.push(`phase-${ph}`);
-  const feat = slugSegment(featureId);
+  const ph = tight(phase);
+  if (ph) segments.push(`phase${ph}`);
+  const feat = tight(featureId);
   if (feat) segments.push(feat);
-  segments.push(slugSegment(sliceId));
+  segments.push(tight(sliceId));
   return segments.join("-");
 }
 
-// Build a human-readable title for crew-CLI title args. Crew CLI slugifies
-// the title to produce its own filename, so the structure mirrors the slug
-// helper (phase → feature → slice) but keeps the original casing for the
-// body display.
+// Build a title for crew-CLI `--title` args. Crew CLI slugifies the title
+// to produce its own filename, so the tags here mirror the tight slug
+// segments — `PHASE3 FEAT021 SLICE36` survives crew slugify as
+// `phase3-feat021-slice36`, matching the repo-owned filename surface.
 //
 // buildArtifactTitle({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36",
 //                      summary: "Health page repurpose" })
-//   → "PHASE-3 FEAT-021 SLICE-36: Health page repurpose"
+//   → "PHASE3 FEAT021 SLICE36: Health page repurpose"
 // buildArtifactTitle({ sliceId: "SLICE-36", summary: "Health page" })
-//   → "SLICE-36: Health page"
+//   → "SLICE36: Health page"
 // buildArtifactTitle({ sliceId: "SLICE-36" })
-//   → "SLICE-36"
+//   → "SLICE36"
 export function buildArtifactTitle({ featureId, phase, sliceId, summary } = {}) {
   if (!sliceId) {
     throw new Error("buildArtifactTitle requires sliceId");
   }
   const tags = [];
   if (phase !== null && phase !== undefined && String(phase).length > 0) {
-    tags.push(`PHASE-${phase}`);
+    tags.push(`PHASE${tightUpper(phase)}`);
   }
-  if (featureId) tags.push(String(featureId));
-  tags.push(String(sliceId));
+  const feat = tightUpper(featureId);
+  if (feat) tags.push(feat);
+  tags.push(tightUpper(sliceId));
   const head = tags.join(" ");
   return summary ? `${head}: ${summary}` : head;
 }

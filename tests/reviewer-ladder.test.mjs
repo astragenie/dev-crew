@@ -38,7 +38,7 @@ async function seedSlice(repo, sliceId, { feature = null, phase = null } = {}) {
   return file;
 }
 
-test("buildReviewLadder prompt includes enriched --title with PHASE → FEAT → SLICE", async () => {
+test("buildReviewLadder prompt includes tight --title PHASE3 FEAT021 SLICE07", async () => {
   const repo = await tmpRepo("rl-feat-phase-");
   await seedSlice(repo, "SLICE-07", { feature: "FEAT-021", phase: "3" });
   const ladder = await buildReviewLadder(repo, "SLICE-07");
@@ -46,8 +46,8 @@ test("buildReviewLadder prompt includes enriched --title with PHASE → FEAT →
   for (const task of ladder.tasks) {
     assert.match(
       task.prompt,
-      /--title "PHASE-3 FEAT-021 SLICE-07: <one-line summary>"/,
-      "prompt names phase, feature, slice in wide→narrow order"
+      /--title "PHASE3 FEAT021 SLICE07: <one-line summary>"/,
+      "prompt names phase, feature, slice in tight wide→narrow order"
     );
   }
 });
@@ -59,10 +59,10 @@ test("buildReviewLadder prompt omits PHASE tag when phase null", async () => {
   for (const task of ladder.tasks) {
     assert.match(
       task.prompt,
-      /--title "FEAT-021 SLICE-08: <one-line summary>"/,
+      /--title "FEAT021 SLICE08: <one-line summary>"/,
       "prompt has FEAT but no PHASE"
     );
-    assert.doesNotMatch(task.prompt, /PHASE-/, "no PHASE token");
+    assert.doesNotMatch(task.prompt, /PHASE/, "no PHASE token");
   }
 });
 
@@ -73,9 +73,15 @@ test("buildReviewLadder prompt drops FEAT tag when feature null", async () => {
   for (const task of ladder.tasks) {
     assert.match(
       task.prompt,
-      /--title "SLICE-09: <one-line summary>"/,
+      /--title "SLICE09: <one-line summary>"/,
       "prompt falls back to bare slice id"
     );
-    assert.doesNotMatch(task.prompt, /FEAT-/, "no FEAT token");
+    // FEAT may appear in instructional body text; only the --title prefix
+    // must omit the FEAT tag.
+    assert.doesNotMatch(
+      task.prompt,
+      /--title "[^"]*FEAT/,
+      "no FEAT token inside the title prefix"
+    );
   }
 });

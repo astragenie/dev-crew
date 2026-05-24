@@ -3,6 +3,21 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased — Artifact filename tight segments (`phase3-feat021-slice36`)
+
+### Slug format — tight internal segments
+
+- Filename segments are now tight: `phase3-feat021-slice36` instead of
+  `phase-3-feat-021-slice-36`. The joining dash sits between segments
+  only; identifiers are compacted internally. Same compaction applies
+  to title args passed to the crew CLI (`PHASE3 FEAT021 SLICE36`) so
+  crew's slugifier produces matching filenames on both surfaces.
+- Frontmatter `feature:` / `phase:` keys keep the standard human form
+  (`FEAT-021`, `"3"`). Only filenames + crew-CLI title args are tight.
+- Tests in `tests/artifact-naming.test.mjs`,
+  `tests/reviewer-ladder.test.mjs`, and `tests/synergy.test.mjs`
+  updated to the tight expectations.
+
 ## Unreleased — Artifact filenames + frontmatter surface FEAT and phase
 
 ### Filename + frontmatter — FEAT and phase linkage
