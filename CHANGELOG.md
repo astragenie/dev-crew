@@ -3,7 +3,24 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## Unreleased — Marathon mode (default-on stop-policy change)
+## v0.3.3 — 2026-05-24 — Marathon mode + deterministic FEAT pickup
+
+### Picker — deterministic tiebreaker on priority ties
+
+- Fixed autonomous-loop stall when batch-triaged FEATs all share the same
+  priority (e.g. all P2). Previous rule "break ties by most recently
+  triaged" collapsed to itself because batch triage stamps every feature
+  with the same `updated` date.
+- New tiebreaker: **lowest FEAT-NNN id ascending** (oldest feature wins).
+  Deterministic, independent of frontmatter timestamps, derivable from
+  filename alone.
+- New comparator `comparePickOrder(a, b)` exported from
+  `scripts/lib/backlog-parser.mjs`. Used by `brief.mjs` (`topTriaged`)
+  and `memory-snapshot.mjs` (`triagedTop`). Rule text in
+  `templates/loop-rules.md` updated to match.
+- New tests in `tests/backlog.test.mjs` (comparator unit tests with
+  shuffled input + missing-priority case) and `tests/brief.test.mjs`
+  (integration tie test).
 
 ### Stop conditions — marathon mode
 
