@@ -325,6 +325,11 @@ export async function writeCrewFinalSynthesis(
   return { synthesisPath: target, hasGrade: Boolean(grade) };
 }
 
+export async function tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }) {
+  const { writeAgentReport } = await import("./agent-report-writer.mjs");
+  return writeAgentReport(repoPath, { sliceId, featureId, phase, startedAt });
+}
+
 export async function writeCrewHandoff(
   repoPath,
   { sliceId, slicePath, featureId, phase = null, featureResult, specChanges }

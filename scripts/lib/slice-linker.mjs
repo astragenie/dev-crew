@@ -4,9 +4,10 @@ import path from "node:path";
 import { resolveConfig } from "./config-resolver.mjs";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
-import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "./ceremonies.mjs";
 import {
+  tryWriteAgentReport,
   tryWriteCostReport,
   writeCrewFinalSynthesis,
   writeCrewHandoff,
@@ -204,6 +205,13 @@ export async function sliceFromFeature(repoPath, featureId, { config = null } = 
 // Wraps an async action so any thrown error becomes `{ error: msg }`. Used
 // by completeSlice for the three best-effort crew-bridge calls; one failing
 // must not block the others or the surrounding slice-complete operation.
+function deriveBlockingGates(workflowState) {
+  const gates = workflowState?.currentRun?.gates || {};
+  const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;
+  const escalated = gates.escalation?.status === "escalated" ? gates.escalation : null;
+  return { blocked, escalated };
+}
+
 async function bestEffort(fn) {
   try {
     return await fn();
@@ -324,7 +332,9 @@ export async function completeSlice(
   // workflow run is blocked or escalated_to_human. The slice itself can
   // still complete (move + stamp), but the feature transition waits for
   // the human to clear the gate.
-  const blockingGates = await readCrewBlockingGates(repoPath);
+  const workflowState = await readCrewWorkflowState(repoPath);
+  const startedAt = workflowState?.currentRun?.startedAt ?? null;
+  const blockingGates = deriveBlockingGates(workflowState);
 
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
@@ -353,10 +363,11 @@ export async function completeSlice(
     featureResult,
     specChanges
   };
-  const [handoff, synthesis, costReport] = await Promise.all([
+  const [handoff, synthesis, costReport, agentReport] = await Promise.all([
     bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
     bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
-    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }))
+    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase })),
+    bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
   ]);
 
   const sliceProgress = await bestEffort(async () => {
@@ -372,6 +383,7 @@ export async function completeSlice(
     handoff,
     synthesis,
     costReport,
+    agentReport,
     sliceProgress,
     nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };

@@ -11,7 +11,7 @@ import { stripArtifactTimestamp } from "./artifact-naming.mjs";
 // each holds repo-relative paths to crew artifacts associated with the
 // slice. Idempotent — appending the same path twice is a no-op.
 
-const SUPPORTED_KINDS = ["reviews", "validations", "deployments"];
+const SUPPORTED_KINDS = ["reviews", "validations", "deployments", "agents"];
 
 async function pathExists(p) {
   try {
