@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { resolveConfig } from "./config-resolver.mjs";
+import { stripArtifactTimestamp } from "./artifact-naming.mjs";
 
 // Bidirectional linkage between slice files and crew artifacts. Replaces
 // the regex-scrape approach in score-inference.mjs with a frontmatter-walk
@@ -69,12 +70,16 @@ export async function linkArtifactToSlice(
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
   if (!sliceFile) throw new Error(`Slice not found: ${sliceId}`);
 
-  const artifactAbs = path.isAbsolute(artifactPath)
+  const artifactAbsInput = path.isAbsolute(artifactPath)
     ? artifactPath
     : path.resolve(repoPath, artifactPath);
-  if (!(await pathExists(artifactAbs))) {
+  if (!(await pathExists(artifactAbsInput))) {
     throw new Error(`Artifact does not exist: ${artifactPath}`);
   }
+  // Strip leading `<TS>-` prefix so linked artifact filenames stay uniform
+  // with the tight repo-owned slug surface. No-op when the filename has no
+  // TS prefix. Renames the file on disk and uses the new path going forward.
+  const artifactAbs = await stripArtifactTimestamp(artifactAbsInput);
   const artifactRel = relativize(repoPath, artifactAbs);
 
   const content = await fs.readFile(sliceFile, "utf8");

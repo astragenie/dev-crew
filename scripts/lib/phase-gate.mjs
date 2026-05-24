@@ -7,6 +7,7 @@ import { resolveConfig } from "./config-resolver.mjs";
 import { findCrewCli } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
+import { stripArtifactTimestamp } from "./artifact-naming.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -84,11 +85,12 @@ async function writeReport(repoPath, config, phase, body) {
     config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations"
   );
   await fs.mkdir(artifactDir, { recursive: true });
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
-  const filename = `phase-${phase}-gate-${stamp}.md`;
+  // No timestamp on the loop-owned phase-gate artifact — phase id is the
+  // uniqueness key. Re-running the gate for the same phase overwrites the
+  // previous report (latest is authoritative).
+  const filename = `phase${String(phase)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")}-gate.md`;
   const target = path.join(artifactDir, filename);
   await fs.writeFile(target, body);
   return target;
@@ -96,7 +98,7 @@ async function writeReport(repoPath, config, phase, body) {
 
 async function recordWithCrew(crewCli, repoPath, title, decision, summary, artifactPath) {
   try {
-    await execFile(
+    const { stdout } = await execFile(
       "node",
       [
         crewCli,
@@ -114,7 +116,19 @@ async function recordWithCrew(crewCli, repoPath, title, decision, summary, artif
       ],
       { maxBuffer: 1024 * 1024 }
     );
-    return { ok: true };
+    // Capture the crew-written artifact path so we can strip the leading
+    // timestamp prefix (matches the repo-owned phase-gate filename surface).
+    let crewArtifactPath = null;
+    try {
+      const parsed = JSON.parse(stdout);
+      const candidate = parsed?.artifactPath || parsed?.path || parsed?.outputPath || null;
+      if (typeof candidate === "string" && candidate.length > 0) {
+        crewArtifactPath = await stripArtifactTimestamp(candidate);
+      }
+    } catch {
+      // crew CLI may not emit JSON — best-effort only.
+    }
+    return { ok: true, crewArtifactPath };
   } catch (error) {
     return { ok: false, error: error.message };
   }

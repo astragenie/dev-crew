@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 // Artifact filename + crew-CLI title construction. Filenames written by
 // slice-linker (handoff, final-synthesis) and crew-CLI titles passed for
 // crew-owned artifacts (run-brief, review-result, validation-result,
@@ -35,6 +38,36 @@ function tightUpper(value) {
   return String(value)
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "");
+}
+
+// Leading-timestamp pattern crew CLI prepends to artifact filenames.
+// Match `YYYYMMDDTHHMMSSZ-` and strip it.
+const LEADING_TS_RE = /^\d{8}T\d{6}Z-/;
+
+// True when the filename starts with the crew CLI timestamp prefix.
+export function hasLeadingTimestamp(filePath) {
+  return LEADING_TS_RE.test(path.basename(String(filePath)));
+}
+
+// Rename a file by stripping the leading `<YYYYMMDDTHHMMSSZ>-` prefix from
+// its basename. Returns the new path (or the original if no match). No-op
+// on directories, missing files, or files without a TS prefix. The caller
+// gets back whichever path is now on disk so it can update downstream
+// references in the same step.
+export async function stripArtifactTimestamp(filePath) {
+  if (!filePath) return filePath;
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath);
+  if (!LEADING_TS_RE.test(base)) return filePath;
+  const newBase = base.replace(LEADING_TS_RE, "");
+  const newPath = path.join(dir, newBase);
+  if (newPath === filePath) return filePath;
+  try {
+    await fs.rename(filePath, newPath);
+    return newPath;
+  } catch {
+    return filePath;
+  }
 }
 
 // Build the slug fragment used between artifact kind and any trailing

@@ -78,10 +78,6 @@ test("buildReviewLadder prompt drops FEAT tag when feature null", async () => {
     );
     // FEAT may appear in instructional body text; only the --title prefix
     // must omit the FEAT tag.
-    assert.doesNotMatch(
-      task.prompt,
-      /--title "[^"]*FEAT/,
-      "no FEAT token inside the title prefix"
-    );
+    assert.doesNotMatch(task.prompt, /--title "[^"]*FEAT/, "no FEAT token inside the title prefix");
   }
 });

@@ -3,6 +3,28 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased — Drop crew-CLI timestamp from artifact filenames
+
+### Strip leading `<TS>-` from crew-written filenames
+
+- `scripts/lib/artifact-naming.mjs` gains `stripArtifactTimestamp` +
+  `hasLeadingTimestamp`. Strips the leading
+  `YYYYMMDDTHHMMSSZ-` prefix the crew CLI adds to artifact filenames
+  and renames the file on disk. No-op when no TS prefix.
+- `crew-bridge.mjs::writeCrewRunBrief` post-renames the run-brief file
+  returned by `crew write-run-brief`. Same for `tryWriteCostReport`
+  (cost-report + cost-advise).
+- `artifact-linkage.mjs::linkArtifactToSlice` auto-strips the TS prefix
+  on the linked file before recording it in slice frontmatter. Covers
+  agent-invoked `crew write-review-result` / `crew write-validation-result`
+  via the `/loop:slice link` flow.
+- `phase-gate.mjs::writeReport` drops the timestamp from the loop-owned
+  filename: `phaseN-gate.md` instead of `phase-N-gate-<TS>.md`.
+- `phase-gate.mjs::recordWithCrew` captures the crew CLI stdout JSON and
+  strips the TS from the crew-written validation-result path.
+- 4 new tests in `tests/artifact-naming.test.mjs` cover the strip helper
+  (TS-prefixed rename, no-op, falsy input).
+
 ## Unreleased — Artifact filename tight segments (`phase3-feat021-slice36`)
 
 ### Slug format — tight internal segments

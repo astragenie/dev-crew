@@ -1,7 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildArtifactSlug, buildArtifactTitle } from "../scripts/lib/artifact-naming.mjs";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import {
+  buildArtifactSlug,
+  buildArtifactTitle,
+  hasLeadingTimestamp,
+  stripArtifactTimestamp
+} from "../scripts/lib/artifact-naming.mjs";
 
 test("buildArtifactSlug emits tight phase → feat → slice when all three set", () => {
   const out = buildArtifactSlug({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36" });
@@ -74,4 +83,40 @@ test("buildArtifactTitle omits PHASE tag when phase null", () => {
 
 test("buildArtifactTitle throws without sliceId", () => {
   assert.throws(() => buildArtifactTitle({ featureId: "FEAT-021" }), /sliceId/);
+});
+
+test("hasLeadingTimestamp detects crew CLI TS prefix", () => {
+  assert.equal(hasLeadingTimestamp("20260524T083250Z-feat021-slice36-review-result.md"), true);
+  assert.equal(hasLeadingTimestamp("feat021-slice36-final-synthesis.md"), false);
+  assert.equal(hasLeadingTimestamp("/abs/dir/20260524T083250Z-x.md"), true);
+});
+
+test("stripArtifactTimestamp renames a TS-prefixed file in place", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "strip-ts-"));
+  const original = path.join(dir, "20260524T083250Z-phase3-feat021-slice36-review-result.md");
+  await fs.writeFile(original, "body");
+
+  const newPath = await stripArtifactTimestamp(original);
+  assert.equal(
+    path.basename(newPath),
+    "phase3-feat021-slice36-review-result.md",
+    "filename loses the leading timestamp segment"
+  );
+  const onDisk = await fs.readdir(dir);
+  assert.deepEqual(onDisk, ["phase3-feat021-slice36-review-result.md"]);
+});
+
+test("stripArtifactTimestamp is a no-op when no TS prefix", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "strip-noop-"));
+  const original = path.join(dir, "phase3-feat021-slice36-complete.md");
+  await fs.writeFile(original, "body");
+
+  const newPath = await stripArtifactTimestamp(original);
+  assert.equal(newPath, original);
+});
+
+test("stripArtifactTimestamp returns falsy input untouched", async () => {
+  assert.equal(await stripArtifactTimestamp(null), null);
+  assert.equal(await stripArtifactTimestamp(undefined), undefined);
+  assert.equal(await stripArtifactTimestamp(""), "");
 });

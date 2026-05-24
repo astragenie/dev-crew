@@ -33,12 +33,16 @@ Both fields propagate to:
 
 - Filenames written by this repo (no timestamp — slug is unique per slice
   close): `runs/phaseN-featNNN-sliceNN-final-synthesis.md`,
-  `handoffs/phaseN-featNNN-sliceNN-complete.md`.
+  `handoffs/phaseN-featNNN-sliceNN-complete.md`,
+  `validations/phaseN-gate.md`.
 - Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`,
   `cost/*`): the loop passes `--title "PHASEN FEATNNN SLICENN: ..."`;
-  crew's slugifier turns this into `phaseN-featNNN-sliceNN-...` so the
-  filename matches the repo-owned surface. Crew CLI controls the format
-  here, so its leading timestamp persists.
+  crew's slugifier turns this into `phaseN-featNNN-sliceNN-...`. Loop then
+  post-renames the crew-written file to strip the leading timestamp prefix,
+  so filenames match the repo-owned surface on both sides. The same
+  TS-strip runs inside `/loop:slice link --kind reviews|validations|
+deployments` — agent-invoked `crew write-review-result` / `crew
+write-validation-result` outputs land tight after linking.
 - Frontmatter of repo-owned artifacts (handoff + final-synthesis):
   `feature:` and `phase:` keys (standard `FEAT-NNN` / `"3"` form).
 

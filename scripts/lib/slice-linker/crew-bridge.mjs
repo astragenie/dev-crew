@@ -11,7 +11,11 @@ import path from "node:path";
 import { execFile as _execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
+import {
+  buildArtifactSlug,
+  buildArtifactTitle,
+  stripArtifactTimestamp
+} from "../artifact-naming.mjs";
 
 const execFile = promisify(_execFile);
 
@@ -94,14 +98,31 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featur
   if (goal) args.push("--goal", goal);
   try {
     const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+    let parsed;
     try {
-      return JSON.parse(stdout);
+      parsed = JSON.parse(stdout);
     } catch {
       return { stdout: stdout.slice(0, 500) };
     }
+    await stripPathsOnReturn(parsed, ["artifactPath", "runBriefPath", "path", "reportPath"]);
+    return parsed;
   } catch (err) {
     return { error: err.message };
   }
+}
+
+// Walk a parsed crew-CLI return object, strip the leading timestamp from
+// any path-shaped values under known keys, and rewrite the key to the new
+// path. Mutates the input. Idempotent.
+async function stripPathsOnReturn(obj, keys) {
+  if (!obj || typeof obj !== "object") return obj;
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === "string" && value.length > 0) {
+      obj[key] = await stripArtifactTimestamp(value);
+    }
+  }
+  return obj;
 }
 
 // Cost attribution mode:
@@ -162,6 +183,7 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   } catch (err) {
     report = { error: err.message };
   }
+  await stripPathsOnReturn(report, ["reportPath", "artifactPath", "path", "outputPath"]);
 
   let advise = null;
   try {
@@ -176,6 +198,7 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   } catch (err) {
     advise = { error: err.message };
   }
+  await stripPathsOnReturn(advise, ["advisePath", "artifactPath", "path", "outputPath"]);
 
   return { ...report, advise, costMode: mode };
 }
