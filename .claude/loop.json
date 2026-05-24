@@ -1,0 +1,46 @@
+{
+  "preset": "node-esm",
+  "loop": {
+    "aiLoopRoot": "docs/ai-loop",
+    "backlogPath": "docs/ai-loop/backlog",
+    "slicesRoot": "docs/ai-loop/slices",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "maxIterations": 25,
+    "marathonMode": true
+  },
+  "stack": {
+    "build": [
+      {
+        "cmd": "npm",
+        "args": [
+          "run",
+          "lint"
+        ]
+      }
+    ],
+    "test": [
+      {
+        "cmd": "npm",
+        "args": [
+          "test"
+        ]
+      }
+    ],
+    "frontendBuild": null,
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": {
+    "ladder": [
+      "A",
+      "B"
+    ]
+  },
+  "mandatoryDocs": [
+    "docs/architecture/platform-overview.md"
+  ],
+  "productName": "hero-crew-autonomous-loop",
+  "productDescription": "Claude Code plugin: Wiggin-Loop methodology layer for autonomous slice-based development on top of the crew plugin.",
+  "stackDescription": "- ESM Node.js (.mjs modules)\n- node --test for testing\n- ESLint + Prettier for linting/formatting"
+}

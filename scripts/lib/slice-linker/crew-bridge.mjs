@@ -68,18 +68,24 @@ async function findHeroCrewCli() {
 // Invokes `crew write-run-brief` to rotate workflow-state.currentRun to
 // the new slice. Best-effort: missing crew is a soft no-op so the agent
 // can still proceed; the loop driver inspects the return.
-export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featureId, phase }) {
+function pushOptionalFlags(args, pairs) {
+  for (const [flag, value] of pairs) {
+    if (value) args.push(flag, String(value));
+  }
+}
+
+export async function writeCrewRunBrief(
+  repoPath,
+  { sliceId, title, goal, featureId, phase, mode, pace, scope, outOfScope }
+) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
-  // The slice-progress dashboard caller passes a `title` like
-  // "SLICE-NN: <human title>". Strip a leading SLICE-NN: prefix before
-  // re-wrapping with buildArtifactTitle so we don't double the tag.
-  const summary = title ? title.replace(/^SLICE-\d+:\s*/i, "") : null;
+  const titleSummary = title ? title.replace(/^SLICE-\d+:\s*/i, "") : null;
   const enrichedTitle = buildArtifactTitle({
     featureId,
     phase,
     sliceId,
-    summary: summary && summary !== sliceId ? summary : undefined
+    summary: titleSummary && titleSummary !== sliceId ? titleSummary : undefined
   });
   const args = [
     cli,
@@ -89,13 +95,19 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featur
     "--title",
     enrichedTitle,
     "--owner",
-    "loop"
+    "loop",
+    "--next",
+    "Begin implementation"
   ];
-  if (goal) args.push("--goal", goal);
-  if (featureId) args.push("--feature", String(featureId));
-  if (phase !== null && phase !== undefined && String(phase).length > 0) {
-    args.push("--phase", String(phase));
-  }
+  pushOptionalFlags(args, [
+    ["--goal", goal],
+    ["--mode", mode],
+    ["--pace", pace],
+    ["--scope", scope],
+    ["--out-of-scope", outOfScope],
+    ["--feature", featureId],
+    ["--phase", phase !== null && phase !== undefined && String(phase).length > 0 ? phase : null]
+  ]);
   try {
     const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
     let parsed;

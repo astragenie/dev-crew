@@ -421,7 +421,17 @@ export async function startSlice(
 
   const [runBrief, gradeTrend] = await Promise.all([
     bestEffort(() =>
-      writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal, featureId, phase })
+      writeCrewRunBrief(repoPath, {
+        sliceId,
+        title,
+        goal: resolvedGoal,
+        featureId,
+        phase,
+        mode: "autonomous",
+        pace: "unattended",
+        scope: ctx.scope,
+        outOfScope: ctx.outOfScope
+      })
     ),
     readGradeTrend(repoPath)
   ]);
@@ -531,12 +541,20 @@ async function readSliceContext(slicesRoot, sliceId) {
   const content = await fs.readFile(file, "utf8");
   const frontmatter = parseFrontmatter(content).frontmatter || {};
   const goal = extractObjective(content);
-  return { file, frontmatter, goal };
+  const scope = extractSection(content, /^##\s+(In\s+scope|Acceptance\s+criteria)\s*$/i, {
+    maxLen: 800,
+    joinChar: "\n"
+  });
+  const outOfScope = extractSection(content, /^##\s+Out\s+of\s+scope\s*$/i, {
+    maxLen: 400,
+    joinChar: "\n"
+  });
+  return { file, frontmatter, goal, scope, outOfScope };
 }
 
-function extractObjective(sliceContent) {
+export function extractSection(sliceContent, headingPattern, { maxLen = 500, joinChar = " " } = {}) {
   const lines = sliceContent.split(/\r?\n/);
-  const startIdx = lines.findIndex((l) => /^##\s+Objective\s*$/i.test(l));
+  const startIdx = lines.findIndex((l) => headingPattern.test(l));
   if (startIdx === -1) return null;
   const body = [];
   for (let i = startIdx + 1; i < lines.length; i += 1) {
@@ -545,8 +563,12 @@ function extractObjective(sliceContent) {
     if (line.trim().length === 0 && body.length === 0) continue;
     body.push(line);
   }
-  const text = body.join(" ").trim();
-  return text.length > 0 ? text.slice(0, 500) : null;
+  const text = body.join(joinChar).trim();
+  return text.length > 0 ? text.slice(0, maxLen) : null;
+}
+
+function extractObjective(sliceContent) {
+  return extractSection(sliceContent, /^##\s+Objective\s*$/i);
 }
 
 async function locateSliceFile(slicesRoot, sliceId) {
