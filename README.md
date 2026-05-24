@@ -9,7 +9,7 @@ layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
 safe phase-gate runner.
 
 Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
-(>= v0.3.0) for artifact writers — loop emits Crew
+(>= v0.3.3) for artifact writers — loop emits Crew
 `validation-result` artifacts through `crew write-validation-result`.
 
 ## Install
@@ -20,7 +20,7 @@ Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
 /plugin install loop@astra
 ```
 
-`crew` must be installed first. Minimum compatible release: `v0.3.0`. See
+`crew` must be installed first. Minimum compatible release: `v0.3.3`. See
 [ADOPTION.md](ADOPTION.md) for new-repo onboarding.
 
 ## What it does

@@ -96,6 +96,10 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featur
     "loop"
   ];
   if (goal) args.push("--goal", goal);
+  if (featureId) args.push("--feature", String(featureId));
+  if (phase !== null && phase !== undefined && String(phase).length > 0) {
+    args.push("--phase", String(phase));
+  }
   try {
     const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
     let parsed;
@@ -158,6 +162,31 @@ async function detectCostMode(repoPath) {
 // phase } object. The structured form is preferred — it lets the cost-slice
 // run-title include the FEAT/phase tags so crew's slugifier writes them into
 // the cost-report filename.
+// Append --feature / --phase flags to a crew CLI arg list when present.
+// Keeps argv terse and the caller's branch count low.
+function appendFeaturePhaseArgs(args, featureId, phase) {
+  if (featureId) args.push("--feature", String(featureId));
+  if (phase !== null && phase !== undefined && String(phase).length > 0) {
+    args.push("--phase", String(phase));
+  }
+}
+
+// Spawn the crew CLI, return parsed JSON or fall back to a truncated stdout
+// envelope. Captures execFile errors as `{ error }` so the caller does not
+// need its own try/catch around every invocation.
+async function runCrew(args) {
+  try {
+    const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+    try {
+      return JSON.parse(stdout);
+    } catch {
+      return { stdout: stdout.slice(0, 500) };
+    }
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
   const { sliceId, featureId = null, phase = null } = info;
@@ -172,22 +201,15 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   } else {
     reportArgs.push("--aggregate-all");
   }
-  let report;
-  try {
-    const { stdout } = await execFile("node", reportArgs, { maxBuffer: 1024 * 1024 });
-    try {
-      report = JSON.parse(stdout);
-    } catch {
-      report = { stdout: stdout.slice(0, 500) };
-    }
-  } catch (err) {
-    report = { error: err.message };
-  }
+  appendFeaturePhaseArgs(reportArgs, featureId, phase);
+  const report = await runCrew(reportArgs);
   await stripPathsOnReturn(report, ["reportPath", "artifactPath", "path", "outputPath"]);
 
+  const adviseArgs = [cli, "cost-advise", "--repo", repoPath, "--title", runTitle];
+  appendFeaturePhaseArgs(adviseArgs, featureId, phase);
   let advise = null;
   try {
-    const { stdout } = await execFile("node", [cli, "cost-advise", "--repo", repoPath], {
+    const { stdout } = await execFile("node", adviseArgs, {
       maxBuffer: 1024 * 1024
     });
     try {

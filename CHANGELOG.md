@@ -3,6 +3,33 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.3.5 — 2026-05-24 — Propagate FEAT + phase to crew CLI flags + bump pin to v0.3.3
+
+### crew-bridge — pass --feature / --phase to crew writers
+
+- `writeCrewRunBrief` passes `--feature <id>` and `--phase <value>` to
+  `crew write-run-brief` when the slice frontmatter sets them. Crew CLI
+  embeds both in the run-brief artifact frontmatter (added in crew
+  v0.3.3). Filename surface also stays tagged via the existing `--title`
+  enrichment.
+- `tryWriteCostReport` passes `--feature` / `--phase` to both
+  `cost-slice` (cost-report frontmatter) and `cost-advise`. The
+  cost-advise call also now passes `--title <enrichedTitle>` so the
+  cost-advise filename matches the rest of the artifact surface
+  (`<TS>-cost-advise-phase3-feat021-slice36.md`).
+- `phase-gate.recordWithCrew` passes `--phase` when invoking
+  `crew write-validation-result`. Validation-result frontmatter from
+  phase-gate now records which phase ran.
+- `reviewer-ladder.buildReviewLadder` prompt instructs dispatched
+  reviewers to invoke `crew write-review-result` with `--feature` and
+  `--phase` flags (in addition to the enriched `--title`). Both
+  filename and frontmatter pick up the tags.
+
+### Crew pin bump
+
+- `MIN_CREW_VERSION` raised `0.3.0` → `0.3.3`. The new flags require
+  hero-crew v0.3.3+. `README.md` install text updated.
+
 ## v0.3.4 — 2026-05-24 — Artifact naming, tight slugs, TS strip, crew pin bump
 
 ### Artifact filenames + frontmatter surface FEAT and phase

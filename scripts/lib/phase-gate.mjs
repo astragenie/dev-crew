@@ -96,26 +96,26 @@ async function writeReport(repoPath, config, phase, body) {
   return target;
 }
 
-async function recordWithCrew(crewCli, repoPath, title, decision, summary, artifactPath) {
+async function recordWithCrew(crewCli, repoPath, title, decision, summary, artifactPath, phase) {
   try {
-    const { stdout } = await execFile(
-      "node",
-      [
-        crewCli,
-        "write-validation-result",
-        "--repo",
-        repoPath,
-        "--title",
-        title,
-        "--decision",
-        decision,
-        "--summary",
-        summary,
-        "--evidence",
-        artifactPath
-      ],
-      { maxBuffer: 1024 * 1024 }
-    );
+    const args = [
+      crewCli,
+      "write-validation-result",
+      "--repo",
+      repoPath,
+      "--title",
+      title,
+      "--decision",
+      decision,
+      "--summary",
+      summary,
+      "--evidence",
+      artifactPath
+    ];
+    if (phase !== null && phase !== undefined && String(phase).length > 0) {
+      args.push("--phase", String(phase));
+    }
+    const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
     // Capture the crew-written artifact path so we can strip the leading
     // timestamp prefix (matches the repo-owned phase-gate filename surface).
     let crewArtifactPath = null;
@@ -185,7 +185,8 @@ export async function runPhaseGate(repoPath, options = {}) {
     `Phase ${phase} gate`,
     anyFailed ? "failed" : "passed",
     summary,
-    artifactPath
+    artifactPath,
+    phase
   );
 
   // Increment iteration counter on phase gate completion (FEAT-001).
