@@ -87,7 +87,7 @@ export async function findCrewCli() {
 // depend on a crew capability that older versions don't have. v0.3.3 added
 // the `--feature` / `--phase` / `--title` flags this plugin now passes
 // when invoking crew artifact writers.
-export const MIN_CREW_VERSION = "0.3.3";
+export const MIN_CREW_VERSION = "0.3.6";
 
 // Read the crew plugin's version from the plugin.json next to a crew CLI path.
 // Returns null if the manifest is missing or unreadable.
