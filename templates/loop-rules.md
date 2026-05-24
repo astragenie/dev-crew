@@ -37,12 +37,8 @@ Both fields propagate to:
   `validations/phaseN-gate.md`.
 - Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`,
   `cost/*`): the loop passes `--title "PHASEN FEATNNN SLICENN: ..."`;
-  crew's slugifier turns this into `phaseN-featNNN-sliceNN-...`. Loop then
-  post-renames the crew-written file to strip the leading timestamp prefix,
-  so filenames match the repo-owned surface on both sides. The same
-  TS-strip runs inside `/loop:slice link --kind reviews|validations|
-deployments` — agent-invoked `crew write-review-result` / `crew
-write-validation-result` outputs land tight after linking.
+  crew's slugifier turns this into `<TS>-phaseN-featNNN-sliceNN-...`.
+  Timestamps are preserved for uniqueness and chronological ordering.
 - Frontmatter of repo-owned artifacts (handoff + final-synthesis):
   `feature:` and `phase:` keys (standard `FEAT-NNN` / `"3"` form).
 

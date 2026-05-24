@@ -43,9 +43,9 @@ async function writeArtifact(repo, subdir, filename, body) {
   return p;
 }
 
-test("linkArtifactToSlice strips leading TS prefix and renames file on disk", async () => {
-  const repo = await tmpRepo("al-link-ts-strip-");
-  const feat = await addFeature(repo, { title: "rename me" });
+test("linkArtifactToSlice preserves timestamp in artifact filename", async () => {
+  const repo = await tmpRepo("al-link-ts-keep-");
+  const feat = await addFeature(repo, { title: "keep ts" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const tsName = "20260524T083250Z-phase3-feat021-slice36-review-result.md";
   const artPath = await writeArtifact(repo, "reviews", tsName, "# review body");
@@ -56,16 +56,14 @@ test("linkArtifactToSlice strips leading TS prefix and renames file on disk", as
     kind: "reviews"
   });
 
-  const expectedRel = `.claude/artifacts/crew/reviews/phase3-feat021-slice36-review-result.md`;
-  assert.equal(result.artifactRel, expectedRel, "linked relative path has no TS prefix");
+  const expectedRel = `.claude/artifacts/crew/reviews/${tsName}`;
+  assert.equal(result.artifactRel, expectedRel, "linked path keeps TS prefix");
   assert.equal(result.alreadyLinked, false);
 
-  // TS-prefixed file no longer exists; tight file does.
   const dir = path.join(repo, ".claude/artifacts/crew/reviews");
   const onDisk = await fs.readdir(dir);
-  assert.deepEqual(onDisk, ["phase3-feat021-slice36-review-result.md"]);
+  assert.deepEqual(onDisk, [tsName]);
 
-  // Slice frontmatter records the stripped path.
   const linked = await getLinkedArtifacts(repo, slice.id, "reviews");
   assert.deepEqual(linked, [expectedRel]);
 });

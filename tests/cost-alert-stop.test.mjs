@@ -11,7 +11,7 @@ import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude/state/crew"), { recursive: true });
-  await fs.mkdir(path.join(repo, ".claude/artifacts/crew/cost"), { recursive: true });
+  await fs.mkdir(path.join(repo, ".claude/artifacts/crew/cost-insights"), { recursive: true });
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
@@ -28,11 +28,11 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function writeCostReport(repo, sliceId, content) {
-  const dir = path.join(repo, ".claude/artifacts/crew/cost");
+async function writeCostAdvise(repo, sliceId, content) {
+  const dir = path.join(repo, ".claude/artifacts/crew/cost-insights");
   await fs.mkdir(dir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";
-  const filename = `${timestamp}-cost-report-slice-${sliceId}.md`;
+  const filename = `${timestamp}-cost-advise-slice-${sliceId}.md`;
   const filepath = path.join(dir, filename);
   await fs.writeFile(filepath, content);
   return filepath;
@@ -44,72 +44,55 @@ test("countHighSeverityCostAlerts returns 0 when no cost reports exist", async (
   assert.equal(count, 0, "should return 0 when no reports exist");
 });
 
-test("countHighSeverityCostAlerts detects high-severity cost alerts in report body", async () => {
+test("countHighSeverityCostAlerts detects high-severity findings in cost-advise body", async () => {
   const repo = await tmpRepo("al-cost-high-severity-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-usd: 25.50
-created_at: 2026-05-22T12:00:00Z
----
+  const adviseContent = `# Cost Advisor
 
-# Cost Report
+Target slice: **test-slice**
+Cost: $25.50 · duration 5.0 min · cache hit 95.0% · grade avg -
 
-Some analysis here.
+## Per-slice findings
+### [HIGH] cache-busted
+- Cache hit 40% is below optimal.
+- **Suggested action:** Reduce file re-reads.
 
-## Recommendations
-
-- cache-busted: Cache hit 40% is below optimal (high)
-- opus-overuse: Opus accounts for 85% of spend (high)
-
-More text.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+### [HIGH] opus-overuse
+- Opus accounts for 85% of spend.
+- **Suggested action:** Switch routine slices to Sonnet.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
   const count = await countHighSeverityCostAlerts(repo);
-  assert.equal(count, 2, "should detect 2 high-severity alerts");
+  assert.equal(count, 2, "should detect 2 high-severity findings");
 });
 
-test("countHighSeverityCostAlerts ignores medium and low severity alerts", async () => {
+test("countHighSeverityCostAlerts ignores medium and low severity findings", async () => {
   const repo = await tmpRepo("al-cost-low-severity-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-usd: 15.25
-created_at: 2026-05-22T12:00:00Z
----
+  const adviseContent = `# Cost Advisor
 
-# Cost Report
+## Per-slice findings
+### [MEDIUM] cache-busted
+- Cache hit 70%.
 
-Some analysis here.
+### [LOW] large-tool-output
+- Tool results are large.
 
-## Recommendations
-
-- cache-busted: Cache hit 70% (medium)
-- large-tool-output: Tool results are large (low)
-- file-rereads: 8 redundant reads (medium)
-
-More text.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+### [MEDIUM] file-rereads
+- 8 redundant reads.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
   const count = await countHighSeverityCostAlerts(repo);
-  assert.equal(count, 0, "should not count medium/low severity alerts");
+  assert.equal(count, 0, "should not count medium/low severity findings");
 });
 
-test("checkStopConditions does NOT stop when only low-severity cost alerts exist", async () => {
+test("checkStopConditions does NOT stop when only low-severity cost findings exist", async () => {
   const repo = await tmpRepo("al-cost-stop-low-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-usd: 10.00
-created_at: 2026-05-22T12:00:00Z
----
+  const adviseContent = `# Cost Advisor
 
-# Cost Report
-
-## Recommendations
-
-- cache-busted: Cache hit 75% (low)
-
-End.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+## Per-slice findings
+### [LOW] cache-busted
+- Cache hit 75%.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Add a pending feature to avoid "no work" stop condition
   await addFeature(repo, { title: "Test feature" });
@@ -118,27 +101,20 @@ End.`;
     loop: { costStopThreshold: 1 }
   };
   const result = await checkStopConditions(repo, { config });
-  assert.equal(result.shouldStop, false, "should not stop when only low-severity alerts exist");
+  assert.equal(result.shouldStop, false, "should not stop when only low-severity findings exist");
   assert.equal(result.snapshot.costAlerts, 0, "cost alerts snapshot should be 0");
 });
 
-test("checkStopConditions stops when >= 1 high-severity cost alert fires (default threshold)", async () => {
+test("checkStopConditions stops when >= 1 high-severity cost finding fires (default threshold)", async () => {
   const repo = await tmpRepo("al-cost-stop-high-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-usd: 50.00
-created_at: 2026-05-22T12:00:00Z
----
+  const adviseContent = `# Cost Advisor
 
-# Cost Report
-
-## Recommendations
-
-- opus-overuse: Opus is 85% of spend (high)
-
-End.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus is 85% of spend.
+- **Suggested action:** Switch to Sonnet.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Initialize backlog structure
   const backlogDir = path.join(repo, "docs/backlog/pending");
@@ -167,27 +143,20 @@ status: pending
 test("checkStopConditions respects custom costStopThreshold", async () => {
   const repo = await tmpRepo("al-cost-threshold-");
 
-  // Create 2 high-severity alerts
-  const report1 = `---
-kind: cost-report
-slice: SLICE-01
-created_at: 2026-05-22T12:00:00Z
----
-# Cost Report
-## Recommendations
-- opus-overuse: High (high)
-End.`;
-  const report2 = `---
-kind: cost-report
-slice: SLICE-02
-created_at: 2026-05-22T12:01:00Z
----
-# Cost Report
-## Recommendations
-- cache-busted: High (high)
-End.`;
-  await writeCostReport(repo, "SLICE-01", report1);
-  await writeCostReport(repo, "SLICE-02", report2);
+  const advise1 = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus share too high.
+`;
+  const advise2 = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] cache-busted
+- Cache hit too low.
+`;
+  await writeCostAdvise(repo, "SLICE-01", advise1);
+  await writeCostAdvise(repo, "SLICE-02", advise2);
 
   // Initialize backlog
   const backlogDir = path.join(repo, "docs/backlog/pending");
@@ -219,16 +188,13 @@ status: pending
 
 test("checkStopConditions uses default threshold of 1 when not configured", async () => {
   const repo = await tmpRepo("al-cost-default-threshold-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-created_at: 2026-05-22T12:00:00Z
----
-# Cost Report
-## Recommendations
-- exploration-heavy: High exploration ratio (high)
-End.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+  const adviseContent = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] exploration-heavy
+- High exploration ratio.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Initialize backlog
   const backlogDir = path.join(repo, "docs/backlog/pending");
@@ -251,18 +217,14 @@ status: pending
 test("countHighSeverityCostAlerts scans across last 3 slices only", async () => {
   const repo = await tmpRepo("al-cost-window-");
 
-  // Create 5 cost reports with high-severity alerts
   for (let i = 1; i <= 5; i++) {
-    const reportContent = `---
-kind: cost-report
-slice: SLICE-${String(i).padStart(2, "0")}
-created_at: 2026-05-22T${String(i).padStart(2, "0")}:00:00Z
----
-# Cost Report
-## Recommendations
-- cache-busted: Issue (high)
-End.`;
-    await writeCostReport(repo, `SLICE-${String(i).padStart(2, "0")}`, reportContent);
+    const adviseContent = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] cache-busted
+- Cache hit below threshold.
+`;
+    await writeCostAdvise(repo, `SLICE-${String(i).padStart(2, "0")}`, adviseContent);
   }
 
   // Should only count the last 3 (most recent by timestamp sort)
@@ -272,17 +234,16 @@ End.`;
 
 test("checkStopConditions includes cost alerts in snapshot", async () => {
   const repo = await tmpRepo("al-cost-snapshot-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-created_at: 2026-05-22T12:00:00Z
----
-# Cost Report
-## Recommendations
-- opus-overuse: Issue (high)
-- cache-busted: Issue (high)
-End.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+  const adviseContent = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus share too high.
+
+### [HIGH] cache-busted
+- Cache hit too low.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Initialize backlog
   const backlogDir = path.join(repo, "docs/backlog/pending");
@@ -305,45 +266,38 @@ status: pending
   assert.equal(result.snapshot.costAlerts, 2, "snapshot should reflect 2 high-severity alerts");
 });
 
-test("countHighSeverityCostAlerts handles missing or malformed reports gracefully", async () => {
+test("countHighSeverityCostAlerts handles missing or malformed files gracefully", async () => {
   const repo = await tmpRepo("al-cost-malformed-");
 
-  // Write a malformed report (missing frontmatter closing)
-  const dir = path.join(repo, ".claude/artifacts/crew/cost");
+  const dir = path.join(repo, ".claude/artifacts/crew/cost-insights");
   await fs.mkdir(dir, { recursive: true });
-  const malformed = path.join(dir, "20260522T120000Z-cost-report-bad.md");
-  await fs.writeFile(malformed, "---\nkind: cost-report\nslice: BAD\n\nNo closing frontmatter");
+  const malformed = path.join(dir, "20260522T120000Z-cost-advise-bad.md");
+  await fs.writeFile(malformed, "---\nkind: cost-advise\nslice: BAD\n\nNo closing frontmatter");
 
-  // Write a valid report
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-created_at: 2026-05-22T12:00:00Z
----
-# Cost Report
-## Recommendations
-- opus-overuse: High (high)
-End.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+  const adviseContent = `# Cost Advisor
 
-  // Should skip malformed and count valid ones
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus share too high.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
+
   const count = await countHighSeverityCostAlerts(repo);
-  assert.equal(count, 1, "should skip malformed reports and count valid ones");
+  assert.equal(count, 1, "should skip malformed files and count valid ones");
 });
 
-test("countHighSeverityCostAlerts detects alerts regardless of casing in marker", async () => {
+test("countHighSeverityCostAlerts detects findings regardless of casing in marker", async () => {
   const repo = await tmpRepo("al-cost-case-insensitive-");
-  const reportContent = `---
-kind: cost-report
-slice: SLICE-01
-created_at: 2026-05-22T12:00:00Z
----
-# Cost Report
-## Recommendations
-- opus-overuse: Issue (HIGH)
-- cache-busted: Issue (High)
-End.`;
-  await writeCostReport(repo, "SLICE-01", reportContent);
+  const adviseContent = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus share too high.
+
+### [High] cache-busted
+- Cache hit too low.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
   const count = await countHighSeverityCostAlerts(repo);
-  assert.equal(count, 2, "should detect high-severity alerts regardless of casing");
+  assert.equal(count, 2, "should detect high-severity findings regardless of casing");
 });

@@ -1,13 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-// Load and parse cost reports to detect high-severity alerts.
-// Cost reports live in crew artifacts under .claude/artifacts/crew/cost/ and
-// .claude/artifacts/crew/runs/ (legacy). Reads frontmatter for severity signals
-// or scans body for "high" severity markers in recommendation text.
-
-const COST_DIR_PARTS = [".claude", "artifacts", "crew", "cost"];
-const LEGACY_COST_DIR_PARTS = [".claude", "artifacts", "crew", "runs"];
+const COST_INSIGHTS_DIR_PARTS = [".claude", "artifacts", "crew", "cost-insights"];
 
 async function parseFrontmatter(text) {
   if (!text.startsWith("---")) return { fm: null, body: text };
@@ -32,76 +26,57 @@ async function parseFrontmatter(text) {
   return { fm, body };
 }
 
-// Parse cost report body to extract recommendations with severity indicators.
-// Looks for lines with high-severity markers, scanning for patterns like:
-// "- cache-busted: ... (high)"
-// "- opus-overuse: ... (high)"
-// etc.
-function extractHighSeverityRecommendations(body) {
-  const recommendations = [];
-  // Match lines with recommendation IDs followed by severity in parentheses
+function extractHighSeverityFindings(body) {
+  const findings = [];
   const lines = body.split(/\r?\n/);
   for (const line of lines) {
-    // Match patterns like "- rule-id: message (high)"
-    const m = line.match(/^-\s+(\w+(?:-\w+)*):.*\(high\)/i);
+    const m = line.match(/^###\s+\[HIGH\]\s+([\w-]+)/i);
     if (m) {
-      recommendations.push({
-        id: m[1],
-        severity: "high"
-      });
+      findings.push({ id: m[1], severity: "high" });
     }
   }
-  return recommendations;
+  return findings;
 }
 
-// Load the most recent cost reports (up to limit) from cost/ and legacy runs/ dirs.
-async function loadCostReports(repoPath, limit = 20) {
-  const dirs = [
-    path.join(repoPath, ...COST_DIR_PARTS),
-    path.join(repoPath, ...LEGACY_COST_DIR_PARTS)
-  ];
+async function loadCostAdviseFiles(repoPath, limit = 20) {
+  const dir = path.join(repoPath, ...COST_INSIGHTS_DIR_PARTS);
   const files = [];
-  for (const dir of dirs) {
-    let entries;
-    try {
-      entries = await fs.readdir(dir);
-    } catch {
-      continue;
-    }
-    for (const e of entries) {
-      if (/-cost-report-.+\.md$/.test(e)) files.push({ dir, name: e });
-    }
+  let entries;
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return [];
   }
-  // Sort by basename desc (newest first via timestamp prefix).
+  for (const e of entries) {
+    if (/-cost-advise-.+\.md$/.test(e)) files.push({ dir, name: e });
+  }
   files.sort((a, b) => b.name.localeCompare(a.name));
   const top = files.slice(0, limit);
-  const reports = [];
-  for (const { dir, name } of top) {
-    const f = path.join(dir, name);
+  const results = [];
+  for (const { dir: d, name } of top) {
+    const f = path.join(d, name);
     try {
       const text = await fs.readFile(f, "utf8");
       const { fm, body } = await parseFrontmatter(text);
-      reports.push({ path: f, fm: fm || {}, body });
+      results.push({ path: f, fm: fm || {}, body });
     } catch {
-      /* skip unreadable / malformed report files silently */
+      /* skip unreadable / malformed files silently */
     }
   }
-  return reports;
+  return results;
 }
 
-// Get high-severity cost alerts from the most recent N reports.
-// Returns array of { id, severity, reportPath, slice } for each high-severity alert found.
 export async function getHighSeverityCostAlerts(repoPath, windowSlices = 3) {
-  const reports = await loadCostReports(repoPath, windowSlices);
+  const adviseFiles = await loadCostAdviseFiles(repoPath, windowSlices);
   const alerts = [];
-  for (const report of reports) {
-    const recs = extractHighSeverityRecommendations(report.body);
-    for (const rec of recs) {
+  for (const file of adviseFiles) {
+    const findings = extractHighSeverityFindings(file.body);
+    for (const f of findings) {
       alerts.push({
-        id: rec.id,
-        severity: rec.severity,
-        reportPath: report.path,
-        slice: report.fm.slice || null
+        id: f.id,
+        severity: f.severity,
+        reportPath: file.path,
+        slice: file.fm.run_title || file.fm.slice || null
       });
     }
   }

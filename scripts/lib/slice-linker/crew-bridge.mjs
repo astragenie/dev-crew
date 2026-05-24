@@ -11,11 +11,7 @@ import path from "node:path";
 import { execFile as _execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import {
-  buildArtifactSlug,
-  buildArtifactTitle,
-  stripArtifactTimestamp
-} from "../artifact-naming.mjs";
+import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
 
 const execFile = promisify(_execFile);
 
@@ -108,25 +104,10 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featur
     } catch {
       return { stdout: stdout.slice(0, 500) };
     }
-    await stripPathsOnReturn(parsed, ["artifactPath", "runBriefPath", "path", "reportPath"]);
     return parsed;
   } catch (err) {
     return { error: err.message };
   }
-}
-
-// Walk a parsed crew-CLI return object, strip the leading timestamp from
-// any path-shaped values under known keys, and rewrite the key to the new
-// path. Mutates the input. Idempotent.
-async function stripPathsOnReturn(obj, keys) {
-  if (!obj || typeof obj !== "object") return obj;
-  for (const key of keys) {
-    const value = obj[key];
-    if (typeof value === "string" && value.length > 0) {
-      obj[key] = await stripArtifactTimestamp(value);
-    }
-  }
-  return obj;
 }
 
 // Cost attribution mode:
@@ -197,13 +178,12 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   const runTitle = buildArtifactTitle({ featureId, phase, sliceId });
   const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
   if (mode === "scoped") {
-    reportArgs.push("--source-project", path.basename(repoPath));
+    reportArgs.push("--source-project", repoPath.replace(/[^A-Za-z0-9]/g, "-"));
   } else {
     reportArgs.push("--aggregate-all");
   }
   appendFeaturePhaseArgs(reportArgs, featureId, phase);
   const report = await runCrew(reportArgs);
-  await stripPathsOnReturn(report, ["reportPath", "artifactPath", "path", "outputPath"]);
 
   const adviseArgs = [cli, "cost-advise", "--repo", repoPath, "--title", runTitle];
   appendFeaturePhaseArgs(adviseArgs, featureId, phase);
@@ -220,7 +200,6 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   } catch (err) {
     advise = { error: err.message };
   }
-  await stripPathsOnReturn(advise, ["advisePath", "artifactPath", "path", "outputPath"]);
 
   return { ...report, advise, costMode: mode };
 }

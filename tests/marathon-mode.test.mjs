@@ -11,7 +11,7 @@ async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude/state/crew"), { recursive: true });
   await fs.mkdir(path.join(repo, ".claude/state/loop"), { recursive: true });
-  await fs.mkdir(path.join(repo, ".claude/artifacts/crew/cost"), { recursive: true });
+  await fs.mkdir(path.join(repo, ".claude/artifacts/crew/cost-insights"), { recursive: true });
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
@@ -52,28 +52,21 @@ async function writeCrewWorkflow(repo, gates) {
   );
 }
 
-async function writeCostReport(repo, sliceId, content) {
-  const dir = path.join(repo, ".claude/artifacts/crew/cost");
+async function writeCostAdvise(repo, sliceId, content) {
+  const dir = path.join(repo, ".claude/artifacts/crew/cost-insights");
   await fs.mkdir(dir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";
-  const filepath = path.join(dir, `${timestamp}-cost-report-${sliceId}.md`);
+  const filepath = path.join(dir, `${timestamp}-cost-advise-${sliceId}.md`);
   await fs.writeFile(filepath, content);
   return filepath;
 }
 
-const HIGH_COST_REPORT = `---
-kind: cost-report
-slice: SLICE-01
-created_at: 2026-05-22T12:00:00Z
----
+const HIGH_COST_ADVISE = `# Cost Advisor
 
-# Cost Report
-
-## Recommendations
-
-- opus-overuse: Opus is 85% of spend (high)
-
-End.
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus is 85% of spend.
+- **Suggested action:** Switch to Sonnet.
 `;
 
 test("marathon=true (default): iteration cap reached → shouldStop=false, counter still in snapshot", async () => {
@@ -148,7 +141,7 @@ test("marathon=true: warn pattern alert still halts the loop", async () => {
 test("marathon=true: high-severity cost alert still halts the loop", async () => {
   const repo = await tmpRepo("marathon-cost-");
   await addFeature(repo, { title: "queued" });
-  await writeCostReport(repo, "SLICE-01", HIGH_COST_REPORT);
+  await writeCostAdvise(repo, "SLICE-01", HIGH_COST_ADVISE);
 
   const config = { loop: { costStopThreshold: 1 } };
   const out = await checkStopConditions(repo, { config });

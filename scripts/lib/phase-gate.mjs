@@ -7,7 +7,6 @@ import { resolveConfig } from "./config-resolver.mjs";
 import { findCrewCli } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
-import { stripArtifactTimestamp } from "./artifact-naming.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -123,7 +122,7 @@ async function recordWithCrew(crewCli, repoPath, title, decision, summary, artif
       const parsed = JSON.parse(stdout);
       const candidate = parsed?.artifactPath || parsed?.path || parsed?.outputPath || null;
       if (typeof candidate === "string" && candidate.length > 0) {
-        crewArtifactPath = await stripArtifactTimestamp(candidate);
+        crewArtifactPath = candidate;
       }
     } catch {
       // crew CLI may not emit JSON — best-effort only.
