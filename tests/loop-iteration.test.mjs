@@ -138,7 +138,9 @@ test("checkStopConditions returns iterationCapReached=true when cap exhausted", 
     await incrementIteration(repo);
   }
 
-  const config = { loop: { maxIterations: 25 } };
+  // marathonMode=true (default) treats iteration cap as advisory.
+  // This test asserts the legacy gating path — opt in explicitly.
+  const config = { loop: { maxIterations: 25, marathonMode: false } };
   const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true);
   assert.equal(result.iterationCapReached, true);

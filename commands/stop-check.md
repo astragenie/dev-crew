@@ -32,12 +32,18 @@ Returns:
 
 ## Stop conditions
 
-| Condition | Trigger |
-|---|---|
-| Backlog exhausted | No pending/triaged/in-progress features AND no approved-undecomposed specs |
-| Warn alerts | Any pattern alert with `severity: warn` (score-trend regression, in-progress orphan, decomposition explosion) |
+`loop.marathonMode` in `.claude/loop.json` (default `true`) controls which triggers gate vs. inform.
 
-`shouldStop: true` when any condition fires.
+| Condition | Trigger | marathon=true | marathon=false |
+|---|---|---|---|
+| Backlog exhausted | No pending/triaged/in-progress features AND no approved-undecomposed specs | halt | halt |
+| Crew `escalated_to_human` | Crew workflow flagged for human attention | halt | halt |
+| Warn pattern alerts | Any pattern alert with `severity: warn` (score-trend regression, in-progress orphan, decomposition explosion) | halt | halt |
+| High-severity cost alerts | `loop.costStopThreshold` reached across last 3 slices | halt | halt |
+| Iteration cap | `iteration.count >= loop.maxIterations` (default 25) | advisory | halt |
+| Crew soft `blocked` badge | Crew workflow blocked waiting on artifact/badge | advisory | halt |
+
+`shouldStop: true` when any gating trigger fires. Snapshot still reports `iterationCount`, `iterationCap`, `crewBlocked`, and `marathonMode` even when the iteration cap or blocked badge is advisory.
 
 ## How to use
 
@@ -57,3 +63,10 @@ Phase-gate includes in retrospective body so post-phase planning sees it.
 Pass `ignoreAlerts: true` (programmatic only — not a CLI flag) when the
 user explicitly accepts known-poor signal and wants to roll the next
 slice anyway.
+
+## Forcing legacy bounded iteration
+
+Set `loop.marathonMode: false` in `.claude/loop.json` to re-enable
+gating on the iteration cap and crew `blocked` badge. Legacy mode is
+useful when a repo needs guaranteed bounded token spend or strict
+crew-gate enforcement per run.

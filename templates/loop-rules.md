@@ -14,13 +14,28 @@ After all acceptance criteria for the current slice are PASS with evidence and a
 
 2. **Scan `docs/backlog/pending/`** — if any pending entries exist, run `/loop:backlog triage` to fill `priority`, `category`, `target_release` heuristically and move each to `docs/backlog/triaged/`.
 
-3. **Pick the highest-priority triaged feature** — break P0 > P1 > P2 > P3 ties by most recently triaged. Promote it: `/loop:slice from-feature --id FEAT-NNN`. The plugin creates a new slice file under `{{slicesRoot}}/pending/`, moves the feature to `docs/backlog/in-progress/`, and cross-links them via frontmatter (`slices: [SLICE-NN]` on the feature; `feature: FEAT-NNN` on the slice).
+3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by **lowest FEAT-NNN id ascending** (oldest feature wins). Deterministic; never stall on tied priorities. Promote it: `/loop:slice from-feature --id FEAT-NNN`. The plugin creates a new slice file under `{{slicesRoot}}/pending/`, moves the feature to `docs/backlog/in-progress/`, and cross-links them via frontmatter (`slices: [SLICE-NN]` on the feature; `feature: FEAT-NNN` on the slice).
 
 4. **Begin the Wiggin Loop on the new slice.** Acceptance criteria, evidence, review per `{{aiLoopRoot}}/01-loop-control/`.
 
 5. **On slice close** — run the Slice Close Ceremony (next section). Do NOT skip this and move on to the next slice — every artifact emitted by the ceremony is part of the slice's evidence record.
 
 If `docs/backlog/pending/` and `docs/backlog/triaged/` are both empty AND `docs/specs/` has no undecomposed approved specs, the agent has reached either stop condition A (every spec satisfied — confirm with `/loop:spec status`) or stop condition B (externally blocked). Surface which and stop. Never stop because the backlog "feels empty" — confirm via the explicit scan first.
+
+### Marathon mode vs. legacy gating
+
+`loop.marathonMode` in `.claude/loop.json` controls the active stop set (default `true` for new installs):
+
+| Trigger | marathon=true (default) | marathon=false (legacy) |
+|---|---|---|
+| Backlog exhausted | halt | halt |
+| Crew `escalated_to_human` | halt | halt |
+| Warn-severity pattern alert | halt | halt |
+| High-severity cost alert | halt | halt |
+| Iteration cap (default 25) | advisory (snapshot only) | halt |
+| Crew soft `blocked` badge | advisory (often self-clears) | halt |
+
+Iteration counter still increments under marathon mode; `stop-check` continues to report `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot` for dashboards. Marathon mode disables only the *gating*, not the *telemetry*. Set `marathonMode: false` if your repo prefers the legacy bounded-iteration behavior.
 
 ## Slice Start Ceremony — HARD RULE
 

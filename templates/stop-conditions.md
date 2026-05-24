@@ -1,6 +1,17 @@
 # Stop Conditions
 
-The agent may stop only when one of these is true.
+The autonomous loop halts only when one of the triggers below fires. `loop.marathonMode` in `.claude/loop.json` (default `true` for new installs) controls whether the two soft triggers (iteration cap, crew `blocked` badge) are gating or advisory.
+
+| Trigger | marathon=true (default) | marathon=false (legacy) |
+|---|---|---|
+| Backlog exhausted | halt | halt |
+| Crew `escalated_to_human` | halt | halt |
+| Warn-severity pattern alert | halt | halt |
+| High-severity cost alert | halt | halt |
+| Iteration cap (default 25) | advisory | halt |
+| Crew soft `blocked` badge | advisory | halt |
+
+Marathon mode never disables telemetry — `stop-check` still reports `iterationCount`, `iterationCap`, and `crewBlocked` in the `snapshot` block. Set `marathonMode: false` to restore bounded-iteration behavior.
 
 ## Allowed stop condition A — complete
 

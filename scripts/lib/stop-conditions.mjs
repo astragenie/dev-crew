@@ -16,10 +16,18 @@ import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 //   B. Severity-warn pattern alerts present (e.g. score-trend regression,
 //      in-progress orphan, decomposition explosion)
 //      (Bad signal — address before continuing rather than charging ahead)
-//   C. Iteration cap reached
+//   C. Iteration cap reached (legacy mode only — disabled when marathonMode)
 //      (Runaway halting — loop has completed maxIterations without finishing)
 //   D. High-severity cost-advisor alerts fired (cost-alert-high)
 //      (Cost is spiraling — halt gracefully and let user review trajectory)
+//   E. Crew run blocked or escalated. Escalation always halts; the soft
+//      blocked-badge branch is disabled when marathonMode (it usually clears
+//      on the next iteration).
+//
+// Marathon mode (config.loop.marathonMode, default true): loop walks the
+// entire backlog. Iteration cap and crew blocked-badge become advisory only
+// — counter still increments and snapshot still reports them. Set
+// marathonMode=false to restore the original five-condition gating.
 //
 // Caller decides what to do with a stop signal:
 //   - In autonomous mode: log + halt + ping user
@@ -58,7 +66,8 @@ function applyWarnAlertSignals(warnAlerts, blockers, reasons) {
   reasons.push(`${warnAlerts.length} warn-severity alert(s) — resolve before rolling next slice`);
 }
 
-function appendIterationCapSignals(iterStatus, reasons, suggestions) {
+function applyIterationCapSignals(iterStatus, reasons, suggestions, { marathonMode }) {
+  if (!iterStatus.exhausted || marathonMode) return;
   reasons.push(`iteration cap reached (${iterStatus.count}/${iterStatus.cap})`);
   suggestions.push(
     `The autonomous loop has completed ${iterStatus.count} iterations without finishing. ` +
@@ -67,7 +76,8 @@ function appendIterationCapSignals(iterStatus, reasons, suggestions) {
   );
 }
 
-function appendCostAlertSignals(costAlertCount, reasons, suggestions) {
+function applyCostAlertSignal(costAlertCount, config, reasons, suggestions) {
+  if (costAlertCount < (config?.loop?.costStopThreshold || 1)) return;
   reasons.push(
     `cost_alert_high: ${costAlertCount} high-severity cost recommendation(s) across last 3 slices`
   );
@@ -77,7 +87,7 @@ function appendCostAlertSignals(costAlertCount, reasons, suggestions) {
   );
 }
 
-function appendCrewGateSignals(crewGates, reasons, suggestions) {
+function appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode }) {
   if (crewGates.escalated) {
     reasons.push(
       `crew run escalated_to_human: ${crewGates.escalated.note || "(no note)"} — hard stop`
@@ -85,7 +95,7 @@ function appendCrewGateSignals(crewGates, reasons, suggestions) {
     suggestions.push(
       "The crew workflow has been escalated to a human. Resolve the escalation and clear the badge before resuming the loop."
     );
-  } else if (crewGates.blocked) {
+  } else if (crewGates.blocked && !marathonMode) {
     reasons.push(
       `crew run blocked: ${crewGates.blocked.note || "(no note)"}` +
         (crewGates.blocked.blockedBy ? ` (blockedBy ${crewGates.blocked.blockedBy})` : "")
@@ -105,11 +115,16 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
     readCrewBlockingGates(repoPath)
   ]);
 
+  // marathonMode defaults to true so freshly hand-rolled .claude/loop.json
+  // (without the key) get the new behavior. Presets ship the key explicitly
+  // for documentation, but the default here is the source of truth.
+  const marathonMode = config?.loop?.marathonMode !== false;
+
   const reasons = [];
   const blockers = [];
   const suggestions = [];
   let iterationCapReached = false;
-  appendCrewGateSignals(crewGates, reasons, suggestions);
+  appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode });
 
   const backlogStats = computeBacklogStats(backlog, specs);
   appendBacklogExhaustedSignals(backlogStats, reasons, suggestions);
@@ -118,14 +133,9 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
   applyWarnAlertSignals(warnAlerts, blockers, reasons);
 
   const iterStatus = await getIterationStatus(repoPath, config?.loop?.maxIterations || 25);
-  if (iterStatus.exhausted) {
-    iterationCapReached = true;
-    appendIterationCapSignals(iterStatus, reasons, suggestions);
-  }
-
-  if (costAlertCount >= (config?.loop?.costStopThreshold || 1)) {
-    appendCostAlertSignals(costAlertCount, reasons, suggestions);
-  }
+  iterationCapReached = iterStatus.exhausted;
+  applyIterationCapSignals(iterStatus, reasons, suggestions, { marathonMode });
+  applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
 
   const shouldStop = reasons.length > 0;
   return {
@@ -144,7 +154,8 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
       iterationCap: iterStatus.cap,
       costAlerts: costAlertCount,
       crewBlocked: Boolean(crewGates.blocked),
-      crewEscalated: Boolean(crewGates.escalated)
+      crewEscalated: Boolean(crewGates.escalated),
+      marathonMode
     }
   };
 }

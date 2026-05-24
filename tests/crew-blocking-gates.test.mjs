@@ -79,13 +79,16 @@ test("checkStopConditions stops when crew run is escalated_to_human", async () =
   assert.equal(result.snapshot.crewEscalated, true);
 });
 
-test("checkStopConditions stops when crew run is blocked", async () => {
+test("checkStopConditions stops when crew run is blocked (legacy gating)", async () => {
   const repo = await tmpRepo("al-stop-blocked-");
   await seedMinimalAlRepo(repo);
   await writeCrewState(repo, {
     currentRun: { gates: { blocked: { status: "blocked", note: "y", blockedBy: "ART-1" } } }
   });
-  const result = await checkStopConditions(repo);
+  // marathonMode=true (default) treats the soft `blocked` badge as advisory.
+  // Legacy gating still halts — opt in explicitly here.
+  const config = { loop: { marathonMode: false } };
+  const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true);
   assert.ok(result.reasons.some((r) => r.includes("blocked")));
   assert.equal(result.snapshot.crewBlocked, true);

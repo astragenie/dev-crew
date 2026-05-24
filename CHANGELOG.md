@@ -3,6 +3,48 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased — Marathon mode (default-on stop-policy change)
+
+### Stop conditions — marathon mode
+
+- New config key `loop.marathonMode` in `.claude/loop.json`. Default
+  `true` on all four shipped presets (`dotnet-aspire-python`,
+  `dotnet-react`, `dotnet-vue`, `python-only`). Hand-rolled configs
+  without the key also default to marathon behavior.
+- Under `marathonMode: true`, the autonomous loop walks the entire
+  backlog. The five previous gating triggers reduce to four:
+  - Backlog exhausted (no pending/triaged/in-progress FEATs + no
+    approved-undecomposed SPECs) — **halt**.
+  - Crew `escalated_to_human` — **halt**.
+  - Warn-severity pattern alerts (score-trend regression, in-progress
+    orphan, decomposition explosion) — **halt**.
+  - High-severity cost alerts across last 3 slices — **halt**.
+  - Iteration cap (default 25) — **advisory only** (counter still
+    increments; snapshot still reports `iterationCount`/`iterationCap`).
+  - Crew soft `blocked` badge — **advisory only** (snapshot still
+    reports `crewBlocked`; the badge usually self-clears next
+    iteration). Hard `escalated_to_human` still halts.
+- Set `loop.marathonMode: false` to restore legacy five-condition
+  gating (iteration cap + soft blocked badge re-enabled as hard stops).
+- Snapshot gains a `marathonMode: boolean` field for dashboards.
+- HARD RULE templates (`templates/claude-md-hard-rules.md`,
+  `templates/loop-rules.md`, `templates/stop-conditions.md`),
+  `commands/stop-check.md`, and `skills/loop-discipline/SKILL.md`
+  updated to describe marathon vs. legacy gating.
+- New `tests/marathon-mode.test.mjs` covers both modes. Existing
+  `tests/crew-blocking-gates.test.mjs` and
+  `tests/loop-iteration.test.mjs` gated-stop assertions now opt into
+  legacy mode explicitly via `marathonMode: false`.
+
+### Notes
+
+- Motivation: the documented HARD RULE block says the loop "runs until
+  PASS" and walks the entire backlog. The iteration cap and soft
+  `blocked` badge fired premature stops mid-backlog with no safety win
+  on well-shaped repos. Marathon mode aligns code with documentation
+  without disabling the genuine external-block signals (escalation,
+  cost spiral, warn alerts, true backlog exhaustion).
+
 ## v0.3.2 — 2026-05-24 — Multi-slice support (FEAT-020)
 
 ### Slice complete — multi-slice support (FEAT-020)
