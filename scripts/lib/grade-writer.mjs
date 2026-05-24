@@ -216,6 +216,12 @@ export async function writeGrade(repoPath, sliceId, { config = null } = {}) {
     scores_average: averageOf(scores)
   });
 
+  const scoresAvg = averageOf(scores);
+  if (scoresAvg !== null) {
+    const { recordGradeScore } = await import("./grade-trend.mjs");
+    await recordGradeScore(repoPath, { sliceId, avg: scoresAvg });
+  }
+
   return {
     gradePath: target,
     sliceId,

@@ -4,6 +4,7 @@ import { detectPatterns } from "./pattern-alerts.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { checkGradeTrend } from "./grade-trend.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -87,6 +88,16 @@ function applyCostAlertSignal(costAlertCount, config, reasons, suggestions) {
   );
 }
 
+function applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions) {
+  if (!gradeTrendSignal) return;
+  reasons.push(gradeTrendSignal.reason);
+  suggestions.push(
+    `Grade trend below threshold (${gradeTrendSignal.threshold}) for ${gradeTrendSignal.consecutiveBelow} consecutive slice(s). ` +
+      "Review recent slice grades before resuming the autonomous loop. " +
+      "Adjust loop.gradeTrendThreshold or loop.gradeTrendConsecutiveLimit in .claude/loop.json to change this behavior."
+  );
+}
+
 function appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode }) {
   if (crewGates.escalated) {
     reasons.push(
@@ -107,12 +118,13 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode }
 }
 
 export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
-  const [backlog, specs, alerts, costAlertCount, crewGates] = await Promise.all([
+  const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
     detectPatterns(repoPath, { config }),
     countHighSeverityCostAlerts(repoPath, 3),
-    readCrewBlockingGates(repoPath)
+    readCrewBlockingGates(repoPath),
+    checkGradeTrend(repoPath, config)
   ]);
 
   // marathonMode defaults to true so freshly hand-rolled .claude/loop.json
@@ -136,6 +148,7 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
   iterationCapReached = iterStatus.exhausted;
   applyIterationCapSignals(iterStatus, reasons, suggestions, { marathonMode });
   applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
+  applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
   const shouldStop = reasons.length > 0;
   return {
@@ -155,7 +168,13 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
       costAlerts: costAlertCount,
       crewBlocked: Boolean(crewGates.blocked),
       crewEscalated: Boolean(crewGates.escalated),
-      marathonMode
+      marathonMode,
+      gradeTrend: gradeTrendSignal
+        ? {
+            consecutiveBelow: gradeTrendSignal.consecutiveBelow,
+            threshold: gradeTrendSignal.threshold
+          }
+        : null
     }
   };
 }

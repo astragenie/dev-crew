@@ -6,6 +6,7 @@ import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
 import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "./ceremonies.mjs";
+import { readGradeTrend } from "./grade-trend.mjs";
 import {
   tryWriteAgentReport,
   tryWriteCostReport,
@@ -418,10 +419,18 @@ export async function startSlice(
   const featureId = ctx.frontmatter.feature || null;
   const phase = ctx.frontmatter.phase || null;
 
-  const runBrief = await bestEffort(() =>
-    writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal, featureId, phase })
-  );
+  const [runBrief, gradeTrend] = await Promise.all([
+    bestEffort(() =>
+      writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal, featureId, phase })
+    ),
+    readGradeTrend(repoPath)
+  ]);
   const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId);
+  const gradeTrendCaution =
+    gradeTrend.consecutiveBelow > 0
+      ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
+        "Review recent grades before continuing if this persists."
+      : null;
 
   return buildStartSliceReturn({
     sliceId,
@@ -432,7 +441,8 @@ export async function startSlice(
     dispatch,
     sliceFile: ctx.file,
     repoPath,
-    resolvedGoal
+    resolvedGoal,
+    gradeTrendCaution
   });
 }
 
@@ -457,7 +467,8 @@ function buildStartSliceReturn({
   dispatch,
   sliceFile,
   repoPath,
-  resolvedGoal
+  resolvedGoal,
+  gradeTrendCaution = null
 }) {
   const dispatchInstruction = dispatch
     ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal })
@@ -474,7 +485,8 @@ function buildStartSliceReturn({
     runBrief,
     sliceProgress,
     dispatchInstruction,
-    nextAction
+    nextAction,
+    gradeTrendCaution
   };
 }
 
