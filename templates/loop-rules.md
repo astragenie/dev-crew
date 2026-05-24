@@ -99,6 +99,8 @@ Pivot triggers — any of these during a slice means **stop, dispatch `/crew:fix
 
 When in doubt, prefer dispatch. A subagent run produces its own artifact trail; an inline patch hides in the loop's conversation and loses cost/grade attribution.
 
+**Never use `caveman:*` agents for slice work.** They are lightweight, read-only helpers that lack the full artifact protocol (`write-review-result`, `write-handoff`, slice linking). Always use `crew:builder`, `crew:reviewer`, `crew:validator`, `crew:deployer` for slice lifecycle work.
+
 ## Build Entry Points
 
 For one-glance visibility into all slices in the active plan: `cat .claude/state/crew/slice-progress.md`. The dashboard is rewritten by start + close ceremonies; trust it over manual inspection of slice files or commits.
