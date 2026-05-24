@@ -3,6 +3,34 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased
+
+### Slice complete — multi-slice support (FEAT-020)
+
+- `loop:slice-complete` no longer auto-moves the parent feature to
+  `backlog/done/` when the feature opts out. Two opt-out paths:
+  - **Frontmatter** — set `feature_complete: false` in the feature's
+    YAML frontmatter. Loop respects this for every slice-complete call
+    against any of the feature's slices. Set back to `true` (or remove)
+    when ready to ship.
+  - **Runtime** — pass `--keep-feature-open` to
+    `/loop:slice-complete --id SLICE-NN --keep-feature-open`. One-off
+    override; does not edit frontmatter.
+- Default behavior unchanged: features without `feature_complete` set
+  (or with `feature_complete: true`) auto-move to `done/` when the
+  slices array is satisfied. Backwards-compatible.
+- Result object gains `feature.keptOpen: true` + `feature.reason: string`
+  when the move was skipped. Empty `feature.to` when kept open.
+- New tests in `tests/slice-complete.test.mjs` cover all three states:
+  frontmatter opt-out, runtime flag opt-out, explicit `true` passes-through.
+
+### Notes
+
+- Addresses the FEAT-019 SLICE-B auto-close gotcha discovered in
+  hero-crew SLICE-01 close: features with body-planned multi-slice
+  decomposition were prematurely moved to `done/` when only the first
+  registered slice closed.
+
 ## v0.3.1 — 2026-05-23 — Author rebrand
 
 ### Marketplace

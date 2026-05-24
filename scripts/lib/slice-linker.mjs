@@ -234,8 +234,12 @@ async function moveAndStampSlice({ sliceFile, sliceContent, sliceFm, slicesRoot,
 
 // Moves the slice's linked feature to done/ when present and not yet done.
 // Returns null when there is no linked feature, or a result object
-// describing the move (or the alreadyDone case).
-async function moveFeatureToDone(repoPath, featureId, config) {
+// describing the move (or the alreadyDone or kept-open case).
+//
+// Skips the move when:
+//   - feat.frontmatter.feature_complete === false (operator opts out for multi-slice features)
+//   - keepFeatureOpen === true (runtime CLI override via --keep-feature-open)
+async function moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen = false) {
   if (!featureId) return null;
   const { findFeatureById, moveFeature } = await import("./backlog-writer.mjs");
   const feat = await findFeatureById(repoPath, featureId, config);
@@ -243,12 +247,35 @@ async function moveFeatureToDone(repoPath, featureId, config) {
   if (feat.state === "done") {
     return { id: featureId, alreadyDone: true, path: feat.filePath };
   }
+  const featureComplete = feat.frontmatter?.feature_complete;
+  if (keepFeatureOpen) {
+    return {
+      id: featureId,
+      keptOpen: true,
+      reason: "runtime --keep-feature-open flag set",
+      path: feat.filePath
+    };
+  }
+  if (featureComplete === false) {
+    return {
+      id: featureId,
+      keptOpen: true,
+      reason: "feature frontmatter feature_complete: false",
+      path: feat.filePath
+    };
+  }
   const moved = await moveFeature(feat.filePath, "done");
   return { id: featureId, from: moved.from, to: moved.to };
 }
 
 // Compute featureResult based on blocking gates and simplify ceremony.
-async function computeFeatureResult(repoPath, featureId, blockingGates, config) {
+async function computeFeatureResult(
+  repoPath,
+  featureId,
+  blockingGates,
+  config,
+  keepFeatureOpen = false
+) {
   const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
   const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
   const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
@@ -268,12 +295,16 @@ async function computeFeatureResult(repoPath, featureId, blockingGates, config) 
     };
   }
 
-  return await moveFeatureToDone(repoPath, featureId, config);
+  return await moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen);
 }
 
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
-export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
+export async function completeSlice(
+  repoPath,
+  sliceId,
+  { config = null, keepFeatureOpen = false } = {}
+) {
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
@@ -300,7 +331,13 @@ export async function completeSlice(repoPath, sliceId, { config = null } = {}) {
     slicesRoot,
     today
   });
-  const featureResult = await computeFeatureResult(repoPath, featureId, blockingGates, config);
+  const featureResult = await computeFeatureResult(
+    repoPath,
+    featureId,
+    blockingGates,
+    config,
+    keepFeatureOpen
+  );
 
   // Reconcile parent spec status
   const { reconcileSpecStatus } = await import("./linkage.mjs");

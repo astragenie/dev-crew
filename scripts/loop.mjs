@@ -36,6 +36,7 @@ const FLAG_SPEC = {
   "--features": { key: "features" },
   "--goal": { key: "goal" },
   "--no-dispatch": { key: "noDispatch", boolean: true },
+  "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
   "--version": { key: "version" },
   "--since": { key: "since" },
   "--span-days": { key: "spanDays" },
@@ -72,7 +73,8 @@ function parseArgs(argv) {
     artifact: null,
     kind: null,
     files: null,
-    featuresJson: null
+    featuresJson: null,
+    keepFeatureOpen: false
   };
   const positionals = [];
 
@@ -400,10 +402,12 @@ const SLICE_HANDLERS = {
     const { writeGrade } = await import("./lib/grade-writer.mjs");
     return writeGrade(repoPath, sliceId);
   },
-  complete: async (repoPath, _flags, _rest, sliceId) => {
+  complete: async (repoPath, flags, _rest, sliceId) => {
     requireId(sliceId, "slice complete requires --id SLICE-NN.");
     const { completeSlice } = await import("./lib/slice-linker.mjs");
-    const out = await completeSlice(repoPath, sliceId);
+    const out = await completeSlice(repoPath, sliceId, {
+      keepFeatureOpen: Boolean(flags.keepFeatureOpen)
+    });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
       command: "slice complete",

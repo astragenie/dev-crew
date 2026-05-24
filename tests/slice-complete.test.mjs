@@ -144,3 +144,52 @@ test("completeSlice allowed when no featureEnd ceremony exists", async () => {
   assert.ok(!result.feature.skipped, "no ceremony should not block");
   assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
 });
+
+// FEAT-020: multi-slice support — feature stays in-progress when explicitly opted out
+
+test("completeSlice keeps feature in-progress when feature_complete: false in frontmatter", async () => {
+  const repo = await tmpRepo("al-keep-fm-");
+  const feat = await addFeature(repo, { title: "Multi-slice work" });
+  // Set feature_complete: false in the feature frontmatter
+  const { mergeFrontmatter } = await import("../scripts/lib/frontmatter.mjs");
+  const featContent = await fs.readFile(feat.filePath, "utf8");
+  await fs.writeFile(feat.filePath, mergeFrontmatter(featContent, { feature_complete: false }));
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id);
+  // Slice still completed
+  assert.match(result.slice.to, /completed[\\/]SLICE_/);
+  // Feature kept open
+  assert.equal(result.feature.keptOpen, true);
+  assert.match(result.feature.reason, /feature_complete: false/);
+  // File still in in-progress/
+  const stillInProgress = await findFeatureById(repo, feat.id);
+  assert.equal(stillInProgress.state, "in-progress");
+});
+
+test("completeSlice keeps feature in-progress when keepFeatureOpen runtime flag passed", async () => {
+  const repo = await tmpRepo("al-keep-flag-");
+  const feat = await addFeature(repo, { title: "Multi-slice work via flag" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id, { keepFeatureOpen: true });
+  // Slice still completed
+  assert.match(result.slice.to, /completed[\\/]SLICE_/);
+  // Feature kept open
+  assert.equal(result.feature.keptOpen, true);
+  assert.match(result.feature.reason, /--keep-feature-open/);
+  // File still in in-progress/
+  const stillInProgress = await findFeatureById(repo, feat.id);
+  assert.equal(stillInProgress.state, "in-progress");
+});
+
+test("completeSlice still moves feature to done when feature_complete: true explicitly set", async () => {
+  const repo = await tmpRepo("al-explicit-true-");
+  const feat = await addFeature(repo, { title: "Single slice with explicit flag" });
+  const { mergeFrontmatter } = await import("../scripts/lib/frontmatter.mjs");
+  const featContent = await fs.readFile(feat.filePath, "utf8");
+  await fs.writeFile(feat.filePath, mergeFrontmatter(featContent, { feature_complete: true }));
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id);
+  // Feature moved as normal
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.ok(!result.feature.keptOpen);
+});
