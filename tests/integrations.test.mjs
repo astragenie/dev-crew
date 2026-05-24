@@ -43,6 +43,33 @@ async function writeArtifact(repo, subdir, filename, body) {
   return p;
 }
 
+test("linkArtifactToSlice strips leading TS prefix and renames file on disk", async () => {
+  const repo = await tmpRepo("al-link-ts-strip-");
+  const feat = await addFeature(repo, { title: "rename me" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const tsName = "20260524T083250Z-phase3-feat021-slice36-review-result.md";
+  const artPath = await writeArtifact(repo, "reviews", tsName, "# review body");
+
+  const result = await linkArtifactToSlice(repo, {
+    sliceId: slice.id,
+    artifactPath: artPath,
+    kind: "reviews"
+  });
+
+  const expectedRel = `.claude/artifacts/crew/reviews/phase3-feat021-slice36-review-result.md`;
+  assert.equal(result.artifactRel, expectedRel, "linked relative path has no TS prefix");
+  assert.equal(result.alreadyLinked, false);
+
+  // TS-prefixed file no longer exists; tight file does.
+  const dir = path.join(repo, ".claude/artifacts/crew/reviews");
+  const onDisk = await fs.readdir(dir);
+  assert.deepEqual(onDisk, ["phase3-feat021-slice36-review-result.md"]);
+
+  // Slice frontmatter records the stripped path.
+  const linked = await getLinkedArtifacts(repo, slice.id, "reviews");
+  assert.deepEqual(linked, [expectedRel]);
+});
+
 test("linkArtifactToSlice appends to slice frontmatter and is idempotent", async () => {
   const repo = await tmpRepo("al-v19-link-");
   const feat = await addFeature(repo, { title: "x" });

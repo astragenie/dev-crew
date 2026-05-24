@@ -64,6 +64,13 @@ test(
     const result = await runPhaseGate(repo, { phase: "test-1" });
     assert.equal(result.status, "PASS");
     assert.ok(result.artifactPath);
+    // Loop-owned phase-gate filename has no timestamp; phase id is the
+    // uniqueness key.
+    assert.match(
+      path.basename(result.artifactPath),
+      /^phase[a-z0-9]+-gate\.md$/,
+      "phase-gate filename is `phase<N>-gate.md` (no timestamp)"
+    );
     const body = await fs.readFile(result.artifactPath, "utf8");
     assert.ok(body.includes("Status: PASS"));
     assert.ok(body.includes("build ok"));

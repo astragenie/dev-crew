@@ -399,24 +399,77 @@ export async function startSlice(
   const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
 
-  const activePlan = await findActivePlan(repoPath);
-  const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
-  const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
+  const { activePlan, title } = await resolvePlanAndTitle(repoPath, sliceId);
 
-  const {
-    file: sliceFile,
-    frontmatter: sliceFm,
-    goal: discoveredGoal
-  } = await readSliceContext(slicesRoot, sliceId);
-  const resolvedGoal = goal || discoveredGoal;
-  const featureId = sliceFm.feature || null;
-  const phase = sliceFm.phase || null;
+  const ctx = await readSliceContext(slicesRoot, sliceId);
+  const resolvedGoal = goal || ctx.goal;
+  const featureId = ctx.frontmatter.feature || null;
+  const phase = ctx.frontmatter.phase || null;
 
   const runBrief = await bestEffort(() =>
     writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal, featureId, phase })
   );
+  const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId);
 
-  const sliceProgress = await bestEffort(async () => {
+  return buildStartSliceReturn({
+    sliceId,
+    title,
+    activePlan,
+    runBrief,
+    sliceProgress,
+    dispatch,
+    sliceFile: ctx.file,
+    repoPath,
+    resolvedGoal
+  });
+}
+
+// Locate the active plan + derive the human-readable title for this slice
+// from the plan match, falling back to bare sliceId. Extracted from
+// startSlice to keep its cyclomatic complexity under the eslint cap.
+async function resolvePlanAndTitle(repoPath, sliceId) {
+  const activePlan = await findActivePlan(repoPath);
+  const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
+  const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
+  return { activePlan, title };
+}
+
+// Build the return shape for startSlice. Extracted to keep startSlice
+// under the eslint complexity cap; no behavior change.
+function buildStartSliceReturn({
+  sliceId,
+  title,
+  activePlan,
+  runBrief,
+  sliceProgress,
+  dispatch,
+  sliceFile,
+  repoPath,
+  resolvedGoal
+}) {
+  const dispatchInstruction = dispatch
+    ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal })
+    : null;
+  const activePlanSummary = activePlan.planPath
+    ? { source: activePlan.source, path: activePlan.planPath }
+    : null;
+  const nextAction = dispatch
+    ? `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`
+    : `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
+  return {
+    slice: { id: sliceId, title },
+    activePlan: activePlanSummary,
+    runBrief,
+    sliceProgress,
+    dispatchInstruction,
+    nextAction
+  };
+}
+
+// Refresh the slice-progress dashboard with the new currentSliceId.
+// Extracted from startSlice purely to lower its cyclomatic complexity.
+async function refreshSliceProgress(repoPath, activePlan, sliceId) {
+  return bestEffort(async () => {
     const enriched = await detectSliceStatus(repoPath, activePlan.slices);
     return writeSliceProgress(repoPath, {
       activePlan,
@@ -424,23 +477,6 @@ export async function startSlice(
       currentSliceId: sliceId
     });
   });
-
-  const dispatchInstruction = dispatch
-    ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal })
-    : null;
-
-  return {
-    slice: { id: sliceId, title },
-    activePlan: activePlan.planPath
-      ? { source: activePlan.source, path: activePlan.planPath }
-      : null,
-    runBrief,
-    sliceProgress,
-    dispatchInstruction,
-    nextAction: dispatch
-      ? `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`
-      : `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`
-  };
 }
 
 function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal }) {

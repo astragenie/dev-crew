@@ -84,8 +84,9 @@ export async function findCrewCli() {
 }
 
 // Minimum compatible crew plugin version. Bump when this plugin starts to
-// depend on a crew capability that older versions don't have.
-export const MIN_CREW_VERSION = "0.1.12";
+// depend on a crew capability that older versions don't have. v0.3.0 is
+// the rebrand cutoff (crew renamed marketplace + plugin in v0.3.x).
+export const MIN_CREW_VERSION = "0.3.0";
 
 // Read the crew plugin's version from the plugin.json next to a crew CLI path.
 // Returns null if the manifest is missing or unreadable.

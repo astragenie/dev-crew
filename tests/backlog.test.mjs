@@ -148,13 +148,7 @@ test("ensureBacklogScaffold creates all four state dirs", async () => {
 
 test("comparePickOrder sorts by priority asc then FEAT-NNN asc on ties", () => {
   const e = (idNumber, priority) => ({ idNumber, frontmatter: { priority } });
-  const input = [
-    e(3, "P2"),
-    e(1, "P2"),
-    e(2, "P0"),
-    e(5, "P2"),
-    e(4, "P0")
-  ];
+  const input = [e(3, "P2"), e(1, "P2"), e(2, "P0"), e(5, "P2"), e(4, "P0")];
   const sorted = [...input].sort(comparePickOrder);
   assert.deepEqual(
     sorted.map((x) => `FEAT-${String(x.idNumber).padStart(3, "0")}`),
@@ -166,7 +160,10 @@ test("comparePickOrder treats missing priority as P3 (sorts last)", () => {
   const e = (idNumber, priority) => ({ idNumber, frontmatter: priority ? { priority } : {} });
   const input = [e(1), e(2, "P0"), e(3)];
   const sorted = [...input].sort(comparePickOrder);
-  assert.deepEqual(sorted.map((x) => x.idNumber), [2, 1, 3]);
+  assert.deepEqual(
+    sorted.map((x) => x.idNumber),
+    [2, 1, 3]
+  );
 });
 
 test("updateFeatureFrontmatter preserves body", async () => {

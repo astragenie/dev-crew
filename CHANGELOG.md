@@ -3,102 +3,86 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## Unreleased — Drop crew-CLI timestamp from artifact filenames
+## v0.3.4 — 2026-05-24 — Artifact naming, tight slugs, TS strip, crew pin bump
 
-### Strip leading `<TS>-` from crew-written filenames
+### Artifact filenames + frontmatter surface FEAT and phase
 
-- `scripts/lib/artifact-naming.mjs` gains `stripArtifactTimestamp` +
-  `hasLeadingTimestamp`. Strips the leading
-  `YYYYMMDDTHHMMSSZ-` prefix the crew CLI adds to artifact filenames
-  and renames the file on disk. No-op when no TS prefix.
-- `crew-bridge.mjs::writeCrewRunBrief` post-renames the run-brief file
-  returned by `crew write-run-brief`. Same for `tryWriteCostReport`
-  (cost-report + cost-advise).
-- `artifact-linkage.mjs::linkArtifactToSlice` auto-strips the TS prefix
-  on the linked file before recording it in slice frontmatter. Covers
-  agent-invoked `crew write-review-result` / `crew write-validation-result`
-  via the `/loop:slice link` flow.
-- `phase-gate.mjs::writeReport` drops the timestamp from the loop-owned
-  filename: `phaseN-gate.md` instead of `phase-N-gate-<TS>.md`.
-- `phase-gate.mjs::recordWithCrew` captures the crew CLI stdout JSON and
-  strips the TS from the crew-written validation-result path.
-- 4 new tests in `tests/artifact-naming.test.mjs` cover the strip helper
-  (TS-prefixed rename, no-op, falsy input).
-
-## Unreleased — Artifact filename tight segments (`phase3-feat021-slice36`)
-
-### Slug format — tight internal segments
-
-- Filename segments are now tight: `phase3-feat021-slice36` instead of
-  `phase-3-feat-021-slice-36`. The joining dash sits between segments
-  only; identifiers are compacted internally. Same compaction applies
-  to title args passed to the crew CLI (`PHASE3 FEAT021 SLICE36`) so
-  crew's slugifier produces matching filenames on both surfaces.
-- Frontmatter `feature:` / `phase:` keys keep the standard human form
-  (`FEAT-021`, `"3"`). Only filenames + crew-CLI title args are tight.
-- Tests in `tests/artifact-naming.test.mjs`,
-  `tests/reviewer-ladder.test.mjs`, and `tests/synergy.test.mjs`
-  updated to the tight expectations.
-
-## Unreleased — Artifact filenames + frontmatter surface FEAT and phase
-
-### Filename + frontmatter — FEAT and phase linkage
-
-- Artifact filenames now include `[phase-N-][feat-NNN-]` slug segments
-  between the artifact kind and the slice id, so LoopObserver (and any
-  other consumer browsing `.claude/artifacts/crew/`) can see which
-  phase and FEAT an artifact belongs to without opening files. Segment
-  order follows the standard wide→narrow decomposition hierarchy
-  (phase → feature → slice).
-- Repo-owned artifact filenames (handoff, final-synthesis) drop the
-  leading timestamp — the slug is already unique per slice id, and
-  re-running the close ceremony overwrites the previous artifact
-  (latest is authoritative). Example:
-  `phase-3-feat-021-slice-36-final-synthesis.md`.
-- Crew-CLI-owned filenames (run-brief, review-result, validation-result,
-  cost-report) keep their leading timestamp — crew CLI controls those
-  filename formats. Tags arrive via `--title` and crew's slugifier.
-  Example:
-  `20260524T083250Z-phase-3-feat-021-slice-36-review-result.md`.
-- Repo-owned artifact frontmatter (handoff, final-synthesis) gains a
+- Artifact filenames now include optional `[phase-N-][feat-NNN-]` slug
+  segments between the artifact kind and the slice id. Segment order
+  follows the standard wide→narrow decomposition hierarchy
+  (phase → feature → slice). LoopObserver (and any consumer browsing
+  `.claude/artifacts/crew/`) can see which phase and FEAT an artifact
+  belongs to from the filename alone.
+- Repo-owned artifact frontmatter (handoff + final-synthesis) gains a
   `phase: <string|null>` key alongside the existing `feature:` key.
-- Crew-CLI-written artifacts (run-brief, review-result,
-  validation-result, cost-report) get FEAT + phase via the `--title`
-  argument; crew's slugifier carries the tags into the filename.
-  Frontmatter of crew-owned writers is owned by the crew CLI and is
-  out of scope for this change (upstream hero-crew tweak required).
-- New `scripts/lib/artifact-naming.mjs` exports `buildArtifactSlug` and
-  `buildArtifactTitle`. 13 unit tests in
-  `tests/artifact-naming.test.mjs`.
 - Slice frontmatter gains an optional `phase: <string|null>` field
   (default `null`). `sliceFromFeature` inherits `phase` from the parent
-  feature when present. `templates/loop-rules.md` documents the field
-  and the filename propagation contract.
+  feature when present.
 - `scripts/lib/slice-linker.mjs::startSlice` reads slice frontmatter and
-  passes `featureId` + `phase` into `writeCrewRunBrief`.
-- `scripts/lib/slice-linker.mjs::completeSlice` passes both into
-  `writeCrewHandoff`, `writeCrewFinalSynthesis`, and `tryWriteCostReport`.
+  passes `featureId` + `phase` into `writeCrewRunBrief`. `completeSlice`
+  passes both into `writeCrewHandoff`, `writeCrewFinalSynthesis`, and
+  `tryWriteCostReport`.
 - `scripts/lib/reviewer-ladder.mjs` prepends `PHASE-N FEAT-NNN SLICE-NN:`
-  to the suggested `--title` in dispatched reviewer prompts. Reviewers
-  invoking `crew write-review-result` against this title produce
-  artifact filenames that include the tags.
-- Filename format:
-  - Repo-owned: `[phase-N-][feat-NNN-]<slice-NN>-<kind>.md` (no
-    timestamp).
-  - Crew-owned: `<TS>-<kind>-[phase-N-][feat-NNN-]<slice-NN>[-summary].md`
-    (timestamp preserved — crew CLI owns the format).
-    Both optional segments drop out when their source field is null;
-    existing artifacts on disk are not rewritten.
+  to the suggested `--title` in dispatched reviewer prompts so reviewer
+  output filenames carry the tags via crew's slugifier.
 
-### Tests
+### Tight slug segments
 
-- `tests/artifact-naming.test.mjs` — slug + title helper coverage.
-- `tests/synergy.test.mjs` — new assertions for `completeSlice`
-  filename + frontmatter when slice carries `phase`, plus a fallback
-  case when `phase` is null.
-- `tests/reviewer-ladder.test.mjs` — asserts the dispatched prompt
-  carries the enriched `--title` for FEAT+phase, FEAT-only, and bare
-  slice cases.
+- Filename segments compacted: `phase3-feat021-slice36` instead of
+  `phase-3-feat-021-slice-36`. The joining dash sits between segments
+  only; identifiers are compacted internally. Same compaction applies
+  to crew-CLI `--title` args (`PHASE3 FEAT021 SLICE36`).
+- Frontmatter `feature:` / `phase:` keys keep the standard human form
+  (`FEAT-021`, `"3"`). Only filenames + crew-CLI title args are tight.
+
+### Crew-CLI timestamp stripped
+
+- New `scripts/lib/artifact-naming.mjs` exports `stripArtifactTimestamp`
+  and `hasLeadingTimestamp`. Strips the leading `YYYYMMDDTHHMMSSZ-`
+  prefix the crew CLI adds to artifact filenames and renames the file
+  on disk. No-op when no TS prefix.
+- `writeCrewRunBrief` post-renames the run-brief file returned by
+  `crew write-run-brief`. Same for `tryWriteCostReport` (cost-report +
+  cost-advise).
+- `linkArtifactToSlice` auto-strips the TS prefix before recording the
+  linked path in slice frontmatter. Covers agent-invoked
+  `crew write-review-result` / `crew write-validation-result` via the
+  `/loop:slice link` flow.
+- `phase-gate.mjs::writeReport` drops the timestamp from the loop-owned
+  filename: `phase<N>-gate.md` instead of `phase-<N>-gate-<TS>.md`.
+- `phase-gate.mjs::recordWithCrew` captures the crew CLI stdout JSON and
+  strips the TS from the crew-written validation-result path.
+
+### Filename format reference
+
+- Repo-owned: `[phase-N-][feat-NNN-]<slice-NN>-<kind>.md` (no timestamp).
+- Crew-owned (after post-rename):
+  `[phase-N-][feat-NNN-]<slice-NN>-<kind>[-summary].md`. Loop strips
+  the leading timestamp; remaining segments come from crew's slugifier.
+- Optional segments drop out when their source field is null;
+  existing artifacts on disk are not rewritten.
+
+### Crew pin bump
+
+- `MIN_CREW_VERSION` raised from `0.1.12` → `0.3.0`. Rebrand cutoff
+  (crew renamed marketplace + plugin in 0.3.x). `README.md` install
+  text and crew version reference updated. Consumers still on crew
+  `0.1.x` must upgrade.
+
+### Refactor + tests
+
+- `scripts/lib/slice-linker.mjs::startSlice` complexity dropped 16 →
+  ≤15 via `resolvePlanAndTitle` and `buildStartSliceReturn` helper
+  extractions. No behavior change. Eslint output is now warning-free.
+- `tests/artifact-naming.test.mjs` — slug + title helper coverage,
+  including TS-strip rename, no-op, falsy input cases.
+- `tests/synergy.test.mjs` — `completeSlice` filename + frontmatter
+  assertions for slices with / without `phase`.
+- `tests/reviewer-ladder.test.mjs` — dispatched-prompt `--title`
+  coverage for PHASE+FEAT, FEAT-only, bare slice.
+- `tests/integrations.test.mjs` — `linkArtifactToSlice` TS-strip
+  rename-on-disk assertion.
+- `tests/phase-gate.test.mjs` — `phase<N>-gate.md` basename assertion.
 
 ### Notes
 
