@@ -90,15 +90,15 @@ test("completeSlice filename embeds FEAT + phase from slice frontmatter", async 
   const result = await completeSlice(repo, slice.id);
   const featSegment = feat.id.toLowerCase();
   const sliceSegment = slice.id.toLowerCase();
-  assert.match(
+  assert.equal(
     path.basename(result.synthesis.synthesisPath),
-    new RegExp(`-${featSegment}-phase-3-${sliceSegment}-final-synthesis\\.md$`),
-    "final-synthesis filename embeds FEAT + phase"
+    `phase-3-${featSegment}-${sliceSegment}-final-synthesis.md`,
+    "final-synthesis filename embeds phase → feat → slice (no timestamp)"
   );
-  assert.match(
+  assert.equal(
     path.basename(result.handoff.handoffPath),
-    new RegExp(`-${featSegment}-phase-3-${sliceSegment}-complete\\.md$`),
-    "handoff filename embeds FEAT + phase"
+    `phase-3-${featSegment}-${sliceSegment}-complete.md`,
+    "handoff filename embeds phase → feat → slice (no timestamp)"
   );
   const synContent = await fs.readFile(result.synthesis.synthesisPath, "utf8");
   const synFm = parseFrontmatter(synContent).frontmatter;
@@ -117,14 +117,14 @@ test("completeSlice falls back to bare slice-NN slug when phase null", async () 
   const result = await completeSlice(repo, slice.id);
   const featSegment = feat.id.toLowerCase();
   const sliceSegment = slice.id.toLowerCase();
-  assert.match(
+  assert.equal(
     path.basename(result.synthesis.synthesisPath),
-    new RegExp(`-${featSegment}-${sliceSegment}-final-synthesis\\.md$`),
+    `${featSegment}-${sliceSegment}-final-synthesis.md`,
     "filename includes FEAT but not phase when phase is null"
   );
   assert.doesNotMatch(
     path.basename(result.synthesis.synthesisPath),
-    /-phase-/,
+    /phase-/,
     "filename has no phase segment"
   );
 });

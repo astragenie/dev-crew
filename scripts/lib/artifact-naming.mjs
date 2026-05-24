@@ -29,11 +29,12 @@ function slugSegment(value) {
 }
 
 // Build the slug fragment used between artifact kind and any trailing
-// per-kind suffix. featureId / phase are nullable; their segments drop out.
-// sliceId is required.
+// per-kind suffix. Segments follow the standard wide→narrow decomposition
+// hierarchy: phase (milestone) → feature → slice (story). phase / featureId
+// are nullable; their segments drop out. sliceId is required.
 //
 // buildArtifactSlug({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36" })
-//   → "feat-021-phase-3-slice-36"
+//   → "phase-3-feat-021-slice-36"
 // buildArtifactSlug({ featureId: null, phase: null, sliceId: "SLICE-36" })
 //   → "slice-36"
 export function buildArtifactSlug({ featureId, phase, sliceId } = {}) {
@@ -41,21 +42,22 @@ export function buildArtifactSlug({ featureId, phase, sliceId } = {}) {
     throw new Error("buildArtifactSlug requires sliceId");
   }
   const segments = [];
-  const feat = slugSegment(featureId);
-  if (feat) segments.push(feat);
   const ph = slugSegment(phase);
   if (ph) segments.push(`phase-${ph}`);
+  const feat = slugSegment(featureId);
+  if (feat) segments.push(feat);
   segments.push(slugSegment(sliceId));
   return segments.join("-");
 }
 
 // Build a human-readable title for crew-CLI title args. Crew CLI slugifies
 // the title to produce its own filename, so the structure mirrors the slug
-// helper but keeps the original casing for the body display.
+// helper (phase → feature → slice) but keeps the original casing for the
+// body display.
 //
 // buildArtifactTitle({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36",
 //                      summary: "Health page repurpose" })
-//   → "FEAT-021 PHASE-3 SLICE-36: Health page repurpose"
+//   → "PHASE-3 FEAT-021 SLICE-36: Health page repurpose"
 // buildArtifactTitle({ sliceId: "SLICE-36", summary: "Health page" })
 //   → "SLICE-36: Health page"
 // buildArtifactTitle({ sliceId: "SLICE-36" })
@@ -65,10 +67,10 @@ export function buildArtifactTitle({ featureId, phase, sliceId, summary } = {}) 
     throw new Error("buildArtifactTitle requires sliceId");
   }
   const tags = [];
-  if (featureId) tags.push(String(featureId));
   if (phase !== null && phase !== undefined && String(phase).length > 0) {
     tags.push(`PHASE-${phase}`);
   }
+  if (featureId) tags.push(String(featureId));
   tags.push(String(sliceId));
   const head = tags.join(" ");
   return summary ? `${head}: ${summary}` : head;

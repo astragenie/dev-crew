@@ -31,11 +31,21 @@ Slices carry two optional linkage fields that propagate into artifact filenames 
 
 Both fields propagate to:
 
-- Filenames written by this repo: `runs/<TS>-feat-NNN-phase-N-slice-NN-final-synthesis.md`, `handoffs/<TS>-feat-NNN-phase-N-slice-NN-complete.md`, `cost/<TS>-cost-report-feat-NNN-phase-N-slice-NN.md`.
-- Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`): the loop passes `--title "FEAT-NNN PHASE-N SLICE-NN: ..."`; crew's slugifier carries the tags into the filename.
-- Frontmatter of repo-owned artifacts (handoff + final-synthesis): `feature:` and `phase:` keys.
+- Filenames written by this repo (no timestamp — slug is unique per slice
+  close): `runs/phase-N-feat-NNN-slice-NN-final-synthesis.md`,
+  `handoffs/phase-N-feat-NNN-slice-NN-complete.md`.
+- Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`,
+  `cost/*`): the loop passes `--title "PHASE-N FEAT-NNN SLICE-NN: ..."`;
+  crew's slugifier carries the tags into the filename. Crew CLI controls
+  the filename format here, so its leading timestamp persists.
+- Frontmatter of repo-owned artifacts (handoff + final-synthesis):
+  `feature:` and `phase:` keys.
 
-When either field is null the corresponding filename segment drops out — `feat-NNN-slice-NN-...` or bare `slice-NN-...` are valid forms. Artifact consumers (LoopObserver, dashboards) should treat the segments as optional and ordered.
+Segment order follows the standard wide→narrow decomposition hierarchy
+(phase → feature → slice). When either optional field is null the
+corresponding segment drops out: `feat-NNN-slice-NN-...` or bare
+`slice-NN-...` are valid forms. Artifact consumers (LoopObserver,
+dashboards) should treat the segments as optional and ordered.
 
 ### Marathon mode vs. legacy gating
 

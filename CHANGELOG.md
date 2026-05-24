@@ -7,11 +7,22 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ### Filename + frontmatter — FEAT and phase linkage
 
-- Artifact filenames now include `feat-NNN[-phase-N]` slug segments between
-  the artifact kind and the slice id, so LoopObserver (and any other
-  consumer browsing `.claude/artifacts/crew/`) can see which FEAT and
-  phase an artifact belongs to without opening files. Example:
-  `20260524T083250Z-feat-021-phase-3-slice-36-final-synthesis.md`.
+- Artifact filenames now include `[phase-N-][feat-NNN-]` slug segments
+  between the artifact kind and the slice id, so LoopObserver (and any
+  other consumer browsing `.claude/artifacts/crew/`) can see which
+  phase and FEAT an artifact belongs to without opening files. Segment
+  order follows the standard wide→narrow decomposition hierarchy
+  (phase → feature → slice).
+- Repo-owned artifact filenames (handoff, final-synthesis) drop the
+  leading timestamp — the slug is already unique per slice id, and
+  re-running the close ceremony overwrites the previous artifact
+  (latest is authoritative). Example:
+  `phase-3-feat-021-slice-36-final-synthesis.md`.
+- Crew-CLI-owned filenames (run-brief, review-result, validation-result,
+  cost-report) keep their leading timestamp — crew CLI controls those
+  filename formats. Tags arrive via `--title` and crew's slugifier.
+  Example:
+  `20260524T083250Z-phase-3-feat-021-slice-36-review-result.md`.
 - Repo-owned artifact frontmatter (handoff, final-synthesis) gains a
   `phase: <string|null>` key alongside the existing `feature:` key.
 - Crew-CLI-written artifacts (run-brief, review-result,
@@ -30,14 +41,17 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
   passes `featureId` + `phase` into `writeCrewRunBrief`.
 - `scripts/lib/slice-linker.mjs::completeSlice` passes both into
   `writeCrewHandoff`, `writeCrewFinalSynthesis`, and `tryWriteCostReport`.
-- `scripts/lib/reviewer-ladder.mjs` prepends `FEAT-NNN PHASE-N SLICE-NN:`
+- `scripts/lib/reviewer-ladder.mjs` prepends `PHASE-N FEAT-NNN SLICE-NN:`
   to the suggested `--title` in dispatched reviewer prompts. Reviewers
   invoking `crew write-review-result` against this title produce
   artifact filenames that include the tags.
-- Filename format remains parseable and backward-compatible:
-  `<TS>-<kind>-[feat-NNN-][phase-N-]<slice-NN>[-extra].md`. Both
-  optional segments drop out when their source field is null —
-  existing artifacts on disk are not rewritten.
+- Filename format:
+  - Repo-owned: `[phase-N-][feat-NNN-]<slice-NN>-<kind>.md` (no
+    timestamp).
+  - Crew-owned: `<TS>-<kind>-[phase-N-][feat-NNN-]<slice-NN>[-summary].md`
+    (timestamp preserved — crew CLI owns the format).
+    Both optional segments drop out when their source field is null;
+    existing artifacts on disk are not rewritten.
 
 ### Tests
 

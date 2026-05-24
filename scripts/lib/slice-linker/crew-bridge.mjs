@@ -244,12 +244,11 @@ export async function writeCrewFinalSynthesis(
 ) {
   const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
   await ensureDir(runsDir);
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
   const slug = buildArtifactSlug({ featureId, phase, sliceId });
-  const target = path.join(runsDir, `${stamp}-${slug}-final-synthesis.md`);
+  // No timestamp — slice closes once per slice id, so the filename is
+  // already unique. Re-running the close overwrites the previous artifact
+  // (intentional — the latest state is authoritative).
+  const target = path.join(runsDir, `${slug}-final-synthesis.md`);
 
   const { findGradeForSlice, SCORE_DIMENSIONS } = await import("../grade-parser.mjs");
   const grade = await findGradeForSlice(repoPath, sliceId);
@@ -287,12 +286,10 @@ export async function writeCrewHandoff(
 ) {
   const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
   await ensureDir(handoffDir);
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
   const slug = buildArtifactSlug({ featureId, phase, sliceId });
-  const filename = `${stamp}-${slug}-complete.md`;
+  // No timestamp — handoff is emitted once per slice close, slug already
+  // unique. Re-running the close overwrites; latest is authoritative.
+  const filename = `${slug}-complete.md`;
   const target = path.join(handoffDir, filename);
   const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
   const featureRel = featureResult?.to

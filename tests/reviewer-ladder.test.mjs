@@ -38,7 +38,7 @@ async function seedSlice(repo, sliceId, { feature = null, phase = null } = {}) {
   return file;
 }
 
-test("buildReviewLadder prompt includes enriched --title with FEAT + phase", async () => {
+test("buildReviewLadder prompt includes enriched --title with PHASE → FEAT → SLICE", async () => {
   const repo = await tmpRepo("rl-feat-phase-");
   await seedSlice(repo, "SLICE-07", { feature: "FEAT-021", phase: "3" });
   const ladder = await buildReviewLadder(repo, "SLICE-07");
@@ -46,8 +46,8 @@ test("buildReviewLadder prompt includes enriched --title with FEAT + phase", asy
   for (const task of ladder.tasks) {
     assert.match(
       task.prompt,
-      /--title "FEAT-021 PHASE-3 SLICE-07: <one-line summary>"/,
-      "prompt names FEAT and phase explicitly"
+      /--title "PHASE-3 FEAT-021 SLICE-07: <one-line summary>"/,
+      "prompt names phase, feature, slice in wide→narrow order"
     );
   }
 });
