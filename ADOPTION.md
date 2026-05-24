@@ -65,7 +65,7 @@ If none match, install with the closest one and override stack commands in
 Or directly:
 
 ```bash
-node "$HOME/.claude/plugins/cache/astra/loop/0.3.1/scripts/loop.mjs" \
+node "$HOME/.claude/plugins/cache/astra/loop/0.3.2/scripts/loop.mjs" \
   install --repo "$PWD" --preset dotnet-aspire-python
 ```
 

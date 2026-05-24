@@ -3,7 +3,7 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## Unreleased
+## v0.3.2 — 2026-05-24 — Multi-slice support (FEAT-020)
 
 ### Slice complete — multi-slice support (FEAT-020)
 
