@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
+import { listBacklog, filterBacklog, comparePickOrder } from "./backlog-parser.mjs";
 import { listSpecs } from "./spec-parser.mjs";
 import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
@@ -228,7 +228,7 @@ export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
   const triagedTop = filterBacklog(backlog, { status: "triaged" })
-    .sort((a, b) => (a.frontmatter.priority || "P3").localeCompare(b.frontmatter.priority || "P3"))
+    .sort(comparePickOrder)
     .slice(0, 5);
   const specsByStatus = {
     draft: specs.filter((s) => s.frontmatter.status === "draft").length,

@@ -1,4 +1,4 @@
-import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
+import { listBacklog, filterBacklog, comparePickOrder } from "./backlog-parser.mjs";
 import { listSpecs } from "./spec-parser.mjs";
 import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
@@ -34,9 +34,9 @@ export async function buildBrief(repoPath, { config = null } = {}) {
     done: filterBacklog(backlog, { status: "done" }).length
   };
 
-  // Top 3 highest-priority triaged features
+  // Top 3 highest-priority triaged features — priority asc, then FEAT-NNN asc.
   const topTriaged = filterBacklog(backlog, { status: "triaged" })
-    .sort((a, b) => (a.frontmatter.priority || "P3").localeCompare(b.frontmatter.priority || "P3"))
+    .sort(comparePickOrder)
     .slice(0, 3)
     .map((f) => ({
       id: f.id,

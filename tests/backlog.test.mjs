@@ -11,7 +11,12 @@ import {
   findFeatureById,
   updateFeatureFrontmatter
 } from "../scripts/lib/backlog-writer.mjs";
-import { listBacklog, filterBacklog, nextFeatureId } from "../scripts/lib/backlog-parser.mjs";
+import {
+  listBacklog,
+  filterBacklog,
+  nextFeatureId,
+  comparePickOrder
+} from "../scripts/lib/backlog-parser.mjs";
 import { triagePending, triageEntry } from "../scripts/lib/backlog-triage.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
@@ -139,6 +144,29 @@ test("ensureBacklogScaffold creates all four state dirs", async () => {
     const stat = await fs.stat(dir).catch(() => null);
     assert.ok(stat?.isDirectory(), `${state} dir should exist`);
   }
+});
+
+test("comparePickOrder sorts by priority asc then FEAT-NNN asc on ties", () => {
+  const e = (idNumber, priority) => ({ idNumber, frontmatter: { priority } });
+  const input = [
+    e(3, "P2"),
+    e(1, "P2"),
+    e(2, "P0"),
+    e(5, "P2"),
+    e(4, "P0")
+  ];
+  const sorted = [...input].sort(comparePickOrder);
+  assert.deepEqual(
+    sorted.map((x) => `FEAT-${String(x.idNumber).padStart(3, "0")}`),
+    ["FEAT-002", "FEAT-004", "FEAT-001", "FEAT-003", "FEAT-005"]
+  );
+});
+
+test("comparePickOrder treats missing priority as P3 (sorts last)", () => {
+  const e = (idNumber, priority) => ({ idNumber, frontmatter: priority ? { priority } : {} });
+  const input = [e(1), e(2, "P0"), e(3)];
+  const sorted = [...input].sort(comparePickOrder);
+  assert.deepEqual(sorted.map((x) => x.idNumber), [2, 1, 3]);
 });
 
 test("updateFeatureFrontmatter preserves body", async () => {

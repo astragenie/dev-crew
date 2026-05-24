@@ -44,6 +44,22 @@ test("buildBrief surfaces top-priority triaged features", async () => {
   assert.equal(out.topTriaged[0].priority, "P0");
 });
 
+test("buildBrief breaks priority ties by lowest FEAT-NNN id", async () => {
+  const repo = await tmpRepo("al-brief-tie-");
+  const a = await addFeature(repo, { title: "first P2" });
+  const b = await addFeature(repo, { title: "second P2" });
+  const c = await addFeature(repo, { title: "third P2" });
+  await moveFeature(a.filePath, "triaged", { priority: "P2", category: "feature" });
+  await moveFeature(b.filePath, "triaged", { priority: "P2", category: "feature" });
+  await moveFeature(c.filePath, "triaged", { priority: "P2", category: "feature" });
+  const out = await buildBrief(repo);
+  assert.equal(out.topTriaged.length, 3);
+  assert.deepEqual(
+    out.topTriaged.map((f) => f.id),
+    ["FEAT-001", "FEAT-002", "FEAT-003"]
+  );
+});
+
 test("buildBrief surfaces specs that need decomposition", async () => {
   const repo = await tmpRepo("al-brief-specs-");
   const s = await addSpec(repo, { type: "prd", title: "Approved + undecomposed" });

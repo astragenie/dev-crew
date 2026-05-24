@@ -82,6 +82,19 @@ export async function nextFeatureId(repoPath, options = {}) {
   return `FEAT-${String(max + 1).padStart(3, "0")}`;
 }
 
+// Pick-order comparator for "next FEAT to work on" queries (brief topTriaged,
+// memory-snapshot triagedTop, autonomous-loop Cross-Slice Continuation rule).
+// Primary key: priority string ascending ("P0" < "P1" < "P2" < "P3"); missing
+// priority sorts as "P3". Tiebreaker: lowest FEAT-NNN id ascending (oldest
+// feature wins) — deterministic and independent of frontmatter timestamps,
+// which batch triage collapses to a single value.
+export function comparePickOrder(a, b) {
+  const ap = a.frontmatter.priority || "P3";
+  const bp = b.frontmatter.priority || "P3";
+  if (ap !== bp) return ap.localeCompare(bp);
+  return a.idNumber - b.idNumber;
+}
+
 export function filterBacklog(entries, filters = {}) {
   return entries.filter((entry) => {
     if (filters.status && entry.state !== filters.status) return false;
