@@ -3,6 +3,60 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased — Artifact filenames + frontmatter surface FEAT and phase
+
+### Filename + frontmatter — FEAT and phase linkage
+
+- Artifact filenames now include `feat-NNN[-phase-N]` slug segments between
+  the artifact kind and the slice id, so LoopObserver (and any other
+  consumer browsing `.claude/artifacts/crew/`) can see which FEAT and
+  phase an artifact belongs to without opening files. Example:
+  `20260524T083250Z-feat-021-phase-3-slice-36-final-synthesis.md`.
+- Repo-owned artifact frontmatter (handoff, final-synthesis) gains a
+  `phase: <string|null>` key alongside the existing `feature:` key.
+- Crew-CLI-written artifacts (run-brief, review-result,
+  validation-result, cost-report) get FEAT + phase via the `--title`
+  argument; crew's slugifier carries the tags into the filename.
+  Frontmatter of crew-owned writers is owned by the crew CLI and is
+  out of scope for this change (upstream hero-crew tweak required).
+- New `scripts/lib/artifact-naming.mjs` exports `buildArtifactSlug` and
+  `buildArtifactTitle`. 13 unit tests in
+  `tests/artifact-naming.test.mjs`.
+- Slice frontmatter gains an optional `phase: <string|null>` field
+  (default `null`). `sliceFromFeature` inherits `phase` from the parent
+  feature when present. `templates/loop-rules.md` documents the field
+  and the filename propagation contract.
+- `scripts/lib/slice-linker.mjs::startSlice` reads slice frontmatter and
+  passes `featureId` + `phase` into `writeCrewRunBrief`.
+- `scripts/lib/slice-linker.mjs::completeSlice` passes both into
+  `writeCrewHandoff`, `writeCrewFinalSynthesis`, and `tryWriteCostReport`.
+- `scripts/lib/reviewer-ladder.mjs` prepends `FEAT-NNN PHASE-N SLICE-NN:`
+  to the suggested `--title` in dispatched reviewer prompts. Reviewers
+  invoking `crew write-review-result` against this title produce
+  artifact filenames that include the tags.
+- Filename format remains parseable and backward-compatible:
+  `<TS>-<kind>-[feat-NNN-][phase-N-]<slice-NN>[-extra].md`. Both
+  optional segments drop out when their source field is null —
+  existing artifacts on disk are not rewritten.
+
+### Tests
+
+- `tests/artifact-naming.test.mjs` — slug + title helper coverage.
+- `tests/synergy.test.mjs` — new assertions for `completeSlice`
+  filename + frontmatter when slice carries `phase`, plus a fallback
+  case when `phase` is null.
+- `tests/reviewer-ladder.test.mjs` — asserts the dispatched prompt
+  carries the enriched `--title` for FEAT+phase, FEAT-only, and bare
+  slice cases.
+
+### Notes
+
+- LoopObserver and other consumers should update their filename regex
+  to allow the optional `feat-NNN` and `phase-N` segments. The slice
+  id position remains canonical.
+- `cost-advise` filename enrichment is out of scope until the bridge
+  call site grows a `--title` argument.
+
 ## v0.3.3 — 2026-05-24 — Marathon mode + deterministic FEAT pickup
 
 ### Picker — deterministic tiebreaker on priority ties
@@ -239,6 +293,7 @@ Consumes the new crew workflow badges (hero-crew FEAT-006, v0.1.26):
 ## v0.1.17 — 2026-05-22
 
 ### Changed
+
 Lint cleanup pass — **24 warnings → 0**. Drops the autonomous-loop hygiene
 bar in line with hero-crew. Mostly cosmetic; one bug-shaped fix.
 
@@ -271,7 +326,7 @@ bar in line with hero-crew. Mostly cosmetic; one bug-shaped fix.
     `renderGroupSection` + `renderReadyFooter`.
   - `renderMarkdown` 21 (retrospective) → six `renderRetro*` helpers.
   - `completeSlice` 21 → `moveAndStampSlice` + `moveFeatureToDone`
-    + `bestEffort` (three concurrent crew-bridge calls).
+    - `bestEffort` (three concurrent crew-bridge calls).
   - `writeCrewFinalSynthesis` 17 → `renderSynthesisScores` +
     `renderSynthesisDecisions` + `renderSynthesisBody`.
 
@@ -280,11 +335,13 @@ Tests: **142/142 pass**. Lint output now empty.
 ## v0.1.16 — 2026-05-22
 
 ### Added
+
 - **`docs/code-conventions.md`**: per-repo coding conventions adapted
   from `Astragenie.Standards/typescript/coding-conventions.md` for
   plain ESM. Points at the canonical version in hero-crew.
 
 ### Changed
+
 - **Test files renamed** to drop release-version prefixes:
   - `tests/v019-integrations.test.mjs` → `tests/integrations.test.mjs`
   - `tests/v0110-synergy.test.mjs` → `tests/synergy.test.mjs`
@@ -298,6 +355,7 @@ Tests: 142/142 pass.
 ## v0.1.15 — 2026-05-22
 
 ### Changed
+
 - **slice-linker split (Tier B-8)**: extracted the crew-CLI bridge into
   `scripts/lib/slice-linker/crew-bridge.mjs` (216 lines). Exports
   `tryWriteCostReport`, `writeCrewFinalSynthesis`, `writeCrewHandoff`.
@@ -312,6 +370,7 @@ Tests: 142/142 pass.
 ## v0.1.14 — 2026-05-22
 
 ### Changed
+
 - **Tooling**: ESLint 9 (flat config) + Prettier 3 added. CI now runs
   `npm ci`, `validate-manifests`, `lint`, `format:check`, tests. New
   `package.json` (devDependencies only) + `package-lock.json`.
@@ -325,6 +384,7 @@ Tests: 142/142 pass.
   - File size: 536 → 476 lines (-60).
 
 ### Fixed
+
 - `scripts/lib/frontmatter.mjs`: redundant escape `\[` removed inside
   YAML-unsafe character class (ESLint `no-useless-escape`).
 - `tests/loop-installer.test.mjs`: aligns happy-path assertion with the
@@ -335,6 +395,7 @@ Tests: 142/142 pass.
 ## v0.1.13 — 2026-05-22
 
 ### Fixed
+
 - `slice-linker::findHeroCrewCli` no longer hard-codes
   `crew/0.1.0/scripts/crew.mjs` in its fallback list. Now delegates to
   the shared plugin-cache discovery (`findCrewCli` from
@@ -343,6 +404,7 @@ Tests: 142/142 pass.
   the dev fallback list.
 
 ### Added
+
 - `scripts/validate-manifests.mjs`: CI step verifying required fields,
   semver parseability, and `marketplace.json` ↔ `plugin.json` version
   alignment.
@@ -350,22 +412,27 @@ Tests: 142/142 pass.
 - README: test / release / license badges.
 
 ### Requires
+
 - `crew` plugin >= v0.1.12 (unchanged — no new crew CLI surface is
   required by this release).
 
 ## v0.1.12 — 2026-05-21
 
 ### Fixed
+
 - Install non-idempotency: orphan start markers no longer stack on re-install.
 
 ### Added — recent
+
 - `slice-linker`: emit hero-crew `cost-report` on slice complete.
 - Synergy Cat 3+4: claims sync, unified stop conditions, workflow state
   unification, memory + synthesis.
 
 ### Requires
+
 - `crew` plugin >= v0.1.12.
 
 ### Infrastructure
+
 - CI: `node --test tests/*.test.mjs` on push/PR (GitHub Actions).
 - README documents marketplace install commands and pins crew version.

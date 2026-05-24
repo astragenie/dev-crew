@@ -11,6 +11,8 @@ import path from "node:path";
 import { execFile as _execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
+
 const execFile = promisify(_execFile);
 
 async function pathExists(p) {
@@ -66,16 +68,26 @@ async function findHeroCrewCli() {
 // Invokes `crew write-run-brief` to rotate workflow-state.currentRun to
 // the new slice. Best-effort: missing crew is a soft no-op so the agent
 // can still proceed; the loop driver inspects the return.
-export async function writeCrewRunBrief(repoPath, { sliceId, title, goal }) {
+export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featureId, phase }) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
+  // The slice-progress dashboard caller passes a `title` like
+  // "SLICE-NN: <human title>". Strip a leading SLICE-NN: prefix before
+  // re-wrapping with buildArtifactTitle so we don't double the tag.
+  const summary = title ? title.replace(/^SLICE-\d+:\s*/i, "") : null;
+  const enrichedTitle = buildArtifactTitle({
+    featureId,
+    phase,
+    sliceId,
+    summary: summary && summary !== sliceId ? summary : undefined
+  });
   const args = [
     cli,
     "write-run-brief",
     "--repo",
     repoPath,
     "--title",
-    title || sliceId,
+    enrichedTitle,
     "--owner",
     "loop"
   ];
@@ -121,12 +133,19 @@ async function detectCostMode(repoPath) {
   }
 }
 
-export async function tryWriteCostReport(repoPath, sliceId) {
+// Accepts either a bare sliceId (legacy callers) or a { sliceId, featureId,
+// phase } object. The structured form is preferred — it lets the cost-slice
+// run-title include the FEAT/phase tags so crew's slugifier writes them into
+// the cost-report filename.
+export async function tryWriteCostReport(repoPath, sliceOrInfo) {
+  const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
+  const { sliceId, featureId = null, phase = null } = info;
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
 
   const mode = await detectCostMode(repoPath);
-  const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", sliceId];
+  const runTitle = buildArtifactTitle({ featureId, phase, sliceId });
+  const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
   if (mode === "scoped") {
     reportArgs.push("--source-project", path.basename(repoPath));
   } else {
@@ -221,7 +240,7 @@ function renderSynthesisBody({
 
 export async function writeCrewFinalSynthesis(
   repoPath,
-  { sliceId, slicePath, featureId, featureResult, specChanges }
+  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges }
 ) {
   const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
   await ensureDir(runsDir);
@@ -229,7 +248,8 @@ export async function writeCrewFinalSynthesis(
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d+Z$/, "Z");
-  const target = path.join(runsDir, `${stamp}-${sliceId.toLowerCase()}-final-synthesis.md`);
+  const slug = buildArtifactSlug({ featureId, phase, sliceId });
+  const target = path.join(runsDir, `${stamp}-${slug}-final-synthesis.md`);
 
   const { findGradeForSlice, SCORE_DIMENSIONS } = await import("../grade-parser.mjs");
   const grade = await findGradeForSlice(repoPath, sliceId);
@@ -237,6 +257,7 @@ export async function writeCrewFinalSynthesis(
     kind: "final-synthesis",
     slice: sliceId,
     feature: featureId || null,
+    phase: phase || null,
     grade: grade ? `GRADE-${sliceId}` : null,
     decisions: grade?.frontmatter?.decisions || [],
     created_at: new Date().toISOString().slice(0, 10)
@@ -262,7 +283,7 @@ export async function writeCrewFinalSynthesis(
 
 export async function writeCrewHandoff(
   repoPath,
-  { sliceId, slicePath, featureId, featureResult, specChanges }
+  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges }
 ) {
   const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
   await ensureDir(handoffDir);
@@ -270,7 +291,8 @@ export async function writeCrewHandoff(
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d+Z$/, "Z");
-  const filename = `${stamp}-${sliceId.toLowerCase()}-complete.md`;
+  const slug = buildArtifactSlug({ featureId, phase, sliceId });
+  const filename = `${stamp}-${slug}-complete.md`;
   const target = path.join(handoffDir, filename);
   const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
   const featureRel = featureResult?.to
@@ -283,6 +305,7 @@ export async function writeCrewHandoff(
     owner: "lead",
     slice: sliceId,
     feature: featureId || null,
+    phase: phase || null,
     created_at: today,
     confidence: "high",
     next_handoff: "grade-and-continue"

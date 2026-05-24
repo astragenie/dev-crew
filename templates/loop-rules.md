@@ -22,20 +22,35 @@ After all acceptance criteria for the current slice are PASS with evidence and a
 
 If `docs/backlog/pending/` and `docs/backlog/triaged/` are both empty AND `docs/specs/` has no undecomposed approved specs, the agent has reached either stop condition A (every spec satisfied — confirm with `/loop:spec status`) or stop condition B (externally blocked). Surface which and stop. Never stop because the backlog "feels empty" — confirm via the explicit scan first.
 
+### Slice frontmatter — optional `phase` field
+
+Slices carry two optional linkage fields that propagate into artifact filenames and frontmatter:
+
+- `feature: FEAT-NNN` — set automatically by `/loop:slice-from-feature` and `/loop:derive-slice`.
+- `phase: <string|null>` — free-form phase identifier (`"1"`, `"2"`, `"beta"`). Defaults to `null`. Set on slice files that belong to a named phase.
+
+Both fields propagate to:
+
+- Filenames written by this repo: `runs/<TS>-feat-NNN-phase-N-slice-NN-final-synthesis.md`, `handoffs/<TS>-feat-NNN-phase-N-slice-NN-complete.md`, `cost/<TS>-cost-report-feat-NNN-phase-N-slice-NN.md`.
+- Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`): the loop passes `--title "FEAT-NNN PHASE-N SLICE-NN: ..."`; crew's slugifier carries the tags into the filename.
+- Frontmatter of repo-owned artifacts (handoff + final-synthesis): `feature:` and `phase:` keys.
+
+When either field is null the corresponding filename segment drops out — `feat-NNN-slice-NN-...` or bare `slice-NN-...` are valid forms. Artifact consumers (LoopObserver, dashboards) should treat the segments as optional and ordered.
+
 ### Marathon mode vs. legacy gating
 
 `loop.marathonMode` in `.claude/loop.json` controls the active stop set (default `true` for new installs):
 
-| Trigger | marathon=true (default) | marathon=false (legacy) |
-|---|---|---|
-| Backlog exhausted | halt | halt |
-| Crew `escalated_to_human` | halt | halt |
-| Warn-severity pattern alert | halt | halt |
-| High-severity cost alert | halt | halt |
-| Iteration cap (default 25) | advisory (snapshot only) | halt |
-| Crew soft `blocked` badge | advisory (often self-clears) | halt |
+| Trigger                     | marathon=true (default)      | marathon=false (legacy) |
+| --------------------------- | ---------------------------- | ----------------------- |
+| Backlog exhausted           | halt                         | halt                    |
+| Crew `escalated_to_human`   | halt                         | halt                    |
+| Warn-severity pattern alert | halt                         | halt                    |
+| High-severity cost alert    | halt                         | halt                    |
+| Iteration cap (default 25)  | advisory (snapshot only)     | halt                    |
+| Crew soft `blocked` badge   | advisory (often self-clears) | halt                    |
 
-Iteration counter still increments under marathon mode; `stop-check` continues to report `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot` for dashboards. Marathon mode disables only the *gating*, not the *telemetry*. Set `marathonMode: false` if your repo prefers the legacy bounded-iteration behavior.
+Iteration counter still increments under marathon mode; `stop-check` continues to report `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot` for dashboards. Marathon mode disables only the _gating_, not the _telemetry_. Set `marathonMode: false` if your repo prefers the legacy bounded-iteration behavior.
 
 ## Slice Start Ceremony — HARD RULE
 
@@ -55,14 +70,14 @@ Exception: manual invocations may pass `--no-dispatch` (e.g., debugging the loop
 
 The autonomous loop is an **orchestrator**, not an implementer. Every code-bearing unit of work runs through a crew subagent. Decision matrix:
 
-| Situation | Dispatch |
-|---|---|
-| Slice implementation (acceptance criteria work) | `/crew:build` subagent |
-| Bug found during slice (test fail, regression, integration error) | `/crew:fix` subagent |
-| Independent code review pass | `/crew:review` subagent (or the configured reviewer ladder) |
-| Behavior validation when something is runnable | `/crew:validate` subagent |
-| Deployment / shipping a reviewed change | `/crew:ship` subagent |
-| Trivial inline fixup (typo, fixture path, single-line patch) | Inline is fine — but log it in the run-brief |
+| Situation                                                         | Dispatch                                                    |
+| ----------------------------------------------------------------- | ----------------------------------------------------------- |
+| Slice implementation (acceptance criteria work)                   | `/crew:build` subagent                                      |
+| Bug found during slice (test fail, regression, integration error) | `/crew:fix` subagent                                        |
+| Independent code review pass                                      | `/crew:review` subagent (or the configured reviewer ladder) |
+| Behavior validation when something is runnable                    | `/crew:validate` subagent                                   |
+| Deployment / shipping a reviewed change                           | `/crew:ship` subagent                                       |
+| Trivial inline fixup (typo, fixture path, single-line patch)      | Inline is fine — but log it in the run-brief                |
 
 Pivot triggers — any of these during a slice means **stop, dispatch `/crew:fix`, then resume**:
 
@@ -127,6 +142,7 @@ Multiple features can be developed concurrently by running an autonomous loop in
 **Cost attribution in parallel mode:**
 
 `tryWriteCostReport` auto-detects the worktree topology at close time:
+
 - Linked worktree (git-common-dir ≠ git-dir) **or** multiple worktrees present → passes `--source-project <worktree-slug>` so cost windows do not bleed between sibling loops.
 - Single worktree → passes `--aggregate-all` to capture cross-repo session work.
 

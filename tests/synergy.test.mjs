@@ -67,6 +67,68 @@ test("completeSlice writes a crew final-synthesis artifact", async () => {
   assert.match(content, /grade|Grade/);
 });
 
+test("completeSlice filename embeds FEAT + phase from slice frontmatter", async () => {
+  const repo = await tmpRepo("al-syn-feat-phase-");
+  const feat = await addFeature(repo, { title: "phase tagged" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+
+  // Inject phase into slice frontmatter (sliceFromFeature defaults phase: null).
+  const slicesRoot = path.join(repo, "docs/ai-loop/slices");
+  let slicePath = null;
+  async function walk(dir) {
+    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (entry.name.startsWith(slice.id.replace("-", "_"))) slicePath = full;
+    }
+  }
+  await walk(slicesRoot);
+  assert.ok(slicePath, "slice file located");
+  const raw = await fs.readFile(slicePath, "utf8");
+  await fs.writeFile(slicePath, raw.replace("phase: null", "phase: 3"));
+
+  const result = await completeSlice(repo, slice.id);
+  const featSegment = feat.id.toLowerCase();
+  const sliceSegment = slice.id.toLowerCase();
+  assert.match(
+    path.basename(result.synthesis.synthesisPath),
+    new RegExp(`-${featSegment}-phase-3-${sliceSegment}-final-synthesis\\.md$`),
+    "final-synthesis filename embeds FEAT + phase"
+  );
+  assert.match(
+    path.basename(result.handoff.handoffPath),
+    new RegExp(`-${featSegment}-phase-3-${sliceSegment}-complete\\.md$`),
+    "handoff filename embeds FEAT + phase"
+  );
+  const synContent = await fs.readFile(result.synthesis.synthesisPath, "utf8");
+  const synFm = parseFrontmatter(synContent).frontmatter;
+  assert.equal(synFm.phase, 3, "synthesis frontmatter carries phase");
+  assert.equal(synFm.feature, feat.id, "synthesis frontmatter carries feature");
+  const hoContent = await fs.readFile(result.handoff.handoffPath, "utf8");
+  const hoFm = parseFrontmatter(hoContent).frontmatter;
+  assert.equal(hoFm.phase, 3, "handoff frontmatter carries phase");
+  assert.equal(hoFm.feature, feat.id, "handoff frontmatter carries feature");
+});
+
+test("completeSlice falls back to bare slice-NN slug when phase null", async () => {
+  const repo = await tmpRepo("al-syn-bare-");
+  const feat = await addFeature(repo, { title: "no phase" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id);
+  const featSegment = feat.id.toLowerCase();
+  const sliceSegment = slice.id.toLowerCase();
+  assert.match(
+    path.basename(result.synthesis.synthesisPath),
+    new RegExp(`-${featSegment}-${sliceSegment}-final-synthesis\\.md$`),
+    "filename includes FEAT but not phase when phase is null"
+  );
+  assert.doesNotMatch(
+    path.basename(result.synthesis.synthesisPath),
+    /-phase-/,
+    "filename has no phase segment"
+  );
+});
+
 test("completeSlice synthesis embeds grade summary when grade exists", async () => {
   const repo = await tmpRepo("al-v110-syn-grade-");
   const feat = await addFeature(repo, { title: "graded" });

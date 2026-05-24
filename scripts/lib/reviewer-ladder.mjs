@@ -63,7 +63,13 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
   const sliceContent = await fs.readFile(sliceFile, "utf8");
   const { frontmatter } = parseFrontmatter(sliceContent);
   const featureId = frontmatter.feature || null;
+  const phase = frontmatter.phase || null;
   const slicePathRel = path.relative(repoPath, sliceFile).replace(/\\/g, "/");
+  const { buildArtifactTitle } = await import("./artifact-naming.mjs");
+  // Suggested --title prefix so the review-result artifact filename
+  // includes FEAT/phase via crew CLI's slugifier. Agents append a
+  // human one-line summary after the prefix.
+  const titlePrefix = buildArtifactTitle({ featureId, phase, sliceId });
 
   const tasks = ladder.map((reviewerId) => {
     const focus =
@@ -88,8 +94,8 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
         "2. Read the diff for the in-progress slice (git diff against base).",
         "3. For each acceptance criterion, evaluate PASS / FAIL / PARTIAL with one-line evidence.",
         "4. Surface any prior decisions relevant to changed files (run `/loop:decisions relevant --files <list>`).",
-        "5. Write your review verdict using the crew writer:",
-        `   \`crew write-review-result --decision <PASS|FAIL> --summary "<one-line>" --evidence <path-to-detail-file>\``,
+        "5. Write your review verdict using the crew writer. Use the title prefix below so the artifact filename surfaces FEAT and phase to LoopObserver:",
+        `   \`crew write-review-result --title "${titlePrefix}: <one-line summary>" --decision <PASS|FAIL> --summary "<one-line>" --evidence <path-to-detail-file>\``,
         `6. Link the review artifact to ${sliceId}:`,
         `   \`/loop:slice link --id ${sliceId} --kind reviews --artifact <path>\``,
         "",

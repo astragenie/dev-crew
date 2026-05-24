@@ -74,6 +74,7 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
     id,
     status: "pending",
     feature: featureId,
+    phase: featureFrontmatter.phase || null,
     priority: featureFrontmatter.priority || null,
     target_release: featureFrontmatter.target_release || null,
     created: today,
@@ -316,6 +317,7 @@ export async function completeSlice(
   const sliceContent = await fs.readFile(sliceFile, "utf8");
   const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
   const featureId = sliceFm.feature || null;
+  const phase = sliceFm.phase || null;
   const today = new Date().toISOString().slice(0, 10);
 
   // FEAT-002: refuse to roll the parent feature to done/ while the crew
@@ -343,11 +345,18 @@ export async function completeSlice(
   const { reconcileSpecStatus } = await import("./linkage.mjs");
   const specChanges = await reconcileSpecStatus(repoPath, config);
 
-  const crewArgs = { sliceId, slicePath: targetSlicePath, featureId, featureResult, specChanges };
+  const crewArgs = {
+    sliceId,
+    slicePath: targetSlicePath,
+    featureId,
+    phase,
+    featureResult,
+    specChanges
+  };
   const [handoff, synthesis, costReport] = await Promise.all([
     bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
     bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
-    bestEffort(() => tryWriteCostReport(repoPath, sliceId))
+    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }))
   ]);
 
   const sliceProgress = await bestEffort(async () => {
@@ -394,20 +403,17 @@ export async function startSlice(
   const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
   const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
 
-  let resolvedGoal = goal;
-  let sliceFile = null;
-  try {
-    sliceFile = await locateSliceFile(slicesRoot, sliceId);
-  } catch {
-    sliceFile = null;
-  }
-  if (!resolvedGoal && sliceFile) {
-    const content = await fs.readFile(sliceFile, "utf8");
-    resolvedGoal = extractObjective(content);
-  }
+  const {
+    file: sliceFile,
+    frontmatter: sliceFm,
+    goal: discoveredGoal
+  } = await readSliceContext(slicesRoot, sliceId);
+  const resolvedGoal = goal || discoveredGoal;
+  const featureId = sliceFm.feature || null;
+  const phase = sliceFm.phase || null;
 
   const runBrief = await bestEffort(() =>
-    writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal })
+    writeCrewRunBrief(repoPath, { sliceId, title, goal: resolvedGoal, featureId, phase })
   );
 
   const sliceProgress = await bestEffort(async () => {
@@ -446,6 +452,26 @@ function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolve
     "",
     `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.`
   ].join("\n");
+}
+
+// Locates the slice file under slicesRoot and reads frontmatter + objective
+// text. Returns null fields when the slice file is missing — callers fall
+// back gracefully (run-brief emits with bare sliceId; dispatchInstruction
+// omits goalLine).
+async function readSliceContext(slicesRoot, sliceId) {
+  let file = null;
+  try {
+    file = await locateSliceFile(slicesRoot, sliceId);
+  } catch {
+    file = null;
+  }
+  if (!file) {
+    return { file: null, frontmatter: {}, goal: null };
+  }
+  const content = await fs.readFile(file, "utf8");
+  const frontmatter = parseFrontmatter(content).frontmatter || {};
+  const goal = extractObjective(content);
+  return { file, frontmatter, goal };
 }
 
 function extractObjective(sliceContent) {
