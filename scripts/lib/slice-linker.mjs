@@ -25,6 +25,7 @@ import {
   locateSliceFile,
   slicesRoot as resolveSlicesRoot
 } from "./paths.mjs";
+import { resolveModel } from "./model-router.mjs";
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
@@ -439,6 +440,8 @@ export async function startSlice(
         "Review recent grades before continuing if this persists."
       : null;
 
+  const modelHint = resolveModel("build", resolved);
+
   return buildStartSliceReturn({
     sliceId,
     title,
@@ -449,7 +452,8 @@ export async function startSlice(
     sliceFile: ctx.file,
     repoPath,
     resolvedGoal,
-    gradeTrendCaution
+    gradeTrendCaution,
+    modelHint
   });
 }
 
@@ -475,10 +479,11 @@ function buildStartSliceReturn({
   sliceFile,
   repoPath,
   resolvedGoal,
-  gradeTrendCaution = null
+  gradeTrendCaution = null,
+  modelHint = null
 }) {
   const dispatchInstruction = dispatch
-    ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal })
+    ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, modelHint })
     : null;
   const activePlanSummary = activePlan.planPath
     ? { source: activePlan.source, path: activePlan.planPath }
@@ -512,14 +517,24 @@ async function refreshSliceProgress(repoPath, activePlan, sliceId, config = null
   });
 }
 
-function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal }) {
+export function buildDispatchInstruction({
+  sliceId,
+  title,
+  sliceFile,
+  repoPath,
+  resolvedGoal,
+  modelHint = null
+}) {
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
+  const modelLine = modelHint
+    ? `\n\n> Preferred model: ${modelHint}. Use this model for the build subagent unless the task requires deeper reasoning.`
+    : "";
   return [
     `Dispatch /crew:build subagent with this prompt:`,
     "",
-    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:reviewer\` subagent. For validation, dispatch a \`crew:validator\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.`
+    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:reviewer\` subagent. For validation, dispatch a \`crew:validator\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${modelLine}`
   ].join("\n");
 }
 
