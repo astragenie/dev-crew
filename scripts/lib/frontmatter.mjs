@@ -26,7 +26,7 @@ function parseScalar(raw) {
   if (v === "" || v === "~" || v === "null") return null;
   if (v === "true") return true;
   if (v === "false") return false;
-  if (/^-?\d+$/.test(v)) return Number(v);
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
   // Inline array: [a, b, c]
   if (v.startsWith("[") && v.endsWith("]")) {
     const inner = v.slice(1, -1).trim();
