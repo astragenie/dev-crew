@@ -6,7 +6,13 @@ import { gradesRoot, pathExists } from "./paths.mjs";
 
 export { gradesRoot };
 
-const GRADE_FILE_RE = /^SLICE-(\d+)-grade\.md$/i;
+// Matches the legacy bare format:  SLICE-NN-grade.md
+const GRADE_FILE_RE_LEGACY = /^SLICE-(\d+)-grade\.md$/i;
+
+// Matches the new timestamped format: YYYYMMDDTHHMMSSZ-*-grade.md
+const GRADE_FILE_RE_NEW = /^\d{8}T\d{6}Z-.*-grade\.md$/i;
+
+// Combined check lives in isGradeFile() below.
 
 export const SCORE_DIMENSIONS = [
   "architecture_quality",
@@ -126,13 +132,17 @@ export async function readGrade(filePath) {
   };
 }
 
+function isGradeFile(filename) {
+  return GRADE_FILE_RE_LEGACY.test(filename) || GRADE_FILE_RE_NEW.test(filename);
+}
+
 export async function listGrades(repoPath, options = {}) {
   const root = gradesRoot(repoPath, options.config);
   if (!(await pathExists(root))) return [];
   const files = await fs.readdir(root);
   const grades = [];
   for (const file of files) {
-    if (!file.endsWith(".md") || !GRADE_FILE_RE.test(file)) continue;
+    if (!file.endsWith(".md") || !isGradeFile(file)) continue;
     const g = await readGrade(path.join(root, file));
     grades.push(g);
   }
@@ -141,14 +151,37 @@ export async function listGrades(repoPath, options = {}) {
   );
 }
 
-export async function findGradeForSlice(repoPath, sliceId, config = null) {
+// Scan the grades directory for any grade file that belongs to the given
+// sliceId. Recognises both the legacy bare format (SLICE-NN-grade.md) and the
+// new timestamped format (YYYYMMDDTHHMMSSZ-...-sliceNN-grade.md). Returns the
+// full path of the first match, or null.
+export async function findGradeFileForSlice(repoPath, sliceId, config = null) {
   const root = gradesRoot(repoPath, config);
-  const filename = `${sliceId}-grade.md`;
-  const filePath = path.join(root, filename);
-  if (!(await pathExists(filePath))) return null;
+  if (!(await pathExists(root))) return null;
+  // Legacy path — fast check before full scan.
+  const legacyPath = path.join(root, `${sliceId}-grade.md`);
+  if (await pathExists(legacyPath)) return legacyPath;
+  // Scan for new timestamped format: any file ending in <sliceNN>-grade.md
+  const sliceCompact = sliceId.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const suffix = `${sliceCompact}-grade.md`;
+  const files = await fs.readdir(root);
+  for (const file of files) {
+    if (GRADE_FILE_RE_NEW.test(file) && file.endsWith(suffix)) {
+      return path.join(root, file);
+    }
+  }
+  return null;
+}
+
+export async function findGradeForSlice(repoPath, sliceId, config = null) {
+  const filePath = await findGradeFileForSlice(repoPath, sliceId, config);
+  if (!filePath) return null;
   return readGrade(filePath);
 }
 
+// Returns a deterministic (legacy-format) path for the given slice. Used as a
+// fallback for callers that need a predictable write target when no existing
+// file is found. Prefer findGradeFileForSlice when reading.
 export function gradeFilePath(repoPath, sliceId, config = null) {
   return path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`);
 }

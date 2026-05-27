@@ -1,6 +1,6 @@
 ---
 id: FEAT-003
-status: pending
+status: triaged
 priority: P1
 category: bugfix
 target_release: null
@@ -9,6 +9,7 @@ updated: 2026-05-27
 depends_on: []
 slices: []
 derived_from: null
+triage_notes: no fields needed inference
 ---
 ## Description
 

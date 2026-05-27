@@ -114,11 +114,8 @@ test("createGradeFile generates a template with slice id substituted", async () 
 
 test("createGradeFile is only-if-missing — does not clobber", async () => {
   const repo = await tmpRepo("al-grade-noclobber-");
-  await createGradeFile(repo, "SLICE-10");
-  await fs.appendFile(
-    path.join(repo, ".claude/artifacts/loop/grades/SLICE-10-grade.md"),
-    "\n# user edits"
-  );
+  const first = await createGradeFile(repo, "SLICE-10");
+  await fs.appendFile(first.gradePath, "\n# user edits");
   const second = await createGradeFile(repo, "SLICE-10");
   assert.equal(second.created, false);
   const content = await fs.readFile(second.gradePath, "utf8");
@@ -144,21 +141,20 @@ test("createGradeFile prefills feature + spec links from slice file", async () =
 
 test("writeGrade rejects when scores are still 0 across the board", async () => {
   const repo = await tmpRepo("al-grade-zero-");
-  await createGradeFile(repo, "SLICE-01");
+  const created = await createGradeFile(repo, "SLICE-01");
   // Default template has 0 for all scores — that's a valid input (in range)
   // but represents "not filled". writeGrade should pass since 0 is in [0,1].
   // To prove validation catches a REAL invalid input, edit scores:
-  const gradePath = path.join(repo, ".claude/artifacts/loop/grades/SLICE-01-grade.md");
-  let content = await fs.readFile(gradePath, "utf8");
+  let content = await fs.readFile(created.gradePath, "utf8");
   content = content.replace("- architecture_quality: 0.00", "- architecture_quality: 1.5");
-  await fs.writeFile(gradePath, content);
+  await fs.writeFile(created.gradePath, content);
   await assert.rejects(() => writeGrade(repo, "SLICE-01"), /architecture_quality.*1\.5/);
 });
 
 test("writeGrade extracts DEC-TBD blocks into .claude/artifacts/loop/decisions/", async () => {
   const repo = await tmpRepo("al-grade-extract-");
-  await createGradeFile(repo, "SLICE-01");
-  const gradePath = path.join(repo, ".claude/artifacts/loop/grades/SLICE-01-grade.md");
+  const created = await createGradeFile(repo, "SLICE-01");
+  const gradePath = created.gradePath;
   let content = await fs.readFile(gradePath, "utf8");
   // Fill valid scores in body
   for (const dim of SCORE_DIMENSIONS) {

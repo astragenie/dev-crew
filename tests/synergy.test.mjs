@@ -33,8 +33,7 @@ async function tmpRepo(prefix) {
 }
 
 async function seedGrade(repo, sliceId, scores, lessons = [], surprises = []) {
-  await createGradeFile(repo, sliceId);
-  const gradePath = path.join(repo, ".claude/artifacts/loop/grades", `${sliceId}-grade.md`);
+  const { gradePath } = await createGradeFile(repo, sliceId);
   let content = await fs.readFile(gradePath, "utf8");
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);

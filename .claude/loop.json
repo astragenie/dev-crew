@@ -1,5 +1,5 @@
 {
-  "preset": "node-esm",
+  "preset": null,
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",

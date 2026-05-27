@@ -7,12 +7,13 @@ import { findFeatureById } from "./backlog-writer.mjs";
 import { findSpecById } from "./spec-parser.mjs";
 import {
   gradesRoot,
-  gradeFilePath,
+  findGradeFileForSlice,
   parseScoresFromBody,
   parseDecisionsFromBody,
   validateScores
 } from "./grade-parser.mjs";
-import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
+import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
+import { buildArtifactSlug } from "./artifact-naming.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
@@ -27,6 +28,20 @@ async function readTemplate(rel) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Build a UTC timestamp string in the crew artifact format: YYYYMMDDTHHMMSSz
+function utcTimestamp() {
+  return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+}
+
+// Build the full path for a new grade file using the artifact naming convention.
+// Format: <gradesRoot>/<TS>-<slug>-grade.md
+// where slug = [phaseN-][featNNN-]sliceNN (via buildArtifactSlug).
+function newGradeFilePath(repoRoot, sliceId, { featureId, phase, config } = {}) {
+  const slug = buildArtifactSlug({ featureId: featureId || null, phase: phase || null, sliceId });
+  const filename = `${utcTimestamp()}-${slug}-grade.md`;
+  return path.join(gradesRoot(repoRoot, config), filename);
 }
 
 async function findSliceFile(repoPath, sliceId, config) {
@@ -105,15 +120,24 @@ function patchGradeFrontmatter(tpl, { featureId, specId, phase, targetRelease })
 
 export async function createGradeFile(repoPath, sliceId, { config = null } = {}) {
   if (!sliceId) throw new Error("createGradeFile requires sliceId");
-  const target = gradeFilePath(repoPath, sliceId, config);
-  if (await pathExists(target)) {
-    return { gradePath: target, created: false };
+
+  // Check for an existing grade file (legacy or new format) before creating.
+  const existing = await findGradeFileForSlice(repoPath, sliceId, config);
+  if (existing) {
+    return { gradePath: existing, created: false };
   }
   await ensureDir(gradesRoot(repoPath, config));
 
   const prefill = await resolveGradePrefill(repoPath, sliceId, config);
   const { inferScoresForSlice } = await import("./score-inference.mjs");
   const inference = await inferScoresForSlice(repoPath, sliceId);
+
+  // Build the new timestamped filename using the artifact naming convention.
+  const target = newGradeFilePath(repoPath, sliceId, {
+    featureId: prefill.featureId,
+    phase: prefill.phase,
+    config
+  });
 
   let tpl = await readTemplate("grades/grade-template.md");
   tpl = tpl
@@ -137,9 +161,10 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
 // blocks into docs/decisions/, replace TBD ids in grade body with allocated
 // ids, update frontmatter `decisions: [DEC-NNN, ...]`. Idempotent.
 export async function writeGrade(repoPath, sliceId, { config = null } = {}) {
-  const target = gradeFilePath(repoPath, sliceId, config);
-  if (!(await pathExists(target))) {
-    throw new Error(`Grade file not found for ${sliceId}: ${target}`);
+  // Locate the grade file regardless of format (new timestamped or legacy).
+  const target = await findGradeFileForSlice(repoPath, sliceId, config);
+  if (!target) {
+    throw new Error(`Grade file not found for ${sliceId}`);
   }
   const content = await fs.readFile(target, "utf8");
   const { frontmatter, body } = parseFrontmatter(content);

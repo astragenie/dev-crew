@@ -8,7 +8,7 @@ import { buildRetrospective, writeRetrospective } from "../scripts/lib/retrospec
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
-import { SCORE_DIMENSIONS } from "../scripts/lib/grade-parser.mjs";
+import { SCORE_DIMENSIONS, findGradeFileForSlice } from "../scripts/lib/grade-parser.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -32,12 +32,7 @@ async function tmpRepo(prefix) {
 async function seedGradedSlice(repo, scores, lessons = []) {
   const feat = await addFeature(repo, { title: "Test feature" });
   const sliceResult = await sliceFromFeature(repo, feat.id);
-  await createGradeFile(repo, sliceResult.slice.id);
-  const gradePath = path.join(
-    repo,
-    ".claude/artifacts/loop/grades",
-    `${sliceResult.slice.id}-grade.md`
-  );
+  const { gradePath } = await createGradeFile(repo, sliceResult.slice.id);
   let content = await fs.readFile(gradePath, "utf8");
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
@@ -114,8 +109,9 @@ test("buildRetrospective with --span-days filters older grades", async () => {
   const scores = {};
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   const sliceId = await seedGradedSlice(repo, scores);
-  // Mutate grade's graded_at to be 30 days ago
-  const gradePath = path.join(repo, ".claude/artifacts/loop/grades", `${sliceId}-grade.md`);
+  // Mutate grade's graded_at to be 30 days ago — locate the file dynamically
+  // since the filename now includes a timestamp prefix.
+  const gradePath = await findGradeFileForSlice(repo, sliceId);
   let content = await fs.readFile(gradePath, "utf8");
   const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   content = content.replace(/graded_at: \d{4}-\d{2}-\d{2}/, `graded_at: ${oldDate}`);
