@@ -1,0 +1,34 @@
+# Review Result: Artifact migration + PM agent review
+
+- Created: 2026-05-27T03:36:41.787Z
+- Reviewer: reviewer
+- Decision: approved_with_notes
+- Summary: 1 blocking bug found and fixed: parseScalar missed floats (0.8 returned as string). After fix: 312/312 tests pass, lint clean (1 pre-existing warning), format clean. Path centralization correct, PM scorer logic sound, scope discipline good.
+- Evidence Checked:
+  - frontmatter.mjs
+  - paths.mjs
+  - pm-scorer.mjs
+  - pm-artifact-writer.mjs
+  - backlog-writer.mjs
+  - artifact-naming.mjs
+  - all test files
+  - npm test
+  - npm run lint
+  - npm run format:check
+- Files Reviewed:
+  - scripts/lib/frontmatter.mjs
+  - scripts/lib/paths.mjs
+  - scripts/lib/pm-scorer.mjs
+  - scripts/lib/pm-artifact-writer.mjs
+  - scripts/lib/backlog-parser.mjs
+  - scripts/lib/backlog-writer.mjs
+  - agents/pm.md
+  - skills/pm-triage.md
+  - skills/pm-review.md
+  - skills/pm-decompose.md
+  - tests/pm-triage-flow.test.mjs
+  - tests/pm-artifact-writer.test.mjs
+- Test Adequacy: 312/312 pass, 0 fail
+- Risks: migrate-product-backlog.mjs still has hardcoded docs/ paths
+- Required Follow-up: Commit frontmatter fix, then stage and commit untracked artifacts
+
