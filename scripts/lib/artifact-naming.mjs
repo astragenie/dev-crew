@@ -78,7 +78,7 @@ export async function stripArtifactTimestamp(filePath) {
 // between segments only.
 //
 // buildArtifactSlug({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36" })
-//   → "phase3-feat021-slice36"
+//   → "phase-3-feat021-slice36"
 // buildArtifactSlug({ featureId: null, phase: null, sliceId: "SLICE-36" })
 //   → "slice36"
 export function buildArtifactSlug({ featureId, phase, sliceId } = {}) {
@@ -87,7 +87,7 @@ export function buildArtifactSlug({ featureId, phase, sliceId } = {}) {
   }
   const segments = [];
   const ph = tight(phase);
-  if (ph) segments.push(`phase${ph}`);
+  if (ph) segments.push(`phase-${ph}`);
   const feat = tight(featureId);
   if (feat) segments.push(feat);
   segments.push(tight(sliceId));
@@ -101,7 +101,7 @@ export function buildArtifactSlug({ featureId, phase, sliceId } = {}) {
 //
 // buildArtifactTitle({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36",
 //                      summary: "Health page repurpose" })
-//   → "PHASE3 FEAT021 SLICE36: Health page repurpose"
+//   → "PHASE-3 FEAT021 SLICE36: Health page repurpose"
 // buildArtifactTitle({ sliceId: "SLICE-36", summary: "Health page" })
 //   → "SLICE36: Health page"
 // buildArtifactTitle({ sliceId: "SLICE-36" })
@@ -112,7 +112,7 @@ export function buildArtifactTitle({ featureId, phase, sliceId, summary } = {}) 
   }
   const tags = [];
   if (phase !== null && phase !== undefined && String(phase).length > 0) {
-    tags.push(`PHASE${tightUpper(phase)}`);
+    tags.push(`PHASE-${tightUpper(phase)}`);
   }
   const feat = tightUpper(featureId);
   if (feat) tags.push(feat);

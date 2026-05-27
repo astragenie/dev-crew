@@ -92,12 +92,12 @@ test("completeSlice filename embeds FEAT + phase from slice frontmatter", async 
   const sliceSegment = slice.id.toLowerCase().replace(/-/g, "");
   assert.equal(
     path.basename(result.synthesis.synthesisPath),
-    `phase3-${featSegment}-${sliceSegment}-final-synthesis.md`,
+    `phase-3-${featSegment}-${sliceSegment}-final-synthesis.md`,
     "final-synthesis filename embeds tight phase → feat → slice (no timestamp)"
   );
   assert.equal(
     path.basename(result.handoff.handoffPath),
-    `phase3-${featSegment}-${sliceSegment}-complete.md`,
+    `phase-3-${featSegment}-${sliceSegment}-complete.md`,
     "handoff filename embeds tight phase → feat → slice (no timestamp)"
   );
   const synContent = await fs.readFile(result.synthesis.synthesisPath, "utf8");

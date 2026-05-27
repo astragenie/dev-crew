@@ -14,7 +14,7 @@ import {
 
 test("buildArtifactSlug emits tight phase → feat → slice when all three set", () => {
   const out = buildArtifactSlug({ featureId: "FEAT-021", phase: "3", sliceId: "SLICE-36" });
-  assert.equal(out, "phase3-feat021-slice36");
+  assert.equal(out, "phase-3-feat021-slice36");
 });
 
 test("buildArtifactSlug drops phase segment when phase is null", () => {
@@ -24,7 +24,7 @@ test("buildArtifactSlug drops phase segment when phase is null", () => {
 
 test("buildArtifactSlug drops feature segment when featureId is null", () => {
   const out = buildArtifactSlug({ featureId: null, phase: "3", sliceId: "SLICE-36" });
-  assert.equal(out, "phase3-slice36");
+  assert.equal(out, "phase-3-slice36");
 });
 
 test("buildArtifactSlug returns bare sliceNN when only sliceId given", () => {
@@ -39,7 +39,17 @@ test("buildArtifactSlug lowercases identifiers", () => {
 
 test("buildArtifactSlug compacts punctuation in phase", () => {
   const out = buildArtifactSlug({ featureId: "FEAT-021", phase: "3 alpha", sliceId: "SLICE-36" });
-  assert.equal(out, "phase3alpha-feat021-slice36");
+  assert.equal(out, "phase-3alpha-feat021-slice36");
+});
+
+test("buildArtifactSlug separates phase prefix from alpha values (R1 bug)", () => {
+  const out = buildArtifactSlug({ featureId: "FEAT-002", phase: "R1", sliceId: "SLICE-02" });
+  assert.equal(out, "phase-r1-feat002-slice02");
+});
+
+test("buildArtifactTitle separates PHASE prefix from alpha values", () => {
+  const out = buildArtifactTitle({ featureId: "FEAT-006", phase: "R2", sliceId: "SLICE-06" });
+  assert.equal(out, "PHASE-R2 FEAT006 SLICE06");
 });
 
 test("buildArtifactSlug throws without sliceId", () => {
@@ -58,7 +68,7 @@ test("buildArtifactTitle emits tight uppercase tags PHASE → FEAT → SLICE", (
     sliceId: "SLICE-36",
     summary: "Health page repurpose"
   });
-  assert.equal(out, "PHASE3 FEAT021 SLICE36: Health page repurpose");
+  assert.equal(out, "PHASE-3 FEAT021 SLICE36: Health page repurpose");
 });
 
 test("buildArtifactTitle omits summary suffix when none given", () => {
