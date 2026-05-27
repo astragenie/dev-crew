@@ -14,7 +14,6 @@ import { migrateLegacyAutonomousLoop } from "./legacy-migrator.mjs";
 import {
   PATH_DEFAULTS,
   pathExists,
-  ensureDir,
   backlogRoot as resolveBacklogRoot,
   specsRoot as resolveSpecsRoot,
   gradesRoot as resolveGradesRoot,
@@ -26,6 +25,10 @@ const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
 export const MARKER_START = "<!-- loop:start -->";
 export const MARKER_END = "<!-- loop:end -->";
+
+function ensureDir(dirPath) {
+  return fs.mkdir(dirPath, { recursive: true });
+}
 
 async function readTemplate(relativePath) {
   return fs.readFile(path.join(templateDir, relativePath), "utf8");

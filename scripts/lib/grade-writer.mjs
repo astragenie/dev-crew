@@ -12,15 +12,14 @@ import {
   parseDecisionsFromBody,
   validateScores
 } from "./grade-parser.mjs";
-import {
-  pathExists,
-  ensureDir,
-  locateSliceFile,
-  slicesRoot as resolveSlicesRoot
-} from "./paths.mjs";
+import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
+
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
 
 async function readTemplate(rel) {
   return fs.readFile(path.join(templateDir, rel), "utf8");

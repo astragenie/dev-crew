@@ -12,7 +12,7 @@ After all acceptance criteria for the current slice are PASS with evidence and a
 
 1. **Scan `{{specsRoot}}/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/loop:spec decompose --id SPEC-NNN --features "title 1; title 2; ..."`. The agent reads the spec body and supplies the feature titles. New FEAT files land in `{{backlogRoot}}/pending/`.
 
-2. **PM-triage `{{backlogRoot}}/pending/`** — if any pending entries exist, dispatch `loop:pm` agent to score each feature across customer_impact, effort_estimate, strategic_alignment, technical_risk, dependency_depth (0.0-1.0). Agent writes `pm_*` fields to FEAT frontmatter, computes `pm_composite_priority` and `pm_autonomous_safe`, writes PM review artifacts to `.claude/artifacts/loop/pm-reviews/`, then moves each to `{{backlogRoot}}/triaged/`. If `loop:pm` agent is unavailable, fall back to `/loop:backlog triage` (regex heuristics).
+2. **Scan `{{backlogRoot}}/pending/`** — if any pending entries exist, run `/loop:backlog triage` to fill `priority`, `category`, `target_release` heuristically and move each to `{{backlogRoot}}/triaged/`.
 
 3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by **lowest FEAT-NNN id ascending** (oldest feature wins). Deterministic; never stall on tied priorities. Promote it: `/loop:slice from-feature --id FEAT-NNN`. The plugin creates a new slice file under `{{slicesRoot}}/pending/`, moves the feature to `{{backlogRoot}}/in-progress/`, and cross-links them via frontmatter (`slices: [SLICE-NN]` on the feature; `feature: FEAT-NNN` on the slice).
 

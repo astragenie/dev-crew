@@ -3,10 +3,22 @@ import path from "node:path";
 
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backlog-parser.mjs";
-import { pathExists, ensureDir } from "./paths.mjs";
 
 function nowIsoDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+
+async function pathExists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function ensureBacklogScaffold(repoPath, config) {
@@ -130,31 +142,4 @@ export async function moveFeature(filePath, toState, updates = {}) {
 export async function findFeatureById(repoPath, featureId, config = null) {
   const entries = await listBacklog(repoPath, { config });
   return entries.find((e) => e.id === featureId) || null;
-}
-
-export async function writePmReview(
-  filePath,
-  {
-    scores = {},
-    compositePriority = "P2",
-    autonomousSafe = false,
-    demandEvidence = null,
-    scopeNotes = null,
-    risks = []
-  }
-) {
-  const { PM_DIMENSIONS } = await import("./pm-scorer.mjs");
-  const updates = {};
-  for (const dim of PM_DIMENSIONS) {
-    if (scores[dim] !== undefined) updates[`pm_${dim}`] = scores[dim];
-  }
-  updates.pm_composite_priority = compositePriority;
-  updates.pm_autonomous_safe = autonomousSafe;
-  if (demandEvidence !== null) updates.pm_demand_evidence = demandEvidence;
-  if (scopeNotes !== null) updates.pm_scope_notes = scopeNotes;
-  if (risks.length > 0) updates.pm_risks = risks;
-  updates.pm_reviewed_at = nowIsoDate();
-  const content = await fs.readFile(filePath, "utf8");
-  const merged = mergeFrontmatter(content, { ...updates, updated: nowIsoDate() });
-  await fs.writeFile(filePath, merged);
 }

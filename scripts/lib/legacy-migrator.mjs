@@ -1,8 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { pathExists } from "./paths.mjs";
-
 // Migrates a consumer repo from the pre-v0.3.0 `autonomous-loop` identifier
 // scheme to the new `loop` scheme. Runs at the very start of `installLoop`
 // so subsequent install passes (marker block, rules write, etc.) operate on
@@ -32,6 +30,15 @@ export const LEGACY_MARKER_START = "<!-- autonomous-loop:start -->";
 export const LEGACY_MARKER_END = "<!-- autonomous-loop:end -->";
 export const NEW_MARKER_START = "<!-- loop:start -->";
 export const NEW_MARKER_END = "<!-- loop:end -->";
+
+async function pathExists(target) {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function migrateConfigFile(repoPath, steps) {
   const legacyPath = path.join(repoPath, LEGACY_CONFIG_FILE);

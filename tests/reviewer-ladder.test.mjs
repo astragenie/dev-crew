@@ -38,7 +38,7 @@ async function seedSlice(repo, sliceId, { feature = null, phase = null } = {}) {
   return file;
 }
 
-test("buildReviewLadder prompt includes tight --title PHASE-3 FEAT021 SLICE07", async () => {
+test("buildReviewLadder prompt includes tight --title PHASE3 FEAT021 SLICE07", async () => {
   const repo = await tmpRepo("rl-feat-phase-");
   await seedSlice(repo, "SLICE-07", { feature: "FEAT-021", phase: "3" });
   const ladder = await buildReviewLadder(repo, "SLICE-07");
@@ -46,7 +46,7 @@ test("buildReviewLadder prompt includes tight --title PHASE-3 FEAT021 SLICE07", 
   for (const task of ladder.tasks) {
     assert.match(
       task.prompt,
-      /--title "PHASE-3 FEAT021 SLICE07: <one-line summary>"/,
+      /--title "PHASE3 FEAT021 SLICE07: <one-line summary>"/,
       "prompt names phase, feature, slice in tight wide→narrow order"
     );
   }
