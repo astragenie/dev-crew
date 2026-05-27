@@ -263,7 +263,10 @@ test("events exist but predate startedAt → no diagnostic note (not a hook prob
   assert.equal(result.agentCount, 0);
   const content = await fs.readFile(result.reportPath, "utf8");
   const { body } = parseFrontmatter(content);
-  assert.ok(!body.includes("No subagent events found"), "no diagnostic when file exists but window filters events");
+  assert.ok(
+    !body.includes("No subagent events found"),
+    "no diagnostic when file exists but window filters events"
+  );
 });
 
 test("startedAt null → no time-window filter, all events included", async () => {

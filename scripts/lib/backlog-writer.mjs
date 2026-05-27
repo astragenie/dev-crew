@@ -3,22 +3,10 @@ import path from "node:path";
 
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backlog-parser.mjs";
+import { pathExists, ensureDir } from "./paths.mjs";
 
 function nowIsoDate() {
   return new Date().toISOString().slice(0, 10);
-}
-
-async function ensureDir(p) {
-  await fs.mkdir(p, { recursive: true });
-}
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export async function ensureBacklogScaffold(repoPath, config) {

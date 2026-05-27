@@ -12,15 +12,11 @@ import {
   parseDecisionsFromBody,
   validateScores
 } from "./grade-parser.mjs";
-import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
+import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "./paths.mjs";
 import { buildArtifactSlug } from "./artifact-naming.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
-
-async function ensureDir(p) {
-  await fs.mkdir(p, { recursive: true });
-}
 
 async function readTemplate(rel) {
   return fs.readFile(path.join(templateDir, rel), "utf8");
@@ -32,7 +28,10 @@ function today() {
 
 // Build a UTC timestamp string in the crew artifact format: YYYYMMDDTHHMMSSz
 function utcTimestamp() {
-  return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  return new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
 }
 
 // Build the full path for a new grade file using the artifact naming convention.

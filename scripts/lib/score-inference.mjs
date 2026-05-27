@@ -1,18 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { pathExists } from "./paths.mjs";
+
 // Reads crew review + validation + deployment artifacts and infers baseline
 // scores per Wiggin Loop dimension. Heuristic-only; agent overrides during
 // grade edit. Best-effort — missing artifacts mean no inference, no error.
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 const ARTIFACT_DIRS = {
   reviews: ".claude/artifacts/crew/reviews",

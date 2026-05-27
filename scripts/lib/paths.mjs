@@ -66,6 +66,10 @@ export async function pathExists(p) {
   }
 }
 
+export async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+
 export async function locateSliceFile(slicesRootDir, sliceId) {
   if (!(await pathExists(slicesRootDir))) return null;
   const slicePattern = sliceId.replace("-", "[_-]");

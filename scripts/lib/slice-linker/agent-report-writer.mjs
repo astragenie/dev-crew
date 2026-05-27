@@ -375,12 +375,15 @@ export async function writeAgentReport(
 
   await fs.writeFile(
     target,
-    serializeFrontmatter(fm, buildBody(agents, groups, {
-      phase,
-      featureId,
-      sliceId,
-      eventsFound: fileFound
-    }))
+    serializeFrontmatter(
+      fm,
+      buildBody(agents, groups, {
+        phase,
+        featureId,
+        sliceId,
+        eventsFound: fileFound
+      })
+    )
   );
   return { reportPath: target, agentCount, totalTurns, totalDurationMs };
 }

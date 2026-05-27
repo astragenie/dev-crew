@@ -19,13 +19,14 @@ import {
   detectSliceStatus,
   writeSliceProgress
 } from "./slice-linker/slice-progress.mjs";
-import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
+import {
+  pathExists,
+  ensureDir,
+  locateSliceFile,
+  slicesRoot as resolveSlicesRoot
+} from "./paths.mjs";
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
-
-async function ensureDir(p) {
-  await fs.mkdir(p, { recursive: true });
-}
 
 // Walks slicesRoot recursively, returns the max numeric slice id found.
 async function maxSliceIdUnder(dir) {

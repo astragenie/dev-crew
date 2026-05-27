@@ -14,6 +14,7 @@ import { migrateLegacyAutonomousLoop } from "./legacy-migrator.mjs";
 import {
   PATH_DEFAULTS,
   pathExists,
+  ensureDir,
   backlogRoot as resolveBacklogRoot,
   specsRoot as resolveSpecsRoot,
   gradesRoot as resolveGradesRoot,
@@ -25,10 +26,6 @@ const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
 export const MARKER_START = "<!-- loop:start -->";
 export const MARKER_END = "<!-- loop:end -->";
-
-function ensureDir(dirPath) {
-  return fs.mkdir(dirPath, { recursive: true });
-}
 
 async function readTemplate(relativePath) {
   return fs.readFile(path.join(templateDir, relativePath), "utf8");
@@ -50,8 +47,13 @@ function renderTemplate(template, tokens) {
   });
 }
 
-function buildTokens(config) {
-  const aiLoopRoot = config.loop?.aiLoopRoot || PATH_DEFAULTS.aiLoopRoot;
+// Resolves a loop path token: prefer config.loop override, fall back to PATH_DEFAULTS.
+function resolveLoopPath(config, key) {
+  return (config.loop && config.loop[key]) || PATH_DEFAULTS[key];
+}
+
+// Builds the numbered mandatory-docs list embedded in the CLAUDE.md block.
+function buildMandatoryDocsList(config, aiLoopRoot) {
   const repoDocs = (config.mandatoryDocs || []).map((doc) => `\`${doc}\``);
   const loopControlDocs = [
     `\`${aiLoopRoot}/01-loop-control/WIGGIN_LOOP.md\``,
@@ -59,21 +61,25 @@ function buildTokens(config) {
     `\`${aiLoopRoot}/01-loop-control/STOP_CONDITIONS.md\``
   ];
   const allDocs = [...repoDocs, ...loopControlDocs];
-  const mandatoryDocsList = allDocs.map((entry, index) => `${index + 2}. ${entry}`).join("\n");
+  const list = allDocs.map((entry, index) => `${index + 2}. ${entry}`).join("\n");
+  return list || "_(no mandatory docs configured)_";
+}
 
+function buildTokens(config) {
+  const aiLoopRoot = resolveLoopPath(config, "aiLoopRoot");
   return {
     aiLoopRoot,
-    backlogPath: config.loop?.backlogPath || PATH_DEFAULTS.backlogPath,
-    slicesRoot: config.loop?.slicesRoot || PATH_DEFAULTS.slicesRoot,
-    backlogRoot: config.loop?.backlogRoot || PATH_DEFAULTS.backlogRoot,
-    specsRoot: config.loop?.specsRoot || PATH_DEFAULTS.specsRoot,
-    gradesRoot: config.loop?.gradesRoot || PATH_DEFAULTS.gradesRoot,
-    decisionsRoot: config.loop?.decisionsRoot || PATH_DEFAULTS.decisionsRoot,
-    phaseGateArtifactDir: config.loop?.phaseGateArtifactDir || PATH_DEFAULTS.phaseGateArtifactDir,
+    backlogPath: resolveLoopPath(config, "backlogPath"),
+    slicesRoot: resolveLoopPath(config, "slicesRoot"),
+    backlogRoot: resolveLoopPath(config, "backlogRoot"),
+    specsRoot: resolveLoopPath(config, "specsRoot"),
+    gradesRoot: resolveLoopPath(config, "gradesRoot"),
+    decisionsRoot: resolveLoopPath(config, "decisionsRoot"),
+    phaseGateArtifactDir: resolveLoopPath(config, "phaseGateArtifactDir"),
     productName: config.productName || "Untitled product",
     productDescription: config.productDescription || "",
     stackDescription: config.stackDescription || "",
-    mandatoryDocsList: mandatoryDocsList || "_(no mandatory docs configured)_"
+    mandatoryDocsList: buildMandatoryDocsList(config, aiLoopRoot)
   };
 }
 
