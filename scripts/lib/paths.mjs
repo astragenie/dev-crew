@@ -69,7 +69,7 @@ export async function pathExists(p) {
 export async function locateSliceFile(slicesRootDir, sliceId) {
   if (!(await pathExists(slicesRootDir))) return null;
   const slicePattern = sliceId.replace("-", "[_-]");
-  const re = new RegExp(`^${slicePattern}(_|$)`, "i");
+  const re = new RegExp(`^${slicePattern}(_|\\.|$)`, "i");
   const stack = [slicesRootDir];
   while (stack.length > 0) {
     const dir = stack.pop();
