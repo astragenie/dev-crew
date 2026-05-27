@@ -9,7 +9,6 @@ import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import {
   computeCompositePriority,
   computeAutonomousSafe,
-  PM_DIMENSIONS,
   validatePmScores
 } from "../scripts/lib/pm-scorer.mjs";
 import { writePmReviewArtifact } from "../scripts/lib/pm-artifact-writer.mjs";
