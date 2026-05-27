@@ -3,6 +3,57 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.4.0 — 2026-05-27 — PM agent, performance optimization, grade naming, hooks
+
+### PM agent (new)
+- `pm-scorer.mjs` — 5-dimension scoring (customer_impact, effort_estimate,
+  strategic_alignment, technical_risk, dependency_depth), composite priority
+  derivation (P0–P3), autonomous_safe classification.
+- `pm-artifact-writer.mjs` — writes PM review artifacts to
+  `.claude/artifacts/loop/pm-reviews/`.
+- PM agent prompt (`agents/pm.md`) + 3 skills (pm-triage, pm-review,
+  pm-decompose). PM triage step inserted in Cross-Slice Continuation rule.
+- Backlog parser/writer enhanced with PM review frontmatter support.
+
+### Performance optimization
+- **Model routing** — `model-router.mjs` resolves model per phase (sonnet
+  default for build/validate, opus for review/design). Config in
+  `loop.json` under `modelRouting`. Dispatch instruction includes
+  `Preferred model:` hint.
+- **Per-invocation cache** — `cache.mjs` with `cached(key, fn)` /
+  `bust(key)` / `clearAll()`. Wired into `listBacklog`, `listGrades`,
+  `locateSliceFile`. Cache busted on writes.
+- **Token diet** — loop-rules.md compressed 184→152 lines, CLAUDE.md
+  HARD RULES summary trimmed.
+- **Dispatch discipline** — `dispatchLimits` config (max 4 subagents/slice,
+  inline preference list). Dispatch budget rule in loop-rules.
+- **Tool discipline** — tool failure prevention guidance (<2% target).
+
+### Grade naming
+- Grade files now follow artifact naming convention:
+  `YYYYMMDDTHHMMSSZ-[phaseN-][featNNN-]sliceNN-grade.md`. Backward
+  compatible — grade-parser discovers both old and new format.
+
+### Plugin hooks
+- Pre-push validation hook (`PreToolUse` on Bash) runs
+  `validate-manifests.mjs` before `git push`.
+- Repo-local reviewer guidance (`.claude/crew/reviewer.md`) invokes
+  `plugin-dev:plugin-validator` and `plugin-dev:skill-reviewer` during
+  crew reviews.
+
+### Tech debt
+- Consolidated `pathExists` (4 modules) and `ensureDir` (5 modules) into
+  `paths.mjs`.
+- Refactored `buildTokens` in loop-installer.mjs — cyclomatic complexity
+  now under ESLint threshold (was 22, limit 15). Zero lint warnings.
+- Artifact path migration: all loop artifacts under
+  `.claude/artifacts/loop/`, single-source `paths.mjs`.
+- `frontmatter.mjs` parseScalar now handles floats (was integers only).
+
+### Other
+- Phase prefix in artifact naming simplified (`phase3` not `phase-3`).
+- 334 tests (up from 288). 0 lint warnings.
+
 ## v0.3.5 — 2026-05-24 — Propagate FEAT + phase to crew CLI flags + bump pin to v0.3.3
 
 ### crew-bridge — pass --feature / --phase to crew writers
