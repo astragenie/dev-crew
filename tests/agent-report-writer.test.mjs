@@ -148,7 +148,11 @@ test("happy path — 2 agents, full data → artifact written with agent_count: 
     }
   ]);
 
-  const result = await writeAgentReport(repo, { sliceId: "SLICE-10" });
+  const result = await writeAgentReport(repo, {
+    sliceId: "SLICE-10",
+    featureId: "FEAT-042",
+    phase: "R2"
+  });
 
   assert.ok(result.reportPath);
   assert.equal(result.agentCount, 2);
@@ -164,6 +168,19 @@ test("happy path — 2 agents, full data → artifact written with agent_count: 
   assert.ok(body.includes("claude-sonnet-4-6"));
   assert.ok(body.includes("claude-opus-4-7"));
   assert.ok(body.includes("crew:build"));
+  // Body starts with phase/feature/slice identification
+  assert.ok(body.includes("**Phase:** R2"), "body has phase identification");
+  assert.ok(body.includes("**Feature:** FEAT-042"), "body has feature identification");
+  assert.ok(body.includes("**Slice:** SLICE-10"), "body has slice identification");
+  // No diagnostic note when events exist
+  assert.ok(!body.includes("No subagent events found"), "no diagnostic when events present");
+  // Frontmatter ordering: phase before feature before slice
+  const fmKeys = Object.keys(frontmatter);
+  const phaseIdx = fmKeys.indexOf("phase");
+  const featIdx = fmKeys.indexOf("feature");
+  const sliceIdx = fmKeys.indexOf("slice");
+  assert.ok(phaseIdx < featIdx, "frontmatter: phase before feature");
+  assert.ok(featIdx < sliceIdx, "frontmatter: feature before slice");
 });
 
 test("zero agents in window → artifact written with agent_count: 0", async () => {
@@ -213,15 +230,40 @@ test("transcript not found → artifact written, model shows n/a, turns 0", asyn
   assert.ok(content.includes("n/a"));
 });
 
-test("events.jsonl missing → artifact written with zero agents, no throw", async () => {
+test("events.jsonl missing → artifact written with zero agents, diagnostic note, no throw", async () => {
   const repo = await tmpRepo("al-arw-noevents-");
   // Don't create events.jsonl at all
   const result = await writeAgentReport(repo, { sliceId: "SLICE-13" });
   assert.equal(result.agentCount, 0);
   assert.ok(result.reportPath);
   const content = await fs.readFile(result.reportPath, "utf8");
-  const { frontmatter } = parseFrontmatter(content);
+  const { frontmatter, body } = parseFrontmatter(content);
   assert.equal(frontmatter.agent_count, 0);
+  assert.ok(body.includes("No subagent events found"), "diagnostic note when events.jsonl missing");
+});
+
+test("events exist but predate startedAt → no diagnostic note (not a hook problem)", async () => {
+  const repo = await tmpRepo("al-arw-window-");
+  await writeAgentEvents(repo, [
+    {
+      agentType: "Explore",
+      agentId: "win001",
+      sessionId: "sess-win",
+      startTs: "2026-05-01T08:00:00.000Z",
+      stopTs: "2026-05-01T08:05:00.000Z",
+      transcriptPath: null
+    }
+  ]);
+
+  const result = await writeAgentReport(repo, {
+    sliceId: "SLICE-14B",
+    startedAt: "2026-05-24T00:00:00.000Z"
+  });
+
+  assert.equal(result.agentCount, 0);
+  const content = await fs.readFile(result.reportPath, "utf8");
+  const { body } = parseFrontmatter(content);
+  assert.ok(!body.includes("No subagent events found"), "no diagnostic when file exists but window filters events");
 });
 
 test("startedAt null → no time-window filter, all events included", async () => {

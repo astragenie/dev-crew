@@ -19,7 +19,8 @@ function normalizePayloadPath(payloadPath) {
 }
 
 // Read events.jsonl filtered to subagent events at or after startedAt.
-// Returns [] when the file is missing or startedAt is null (no time-floor).
+// Returns { events, fileFound }. When startedAt is null, startMs is
+// -Infinity so all events pass the time filter (no floor).
 async function readEventsInWindow(repoPath, startedAt) {
   const eventsPath = path.join(repoPath, ...EVENTS_JSONL);
   const startMs = startedAt ? new Date(startedAt).getTime() : -Infinity;
@@ -27,7 +28,7 @@ async function readEventsInWindow(repoPath, startedAt) {
   try {
     raw = await fs.readFile(eventsPath, "utf8");
   } catch {
-    return [];
+    return { events: [], fileFound: false };
   }
   const events = [];
   for (const line of raw.split("\n")) {
@@ -43,7 +44,7 @@ async function readEventsInWindow(repoPath, startedAt) {
     if (new Date(obj.timestamp).getTime() < startMs) continue;
     events.push(obj);
   }
-  return events;
+  return { events, fileFound: true };
 }
 
 async function loadPayload(payloadPath) {
@@ -259,9 +260,27 @@ function renderToolSummary(agents) {
   return [header, sep, ...rows].join("\n");
 }
 
-function buildBody(agents, groups) {
-  return [
-    "",
+function renderIdentification(phase, featureId, sliceId) {
+  const parts = [];
+  if (phase !== null && phase !== undefined && String(phase).length > 0) {
+    parts.push(`**Phase:** ${phase}`);
+  }
+  if (featureId) parts.push(`**Feature:** ${featureId}`);
+  if (sliceId) parts.push(`**Slice:** ${sliceId}`);
+  return parts.length > 0 ? parts.join(" · ") : "";
+}
+
+function buildBody(agents, groups, { phase, featureId, sliceId, eventsFound } = {}) {
+  const sections = [""];
+  const id = renderIdentification(phase, featureId, sliceId);
+  if (id) sections.push(id, "");
+  if (!eventsFound) {
+    sections.push(
+      "> **Note:** No subagent events found in `.claude/logs/events.jsonl`. Ensure crew hooks (SubagentStart/SubagentStop) are installed via `crew init`.",
+      ""
+    );
+  }
+  sections.push(
     "## Agents",
     "",
     renderAgentTable(agents),
@@ -274,7 +293,8 @@ function buildBody(agents, groups) {
     "",
     renderToolSummary(agents),
     ""
-  ].join("\n");
+  );
+  return sections.join("\n");
 }
 
 async function collectEventPayloads(events) {
@@ -328,7 +348,7 @@ export async function writeAgentReport(
   const slug = buildArtifactSlug({ featureId, phase, sliceId });
   const target = path.join(agentsDir, `${slug}-agent-report.md`);
 
-  const events = await readEventsInWindow(repoPath, startedAt);
+  const { events, fileFound } = await readEventsInWindow(repoPath, startedAt);
   const { startPayloads, startTimestamps, stopPayloads, stopTimestamps } =
     await collectEventPayloads(events);
 
@@ -343,9 +363,9 @@ export async function writeAgentReport(
 
   const fm = {
     kind: "agent-report",
-    slice: sliceId,
-    feature: featureId || null,
     phase: phase || null,
+    feature: featureId || null,
+    slice: sliceId,
     created_at: new Date().toISOString(),
     session_id: sessionId,
     agent_count: agentCount,
@@ -353,6 +373,14 @@ export async function writeAgentReport(
     total_duration_ms: totalDurationMs
   };
 
-  await fs.writeFile(target, serializeFrontmatter(fm, buildBody(agents, groups)));
+  await fs.writeFile(
+    target,
+    serializeFrontmatter(fm, buildBody(agents, groups, {
+      phase,
+      featureId,
+      sliceId,
+      eventsFound: fileFound
+    }))
+  );
   return { reportPath: target, agentCount, totalTurns, totalDurationMs };
 }
