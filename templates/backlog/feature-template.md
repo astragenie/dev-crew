@@ -9,6 +9,15 @@ updated: YYYY-MM-DD
 depends_on: []
 slices: []
 derived_from: null
+pm_reviewed_at: null
+pm_customer_impact: null
+pm_effort_estimate: null
+pm_strategic_alignment: null
+pm_technical_risk: null
+pm_dependency_depth: null
+pm_composite_priority: null
+pm_autonomous_safe: null
+pm_demand_evidence: null
 ---
 # FEAT-NNN: Short feature title
 
