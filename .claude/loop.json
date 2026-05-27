@@ -11,6 +11,10 @@
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
     "maxIterations": 25,
     "marathonMode": true,
+    "dispatchLimits": {
+      "maxSubagentsPerSlice": 4,
+      "preferInlineFor": ["single-file-edit", "test-fix", "lint-fix", "format-fix"]
+    },
     "modelRouting": {
       "default": "sonnet",
       "sliceStart": "opus",
