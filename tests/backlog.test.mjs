@@ -176,3 +176,39 @@ test("updateFeatureFrontmatter preserves body", async () => {
   const { body: afterBody } = parseFrontmatter(after);
   assert.equal(body, afterBody);
 });
+
+test("comparePickOrder uses pm_composite_priority over raw priority", () => {
+  const a = { idNumber: 1, frontmatter: { priority: "P2", pm_composite_priority: "P0" } };
+  const b = { idNumber: 2, frontmatter: { priority: "P1", pm_composite_priority: "P2" } };
+  assert.ok(comparePickOrder(a, b) < 0, "a (PM P0) should sort before b (PM P2)");
+});
+
+test("comparePickOrder falls back to priority when no pm_composite_priority", () => {
+  const a = { idNumber: 1, frontmatter: { priority: "P2" } };
+  const b = { idNumber: 2, frontmatter: { priority: "P1" } };
+  assert.ok(comparePickOrder(a, b) > 0, "b (P1) should sort before a (P2)");
+});
+
+test("writePmReview updates FEAT frontmatter with pm_ fields", async () => {
+  const repo = await tmpRepo("al-pm-write-");
+  const feat = await addFeature(repo, { title: "PM test feature" });
+  const { writePmReview } = await import("../scripts/lib/backlog-writer.mjs");
+  await writePmReview(feat.filePath, {
+    scores: {
+      customer_impact: 0.8,
+      effort_estimate: 0.35,
+      strategic_alignment: 0.9,
+      technical_risk: 0.4,
+      dependency_depth: 0.15
+    },
+    compositePriority: "P1",
+    autonomousSafe: true,
+    demandEvidence: "grade feedback"
+  });
+  const content = await fs.readFile(feat.filePath, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.pm_customer_impact, 0.8);
+  assert.equal(frontmatter.pm_composite_priority, "P1");
+  assert.equal(frontmatter.pm_autonomous_safe, true);
+  assert.equal(frontmatter.pm_demand_evidence, "grade feedback");
+});

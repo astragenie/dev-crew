@@ -74,8 +74,8 @@ export async function nextFeatureId(repoPath, options = {}) {
 // feature wins) — deterministic and independent of frontmatter timestamps,
 // which batch triage collapses to a single value.
 export function comparePickOrder(a, b) {
-  const ap = a.frontmatter.priority || "P3";
-  const bp = b.frontmatter.priority || "P3";
+  const ap = a.frontmatter.pm_composite_priority || a.frontmatter.priority || "P3";
+  const bp = b.frontmatter.pm_composite_priority || b.frontmatter.priority || "P3";
   if (ap !== bp) return ap.localeCompare(bp);
   return a.idNumber - b.idNumber;
 }
