@@ -26,7 +26,7 @@ test("resolveConfig returns preset defaults when no user config exists", async (
   const repo = await tmpRepo("al-resolve-default-");
   const config = await resolveConfig(repo);
   assert.equal(config.preset, "dotnet-aspire-python");
-  assert.equal(config.loop.aiLoopRoot, "docs/ai-loop");
+  assert.equal(config.loop.aiLoopRoot, ".claude/artifacts/loop/ai-loop");
   assert.ok(Array.isArray(config.stack.build));
   assert.ok(config.stack.build.length > 0);
 });

@@ -1,7 +1,7 @@
 # Grades
 
 One markdown file per closed slice capturing scores, lessons learned,
-decisions made, and surprises. Lives at `docs/grades/SLICE-NN-grade.md`.
+decisions made, and surprises. Lives at `.claude/artifacts/loop/grades/SLICE-NN-grade.md`.
 
 ## Lifecycle
 
@@ -19,7 +19,7 @@ decisions made, and surprises. Lives at `docs/grades/SLICE-NN-grade.md`.
    `/loop:slice grade-write --id SLICE-NN`
    - Validates scores in [0, 1]
    - For each `### DEC-TBD: <title>` block, allocates `DEC-NNN` and writes
-     a full ADR-style file under `docs/decisions/`
+     a full ADR-style file under `.claude/artifacts/loop/decisions/`
    - Updates the grade body to replace `DEC-TBD` with the allocated id
    - Appends a `decisions: [DEC-NNN, ...]` array to the grade frontmatter
    - Idempotent on re-run — only extracts blocks still marked `DEC-TBD`.

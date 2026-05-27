@@ -2,28 +2,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
+import { backlogRoot, pathExists } from "./paths.mjs";
 
-// Reads every FEAT-NNN.md under docs/backlog/<state>/ and returns a flat array
-// of entries. State is inferred from the parent directory name; if frontmatter
-// has a conflicting `status`, the directory wins because file-moves are the
-// state-of-truth in this state-machine.
+export { backlogRoot };
 
 export const BACKLOG_STATES = ["pending", "triaged", "in-progress", "done"];
 
 const FEATURE_FILE_RE = /^FEAT-(\d+)(?:-.*)?\.md$/;
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function backlogRoot(repoPath, config) {
-  return path.join(repoPath, config?.backlog?.root || "docs/backlog");
-}
 
 /**
  * @typedef {object} BacklogEntry

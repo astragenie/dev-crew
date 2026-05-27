@@ -89,7 +89,7 @@ test("releaseStatus returns counts without writing a file", async () => {
   assert.equal(status.pending, 1);
   assert.equal(status.triaged, 1);
   // No file artifact
-  const releasesDir = path.join(repo, "docs/releases");
+  const releasesDir = path.join(repo, ".claude/artifacts/loop/releases");
   const exists = await fs
     .access(releasesDir)
     .then(() => true)

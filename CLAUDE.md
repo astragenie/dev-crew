@@ -9,7 +9,7 @@ phase-gate runner, and the autonomous-development loop primitives.
 1. `README.md` — what this plugin is, install instructions, pinned release.
 2. `ADOPTION.md` — preconditions, backup advice, and a manual install walk-through.
 3. `docs/code-conventions.md` — ESM / Node conventions for this repo.
-4. `docs/backlog/product-backlog.md` — current roadmap (Phase 3 loop safety + telemetry).
+4. `.claude/artifacts/loop/backlog/product-backlog.md` — current roadmap (Phase 3 loop safety + telemetry).
 5. `CHANGELOG.md` — recent releases.
 
 ## Engineering standards
@@ -56,7 +56,7 @@ GitHub Actions runs on every push and PR:
 
 ## Backlog discipline
 
-Active backlog under `docs/backlog/{pending,triaged,in-progress,done}/`.
+Active backlog under `.claude/artifacts/loop/backlog/{pending,triaged,in-progress,done}/`.
 Each FEAT has frontmatter declaring priority, status, and an
 `autonomous_safe` flag. The loop only picks
 `autonomous_safe: true` items without per-slice human review; creative

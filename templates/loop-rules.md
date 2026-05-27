@@ -10,17 +10,17 @@ Plugin-managed by `/loop:install`. Do not edit by hand.
 
 After all acceptance criteria for the current slice are PASS with evidence and all artifacts written, automatically pick the next unit of work using the following scan order — without user confirmation:
 
-1. **Scan `docs/specs/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/loop:spec decompose --id SPEC-NNN --features "title 1; title 2; ..."`. The agent reads the spec body and supplies the feature titles. New FEAT files land in `docs/backlog/pending/`.
+1. **Scan `{{specsRoot}}/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/loop:spec decompose --id SPEC-NNN --features "title 1; title 2; ..."`. The agent reads the spec body and supplies the feature titles. New FEAT files land in `{{backlogRoot}}/pending/`.
 
-2. **Scan `docs/backlog/pending/`** — if any pending entries exist, run `/loop:backlog triage` to fill `priority`, `category`, `target_release` heuristically and move each to `docs/backlog/triaged/`.
+2. **Scan `{{backlogRoot}}/pending/`** — if any pending entries exist, run `/loop:backlog triage` to fill `priority`, `category`, `target_release` heuristically and move each to `{{backlogRoot}}/triaged/`.
 
-3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by **lowest FEAT-NNN id ascending** (oldest feature wins). Deterministic; never stall on tied priorities. Promote it: `/loop:slice from-feature --id FEAT-NNN`. The plugin creates a new slice file under `{{slicesRoot}}/pending/`, moves the feature to `docs/backlog/in-progress/`, and cross-links them via frontmatter (`slices: [SLICE-NN]` on the feature; `feature: FEAT-NNN` on the slice).
+3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by **lowest FEAT-NNN id ascending** (oldest feature wins). Deterministic; never stall on tied priorities. Promote it: `/loop:slice from-feature --id FEAT-NNN`. The plugin creates a new slice file under `{{slicesRoot}}/pending/`, moves the feature to `{{backlogRoot}}/in-progress/`, and cross-links them via frontmatter (`slices: [SLICE-NN]` on the feature; `feature: FEAT-NNN` on the slice).
 
 4. **Begin the Wiggin Loop on the new slice.** Acceptance criteria, evidence, review per `{{aiLoopRoot}}/01-loop-control/`.
 
 5. **On slice close** — run the Slice Close Ceremony (next section). Do NOT skip this and move on to the next slice — every artifact emitted by the ceremony is part of the slice's evidence record.
 
-If `docs/backlog/pending/` and `docs/backlog/triaged/` are both empty AND `docs/specs/` has no undecomposed approved specs, the agent has reached either stop condition A (every spec satisfied — confirm with `/loop:spec status`) or stop condition B (externally blocked). Surface which and stop. Never stop because the backlog "feels empty" — confirm via the explicit scan first.
+If `{{backlogRoot}}/pending/` and `{{backlogRoot}}/triaged/` are both empty AND `{{specsRoot}}/` has no undecomposed approved specs, the agent has reached either stop condition A (every spec satisfied — confirm with `/loop:spec status`) or stop condition B (externally blocked). Surface which and stop. Never stop because the backlog "feels empty" — confirm via the explicit scan first.
 
 ### Slice frontmatter — optional `phase` field
 
@@ -70,7 +70,7 @@ Open every slice through the canonical start command **before** beginning accept
 
 Run, in order:
 
-1. **Identify the next slice.** If `docs/superpowers/plans/*.md` exists and has unchecked `## Task N: SLICE_NN — Title` headings, pick the first unchecked one. Otherwise fall back to Cross-Slice Continuation (scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/`).
+1. **Identify the next slice.** If `docs/superpowers/plans/*.md` exists and has unchecked `## Task N: SLICE_NN — Title` headings, pick the first unchecked one. Otherwise fall back to Cross-Slice Continuation (scan `{{specsRoot}}/` → `{{backlogRoot}}/pending/` → `{{backlogRoot}}/triaged/`).
 2. **`/loop:slice start --id SLICE-NN`** — this rotates `currentRun` via `crew write-run-brief`, seeds the goal from the slice file's `## Objective` block when present, and rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` (or `runBrief.runBriefPath`) is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. If not, surface the error and stop — do not proceed with implementation against a stale run.
 4. **Dispatch implementation via `/crew:build`.** The `slice start` return includes a `dispatchInstruction` — a literal prompt for a subagent. Hand it to a `crew:builder` (or generic `claude`) subagent. **Do not implement inline.** The loop's job is to pick slices, rotate state, and close them; the slice work itself runs through crew's `build.md` workflow (frame → implement → review → validate → synthesize) so it inherits the standard artifact protocol and gets its own bounded conversation context.

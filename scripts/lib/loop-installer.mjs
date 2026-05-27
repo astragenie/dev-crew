@@ -11,6 +11,14 @@ import {
 } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
 import { migrateLegacyAutonomousLoop } from "./legacy-migrator.mjs";
+import {
+  PATH_DEFAULTS,
+  pathExists,
+  backlogRoot as resolveBacklogRoot,
+  specsRoot as resolveSpecsRoot,
+  gradesRoot as resolveGradesRoot,
+  decisionsRoot as resolveDecisionsRoot
+} from "./paths.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
@@ -18,17 +26,8 @@ const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 export const MARKER_START = "<!-- loop:start -->";
 export const MARKER_END = "<!-- loop:end -->";
 
-async function pathExists(targetPath) {
-  try {
-    await fs.access(targetPath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function ensureDir(dirPath) {
-  await fs.mkdir(dirPath, { recursive: true });
+function ensureDir(dirPath) {
+  return fs.mkdir(dirPath, { recursive: true });
 }
 
 async function readTemplate(relativePath) {
@@ -52,11 +51,7 @@ function renderTemplate(template, tokens) {
 }
 
 function buildTokens(config) {
-  // Build a fully-numbered mandatory-reading list that includes the three
-  // loop-control docs at the end. Item 1 is always CLAUDE.md (handled by the
-  // template). Repo-specific mandatoryDocs entries fill the middle. The three
-  // loop-control entries are always last so an agent reads them last.
-  const aiLoopRoot = config.loop?.aiLoopRoot || "docs/architecture/ai-loop";
+  const aiLoopRoot = config.loop?.aiLoopRoot || PATH_DEFAULTS.aiLoopRoot;
   const repoDocs = (config.mandatoryDocs || []).map((doc) => `\`${doc}\``);
   const loopControlDocs = [
     `\`${aiLoopRoot}/01-loop-control/WIGGIN_LOOP.md\``,
@@ -64,14 +59,17 @@ function buildTokens(config) {
     `\`${aiLoopRoot}/01-loop-control/STOP_CONDITIONS.md\``
   ];
   const allDocs = [...repoDocs, ...loopControlDocs];
-  // Start numbering at 2 because item 1 (CLAUDE.md) is in the template body.
   const mandatoryDocsList = allDocs.map((entry, index) => `${index + 2}. ${entry}`).join("\n");
 
   return {
     aiLoopRoot,
-    backlogPath: config.loop?.backlogPath || "docs/architecture/ai-loop/backlog",
-    slicesRoot: config.loop?.slicesRoot || "docs/architecture/ai-loop/slices",
-    phaseGateArtifactDir: config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations",
+    backlogPath: config.loop?.backlogPath || PATH_DEFAULTS.backlogPath,
+    slicesRoot: config.loop?.slicesRoot || PATH_DEFAULTS.slicesRoot,
+    backlogRoot: config.loop?.backlogRoot || PATH_DEFAULTS.backlogRoot,
+    specsRoot: config.loop?.specsRoot || PATH_DEFAULTS.specsRoot,
+    gradesRoot: config.loop?.gradesRoot || PATH_DEFAULTS.gradesRoot,
+    decisionsRoot: config.loop?.decisionsRoot || PATH_DEFAULTS.decisionsRoot,
+    phaseGateArtifactDir: config.loop?.phaseGateArtifactDir || PATH_DEFAULTS.phaseGateArtifactDir,
     productName: config.productName || "Untitled product",
     productDescription: config.productDescription || "",
     stackDescription: config.stackDescription || "",
@@ -238,14 +236,13 @@ async function writeBacklogScaffold(repoPath, tokens, writes) {
   }
 }
 
-// Product-tier scaffolds: docs/backlog/ (state-machine dir for FEAT-NNN
-// files) and docs/specs/ (flat dir for SPEC-NNN files). These live OUTSIDE
-// the ai-loop tree because they're PM/strategic surfaces, not methodology.
-// Only-if-missing per file — never clobber user content.
+// Product-tier scaffolds: backlog state-machine (FEAT-NNN files), specs,
+// grades, and decisions. Paths resolved via paths.mjs — defaults to
+// .claude/artifacts/loop/. Only-if-missing per file — never clobber user content.
 const BACKLOG_STATES = ["pending", "triaged", "in-progress", "done"];
 
-async function writeBacklogStateMachine(repoPath, writes) {
-  const root = path.join(repoPath, "docs", "backlog");
+async function writeBacklogStateMachine(repoPath, config, writes) {
+  const root = resolveBacklogRoot(repoPath, config);
   await ensureDir(root);
   // Top-level README explaining the dir
   const readmePath = path.join(root, "README.md");
@@ -273,8 +270,8 @@ async function writeBacklogStateMachine(repoPath, writes) {
   }
 }
 
-async function writeGradesScaffold(repoPath, writes) {
-  const root = path.join(repoPath, "docs", "grades");
+async function writeGradesScaffold(repoPath, config, writes) {
+  const root = resolveGradesRoot(repoPath, config);
   await ensureDir(root);
   const items = [
     { template: "grades/README.md", target: "README.md" },
@@ -289,8 +286,8 @@ async function writeGradesScaffold(repoPath, writes) {
   }
 }
 
-async function writeDecisionsScaffold(repoPath, writes) {
-  const root = path.join(repoPath, "docs", "decisions");
+async function writeDecisionsScaffold(repoPath, config, writes) {
+  const root = resolveDecisionsRoot(repoPath, config);
   await ensureDir(root);
   const items = [
     { template: "decisions/README.md", target: "README.md" },
@@ -305,8 +302,8 @@ async function writeDecisionsScaffold(repoPath, writes) {
   }
 }
 
-async function writeSpecsScaffold(repoPath, writes) {
-  const root = path.join(repoPath, "docs", "specs");
+async function writeSpecsScaffold(repoPath, config, writes) {
+  const root = resolveSpecsRoot(repoPath, config);
   await ensureDir(root);
   const items = [
     { template: "specs/README.md", target: "README.md" },
@@ -400,10 +397,10 @@ export async function installLoop(repoPath, options = {}) {
   await writeLoopRules(repoPath, tokens, writes);
   await writeLoopControlFiles(repoPath, tokens, writes);
   await writeBacklogScaffold(repoPath, tokens, writes);
-  await writeBacklogStateMachine(repoPath, writes);
-  await writeSpecsScaffold(repoPath, writes);
-  await writeGradesScaffold(repoPath, writes);
-  await writeDecisionsScaffold(repoPath, writes);
+  await writeBacklogStateMachine(repoPath, config, writes);
+  await writeSpecsScaffold(repoPath, config, writes);
+  await writeGradesScaffold(repoPath, config, writes);
+  await writeDecisionsScaffold(repoPath, config, writes);
 
   // Initialize loop iteration counter for runaway halting (FEAT-001).
   await initializeIterationCounter(repoPath);

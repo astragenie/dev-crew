@@ -12,18 +12,11 @@ import {
   parseDecisionsFromBody,
   validateScores
 } from "./grade-parser.mjs";
+import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 async function ensureDir(p) {
   await fs.mkdir(p, { recursive: true });
 }
@@ -37,31 +30,8 @@ function today() {
 }
 
 async function findSliceFile(repoPath, sliceId, config) {
-  // Slice files can live under <slicesRoot>/{pending,active,completed}/ or
-  // flat in <slicesRoot>/ (LoopBrain pattern). Try both.
-  const slicesRoot = path.join(repoPath, config?.loop?.slicesRoot || "docs/ai-loop/slices");
-  if (!(await pathExists(slicesRoot))) return null;
-  const stack = [slicesRoot];
-  const slicePattern = sliceId.replace("-", "[_-]");
-  const re = new RegExp(`^${slicePattern}(_|$)`, "i");
-  while (stack.length > 0) {
-    const dir = stack.pop();
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        stack.push(full);
-        continue;
-      }
-      if (re.test(e.name)) return full;
-    }
-  }
-  return null;
+  const slicesRootDir = resolveSlicesRoot(repoPath, config);
+  return locateSliceFile(slicesRootDir, sliceId);
 }
 
 // Resolves feature/spec/phase/target_release for the prefill block. Each

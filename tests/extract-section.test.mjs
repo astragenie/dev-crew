@@ -83,11 +83,9 @@ test("extractSection returns null for section with only whitespace", () => {
 });
 
 test("extractSection handles alternate heading pattern", () => {
-  const result = extractSection(
-    SLICE_CONTENT,
-    /^##\s+(In\s+scope|Acceptance\s+criteria)\s*$/i,
-    { joinChar: "\n" }
-  );
+  const result = extractSection(SLICE_CONTENT, /^##\s+(In\s+scope|Acceptance\s+criteria)\s*$/i, {
+    joinChar: "\n"
+  });
   assert.ok(result.includes("AC-1: Widget renders"));
 });
 
@@ -100,10 +98,8 @@ test("extractSection alternate pattern matches Acceptance criteria when In scope
     "",
     "## Done When"
   ].join("\n");
-  const result = extractSection(
-    content,
-    /^##\s+(In\s+scope|Acceptance\s+criteria)\s*$/i,
-    { joinChar: "\n" }
-  );
+  const result = extractSection(content, /^##\s+(In\s+scope|Acceptance\s+criteria)\s*$/i, {
+    joinChar: "\n"
+  });
   assert.ok(result.includes("AC-1: Works"));
 });

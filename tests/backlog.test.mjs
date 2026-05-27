@@ -140,7 +140,7 @@ test("ensureBacklogScaffold creates all four state dirs", async () => {
   const repo = await tmpRepo("al-backlog-scaffold-");
   await ensureBacklogScaffold(repo);
   for (const state of ["pending", "triaged", "in-progress", "done"]) {
-    const dir = path.join(repo, "docs", "backlog", state);
+    const dir = path.join(repo, ".claude", "artifacts", "loop", "backlog", state);
     const stat = await fs.stat(dir).catch(() => null);
     assert.ok(stat?.isDirectory(), `${state} dir should exist`);
   }

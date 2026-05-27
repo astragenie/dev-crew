@@ -14,9 +14,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {},
@@ -27,7 +27,7 @@ async function tmpRepo(prefix) {
 }
 
 async function seedSlice(repo, sliceId, { feature = null, phase = null } = {}) {
-  const dir = path.join(repo, "docs/ai-loop/slices/pending");
+  const dir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${sliceId.replace("-", "_")}_TEST.md`);
   const fm = ["---", `id: ${sliceId}`, "status: in-progress"];

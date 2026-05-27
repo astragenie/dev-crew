@@ -29,7 +29,7 @@ Three ways:
 - `/loop:backlog triage` — moves all `pending/*` → `triaged/`,
   filling in priority / category / target_release via heuristic.
 - `/loop:backlog promote --id FEAT-NNN` — moves a triaged feature →
-  `in-progress/` and creates a linked slice in `docs/ai-loop/slices/pending/`.
+  `in-progress/` and creates a linked slice in `.claude/artifacts/loop/ai-loop/slices/pending/`.
 - When the slice closes, plugin moves the feature → `done/`.
 
 ## Linkage

@@ -2,24 +2,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
+import { specsRoot, pathExists } from "./paths.mjs";
+
+export const specRoot = specsRoot;
 
 const SPEC_FILE_RE = /^SPEC-(\d+)(?:-.*)?\.md$/;
 
 export const SPEC_TYPES = ["prd", "user-journey", "sre", "research", "adr", "other"];
 export const SPEC_STATUSES = ["draft", "approved", "decomposed", "satisfied", "archived"];
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function specRoot(repoPath, config) {
-  return path.join(repoPath, config?.specs?.root || "docs/specs");
-}
 
 async function readSpec(filePath) {
   const filename = path.basename(filePath);

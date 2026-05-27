@@ -17,9 +17,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {}
@@ -67,7 +67,7 @@ test("sliceFromFeature allocates monotonically increasing ids", async () => {
 test("sliceFromFeature respects existing flat slice layout (LoopBrain pattern)", async () => {
   const repo = await tmpRepo("al-slice-flat-");
   // Seed flat layout: pre-existing SLICE_05 directly under slicesRoot
-  const slicesRoot = path.join(repo, "docs/ai-loop/slices");
+  const slicesRoot = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
   await fs.mkdir(slicesRoot, { recursive: true });
   await fs.writeFile(path.join(slicesRoot, "SLICE_05_OLD.md"), "# SLICE-05 pre-existing");
   const feat = await addFeature(repo, { title: "New work" });

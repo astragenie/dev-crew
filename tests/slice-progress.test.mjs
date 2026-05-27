@@ -54,7 +54,7 @@ test("parseApprovedSlices reads checked/unchecked list items", async () => {
   const repo = await tmpRepo("al-slice-progress-approved-");
   const filePath = await writeFile(
     repo,
-    "docs/ai-loop/backlog/approved-slices.md",
+    ".claude/artifacts/loop/ai-loop/backlog/approved-slices.md",
     [
       "# Approved",
       "- [x] SLICE-10 — Done one",
@@ -75,7 +75,7 @@ test("findActivePlan prefers newest superpowers plan over approved-slices", asyn
   const repo = await tmpRepo("al-slice-progress-pick-");
   await writeFile(
     repo,
-    "docs/ai-loop/backlog/approved-slices.md",
+    ".claude/artifacts/loop/ai-loop/backlog/approved-slices.md",
     "- [ ] SLICE-01 — Approved fallback\n"
   );
   await writeFile(repo, "docs/superpowers/plans/older.md", "## Task 1: SLICE_02 — Older\n");
@@ -96,12 +96,12 @@ test("detectSliceStatus marks completed when slice file frontmatter status is co
   const repo = await tmpRepo("al-slice-progress-status-");
   await writeFile(
     repo,
-    "docs/ai-loop/04-implementation-slices/SLICE_17_AUTH.md",
+    ".claude/artifacts/loop/ai-loop/slices/pending/SLICE_17_AUTH.md",
     "---\nstatus: completed\n---\n# SLICE-17\n"
   );
   await writeFile(
     repo,
-    "docs/ai-loop/04-implementation-slices/SLICE_18_SOURCES.md",
+    ".claude/artifacts/loop/ai-loop/slices/pending/SLICE_18_SOURCES.md",
     "---\nstatus: pending\n---\n# SLICE-18\n"
   );
   const enriched = await detectSliceStatus(repo, [
@@ -146,7 +146,7 @@ test("refreshSliceProgress end-to-end against a superpowers plan + slice files",
   );
   await writeFile(
     repo,
-    "docs/ai-loop/04-implementation-slices/SLICE_17_AUTH.md",
+    ".claude/artifacts/loop/ai-loop/slices/pending/SLICE_17_AUTH.md",
     "---\nstatus: completed\n---\n# done\n"
   );
   const result = await refreshSliceProgress(repo, { currentSliceId: "SLICE-18" });

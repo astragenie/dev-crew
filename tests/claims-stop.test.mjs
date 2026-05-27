@@ -17,9 +17,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {}
@@ -50,7 +50,10 @@ test("syncClaims promotes triaged feature to in-progress when claim references i
   const f = await addFeature(repo, { title: "claimed" });
   await moveFeature(f.filePath, "triaged");
   await writeClaims(repo, {
-    [`docs/backlog/triaged/${f.id}.md`]: { owner: "builder-1", claimedAt: new Date().toISOString() }
+    [`.claude/artifacts/loop/backlog/triaged/${f.id}.md`]: {
+      owner: "builder-1",
+      claimedAt: new Date().toISOString()
+    }
   });
   const result = await syncClaims(repo);
   assert.deepEqual(result.claimedFeatureIds, [f.id]);
@@ -77,7 +80,7 @@ test("syncClaims warns when in-progress feature has no claim", async () => {
 test("syncClaims flags stale claims referencing missing FEAT id", async () => {
   const repo = await tmpRepo("al-v111-claims-stale-");
   await writeClaims(repo, {
-    "docs/backlog/in-progress/FEAT-999.md": { owner: "builder-1" }
+    ".claude/artifacts/loop/backlog/in-progress/FEAT-999.md": { owner: "builder-1" }
   });
   const result = await syncClaims(repo);
   const stale = result.actions.find((a) => a.type === "claim-without-feature");

@@ -2,6 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
+import { gradesRoot, pathExists } from "./paths.mjs";
+
+export { gradesRoot };
 
 const GRADE_FILE_RE = /^SLICE-(\d+)-grade\.md$/i;
 
@@ -14,19 +17,6 @@ export const SCORE_DIMENSIONS = [
   "test_confidence",
   "product_completeness"
 ];
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function gradesRoot(repoPath, config = null) {
-  return path.join(repoPath, config?.grades?.root || "docs/grades");
-}
 
 // Parse the "## Scores" section out of the markdown body. Returns
 // { dimension: value } object. Used because the simple frontmatter parser

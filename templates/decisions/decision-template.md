@@ -38,5 +38,5 @@ The decision in declarative voice. "We will …"
 
 ## References
 
-- Grade: `docs/grades/SLICE-NN-grade.md`
+- Grade: `.claude/artifacts/loop/grades/SLICE-NN-grade.md`
 - Slice: `<slicesRoot>/.../SLICE_NN_*.md`

@@ -73,6 +73,6 @@ ids on `/loop:slice grade-write`.)
 ## References
 
 - slice file: `<slicesRoot>/.../<SLICE_NN>.md`
-- feature file: `docs/backlog/done/FEAT-NNN.md`
+- feature file: `.claude/artifacts/loop/backlog/done/FEAT-NNN.md`
 - review artifact: `.claude/artifacts/crew/reviews/<...>.md`
 - validation artifact: `.claude/artifacts/crew/validations/<...>.md`

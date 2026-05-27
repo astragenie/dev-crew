@@ -18,9 +18,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {}
@@ -33,7 +33,11 @@ async function seedGradedSlice(repo, scores, lessons = []) {
   const feat = await addFeature(repo, { title: "Test feature" });
   const sliceResult = await sliceFromFeature(repo, feat.id);
   await createGradeFile(repo, sliceResult.slice.id);
-  const gradePath = path.join(repo, "docs/grades", `${sliceResult.slice.id}-grade.md`);
+  const gradePath = path.join(
+    repo,
+    ".claude/artifacts/loop/grades",
+    `${sliceResult.slice.id}-grade.md`
+  );
   let content = await fs.readFile(gradePath, "utf8");
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
@@ -89,13 +93,16 @@ test("buildRetrospective aggregates recurring lessons", async () => {
   assert.equal(r.topLessons[0].count, 3);
 });
 
-test("writeRetrospective creates docs/retrospectives/YYYY-MM-DD.md", async () => {
+test("writeRetrospective creates .claude/artifacts/loop/retrospectives/YYYY-MM-DD.md", async () => {
   const repo = await tmpRepo("al-retro-write-");
   const scores = {};
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   await seedGradedSlice(repo, scores);
   const result = await writeRetrospective(repo);
-  assert.match(result.artifactPath, /docs[\\/]retrospectives[\\/]\d{4}-\d{2}-\d{2}\.md$/);
+  assert.match(
+    result.artifactPath,
+    /\.claude[\\/]artifacts[\\/]loop[\\/]retrospectives[\\/]\d{4}-\d{2}-\d{2}\.md$/
+  );
   const body = await fs.readFile(result.artifactPath, "utf8");
   assert.match(body, /Retrospective/);
   assert.match(body, /Slices graded/);
@@ -108,7 +115,7 @@ test("buildRetrospective with --span-days filters older grades", async () => {
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   const sliceId = await seedGradedSlice(repo, scores);
   // Mutate grade's graded_at to be 30 days ago
-  const gradePath = path.join(repo, "docs/grades", `${sliceId}-grade.md`);
+  const gradePath = path.join(repo, ".claude/artifacts/loop/grades", `${sliceId}-grade.md`);
   let content = await fs.readFile(gradePath, "utf8");
   const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   content = content.replace(/graded_at: \d{4}-\d{2}-\d{2}/, `graded_at: ${oldDate}`);

@@ -48,7 +48,7 @@ Some intro content.
 
 **Run autonomously until ...**
 
-**Cross-Slice Continuation — HARD RULE: After all ... \`docs/ai-loop/backlog/approved-slices.md\` ... \`docs/ai-loop/slices/pending/\` ...**
+**Cross-Slice Continuation — HARD RULE: After all ... \`.claude/artifacts/loop/ai-loop/backlog/approved-slices.md\` ... \`.claude/artifacts/loop/ai-loop/slices/pending/\` ...**
 
 **Phase Completion Gate — HARD RULE: When a phase completes:**
 1. **C# regression** — \`dotnet build mysolution.slnx -c Release\` then \`dotnet test mysolution.slnx -c Release\`.

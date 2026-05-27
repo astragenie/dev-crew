@@ -88,7 +88,7 @@ Do not skip tests unless impossible. If impossible, document why.
 
 ## Step 6 — Review
 
-Use the review rubrics under `docs/ai-loop/05-review-rubrics/`.
+Use the review rubrics under `.claude/artifacts/loop/ai-loop/05-review-rubrics/`.
 
 Review:
 

@@ -23,9 +23,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {},
@@ -124,7 +124,7 @@ test("findRelevantDecisions matches affects_files literally + by path-suffix", a
     rationale: "r"
   });
   // Patch in affects_files manually
-  const decPath = path.join(repo, "docs/decisions/DEC-001.md");
+  const decPath = path.join(repo, ".claude/artifacts/loop/decisions/DEC-001.md");
   const content = await fs.readFile(decPath, "utf8");
   await fs.writeFile(
     decPath,
@@ -197,9 +197,9 @@ test("buildReviewLadder respects custom ladder + focus from config", async () =>
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {},

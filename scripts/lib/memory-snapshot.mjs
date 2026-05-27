@@ -6,6 +6,7 @@ import { listSpecs } from "./spec-parser.mjs";
 import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
+import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
 
 // Writes a single durable snapshot of loop state to
 // docs/loop-snapshot.md. Designed to be `@`-referenced from
@@ -208,7 +209,7 @@ function renderUsageFooter() {
   return [
     "## How to use this file",
     "",
-    "- Reference from `CLAUDE.md` via `@docs/loop-snapshot.md` so agents pick it up at session start.",
+    "- Reference from `CLAUDE.md` via `@.claude/artifacts/loop/loop-snapshot.md` so agents pick it up at session start.",
     "- Regenerate via `/loop:snapshot-memory` whenever the picture shifts materially.",
     ""
   ];
@@ -262,7 +263,7 @@ export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
     ...renderUsageFooter()
   ];
 
-  const target = path.join(repoPath, "docs", "loop-snapshot.md");
+  const target = resolveSnapshotPath(repoPath, config);
   await fs.mkdir(path.dirname(target), { recursive: true });
   await fs.writeFile(target, lines.join("\n"));
   return {

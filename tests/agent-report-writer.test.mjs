@@ -15,9 +15,9 @@ async function tmpRepo(prefix) {
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices"
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices"
       }
     })
   );
@@ -344,7 +344,7 @@ test("idempotent — second call overwrites cleanly", async () => {
 
 test("linkArtifactToSlice accepts 'agents' kind without throwing", async () => {
   const repo = await tmpRepo("al-arw-link-");
-  const slicesDir = path.join(repo, "docs/ai-loop/slices");
+  const slicesDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
   await fs.mkdir(slicesDir, { recursive: true });
   await fs.writeFile(
     path.join(slicesDir, "SLICE_19_test.md"),

@@ -12,17 +12,9 @@ import { execFile as _execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
+import { pathExists, gradesRoot, decisionsRoot } from "../paths.mjs";
 
 const execFile = promisify(_execFile);
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function ensureDir(p) {
   await fs.mkdir(p, { recursive: true });
@@ -236,8 +228,13 @@ function renderSynthesisBody({
   specChanges,
   scoresBlock,
   decisionsBlock,
-  grade
+  grade,
+  repoPath,
+  config
 }) {
+  const gradeRel = path
+    .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
+    .replace(/\\/g, "/");
   return [
     `# Final synthesis — ${sliceId}`,
     "",
@@ -264,9 +261,7 @@ function renderSynthesisBody({
     "",
     "## References",
     "",
-    grade
-      ? `- Grade file: \`docs/grades/${sliceId}-grade.md\``
-      : "- Grade missing — synthesis is incomplete",
+    grade ? `- Grade file: \`${gradeRel}\`` : "- Grade missing — synthesis is incomplete",
     `- Slice handoff: \`.claude/artifacts/crew/handoffs/<timestamp>-${sliceId.toLowerCase()}-complete.md\``,
     ""
   ]
@@ -276,7 +271,7 @@ function renderSynthesisBody({
 
 export async function writeCrewFinalSynthesis(
   repoPath,
-  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges }
+  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges, config = null }
 ) {
   const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
   await ensureDir(runsDir);
@@ -309,7 +304,9 @@ export async function writeCrewFinalSynthesis(
     specChanges,
     scoresBlock: renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS),
     decisionsBlock: renderSynthesisDecisions(grade),
-    grade
+    grade,
+    repoPath,
+    config
   });
   const { serializeFrontmatter } = await import("../frontmatter.mjs");
   await fs.writeFile(target, serializeFrontmatter(fm, body));
@@ -323,7 +320,7 @@ export async function tryWriteAgentReport(repoPath, { sliceId, featureId, phase,
 
 export async function writeCrewHandoff(
   repoPath,
-  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges }
+  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges, config = null }
 ) {
   const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
   await ensureDir(handoffDir);
@@ -348,6 +345,10 @@ export async function writeCrewHandoff(
     confidence: "high",
     next_handoff: "grade-and-continue"
   };
+  const gradeRel = path
+    .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
+    .replace(/\\/g, "/");
+  const decisionsRel = path.relative(repoPath, decisionsRoot(repoPath, config)).replace(/\\/g, "/");
   const body = [
     `# Handoff — ${sliceId} complete`,
     "",
@@ -358,7 +359,7 @@ export async function writeCrewHandoff(
     "## Allowed scope",
     "",
     `- Run \`/loop:slice grade --id ${sliceId}\` to draft grade file.`,
-    `- Edit \`docs/grades/${sliceId}-grade.md\` (scores, lessons, decisions, narrative).`,
+    `- Edit \`${gradeRel}\` (scores, lessons, decisions, narrative).`,
     `- Run \`/loop:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
     "- Pick next slice via Cross-Slice Continuation HARD RULE.",
     "",
@@ -368,8 +369,8 @@ export async function writeCrewHandoff(
     "",
     "## Deliverable",
     "",
-    `- \`docs/grades/${sliceId}-grade.md\` populated + grade-write'd`,
-    "- Any extracted `docs/decisions/DEC-NNN.md` files",
+    `- \`${gradeRel}\` populated + grade-write'd`,
+    `- Any extracted \`${decisionsRel}/DEC-NNN.md\` files`,
     "",
     "## Changed files / evidence",
     "",

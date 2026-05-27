@@ -61,7 +61,7 @@ test("listDecisions filters by status", async () => {
   await writeDecisionFile(repo, { id: "DEC-001", title: "A", sliceId: "SLICE-01", rationale: "r" });
   await writeDecisionFile(repo, { id: "DEC-002", title: "B", sliceId: "SLICE-02", rationale: "r" });
   // Manually mark DEC-002 as superseded
-  const target = path.join(repo, "docs/decisions/DEC-002.md");
+  const target = path.join(repo, ".claude/artifacts/loop/decisions/DEC-002.md");
   let content = await fs.readFile(target, "utf8");
   content = content.replace("status: accepted", "status: superseded");
   await fs.writeFile(target, content);

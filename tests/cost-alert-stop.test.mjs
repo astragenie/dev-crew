@@ -17,9 +17,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {}
@@ -117,7 +117,7 @@ test("checkStopConditions stops when >= 1 high-severity cost finding fires (defa
   await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Initialize backlog structure
-  const backlogDir = path.join(repo, "docs/backlog/pending");
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
   await fs.mkdir(backlogDir, { recursive: true });
   await fs.writeFile(
     path.join(backlogDir, "FEAT-001.md"),
@@ -159,7 +159,7 @@ test("checkStopConditions respects custom costStopThreshold", async () => {
   await writeCostAdvise(repo, "SLICE-02", advise2);
 
   // Initialize backlog
-  const backlogDir = path.join(repo, "docs/backlog/pending");
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
   await fs.mkdir(backlogDir, { recursive: true });
   await fs.writeFile(
     path.join(backlogDir, "FEAT-001.md"),
@@ -197,7 +197,7 @@ test("checkStopConditions uses default threshold of 1 when not configured", asyn
   await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Initialize backlog
-  const backlogDir = path.join(repo, "docs/backlog/pending");
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
   await fs.mkdir(backlogDir, { recursive: true });
   await fs.writeFile(
     path.join(backlogDir, "FEAT-001.md"),
@@ -246,7 +246,7 @@ test("checkStopConditions includes cost alerts in snapshot", async () => {
   await writeCostAdvise(repo, "SLICE-01", adviseContent);
 
   // Initialize backlog
-  const backlogDir = path.join(repo, "docs/backlog/pending");
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
   await fs.mkdir(backlogDir, { recursive: true });
   await fs.writeFile(
     path.join(backlogDir, "FEAT-001.md"),

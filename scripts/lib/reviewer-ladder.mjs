@@ -3,61 +3,23 @@ import path from "node:path";
 
 import { resolveConfig } from "./config-resolver.mjs";
 import { parseFrontmatter } from "./frontmatter.mjs";
-
-// Produces structured review-task prompts for parallel reviewer agents per
-// the `reviewers.ladder` config (default ["A", "B"]). Plugin does not spawn
-// the agents — Claude Code does that via the Task tool / subagents. This
-// module hands the orchestrator the prompts to dispatch.
-//
-// Reviewer A focus: correctness, regressions, acceptance criteria coverage.
-// Reviewer B focus: production-readiness, observability, security, edge cases.
-// Customize per-reviewer focus via reviewers.focus.<id> in config.
+import {
+  locateSliceFile,
+  slicesRoot as resolveSlicesRoot,
+  backlogRoot as resolveBacklogRoot
+} from "./paths.mjs";
 
 const DEFAULT_FOCUS = {
   A: "Correctness, regressions, and explicit coverage of each acceptance criterion. Verify diffs against the slice file. Flag missing test cases.",
   B: "Production-readiness, observability (OTel spans / structured logs), security posture, edge cases. Check for hardcoded secrets, missing healthchecks, and absent error paths."
 };
 
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function locateSliceFile(slicesRoot, sliceId) {
-  if (!(await pathExists(slicesRoot))) return null;
-  const slicePattern = sliceId.replace("-", "[_-]");
-  const re = new RegExp(`^${slicePattern}(_|$)`, "i");
-  const stack = [slicesRoot];
-  while (stack.length > 0) {
-    const dir = stack.pop();
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        stack.push(full);
-        continue;
-      }
-      if (re.test(e.name)) return full;
-    }
-  }
-  return null;
-}
-
 export async function buildReviewLadder(repoPath, sliceId, { config = null } = {}) {
   if (!sliceId) throw new Error("buildReviewLadder requires sliceId");
   const resolved = config || (await resolveConfig(repoPath));
   const ladder = resolved.reviewers?.ladder || ["A", "B"];
   const focusOverrides = resolved.reviewers?.focus || {};
-  const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
+  const slicesRoot = resolveSlicesRoot(repoPath, resolved);
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
   if (!sliceFile) throw new Error(`Slice not found: ${sliceId}`);
   const sliceContent = await fs.readFile(sliceFile, "utf8");
@@ -84,7 +46,9 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
         `You are Reviewer ${reviewerId} on the Wiggin Loop ladder for slice ${sliceId}.`,
         "",
         `**Slice file**: \`${slicePathRel}\``,
-        featureId ? `**Linked feature**: \`docs/backlog/in-progress/${featureId}.md\`` : "",
+        featureId
+          ? `**Linked feature**: \`${path.relative(repoPath, path.join(resolveBacklogRoot(repoPath, resolved), "in-progress", featureId + ".md")).replace(/\\/g, "/")}\``
+          : "",
         "",
         "**Your focus area**:",
         focus,

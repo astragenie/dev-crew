@@ -49,7 +49,7 @@ After a spec is `approved`:
 /loop:spec decompose --id SPEC-NNN --features "feature 1; feature 2; feature 3"
 ```
 
-Plugin creates `FEAT-NNN.md` files in `docs/backlog/pending/` with
+Plugin creates `FEAT-NNN.md` files in `.claude/artifacts/loop/backlog/pending/` with
 `derived_from: SPEC-NNN` and updates the spec's `derived_features` list.
 
 Triage + slice derivation happen downstream via the normal backlog flow.

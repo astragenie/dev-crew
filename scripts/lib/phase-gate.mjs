@@ -289,7 +289,7 @@ async function emitDeployHandoffsForReadyReleases(repoPath) {
       "",
       "## Allowed scope",
       "",
-      `1. Run \`/loop:release plan --version ${version}\` to refresh \`docs/releases/${version}.md\` with current status.`,
+      `1. Run \`/loop:release plan --version ${version}\` to refresh the release notes with current status.`,
       `2. \`git tag ${version} && git push origin ${version}\` once the release notes look right.`,
       "3. Run the deployer agent / scripts per repo deployment guidance.",
       "4. Capture deployment evidence via crew `write-deployment-result`.",

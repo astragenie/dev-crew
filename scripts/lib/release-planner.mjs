@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { listBacklog } from "./backlog-parser.mjs";
 import { listSpecs } from "./spec-parser.mjs";
+import { releasesRoot, backlogRoot } from "./paths.mjs";
 
 // Plans a release: collects all FEAT entries whose target_release matches the
 // supplied version, groups them by parent spec, and writes a markdown report
@@ -73,7 +74,10 @@ function renderGroupSection(sid, entries, specs) {
   return lines;
 }
 
-function renderReadyFooter(version) {
+function renderReadyFooter(version, repoPath, config) {
+  const doneRel = path
+    .relative(repoPath, path.join(backlogRoot(repoPath, config), "done"))
+    .replace(/\\/g, "/");
   return [
     "## Cutting the release",
     "",
@@ -82,12 +86,20 @@ function renderReadyFooter(version) {
     `1. Tag the commit: \`git tag ${version}\``,
     `2. Push the tag: \`git push origin ${version}\``,
     "3. Move the feature files from `done/` into a versioned subdir if you want to keep `done/` short:",
-    `   \`mkdir docs/backlog/done/${version} && git mv docs/backlog/done/FEAT-*.md docs/backlog/done/${version}/\``,
+    `   \`mkdir ${doneRel}/${version} && git mv ${doneRel}/FEAT-*.md ${doneRel}/${version}/\``,
     ""
   ];
 }
 
-function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt }) {
+function buildReleaseBody({
+  version,
+  features,
+  specs,
+  releaseStatus,
+  generatedAt,
+  repoPath,
+  config
+}) {
   const { grouped, keys } = groupFeaturesBySpec(features);
   const lines = [
     `# Release ${version}`,
@@ -104,7 +116,7 @@ function buildReleaseBody({ version, features, specs, releaseStatus, generatedAt
     lines.push(...renderGroupSection(sid, entries, specs));
   }
   if (releaseStatus === "READY") {
-    lines.push(...renderReadyFooter(version));
+    lines.push(...renderReadyFooter(version, repoPath, config));
   }
   return lines.join("\n");
 }
@@ -133,10 +145,12 @@ export async function planRelease(repoPath, { version, config = null } = {}) {
     features: targeted,
     specs,
     releaseStatus,
-    generatedAt
+    generatedAt,
+    repoPath,
+    config
   });
 
-  const releasesDir = path.join(repoPath, "docs", "releases");
+  const releasesDir = releasesRoot(repoPath, config);
   await fs.mkdir(releasesDir, { recursive: true });
   const target = path.join(releasesDir, `${normalized}.md`);
   await fs.writeFile(target, body);

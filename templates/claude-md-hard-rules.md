@@ -11,7 +11,7 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`
 - **Dispatch discipline.** The loop is an orchestrator, not an implementer. Hand the `slice start` return's `dispatchInstruction` to a `/crew:build` subagent; pivot to `/crew:fix` on any review:needs_fix or validation:fail. Inline implementation is reserved for trivial single-line fixups.
 - **Slice close ceremony.** Every slice MUST close via `/loop:slice complete --id SLICE-NN` (writes handoff + final-synthesis + cost-report + cost-advise) followed by `/loop:slice grade*`. Manual file moves + a `docs(slice): mark ... complete` commit are NOT a substitute.
 - **Build entry points.** `/crew:build` is the interactive single-slice path (lighter — no run-brief required). Autonomous loop is the unattended multi-slice path (full ceremony). Never run both against the same branch — they race on workflow-state.
-- **Auto-continue.** After the ceremony, scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/` and promote the next item without asking.
+- **Auto-continue.** After the ceremony, scan `{{specsRoot}}/` → `{{backlogRoot}}/pending/` → `{{backlogRoot}}/triaged/` and promote the next item without asking.
 - **Phase gate.** When the last slice in a phase completes, run `/loop:phase-gate` before starting the next phase.
 - **Worktree parallelism.** Run parallel features in sibling git worktrees — each has its own `.claude/state/`. Cost attribution is auto-scoped per worktree. Use `crew fleet --repo "$PWD"` for a one-glance view. Never check out the same branch twice; never push from inside the loop.
 

@@ -5,6 +5,7 @@ import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
 import { listBacklog } from "./backlog-parser.mjs";
 import { listSpecs } from "./spec-parser.mjs";
+import { retroRoot } from "./paths.mjs";
 
 // Aggregates grades + decisions + backlog over a time window into a markdown
 // retrospective at docs/retrospectives/YYYY-MM-DD.md. Pure read + filter +
@@ -254,7 +255,7 @@ function renderMarkdown(report) {
 export async function writeRetrospective(repoPath, options = {}) {
   const report = await buildRetrospective(repoPath, options);
   const md = renderMarkdown(report);
-  const dir = path.join(repoPath, "docs", "retrospectives");
+  const dir = retroRoot(repoPath, options.config || null);
   await fs.mkdir(dir, { recursive: true });
   const filename = `${report.range.until}.md`;
   const target = path.join(dir, filename);

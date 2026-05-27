@@ -19,17 +19,10 @@ import {
   detectSliceStatus,
   writeSliceProgress
 } from "./slice-linker/slice-progress.mjs";
+import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 async function ensureDir(p) {
   await fs.mkdir(p, { recursive: true });
 }
@@ -137,7 +130,7 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
 export async function sliceFromFeature(repoPath, featureId, { config = null } = {}) {
   if (!featureId) throw new Error("sliceFromFeature requires a featureId.");
   const resolved = config || (await resolveConfig(repoPath));
-  const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
+  const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
   const entry = await findFeatureById(repoPath, featureId);
   if (!entry) throw new Error(`Feature not found: ${featureId}`);
@@ -317,7 +310,7 @@ export async function completeSlice(
 ) {
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
-  const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
+  const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
   // Locate slice file recursively
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
@@ -362,7 +355,8 @@ export async function completeSlice(
     featureId,
     phase,
     featureResult,
-    specChanges
+    specChanges,
+    config: resolved
   };
   const [handoff, synthesis, costReport, agentReport] = await Promise.all([
     bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
@@ -372,8 +366,10 @@ export async function completeSlice(
   ]);
 
   const sliceProgress = await bestEffort(async () => {
-    const activePlan = await findActivePlan(repoPath);
-    const enriched = await detectSliceStatus(repoPath, activePlan.slices);
+    const activePlan = await findActivePlan(repoPath, resolved);
+    const enriched = await detectSliceStatus(repoPath, activePlan.slices, {
+      slicesRoot: resolveSlicesRoot(repoPath, resolved)
+    });
     return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
   });
 
@@ -410,9 +406,9 @@ export async function startSlice(
 ) {
   if (!sliceId) throw new Error("startSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
-  const slicesRoot = path.resolve(repoPath, resolved.loop?.slicesRoot || "docs/ai-loop/slices");
+  const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
-  const { activePlan, title } = await resolvePlanAndTitle(repoPath, sliceId);
+  const { activePlan, title } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
 
   const ctx = await readSliceContext(slicesRoot, sliceId);
   const resolvedGoal = goal || ctx.goal;
@@ -435,7 +431,7 @@ export async function startSlice(
     ),
     readGradeTrend(repoPath)
   ]);
-  const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId);
+  const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
   const gradeTrendCaution =
     gradeTrend.consecutiveBelow > 0
       ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
@@ -459,8 +455,8 @@ export async function startSlice(
 // Locate the active plan + derive the human-readable title for this slice
 // from the plan match, falling back to bare sliceId. Extracted from
 // startSlice to keep its cyclomatic complexity under the eslint cap.
-async function resolvePlanAndTitle(repoPath, sliceId) {
-  const activePlan = await findActivePlan(repoPath);
+async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
+  const activePlan = await findActivePlan(repoPath, config);
   const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
   const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
   return { activePlan, title };
@@ -502,9 +498,11 @@ function buildStartSliceReturn({
 
 // Refresh the slice-progress dashboard with the new currentSliceId.
 // Extracted from startSlice purely to lower its cyclomatic complexity.
-async function refreshSliceProgress(repoPath, activePlan, sliceId) {
+async function refreshSliceProgress(repoPath, activePlan, sliceId, config = null) {
   return bestEffort(async () => {
-    const enriched = await detectSliceStatus(repoPath, activePlan.slices);
+    const enriched = await detectSliceStatus(repoPath, activePlan.slices, {
+      slicesRoot: resolveSlicesRoot(repoPath, config)
+    });
     return writeSliceProgress(repoPath, {
       activePlan,
       slices: enriched,
@@ -552,7 +550,11 @@ async function readSliceContext(slicesRoot, sliceId) {
   return { file, frontmatter, goal, scope, outOfScope };
 }
 
-export function extractSection(sliceContent, headingPattern, { maxLen = 500, joinChar = " " } = {}) {
+export function extractSection(
+  sliceContent,
+  headingPattern,
+  { maxLen = 500, joinChar = " " } = {}
+) {
   const lines = sliceContent.split(/\r?\n/);
   const startIdx = lines.findIndex((l) => headingPattern.test(l));
   if (startIdx === -1) return null;
@@ -569,31 +571,6 @@ export function extractSection(sliceContent, headingPattern, { maxLen = 500, joi
 
 function extractObjective(sliceContent) {
   return extractSection(sliceContent, /^##\s+Objective\s*$/i);
-}
-
-async function locateSliceFile(slicesRoot, sliceId) {
-  if (!(await pathExists(slicesRoot))) return null;
-  const slicePattern = sliceId.replace("-", "[_-]");
-  const re = new RegExp(`^${slicePattern}(_|$)`, "i");
-  const stack = [slicesRoot];
-  while (stack.length > 0) {
-    const dir = stack.pop();
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        stack.push(full);
-        continue;
-      }
-      if (re.test(e.name)) return full;
-    }
-  }
-  return null;
 }
 
 import { mergeFrontmatter } from "./frontmatter.mjs";

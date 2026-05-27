@@ -22,9 +22,9 @@ async function tmpRepo(prefix) {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        aiLoopRoot: "docs/ai-loop",
-        backlogPath: "docs/ai-loop/backlog",
-        slicesRoot: "docs/ai-loop/slices",
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
         phaseGateArtifactDir: ".claude/artifacts/crew/validations"
       },
       stack: {}
@@ -35,7 +35,7 @@ async function tmpRepo(prefix) {
 
 async function seedGrade(repo, sliceId, scores) {
   await createGradeFile(repo, sliceId);
-  const gradePath = path.join(repo, "docs/grades", `${sliceId}-grade.md`);
+  const gradePath = path.join(repo, ".claude/artifacts/loop/grades", `${sliceId}-grade.md`);
   let content = await fs.readFile(gradePath, "utf8");
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
