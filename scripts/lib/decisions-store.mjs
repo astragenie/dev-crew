@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseFrontmatter, mergeFrontmatter } from "./frontmatter.mjs";
-import { decisionsRoot, pathExists } from "./paths.mjs";
+import { decisionsRoot, pathExists, ensureDir } from "./paths.mjs";
 
 export { decisionsRoot };
 
@@ -11,9 +11,6 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
 const DEC_FILE_RE = /^DEC-(\d+)\.md$/;
-async function ensureDir(p) {
-  await fs.mkdir(p, { recursive: true });
-}
 
 async function readTemplate(rel) {
   return fs.readFile(path.join(templateDir, rel), "utf8");

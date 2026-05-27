@@ -12,13 +12,9 @@ import { execFile as _execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
-import { pathExists, gradesRoot, decisionsRoot } from "../paths.mjs";
+import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
 
 const execFile = promisify(_execFile);
-
-async function ensureDir(p) {
-  await fs.mkdir(p, { recursive: true });
-}
 
 async function findHeroCrewCli() {
   // Lookup order, most-specific-first:

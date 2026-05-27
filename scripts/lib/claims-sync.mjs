@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 import { moveFeature } from "./backlog-writer.mjs";
+import { pathExists } from "./paths.mjs";
 
 // Reconciles crew claims state (.claude/state/crew/claims.json) with
 // loop backlog state-machine position. Two directions:
@@ -20,15 +21,6 @@ import { moveFeature } from "./backlog-writer.mjs";
 
 const CLAIMS_STATE = path.join(".claude", "state", "crew", "claims.json");
 const FEAT_RE = /\b(FEAT-\d+)\b/;
-
-async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function readClaimsState(repoPath) {
   const target = path.join(repoPath, CLAIMS_STATE);
