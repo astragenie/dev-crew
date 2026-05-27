@@ -4,6 +4,7 @@ import path from "node:path";
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backlog-parser.mjs";
 import { pathExists, ensureDir } from "./paths.mjs";
+import { bust, clearAll } from "./cache.mjs";
 
 function nowIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -83,6 +84,7 @@ export async function addFeature(
   const contents = serializeFrontmatter(frontmatter, fullBody);
   const filePath = path.join(root, "pending", `${id}.md`);
   await fs.writeFile(filePath, contents);
+  bust(`listBacklog:${repoPath}`);
   return { id, filePath, frontmatter };
 }
 
@@ -90,6 +92,7 @@ export async function updateFeatureFrontmatter(filePath, updates) {
   const content = await fs.readFile(filePath, "utf8");
   const merged = mergeFrontmatter(content, { ...updates, updated: nowIsoDate() });
   await fs.writeFile(filePath, merged);
+  clearAll();
   return parseFrontmatter(merged).frontmatter;
 }
 
@@ -124,6 +127,7 @@ export async function moveFeature(filePath, toState, updates = {}) {
   if (targetPath !== filePath) {
     await fs.unlink(filePath);
   }
+  clearAll();
   return { from: filePath, to: targetPath };
 }
 
