@@ -8,12 +8,14 @@ import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "./ceremonies.mjs";
 import { readGradeTrend } from "./grade-trend.mjs";
 import {
+  markValidationSkippedBadge,
   tryWriteAgentReport,
   tryWriteCostReport,
   writeCrewFinalSynthesis,
   writeCrewHandoff,
   writeCrewRunBrief
 } from "./slice-linker/crew-bridge.mjs";
+import { deriveValidationGate } from "./validation-gate.mjs";
 import {
   findActivePlan,
   detectSliceStatus,
@@ -273,30 +275,49 @@ async function moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen = 
   return { id: featureId, from: moved.from, to: moved.to };
 }
 
-// Compute featureResult based on blocking gates and simplify ceremony.
+// Compute featureResult based on blocking gates, simplify ceremony, and
+// validation gate. Validation gate fires when the slice closed without a
+// validation artifact under .claude/artifacts/crew/validations/ AND without
+// a validation_passed/skipped badge AND without a requires_validation: false
+// waiver in slice frontmatter. The slice file itself still moves to
+// completed/; only the feature->done transition is held back.
+function describeBlockedGate({ isBlocked, isSimplifyBlocked, blockingGates, validationGate }) {
+  if (isBlocked) {
+    return blockingGates.escalated
+      ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
+      : `crew run blocked: ${blockingGates.blocked?.note || ""}`;
+  }
+  if (isSimplifyBlocked) {
+    return "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
+  }
+  return `validation-gate: ${validationGate.reason}`;
+}
+
 async function computeFeatureResult(
   repoPath,
   featureId,
   blockingGates,
   config,
-  keepFeatureOpen = false
+  keepFeatureOpen = false,
+  validationGate = null
 ) {
   const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
   const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
   const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
+  const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
 
-  if (isBlocked || isSimplifyBlocked) {
-    const reason = isBlocked
-      ? blockingGates.escalated
-        ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
-        : `crew run blocked: ${blockingGates.blocked?.note || ""}`
-      : "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
-
+  if (isBlocked || isSimplifyBlocked || isValidationBlocked) {
     return {
       skipped: true,
-      reason,
+      reason: describeBlockedGate({
+        isBlocked,
+        isSimplifyBlocked,
+        blockingGates,
+        validationGate
+      }),
       blockingGates: isBlocked ? blockingGates : null,
-      simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null
+      simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null,
+      validationGate: isValidationBlocked ? validationGate : null
     };
   }
 
@@ -308,7 +329,7 @@ async function computeFeatureResult(
 export async function completeSlice(
   repoPath,
   sliceId,
-  { config = null, keepFeatureOpen = false } = {}
+  { config = null, keepFeatureOpen = false, skipValidationCheck = null } = {}
 ) {
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
@@ -332,6 +353,30 @@ export async function completeSlice(
   const startedAt = workflowState?.currentRun?.startedAt ?? null;
   const blockingGates = deriveBlockingGates(workflowState);
 
+  // Validation gate: refuse to roll feature to done when no validation
+  // artifact / badge / waiver is present. --skip-validation-check writes
+  // a validation_skipped badge first so the bypass is auditable, then
+  // shortcuts the gate to satisfied.
+  let validationGate;
+  let validationSkippedBadge = null;
+  if (skipValidationCheck) {
+    const reason = String(skipValidationCheck).trim();
+    if (!reason) {
+      throw new Error(
+        "--skip-validation-check requires a non-empty reason. " +
+          "Example: --skip-validation-check 'doc-only slice, no behavior'."
+      );
+    }
+    validationSkippedBadge = await bestEffort(() => markValidationSkippedBadge(repoPath, reason));
+    validationGate = {
+      satisfied: true,
+      reason: `--skip-validation-check: ${reason}`,
+      evidence: []
+    };
+  } else {
+    validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm });
+  }
+
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
     sliceContent,
@@ -344,7 +389,8 @@ export async function completeSlice(
     featureId,
     blockingGates,
     config,
-    keepFeatureOpen
+    keepFeatureOpen,
+    validationGate
   );
 
   // Reconcile parent spec status
@@ -384,6 +430,8 @@ export async function completeSlice(
     costReport,
     agentReport,
     sliceProgress,
+    validationGate,
+    validationSkippedBadge,
     nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
 }

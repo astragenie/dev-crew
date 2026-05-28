@@ -35,7 +35,9 @@ test("completeSlice moves slice to completed/ and feature to done/", async () =>
   const repo = await tmpRepo("al-slice-complete-");
   const feat = await addFeature(repo, { title: "Test work" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Slice moved
   assert.match(result.slice.to, /completed[\\/]SLICE_/);
   const sliceContent = await fs.readFile(result.slice.to, "utf8");
@@ -58,7 +60,9 @@ test("completeSlice auto-rolls parent spec to satisfied when all features done",
   await decomposeSpec(repo, spec.id, ["Single feature"]);
   const [feat] = await listBacklog(repo);
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Spec should now be satisfied (only had 1 feature, which moved to done)
   const specStatuses = result.specStatusChanges.map((c) => c.to);
   assert.ok(specStatuses.includes("satisfied"));
@@ -70,8 +74,12 @@ test("completeSlice is idempotent — re-running on a completed slice doesn't er
   const repo = await tmpRepo("al-slice-complete-idem-");
   const feat = await addFeature(repo, { title: "Idempotent" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  await completeSlice(repo, slice.id);
-  const second = await completeSlice(repo, slice.id);
+  await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
+  const second = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Feature is already done — completeSlice reports alreadyDone
   assert.ok(second.feature.alreadyDone);
 });
@@ -108,7 +116,9 @@ test("completeSlice blocked when featureEnd ceremony has simplifyRan: false", as
     { simplifyRan: false }
   );
   await writeFeatureEndCeremony(repo, ceremony);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Slice still moves but feature is blocked
   assert.match(result.slice.to, /completed[\\/]SLICE_/);
   assert.equal(result.feature.skipped, true);
@@ -128,7 +138,9 @@ test("completeSlice allowed when featureEnd ceremony has simplifyRan: true", asy
     { simplifyRan: true }
   );
   await writeFeatureEndCeremony(repo, ceremony);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Feature should move to done normally
   assert.ok(!result.feature.skipped, "feature should not be skipped");
   assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
@@ -139,7 +151,9 @@ test("completeSlice allowed when no featureEnd ceremony exists", async () => {
   const feat = await addFeature(repo, { title: "No ceremony" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // No ceremony written — feature is still in-progress
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Should complete normally (no ceremony = no gate)
   assert.ok(!result.feature.skipped, "no ceremony should not block");
   assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
@@ -155,7 +169,9 @@ test("completeSlice keeps feature in-progress when feature_complete: false in fr
   const featContent = await fs.readFile(feat.filePath, "utf8");
   await fs.writeFile(feat.filePath, mergeFrontmatter(featContent, { feature_complete: false }));
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Slice still completed
   assert.match(result.slice.to, /completed[\\/]SLICE_/);
   // Feature kept open
@@ -170,7 +186,10 @@ test("completeSlice keeps feature in-progress when keepFeatureOpen runtime flag 
   const repo = await tmpRepo("al-keep-flag-");
   const feat = await addFeature(repo, { title: "Multi-slice work via flag" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id, { keepFeatureOpen: true });
+  const result = await completeSlice(repo, slice.id, {
+    keepFeatureOpen: true,
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Slice still completed
   assert.match(result.slice.to, /completed[\\/]SLICE_/);
   // Feature kept open
@@ -188,8 +207,120 @@ test("completeSlice still moves feature to done when feature_complete: true expl
   const featContent = await fs.readFile(feat.filePath, "utf8");
   await fs.writeFile(feat.filePath, mergeFrontmatter(featContent, { feature_complete: true }));
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   // Feature moved as normal
   assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
   assert.ok(!result.feature.keptOpen);
+});
+
+// Validation gate
+
+async function writeValidationsArtifact(repo, filename, body = "# validation\n") {
+  const dir = path.join(repo, ".claude/artifacts/crew/validations");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, filename), body);
+}
+
+async function writeValidationBadge(repo, status, note = "") {
+  const dir = path.join(repo, ".claude/state/crew");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(
+    path.join(dir, "workflow-state.json"),
+    JSON.stringify(
+      { version: "1.0", currentRun: { gates: { validation: { status, note } } } },
+      null,
+      2
+    )
+  );
+}
+
+test("completeSlice holds feature open when validation gate unmet (no artifact, no badge)", async () => {
+  const repo = await tmpRepo("al-vgate-block-");
+  const feat = await addFeature(repo, { title: "Behavior-bearing work" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id);
+  // Slice still moves
+  assert.match(result.slice.to, /completed[\\/]SLICE_/);
+  // Feature held open
+  assert.equal(result.feature.skipped, true);
+  assert.match(result.feature.reason, /validation-gate/);
+  assert.equal(result.validationGate.satisfied, false);
+  // Feature still in in-progress
+  const stillInProgress = await findFeatureById(repo, feat.id);
+  assert.equal(stillInProgress.state, "in-progress");
+});
+
+test("completeSlice proceeds when validation artifact present for the slice", async () => {
+  const repo = await tmpRepo("al-vgate-artifact-");
+  const feat = await addFeature(repo, { title: "Validated" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await writeValidationsArtifact(
+    repo,
+    `20260528T120000Z-validation-result-${slice.id.toLowerCase()}-feature.md`
+  );
+  const result = await completeSlice(repo, slice.id);
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.equal(result.validationGate.satisfied, true);
+  assert.match(result.validationGate.reason, /validation artifact present/);
+});
+
+test("completeSlice proceeds when validation_passed badge present", async () => {
+  const repo = await tmpRepo("al-vgate-passed-");
+  const feat = await addFeature(repo, { title: "Passed via badge" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await writeValidationBadge(repo, "passed", "all green");
+  const result = await completeSlice(repo, slice.id);
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.equal(result.validationGate.satisfied, true);
+});
+
+test("completeSlice proceeds when validation_skipped badge present", async () => {
+  const repo = await tmpRepo("al-vgate-pre-skipped-");
+  const feat = await addFeature(repo, { title: "Pre-skipped" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await writeValidationBadge(repo, "skipped", "no env");
+  const result = await completeSlice(repo, slice.id);
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.equal(result.validationGate.satisfied, true);
+  assert.match(result.validationGate.reason, /validation_skipped/);
+});
+
+test("completeSlice proceeds when slice frontmatter requires_validation: false", async () => {
+  const repo = await tmpRepo("al-vgate-waiver-");
+  const feat = await addFeature(repo, { title: "Doc-only slice" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  // Patch the slice file to add requires_validation: false
+  const { mergeFrontmatter } = await import("../scripts/lib/frontmatter.mjs");
+  const sliceContent = await fs.readFile(slice.path, "utf8");
+  await fs.writeFile(slice.path, mergeFrontmatter(sliceContent, { requires_validation: false }));
+  const result = await completeSlice(repo, slice.id);
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.equal(result.validationGate.satisfied, true);
+  assert.match(result.validationGate.reason, /explicit-waiver/);
+});
+
+test("completeSlice --skip-validation-check bypass requires non-empty reason", async () => {
+  const repo = await tmpRepo("al-vgate-skip-empty-");
+  const feat = await addFeature(repo, { title: "Bad skip" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await assert.rejects(
+    () => completeSlice(repo, slice.id, { skipValidationCheck: "   " }),
+    /requires a non-empty reason/
+  );
+});
+
+test("completeSlice --skip-validation-check with reason bypasses gate", async () => {
+  const repo = await tmpRepo("al-vgate-skip-ok-");
+  const feat = await addFeature(repo, { title: "Skip with reason" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "no DB available in sandbox"
+  });
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.equal(result.validationGate.satisfied, true);
+  assert.match(result.validationGate.reason, /no DB available in sandbox/);
+  // Best-effort badge call surfaced (may be skipped: hero-crew CLI not found in CI)
+  assert.ok(result.validationSkippedBadge !== undefined);
 });

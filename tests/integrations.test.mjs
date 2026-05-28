@@ -165,7 +165,9 @@ test("completeSlice writes a crew handoff artifact", async () => {
   const repo = await tmpRepo("al-v19-handoff-");
   const feat = await addFeature(repo, { title: "h" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   assert.ok(result.handoff?.handoffPath, "handoff path should be returned");
   const content = await fs.readFile(result.handoff.handoffPath, "utf8");
   const { frontmatter } = parseFrontmatter(content);

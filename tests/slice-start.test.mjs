@@ -98,7 +98,9 @@ test("completeSlice also refreshes slice-progress", async () => {
   await writePlan(repo, [{ id: "SLICE-01", title: "Only one" }]);
   const feat = await addFeature(repo, { title: "Done feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   assert.ok(result.sliceProgress && !result.sliceProgress.error);
   const dashboard = path.join(repo, ".claude/state/crew/slice-progress.md");
   const text = await fs.readFile(dashboard, "utf8");

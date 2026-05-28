@@ -37,6 +37,7 @@ const FLAG_SPEC = {
   "--goal": { key: "goal" },
   "--no-dispatch": { key: "noDispatch", boolean: true },
   "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
+  "--skip-validation-check": { key: "skipValidationCheck" },
   "--version": { key: "version" },
   "--since": { key: "since" },
   "--span-days": { key: "spanDays" },
@@ -74,7 +75,8 @@ function parseArgs(argv) {
     kind: null,
     files: null,
     featuresJson: null,
-    keepFeatureOpen: false
+    keepFeatureOpen: false,
+    skipValidationCheck: null
   };
   const positionals = [];
 
@@ -406,7 +408,8 @@ const SLICE_HANDLERS = {
     requireId(sliceId, "slice complete requires --id SLICE-NN.");
     const { completeSlice } = await import("./lib/slice-linker.mjs");
     const out = await completeSlice(repoPath, sliceId, {
-      keepFeatureOpen: Boolean(flags.keepFeatureOpen)
+      keepFeatureOpen: Boolean(flags.keepFeatureOpen),
+      skipValidationCheck: flags.skipValidationCheck || null
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
@@ -414,7 +417,9 @@ const SLICE_HANDLERS = {
       slice: sliceId,
       feature: out.feature?.id || null,
       spec_status_changes: out.specStatusChanges?.length || 0,
-      handoff_written: Boolean(out.handoff?.handoffPath)
+      handoff_written: Boolean(out.handoff?.handoffPath),
+      validation_gate_satisfied: Boolean(out.validationGate?.satisfied),
+      validation_skipped_via_flag: Boolean(flags.skipValidationCheck)
     });
     return out;
   },

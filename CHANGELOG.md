@@ -3,6 +3,62 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.5.0 — 2026-05-28 — enforce validation gate at slice close
+
+### Behavior change (potentially breaking for downstream repos)
+
+`/loop:slice complete` now refuses to roll the parent feature to
+`done/` when no validation evidence is present for the slice. Mirrors
+the existing blocked / simplify gates: the slice file still moves to
+`completed/`, but the feature is held in `in-progress/` until the gate
+is satisfied.
+
+Motivation: the previous `/crew:build` and `/loop:slice complete`
+workflows were instruction-only — they listed validation as a phase but
+relied entirely on agent discipline to dispatch the validator and emit
+the artifact. In practice this drifted (e.g. Astra.Humanizer shipped 34
+slices with zero validation artifacts and no `validation_skipped`
+badges). The gate makes the skip impossible without an explicit,
+auditable bypass.
+
+### Gate resolution order
+
+1. Slice frontmatter `requires_validation: false` → waived.
+2. Workflow-state `currentRun.gates.validation.status` ∈
+   `{passed, skipped}` → satisfied.
+3. Validation artifact under
+   `.claude/artifacts/crew/validations/` whose filename references the
+   slice id → satisfied with evidence list.
+4. `slice complete --skip-validation-check "<reason>"` → writes a
+   `validation_skipped` badge (audit trail) then bypasses.
+5. Otherwise → feature held open with `reason: "validation-gate: ..."`.
+
+### New surface
+
+- `scripts/lib/validation-gate.mjs` — `deriveValidationGate(repoPath,
+  sliceId, { sliceFm })`.
+- `scripts/lib/slice-linker.mjs::completeSlice` — accepts
+  `skipValidationCheck` option; result includes `validationGate` +
+  `validationSkippedBadge`.
+- `scripts/lib/slice-linker/crew-bridge.mjs::markValidationSkippedBadge`
+  — invokes `crew mark-badge --badge validation_skipped --note <reason>`.
+- `scripts/loop.mjs` — new `--skip-validation-check <reason>` flag on
+  `slice complete`.
+- `tests/validation-gate.test.mjs` — 8 unit tests for the helper.
+- `tests/slice-complete.test.mjs` — 7 integration tests for gate
+  scenarios.
+
+### Migration
+
+Repos that were silently skipping validation must do one of:
+
+- Backfill validation artifacts for in-flight slices (`crew
+  write-validation-result --repo <path>`).
+- Set `validation_skipped` badges with reasons via `crew mark-badge`.
+- Add `requires_validation: false` to doc-only slice frontmatter.
+- Pass `--skip-validation-check "<reason>"` to `slice complete`
+  invocations from automation.
+
 ## v0.4.1 — 2026-05-28 — fix: ship missing cache.mjs
 
 ### Fix

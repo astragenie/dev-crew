@@ -21,8 +21,49 @@ Usage:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice complete \
   --repo "$PWD" \
-  --id SLICE-NN
+  --id SLICE-NN \
+  [--keep-feature-open] \
+  [--skip-validation-check "<reason>"]
 ```
+
+### Validation gate (since v0.5.0)
+
+`slice complete` now refuses to roll the parent feature to `done/` when
+**no validation evidence** exists for the slice. The slice itself still
+moves to `completed/` (the gate only holds the feature transition,
+mirroring the existing blocked / simplify gates).
+
+The gate is satisfied when **any** of these is true:
+
+1. A validation artifact under `.claude/artifacts/crew/validations/`
+   whose filename references the slice id (e.g. `*-slice03-*.md`,
+   `validation-result-SLICE-03.md`).
+2. The crew workflow-state has `currentRun.gates.validation.status` set
+   to `passed` or `skipped` (via `crew mark-badge --badge
+   validation_passed` or `validation_skipped --note "<reason>"`).
+3. The slice file frontmatter contains `requires_validation: false`
+   (explicit waiver — use sparingly; intended for doc-only slices).
+4. `slice complete` is invoked with
+   `--skip-validation-check "<reason>"` (the reason is written to
+   workflow-state as a `validation_skipped` badge so the bypass is
+   auditable).
+
+When the gate is unmet, the return payload includes:
+
+```json
+{
+  "feature": {
+    "skipped": true,
+    "reason": "validation-gate: no validation artifact under ...",
+    "validationGate": { "satisfied": false, "reason": "...", "evidence": [] }
+  },
+  "validationGate": { "satisfied": false, ... }
+}
+```
+
+The feature stays in `in-progress/`. To unblock, write the validation
+artifact (e.g. via `crew write-validation-result`), set the badge, or
+re-run with `--skip-validation-check "<reason>"`.
 
 Returns:
 

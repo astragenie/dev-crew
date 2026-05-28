@@ -204,6 +204,27 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo) {
   return { ...report, advise, costMode: mode };
 }
 
+// Invokes `crew mark-badge --badge validation_skipped --note <reason>` so
+// the skip is captured in workflow-state with an audit trail. Best-effort:
+// missing crew is reported via `{ skipped }`, identical to other bridge
+// calls. The slice close still proceeds — the bypass already passed the
+// gate in completeSlice; this call only records *why*.
+export async function markValidationSkippedBadge(repoPath, reason) {
+  const cli = await findHeroCrewCli();
+  if (!cli) return { skipped: "hero-crew CLI not found" };
+  const args = [
+    cli,
+    "mark-badge",
+    "--repo",
+    repoPath,
+    "--badge",
+    "validation_skipped",
+    "--note",
+    reason || "validation_skipped via /loop:slice complete --skip-validation-check"
+  ];
+  return runCrew(args);
+}
+
 function renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS) {
   if (!grade) {
     return `_(no grade yet — run \`/loop:slice grade --id ${sliceId}\`)_`;

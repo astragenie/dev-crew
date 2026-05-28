@@ -55,7 +55,9 @@ test("completeSlice writes a crew final-synthesis artifact", async () => {
   const repo = await tmpRepo("al-v110-syn-");
   const feat = await addFeature(repo, { title: "synthesis test" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   assert.ok(result.synthesis?.synthesisPath);
   const content = await fs.readFile(result.synthesis.synthesisPath, "utf8");
   const { frontmatter } = parseFrontmatter(content);
@@ -86,7 +88,9 @@ test("completeSlice filename embeds FEAT + phase from slice frontmatter", async 
   const raw = await fs.readFile(slicePath, "utf8");
   await fs.writeFile(slicePath, raw.replace("phase: null", "phase: 3"));
 
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   const featSegment = feat.id.toLowerCase().replace(/-/g, "");
   const sliceSegment = slice.id.toLowerCase().replace(/-/g, "");
   assert.equal(
@@ -113,7 +117,9 @@ test("completeSlice falls back to bare sliceNN slug when phase null", async () =
   const repo = await tmpRepo("al-syn-bare-");
   const feat = await addFeature(repo, { title: "no phase" });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   const featSegment = feat.id.toLowerCase().replace(/-/g, "");
   const sliceSegment = slice.id.toLowerCase().replace(/-/g, "");
   assert.equal(
@@ -136,7 +142,9 @@ test("completeSlice synthesis embeds grade summary when grade exists", async () 
   const scores = {};
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   await seedGrade(repo, slice.id, scores);
-  const result = await completeSlice(repo, slice.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   const content = await fs.readFile(result.synthesis.synthesisPath, "utf8");
   // Grade scores should appear in synthesis body
   assert.match(content, /architecture_quality: 0\.85/);
