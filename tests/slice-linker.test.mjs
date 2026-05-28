@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
+import { sliceFromFeature, buildDispatchInstruction } from "../scripts/lib/slice-linker.mjs";
 import { addFeature, findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
@@ -95,4 +95,46 @@ test("sliceFromFeature is idempotent on the slice link", async () => {
 test("sliceFromFeature throws when feature not found", async () => {
   const repo = await tmpRepo("al-slice-missing-");
   await assert.rejects(() => sliceFromFeature(repo, "FEAT-999"), /Feature not found/);
+});
+
+// --- buildDispatchInstruction context embedding tests ---
+
+test("buildDispatchInstruction with sliceContent embeds context block", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-01",
+    title: "SLICE-01: Add login",
+    sliceFile: "/repo/slices/SLICE_01.md",
+    repoPath: "/repo",
+    resolvedGoal: "Implement login",
+    sliceContent: "## Acceptance criteria\n- AC-1: login works"
+  });
+  assert.match(result, /Slice context \(pre-read/);
+  assert.match(result, /AC-1: login works/);
+});
+
+test("buildDispatchInstruction with featureExcerpt embeds feature section", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-02",
+    title: "SLICE-02: Add signup",
+    sliceFile: "/repo/slices/SLICE_02.md",
+    repoPath: "/repo",
+    resolvedGoal: "Implement signup",
+    featureId: "FEAT-007",
+    sliceContent: "## Acceptance criteria\n- AC-1",
+    featureExcerpt: "Allow users to register a new account."
+  });
+  assert.match(result, /Feature: FEAT-007 \(excerpt\)/);
+  assert.match(result, /Allow users to register/);
+});
+
+test("buildDispatchInstruction without optional fields is backward compatible", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-03",
+    title: "SLICE-03: Refactor",
+    sliceFile: null,
+    repoPath: "/repo",
+    resolvedGoal: null
+  });
+  assert.match(result, /Dispatch \/crew:build/);
+  assert.doesNotMatch(result, /Slice context/);
 });

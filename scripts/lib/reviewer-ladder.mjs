@@ -14,6 +14,27 @@ const DEFAULT_FOCUS = {
   B: "Production-readiness, observability (OTel spans / structured logs), security posture, edge cases. Check for hardcoded secrets, missing healthchecks, and absent error paths."
 };
 
+export function extractFilesSection(content) {
+  const m = content.match(
+    /(?:\*\*Files:\*\*[ \t]*|(?:^|\n)## Files[^\n]*)\n([\s\S]*?)(?=\n## |\s*$)/
+  );
+  return m ? m[1].trim() || null : null;
+}
+
+async function runGitDiffStat(repoPath) {
+  try {
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const { stdout } = await promisify(execFile)("git", ["diff", "HEAD~1", "--stat"], {
+      cwd: repoPath,
+      maxBuffer: 64 * 1024
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function buildReviewLadder(repoPath, sliceId, { config = null } = {}) {
   if (!sliceId) throw new Error("buildReviewLadder requires sliceId");
   const resolved = config || (await resolveConfig(repoPath));
@@ -32,6 +53,11 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
   // includes FEAT/phase via crew CLI's slugifier. Agents append a
   // human one-line summary after the prefix.
   const titlePrefix = buildArtifactTitle({ featureId, phase, sliceId });
+
+  const [filesBlock, diffStat] = await Promise.all([
+    Promise.resolve(extractFilesSection(sliceContent)),
+    runGitDiffStat(repoPath)
+  ]);
 
   const tasks = ladder.map((reviewerId) => {
     const focus =
@@ -52,6 +78,15 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
         "",
         "**Your focus area**:",
         focus,
+        "",
+        `**Files in scope (pre-loaded — do not re-discover):**`,
+        filesBlock ?? "(discover from slice spec above)",
+        "",
+        `**Diff stat (HEAD~1):**`,
+        diffStat ?? "(run git diff HEAD~1 --stat)",
+        "",
+        "Do not read files outside the above list unless they are direct imports.",
+        "Run targeted tests only: `npm test -- --test-name-pattern \"<test-file-basename>\"`",
         "",
         "**What to do**:",
         "1. Read the slice file. List its acceptance criteria.",

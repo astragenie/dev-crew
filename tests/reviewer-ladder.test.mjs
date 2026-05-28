@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildReviewLadder } from "../scripts/lib/reviewer-ladder.mjs";
+import { buildReviewLadder, extractFilesSection } from "../scripts/lib/reviewer-ladder.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -79,5 +79,68 @@ test("buildReviewLadder prompt drops FEAT tag when feature null", async () => {
     // FEAT may appear in instructional body text; only the --title prefix
     // must omit the FEAT tag.
     assert.doesNotMatch(task.prompt, /--title "[^"]*FEAT/, "no FEAT token inside the title prefix");
+  }
+});
+
+// --- extractFilesSection tests ---
+
+test("extractFilesSection finds **Files:** block", () => {
+  const content = "# Slice\n\n**Files:**\n- src/foo.mjs\n- src/bar.mjs\n\n## What to do\n";
+  const result = extractFilesSection(content);
+  assert.ok(result, "should return a string");
+  assert.match(result, /src\/foo\.mjs/);
+  assert.match(result, /src\/bar\.mjs/);
+});
+
+test("extractFilesSection finds ## Files heading", () => {
+  const content = "# Slice\n\n## Files\n- src/foo.mjs\n- src/bar.mjs\n\n## What to do\n";
+  const result = extractFilesSection(content);
+  assert.ok(result, "should return a string");
+  assert.match(result, /src\/foo\.mjs/);
+});
+
+test("extractFilesSection returns null when absent", () => {
+  const content = "# Slice\n\n## Objective\nDo something.\n\n## Acceptance criteria\n- AC-1\n";
+  const result = extractFilesSection(content);
+  assert.equal(result, null);
+});
+
+// --- buildReviewLadder context injection tests ---
+
+test("buildReviewLadder prompt includes files block when slice has Files section", async () => {
+  const repo = await tmpRepo("rl-files-block-");
+  const dir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, "SLICE_10_TEST.md");
+  await fs.writeFile(
+    file,
+    [
+      "---",
+      "id: SLICE-10",
+      "status: in-progress",
+      "---",
+      "# SLICE-10: test",
+      "",
+      "**Files:**",
+      "- src/lib/foo.mjs",
+      "- tests/foo.test.mjs",
+      "",
+      "## Acceptance criteria",
+      "- AC-1"
+    ].join("\n")
+  );
+  const ladder = await buildReviewLadder(repo, "SLICE-10");
+  for (const task of ladder.tasks) {
+    assert.match(task.prompt, /src\/lib\/foo\.mjs/, "prompt includes files from Files block");
+    assert.match(task.prompt, /pre-loaded/, "prompt includes pre-loaded hint");
+  }
+});
+
+test("buildReviewLadder prompt always includes Diff stat header", async () => {
+  const repo = await tmpRepo("rl-diff-stat-");
+  await seedSlice(repo, "SLICE-11");
+  const ladder = await buildReviewLadder(repo, "SLICE-11");
+  for (const task of ladder.tasks) {
+    assert.match(task.prompt, /Diff stat/, "prompt always includes Diff stat header");
   }
 });

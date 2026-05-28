@@ -25,7 +25,8 @@ import {
   pathExists,
   ensureDir,
   locateSliceFile,
-  slicesRoot as resolveSlicesRoot
+  slicesRoot as resolveSlicesRoot,
+  backlogRoot as resolveBacklogRoot
 } from "./paths.mjs";
 import { resolveModel } from "./model-router.mjs";
 
@@ -465,7 +466,7 @@ export async function startSlice(
   const featureId = ctx.frontmatter.feature || null;
   const phase = ctx.frontmatter.phase || null;
 
-  const [runBrief, gradeTrend] = await Promise.all([
+  const [runBrief, gradeTrend, featureExcerpt] = await Promise.all([
     bestEffort(() =>
       writeCrewRunBrief(repoPath, {
         sliceId,
@@ -479,7 +480,8 @@ export async function startSlice(
         outOfScope: ctx.outOfScope
       })
     ),
-    readGradeTrend(repoPath)
+    readGradeTrend(repoPath),
+    featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null)
   ]);
   const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
   const gradeTrendCaution =
@@ -501,7 +503,10 @@ export async function startSlice(
     repoPath,
     resolvedGoal,
     gradeTrendCaution,
-    modelHint
+    modelHint,
+    featureId,
+    sliceContent: ctx.content,
+    featureExcerpt
   });
 }
 
@@ -528,10 +533,23 @@ function buildStartSliceReturn({
   repoPath,
   resolvedGoal,
   gradeTrendCaution = null,
-  modelHint = null
+  modelHint = null,
+  featureId = null,
+  sliceContent = null,
+  featureExcerpt = null
 }) {
   const dispatchInstruction = dispatch
-    ? buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, modelHint })
+    ? buildDispatchInstruction({
+        sliceId,
+        title,
+        sliceFile,
+        repoPath,
+        resolvedGoal,
+        modelHint,
+        featureId,
+        sliceContent,
+        featureExcerpt
+      })
     : null;
   const activePlanSummary = activePlan.planPath
     ? { source: activePlan.source, path: activePlan.planPath }
@@ -571,7 +589,10 @@ export function buildDispatchInstruction({
   sliceFile,
   repoPath,
   resolvedGoal,
-  modelHint = null
+  modelHint = null,
+  featureId = null,
+  sliceContent = null,
+  featureExcerpt = null
 }) {
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
@@ -579,11 +600,23 @@ export function buildDispatchInstruction({
   const modelLine = modelHint
     ? `\n\n> Preferred model: ${modelHint}. Use this model for the build subagent unless the task requires deeper reasoning.`
     : "";
-  return [
+  const lines = [
     `Dispatch /crew:build subagent with this prompt:`,
     "",
     `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:reviewer\` subagent. For validation, dispatch a \`crew:validator\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${modelLine}`
-  ].join("\n");
+  ];
+
+  if (sliceContent || featureExcerpt) {
+    lines.push("", "## Slice context (pre-read — do not re-read these files)", "");
+    if (rel && sliceContent) {
+      lines.push(`### Slice: ${rel}`, "", sliceContent);
+    }
+    if (featureId && featureExcerpt) {
+      lines.push("", `### Feature: ${featureId} (excerpt)`, "", featureExcerpt);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 // Locates the slice file under slicesRoot and reads frontmatter + objective
@@ -611,7 +644,19 @@ async function readSliceContext(slicesRoot, sliceId) {
     maxLen: 400,
     joinChar: "\n"
   });
-  return { file, frontmatter, goal, scope, outOfScope };
+  return { file, frontmatter, goal, scope, outOfScope, content };
+}
+
+async function readFeatureExcerpt(repoPath, featureId, config) {
+  const root = resolveBacklogRoot(repoPath, config);
+  for (const dir of ["in-progress", "triaged", "pending", "done"]) {
+    const p = path.join(root, dir, `${featureId}.md`);
+    const content = await fs.readFile(p, "utf8").catch(() => null);
+    if (content) {
+      return extractSection(content, /^##\s+Description\s*$/i, { maxLen: 400, joinChar: "\n" });
+    }
+  }
+  return null;
 }
 
 export function extractSection(
