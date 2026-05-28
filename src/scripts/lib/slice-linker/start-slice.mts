@@ -4,7 +4,6 @@ import { lintAcceptanceCriteria } from "../ac-linter.mjs";
 import { writeCrewRunBrief } from "./crew-bridge.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
-import { resolveModel } from "../model-router.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
 
 async function bestEffort(fn) {
@@ -95,8 +94,6 @@ export async function startSlice(
         "Review recent grades before continuing if this persists."
       : null;
 
-  const modelHint = resolveModel("build", resolved);
-
   return buildStartSliceReturn({
     sliceId,
     title,
@@ -108,7 +105,6 @@ export async function startSlice(
     repoPath,
     resolvedGoal,
     gradeTrendCaution,
-    modelHint,
     featureId,
     sliceContent: ctx.content,
     featureExcerpt,
@@ -140,7 +136,6 @@ function buildStartSliceReturn({
   repoPath,
   resolvedGoal,
   gradeTrendCaution = null as any,
-  modelHint = null as any,
   featureId = null as any,
   sliceContent = null as any,
   featureExcerpt = null as any,
@@ -154,7 +149,6 @@ function buildStartSliceReturn({
         sliceFile,
         repoPath,
         resolvedGoal,
-        modelHint,
         featureId,
         sliceContent,
         featureExcerpt,

@@ -19,25 +19,13 @@ test("MODEL_PHASES lists all routable phases", () => {
     assert.ok(MODEL_PHASES.includes("review"));
     assert.ok(MODEL_PHASES.includes("sliceStart"));
 });
-test("buildDispatchInstruction includes model hint when modelHint provided", () => {
+test("buildDispatchInstruction does not contain model hint (Agent tool model param is ignored)", () => {
     const result = buildDispatchInstruction({
         sliceId: "SLICE-01",
         title: "Test slice",
         sliceFile: null,
         repoPath: "/tmp/repo",
-        resolvedGoal: "Test goal",
-        modelHint: "sonnet"
+        resolvedGoal: "Test goal"
     });
-    assert.ok(result.includes("Preferred model: sonnet"), "dispatch should contain model hint");
-});
-test("buildDispatchInstruction omits model hint when modelHint is null", () => {
-    const result = buildDispatchInstruction({
-        sliceId: "SLICE-01",
-        title: "Test slice",
-        sliceFile: null,
-        repoPath: "/tmp/repo",
-        resolvedGoal: "Test goal",
-        modelHint: null
-    });
-    assert.ok(!result.includes("Preferred model"), "dispatch should not contain model hint");
+    assert.ok(!result.includes("Preferred model"), "dispatch must not contain misleading model hint");
 });

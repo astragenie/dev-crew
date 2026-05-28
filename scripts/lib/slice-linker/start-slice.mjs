@@ -4,7 +4,6 @@ import { lintAcceptanceCriteria } from "../ac-linter.mjs";
 import { writeCrewRunBrief } from "./crew-bridge.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
-import { resolveModel } from "../model-router.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
 async function bestEffort(fn) {
     try {
@@ -78,7 +77,6 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
             "Review recent grades before continuing if this persists."
         : null;
-    const modelHint = resolveModel("build", resolved);
     return buildStartSliceReturn({
         sliceId,
         title,
@@ -90,7 +88,6 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         repoPath,
         resolvedGoal,
         gradeTrendCaution,
-        modelHint,
         featureId,
         sliceContent: ctx.content,
         featureExcerpt,
@@ -109,7 +106,7 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
 }
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, modelHint = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null }) {
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null }) {
     const dispatchInstruction = dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -117,7 +114,6 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
             sliceFile,
             repoPath,
             resolvedGoal,
-            modelHint,
             featureId,
             sliceContent,
             featureExcerpt,

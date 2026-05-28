@@ -3,12 +3,6 @@ import path from "node:path";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { locateSliceFile, backlogRoot as resolveBacklogRoot } from "../paths.mjs";
 
-function buildModelLine(modelHint) {
-  return modelHint
-    ? `\n\n> Preferred model: ${modelHint}. Use this model for the build subagent unless the task requires deeper reasoning.`
-    : "";
-}
-
 function buildBudgetLine(dispatchLimits) {
   if (!dispatchLimits) return "";
   const preferInline = (dispatchLimits.preferInlineFor || []).join(", ");
@@ -36,7 +30,6 @@ export function buildDispatchInstruction({
   sliceFile,
   repoPath,
   resolvedGoal,
-  modelHint = null,
   featureId = null,
   sliceContent = null,
   featureExcerpt = null,
@@ -45,7 +38,7 @@ export function buildDispatchInstruction({
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
-  const suffix = buildModelLine(modelHint) + buildBudgetLine(dispatchLimits);
+  const suffix = buildBudgetLine(dispatchLimits);
   const lines = [
     `Dispatch /crew:build subagent with this prompt:`,
     "",
