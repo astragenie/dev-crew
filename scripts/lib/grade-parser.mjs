@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { gradesRoot, pathExists } from "./paths.mjs";
+import { cached } from "./cache.mjs";
 
 export { gradesRoot };
 
@@ -137,18 +138,21 @@ function isGradeFile(filename) {
 }
 
 export async function listGrades(repoPath, options = {}) {
-  const root = gradesRoot(repoPath, options.config);
-  if (!(await pathExists(root))) return [];
-  const files = await fs.readdir(root);
-  const grades = [];
-  for (const file of files) {
-    if (!file.endsWith(".md") || !isGradeFile(file)) continue;
-    const g = await readGrade(path.join(root, file));
-    grades.push(g);
-  }
-  return grades.sort((a, b) =>
-    (a.frontmatter.slice || "").localeCompare(b.frontmatter.slice || "")
-  );
+  const cacheKey = `listGrades:${repoPath}`;
+  return cached(cacheKey, async () => {
+    const root = gradesRoot(repoPath, options.config);
+    if (!(await pathExists(root))) return [];
+    const files = await fs.readdir(root);
+    const grades = [];
+    for (const file of files) {
+      if (!file.endsWith(".md") || !isGradeFile(file)) continue;
+      const g = await readGrade(path.join(root, file));
+      grades.push(g);
+    }
+    return grades.sort((a, b) =>
+      (a.frontmatter.slice || "").localeCompare(b.frontmatter.slice || "")
+    );
+  });
 }
 
 // Scan the grades directory for any grade file that belongs to the given

@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import { cached } from "./cache.mjs";
 
 const PATH_DEFAULTS = {
   artifactRoot: ".claude/artifacts/loop",
@@ -71,28 +72,31 @@ export async function ensureDir(p) {
 }
 
 export async function locateSliceFile(slicesRootDir, sliceId) {
-  if (!(await pathExists(slicesRootDir))) return null;
-  const slicePattern = sliceId.replace("-", "[_-]");
-  const re = new RegExp(`^${slicePattern}(_|$)`, "i");
-  const stack = [slicesRootDir];
-  while (stack.length > 0) {
-    const dir = stack.pop();
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        stack.push(full);
+  const cacheKey = `locateSlice:${slicesRootDir}:${sliceId}`;
+  return cached(cacheKey, async () => {
+    if (!(await pathExists(slicesRootDir))) return null;
+    const slicePattern = sliceId.replace("-", "[_-]");
+    const re = new RegExp(`^${slicePattern}(_|$)`, "i");
+    const stack = [slicesRootDir];
+    while (stack.length > 0) {
+      const dir = stack.pop();
+      let entries;
+      try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+      } catch {
         continue;
       }
-      if (re.test(e.name)) return full;
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          stack.push(full);
+          continue;
+        }
+        if (re.test(e.name)) return full;
+      }
     }
-  }
-  return null;
+    return null;
+  });
 }
 
 export { PATH_DEFAULTS };

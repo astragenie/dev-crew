@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { backlogRoot, pathExists } from "./paths.mjs";
+import { cached } from "./cache.mjs";
 
 export { backlogRoot };
 
@@ -45,20 +46,23 @@ async function readEntry(filePath, state) {
 }
 
 export async function listBacklog(repoPath, options = {}) {
-  const root = backlogRoot(repoPath, options.config);
-  const entries = [];
-  for (const state of BACKLOG_STATES) {
-    const dir = path.join(root, state);
-    if (!(await pathExists(dir))) continue;
-    const files = await fs.readdir(dir);
-    for (const file of files) {
-      if (!file.endsWith(".md") || !FEATURE_FILE_RE.test(file)) continue;
-      const entry = await readEntry(path.join(dir, file), state);
-      if (entry) entries.push(entry);
+  const cacheKey = `listBacklog:${repoPath}`;
+  return cached(cacheKey, async () => {
+    const root = backlogRoot(repoPath, options.config);
+    const entries = [];
+    for (const state of BACKLOG_STATES) {
+      const dir = path.join(root, state);
+      if (!(await pathExists(dir))) continue;
+      const files = await fs.readdir(dir);
+      for (const file of files) {
+        if (!file.endsWith(".md") || !FEATURE_FILE_RE.test(file)) continue;
+        const entry = await readEntry(path.join(dir, file), state);
+        if (entry) entries.push(entry);
+      }
     }
-  }
-  entries.sort((a, b) => a.idNumber - b.idNumber);
-  return entries;
+    entries.sort((a, b) => a.idNumber - b.idNumber);
+    return entries;
+  });
 }
 
 export async function nextFeatureId(repoPath, options = {}) {

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { specsRoot, pathExists } from "./paths.mjs";
+import { cached, bust, clearAll } from "./cache.mjs";
 
 export const specRoot = specsRoot;
 
@@ -29,17 +30,20 @@ async function readSpec(filePath) {
 }
 
 export async function listSpecs(repoPath, options = {}) {
-  const root = specRoot(repoPath, options.config);
-  if (!(await pathExists(root))) return [];
-  const files = await fs.readdir(root);
-  const specs = [];
-  for (const file of files) {
-    if (!file.endsWith(".md") || !SPEC_FILE_RE.test(file)) continue;
-    const spec = await readSpec(path.join(root, file));
-    if (spec) specs.push(spec);
-  }
-  specs.sort((a, b) => a.idNumber - b.idNumber);
-  return specs;
+  const cacheKey = `listSpecs:${repoPath}`;
+  return cached(cacheKey, async () => {
+    const root = specRoot(repoPath, options.config);
+    if (!(await pathExists(root))) return [];
+    const files = await fs.readdir(root);
+    const specs = [];
+    for (const file of files) {
+      if (!file.endsWith(".md") || !SPEC_FILE_RE.test(file)) continue;
+      const spec = await readSpec(path.join(root, file));
+      if (spec) specs.push(spec);
+    }
+    specs.sort((a, b) => a.idNumber - b.idNumber);
+    return specs;
+  });
 }
 
 export async function nextSpecId(repoPath, options = {}) {
@@ -69,6 +73,7 @@ export async function updateSpecFrontmatter(filePath, updates) {
   const today = new Date().toISOString().slice(0, 10);
   const merged = mergeFrontmatter(content, { ...updates, updated: today });
   await fs.writeFile(filePath, merged);
+  clearAll();
   return parseFrontmatter(merged).frontmatter;
 }
 
@@ -129,5 +134,6 @@ export async function addSpec(
   const contents = serializeFrontmatter(frontmatter, fullBody);
   const filePath = path.join(root, `${id}.md`);
   await fs.writeFile(filePath, contents);
+  bust(`listSpecs:${repoPath}`);
   return { id, filePath, frontmatter };
 }

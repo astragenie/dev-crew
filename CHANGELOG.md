@@ -3,6 +3,18 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.4.1 — 2026-05-28 — fix: ship missing cache.mjs
+
+### Fix
+- `scripts/lib/cache.mjs` was referenced by `backlog-writer.mjs` but
+  never committed in the v0.4.0 release, breaking every plugin install
+  that pinned 0.4.0 (e.g. `backlog-writer.mjs:7` import of
+  `./cache.mjs` resolved to a missing file).
+- Adds the cache module + its test (`tests/cache.test.mjs`).
+- Also ships the per-invocation cache wiring in `backlog-parser.mjs`,
+  `grade-parser.mjs`, `paths.mjs`, and `spec-parser.mjs` that was
+  missing from the 0.4.0 cut.
+
 ## v0.4.0 — 2026-05-27 — PM agent, performance optimization, grade naming, hooks
 
 ### PM agent (new)
