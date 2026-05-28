@@ -58,6 +58,7 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
         phase: featureFrontmatter.phase || null,
         priority: featureFrontmatter.priority || null,
         target_release: featureFrontmatter.target_release || null,
+        requires_validation: true,
         created: today,
         updated: today
     };
@@ -95,6 +96,8 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
         "- build / test commands per `.claude/loop.json` pass",
         `- feature ${featureId} moved from \`in-progress/\` to \`done/\``,
         "- Crew `final-synthesis` artifact written",
+        "- (pure refactors / mechanical changes: set `requires_validation: false` in frontmatter",
+        "   above to waive the validation gate — no badge needed at close time)",
         "",
         "## Reviewer ladder",
         "",

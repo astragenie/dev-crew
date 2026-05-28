@@ -48,6 +48,7 @@ test("sliceFromFeature creates a SLICE file and cross-links the feature", async 
   assert.equal(frontmatter.feature, feat.id);
   assert.equal(frontmatter.priority, "P1");
   assert.equal(frontmatter.target_release, "v1.0.0");
+  assert.equal(frontmatter.requires_validation, true);
   // Feature now lists the slice
   const updated = await findFeatureById(repo, feat.id);
   assert.ok(updated.frontmatter.slices.includes(result.slice.id));
