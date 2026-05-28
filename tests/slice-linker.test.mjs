@@ -125,3 +125,30 @@ test("buildDispatchInstruction without optional fields is backward compatible", 
     assert.match(result, /Dispatch \/crew:build/);
     assert.doesNotMatch(result, /Slice context/);
 });
+test("buildDispatchInstruction with dispatchLimits injects budget block", () => {
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-04",
+        title: "SLICE-04: Add feature",
+        sliceFile: "/repo/slices/SLICE_04.md",
+        repoPath: "/repo",
+        resolvedGoal: "Implement feature",
+        dispatchLimits: {
+            maxSubagentsPerSlice: 4,
+            preferInlineFor: ["single-file-edit", "test-fix"]
+        }
+    });
+    assert.match(result, /Dispatch budget/);
+    assert.match(result, /max 4 subagents/);
+    assert.match(result, /single-file-edit/);
+    assert.match(result, /test-fix/);
+});
+test("buildDispatchInstruction without dispatchLimits omits budget block", () => {
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-05",
+        title: "SLICE-05: Refactor",
+        sliceFile: null,
+        repoPath: "/repo",
+        resolvedGoal: null
+    });
+    assert.doesNotMatch(result, /Dispatch budget/);
+});

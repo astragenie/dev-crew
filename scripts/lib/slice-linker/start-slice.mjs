@@ -94,7 +94,8 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         featureId,
         sliceContent: ctx.content,
         featureExcerpt,
-        marathonMilestone
+        marathonMilestone,
+        dispatchLimits: resolved.loop?.dispatchLimits ?? null
     });
 }
 // Locate the active plan + derive the human-readable title for this slice
@@ -108,7 +109,7 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
 }
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, modelHint = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null }) {
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, modelHint = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null }) {
     const dispatchInstruction = dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -119,7 +120,8 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
             modelHint,
             featureId,
             sliceContent,
-            featureExcerpt
+            featureExcerpt,
+            dispatchLimits
         })
         : null;
     const activePlanSummary = activePlan.planPath

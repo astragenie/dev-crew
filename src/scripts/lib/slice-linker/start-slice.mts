@@ -112,7 +112,8 @@ export async function startSlice(
     featureId,
     sliceContent: ctx.content,
     featureExcerpt,
-    marathonMilestone
+    marathonMilestone,
+    dispatchLimits: resolved.loop?.dispatchLimits ?? null
   });
 }
 
@@ -143,7 +144,8 @@ function buildStartSliceReturn({
   featureId = null as any,
   sliceContent = null as any,
   featureExcerpt = null as any,
-  marathonMilestone = null as any
+  marathonMilestone = null as any,
+  dispatchLimits = null as any
 }) {
   const dispatchInstruction = dispatch
     ? buildDispatchInstruction({
@@ -155,7 +157,8 @@ function buildStartSliceReturn({
         modelHint,
         featureId,
         sliceContent,
-        featureExcerpt
+        featureExcerpt,
+        dispatchLimits
       })
     : null;
   const activePlanSummary = activePlan.planPath

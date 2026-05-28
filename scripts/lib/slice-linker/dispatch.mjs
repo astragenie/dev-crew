@@ -2,27 +2,41 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { locateSliceFile, backlogRoot as resolveBacklogRoot } from "../paths.mjs";
-export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, modelHint = null, featureId = null, sliceContent = null, featureExcerpt = null }) {
+function buildModelLine(modelHint) {
+    return modelHint
+        ? `\n\n> Preferred model: ${modelHint}. Use this model for the build subagent unless the task requires deeper reasoning.`
+        : "";
+}
+function buildBudgetLine(dispatchLimits) {
+    if (!dispatchLimits)
+        return "";
+    const preferInline = (dispatchLimits.preferInlineFor || []).join(", ");
+    return (`\n\n> **Dispatch budget (hard limit):** max ${dispatchLimits.maxSubagentsPerSlice} subagents this slice. ` +
+        `Prefer inline (no subagent dispatch) for: ${preferInline}. ` +
+        `Bundle review + validation into one pass when scope is small.`);
+}
+function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt) {
+    if (!sliceContent && !featureExcerpt)
+        return;
+    lines.push("", "## Slice context (pre-read — do not re-read these files)", "");
+    if (rel && sliceContent) {
+        lines.push(`### Slice: ${rel}`, "", sliceContent);
+    }
+    if (featureId && featureExcerpt) {
+        lines.push("", `### Feature: ${featureId} (excerpt)`, "", featureExcerpt);
+    }
+}
+export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, modelHint = null, featureId = null, sliceContent = null, featureExcerpt = null, dispatchLimits = null }) {
     const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
     const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
     const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
-    const modelLine = modelHint
-        ? `\n\n> Preferred model: ${modelHint}. Use this model for the build subagent unless the task requires deeper reasoning.`
-        : "";
+    const suffix = buildModelLine(modelHint) + buildBudgetLine(dispatchLimits);
     const lines = [
         `Dispatch /crew:build subagent with this prompt:`,
         "",
-        `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:reviewer\` subagent. For validation, dispatch a \`crew:validator\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${modelLine}`
+        `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:reviewer\` subagent. For validation, dispatch a \`crew:validator\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
     ];
-    if (sliceContent || featureExcerpt) {
-        lines.push("", "## Slice context (pre-read — do not re-read these files)", "");
-        if (rel && sliceContent) {
-            lines.push(`### Slice: ${rel}`, "", sliceContent);
-        }
-        if (featureId && featureExcerpt) {
-            lines.push("", `### Feature: ${featureId} (excerpt)`, "", featureExcerpt);
-        }
-    }
+    appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt);
     return lines.join("\n");
 }
 // Locates the slice file under slicesRoot and reads frontmatter + objective
