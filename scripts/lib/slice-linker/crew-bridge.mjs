@@ -13,6 +13,7 @@ import { promisify } from "node:util";
 
 import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
 import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
+import { renderIdentification } from "./agent-report-writer.mjs";
 
 const execFile = promisify(_execFile);
 
@@ -247,14 +248,18 @@ function renderSynthesisBody({
   decisionsBlock,
   grade,
   repoPath,
-  config
+  config,
+  featureId,
+  phase
 }) {
   const gradeRel = path
     .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
     .replace(/\\/g, "/");
+  const id = renderIdentification(phase, featureId, sliceId);
   return [
     `# Final synthesis — ${sliceId}`,
     "",
+    ...(id ? [id, ""] : []),
     "## What shipped",
     "",
     `- Slice: \`${sliceRel}\` (completed)`,
@@ -323,7 +328,9 @@ export async function writeCrewFinalSynthesis(
     decisionsBlock: renderSynthesisDecisions(grade),
     grade,
     repoPath,
-    config
+    config,
+    featureId,
+    phase
   });
   const { serializeFrontmatter } = await import("../frontmatter.mjs");
   await fs.writeFile(target, serializeFrontmatter(fm, body));
@@ -366,9 +373,11 @@ export async function writeCrewHandoff(
     .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
     .replace(/\\/g, "/");
   const decisionsRel = path.relative(repoPath, decisionsRoot(repoPath, config)).replace(/\\/g, "/");
+  const handoffId = renderIdentification(phase, featureId, sliceId);
   const body = [
     `# Handoff — ${sliceId} complete`,
     "",
+    ...(handoffId ? [handoffId, ""] : []),
     "## Objective",
     "",
     `Slice ${sliceId} closed with acceptance criteria PASS. Capture lessons + decisions via grading, then resume Cross-Slice Continuation.`,

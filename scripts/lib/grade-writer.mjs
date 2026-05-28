@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById } from "./backlog-writer.mjs";
+import { renderIdentification } from "./slice-linker/agent-report-writer.mjs";
 import { findSpecById } from "./spec-parser.mjs";
 import {
   gradesRoot,
@@ -147,6 +148,12 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
     .replace(/YYYY-MM-DD/g, today());
   tpl = applyInferredScores(tpl, inference);
   tpl = patchGradeFrontmatter(tpl, prefill);
+
+  // Inject identification line after the H1 heading (first `# …` line in the body)
+  const id = renderIdentification(prefill.phase, prefill.featureId, sliceId);
+  if (id) {
+    tpl = tpl.replace(/(^# .+$)/m, `$1\n\n${id}`);
+  }
 
   await fs.writeFile(target, tpl);
   return {
