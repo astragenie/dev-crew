@@ -6,7 +6,8 @@ import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
 import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "./ceremonies.mjs";
-import { readGradeTrend } from "./grade-trend.mjs";
+import { readGradeTrend, checkGradeTrend, checkMarathonMilestone } from "./grade-trend.mjs";
+import { lintAcceptanceCriteria } from "./ac-linter.mjs";
 import {
   markValidationSkippedBadge,
   tryWriteAgentReport,
@@ -16,6 +17,7 @@ import {
   writeCrewRunBrief
 } from "./slice-linker/crew-bridge.mjs";
 import { deriveValidationGate } from "./validation-gate.mjs";
+import { deriveTestAdequacyGate } from "./test-adequacy-gate.mjs";
 import {
   findActivePlan,
   detectSliceStatus,
@@ -105,8 +107,8 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
     "",
     "## Acceptance criteria",
     "",
-    "- [ ] AC-1: ...",
-    "- [ ] AC-2: ...",
+    "- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)",
+    "- [ ] AC-2: <replace with a concrete, testable acceptance criterion>",
     "",
     "## Done When",
     "",
@@ -282,7 +284,13 @@ async function moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen = 
 // a validation_passed/skipped badge AND without a requires_validation: false
 // waiver in slice frontmatter. The slice file itself still moves to
 // completed/; only the feature->done transition is held back.
-function describeBlockedGate({ isBlocked, isSimplifyBlocked, blockingGates, validationGate }) {
+function describeBlockedGate({
+  isBlocked,
+  isSimplifyBlocked,
+  blockingGates,
+  validationGate,
+  testAdequacyGate
+}) {
   if (isBlocked) {
     return blockingGates.escalated
       ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
@@ -291,7 +299,17 @@ function describeBlockedGate({ isBlocked, isSimplifyBlocked, blockingGates, vali
   if (isSimplifyBlocked) {
     return "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
   }
+  if (testAdequacyGate?.satisfied === false) return testAdequacyGate.reason;
   return `validation-gate: ${validationGate.reason}`;
+}
+
+async function evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate) {
+  const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
+  const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
+  const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
+  const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
+  const isTestAdequacyBlocked = Boolean(testAdequacyGate && testAdequacyGate.satisfied === false);
+  return { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked };
 }
 
 async function computeFeatureResult(
@@ -300,25 +318,26 @@ async function computeFeatureResult(
   blockingGates,
   config,
   keepFeatureOpen = false,
-  validationGate = null
+  validationGate = null,
+  testAdequacyGate = null
 ) {
-  const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
-  const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
-  const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
-  const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
+  const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } =
+    await evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate);
 
-  if (isBlocked || isSimplifyBlocked || isValidationBlocked) {
+  if (isBlocked || isSimplifyBlocked || isValidationBlocked || isTestAdequacyBlocked) {
     return {
       skipped: true,
       reason: describeBlockedGate({
         isBlocked,
         isSimplifyBlocked,
         blockingGates,
-        validationGate
+        validationGate,
+        testAdequacyGate
       }),
       blockingGates: isBlocked ? blockingGates : null,
       simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null,
-      validationGate: isValidationBlocked ? validationGate : null
+      validationGate: isValidationBlocked ? validationGate : null,
+      testAdequacyGate: isTestAdequacyBlocked ? testAdequacyGate : null
     };
   }
 
@@ -378,6 +397,8 @@ export async function completeSlice(
     validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm });
   }
 
+  const testAdequacyGate = await deriveTestAdequacyGate(repoPath, sliceId, resolved);
+
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
     sliceContent,
@@ -391,7 +412,8 @@ export async function completeSlice(
     blockingGates,
     config,
     keepFeatureOpen,
-    validationGate
+    validationGate,
+    testAdequacyGate
   );
 
   // Reconcile parent spec status
@@ -433,8 +455,33 @@ export async function completeSlice(
     sliceProgress,
     validationGate,
     validationSkippedBadge,
+    testAdequacyGate,
     nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
+}
+
+// Quality gates that must pass before startSlice can proceed.
+// Extracted to keep startSlice under the complexity cap.
+async function runSliceStartGates(sliceId, content, repoPath, config) {
+  if (content) {
+    const acResult = lintAcceptanceCriteria(content);
+    if (!acResult.ok) {
+      const detail = acResult.error
+        ? acResult.error
+        : `${acResult.violations.length} placeholder AC(s) found:\n${acResult.violations.map((v) => `  ${v.trim()}`).join("\n")}`;
+      throw new Error(
+        `startSlice(${sliceId}): AC linter failed — ${detail}. ` +
+          "Replace all placeholder acceptance criteria before starting the slice."
+      );
+    }
+  }
+  const ladderGateSignal = await checkGradeTrend(repoPath, config);
+  if (ladderGateSignal?.shouldStop) {
+    throw new Error(
+      `startSlice(${sliceId}): Ladder gate — ${ladderGateSignal.reason}. ` +
+        "Resolve grade regression before starting the next slice."
+    );
+  }
 }
 
 // Opens a new run for the given slice. Symmetric counterpart to
@@ -466,7 +513,9 @@ export async function startSlice(
   const featureId = ctx.frontmatter.feature || null;
   const phase = ctx.frontmatter.phase || null;
 
-  const [runBrief, gradeTrend, featureExcerpt] = await Promise.all([
+  await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
+
+  const [runBrief, gradeTrend, featureExcerpt, marathonMilestone] = await Promise.all([
     bestEffort(() =>
       writeCrewRunBrief(repoPath, {
         sliceId,
@@ -481,7 +530,8 @@ export async function startSlice(
       })
     ),
     readGradeTrend(repoPath),
-    featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null)
+    featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null),
+    checkMarathonMilestone(repoPath, resolved)
   ]);
   const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
   const gradeTrendCaution =
@@ -506,7 +556,8 @@ export async function startSlice(
     modelHint,
     featureId,
     sliceContent: ctx.content,
-    featureExcerpt
+    featureExcerpt,
+    marathonMilestone
   });
 }
 
@@ -536,7 +587,8 @@ function buildStartSliceReturn({
   modelHint = null,
   featureId = null,
   sliceContent = null,
-  featureExcerpt = null
+  featureExcerpt = null,
+  marathonMilestone = null
 }) {
   const dispatchInstruction = dispatch
     ? buildDispatchInstruction({
@@ -564,7 +616,8 @@ function buildStartSliceReturn({
     sliceProgress,
     dispatchInstruction,
     nextAction,
-    gradeTrendCaution
+    gradeTrendCaution,
+    marathonMilestone
   };
 }
 
