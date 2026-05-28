@@ -155,6 +155,7 @@ test("happy path — 2 agents, full data → artifact written with agent_count: 
   });
 
   assert.ok(result.reportPath);
+  assert.match(path.basename(result.reportPath), /^\d{8}T\d{6}Z-agent-report-.+\.md$/);
   assert.equal(result.agentCount, 2);
   assert.equal(result.totalTurns, 13);
 
@@ -398,7 +399,7 @@ test("linkArtifactToSlice accepts 'agents' kind without throwing", async () => {
 
   const agentsDir = path.join(repo, ".claude", "artifacts", "crew", "agents");
   await fs.mkdir(agentsDir, { recursive: true });
-  const artifactPath = path.join(agentsDir, "slice19-agent-report.md");
+  const artifactPath = path.join(agentsDir, "20260528T000000Z-agent-report-slice19.md");
   await fs.writeFile(artifactPath, "---\nkind: agent-report\n---\n");
 
   const result = await linkArtifactToSlice(repo, {
@@ -415,7 +416,7 @@ test("linkArtifactToSlice accepts 'agents' kind without throwing", async () => {
   assert.equal(frontmatter.agents.length, 1);
 });
 
-test("slug format — feat021-slice36-agent-report.md for FEAT-021 / SLICE-36", async () => {
+test("slug format — TS-agent-report-feat021-slice36.md for FEAT-021 / SLICE-36", async () => {
   const repo = await tmpRepo("al-arw-slug-");
   const result = await writeAgentReport(repo, {
     sliceId: "SLICE-36",
@@ -423,7 +424,7 @@ test("slug format — feat021-slice36-agent-report.md for FEAT-021 / SLICE-36", 
     phase: null
   });
   const basename = path.basename(result.reportPath);
-  assert.equal(basename, "feat021-slice36-agent-report.md");
+  assert.match(basename, /^\d{8}T\d{6}Z-agent-report-feat021-slice36\.md$/);
 });
 
 test("duration formatting — 127000ms renders as 2m 7s in table", async () => {

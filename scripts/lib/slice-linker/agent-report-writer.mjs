@@ -260,7 +260,7 @@ function renderToolSummary(agents) {
   return [header, sep, ...rows].join("\n");
 }
 
-function renderIdentification(phase, featureId, sliceId) {
+export function renderIdentification(phase, featureId, sliceId) {
   const parts = [];
   if (phase !== null && phase !== undefined && String(phase).length > 0) {
     parts.push(`**Phase:** ${phase}`);
@@ -346,7 +346,8 @@ export async function writeAgentReport(
   await fs.mkdir(agentsDir, { recursive: true });
 
   const slug = buildArtifactSlug({ featureId, phase, sliceId });
-  const target = path.join(agentsDir, `${slug}-agent-report.md`);
+  const ts = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const target = path.join(agentsDir, `${ts}-agent-report-${slug}.md`);
 
   const { events, fileFound } = await readEventsInWindow(repoPath, startedAt);
   const { startPayloads, startTimestamps, stopPayloads, stopTimestamps } =
