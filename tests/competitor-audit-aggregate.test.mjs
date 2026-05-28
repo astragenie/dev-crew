@@ -115,6 +115,18 @@ test("parseBrief throws when a required axis row is missing", async () => {
   await assert.rejects(() => parseBrief(file), /missing axis: Deployment/);
 });
 
+test("parseBrief strips UTF-8 BOM before parsing frontmatter", async () => {
+  const dir = await tmpBriefsDir("audit-parse-bom-");
+  const file = path.join(dir, "bom.md");
+  // Editors on Windows commonly prepend a UTF-8 BOM (U+FEFF). Without
+  // stripping, the leading invisible character breaks parseFrontmatter
+  // and every required frontmatter field reads as undefined.
+  await fs.writeFile(file, "\ufeff" + SAMPLE_BRIEF);
+  const brief = await parseBrief(file);
+  assert.equal(brief.competitor, "superpowers");
+  assert.equal(brief.gaps.length, 1);
+});
+
 test("parseBrief extracts multiple gap candidates", async () => {
   const dir = await tmpBriefsDir("audit-parse-multigap-");
   const file = path.join(dir, "multi.md");

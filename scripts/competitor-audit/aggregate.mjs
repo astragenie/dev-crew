@@ -105,7 +105,7 @@ function extractGaps(body) {
 }
 
 export async function parseBrief(filePath) {
-  const raw = await fs.readFile(filePath, "utf8");
+  const raw = (await fs.readFile(filePath, "utf8")).replace(/^\ufeff/, "");
   const { frontmatter, body } = parseFrontmatter(raw);
   for (const field of REQUIRED_FRONTMATTER_FIELDS) {
     const value = frontmatter[field];
@@ -324,7 +324,7 @@ export async function runAudit(repoPath, { auditDir, baselineName, baselineMatri
   return { briefs, ranked, matrixPath, draftedFeats };
 }
 
-const isMain = import.meta.url === pathToFileURL(process.argv[1]).href;
+const isMain = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   const repoPath = process.cwd();
   const baselineMatrix = Object.fromEntries(
