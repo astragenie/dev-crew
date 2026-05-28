@@ -3,6 +3,38 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.5.2 — 2026-05-28 — quality gates: AC linter, ladder, marathon, test-adequacy
+
+### Features
+
+**AC linter gate (`startSlice`)**
+- New `ac-linter.mjs` module: rejects slice start when any `AC-N:` bullet is a
+  placeholder (`...`, `<...>`, `TBD`, or empty).
+- Slice template updated: `AC-1` is now a concrete criterion; `AC-2` is an explicit
+  placeholder that agents must replace before calling `startSlice`.
+
+**Ladder gate (`startSlice`)**
+- Blocks start when `checkGradeTrend` signals ≥ 2 consecutive below-threshold scores.
+- Threshold and window size configurable via `loop.gradeTrendThreshold` /
+  `loop.gradeTrendConsecutiveLimit` in `loop.json`.
+
+**Marathon milestone (`startSlice`)**
+- Returns `marathonMilestone` in `startSlice` result when all window scores are at
+  or above threshold, signalling a sustained quality run.
+- Window size configurable via `loop.marathonMilestoneLength`.
+
+**Test-adequacy gate (`completeSlice`)**
+- New `test-adequacy-gate.mjs`: reads linked review artifacts and checks each for a
+  populated `Test Adequacy:` field (crew CLI writes `-` by default).
+- `completeSlice` refuses to advance feature → done when any linked review artifact
+  leaves `Test Adequacy: -` with no skip reason.
+- Reviewer prompts now warn that `--test-summary` is gated: leaving it as `-` blocks
+  the feature transition.
+
+### Tests
+
+42 new tests (401 total). All pass.
+
 ## v0.5.1 — 2026-05-28 — perf: pre-load slice context into builder and reviewer prompts
 
 ### Performance

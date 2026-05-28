@@ -107,7 +107,7 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
         `     --next "<required follow-up actions or 'none'>"${featureId ? ` \\\n     --feature ${featureId}` : ""}${phase ? ` \\\n     --phase ${phase}` : ""}`,
         "   ```",
         "",
-        "   Every flag maps to a section in the artifact. Passing `-` or omitting a flag leaves that section empty — fill them all.",
+        "   Every flag maps to a section in the artifact. Passing `-` or omitting a flag leaves that section empty — fill them all. **`--test-summary` is enforced by a gate: leaving it as `-` will block `completeSlice` from advancing the feature to done.**",
         "",
         `6. Link the review artifact to ${sliceId}:`,
         `   \`/loop:slice link --id ${sliceId} --kind reviews --artifact <path>\``,
