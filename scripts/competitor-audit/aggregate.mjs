@@ -124,3 +124,75 @@ export async function parseBrief(filePath) {
     gaps
   };
 }
+
+function normalizeTitle(title) {
+  return String(title || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function createMergedGap(gap) {
+  return {
+    key: normalizeTitle(gap.title),
+    title: gap.title,
+    description: gap.description || "",
+    source_competitors: [],
+    sources: [],
+    impact: gap.impact ?? 0,
+    effort: gap.effort ?? 3,
+    fit: gap.fit ?? 0,
+    composite: gap.composite ?? 0
+  };
+}
+
+function mergeGapInto(merged, gap, competitor) {
+  if (!merged.source_competitors.includes(competitor)) {
+    merged.source_competitors.push(competitor);
+  }
+  if (gap.source && !merged.sources.includes(gap.source)) {
+    merged.sources.push(gap.source);
+  }
+  // Take the most generous scores across duplicates so we don't
+  // under-rate a gap that one researcher scored conservatively.
+  merged.impact = Math.max(merged.impact, gap.impact ?? 0);
+  merged.effort = Math.min(merged.effort, gap.effort ?? 3);
+  merged.fit = Math.max(merged.fit, gap.fit ?? 0);
+  merged.composite = Math.max(merged.composite, gap.composite ?? 0);
+  // Keep the longest description we have seen.
+  if ((gap.description || "").length > merged.description.length) {
+    merged.description = gap.description;
+  }
+}
+
+export function dedupeAndRank(briefs) {
+  const bucket = new Map();
+  for (const brief of briefs) {
+    for (const gap of brief.gaps || []) {
+      const key = normalizeTitle(gap.title);
+      if (!key) continue;
+      if (!bucket.has(key)) {
+        bucket.set(key, createMergedGap(gap));
+      }
+      mergeGapInto(bucket.get(key), gap, brief.competitor);
+    }
+  }
+  return [...bucket.values()].sort((a, b) => b.composite - a.composite);
+}
+
+export function renderMatrixMarkdown(briefs, { baseline, axes }) {
+  const competitors = briefs.map((b) => b.competitor);
+  const header = `| Axis                 | ${baseline.name} | ${competitors.join(" | ")} |`;
+  const sep = `| -------------------- | ${"---".padEnd(baseline.name.length, "-")} | ${competitors
+    .map((c) => "---".padEnd(c.length, "-"))
+    .join(" | ")} |`;
+  const rows = axes.map((axis) => {
+    const baseCell = baseline.matrix[axis] || { symbol: "?", note: "" };
+    const competitorCells = briefs.map((b) => {
+      const cell = b.matrix[axis] || { symbol: "?", note: "" };
+      return `${cell.symbol} ${cell.note}`.trim();
+    });
+    return `| ${axis} | ${baseCell.symbol} ${baseCell.note} | ${competitorCells.join(" | ")} |`;
+  });
+  return [header, sep, ...rows].join("\n");
+}

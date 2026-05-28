@@ -4,7 +4,12 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { parseBrief, AXES } from "../scripts/competitor-audit/aggregate.mjs";
+import {
+  parseBrief,
+  AXES,
+  dedupeAndRank,
+  renderMatrixMarkdown
+} from "../scripts/competitor-audit/aggregate.mjs";
 
 async function tmpBriefsDir(prefix) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -158,4 +163,48 @@ test("parseBrief throws on duplicate axis row", async () => {
   );
   await fs.writeFile(file, dupBrief);
   await assert.rejects(() => parseBrief(file), /duplicate axis row: Workflow phases/);
+});
+
+test("dedupeAndRank merges same-title gaps across competitors", () => {
+  const briefs = [
+    {
+      competitor: "A",
+      gaps: [
+        { id: "GAP-1", title: "Verification guard", impact: 3, effort: 1, fit: 3, composite: 8 }
+      ]
+    },
+    {
+      competitor: "B",
+      gaps: [
+        { id: "GAP-1", title: "Verification guard", impact: 2, effort: 1, fit: 3, composite: 7 },
+        { id: "GAP-2", title: "Cost dashboards", impact: 2, effort: 2, fit: 2, composite: 5 }
+      ]
+    }
+  ];
+  const ranked = dedupeAndRank(briefs);
+  assert.equal(ranked.length, 2);
+  assert.equal(ranked[0].title, "Verification guard");
+  assert.deepEqual(ranked[0].source_competitors.sort(), ["A", "B"]);
+  // Composite takes the MAX across duplicates so we don't underrate.
+  assert.equal(ranked[0].composite, 8);
+  assert.equal(ranked[1].title, "Cost dashboards");
+});
+
+test("renderMatrixMarkdown produces an 8-column table (7 + loop/crew baseline)", () => {
+  const briefs = [
+    {
+      competitor: "A",
+      matrix: { "Workflow phases": { symbol: "●", note: "yes" } }
+    },
+    {
+      competitor: "B",
+      matrix: { "Workflow phases": { symbol: "○", note: "no" } }
+    }
+  ];
+  const md = renderMatrixMarkdown(briefs, {
+    baseline: { name: "loop+crew", matrix: { "Workflow phases": { symbol: "●", note: "native" } } },
+    axes: ["Workflow phases"]
+  });
+  assert.match(md, /\| Axis\s+\| loop\+crew \| A \| B \|/);
+  assert.match(md, /\| Workflow phases \| ● native \| ● yes \| ○ no \|/);
 });
