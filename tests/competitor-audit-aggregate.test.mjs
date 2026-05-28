@@ -106,3 +106,56 @@ test("parseBrief throws when a required axis row is missing", async () => {
   await fs.writeFile(file, SAMPLE_BRIEF.replace(/^\| Deployment.*$\n/m, ""));
   await assert.rejects(() => parseBrief(file), /missing axis: Deployment/);
 });
+
+test("parseBrief extracts multiple gap candidates", async () => {
+  const dir = await tmpBriefsDir("audit-parse-multigap-");
+  const file = path.join(dir, "multi.md");
+  const multiGapBrief = SAMPLE_BRIEF.replace(
+    "## Inadvisable mimics",
+    `### GAP-2: Subagent dispatch budget
+
+- Description: caps tokens spent per dispatched subagent.
+- Source: skills/dispatching-parallel-agents
+- Impact (0-3): 2 — protects cost ceiling
+- Effort (0-3): 2 — moderate plumbing
+- Fit (0-3): 2 — fits crew dispatch model
+- Composite: 2 + (3 - 2) + 2 = 5
+
+## Inadvisable mimics`
+  );
+  await fs.writeFile(file, multiGapBrief);
+  const brief = await parseBrief(file);
+  assert.equal(brief.gaps.length, 2);
+  assert.equal(brief.gaps[0].id, "GAP-1");
+  assert.equal(brief.gaps[0].title, "Verification-before-completion guard");
+  assert.equal(brief.gaps[0].impact, 3);
+  assert.equal(brief.gaps[0].effort, 1);
+  assert.equal(brief.gaps[0].fit, 3);
+  assert.equal(brief.gaps[0].composite, 8);
+  assert.equal(brief.gaps[1].id, "GAP-2");
+  assert.equal(brief.gaps[1].title, "Subagent dispatch budget");
+  assert.equal(brief.gaps[1].impact, 2);
+  assert.equal(brief.gaps[1].effort, 2);
+  assert.equal(brief.gaps[1].fit, 2);
+  assert.equal(brief.gaps[1].composite, 5);
+});
+
+test("parseBrief throws when required frontmatter field is missing", async () => {
+  const dir = await tmpBriefsDir("audit-parse-missing-fm-");
+  const file = path.join(dir, "missing-license.md");
+  // Drop the "license" frontmatter line entirely.
+  await fs.writeFile(file, SAMPLE_BRIEF.replace(/^license:.*$\n/m, ""));
+  await assert.rejects(() => parseBrief(file), /missing required frontmatter field: license/);
+});
+
+test("parseBrief throws on duplicate axis row", async () => {
+  const dir = await tmpBriefsDir("audit-parse-dup-axis-");
+  const file = path.join(dir, "dup.md");
+  // Inject a second "Workflow phases" row right after the first.
+  const dupBrief = SAMPLE_BRIEF.replace(
+    "| Workflow phases      | ●      | brainstorming + plans      |",
+    "| Workflow phases      | ●      | brainstorming + plans      |\n| Workflow phases      | ◐      | duplicate row              |"
+  );
+  await fs.writeFile(file, dupBrief);
+  await assert.rejects(() => parseBrief(file), /duplicate axis row: Workflow phases/);
+});

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 
-export const AXES = [
+export const AXES = Object.freeze([
   "Workflow phases",
   "Roles / dispatch",
   "Artifacts / state",
@@ -13,7 +13,15 @@ export const AXES = [
   "Validation / gates",
   "Deployment",
   "Install / distribution"
-];
+]);
+
+const REQUIRED_FRONTMATTER_FIELDS = Object.freeze([
+  "competitor",
+  "host",
+  "language",
+  "license",
+  "version_observed"
+]);
 
 const SYMBOL_RE = /[●◐○]/;
 const GAP_HEADER_RE = /^### (GAP-\d+):\s*(.+)$/;
@@ -43,6 +51,9 @@ function extractMatrix(body) {
     const parsed = parseMatrixRow(line);
     if (!parsed) continue;
     if (AXES.includes(parsed.axis)) {
+      if (parsed.axis in matrix) {
+        throw new Error(`Brief has duplicate axis row: ${parsed.axis}`);
+      }
       matrix[parsed.axis] = { symbol: parsed.symbol, note: parsed.note };
     }
   }
@@ -93,6 +104,12 @@ function extractGaps(body) {
 export async function parseBrief(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
   const { frontmatter, body } = parseFrontmatter(raw);
+  for (const field of REQUIRED_FRONTMATTER_FIELDS) {
+    const value = frontmatter[field];
+    if (value === undefined || value === null || value === "") {
+      throw new Error(`Brief missing required frontmatter field: ${field}`);
+    }
+  }
   const matrix = extractMatrix(body);
   const gaps = extractGaps(body);
   return {
