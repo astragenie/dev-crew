@@ -64,3 +64,19 @@ crew CLI surface that older versions do not expose.
 - Tests that exercise the crew CLI bridge skip with a clear reason
   when the local cache crew version is below `MIN_CREW_VERSION`;
   they do not fail. See `tests/loop-installer.test.mjs`.
+
+## HARD-GATE tag convention
+
+Skill Markdown files use two XML tag levels to signal enforcement severity.
+Use `<HARD-GATE>...</HARD-GATE>` for absolute prohibitions and
+non-negotiable rules — things where a violation breaks the loop workflow
+entirely (for example: stopping mid-slice without evidence, omitting a
+required slice field, or bypassing the phase-gate ceremony). Use
+`<EXTREMELY-IMPORTANT>...</EXTREMELY-IMPORTANT>` for strong warnings and
+high-severity guidance where a violation is very bad but does not
+completely break the workflow (for example: evidence quality standards,
+artifact naming conventions, or recommended sequencing that may have
+acceptable exceptions in extreme edge cases). Every hard rule block that
+an autonomous agent MUST obey unconditionally belongs inside `<HARD-GATE>`
+tags; strong-but-soft guidance that an agent should almost always follow
+but that admits rare exceptions belongs inside `<EXTREMELY-IMPORTANT>` tags.

@@ -11,7 +11,10 @@ they're reviewed and implemented.
 
 ## Canonical template
 
-Read `<aiLoopRoot>/00-entry/SLICE_TEMPLATE.md`. Every slice file MUST have:
+Read `<aiLoopRoot>/00-entry/SLICE_TEMPLATE.md`.
+
+<HARD-GATE>
+Every slice file MUST have:
 
 - `# SLICE-NN: <title>` heading (NN zero-padded if < 10)
 - Priority (P0 / P1 / P2)
@@ -26,6 +29,7 @@ Read `<aiLoopRoot>/00-entry/SLICE_TEMPLATE.md`. Every slice file MUST have:
 - Reviewer ladder
 - Risks
 - Open questions
+</HARD-GATE>
 
 ## Naming convention
 

@@ -1,13 +1,13 @@
 ---
 id: FEAT-013
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
 updated: 2026-05-28
 depends_on: []
-slices: []
+slices: [SLICE-07]
 derived_from: null
 composite_score: 7
 source_competitors: [superpowers]
@@ -19,6 +19,7 @@ pm_implementation_confidence: 0.9
 pm_demand_signal: 0.5
 pm_risk_level: 0.1
 pm_reasoning: "Pure Markdown convention change — no runtime code, no behavioral regression, no new deps; only autonomous_safe FEAT in this batch"
+started_at: 2026-05-28
 ---
 # FEAT-013: Iron Law hard-gate tag convention in skill Markdown
 

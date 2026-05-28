@@ -15,6 +15,7 @@ block. Read it now. The three HARD RULE statements there govern this session.
 
 ## The three rules summarized
 
+<HARD-GATE>
 1. **Autonomous Loop Instruction** — Do NOT ask the user mid-slice. Run
    review → fix → validation → artifacts → push without pausing. Stop only
    when every acceptance criterion is PASS with evidence OR the work is
@@ -26,9 +27,11 @@ block. Read it now. The three HARD RULE statements there govern this session.
 3. **Phase Completion Gate** — At phase boundaries, invoke
    `/loop:phase-gate`. Do NOT hand-author the validation
    artifact — let the plugin own it.
+</HARD-GATE>
 
 ## Disallowed stop reasons
 
+<HARD-GATE>
 The agent must NOT stop because:
 
 - a slice "looks complete enough"
@@ -38,6 +41,7 @@ The agent must NOT stop because:
 - the next slice "isn't clearly defined" (derive it)
 - the iteration counter hit the cap (advisory only under `loop.marathonMode: true`, which is the default)
 - a crew soft `blocked` badge is set (advisory under marathon mode — usually clears the next iteration; only `escalated_to_human` is a hard external block)
+</HARD-GATE>
 
 ## When stopping IS allowed
 
