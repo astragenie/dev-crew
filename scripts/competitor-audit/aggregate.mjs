@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { parseFrontmatter, serializeFrontmatter } from "../lib/frontmatter.mjs";
 import { addFeature, updateFeatureFrontmatter } from "../lib/backlog-writer.mjs";
@@ -323,7 +324,7 @@ export async function runAudit(repoPath, { auditDir, baselineName, baselineMatri
   return { briefs, ranked, matrixPath, draftedFeats };
 }
 
-const isMain = import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}`;
+const isMain = import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   const repoPath = process.cwd();
   const baselineMatrix = Object.fromEntries(
