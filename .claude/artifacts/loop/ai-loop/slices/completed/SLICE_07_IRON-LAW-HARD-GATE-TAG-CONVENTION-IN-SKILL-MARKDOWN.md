@@ -1,6 +1,6 @@
 ---
 id: SLICE-07
-status: pending
+status: completed
 feature: FEAT-013
 phase: null
 priority: P2
@@ -8,6 +8,7 @@ target_release: null
 requires_validation: false
 created: 2026-05-28
 updated: 2026-05-28
+completed_at: 2026-05-28
 ---
 # SLICE-07: Iron Law hard-gate tag convention in skill Markdown
 
