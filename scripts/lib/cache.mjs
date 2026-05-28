@@ -1,3 +1,7 @@
+// Process-scoped in-memory cache. Lives only for the duration of one Node.js
+// process. Does NOT persist across subagent boundaries — each subagent starts
+// with an empty store. Useful for loop.mjs CLI commands (list, status) that
+// make repeated calls within one invocation. Not useful for multi-agent flows.
 const _store = new Map();
 
 export function cached(key, asyncFn) {

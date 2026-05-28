@@ -114,11 +114,14 @@ export async function writeCrewRunBrief(
 // Cost attribution mode:
 // - "aggregate" (default): pass --aggregate-all so cross-repo session
 //   work is captured (mirrors maybeEmitCostReport in crew.mjs).
-// - "scoped": pass --source-project <repo-basename> so concurrent loops
-//   in sibling worktrees don't bleed into each other's cost windows.
-// Auto-detect: if this dir is a linked worktree OR git worktree list
-// returns more than one entry, use scoped; otherwise aggregate.
-async function detectCostMode(repoPath) {
+// - "scoped": pass --source-project <slug> so concurrent loops in sibling
+//   worktrees don't bleed into each other's cost windows.
+// Config override: if config.loop.costProject is set, always use scoped
+// with that value — avoids false-high alerts from aggregate mode when
+// running a single repo alongside other active repos.
+// Auto-detect fallback: linked worktree OR multiple worktrees → scoped.
+export async function detectCostMode(repoPath, config) {
+  if (config?.loop?.costProject) return "scoped";
   try {
     const { stdout: commonDir } = await execFile("git", ["rev-parse", "--git-common-dir"], {
       cwd: repoPath,
@@ -169,17 +172,18 @@ async function runCrew(args) {
   }
 }
 
-export async function tryWriteCostReport(repoPath, sliceOrInfo) {
+export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
   const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
   const { sliceId, featureId = null, phase = null } = info;
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
 
-  const mode = await detectCostMode(repoPath);
+  const mode = await detectCostMode(repoPath, config);
   const runTitle = buildArtifactTitle({ featureId, phase, sliceId });
   const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
   if (mode === "scoped") {
-    reportArgs.push("--source-project", repoPath.replace(/[^A-Za-z0-9]/g, "-"));
+    const project = config?.loop?.costProject ?? repoPath.replace(/[^A-Za-z0-9]/g, "-");
+    reportArgs.push("--source-project", project);
   } else {
     reportArgs.push("--aggregate-all");
   }

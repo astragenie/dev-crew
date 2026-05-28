@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 
 import {
   writeCrewHandoff,
-  writeCrewFinalSynthesis
+  writeCrewFinalSynthesis,
+  detectCostMode
 } from "../scripts/lib/slice-linker/crew-bridge.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
@@ -118,4 +119,16 @@ test("writeCrewFinalSynthesis body omits blank identification segments when phas
   const { body } = parseFrontmatter(content);
   assert.doesNotMatch(body, /\*\*Phase:\*\*\s*$/m);
   assert.doesNotMatch(body, /\*\*Feature:\*\*\s*$/m);
+});
+
+test("detectCostMode returns scoped when config.loop.costProject is set", async () => {
+  const config = { loop: { costProject: "my-repo" } };
+  const mode = await detectCostMode("/irrelevant/path", config);
+  assert.equal(mode, "scoped");
+});
+
+test("detectCostMode returns aggregate when config has no costProject", async () => {
+  // No git repo at tmp path → falls through to catch → aggregate
+  const mode = await detectCostMode(os.tmpdir(), {});
+  assert.equal(mode, "aggregate");
 });

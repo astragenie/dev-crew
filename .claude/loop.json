@@ -11,6 +11,8 @@
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
     "maxIterations": 25,
     "marathonMode": true,
+    "costStopThreshold": 15,
+    "costProject": "hero-crew-autonomous-loop",
     "dispatchLimits": {
       "maxSubagentsPerSlice": 4,
       "preferInlineFor": ["single-file-edit", "test-fix", "lint-fix", "format-fix"]

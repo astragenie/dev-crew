@@ -103,6 +103,35 @@ Pivot triggers — any of these during a slice means **stop, dispatch `/crew:fix
 
 When in doubt, prefer dispatch. A subagent run produces its own artifact trail; an inline patch hides in the loop's conversation and loses cost/grade attribution.
 
+## Review Dispatch Budget — HARD RULE
+
+Review agents that roam freely read 25–35 files per review and run the full test suite, causing 3–5 min of unnecessary latency per slice. The following constraints apply:
+
+**Before dispatching any reviewer:**
+1. Pre-extract from the slice spec: the `Files:` list and `Done When:` / AC criteria.
+2. Run `git diff HEAD~1 -- <changed files>` and capture the output inline.
+
+**Dispatch spec compliance + code quality reviewers in a single message (parallel):**
+```
+# Reviewer dispatch — send BOTH in one message as parallel Agent tool calls
+Agent(spec-compliance-reviewer, prompt = <spec content> + <diff> + scope rule)
+Agent(code-quality-reviewer,   prompt = <spec content> + <diff> + scope rule)
+```
+
+**Every reviewer prompt MUST include this scope block:**
+```
+**Files in scope (from slice spec):**
+- <exact list from spec Files: section>
+
+Do not read files outside this list unless they are direct imports of the above.
+Do not run the full test suite. Run only:
+  npm test -- --test-name-pattern "<basename of the changed test file>"
+```
+
+If spec review FAILS: dispatch a builder fix, then re-dispatch both reviewers in parallel. Do NOT run quality review on a failing spec.
+
+**Dispatch budget per slice:** builder (1) + parallel reviewers (1 message = 2 agents) = **3 total subagent dispatches**. Do not exceed 4. Inline trivial fixups rather than dispatching a 4th agent.
+
 ## Build Entry Points
 
 For one-glance visibility into all slices in the active plan: `cat .claude/state/crew/slice-progress.md`. The dashboard is rewritten by start + close ceremonies; trust it over manual inspection of slice files or commits.
@@ -157,12 +186,13 @@ Multiple features can be developed concurrently by running an autonomous loop in
 
 **Cost attribution in parallel mode:**
 
-`tryWriteCostReport` auto-detects the worktree topology at close time:
+`tryWriteCostReport` resolves the scoping mode in this order:
 
-- Linked worktree (git-common-dir ≠ git-dir) **or** multiple worktrees present → passes `--source-project <worktree-slug>` so cost windows do not bleed between sibling loops.
-- Single worktree → passes `--aggregate-all` to capture cross-repo session work.
+1. `loop.costProject` in `.claude/loop.json` → always uses `--source-project <value>`. Set this for single-worktree repos that share a machine with other active repos to prevent false cost-halt alerts.
+2. Linked worktree (git-common-dir ≠ git-dir) **or** multiple worktrees detected → `--source-project <worktree-slug>`.
+3. No config, single worktree → `--aggregate-all`.
 
-No manual flag needed — detection is automatic.
+For the loop stop-check, `loop.costStopThreshold` (default 1) sets how many `[HIGH]` cost-advise flags trigger a halt. Raise this if aggregate mode produces false positives (e.g., `"costStopThreshold": 15` for a repo running alongside several other active repos).
 
 **Fleet view:**
 

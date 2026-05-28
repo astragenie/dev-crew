@@ -409,7 +409,7 @@ export async function completeSlice(
   const [handoff, synthesis, costReport, agentReport] = await Promise.all([
     bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
     bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
-    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase })),
+    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }, resolved)),
     bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
   ]);
 
