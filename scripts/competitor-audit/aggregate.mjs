@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 
-import { parseFrontmatter } from "../lib/frontmatter.mjs";
+import { parseFrontmatter, serializeFrontmatter } from "../lib/frontmatter.mjs";
+import { addFeature, updateFeatureFrontmatter } from "../lib/backlog-writer.mjs";
 
 export const AXES = Object.freeze([
   "Workflow phases",
@@ -207,4 +209,141 @@ export function renderMatrixMarkdown(briefs, { baseline, axes }) {
     return `| ${axis} | ${baseCellStr} | ${competitorCells.join(" | ")} |`;
   });
   return [header, sep, ...rows].join("\n");
+}
+
+export function priorityFromComposite(composite) {
+  if (composite >= 9) return "P0";
+  if (composite >= 7) return "P1";
+  if (composite >= 6) return "P2";
+  return "P3";
+}
+
+function renderGapBody(featId, gap) {
+  return [
+    `# ${featId}: ${gap.title}`,
+    "",
+    "## Source",
+    "",
+    "Competitor gap audit (2026-05-28). Surfaced by:",
+    ...gap.source_competitors.map((c) => `- ${c}`),
+    "",
+    "## Description",
+    "",
+    gap.description || "(no description provided)",
+    "",
+    "## Scoring",
+    "",
+    `- Impact: ${gap.impact}`,
+    `- Effort: ${gap.effort}`,
+    `- Fit: ${gap.fit}`,
+    `- Composite: ${gap.composite} / 9`,
+    "",
+    "## References",
+    "",
+    ...(gap.sources.length > 0
+      ? gap.sources.map((s) => `- ${s}`)
+      : ["- (no source URLs captured)"]),
+    "",
+    "## Consider rejecting because",
+    "",
+    "_(Filled in during PM triage. See related inadvisable-mimic entries in the matching competitor briefs.)_",
+    ""
+  ].join("\n");
+}
+
+async function listBriefFiles(briefsDir) {
+  const entries = await fs.readdir(briefsDir);
+  return entries
+    .filter((entry) => entry.endsWith(".md") && entry !== "README.md")
+    .map((entry) => path.join(briefsDir, entry));
+}
+
+export async function runAudit(repoPath, { auditDir, baselineName, baselineMatrix }) {
+  const briefsDir = path.join(repoPath, auditDir, "briefs");
+  const briefFiles = await listBriefFiles(briefsDir);
+  const briefs = [];
+  for (const file of briefFiles) {
+    briefs.push(await parseBrief(file));
+  }
+  briefs.sort((a, b) => a.competitor.localeCompare(b.competitor));
+
+  const ranked = dedupeAndRank(briefs);
+  const matrix = renderMatrixMarkdown(briefs, {
+    baseline: { name: baselineName, matrix: baselineMatrix },
+    axes: AXES
+  });
+
+  const matrixPath = path.join(repoPath, auditDir, "matrix.md");
+  const rankedList =
+    ranked.length === 0
+      ? "_(no gap candidates found — every competitor was matched on every axis)_"
+      : ranked
+          .map((gap, idx) => {
+            const sources = gap.source_competitors.join(", ");
+            return `${idx + 1}. **${gap.title}** — composite ${gap.composite}/9 (impact ${gap.impact}, effort ${gap.effort}, fit ${gap.fit}). Surfaced by: ${sources}.`;
+          })
+          .join("\n");
+  const matrixBody = [
+    "# Master matrix — 2026-05-28 competitor gap audit",
+    "",
+    "Legend: ● = full coverage, ◐ = partial, ○ = absent.",
+    "",
+    matrix,
+    "",
+    "## Ranked candidate list",
+    "",
+    rankedList,
+    ""
+  ].join("\n");
+  await fs.writeFile(matrixPath, matrixBody);
+
+  const draftedFeats = [];
+  for (const gap of ranked) {
+    if (gap.composite < 6) continue;
+    const draft = await addFeature(repoPath, {
+      title: gap.title,
+      priority: priorityFromComposite(gap.composite),
+      category: "competitor-gap"
+    });
+    // addFeature can't take arbitrary frontmatter; layer the audit-specific
+    // fields on top via updateFeatureFrontmatter and re-render the body
+    // while preserving the frontmatter block addFeature wrote.
+    const body = renderGapBody(draft.id, gap);
+    const existing = await fs.readFile(draft.filePath, "utf8");
+    const { frontmatter } = parseFrontmatter(existing);
+    await fs.writeFile(draft.filePath, serializeFrontmatter(frontmatter, body));
+    await updateFeatureFrontmatter(draft.filePath, {
+      composite_score: gap.composite,
+      source_competitors: gap.source_competitors,
+      autonomous_safe: false
+    });
+    draftedFeats.push(draft);
+  }
+
+  return { briefs, ranked, matrixPath, draftedFeats };
+}
+
+const isMain = import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}`;
+if (isMain) {
+  const repoPath = process.cwd();
+  const baselineMatrix = Object.fromEntries(
+    AXES.map((axis) => [axis, { symbol: "●", note: "native" }])
+  );
+  const result = await runAudit(repoPath, {
+    auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+    baselineName: "loop+crew",
+    baselineMatrix
+  });
+  console.log(
+    JSON.stringify(
+      {
+        briefs: result.briefs.length,
+        ranked: result.ranked.length,
+        drafted: result.draftedFeats.length,
+        matrixPath: result.matrixPath
+      },
+      null,
+      2
+    )
+  );
 }

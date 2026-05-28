@@ -8,8 +8,11 @@ import {
   parseBrief,
   AXES,
   dedupeAndRank,
-  renderMatrixMarkdown
+  renderMatrixMarkdown,
+  priorityFromComposite,
+  runAudit
 } from "../scripts/competitor-audit/aggregate.mjs";
+import { findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 
 async function tmpBriefsDir(prefix) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -217,4 +220,49 @@ test("renderMatrixMarkdown produces an 8-column table (7 + loop/crew baseline)",
   });
   assert.match(md, /\| Axis\s+\| loop\+crew \| A \| B \|/);
   assert.match(md, /\| Workflow phases \| ● native \| ● yes \| ○ no \|/);
+});
+
+test("priorityFromComposite maps 9->P0, 8|7->P1, 6->P2, <6->P3", () => {
+  assert.equal(priorityFromComposite(9), "P0");
+  assert.equal(priorityFromComposite(8), "P1");
+  assert.equal(priorityFromComposite(7), "P1");
+  assert.equal(priorityFromComposite(6), "P2");
+  assert.equal(priorityFromComposite(5), "P3");
+  assert.equal(priorityFromComposite(0), "P3");
+});
+
+test("runAudit reads briefs dir, writes matrix.md, drafts FEATs for composite >= 6", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "audit-run-"));
+  const briefsDir = path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/briefs");
+  await fs.mkdir(briefsDir, { recursive: true });
+  await fs.writeFile(
+    path.join(briefsDir, "alpha.md"),
+    SAMPLE_BRIEF.replace("superpowers", "alpha")
+  );
+  await fs.writeFile(path.join(briefsDir, "beta.md"), SAMPLE_BRIEF.replace("superpowers", "beta"));
+
+  const result = await runAudit(repo, {
+    auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+    baselineName: "loop+crew",
+    baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }]))
+  });
+
+  // matrix.md written
+  const matrixContent = await fs.readFile(
+    path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/matrix.md"),
+    "utf8"
+  );
+  assert.match(matrixContent, /\| Axis/);
+  assert.match(matrixContent, /alpha/);
+  assert.match(matrixContent, /beta/);
+
+  // composite-8 gap drafted as FEAT
+  assert.equal(result.draftedFeats.length, 1);
+  const feat = await findFeatureById(repo, result.draftedFeats[0].id);
+  assert.ok(feat, "feat exists");
+  assert.equal(feat.frontmatter.category, "competitor-gap");
+  assert.equal(feat.frontmatter.priority, "P1");
+  assert.equal(feat.frontmatter.composite_score, 8);
+  assert.deepEqual(feat.frontmatter.source_competitors.sort(), ["alpha", "beta"]);
+  assert.equal(feat.frontmatter.autonomous_safe, false);
 });
