@@ -1,6 +1,6 @@
 ---
 id: FEAT-023
-status: in-progress
+status: done
 priority: P3
 category: tech-debt
 target_release: null
@@ -12,6 +12,7 @@ derived_from: null
 autonomous_safe: true
 triage_notes: no fields needed inference
 started_at: 2026-05-28
+completed_at: 2026-05-28
 ---
 # FEAT-023: TypeScript port — phase 3: stability hardening
 
