@@ -162,3 +162,13 @@ test("searchLearnings returns empty when no matches", async () => {
   const result = await searchLearnings(repo, "zzz-no-match");
   assert.equal(result.count, 0);
 });
+
+test("recentLearnings with n=0 returns empty result not full store", async () => {
+  const repo = await tmpRepo("learnings-n-zero-");
+  await logLearning(repo, { key: "k1", insight: "i1" });
+  await logLearning(repo, { key: "k2", insight: "i2" });
+  const result = await recentLearnings(repo, 0);
+  assert.equal(result.count, 0);
+  assert.deepEqual(result.items, []);
+  assert.equal(result.digest, null);
+});

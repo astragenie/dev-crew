@@ -73,9 +73,11 @@ export async function logLearning(repoPath, entry) {
 // Return the last N entries from the store plus a markdown digest.
 // Returns { count, items, digest } where digest is null when store is empty.
 export async function recentLearnings(repoPath, n = 3) {
+    if (n <= 0)
+        return { count: 0, items: [], digest: null };
     const filePath = learningsPath(repoPath);
     const all = await readAllEntries(filePath);
-    const items = all.slice(-Math.max(0, n));
+    const items = all.slice(-n);
     const digest = items.length > 0 ? renderLearningsDigest(items) : null;
     return { count: items.length, items, digest };
 }
