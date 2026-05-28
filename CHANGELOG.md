@@ -3,6 +3,35 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.5.3 — 2026-05-28 — TypeScript migration, slice-linker decomposition, dispatch discipline
+
+### Features
+
+**TypeScript Phase 1 migration (FEAT-021)**
+- All library source files ported to `.mts` under `src/scripts/lib/`.
+- Permissive Phase 1 settings: `noImplicitAny: false`, `strictNullChecks: false`, liberal `any` casts.
+- Compiled output stays in `scripts/` (committed); drift guard (`git diff --exit-code scripts/`) blocks uncompiled changes.
+- Tests compile to `tests/` via `tsconfig.test.json` (`outDir: "."`); `npm test` runs the compiled `.mjs` test files.
+
+**`requires_validation: true` in slice scaffold (SLICE-05)**
+- `sliceFromFeature` now writes `requires_validation: true` to the slice frontmatter template.
+- Operators can override to `false` for pure-refactor or doc-only slices to waive the validation gate upfront.
+
+**`slice-linker` decomposition into 4 sub-modules (FEAT-022)**
+- `slice-linker.mts` (741 lines) split into focused modules: `feature-lifecycle.mts`, `complete-slice.mts`, `start-slice.mts`, `dispatch.mts`.
+- Public API preserved via barrel re-export. All 401 tests unchanged.
+
+**Dispatch budget enforcement**
+- `buildDispatchInstruction` now accepts `dispatchLimits` (from `loop.json`) and injects a hard-limit budget block into every builder subagent prompt.
+- Builder sees: max subagents per slice, inline-preferred task types, bundle hint.
+- `startSlice` propagates `resolved.loop.dispatchLimits` automatically.
+
+### Fixes
+
+**Cost report `costProject` slug mismatch**
+- `loop.json` `costProject` corrected to `"C--work-mega-hero-crew-autonomous-loop"` — matches the slug the crew cost-slice CLI derives from the Windows repo path.
+- Previously caused `sessions_scanned: 0` in all cost reports and false F grades.
+
 ## v0.5.2 — 2026-05-28 — quality gates: AC linter, ladder, marathon, test-adequacy
 
 ### Features
