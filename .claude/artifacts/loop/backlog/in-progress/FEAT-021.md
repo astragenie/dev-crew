@@ -1,16 +1,17 @@
 ---
 id: FEAT-021
-status: triaged
+status: in-progress
 priority: P2
 category: tech-debt
 target_release: null
 created: 2026-05-28
 updated: 2026-05-28
 depends_on: []
-slices: []
+slices: [SLICE-05]
 derived_from: null
 autonomous_safe: true
 triage_notes: no fields needed inference
+started_at: 2026-05-28
 ---
 # FEAT-021: TypeScript port — phase 1: mechanical rename
 

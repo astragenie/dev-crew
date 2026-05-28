@@ -1,191 +1,181 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { gradesRoot, pathExists } from "./paths.mjs";
 import { cached } from "./cache.mjs";
-
 export { gradesRoot };
-
 // Matches the legacy bare format:  SLICE-NN-grade.md
 const GRADE_FILE_RE_LEGACY = /^SLICE-(\d+)-grade\.md$/i;
-
 // Matches the new timestamped format: YYYYMMDDTHHMMSSZ-*-grade.md
 const GRADE_FILE_RE_NEW = /^\d{8}T\d{6}Z-.*-grade\.md$/i;
-
 // Combined check lives in isGradeFile() below.
-
 export const SCORE_DIMENSIONS = [
-  "architecture_quality",
-  "reliability",
-  "observability",
-  "production_readiness",
-  "security",
-  "test_confidence",
-  "product_completeness"
+    "architecture_quality",
+    "reliability",
+    "observability",
+    "production_readiness",
+    "security",
+    "test_confidence",
+    "product_completeness"
 ];
-
 // Parse the "## Scores" section out of the markdown body. Returns
 // { dimension: value } object. Used because the simple frontmatter parser
 // doesn't handle nested mappings.
 export function parseScoresFromBody(body) {
-  const scores = {};
-  const lines = body.split("\n");
-  let inScores = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (/^##\s+Scores\b/i.test(trimmed)) {
-      inScores = true;
-      continue;
+    const scores = {};
+    const lines = body.split("\n");
+    let inScores = false;
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^##\s+Scores\b/i.test(trimmed)) {
+            inScores = true;
+            continue;
+        }
+        if (inScores && /^##\s+/.test(trimmed))
+            break;
+        if (!inScores)
+            continue;
+        const m = trimmed.match(/^-\s+([a-z_]+)\s*:\s*([0-9]*\.?[0-9]+)/i);
+        if (m) {
+            scores[m[1]] = Number(m[2]);
+        }
     }
-    if (inScores && /^##\s+/.test(trimmed)) break;
-    if (!inScores) continue;
-    const m = trimmed.match(/^-\s+([a-z_]+)\s*:\s*([0-9]*\.?[0-9]+)/i);
-    if (m) {
-      scores[m[1]] = Number(m[2]);
-    }
-  }
-  return scores;
+    return scores;
 }
-
 export function averageScore(scores) {
-  if (!scores) return null;
-  const values = SCORE_DIMENSIONS.map((d) => scores[d]).filter((v) => typeof v === "number");
-  if (values.length === 0) return null;
-  return values.reduce((a, b) => a + b, 0) / values.length;
+    if (!scores)
+        return null;
+    const values = SCORE_DIMENSIONS.map((d) => scores[d]).filter((v) => typeof v === "number");
+    if (values.length === 0)
+        return null;
+    return values.reduce((a, b) => a + b, 0) / values.length;
 }
-
 export function validateScores(scores) {
-  const errors = [];
-  for (const dim of SCORE_DIMENSIONS) {
-    const v = scores[dim];
-    if (v === undefined || v === null) {
-      errors.push(`missing dimension: ${dim}`);
-      continue;
+    const errors = [];
+    for (const dim of SCORE_DIMENSIONS) {
+        const v = scores[dim];
+        if (v === undefined || v === null) {
+            errors.push(`missing dimension: ${dim}`);
+            continue;
+        }
+        if (typeof v !== "number" || Number.isNaN(v)) {
+            errors.push(`${dim} must be a number, got ${typeof v}`);
+            continue;
+        }
+        if (v < 0 || v > 1) {
+            errors.push(`${dim} = ${v} out of range [0, 1]`);
+        }
     }
-    if (typeof v !== "number" || Number.isNaN(v)) {
-      errors.push(`${dim} must be a number, got ${typeof v}`);
-      continue;
-    }
-    if (v < 0 || v > 1) {
-      errors.push(`${dim} = ${v} out of range [0, 1]`);
-    }
-  }
-  return errors;
+    return errors;
 }
-
 // Parse the "## Decisions" section out of the body. Returns array of
 // { id, title, rationale, consequences } extracted from "### DEC-XXX: title"
 // blocks. id is "TBD" for blocks not yet extracted.
 export function parseDecisionsFromBody(body) {
-  const decisions = [];
-  const lines = body.split("\n");
-  let inDecisions = false;
-  let current = null;
-  let buffer = [];
-
-  function flush() {
-    if (!current) return;
-    const text = buffer.join("\n");
-    const rationaleMatch = text.match(/\*\*Rationale\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i);
-    current.rationale = rationaleMatch ? rationaleMatch[1].trim() : "";
-    const consequencesMatch = text.match(
-      /\*\*Consequences\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i
-    );
-    current.consequences = consequencesMatch ? consequencesMatch[1].trim() : "";
-    decisions.push(current);
-    current = null;
-    buffer = [];
-  }
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (/^##\s+Decisions\b/i.test(trimmed)) {
-      inDecisions = true;
-      continue;
+    const decisions = [];
+    const lines = body.split("\n");
+    let inDecisions = false;
+    let current = null;
+    let buffer = [];
+    function flush() {
+        if (!current)
+            return;
+        const text = buffer.join("\n");
+        const rationaleMatch = text.match(/\*\*Rationale\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i);
+        current.rationale = rationaleMatch ? rationaleMatch[1].trim() : "";
+        const consequencesMatch = text.match(/\*\*Consequences\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i);
+        current.consequences = consequencesMatch ? consequencesMatch[1].trim() : "";
+        decisions.push(current);
+        current = null;
+        buffer = [];
     }
-    if (inDecisions && /^##\s+/.test(trimmed)) {
-      flush();
-      break;
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^##\s+Decisions\b/i.test(trimmed)) {
+            inDecisions = true;
+            continue;
+        }
+        if (inDecisions && /^##\s+/.test(trimmed)) {
+            flush();
+            break;
+        }
+        if (!inDecisions)
+            continue;
+        const heading = trimmed.match(/^###\s+(DEC-(?:TBD|\d+))\s*:\s*(.+)$/i);
+        if (heading) {
+            flush();
+            current = { id: heading[1].toUpperCase(), title: heading[2].trim() };
+            continue;
+        }
+        if (current)
+            buffer.push(line);
     }
-    if (!inDecisions) continue;
-    const heading = trimmed.match(/^###\s+(DEC-(?:TBD|\d+))\s*:\s*(.+)$/i);
-    if (heading) {
-      flush();
-      current = { id: heading[1].toUpperCase(), title: heading[2].trim() };
-      continue;
-    }
-    if (current) buffer.push(line);
-  }
-  flush();
-  return decisions;
+    flush();
+    return decisions;
 }
-
 export async function readGrade(filePath) {
-  const content = await fs.readFile(filePath, "utf8");
-  const { frontmatter, body } = parseFrontmatter(content);
-  return {
-    filePath,
-    frontmatter,
-    body,
-    scores: parseScoresFromBody(body),
-    decisions: parseDecisionsFromBody(body)
-  };
+    const content = await fs.readFile(filePath, "utf8");
+    const { frontmatter, body } = parseFrontmatter(content);
+    return {
+        filePath,
+        frontmatter,
+        body,
+        scores: parseScoresFromBody(body),
+        decisions: parseDecisionsFromBody(body)
+    };
 }
-
 function isGradeFile(filename) {
-  return GRADE_FILE_RE_LEGACY.test(filename) || GRADE_FILE_RE_NEW.test(filename);
+    return GRADE_FILE_RE_LEGACY.test(filename) || GRADE_FILE_RE_NEW.test(filename);
 }
-
 export async function listGrades(repoPath, options = {}) {
-  const cacheKey = `listGrades:${repoPath}`;
-  return cached(cacheKey, async () => {
-    const root = gradesRoot(repoPath, options.config);
-    if (!(await pathExists(root))) return [];
-    const files = await fs.readdir(root);
-    const grades = [];
-    for (const file of files) {
-      if (!file.endsWith(".md") || !isGradeFile(file)) continue;
-      const g = await readGrade(path.join(root, file));
-      grades.push(g);
-    }
-    return grades.sort((a, b) =>
-      (a.frontmatter.slice || "").localeCompare(b.frontmatter.slice || "")
-    );
-  });
+    const cacheKey = `listGrades:${repoPath}`;
+    return cached(cacheKey, async () => {
+        const root = gradesRoot(repoPath, options.config);
+        if (!(await pathExists(root)))
+            return [];
+        const files = await fs.readdir(root);
+        const grades = [];
+        for (const file of files) {
+            if (!file.endsWith(".md") || !isGradeFile(file))
+                continue;
+            const g = await readGrade(path.join(root, file));
+            grades.push(g);
+        }
+        return grades.sort((a, b) => (a.frontmatter.slice || "").localeCompare(b.frontmatter.slice || ""));
+    });
 }
-
 // Scan the grades directory for any grade file that belongs to the given
 // sliceId. Recognises both the legacy bare format (SLICE-NN-grade.md) and the
 // new timestamped format (YYYYMMDDTHHMMSSZ-...-sliceNN-grade.md). Returns the
 // full path of the first match, or null.
 export async function findGradeFileForSlice(repoPath, sliceId, config = null) {
-  const root = gradesRoot(repoPath, config);
-  if (!(await pathExists(root))) return null;
-  // Legacy path — fast check before full scan.
-  const legacyPath = path.join(root, `${sliceId}-grade.md`);
-  if (await pathExists(legacyPath)) return legacyPath;
-  // Scan for new timestamped format: any file ending in <sliceNN>-grade.md
-  const sliceCompact = sliceId.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const suffix = `${sliceCompact}-grade.md`;
-  const files = await fs.readdir(root);
-  for (const file of files) {
-    if (GRADE_FILE_RE_NEW.test(file) && file.endsWith(suffix)) {
-      return path.join(root, file);
+    const root = gradesRoot(repoPath, config);
+    if (!(await pathExists(root)))
+        return null;
+    // Legacy path — fast check before full scan.
+    const legacyPath = path.join(root, `${sliceId}-grade.md`);
+    if (await pathExists(legacyPath))
+        return legacyPath;
+    // Scan for new timestamped format: any file ending in <sliceNN>-grade.md
+    const sliceCompact = sliceId.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const suffix = `${sliceCompact}-grade.md`;
+    const files = await fs.readdir(root);
+    for (const file of files) {
+        if (GRADE_FILE_RE_NEW.test(file) && file.endsWith(suffix)) {
+            return path.join(root, file);
+        }
     }
-  }
-  return null;
+    return null;
 }
-
 export async function findGradeForSlice(repoPath, sliceId, config = null) {
-  const filePath = await findGradeFileForSlice(repoPath, sliceId, config);
-  if (!filePath) return null;
-  return readGrade(filePath);
+    const filePath = await findGradeFileForSlice(repoPath, sliceId, config);
+    if (!filePath)
+        return null;
+    return readGrade(filePath);
 }
-
 // Returns a deterministic (legacy-format) path for the given slice. Used as a
 // fallback for callers that need a predictable write target when no existing
 // file is found. Prefer findGradeFileForSlice when reading.
 export function gradeFilePath(repoPath, sliceId, config = null) {
-  return path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`);
+    return path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`);
 }

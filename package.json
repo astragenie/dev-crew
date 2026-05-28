@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
+    "build": "tsc --project tsconfig.json",
+    "build:tests": "tsc --project tsconfig.test.json",
+    "typecheck": "tsc --project tsconfig.json --noEmit && tsc --project tsconfig.test.json --noEmit",
+    "test": "npm run build && npm run build:tests && node --test tests/*.test.mjs",
     "validate:manifests": "node ./scripts/validate-manifests.mjs",
-    "lint": "eslint scripts tests eslint.config.mjs",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"scripts/**/*.mjs\" \"tests/**/*.mjs\"",
-    "format:check": "prettier --check \"scripts/**/*.mjs\" \"tests/**/*.mjs\""
+    "lint": "eslint src eslint.config.mjs",
+    "format": "prettier --write \"src/**/*.mts\"",
+    "format:check": "prettier --check \"src/**/*.mts\""
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -17,6 +19,7 @@
     "eslint": "^9.16.0",
     "globals": "^15.13.0",
     "prettier": "^3.4.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0"
   }
 }

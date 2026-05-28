@@ -4,16 +4,14 @@
  * Provides dimension definitions, validation, composite priority derivation,
  * autonomous-safe classification, and frontmatter parsing helpers.
  */
-
 /** The five PM scoring dimensions, in canonical order. */
 export const PM_DIMENSIONS = [
-  "customer_impact",
-  "effort_estimate",
-  "strategic_alignment",
-  "technical_risk",
-  "dependency_depth"
+    "customer_impact",
+    "effort_estimate",
+    "strategic_alignment",
+    "technical_risk",
+    "dependency_depth"
 ];
-
 /**
  * Validate a scores object against PM_DIMENSIONS.
  *
@@ -21,24 +19,23 @@ export const PM_DIMENSIONS = [
  * @returns {string[]} Array of error strings; empty when valid.
  */
 export function validatePmScores(scores) {
-  const errors = [];
-  for (const dim of PM_DIMENSIONS) {
-    const v = scores[dim];
-    if (v === undefined || v === null) {
-      errors.push(`missing dimension: ${dim}`);
-      continue;
+    const errors = [];
+    for (const dim of PM_DIMENSIONS) {
+        const v = scores[dim];
+        if (v === undefined || v === null) {
+            errors.push(`missing dimension: ${dim}`);
+            continue;
+        }
+        if (typeof v !== "number" || Number.isNaN(v)) {
+            errors.push(`${dim} must be a number, got ${typeof v}`);
+            continue;
+        }
+        if (v < 0 || v > 1) {
+            errors.push(`${dim} = ${v} out of range [0, 1]`);
+        }
     }
-    if (typeof v !== "number" || Number.isNaN(v)) {
-      errors.push(`${dim} must be a number, got ${typeof v}`);
-      continue;
-    }
-    if (v < 0 || v > 1) {
-      errors.push(`${dim} = ${v} out of range [0, 1]`);
-    }
-  }
-  return errors;
+    return errors;
 }
-
 /**
  * Derive a composite priority band from PM scores.
  *
@@ -53,26 +50,21 @@ export function validatePmScores(scores) {
  * @returns {"P0"|"P1"|"P2"|"P3"}
  */
 export function computeCompositePriority(scores, category = "feature") {
-  const impact = scores.customer_impact;
-  const effort = scores.effort_estimate;
-  const alignment = scores.strategic_alignment;
-  const risk = scores.technical_risk;
-
-  if (impact >= 0.8 && (category === "bugfix" || risk >= 0.8)) {
-    return "P0";
-  }
-
-  if ((impact >= 0.7 && alignment >= 0.6) || (alignment >= 0.8 && effort <= 0.4)) {
-    return "P1";
-  }
-
-  if (effort >= 0.7 && impact <= 0.3) {
-    return "P3";
-  }
-
-  return "P2";
+    const impact = scores.customer_impact;
+    const effort = scores.effort_estimate;
+    const alignment = scores.strategic_alignment;
+    const risk = scores.technical_risk;
+    if (impact >= 0.8 && (category === "bugfix" || risk >= 0.8)) {
+        return "P0";
+    }
+    if ((impact >= 0.7 && alignment >= 0.6) || (alignment >= 0.8 && effort <= 0.4)) {
+        return "P1";
+    }
+    if (effort >= 0.7 && impact <= 0.3) {
+        return "P3";
+    }
+    return "P2";
 }
-
 /**
  * Determine whether a backlog item is safe for autonomous execution.
  *
@@ -87,16 +79,17 @@ export function computeCompositePriority(scores, category = "feature") {
  * @returns {boolean}
  */
 export function computeAutonomousSafe(scores, context = {}) {
-  const { hasSpec = false, hasAcceptanceCriteria = false } = context;
-
-  if (scores.technical_risk > 0.6) return false;
-  if (scores.effort_estimate > 0.6) return false;
-  if (scores.dependency_depth > 0.6) return false;
-  if (!hasSpec && !hasAcceptanceCriteria) return false;
-
-  return true;
+    const { hasSpec = false, hasAcceptanceCriteria = false } = context;
+    if (scores.technical_risk > 0.6)
+        return false;
+    if (scores.effort_estimate > 0.6)
+        return false;
+    if (scores.dependency_depth > 0.6)
+        return false;
+    if (!hasSpec && !hasAcceptanceCriteria)
+        return false;
+    return true;
 }
-
 /**
  * Compute the arithmetic mean of all PM dimensions that are present
  * and numeric in `scores`.
@@ -105,15 +98,13 @@ export function computeAutonomousSafe(scores, context = {}) {
  * @returns {number|null} Mean value, or null when no valid dimension exists.
  */
 export function averagePmScore(scores) {
-  const values = PM_DIMENSIONS.map((d) => scores[d]).filter(
-    (v) => typeof v === "number" && !Number.isNaN(v)
-  );
-  if (values.length === 0) return null;
-  const raw = values.reduce((a, b) => a + b, 0) / values.length;
-  // Round to 10 decimal places to avoid IEEE 754 noise (e.g. 0.4000000000000001).
-  return Math.round(raw * 1e10) / 1e10;
+    const values = PM_DIMENSIONS.map((d) => scores[d]).filter((v) => typeof v === "number" && !Number.isNaN(v));
+    if (values.length === 0)
+        return null;
+    const raw = values.reduce((a, b) => a + b, 0) / values.length;
+    // Round to 10 decimal places to avoid IEEE 754 noise (e.g. 0.4000000000000001).
+    return Math.round(raw * 1e10) / 1e10;
 }
-
 /**
  * Extract PM scores from a flat frontmatter object.
  *
@@ -124,12 +115,12 @@ export function averagePmScore(scores) {
  * @returns {Record<string, number>}
  */
 export function parsePmScoresFromFrontmatter(frontmatter) {
-  const scores = {};
-  for (const dim of PM_DIMENSIONS) {
-    const key = `pm_${dim}`;
-    if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {
-      scores[dim] = frontmatter[key];
+    const scores = {};
+    for (const dim of PM_DIMENSIONS) {
+        const key = `pm_${dim}`;
+        if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {
+            scores[dim] = frontmatter[key];
+        }
     }
-  }
-  return scores;
+    return scores;
 }

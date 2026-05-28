@@ -1,24 +1,30 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "src",
+    "outDir": ".",
+    "strict": true,
+    "noEmit": false,
+    "declaration": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "isolatedModules": false,
-    "verbatimModuleSyntax": false,
-    "types": ["node"]
+    "verbatimModuleSyntax": true,
+    "types": [
+      "node"
+    ],
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false
   },
-  "include": ["scripts/**/*.mjs"],
-  "exclude": ["node_modules", "tests", ".claude", "docs"]
+  "include": [
+    "src/scripts/**/*.mts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".claude",
+    "docs",
+    "dist",
+    "src/tests"
+  ]
 }

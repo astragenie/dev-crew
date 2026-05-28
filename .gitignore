@@ -1,4 +1,5 @@
 node_modules/
+dist/
 .claude/logs/
 .claude/state/
 .claude.backup.*
