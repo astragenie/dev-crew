@@ -255,7 +255,7 @@ function renderGapBody(featId, gap) {
 async function listBriefFiles(briefsDir) {
   const entries = await fs.readdir(briefsDir);
   return entries
-    .filter((entry) => entry.endsWith(".md") && entry !== "README.md")
+    .filter((entry) => entry.endsWith(".md") && entry.toLowerCase() !== "readme.md")
     .map((entry) => path.join(briefsDir, entry));
 }
 
@@ -330,21 +330,33 @@ if (isMain) {
   const baselineMatrix = Object.fromEntries(
     AXES.map((axis) => [axis, { symbol: "●", note: "native" }])
   );
-  const result = await runAudit(repoPath, {
-    auditDir: "docs/research/2026-05-28-competitor-gap-audit",
-    baselineName: "loop+crew",
-    baselineMatrix
-  });
-  console.log(
-    JSON.stringify(
-      {
-        briefs: result.briefs.length,
-        ranked: result.ranked.length,
-        drafted: result.draftedFeats.length,
-        matrixPath: result.matrixPath
-      },
-      null,
-      2
-    )
-  );
+  try {
+    const result = await runAudit(repoPath, {
+      auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+      baselineName: "loop+crew",
+      baselineMatrix
+    });
+    console.log(
+      JSON.stringify(
+        {
+          briefs: result.briefs.length,
+          ranked: result.ranked.length,
+          drafted: result.draftedFeats.length,
+          matrixPath: result.matrixPath
+        },
+        null,
+        2
+      )
+    );
+  } catch (err) {
+    if (err && err.code === "ENOENT") {
+      console.error(
+        "Briefs directory not found. Run Task 5 (dispatch researchers) " +
+          "to populate docs/research/2026-05-28-competitor-gap-audit/briefs/ first."
+      );
+      process.exitCode = 1;
+    } else {
+      throw err;
+    }
+  }
 }

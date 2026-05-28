@@ -235,10 +235,23 @@ test("runAudit reads briefs dir, writes matrix.md, drafts FEATs for composite >=
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "audit-run-"));
   const briefsDir = path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/briefs");
   await fs.mkdir(briefsDir, { recursive: true });
-  await fs.writeFile(
-    path.join(briefsDir, "alpha.md"),
-    SAMPLE_BRIEF.replace("superpowers", "alpha")
+  // alpha.md gets a second composite-5 gap to exercise the `composite < 6` skip
+  // branch in runAudit. Keep this modification inline — don't pollute SAMPLE_BRIEF
+  // because other tests rely on its single-gap shape.
+  const alphaBrief = SAMPLE_BRIEF.replace("superpowers", "alpha").replace(
+    "## Inadvisable mimics",
+    `### GAP-2: Low-value experimental knob
+
+- Description: a knob with marginal value.
+- Source: skills/example-low-value
+- Impact (0-3): 2 — limited reach
+- Effort (0-3): 2 — moderate plumbing
+- Fit (0-3): 1 — weak alignment
+- Composite: 2 + (3 - 2) + 1 = 4
+
+## Inadvisable mimics`
   );
+  await fs.writeFile(path.join(briefsDir, "alpha.md"), alphaBrief);
   await fs.writeFile(path.join(briefsDir, "beta.md"), SAMPLE_BRIEF.replace("superpowers", "beta"));
 
   const result = await runAudit(repo, {
@@ -256,7 +269,7 @@ test("runAudit reads briefs dir, writes matrix.md, drafts FEATs for composite >=
   assert.match(matrixContent, /alpha/);
   assert.match(matrixContent, /beta/);
 
-  // composite-8 gap drafted as FEAT
+  // Only the composite-8 gap is drafted; composite-4 GAP-2 must be skipped.
   assert.equal(result.draftedFeats.length, 1);
   const feat = await findFeatureById(repo, result.draftedFeats[0].id);
   assert.ok(feat, "feat exists");
