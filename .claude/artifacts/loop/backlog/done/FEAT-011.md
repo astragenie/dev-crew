@@ -1,6 +1,6 @@
 ---
 id: FEAT-011
-status: in-progress
+status: done
 priority: P1
 category: competitor-gap
 target_release: null
@@ -20,6 +20,7 @@ pm_demand_signal: 0.65
 pm_risk_level: 0.3
 pm_reasoning: lessons-feed.mjs already feeds forward grades; JSONL learnings store would compound loop effectiveness but /learn command is new user surface needing SPEC
 started_at: 2026-05-28
+completed_at: 2026-05-28
 ---
 # FEAT-011: Cross-session learnings with automatic recall
 
