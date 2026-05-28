@@ -3,6 +3,23 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.5.4 — 2026-05-28 — TS phase 3: integration tests, ESLint boundaries, CI typecheck
+
+### Features
+
+**Integration test coverage (FEAT-023)**
+- New `src/tests/integration.test.mts`: 3 full-cycle `startSlice` → `completeSlice` scenarios in tmp repos (happy path, validation-blocked, `--skip-validation-check` bypass).
+- New `src/tests/gates.test.mts`: blocking + passing cases for `deriveValidationGate`, `deriveTestAdequacyGate`, `computeFeatureResult`.
+- Test count: 403 → 427 (+24 net new integration and gate tests).
+
+**ESLint sub-module boundary rule**
+- `eslint.config.mjs` now enforces `import/no-restricted-paths`: code outside `slice-linker.mts` barrel cannot import `slice-linker/*` sub-modules directly.
+- Fixed pre-existing violation in `grade-writer.mts` (was importing `renderIdentification` directly; now goes through barrel).
+
+**CI hardening**
+- `.github/workflows/test.yml` renamed to `ci.yml`; `pull_request` trigger added.
+- `npm run typecheck` step added — runs on every PR, not only on push to main.
+
 ## v0.5.3 — 2026-05-28 — TypeScript migration, slice-linker decomposition, dispatch discipline
 
 ### Features
