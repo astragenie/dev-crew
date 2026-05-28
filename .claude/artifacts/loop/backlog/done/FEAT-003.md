@@ -1,15 +1,16 @@
 ---
 id: FEAT-003
-status: triaged
+status: done
 priority: P1
 category: bugfix
 target_release: null
 created: 2026-05-27
-updated: 2026-05-27
+updated: 2026-05-28
 depends_on: []
-slices: []
+slices: [SLICE-04]
 derived_from: null
 triage_notes: no fields needed inference
+completion_notes: Completed via SLICE-04 (commit 5c02b2d). grade-writer, crew-bridge handoff, and crew-bridge final-synthesis now emit phase→feature→slice identification headers. renderIdentification exported from agent-report-writer. Null fields omitted cleanly. 366/366 tests pass.
 ---
 ## Description
 

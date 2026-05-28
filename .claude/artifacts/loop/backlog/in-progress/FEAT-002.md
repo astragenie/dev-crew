@@ -1,15 +1,16 @@
 ---
 id: FEAT-002
-status: triaged
+status: in-progress
 priority: P1
 category: bugfix
 target_release: null
 created: 2026-05-27
-updated: 2026-05-27
+updated: 2026-05-28
 depends_on: []
-slices: []
+slices: [SLICE-03]
 derived_from: null
 triage_notes: no fields needed inference
+progress_notes: Part 2 (agent-report timestamp) completed via SLICE-03 (commit 850b69f). Part 1 (cost-report double prefix) is in hero-crew repo — out of scope for this repo.
 ---
 ## Description
 
