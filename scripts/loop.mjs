@@ -42,7 +42,12 @@ const FLAG_SPEC = {
     "--artifact": { key: "artifact" },
     "--kind": { key: "kind" },
     "--files": { key: "files" },
-    "--features-json": { key: "featuresJson" }
+    "--features-json": { key: "featuresJson" },
+    "--key": { key: "key" },
+    "--insight": { key: "insight" },
+    "--confidence": { key: "confidence" },
+    "--slice": { key: "slice" },
+    "--limit": { key: "limit" }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -71,7 +76,12 @@ function parseArgs(argv) {
         files: null,
         featuresJson: null,
         keepFeatureOpen: false,
-        skipValidationCheck: null
+        skipValidationCheck: null,
+        key: null,
+        insight: null,
+        confidence: null,
+        slice: null,
+        limit: null
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -186,7 +196,8 @@ const COMMANDS = {
     "stop-check": async ({ repoPath }) => {
         const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
         return checkStopConditions(repoPath);
-    }
+    },
+    learnings: ({ repoPath, flags, positionals }) => runLearningsSubcommand(repoPath, positionals, flags)
 };
 async function main() {
     const { command, flags, positionals } = parseArgs(process.argv.slice(2));
@@ -512,6 +523,32 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
         return { count: matches.length, decisions: matches };
     }
     throw new Error(`Unknown decisions subcommand: ${sub}`);
+}
+async function runLearningsSubcommand(repoPath, positionals, flags) {
+    const [sub] = positionals;
+    if (!sub)
+        throw new Error("learnings requires a subcommand: log | recent");
+    const { logLearning, recentLearnings } = await import("./lib/learnings.mjs");
+    if (sub === "log") {
+        if (!flags.key)
+            throw new Error("learnings log requires --key <key>");
+        if (!flags.insight)
+            throw new Error("learnings log requires --insight <insight>");
+        const entry = { key: flags.key, insight: flags.insight, source: "agent" };
+        if (flags.confidence !== null && flags.confidence !== undefined) {
+            const conf = Number(flags.confidence);
+            if (!Number.isNaN(conf))
+                entry.confidence = conf;
+        }
+        if (flags.slice)
+            entry.sliceId = flags.slice;
+        return logLearning(repoPath, entry);
+    }
+    if (sub === "recent") {
+        const limit = flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : 3;
+        return recentLearnings(repoPath, limit);
+    }
+    throw new Error(`Unknown learnings subcommand: ${sub}`);
 }
 main().catch((error) => {
     console.error(error.message);

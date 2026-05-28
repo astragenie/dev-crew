@@ -58,6 +58,14 @@ commands run with exit 0, endpoints implemented, migrations added.
 Unacceptable: "implemented conceptually", "should work", "TODO added",
 "mock exists only".
 
+## Operational learnings recall
+
+<HARD-GATE>
+When `startSlice` returns a non-null `learningsDigest`, read it before dispatching the builder.
+These are session-to-session operational observations that improve implementation accuracy.
+Skipping this step risks repeating known mistakes from prior sessions.
+</HARD-GATE>
+
 ## Artifact discipline
 
 Every meaningful action emits a Crew artifact:

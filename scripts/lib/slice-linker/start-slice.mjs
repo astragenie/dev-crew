@@ -5,6 +5,7 @@ import { writeCrewRunBrief } from "./crew-bridge.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
+import { recentLearnings } from "../learnings.mjs";
 async function bestEffort(fn) {
     try {
         return await fn();
@@ -56,27 +57,8 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     const featureId = ctx.frontmatter.feature || null;
     const phase = ctx.frontmatter.phase || null;
     await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
-    const [runBrief, gradeTrend, featureExcerpt, marathonMilestone] = await Promise.all([
-        bestEffort(() => writeCrewRunBrief(repoPath, {
-            sliceId,
-            title,
-            goal: resolvedGoal,
-            featureId,
-            phase,
-            mode: "autonomous",
-            pace: "unattended",
-            scope: ctx.scope,
-            outOfScope: ctx.outOfScope
-        })),
-        readGradeTrend(repoPath),
-        featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null),
-        checkMarathonMilestone(repoPath, resolved)
-    ]);
+    const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest } = await gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved });
     const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
-    const gradeTrendCaution = gradeTrend.consecutiveBelow > 0
-        ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
-            "Review recent grades before continuing if this persists."
-        : null;
     return buildStartSliceReturn({
         sliceId,
         title,
@@ -92,8 +74,36 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         sliceContent: ctx.content,
         featureExcerpt,
         marathonMilestone,
-        dispatchLimits: resolved.loop?.dispatchLimits ?? null
+        dispatchLimits: resolved.loop?.dispatchLimits ?? null,
+        learningsDigest
     });
+}
+// Gathers all parallel async resources for a slice start in one Promise.all.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved }) {
+    const [runBrief, gradeTrend, featureExcerpt, marathonMilestone, learningsResult] = await Promise.all([
+        bestEffort(() => writeCrewRunBrief(repoPath, {
+            sliceId,
+            title,
+            goal: resolvedGoal,
+            featureId,
+            phase,
+            mode: "autonomous",
+            pace: "unattended",
+            scope: ctx.scope,
+            outOfScope: ctx.outOfScope
+        })),
+        readGradeTrend(repoPath),
+        featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null),
+        checkMarathonMilestone(repoPath, resolved),
+        bestEffort(() => recentLearnings(repoPath, 3))
+    ]);
+    const gradeTrendCaution = gradeTrend.consecutiveBelow > 0
+        ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
+            "Review recent grades before continuing if this persists."
+        : null;
+    const learningsDigest = learningsResult?.digest ?? null;
+    return { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest };
 }
 // Locate the active plan + derive the human-readable title for this slice
 // from the plan match, falling back to bare sliceId. Extracted from
@@ -106,7 +116,7 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
 }
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null }) {
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, learningsDigest = null }) {
     const dispatchInstruction = dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -134,7 +144,8 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
         dispatchInstruction,
         nextAction,
         gradeTrendCaution,
-        marathonMilestone
+        marathonMilestone,
+        learningsDigest
     };
 }
 // Refresh the slice-progress dashboard with the new currentSliceId.
