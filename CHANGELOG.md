@@ -3,6 +3,29 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.5.1 — 2026-05-28 — perf: pre-load slice context into builder and reviewer prompts
+
+### Performance
+
+Lead agent now embeds context inline before dispatching subagents, eliminating
+cold-start re-reads that caused 10–15 wasted tool uses per slice.
+
+**Builder dispatch (`buildDispatchInstruction`)**
+- Full slice `.md` content appended as `## Slice context (pre-read)` block.
+- First 400 chars of linked feature's `## Description` appended as feature excerpt.
+- Builder skips ~3 file re-reads and starts framing immediately.
+
+**Reviewer prompts (`buildReviewLadder`)**
+- New `extractFilesSection()` helper extracts `**Files:**` / `## Files` block
+  from slice content and injects it before "What to do" in every reviewer prompt.
+- New `runGitDiffStat()` helper captures `git diff HEAD~1 --stat` and injects it
+  alongside the files list.
+- Each reviewer skips ~4–6 tool uses (file discovery + independent diff run).
+- When no Files section is present, fallback hint guides the reviewer to the spec.
+
+These changes directly implement the Review Dispatch Budget HARD RULE already
+documented in `.claude/loop/rules.md`.
+
 ## v0.5.0 — 2026-05-28 — enforce validation gate at slice close
 
 ### Behavior change (potentially breaking for downstream repos)
