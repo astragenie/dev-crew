@@ -125,6 +125,10 @@ export async function parseBrief(filePath) {
   };
 }
 
+// Researchers must use ASCII-only gap titles. Non-ASCII titles
+// normalize to an empty key and are silently skipped — see `if (!key) continue`
+// in dedupeAndRank. Surfacing the warning would require I/O which is out
+// of scope for this pure function.
 function normalizeTitle(title) {
   return String(title || "")
     .toLowerCase()
@@ -133,16 +137,21 @@ function normalizeTitle(title) {
 }
 
 function createMergedGap(gap) {
+  const impact = gap.impact ?? 0;
+  const effort = gap.effort ?? 3;
+  const fit = gap.fit ?? 0;
   return {
     key: normalizeTitle(gap.title),
     title: gap.title,
     description: gap.description || "",
     source_competitors: [],
     sources: [],
-    impact: gap.impact ?? 0,
-    effort: gap.effort ?? 3,
-    fit: gap.fit ?? 0,
-    composite: gap.composite ?? 0
+    impact,
+    effort,
+    fit,
+    // Recompute composite from components rather than trusting the stored
+    // value — the brief may not be internally consistent.
+    composite: impact + (3 - effort) + fit
   };
 }
 
@@ -158,7 +167,9 @@ function mergeGapInto(merged, gap, competitor) {
   merged.impact = Math.max(merged.impact, gap.impact ?? 0);
   merged.effort = Math.min(merged.effort, gap.effort ?? 3);
   merged.fit = Math.max(merged.fit, gap.fit ?? 0);
-  merged.composite = Math.max(merged.composite, gap.composite ?? 0);
+  // Recompute composite from merged components — taking max of stored
+  // composites would use stale values from before the per-component merge.
+  merged.composite = merged.impact + (3 - merged.effort) + merged.fit;
   // Keep the longest description we have seen.
   if ((gap.description || "").length > merged.description.length) {
     merged.description = gap.description;
@@ -188,11 +199,12 @@ export function renderMatrixMarkdown(briefs, { baseline, axes }) {
     .join(" | ")} |`;
   const rows = axes.map((axis) => {
     const baseCell = baseline.matrix[axis] || { symbol: "?", note: "" };
+    const baseCellStr = `${baseCell.symbol} ${baseCell.note}`.trim();
     const competitorCells = briefs.map((b) => {
       const cell = b.matrix[axis] || { symbol: "?", note: "" };
       return `${cell.symbol} ${cell.note}`.trim();
     });
-    return `| ${axis} | ${baseCell.symbol} ${baseCell.note} | ${competitorCells.join(" | ")} |`;
+    return `| ${axis} | ${baseCellStr} | ${competitorCells.join(" | ")} |`;
   });
   return [header, sep, ...rows].join("\n");
 }

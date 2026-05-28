@@ -166,11 +166,18 @@ test("parseBrief throws on duplicate axis row", async () => {
 });
 
 test("dedupeAndRank merges same-title gaps across competitors", () => {
+  // A and B disagree on every dimension. We want:
+  //   impact = MAX(3, 2) = 3  (most generous)
+  //   effort = MIN(3, 1) = 1  (most generous — least work)
+  //   fit    = MAX(2, 3) = 3  (most generous)
+  //   composite = 3 + (3 - 1) + 3 = 8  (recomputed from merged components)
+  // Stored composites are 5 and 7 — neither matches the merged composite,
+  // so this also catches a buggy `Math.max(stored)` implementation.
   const briefs = [
     {
       competitor: "A",
       gaps: [
-        { id: "GAP-1", title: "Verification guard", impact: 3, effort: 1, fit: 3, composite: 8 }
+        { id: "GAP-1", title: "Verification guard", impact: 3, effort: 3, fit: 2, composite: 5 }
       ]
     },
     {
@@ -185,7 +192,10 @@ test("dedupeAndRank merges same-title gaps across competitors", () => {
   assert.equal(ranked.length, 2);
   assert.equal(ranked[0].title, "Verification guard");
   assert.deepEqual(ranked[0].source_competitors.sort(), ["A", "B"]);
-  // Composite takes the MAX across duplicates so we don't underrate.
+  assert.equal(ranked[0].impact, 3);
+  assert.equal(ranked[0].effort, 1);
+  assert.equal(ranked[0].fit, 3);
+  // Composite is recomputed from merged components, not max of stored values.
   assert.equal(ranked[0].composite, 8);
   assert.equal(ranked[1].title, "Cost dashboards");
 });
