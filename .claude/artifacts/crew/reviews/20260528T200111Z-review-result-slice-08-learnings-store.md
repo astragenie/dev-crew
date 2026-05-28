@@ -1,0 +1,35 @@
+# Review Result: SLICE-08 learnings store
+
+- Created: 2026-05-28T20:01:11.985Z
+- Reviewer: reviewer
+- Decision: approved_with_notes
+- Summary: SLICE-08 ships a correct JSONL learnings store; all 6 ACs pass, 440 tests pass, lint and typecheck clean — one minor correctness gap (recentLearnings n=0 returns all instead of empty) and one pre-existing manifest mismatch left unflagged
+- Evidence Checked:
+  - scripts/lib/learnings.mjs: entry shape {id
+  - timestamp
+  - key
+  - insight
+  - confidence
+  - source
+  - sliceId?
+  - tags?} correct; ID monotonicity via readAllEntries+max confirmed; JSONL append via fs.appendFile correct; recentLearnings returns {count
+  - items
+  - digest} with markdown digest; digest is null when store empty; AC-1 CLI verified (log writes correct JSON line); AC-2 CLI verified (recent returns {count
+  - items
+  - digest} with markdown); AC-3 startSlice return includes learningsDigest via gatherSliceResources helper; AC-4 SKILL.md has <HARD-GATE> at line 62-67 instructing agent to read learningsDigest; AC-5 npm test 440/440 pass; AC-6 lint clean (ESLint exit 0)
+  - tsc --noEmit exit 0; no process.exit in library functions; no require() — ESM only; module 103 lines well under 400-line cap; TDD gate: 14 behavior-descriptive tests covering all public API paths; n=0 edge case missing test: recentLearnings(repo
+  - 0) returns all entries (slice(-0)===slice(0)) instead of empty result; manifest validation failure (marketplace.json v0.5.0 vs plugin.json v0.5.2) is pre-existing
+  - not introduced by SLICE-08
+- Files Reviewed:
+  - scripts/lib/learnings.mjs
+  - src/scripts/lib/learnings.mts
+  - scripts/lib/slice-linker/start-slice.mjs
+  - src/scripts/lib/slice-linker/start-slice.mts
+  - scripts/loop.mjs
+  - skills/loop-discipline/SKILL.md
+  - commands/learn.md
+  - tests/learnings.test.mjs
+- Test Adequacy: 14 new tests in tests/learnings.test.mjs covering logLearning (append, ID monotonicity, mkdir, throws on bad key/insight, sliceId/tags, malformed-line guard) and recentLearnings (empty store, last-N order, n>count, digest format, confidence in digest) and searchLearnings (key match, no match); total suite 440 pass; missing test for n=0 edge case in recentLearnings
+- Risks: recentLearnings(repo,0) silently returns all entries rather than empty — slice(-0) === slice(0) in JS; low operational impact since CLI defaults to 3 and startSlice hardcodes 3, but the API contract is violated for n=0 callers; pre-existing manifest version mismatch blocks node scripts/validate-manifests.mjs CI gate independently of this slice
+- Required Follow-up: Fix recentLearnings n=0 guard (add n<=0 early-return before slice call) and add a test; separately fix marketplace.json version sync with plugin.json to unblock validate-manifests CI gate
+

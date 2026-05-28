@@ -1,16 +1,17 @@
 ---
 id: FEAT-004
-status: in-progress
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-05-27
-updated: 2026-05-27
+updated: 2026-05-28
 depends_on: []
 slices: [SLICE-01]
 derived_from: null
 triage_notes: no fields needed inference
 started_at: 2026-05-27
+completed_at: 2026-05-28
 ---
 ## Description
 

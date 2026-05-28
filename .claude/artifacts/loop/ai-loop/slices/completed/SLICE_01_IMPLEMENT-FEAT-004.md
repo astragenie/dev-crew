@@ -1,12 +1,13 @@
 ---
 id: SLICE-01
-status: pending
+status: completed
 feature: FEAT-004
 phase: null
 priority: P2
 target_release: null
 created: 2026-05-27
-updated: 2026-05-27
+updated: 2026-05-28
+completed_at: 2026-05-28
 ---
 # SLICE-01: Implement FEAT-004
 
@@ -18,17 +19,18 @@ Grade files currently named SLICE-NN-grade.md (bare, no timestamp or context). S
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- `scripts/lib/grade-writer.mjs` — grade filenames use `<TS>-<slug>-grade.md` format
+- `scripts/lib/grade-parser.mjs` — discovers both new timestamped and legacy formats
 
 ## Out of scope
 
-- bullet 1
+- Other artifact writers (crew-bridge, agent-report-writer)
 
 ## Acceptance criteria
 
-- [ ] AC-1: ...
-- [ ] AC-2: ...
+- [ ] AC-1: `createGradeFile` output path basename matches `\d{8}T\d{6}Z-.+-grade\.md`
+- [ ] AC-2: `grade-parser` discovers grade files in both old (`SLICE-NN-grade.md`) and new (`<TS>-<slug>-grade.md`) formats
+- [ ] AC-3: `npm test` green, `npm run lint` clean
 
 ## Done When
 
@@ -39,5 +41,5 @@ Grade files currently named SLICE-NN-grade.md (bare, no timestamp or context). S
 
 ## Reviewer ladder
 
-- Reviewer A: ...
-- Reviewer B: ...
+- Reviewer A: spec compliance (filename pattern, backward compat)
+- Reviewer B: code quality (utcTimestamp correctness, no regressions)

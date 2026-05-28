@@ -1,12 +1,13 @@
 ---
 id: SLICE-03
-status: pending
+status: completed
 feature: FEAT-002
 phase: null
 priority: P1
 target_release: null
 created: 2026-05-28
 updated: 2026-05-28
+completed_at: 2026-05-28
 ---
 # SLICE-03: Fix agent-report filename — add leading timestamp, move kind before slug
 
