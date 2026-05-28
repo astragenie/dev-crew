@@ -1,6 +1,6 @@
 ---
 id: FEAT-022
-status: triaged
+status: done
 priority: P2
 category: tech-debt
 target_release: null
@@ -11,6 +11,7 @@ slices: []
 derived_from: null
 autonomous_safe: false
 triage_notes: no fields needed inference
+started_at: 2026-05-28
 ---
 # FEAT-022: TypeScript port — phase 2: refactoring
 

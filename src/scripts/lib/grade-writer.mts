@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById } from "./backlog-writer.mjs";
-import { renderIdentification } from "./slice-linker/agent-report-writer.mjs";
+import { renderIdentification } from "./slice-linker.mjs";
 import { findSpecById } from "./spec-parser.mjs";
 import {
   gradesRoot,

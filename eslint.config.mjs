@@ -3,6 +3,58 @@ import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+// Sub-module boundary rule: imports of slice-linker sub-modules
+// (scripts/lib/slice-linker/*.mjs) must go through the barrel
+// (scripts/lib/slice-linker.mjs) and must never be imported
+// directly from outside of slice-linker.mts.
+//
+// Pattern: any .mts file that is NOT src/scripts/lib/slice-linker.mts
+// must not import from ../scripts/lib/slice-linker/*.
+const sliceLinkerBoundaryRule = {
+  "no-restricted-imports": [
+    "error",
+    {
+      patterns: [
+        {
+          group: ["**/slice-linker/feature-lifecycle*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        },
+        {
+          group: ["**/slice-linker/complete-slice*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        },
+        {
+          group: ["**/slice-linker/start-slice*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        },
+        {
+          group: ["**/slice-linker/dispatch*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        },
+        {
+          group: ["**/slice-linker/crew-bridge*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        },
+        {
+          group: ["**/slice-linker/slice-progress*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        },
+        {
+          group: ["**/slice-linker/agent-report-writer*"],
+          message:
+            "Import from scripts/lib/slice-linker.mts barrel instead of sub-module directly."
+        }
+      ]
+    }
+  ]
+};
+
 export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -25,6 +77,21 @@ export default [
       "no-implicit-globals": "error",
       "max-lines-per-function": ["warn", { max: 120, skipBlankLines: true, skipComments: true }],
       "complexity": ["warn", 15]
+    }
+  },
+  {
+    // Apply boundary rule to non-test source files only.
+    // Exceptions:
+    //   - The barrel (src/scripts/lib/slice-linker.mts) re-exports from sub-modules — allowed.
+    //   - Unit-test files targeting individual sub-modules are allowed to import directly.
+    //     These include tests named after the sub-module they cover.
+    files: ["src/scripts/**/*.mts"],
+    ignores: [
+      "src/scripts/lib/slice-linker.mts",
+      "src/scripts/lib/slice-linker/**/*.mts"
+    ],
+    rules: {
+      ...sliceLinkerBoundaryRule
     }
   },
   {
