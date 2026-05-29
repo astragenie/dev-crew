@@ -83,6 +83,7 @@ export async function writeCrewRunBrief(repoPath, { sliceId, title, goal, featur
     ];
     pushOptionalFlags(args, [
         ["--goal", goal],
+        ["--summary", titleSummary && titleSummary !== sliceId ? titleSummary : null],
         ["--mode", mode],
         ["--pace", pace],
         ["--scope", scope],

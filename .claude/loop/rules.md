@@ -151,6 +151,8 @@ When every acceptance criterion on the current slice is PASS with evidence, clos
 
 Run, in order:
 
+0. **Pre-check validation** — before calling `/loop:slice complete`, verify a `validations/` artifact exists for this slice (`ls .claude/artifacts/crew/validations/ | grep -i SLICE-NN`). If none: either dispatch `/crew:validate` now, or plan to pass `--skip-validation-check "<reason>"` to the complete command (the CLI will write the skip badge and allow completion). Skipping without the flag causes complete-slice to reject and forces a re-run of the ceremony.
+
 1. **`/loop:slice complete --id SLICE-NN`** — atomically moves the slice file to `completed/`, moves the linked feature to `done/`, reconciles parent SPEC status, AND fans out three artifacts in parallel:
    - `.claude/artifacts/crew/handoffs/<timestamp>-slice-nn-complete.md`
    - `.claude/artifacts/crew/runs/<timestamp>-slice-nn-final-synthesis.md` (auto-emits `cost-report` → `.claude/artifacts/crew/cost/` and `cost-advise` → `.claude/artifacts/crew/cost-insights/`)
