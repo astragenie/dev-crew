@@ -199,3 +199,44 @@ test("closeIssue calls gh issue close", () => {
   closeIssue("org/repo", 42, { ghExec });
   assert.ok(calls.some((c) => c[0] === "issue" && c[1] === "close" && c.includes("42")));
 });
+
+import { createSliceIssue, attachSubIssue, closeSliceIssue } from "../scripts/lib/github-sync/subissue-sync.mjs";
+
+// --- subissue-sync ---
+
+test("createSliceIssue returns existing github_issue when already set", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  const slice = { id: "SLICE-01", frontmatter: { github_issue: 87 }, body: "## Objective\n\nDo it.\n" };
+  const num = createSliceIssue("org/repo", slice, { ghExec });
+  assert.equal(num, 87);
+  assert.equal(calls.length, 0);
+});
+
+test("createSliceIssue creates issue and returns number", () => {
+  let callCount = 0;
+  const ghExec = (args) => {
+    callCount++;
+    if (args[0] === "label" && args[1] === "list") return JSON.stringify([{ name: "slice" }, { name: "status:pending" }]);
+    return "https://github.com/org/repo/issues/55\n";
+  };
+  const slice = { id: "SLICE-03", frontmatter: {}, body: "## Objective\n\nBuild feature.\n" };
+  const num = createSliceIssue("org/repo", slice, { ghExec });
+  assert.equal(num, 55);
+});
+
+test("attachSubIssue calls sub_issues API with correct body", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return JSON.stringify({ id: 1 }); };
+  attachSubIssue("org/repo", 42, 55, { ghExec });
+  const apiCall = calls[0];
+  assert.ok(apiCall.includes("repos/org/repo/issues/42/sub_issues"));
+  assert.ok(apiCall.includes("55"));
+});
+
+test("closeSliceIssue closes the issue and updates label", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  closeSliceIssue("org/repo", 55, { ghExec });
+  assert.ok(calls.some((c) => c[0] === "issue" && c[1] === "close"));
+});
