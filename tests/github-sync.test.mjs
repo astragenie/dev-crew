@@ -240,3 +240,47 @@ test("closeSliceIssue closes the issue and updates label", () => {
   closeSliceIssue("org/repo", 55, { ghExec });
   assert.ok(calls.some((c) => c[0] === "issue" && c[1] === "close"));
 });
+
+import { buildSliceComment, postComment } from "../scripts/lib/github-sync/comment-sync.mjs";
+
+// --- comment-sync ---
+
+test("buildSliceComment renders all-pass table", () => {
+  const comment = buildSliceComment({
+    sliceId: "SLICE-05",
+    objective: "Add health endpoint",
+    validationSatisfied: true,
+    reviewStatus: "Approved",
+    costStr: "~$0.42 (42k tokens)",
+    artifactPath: ".claude/artifacts/crew/runs/final-synthesis-feat012-slice05.md"
+  });
+  assert.ok(comment.includes("SLICE-05 Complete"));
+  assert.ok(comment.includes("Add health endpoint"));
+  assert.ok(comment.includes("✅"));
+  assert.ok(comment.includes("Approved"));
+  assert.ok(comment.includes("~$0.42"));
+  assert.ok(comment.includes("final-synthesis-feat012-slice05.md"));
+});
+
+test("buildSliceComment renders failed outcome when validation not satisfied", () => {
+  const comment = buildSliceComment({
+    sliceId: "SLICE-06",
+    objective: "Fix auth bug",
+    validationSatisfied: false,
+    reviewStatus: "Needs fix",
+    costStr: null,
+    artifactPath: null
+  });
+  assert.ok(comment.includes("❌"));
+  assert.ok(comment.includes("Needs fix"));
+});
+
+test("postComment calls gh issue comment with correct args", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  postComment("org/repo", 42, "hello comment", { ghExec });
+  const call = calls[0];
+  assert.ok(call[0] === "issue" && call[1] === "comment");
+  assert.ok(call.includes("42"));
+  assert.ok(call.includes("hello comment"));
+});
