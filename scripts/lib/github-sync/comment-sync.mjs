@@ -1,6 +1,13 @@
 import { defaultGhExec } from "./gh.mjs";
 
-export function buildSliceComment({ sliceId, objective, validationSatisfied, reviewStatus, costStr, artifactPath }) {
+export function buildSliceComment({
+  sliceId,
+  objective,
+  validationSatisfied,
+  reviewStatus,
+  costStr,
+  artifactPath
+}) {
   const outcome = validationSatisfied ? "✅ Validation passed" : "❌ Validation failed";
   const lines = [
     `## ${sliceId} Complete — ${objective}`,

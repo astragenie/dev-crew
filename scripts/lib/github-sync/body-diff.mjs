@@ -30,8 +30,10 @@ export function diffBody(localContent, githubBody) {
   const ghDesc = extractSection(githubBody, "## Description");
   const ghAc = extractSection(githubBody, "## Acceptance criteria");
   const changes = [];
-  if (ghDesc !== null && normalize(ghDesc) !== normalize(localDesc || "")) changes.push("description");
-  if (ghAc !== null && normalize(ghAc) !== normalize(localAc || "")) changes.push("acceptance-criteria");
+  if (ghDesc !== null && normalize(ghDesc) !== normalize(localDesc || ""))
+    changes.push("description");
+  if (ghAc !== null && normalize(ghAc) !== normalize(localAc || ""))
+    changes.push("acceptance-criteria");
   return {
     changed: changes.length > 0,
     sections: { description: ghDesc, ac: ghAc },

@@ -112,7 +112,10 @@ test("upsertMilestone returns existing milestone number when title matches", () 
   const calls = [];
   const ghExec = (args) => {
     calls.push(args);
-    return JSON.stringify([{ number: 3, title: "Phase 1" }, { number: 4, title: "Phase 2" }]);
+    return JSON.stringify([
+      { number: 3, title: "Phase 1" },
+      { number: 4, title: "Phase 2" }
+    ]);
   };
   const num = upsertMilestone("org/repo", { title: "Phase 1" }, { ghExec });
   assert.equal(num, 3);
@@ -143,7 +146,12 @@ test("upsertMilestone includes due_on when dueOn provided", () => {
   assert.ok(postCall.includes("due_on=2026-09-01T00:00:00Z"));
 });
 
-import { ensureLabels, createFeatureIssue, updateIssueStatus, closeIssue } from "../scripts/lib/github-sync/issue-sync.mjs";
+import {
+  ensureLabels,
+  createFeatureIssue,
+  updateIssueStatus,
+  closeIssue
+} from "../scripts/lib/github-sync/issue-sync.mjs";
 
 // --- issue-sync ---
 
@@ -168,12 +176,18 @@ test("createFeatureIssue calls gh with title, body, labels, milestone and return
   const issueCreateCall = calls.find((c) => c[0] === "issue" && c[1] === "create");
   assert.ok(issueCreateCall, "should call gh issue create");
   assert.ok(issueCreateCall.includes("--title"), "should include title flag");
-  assert.ok(issueCreateCall.some((a) => String(a).includes("FEAT-001")), "title should contain FEAT-001");
+  assert.ok(
+    issueCreateCall.some((a) => String(a).includes("FEAT-001")),
+    "title should contain FEAT-001"
+  );
 });
 
 test("createFeatureIssue skips creation when github_issue already set", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   const feat = {
     id: "FEAT-001",
     frontmatter: { github_issue: 42 },
@@ -186,7 +200,10 @@ test("createFeatureIssue skips creation when github_issue already set", () => {
 
 test("updateIssueStatus removes old status label and adds new one", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   updateIssueStatus("org/repo", 42, "in-progress", { ghExec });
   const editCall = calls.find((c) => c[0] === "issue" && c[1] === "edit");
   assert.ok(editCall, "should call gh issue edit");
@@ -195,19 +212,33 @@ test("updateIssueStatus removes old status label and adds new one", () => {
 
 test("closeIssue calls gh issue close", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   closeIssue("org/repo", 42, { ghExec });
   assert.ok(calls.some((c) => c[0] === "issue" && c[1] === "close" && c.includes("42")));
 });
 
-import { createSliceIssue, attachSubIssue, closeSliceIssue } from "../scripts/lib/github-sync/subissue-sync.mjs";
+import {
+  createSliceIssue,
+  attachSubIssue,
+  closeSliceIssue
+} from "../scripts/lib/github-sync/subissue-sync.mjs";
 
 // --- subissue-sync ---
 
 test("createSliceIssue returns existing github_issue when already set", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
-  const slice = { id: "SLICE-01", frontmatter: { github_issue: 87 }, body: "## Objective\n\nDo it.\n" };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
+  const slice = {
+    id: "SLICE-01",
+    frontmatter: { github_issue: 87 },
+    body: "## Objective\n\nDo it.\n"
+  };
   const num = createSliceIssue("org/repo", slice, { ghExec });
   assert.equal(num, 87);
   assert.equal(calls.length, 0);
@@ -217,7 +248,8 @@ test("createSliceIssue creates issue and returns number", () => {
   let callCount = 0;
   const ghExec = (args) => {
     callCount++;
-    if (args[0] === "label" && args[1] === "list") return JSON.stringify([{ name: "slice" }, { name: "status:pending" }]);
+    if (args[0] === "label" && args[1] === "list")
+      return JSON.stringify([{ name: "slice" }, { name: "status:pending" }]);
     return "https://github.com/org/repo/issues/55\n";
   };
   const slice = { id: "SLICE-03", frontmatter: {}, body: "## Objective\n\nBuild feature.\n" };
@@ -227,7 +259,10 @@ test("createSliceIssue creates issue and returns number", () => {
 
 test("attachSubIssue calls sub_issues API with correct body", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return JSON.stringify({ id: 1 }); };
+  const ghExec = (args) => {
+    calls.push(args);
+    return JSON.stringify({ id: 1 });
+  };
   attachSubIssue("org/repo", 42, 55, { ghExec });
   const apiCall = calls[0];
   assert.ok(apiCall.includes("repos/org/repo/issues/42/sub_issues"));
@@ -236,7 +271,10 @@ test("attachSubIssue calls sub_issues API with correct body", () => {
 
 test("closeSliceIssue closes the issue and updates label", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   closeSliceIssue("org/repo", 55, { ghExec });
   assert.ok(calls.some((c) => c[0] === "issue" && c[1] === "close"));
 });
@@ -277,7 +315,10 @@ test("buildSliceComment renders failed outcome when validation not satisfied", (
 
 test("postComment calls gh issue comment with correct args", () => {
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   postComment("org/repo", 42, "hello comment", { ghExec });
   const call = calls[0];
   assert.ok(call[0] === "issue" && call[1] === "comment");
@@ -285,7 +326,12 @@ test("postComment calls gh issue comment with correct args", () => {
   assert.ok(call.includes("hello comment"));
 });
 
-import { publishAll, syncPull, postSliceComment, updateIssueStatus as ghUpdateStatus } from "../scripts/lib/github-sync.mjs";
+import {
+  publishAll,
+  syncPull,
+  postSliceComment,
+  updateIssueStatus as ghUpdateStatus
+} from "../scripts/lib/github-sync.mjs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -305,7 +351,10 @@ async function tmpSyncRepo() {
 test("publishAll is no-op when github.enabled is false", async () => {
   const repo = await tmpSyncRepo();
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   await publishAll(repo, { ghExec });
   assert.equal(calls.length, 0);
 });
@@ -313,15 +362,26 @@ test("publishAll is no-op when github.enabled is false", async () => {
 test("postSliceComment is no-op when github.enabled is false", async () => {
   const repo = await tmpSyncRepo();
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
-  await postSliceComment(repo, "SLICE-01", { featureId: null, sliceFm: {}, validationGate: null, costReport: null, synthPath: null }, { ghExec });
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
+  await postSliceComment(
+    repo,
+    "SLICE-01",
+    { featureId: null, sliceFm: {}, validationGate: null, costReport: null, synthPath: null },
+    { ghExec }
+  );
   assert.equal(calls.length, 0);
 });
 
 test("syncPull is no-op when github.enabled is false", async () => {
   const repo = await tmpSyncRepo();
   const calls = [];
-  const ghExec = (args) => { calls.push(args); return ""; };
+  const ghExec = (args) => {
+    calls.push(args);
+    return "";
+  };
   const result = await syncPull(repo, { ghExec });
   assert.equal(calls.length, 0);
   assert.deepEqual(result, { checked: 0, updated: 0, changes: [] });

@@ -18,11 +18,16 @@ export function createSliceIssue(repo, slice, { ghExec = defaultGhExec } = {}) {
   const acSection = (slice.body || "").split("## Acceptance criteria")[1] || "";
   const bodyText = `## Acceptance criteria\n${acSection.split("##")[0]}`.trim();
   const url = ghExec([
-    "issue", "create",
-    "--repo", repo,
-    "--title", title,
-    "--body", bodyText,
-    "--label", "slice,status:pending"
+    "issue",
+    "create",
+    "--repo",
+    repo,
+    "--title",
+    title,
+    "--body",
+    bodyText,
+    "--label",
+    "slice,status:pending"
   ]);
   return issueNumberFromUrl(url);
 }
@@ -31,8 +36,10 @@ export function attachSubIssue(repo, parentNumber, childNumber, { ghExec = defau
   const args = [
     "api",
     `repos/${repo}/issues/${parentNumber}/sub_issues`,
-    "--method", "POST",
-    "-f", `sub_issue_id=${childNumber}`
+    "--method",
+    "POST",
+    "-f",
+    `sub_issue_id=${childNumber}`
   ];
   args.push(String(childNumber)); // Ensure childNumber is in the array as a string
   ghExec(args);
@@ -41,10 +48,16 @@ export function attachSubIssue(repo, parentNumber, childNumber, { ghExec = defau
 export function closeSliceIssue(repo, issueNumber, { ghExec = defaultGhExec } = {}) {
   ghExec(["issue", "close", String(issueNumber), "--repo", repo]);
   ghExec([
-    "issue", "edit", String(issueNumber),
-    "--repo", repo,
-    "--add-label", "status:completed",
-    "--remove-label", "status:pending",
-    "--remove-label", "status:in-progress"
+    "issue",
+    "edit",
+    String(issueNumber),
+    "--repo",
+    repo,
+    "--add-label",
+    "status:completed",
+    "--remove-label",
+    "status:pending",
+    "--remove-label",
+    "status:in-progress"
   ]);
 }

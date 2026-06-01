@@ -5,7 +5,10 @@ import { mergeFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
 import { defaultGhExec, isGhInstalled } from "./github-sync/gh.mjs";
 import { detectRepo } from "./github-sync/repo-detect.mjs";
 import { upsertMilestone } from "./github-sync/milestone-sync.mjs";
-import { createFeatureIssue, updateIssueStatus as _updateLabel } from "./github-sync/issue-sync.mjs";
+import {
+  createFeatureIssue,
+  updateIssueStatus as _updateLabel
+} from "./github-sync/issue-sync.mjs";
 import { createSliceIssue, attachSubIssue, closeSliceIssue } from "./github-sync/subissue-sync.mjs";
 import { buildSliceComment, postComment } from "./github-sync/comment-sync.mjs";
 import { diffBody, patchBody } from "./github-sync/body-diff.mjs";
@@ -66,10 +69,10 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
     if (feat.frontmatter.github_issue) continue;
     const milestoneNum = feat.frontmatter.phase ? milestoneMap[feat.frontmatter.phase] : null;
     const issueNum = createFeatureIssue(repo, feat, milestoneNum, { ghExec });
-    const updated = mergeFrontmatter(
-      await fs.readFile(feat.filePath, "utf8"),
-      { github_issue: issueNum, github_milestone: milestoneNum ?? null }
-    );
+    const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
+      github_issue: issueNum,
+      github_milestone: milestoneNum ?? null
+    });
     await fs.writeFile(feat.filePath, updated);
     issueCount++;
     feat.frontmatter.github_issue = issueNum;
@@ -81,7 +84,11 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
       const sliceContent = await fs.readFile(sliceFile, "utf8");
       const { frontmatter: sliceFm, body: sliceBody } = parseFrontmatter(sliceContent);
       if (sliceFm.github_issue) continue;
-      const sliceIssueNum = createSliceIssue(repo, { id: sliceId, frontmatter: sliceFm, body: sliceBody }, { ghExec });
+      const sliceIssueNum = createSliceIssue(
+        repo,
+        { id: sliceId, frontmatter: sliceFm, body: sliceBody },
+        { ghExec }
+      );
       attachSubIssue(repo, issueNum, sliceIssueNum, { ghExec });
       const updatedSlice = mergeFrontmatter(sliceContent, { github_issue: sliceIssueNum });
       await fs.writeFile(sliceFile, updatedSlice);
@@ -89,7 +96,9 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
     }
   }
 
-  console.log(`[github-sync] Published: ${milestoneCount} milestones, ${issueCount} issues, ${subissueCount} sub-issues`);
+  console.log(
+    `[github-sync] Published: ${milestoneCount} milestones, ${issueCount} issues, ${subissueCount} sub-issues`
+  );
   return { milestones: milestoneCount, issues: issueCount, subissues: subissueCount };
 }
 
@@ -162,7 +171,12 @@ export async function syncPull(repoPath, { ghExec = defaultGhExec, config } = {}
  * @param {object} options.config - resolved config (default: loaded from repoPath)
  * @returns {Promise<{ posted: boolean, issueNum: number } | null>}
  */
-export async function postSliceComment(repoPath, sliceId, { featureId, sliceFm, validationGate, costReport, synthPath }, { ghExec = defaultGhExec, config } = {}) {
+export async function postSliceComment(
+  repoPath,
+  sliceId,
+  { featureId, sliceFm, validationGate, costReport, synthPath },
+  { ghExec = defaultGhExec, config } = {}
+) {
   const resolved = await loadConfig(repoPath, config);
   if (!isEnabled(resolved)) return null;
   if (!featureId) return null;
@@ -200,7 +214,12 @@ export async function postSliceComment(repoPath, sliceId, { featureId, sliceFm, 
  * @param {object} options.config - resolved config (default: loaded from repoPath)
  * @returns {Promise<{ updated: boolean } | null>}
  */
-export async function updateIssueStatus(repoPath, _sliceId, { featureId, sliceFm }, { ghExec = defaultGhExec, config } = {}) {
+export async function updateIssueStatus(
+  repoPath,
+  _sliceId,
+  { featureId, sliceFm },
+  { ghExec = defaultGhExec, config } = {}
+) {
   const resolved = await loadConfig(repoPath, config);
   if (!isEnabled(resolved)) return null;
   if (!featureId) return null;

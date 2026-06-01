@@ -17,11 +17,23 @@ const LABEL_DEFS = [
 ];
 
 export function ensureLabels(repo, { ghExec = defaultGhExec } = {}) {
-  const existing = JSON.parse(ghExec(["label", "list", "--repo", repo, "--json", "name", "--limit", "100"]));
+  const existing = JSON.parse(
+    ghExec(["label", "list", "--repo", repo, "--json", "name", "--limit", "100"])
+  );
   const existingNames = new Set(existing.map((l) => l.name));
   for (const { name, color, description } of LABEL_DEFS) {
     if (existingNames.has(name)) continue;
-    ghExec(["label", "create", name, "--repo", repo, "--color", color, "--description", description]);
+    ghExec([
+      "label",
+      "create",
+      name,
+      "--repo",
+      repo,
+      "--color",
+      color,
+      "--description",
+      description
+    ]);
   }
 }
 
@@ -50,11 +62,16 @@ export function createFeatureIssue(repo, feat, milestoneNumber, { ghExec = defau
   const labels = buildLabels(feat.frontmatter || {});
   const title = `${feat.id}: ${extractFirstDescriptionLine(feat.body)}`;
   const args = [
-    "issue", "create",
-    "--repo", repo,
-    "--title", title,
-    "--body", feat.body || "",
-    "--label", labels.join(",")
+    "issue",
+    "create",
+    "--repo",
+    repo,
+    "--title",
+    title,
+    "--body",
+    feat.body || "",
+    "--label",
+    labels.join(",")
   ];
   if (milestoneNumber) args.push("--milestone", String(milestoneNumber));
   const url = ghExec(args);
@@ -65,9 +82,13 @@ export function updateIssueStatus(repo, issueNumber, newStatus, { ghExec = defau
   const statusLabels = ["status:pending", "status:in-progress", "status:done", "status:completed"];
   const removeArgs = statusLabels.flatMap((l) => ["--remove-label", l]);
   ghExec([
-    "issue", "edit", String(issueNumber),
-    "--repo", repo,
-    "--add-label", `status:${newStatus}`,
+    "issue",
+    "edit",
+    String(issueNumber),
+    "--repo",
+    repo,
+    "--add-label",
+    `status:${newStatus}`,
     ...removeArgs
   ]);
 }
