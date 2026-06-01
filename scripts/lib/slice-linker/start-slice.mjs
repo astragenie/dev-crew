@@ -7,6 +7,7 @@ import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
 import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
+import { updateIssueStatus } from "../github-sync.mjs";
 async function bestEffort(fn) {
     try {
         return await fn();
@@ -60,6 +61,9 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
     const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest } = await gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved });
     const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
+    await bestEffort(() =>
+        updateIssueStatus(repoPath, sliceId, { featureId, sliceFm: ctx.frontmatter }, { config: resolved })
+    );
     return buildStartSliceReturn({
         sliceId,
         title,
