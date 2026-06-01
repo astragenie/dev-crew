@@ -13,6 +13,7 @@
     "marathonMode": true,
     "costStopThreshold": 15,
     "costProject": "C--work-mega-hero-crew-autonomous-loop",
+    "orchestratorModel": "sonnet",
     "dispatchLimits": {
       "maxSubagentsPerSlice": 4,
       "preferInlineFor": ["single-file-edit", "test-fix", "lint-fix", "format-fix"]
@@ -60,5 +61,9 @@
   ],
   "productName": "hero-crew-autonomous-loop",
   "productDescription": "Claude Code plugin: Wiggin-Loop methodology layer for autonomous slice-based development on top of the crew plugin.",
-  "stackDescription": "- ESM Node.js (.mjs modules)\n- node --test for testing\n- ESLint + Prettier for linting/formatting"
+  "stackDescription": "- ESM Node.js (.mjs modules)\n- node --test for testing\n- ESLint + Prettier for linting/formatting",
+  "github": {
+    "enabled": false,
+    "repo": null
+  }
 }
