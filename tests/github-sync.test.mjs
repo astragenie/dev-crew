@@ -284,3 +284,45 @@ test("postComment calls gh issue comment with correct args", () => {
   assert.ok(call.includes("42"));
   assert.ok(call.includes("hello comment"));
 });
+
+import { publishAll, syncPull, postSliceComment, updateIssueStatus as ghUpdateStatus } from "../scripts/lib/github-sync.mjs";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+async function tmpSyncRepo() {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "gh-sync-"));
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(
+    path.join(repo, ".claude/loop.json"),
+    JSON.stringify({ github: { enabled: false, repo: null } })
+  );
+  return repo;
+}
+
+// --- github-sync public API ---
+
+test("publishAll is no-op when github.enabled is false", async () => {
+  const repo = await tmpSyncRepo();
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  await publishAll(repo, { ghExec });
+  assert.equal(calls.length, 0);
+});
+
+test("postSliceComment is no-op when github.enabled is false", async () => {
+  const repo = await tmpSyncRepo();
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  await postSliceComment(repo, "SLICE-01", { featureId: null, sliceFm: {}, validationGate: null, costReport: null, synthPath: null }, { ghExec });
+  assert.equal(calls.length, 0);
+});
+
+test("syncPull is no-op when github.enabled is false", async () => {
+  const repo = await tmpSyncRepo();
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  const result = await syncPull(repo, { ghExec });
+  assert.equal(calls.length, 0);
+  assert.deepEqual(result, { checked: 0, updated: 0, changes: [] });
+});
