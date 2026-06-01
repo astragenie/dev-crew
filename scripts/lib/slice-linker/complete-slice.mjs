@@ -10,6 +10,7 @@ import { deriveValidationGate } from "../validation-gate.mjs";
 import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../paths.mjs";
+import { postSliceComment } from "../github-sync.mjs";
 function deriveBlockingGates(workflowState) {
     const gates = workflowState?.currentRun?.gates || {};
     const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;
@@ -207,6 +208,20 @@ export async function completeSlice(repoPath, sliceId, { config = null, keepFeat
         });
         return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
     });
+    const githubComment = await bestEffort(() =>
+        postSliceComment(
+            repoPath,
+            sliceId,
+            {
+                featureId,
+                sliceFm,
+                validationGate,
+                costReport: costReport?.error ? null : costReport,
+                synthPath: synthesis?.error ? null : synthesis?.path
+            },
+            { config: resolved }
+        )
+    );
     return {
         slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
         feature: featureResult,
@@ -216,6 +231,7 @@ export async function completeSlice(repoPath, sliceId, { config = null, keepFeat
         costReport,
         agentReport,
         sliceProgress,
+        githubComment,
         validationGate,
         validationSkippedBadge,
         testAdequacyGate,
