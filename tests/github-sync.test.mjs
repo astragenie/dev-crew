@@ -142,3 +142,60 @@ test("upsertMilestone includes due_on when dueOn provided", () => {
   const postCall = calls[1];
   assert.ok(postCall.includes("due_on=2026-09-01T00:00:00Z"));
 });
+
+import { ensureLabels, createFeatureIssue, updateIssueStatus, closeIssue } from "../scripts/lib/github-sync/issue-sync.mjs";
+
+// --- issue-sync ---
+
+test("createFeatureIssue calls gh with title, body, labels, milestone and returns issue number", () => {
+  const calls = [];
+  const ghExec = (args) => {
+    calls.push(args);
+    // First call = ensureLabels list check, returns empty array per label
+    if (args[0] === "label" && args[1] === "list") return JSON.stringify([]);
+    // label create calls return empty
+    if (args[0] === "label" && args[1] === "create") return "";
+    // issue create returns URL
+    return "https://github.com/org/repo/issues/42\n";
+  };
+  const feat = {
+    id: "FEAT-001",
+    frontmatter: { priority: "P1", category: "integration", autonomous_safe: true, phase: "1" },
+    body: "## Description\n\nDo a thing.\n\n## Acceptance criteria\n\n- [ ] AC-1: It works\n"
+  };
+  const num = createFeatureIssue("org/repo", feat, 3, { ghExec });
+  assert.equal(num, 42);
+  const issueCreateCall = calls.find((c) => c[0] === "issue" && c[1] === "create");
+  assert.ok(issueCreateCall, "should call gh issue create");
+  assert.ok(issueCreateCall.includes("--title"), "should include title flag");
+  assert.ok(issueCreateCall.includes("FEAT-001"), "title should contain FEAT-001");
+});
+
+test("createFeatureIssue skips creation when github_issue already set", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  const feat = {
+    id: "FEAT-001",
+    frontmatter: { github_issue: 42 },
+    body: ""
+  };
+  const num = createFeatureIssue("org/repo", feat, null, { ghExec });
+  assert.equal(num, 42);
+  assert.equal(calls.length, 0);
+});
+
+test("updateIssueStatus removes old status label and adds new one", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  updateIssueStatus("org/repo", 42, "in-progress", { ghExec });
+  const editCall = calls.find((c) => c[0] === "issue" && c[1] === "edit");
+  assert.ok(editCall, "should call gh issue edit");
+  assert.ok(editCall.includes("--add-label"), "should add new status label");
+});
+
+test("closeIssue calls gh issue close", () => {
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return ""; };
+  closeIssue("org/repo", 42, { ghExec });
+  assert.ok(calls.some((c) => c[0] === "issue" && c[1] === "close" && c.includes("42")));
+});
