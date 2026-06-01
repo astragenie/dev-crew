@@ -80,3 +80,23 @@ acceptable exceptions in extreme edge cases). Every hard rule block that
 an autonomous agent MUST obey unconditionally belongs inside `<HARD-GATE>`
 tags; strong-but-soft guidance that an agent should almost always follow
 but that admits rare exceptions belongs inside `<EXTREMELY-IMPORTANT>` tags.
+
+## GitHub sync frontmatter fields
+
+Added by `/loop:publish`; null/absent means unpublished. Do not set manually.
+
+**FEAT files:**
+
+```yaml
+github_issue: 42       # GitHub issue number (integer)
+github_milestone: 3    # GitHub milestone number (integer)
+```
+
+**SLICE files:**
+
+```yaml
+github_issue: 87       # GitHub native sub-issue number (integer)
+```
+
+These fields are written back by `scripts/lib/github-sync.mjs`. The sync
+module is opt-in via `"github": { "enabled": true }` in `.claude/loop.json`.
