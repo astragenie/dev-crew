@@ -48,12 +48,13 @@ export function createFeatureIssue(repo, feat, milestoneNumber, { ghExec = defau
   if (feat.frontmatter?.github_issue) return feat.frontmatter.github_issue;
   ensureLabels(repo, { ghExec });
   const labels = buildLabels(feat.frontmatter || {});
+  const title = `${feat.id}: ${extractFirstDescriptionLine(feat.body)}`;
   const args = [
     "issue", "create",
     "--repo", repo,
-    "--title", feat.id,
+    "--title", title,
     "--body", feat.body || "",
-    ...labels.flatMap((l) => ["--label", l])
+    "--label", labels.join(",")
   ];
   if (milestoneNumber) args.push("--milestone", String(milestoneNumber));
   const url = ghExec(args);

@@ -168,7 +168,7 @@ test("createFeatureIssue calls gh with title, body, labels, milestone and return
   const issueCreateCall = calls.find((c) => c[0] === "issue" && c[1] === "create");
   assert.ok(issueCreateCall, "should call gh issue create");
   assert.ok(issueCreateCall.includes("--title"), "should include title flag");
-  assert.ok(issueCreateCall.includes("FEAT-001"), "title should contain FEAT-001");
+  assert.ok(issueCreateCall.some((a) => String(a).includes("FEAT-001")), "title should contain FEAT-001");
 });
 
 test("createFeatureIssue skips creation when github_issue already set", () => {
