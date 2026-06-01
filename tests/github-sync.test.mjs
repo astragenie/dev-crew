@@ -103,3 +103,42 @@ test("patchBody does not touch frontmatter fields other than updated", () => {
   assert.ok(patched.includes("id: FEAT-001"));
   assert.ok(patched.includes("status: triaged"));
 });
+
+import { upsertMilestone } from "../scripts/lib/github-sync/milestone-sync.mjs";
+
+// --- milestone-sync ---
+
+test("upsertMilestone returns existing milestone number when title matches", () => {
+  const calls = [];
+  const ghExec = (args) => {
+    calls.push(args);
+    return JSON.stringify([{ number: 3, title: "Phase 1" }, { number: 4, title: "Phase 2" }]);
+  };
+  const num = upsertMilestone("org/repo", { title: "Phase 1" }, { ghExec });
+  assert.equal(num, 3);
+  assert.equal(calls.length, 1); // only the list call, no POST
+});
+
+test("upsertMilestone creates milestone when not found, returns new number", () => {
+  let callCount = 0;
+  const ghExec = (args) => {
+    callCount++;
+    if (callCount === 1) return JSON.stringify([]); // list returns empty
+    return JSON.stringify({ number: 7, title: "Phase 3" }); // POST returns new
+  };
+  const num = upsertMilestone("org/repo", { title: "Phase 3" }, { ghExec });
+  assert.equal(num, 7);
+  assert.equal(callCount, 2);
+});
+
+test("upsertMilestone includes due_on when dueOn provided", () => {
+  const calls = [];
+  const ghExec = (args) => {
+    calls.push(args);
+    if (calls.length === 1) return JSON.stringify([]);
+    return JSON.stringify({ number: 5, title: "Phase 4" });
+  };
+  upsertMilestone("org/repo", { title: "Phase 4", dueOn: "2026-09-01" }, { ghExec });
+  const postCall = calls[1];
+  assert.ok(postCall.includes("due_on=2026-09-01T00:00:00Z"));
+});
