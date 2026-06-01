@@ -34,7 +34,7 @@
 | Issue body | `## Description` + `## Acceptance criteria` sections | PM-editable; synced back by `/loop:sync` |
 | Issue labels | `priority:P1`, `status:pending`, `category:tech-debt`, `autonomous-safe` | Auto-created on first publish |
 | Issue state | `open` / `closed` | Closed when FEAT moves to `done` |
-| Sub-issue | SLICE | Real GitHub Issue; linked from parent FEAT via `## Slices` tasklist in body |
+| Sub-issue | SLICE | Real GitHub Issue attached to parent FEAT via native sub-issues API |
 | Sub-issue title | `SLICE-NN: <Objective>` | |
 | Sub-issue labels | `slice`, `status:pending/in-progress/completed` | |
 | Sub-issue body | Acceptance criteria checklist | Read-only; not pulled back |
@@ -82,7 +82,7 @@ scripts/lib/github-sync.mjs                 # Public API: publishAll(), syncPull
 scripts/lib/github-sync/repo-detect.mjs     # git remote origin → "org/repo"
 scripts/lib/github-sync/milestone-sync.mjs  # Phase ↔ Milestone upsert
 scripts/lib/github-sync/issue-sync.mjs      # FEAT ↔ Issue CRUD + label management
-scripts/lib/github-sync/subissue-sync.mjs   # SLICE ↔ real Issue CRUD; updates parent body tasklist
+scripts/lib/github-sync/subissue-sync.mjs   # SLICE ↔ real Issue CRUD; attaches to parent via native sub-issues API
 scripts/lib/github-sync/comment-sync.mjs    # Ceremony → summary comment
 scripts/lib/github-sync/body-diff.mjs       # GitHub body → local section comparison + patch
 tests/github-sync.test.mjs                  # Unit tests (gh CLI mocked)
@@ -113,7 +113,7 @@ Triggered manually. Idempotent: safe to run multiple times.
 2. Collect all phases (unique `feature.phase` values across all FEATs in all states).
 3. For each phase → upsert Milestone via `gh api`; write `github_milestone` back to all matching FEAT files.
 4. For each FEAT without `github_issue` → create Issue (title, body rendered from Description + AC sections, labels, milestone); write `github_issue` back.
-5. For each SLICE linked to a published FEAT and without `github_issue` → create a real GitHub Issue for the SLICE; append a `- [ ] SLICE-NN: <Objective> #<issue_number>` tasklist entry to the parent FEAT issue body under a `## Slices` section; write `github_issue` back. (Uses `gh issue create` + `gh issue edit` — no Projects API required.)
+5. For each SLICE linked to a published FEAT and without `github_issue` → create a real GitHub Issue for the SLICE via `gh issue create`; attach it to the parent FEAT issue as a native sub-issue via `gh api repos/{repo}/issues/{parent}/sub_issues -f sub_issue_id={child}`; write `github_issue` back. Parent FEAT issue gains a native sub-issues progress indicator in the GitHub UI automatically.
 6. Print summary: `3 milestones, 14 issues, 22 sub-issues created/updated`.
 
 ### Ceremony hooks (auto, only if `github.enabled: true`)
@@ -213,6 +213,7 @@ Test cases:
 - `repo-detect`: parses SSH and HTTPS remote URLs correctly
 - `milestone-sync`: creates milestone when missing; updates when title matches
 - `issue-sync`: creates issue with correct title/body/labels; skips when `github_issue` already set
+- `subissue-sync`: creates SLICE issue and attaches via sub-issues API; verifies parent linkage
 - `body-diff`: detects changed AC section; ignores unchanged description; handles missing sections
 - `postSliceComment`: renders correct markdown for all-pass, partial, and failed AC states
 - `updateIssueStatus`: emits correct `gh` label commands for start and complete transitions
