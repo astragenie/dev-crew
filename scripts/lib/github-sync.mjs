@@ -5,7 +5,7 @@ import { mergeFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
 import { defaultGhExec, isGhInstalled } from "./github-sync/gh.mjs";
 import { detectRepo } from "./github-sync/repo-detect.mjs";
 import { upsertMilestone } from "./github-sync/milestone-sync.mjs";
-import { createFeatureIssue, updateIssueStatus as _updateLabel, closeIssue } from "./github-sync/issue-sync.mjs";
+import { createFeatureIssue, updateIssueStatus as _updateLabel } from "./github-sync/issue-sync.mjs";
 import { createSliceIssue, attachSubIssue, closeSliceIssue } from "./github-sync/subissue-sync.mjs";
 import { buildSliceComment, postComment } from "./github-sync/comment-sync.mjs";
 import { diffBody, patchBody } from "./github-sync/body-diff.mjs";
@@ -200,7 +200,7 @@ export async function postSliceComment(repoPath, sliceId, { featureId, sliceFm, 
  * @param {object} options.config - resolved config (default: loaded from repoPath)
  * @returns {Promise<{ updated: boolean } | null>}
  */
-export async function updateIssueStatus(repoPath, sliceId, { featureId, sliceFm }, { ghExec = defaultGhExec, config } = {}) {
+export async function updateIssueStatus(repoPath, _sliceId, { featureId, sliceFm }, { ghExec = defaultGhExec, config } = {}) {
   const resolved = await loadConfig(repoPath, config);
   if (!isEnabled(resolved)) return null;
   if (!featureId) return null;
