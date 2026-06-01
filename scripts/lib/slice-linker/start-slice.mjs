@@ -6,6 +6,7 @@ import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-p
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
 import { recentLearnings } from "../learnings.mjs";
+import { resolveOrchestratorModel } from "../model-router.mjs";
 async function bestEffort(fn) {
     try {
         return await fn();
@@ -75,6 +76,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         featureExcerpt,
         marathonMilestone,
         dispatchLimits: resolved.loop?.dispatchLimits ?? null,
+        orchestratorModel: resolveOrchestratorModel(resolved),
         learningsDigest
     });
 }
@@ -116,7 +118,7 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
 }
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, learningsDigest = null }) {
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null }) {
     const dispatchInstruction = dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -145,6 +147,7 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
         nextAction,
         gradeTrendCaution,
         marathonMilestone,
+        orchestratorModel,
         learningsDigest
     };
 }
