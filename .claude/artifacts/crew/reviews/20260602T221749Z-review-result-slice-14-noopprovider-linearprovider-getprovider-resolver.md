@@ -1,0 +1,32 @@
+# Review Result: SLICE-14: NoopProvider + LinearProvider + getProvider resolver
+
+- Created: 2026-06-02T22:17:49.543Z
+- Reviewer: reviewer
+- Decision: approved
+- Summary: All 8 acceptance criteria PASS; resolver logic correctly handles 9 distinct config paths with proper precedence; NoopProvider silently complies with interface; LinearProvider throws not-implemented as specified; 14 new tests cover all paths; 514 total tests pass; ESM/TypeScript conventions met; lint clean; zero regressions.
+- Evidence Checked:
+  - AC1-AC8 verified programmatically; getProvider resolver matrix: 9/9 paths correct (default
+  - taskStore.provider={github|linear|noop|unknown}
+  - taskStore.enabled=false override
+  - github.enabled back-compat
+  - precedence); NoopProvider contract: all 7 methods resolve with correct return types (null
+  - null
+  - void
+  - void
+  - void
+  - {features:[]
+  - slices:[]}
+  - {features:[]}); LinearProvider contract: all 7 methods throw 'not implemented' on call; existing github-provider tests (8 tests) still passing; test file covers 12 distinct critical paths; npm test: 514/514 PASS; npm run lint: clean; node ./scripts/validate-manifests.mjs: OK
+- Files Reviewed:
+  - src/scripts/lib/task-store/index.mts
+  - src/scripts/lib/task-store/providers/noop-provider.mts
+  - src/scripts/lib/task-store/providers/linear-provider.mts
+  - src/tests/task-store-index.test.mts
+  - scripts/lib/task-store/index.mjs
+  - scripts/lib/task-store/providers/noop-provider.mjs
+  - scripts/lib/task-store/providers/linear-provider.mjs
+  - tests/task-store-index.test.mjs
+- Test Adequacy: 14 new tests added covering getProvider resolver (9 paths), NoopProvider (all 7 methods resolve silently), LinearProvider (constructor + all 7 methods throw); 514 total tests pass; existing github-provider tests (8 tests) regress-clean.
+- Risks: LinearProvider stub throws on every call — callers must guard against it if they mistakenly set provider=linear in config; however, this is intentional and documented (shape-proof stub for future implementation); no production impact unless linear is explicitly configured.
+- Required Follow-up: none
+

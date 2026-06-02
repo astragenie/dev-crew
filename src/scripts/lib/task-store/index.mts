@@ -1,0 +1,42 @@
+import type { TaskStoreProvider } from "./provider-interface.mjs";
+import { GithubProvider } from "./providers/github-provider.mjs";
+import { LinearProvider } from "./providers/linear-provider.mjs";
+import { NoopProvider } from "./providers/noop-provider.mjs";
+
+export type { TaskStoreProvider };
+export { GithubProvider, LinearProvider, NoopProvider };
+
+/**
+ * Resolve the configured task-store provider from a merged loop.json config.
+ *
+ * Resolution order:
+ * 1. `config.taskStore.provider` — explicit provider name ('github' | 'linear' | 'noop')
+ * 2. `config.taskStore.enabled === false` — force noop regardless of provider field
+ * 3. `config.github.enabled === true` — back-compat: treat as provider 'github'
+ * 4. Default: NoopProvider (no external tracker configured)
+ *
+ * @param config - fully-resolved loop.json config (from resolveConfig)
+ * @param repoPath - absolute path to the repository root
+ */
+export function getProvider(config: any, repoPath: string): TaskStoreProvider {
+  const ts = config?.taskStore;
+
+  // Explicit disable
+  if (ts?.enabled === false) {
+    return new NoopProvider();
+  }
+
+  const providerName: string | undefined =
+    ts?.provider ?? (config?.github?.enabled === true ? "github" : undefined);
+
+  switch (providerName) {
+    case "github":
+      return new GithubProvider(repoPath, config);
+    case "linear":
+      return new LinearProvider(repoPath, config);
+    case "noop":
+      return new NoopProvider();
+    default:
+      return new NoopProvider();
+  }
+}
