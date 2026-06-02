@@ -155,6 +155,7 @@ const COMMANDS = {
     const { listPresets } = await import("./lib/config-resolver.mjs");
     return { presets: await listPresets() };
   },
+  github: ({ repoPath, flags, positionals }: any) => runGithubSubcommand(repoPath, positionals, flags),
   backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
   spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
   release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
@@ -549,6 +550,22 @@ async function runLearningsSubcommand(repoPath, positionals, flags) {
     return recentLearnings(repoPath, limit);
   }
   throw new Error(`Unknown learnings subcommand: ${sub}`);
+}
+
+async function runGithubSubcommand(repoPath: any, positionals: any, _flags: any) {
+  const [sub] = positionals;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
+  const { publishAll, syncPull, syncMilestones, setupGithubSync } = await import("./lib/github-sync.mjs");
+  if (sub === "setup") {
+    const result = await (setupGithubSync as any)(repoPath);
+    console.log("[github-sync] Setup complete. Run 'github publish' next.");
+    return result;
+  }
+  if (sub === "publish") return (publishAll as any)(repoPath);
+  if (sub === "sync") return (syncPull as any)(repoPath);
+  if (sub === "status") return (syncMilestones as any)(repoPath);
+  throw new Error("github requires a subcommand: setup | publish | sync | status");
 }
 
 main().catch((error) => {

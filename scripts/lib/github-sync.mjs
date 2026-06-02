@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
-import { resolveConfig } from "./config-resolver.mjs";
+import path from "node:path";
+import { resolveConfig, configPath as resolveConfigPath } from "./config-resolver.mjs";
 import { listBacklog } from "./backlog-parser.mjs";
 import { mergeFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
 import { defaultGhExec, isGhInstalled } from "./github-sync/gh.mjs";
@@ -331,4 +332,58 @@ export async function syncMilestones(repoPath, { ghExec = defaultGhExec, config 
     `[github-sync] syncMilestones: ${phases.length} milestones, ${updatedCount} issues updated, ${closedCount} closed`
   );
   return { milestones: phases.length, updated: updatedCount, closed: closedCount };
+}
+
+/**
+ * One-shot setup: enable GitHub sync in loop.json and bulk-set phases on all FEATs.
+ * Phase convention: done→"1", in-progress/triaged→"2", pending→"3".
+ * Safe to re-run — skips FEATs that already have phase set if overwrite is false.
+ */
+export async function setupGithubSync(repoPath, { overwrite = false } = {}) {
+  const cfgFile = resolveConfigPath(repoPath);
+  const raw = await fs.readFile(cfgFile, "utf8");
+  const cfg = JSON.parse(raw);
+
+  // Enable github sync
+  if (!cfg.github || overwrite) {
+    cfg.github = { enabled: true, repo: null };
+  } else {
+    cfg.github.enabled = true;
+  }
+
+  // Ensure backlogRoot is set so listBacklog finds the right folder
+  if (cfg.loop?.backlogPath && !cfg.loop?.backlogRoot) {
+    cfg.loop.backlogRoot = cfg.loop.backlogPath;
+  }
+
+  await fs.writeFile(cfgFile, JSON.stringify(cfg, null, 2) + "\n");
+  console.log("[github-sync] loop.json updated (github.enabled = true)");
+
+  // Resolve backlog root
+  const backlogRoot = cfg.loop?.backlogRoot
+    ? path.join(repoPath, cfg.loop.backlogRoot)
+    : path.join(repoPath, ".claude/artifacts/loop/backlog");
+
+  const stateToPhase = { done: "1", triaged: "2", "in-progress": "2", pending: "3" };
+  let count = 0;
+  for (const [state, phase] of Object.entries(stateToPhase)) {
+    const dir = path.join(backlogRoot, state);
+    let files;
+    try {
+      files = await fs.readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const f of files.filter((f) => f.endsWith(".md") && f.startsWith("FEAT-"))) {
+      const fp = path.join(dir, f);
+      const content = await fs.readFile(fp, "utf8");
+      const { frontmatter } = parseFrontmatter(content);
+      if (!overwrite && frontmatter.phase) continue;
+      await fs.writeFile(fp, mergeFrontmatter(content, { phase }));
+      count++;
+    }
+  }
+
+  console.log(`[github-sync] ${count} FEATs phased (done→1, triaged/in-progress→2, pending→3)`);
+  return { configUpdated: true, featsPhased: count };
 }
