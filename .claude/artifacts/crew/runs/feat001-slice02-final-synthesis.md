@@ -5,13 +5,12 @@ feature: FEAT-001
 phase: null
 grade: null
 decisions: []
-created_at: 2026-05-28
+created_at: 2026-06-01
 ---
 # Final synthesis — SLICE-02
 **Feature:** FEAT-001 · **Slice:** SLICE-02
 ## What shipped
 - Slice: `.claude/artifacts/loop/ai-loop/slices/completed/SLICE_02_IMPLEMENT-FEAT-001.md` (completed)
-- Feature: `.claude/artifacts/loop/backlog/done/FEAT-001.md` (done)
 ## Grade
 _(no grade yet — run `/loop:slice grade --id SLICE-02`)_
 ## Decisions captured
