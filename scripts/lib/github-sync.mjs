@@ -89,7 +89,11 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
         { id: sliceId, frontmatter: sliceFm, body: sliceBody },
         { ghExec }
       );
-      attachSubIssue(repo, issueNum, sliceIssueNum, { ghExec });
+      try {
+        attachSubIssue(repo, issueNum, sliceIssueNum, { ghExec });
+      } catch (err) {
+        console.warn(`[github-sync] sub-issue link skipped (issue #${issueNum} ← #${sliceIssueNum}): ${err.message?.split("\n")[0]}`);
+      }
       const updatedSlice = mergeFrontmatter(sliceContent, { github_issue: sliceIssueNum });
       await fs.writeFile(sliceFile, updatedSlice);
       subissueCount++;
