@@ -1,6 +1,6 @@
 ---
 id: FEAT-006
-status: done
+status: triaged
 priority: P2
 category: competitor-gap
 target_release: null
@@ -8,11 +8,13 @@ created: 2026-05-28
 updated: 2026-06-02
 depends_on: []
 slices: [SLICE-10]
+slices_complete: [SLICE-10]
+slices_remaining: [SLICE-B-conditional-gate]
 derived_from: null
 composite_score: 7
 source_competitors: [Cursor agents]
 autonomous_safe: false
-triage_notes: no fields needed inference
+triage_notes: reopened — slice complete prematurely rolled FEAT to done after SLICE-A (pre-flight primitive); SLICE-B (conditional gate keyed on autonomous_safe) still owed
 pm_customer_impact: 0.7
 pm_strategic_fit: 0.75
 pm_implementation_confidence: 0.55
@@ -23,7 +25,6 @@ github_issue: 11
 github_milestone: 2
 phase: 2
 started_at: 2026-06-02
-completed_at: 2026-06-02
 ---
 # FEAT-006: Plan Mode with codebase-research pre-flight
 

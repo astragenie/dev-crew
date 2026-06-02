@@ -1,17 +1,18 @@
 ---
 id: FEAT-025
-status: done
+status: triaged
 priority: P1
 category: infrastructure
 target_release: null
 created: 2026-06-02
 updated: 2026-06-02
-depends_on: []
+depends_on: [FEAT-006]
 slices: [SLICE-11]
+slices_complete: [SLICE-11]
+slices_remaining: [SLICE-B-real-dispatch-and-auto-commit, SLICE-C-stop-conditions-and-flip-default]
 derived_from: null
-triage_notes: no fields needed inference
+triage_notes: reopened — slice complete prematurely rolled FEAT to done after SLICE-A (dry-run walker primitive); SLICE-B (real dispatch + auto-commit) and SLICE-C (stop conditions + flip default to ship autonomous_safe=false items) still owed
 started_at: 2026-06-02
-completed_at: 2026-06-02
 ---
 # FEAT-025: /loop:auto — autonomous backlog walker that ships every FEAT/slice until exhaustion or hard halt
 
