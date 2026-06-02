@@ -47,7 +47,9 @@ const FLAG_SPEC = {
     "--insight": { key: "insight" },
     "--confidence": { key: "confidence" },
     "--slice": { key: "slice" },
-    "--limit": { key: "limit" }
+    "--limit": { key: "limit" },
+    "--max-features": { key: "maxFeatures" },
+    "--dry-run": { key: "dryRun", boolean: true }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -81,7 +83,9 @@ function parseArgs(argv) {
         insight: null,
         confidence: null,
         slice: null,
-        limit: null
+        limit: null,
+        maxFeatures: null,
+        dryRun: false
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -197,6 +201,13 @@ const COMMANDS = {
     "stop-check": async ({ repoPath }) => {
         const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
         return checkStopConditions(repoPath);
+    },
+    auto: async ({ repoPath, flags }) => {
+        const { runAutoWalker } = await import("./lib/auto-walker.mjs");
+        return runAutoWalker(repoPath, {
+            maxFeatures: flags.maxFeatures ? Number(flags.maxFeatures) : undefined,
+            dryRun: Boolean(flags.dryRun)
+        });
     },
     learnings: ({ repoPath, flags, positionals }) => runLearningsSubcommand(repoPath, positionals, flags)
 };
