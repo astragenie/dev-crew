@@ -3,6 +3,33 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.5.6 — 2026-06-02 — Move `presets/` under `scripts/` to survive plugin-cache selective copy
+
+### Fixes
+
+**Plugin cache `ENOENT: presets/` regression**
+- Claude Code's plugin fetcher populates `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` by selectively copying recognized plugin-component directories (`commands/`, `scripts/`, `skills/`, `tests/`). Top-level `presets/` was dropped on install, causing `node ./scripts/loop.mjs <any-cmd>` to crash with `ENOENT: no such file or directory, scandir '<cache>/0.5.5/presets'` because `scripts/lib/config-resolver.mjs` reads the preset directory at startup.
+- Moved `presets/` → `scripts/presets/` so the directory rides along with `scripts/` in the cache copy.
+- Updated `scripts/lib/config-resolver.mjs` and `src/scripts/lib/config-resolver.mts`: `path.resolve(scriptDir, "..", "presets")` (one `..` instead of two).
+- Updated `README.md` and `commands/list-presets.md` to reference the new path.
+
+## v0.5.5 — 2026-05-28 — Cross-session learnings JSONL store + github-sync
+
+### Features
+
+**Cross-session learnings (FEAT-011)**
+- Persistent JSONL store at `.claude/artifacts/loop/learnings.jsonl`.
+- `recentLearnings(repo, n)` returns the top `n` most-recent entries; `/loop:start` surfaces the top 3 automatically so the agent inherits session-to-session observations without manual recall.
+- Guard added: `recentLearnings(repo, 0)` returns an empty array instead of the full store.
+
+**GitHub Issues integration (Phase 21)**
+- Bidirectional sync layer in `scripts/lib/github-sync.mjs` + `scripts/lib/github-sync/*`: milestones, issues, sub-issues, comments, body-diff.
+- Public API: `publishAll`, `syncPull`, `syncMilestones`, `postSliceComment`, `updateIssueStatus`, `bootstrapFromGithub`.
+- `loop.json` `github: { enabled, repo }` opt-in block.
+- Ceremony hooks: slice start writes status label + comment; slice complete posts summary comment and closes the issue.
+- One-shot adopter: `scripts/setup-github-sync.mjs <repoPath>`.
+- CLI: `node scripts/loop.mjs github setup|publish|sync|status|bootstrap`.
+
 ## v0.5.4 — 2026-05-28 — TS phase 3: integration tests, ESLint boundaries, CI typecheck
 
 ### Features

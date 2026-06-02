@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 //   the preset defines a default.
 // - Missing keys fall back to the preset value.
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const presetDir = path.resolve(scriptDir, "..", "..", "presets");
+const presetDir = path.resolve(scriptDir, "..", "presets");
 export const CONFIG_FILENAME = ".claude/loop.json";
 export async function listPresets() {
     const entries = await fs.readdir(presetDir);

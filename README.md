@@ -110,7 +110,7 @@ is auto-skipped if `healthchecks` is empty (otherwise it would hang).
 |---|---|
 | `dotnet-aspire-python` | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra |
 
-More presets ship as new repo types surface. See `presets/` to author your own.
+More presets ship as new repo types surface. See `scripts/presets/` to author your own.
 
 ## Plugin architecture
 

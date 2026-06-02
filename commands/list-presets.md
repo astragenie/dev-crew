@@ -8,8 +8,8 @@ description: Show built-in loop presets with their stack defaults.
 node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" list-presets
 ```
 
-Returns an array of `{ name, description }` for each `presets/*.json` shipped
-by the plugin.
+Returns an array of `{ name, description }` for each `scripts/presets/*.json`
+shipped by the plugin.
 
 v1 ships:
 
@@ -24,7 +24,7 @@ makes the phase-gate runner injection-safe.
 
 To add a new preset:
 
-1. Author `presets/<name>.json` mirroring the structure of
+1. Author `scripts/presets/<name>.json` mirroring the structure of
    `dotnet-aspire-python.json`.
 2. Reinstall the plugin so the cache picks up the new preset, or copy the
    preset file into the plugin cache directly during dev.
