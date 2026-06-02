@@ -405,24 +405,25 @@ export async function bootstrapFromGithub(repoPath, { ghExec = defaultGhExec, co
   // Fetch all open issues
   const rawIssues = JSON.parse(
     ghExec([
-      "issue", "list",
-      "--repo", repo,
-      "--state", "open",
-      "--json", "number,title,body,labels,milestone",
-      "--limit", "200"
+      "issue",
+      "list",
+      "--repo",
+      repo,
+      "--state",
+      "open",
+      "--json",
+      "number,title,body,labels,milestone",
+      "--limit",
+      "200"
     ])
   );
 
   // Drop slice sub-issues
-  const featIssues = rawIssues.filter(
-    (i) => !i.labels.some((l) => l.name === "slice")
-  );
+  const featIssues = rawIssues.filter((i) => !i.labels.some((l) => l.name === "slice"));
 
   // Find already-linked issue numbers
   const existingFeats = await listBacklog(repoPath, { config: resolved });
-  const linkedNums = new Set(
-    existingFeats.map((f) => f.frontmatter.github_issue).filter(Boolean)
-  );
+  const linkedNums = new Set(existingFeats.map((f) => f.frontmatter.github_issue).filter(Boolean));
   let nextIdNum = existingFeats.reduce((acc, e) => Math.max(acc, e.idNumber), 0);
 
   const backlogRootPath = resolveBacklogRoot(repoPath, resolved);
@@ -482,7 +483,10 @@ export async function bootstrapFromGithub(repoPath, { ghExec = defaultGhExec, co
       ""
     ].join("\n");
 
-    await fs.writeFile(path.join(triagedDir, `${featId}.md`), serializeFrontmatter(frontmatter, body));
+    await fs.writeFile(
+      path.join(triagedDir, `${featId}.md`),
+      serializeFrontmatter(frontmatter, body)
+    );
     linkedNums.add(issue.number);
     created.push(featId);
     console.log(`[github-sync] ${featId} ← GitHub issue #${issue.number}: ${description}`);
