@@ -4,3 +4,4 @@ dist/
 .claude/state/
 .claude.backup.*
 *.tmp
+.playwright-mcp/
