@@ -1,6 +1,6 @@
 ---
 id: FEAT-024
-status: in-progress
+status: done
 priority: P1
 category: infrastructure
 target_release: null
@@ -12,6 +12,7 @@ slices_complete: [SLICE-13, SLICE-14, SLICE-15]
 derived_from: null
 triage_notes: "pre-declared 3 slices — A interface+GithubProvider (refactor, no behavior change), B NoopProvider+LinearProvider stub+loop.json taskStore resolver, C migrate ceremony hooks + setup-task-store.mjs"
 started_at: 2026-06-02
+completed_at: 2026-06-02
 ---
 # FEAT-024: Pluggable task-store backend — abstract GitHub/Linear/etc behind provider interface
 
