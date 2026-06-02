@@ -37,6 +37,7 @@ const FLAG_SPEC = {
   "--goal": { key: "goal" },
   "--no-dispatch": { key: "noDispatch", boolean: true },
   "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
+  "--force-close": { key: "forceClose", boolean: true },
   "--skip-validation-check": { key: "skipValidationCheck" },
   "--version": { key: "version" },
   "--since": { key: "since" },
@@ -432,6 +433,7 @@ const SLICE_HANDLERS = {
     const { completeSlice } = await import("./lib/slice-linker.mjs");
     const out = await completeSlice(repoPath, sliceId, {
       keepFeatureOpen: Boolean(flags.keepFeatureOpen),
+      forceClose: Boolean(flags.forceClose),
       skipValidationCheck: flags.skipValidationCheck || null
     });
     const { logEvent } = await import("./lib/telemetry.mjs");

@@ -1,14 +1,18 @@
 ---
 id: FEAT-026
-status: pending
+status: done
 priority: P1
 category: infrastructure
 target_release: null
 created: 2026-06-02
 updated: 2026-06-02
 depends_on: []
-slices: []
+slices: [SLICE-12]
 derived_from: null
+triage_notes: no fields needed inference
+started_at: 2026-06-02
+slices_complete: [SLICE-12]
+completed_at: 2026-06-02
 ---
 # FEAT-026: slice complete auto-detection of remaining slices — block premature FEAT roll to done/
 

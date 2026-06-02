@@ -122,36 +122,174 @@ async function evaluateFeatureGates(repoPath, featureId, blockingGates, validati
   return { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked };
 }
 
+// Appends sliceId to the FEAT's slices_complete array (dedupe), writes back
+// the updated frontmatter. Returns { slicesComplete, remainingSlices }.
+async function updateSlicesComplete(
+  feat: any,
+  sliceId: string
+): Promise<{ slicesComplete: string[]; remainingSlices: string[] }> {
+  const planned: string[] = Array.isArray(feat.frontmatter?.slices)
+    ? [...feat.frontmatter.slices]
+    : [];
+  const existing: string[] = Array.isArray(feat.frontmatter?.slices_complete)
+    ? [...feat.frontmatter.slices_complete]
+    : [];
+  const slicesComplete: string[] = existing.includes(sliceId)
+    ? existing
+    : [...existing, sliceId];
+  const remainingSlices: string[] = planned.filter((s) => !slicesComplete.includes(s));
+
+  // Write back to FEAT file
+  const content = await fs.readFile(feat.filePath, "utf8");
+  const updated = mergeFrontmatter(content, { slices_complete: slicesComplete });
+  await fs.writeFile(feat.filePath, updated);
+
+  return { slicesComplete, remainingSlices };
+}
+
+// Applies multi-slice detection for a FEAT that has a non-empty slices array.
+// Returns a result object to short-circuit computeFeatureResult, or null to
+// fall through to the default moveFeatureToDone path.
+async function applyMultiSliceLogic(
+  _repoPath,
+  feat: any,
+  featureId: string,
+  sliceId: string,
+  keepFeatureOpen: boolean,
+  forceClose: boolean,
+  _config
+) {
+  const planned: string[] = Array.isArray(feat.frontmatter?.slices)
+    ? [...feat.frontmatter.slices]
+    : [];
+  if (planned.length === 0) return null;
+
+  const { slicesComplete, remainingSlices } = await updateSlicesComplete(feat, sliceId);
+
+  if (remainingSlices.length > 0 && !forceClose && !keepFeatureOpen) {
+    return {
+      id: featureId,
+      skipped: true,
+      reason: `multi-slice: ${remainingSlices.join(", ")} still pending`,
+      remainingSlices,
+      slicesComplete,
+      path: feat.filePath
+    };
+  }
+
+  if (forceClose && remainingSlices.length > 0) {
+    const moved = await moveFeature(feat.filePath, "done", {
+      force_closed: true,
+      slices_remaining_at_close: remainingSlices,
+      slices_complete: slicesComplete
+    });
+    return { id: featureId, from: moved.from, to: moved.to };
+  }
+
+  // remaining == 0 (or keepFeatureOpen): fall through
+  return null;
+}
+
+function buildBlockedResult(
+  gateState: {
+    isBlocked: boolean;
+    isSimplifyBlocked: boolean;
+    isValidationBlocked: boolean;
+    isTestAdequacyBlocked: boolean;
+  },
+  blockingGates,
+  validationGate,
+  testAdequacyGate
+) {
+  const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } = gateState;
+  return {
+    skipped: true,
+    reason: describeBlockedGate({
+      isBlocked,
+      isSimplifyBlocked,
+      blockingGates,
+      validationGate,
+      testAdequacyGate
+    }),
+    blockingGates: isBlocked ? blockingGates : null,
+    simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null,
+    validationGate: isValidationBlocked ? validationGate : null,
+    testAdequacyGate: isTestAdequacyBlocked ? testAdequacyGate : null
+  };
+}
+
 async function computeFeatureResult(
   repoPath,
   featureId,
   blockingGates,
   config,
+  sliceId: string,
   keepFeatureOpen = false,
+  forceClose = false,
   validationGate = null as any,
   testAdequacyGate = null as any
 ) {
-  const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } =
-    await evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate);
+  const gateState = await evaluateFeatureGates(
+    repoPath,
+    featureId,
+    blockingGates,
+    validationGate,
+    testAdequacyGate
+  );
 
+  const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } = gateState;
   if (isBlocked || isSimplifyBlocked || isValidationBlocked || isTestAdequacyBlocked) {
-    return {
-      skipped: true,
-      reason: describeBlockedGate({
-        isBlocked,
-        isSimplifyBlocked,
-        blockingGates,
-        validationGate,
-        testAdequacyGate
-      }),
-      blockingGates: isBlocked ? blockingGates : null,
-      simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null,
-      validationGate: isValidationBlocked ? validationGate : null,
-      testAdequacyGate: isTestAdequacyBlocked ? testAdequacyGate : null
-    };
+    return buildBlockedResult(gateState, blockingGates, validationGate, testAdequacyGate);
+  }
+
+  if (featureId) {
+    const feat = await findFeatureById(repoPath, featureId, config);
+    if (feat && feat.state !== "done") {
+      const multiSliceResult = await applyMultiSliceLogic(
+        repoPath,
+        feat,
+        featureId,
+        sliceId,
+        keepFeatureOpen,
+        forceClose,
+        config
+      );
+      if (multiSliceResult !== null) return multiSliceResult;
+    }
   }
 
   return await moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen);
+}
+
+// Resolves the validation gate: --skip-validation-check writes a
+// validation_skipped badge first so the bypass is auditable, then shortcuts
+// the gate to satisfied. Otherwise derives from artifacts / badges / waiver.
+async function resolveValidationGate(
+  repoPath,
+  sliceId,
+  sliceFm,
+  skipValidationCheck
+): Promise<{ validationGate: any; validationSkippedBadge: any }> {
+  if (!skipValidationCheck) {
+    const validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm });
+    return { validationGate, validationSkippedBadge: null };
+  }
+  const reason = String(skipValidationCheck).trim();
+  if (!reason) {
+    throw new Error(
+      "--skip-validation-check requires a non-empty reason. " +
+        "Example: --skip-validation-check 'doc-only slice, no behavior'."
+    );
+  }
+  const validationSkippedBadge = await bestEffort(() =>
+    markValidationSkippedBadge(repoPath, reason)
+  );
+  const validationGate = {
+    satisfied: true,
+    reason: `--skip-validation-check: ${reason}`,
+    evidence: []
+  };
+  return { validationGate, validationSkippedBadge };
 }
 
 //      auto-rolls to satisfied.
@@ -159,7 +297,12 @@ async function computeFeatureResult(
 export async function completeSlice(
   repoPath,
   sliceId,
-  { config = null, keepFeatureOpen = false, skipValidationCheck = null }: Record<string, any> = {}
+  {
+    config = null,
+    keepFeatureOpen = false,
+    forceClose = false,
+    skipValidationCheck = null
+  }: Record<string, any> = {}
 ) {
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
@@ -183,29 +326,12 @@ export async function completeSlice(
   const startedAt = workflowState?.currentRun?.startedAt ?? null;
   const blockingGates = deriveBlockingGates(workflowState);
 
-  // Validation gate: refuse to roll feature to done when no validation
-  // artifact / badge / waiver is present. --skip-validation-check writes
-  // a validation_skipped badge first so the bypass is auditable, then
-  // shortcuts the gate to satisfied.
-  let validationGate;
-  let validationSkippedBadge: any = null;
-  if (skipValidationCheck) {
-    const reason = String(skipValidationCheck).trim();
-    if (!reason) {
-      throw new Error(
-        "--skip-validation-check requires a non-empty reason. " +
-          "Example: --skip-validation-check 'doc-only slice, no behavior'."
-      );
-    }
-    validationSkippedBadge = await bestEffort(() => markValidationSkippedBadge(repoPath, reason));
-    validationGate = {
-      satisfied: true,
-      reason: `--skip-validation-check: ${reason}`,
-      evidence: []
-    };
-  } else {
-    validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm });
-  }
+  const { validationGate, validationSkippedBadge } = await resolveValidationGate(
+    repoPath,
+    sliceId,
+    sliceFm,
+    skipValidationCheck
+  );
 
   const testAdequacyGate = await deriveTestAdequacyGate(repoPath, sliceId, resolved);
 
@@ -221,7 +347,9 @@ export async function completeSlice(
     featureId,
     blockingGates,
     config,
+    sliceId,
     keepFeatureOpen,
+    forceClose,
     validationGate,
     testAdequacyGate
   );
