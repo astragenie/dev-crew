@@ -8,6 +8,7 @@ target_release: null
 created: 2026-05-28
 updated: 2026-05-28
 completed_at: 2026-05-28
+github_issue: 29
 ---
 # SLICE-03: Fix agent-report filename — add leading timestamp, move kind before slug
 

@@ -9,6 +9,7 @@ requires_validation: true
 created: 2026-05-28
 updated: 2026-05-28
 completed_at: 2026-05-28
+github_issue: 27
 ---
 # SLICE-06: TypeScript port — phase 3: stability hardening
 

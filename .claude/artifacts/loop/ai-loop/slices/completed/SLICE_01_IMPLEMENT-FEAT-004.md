@@ -8,6 +8,7 @@ target_release: null
 created: 2026-05-27
 updated: 2026-05-28
 completed_at: 2026-05-28
+github_issue: 9
 ---
 # SLICE-01: Implement FEAT-004
 

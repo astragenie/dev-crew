@@ -8,6 +8,7 @@ target_release: null
 created: 2026-05-28
 updated: 2026-05-28
 completed_at: 2026-05-28
+github_issue: 24
 ---
 # SLICE-05: TypeScript port — phase 1: mechanical rename
 

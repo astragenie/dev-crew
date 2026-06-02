@@ -9,6 +9,7 @@ requires_validation: false
 created: 2026-05-28
 updated: 2026-05-28
 completed_at: 2026-05-28
+github_issue: 20
 ---
 # SLICE-07: Iron Law hard-gate tag convention in skill Markdown
 
