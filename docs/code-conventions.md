@@ -65,6 +65,15 @@ crew CLI surface that older versions do not expose.
   when the local cache crew version is below `MIN_CREW_VERSION`;
   they do not fail. See `tests/loop-installer.test.mjs`.
 
+## Evidence-before-claims convention
+
+Before any completion claim ("tests pass", "lint clean", "build green",
+"bug fixed", "feature works", "deploy succeeded"), an agent must run
+the corresponding verification command in the current turn and post
+the full output. Assertions from memory or prior turns are prohibited.
+See [`skills/verification-before-completion/SKILL.md`](../skills/verification-before-completion/SKILL.md)
+for the canonical claim→evidence lookup table and Iron Law block.
+
 ## HARD-GATE tag convention
 
 Skill Markdown files use two XML tag levels to signal enforcement severity.

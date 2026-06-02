@@ -1,13 +1,13 @@
 ---
 id: FEAT-014
-status: triaged
+status: done
 priority: P1
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-02
 depends_on: []
-slices: []
+slices: [SLICE-09]
 derived_from: null
 composite_score: 7
 source_competitors: [superpowers]
@@ -22,6 +22,8 @@ pm_reasoning: High strategic fit with existing validation gate; Iron Law framing
 github_issue: 21
 github_milestone: 2
 phase: 2
+started_at: 2026-06-02
+completed_at: 2026-06-02
 ---
 # FEAT-014: Evidence-before-claims verification gate as a named skill with evidence table
 
