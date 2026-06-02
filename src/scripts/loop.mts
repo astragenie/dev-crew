@@ -556,7 +556,7 @@ async function runGithubSubcommand(repoPath: any, positionals: any, _flags: any)
   const [sub] = positionals;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
-  const { publishAll, syncPull, syncMilestones, setupGithubSync } = await import("./lib/github-sync.mjs");
+  const { publishAll, syncPull, syncMilestones, setupGithubSync, bootstrapFromGithub } = await import("./lib/github-sync.mjs");
   if (sub === "setup") {
     const result = await (setupGithubSync as any)(repoPath);
     console.log("[github-sync] Setup complete. Run 'github publish' next.");
@@ -565,7 +565,8 @@ async function runGithubSubcommand(repoPath: any, positionals: any, _flags: any)
   if (sub === "publish") return (publishAll as any)(repoPath);
   if (sub === "sync") return (syncPull as any)(repoPath);
   if (sub === "status") return (syncMilestones as any)(repoPath);
-  throw new Error("github requires a subcommand: setup | publish | sync | status");
+  if (sub === "bootstrap") return (bootstrapFromGithub as any)(repoPath);
+  throw new Error("github requires a subcommand: setup | publish | sync | status | bootstrap");
 }
 
 main().catch((error) => {
