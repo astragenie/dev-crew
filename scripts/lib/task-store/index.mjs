@@ -29,6 +29,10 @@ export function getProvider(config, repoPath) {
         case "noop":
             return new NoopProvider();
         default:
+            if (providerName !== undefined) {
+                console.warn(`[task-store] Unknown provider "${providerName}" — falling back to NoopProvider. ` +
+                    `Check taskStore.provider in loop.json. Valid values: github, noop, linear.`);
+            }
             return new NoopProvider();
     }
 }

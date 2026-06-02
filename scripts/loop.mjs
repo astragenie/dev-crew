@@ -594,17 +594,13 @@ async function runGithubSubcommand(repoPath, positionals, _flags) {
         return publishAll(repoPath);
     if (sub === "status")
         return syncMilestones(repoPath);
-    if (sub === "sync") {
+    if (sub === "sync" || sub === "bootstrap") {
         const { resolveConfig } = await import("./lib/config-resolver.mjs");
         const { getProvider } = await import("./lib/task-store/index.mjs");
         const config = await resolveConfig(repoPath);
-        return getProvider(config, repoPath).syncPull(repoPath);
-    }
-    if (sub === "bootstrap") {
-        const { resolveConfig } = await import("./lib/config-resolver.mjs");
-        const { getProvider } = await import("./lib/task-store/index.mjs");
-        const config = await resolveConfig(repoPath);
-        return getProvider(config, repoPath).bootstrap(repoPath);
+        const provider = getProvider(config, repoPath);
+        console.log(`[task-store] provider: ${provider.constructor.name}`);
+        return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
     }
     throw new Error("github requires a subcommand: setup | publish | sync | status | bootstrap");
 }

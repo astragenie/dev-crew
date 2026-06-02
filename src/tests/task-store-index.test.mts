@@ -119,6 +119,48 @@ test("LinearProvider methods throw 'not implemented'", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// getProvider — warn on unknown provider name
+// ---------------------------------------------------------------------------
+test("getProvider emits console.warn for unrecognised provider name", () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (...args: any[]) => { warns.push(args.join(" ")); };
+  try {
+    const p = getProvider({ taskStore: { provider: "jira" } }, REPO);
+    assert.ok(p instanceof NoopProvider);
+    assert.equal(warns.length, 1);
+    assert.ok(warns[0].includes("jira"), `warn should mention provider name, got: ${warns[0]}`);
+    assert.ok(warns[0].includes("[task-store]"), `warn should have [task-store] prefix`);
+  } finally {
+    console.warn = orig;
+  }
+});
+
+test("getProvider does NOT warn when provider is explicitly 'noop'", () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (...args: any[]) => { warns.push(args.join(" ")); };
+  try {
+    getProvider({ taskStore: { provider: "noop" } }, REPO);
+    assert.equal(warns.length, 0, "explicit noop should produce no warning");
+  } finally {
+    console.warn = orig;
+  }
+});
+
+test("getProvider does NOT warn when no taskStore configured (default noop)", () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (...args: any[]) => { warns.push(args.join(" ")); };
+  try {
+    getProvider({}, REPO);
+    assert.equal(warns.length, 0, "unconfigured default should produce no warning");
+  } finally {
+    console.warn = orig;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Re-exports from index
 // ---------------------------------------------------------------------------
 test("index re-exports GithubProvider, LinearProvider, NoopProvider", () => {
