@@ -257,16 +257,22 @@ test("createSliceIssue creates issue and returns number", () => {
   assert.equal(num, 55);
 });
 
-test("attachSubIssue calls sub_issues API with correct body", () => {
+test("attachSubIssue fetches numeric id via REST then calls sub_issues API with version header", () => {
   const calls = [];
   const ghExec = (args) => {
     calls.push(args);
+    // gh api repos/.../issues/55 returns full issue JSON with numeric id
+    if (args[0] === "api" && String(args[1]).includes("/issues/55"))
+      return JSON.stringify({ id: 2794530182, number: 55 });
     return JSON.stringify({ id: 1 });
   };
   attachSubIssue("org/repo", 42, 55, { ghExec });
-  const apiCall = calls[0];
-  assert.ok(apiCall.includes("repos/org/repo/issues/42/sub_issues"));
-  assert.ok(apiCall.some((a) => String(a).includes("sub_issue_id=55")));
+  const lookupCall = calls[0];
+  const apiCall = calls[1];
+  assert.ok(String(lookupCall[1]).includes("issues/55"), "should look up child issue via REST");
+  assert.ok(apiCall.includes("repos/org/repo/issues/42/sub_issues"), "should call sub_issues endpoint");
+  assert.ok(apiCall.some((a) => String(a).includes("2794530182")), "should use numeric database id");
+  assert.ok(apiCall.some((a) => String(a).includes("X-GitHub-Api-Version")), "should pass api version header");
 });
 
 test("closeSliceIssue closes the issue and updates label", () => {

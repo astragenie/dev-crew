@@ -33,13 +33,18 @@ export function createSliceIssue(repo, slice, { ghExec = defaultGhExec } = {}) {
 }
 
 export function attachSubIssue(repo, parentNumber, childNumber, { ghExec = defaultGhExec } = {}) {
+  // gh issue view --json id returns the node_id (string), not the numeric database id.
+  // Use the REST API endpoint to get the numeric id field.
+  const { id: childId } = JSON.parse(ghExec(["api", `repos/${repo}/issues/${childNumber}`]));
   ghExec([
     "api",
     `repos/${repo}/issues/${parentNumber}/sub_issues`,
     "--method",
     "POST",
+    "-H",
+    "X-GitHub-Api-Version: 2026-03-10",
     "-F",
-    `sub_issue_id=${childNumber}`
+    `sub_issue_id=${childId}`
   ]);
 }
 

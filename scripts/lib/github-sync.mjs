@@ -66,37 +66,45 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
   }
 
   for (const feat of feats) {
-    if (feat.frontmatter.github_issue) continue;
-    const milestoneNum = feat.frontmatter.phase ? milestoneMap[feat.frontmatter.phase] : null;
-    const issueNum = createFeatureIssue(repo, feat, milestoneNum, { ghExec });
-    const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
-      github_issue: issueNum,
-      github_milestone: milestoneNum ?? null
-    });
-    await fs.writeFile(feat.filePath, updated);
-    issueCount++;
-    feat.frontmatter.github_issue = issueNum;
+    let issueNum = feat.frontmatter.github_issue;
+    if (!issueNum) {
+      const milestoneNum = feat.frontmatter.phase ? milestoneMap[feat.frontmatter.phase] : null;
+      issueNum = createFeatureIssue(repo, feat, milestoneNum, { ghExec });
+      const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
+        github_issue: issueNum,
+        github_milestone: milestoneNum ?? null
+      });
+      await fs.writeFile(feat.filePath, updated);
+      issueCount++;
+      feat.frontmatter.github_issue = issueNum;
+    }
 
+    // Always attempt sub-issue linking — idempotent for already-linked pairs
     const sliceIds = feat.frontmatter.slices || [];
     for (const sliceId of sliceIds) {
       const sliceFile = await findSliceFile(repoPath, sliceId, resolved);
       if (!sliceFile) continue;
       const sliceContent = await fs.readFile(sliceFile, "utf8");
       const { frontmatter: sliceFm, body: sliceBody } = parseFrontmatter(sliceContent);
-      if (sliceFm.github_issue) continue;
-      const sliceIssueNum = createSliceIssue(
-        repo,
-        { id: sliceId, frontmatter: sliceFm, body: sliceBody },
-        { ghExec }
-      );
+      let sliceIssueNum = sliceFm.github_issue;
+      if (!sliceIssueNum) {
+        sliceIssueNum = createSliceIssue(
+          repo,
+          { id: sliceId, frontmatter: sliceFm, body: sliceBody },
+          { ghExec }
+        );
+        const updatedSlice = mergeFrontmatter(sliceContent, { github_issue: sliceIssueNum });
+        await fs.writeFile(sliceFile, updatedSlice);
+        subissueCount++;
+      }
       try {
         attachSubIssue(repo, issueNum, sliceIssueNum, { ghExec });
       } catch (err) {
-        console.warn(`[github-sync] sub-issue link skipped (issue #${issueNum} ← #${sliceIssueNum}): ${err.message?.split("\n")[0]}`);
+        const detail = `${err.message ?? ""} ${err.stderr ?? ""}`;
+        if (!detail.includes("422") && !detail.includes("duplicate")) {
+          console.warn(`[github-sync] sub-issue link failed (#${issueNum} ← #${sliceIssueNum}): ${err.message?.split("\n")[0] ?? ""}`);
+        }
       }
-      const updatedSlice = mergeFrontmatter(sliceContent, { github_issue: sliceIssueNum });
-      await fs.writeFile(sliceFile, updatedSlice);
-      subissueCount++;
     }
   }
 
