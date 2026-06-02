@@ -70,7 +70,8 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
     let issueNum = feat.frontmatter.github_issue;
     if (!issueNum) {
       const milestoneNum = feat.frontmatter.phase ? milestoneMap[feat.frontmatter.phase] : null;
-      issueNum = createFeatureIssue(repo, feat, milestoneNum, { ghExec });
+      const milestoneTitle = feat.frontmatter.phase ? `Phase ${feat.frontmatter.phase}` : null;
+      issueNum = createFeatureIssue(repo, feat, milestoneTitle, { ghExec });
       const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
         github_issue: issueNum,
         github_milestone: milestoneNum ?? null

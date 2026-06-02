@@ -69,7 +69,7 @@ function ensureLabelExists(repo, name, ghExec) {
   }
 }
 
-export function createFeatureIssue(repo, feat, milestoneNumber, { ghExec = defaultGhExec } = {}) {
+export function createFeatureIssue(repo, feat, milestoneTitle, { ghExec = defaultGhExec } = {}) {
   if (feat.frontmatter?.github_issue) return feat.frontmatter.github_issue;
   ensureLabels(repo, { ghExec });
   const labels = buildLabels(feat.frontmatter || {});
@@ -88,7 +88,7 @@ export function createFeatureIssue(repo, feat, milestoneNumber, { ghExec = defau
     "--label",
     labels.join(",")
   ];
-  if (milestoneNumber) args.push("--milestone", String(milestoneNumber));
+  if (milestoneTitle) args.push("--milestone", String(milestoneTitle));
   const url = ghExec(args);
   return issueNumberFromUrl(url);
 }
