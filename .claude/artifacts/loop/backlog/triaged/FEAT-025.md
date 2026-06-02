@@ -1,6 +1,6 @@
 ---
 id: FEAT-025
-status: pending
+status: triaged
 priority: P1
 category: infrastructure
 target_release: null
@@ -9,6 +9,7 @@ updated: 2026-06-02
 depends_on: []
 slices: []
 derived_from: null
+triage_notes: no fields needed inference
 ---
 # FEAT-025: /loop:auto — autonomous backlog walker that ships every FEAT/slice until exhaustion or hard halt
 

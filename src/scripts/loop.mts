@@ -467,6 +467,19 @@ const SLICE_HANDLERS = {
     requireId(sliceId, "slice review-ladder requires --id SLICE-NN.");
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
     return buildReviewLadder(repoPath, sliceId);
+  },
+  plan: async (repoPath, _flags, _rest, sliceId) => {
+    requireId(sliceId, "slice plan requires --id SLICE-NN.");
+    const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
+    const out = await runPlanPreflight(repoPath, sliceId);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "slice plan",
+      slice: sliceId,
+      plan_path: out.planPath,
+      files_researched: out.filesResearched.length
+    });
+    return out;
   }
 };
 
@@ -474,7 +487,7 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder"
+      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | plan"
     );
   const handler = SLICE_HANDLERS[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);

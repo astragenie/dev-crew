@@ -1,13 +1,13 @@
 ---
 id: FEAT-006
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-02
 depends_on: []
-slices: []
+slices: [SLICE-10]
 derived_from: null
 composite_score: 7
 source_competitors: [Cursor agents]
@@ -22,6 +22,8 @@ pm_reasoning: Plan Mode aligns with loop intent but adds user-approval gate touc
 github_issue: 11
 github_milestone: 2
 phase: 2
+started_at: 2026-06-02
+completed_at: 2026-06-02
 ---
 # FEAT-006: Plan Mode with codebase-research pre-flight
 
