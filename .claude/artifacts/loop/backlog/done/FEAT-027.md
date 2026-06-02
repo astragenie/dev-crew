@@ -1,16 +1,17 @@
 ---
 id: FEAT-027
-status: in-progress
+status: done
 priority: P2
 category: infrastructure
 target_release: null
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-06-02
 depends_on: []
 slices: [SLICE-16]
-slices_complete: []
+slices_complete: [SLICE-16]
 derived_from: null
 started_at: 2026-06-03
+completed_at: 2026-06-02
 ---
 # FEAT-027: Observability: warn on unknown provider name, log resolved provider at task-store init
 
