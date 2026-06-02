@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.55
 pm_demand_signal: 0.65
 pm_risk_level: 0.55
 pm_reasoning: Plan Mode aligns with loop intent but adds user-approval gate touching slice start ceremony — user-visible behavioral contract needs SPEC first
+github_issue: 11
+github_milestone: 2
+phase: 2
 ---
 # FEAT-006: Plan Mode with codebase-research pre-flight
 

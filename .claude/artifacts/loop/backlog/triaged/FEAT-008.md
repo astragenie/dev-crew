@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.75
 pm_demand_signal: 0.55
 pm_risk_level: 0.25
 pm_reasoning: telemetry.mjs JSONL infrastructure already exists; schema design for step-records needs deliberate spec work before autonomous dispatch
+github_issue: 13
+github_milestone: 2
+phase: 2
 ---
 # FEAT-008: Trajectory JSON -- machine-parseable step log per run
 

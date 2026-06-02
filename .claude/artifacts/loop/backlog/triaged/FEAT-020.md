@@ -21,6 +21,9 @@ pm_implementation_confidence: 0.25
 pm_demand_signal: 0.6
 pm_risk_level: 0.85
 pm_reasoning: Explicitly deferred — depth limit and file-claim system unresolved; highest risk_level in batch
+github_issue: 22
+github_milestone: 2
+phase: 2
 ---
 # FEAT-020: Async hierarchical subagent dispatch
 

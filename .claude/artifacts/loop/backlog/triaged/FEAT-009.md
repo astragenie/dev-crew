@@ -21,6 +21,9 @@ pm_implementation_confidence: 0.35
 pm_demand_signal: 0.65
 pm_risk_level: 0.75
 pm_reasoning: Explicitly deferred — circuit breaker and CI integration primitives missing; highest risk in active batch
+github_issue: 14
+github_milestone: 2
+phase: 2
 ---
 # FEAT-009: Autonomous PR autofix loop (lint / CI / scanner / review-bot driven)
 

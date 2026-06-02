@@ -7,7 +7,8 @@ import { detectRepo } from "./github-sync/repo-detect.mjs";
 import { upsertMilestone } from "./github-sync/milestone-sync.mjs";
 import {
   createFeatureIssue,
-  updateIssueStatus as _updateLabel
+  updateIssueStatus as _updateLabel,
+  closeIssue
 } from "./github-sync/issue-sync.mjs";
 import { createSliceIssue, attachSubIssue, closeSliceIssue } from "./github-sync/subissue-sync.mjs";
 import { buildSliceComment, postComment } from "./github-sync/comment-sync.mjs";
@@ -102,7 +103,9 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
       } catch (err) {
         const detail = `${err.message ?? ""} ${err.stderr ?? ""}`;
         if (!detail.includes("422") && !detail.includes("duplicate")) {
-          console.warn(`[github-sync] sub-issue link failed (#${issueNum} ← #${sliceIssueNum}): ${err.message?.split("\n")[0] ?? ""}`);
+          console.warn(
+            `[github-sync] sub-issue link failed (#${issueNum} ← #${sliceIssueNum}): ${err.message?.split("\n")[0] ?? ""}`
+          );
         }
       }
     }
@@ -245,4 +248,86 @@ export async function updateIssueStatus(
     _updateLabel(repo, sliceFm.github_issue, "in-progress", { ghExec });
   }
   return { updated: true };
+}
+
+const STATE_TO_LABEL = {
+  done: "done",
+  "in-progress": "in-progress",
+  triaged: "pending",
+  pending: "pending"
+};
+
+/**
+ * Sync milestones and status labels for all published FEATs.
+ * - Upserts milestones for every unique phase value found across FEATs.
+ * - Assigns each published FEAT to its milestone via gh issue edit.
+ * - Updates status labels to match current local state.
+ * - Closes GitHub issues for FEATs in state "done".
+ * Idempotent — safe to run multiple times.
+ */
+export async function syncMilestones(repoPath, { ghExec = defaultGhExec, config } = {}) {
+  const resolved = await loadConfig(repoPath, config);
+  if (!isEnabled(resolved)) return { milestones: 0, updated: 0, closed: 0 };
+  const repo = detectRepo(resolved.github.repo, repoPath);
+  if (!isGhInstalled({ ghExec })) {
+    console.warn("[github-sync] gh CLI not found. Run: gh auth login");
+    return { milestones: 0, updated: 0, closed: 0 };
+  }
+
+  const feats = await listBacklog(repoPath, { config: resolved });
+  const published = feats.filter((f) => f.frontmatter.github_issue);
+
+  // Build milestone map for all phases present in published FEATs
+  const phases = [...new Set(published.map((f) => f.frontmatter.phase).filter(Boolean))];
+  const milestoneMap = {};
+  for (const phase of phases) {
+    milestoneMap[phase] = upsertMilestone(repo, { title: `Phase ${phase}` }, { ghExec });
+  }
+
+  let updatedCount = 0;
+  let closedCount = 0;
+
+  for (const feat of published) {
+    const issueNum = feat.frontmatter.github_issue;
+    const state = feat.state;
+    const phase = feat.frontmatter.phase;
+    const milestoneNum = phase ? milestoneMap[phase] : null;
+    const statusLabel = STATE_TO_LABEL[state] ?? "pending";
+
+    // Update milestone assignment when phase is set
+    if (milestoneNum && phase) {
+      ghExec(["issue", "edit", String(issueNum), "--repo", repo, "--milestone", `Phase ${phase}`]);
+      // Write github_milestone back to frontmatter if changed
+      if (feat.frontmatter.github_milestone !== milestoneNum) {
+        const content = await fs.readFile(feat.filePath, "utf8");
+        await fs.writeFile(
+          feat.filePath,
+          mergeFrontmatter(content, { github_milestone: milestoneNum })
+        );
+      }
+    }
+
+    // Sync status label to match local state
+    _updateLabel(repo, issueNum, statusLabel, { ghExec });
+
+    // Close GitHub issue when FEAT is done
+    if (state === "done") {
+      try {
+        closeIssue(repo, issueNum, { ghExec });
+        closedCount++;
+      } catch {
+        // already closed — ignore
+      }
+    }
+
+    updatedCount++;
+    console.log(
+      `[github-sync] ${feat.id} → milestone:${milestoneNum ?? "none"} status:${statusLabel}`
+    );
+  }
+
+  console.log(
+    `[github-sync] syncMilestones: ${phases.length} milestones, ${updatedCount} issues updated, ${closedCount} closed`
+  );
+  return { milestones: phases.length, updated: updatedCount, closed: closedCount };
 }

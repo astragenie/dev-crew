@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.8
 pm_demand_signal: 0.55
 pm_risk_level: 0.15
 pm_reasoning: High strategic fit with existing validation gate; Iron Law framing is new artifact type for this repo — needs SPEC despite low technical risk
+github_issue: 21
+github_milestone: 2
+phase: 2
 ---
 # FEAT-014: Evidence-before-claims verification gate as a named skill with evidence table
 

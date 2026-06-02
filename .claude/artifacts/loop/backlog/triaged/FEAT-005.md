@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.7
 pm_demand_signal: 0.55
 pm_risk_level: 0.35
 pm_reasoning: "model-router.mjs handles phase routing; within-task architect/editor split is new command surface — behavioral change, single competitor source"
+github_issue: 10
+github_milestone: 2
+phase: 2
 ---
 # FEAT-005: Architect / editor two-model split as a built-in command
 

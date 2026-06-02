@@ -10,7 +10,10 @@ depends_on: []
 slices: [SLICE-04]
 derived_from: null
 triage_notes: no fields needed inference
-completion_notes: Completed via SLICE-04 (commit 5c02b2d). grade-writer, crew-bridge handoff, and crew-bridge final-synthesis now emit phase→feature→slice identification headers. renderIdentification exported from agent-report-writer. Null fields omitted cleanly. 366/366 tests pass.
+completion_notes: "Completed via SLICE-04 (commit 5c02b2d). grade-writer, crew-bridge handoff, and crew-bridge final-synthesis now emit phase→feature→slice identification headers. renderIdentification exported from agent-report-writer. Null fields omitted cleanly. 366/366 tests pass."
+github_issue: 6
+github_milestone: 1
+phase: 1
 ---
 ## Description
 

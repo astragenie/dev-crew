@@ -12,6 +12,9 @@ derived_from: null
 triage_notes: no fields needed inference
 started_at: 2026-05-27
 completed_at: 2026-05-28
+github_issue: 2
+github_milestone: 1
+phase: 1
 ---
 ## Description
 

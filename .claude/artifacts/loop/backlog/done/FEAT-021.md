@@ -13,6 +13,9 @@ autonomous_safe: true
 triage_notes: no fields needed inference
 started_at: 2026-05-28
 completed_at: 2026-05-28
+github_issue: 23
+github_milestone: 1
+phase: 1
 ---
 # FEAT-021: TypeScript port — phase 1: mechanical rename
 

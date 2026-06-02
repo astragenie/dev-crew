@@ -12,6 +12,9 @@ derived_from: null
 autonomous_safe: false
 triage_notes: no fields needed inference
 started_at: 2026-05-28
+github_issue: 25
+github_milestone: 1
+phase: 1
 ---
 # FEAT-022: TypeScript port — phase 2: refactoring
 

@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.55
 pm_demand_signal: 0.55
 pm_risk_level: 0.6
 pm_reasoning: "Auto-commit WIP + ship squash filter touches git history and PR shape — high blast-radius, squash edge cases underspecified"
+github_issue: 18
+github_milestone: 2
+phase: 2
 ---
 # FEAT-012: Continuous checkpoint commits with WIP squash on ship
 

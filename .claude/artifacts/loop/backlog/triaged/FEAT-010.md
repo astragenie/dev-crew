@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.6
 pm_demand_signal: 0.6
 pm_risk_level: 0.4
 pm_reasoning: "Prospective confidence signal hooks into slice start ceremony output — user-visible behavioral change, calibration methodology unspecified"
+github_issue: 15
+github_milestone: 2
+phase: 2
 ---
 # FEAT-010: Confidence reporting per slice (traffic-light signal)
 

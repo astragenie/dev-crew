@@ -19,6 +19,9 @@ pm_implementation_confidence: 0.5
 pm_demand_signal: 0.5
 pm_risk_level: 0.5
 pm_reasoning: Cursor .mdc glob-attach is IDE-layer concept; no clear mapping to loop/crew Markdown-first rule system + remote import adds network dependency
+github_issue: 12
+github_milestone: 2
+phase: 2
 ---
 # FEAT-007: Glob-scoped auto-attach rules with remote import
 
