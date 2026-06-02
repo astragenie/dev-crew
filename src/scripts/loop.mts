@@ -54,7 +54,8 @@ const FLAG_SPEC = {
   "--slice": { key: "slice" },
   "--limit": { key: "limit" },
   "--max-features": { key: "maxFeatures" },
-  "--dry-run": { key: "dryRun", boolean: true }
+  "--dry-run": { key: "dryRun", boolean: true },
+  "--provider": { key: "provider" }
 };
 
 function parseArgs(argv) {
@@ -91,7 +92,8 @@ function parseArgs(argv) {
     slice: null,
     limit: null,
     maxFeatures: null,
-    dryRun: false
+    dryRun: false,
+    provider: null
   };
   const positionals: any[] = [];
 
@@ -161,6 +163,7 @@ const COMMANDS = {
     return { presets: await listPresets() };
   },
   github: ({ repoPath, flags, positionals }: any) => runGithubSubcommand(repoPath, positionals, flags),
+  "task-store": ({ repoPath, flags, positionals }: any) => runGithubSubcommand(repoPath, positionals, flags),
   backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
   spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
   release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
@@ -582,16 +585,26 @@ async function runGithubSubcommand(repoPath: any, positionals: any, _flags: any)
   const [sub] = positionals;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
-  const { publishAll, syncPull, syncMilestones, setupGithubSync, bootstrapFromGithub } = await import("./lib/github-sync.mjs");
+  const { publishAll, syncMilestones, setupGithubSync } = await import("./lib/github-sync.mjs");
   if (sub === "setup") {
     const result = await (setupGithubSync as any)(repoPath);
     console.log("[github-sync] Setup complete. Run 'github publish' next.");
     return result;
   }
   if (sub === "publish") return (publishAll as any)(repoPath);
-  if (sub === "sync") return (syncPull as any)(repoPath);
   if (sub === "status") return (syncMilestones as any)(repoPath);
-  if (sub === "bootstrap") return (bootstrapFromGithub as any)(repoPath);
+  if (sub === "sync") {
+    const { resolveConfig } = await import("./lib/config-resolver.mjs");
+    const { getProvider } = await import("./lib/task-store/index.mjs");
+    const config = await resolveConfig(repoPath);
+    return getProvider(config, repoPath).syncPull(repoPath);
+  }
+  if (sub === "bootstrap") {
+    const { resolveConfig } = await import("./lib/config-resolver.mjs");
+    const { getProvider } = await import("./lib/task-store/index.mjs");
+    const config = await resolveConfig(repoPath);
+    return getProvider(config, repoPath).bootstrap(repoPath);
+  }
   throw new Error("github requires a subcommand: setup | publish | sync | status | bootstrap");
 }
 
