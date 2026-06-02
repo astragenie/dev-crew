@@ -7,7 +7,7 @@ priority: P1
 target_release: null
 requires_validation: false
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-06-02
 completed_at: 2026-06-03
 ---
 # SLICE-15: Ceremony hook migration + setup-task-store.mjs
