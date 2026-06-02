@@ -56,10 +56,25 @@ function issueNumberFromUrl(url) {
   return parseInt(url.trim().split("/").pop(), 10);
 }
 
+function ensureLabelExists(repo, name, ghExec) {
+  try {
+    const existing = JSON.parse(
+      ghExec(["label", "list", "--repo", repo, "--json", "name", "--limit", "200"])
+    );
+    if (!existing.some((l) => l.name === name)) {
+      ghExec(["label", "create", name, "--repo", repo, "--color", "ededed", "--description", ""]);
+    }
+  } catch {
+    // best-effort
+  }
+}
+
 export function createFeatureIssue(repo, feat, milestoneNumber, { ghExec = defaultGhExec } = {}) {
   if (feat.frontmatter?.github_issue) return feat.frontmatter.github_issue;
   ensureLabels(repo, { ghExec });
   const labels = buildLabels(feat.frontmatter || {});
+  const knownNames = new Set(LABEL_DEFS.map((l) => l.name));
+  labels.filter((l) => !knownNames.has(l)).forEach((l) => ensureLabelExists(repo, l, ghExec));
   const title = `${feat.id}: ${extractFirstDescriptionLine(feat.body)}`;
   const args = [
     "issue",
