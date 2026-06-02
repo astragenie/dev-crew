@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveConfig, configPath as resolveConfigPath } from "./config-resolver.mjs";
 import { listBacklog } from "./backlog-parser.mjs";
-import { mergeFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
+import { mergeFrontmatter, parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { defaultGhExec, isGhInstalled } from "./github-sync/gh.mjs";
 import { detectRepo } from "./github-sync/repo-detect.mjs";
 import { upsertMilestone } from "./github-sync/milestone-sync.mjs";
@@ -14,7 +14,7 @@ import {
 import { createSliceIssue, attachSubIssue, closeSliceIssue } from "./github-sync/subissue-sync.mjs";
 import { buildSliceComment, postComment } from "./github-sync/comment-sync.mjs";
 import { diffBody, patchBody } from "./github-sync/body-diff.mjs";
-import { locateSliceFile, slicesRoot } from "./paths.mjs";
+import { locateSliceFile, slicesRoot, backlogRoot as resolveBacklogRoot } from "./paths.mjs";
 
 function isEnabled(resolved) {
   return Boolean(resolved?.github?.enabled);
@@ -386,4 +386,108 @@ export async function setupGithubSync(repoPath, { overwrite = false } = {}) {
 
   console.log(`[github-sync] ${count} FEATs phased (done→1, triaged/in-progress→2, pending→3)`);
   return { configUpdated: true, featsPhased: count };
+}
+
+/**
+ * Reverse sync: fetch open GitHub issues and create local FEAT-NNN.md files.
+ * Skips issues labeled "slice" and issues already linked to an existing FEAT.
+ * Creates new FEATs in the backlog triaged/ folder.
+ */
+export async function bootstrapFromGithub(repoPath, { ghExec = defaultGhExec, config } = {}) {
+  const resolved = await loadConfig(repoPath, config);
+  if (!isEnabled(resolved)) return { created: 0, skipped: 0, featIds: [] };
+  const repo = detectRepo(resolved.github.repo, repoPath);
+  if (!isGhInstalled({ ghExec })) {
+    console.warn("[github-sync] gh CLI not found. Run: gh auth login");
+    return { created: 0, skipped: 0, featIds: [] };
+  }
+
+  // Fetch all open issues
+  const rawIssues = JSON.parse(
+    ghExec([
+      "issue", "list",
+      "--repo", repo,
+      "--state", "open",
+      "--json", "number,title,body,labels,milestone",
+      "--limit", "200"
+    ])
+  );
+
+  // Drop slice sub-issues
+  const featIssues = rawIssues.filter(
+    (i) => !i.labels.some((l) => l.name === "slice")
+  );
+
+  // Find already-linked issue numbers
+  const existingFeats = await listBacklog(repoPath, { config: resolved });
+  const linkedNums = new Set(
+    existingFeats.map((f) => f.frontmatter.github_issue).filter(Boolean)
+  );
+  let nextIdNum = existingFeats.reduce((acc, e) => Math.max(acc, e.idNumber), 0);
+
+  const backlogRootPath = resolveBacklogRoot(repoPath, resolved);
+  const triagedDir = path.join(backlogRootPath, "triaged");
+  await fs.mkdir(triagedDir, { recursive: true });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const created = [];
+  let skipped = 0;
+
+  for (const issue of featIssues) {
+    if (linkedNums.has(issue.number)) {
+      skipped++;
+      continue;
+    }
+
+    nextIdNum++;
+    const featId = `FEAT-${String(nextIdNum).padStart(3, "0")}`;
+
+    const labelNames = issue.labels.map((l) => l.name);
+    const priorityLabel = labelNames.find((l) => l.startsWith("priority:"));
+    const categoryLabel = labelNames.find((l) => l.startsWith("category:"));
+
+    const milestoneTitle = issue.milestone?.title ?? null;
+    const phaseMatch = milestoneTitle?.match(/^Phase\s+(\S+)$/i);
+    const phase = phaseMatch ? phaseMatch[1] : null;
+
+    const description = issue.title.replace(/^FEAT-\d+:\s*/i, "").trim();
+
+    const frontmatter = {
+      id: featId,
+      status: "triaged",
+      priority: priorityLabel ? priorityLabel.replace("priority:", "") : null,
+      category: categoryLabel ? categoryLabel.replace("category:", "") : null,
+      target_release: null,
+      created: today,
+      updated: today,
+      depends_on: [],
+      slices: [],
+      derived_from: null,
+      feature_complete: null,
+      autonomous_safe: labelNames.includes("autonomous-safe") || null,
+      phase,
+      github_issue: issue.number,
+      github_milestone: issue.milestone?.number ?? null
+    };
+
+    const body = [
+      "## Description",
+      "",
+      description,
+      "",
+      ...(issue.body?.trim() ? [issue.body.trim(), ""] : []),
+      "## Acceptance criteria",
+      "",
+      "- [ ] AC-1: <replace with a concrete, testable acceptance criterion>",
+      ""
+    ].join("\n");
+
+    await fs.writeFile(path.join(triagedDir, `${featId}.md`), serializeFrontmatter(frontmatter, body));
+    linkedNums.add(issue.number);
+    created.push(featId);
+    console.log(`[github-sync] ${featId} ← GitHub issue #${issue.number}: ${description}`);
+  }
+
+  console.log(`[github-sync] bootstrap: ${created.length} created, ${skipped} skipped`);
+  return { created: created.length, skipped, featIds: created };
 }

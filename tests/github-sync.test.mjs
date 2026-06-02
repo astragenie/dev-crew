@@ -392,3 +392,94 @@ test("syncPull is no-op when github.enabled is false", async () => {
   assert.equal(calls.length, 0);
   assert.deepEqual(result, { checked: 0, updated: 0, changes: [] });
 });
+
+import { bootstrapFromGithub } from "../scripts/lib/github-sync.mjs";
+// Note: fs, path, os are already imported earlier in this file
+
+async function tmpBootstrapRepo() {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "gh-bootstrap-"));
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(
+    path.join(repo, ".claude/loop.json"),
+    // repo: "org/testrepo" avoids git remote lookup in tests
+    JSON.stringify({ github: { enabled: true, repo: "org/testrepo" } })
+  );
+  return repo;
+}
+
+// --- github bootstrap ---
+
+test("bootstrapFromGithub is no-op when github.enabled is false", async () => {
+  const repo = await tmpSyncRepo(); // enabled: false
+  const calls = [];
+  const ghExec = (args) => { calls.push(args); return "[]"; };
+  const result = await bootstrapFromGithub(repo, { ghExec });
+  assert.equal(calls.length, 0);
+  assert.deepEqual(result, { created: 0, skipped: 0, featIds: [] });
+});
+
+test("bootstrapFromGithub creates FEAT file from GitHub issue", async () => {
+  const repo = await tmpBootstrapRepo();
+  const ghExec = (args) => {
+    if (args[0] === "--version") return "gh version 2.0";
+    if (args[0] === "issue" && args[1] === "list")
+      return JSON.stringify([
+        {
+          number: 42,
+          title: "Add health endpoint",
+          body: "Returns 200 with uptime.",
+          labels: [{ name: "priority:P1" }, { name: "category:integration" }],
+          milestone: { title: "Phase 2", number: 2 }
+        }
+      ]);
+    return "";
+  };
+  const result = await bootstrapFromGithub(repo, { ghExec });
+  assert.equal(result.created, 1);
+  assert.equal(result.skipped, 0);
+  assert.equal(result.featIds[0], "FEAT-001");
+  const content = await fs.readFile(
+    path.join(repo, ".claude/artifacts/loop/backlog/triaged/FEAT-001.md"),
+    "utf8"
+  );
+  assert.ok(content.includes("github_issue: 42"), "should set github_issue");
+  assert.ok(content.includes("priority: P1"), "should parse priority label");
+  assert.ok(content.includes("category: integration"), "should parse category label");
+  assert.ok(content.includes("phase: 2"), "should parse milestone as phase");
+  assert.ok(content.includes("Add health endpoint"), "should include issue title");
+});
+
+test("bootstrapFromGithub skips issues already linked to a local FEAT", async () => {
+  const repo = await tmpBootstrapRepo();
+  // Pre-create a FEAT that already links issue #42
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/done");
+  await fs.mkdir(backlogDir, { recursive: true });
+  await fs.writeFile(
+    path.join(backlogDir, "FEAT-001.md"),
+    "---\nid: FEAT-001\nstatus: done\ngithub_issue: 42\n---\n## Description\n\nExisting.\n"
+  );
+  const ghExec = (args) => {
+    if (args[0] === "--version") return "gh version 2.0";
+    if (args[0] === "issue" && args[1] === "list")
+      return JSON.stringify([{ number: 42, title: "Existing", body: "", labels: [], milestone: null }]);
+    return "";
+  };
+  const result = await bootstrapFromGithub(repo, { ghExec });
+  assert.equal(result.created, 0);
+  assert.equal(result.skipped, 1);
+});
+
+test("bootstrapFromGithub skips issues labeled slice", async () => {
+  const repo = await tmpBootstrapRepo();
+  const ghExec = (args) => {
+    if (args[0] === "--version") return "gh version 2.0";
+    if (args[0] === "issue" && args[1] === "list")
+      return JSON.stringify([
+        { number: 10, title: "SLICE-01: Do work", body: "", labels: [{ name: "slice" }], milestone: null }
+      ]);
+    return "";
+  };
+  const result = await bootstrapFromGithub(repo, { ghExec });
+  assert.equal(result.created, 0);
+  assert.equal(result.skipped, 0); // filtered before skip check
+});
