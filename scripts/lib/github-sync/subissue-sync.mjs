@@ -33,16 +33,14 @@ export function createSliceIssue(repo, slice, { ghExec = defaultGhExec } = {}) {
 }
 
 export function attachSubIssue(repo, parentNumber, childNumber, { ghExec = defaultGhExec } = {}) {
-  const args = [
+  ghExec([
     "api",
     `repos/${repo}/issues/${parentNumber}/sub_issues`,
     "--method",
     "POST",
-    "-f",
+    "-F",
     `sub_issue_id=${childNumber}`
-  ];
-  args.push(String(childNumber)); // Ensure childNumber is in the array as a string
-  ghExec(args);
+  ]);
 }
 
 export function closeSliceIssue(repo, issueNumber, { ghExec = defaultGhExec } = {}) {

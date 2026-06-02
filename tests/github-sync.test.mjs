@@ -266,7 +266,7 @@ test("attachSubIssue calls sub_issues API with correct body", () => {
   attachSubIssue("org/repo", 42, 55, { ghExec });
   const apiCall = calls[0];
   assert.ok(apiCall.includes("repos/org/repo/issues/42/sub_issues"));
-  assert.ok(apiCall.includes("55"));
+  assert.ok(apiCall.some((a) => String(a).includes("sub_issue_id=55")));
 });
 
 test("closeSliceIssue closes the issue and updates label", () => {
