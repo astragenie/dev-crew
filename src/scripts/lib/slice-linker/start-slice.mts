@@ -6,6 +6,7 @@ import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-p
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
 import { recentLearnings } from "../learnings.mjs";
+import { resolveOrchestratorModel } from "../model-router.mjs";
 
 async function bestEffort(fn) {
   try {
@@ -90,6 +91,7 @@ export async function startSlice(
     featureExcerpt,
     marathonMilestone,
     dispatchLimits: resolved.loop?.dispatchLimits ?? null,
+    orchestratorModel: resolveOrchestratorModel(resolved),
     learningsDigest
   });
 }
@@ -153,6 +155,7 @@ function buildStartSliceReturn({
   featureExcerpt = null as any,
   marathonMilestone = null as any,
   dispatchLimits = null as any,
+  orchestratorModel = null as any,
   learningsDigest = null as any
 }) {
   const dispatchInstruction = dispatch
@@ -183,6 +186,7 @@ function buildStartSliceReturn({
     nextAction,
     gradeTrendCaution,
     marathonMilestone,
+    orchestratorModel,
     learningsDigest
   };
 }

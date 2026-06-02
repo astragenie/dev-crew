@@ -153,3 +153,22 @@ test("startSlice returns marathonMilestone when all window scores above threshol
     assert.ok(result.marathonMilestone !== null, "marathonMilestone should be set");
     assert.equal(result.marathonMilestone.milestone, true);
 });
+// --- Orchestrator model gate tests ---
+test("startSlice returns orchestratorModel from config when set", async () => {
+    const repo = await tmpRepo("al-slice-orch-model-");
+    const feat = await addFeature(repo, { title: "Model gate" });
+    const { slice } = await sliceFromFeature(repo, feat.id);
+    await fillPlaceholderACs(slice.path);
+    const config = { loop: { orchestratorModel: "sonnet" } };
+    const result = await startSlice(repo, slice.id, { dispatch: false, config });
+    assert.equal(result.orchestratorModel, "sonnet");
+});
+test("startSlice returns orchestratorModel null when not configured", async () => {
+    const repo = await tmpRepo("al-slice-orch-model-null-");
+    const feat = await addFeature(repo, { title: "No model gate" });
+    const { slice } = await sliceFromFeature(repo, feat.id);
+    await fillPlaceholderACs(slice.path);
+    const config = { loop: {} };
+    const result = await startSlice(repo, slice.id, { dispatch: false, config });
+    assert.equal(result.orchestratorModel, null);
+});

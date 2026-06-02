@@ -68,6 +68,22 @@ optional and ordered.
 
 Iteration counter still increments under marathon mode; `stop-check` continues to report `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot` for dashboards. Marathon mode disables only the _gating_, not the _telemetry_. Set `marathonMode: false` if your repo prefers the legacy bounded-iteration behavior.
 
+## Orchestrator Model Gate — HARD RULE
+
+After calling `/loop:slice start`, inspect `orchestratorModel` in the return. If it is non-null and does not match your current session model, stop immediately before any slice work and output:
+
+```
+HARD GATE — Orchestrator model mismatch.
+  Required: <orchestratorModel value from return>
+  Current:  <your session model from system prompt>
+
+Restart this session on the correct model before continuing the loop.
+  claude --model claude-sonnet-4-6
+Do not continue the loop until restarted on the correct model.
+```
+
+The autonomous loop must not proceed past this gate. Resuming on the wrong model burns Opus-tier cost for coordination work that Sonnet handles equally well.
+
 ## Slice Start Ceremony — HARD RULE
 
 Open every slice through the canonical start command **before** beginning acceptance-criteria work. Skipping it leaves `workflow-state.json.currentRun` pinned to the previous slice (or a stale "verification" run), so the close ceremony's cost auto-emit attributes the new slice's spend to the wrong window.
