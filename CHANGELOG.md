@@ -3,6 +3,52 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.6.0 — 2026-06-03 — Pluggable task-store, architect command, Plan Mode gate, autonomous walker, trajectory log, PR autofix
+
+### Features
+
+**Pluggable task-store backend (FEAT-024)**
+- New `scripts/lib/task-store/` provider layer: `TaskStoreProvider` interface, `GithubProvider`, `NoopProvider`, `LinearProvider` stub.
+- `getProvider(config, repoPath)` resolver reads `taskStore.provider` from `loop.json`; back-compat with `github.enabled: true`.
+- `setup-task-store.mjs --provider <github|noop|linear>` adopter script.
+- `loop github sync` and `loop github bootstrap` now route through the provider.
+- `loop task-store` alias added.
+
+**Observability: warn on unknown provider (FEAT-027)**
+- `getProvider` emits `console.warn` when falling through to NoopProvider due to an unrecognised provider name.
+- `loop github sync`/`bootstrap` log resolved provider name at INFO level.
+
+**Architect / editor two-model split — `loop architect` (FEAT-005)**
+- New `loop architect --id SLICE-NN` command: runs `runPlanPreflight` as the architect model (Opus), returns plan artifact + two-model dispatch instruction naming both architect and editor models.
+- `resolveArchitectModels(config)` added to model-router; `"architect"` added to `MODEL_PHASES`.
+- `commands/architect.md` skill doc.
+
+**Plan Mode conditional gate in `startSlice` (FEAT-006 SLICE-B)**
+- `runPlanPreflight` now runs as a best-effort parallel resource in `startSlice`.
+- `computeApprovalGate(autonomousSafe, autoMode, dispatch)` — exported pure helper.
+- `requiresApprovalGate` and `planPreflight` included in `startSlice` return.
+- Gate fires when `autonomous_safe: false` and loop not in auto mode; suppressed when `loop.autoMode: true`.
+
+**Autonomous backlog walker updates (FEAT-025)**
+- SLICE-B: `evaluateRiskGate` (deferred/depends_on → skip; pm_risk_level ≥ 0.7 → warn). `processUnsafeEntry` produces plans with `requiresPlanPreflight: true`. `writeAutoRunSummary` writes `.claude/artifacts/loop/auto-runs/` artifact.
+- SLICE-C: `costStopThreshold` enforcement (plan-count proxy; reads `loop.json`). `orchConfig: { costStopThreshold, escalationThreshold: 3, autoMode }` in return. `--auto-mode` CLI flag wired.
+- `loop auto` now processes `autonomous_safe: false` items (with risk gate).
+
+**Trajectory JSONL step log (FEAT-008)**
+- New `scripts/lib/trajectory-writer.mjs`: `recordStep`, `readTrajectory`, `trajectoryPath`.
+- `startSlice` and `completeSlice` emit `slice_start`/`slice_complete` events to `.claude/artifacts/loop/trajectories/<sliceId>-trajectory.jsonl`.
+- `loop trajectory --id SLICE-NN` CLI query.
+
+**Autonomous PR autofix loop (FEAT-009)**
+- New `scripts/lib/pr-fixer.mjs`: `fetchPrStatus` (gh CLI), `categorizePrIssues` (5 categories), `runPrFix` (circuit breaker via `priorAttempts`).
+- Categories: `ci_failure`, `lint`, `test_failure`, `review_comment`, `security`.
+- `loop pr-fix --pr N` CLI command.
+- `commands/pr-fix.md` skill doc.
+
+### Tests
+
+555 total tests (up from 500 at v0.5.6). All pass.
+
 ## v0.5.6 — 2026-06-02 — Move `presets/` under `scripts/` to survive plugin-cache selective copy
 
 ### Fixes
