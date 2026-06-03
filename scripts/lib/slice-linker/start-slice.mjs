@@ -7,6 +7,8 @@ import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
 import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
+import { runPlanPreflight } from "../slice-plan.mjs";
+import { findFeatureById } from "../backlog-writer.mjs";
 async function bestEffort(fn) {
     try {
         return await fn();
@@ -14,6 +16,11 @@ async function bestEffort(fn) {
     catch (err) {
         return { error: err.message };
     }
+}
+// Compute whether plan preflight approval gate is required.
+// Gate is required when: autonomous_safe=false AND not in auto mode AND dispatch is enabled.
+export function computeApprovalGate(autonomousSafe, autoMode, dispatch) {
+    return autonomousSafe === false && !autoMode && dispatch !== false;
 }
 // Quality gates that must pass before startSlice can proceed.
 // Extracted to keep startSlice under the complexity cap.
@@ -58,8 +65,24 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     const featureId = ctx.frontmatter.feature || null;
     const phase = ctx.frontmatter.phase || null;
     await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
-    const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest } = await gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved });
+    const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight } = await gatherSliceResources(repoPath, {
+        sliceId,
+        title,
+        resolvedGoal,
+        featureId,
+        phase,
+        ctx,
+        resolved
+    });
     const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
+    const autonomousSafe = await bestEffort(async () => {
+        if (!featureId)
+            return null;
+        const feat = await findFeatureById(repoPath, featureId, resolved);
+        return feat?.frontmatter?.autonomous_safe ?? null;
+    });
+    const autoMode = resolved.loop?.autoMode === true;
+    const requiresApprovalGate = computeApprovalGate(autonomousSafe, autoMode, dispatch);
     return buildStartSliceReturn({
         sliceId,
         title,
@@ -77,13 +100,15 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         marathonMilestone,
         dispatchLimits: resolved.loop?.dispatchLimits ?? null,
         orchestratorModel: resolveOrchestratorModel(resolved),
-        learningsDigest
+        learningsDigest,
+        planPreflight: planPreflight ?? null,
+        requiresApprovalGate
     });
 }
 // Gathers all parallel async resources for a slice start in one Promise.all.
 // Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
 async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved }) {
-    const [runBrief, gradeTrend, featureExcerpt, marathonMilestone, learningsResult] = await Promise.all([
+    const [runBrief, gradeTrend, featureExcerpt, marathonMilestone, learningsResult, planPreflight] = await Promise.all([
         bestEffort(() => writeCrewRunBrief(repoPath, {
             sliceId,
             title,
@@ -98,14 +123,22 @@ async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, fe
         readGradeTrend(repoPath),
         featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null),
         checkMarathonMilestone(repoPath, resolved),
-        bestEffort(() => recentLearnings(repoPath, 3))
+        bestEffort(() => recentLearnings(repoPath, 3)),
+        bestEffort(() => runPlanPreflight(repoPath, sliceId, { config: resolved }))
     ]);
     const gradeTrendCaution = gradeTrend.consecutiveBelow > 0
         ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
             "Review recent grades before continuing if this persists."
         : null;
     const learningsDigest = learningsResult?.digest ?? null;
-    return { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest };
+    return {
+        runBrief,
+        featureExcerpt,
+        marathonMilestone,
+        gradeTrendCaution,
+        learningsDigest,
+        planPreflight
+    };
 }
 // Locate the active plan + derive the human-readable title for this slice
 // from the plan match, falling back to bare sliceId. Extracted from
@@ -116,9 +149,20 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
     const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
     return { activePlan, title };
 }
+// Compute nextAction text based on requiresApprovalGate, dispatch, and planPreflight.
+// Extracted to keep buildStartSliceReturn under the eslint complexity cap.
+function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight) {
+    if (requiresApprovalGate) {
+        return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch /crew:build for ${sliceId}.`;
+    }
+    if (dispatch) {
+        return `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+    }
+    return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
+}
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null }) {
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false }) {
     const dispatchInstruction = dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -135,9 +179,7 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
     const activePlanSummary = activePlan.planPath
         ? { source: activePlan.source, path: activePlan.planPath }
         : null;
-    const nextAction = dispatch
-        ? `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`
-        : `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
+    const nextAction = computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight);
     return {
         slice: { id: sliceId, title },
         activePlan: activePlanSummary,
@@ -148,7 +190,9 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
         gradeTrendCaution,
         marathonMilestone,
         orchestratorModel,
-        learningsDigest
+        learningsDigest,
+        planPreflight,
+        requiresApprovalGate
     };
 }
 // Refresh the slice-progress dashboard with the new currentSliceId.
