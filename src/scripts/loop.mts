@@ -56,7 +56,8 @@ const FLAG_SPEC = {
   "--max-features": { key: "maxFeatures" },
   "--dry-run": { key: "dryRun", boolean: true },
   "--auto-mode": { key: "autoMode", boolean: true },
-  "--provider": { key: "provider" }
+  "--provider": { key: "provider" },
+  "--pr": { key: "pr" }
 };
 
 function parseArgs(argv) {
@@ -95,7 +96,8 @@ function parseArgs(argv) {
     maxFeatures: null,
     dryRun: false,
     autoMode: false,
-    provider: null
+    provider: null,
+    pr: null
   };
   const positionals: any[] = [];
 
@@ -238,6 +240,13 @@ const COMMANDS = {
     if (!sliceId) throw new Error("trajectory requires --id SLICE-NN");
     const steps = await readTrajectory(repoPath, sliceId);
     return { sliceId, steps, count: steps.length, path: trajectoryPath(repoPath, sliceId) };
+  },
+  "pr-fix": async ({ repoPath, flags }) => {
+    const { runPrFix } = await import("./lib/pr-fixer.mjs");
+    const prNumber = flags.pr;
+    if (!prNumber) throw new Error("pr-fix requires --pr <number>");
+    const priorAttempts = flags.body ? JSON.parse(flags.body) : {};
+    return runPrFix(repoPath, prNumber, { priorAttempts });
   }
 };
 
