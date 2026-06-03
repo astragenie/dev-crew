@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 import { checkStopConditions } from "./stop-conditions.mjs";
 // Priority ordering for sort tiebreaker (lower index = higher rank).
@@ -24,43 +26,124 @@ function compareWalkerOrder(a, b) {
     return fitB - fitA;
 }
 /**
- * Walk the triaged backlog and emit dispatch plans for autonomous_safe FEATs.
+ * SLICE-B: Evaluate risk gate for autonomous_safe=false items.
  *
- * This is SLICE-A: dry-run only. Plans describe what SLICE-B would dispatch
- * but do NOT invoke any builder agent or commit.
+ * Returns { skip, skipReason?, warn? }:
+ *   - deferred flag → skip with reason "deferred"
+ *   - unfinished depends_on → skip with reason listing deps
+ *   - pm_risk_level >= 0.7 → do NOT skip, but warn (SPEC recommended)
+ *   - otherwise → do not skip, no warn
  *
- * @param repoPath  Absolute path to the repo root.
- * @param options   { maxFeatures?, dryRun? (default true) }
+ * @param entry  The backlog entry to evaluate.
  */
-export async function runAutoWalker(repoPath, options = {}) {
-    const { maxFeatures, dryRun: _dryRun = true } = options;
+export function evaluateRiskGate(entry) {
+    const fm = entry.frontmatter;
+    // Honor deferred flag
+    if (fm.deferred === true) {
+        return { skip: true, skipReason: "deferred" };
+    }
+    // Unfinished dependencies
+    if (Array.isArray(fm.depends_on) && fm.depends_on.length > 0) {
+        return {
+            skip: true,
+            skipReason: `depends_on: ${fm.depends_on.join(", ")}`
+        };
+    }
+    // High risk → warn but don't skip (SPEC requirement check handled at orchestrator layer)
+    if (Number(fm.pm_risk_level) >= 0.7) {
+        return {
+            skip: false,
+            warn: `pm_risk_level ${fm.pm_risk_level} — SPEC recommended`
+        };
+    }
+    return { skip: false };
+}
+/**
+ * Process an entry with autonomous_safe=false and determine if it should be
+ * skipped or planned. Returns { shouldSkip, plan?, skipReason? }
+ */
+function processUnsafeEntry(entry, autoMode) {
+    const riskResult = evaluateRiskGate(entry);
+    if (riskResult.skip) {
+        return { shouldSkip: true, skipReason: riskResult.skipReason || "risk gate blocked" };
+    }
+    const plan = {
+        featureId: entry.id,
+        suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
+        fromFeatureCmd: `node scripts/loop.mjs slice from-feature --id ${entry.id}`,
+        startCmd: `node scripts/loop.mjs slice start --id SLICE-<TBD>`,
+        builderPrompt: buildPromptSummary(entry),
+        requiresPlanPreflight: true
+    };
+    if (riskResult.warn) {
+        plan.riskGate = {
+            level: Number(entry.frontmatter.pm_risk_level) || 0,
+            warn: riskResult.warn
+        };
+    }
+    if (autoMode) {
+        plan.autoMode = true;
+    }
+    return { shouldSkip: false, plan };
+}
+/**
+ * Build a dispatch plan for a triaged entry with autonomous_safe=true.
+ *
+ * @param entry    The backlog entry.
+ * @param autoMode If true, marks plan with autoMode flag.
+ */
+function buildSafePlan(entry, autoMode) {
+    const plan = {
+        featureId: entry.id,
+        suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
+        fromFeatureCmd: `node scripts/loop.mjs slice from-feature --id ${entry.id}`,
+        startCmd: `node scripts/loop.mjs slice start --id SLICE-<TBD>`,
+        builderPrompt: buildPromptSummary(entry)
+    };
+    if (autoMode) {
+        plan.autoMode = true;
+    }
+    return plan;
+}
+/**
+ * Process the walk loop: iterate candidates, build plans, check stop conditions.
+ *
+ * @param candidates  The triaged candidates to walk.
+ * @param maxFeatures Cap on number of plans to build.
+ * @param autoMode    If true, include autoMode flag in plans.
+ * @param repoPath    For stop condition checks.
+ * @returns           { skipped, plans, halted, stopReason }
+ */
+async function walkCandidates(candidates, maxFeatures, autoMode, repoPath) {
     const skipped = [];
     const plans = [];
     let halted = false;
     let stopReason = null;
-    // Load triaged entries and sort by walker priority ordering.
-    const allEntries = await listBacklog(repoPath);
-    const triaged = filterBacklog(allEntries, { status: "triaged" });
-    triaged.sort(compareWalkerOrder);
-    const candidates = triaged;
     for (const entry of candidates) {
         // Enforce max-features cap on plans (not on the walk count).
         if (maxFeatures !== undefined && plans.length >= maxFeatures) {
             break;
         }
-        if (entry.frontmatter.autonomous_safe !== true) {
+        const autonSafe = entry.frontmatter.autonomous_safe;
+        // SLICE-B: only skip if autonomous_safe is null/undefined (not explicitly set)
+        // If autonomous_safe === false, process it with risk gate
+        if (autonSafe !== true && autonSafe !== false) {
             skipped.push({ id: entry.id, reason: "not_autonomous_safe" });
             continue;
         }
-        // Build dispatch plan (read-only; SLICE-B wires actual execution).
-        const plan = {
-            featureId: entry.id,
-            suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
-            fromFeatureCmd: `node scripts/loop.mjs slice from-feature --id ${entry.id}`,
-            startCmd: `node scripts/loop.mjs slice start --id SLICE-<TBD>`,
-            builderPrompt: buildPromptSummary(entry)
-        };
-        plans.push(plan);
+        // SLICE-B: evaluate risk gate for autonomous_safe=false items
+        if (autonSafe === false) {
+            const result = processUnsafeEntry(entry, autoMode);
+            if (result.shouldSkip) {
+                skipped.push({ id: entry.id, reason: result.skipReason || "risk gate blocked" });
+                continue;
+            }
+            plans.push(result.plan);
+        }
+        else {
+            // autonomous_safe === true: build standard plan
+            plans.push(buildSafePlan(entry, autoMode));
+        }
         // Check stop conditions after each plan to allow early halt.
         const stopResult = await checkStopConditions(repoPath);
         if (stopResult.shouldStop) {
@@ -69,14 +152,106 @@ export async function runAutoWalker(repoPath, options = {}) {
             break;
         }
     }
+    return { skipped, plans, halted, stopReason };
+}
+/**
+ * Walk the triaged backlog and emit dispatch plans for autonomous_safe FEATs.
+ *
+ * SLICE-B: Now also processes autonomous_safe=false items (with risk gate).
+ * Only skips items where autonomous_safe is null/undefined (not explicitly set).
+ *
+ * Plans include:
+ *   - requiresPlanPreflight: true for autonomous_safe=false items
+ *   - riskGate: populated if pm_risk_level >= 0.7
+ *   - autoMode: set when options.autoMode=true
+ *
+ * After the walk, writes summary artifact to .claude/artifacts/loop/auto-runs/<TS>-auto-run.md
+ *
+ * @param repoPath  Absolute path to the repo root.
+ * @param options   { maxFeatures?, dryRun? (default true), autoMode? }
+ */
+export async function runAutoWalker(repoPath, options = {}) {
+    const { maxFeatures, dryRun: _dryRun = true, autoMode = false } = options;
+    // Load triaged entries and sort by walker priority ordering.
+    const allEntries = await listBacklog(repoPath);
+    const triaged = filterBacklog(allEntries, { status: "triaged" });
+    triaged.sort(compareWalkerOrder);
+    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, repoPath);
+    // SLICE-B: Write auto-run summary artifact (best-effort; don't fail if it errors)
+    let summaryPath;
+    try {
+        summaryPath = await writeAutoRunSummary(repoPath, {
+            walked: triaged.length,
+            skipped,
+            planned: plans.length,
+            halted,
+            stopReason,
+            plans
+        });
+    }
+    catch {
+        // Best-effort: silently continue on write failure
+    }
     return {
-        walked: candidates.length,
+        walked: triaged.length,
         skipped,
         planned: plans.length,
         halted,
         stopReason,
-        plans
+        plans,
+        summaryPath
     };
+}
+/**
+ * SLICE-B: Write auto-run summary artifact to .claude/artifacts/loop/auto-runs/<TS>-auto-run.md
+ *
+ * @param repoPath  Absolute path to the repo root.
+ * @param result    The AutoWalkerResult returned by runAutoWalker.
+ * @returns         The absolute path to the written artifact.
+ */
+export async function writeAutoRunSummary(repoPath, result) {
+    const artifactDir = path.join(repoPath, ".claude/artifacts/loop/auto-runs");
+    await fs.mkdir(artifactDir, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filePath = path.join(artifactDir, `${timestamp}-auto-run.md`);
+    // Build planned list
+    const plannedList = result.plans
+        .map((plan) => {
+        const preflight = plan.requiresPlanPreflight ? " (requiresPlanPreflight)" : "";
+        return `- ${plan.featureId}${preflight}`;
+    })
+        .join("\n");
+    // Build skipped list
+    const skippedList = result.skipped
+        .map((skip) => `- ${skip.id}: ${skip.reason}`)
+        .join("\n");
+    // Build frontmatter
+    const content = `---
+kind: auto-run-summary
+walked: ${result.walked}
+planned: ${result.planned}
+skipped: ${result.skipped.length}
+halted: ${result.halted}
+generated_at: ${new Date().toISOString()}
+---
+
+# Auto-Run Summary
+
+- FEATs walked: ${result.walked}
+- FEATs planned: ${result.planned}
+- FEATs skipped: ${result.skipped.length}
+- Halted: ${result.halted}${result.stopReason ? ` (reason: ${result.stopReason})` : ""}
+
+## Planned
+
+${plannedList || "_(none)_"}
+
+## Skipped
+
+${skippedList || "_(none)_"}
+`;
+    await fs.writeFile(filePath, content, "utf-8");
+    return filePath;
 }
 // ---------------------------------------------------------------------------
 // Internal helpers

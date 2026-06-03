@@ -1,15 +1,15 @@
 ---
 id: FEAT-025
-status: triaged
+status: in-progress
 priority: P1
 category: infrastructure
 target_release: null
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-03
 depends_on: [FEAT-006]
-slices: [SLICE-11]
-slices_complete: [SLICE-11]
-slices_remaining: [SLICE-B-real-dispatch-and-auto-commit, SLICE-C-stop-conditions-and-flip-default]
+slices: [SLICE-11, SLICE-19, SLICE-20]
+slices_complete: [SLICE-11, SLICE-19]
+slices_remaining: [SLICE-20]
 derived_from: null
 triage_notes: reopened — slice complete prematurely rolled FEAT to done after SLICE-A (dry-run walker primitive); SLICE-B (real dispatch + auto-commit) and SLICE-C (stop conditions + flip default to ship autonomous_safe=false items) still owed
 started_at: 2026-06-02
