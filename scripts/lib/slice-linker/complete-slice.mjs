@@ -117,9 +117,7 @@ async function updateSlicesComplete(feat, sliceId) {
     const existing = Array.isArray(feat.frontmatter?.slices_complete)
         ? [...feat.frontmatter.slices_complete]
         : [];
-    const slicesComplete = existing.includes(sliceId)
-        ? existing
-        : [...existing, sliceId];
+    const slicesComplete = existing.includes(sliceId) ? existing : [...existing, sliceId];
     const remainingSlices = planned.filter((s) => !slicesComplete.includes(s));
     // Write back to FEAT file
     const content = await fs.readFile(feat.filePath, "utf8");
@@ -270,6 +268,7 @@ export async function completeSlice(repoPath, sliceId, { config = null, keepFeat
         });
         return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
     });
+    await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
     return {
         slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
         feature: featureResult,
@@ -284,4 +283,17 @@ export async function completeSlice(repoPath, sliceId, { config = null, keepFeat
         testAdequacyGate,
         nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
     };
+}
+async function recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate) {
+    try {
+        const { recordStep } = await import("../trajectory-writer.mjs");
+        await recordStep(repoPath, sliceId, "slice_complete", {
+            featureId: featureId ?? null,
+            featureMovedTo: featureResult?.to ?? null,
+            validationSatisfied: validationGate?.satisfied ?? null
+        });
+    }
+    catch {
+        // best-effort — never blocks slice complete
+    }
 }

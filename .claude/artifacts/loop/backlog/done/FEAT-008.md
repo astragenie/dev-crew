@@ -1,13 +1,15 @@
 ---
 id: FEAT-008
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-03
 depends_on: []
-slices: []
+slices: [SLICE-21]
+slices_complete: [SLICE-21]
+started_at: 2026-06-03
 derived_from: null
 composite_score: 7
 source_competitors: [Devin / SWE-Agent]
@@ -22,6 +24,7 @@ pm_reasoning: telemetry.mjs JSONL infrastructure already exists; schema design f
 github_issue: 13
 github_milestone: 2
 phase: 2
+completed_at: 2026-06-03
 ---
 # FEAT-008: Trajectory JSON -- machine-parseable step log per run
 

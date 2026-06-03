@@ -220,7 +220,15 @@ const COMMANDS = {
         });
     },
     learnings: ({ repoPath, flags, positionals }) => runLearningsSubcommand(repoPath, positionals, flags),
-    architect: async ({ repoPath, flags }) => runArchitectSubcommand(repoPath, flags)
+    architect: async ({ repoPath, flags }) => runArchitectSubcommand(repoPath, flags),
+    trajectory: async ({ repoPath, flags }) => {
+        const { readTrajectory, trajectoryPath } = await import("./lib/trajectory-writer.mjs");
+        const sliceId = flags.id;
+        if (!sliceId)
+            throw new Error("trajectory requires --id SLICE-NN");
+        const steps = await readTrajectory(repoPath, sliceId);
+        return { sliceId, steps, count: steps.length, path: trajectoryPath(repoPath, sliceId) };
+    }
 };
 async function runArchitectSubcommand(repoPath, flags) {
     const sliceId = flags.id;

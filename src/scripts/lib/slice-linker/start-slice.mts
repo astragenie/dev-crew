@@ -109,7 +109,7 @@ export async function startSlice(
   const autoMode = resolved.loop?.autoMode === true;
   const requiresApprovalGate = computeApprovalGate(autonomousSafe, autoMode, dispatch as boolean);
 
-  return buildStartSliceReturn({
+  const result = buildStartSliceReturn({
     sliceId,
     title,
     activePlan,
@@ -130,6 +130,9 @@ export async function startSlice(
     planPreflight: planPreflight ?? null,
     requiresApprovalGate
   });
+
+  await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
+  return result;
 }
 
 // Gathers all parallel async resources for a slice start in one Promise.all.
@@ -271,4 +274,18 @@ async function refreshSliceProgress(repoPath, activePlan, sliceId, config = null
       currentSliceId: sliceId
     });
   });
+}
+
+async function recordStartTrajectory(repoPath, sliceId, result, featureId, title) {
+  try {
+    const { recordStep } = await import("../trajectory-writer.mjs");
+    await recordStep(repoPath, sliceId, "slice_start", {
+      featureId: featureId ?? null,
+      title,
+      planPath: result.planPreflight?.planPath ?? null,
+      requiresApprovalGate: result.requiresApprovalGate ?? false
+    });
+  } catch {
+    // best-effort — never blocks slice start
+  }
 }

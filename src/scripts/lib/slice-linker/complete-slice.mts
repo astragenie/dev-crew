@@ -113,7 +113,13 @@ function describeBlockedGate({
   return `validation-gate: ${validationGate.reason}`;
 }
 
-async function evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate) {
+async function evaluateFeatureGates(
+  repoPath,
+  featureId,
+  blockingGates,
+  validationGate,
+  testAdequacyGate
+) {
   const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
   const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
   const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
@@ -134,9 +140,7 @@ async function updateSlicesComplete(
   const existing: string[] = Array.isArray(feat.frontmatter?.slices_complete)
     ? [...feat.frontmatter.slices_complete]
     : [];
-  const slicesComplete: string[] = existing.includes(sliceId)
-    ? existing
-    : [...existing, sliceId];
+  const slicesComplete: string[] = existing.includes(sliceId) ? existing : [...existing, sliceId];
   const remainingSlices: string[] = planned.filter((s) => !slicesComplete.includes(s));
 
   // Write back to FEAT file
@@ -382,6 +386,8 @@ export async function completeSlice(
     return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
   });
 
+  await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
+
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
     feature: featureResult,
@@ -396,4 +402,17 @@ export async function completeSlice(
     testAdequacyGate,
     nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
+}
+
+async function recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate) {
+  try {
+    const { recordStep } = await import("../trajectory-writer.mjs");
+    await recordStep(repoPath, sliceId, "slice_complete", {
+      featureId: featureId ?? null,
+      featureMovedTo: featureResult?.to ?? null,
+      validationSatisfied: validationGate?.satisfied ?? null
+    });
+  } catch {
+    // best-effort — never blocks slice complete
+  }
 }
