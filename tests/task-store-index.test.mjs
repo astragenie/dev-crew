@@ -66,7 +66,7 @@ test("NoopProvider all methods resolve without throwing", async () => {
         p.postSliceComment(1, "comment"),
         p.updateStatus(1, "in-progress"),
         p.syncPull(REPO),
-        p.bootstrap(REPO),
+        p.bootstrap(REPO)
     ]);
     assert.equal(results[0], null, "publishFeature should return null");
     assert.equal(results[1], null, "publishSlice should return null");
@@ -97,7 +97,7 @@ test("LinearProvider methods throw 'not implemented'", async () => {
         ["postSliceComment", () => p.postSliceComment(1, "body")],
         ["updateStatus", () => p.updateStatus(1, "done")],
         ["syncPull", () => p.syncPull(REPO)],
-        ["bootstrap", () => p.bootstrap(REPO)],
+        ["bootstrap", () => p.bootstrap(REPO)]
     ];
     for (const [name, call] of methods) {
         await assert.rejects(call, /not implemented/, `${name} should throw not implemented`);
@@ -109,7 +109,9 @@ test("LinearProvider methods throw 'not implemented'", async () => {
 test("getProvider emits console.warn for unrecognised provider name", () => {
     const warns = [];
     const orig = console.warn;
-    console.warn = (...args) => { warns.push(args.join(" ")); };
+    console.warn = (...args) => {
+        warns.push(args.join(" "));
+    };
     try {
         const p = getProvider({ taskStore: { provider: "jira" } }, REPO);
         assert.ok(p instanceof NoopProvider);
@@ -124,7 +126,9 @@ test("getProvider emits console.warn for unrecognised provider name", () => {
 test("getProvider does NOT warn when provider is explicitly 'noop'", () => {
     const warns = [];
     const orig = console.warn;
-    console.warn = (...args) => { warns.push(args.join(" ")); };
+    console.warn = (...args) => {
+        warns.push(args.join(" "));
+    };
     try {
         getProvider({ taskStore: { provider: "noop" } }, REPO);
         assert.equal(warns.length, 0, "explicit noop should produce no warning");
@@ -136,7 +140,9 @@ test("getProvider does NOT warn when provider is explicitly 'noop'", () => {
 test("getProvider does NOT warn when no taskStore configured (default noop)", () => {
     const warns = [];
     const orig = console.warn;
-    console.warn = (...args) => { warns.push(args.join(" ")); };
+    console.warn = (...args) => {
+        warns.push(args.join(" "));
+    };
     try {
         getProvider({}, REPO);
         assert.equal(warns.length, 0, "unconfigured default should produce no warning");

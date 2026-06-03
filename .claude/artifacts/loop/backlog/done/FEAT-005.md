@@ -1,13 +1,14 @@
 ---
 id: FEAT-005
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-03
 depends_on: []
-slices: []
+slices: [SLICE-17]
+slices_complete: [SLICE-17]
 derived_from: null
 composite_score: 7
 source_competitors: [Aider]
@@ -22,6 +23,8 @@ pm_reasoning: "model-router.mjs handles phase routing; within-task architect/edi
 github_issue: 10
 github_milestone: 2
 phase: 2
+started_at: 2026-06-03
+completed_at: 2026-06-03
 ---
 # FEAT-005: Architect / editor two-model split as a built-in command
 

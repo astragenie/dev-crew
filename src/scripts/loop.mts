@@ -162,8 +162,10 @@ const COMMANDS = {
     const { listPresets } = await import("./lib/config-resolver.mjs");
     return { presets: await listPresets() };
   },
-  github: ({ repoPath, flags, positionals }: any) => runGithubSubcommand(repoPath, positionals, flags),
-  "task-store": ({ repoPath, flags, positionals }: any) => runGithubSubcommand(repoPath, positionals, flags),
+  github: ({ repoPath, flags, positionals }: any) =>
+    runGithubSubcommand(repoPath, positionals, flags),
+  "task-store": ({ repoPath, flags, positionals }: any) =>
+    runGithubSubcommand(repoPath, positionals, flags),
   backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
   spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
   release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
@@ -221,8 +223,55 @@ const COMMANDS = {
       dryRun: Boolean(flags.dryRun)
     });
   },
-  learnings: ({ repoPath, flags, positionals }) => runLearningsSubcommand(repoPath, positionals, flags)
+  learnings: ({ repoPath, flags, positionals }) =>
+    runLearningsSubcommand(repoPath, positionals, flags),
+  architect: async ({ repoPath, flags }) => runArchitectSubcommand(repoPath, flags)
 };
+
+async function runArchitectSubcommand(repoPath: any, flags: any) {
+  const sliceId = flags.id;
+  if (!sliceId) throw new Error("architect requires --id SLICE-NN");
+
+  const { resolveConfig } = await import("./lib/config-resolver.mjs");
+  const { resolveArchitectModels } = await import("./lib/model-router.mjs");
+  const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
+
+  const config = await resolveConfig(repoPath);
+  const { architectModel, editorModel } = resolveArchitectModels(config);
+  const planResult = await runPlanPreflight(repoPath, sliceId, { config });
+
+  const dispatchInstruction = [
+    `## Two-Model Split Dispatch`,
+    ``,
+    `**Architect Model (Research/Plan):** ${architectModel}`,
+    `**Editor Model (Implementation):** ${editorModel}`,
+    ``,
+    `The architect model has completed the codebase research pre-flight.`,
+    `Plan artifact written to: ${planResult.planPath}`,
+    ``,
+    `Dispatch \`/crew:build\` for the editor phase, which will use the ${editorModel} model for implementation.`,
+    `The editor phase should reference the plan artifact to guide the implementation approach.`
+  ].join("\n");
+
+  const { logEvent } = await import("./lib/telemetry.mjs");
+  await logEvent(repoPath, {
+    command: "architect",
+    slice: sliceId,
+    architect_model: architectModel,
+    editor_model: editorModel,
+    plan_path: planResult.planPath,
+    files_researched: planResult.filesResearched.length
+  });
+
+  return {
+    sliceId,
+    architectModel,
+    editorModel,
+    planPath: planResult.planPath,
+    filesResearched: planResult.filesResearched,
+    dispatchInstruction
+  };
+}
 
 async function main() {
   const { command, flags, positionals } = parseArgs(process.argv.slice(2));
