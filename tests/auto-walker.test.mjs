@@ -228,3 +228,77 @@ test("SLICE-B: writeAutoRunSummary creates artifact under auto-runs/", async () 
     assert.ok(content.includes(`walked: ${result.walked}`), "file must list walked count");
     assert.ok(content.includes(`planned: ${result.planned}`), "file must list planned count");
 });
+// ---------------------------------------------------------------------------
+// SLICE-C Tests (4 new tests)
+// ---------------------------------------------------------------------------
+test("SLICE-C: costStopThreshold=1 → halts after 1 plan with cost_cap stopReason", async () => {
+    const repo = await tmpRepo("aw-cost-cap-");
+    const a = await addFeature(repo, { title: "Feature A" });
+    const b = await addFeature(repo, { title: "Feature B" });
+    const c = await addFeature(repo, { title: "Feature C" });
+    await triageFeature(a.filePath, { autonomous_safe: true, composite_score: 0.9 });
+    await triageFeature(b.filePath, { autonomous_safe: true, composite_score: 0.7 });
+    await triageFeature(c.filePath, { autonomous_safe: true, composite_score: 0.5 });
+    const result = await runAutoWalker(repo, {
+        dryRun: true,
+        costStopThreshold: 1
+    });
+    assert.equal(result.planned, 1, "must halt after 1 plan due to cost cap");
+    assert.equal(result.halted, true, "halted must be true");
+    assert.ok(result.stopReason, "stopReason must be set");
+    assert.ok(result.stopReason.includes("cost_cap"), `stopReason must mention cost_cap, got: ${result.stopReason}`);
+    assert.ok(result.stopReason.includes("costStopThreshold"), "stopReason must mention costStopThreshold");
+});
+test("SLICE-C: result includes orchConfig with escalationThreshold and autoMode", async () => {
+    const repo = await tmpRepo("aw-orchconfig-");
+    const a = await addFeature(repo, { title: "Feature A" });
+    await triageFeature(a.filePath, { autonomous_safe: true });
+    const result = await runAutoWalker(repo, { dryRun: true, autoMode: true });
+    assert.ok(result.orchConfig, "result must include orchConfig");
+    assert.equal(result.orchConfig.escalationThreshold, 3, "escalationThreshold must be 3");
+    assert.equal(result.orchConfig.autoMode, true, "autoMode must reflect the option passed");
+    assert.ok(result.orchConfig.costStopThreshold === null ||
+        typeof result.orchConfig.costStopThreshold === "number", "costStopThreshold must be null or a number");
+});
+test("SLICE-C: autoMode=true → each plan includes autoMode=true", async () => {
+    const repo = await tmpRepo("aw-automode-");
+    const a = await addFeature(repo, { title: "Safe feature" });
+    const b = await addFeature(repo, { title: "Unsafe feature" });
+    await triageFeature(a.filePath, { autonomous_safe: true });
+    await triageFeature(b.filePath, { autonomous_safe: false, pm_risk_level: 0.3 });
+    const result = await runAutoWalker(repo, { dryRun: true, autoMode: true });
+    assert.equal(result.plans.length, 2, "both plans must be returned");
+    for (const plan of result.plans) {
+        assert.equal(plan.autoMode, true, `plan ${plan.featureId} must have autoMode=true`);
+    }
+});
+test("SLICE-C: config-provided costStopThreshold read from loop.json → applied", async () => {
+    const repo = await tmpRepo("aw-config-cost-");
+    // Overwrite loop.json with costStopThreshold in loop section
+    await fs.writeFile(path.join(repo, ".claude/loop.json"), JSON.stringify({
+        preset: "dotnet-aspire-python",
+        loop: {
+            aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+            backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+            slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
+            phaseGateArtifactDir: ".claude/artifacts/crew/validations",
+            costStopThreshold: 1
+        },
+        stack: {}
+    }));
+    const a = await addFeature(repo, { title: "Feature A" });
+    const b = await addFeature(repo, { title: "Feature B" });
+    await triageFeature(a.filePath, { autonomous_safe: true, composite_score: 0.9 });
+    await triageFeature(b.filePath, { autonomous_safe: true, composite_score: 0.7 });
+    // Import resolveConfig to pass it
+    const { resolveConfig } = await import("../scripts/lib/config-resolver.mjs");
+    const config = await resolveConfig(repo);
+    const result = await runAutoWalker(repo, {
+        dryRun: true,
+        config
+    });
+    assert.equal(result.planned, 1, "must halt after 1 plan due to config-provided costStopThreshold");
+    assert.equal(result.halted, true, "halted must be true");
+    assert.ok(result.stopReason.includes("cost_cap"), `stopReason must mention cost_cap, got: ${result.stopReason}`);
+    assert.equal(result.orchConfig.costStopThreshold, 1, "orchConfig.costStopThreshold must reflect config value");
+});

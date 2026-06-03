@@ -108,13 +108,14 @@ function buildSafePlan(entry, autoMode) {
 /**
  * Process the walk loop: iterate candidates, build plans, check stop conditions.
  *
- * @param candidates  The triaged candidates to walk.
- * @param maxFeatures Cap on number of plans to build.
- * @param autoMode    If true, include autoMode flag in plans.
- * @param repoPath    For stop condition checks.
- * @returns           { skipped, plans, halted, stopReason }
+ * @param candidates       The triaged candidates to walk.
+ * @param maxFeatures      Cap on number of plans to build.
+ * @param autoMode         If true, include autoMode flag in plans.
+ * @param costStopThreshold SLICE-C: halt after this many plans (plan-count proxy for cost).
+ * @param repoPath         For stop condition checks.
+ * @returns                { skipped, plans, halted, stopReason }
  */
-async function walkCandidates(candidates, maxFeatures, autoMode, repoPath) {
+async function walkCandidates(candidates, maxFeatures, autoMode, costStopThreshold, repoPath) {
     const skipped = [];
     const plans = [];
     let halted = false;
@@ -144,6 +145,12 @@ async function walkCandidates(candidates, maxFeatures, autoMode, repoPath) {
             // autonomous_safe === true: build standard plan
             plans.push(buildSafePlan(entry, autoMode));
         }
+        // SLICE-C: enforce cost cap after each plan
+        if (costStopThreshold !== undefined && plans.length >= costStopThreshold) {
+            halted = true;
+            stopReason = `cost_cap: plan count ${plans.length} reached costStopThreshold ${costStopThreshold}`;
+            break;
+        }
         // Check stop conditions after each plan to allow early halt.
         const stopResult = await checkStopConditions(repoPath);
         if (stopResult.shouldStop) {
@@ -160,6 +167,8 @@ async function walkCandidates(candidates, maxFeatures, autoMode, repoPath) {
  * SLICE-B: Now also processes autonomous_safe=false items (with risk gate).
  * Only skips items where autonomous_safe is null/undefined (not explicitly set).
  *
+ * SLICE-C: Adds cost cap enforcement and orchConfig hints.
+ *
  * Plans include:
  *   - requiresPlanPreflight: true for autonomous_safe=false items
  *   - riskGate: populated if pm_risk_level >= 0.7
@@ -168,15 +177,30 @@ async function walkCandidates(candidates, maxFeatures, autoMode, repoPath) {
  * After the walk, writes summary artifact to .claude/artifacts/loop/auto-runs/<TS>-auto-run.md
  *
  * @param repoPath  Absolute path to the repo root.
- * @param options   { maxFeatures?, dryRun? (default true), autoMode? }
+ * @param options   { maxFeatures?, dryRun? (default true), autoMode?, costStopThreshold?, config? }
  */
 export async function runAutoWalker(repoPath, options = {}) {
-    const { maxFeatures, dryRun: _dryRun = true, autoMode = false } = options;
+    const { maxFeatures, dryRun: _dryRun = true, autoMode = false, config: providedConfig } = options;
+    // SLICE-C: Load config if not provided and read costStopThreshold
+    let resolvedConfig = providedConfig;
+    if (!resolvedConfig) {
+        try {
+            const { resolveConfig } = await import("./config-resolver.mjs");
+            resolvedConfig = await resolveConfig(repoPath);
+        }
+        catch {
+            // Best-effort: if config resolution fails, continue without it
+            resolvedConfig = null;
+        }
+    }
+    // SLICE-C: Determine effective costStopThreshold
+    // Priority: explicit option > config.loop.costStopThreshold > undefined
+    const costStopThreshold = options.costStopThreshold ?? resolvedConfig?.loop?.costStopThreshold ?? undefined;
     // Load triaged entries and sort by walker priority ordering.
     const allEntries = await listBacklog(repoPath);
     const triaged = filterBacklog(allEntries, { status: "triaged" });
     triaged.sort(compareWalkerOrder);
-    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, repoPath);
+    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, costStopThreshold, repoPath);
     // SLICE-B: Write auto-run summary artifact (best-effort; don't fail if it errors)
     let summaryPath;
     try {
@@ -199,7 +223,13 @@ export async function runAutoWalker(repoPath, options = {}) {
         halted,
         stopReason,
         plans,
-        summaryPath
+        summaryPath,
+        // SLICE-C: Include orchestrator hints
+        orchConfig: {
+            costStopThreshold: costStopThreshold ?? null,
+            escalationThreshold: 3,
+            autoMode
+        }
     };
 }
 /**
@@ -222,9 +252,7 @@ export async function writeAutoRunSummary(repoPath, result) {
     })
         .join("\n");
     // Build skipped list
-    const skippedList = result.skipped
-        .map((skip) => `- ${skip.id}: ${skip.reason}`)
-        .join("\n");
+    const skippedList = result.skipped.map((skip) => `- ${skip.id}: ${skip.reason}`).join("\n");
     // Build frontmatter
     const content = `---
 kind: auto-run-summary

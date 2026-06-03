@@ -51,6 +51,7 @@ const FLAG_SPEC = {
     "--limit": { key: "limit" },
     "--max-features": { key: "maxFeatures" },
     "--dry-run": { key: "dryRun", boolean: true },
+    "--auto-mode": { key: "autoMode", boolean: true },
     "--provider": { key: "provider" }
 };
 function parseArgs(argv) {
@@ -88,6 +89,7 @@ function parseArgs(argv) {
         limit: null,
         maxFeatures: null,
         dryRun: false,
+        autoMode: false,
         provider: null
     };
     const positionals = [];
@@ -208,9 +210,13 @@ const COMMANDS = {
     },
     auto: async ({ repoPath, flags }) => {
         const { runAutoWalker } = await import("./lib/auto-walker.mjs");
+        const { resolveConfig } = await import("./lib/config-resolver.mjs");
+        const config = await resolveConfig(repoPath);
         return runAutoWalker(repoPath, {
             maxFeatures: flags.maxFeatures ? Number(flags.maxFeatures) : undefined,
-            dryRun: Boolean(flags.dryRun)
+            dryRun: Boolean(flags.dryRun),
+            autoMode: Boolean(flags.autoMode),
+            config
         });
     },
     learnings: ({ repoPath, flags, positionals }) => runLearningsSubcommand(repoPath, positionals, flags),
