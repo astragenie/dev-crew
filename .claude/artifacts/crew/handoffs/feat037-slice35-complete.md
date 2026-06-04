@@ -25,7 +25,6 @@ Slice SLICE-35 closed with acceptance criteria PASS. Capture lessons + decisions
 - Any extracted `.claude/artifacts/loop/decisions/DEC-NNN.md` files
 ## Changed files / evidence
 - slice file (completed): `.claude/artifacts/loop/ai-loop/slices/completed/SLICE_35_IMPLEMENT-FEAT-037.md`
-- feature file (done): `.claude/artifacts/loop/backlog/done/FEAT-037.md`
 ## Confidence
 High — slice + feature moves atomic; spec reconciliation idempotent.
 ## Risks or open questions
