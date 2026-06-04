@@ -1,6 +1,6 @@
 ---
 id: FEAT-031
-status: in-progress
+status: done
 priority: P2
 category: infra-bug
 target_release: null
@@ -11,6 +11,8 @@ slices: [SLICE-28]
 derived_from: null
 triage_notes: no fields needed inference
 started_at: 2026-06-04
+slices_complete: [SLICE-28]
+completed_at: 2026-06-04
 ---
 ## Symptom
 

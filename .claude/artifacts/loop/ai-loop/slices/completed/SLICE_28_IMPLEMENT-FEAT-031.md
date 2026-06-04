@@ -1,6 +1,6 @@
 ---
 id: SLICE-28
-status: pending
+status: completed
 feature: FEAT-031
 phase: null
 priority: P2
@@ -8,6 +8,7 @@ target_release: null
 requires_validation: true
 created: 2026-06-04
 updated: 2026-06-04
+completed_at: 2026-06-04
 ---
 # SLICE-28: FEAT-031 — agent-report-writer hardening + stop-hook diagnosis
 
