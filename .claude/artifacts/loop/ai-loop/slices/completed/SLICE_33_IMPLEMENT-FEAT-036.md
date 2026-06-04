@@ -1,6 +1,6 @@
 ---
 id: SLICE-33
-status: pending
+status: completed
 feature: FEAT-036
 phase: null
 priority: P3
@@ -8,6 +8,7 @@ target_release: null
 requires_validation: true
 created: 2026-06-04
 updated: 2026-06-04
+completed_at: 2026-06-04
 ---
 # SLICE-33: FEAT-036 — parser hardening (issues #8 + #9)
 
