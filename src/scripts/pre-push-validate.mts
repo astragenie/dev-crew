@@ -25,6 +25,12 @@ try {
   execFileSync("node", [path.join(scriptDir, "validate-content-length.mjs")], {
     stdio: ["ignore", "pipe", "pipe"]
   });
+  // Prettier drift was undetected for several pushes; running format:check
+  // here mirrors the CI gate so divergence blocks at git push, not in CI.
+  execFileSync("npm", ["run", "format:check"], {
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: process.platform === "win32"
+  });
   process.exit(0);
 } catch (e) {
   process.stderr.write(
