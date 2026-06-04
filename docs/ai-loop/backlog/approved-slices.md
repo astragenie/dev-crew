@@ -42,3 +42,21 @@ handoff/final-synthesis bodies (currently absent). agent-report-writer already c
 **Files:** `scripts/lib/grade-writer.mjs`, `scripts/lib/slice-linker/crew-bridge.mjs`,
 `scripts/lib/slice-linker/agent-report-writer.mjs` (export renderIdentification only),
 tests for changed writers.
+
+---
+
+## SLICE-38 — Checkpoint commit primitive (FEAT-012, P2)
+
+**Status:** PENDING
+
+**Goal:** Add `checkpointCommit()` — a structured WIP git commit primitive that writes subject `wip(checkpoint): <sliceId> — <summary>` with optional body sections. No-op when tree is clean. Foundation for continuous auto-commit safety net (FEAT-012 SLICE-A).
+
+**Done When:**
+- AC-1: `npm test` + `npm run lint` + typecheck + format-check + validators all pass
+- AC-2: `checkpointCommit()` in `scripts/lib/checkpoint-commit.mjs`, returns `{ committed, sha?, reason? }`
+- AC-3: clean tree → `{ committed: false, reason: "clean" }`, no commit made
+- AC-4: subject truncated to 72 JS string code-units with `…`
+- AC-5: empty body sections omitted
+- AC-6: re-exported from `src/scripts/lib/slice-linker.mts`
+
+**Files:** `src/scripts/lib/checkpoint-commit.mts`, `scripts/lib/checkpoint-commit.mjs`, `src/tests/checkpoint-commit.test.mts`, `src/scripts/lib/slice-linker.mts`

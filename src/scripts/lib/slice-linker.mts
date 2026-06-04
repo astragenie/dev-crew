@@ -7,3 +7,4 @@ export {
   extractSection
 } from "./slice-linker/dispatch.mjs";
 export { renderIdentification } from "./slice-linker/agent-report-writer.mjs";
+export { checkpointCommit } from "./checkpoint-commit.mjs";

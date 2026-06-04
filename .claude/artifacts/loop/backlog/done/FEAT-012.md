@@ -1,13 +1,13 @@
 ---
 id: FEAT-012
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-04
 depends_on: []
-slices: []
+slices: [SLICE-38]
 derived_from: null
 composite_score: 7
 source_competitors: [gstack]
@@ -22,6 +22,9 @@ pm_reasoning: "Auto-commit WIP + ship squash filter touches git history and PR s
 github_issue: 18
 github_milestone: 2
 phase: 2
+started_at: 2026-06-04
+slices_complete: [SLICE-38]
+completed_at: 2026-06-04
 ---
 # FEAT-012: Continuous checkpoint commits with WIP squash on ship
 
