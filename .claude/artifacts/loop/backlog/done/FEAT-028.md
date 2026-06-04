@@ -1,6 +1,6 @@
 ---
 id: FEAT-028
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
@@ -12,8 +12,24 @@ derived_from: null
 triage_notes: no fields needed inference
 started_at: 2026-06-04
 slices_complete: [SLICE-23, SLICE-25, SLICE-26]
+completed_at: 2026-06-04
+shipped_scope_note: "SLICE-D (document-writer into slice-complete) deferred to FEAT-030 due to decomposition pattern alert — FEAT shipped 3-of-4 originally-designed slices"
 ---
 # FEAT-028: Agent-aware autonomous backlog flow
+
+## Shipped scope
+
+- SLICE-23 / SLICE-A — auto-dispatch foundation module (DONE)
+- SLICE-25 / SLICE-B — researcher into backlog-add (DONE)
+- SLICE-26 / SLICE-C — architect into spec-decompose (DONE)
+- **SLICE-D — document-writer into slice-complete — DEFERRED TO FEAT-030**
+
+When SLICE-C closed, FEAT-028's slice count hit 3 and triggered the
+decomposition pattern alert. Rather than push to 4 slices on one FEAT
+(which the loop itself just told us is a smell), SLICE-D was split
+out as standalone FEAT-030. The auto-dispatch foundation + two of
+three integration sites land in this FEAT; the third lands cleanly
+in its own.
 
 ## Description
 

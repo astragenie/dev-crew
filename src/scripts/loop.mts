@@ -38,6 +38,7 @@ const FLAG_SPEC = {
   "--no-dispatch": { key: "noDispatch", boolean: true },
   "--no-research": { key: "noResearch", boolean: true },
   "--no-architect": { key: "noArchitect", boolean: true },
+  "--no-doc-writer": { key: "noDocWriter", boolean: true },
   "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
   "--force-close": { key: "forceClose", boolean: true },
   "--skip-validation-check": { key: "skipValidationCheck" },
@@ -101,7 +102,8 @@ function parseArgs(argv) {
     provider: null,
     pr: null,
     noResearch: false,
-    noArchitect: false
+    noArchitect: false,
+    noDocWriter: false
   };
   const positionals: any[] = [];
 
@@ -695,7 +697,8 @@ const SLICE_HANDLERS = {
     const out = await completeSlice(repoPath, sliceId, {
       keepFeatureOpen: Boolean(flags.keepFeatureOpen),
       forceClose: Boolean(flags.forceClose),
-      skipValidationCheck: flags.skipValidationCheck || null
+      skipValidationCheck: flags.skipValidationCheck || null,
+      noDocWriter: Boolean(flags.noDocWriter)
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {

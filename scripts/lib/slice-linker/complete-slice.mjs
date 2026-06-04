@@ -212,7 +212,8 @@ async function resolveValidationGate(repoPath, sliceId, sliceFm, skipValidationC
 }
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
-export async function completeSlice(repoPath, sliceId, { config = null, keepFeatureOpen = false, forceClose = false, skipValidationCheck = null } = {}) {
+export async function completeSlice(repoPath, sliceId, opts = {}) {
+    const { config = null, keepFeatureOpen = false, forceClose = false, skipValidationCheck = null } = opts;
     if (!sliceId)
         throw new Error("completeSlice requires a sliceId.");
     const resolved = config || (await resolveConfig(repoPath));
@@ -269,6 +270,10 @@ export async function completeSlice(repoPath, sliceId, { config = null, keepFeat
         return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
     });
     await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
+    // Fire doc-writer dispatch — async / fire-and-forget. Must not block the
+    // close ceremony. Dispatch failure is isolated: audit log records it, but
+    // completeSlice always returns success.
+    fireDocWriterDispatch(repoPath, sliceId, featureId, targetSlicePath, resolved, opts);
     return {
         slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
         feature: featureResult,
@@ -283,6 +288,85 @@ export async function completeSlice(repoPath, sliceId, { config = null, keepFeat
         testAdequacyGate,
         nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
     };
+}
+// Builds the doc-writer prompt encoding the multi-output decision tree.
+// Receives absolute paths so doc-writer can open the files it needs.
+function buildDocWriterPrompt(sliceId, slicePath, gradePath, featPath) {
+    return [
+        `Slice ${sliceId} closed. Decide which outputs to draft based on context:`,
+        `- CHANGELOG line: always — produce one line summarizing the slice`,
+        `- ADR draft for each DEC-NNN extracted from grade: only if grade.decisions[] non-empty`,
+        `- Release-notes append: only if FEAT.frontmatter.target_release is set`,
+        `- README / docs suggestion: only if FEAT touches commands/, agents/, skills/, or has surface-flag in FEAT frontmatter`,
+        ``,
+        `Return: list of files to write + content. If no outputs warranted, return "no doc needed".`,
+        ``,
+        `Slice context: ${slicePath}`,
+        `Grade context: ${gradePath}`,
+        `FEAT context: ${featPath}`
+    ].join("\n");
+}
+// Fires the doc-writer dispatch asynchronously (fire-and-forget). Never
+// throws — all failures are recorded in the audit log. Returns void immediately
+// so the close ceremony is not blocked.
+function fireDocWriterDispatch(repoPath, sliceId, featureId, slicePath, config, opts) {
+    const { noDocWriter = false, dispatchFn } = opts;
+    // Async work runs detached — errors are caught and written to the audit log.
+    const work = async () => {
+        const { dispatchAgent, appendAuditLog, parseSkipFlag } = await import("../auto-dispatch.mjs");
+        const { findGradeFileForSlice } = await import("../grade-parser.mjs");
+        const { findFeatureById } = await import("../backlog-writer.mjs");
+        const effectiveDispatch = dispatchFn ?? dispatchAgent;
+        const argv = noDocWriter ? ["--no-doc-writer"] : [];
+        // Opt-out path: log skip and return.
+        if (parseSkipFlag(argv, "--no-doc-writer")) {
+            await appendAuditLog(repoPath, {
+                timestamp: new Date().toISOString(),
+                agent: "loop:document-writer",
+                parentCommand: "slice-complete",
+                ok: true,
+                skipped: true,
+                skipReason: "opt-out",
+                durationMs: 0
+            });
+            return;
+        }
+        // Resolve grade and FEAT paths for the prompt.
+        const gradePath = (await findGradeFileForSlice(repoPath, sliceId, config)) ?? "none";
+        let featPath = "none";
+        if (featureId) {
+            const feat = await findFeatureById(repoPath, featureId, config);
+            if (feat?.filePath)
+                featPath = feat.filePath;
+        }
+        const prompt = buildDocWriterPrompt(sliceId, slicePath, gradePath, featPath);
+        await effectiveDispatch({
+            agent: "loop:document-writer",
+            prompt,
+            parentCommand: "slice-complete",
+            repoRoot: repoPath,
+            argv,
+            skipFlag: "--no-doc-writer"
+        });
+    };
+    // Detach: do NOT await. Catch unhandled failures and write to audit log.
+    work().catch(async (err) => {
+        try {
+            const { appendAuditLog } = await import("../auto-dispatch.mjs");
+            await appendAuditLog(repoPath, {
+                timestamp: new Date().toISOString(),
+                agent: "loop:document-writer",
+                parentCommand: "slice-complete",
+                ok: false,
+                skipped: false,
+                error: err instanceof Error ? err.message : String(err),
+                durationMs: 0
+            });
+        }
+        catch {
+            // Absolute last-resort: never propagate from the catch handler.
+        }
+    });
 }
 async function recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate) {
     try {
