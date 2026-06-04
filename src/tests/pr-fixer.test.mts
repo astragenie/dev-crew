@@ -2,7 +2,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { categorizePrIssues, runPrFix } from "../scripts/lib/pr-fixer.mjs";
+import {
+  assertPrViewShape,
+  categorizePrIssues,
+  fetchPrStatus,
+  runPrFix
+} from "../scripts/lib/pr-fixer.mjs";
 
 // --- categorizePrIssues tests ---
 
@@ -98,4 +103,107 @@ test("runPrFix with circuitBroken=false when priorAttempts is below threshold", 
   assert.ok(plan, "expected a test_failure plan");
   assert.equal(plan.attemptCount, 1);
   assert.equal(plan.circuitBroken, false);
+});
+
+// --- fetchPrStatus tests ---
+
+test("fetchPrStatus returns gh_unavailable when ghExec throws", async () => {
+  const mockGhExec = () => {
+    throw new Error("gh: command not found");
+  };
+
+  const result = await fetchPrStatus(".", 1, { ghExec: mockGhExec });
+  assert.deepEqual(result, { raw: null, haltReason: "gh_unavailable" });
+});
+
+test("fetchPrStatus throws when JSON is missing required field title", async () => {
+  const mockGhExec = () => JSON.stringify({ state: "OPEN", reviews: [], comments: [] });
+
+  await assert.rejects(
+    () => fetchPrStatus(".", 1, { ghExec: mockGhExec }),
+    (err: any) => {
+      assert.ok(err.message.includes("title"), `expected "title" in message: ${err.message}`);
+      return true;
+    }
+  );
+});
+
+test("fetchPrStatus throws when reviews field is not an array", async () => {
+  const mockGhExec = () =>
+    JSON.stringify({ title: "PR", state: "OPEN", reviews: "nope", comments: [] });
+
+  await assert.rejects(
+    () => fetchPrStatus(".", 1, { ghExec: mockGhExec }),
+    (err: any) => {
+      assert.ok(err.message.includes("reviews"), `expected "reviews" in message: ${err.message}`);
+      return true;
+    }
+  );
+});
+
+test("fetchPrStatus succeeds and returns parsed data for well-formed JSON", async () => {
+  const payload = {
+    title: "Good PR",
+    state: "OPEN",
+    reviews: [{ state: "APPROVED" }],
+    comments: [],
+    statusCheckRollup: []
+  };
+  const mockGhExec = () => JSON.stringify(payload);
+
+  const result = await fetchPrStatus(".", 1, { ghExec: mockGhExec });
+  assert.equal(result.haltReason, null);
+  assert.deepEqual(result.raw, payload);
+});
+
+// --- assertPrViewShape direct unit tests ---
+
+test("assertPrViewShape throws on non-object input", () => {
+  assert.throws(
+    () => assertPrViewShape(null),
+    (err: any) => {
+      assert.ok(err.message.includes("root"), `expected "root" in message: ${err.message}`);
+      return true;
+    }
+  );
+});
+
+test("assertPrViewShape throws when title is missing", () => {
+  assert.throws(
+    () => assertPrViewShape({ state: "OPEN", reviews: [], comments: [] }),
+    (err: any) => {
+      assert.ok(err.message.includes("title"), `expected "title" in message: ${err.message}`);
+      return true;
+    }
+  );
+});
+
+test("assertPrViewShape throws when state is missing", () => {
+  assert.throws(
+    () => assertPrViewShape({ title: "PR", reviews: [], comments: [] }),
+    (err: any) => {
+      assert.ok(err.message.includes("state"), `expected "state" in message: ${err.message}`);
+      return true;
+    }
+  );
+});
+
+test("assertPrViewShape throws when reviews is not an array", () => {
+  assert.throws(
+    () => assertPrViewShape({ title: "PR", state: "OPEN", reviews: null, comments: [] }),
+    (err: any) => {
+      assert.ok(err.message.includes("reviews"), `expected "reviews" in message: ${err.message}`);
+      return true;
+    }
+  );
+});
+
+test("assertPrViewShape throws when comments is not an array", () => {
+  assert.throws(
+    () => assertPrViewShape({ title: "PR", state: "OPEN", reviews: [], comments: "bad" }),
+    (err: any) => {
+      assert.ok(err.message.includes("comments"), `expected "comments" in message: ${err.message}`);
+      return true;
+    }
+  );
 });

@@ -1,14 +1,19 @@
 ---
 id: FEAT-037
-status: pending
+status: done
 priority: P3
 category: infra-bug
 target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 depends_on: []
-slices: []
+slices: [SLICE-35]
 derived_from: null
+autonomous_safe: false
+triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false"
+started_at: 2026-06-04
+slices_complete: [SLICE-35]
+completed_at: 2026-06-04
 ---
 ## Description
 

@@ -5,6 +5,30 @@
 // Note: github-sync modules are .mjs files (JavaScript), not TypeScript.
 // We use dynamic imports for the gh module to avoid hard TypeScript dependencies.
 
+/**
+ * Assert that a parsed `gh pr view` JSON response has the expected shape.
+ * Tolerant of unknown additional fields.
+ * Throws with a descriptive message identifying the failing field.
+ */
+export function assertPrViewShape(parsed: unknown): void {
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("gh pr view returned unexpected JSON shape: root must be object");
+  }
+  const p = parsed as Record<string, unknown>;
+  if (typeof p["title"] !== "string") {
+    throw new Error("gh pr view returned unexpected JSON shape: title must be string");
+  }
+  if (typeof p["state"] !== "string") {
+    throw new Error("gh pr view returned unexpected JSON shape: state must be string");
+  }
+  if (!Array.isArray(p["reviews"])) {
+    throw new Error("gh pr view returned unexpected JSON shape: reviews must be array");
+  }
+  if (!Array.isArray(p["comments"])) {
+    throw new Error("gh pr view returned unexpected JSON shape: comments must be array");
+  }
+}
+
 export type PrIssueCategory =
   | "lint"
   | "test_failure"
@@ -57,30 +81,31 @@ export async function fetchPrStatus(
     }
   }
 
+  const args = [
+    "pr",
+    "view",
+    String(prNumber),
+    "--json",
+    "title,state,reviews,statusCheckRollup,comments"
+  ];
+
+  if (repo) {
+    args.push("--repo", repo);
+  }
+
+  let result: unknown;
   try {
-    // Build gh pr view command
-    const args = [
-      "pr",
-      "view",
-      String(prNumber),
-      "--json",
-      "title,state,reviews,statusCheckRollup,comments"
-    ];
-
-    if (repo) {
-      args.push("--repo", repo);
-    }
-
-    const result = resolvedGhExec(args);
-    const raw = typeof result === "string" ? JSON.parse(result) : result;
-    return { raw, haltReason: null };
+    result = resolvedGhExec(args);
   } catch (err: any) {
-    // gh command failed or not available
     return {
       raw: null,
       haltReason: err?.message?.includes("not found") ? "gh_unavailable" : "gh_error"
     };
   }
+
+  const raw = typeof result === "string" ? JSON.parse(result as string) : result;
+  assertPrViewShape(raw);
+  return { raw, haltReason: null };
 }
 
 /**
