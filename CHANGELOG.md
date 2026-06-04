@@ -3,6 +3,57 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.1 — 2026-06-04 — Agent-report hardening, triage heuristics, auto-mode rename, SPEC-002 wiring
+
+### Fixes
+
+**Agent-report writer counts in-flight subagents (FEAT-031)**
+
+Recent agent reports collapsed to `agent_count: 0` whenever `subagent_stop`
+events hadn't landed in `events.jsonl` by the time `/loop:slice complete`
+ran. SubagentStop fires when the orchestrator returns control to the user,
+not when the subagent finishes — that can land minutes after slice-complete
+writes the report, so the writer was reading an incomplete event window.
+
+- `scripts/lib/slice-linker/agent-report-writer.mjs::pairAgentEvents` now
+  iterates the union of `agent_id`s seen in start AND stop payloads. Starts
+  without a matching stop become entries with `stopTs: null`, surfaced via
+  a new diagnostic note: "_N agent(s) have no `subagent_stop` event recorded._"
+- Real-data probe: re-running the writer on SLICE-27 (FEAT-030) window now
+  yields `agentCount: 3` (was 0).
+- Two new unit tests in `tests/agent-report-writer.test.mjs` cover the
+  start-without-stop path and mixed completed/in-flight runs.
+
+### Features
+
+**Triage heuristic for `autonomous_safe` (FEAT-033)**
+
+`/loop:backlog triage` now infers an `autonomous_safe` flag for each FEAT
+based on category + priority + description keywords. P1 features touching
+core dispatch machinery default to `autonomous_safe: false`; mechanical
+bug fixes default to `autonomous_safe: true`. Agents and the autonomous
+loop use the flag to decide whether to skip per-slice human review.
+
+### Renames
+
+**`marathonMode` → `autoMode` with back-compat**
+
+The autonomous-loop config field formerly known as `marathonMode` is now
+`autoMode`. Old configs continue to work — `stop-conditions.mts` reads
+both keys with `autoMode` winning when both are present. Documentation
+updated to use "auto mode" in user-facing copy.
+
+### Internals
+
+- SPEC-002 ("Reliability Hardening from Grade Followups") authored and
+  decomposed into FEAT-034 (marker hygiene + builder mid-cleanup stop),
+  FEAT-035 (cost telemetry project-name fix), FEAT-036 (defensive
+  parsers + test coverage). All P1-P3, queued for autonomous loop.
+- Post-v0.7.0 housekeeping: retrospective for 2026-06-04 added under
+  `.claude/artifacts/loop/retrospectives/`; loop-snapshot refreshed.
+- 6th decision captured: DEC-006 (pair agent events by union of
+  start+stop ids).
+
 ## v0.7.0 — 2026-06-04 — Agent-aware autonomous backlog flow, three new role agents, length validator, plugin surface restructure
 
 ### Features
