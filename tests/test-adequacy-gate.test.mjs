@@ -59,7 +59,9 @@ test("deriveTestAdequacyGate — slice not found → satisfied: true (no artifac
 test("deriveTestAdequacyGate — all reviews have test adequacy → satisfied: true", async () => {
     const repo = await tmpRepo("al-tag-pass-");
     const rel = ".claude/artifacts/crew/reviews/review-001.md";
-    await writeReviewArtifact(repo, rel, { testAdequacy: "All edge cases covered in integration tests" });
+    await writeReviewArtifact(repo, rel, {
+        testAdequacy: "All edge cases covered in integration tests"
+    });
     await writeSlice(repo, [rel]);
     const result = await deriveTestAdequacyGate(repo, "SLICE-01");
     assert.equal(result.satisfied, true);

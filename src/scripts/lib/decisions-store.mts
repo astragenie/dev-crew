@@ -20,7 +20,10 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function listDecisions(repoPath, { config = null, status = null }: Record<string, unknown> = {}) {
+export async function listDecisions(
+  repoPath,
+  { config = null, status = null }: Record<string, unknown> = {}
+) {
   const root = decisionsRoot(repoPath, config);
   if (!(await pathExists(root))) return [];
   const files = await fs.readdir(root);

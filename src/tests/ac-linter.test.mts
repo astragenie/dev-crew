@@ -45,7 +45,9 @@ test("lintAcceptanceCriteria rejects AC-N: ... (dots)", () => {
 });
 
 test("lintAcceptanceCriteria rejects AC-N: <describe...> (angle bracket)", () => {
-  const content = makeContent(["- [ ] AC-2: <replace with a concrete, testable acceptance criterion>"]);
+  const content = makeContent([
+    "- [ ] AC-2: <replace with a concrete, testable acceptance criterion>"
+  ]);
   const result = lintAcceptanceCriteria(content);
   assert.equal(result.ok, false);
   assert.equal(result.violations.length, 1);

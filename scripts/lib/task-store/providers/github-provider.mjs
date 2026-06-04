@@ -69,6 +69,7 @@ export class GithubProvider {
         }
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
+        // prettier-ignore
         const { createSliceIssue, attachSubIssue } = await import("../../github-sync/subissue-sync.mjs");
         const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
         const sliceIssueNum = createSliceIssue(repo, slice, { ghExec });

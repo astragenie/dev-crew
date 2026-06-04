@@ -22,7 +22,10 @@ function parseListSection(body, sectionHeader) {
   return items;
 }
 
-export async function recentLessons(repoPath, { limit = 5, config = null }: Record<string, any> = {}) {
+export async function recentLessons(
+  repoPath,
+  { limit = 5, config = null }: Record<string, any> = {}
+) {
   const grades = await listGrades(repoPath, { config });
   const recent = grades.slice(-limit);
   const items = recent.map((g) => ({

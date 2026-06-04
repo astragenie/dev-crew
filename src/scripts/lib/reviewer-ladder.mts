@@ -35,7 +35,11 @@ async function runGitDiffStat(repoPath) {
   }
 }
 
-export async function buildReviewLadder(repoPath, sliceId, { config = null }: Record<string, unknown> = {}) {
+export async function buildReviewLadder(
+  repoPath,
+  sliceId,
+  { config = null }: Record<string, unknown> = {}
+) {
   if (!sliceId) throw new Error("buildReviewLadder requires sliceId");
   const resolved = config || (await resolveConfig(repoPath));
   const ladder = resolved.reviewers?.ladder || ["A", "B"];
@@ -86,7 +90,7 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null }: Re
         diffStat ?? "(run git diff HEAD~1 --stat)",
         "",
         "Do not read files outside the above list unless they are direct imports.",
-        "Run targeted tests only: `npm test -- --test-name-pattern \"<test-file-basename>\"`",
+        'Run targeted tests only: `npm test -- --test-name-pattern "<test-file-basename>"`',
         "",
         "**What to do**:",
         "1. Read the slice file. List its acceptance criteria.",

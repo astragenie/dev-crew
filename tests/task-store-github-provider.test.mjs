@@ -34,7 +34,9 @@ test("GithubProvider has all 7 TaskStoreProvider methods as functions", () => {
 });
 test("GithubProvider methods return Promises when gh is absent", async () => {
     // Inject a ghExec that always throws (simulates gh not installed)
-    const noGh = () => { throw new Error("gh not found"); };
+    const noGh = () => {
+        throw new Error("gh not found");
+    };
     const provider = new GithubProvider("/tmp/repo", { ghExec: noGh });
     // Each call must resolve (not reject)
     const [pf, ps, cs, pc, us, sp, bs] = await Promise.all([
@@ -90,7 +92,9 @@ test("publishFeature delegates to createFeatureIssue (gh issue create)", async (
 // Test 4 — Missing gh CLI: all methods resolve gracefully (no throw)
 // ---------------------------------------------------------------------------
 test("missing gh CLI: publishSlice returns null without throwing", async () => {
-    const noGh = () => { throw new Error("ENOENT: gh not found"); };
+    const noGh = () => {
+        throw new Error("ENOENT: gh not found");
+    };
     const provider = new GithubProvider("/tmp/repo", {
         ghExec: noGh,
         github: { repo: "owner/repo" }
@@ -99,17 +103,23 @@ test("missing gh CLI: publishSlice returns null without throwing", async () => {
     assert.equal(result, null);
 });
 test("missing gh CLI: closeSlice resolves without throwing", async () => {
-    const noGh = () => { throw new Error("gh not found"); };
+    const noGh = () => {
+        throw new Error("gh not found");
+    };
     const provider = new GithubProvider("/tmp/repo", { ghExec: noGh });
     await assert.doesNotReject(() => provider.closeSlice(1, "done"));
 });
 test("missing gh CLI: postSliceComment resolves without throwing", async () => {
-    const noGh = () => { throw new Error("gh not found"); };
+    const noGh = () => {
+        throw new Error("gh not found");
+    };
     const provider = new GithubProvider("/tmp/repo", { ghExec: noGh });
     await assert.doesNotReject(() => provider.postSliceComment(1, "body"));
 });
 test("missing gh CLI: updateStatus resolves without throwing", async () => {
-    const noGh = () => { throw new Error("gh not found"); };
+    const noGh = () => {
+        throw new Error("gh not found");
+    };
     const provider = new GithubProvider("/tmp/repo", { ghExec: noGh });
     await assert.doesNotReject(() => provider.updateStatus(1, "in-progress"));
 });

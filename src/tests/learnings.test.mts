@@ -4,7 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { logLearning, recentLearnings, searchLearnings, learningsPath } from "../scripts/lib/learnings.mjs";
+import {
+  logLearning,
+  recentLearnings,
+  searchLearnings,
+  learningsPath
+} from "../scripts/lib/learnings.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -89,7 +94,11 @@ test("logLearning skips malformed existing lines (guards against corrupt store)"
   const filePath = learningsPath(repo);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   // Write a malformed line followed by a valid one
-  await fs.writeFile(filePath, 'not-json\n{"id":1,"key":"k","insight":"i","confidence":null,"source":"agent"}\n', "utf8");
+  await fs.writeFile(
+    filePath,
+    'not-json\n{"id":1,"key":"k","insight":"i","confidence":null,"source":"agent"}\n',
+    "utf8"
+  );
 
   // Should still compute next ID correctly (max valid id is 1, next is 2)
   const record = await logLearning(repo, { key: "after-malformed", insight: "ok" });

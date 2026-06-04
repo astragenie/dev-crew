@@ -26,7 +26,11 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function seedSlice(repo, sliceId, { feature = null, phase = null }: Record<string, unknown> = {}) {
+async function seedSlice(
+  repo,
+  sliceId,
+  { feature = null, phase = null }: Record<string, unknown> = {}
+) {
   const dir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${sliceId.replace("-", "_")}_TEST.md`);

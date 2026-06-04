@@ -40,7 +40,10 @@ export interface TaskStoreProvider {
    * @param parentExternalId - the external ID of the parent feature, or null
    * @returns external ID for the slice issue or null if skipped
    */
-  publishSlice(slice: any, parentExternalId: number | string | null): Promise<number | string | null>;
+  publishSlice(
+    slice: any,
+    parentExternalId: number | string | null
+  ): Promise<number | string | null>;
 
   /**
    * Close a slice in the external tracker (marks it done/completed).

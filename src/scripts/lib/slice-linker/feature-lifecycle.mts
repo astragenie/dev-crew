@@ -110,7 +110,11 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
 // - Updates feature.slices += [SLICE-NN] in frontmatter.
 //
 // Returns { slice: {id, path}, feature: {id, path, fromState, toState} }.
-export async function sliceFromFeature(repoPath, featureId, { config = null }: Record<string, unknown> = {}) {
+export async function sliceFromFeature(
+  repoPath,
+  featureId,
+  { config = null }: Record<string, unknown> = {}
+) {
   if (!featureId) throw new Error("sliceFromFeature requires a featureId.");
   const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = resolveSlicesRoot(repoPath, resolved);

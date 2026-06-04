@@ -76,7 +76,11 @@ function readGateStatus(workflowState) {
  * @param {{ sliceFm?: object|null }} [opts]
  * @returns {Promise<{ satisfied: boolean, reason: string, evidence: string[] }>}
  */
-export async function deriveValidationGate(repoPath, sliceId, { sliceFm = null }: Record<string, any> = {}) {
+export async function deriveValidationGate(
+  repoPath,
+  sliceId,
+  { sliceFm = null }: Record<string, any> = {}
+) {
   if (sliceFm && sliceFm.requires_validation === false) {
     return {
       satisfied: true,

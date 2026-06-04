@@ -5,21 +5,26 @@
 // Note: github-sync modules are .mjs files (JavaScript), not TypeScript.
 // We use dynamic imports for the gh module to avoid hard TypeScript dependencies.
 
-export type PrIssueCategory = "lint" | "test_failure" | "review_comment" | "ci_failure" | "security";
+export type PrIssueCategory =
+  | "lint"
+  | "test_failure"
+  | "review_comment"
+  | "ci_failure"
+  | "security";
 
 export interface PrFixPlan {
   category: PrIssueCategory;
   description: string;
   dispatchPrompt: string;
   attemptCount: number;
-  circuitBroken: boolean;   // true when attemptCount >= maxAttemptsPerCategory
+  circuitBroken: boolean; // true when attemptCount >= maxAttemptsPerCategory
 }
 
 export interface PrFixResult {
   prNumber: number | string;
   ciGreen: boolean;
   plans: PrFixPlan[];
-  haltReason: string | null;   // null when no halt
+  haltReason: string | null; // null when no halt
   walkedCategories: PrIssueCategory[];
 }
 
@@ -57,8 +62,11 @@ export async function fetchPrStatus(
   try {
     // Build gh pr view command
     const args = [
-      "pr", "view", String(prNumber),
-      "--json", "title,state,reviews,statusCheckRollup,comments"
+      "pr",
+      "view",
+      String(prNumber),
+      "--json",
+      "title,state,reviews,statusCheckRollup,comments"
     ];
 
     if (repo) {
@@ -164,12 +172,7 @@ export async function runPrFix(
     priorAttempts?: Partial<Record<PrIssueCategory, number>>;
   } = {}
 ): Promise<PrFixResult> {
-  const {
-    ghExec,
-    repo,
-    maxAttemptsPerCategory = 3,
-    priorAttempts = {}
-  } = options;
+  const { ghExec, repo, maxAttemptsPerCategory = 3, priorAttempts = {} } = options;
 
   // Fetch PR status
   const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, { ghExec, repo });

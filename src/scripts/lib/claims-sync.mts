@@ -48,7 +48,10 @@ function extractFeatureIdsFromClaims(claims) {
   return [...ids];
 }
 
-export async function syncClaims(repoPath, { config = null, apply = true }: Record<string, unknown> = {}) {
+export async function syncClaims(
+  repoPath,
+  { config = null, apply = true }: Record<string, unknown> = {}
+) {
   const state = await readClaimsState(repoPath);
   const claimedFeatureIds = extractFeatureIdsFromClaims(state.claims || {});
   const backlog = await listBacklog(repoPath, { config });

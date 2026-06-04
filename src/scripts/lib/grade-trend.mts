@@ -115,6 +115,7 @@ export async function checkMarathonMilestone(repoPath, config: any = null) {
   const recent = state.scores.slice(-milestoneLength);
   if (!recent.every((s) => s.avg >= threshold)) return null;
 
-  const avgScore = Math.round((recent.reduce((sum, s) => sum + s.avg, 0) / milestoneLength) * 100) / 100;
+  const avgScore =
+    Math.round((recent.reduce((sum, s) => sum + s.avg, 0) / milestoneLength) * 100) / 100;
   return { milestone: true, consecutiveAbove: milestoneLength, avgScore, threshold };
 }

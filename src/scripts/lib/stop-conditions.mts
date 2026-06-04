@@ -117,7 +117,10 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode }
   }
 }
 
-export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false }: Record<string, any> = {}) {
+export async function checkStopConditions(
+  repoPath,
+  { config = null, ignoreAlerts = false }: Record<string, any> = {}
+) {
   const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),

@@ -270,7 +270,11 @@ export function renderIdentification(phase, featureId, sliceId) {
   return parts.length > 0 ? parts.join(" · ") : "";
 }
 
-function buildBody(agents, groups, { phase, featureId, sliceId, eventsFound }: Record<string, unknown> = {}) {
+function buildBody(
+  agents,
+  groups,
+  { phase, featureId, sliceId, eventsFound }: Record<string, unknown> = {}
+) {
   const sections = [""];
   const id = renderIdentification(phase, featureId, sliceId);
   if (id) sections.push(id, "");
@@ -346,7 +350,10 @@ export async function writeAgentReport(
   await fs.mkdir(agentsDir, { recursive: true });
 
   const slug = buildArtifactSlug({ featureId, phase, sliceId });
-  const ts = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const ts = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
   const target = path.join(agentsDir, `${ts}-agent-report-${slug}.md`);
 
   const { events, fileFound } = await readEventsInWindow(repoPath, startedAt);

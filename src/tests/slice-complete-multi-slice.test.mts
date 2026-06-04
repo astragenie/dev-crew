@@ -153,20 +153,14 @@ test("multi-slice Case 1: FEAT with 2 planned slices — first slice done → fe
   assert.deepEqual(result.feature.slicesComplete, ["SLICE-A"]);
 
   // FEAT file stays in triaged/
-  const featFiles = await fs.readdir(
-    path.join(repo, ".claude/artifacts/loop/backlog/triaged")
-  );
+  const featFiles = await fs.readdir(path.join(repo, ".claude/artifacts/loop/backlog/triaged"));
   assert.ok(
     featFiles.some((f) => f.startsWith(featId)),
     "FEAT file should remain in triaged/"
   );
 
   // FEAT frontmatter has slices_complete: [SLICE-A]
-  const featPath = path.join(
-    repo,
-    ".claude/artifacts/loop/backlog/triaged",
-    `${featId}.md`
-  );
+  const featPath = path.join(repo, ".claude/artifacts/loop/backlog/triaged", `${featId}.md`);
   const featContent = await fs.readFile(featPath, "utf8");
   const { frontmatter: featFm } = parseFrontmatter(featContent);
   assert.deepEqual(featFm.slices_complete, ["SLICE-A"]);
@@ -199,26 +193,17 @@ test("multi-slice Case 2: all planned slices complete → feature moves to done 
   assert.match(result.feature.to, /done[\\/]/);
 
   // FEAT file is under done/
-  const featFiles = await fs.readdir(
-    path.join(repo, ".claude/artifacts/loop/backlog/done")
-  );
+  const featFiles = await fs.readdir(path.join(repo, ".claude/artifacts/loop/backlog/done"));
   assert.ok(
     featFiles.some((f) => f.startsWith(featId)),
     "FEAT file should be in done/"
   );
 
   // FEAT frontmatter has slices_complete: [SLICE-A, SLICE-B]
-  const featPath = path.join(
-    repo,
-    ".claude/artifacts/loop/backlog/done",
-    `${featId}.md`
-  );
+  const featPath = path.join(repo, ".claude/artifacts/loop/backlog/done", `${featId}.md`);
   const featContent = await fs.readFile(featPath, "utf8");
   const { frontmatter: featFm } = parseFrontmatter(featContent);
-  assert.ok(
-    Array.isArray(featFm.slices_complete),
-    "slices_complete should be an array"
-  );
+  assert.ok(Array.isArray(featFm.slices_complete), "slices_complete should be an array");
   assert.ok(featFm.slices_complete.includes("SLICE-A"));
   assert.ok(featFm.slices_complete.includes("SLICE-B"));
 });
@@ -247,20 +232,14 @@ test("multi-slice Case 3: --force-close moves multi-slice FEAT to done with audi
   assert.match(result.feature.to, /done[\\/]/);
 
   // FEAT file is under done/
-  const featFiles = await fs.readdir(
-    path.join(repo, ".claude/artifacts/loop/backlog/done")
-  );
+  const featFiles = await fs.readdir(path.join(repo, ".claude/artifacts/loop/backlog/done"));
   assert.ok(
     featFiles.some((f) => f.startsWith(featId)),
     "FEAT file should be in done/ when --force-close"
   );
 
   // FEAT frontmatter has audit fields
-  const featPath = path.join(
-    repo,
-    ".claude/artifacts/loop/backlog/done",
-    `${featId}.md`
-  );
+  const featPath = path.join(repo, ".claude/artifacts/loop/backlog/done", `${featId}.md`);
   const featContent = await fs.readFile(featPath, "utf8");
   const { frontmatter: featFm } = parseFrontmatter(featContent);
   assert.equal(featFm.force_closed, true, "force_closed should be true");
@@ -294,9 +273,7 @@ test("multi-slice Case 4: --keep-feature-open on fully-complete FEAT → feature
   assert.match(result.feature.reason, /keep-feature-open/);
 
   // FEAT file still in triaged/
-  const featFiles = await fs.readdir(
-    path.join(repo, ".claude/artifacts/loop/backlog/triaged")
-  );
+  const featFiles = await fs.readdir(path.join(repo, ".claude/artifacts/loop/backlog/triaged"));
   assert.ok(
     featFiles.some((f) => f.startsWith(featId)),
     "FEAT file should remain in triaged/ when --keep-feature-open"
@@ -326,9 +303,7 @@ test("multi-slice Case 5: single-slice FEAT → moves to done immediately after 
   assert.match(result.feature.to, /done[\\/]/);
 
   // FEAT file is under done/
-  const featFiles = await fs.readdir(
-    path.join(repo, ".claude/artifacts/loop/backlog/done")
-  );
+  const featFiles = await fs.readdir(path.join(repo, ".claude/artifacts/loop/backlog/done"));
   assert.ok(
     featFiles.some((f) => f.startsWith(featId)),
     "FEAT file should be in done/ for single-slice FEAT"

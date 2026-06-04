@@ -5,9 +5,7 @@ import { categorizePrIssues, runPrFix } from "../scripts/lib/pr-fixer.mjs";
 // --- categorizePrIssues tests ---
 test("categorizePrIssues returns ['ci_failure'] when statusCheckRollup has FAILURE", () => {
     const raw = {
-        statusCheckRollup: [
-            { name: "build", conclusion: "FAILURE" }
-        ],
+        statusCheckRollup: [{ name: "build", conclusion: "FAILURE" }],
         reviews: [],
         comments: []
     };
@@ -16,9 +14,7 @@ test("categorizePrIssues returns ['ci_failure'] when statusCheckRollup has FAILU
 });
 test("categorizePrIssues includes 'lint' when failed check name contains 'lint'", () => {
     const raw = {
-        statusCheckRollup: [
-            { name: "ESLint", conclusion: "FAILURE" }
-        ],
+        statusCheckRollup: [{ name: "ESLint", conclusion: "FAILURE" }],
         reviews: [],
         comments: []
     };
@@ -28,9 +24,7 @@ test("categorizePrIssues includes 'lint' when failed check name contains 'lint'"
 test("categorizePrIssues includes 'review_comment' when review has CHANGES_REQUESTED", () => {
     const raw = {
         statusCheckRollup: [],
-        reviews: [
-            { state: "CHANGES_REQUESTED" }
-        ],
+        reviews: [{ state: "CHANGES_REQUESTED" }],
         comments: []
     };
     const result = categorizePrIssues(raw);
@@ -38,12 +32,8 @@ test("categorizePrIssues includes 'review_comment' when review has CHANGES_REQUE
 });
 test("categorizePrIssues returns empty array for clean PR", () => {
     const raw = {
-        statusCheckRollup: [
-            { name: "tests", conclusion: "SUCCESS" }
-        ],
-        reviews: [
-            { state: "APPROVED" }
-        ],
+        statusCheckRollup: [{ name: "tests", conclusion: "SUCCESS" }],
+        reviews: [{ state: "APPROVED" }],
         comments: []
     };
     const result = categorizePrIssues(raw);
@@ -54,9 +44,7 @@ test("runPrFix with circuitBroken=true when priorAttempts exceeds threshold", as
     const mockGhExec = () => JSON.stringify({
         title: "Test PR",
         state: "OPEN",
-        statusCheckRollup: [
-            { name: "test", conclusion: "FAILURE" }
-        ],
+        statusCheckRollup: [{ name: "test", conclusion: "FAILURE" }],
         reviews: [],
         comments: []
     });
@@ -77,9 +65,7 @@ test("runPrFix with circuitBroken=false when priorAttempts is below threshold", 
     const mockGhExec = () => JSON.stringify({
         title: "Test PR",
         state: "OPEN",
-        statusCheckRollup: [
-            { name: "test", conclusion: "FAILURE" }
-        ],
+        statusCheckRollup: [{ name: "test", conclusion: "FAILURE" }],
         reviews: [],
         comments: []
     });

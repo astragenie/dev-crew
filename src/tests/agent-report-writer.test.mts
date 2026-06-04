@@ -88,7 +88,10 @@ async function writeAgentEvents(repo, agents) {
 }
 
 // Write a fake agent transcript JSONL with given turns/tools/skills.
-async function writeTranscript(filePath, { turns = 0, model = null, tools = {}, skills = [] }: Record<string, any> = {}) {
+async function writeTranscript(
+  filePath,
+  { turns = 0, model = null, tools = {}, skills = [] }: Record<string, any> = {}
+) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   const lines: any[] = [];
   for (let i = 0; i < turns; i++) {

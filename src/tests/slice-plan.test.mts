@@ -27,10 +27,7 @@ async function tmpRepo(prefix) {
 }
 
 async function writeSliceFile(repo, sliceId, content) {
-  const slicesDir = path.join(
-    repo,
-    ".claude/artifacts/loop/ai-loop/slices/pending"
-  );
+  const slicesDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
   await fs.mkdir(slicesDir, { recursive: true });
   const filePath = path.join(slicesDir, `${sliceId}_TEST-SLICE.md`);
   await fs.writeFile(filePath, content);
@@ -108,16 +105,30 @@ Build a feature.
 
   assert.ok(result.sections, "sections must be returned");
   assert.ok(result.sections.context !== undefined, "context section must be present");
-  assert.ok(result.sections.filesResearched !== undefined, "filesResearched section must be present");
+  assert.ok(
+    result.sections.filesResearched !== undefined,
+    "filesResearched section must be present"
+  );
   assert.ok(result.sections.openQuestions !== undefined, "openQuestions section must be present");
-  assert.ok(result.sections.proposedApproach !== undefined, "proposedApproach section must be present");
+  assert.ok(
+    result.sections.proposedApproach !== undefined,
+    "proposedApproach section must be present"
+  );
 
   // Verify the artifact file contains all 4 headings
   const content = await fs.readFile(result.planPath, "utf8");
   assert.match(content, /^## Context$/m, "artifact must contain ## Context section");
-  assert.match(content, /^## Files researched$/m, "artifact must contain ## Files researched section");
+  assert.match(
+    content,
+    /^## Files researched$/m,
+    "artifact must contain ## Files researched section"
+  );
   assert.match(content, /^## Open questions$/m, "artifact must contain ## Open questions section");
-  assert.match(content, /^## Proposed approach$/m, "artifact must contain ## Proposed approach section");
+  assert.match(
+    content,
+    /^## Proposed approach$/m,
+    "artifact must contain ## Proposed approach section"
+  );
 });
 
 // AC-4 case 3: no-in-scope-hint fallback — slice with no In scope section still produces artifact with Context section
@@ -145,10 +156,18 @@ Something without scope.
   const result = await runPlanPreflight(repo, "SLICE-99");
 
   assert.ok(result.planPath, "planPath must be set even with no in-scope hint");
-  assert.equal(result.filesResearched.length, 0, "filesResearched should be empty when no hint given");
+  assert.equal(
+    result.filesResearched.length,
+    0,
+    "filesResearched should be empty when no hint given"
+  );
 
   const content = await fs.readFile(result.planPath, "utf8");
-  assert.match(content, /^## Context$/m, "artifact must contain ## Context even without in-scope hint");
+  assert.match(
+    content,
+    /^## Context$/m,
+    "artifact must contain ## Context even without in-scope hint"
+  );
   assert.match(content, /^## Files researched$/m, "Files researched section must still appear");
 });
 

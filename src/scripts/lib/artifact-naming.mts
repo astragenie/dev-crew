@@ -106,7 +106,12 @@ export function buildArtifactSlug({ featureId, phase, sliceId }: Record<string, 
 //   → "SLICE36: Health page"
 // buildArtifactTitle({ sliceId: "SLICE-36" })
 //   → "SLICE36"
-export function buildArtifactTitle({ featureId, phase, sliceId, summary }: Record<string, unknown> = {}) {
+export function buildArtifactTitle({
+  featureId,
+  phase,
+  sliceId,
+  summary
+}: Record<string, unknown> = {}) {
   if (!sliceId) {
     throw new Error("buildArtifactTitle requires sliceId");
   }

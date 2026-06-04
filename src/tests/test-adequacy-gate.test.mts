@@ -36,7 +36,11 @@ async function writeSlice(repo, reviews = []) {
   return slicePath;
 }
 
-async function writeReviewArtifact(repo, relPath, { testAdequacy = null, skipReason = null }: Record<string, unknown> = {}) {
+async function writeReviewArtifact(
+  repo,
+  relPath,
+  { testAdequacy = null, skipReason = null }: Record<string, unknown> = {}
+) {
   const absPath = path.join(repo, relPath);
   await fs.mkdir(path.dirname(absPath), { recursive: true });
   const lines = [
@@ -69,7 +73,9 @@ test("deriveTestAdequacyGate — slice not found → satisfied: true (no artifac
 test("deriveTestAdequacyGate — all reviews have test adequacy → satisfied: true", async () => {
   const repo = await tmpRepo("al-tag-pass-");
   const rel = ".claude/artifacts/crew/reviews/review-001.md";
-  await writeReviewArtifact(repo, rel, { testAdequacy: "All edge cases covered in integration tests" });
+  await writeReviewArtifact(repo, rel, {
+    testAdequacy: "All edge cases covered in integration tests"
+  });
   await writeSlice(repo, [rel]);
   const result = await deriveTestAdequacyGate(repo, "SLICE-01");
   assert.equal(result.satisfied, true);

@@ -404,7 +404,13 @@ export async function completeSlice(
   };
 }
 
-async function recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate) {
+async function recordCompleteTrajectory(
+  repoPath,
+  sliceId,
+  featureId,
+  featureResult,
+  validationGate
+) {
   try {
     const { recordStep } = await import("../trajectory-writer.mjs");
     await recordStep(repoPath, sliceId, "slice_complete", {

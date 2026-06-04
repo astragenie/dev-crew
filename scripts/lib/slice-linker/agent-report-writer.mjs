@@ -336,7 +336,10 @@ export async function writeAgentReport(repoPath, { sliceId, featureId = null, ph
     const agentsDir = path.join(repoPath, ".claude", "artifacts", "crew", "agents");
     await fs.mkdir(agentsDir, { recursive: true });
     const slug = buildArtifactSlug({ featureId, phase, sliceId });
-    const ts = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const ts = new Date()
+        .toISOString()
+        .replace(/[-:]/g, "")
+        .replace(/\.\d+Z$/, "Z");
     const target = path.join(agentsDir, `${ts}-agent-report-${slug}.md`);
     const { events, fileFound } = await readEventsInWindow(repoPath, startedAt);
     const { startPayloads, startTimestamps, stopPayloads, stopTimestamps } = await collectEventPayloads(events);

@@ -98,7 +98,11 @@ export async function parseApprovedSlices(filePath) {
 // For a list of parsed slice descriptors, check whether each slice file
 // exists under slicesRoot and whether its frontmatter is status:
 // completed. Returns slices augmented with { exists, completed, slicePath }.
-export async function detectSliceStatus(repoPath, slices, { slicesRoot }: Record<string, any> = {}) {
+export async function detectSliceStatus(
+  repoPath,
+  slices,
+  { slicesRoot }: Record<string, any> = {}
+) {
   const root = slicesRoot || resolveSlicesRoot(repoPath, null);
   const hasRoot = await pathExists(root);
   const filesByNumber = hasRoot ? await indexSliceFiles(root) : new Map();

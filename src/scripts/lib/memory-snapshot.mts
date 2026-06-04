@@ -215,7 +215,10 @@ function renderUsageFooter() {
   ];
 }
 
-export async function writeMemorySnapshot(repoPath, { config = null }: Record<string, unknown> = {}) {
+export async function writeMemorySnapshot(
+  repoPath,
+  { config = null }: Record<string, unknown> = {}
+) {
   const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues] =
     await Promise.all([
       listBacklog(repoPath, { config }),

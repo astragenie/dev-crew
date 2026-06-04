@@ -75,7 +75,7 @@ export async function buildReviewLadder(repoPath, sliceId, { config = null } = {
                 diffStat ?? "(run git diff HEAD~1 --stat)",
                 "",
                 "Do not read files outside the above list unless they are direct imports.",
-                "Run targeted tests only: `npm test -- --test-name-pattern \"<test-file-basename>\"`",
+                'Run targeted tests only: `npm test -- --test-name-pattern "<test-file-basename>"`',
                 "",
                 "**What to do**:",
                 "1. Read the slice file. List its acceptance criteria.",

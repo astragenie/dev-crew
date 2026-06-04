@@ -79,6 +79,7 @@ export class GithubProvider implements TaskStoreProvider {
     }
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
+    // prettier-ignore
     const { createSliceIssue, attachSubIssue } = await import("../../github-sync/subissue-sync.mjs");
     const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
     const sliceIssueNum = createSliceIssue(repo, slice, { ghExec });
@@ -88,7 +89,9 @@ export class GithubProvider implements TaskStoreProvider {
       } catch (err: any) {
         const detail = `${err.message ?? ""} ${err.stderr ?? ""}`;
         if (!detail.includes("422") && !detail.includes("duplicate")) {
-          console.warn(`[GithubProvider] sub-issue attach failed: ${err.message?.split("\n")[0] ?? ""}`);
+          console.warn(
+            `[GithubProvider] sub-issue attach failed: ${err.message?.split("\n")[0] ?? ""}`
+          );
         }
       }
     }

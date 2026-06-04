@@ -125,7 +125,10 @@ function buildReleaseBody({
  * @param {string} repoPath
  * @param {{ version?: string, config?: any }} [options]
  */
-export async function planRelease(repoPath, { version, config = null }: Record<string, unknown> = {}) {
+export async function planRelease(
+  repoPath,
+  { version, config = null }: Record<string, unknown> = {}
+) {
   const normalized = normalizeVersion(version);
   const [backlog, specs] = await Promise.all([
     listBacklog(repoPath, { config }),
@@ -170,7 +173,10 @@ export async function planRelease(repoPath, { version, config = null }: Record<s
  * @param {string} repoPath
  * @param {{ version?: string, config?: any }} [options]
  */
-export async function releaseStatus(repoPath, { version, config = null }: Record<string, unknown> = {}) {
+export async function releaseStatus(
+  repoPath,
+  { version, config = null }: Record<string, unknown> = {}
+) {
   const normalized = normalizeVersion(version);
   const backlog = await listBacklog(repoPath, { config });
   const targeted = backlog.filter((f) => f.frontmatter.target_release === normalized);

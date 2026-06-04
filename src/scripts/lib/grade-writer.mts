@@ -38,7 +38,11 @@ function utcTimestamp() {
 // Build the full path for a new grade file using the artifact naming convention.
 // Format: <gradesRoot>/<TS>-<slug>-grade.md
 // where slug = [phaseN-][featNNN-]sliceNN (via buildArtifactSlug).
-function newGradeFilePath(repoRoot, sliceId, { featureId, phase, config }: Record<string, unknown> = {}) {
+function newGradeFilePath(
+  repoRoot,
+  sliceId,
+  { featureId, phase, config }: Record<string, unknown> = {}
+) {
   const slug = buildArtifactSlug({ featureId: featureId || null, phase: phase || null, sliceId });
   const filename = `${utcTimestamp()}-${slug}-grade.md`;
   return path.join(gradesRoot(repoRoot, config), filename);
@@ -118,7 +122,11 @@ function patchGradeFrontmatter(tpl, { featureId, specId, phase, targetRelease })
     .replace(/^(feature):\s*FEAT-NNN/m, `$1: ${featureId || "null"}`);
 }
 
-export async function createGradeFile(repoPath, sliceId, { config = null }: Record<string, any> = {}) {
+export async function createGradeFile(
+  repoPath,
+  sliceId,
+  { config = null }: Record<string, any> = {}
+) {
   if (!sliceId) throw new Error("createGradeFile requires sliceId");
 
   // Check for an existing grade file (legacy or new format) before creating.
@@ -177,7 +185,9 @@ export async function writeGrade(repoPath, sliceId, { config = null }: Record<st
   const scores = parseScoresFromBody(body);
   const scoreErrors = validateScores(scores);
   if (scoreErrors.length > 0) {
-    const err = new Error(`Score validation failed:\n  - ${scoreErrors.join("\n  - ")}`) as NodeJS.ErrnoException;
+    const err = new Error(
+      `Score validation failed:\n  - ${scoreErrors.join("\n  - ")}`
+    ) as NodeJS.ErrnoException;
     err.code = "SCORE_VALIDATION";
     throw err;
   }

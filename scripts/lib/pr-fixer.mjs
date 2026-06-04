@@ -30,8 +30,11 @@ export async function fetchPrStatus(repoPath, prNumber, options = {}) {
     try {
         // Build gh pr view command
         const args = [
-            "pr", "view", String(prNumber),
-            "--json", "title,state,reviews,statusCheckRollup,comments"
+            "pr",
+            "view",
+            String(prNumber),
+            "--json",
+            "title,state,reviews,statusCheckRollup,comments"
         ];
         if (repo) {
             args.push("--repo", repo);
