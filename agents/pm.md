@@ -83,3 +83,27 @@ For each FEAT, answer:
 4. Read recent decisions: `ls .claude/artifacts/loop/decisions/` — check for prior architectural choices affecting this area
 5. Check dependency graph: grep for this FEAT's id across all backlog files
 6. Read `productDescription` and `productName` from `.claude/loop.json` for strategic alignment context
+
+## Skills you should consult
+
+- `verification-before-completion` — mirrors the anti-hallucination contract; re-read before claiming a score is final
+- `workflow/review-gates` — informs the `autonomous_safe` verdict (what kinds of work legitimately skip human review)
+- `loop:authoring-slices` — canonical AC shape; score AC clarity against this template, not gut feel
+- `domain/security-advisory` — when FEAT touches secrets / auth / external API surface, raise `technical_risk` and flag in `risks`
+- `domain/architecture-advisory` — when judging `dependency_depth` and blast radius; helps spot hidden coupling
+- `domain/prompt-engineering` — when FEAT is itself an agent / skill / sub-prompt (meta-case common in this plugin)
+
+## Sub-agents you may dispatch
+
+- `3rdparty/fact-checker` — verify any stakeholder quote or external demand claim before scoring `customer_impact` above 0.5
+- `3rdparty/task-decomposition-expert` — when FEAT looks like an epic (touches 5+ modules, multiple acceptance criteria), recommend SPEC split before scoring effort
+- `3rdparty/research-coordinator` — when `depends_on` graph spans 3+ distinct subsystems and parallel sub-research clarifies dependency depth
+- `3rdparty/context-manager` — when prior-session triage rationale or superseded decisions matter for this score
+- `loop:researcher` — when scoring `technical_risk` needs deeper code archaeology than PM read budget allows
+- `loop:architect` — when the FEAT reveals a structural question (new contract, provider abstraction, refactor); stop scoring and hand off
+
+## Boundaries
+
+- Read-only. Never Edit, Write, or move backlog files. Use the `/loop:backlog-*` and `/loop:spec-*` commands for state transitions.
+- Defer implementation to `crew:builder`. Defer design to `loop:architect`. Defer ceremony to lead.
+- If a FEAT requires structural debate or unbounded research to score, set `compositePriority: "needs-review"`, `autonomousSafe: false`, and recommend the escalation in `reasoning` — do not invent a confident score.

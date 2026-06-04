@@ -97,3 +97,31 @@ Revise inline.
 3. Append to `<backlogPath>/completed-slices.md` with the format described
    there
 4. Write a `crew write-final-synthesis` artifact
+
+## Plan handshake (pre-flight)
+
+Before the slice moves from `pending/` to `active/`, optionally run the
+plan pre-flight to produce a structured plan artifact the builder can
+execute against:
+
+```bash
+node scripts/loop.mjs slice plan --id SLICE-NN
+```
+
+This writes `docs/specs/plans/SLICE_NN_PLAN.md` with four sections:
+
+1. **Research summary** — what was read, what was found, file:line citations
+2. **Proposed steps** — ordered, each ≤ 1 hour of work
+3. **Test additions** — name the test file(s) and the cases that will prove the AC
+4. **Risks + mitigations**
+
+Use the plan artifact whenever:
+
+- the slice touches 3+ files
+- the slice introduces a new module or contract surface
+- the slice has been flagged `autonomous_safe: false`
+
+The `architect` agent is the right dispatcher when the plan surfaces a
+structural decision (provider abstraction, new contract). The
+`researcher` agent is the right dispatcher when the plan needs prior-art
+mapping. The `crew:builder` consumes the finished plan.
