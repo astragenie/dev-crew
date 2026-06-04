@@ -73,9 +73,9 @@ export function buildDispatchInstruction({
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
   const lines = [
-    `Dispatch /crew:build subagent with this prompt:`,
+    `Dispatch crew:builder subagent with this prompt:`,
     "",
-    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:reviewer\` subagent. For validation, dispatch a \`crew:validator\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
+    `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:validator yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:validator if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
   ];
   appendProgressSignals(lines);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);

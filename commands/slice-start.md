@@ -35,7 +35,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice start \
 `--no-dispatch` opts out of the dispatch instruction (used for manual /
 debugging invocations where the agent is doing the slice work
 in-conversation). The autonomous loop should always omit this flag so
-implementation runs through a `/crew:build` subagent.
+implementation runs through a `crew:builder` subagent (the parent loop
+then drives the `crew:reviewer` and `crew:validator` gates separately
+before closing the slice).
 
 Returns:
 
@@ -45,8 +47,8 @@ Returns:
   "activePlan": { "source": "superpowers", "path": "docs/superpowers/plans/2026-05-22-crew-monitor-phase-2.md" },
   "runBrief": { "artifactPath": ".claude/artifacts/crew/runs/<stamp>-run-brief-slice-18-...md" },
   "sliceProgress": { "path": ".claude/state/crew/slice-progress.md", "completedCount": 17, "totalCount": 19 },
-  "dispatchInstruction": "Dispatch /crew:build subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id SLICE-18. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.",
-  "nextAction": "Dispatch /crew:build subagent for SLICE-18; close with /loop:slice complete --id SLICE-18."
+  "dispatchInstruction": "Dispatch crew:builder subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:validator yourself; the parent loop drives those gates separately after you return. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:validator if behavior changed, then run /loop:slice complete --id SLICE-18.",
+  "nextAction": "Dispatch crew:builder subagent for SLICE-18; then dispatch crew:reviewer (and crew:validator if behavior changed); close with /loop:slice complete --id SLICE-18."
 }
 ```
 
@@ -61,6 +63,13 @@ the close ceremony's cost auto-emit attribute work to the wrong slice.
 
 ## What to do after
 
-The returned `nextAction` is a literal prompt to follow: do the slice
-work (acceptance criteria, build + test PASS with evidence), then run
-`/loop:slice complete --id SLICE-NN`.
+The returned `nextAction` is a literal prompt to follow:
+
+1. Dispatch `crew:builder` subagent for slice implementation. Builder
+   owns implementation only and returns a write-handoff artifact path
+   when acceptance criteria PASS in its self-verify gates.
+2. Dispatch `crew:reviewer` subagent for the review gate. Pass it the
+   builder's handoff artifact path and the slice file path.
+3. If behavior changed, dispatch `crew:validator` subagent for the
+   validation gate.
+4. Run `/loop:slice complete --id SLICE-NN` to close.

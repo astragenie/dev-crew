@@ -245,10 +245,10 @@ function computeNextAction(
   planPreflight: any
 ): string {
   if (requiresApprovalGate) {
-    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch /crew:build for ${sliceId}.`;
+    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:builder for ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+    return `Dispatch crew:builder subagent for ${sliceId}; then dispatch crew:reviewer (and crew:validator if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
   }
   return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }
