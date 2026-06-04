@@ -17,6 +17,9 @@ try {
     execFileSync("node", [path.join(scriptDir, "validate-manifests.mjs")], {
         stdio: ["ignore", "pipe", "pipe"]
     });
+    execFileSync("node", [path.join(scriptDir, "validate-content-length.mjs")], {
+        stdio: ["ignore", "pipe", "pipe"]
+    });
     process.exit(0);
 }
 catch (e) {
