@@ -36,12 +36,21 @@ function detectDecompositionAlerts(backlog) {
   for (const f of backlog) {
     const slices = Array.isArray(f.frontmatter.slices) ? f.frontmatter.slices : [];
     if (slices.length >= 3) {
-      out.push({
-        severity: "warn",
-        category: "decomposition",
-        message: `${f.id} has spawned ${slices.length} slices`,
-        suggested_action: `Review feature scope — split into smaller features or capture the pattern as a SPEC.`
-      });
+      if (f.state === "done") {
+        out.push({
+          severity: "info",
+          category: "decomposition",
+          message: `${f.id} shipped with ${slices.length} slices — consider capturing the pattern as a SPEC if recurring`,
+          suggested_action: `Capture pattern as SPEC retroactively only if recurring.`
+        });
+      } else {
+        out.push({
+          severity: "warn",
+          category: "decomposition",
+          message: `${f.id} has spawned ${slices.length} slices`,
+          suggested_action: `Review feature scope — split into smaller features or capture the pattern as a SPEC.`
+        });
+      }
     }
   }
   return out;

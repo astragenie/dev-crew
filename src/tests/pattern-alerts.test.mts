@@ -66,14 +66,38 @@ test("detectPatterns warns when a dimension is consistently below 0.80", async (
   assert.ok(trend, "expected an observability score-trend alert");
 });
 
-test("detectPatterns warns when a feature has 3+ linked slices", async () => {
-  const repo = await tmpRepo("al-alerts-decomp-");
+test("detectPatterns warns when a pending feature has 3+ linked slices", async () => {
+  const repo = await tmpRepo("al-alerts-decomp-pending-");
   const f = await addFeature(repo, { title: "Big feature" });
   await updateFeatureFrontmatter(f.filePath, { slices: ["SLICE-01", "SLICE-02", "SLICE-03"] });
   const alerts = await detectPatterns(repo);
   const decomp = alerts.find((a) => a.category === "decomposition");
-  assert.ok(decomp);
+  assert.ok(decomp, "expected a decomposition alert");
+  assert.equal(decomp.severity, "warn", "pending feature should emit warn severity");
   assert.match(decomp.message, /3 slices/);
+});
+
+test("detectPatterns emits info (not warn) when a done feature has 3+ slices", async () => {
+  const repo = await tmpRepo("al-alerts-decomp-done-");
+  const f = await addFeature(repo, { title: "Shipped feature" });
+  await updateFeatureFrontmatter(f.filePath, { slices: ["SLICE-01", "SLICE-02", "SLICE-03"] });
+  await moveFeature(f.filePath, "done");
+  const alerts = await detectPatterns(repo);
+  const decomp = alerts.find((a) => a.category === "decomposition");
+  assert.ok(decomp, "expected a decomposition alert even for done features");
+  assert.equal(decomp.severity, "info", "done feature should emit info severity");
+  assert.match(decomp.message, /shipped with/);
+});
+
+test("detectPatterns warns when an in-progress feature has 3+ linked slices", async () => {
+  const repo = await tmpRepo("al-alerts-decomp-inprogress-");
+  const f = await addFeature(repo, { title: "Active feature" });
+  await updateFeatureFrontmatter(f.filePath, { slices: ["SLICE-01", "SLICE-02", "SLICE-03"] });
+  await moveFeature(f.filePath, "in-progress");
+  const alerts = await detectPatterns(repo);
+  const decomp = alerts.find((a) => a.category === "decomposition");
+  assert.ok(decomp, "expected a decomposition alert for in-progress feature");
+  assert.equal(decomp.severity, "warn", "in-progress feature should emit warn severity");
 });
 
 test("detectPatterns flags approved-but-undecomposed specs", async () => {
