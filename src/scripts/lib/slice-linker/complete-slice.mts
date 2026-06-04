@@ -17,8 +17,10 @@ import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../paths.mjs";
 import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
+import type { DrainOpts, DrainResult } from "../marker-drain.mjs";
 
 type DispatchFn = (opts: DispatchOpts) => Promise<DispatchResult>;
+type DrainFn = (repoPath: string, opts?: DrainOpts) => Promise<DrainResult>;
 
 function deriveBlockingGates(workflowState) {
   const gates = workflowState?.currentRun?.gates || {};
@@ -299,6 +301,54 @@ async function resolveValidationGate(
   return { validationGate, validationSkippedBadge };
 }
 
+// Reads slice file, parses frontmatter, and resolves workflow state. Extracted
+// to keep completeSlice under the complexity budget.
+async function resolveSliceContext(repoPath, sliceFile) {
+  const sliceContent = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
+  const featureId = sliceFm.feature || null;
+  const phase = sliceFm.phase || null;
+  const today = new Date().toISOString().slice(0, 10);
+  const workflowState = await readCrewWorkflowState(repoPath);
+  const startedAt = workflowState?.currentRun?.startedAt ?? null;
+  const blockingGates = deriveBlockingGates(workflowState);
+  return { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates };
+}
+
+// Writes all best-effort ceremony artifacts in parallel. Extracted to keep
+// completeSlice under the complexity budget.
+async function writeCeremonyArtifacts(
+  repoPath,
+  { sliceId, featureId, phase, featureResult, specChanges, targetSlicePath, startedAt, resolved }
+) {
+  const crewArgs = {
+    sliceId,
+    slicePath: targetSlicePath,
+    featureId,
+    phase,
+    featureResult,
+    specChanges,
+    config: resolved
+  };
+
+  const [handoff, synthesis, costReport, agentReport] = await Promise.all([
+    bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
+    bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
+    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }, resolved)),
+    bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
+  ]);
+
+  const sliceProgress = await bestEffort(async () => {
+    const activePlan = await findActivePlan(repoPath, resolved);
+    const enriched = await detectSliceStatus(repoPath, activePlan.slices, {
+      slicesRoot: resolveSlicesRoot(repoPath, resolved)
+    });
+    return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
+  });
+
+  return { handoff, synthesis, costReport, agentReport, sliceProgress };
+}
+
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, opts: Record<string, any> = {}) {
@@ -306,7 +356,9 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
     config = null,
     keepFeatureOpen = false,
     forceClose = false,
-    skipValidationCheck = null
+    skipValidationCheck = null,
+    noMarkerDrain = false,
+    drainFn = undefined
   } = opts;
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
   const resolved = config || (await resolveConfig(repoPath));
@@ -316,19 +368,8 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
   if (!sliceFile) throw new Error(`Slice file not found for ${sliceId} under ${slicesRoot}`);
 
-  const sliceContent = await fs.readFile(sliceFile, "utf8");
-  const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
-  const featureId = sliceFm.feature || null;
-  const phase = sliceFm.phase || null;
-  const today = new Date().toISOString().slice(0, 10);
-
-  // FEAT-002: refuse to roll the parent feature to done/ while the crew
-  // workflow run is blocked or escalated_to_human. The slice itself can
-  // still complete (move + stamp), but the feature transition waits for
-  // the human to clear the gate.
-  const workflowState = await readCrewWorkflowState(repoPath);
-  const startedAt = workflowState?.currentRun?.startedAt ?? null;
-  const blockingGates = deriveBlockingGates(workflowState);
+  const { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates } =
+    await resolveSliceContext(repoPath, sliceFile);
 
   const { validationGate, validationSkippedBadge } = await resolveValidationGate(
     repoPath,
@@ -362,29 +403,17 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
   const { reconcileSpecStatus } = await import("../linkage.mjs");
   const specChanges = await reconcileSpecStatus(repoPath, config);
 
-  const crewArgs = {
-    sliceId,
-    slicePath: targetSlicePath,
-    featureId,
-    phase,
-    featureResult,
-    specChanges,
-    config: resolved
-  };
-  const [handoff, synthesis, costReport, agentReport] = await Promise.all([
-    bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
-    bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
-    bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }, resolved)),
-    bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
-  ]);
-
-  const sliceProgress = await bestEffort(async () => {
-    const activePlan = await findActivePlan(repoPath, resolved);
-    const enriched = await detectSliceStatus(repoPath, activePlan.slices, {
-      slicesRoot: resolveSlicesRoot(repoPath, resolved)
+  const { handoff, synthesis, costReport, agentReport, sliceProgress } =
+    await writeCeremonyArtifacts(repoPath, {
+      sliceId,
+      featureId,
+      phase,
+      featureResult,
+      specChanges,
+      targetSlicePath,
+      startedAt,
+      resolved
     });
-    return writeSliceProgress(repoPath, { activePlan, slices: enriched, currentSliceId: null });
-  });
 
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
 
@@ -392,6 +421,10 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
   // close ceremony. Dispatch failure is isolated: audit log records it, but
   // completeSlice always returns success.
   fireDocWriterDispatch(repoPath, sliceId, featureId, targetSlicePath, resolved, opts);
+
+  // Drain stale pending-dispatch markers — async / fire-and-forget. Must not
+  // block the close ceremony. Drain failure is isolated via audit log.
+  fireMarkerDrain(repoPath, { noMarkerDrain, drainFn });
 
   return {
     slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
@@ -495,6 +528,55 @@ function fireDocWriterDispatch(
       await appendAuditLog(repoPath, {
         timestamp: new Date().toISOString(),
         agent: "loop:document-writer",
+        parentCommand: "slice-complete",
+        ok: false,
+        skipped: false,
+        error: err instanceof Error ? err.message : String(err),
+        durationMs: 0
+      });
+    } catch {
+      // Absolute last-resort: never propagate from the catch handler.
+    }
+  });
+}
+
+// Fires the marker-drain step asynchronously (fire-and-forget). Never throws —
+// all failures are recorded in the audit log. Returns void immediately so the
+// close ceremony is not blocked.
+function fireMarkerDrain(
+  repoPath: string,
+  opts: { noMarkerDrain?: boolean; drainFn?: DrainFn }
+): void {
+  const { noMarkerDrain = false, drainFn } = opts;
+
+  const work = async () => {
+    const { appendAuditLog, parseSkipFlag } = await import("../auto-dispatch.mjs");
+    const argv = noMarkerDrain ? ["--no-marker-drain"] : [];
+
+    if (parseSkipFlag(argv, "--no-marker-drain")) {
+      await appendAuditLog(repoPath, {
+        timestamp: new Date().toISOString(),
+        agent: "system:marker-drain",
+        parentCommand: "slice-complete",
+        ok: true,
+        skipped: true,
+        skipReason: "opt-out",
+        durationMs: 0
+      });
+      return;
+    }
+
+    const { drainPendingDispatchMarkers } = await import("../marker-drain.mjs");
+    const effectiveDrain: DrainFn = drainFn ?? drainPendingDispatchMarkers;
+    await effectiveDrain(repoPath);
+  };
+
+  work().catch(async (err) => {
+    try {
+      const { appendAuditLog } = await import("../auto-dispatch.mjs");
+      await appendAuditLog(repoPath, {
+        timestamp: new Date().toISOString(),
+        agent: "system:marker-drain",
         parentCommand: "slice-complete",
         ok: false,
         skipped: false,
