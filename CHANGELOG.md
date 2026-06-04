@@ -56,7 +56,7 @@ spawn a role agent without the user remembering to ask for one.
 `pattern-alerts.mts::detectDecompositionAlerts` now branches on
 `feat.state`. Done features with 3+ slices emit `info` severity
 (observability preserved, does not gate `stop-check`). Active
-features still emit `warn`. Unblocks marathon loop progression on
+features still emit `warn`. Unblocks auto-mode loop progression on
 shipped-historical FEATs.
 
 **PM agent escalation contract**

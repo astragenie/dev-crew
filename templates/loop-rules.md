@@ -29,11 +29,11 @@ Both propagate to artifact filenames (`runs/phaseN-featNNN-sliceNN-*.md`) and fr
 
 Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`, `cost/*`) receive `--title "PHASEN FEATNNN SLICENN: ..."` — crew's slugifier handles the rest, preserving timestamps for uniqueness.
 
-### Marathon mode vs. legacy gating
+### Auto mode vs. legacy gating
 
-`loop.marathonMode` in `.claude/loop.json` controls the active stop set (default `true`):
+`loop.marathonMode` in `.claude/loop.json` controls the active stop set (default `true` — auto mode on):
 
-| Trigger                     | marathon=true (default)      | marathon=false (legacy) |
+| Trigger                     | auto mode (default)          | legacy (marathonMode=false) |
 | --------------------------- | ---------------------------- | ----------------------- |
 | Backlog exhausted           | halt                         | halt                    |
 | Crew `escalated_to_human`   | halt                         | halt                    |
@@ -42,7 +42,7 @@ Crew-CLI-written filenames (`reviews/`, `validations/`, `runs/run-brief-*`, `cos
 | Iteration cap (default 25)  | advisory (snapshot only)     | halt                    |
 | Crew soft `blocked` badge   | advisory (often self-clears) | halt                    |
 
-Marathon mode disables only the _gating_, not the _telemetry_. Iteration counter still increments; `stop-check` still reports `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot`.
+Auto mode disables only the _gating_, not the _telemetry_. Iteration counter still increments; `stop-check` still reports `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot`.
 
 ## Slice Start Ceremony — HARD RULE
 

@@ -53,20 +53,20 @@ When either optional field is null the corresponding segment drops out:
 consumers (LoopObserver, dashboards) should treat the segments as
 optional and ordered.
 
-### Marathon mode vs. legacy gating
+### Auto mode vs. legacy gating
 
-`loop.marathonMode` in `.claude/loop.json` controls the active stop set (default `true` for new installs):
+`loop.marathonMode` in `.claude/loop.json` controls the active stop set (default `true` — auto mode on for new installs):
 
-| Trigger                     | marathon=true (default)      | marathon=false (legacy) |
-| --------------------------- | ---------------------------- | ----------------------- |
-| Backlog exhausted           | halt                         | halt                    |
-| Crew `escalated_to_human`   | halt                         | halt                    |
-| Warn-severity pattern alert | halt                         | halt                    |
-| High-severity cost alert    | halt                         | halt                    |
-| Iteration cap (default 25)  | advisory (snapshot only)     | halt                    |
-| Crew soft `blocked` badge   | advisory (often self-clears) | halt                    |
+| Trigger                     | auto mode (default)          | legacy (marathonMode=false) |
+| --------------------------- | ---------------------------- | --------------------------- |
+| Backlog exhausted           | halt                         | halt                        |
+| Crew `escalated_to_human`   | halt                         | halt                        |
+| Warn-severity pattern alert | halt                         | halt                        |
+| High-severity cost alert    | halt                         | halt                        |
+| Iteration cap (default 25)  | advisory (snapshot only)     | halt                        |
+| Crew soft `blocked` badge   | advisory (often self-clears) | halt                        |
 
-Iteration counter still increments under marathon mode; `stop-check` continues to report `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot` for dashboards. Marathon mode disables only the _gating_, not the _telemetry_. Set `marathonMode: false` if your repo prefers the legacy bounded-iteration behavior.
+Iteration counter still increments under auto mode; `stop-check` continues to report `iterationCount`/`iterationCap`/`crewBlocked` in `snapshot` for dashboards. Auto mode disables only the _gating_, not the _telemetry_. Set `marathonMode: false` if your repo prefers the legacy bounded-iteration behavior. The config key stays `marathonMode` for back-compat; the concept is "auto mode".
 
 ## Orchestrator Model Gate — HARD RULE
 

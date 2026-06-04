@@ -39,8 +39,8 @@ The agent must NOT stop because:
 - a test is "too hard to write right now"
 - a build warning was "probably already there"
 - the next slice "isn't clearly defined" (derive it)
-- the iteration counter hit the cap (advisory only under `loop.marathonMode: true`, which is the default)
-- a crew soft `blocked` badge is set (advisory under marathon mode — usually clears the next iteration; only `escalated_to_human` is a hard external block)
+- the iteration counter hit the cap (advisory only under auto mode — `loop.marathonMode: true` in `.claude/loop.json`, which is the default)
+- a crew soft `blocked` badge is set (advisory under auto mode — usually clears the next iteration; only `escalated_to_human` is a hard external block)
 </HARD-GATE>
 
 ## When stopping IS allowed

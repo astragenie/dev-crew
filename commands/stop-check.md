@@ -32,9 +32,9 @@ Returns:
 
 ## Stop conditions
 
-`loop.marathonMode` in `.claude/loop.json` (default `true`) controls which triggers gate vs. inform.
+`loop.marathonMode` in `.claude/loop.json` (default `true` — "auto mode" in docs) controls which triggers gate vs. inform.
 
-| Condition | Trigger | marathon=true | marathon=false |
+| Condition | Trigger | auto mode (default) | legacy (marathonMode=false) |
 |---|---|---|---|
 | Backlog exhausted | No pending/triaged/in-progress features AND no approved-undecomposed specs | halt | halt |
 | Crew `escalated_to_human` | Crew workflow flagged for human attention | halt | halt |
