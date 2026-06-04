@@ -1,16 +1,17 @@
 ---
 id: FEAT-036
-status: triaged
+status: in-progress
 priority: P3
 category: infra-bug
 target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 depends_on: []
-slices: []
+slices: [SLICE-33]
 derived_from: SPEC-002
 autonomous_safe: true
 triage_notes: "autonomous_safe inferred: AC count=0, derived_from=SPEC-002 → true"
+started_at: 2026-06-04
 ---
 ## Description
 

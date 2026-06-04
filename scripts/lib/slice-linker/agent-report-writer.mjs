@@ -64,8 +64,8 @@ async function loadPayload(payloadPath) {
 function buildAgentPair(stopPayload, stopTs, startEntry) {
     return {
         agentId: stopPayload.agent_id,
-        agentType: stopPayload.agent_type || "unknown",
-        sessionId: stopPayload.session_id || null,
+        agentType: stopPayload.agent_type || startEntry?.payload?.agent_type || "unknown",
+        sessionId: stopPayload.session_id || startEntry?.payload?.session_id || null,
         startTs: startEntry?.ts || null,
         stopTs,
         transcriptPath: normalizePayloadPath(stopPayload.agent_transcript_path || null),

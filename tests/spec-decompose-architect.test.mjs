@@ -169,6 +169,35 @@ test("parseArchitectOutput: splits on semicolons, trims, filters empty", () => {
 test("parseArchitectOutput: returns empty array for blank string", () => {
     assert.deepEqual(parseArchitectOutput("  "), []);
 });
+test("parseArchitectOutput: splits on newlines when no semicolon present", () => {
+    const out = parseArchitectOutput("Feature A\nFeature B\nFeature C (in-scope: src/)");
+    assert.deepEqual(out, ["Feature A", "Feature B", "Feature C (in-scope: src/)"]);
+});
+test("parseArchitectOutput: strips numbered-list markers (1. / 1))", () => {
+    const out = parseArchitectOutput("1. Feature A\n2) Feature B\n3. Feature C");
+    assert.deepEqual(out, ["Feature A", "Feature B", "Feature C"]);
+});
+test("parseArchitectOutput: strips bullet markers (- / *)", () => {
+    const out = parseArchitectOutput("- Feature A\n* Feature B\n- Feature C");
+    assert.deepEqual(out, ["Feature A", "Feature B", "Feature C"]);
+});
+test("parseArchitectOutput: strips surrounding bold and backticks", () => {
+    const out = parseArchitectOutput("**Feature A**\n`Feature B`\n*Feature C*");
+    assert.deepEqual(out, ["Feature A", "Feature B", "Feature C"]);
+});
+test("parseArchitectOutput: prose without titles returns single entry (no false split)", () => {
+    // Single line of prose — no list markers, no semicolons. Caller's empty-list
+    // branch in dispatchArchitectForSpec is the negative path; this asserts the
+    // parser itself doesn't manufacture multiple titles from prose.
+    const out = parseArchitectOutput("The architect chose to explain rather than enumerate.");
+    assert.equal(out.length, 1);
+    assert.equal(out[0], "The architect chose to explain rather than enumerate.");
+});
+test("parseArchitectOutput: semicolon split still preferred when both present", () => {
+    // Back-compat: prompt asks for semicolons. If both present, semicolons win.
+    const out = parseArchitectOutput("Feature A\nstill same; Feature B");
+    assert.deepEqual(out, ["Feature A\nstill same", "Feature B"]);
+});
 test("detectMissingSpecFields: complete SPEC with ## Goals and ## Non-goals returns empty", () => {
     const spec = {
         frontmatter: {},

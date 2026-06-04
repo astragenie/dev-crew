@@ -388,6 +388,55 @@ test("mix of start-only and start+stop — both counted, only start-only marked 
     assert.ok(body.includes("crew:researcher"));
     assert.ok(body.includes("crew:builder"));
 });
+test("agent_type fallback — stop payload with null agent_type uses start payload's agent_type", async () => {
+    const repo = await tmpRepo("al-arw-fallback-");
+    const logsDir = path.join(repo, ".claude", "logs");
+    const payloadsDir = path.join(logsDir, "payloads");
+    await fs.mkdir(payloadsDir, { recursive: true });
+    const agentId = "fallback001";
+    const startPath = path.join(payloadsDir, `start-${agentId}.json`);
+    const stopPath = path.join(payloadsDir, `stop-${agentId}.json`);
+    // Start has the agent_type; stop payload has it as null (the real failure
+    // mode observed during FEAT-031 SLICE-28 real-data probe).
+    await fs.writeFile(startPath, JSON.stringify({
+        session_id: "sess-fb",
+        agent_id: agentId,
+        agent_type: "crew:builder",
+        hook_event_name: "SubagentStart"
+    }));
+    await fs.writeFile(stopPath, JSON.stringify({
+        session_id: null,
+        agent_id: agentId,
+        agent_type: null,
+        hook_event_name: "SubagentStop",
+        agent_transcript_path: null,
+        background_tasks: [],
+        stop_hook_active: false
+    }));
+    await fs.writeFile(path.join(logsDir, "events.jsonl"), [
+        JSON.stringify({
+            schemaVersion: "1.0",
+            source: "crew",
+            timestamp: "2026-05-24T10:00:00.000Z",
+            event: "subagent_start",
+            repoPath: repo,
+            payloadPath: startPath
+        }),
+        JSON.stringify({
+            schemaVersion: "1.0",
+            source: "crew",
+            timestamp: "2026-05-24T10:05:00.000Z",
+            event: "subagent_stop",
+            repoPath: repo,
+            payloadPath: stopPath
+        })
+    ].join("\n") + "\n");
+    const result = await writeAgentReport(repo, { sliceId: "SLICE-FB" });
+    assert.equal(result.agentCount, 1);
+    const content = await fs.readFile(result.reportPath, "utf8");
+    assert.ok(content.includes("crew:builder"), "agent_type from start payload should appear in body");
+    assert.ok(!content.match(/\| unknown \|/), "no 'unknown' row when start payload provides agent_type");
+});
 test("idempotent — second call overwrites cleanly", async () => {
     const repo = await tmpRepo("al-arw-idem-");
     const result1 = await writeAgentReport(repo, { sliceId: "SLICE-18" });

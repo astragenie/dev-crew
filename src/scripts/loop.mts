@@ -451,15 +451,26 @@ function parseFeatureEntries(flags) {
 }
 
 // ---------------------------------------------------------------------------
-// Architect output parser — accepts semicolon-separated titles from the agent.
-// Each entry is trimmed; empty entries are discarded.
+// Architect output parser — accepts semicolon-separated, newline-separated,
+// or markdown-numbered-list titles from the agent. Each entry is trimmed,
+// list markers and surrounding emphasis are stripped, empty entries
+// discarded. Prefers semicolon split when present (back-compat with the
+// original prompt format); falls back to newline split otherwise.
 // ---------------------------------------------------------------------------
 
+function stripListMarker(line: string): string {
+  // Strip leading markdown list markers: "1.", "1)", "-", "*"
+  let s = line.replace(/^\s*(?:[-*]|\d+[.)])\s+/, "");
+  // Strip surrounding bold/italic markers and backticks
+  s = s.replace(/^[*_`]+|[*_`]+$/g, "");
+  return s.trim();
+}
+
 export function parseArchitectOutput(raw: string): string[] {
-  return raw
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  if (!raw || !raw.trim()) return [];
+  const hasSemicolon = raw.includes(";");
+  const parts = hasSemicolon ? raw.split(";") : raw.split("\n");
+  return parts.map(stripListMarker).filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
