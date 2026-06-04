@@ -169,6 +169,22 @@ async function runCrew(args) {
         return { error: err.message };
     }
 }
+// Appends --source-project flags for the primary project and any aliases
+// declared in config.loop.costProjectAliases. The crew CLI 0.9.0 parser
+// uses last-one-wins when multiple --source-project flags are passed, so
+// aliases are pushed FIRST and primary is pushed LAST — this ensures the
+// primary wins in current crew builds while the full alias list is present
+// for future crew versions that may support multi-source aggregation.
+export function appendSourceProjectArgs(args, primary, aliases) {
+    if (Array.isArray(aliases)) {
+        for (const alias of aliases) {
+            if (typeof alias === "string" && alias.length > 0) {
+                args.push("--source-project", alias);
+            }
+        }
+    }
+    args.push("--source-project", primary);
+}
 export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
     const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
     const { sliceId, featureId = null, phase = null } = info;
@@ -180,7 +196,8 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
     const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
     if (mode === "scoped") {
         const project = config?.loop?.costProject ?? repoPath.replace(/[^A-Za-z0-9]/g, "-");
-        reportArgs.push("--source-project", project);
+        const aliases = config?.loop?.costProjectAliases;
+        appendSourceProjectArgs(reportArgs, project, aliases);
     }
     else {
         reportArgs.push("--aggregate-all");

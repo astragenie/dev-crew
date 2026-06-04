@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { writeCrewHandoff, writeCrewFinalSynthesis, detectCostMode } from "../scripts/lib/slice-linker/crew-bridge.mjs";
+import { writeCrewHandoff, writeCrewFinalSynthesis, detectCostMode, appendSourceProjectArgs } from "../scripts/lib/slice-linker/crew-bridge.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 async function tmpRepo(prefix) {
     const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -113,4 +113,41 @@ test("detectCostMode returns aggregate when config has no costProject", async ()
     // No git repo at tmp path → falls through to catch → aggregate
     const mode = await detectCostMode(os.tmpdir(), {});
     assert.equal(mode, "aggregate");
+});
+// --- appendSourceProjectArgs tests ---
+test("appendSourceProjectArgs pushes aliases first then primary last (primary wins in last-one-wins CLI)", () => {
+    const args = [];
+    appendSourceProjectArgs(args, "PRIMARY", ["ALIAS1", "ALIAS2"]);
+    assert.deepEqual(args, [
+        "--source-project",
+        "ALIAS1",
+        "--source-project",
+        "ALIAS2",
+        "--source-project",
+        "PRIMARY"
+    ]);
+});
+test("appendSourceProjectArgs with no aliases pushes exactly one --source-project flag (primary only)", () => {
+    const args = [];
+    appendSourceProjectArgs(args, "PRIMARY", undefined);
+    assert.deepEqual(args, ["--source-project", "PRIMARY"]);
+});
+test("appendSourceProjectArgs with empty aliases array behaves same as no aliases", () => {
+    const args = [];
+    appendSourceProjectArgs(args, "PRIMARY", []);
+    assert.deepEqual(args, ["--source-project", "PRIMARY"]);
+});
+test("appendSourceProjectArgs skips non-string entries in aliases array, primary last", () => {
+    const args = [];
+    appendSourceProjectArgs(args, "PRIMARY", [null, 123, "GOOD"]);
+    assert.deepEqual(args, ["--source-project", "GOOD", "--source-project", "PRIMARY"]);
+});
+test("appendSourceProjectArgs can be used for cost-advise argv shape (mirrors cost-slice)", () => {
+    // cost-advise does not accept --source-project at all, so only
+    // cost-slice uses appendSourceProjectArgs. This test documents that the
+    // helper is argv-shape-agnostic and can be reused by any future block.
+    const adviseArgs = ["node", "crew.mjs", "cost-advise", "--repo", "/repo"];
+    appendSourceProjectArgs(adviseArgs, "PRIMARY", ["ALIAS1"]);
+    assert.ok(adviseArgs.includes("--source-project"), "adviseArgs contains --source-project flag");
+    assert.equal(adviseArgs.filter((a) => a === "--source-project").length, 2, "two --source-project occurrences: primary + alias");
 });
