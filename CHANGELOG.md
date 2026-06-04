@@ -3,6 +3,101 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.2 — 2026-06-04 — Slice dispatch routes to crew:lead + FEAT-034 marker drain + auditLogPath
+
+### Architecture
+
+**Slice work now dispatched through `crew:lead`, not directly to `crew:builder`**
+
+`/loop:slice start`'s `dispatchInstruction` previously emitted
+`Dispatch /crew:build subagent with this prompt:`, which the
+orchestrator interpreted (per `.claude/loop/rules.md`) as spawning
+`crew:builder` directly. That collapsed crew's lead workflow —
+framing (in-scope / out-of-scope / mode choice), sub-task splitting,
+role-bounded delegation, synthesis — onto the builder agent itself,
+weakening scope discipline for every autonomous slice.
+
+- `buildDispatchInstruction` now emits
+  `Dispatch crew:lead subagent with this prompt:`. The embedded prompt
+  instructs lead to run the full crew lead workflow: frame the work,
+  implement via single-session, assisted single-session, or team run
+  (delegating to `crew:builder` when scope warrants), require
+  independent review via `crew:reviewer` when code changes, validation
+  via `crew:validator` when behavior is exercisable, then synthesize.
+- `computeNextAction` in `start-slice` updated for both the
+  approval-gate branch and the default dispatch branch.
+- HARD RULE blocks (`.claude/loop/rules.md`, `templates/loop-rules.md`,
+  `templates/claude-md-hard-rules.md`, `CLAUDE.md` summary) updated so
+  docs and code agree on the new dispatch target.
+- `commands/slice-start.md` example return values updated.
+- Test coverage: `tests/slice-linker.test.mjs` and
+  `tests/slice-start.test.mjs` (plus their `.mts` sources) regex-assert
+  the new dispatch text. Full suite 640 / 640 passing.
+
+Cost trade-off accepted: opus lead-framing pass before the sonnet
+builder runs. Quality gain: real lead workflow + bounded builder
+scope per slice. Interactive `/crew:build` is unaffected — orchestrator
+remains lead in the user's own conversation context, no extra subagent
+layer.
+
+Gap analysis driving this change lives in
+hero-crew's `.claude/artifacts/crew/handoffs/2026-06-04-loop-dispatch-gaps-analysis.md`
+and the corresponding final synthesis under
+`.claude/artifacts/crew/runs/`.
+
+### Features
+
+**Pending-dispatch marker drain on slice-complete (FEAT-034 SLICE-A)**
+
+Closes Issue #1 of FEAT-034 (SPEC-002 Theme A). Markers in
+`.claude/artifacts/loop/pending-dispatch/` older than 24h are now
+drained on slice complete, fire-and-forget. Filename safety: only
+operates on `^\d{13,}-[a-z][\w-]*\.json$` — prevents accidental
+deletion of unrelated files. Drain failure is isolated (logged via
+`appendAuditLog`; ceremony returns successfully regardless).
+
+- `src/scripts/lib/marker-drain.mts` (new) — `drainPendingDispatchMarkers`
+  with `DEFAULT_TTL_MS = 24h`. Pure helper `parseMarkerTimestamp`
+  unit-testable in isolation.
+- `complete-slice.mts` wires `fireMarkerDrain` after
+  `fireDocWriterDispatch`. `--no-marker-drain` opt-out via
+  `parseSkipFlag`. `drainFn` test-injection seam (same shape as
+  `dispatchFn`). Helper extraction (`resolveSliceContext`,
+  `writeCeremonyArtifacts`) keeps `completeSlice` under the ESLint
+  complexity ceiling of 15.
+- 12 new tests across `marker-drain.test.mts` and
+  `slice-complete-marker-drain.test.mts`.
+
+**Configurable `auditLogPath` for auto-dispatch (FEAT-034 SLICE-B)**
+
+Closes Issue #3 of FEAT-034. `appendAuditLog` now reads
+`loop.auditLogPath` from config — absolute paths used verbatim,
+relative paths resolved against `repoPath`. Default unchanged. Lazy
+config resolution: when `opts.config` is not passed, the default path
+is used directly without calling `resolveConfig` (avoids recursion
+risk + keeps the hot path fast).
+
+- `src/scripts/lib/auto-dispatch.mts::appendAuditLog` extended with
+  optional `opts: AuditLogOpts` third parameter (fully back-compat).
+- New exported pure helper `resolveAuditLogPath(repoPath, opts)`.
+- 8 new tests in `auto-dispatch.test.mts`.
+
+FEAT-034 closes as done (2-of-3 shipped, Issue #2 — builder
+mid-cleanup stop investigation — deferred to FEAT-032 which already
+covers the same research spike). SPEC-002 Theme A two-thirds
+satisfied.
+
+### Early signal on Option A
+
+Both FEAT-034 slices shipped under the new `crew:lead` dispatch
+routing. Composite grade 0.914 on both (SLICE-30 + SLICE-31). SLICE-31
+is the first slice in this session that did NOT exhibit the builder
+mid-cleanup stop pattern (occurred 6 times prior in SLICE-23 / 25 / 26
+/ 27 / 29 / 30). Counter-evidence to the FEAT-032 hypothesis: small
+slices stay within whatever budget large ones exhaust. Two data points
+is not validation — full Option A signal still requires the 2-3 grade
+measurement window from the dispatch-gap analysis handoff.
+
 ## v0.7.1 — 2026-06-04 — Agent-report hardening, triage heuristics, auto-mode rename, SPEC-002 wiring
 
 ### Fixes

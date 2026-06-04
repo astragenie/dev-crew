@@ -10,7 +10,7 @@
     {
       "name": "loop",
       "description": "Wiggin-Loop methodology layer for Claude Code with HARD RULE blocks, slice scaffold, and phase-gate runner",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "source": "./",
       "author": {
         "name": "astra"
