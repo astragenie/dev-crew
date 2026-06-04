@@ -3,6 +3,32 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.4 — 2026-06-04 — Read-guard hook, model routing audit, costSliceCeiling stop condition (FEAT-039)
+
+### Features
+
+**Read-guard PreToolUse hook (FEAT-039)**
+
+`hooks/read-guard.sh` — bash PreToolUse hook that exits non-zero when Claude attempts to re-read a file immediately after an Edit or Write on the same path. Prevents the post-edit re-read pattern that burned 17 extra reads in SLICE-36.
+
+`/loop:install` now registers the hook in `.claude/settings.json` under `hooks.PreToolUse` (matcher `Read|Edit|Write`). Registration is idempotent — re-install does not duplicate the entry and preserves pre-existing user hooks.
+
+**Model routing policy — sonnet default for review/build/validate (FEAT-039)**
+
+Audit of 10 routing sites (`docs/research/2026-06-04-model-routing-audit.md`). Review and build phases do not require frontier reasoning; switching opus→sonnet there cuts per-slice cost ~4×. sliceStart and gradeWrite retain opus for architectural judgment and retrospective synthesis. Routing table formalized in `docs/decisions/DEC-008-model-routing-policy.md` (ADR). `.claude/loop.json` updated: `review→sonnet`, `decompose→sonnet` added.
+
+Result: SLICE-37 burned $18.36 (100% Sonnet) vs SLICE-36 $85.97 (100% Opus) — 79% reduction.
+
+**costSliceCeiling stop condition (FEAT-039)**
+
+`src/scripts/lib/slice-cost-ceiling.mts` — new module. Reads latest per-slice cost report (skips aggregate reports), compares `usd` field against `loop.costSliceCeiling` (default $75). Returns `SliceCostCeilingSignal` when exceeded. `stop-conditions.mts` now calls this check and emits `[HIGH] slice-cost-ceiling:exceeded` as a stop reason + blocker. Complexity kept at 15 via `buildCeilingSnapshotEntry` and `gatherStopInputs` helpers. 3 new tests: exceeded, not-exceeded, no-config.
+
+### Tests
+
+702/702 pass (+7 new: 3 read-guard hook behavior, 3 loop-installer hook idempotency/preservation, 3 stop-check-cost-ceiling branches; 695 pre-existing).
+
+---
+
 ## v0.7.3 — 2026-06-04 — Confidence signal at slice-start, lead-dispatch visibility, pr-fixer schema assert, cost-aliases, agent-report dedupe
 
 ### Features

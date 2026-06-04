@@ -22,7 +22,8 @@
     "modelRouting": {
       "default": "sonnet",
       "sliceStart": "opus",
-      "review": "opus",
+      "review": "sonnet",
+      "decompose": "sonnet",
       "gradeWrite": "opus",
       "build": "sonnet",
       "validate": "sonnet"

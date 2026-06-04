@@ -5,6 +5,7 @@ import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
+import { checkSliceCostCeiling } from "./slice-cost-ceiling.mjs";
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
 // Used by Cross-Slice Continuation HARD RULE (and crew brief) to decide
@@ -73,6 +74,26 @@ function applyCostAlertSignal(costAlertCount, config, reasons, suggestions) {
     suggestions.push("The cost trajectory has triggered a high-severity alert. Review the cost-advisor output and optimize before continuing. " +
         "Adjust loop.costStopThreshold in .claude/loop.json to change this behavior.");
 }
+function buildCeilingSnapshotEntry(sig) {
+    if (!sig)
+        return null;
+    return { exceeded: true, actualUsd: sig.actualUsd, ceilingUsd: sig.ceilingUsd };
+}
+function applySliceCostCeilingSignal(ceilingSignal, reasons, suggestions, blockers) {
+    if (!ceilingSignal)
+        return;
+    const actual = ceilingSignal.actualUsd.toFixed(2);
+    const ceiling = ceilingSignal.ceilingUsd;
+    reasons.push(`[HIGH] slice-cost-ceiling:exceeded (actual: $${actual}, ceiling: $${ceiling})`);
+    blockers.push({
+        category: "slice-cost-ceiling",
+        message: `latest slice spend $${actual} exceeded ceiling $${ceiling}`,
+        suggestion: "Review the latest cost report under .claude/artifacts/crew/cost/, address opus-overuse / cache-busted findings, then adjust loop.costSliceCeiling in .claude/loop.json if the new floor is intentional."
+    });
+    suggestions.push(`Latest slice cost $${actual} exceeded loop.costSliceCeiling ($${ceiling}). ` +
+        "Inspect the cost report (referenced under .claude/artifacts/crew/cost/) for opus-overuse / cache-busted findings before rolling the next slice. " +
+        "Adjust loop.costSliceCeiling in .claude/loop.json to change this behavior.");
+}
 function applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions) {
     if (!gradeTrendSignal)
         return;
@@ -92,15 +113,20 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
         suggestions.push("The crew workflow is blocked. Unblock the run (clear the badge or write the missing artifact) before continuing.");
     }
 }
-export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
-    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal] = await Promise.all([
+async function gatherStopInputs(repoPath, config) {
+    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal] = await Promise.all([
         listBacklog(repoPath, { config }),
         listSpecs(repoPath, { config }),
         detectPatterns(repoPath, { config }),
         countHighSeverityCostAlerts(repoPath, 3),
         readCrewBlockingGates(repoPath),
-        checkGradeTrend(repoPath, config)
+        checkGradeTrend(repoPath, config),
+        checkSliceCostCeiling(repoPath, config)
     ]);
+    return { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal };
+}
+export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
+    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal } = await gatherStopInputs(repoPath, config);
     // autoMode defaults to true so freshly hand-rolled .claude/loop.json
     // (without the key) get the new behavior. Presets ship the key explicitly
     // for documentation, but the default here is the source of truth.
@@ -119,6 +145,7 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
     iterationCapReached = iterStatus.exhausted;
     applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode });
     applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
+    applySliceCostCeilingSignal(costCeilingSignal, reasons, suggestions, blockers);
     applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
     const shouldStop = reasons.length > 0;
     return {
@@ -145,7 +172,8 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
                     consecutiveBelow: gradeTrendSignal.consecutiveBelow,
                     threshold: gradeTrendSignal.threshold
                 }
-                : null
+                : null,
+            sliceCostCeiling: buildCeilingSnapshotEntry(costCeilingSignal)
         }
     };
 }

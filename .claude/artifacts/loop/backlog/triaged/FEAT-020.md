@@ -11,7 +11,7 @@ slices: []
 derived_from: null
 composite_score: 6
 source_competitors: [Cursor agents]
-autonomous_safe: false
+autonomous_safe: true
 deferred: true
 defer_reason: medium-high risk — implement after PR autofix loop ships. Needs depth limit + file-claim system.
 triage_notes: no fields needed inference

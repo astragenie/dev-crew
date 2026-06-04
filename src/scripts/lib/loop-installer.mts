@@ -308,6 +308,60 @@ async function writeDecisionsScaffold(repoPath, config, writes) {
   }
 }
 
+// Register the read-guard PreToolUse hook in .claude/settings.json.
+//
+// The hook lives at ${CLAUDE_PLUGIN_ROOT}/hooks/read-guard.sh and runs
+// on every Read/Edit/Write call. See hooks/read-guard.sh for behavior
+// and the JSONL log schema.
+//
+// Idempotent: re-running on an already-registered repo is a no-op.
+// Preserves any other PreToolUse hooks the user has added.
+async function registerReadGuardHook(repoPath, writes) {
+  const settingsPath = path.join(repoPath, ".claude", "settings.json");
+  await ensureDir(path.dirname(settingsPath));
+
+  let settings: Record<string, any> = {};
+  const existing = await fs.readFile(settingsPath, "utf8").catch(() => null);
+  if (existing !== null) {
+    try {
+      settings = JSON.parse(existing);
+    } catch {
+      // Don't clobber malformed user settings — bail loudly instead.
+      throw new Error(
+        `loop installer: ${settingsPath} exists but is not valid JSON. ` +
+          "Fix or remove it before re-running /loop:install."
+      );
+    }
+  }
+
+  const hookCommand = "bash ${CLAUDE_PLUGIN_ROOT}/hooks/read-guard.sh";
+  settings.hooks ??= {};
+  settings.hooks.PreToolUse ??= [];
+
+  // Check if our hook is already registered (idempotency).
+  const alreadyRegistered = settings.hooks.PreToolUse.some((entry: any) => {
+    if (!entry || !Array.isArray(entry.hooks)) return false;
+    return entry.hooks.some(
+      (h: any) => h && typeof h.command === "string" && h.command.includes("hooks/read-guard.sh")
+    );
+  });
+
+  if (alreadyRegistered) return;
+
+  settings.hooks.PreToolUse.push({
+    matcher: "Read|Edit|Write",
+    hooks: [
+      {
+        type: "command",
+        command: hookCommand
+      }
+    ]
+  });
+
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  writes.push(path.relative(repoPath, settingsPath));
+}
+
 async function writeSpecsScaffold(repoPath, config, writes) {
   const root = resolveSpecsRoot(repoPath, config);
   await ensureDir(root);
@@ -407,6 +461,9 @@ export async function installLoop(repoPath, options: Record<string, any> = {}) {
   await writeSpecsScaffold(repoPath, config, writes);
   await writeGradesScaffold(repoPath, config, writes);
   await writeDecisionsScaffold(repoPath, config, writes);
+
+  // Register PreToolUse re-read guard hook in .claude/settings.json (FEAT-039).
+  await registerReadGuardHook(repoPath, writes);
 
   // Initialize loop iteration counter for runaway halting (FEAT-001).
   await initializeIterationCounter(repoPath);

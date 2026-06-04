@@ -149,6 +149,60 @@ test("installLoop migrates an ad-hoc HARD RULE block when migrateAdhoc is true",
     const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
     assert.ok(cfg.stack.build.length > 0 || cfg.stack.test.length > 0, "extracted commands should land in the config");
 });
+test("installLoop registers the read-guard PreToolUse hook in .claude/settings.json", {
+    skip: crewAvailable
+        ? false
+        : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+}, async () => {
+    const repo = await initGitRepo("al-install-hook-");
+    await installLoop(repo, { migrateAdhoc: false });
+    const settingsPath = path.join(repo, ".claude", "settings.json");
+    const settingsRaw = await fs.readFile(settingsPath, "utf8");
+    const settings = JSON.parse(settingsRaw);
+    assert.ok(settings.hooks, "settings.hooks must exist after install");
+    assert.ok(Array.isArray(settings.hooks.PreToolUse), "PreToolUse array must exist");
+    const matchEntries = settings.hooks.PreToolUse.filter((entry) => entry?.hooks?.some((h) => typeof h?.command === "string" && h.command.includes("hooks/read-guard.sh")));
+    assert.equal(matchEntries.length, 1, "exactly one read-guard hook entry must be registered");
+    assert.equal(matchEntries[0].matcher, "Read|Edit|Write");
+});
+test("installLoop hook registration is idempotent (re-install does not duplicate)", {
+    skip: crewAvailable
+        ? false
+        : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+}, async () => {
+    const repo = await initGitRepo("al-install-hook-idem-");
+    await installLoop(repo, { migrateAdhoc: false });
+    await installLoop(repo, { migrateAdhoc: false });
+    const settings = JSON.parse(await fs.readFile(path.join(repo, ".claude", "settings.json"), "utf8"));
+    const matchEntries = settings.hooks.PreToolUse.filter((entry) => entry?.hooks?.some((h) => typeof h?.command === "string" && h.command.includes("hooks/read-guard.sh")));
+    assert.equal(matchEntries.length, 1, "re-install must not duplicate the hook entry");
+});
+test("installLoop preserves pre-existing PreToolUse hooks added by the user", {
+    skip: crewAvailable
+        ? false
+        : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
+}, async () => {
+    const repo = await initGitRepo("al-install-hook-preserve-");
+    const settingsDir = path.join(repo, ".claude");
+    await fs.mkdir(settingsDir, { recursive: true });
+    const userHook = {
+        hooks: {
+            PreToolUse: [
+                {
+                    matcher: "Bash",
+                    hooks: [{ type: "command", command: "echo user-hook" }]
+                }
+            ]
+        }
+    };
+    await fs.writeFile(path.join(settingsDir, "settings.json"), JSON.stringify(userHook, null, 2) + "\n");
+    await installLoop(repo, { migrateAdhoc: false });
+    const settings = JSON.parse(await fs.readFile(path.join(settingsDir, "settings.json"), "utf8"));
+    const userEntries = settings.hooks.PreToolUse.filter((entry) => entry?.hooks?.some((h) => typeof h?.command === "string" && h.command.includes("user-hook")));
+    const guardEntries = settings.hooks.PreToolUse.filter((entry) => entry?.hooks?.some((h) => typeof h?.command === "string" && h.command.includes("hooks/read-guard.sh")));
+    assert.equal(userEntries.length, 1, "user's Bash hook must survive install");
+    assert.equal(guardEntries.length, 1, "read-guard hook must be added alongside");
+});
 test("reportStatus reflects install state", {
     skip: crewAvailable
         ? false

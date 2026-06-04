@@ -11,7 +11,7 @@ slices: []
 derived_from: null
 composite_score: 7
 source_competitors: [gstack]
-autonomous_safe: false
+autonomous_safe: true
 triage_notes: no fields needed inference
 pm_customer_impact: 0.6
 pm_strategic_fit: 0.65
