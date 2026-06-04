@@ -3,6 +3,119 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.0 — 2026-06-04 — Agent-aware autonomous backlog flow, three new role agents, length validator, plugin surface restructure
+
+### Features
+
+**Agent-aware autonomous flow (FEAT-028 / FEAT-030)**
+
+The three documentation-and-discovery role agents now auto-dispatch
+from inside the loop CLI primitives. Every `/loop:backlog-add`,
+`/loop:spec-decompose`, and `/loop:slice-complete` invocation can
+spawn a role agent without the user remembering to ask for one.
+
+- `src/scripts/lib/auto-dispatch.mts` shared primitive: `dispatchAgent`,
+  `parseSkipFlag`, `appendAuditLog`. Audit trail at
+  `.claude/artifacts/loop/auto-dispatch.jsonl`.
+- `/loop:backlog-add` auto-dispatches `loop:researcher` to populate
+  the FEAT body with citation-backed findings. `--no-research`
+  opt-out; `--body` short-circuits the dispatch entirely.
+- `/loop:spec-decompose` auto-dispatches `loop:architect` to produce
+  a structured decomposition when no `--features` is supplied.
+  `--no-architect` opt-out; incomplete SPECs surface a warn-and-proceed
+  best-effort.
+- `/loop:slice-complete` auto-dispatches `loop:document-writer` async
+  (fire-and-forget). Multi-output prompt: CHANGELOG line always, ADR
+  drafts per DEC-NNN, release-notes append when `target_release` set,
+  README / docs suggestion when surface-touching. `--no-doc-writer`
+  opt-out.
+- Each integration site exposes a `dispatchFn` test-injection seam.
+- DEC-004 (marker-file dispatch primitive), DEC-005 (audit log
+  fail-loud) captured in `docs/decisions/`.
+
+**Three new role agents**
+
+- `agents/architect.md` — read-only Node ESM design and ADR drafter.
+- `agents/researcher.md` — read-only citation-backed code archaeology.
+- `agents/document-writer.md` — Markdown-only docs (README,
+  CHANGELOG, ADR, retros, release notes). Each has explicit output
+  contract, anti-hallucination rules, boundary clauses, and a
+  consult-list of skills + sub-agents.
+
+**Length validator (`validate-content-length.mjs`)**
+
+- Owned agents capped at 300 lines, SKILL.md at 200. `agents/3rdparty/`
+  exempt (vendored — avoiding fork-and-trim chore on every refresh).
+- Wired into CI (`.github/workflows/ci.yml`), `npm run
+  validate:lengths`, and the pre-push hook.
+- `parseSkipFlag` / `agentSkipPaths` opt overrides for callers.
+- 14 tests cover the contract.
+
+**State-gated decomposition alert (FEAT-029)**
+
+`pattern-alerts.mts::detectDecompositionAlerts` now branches on
+`feat.state`. Done features with 3+ slices emit `info` severity
+(observability preserved, does not gate `stop-check`). Active
+features still emit `warn`. Unblocks marathon loop progression on
+shipped-historical FEATs.
+
+**PM agent escalation contract**
+
+`agents/pm.md` now lists explicit skill consultation paths and
+sub-agent escalation targets (`3rdparty/task-decomposition-expert`,
+`3rdparty/fact-checker`, `3rdparty/research-coordinator`,
+`3rdparty/context-manager`, `loop:researcher`, `loop:architect`).
+Adds `compositePriority: "needs-review"` escape valve — PM emits
+this instead of fabricating confidence when scope exceeds PM ability.
+
+**`brainstorming` and `authoring-slices` skill augments**
+
+- `universal/brainstorming/SKILL.md` adds a Loop integration block:
+  surfaces PM scoring dimensions + `autonomous_safe` verdict before
+  exit so ideas land triage-ready.
+- `loop:authoring-slices` documents the `loop slice plan` pre-flight
+  CLI + when to dispatch architect vs researcher vs builder.
+
+### Plugin surface restructure
+
+- Owned agents: 4 (`pm`, `architect`, `researcher`, `document-writer`).
+- Vendored `3rdparty/` reduced from 21 to 7 (kept: `code-reviewer`,
+  `context-manager`, `diagram-architect`, `fact-checker`,
+  `markdown-syntax-formatter`, `research-coordinator`,
+  `task-decomposition-expert`). Dropped 14 wrong-language /
+  wrong-domain agents (python, c#, react, cloud, db, backend,
+  devops, ai, ui, api-documenter, etc.).
+- `skills/domain/` reduced from 16 to 4 (kept: `architecture-advisory`,
+  `javascript`, `prompt-engineering`, `security-advisory`).
+- `skills/workflow/` reduced from 7 to 4 (dropped duplicates +
+  crew-overlap: `git-commit`, `fix-pr`, `reviewing-code`).
+- Skill metadata loaded into session reminders is leaner — faster
+  startup payload.
+
+### CI and tooling
+
+- `actions/checkout@v5`, `actions/setup-node@v5`, `node-version: 24`
+  — ahead of the June-2026 Node 20 deprecation.
+- Pre-push hook now runs `npm run format:check` alongside
+  `validate-manifests` and `validate-content-length` — drift caught
+  before it reaches CI.
+- Ambient `.d.mts` shims under `src/scripts/lib/github-sync/`
+  replaced 9 `@ts-ignore` blocks for dynamic imports of the
+  runtime-only github-sync subsystem.
+- Prettier formatting drift fix across 28 src files; format check
+  now clean.
+
+### Notes
+
+- FEAT-028 shipped 3 of 4 originally-designed slices; SLICE-D split
+  off as standalone FEAT-030 when FEAT-028 hit the decomposition
+  pattern alert at 3 slices — the alert worked as intended on its
+  own author.
+- Test count: 555 → 601 (+46 across all FEATs in this release; 1
+  regression test skipped pending fixture refactor).
+- All gates green: lint, typecheck, format-check, manifest validator,
+  length validator, full suite, CI.
+
 ## v0.6.0 — 2026-06-03 — Pluggable task-store, architect command, Plan Mode gate, autonomous walker, trajectory log, PR autofix
 
 ### Features
