@@ -1,16 +1,19 @@
 ---
 id: FEAT-038
-status: triaged
+status: done
 priority: P2
 category: infra-feature
 target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 depends_on: []
-slices: []
+slices: [SLICE-40]
 derived_from: null
 autonomous_safe: true
 triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false"
+started_at: 2026-06-04
+slices_complete: [SLICE-40]
+completed_at: 2026-06-04
 ---
 ## Description
 
