@@ -9,11 +9,34 @@ import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
 import { runPlanPreflight } from "../slice-plan.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
+import { detectAcceptanceCriteria } from "../backlog-triage.mjs";
+import { computeConfidence } from "../confidence-signal.mjs";
 function computeRecentGradeAvg(scores) {
     if (!scores || scores.length === 0)
         return null;
     const recent = scores.slice(-3);
     return recent.reduce((sum, s) => sum + s.avg, 0) / recent.length;
+}
+// Resolve all feature-level signals + confidence verdict in one call.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+async function resolveFeatureSignals(repoPath, featureId, resolved, sliceContent, recentGradeAvg, dispatch) {
+    const feat = featureId
+        ? await bestEffort(() => findFeatureById(repoPath, featureId, resolved))
+        : null;
+    const autonomousSafe = feat?.frontmatter?.autonomous_safe ?? null;
+    const dependsOnCount = Array.isArray(feat?.frontmatter?.depends_on)
+        ? feat.frontmatter.depends_on.length
+        : 0;
+    const acCount = detectAcceptanceCriteria(sliceContent).count;
+    const { confidence, reason: confidenceReason } = computeConfidence({
+        autonomousSafe,
+        acCount,
+        recentGradeAvg: typeof recentGradeAvg === "number" ? recentGradeAvg : null,
+        dependsOnCount
+    });
+    const autoMode = resolved.loop?.autoMode === true;
+    const requiresApprovalGate = computeApprovalGate(autonomousSafe, autoMode, dispatch);
+    return { autonomousSafe, confidence, confidenceReason, requiresApprovalGate };
 }
 async function bestEffort(fn) {
     try {
@@ -71,7 +94,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     const featureId = ctx.frontmatter.feature || null;
     const phase = ctx.frontmatter.phase || null;
     await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
-    const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight } = await gatherSliceResources(repoPath, {
+    const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight, recentGradeAvg } = await gatherSliceResources(repoPath, {
         sliceId,
         title,
         resolvedGoal,
@@ -81,14 +104,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         resolved
     });
     const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
-    const autonomousSafe = await bestEffort(async () => {
-        if (!featureId)
-            return null;
-        const feat = await findFeatureById(repoPath, featureId, resolved);
-        return feat?.frontmatter?.autonomous_safe ?? null;
-    });
-    const autoMode = resolved.loop?.autoMode === true;
-    const requiresApprovalGate = computeApprovalGate(autonomousSafe, autoMode, dispatch);
+    const { confidence, confidenceReason, requiresApprovalGate } = await resolveFeatureSignals(repoPath, featureId, resolved, ctx.content ?? "", recentGradeAvg, dispatch);
     const result = buildStartSliceReturn({
         sliceId,
         title,
@@ -108,7 +124,9 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         orchestratorModel: resolveOrchestratorModel(resolved),
         learningsDigest,
         planPreflight: planPreflight ?? null,
-        requiresApprovalGate
+        requiresApprovalGate,
+        confidence,
+        confidenceReason
     });
     await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
     return result;
@@ -172,7 +190,7 @@ function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPrefligh
 }
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false }) {
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false, confidence = null, confidenceReason = null }) {
     const dispatchInstruction = dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -202,7 +220,9 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
         orchestratorModel,
         learningsDigest,
         planPreflight,
-        requiresApprovalGate
+        requiresApprovalGate,
+        confidence,
+        confidenceReason
     };
 }
 // Refresh the slice-progress dashboard with the new currentSliceId.
