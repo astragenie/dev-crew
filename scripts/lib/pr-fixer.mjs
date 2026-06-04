@@ -18,8 +18,6 @@ export async function fetchPrStatus(repoPath, prNumber, options = {}) {
     let resolvedGhExec = ghExec;
     if (!resolvedGhExec) {
         try {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore — github-sync/gh.mjs has no TypeScript source; exists at runtime
             const ghModule = await import("./github-sync/gh.mjs");
             resolvedGhExec = ghModule.defaultGhExec;
         }

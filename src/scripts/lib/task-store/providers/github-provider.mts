@@ -1,10 +1,9 @@
 import type { TaskStoreProvider } from "../provider-interface.mjs";
 
-// All github-sync modules are plain .mjs files with no TypeScript source.
-// They live under scripts/lib/github-sync/ (already compiled) and are
-// imported dynamically so tsc does not try to resolve their types.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
+// Types for the runtime-only github-sync modules live in ambient .d.mts
+// files alongside this tree (see ../../github-sync.d.mts and
+// ../../github-sync/*.d.mts). All imports stay dynamic so tsc does not
+// pull the plain-JS implementations into the build graph.
 
 /**
  * GithubProvider — TaskStoreProvider implementation backed by GitHub Issues via the gh CLI.
@@ -31,8 +30,6 @@ export class GithubProvider implements TaskStoreProvider {
    * Using dynamic import so tsc does not try to resolve the plain-JS file.
    */
   private async _gh(): Promise<any> {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     return import("../../github-sync/gh.mjs");
   }
 
@@ -50,8 +47,6 @@ export class GithubProvider implements TaskStoreProvider {
   }
 
   private async _repo(): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { detectRepo } = await import("../../github-sync/repo-detect.mjs");
     return detectRepo(this.config?.github?.repo ?? null, this.repoPath);
   }
@@ -61,8 +56,6 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping publishFeature");
       return null;
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { createFeatureIssue } = await import("../../github-sync/issue-sync.mjs");
     const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
     const milestoneTitle = feat.frontmatter?.phase ? `Phase ${feat.frontmatter.phase}` : null;
@@ -77,10 +70,8 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping publishSlice");
       return null;
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    // prettier-ignore
-    const { createSliceIssue, attachSubIssue } = await import("../../github-sync/subissue-sync.mjs");
+    const { createSliceIssue, attachSubIssue } =
+      await import("../../github-sync/subissue-sync.mjs");
     const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
     const sliceIssueNum = createSliceIssue(repo, slice, { ghExec });
     if (parentExternalId != null) {
@@ -103,8 +94,6 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping closeSlice");
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { closeSliceIssue } = await import("../../github-sync/subissue-sync.mjs");
     const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
     closeSliceIssue(repo, externalId, { ghExec });
@@ -115,8 +104,6 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping postSliceComment");
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { postComment } = await import("../../github-sync/comment-sync.mjs");
     const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
     postComment(repo, externalId, body, { ghExec });
@@ -127,8 +114,6 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping updateStatus");
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { updateIssueStatus } = await import("../../github-sync/issue-sync.mjs");
     const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
     updateIssueStatus(repo, externalId, status, { ghExec });
@@ -139,8 +124,6 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping syncPull");
       return { features: [], slices: [] };
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { syncPull: githubSyncPull } = await import("../../github-sync.mjs");
     const ghExec = await this._resolvedExec();
     const result = await githubSyncPull(repoPath, { ghExec, config: this.config });
@@ -152,8 +135,6 @@ export class GithubProvider implements TaskStoreProvider {
       console.warn("[GithubProvider] gh CLI not found — skipping bootstrap");
       return { features: [] };
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const { bootstrapFromGithub } = await import("../../github-sync.mjs");
     const ghExec = await this._resolvedExec();
     const result = await bootstrapFromGithub(repoPath, { ghExec, config: this.config });
