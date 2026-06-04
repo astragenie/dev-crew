@@ -85,9 +85,9 @@ test("checkStopConditions stops when crew run is blocked (legacy gating)", async
   await writeCrewState(repo, {
     currentRun: { gates: { blocked: { status: "blocked", note: "y", blockedBy: "ART-1" } } }
   });
-  // marathonMode=true (default) treats the soft `blocked` badge as advisory.
+  // auto mode (default) treats the soft `blocked` badge as advisory.
   // Legacy gating still halts — opt in explicitly here.
-  const config = { loop: { marathonMode: false } };
+  const config = { loop: { autoMode: false } };
   const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true);
   assert.ok(result.reasons.some((r) => r.includes("blocked")));

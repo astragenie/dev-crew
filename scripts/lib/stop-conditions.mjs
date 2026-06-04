@@ -16,18 +16,19 @@ import { checkGradeTrend } from "./grade-trend.mjs";
 //   B. Severity-warn pattern alerts present (e.g. score-trend regression,
 //      in-progress orphan, decomposition explosion)
 //      (Bad signal — address before continuing rather than charging ahead)
-//   C. Iteration cap reached (legacy mode only — disabled when marathonMode)
+//   C. Iteration cap reached (legacy mode only — disabled when autoMode)
 //      (Runaway halting — loop has completed maxIterations without finishing)
 //   D. High-severity cost-advisor alerts fired (cost-alert-high)
 //      (Cost is spiraling — halt gracefully and let user review trajectory)
 //   E. Crew run blocked or escalated. Escalation always halts; the soft
-//      blocked-badge branch is disabled when marathonMode (it usually clears
+//      blocked-badge branch is disabled when autoMode (it usually clears
 //      on the next iteration).
 //
-// Marathon mode (config.loop.marathonMode, default true): loop walks the
-// entire backlog. Iteration cap and crew blocked-badge become advisory only
-// — counter still increments and snapshot still reports them. Set
-// marathonMode=false to restore the original five-condition gating.
+// Auto mode (config.loop.autoMode, default true): loop walks the entire
+// backlog. Iteration cap and crew blocked-badge become advisory only —
+// counter still increments and snapshot still reports them. Set
+// autoMode=false to restore the original five-condition gating.
+// config.loop.marathonMode is a deprecated alias accepted for back-compat.
 //
 // Caller decides what to do with a stop signal:
 //   - In autonomous mode: log + halt + ping user
@@ -57,8 +58,8 @@ function applyWarnAlertSignals(warnAlerts, blockers, reasons) {
     }
     reasons.push(`${warnAlerts.length} warn-severity alert(s) — resolve before rolling next slice`);
 }
-function applyIterationCapSignals(iterStatus, reasons, suggestions, { marathonMode }) {
-    if (!iterStatus.exhausted || marathonMode)
+function applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode }) {
+    if (!iterStatus.exhausted || autoMode)
         return;
     reasons.push(`iteration cap reached (${iterStatus.count}/${iterStatus.cap})`);
     suggestions.push(`The autonomous loop has completed ${iterStatus.count} iterations without finishing. ` +
@@ -80,12 +81,12 @@ function applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions) {
         "Review recent slice grades before resuming the autonomous loop. " +
         "Adjust loop.gradeTrendThreshold or loop.gradeTrendConsecutiveLimit in .claude/loop.json to change this behavior.");
 }
-function appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode }) {
+function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
     if (crewGates.escalated) {
         reasons.push(`crew run escalated_to_human: ${crewGates.escalated.note || "(no note)"} — hard stop`);
         suggestions.push("The crew workflow has been escalated to a human. Resolve the escalation and clear the badge before resuming the loop.");
     }
-    else if (crewGates.blocked && !marathonMode) {
+    else if (crewGates.blocked && !autoMode) {
         reasons.push(`crew run blocked: ${crewGates.blocked.note || "(no note)"}` +
             (crewGates.blocked.blockedBy ? ` (blockedBy ${crewGates.blocked.blockedBy})` : ""));
         suggestions.push("The crew workflow is blocked. Unblock the run (clear the badge or write the missing artifact) before continuing.");
@@ -100,22 +101,23 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
         readCrewBlockingGates(repoPath),
         checkGradeTrend(repoPath, config)
     ]);
-    // marathonMode defaults to true so freshly hand-rolled .claude/loop.json
+    // autoMode defaults to true so freshly hand-rolled .claude/loop.json
     // (without the key) get the new behavior. Presets ship the key explicitly
     // for documentation, but the default here is the source of truth.
-    const marathonMode = config?.loop?.marathonMode !== false;
+    // config.loop.marathonMode is a deprecated alias; autoMode wins if both set.
+    const autoMode = config?.loop?.autoMode ?? config?.loop?.marathonMode ?? true;
     const reasons = [];
     const blockers = [];
     const suggestions = [];
     let iterationCapReached = false;
-    appendCrewGateSignals(crewGates, reasons, suggestions, { marathonMode });
+    appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode });
     const backlogStats = computeBacklogStats(backlog, specs);
     appendBacklogExhaustedSignals(backlogStats, reasons, suggestions);
     const warnAlerts = ignoreAlerts ? [] : alerts.filter((a) => a.severity === "warn");
     applyWarnAlertSignals(warnAlerts, blockers, reasons);
     const iterStatus = await getIterationStatus(repoPath, config?.loop?.maxIterations || 25);
     iterationCapReached = iterStatus.exhausted;
-    applyIterationCapSignals(iterStatus, reasons, suggestions, { marathonMode });
+    applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode });
     applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
     applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
     const shouldStop = reasons.length > 0;
@@ -136,7 +138,8 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
             costAlerts: costAlertCount,
             crewBlocked: Boolean(crewGates.blocked),
             crewEscalated: Boolean(crewGates.escalated),
-            marathonMode,
+            autoMode,
+            marathonMode: autoMode,
             gradeTrend: gradeTrendSignal
                 ? {
                     consecutiveBelow: gradeTrendSignal.consecutiveBelow,
