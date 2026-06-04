@@ -51,7 +51,7 @@ Open every slice through the canonical start command **before** beginning accept
 1. **Identify the next slice.** Check `docs/superpowers/plans/*.md` for unchecked `## Task N: SLICE_NN` headings first; else fall back to Cross-Slice Continuation.
 2. **`/loop:slice start --id SLICE-NN`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. Surface errors and stop — do not proceed with a stale run.
-4. **Invoke the `crew:build` skill.** The `slice start` return includes a `dispatchInstruction` — invoke the `crew:build` skill with that context. Crew:build frames the work, delegates to `crew:builder` for implementation, and gates via `crew:reviewer` / `crew:validator`. **Do not implement inline.**
+4. **Dispatch via `/crew:build`.** The `slice start` return includes a `dispatchInstruction` — hand it to a `crew:builder` subagent. **Do not implement inline.**
 5. **Wait for the subagent's completion report**, then run the Slice Close Ceremony.
 
 Exception: manual invocations may pass `--no-dispatch`. The autonomous loop should never pass `--no-dispatch`.
@@ -62,7 +62,7 @@ The autonomous loop is an **orchestrator**, not an implementer. Every code-beari
 
 | Situation                                                         | Dispatch                                                    |
 | ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| Slice implementation (acceptance criteria work)                   | `crew:build` skill (inline; delegates to `crew:builder`)    |
+| Slice implementation (acceptance criteria work)                   | `/crew:build` subagent                                      |
 | Bug found during slice (test fail, regression, integration error) | `/crew:fix` subagent                                        |
 | Independent code review pass                                      | `/crew:review` subagent (or the configured reviewer ladder) |
 | Behavior validation when something is runnable                    | `/crew:validate` subagent                                   |

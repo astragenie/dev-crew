@@ -140,7 +140,7 @@ test("buildDispatchInstruction without optional fields is backward compatible", 
     repoPath: "/repo",
     resolvedGoal: null
   });
-  assert.match(result, /Invoke the `crew:build` skill/);
+  assert.match(result, /Dispatch \/crew:build/);
   assert.doesNotMatch(result, /Slice context/);
 });
 
