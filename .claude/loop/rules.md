@@ -93,7 +93,7 @@ Run, in order:
 1. **Identify the next slice.** If `docs/superpowers/plans/*.md` exists and has unchecked `## Task N: SLICE_NN — Title` headings, pick the first unchecked one. Otherwise fall back to Cross-Slice Continuation (scan `docs/specs/` → `docs/backlog/pending/` → `docs/backlog/triaged/`).
 2. **`/loop:slice start --id SLICE-NN`** — this rotates `currentRun` via `crew write-run-brief`, seeds the goal from the slice file's `## Objective` block when present, and rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` (or `runBrief.runBriefPath`) is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. If not, surface the error and stop — do not proceed with implementation against a stale run.
-4. **Dispatch implementation via `/crew:build`.** The `slice start` return includes a `dispatchInstruction` — a literal prompt for a subagent. Hand it to a `crew:builder` subagent. **Do not implement inline.** The loop's job is to pick slices, rotate state, and close them; the slice work itself runs through crew's `build.md` workflow (frame → implement → review → validate → synthesize) so it inherits the standard artifact protocol and gets its own bounded conversation context.
+4. **Dispatch `crew:builder` subagent.** The `slice start` return includes a `dispatchInstruction` — hand it to a `crew:builder` subagent. Builder owns implementation only; when it returns a write-handoff path, dispatch `crew:reviewer`, then `crew:validator` if behavior changed. **Do not implement inline.** The loop orchestrates the full pipeline; each role runs in its own bounded context.
 5. **Wait for the subagent's completion report.** It will tell you what shipped, what was reviewed, what was validated. Then run the Slice Close Ceremony (next section).
 
 Exception: manual invocations may pass `--no-dispatch` (e.g., debugging the loop itself, or a tiny inline change you don't want to spawn a subagent for). The autonomous loop should never pass `--no-dispatch`.
@@ -104,7 +104,7 @@ The autonomous loop is an **orchestrator**, not an implementer. Every code-beari
 
 | Situation                                                         | Dispatch                                                    |
 | ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| Slice implementation (acceptance criteria work)                   | `/crew:build` subagent                                      |
+| Slice implementation (acceptance criteria work)                   | `crew:builder` subagent (parent loop gates review+validate) |
 | Bug found during slice (test fail, regression, integration error) | `/crew:fix` subagent                                        |
 | Independent code review pass                                      | `/crew:review` subagent (or the configured reviewer ladder) |
 | Behavior validation when something is runnable                    | `/crew:validate` subagent                                   |
