@@ -3,6 +3,66 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.3 — 2026-06-04 — Confidence signal at slice-start, lead-dispatch visibility, pr-fixer schema assert, cost-aliases, agent-report dedupe
+
+### Features
+
+**Confidence signal at slice-start (FEAT-010 SLICE-A)**
+
+`startSlice` ceremony return now includes `confidence: "green" | "yellow" | "red"` + `confidenceReason` string. Deterministic heuristic (no LLM) over 4 signals: `autonomous_safe`, AC count, recent grade trend, `depends_on` count. Null grade history treated as neutral — avoids penalizing first-ever slices.
+
+Helper module: `src/scripts/lib/confidence-signal.mts` exports pure `computeConfidence`. 9 unit tests cover all 5 decision branches plus null-grade and null-auto-safe pass-through.
+
+Slice-progress dashboard rendering deferred to follow-on slice (signal flows through return; consumers see it today).
+
+**Lead-dispatch visibility: `[MODE]` + `[CHECKPOINT]` line-tag conventions (FEAT-038)**
+
+`buildDispatchInstruction` now embeds advisory `[MODE]` (inline vs subagent choice) and `[CHECKPOINT]` (per-AC progress) line-tag prompts so the parent loop gets early visibility into crew:lead's dispatch decisions and progress. Advisory contract — no enforcement layer. Design doc at `docs/superpowers/specs/2026-06-04-lead-dispatch-visibility-design.md`.
+
+**Architect output parser + agent_type fallback (FEAT-036 SLICE-33)**
+
+Improvements landed during SPEC-002 Theme C work; closes the parser robustness + test-coverage gap from prior PR autofix work.
+
+**costProjectAliases for legacy source slugs (FEAT-035)**
+
+`tryWriteCostReport` in `crew-bridge.mts` now honors `loop.costProjectAliases: string[]` config. After a repo rename, historical cost session data stays accessible via the alias — each alias is passed as an additional `--source-project` flag to the crew CLI (which accepts them additively, verified by live smoke).
+
+`.claude/loop.json` updated: `costProject: "C--work-mega-loop"` + `costProjectAliases: ["C--work-mega-hero-crew-autonomous-loop"]`. Restored cost-trend signal that had been zero for SLICE-23..SLICE-28 due to stale slug.
+
+**pr-fixer schema assert + gh-unavailable coverage (FEAT-037)**
+
+`assertPrViewShape` helper validates the `gh pr view` JSON shape after `JSON.parse`. Throws with field-specific message on mismatch. `fetchPrStatus` restructured to separate the gh-CLI try/catch (recoverable via `haltReason`) from the shape assertion (programming bug, throws). 9 new tests cover both branches.
+
+### Fixes
+
+**`stop-check` CLI honors `costStopThreshold` config**
+
+`stop-check` was calling `checkStopConditions(repoPath)` without resolving config first. Inside, `config?.loop?.costStopThreshold` fell through to `|| 1`, ignoring the user's actual configured value (e.g. 15) and tripping on the first HIGH-severity cost recommendation. Fix: resolve config via `resolveConfig` before invoking `checkStopConditions`. One-line addition; verified via live smoke (previously `shouldStop: true` on 6 alerts → now `shouldStop: false` with threshold 15 applied).
+
+**agent-report dedupes pairs sharing transcriptPath**
+
+Some hook configurations emit two `SubagentStart`/`SubagentStop` event sequences per logical dispatch. Each pair gets a distinct `agent_id` but both reference the same `agent_transcript_path`. Writer now collapses pairs sharing a non-null transcriptPath, preferring the pair with both timestamps populated. LoopObserver-style consumers no longer see every dispatch twice with identical stats.
+
+### Research
+
+**FEAT-032 SLICE-34: builder mid-cleanup stop root cause**
+
+Confirmed via real-data analysis: the pattern correlates with subagent dispatch context budget pressure during final-synthesis writes. Documents mitigation recommendations + recovery patterns; informs future slice-scope discipline.
+
+### Internals
+
+- SLICE-33 (FEAT-036) and SLICE-35 (FEAT-037) closure ceremonies + grade artifacts.
+- SPEC-002 Theme C followups satisfied.
+- FEAT-038 design doc + SLICE wire-up for `[MODE]`/`[CHECKPOINT]` signals.
+- Tests: 656 → 683 (+27 across all FEATs in this release).
+- All gates green: lint, typecheck, format-check, manifest validator, length validator.
+
+### Known gaps (deferred)
+
+- FEAT-010 SLICE-B: mid-execution confidence updates (signal is static-at-start only this release).
+- Slice-progress dashboard rendering of confidence (signal flows through return but dashboard not yet wired).
+- Builder mid-cleanup stop persists; FEAT-032 produced root cause but mitigation code is future work.
+
 ## v0.7.2 — 2026-06-04 — Slice dispatch routes to crew:lead + FEAT-034 marker drain + auditLogPath
 
 ### Architecture
