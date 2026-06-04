@@ -122,7 +122,7 @@ test("buildDispatchInstruction without optional fields is backward compatible", 
         repoPath: "/repo",
         resolvedGoal: null
     });
-    assert.match(result, /Dispatch \/crew:build/);
+    assert.match(result, /Dispatch crew:lead/);
     assert.doesNotMatch(result, /Slice context/);
 });
 test("buildDispatchInstruction with dispatchLimits injects budget block", () => {

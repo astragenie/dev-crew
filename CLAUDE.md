@@ -127,7 +127,7 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
 - **Auto mode (default — `loop.marathonMode: true`).** Loop walks entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts.
 - **Slice start/close ceremony.** Every slice MUST use `/loop:slice start` and `/loop:slice complete`.
-- **Dispatch discipline.** Hand work to `/crew:build` subagent; never implement inline except trivial single-line fixups.
+- **Dispatch discipline.** Hand work to `crew:lead` subagent (which delegates implementation to `crew:builder`); never implement inline except trivial single-line fixups.
 - **Auto-continue.** After ceremony, promote next item without asking.
 
 First action when starting the loop: read `.claude/loop/rules.md` → `docs/ai-loop/00-entry/MASTER_PROMPT.md` → `docs/ai-loop/backlog/approved-slices.md`.

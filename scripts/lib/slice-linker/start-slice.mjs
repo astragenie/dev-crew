@@ -155,10 +155,10 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
 // Extracted to keep buildStartSliceReturn under the eslint complexity cap.
 function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight) {
     if (requiresApprovalGate) {
-        return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch /crew:build for ${sliceId}.`;
+        return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:lead for ${sliceId}.`;
     }
     if (dispatch) {
-        return `Dispatch /crew:build subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+        return `Dispatch crew:lead subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
     }
     return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }

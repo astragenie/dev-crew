@@ -35,7 +35,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice start \
 `--no-dispatch` opts out of the dispatch instruction (used for manual /
 debugging invocations where the agent is doing the slice work
 in-conversation). The autonomous loop should always omit this flag so
-implementation runs through a `/crew:build` subagent.
+implementation runs through a `crew:lead` subagent (which then drives
+the full lead workflow — frame, delegate to `crew:builder`, gate via
+`crew:reviewer` / `crew:validator`, synthesize).
 
 Returns:
 
@@ -45,8 +47,8 @@ Returns:
   "activePlan": { "source": "superpowers", "path": "docs/superpowers/plans/2026-05-22-crew-monitor-phase-2.md" },
   "runBrief": { "artifactPath": ".claude/artifacts/crew/runs/<stamp>-run-brief-slice-18-...md" },
   "sliceProgress": { "path": ".claude/state/crew/slice-progress.md", "completedCount": 17, "totalCount": 19 },
-  "dispatchInstruction": "Dispatch /crew:build subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... Follow the full crew build workflow (frame → implement → review → validate → synthesize). When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id SLICE-18. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.",
-  "nextAction": "Dispatch /crew:build subagent for SLICE-18; close with /loop:slice complete --id SLICE-18."
+  "dispatchInstruction": "Dispatch crew:lead subagent with this prompt:\n\n> Lead the implementation of SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to `crew:builder` when scope warrants), require independent review via `crew:reviewer` when code changes, and validation via `crew:validator` when behavior is exercisable, then synthesize. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id SLICE-18. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.",
+  "nextAction": "Dispatch crew:lead subagent for SLICE-18; close with /loop:slice complete --id SLICE-18."
 }
 ```
 
