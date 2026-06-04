@@ -224,7 +224,9 @@ const COMMANDS = {
   },
   "stop-check": async ({ repoPath }) => {
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    return checkStopConditions(repoPath);
+    const { resolveConfig } = await import("./lib/config-resolver.mjs");
+    const config = await resolveConfig(repoPath);
+    return checkStopConditions(repoPath, { config });
   },
   auto: async ({ repoPath, flags }) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
