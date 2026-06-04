@@ -7,11 +7,11 @@ target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 depends_on: []
-slices: [SLICE-23]
+slices: [SLICE-23, SLICE-25]
 derived_from: null
 triage_notes: no fields needed inference
 started_at: 2026-06-04
-slices_complete: [SLICE-23]
+slices_complete: [SLICE-23, SLICE-25]
 ---
 # FEAT-028: Agent-aware autonomous backlog flow
 

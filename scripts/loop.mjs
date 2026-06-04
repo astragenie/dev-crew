@@ -32,6 +32,7 @@ const FLAG_SPEC = {
     "--features": { key: "features" },
     "--goal": { key: "goal" },
     "--no-dispatch": { key: "noDispatch", boolean: true },
+    "--no-research": { key: "noResearch", boolean: true },
     "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
     "--force-close": { key: "forceClose", boolean: true },
     "--skip-validation-check": { key: "skipValidationCheck" },
@@ -92,7 +93,8 @@ function parseArgs(argv) {
         dryRun: false,
         autoMode: false,
         provider: null,
-        pr: null
+        pr: null,
+        noResearch: false
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -294,7 +296,49 @@ async function main() {
     const result = await handler({ repoPath, flags, positionals });
     console.log(JSON.stringify(result, null, 2));
 }
-async function runBacklogSubcommand(repoPath, positionals, flags) {
+function sanitizeResearcherBody(raw) {
+    let text = raw;
+    // Strip leading frontmatter block (--- ... ---).
+    if (text.trimStart().startsWith("---")) {
+        const after = text.trimStart().slice(3);
+        const endIdx = after.indexOf("---");
+        if (endIdx !== -1) {
+            text = after.slice(endIdx + 3);
+        }
+    }
+    // Strip leading # <heading> line (title heading; CLI adds its own).
+    text = text.replace(/^\s*#[^\n]*\n/, "");
+    return text.trim();
+}
+async function resolveBacklogAddBody(repoPath, title, suppliedBody, dispatchFn) {
+    if (suppliedBody)
+        return suppliedBody;
+    const prompt = `Research repo context relevant to the new FEAT titled "${title}". ` +
+        "Find prior FEATs in done/in-progress, recent grades mentioning this area, " +
+        "decisions affecting it. Return a 200-400 word findings document with file:line " +
+        "citations suitable for use as the FEAT body. Output only the body content " +
+        "(no frontmatter, no title heading — those are added by the CLI).";
+    try {
+        const result = await dispatchFn({
+            agent: "loop:researcher",
+            prompt,
+            parentCommand: "backlog-add",
+            repoRoot: repoPath,
+            argv: process.argv,
+            skipFlag: "--no-research"
+        });
+        if (result.ok && !result.skipped && result.output && result.output.trim()) {
+            const sanitized = sanitizeResearcherBody(result.output);
+            if (sanitized.length > 0)
+                return sanitized;
+        }
+    }
+    catch {
+        // Researcher failure must never block backlog add.
+    }
+    return "";
+}
+async function runBacklogSubcommand(repoPath, positionals, flags, opts = {}) {
     const [sub, ...rest] = positionals;
     if (!sub)
         throw new Error("backlog requires a subcommand: add | list | triage | promote");
@@ -302,13 +346,16 @@ async function runBacklogSubcommand(repoPath, positionals, flags) {
         const title = flags.title || rest.join(" ");
         if (!title)
             throw new Error("backlog add requires a title (positional or --title).");
+        const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
+        const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+        const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body, dispatchFn);
         const { addFeature } = await import("./lib/backlog-writer.mjs");
         return await addFeature(repoPath, {
             title,
             priority: flags.priority,
             category: flags.category,
             target_release: flags.targetRelease,
-            body: flags.body || ""
+            body: resolvedBody
         });
     }
     if (sub === "list") {
