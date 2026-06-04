@@ -94,7 +94,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     const featureId = ctx.frontmatter.feature || null;
     const phase = ctx.frontmatter.phase || null;
     await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
-    const { runBrief, featureExcerpt, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight, recentGradeAvg } = await gatherSliceResources(repoPath, {
+    const { runBrief, featureExcerpt, featurePath, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight, recentGradeAvg } = await gatherSliceResources(repoPath, {
         sliceId,
         title,
         resolvedGoal,
@@ -119,6 +119,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         featureId,
         sliceContent: ctx.content,
         featureExcerpt,
+        featurePath,
         marathonMilestone,
         dispatchLimits: resolved.loop?.dispatchLimits ?? null,
         orchestratorModel: resolveOrchestratorModel(resolved),
@@ -134,7 +135,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
 // Gathers all parallel async resources for a slice start in one Promise.all.
 // Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
 async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved }) {
-    const [runBrief, gradeTrend, featureExcerpt, marathonMilestone, learningsResult, planPreflight] = await Promise.all([
+    const [runBrief, gradeTrend, featureResult, marathonMilestone, learningsResult, planPreflight] = await Promise.all([
         bestEffort(() => writeCrewRunBrief(repoPath, {
             sliceId,
             title,
@@ -158,9 +159,12 @@ async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, fe
         : null;
     const learningsDigest = learningsResult?.digest ?? null;
     const recentGradeAvg = computeRecentGradeAvg(gradeTrend?.scores ?? []);
+    const featureExcerpt = featureResult?.excerpt ?? null;
+    const featurePath = featureResult?.path ?? null;
     return {
         runBrief,
         featureExcerpt,
+        featurePath,
         marathonMilestone,
         gradeTrendCaution,
         learningsDigest,
@@ -181,17 +185,16 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
 // Extracted to keep buildStartSliceReturn under the eslint complexity cap.
 function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight) {
     if (requiresApprovalGate) {
-        return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:lead for ${sliceId}.`;
+        return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to invoke crew:build for ${sliceId}.`;
     }
     if (dispatch) {
-        return `Dispatch crew:lead subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+        return `Invoke crew:build skill for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
     }
     return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }
-// Build the return shape for startSlice. Extracted to keep startSlice
-// under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false, confidence = null, confidenceReason = null }) {
-    const dispatchInstruction = dispatch
+// Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.
+function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits) {
+    return dispatch
         ? buildDispatchInstruction({
             sliceId,
             title,
@@ -201,9 +204,15 @@ function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProg
             featureId,
             sliceContent,
             featureExcerpt,
+            featurePath,
             dispatchLimits
         })
         : null;
+}
+// Build the return shape for startSlice. Extracted to keep startSlice
+// under the eslint complexity cap; no behavior change.
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false, confidence = null, confidenceReason = null }) {
+    const dispatchInstruction = resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits);
     const activePlanSummary = activePlan.planPath
         ? { source: activePlan.source, path: activePlan.planPath }
         : null;

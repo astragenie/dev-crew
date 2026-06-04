@@ -10,7 +10,7 @@ function buildBudgetLine(dispatchLimits) {
         `Prefer inline (no subagent dispatch) for: ${preferInline}. ` +
         `Bundle review + validation into one pass when scope is small.`);
 }
-function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt) {
+function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath = null) {
     if (!sliceContent && !featureExcerpt)
         return;
     lines.push("", "## Slice context (pre-read — do not re-read these files)", "");
@@ -18,24 +18,27 @@ function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt)
         lines.push(`### Slice: ${rel}`, "", sliceContent);
     }
     if (featureId && featureExcerpt) {
-        lines.push("", `### Feature: ${featureId} (excerpt)`, "", featureExcerpt);
+        lines.push("", `### Feature: ${featureId}`);
+        if (featurePath)
+            lines.push(`Path: ${featurePath}`);
+        lines.push("", featureExcerpt);
     }
 }
 function appendProgressSignals(lines) {
     lines.push("", "## Progress signals", "", "Emit two advisory line-tags so the parent orchestrator has early visibility into your mode choice and per-AC progress. Advisory only — parent degrades gracefully on absence.", "", "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:builder for src/foo/`.", "- `[CHECKPOINT] AC-<N>: <pass|fail|skip> — <≤80 char note>` — emit one per AC AFTER the AC is verified. Status `fail` is the parent's interrupt signal; status `skip` carries a reason in the note.");
 }
-export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, featureId = null, sliceContent = null, featureExcerpt = null, dispatchLimits = null }) {
+export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, dispatchLimits = null }) {
     const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
     const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
     const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
     const suffix = buildBudgetLine(dispatchLimits);
     const lines = [
-        `Dispatch crew:lead subagent with this prompt:`,
+        `Invoke the \`crew:build\` skill with this context:`,
         "",
-        `> Lead the implementation of ${title}.${sliceRef}${goalLine} Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`crew:builder\` when scope warrants), require independent review via \`crew:reviewer\` when code changes, and validation via \`crew:validator\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
+        `> Build ${title}.${sliceRef}${goalLine} Run the full crew build workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`crew:builder\` when scope warrants), require independent review via \`crew:reviewer\` when code changes, and validation via \`crew:validator\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
     ];
     appendProgressSignals(lines);
-    appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt);
+    appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
     return lines.join("\n");
 }
 // Locates the slice file under slicesRoot and reads frontmatter + objective
@@ -72,7 +75,11 @@ export async function readFeatureExcerpt(repoPath, featureId, config) {
         const p = path.join(root, dir, `${featureId}.md`);
         const content = await fs.readFile(p, "utf8").catch(() => null);
         if (content) {
-            return extractSection(content, /^##\s+Description\s*$/i, { maxLen: 400, joinChar: "\n" });
+            const excerpt = extractSection(content, /^##\s+Description\s*$/i, {
+                maxLen: 400,
+                joinChar: "\n"
+            });
+            return { path: p, excerpt: excerpt ?? "" };
         }
     }
     return null;

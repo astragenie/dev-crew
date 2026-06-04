@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sliceFromFeature, buildDispatchInstruction } from "../scripts/lib/slice-linker.mjs";
+import { sliceFromFeature, buildDispatchInstruction, readFeatureExcerpt } from "../scripts/lib/slice-linker.mjs";
 import { addFeature, findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 async function tmpRepo(prefix) {
@@ -111,7 +111,7 @@ test("buildDispatchInstruction with featureExcerpt embeds feature section", () =
         sliceContent: "## Acceptance criteria\n- AC-1",
         featureExcerpt: "Allow users to register a new account."
     });
-    assert.match(result, /Feature: FEAT-007 \(excerpt\)/);
+    assert.match(result, /Feature: FEAT-007/);
     assert.match(result, /Allow users to register/);
 });
 test("buildDispatchInstruction without optional fields is backward compatible", () => {
@@ -122,7 +122,7 @@ test("buildDispatchInstruction without optional fields is backward compatible", 
         repoPath: "/repo",
         resolvedGoal: null
     });
-    assert.match(result, /Dispatch crew:lead/);
+    assert.match(result, /Invoke the `crew:build` skill/);
     assert.doesNotMatch(result, /Slice context/);
 });
 test("buildDispatchInstruction with dispatchLimits injects budget block", () => {
@@ -151,4 +151,56 @@ test("buildDispatchInstruction without dispatchLimits omits budget block", () =>
         resolvedGoal: null
     });
     assert.doesNotMatch(result, /Dispatch budget/);
+});
+test("readFeatureExcerpt returns {path, excerpt} object when feature found", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "rfe-"));
+    const dir = path.join(tmp, "in-progress");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "FEAT-001.md"), "---\nid: FEAT-001\n---\n# FEAT-001\n\n## Description\n\nTest feature description.\n");
+    // config.loop.backlogRoot = "." so resolveBacklogRoot returns path.join(tmp, ".") = tmp
+    const config = { loop: { backlogRoot: "." } };
+    const result = await readFeatureExcerpt(tmp, "FEAT-001", config);
+    assert.ok(result !== null, "expected non-null result");
+    if (!result)
+        throw new Error("narrowing guard");
+    assert.strictEqual(typeof result.path, "string");
+    assert.match(result.path, /FEAT-001\.md$/);
+    assert.match(result.excerpt, /Test feature description/);
+    await fs.rm(tmp, { recursive: true });
+});
+test("readFeatureExcerpt returns null when feature not found", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "rfe-"));
+    const config = { loop: { backlogRoot: "." } };
+    const result = await readFeatureExcerpt(tmp, "FEAT-999", config);
+    assert.strictEqual(result, null);
+    await fs.rm(tmp, { recursive: true });
+});
+test("buildDispatchInstruction with featurePath renders Path line in context block", () => {
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-99",
+        title: "SLICE-99",
+        sliceFile: null,
+        repoPath: "/repo",
+        resolvedGoal: "test goal",
+        featureId: "FEAT-001",
+        featureExcerpt: "A description.",
+        featurePath: "/repo/.claude/artifacts/loop/backlog/in-progress/FEAT-001.md"
+    });
+    assert.match(result, /### Feature: FEAT-001/);
+    assert.match(result, /Path: .*FEAT-001\.md/);
+    assert.match(result, /A description\./);
+});
+test("buildDispatchInstruction without featurePath omits Path line", () => {
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-99",
+        title: "SLICE-99",
+        sliceFile: null,
+        repoPath: "/repo",
+        resolvedGoal: "test goal",
+        featureId: "FEAT-001",
+        featureExcerpt: "A description.",
+        featurePath: null
+    });
+    assert.match(result, /### Feature: FEAT-001/);
+    assert.doesNotMatch(result, /^Path:/m);
 });

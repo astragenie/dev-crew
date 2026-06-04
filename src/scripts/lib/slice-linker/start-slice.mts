@@ -123,6 +123,7 @@ export async function startSlice(
   const {
     runBrief,
     featureExcerpt,
+    featurePath,
     marathonMilestone,
     gradeTrendCaution,
     learningsDigest,
@@ -162,6 +163,7 @@ export async function startSlice(
     featureId,
     sliceContent: ctx.content,
     featureExcerpt,
+    featurePath,
     marathonMilestone,
     dispatchLimits: resolved.loop?.dispatchLimits ?? null,
     orchestratorModel: resolveOrchestratorModel(resolved),
@@ -182,7 +184,7 @@ async function gatherSliceResources(
   repoPath,
   { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved }
 ) {
-  const [runBrief, gradeTrend, featureExcerpt, marathonMilestone, learningsResult, planPreflight] =
+  const [runBrief, gradeTrend, featureResult, marathonMilestone, learningsResult, planPreflight] =
     await Promise.all([
       bestEffort(() =>
         writeCrewRunBrief(repoPath, {
@@ -210,9 +212,12 @@ async function gatherSliceResources(
       : null;
   const learningsDigest = learningsResult?.digest ?? null;
   const recentGradeAvg = computeRecentGradeAvg(gradeTrend?.scores ?? []);
+  const featureExcerpt = featureResult?.excerpt ?? null;
+  const featurePath = featureResult?.path ?? null;
   return {
     runBrief,
     featureExcerpt,
+    featurePath,
     marathonMilestone,
     gradeTrendCaution,
     learningsDigest,
@@ -240,12 +245,42 @@ function computeNextAction(
   planPreflight: any
 ): string {
   if (requiresApprovalGate) {
-    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:lead for ${sliceId}.`;
+    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to invoke crew:build for ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch crew:lead subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+    return `Invoke crew:build skill for ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
   }
   return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
+}
+
+// Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.
+function resolveDispatchInstruction(
+  dispatch,
+  sliceId,
+  title,
+  sliceFile,
+  repoPath,
+  resolvedGoal,
+  featureId,
+  sliceContent,
+  featureExcerpt,
+  featurePath,
+  dispatchLimits
+) {
+  return dispatch
+    ? buildDispatchInstruction({
+        sliceId,
+        title,
+        sliceFile,
+        repoPath,
+        resolvedGoal,
+        featureId,
+        sliceContent,
+        featureExcerpt,
+        featurePath,
+        dispatchLimits
+      })
+    : null;
 }
 
 // Build the return shape for startSlice. Extracted to keep startSlice
@@ -264,6 +299,7 @@ function buildStartSliceReturn({
   featureId = null as any,
   sliceContent = null as any,
   featureExcerpt = null as any,
+  featurePath = null as any,
   marathonMilestone = null as any,
   dispatchLimits = null as any,
   orchestratorModel = null as any,
@@ -273,19 +309,19 @@ function buildStartSliceReturn({
   confidence = null as any,
   confidenceReason = null as any
 }) {
-  const dispatchInstruction = dispatch
-    ? buildDispatchInstruction({
-        sliceId,
-        title,
-        sliceFile,
-        repoPath,
-        resolvedGoal,
-        featureId,
-        sliceContent,
-        featureExcerpt,
-        dispatchLimits
-      })
-    : null;
+  const dispatchInstruction = resolveDispatchInstruction(
+    dispatch,
+    sliceId,
+    title,
+    sliceFile,
+    repoPath,
+    resolvedGoal,
+    featureId,
+    sliceContent,
+    featureExcerpt,
+    featurePath,
+    dispatchLimits
+  );
   const activePlanSummary = activePlan.planPath
     ? { source: activePlan.source, path: activePlan.planPath }
     : null;

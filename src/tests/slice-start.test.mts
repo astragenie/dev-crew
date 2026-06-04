@@ -93,10 +93,10 @@ test("startSlice emits dispatchInstruction by default", async () => {
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id);
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present by default");
-  assert.match(result.dispatchInstruction, /Dispatch crew:lead subagent/);
+  assert.match(result.dispatchInstruction, /Invoke the `crew:build` skill/);
   assert.match(result.dispatchInstruction, new RegExp(slice.id));
   assert.match(result.dispatchInstruction, /\/crew:fix/);
-  assert.match(result.nextAction, /Dispatch crew:lead subagent/);
+  assert.match(result.nextAction, /Invoke crew:build skill/);
 });
 
 test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-038)", async () => {
