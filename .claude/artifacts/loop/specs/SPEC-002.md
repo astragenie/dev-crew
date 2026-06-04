@@ -2,13 +2,13 @@
 id: SPEC-002
 type: prd
 title: Reliability Hardening from Grade Followups
-status: draft
+status: decomposed
 priority: P1
 target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 owner: null
-derived_features: []
+derived_features: [FEAT-034, FEAT-035, FEAT-036]
 ---
 ## Objective
 
