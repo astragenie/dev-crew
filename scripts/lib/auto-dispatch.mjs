@@ -14,8 +14,15 @@ const PENDING_DISPATCH_REL = ".claude/artifacts/loop/pending-dispatch";
 export function parseSkipFlag(argv, flagName) {
     return argv.includes(flagName);
 }
-export async function appendAuditLog(repoRoot, entry) {
-    const logPath = path.join(repoRoot, AUDIT_LOG_REL);
+export function resolveAuditLogPath(repoRoot, opts = {}) {
+    const custom = opts.config?.loop?.auditLogPath;
+    if (typeof custom === "string" && custom.length > 0) {
+        return path.isAbsolute(custom) ? custom : path.join(repoRoot, custom);
+    }
+    return path.join(repoRoot, AUDIT_LOG_REL);
+}
+export async function appendAuditLog(repoRoot, entry, opts = {}) {
+    const logPath = resolveAuditLogPath(repoRoot, opts);
     await fs.mkdir(path.dirname(logPath), { recursive: true });
     await fs.appendFile(logPath, JSON.stringify(entry) + "\n", "utf8");
 }

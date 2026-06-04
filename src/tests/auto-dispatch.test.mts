@@ -4,7 +4,12 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { parseSkipFlag, appendAuditLog, dispatchAgent } from "../scripts/lib/auto-dispatch.mjs";
+import {
+  parseSkipFlag,
+  appendAuditLog,
+  dispatchAgent,
+  resolveAuditLogPath
+} from "../scripts/lib/auto-dispatch.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -191,4 +196,75 @@ test("each audit entry contains required keys: timestamp, agent, parentCommand, 
   assert.equal(entry.parentCommand, "spec-decompose");
   assert.equal(typeof entry.timestamp, "string");
   assert.equal(typeof entry.durationMs, "number");
+});
+
+// --- resolveAuditLogPath ---
+
+test("resolveAuditLogPath returns default path when opts is empty", () => {
+  const repo = "/tmp/test-repo";
+  const expected = path.join(repo, ".claude/artifacts/loop/auto-dispatch.jsonl");
+  assert.equal(resolveAuditLogPath(repo, {}), expected);
+});
+
+test("resolveAuditLogPath returns default path when config has no loop key", () => {
+  const repo = "/tmp/test-repo";
+  const expected = path.join(repo, ".claude/artifacts/loop/auto-dispatch.jsonl");
+  assert.equal(resolveAuditLogPath(repo, { config: {} }), expected);
+});
+
+test("resolveAuditLogPath returns default path when config.loop has no auditLogPath", () => {
+  const repo = "/tmp/test-repo";
+  const expected = path.join(repo, ".claude/artifacts/loop/auto-dispatch.jsonl");
+  assert.equal(resolveAuditLogPath(repo, { config: { loop: {} } }), expected);
+});
+
+test("resolveAuditLogPath resolves relative auditLogPath against repoRoot", () => {
+  const repo = "/tmp/test-repo";
+  const expected = path.join(repo, "custom/foo.jsonl");
+  assert.equal(
+    resolveAuditLogPath(repo, { config: { loop: { auditLogPath: "custom/foo.jsonl" } } }),
+    expected
+  );
+});
+
+test("resolveAuditLogPath uses absolute auditLogPath verbatim", () => {
+  const repo = "/tmp/test-repo";
+  const absPath = "/abs/path/foo.jsonl";
+  assert.equal(resolveAuditLogPath(repo, { config: { loop: { auditLogPath: absPath } } }), absPath);
+});
+
+// --- appendAuditLog with opts ---
+
+test("appendAuditLog with no opts writes to default path (regression guard)", async () => {
+  const repo = await tmpRepo("ad-noopt-");
+  const entry = { agent: "smoke", ok: true, durationMs: 0 };
+  await appendAuditLog(repo, entry);
+  const logPath = auditLogPath(repo);
+  await fs.access(logPath);
+  const lines = await readJsonLines(logPath);
+  assert.equal(lines.length, 1);
+});
+
+test("appendAuditLog with custom relative auditLogPath writes to that path", async () => {
+  const repo = await tmpRepo("ad-custom-");
+  const entry = { agent: "smoke", ok: true, durationMs: 0 };
+  await appendAuditLog(repo, entry, { config: { loop: { auditLogPath: "custom.jsonl" } } });
+  const customPath = path.join(repo, "custom.jsonl");
+  await fs.access(customPath);
+  const lines = await readJsonLines(customPath);
+  assert.equal(lines.length, 1);
+  // default path must not exist
+  await assert.rejects(() => fs.access(auditLogPath(repo)));
+});
+
+test("appendAuditLog creates parent dir when custom path dir does not exist", async () => {
+  const repo = await tmpRepo("ad-mkdir-");
+  const entry = { agent: "smoke", ok: true, durationMs: 0 };
+  await appendAuditLog(repo, entry, {
+    config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
+  });
+  const customPath = path.join(repo, "deep/nested/dir/audit.jsonl");
+  await fs.access(customPath);
+  const lines = await readJsonLines(customPath);
+  assert.equal(lines.length, 1);
 });

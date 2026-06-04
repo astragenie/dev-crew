@@ -1,18 +1,20 @@
 ---
 id: FEAT-034
-status: in-progress
+status: done
 priority: P1
 category: infra-bug
 target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 depends_on: []
-slices: [SLICE-30]
+slices: [SLICE-30, SLICE-31]
 derived_from: SPEC-002
 autonomous_safe: true
 triage_notes: "autonomous_safe inferred: AC count=0, derived_from=SPEC-002 → true"
 started_at: 2026-06-04
-slices_complete: [SLICE-30]
+slices_complete: [SLICE-30, SLICE-31]
+completed_at: 2026-06-04
+shipped_scope_note: "Issue #1 (SLICE-30 marker drain) + Issue #3 (SLICE-31 auditLogPath config) shipped. Issue #2 (builder mid-cleanup investigation) deferred to FEAT-032 which already covers the research spike for that exact pattern."
 ---
 ## Description
 
