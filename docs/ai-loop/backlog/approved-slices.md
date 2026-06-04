@@ -47,7 +47,7 @@ tests for changed writers.
 
 ## SLICE-38 — Checkpoint commit primitive (FEAT-012, P2)
 
-**Status:** PENDING
+**Status:** COMPLETED — 2026-06-04. All 6 ACs pass. Commit: 8d4c9dd.
 
 **Goal:** Add `checkpointCommit()` — a structured WIP git commit primitive that writes subject `wip(checkpoint): <sliceId> — <summary>` with optional body sections. No-op when tree is clean. Foundation for continuous auto-commit safety net (FEAT-012 SLICE-A).
 
@@ -60,3 +60,21 @@ tests for changed writers.
 - AC-6: re-exported from `src/scripts/lib/slice-linker.mts`
 
 **Files:** `src/scripts/lib/checkpoint-commit.mts`, `scripts/lib/checkpoint-commit.mjs`, `src/tests/checkpoint-commit.test.mts`, `src/scripts/lib/slice-linker.mts`
+
+---
+
+## SLICE-39 — Glob-scoped context rules (FEAT-007, P3)
+
+**Status:** PENDING
+
+**Goal:** Add `contextRules` array to `.claude/loop.json` config. Installer renders glob-to-docs mappings into `{{contextRulesList}}` token in MASTER_PROMPT, instructing the agent to read matching docs when a slice's `in_scope_globs` overlaps the rule patterns. Remote import (GitHub fetch) explicitly out of scope.
+
+**Done When:**
+- AC-1: `npm test` + lint + typecheck + format-check + validators all pass
+- AC-2: `contextRules` in `loop.json` → MASTER_PROMPT block contains glob-to-docs mapping
+- AC-3: Absent/empty `contextRules` → no "Context rules" heading in MASTER_PROMPT
+- AC-4: Rendered section contains `in_scope_globs` instruction prose
+- AC-5: Existing `mandatoryDocs` behavior unchanged
+- AC-6: Unit tests cover absent, empty, populated + instruction prose cases
+
+**Files:** `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`, `src/tests/loop-installer.test.mts`

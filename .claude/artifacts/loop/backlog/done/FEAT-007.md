@@ -1,13 +1,13 @@
 ---
 id: FEAT-007
-status: triaged
+status: done
 priority: P3
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-04
 depends_on: []
-slices: []
+slices: [SLICE-39]
 derived_from: null
 composite_score: 7
 source_competitors: [Cursor agents]
@@ -22,6 +22,9 @@ pm_reasoning: Cursor .mdc glob-attach is IDE-layer concept; no clear mapping to 
 github_issue: 12
 github_milestone: 2
 phase: 2
+started_at: 2026-06-04
+slices_complete: [SLICE-39]
+completed_at: 2026-06-04
 ---
 # FEAT-007: Glob-scoped auto-attach rules with remote import
 

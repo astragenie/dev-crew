@@ -44,6 +44,21 @@ function buildMandatoryDocsList(config, aiLoopRoot) {
     const list = allDocs.map((entry, index) => `${index + 2}. ${entry}`).join("\n");
     return list || "_(no mandatory docs configured)_";
 }
+export function buildContextRulesList(config) {
+    const rules = config.contextRules || [];
+    if (!Array.isArray(rules) || rules.length === 0)
+        return "";
+    const lines = rules.map((rule) => {
+        const globs = (rule.globs || []).map((g) => `\`${g}\``).join(", ");
+        const docs = (rule.docs || []).map((d) => `\`${d}\``).join(", ");
+        return `- Globs: ${globs} → docs: ${docs}`;
+    });
+    return (`\n## Context rules\n\n` +
+        `Before starting a slice, check its \`in_scope_globs\` frontmatter against these patterns ` +
+        `and read the listed docs for any matching rule.\n\n` +
+        lines.join("\n") +
+        "\n");
+}
 function buildTokens(config) {
     const aiLoopRoot = resolveLoopPath(config, "aiLoopRoot");
     return {
@@ -58,7 +73,8 @@ function buildTokens(config) {
         productName: config.productName || "Untitled product",
         productDescription: config.productDescription || "",
         stackDescription: config.stackDescription || "",
-        mandatoryDocsList: buildMandatoryDocsList(config, aiLoopRoot)
+        mandatoryDocsList: buildMandatoryDocsList(config, aiLoopRoot),
+        contextRulesList: buildContextRulesList(config)
     };
 }
 // Replace the existing loop marker block in CLAUDE.md, or append

@@ -10,7 +10,8 @@ import {
   installLoop,
   reportStatus,
   MARKER_START,
-  MARKER_END
+  MARKER_END,
+  buildContextRulesList
 } from "../scripts/lib/loop-installer.mjs";
 import {
   findCrewCli,
@@ -330,6 +331,34 @@ test(
     assert.equal(guardEntries.length, 1, "read-guard hook must be added alongside");
   }
 );
+
+test("buildContextRulesList returns empty string when contextRules absent", () => {
+  assert.equal(buildContextRulesList({}), "");
+});
+
+test("buildContextRulesList returns empty string when contextRules is empty array", () => {
+  assert.equal(buildContextRulesList({ contextRules: [] }), "");
+});
+
+test("buildContextRulesList renders globs and docs for each rule", () => {
+  const result = buildContextRulesList({
+    contextRules: [
+      { globs: ["src/db/**", "*.sql"], docs: ["docs/database.md"] },
+      { globs: ["src/auth/**"], docs: ["docs/auth.md", "docs/security.md"] }
+    ]
+  });
+  assert.ok(result.includes("`src/db/**`"), "first glob appears");
+  assert.ok(result.includes("`*.sql`"), "second glob appears");
+  assert.ok(result.includes("`docs/database.md`"), "first doc appears");
+  assert.ok(result.includes("`docs/auth.md`"), "second rule doc appears");
+});
+
+test("buildContextRulesList output contains in_scope_globs instruction prose", () => {
+  const result = buildContextRulesList({
+    contextRules: [{ globs: ["src/**"], docs: ["docs/conventions.md"] }]
+  });
+  assert.ok(result.includes("in_scope_globs"), "instruction mentions in_scope_globs");
+});
 
 test(
   "reportStatus reflects install state",
