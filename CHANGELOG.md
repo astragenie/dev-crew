@@ -3,6 +3,28 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.6 — 2026-06-04 — crew:builder direct dispatch + checkpointCommit + contextRules
+
+### Features
+
+**crew:builder direct dispatch (builder-only scope)**
+
+Loop orchestrator now dispatches `crew:builder` directly instead of routing through `/crew:build` or `crew:lead`. Builder prompt scoped to implementation only — builder must NOT dispatch `crew:reviewer` or `crew:validator` itself. Parent loop drives review and validation gates explicitly after builder returns. `nextAction` string updated to spell out the full sequence: builder → reviewer → (validator if behavior changed) → slice complete. Rules, templates, and `CLAUDE.md` updated to match.
+
+**checkpointCommit primitive (FEAT-012 SLICE-38)**
+
+`src/scripts/lib/checkpoint-commit.mts` — new module. `checkpointCommit({ repoPath, sliceId, summary, stagedOnly?, body? })` runs `git add -u` (or skips when `stagedOnly: true`), builds a structured WIP commit subject (truncated to 72 chars), and returns `{ committed: boolean, sha?, reason? }`. Foundation for continuous auto-commit safety nets during long sessions. Exported via `slice-linker.mts` barrel. 7 unit tests cover happy path, clean no-op, 72-char truncation, body filtering, and stagedOnly isolation.
+
+**contextRules glob-to-docs config key (FEAT-007 SLICE-39)**
+
+`loop.json` now accepts a `contextRules` array: each entry maps `globs` patterns to `docs` paths. `buildContextRulesList(config)` renders an advisory `## Context rules` section into `MASTER_PROMPT.md` via the `{{contextRulesList}}` template token. Instructs agents to read listed docs when a slice's `in_scope_globs` matches. Remote import half rejected (no network dependency, no integrity check — see DEC-009). 4 unit tests.
+
+### Tests
+
+717/717 pass.
+
+---
+
 ## v0.7.5 — 2026-06-04 — crew:build inline dispatch + feature path in context block
 
 ### Features
