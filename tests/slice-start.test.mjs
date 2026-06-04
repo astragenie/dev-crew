@@ -83,6 +83,21 @@ test("startSlice emits dispatchInstruction by default", async () => {
     assert.match(result.dispatchInstruction, /\/crew:fix/);
     assert.match(result.nextAction, /Dispatch crew:lead subagent/);
 });
+test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-038)", async () => {
+    const repo = await tmpRepo("al-slice-start-progress-signals-");
+    await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+    const feat = await addFeature(repo, { title: "Visibility feature" });
+    const { slice } = await sliceFromFeature(repo, feat.id);
+    await fillPlaceholderACs(slice.path);
+    const result = await startSlice(repo, slice.id);
+    assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+    // Header for the new block
+    assert.match(result.dispatchInstruction, /## Progress signals/, "progress signals section header missing");
+    // Mode tag with all three permitted values listed
+    assert.match(result.dispatchInstruction, /\[MODE\] <single-session\|assisted-single-session\|team-run>/, "MODE tag spec missing or malformed");
+    // Checkpoint tag with status enum + AC marker
+    assert.match(result.dispatchInstruction, /\[CHECKPOINT\] AC-<N>: <pass\|fail\|skip>/, "CHECKPOINT tag spec missing or malformed");
+});
 test("startSlice with dispatch:false omits the instruction", async () => {
     const repo = await tmpRepo("al-slice-start-nodispatch-");
     const feat = await addFeature(repo, { title: "Manual" });

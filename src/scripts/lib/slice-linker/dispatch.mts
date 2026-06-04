@@ -24,6 +24,18 @@ function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt)
   }
 }
 
+function appendProgressSignals(lines) {
+  lines.push(
+    "",
+    "## Progress signals",
+    "",
+    "Emit two advisory line-tags so the parent orchestrator has early visibility into your mode choice and per-AC progress. Advisory only — parent degrades gracefully on absence.",
+    "",
+    "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:builder for src/foo/`.",
+    "- `[CHECKPOINT] AC-<N>: <pass|fail|skip> — <≤80 char note>` — emit one per AC AFTER the AC is verified. Status `fail` is the parent's interrupt signal; status `skip` carries a reason in the note."
+  );
+}
+
 export function buildDispatchInstruction({
   sliceId,
   title,
@@ -44,6 +56,7 @@ export function buildDispatchInstruction({
     "",
     `> Lead the implementation of ${title}.${sliceRef}${goalLine} Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`crew:builder\` when scope warrants), require independent review via \`crew:reviewer\` when code changes, and validation via \`crew:validator\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
   ];
+  appendProgressSignals(lines);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt);
   return lines.join("\n");
 }

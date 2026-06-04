@@ -9,6 +9,12 @@ import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
 import { runPlanPreflight } from "../slice-plan.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
+function computeRecentGradeAvg(scores) {
+    if (!scores || scores.length === 0)
+        return null;
+    const recent = scores.slice(-3);
+    return recent.reduce((sum, s) => sum + s.avg, 0) / recent.length;
+}
 async function bestEffort(fn) {
     try {
         return await fn();
@@ -133,13 +139,15 @@ async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, fe
             "Review recent grades before continuing if this persists."
         : null;
     const learningsDigest = learningsResult?.digest ?? null;
+    const recentGradeAvg = computeRecentGradeAvg(gradeTrend?.scores ?? []);
     return {
         runBrief,
         featureExcerpt,
         marathonMilestone,
         gradeTrendCaution,
         learningsDigest,
-        planPreflight
+        planPreflight,
+        recentGradeAvg
     };
 }
 // Locate the active plan + derive the human-readable title for this slice
