@@ -1,6 +1,6 @@
 ---
 id: FEAT-032
-status: pending
+status: triaged
 priority: P2
 category: infra-bug
 target_release: null
@@ -9,6 +9,7 @@ updated: 2026-06-04
 depends_on: []
 slices: []
 derived_from: null
+triage_notes: no fields needed inference
 ---
 # FEAT-032: Investigate crew:builder mid-cleanup stop pattern (research spike)
 

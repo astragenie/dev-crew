@@ -1,14 +1,18 @@
 ---
 id: FEAT-033
-status: pending
+status: done
 priority: P1
 category: infra-bug
 target_release: null
 created: 2026-06-04
 updated: 2026-06-04
 depends_on: []
-slices: []
+slices: [SLICE-29]
 derived_from: null
+triage_notes: no fields needed inference
+started_at: 2026-06-04
+slices_complete: [SLICE-29]
+completed_at: 2026-06-04
 ---
 # FEAT-033: PM autonomous_safe wiring — triage must write the flag to FEAT frontmatter
 
