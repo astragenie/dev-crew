@@ -3,6 +3,24 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.5 — 2026-06-04 — crew:build inline dispatch + feature path in context block
+
+### Features
+
+**Inline crew:build dispatch replaces crew:lead subagent**
+
+Loop orchestrators now invoke the `crew:build` skill inline instead of dispatching a `crew:lead` subagent. Fixes instability where lead agents were choosing single-session mode and implementing code directly rather than delegating to `crew:builder`. Dispatch instruction text changed from `Dispatch crew:lead subagent with this prompt:` to `Invoke the \`crew:build\` skill with this context:`. `rules.md`, `templates/loop-rules.md`, and `CLAUDE.md` dispatch table updated to match.
+
+**Feature file path in dispatch context block**
+
+`readFeatureExcerpt` return type changed from `string | null` to `{ path: string; excerpt: string } | null`. The feature file path is now surfaced as a `Path:` line in the `## Slice context` block of the dispatch instruction, giving dispatched agents direct access to the feature file without needing to search for it.
+
+### Tests
+
+687/687 pass.
+
+---
+
 ## v0.7.4 — 2026-06-04 — Read-guard hook, model routing audit, costSliceCeiling stop condition (FEAT-039)
 
 ### Features
