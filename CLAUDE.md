@@ -33,6 +33,8 @@ plugin at the version pinned in `scripts/lib/plugin-identity.mjs::MIN_CREW_VERSI
 - `npm run lint` — ESLint flat config.
 - `npm run format` / `npm run format:check` — Prettier.
 - `node ./scripts/validate-manifests.mjs` — manifest sanity check.
+- `node ./scripts/validate-content-length.mjs` — owned-agent line cap
+  (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
 
 ## CI gates
 
@@ -40,19 +42,33 @@ GitHub Actions runs on every push and PR:
 
 1. `npm ci`
 2. `node ./scripts/validate-manifests.mjs`
-3. `npm run lint`
-4. `npm run format:check`
-5. `node --test tests/*.test.mjs`
+3. `node ./scripts/validate-content-length.mjs`
+4. `npm run typecheck`
+5. `npm run lint`
+6. `npm run format:check`
+7. `node --test tests/*.test.mjs`
+
+Pre-push hook (`scripts/pre-push-validate.mjs`) runs manifest +
+content-length + format-check locally before any `git push`.
 
 ## Repo conventions
 
-- ESM only (`.mjs`). No CommonJS.
+- ESM only (`.mjs`). No CommonJS. Source is `src/scripts/*.mts`; tsc
+  emits `scripts/*.mjs` (CI checks `git diff --exit-code scripts/`).
 - One responsibility per module; split at ~400 lines.
-- Tests colocated in `tests/`, behavior-descriptive file names (no
-  release-version prefixes).
-- Lint output must be clean. Zero warnings.
+- Owned `agents/*.md` capped at 300 lines; `skills/**/SKILL.md` capped
+  at 200 (enforced by `validate-content-length`). `agents/3rdparty/`
+  exempt — vendored, kept as-is to avoid fork-and-trim chores.
+- Tests colocated in `src/tests/*.mts` → built to `tests/*.mjs`.
+  Behavior-descriptive file names (no release-version prefixes).
+- Lint output must be clean. Zero warnings. ESLint cyclomatic
+  complexity capped at 15 — reduce by extracting helpers, not by
+  suppressing the rule.
 - No `process.exit(N)` from library functions — set
   `process.exitCode` from entry points only.
+- Runtime-only modules without `.mts` source (e.g. `github-sync/`)
+  need ambient `.d.mts` shims under `src/scripts/lib/` so callers
+  can drop `@ts-ignore`.
 
 ## Backlog discipline
 
@@ -61,6 +77,40 @@ Each FEAT has frontmatter declaring priority, status, and an
 `autonomous_safe` flag. The loop only picks
 `autonomous_safe: true` items without per-slice human review; creative
 items still require a human in the loop on review.
+
+## Owned agents
+
+Dispatch via `Agent(subagent_type: ...)`:
+
+- `pm` — backlog scoring across 5 dimensions; `compositePriority:
+  "needs-review"` escape valve when scope exceeds PM ability.
+- `architect` — read-only Node ESM design + ADR drafter for
+  structural change. Use before SLICE-A of any new contract / provider
+  / cross-module refactor.
+- `researcher` — read-only citation-backed code archaeology + fact
+  gathering. Use when a question needs evidence from the repo before a
+  change is proposed.
+- `document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
+  retros, release notes, agent / skill prompts). Will NOT edit source.
+
+## Auto-dispatch primitives
+
+`src/scripts/lib/auto-dispatch.mts` exposes `dispatchAgent`,
+`parseSkipFlag`, `appendAuditLog` for CLI commands that auto-spawn
+role agents. Three integration sites today:
+
+- `/loop:backlog-add` → `loop:researcher` (skip via `--no-research`
+  or by supplying `--body`)
+- `/loop:spec-decompose` → `loop:architect` (skip via
+  `--no-architect` or by supplying `--features`)
+- `/loop:slice-complete` → `loop:document-writer` (async
+  fire-and-forget; skip via `--no-doc-writer`)
+
+Every dispatch appends one JSON line to
+`.claude/artifacts/loop/auto-dispatch.jsonl` — audit trail for cost
+attribution + retry of failed dispatches. Marker files for the
+out-of-band consumer queue at `.claude/artifacts/loop/pending-dispatch/`
+(consumer + cleanup is a known followup; see GRADE-SLICE-23 DEC-004).
 
 ## Safety
 

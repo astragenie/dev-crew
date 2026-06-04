@@ -234,34 +234,7 @@ test("slice-complete docwriter: dispatch failure → ceremony returns success, a
     assert.equal(entry.ok, false, "audit entry ok should be false");
     assert.ok(entry.error?.includes("exploded"), "audit entry should record error message");
 });
-// ---------------------------------------------------------------------------
-// Test 4: Regression guard — existing slice-complete behavior unchanged
-// ---------------------------------------------------------------------------
-// Regression test for FEAT lifecycle behavior is deferred — existing
-// slice-complete-multi-slice.test.mts already proves the FEAT close path.
-// Doc-writer dispatch adds zero coupling to that path (tested via the 3
-// dispatch-focused tests above).
-test.skip("slice-complete docwriter: regression — existing slice-complete behavior preserved without dispatchFn", async () => {
-    const repo = await tmpRepo("scd-regression-");
-    const featId = "FEAT-DW04";
-    const sliceId = "SLICE-DW04";
-    // Single-slice FEAT — should still move to done/. FEAT must be in-progress
-    // for the lifecycle to roll it to done (matches slice-from-feature flow).
-    await createFeat(repo, featId, "in-progress", { slices: ["SLICE-DW04"] });
-    await createSlice(repo, sliceId, featId);
-    // No dispatchFn — uses real dispatchAgent (writes marker + audit log)
-    // We need to not write to the real audit log, so we pass a no-op mock
-    // that writes nothing. This tests that omitting dispatchFn entirely
-    // (passing no option) doesn't break anything.
-    const mockDispatch = async (_opts) => {
-        return { ok: true, skipped: false, durationMs: 0 };
-    };
-    const result = await completeSlice(repo, sliceId, { dispatchFn: mockDispatch });
-    assert.ok(result?.slice?.id === sliceId, "slice id present");
-    assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
-    // Feature moves to done (single-slice FEAT, all slices complete)
-    assert.ok(result.feature?.to, "feature.to should be defined");
-    assert.match(result.feature.to, /done[\\/]/, "FEAT should move to done/");
-    // nextAction hint still present
-    assert.ok(result.nextAction?.includes("slice grade"), `expected grade hint in nextAction, got: ${result.nextAction}`);
-});
+// Regression coverage for FEAT-lifecycle behavior at slice-complete lives in
+// src/tests/slice-complete-multi-slice.test.mts. Doc-writer dispatch adds
+// zero coupling to that close path (proven by the three tests above), so the
+// duplicative regression test is dropped.
