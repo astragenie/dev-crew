@@ -72,21 +72,48 @@ function buildAgentPair(stopPayload, stopTs, startEntry) {
   };
 }
 
-// Correlate start and stop payloads by agent_id. Stops without a matching
-// start (agent began before the slice window) are included with startTs: null.
+function buildPairFromStart(startPayload, startTs) {
+  return {
+    agentId: startPayload.agent_id,
+    agentType: startPayload.agent_type || "unknown",
+    sessionId: startPayload.session_id || null,
+    startTs,
+    stopTs: null,
+    transcriptPath: null,
+    backgroundTasks: 0,
+    stopHookActive: false
+  };
+}
+
+// Correlate start and stop payloads by agent_id over the union of both
+// event streams. Stops without a matching start are included with
+// startTs: null (agent began before the slice window). Starts without a
+// matching stop are included with stopTs: null — the SubagentStop hook
+// fires when the orchestrator returns control to the user, which can
+// land after slice-complete runs, so this is the common case for the
+// last-dispatched agent of a slice rather than an error.
 function pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimestamps) {
   const startByAgentId = new Map();
   for (let i = 0; i < startPayloads.length; i++) {
     const p = startPayloads[i];
     if (p?.agent_id) startByAgentId.set(p.agent_id, { payload: p, ts: startTimestamps[i] });
   }
-  const pairs: any[] = [];
+  const stopByAgentId = new Map();
   for (let i = 0; i < stopPayloads.length; i++) {
-    const stopPayload = stopPayloads[i];
-    if (!stopPayload?.agent_id) continue;
-    pairs.push(
-      buildAgentPair(stopPayload, stopTimestamps[i], startByAgentId.get(stopPayload.agent_id))
-    );
+    const p = stopPayloads[i];
+    if (p?.agent_id) stopByAgentId.set(p.agent_id, { payload: p, ts: stopTimestamps[i] });
+  }
+
+  const allIds = new Set<string>([...startByAgentId.keys(), ...stopByAgentId.keys()]);
+  const pairs: any[] = [];
+  for (const id of allIds) {
+    const stopEntry = stopByAgentId.get(id);
+    const startEntry = startByAgentId.get(id);
+    if (stopEntry) {
+      pairs.push(buildAgentPair(stopEntry.payload, stopEntry.ts, startEntry));
+    } else {
+      pairs.push(buildPairFromStart(startEntry.payload, startEntry.ts));
+    }
   }
   return pairs;
 }
@@ -281,6 +308,13 @@ function buildBody(
   if (!eventsFound) {
     sections.push(
       "> **Note:** No subagent events found in `.claude/logs/events.jsonl`. Ensure crew hooks (SubagentStart/SubagentStop) are installed via `crew init`.",
+      ""
+    );
+  }
+  const stoplessCount = (agents as any[]).filter((a) => a.stopTs === null).length;
+  if (stoplessCount > 0) {
+    sections.push(
+      `> **Note:** ${stoplessCount} agent(s) have no \`subagent_stop\` event recorded. SubagentStop fires when the orchestrator returns to the user, which can land after slice-complete; duration and tool usage for these entries are partial.`,
       ""
     );
   }

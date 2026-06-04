@@ -45,24 +45,26 @@ async function writeAgentEvents(repo, agents) {
                 payloadPath: startPayloadPath
             }));
         }
-        const stopPayloadPath = path.join(payloadsDir, `stop-${agentId}.json`);
-        await fs.writeFile(stopPayloadPath, JSON.stringify({
-            session_id: sessionId,
-            agent_id: agentId,
-            agent_type: agentType,
-            hook_event_name: "SubagentStop",
-            agent_transcript_path: transcriptPath || null,
-            background_tasks: backgroundTasks || [],
-            stop_hook_active: false
-        }));
-        lines.push(JSON.stringify({
-            schemaVersion: "1.0",
-            source: "crew",
-            timestamp: stopTs,
-            event: "subagent_stop",
-            repoPath: repo,
-            payloadPath: stopPayloadPath
-        }));
+        if (stopTs) {
+            const stopPayloadPath = path.join(payloadsDir, `stop-${agentId}.json`);
+            await fs.writeFile(stopPayloadPath, JSON.stringify({
+                session_id: sessionId,
+                agent_id: agentId,
+                agent_type: agentType,
+                hook_event_name: "SubagentStop",
+                agent_transcript_path: transcriptPath || null,
+                background_tasks: backgroundTasks || [],
+                stop_hook_active: false
+            }));
+            lines.push(JSON.stringify({
+                schemaVersion: "1.0",
+                source: "crew",
+                timestamp: stopTs,
+                event: "subagent_stop",
+                repoPath: repo,
+                payloadPath: stopPayloadPath
+            }));
+        }
     }
     await fs.writeFile(path.join(logsDir, "events.jsonl"), lines.join("\n") + "\n");
 }
@@ -330,6 +332,61 @@ test("skill extraction from transcript → Skills column shows skill name", asyn
     const content = await fs.readFile(result.reportPath, "utf8");
     assert.ok(content.includes("loop:slice-start"));
     assert.ok(content.includes("superpowers:writing-plans"));
+});
+test("start without stop — agent counted with stopTs null, in-flight note rendered", async () => {
+    const repo = await tmpRepo("al-arw-nostop-");
+    // No stopTs → helper omits the subagent_stop event entirely.
+    await writeAgentEvents(repo, [
+        {
+            agentType: "crew:builder",
+            agentId: "nostop001",
+            sessionId: "sess-nostop",
+            startTs: "2026-05-24T11:00:00.000Z",
+            stopTs: null,
+            transcriptPath: null
+        }
+    ]);
+    const result = await writeAgentReport(repo, { sliceId: "SLICE-NOSTOP" });
+    assert.equal(result.agentCount, 1, "agent counted even when stop event is missing");
+    assert.equal(result.totalDurationMs, 0, "duration is zero when stop is missing");
+    const content = await fs.readFile(result.reportPath, "utf8");
+    const { frontmatter, body } = parseFrontmatter(content);
+    assert.equal(frontmatter.agent_count, 1);
+    assert.ok(body.includes("no `subagent_stop` event recorded"), "in-flight diagnostic note rendered");
+    assert.ok(body.includes("crew:builder"), "agent type from start payload");
+    assert.ok(body.includes("| n/a |"), "duration column shows n/a for stop-less agent");
+});
+test("mix of start-only and start+stop — both counted, only start-only marked in-flight", async () => {
+    const repo = await tmpRepo("al-arw-mix-");
+    const transcript = path.join(repo, "complete.jsonl");
+    await writeTranscript(transcript, { turns: 4 });
+    await writeAgentEvents(repo, [
+        {
+            agentType: "crew:researcher",
+            agentId: "complete001",
+            sessionId: "sess-mix",
+            startTs: "2026-05-24T11:00:00.000Z",
+            stopTs: "2026-05-24T11:03:00.000Z",
+            transcriptPath: transcript
+        },
+        {
+            agentType: "crew:builder",
+            agentId: "inflight001",
+            sessionId: "sess-mix",
+            startTs: "2026-05-24T11:05:00.000Z",
+            stopTs: null,
+            transcriptPath: null
+        }
+    ]);
+    const result = await writeAgentReport(repo, { sliceId: "SLICE-MIX" });
+    assert.equal(result.agentCount, 2);
+    // Only the completed agent contributes turns (in-flight has no transcript yet).
+    assert.equal(result.totalTurns, 4);
+    const content = await fs.readFile(result.reportPath, "utf8");
+    const { body } = parseFrontmatter(content);
+    assert.ok(body.includes("1 agent(s) have no `subagent_stop`"), "note counts only in-flight agents");
+    assert.ok(body.includes("crew:researcher"));
+    assert.ok(body.includes("crew:builder"));
 });
 test("idempotent — second call overwrites cleanly", async () => {
     const repo = await tmpRepo("al-arw-idem-");
