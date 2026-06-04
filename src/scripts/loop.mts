@@ -37,6 +37,7 @@ const FLAG_SPEC = {
   "--goal": { key: "goal" },
   "--no-dispatch": { key: "noDispatch", boolean: true },
   "--no-research": { key: "noResearch", boolean: true },
+  "--no-architect": { key: "noArchitect", boolean: true },
   "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
   "--force-close": { key: "forceClose", boolean: true },
   "--skip-validation-check": { key: "skipValidationCheck" },
@@ -99,7 +100,8 @@ function parseArgs(argv) {
     autoMode: false,
     provider: null,
     pr: null,
-    noResearch: false
+    noResearch: false,
+    noArchitect: false
   };
   const positionals: any[] = [];
 
@@ -446,6 +448,113 @@ function parseFeatureEntries(flags) {
     .filter(Boolean);
 }
 
+// ---------------------------------------------------------------------------
+// Architect output parser — accepts semicolon-separated titles from the agent.
+// Each entry is trimmed; empty entries are discarded.
+// ---------------------------------------------------------------------------
+
+export function parseArchitectOutput(raw: string): string[] {
+  return raw
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// Incomplete-SPEC detection — checks frontmatter and body for objective/scope.
+// Returns array of missing field names (empty when SPEC is complete).
+// ---------------------------------------------------------------------------
+
+export function detectMissingSpecFields(spec: {
+  frontmatter: Record<string, unknown>;
+  body: string;
+}): string[] {
+  const missing: string[] = [];
+  const fm = spec.frontmatter;
+  const body = spec.body ?? "";
+
+  const hasObjective =
+    (fm["objective"] != null && String(fm["objective"]).trim().length > 0) ||
+    /##\s+objective/i.test(body) ||
+    /##\s+goals/i.test(body) ||
+    /##\s+problem/i.test(body);
+
+  const hasScope =
+    (fm["scope"] != null && String(fm["scope"]).trim().length > 0) ||
+    /##\s+scope/i.test(body) ||
+    /##\s+in[- ]scope/i.test(body) ||
+    /##\s+non-goals/i.test(body);
+
+  if (!hasObjective) missing.push("objective");
+  if (!hasScope) missing.push("scope");
+  return missing;
+}
+
+async function architectOptOut(repoPath: string, dispatchFn: DispatchFn) {
+  await dispatchFn({
+    agent: "loop:architect",
+    prompt: "",
+    parentCommand: "spec-decompose",
+    repoRoot: repoPath,
+    argv: ["--no-architect"],
+    skipFlag: "--no-architect"
+  });
+  const msg =
+    "spec-decompose requires --features or architect dispatch; you opted out of architect with --no-architect";
+  console.error(msg);
+  process.exitCode = 1;
+  return { error: msg };
+}
+
+async function dispatchArchitectForSpec(
+  repoPath: string,
+  specId: string,
+  dispatchFn: DispatchFn
+): Promise<{ titles?: string[]; error?: string }> {
+  const { findSpecById } = await import("./lib/spec-parser.mjs");
+  const spec = await findSpecById(repoPath, specId);
+  if (!spec) throw new Error(`Spec not found: ${specId}`);
+
+  for (const field of detectMissingSpecFields(spec)) {
+    console.warn(
+      `[spec-decompose] SPEC ${specId} missing ${field}; architect best-effort decomposition may produce low-quality FEATs`
+    );
+  }
+
+  const prompt =
+    `Decompose ${specId} (file: ${spec.filePath}) into 3-7 implementation FEATs. ` +
+    "Return them as a semicolon-separated list of feature titles (no FEAT-NNN prefix; the CLI assigns ids). " +
+    "Optionally include scope hints in parentheses, e.g. " +
+    '"Audio ingestion pipeline (in-scope: src/audio/; out: streaming); Multi-tenant key scoping (depends_on: auth)". ' +
+    "Output ONLY the semicolon-separated list — no preamble, no markdown headings.";
+
+  const dispatchResult = await dispatchFn({
+    agent: "loop:architect",
+    prompt,
+    parentCommand: "spec-decompose",
+    repoRoot: repoPath,
+    argv: process.argv,
+    skipFlag: "--no-architect"
+  });
+
+  if (!dispatchResult.ok) {
+    const msg = `architect dispatch failed: ${dispatchResult.error ?? "unknown error"}`;
+    console.error(`[spec-decompose] ${msg}. Run with --features to skip architect.`);
+    process.exitCode = 1;
+    return { error: msg };
+  }
+
+  const titles = parseArchitectOutput(dispatchResult.output ?? "");
+  if (titles.length === 0) {
+    const msg = "architect returned empty feature list";
+    console.error(`[spec-decompose] ${msg}. Run with --features to provide titles explicitly.`);
+    process.exitCode = 1;
+    return { error: msg };
+  }
+
+  return { titles };
+}
+
 const SPEC_HANDLERS = {
   add: async (repoPath, flags, rest) => {
     const title = flags.title || rest.join(" ");
@@ -485,17 +594,31 @@ const SPEC_HANDLERS = {
       }))
     };
   },
-  decompose: async (repoPath, flags, rest) => {
+  decompose: async (repoPath, flags, rest, opts: { dispatchFn?: DispatchFn } = {}) => {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
-    if (!flags.features && !flags.featuresJson) {
-      throw new Error(
-        'spec decompose requires --features "t1;t2" OR --features-json <JSON array>.'
-      );
+
+    // Fast path: caller supplied explicit feature list — skip architect entirely.
+    if (flags.features || flags.featuresJson) {
+      const entries = parseFeatureEntries(flags);
+      const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
+      return decomposeSpec(repoPath, specId, entries);
     }
-    const entries = parseFeatureEntries(flags);
+
+    const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
+    const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+
+    // --no-architect opt-out: write audit log skip entry + exit non-zero.
+    if (flags.noArchitect) {
+      return architectOptOut(repoPath, dispatchFn);
+    }
+
+    // Neither flag: dispatch architect to produce feature list.
+    const { titles, error } = await dispatchArchitectForSpec(repoPath, specId, dispatchFn);
+    if (error) return { error };
+
     const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-    return decomposeSpec(repoPath, specId, entries);
+    return decomposeSpec(repoPath, specId, titles!);
   },
   status: async (repoPath) => {
     const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
@@ -505,12 +628,17 @@ const SPEC_HANDLERS = {
   }
 };
 
-async function runSpecSubcommand(repoPath, positionals, flags) {
+async function runSpecSubcommand(
+  repoPath,
+  positionals,
+  flags,
+  opts: { dispatchFn?: DispatchFn } = {}
+) {
   const [sub, ...rest] = positionals;
   if (!sub) throw new Error("spec requires a subcommand: add | list | decompose | status");
   const handler = SPEC_HANDLERS[sub];
   if (!handler) throw new Error(`Unknown spec subcommand: ${sub}`);
-  return handler(repoPath, flags, rest);
+  return handler(repoPath, flags, rest, opts);
 }
 
 async function runReleaseSubcommand(repoPath, positionals, flags) {
