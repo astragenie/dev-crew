@@ -388,6 +388,39 @@ test("mix of start-only and start+stop — both counted, only start-only marked 
     assert.ok(body.includes("crew:researcher"));
     assert.ok(body.includes("crew:builder"));
 });
+test("duplicate hook fires sharing transcriptPath → collapsed to one row", async () => {
+    // Real-world failure mode (observed externally): SubagentStart/Stop hook
+    // fires twice for one logical dispatch, each pair gets a distinct agent_id
+    // but both reference the same agent_transcript_path. Writer must dedupe
+    // by transcriptPath so the report does not show every agent twice with
+    // identical stats.
+    const repo = await tmpRepo("al-arw-dupe-");
+    const transcript = path.join(repo, "shared.jsonl");
+    await writeTranscript(transcript, { turns: 7 });
+    await writeAgentEvents(repo, [
+        {
+            agentType: "crew:builder",
+            agentId: "dupe-a",
+            sessionId: "sess-dupe",
+            startTs: "2026-05-24T11:00:00.000Z",
+            stopTs: "2026-05-24T11:05:00.000Z",
+            transcriptPath: transcript
+        },
+        {
+            agentType: "crew:builder",
+            agentId: "dupe-b",
+            sessionId: "sess-dupe",
+            startTs: "2026-05-24T11:00:00.000Z",
+            stopTs: "2026-05-24T11:05:00.000Z",
+            transcriptPath: transcript
+        }
+    ]);
+    const result = await writeAgentReport(repo, { sliceId: "SLICE-DUPE" });
+    assert.equal(result.agentCount, 1, "duplicate transcript collapses to one agent row");
+    const content = await fs.readFile(result.reportPath, "utf8");
+    const builderRowMatches = content.match(/\| crew:builder \|/g) ?? [];
+    assert.equal(builderRowMatches.length, 1, "table contains exactly one crew:builder row");
+});
 test("agent_type fallback — stop payload with null agent_type uses start payload's agent_type", async () => {
     const repo = await tmpRepo("al-arw-fallback-");
     const logsDir = path.join(repo, ".claude", "logs");

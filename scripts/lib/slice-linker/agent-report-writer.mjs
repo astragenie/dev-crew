@@ -87,6 +87,41 @@ function buildPairFromStart(startPayload, startTs) {
         stopHookActive: false
     };
 }
+// Collapse pairs that point at the SAME transcript file. Some hook
+// configurations emit two SubagentStart/SubagentStop event sequences for
+// one logical dispatch (each gets a distinct agent_id but the same
+// transcript path). Without dedupe the report shows every such dispatch
+// twice with identical stats. Strategy: group by transcriptPath, keep
+// the pair with the most complete data (prefer one with both timestamps;
+// else keep first; merge null timestamps from siblings into the keeper).
+function dedupePairsByTranscript(pairs) {
+    const byTranscript = new Map();
+    const noTranscript = [];
+    for (const pair of pairs) {
+        if (!pair.transcriptPath) {
+            noTranscript.push(pair);
+            continue;
+        }
+        const bucket = byTranscript.get(pair.transcriptPath) ?? [];
+        bucket.push(pair);
+        byTranscript.set(pair.transcriptPath, bucket);
+    }
+    const deduped = [];
+    for (const bucket of byTranscript.values()) {
+        if (bucket.length === 1) {
+            deduped.push(bucket[0]);
+            continue;
+        }
+        const complete = bucket.find((p) => p.startTs && p.stopTs);
+        const keeper = complete ?? bucket[0];
+        if (!keeper.startTs)
+            keeper.startTs = bucket.find((p) => p.startTs)?.startTs ?? null;
+        if (!keeper.stopTs)
+            keeper.stopTs = bucket.find((p) => p.stopTs)?.stopTs ?? null;
+        deduped.push(keeper);
+    }
+    return [...deduped, ...noTranscript];
+}
 // Correlate start and stop payloads by agent_id over the union of both
 // event streams. Stops without a matching start are included with
 // startTs: null (agent began before the slice window). Starts without a
@@ -94,6 +129,10 @@ function buildPairFromStart(startPayload, startTs) {
 // fires when the orchestrator returns control to the user, which can
 // land after slice-complete runs, so this is the common case for the
 // last-dispatched agent of a slice rather than an error.
+//
+// After pairing by agent_id, pairs are deduped by transcriptPath so that
+// duplicate hook fires (which produce distinct agent_ids referencing the
+// same dispatch) collapse to one row in the report.
 function pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimestamps) {
     const startByAgentId = new Map();
     for (let i = 0; i < startPayloads.length; i++) {
@@ -119,7 +158,7 @@ function pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimes
             pairs.push(buildPairFromStart(startEntry.payload, startEntry.ts));
         }
     }
-    return pairs;
+    return dedupePairsByTranscript(pairs);
 }
 function accumulateToolUse(block, tools, skills) {
     const toolName = block.name;
