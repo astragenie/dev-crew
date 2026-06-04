@@ -1,4 +1,4 @@
-# Repo Instructions — hero-crew-autonomous-loop
+# Repo Instructions — loop
 
 Claude Code plugin: the Wiggin-Loop methodology layer that sits on top
 of the `crew` plugin. Provides HARD RULE blocks, slice scaffold,

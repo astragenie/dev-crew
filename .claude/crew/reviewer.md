@@ -1,4 +1,4 @@
-# Repo Reviewer Instructions — hero-crew-autonomous-loop
+# Repo Reviewer Instructions — loop
 
 This repo is a Claude Code plugin. Apply these additional review gates
 for plugin-specific changes.

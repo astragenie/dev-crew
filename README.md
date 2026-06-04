@@ -1,8 +1,8 @@
 # loop
 
-[![test](https://github.com/sergeymilashico/hero-crew-autonomous-loop/actions/workflows/test.yml/badge.svg)](https://github.com/sergeymilashico/hero-crew-autonomous-loop/actions/workflows/test.yml)
-[![release](https://img.shields.io/github/v/tag/sergeymilashico/hero-crew-autonomous-loop?label=release&sort=semver)](https://github.com/sergeymilashico/hero-crew-autonomous-loop/releases)
-[![license](https://img.shields.io/github/license/sergeymilashico/hero-crew-autonomous-loop)](LICENSE)
+[![test](https://github.com/sergeymilashico/loop/actions/workflows/test.yml/badge.svg)](https://github.com/sergeymilashico/loop/actions/workflows/test.yml)
+[![release](https://img.shields.io/github/v/tag/sergeymilashico/loop?label=release&sort=semver)](https://github.com/sergeymilashico/loop/releases)
+[![license](https://img.shields.io/github/license/sergeymilashico/loop)](LICENSE)
 
 A Claude Code plugin that ships the Wiggin Loop methodology as a reusable
 layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
