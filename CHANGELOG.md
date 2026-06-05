@@ -3,6 +3,18 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.3 — 2026-06-05 — chore: SLICE-46 ceremony artifacts + version alignment
+
+### Housekeeping
+
+SLICE-46 ceremony artifacts committed (agent reports, cost reports, handoffs, run brief,
+final synthesis, pending-dispatch). FEAT-048 backlog item moved to done. SLICE_46 moved
+from pending to completed. Tag now includes CHANGELOG and full artifact trail.
+
+Full test suite: 772/772 pass.
+
+---
+
 ## v0.8.2 — 2026-06-05 — feat: architect classification tags for slices and features (FEAT-048)
 
 ### Features
