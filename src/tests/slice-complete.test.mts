@@ -325,3 +325,28 @@ test("completeSlice --skip-validation-check with reason bypasses gate", async ()
   // Best-effort badge call surfaced (may be skipped: hero-crew CLI not found in CI)
   assert.ok(result.validationSkippedBadge !== undefined);
 });
+
+// AC-1 + AC-2: updated_confidence returned and downgrades to red on hard failure
+test("completeSlice returns updated_confidence red when builderEvidence has test-fail", async () => {
+  const repo = await tmpRepo("al-builder-evidence-red-");
+  const feat = await addFeature(repo, { title: "Builder evidence red" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test",
+    builderEvidence: { status: "fail", failures: ["test-fail"] }
+  });
+  assert.equal(result.updated_confidence, "red");
+  assert.match(result.updated_confidence_reason, /test-fail/);
+});
+
+// AC-3: updated_confidence is null when no builderEvidence provided
+test("completeSlice returns updated_confidence null when no builderEvidence", async () => {
+  const repo = await tmpRepo("al-builder-evidence-null-");
+  const feat = await addFeature(repo, { title: "No builder evidence" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
+  assert.equal(result.updated_confidence, null);
+  assert.equal(result.updated_confidence_reason, null);
+});

@@ -3,6 +3,34 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.1 — 2026-06-05 — refactor: module splits + post-builder confidence (FEAT-044/045/046)
+
+### Refactors
+
+**`loop-installer.mts` split into 3 modules (FEAT-044 / SLICE-47)**
+
+`loop-installer.mts` was 533 lines (33% over the 400-line convention). Split into:
+- `loop-installer-tokens.mts` (82 lines) — `readTemplate`, `renderTemplate`, `resolveLoopPath`, `buildMandatoryDocsList`, `buildContextRulesList`, `buildTokens`
+- `loop-installer-scaffold.mts` (346 lines) — 7 scaffold write functions
+- `loop-installer.mts` trimmed to 168 lines; re-exports `buildContextRulesList` for test compat
+
+**`auto-walker.mts` gate helpers extracted to `walker-gates.mts` (FEAT-045 / SLICE-48)**
+
+`auto-walker.mts` was 490 lines, now 261 lines. Extracted to `walker-gates.mts` (234 lines):
+`compareWalkerOrder`, `checkDependsOn`, `evaluateCandidate`, `evaluateRiskGate`, `DispatchPlan` interface, `PRIORITY_ORDER`. `DispatchPlan` moved to break a potential circular import. `auto-walker.mts` re-exports `DispatchPlan` and `evaluateRiskGate` for backward compat.
+
+### Features
+
+**Post-builder confidence update in `slice complete` (FEAT-046 / SLICE-49)**
+
+`completeSlice` now accepts `opts.builderEvidence?: BuilderEvidence`. When present, `computePostBuilderConfidence` maps pass/fail/partial → green/yellow/red and appends `updated_confidence` + `updated_confidence_reason` to the return. When absent, both fields are `null`. `computeConfidence` at slice-start is unchanged.
+
+### Tests
+
+751/751 pass. 8 new tests: 6 unit tests for `computePostBuilderConfidence` branches + 2 integration tests in `slice-complete.test.mts`.
+
+---
+
 ## v0.8.0 — 2026-06-05 — feat: backlog pm-write CLI subcommand (FEAT-043)
 
 ### Features

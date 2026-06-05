@@ -64,3 +64,37 @@ function redCompoundReason(
   if (dependsOnCount > 0) return `${dependsOnCount} unresolved depends_on`;
   return null;
 }
+
+// ── Post-builder confidence signal ──────────────────────────────────────────
+// Fires after the builder subagent returns, before reviewer dispatch. Pure
+// function — no IO, no dependency on computeConfidence.
+
+export interface BuilderEvidence {
+  status: "pass" | "fail" | "partial";
+  failures?: string[];
+}
+
+// Maps builder evidence to a traffic-light confidence signal.
+// pass         → green
+// fail/partial with "test-fail" or "build-fail" → red
+// fail/partial without hard failures             → yellow
+export function computePostBuilderConfidence(evidence: BuilderEvidence): ConfidenceResult {
+  if (evidence.status === "pass") {
+    return { confidence: "green", reason: "builder reported all checks passed" };
+  }
+  const failures = evidence.failures ?? [];
+  const hasHardFail = failures.some((f) => f === "test-fail" || f === "build-fail");
+  if (hasHardFail) {
+    return {
+      confidence: "red",
+      reason: `builder reported hard failures: ${failures.join(", ")}`
+    };
+  }
+  return {
+    confidence: "yellow",
+    reason:
+      evidence.status === "partial"
+        ? "builder reported partial completion"
+        : "builder reported failure (no specific kind recorded)"
+  };
+}

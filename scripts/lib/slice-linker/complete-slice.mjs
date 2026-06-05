@@ -6,6 +6,7 @@ import { findFeatureById, moveFeature } from "../backlog-writer.mjs";
 import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "../ceremonies.mjs";
 import { markValidationSkippedBadge, tryWriteAgentReport, tryWriteCostReport, writeCrewFinalSynthesis, writeCrewHandoff } from "./crew-bridge.mjs";
+import { computePostBuilderConfidence } from "../confidence-signal.mjs";
 import { deriveValidationGate } from "../validation-gate.mjs";
 import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
@@ -250,10 +251,31 @@ async function writeCeremonyArtifacts(repoPath, { sliceId, featureId, phase, fea
     });
     return { handoff, synthesis, costReport, agentReport, sliceProgress };
 }
+// Builds the final return object for completeSlice. Extracted to keep
+// completeSlice under the cyclomatic-complexity cap.
+function buildCompleteResult({ sliceId, sliceFile, targetSlicePath, featureResult, specChanges, handoff, synthesis, costReport, agentReport, sliceProgress, validationGate, validationSkippedBadge, testAdequacyGate, builderEvidence }) {
+    const updatedConfidence = builderEvidence ? computePostBuilderConfidence(builderEvidence) : null;
+    return {
+        slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
+        feature: featureResult,
+        specStatusChanges: specChanges,
+        handoff,
+        synthesis,
+        costReport,
+        agentReport,
+        sliceProgress,
+        validationGate,
+        validationSkippedBadge,
+        testAdequacyGate,
+        updated_confidence: updatedConfidence?.confidence ?? null,
+        updated_confidence_reason: updatedConfidence?.reason ?? null,
+        nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
+    };
+}
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, opts = {}) {
-    const { config = null, keepFeatureOpen = false, forceClose = false, skipValidationCheck = null, noMarkerDrain = false, drainFn = undefined } = opts;
+    const { config = null, keepFeatureOpen = false, forceClose = false, skipValidationCheck = null, noMarkerDrain = false, drainFn = undefined, builderEvidence = null } = opts;
     if (!sliceId)
         throw new Error("completeSlice requires a sliceId.");
     const resolved = config || (await resolveConfig(repoPath));
@@ -294,10 +316,12 @@ export async function completeSlice(repoPath, sliceId, opts = {}) {
     // Drain stale pending-dispatch markers — async / fire-and-forget. Must not
     // block the close ceremony. Drain failure is isolated via audit log.
     fireMarkerDrain(repoPath, { noMarkerDrain, drainFn });
-    return {
-        slice: { id: sliceId, from: sliceFile, to: targetSlicePath },
-        feature: featureResult,
-        specStatusChanges: specChanges,
+    return buildCompleteResult({
+        sliceId,
+        sliceFile,
+        targetSlicePath,
+        featureResult,
+        specChanges,
         handoff,
         synthesis,
         costReport,
@@ -306,8 +330,8 @@ export async function completeSlice(repoPath, sliceId, opts = {}) {
         validationGate,
         validationSkippedBadge,
         testAdequacyGate,
-        nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
-    };
+        builderEvidence
+    });
 }
 // Builds the doc-writer prompt encoding the multi-output decision tree.
 // Receives absolute paths so doc-writer can open the files it needs.

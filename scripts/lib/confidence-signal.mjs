@@ -41,3 +41,26 @@ function redCompoundReason(acCount, recentGradeAvg, dependsOnCount) {
         return `${dependsOnCount} unresolved depends_on`;
     return null;
 }
+// Maps builder evidence to a traffic-light confidence signal.
+// pass         → green
+// fail/partial with "test-fail" or "build-fail" → red
+// fail/partial without hard failures             → yellow
+export function computePostBuilderConfidence(evidence) {
+    if (evidence.status === "pass") {
+        return { confidence: "green", reason: "builder reported all checks passed" };
+    }
+    const failures = evidence.failures ?? [];
+    const hasHardFail = failures.some((f) => f === "test-fail" || f === "build-fail");
+    if (hasHardFail) {
+        return {
+            confidence: "red",
+            reason: `builder reported hard failures: ${failures.join(", ")}`
+        };
+    }
+    return {
+        confidence: "yellow",
+        reason: evidence.status === "partial"
+            ? "builder reported partial completion"
+            : "builder reported failure (no specific kind recorded)"
+    };
+}
