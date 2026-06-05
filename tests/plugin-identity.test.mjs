@@ -15,6 +15,15 @@ test("compareSemver orders versions correctly", () => {
 test("MIN_CREW_VERSION is a parseable semver string", () => {
     assert.match(MIN_CREW_VERSION, /^\d+\.\d+\.\d+$/);
 });
+test("findCrewCli sort: semver desc puts 0.13.1 before 0.9.0 (lex sort regression guard)", () => {
+    // Lex sort bug: "0.9.0" > "0.13.1" alphabetically because "9" > "1".
+    // findCrewCli must use compareSemver sort so the real newest version wins.
+    const versions = ["0.9.0", "0.13.1", "0.10.0", "0.3.8"];
+    const semverDesc = [...versions].sort((a, b) => compareSemver(b, a));
+    assert.equal(semverDesc[0], "0.13.1", "semver sort must place 0.13.1 first");
+    const lexDesc = [...versions].sort().reverse();
+    assert.equal(lexDesc[0], "0.9.0", "lex sort bug: 0.9.0 wins — confirms we must use semver sort");
+});
 test("getCrewVersion reads plugin.json adjacent to a crew CLI path", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "crew-ver-"));
     const scriptsDir = path.join(tmp, "scripts");

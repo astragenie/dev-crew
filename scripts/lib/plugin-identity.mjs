@@ -56,7 +56,7 @@ export async function findCrewCli() {
     const pluginName = "crew";
     const cacheDir = path.join(homedir, ".claude", "plugins", "cache", marketplaceName, pluginName);
     try {
-        const versions = (await fs.readdir(cacheDir)).sort().reverse();
+        const versions = (await fs.readdir(cacheDir)).sort((a, b) => compareSemver(b, a));
         for (const v of versions) {
             const candidate = path.join(cacheDir, v, "scripts", "crew.mjs");
             try {

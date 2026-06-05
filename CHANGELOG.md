@@ -3,6 +3,22 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.8 — 2026-06-05 — hotfix: findCrewCli semver sort
+
+### Bug fixes
+
+**`findCrewCli` lexicographic sort returned wrong version (P0 hotfix)**
+
+`findCrewCli` used `.sort().reverse()` (lexicographic) to pick the newest crew version. With both `0.9.0` and `0.13.1` installed, lex sort picked `0.9.0` because `"9" > "1"` character-by-character. This caused `checkOrchestrateSliceSupport` to read crew `0.9.0` and return `false`, silently falling back to the legacy builder dispatch even when crew `0.13.1` (which ships `/crew:orchestrate-slice`) is installed — breaking FEAT-047 entirely.
+
+Fixed by replacing `.sort().reverse()` with `.sort((a, b) => compareSemver(b, a))`. Regression test added to `plugin-identity.test.mts` documenting both the bug (lex sort picks `0.9.0`) and the fix (semver sort picks `0.13.1`).
+
+### Tests
+
+735/735 pass.
+
+---
+
 ## v0.7.7 — 2026-06-05 — /crew:orchestrate-slice as default dispatch + inline AC prefix detection
 
 ### Features
