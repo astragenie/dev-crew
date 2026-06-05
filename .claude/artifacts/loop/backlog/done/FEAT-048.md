@@ -1,6 +1,6 @@
 ---
 id: FEAT-048
-status: in-progress
+status: done
 priority: P1
 category: workflow
 target_release: null
@@ -18,6 +18,8 @@ pm_technical_risk: 0.55
 pm_dependency_depth: 0.25
 triage_notes: "P1 workflow — orchestrate-slice ladder routes incorrectly for all features lacking tags; affects all repos on v0.7.7+. autonomous_safe: false — touches sliceFromFeature dispatch path, human review required. PM: high strategic alignment (fixes classification gap shipped in v0.7.7), moderate risk (sliceFromFeature dispatch path)"
 started_at: 2026-06-05
+slices_complete: [SLICE-46]
+completed_at: 2026-06-05
 ---
 # FEAT-048: Architect classification tags for features and slices
 
