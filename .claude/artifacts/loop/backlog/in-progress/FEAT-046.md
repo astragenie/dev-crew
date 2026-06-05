@@ -1,16 +1,23 @@
 ---
 id: FEAT-046
-status: triaged
+status: in-progress
 priority: P3
 category: feature
 target_release: null
 created: 2026-06-05
 updated: 2026-06-05
 depends_on: []
-slices: []
+slices: [SLICE-49]
 derived_from: null
 autonomous_safe: true
-triage_notes: "autonomous_safe inferred: AC count=5+ (inline prefix), derived_from=null → true"
+triage_notes: "debatable value — builder callback confidence update, low unless observer tooling consumes it"
+pm_customer_impact: 0.25
+pm_effort_estimate: 0.35
+pm_strategic_alignment: 0.3
+pm_technical_risk: 0.25
+pm_dependency_depth: 0.1
+composite_score: 0.4275
+started_at: 2026-06-05
 ---
 # FEAT-046: Confidence signal mid-execution update after builder returns (SLICE-B of FEAT-010)
 
