@@ -3,6 +3,24 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.9 — 2026-06-05 — fix: auto-walker passes config to stop-condition check
+
+### Bug fixes
+
+**Auto-walker ignored `costStopThreshold` from loop.json in stop-condition evaluations**
+
+`walkCandidates` called `checkStopConditions(repoPath)` without forwarding the resolved config. Inside `applyCostAlertSignal`, the threshold expression `config?.loop?.costStopThreshold || 1` resolved to `1` (default) instead of the configured value (e.g. 15), so any repo with ≥ 1 high-severity cost alert would halt the walker after its first plan. Fix: `walkCandidates` now accepts a `config` param (default `null`) and forwards `{ config }` to `checkStopConditions`. `runAutoWalker` passes `resolvedConfig` through.
+
+### Backlog
+
+PM scores patched for FEAT-043 (0.84), FEAT-044 (0.56), FEAT-045 (0.55), FEAT-048 (0.62).
+
+### Tests
+
+735/735 pass.
+
+---
+
 ## v0.7.8 — 2026-06-05 — hotfix: findCrewCli semver sort
 
 ### Bug fixes

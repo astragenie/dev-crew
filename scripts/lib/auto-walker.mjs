@@ -167,7 +167,7 @@ function evaluateCandidate(entry, autoMode, doneSet, allKnownIds) {
  * @param allKnownIds       SLICE-41: Set of all known backlog IDs for missing-dep detection.
  * @returns                 { skipped, plans, halted, stopReason }
  */
-async function walkCandidates(candidates, maxFeatures, autoMode, costStopThreshold, repoPath, doneSet, allKnownIds) {
+async function walkCandidates(candidates, maxFeatures, autoMode, costStopThreshold, repoPath, doneSet, allKnownIds, config = null) {
     const skipped = [];
     const plans = [];
     let halted = false;
@@ -190,7 +190,7 @@ async function walkCandidates(candidates, maxFeatures, autoMode, costStopThresho
             break;
         }
         // Check stop conditions after each plan to allow early halt.
-        const stopResult = await checkStopConditions(repoPath);
+        const stopResult = await checkStopConditions(repoPath, { config });
         if (stopResult.shouldStop) {
             halted = true;
             stopReason = stopResult.reasons?.[0] ?? "stop condition fired";
@@ -242,7 +242,7 @@ export async function runAutoWalker(repoPath, options = {}) {
     const doneEntries = filterBacklog(allEntries, { status: "done" });
     const doneSet = new Set(doneEntries.map((e) => String(e.id)));
     const allKnownIds = new Set(allEntries.map((e) => String(e.id)));
-    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, costStopThreshold, repoPath, doneSet, allKnownIds);
+    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, costStopThreshold, repoPath, doneSet, allKnownIds, resolvedConfig);
     // SLICE-B: Write auto-run summary artifact (best-effort; don't fail if it errors)
     let summaryPath;
     try {

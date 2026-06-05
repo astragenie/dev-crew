@@ -10,7 +10,13 @@ depends_on: []
 slices: []
 derived_from: null
 autonomous_safe: true
-triage_notes: "autonomous_safe inferred: AC count=5+ (inline prefix), derived_from=null → true"
+composite_score: 0.55
+pm_customer_impact: 0.25
+pm_effort_estimate: 0.25
+pm_strategic_alignment: 0.50
+pm_technical_risk: 0.08
+pm_dependency_depth: 0.05
+triage_notes: "P2 tech-debt — 487 lines, gate helpers are I/O-free making extraction clean, pre-emptive hygiene"
 ---
 # FEAT-045: Split auto-walker.mts gate helpers to walker-gates.mts (487 lines near 400-line convention)
 

@@ -10,7 +10,13 @@ depends_on: []
 slices: []
 derived_from: null
 autonomous_safe: false
-triage_notes: "P1 workflow — orchestrate-slice ladder routes incorrectly for all features lacking tags; affects all repos on v0.7.7+. autonomous_safe: false — touches sliceFromFeature dispatch path, human review required"
+composite_score: 0.62
+pm_customer_impact: 0.65
+pm_effort_estimate: 0.55
+pm_strategic_alignment: 0.78
+pm_technical_risk: 0.55
+pm_dependency_depth: 0.25
+triage_notes: "P1 workflow — orchestrate-slice ladder routes incorrectly for all features lacking tags; affects all repos on v0.7.7+. autonomous_safe: false — touches sliceFromFeature dispatch path, human review required. PM: high strategic alignment (fixes classification gap shipped in v0.7.7), moderate risk (sliceFromFeature dispatch path)"
 ---
 # FEAT-048: Architect classification tags for features and slices
 

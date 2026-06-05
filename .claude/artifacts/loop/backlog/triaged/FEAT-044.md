@@ -10,7 +10,13 @@ depends_on: []
 slices: []
 derived_from: null
 autonomous_safe: true
-triage_notes: "autonomous_safe inferred: AC count=5+ (inline prefix), derived_from=null → true"
+composite_score: 0.56
+pm_customer_impact: 0.30
+pm_effort_estimate: 0.30
+pm_strategic_alignment: 0.50
+pm_technical_risk: 0.10
+pm_dependency_depth: 0.05
+triage_notes: "P2 tech-debt — 533 lines confirmed, pure structural split, no behavior change, no customer-visible impact"
 ---
 # FEAT-044: Split loop-installer.mts — extract token helpers and scaffold writers (533 lines over 400-line convention)
 

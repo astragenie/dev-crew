@@ -10,7 +10,13 @@ depends_on: []
 slices: []
 derived_from: null
 autonomous_safe: true
-triage_notes: "autonomous_safe inferred: AC count=5+ (inline prefix), derived_from=null → true"
+composite_score: 0.84
+pm_customer_impact: 0.82
+pm_effort_estimate: 0.20
+pm_strategic_alignment: 0.85
+pm_technical_risk: 0.10
+pm_dependency_depth: 0.05
+triage_notes: "P1 bugfix — entire PM triage loop silently broken; composite_score=0 ranking defect proven; pm-write subcommand missing; effort low (computeCompositePriority already exists)"
 ---
 # FEAT-043: Implement backlog pm-write CLI subcommand for PM score write-back
 

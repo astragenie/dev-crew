@@ -264,7 +264,8 @@ async function walkCandidates(
   costStopThreshold: number | undefined,
   repoPath: string,
   doneSet: Set<string>,
-  allKnownIds: Set<string>
+  allKnownIds: Set<string>,
+  config: any = null
 ): Promise<{
   skipped: SkippedEntry[];
   plans: DispatchPlan[];
@@ -297,7 +298,7 @@ async function walkCandidates(
     }
 
     // Check stop conditions after each plan to allow early halt.
-    const stopResult = await checkStopConditions(repoPath);
+    const stopResult = await checkStopConditions(repoPath, { config });
     if (stopResult.shouldStop) {
       halted = true;
       stopReason = stopResult.reasons?.[0] ?? "stop condition fired";
@@ -366,7 +367,8 @@ export async function runAutoWalker(
     costStopThreshold,
     repoPath,
     doneSet,
-    allKnownIds
+    allKnownIds,
+    resolvedConfig
   );
 
   // SLICE-B: Write auto-run summary artifact (best-effort; don't fail if it errors)
