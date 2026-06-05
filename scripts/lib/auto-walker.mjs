@@ -11,8 +11,8 @@ const PRIORITY_ORDER = ["P0", "P1", "P2", "P3"];
  *   3. pm_strategic_fit DESC (default 0)
  */
 function compareWalkerOrder(a, b) {
-    const scoreA = Number(a.frontmatter.composite_score) || 0;
-    const scoreB = Number(b.frontmatter.composite_score) || 0;
+    const scoreA = Math.min(Number(a.frontmatter.composite_score) || 0, 1.0);
+    const scoreB = Math.min(Number(b.frontmatter.composite_score) || 0, 1.0);
     if (scoreB !== scoreA)
         return scoreB - scoreA;
     const prA = PRIORITY_ORDER.indexOf(a.frontmatter.priority || "P3");

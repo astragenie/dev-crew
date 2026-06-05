@@ -305,6 +305,44 @@ test("SLICE-C: config-provided costStopThreshold read from loop.json → applied
     assert.equal(result.orchConfig.costStopThreshold, 1, "orchConfig.costStopThreshold must reflect config value");
 });
 // ---------------------------------------------------------------------------
+// FEAT-042 Tests — composite_score out-of-range clamping
+// ---------------------------------------------------------------------------
+test("FEAT-042 AC-2: legacy score 6 clamps to 1.0 — equal to score 1.0, tiebreak by priority", async () => {
+    const repo = await tmpRepo("aw-score-clamp-");
+    // score 6 clamps to 1.0; score 1.0 stays 1.0 — they tie, priority wins
+    const legacy = await addFeature(repo, { title: "Legacy scored P2" });
+    const current = await addFeature(repo, { title: "Current scored P1" });
+    await triageFeature(legacy.filePath, { autonomous_safe: true, composite_score: 6, priority: "P2" });
+    await triageFeature(current.filePath, { autonomous_safe: true, composite_score: 1.0, priority: "P1" });
+    const result = await runAutoWalker(repo, { dryRun: true });
+    assert.equal(result.plans.length, 2, "both plans must be returned");
+    assert.equal(result.plans[0].featureId, current.id, "P1 (score 1.0) must beat P2 (score 6 clamped to 1.0) on priority tiebreak");
+});
+test("FEAT-042 AC-3/AC-5: in-range scores 0.0-1.0 sort correctly unchanged", async () => {
+    const repo = await tmpRepo("aw-score-inrange-");
+    const low = await addFeature(repo, { title: "Low score" });
+    const mid = await addFeature(repo, { title: "Mid score" });
+    const high = await addFeature(repo, { title: "High score" });
+    await triageFeature(low.filePath, { autonomous_safe: true, composite_score: 0.2 });
+    await triageFeature(mid.filePath, { autonomous_safe: true, composite_score: 0.5 });
+    await triageFeature(high.filePath, { autonomous_safe: true, composite_score: 0.9 });
+    const result = await runAutoWalker(repo, { dryRun: true });
+    assert.equal(result.plans.length, 3);
+    assert.equal(result.plans[0].featureId, high.id, "0.9 must be first");
+    assert.equal(result.plans[1].featureId, mid.id, "0.5 must be second");
+    assert.equal(result.plans[2].featureId, low.id, "0.2 must be third");
+});
+test("FEAT-042 AC-4: scores 1.1 and 1.0 both clamp to 1.0 → tiebreak by priority", async () => {
+    const repo = await tmpRepo("aw-score-tiebreak-");
+    const a = await addFeature(repo, { title: "Score 1.1 P2" });
+    const b = await addFeature(repo, { title: "Score 1.0 P1" });
+    await triageFeature(a.filePath, { autonomous_safe: true, composite_score: 1.1, priority: "P2" });
+    await triageFeature(b.filePath, { autonomous_safe: true, composite_score: 1.0, priority: "P1" });
+    const result = await runAutoWalker(repo, { dryRun: true });
+    assert.equal(result.plans.length, 2);
+    assert.equal(result.plans[0].featureId, b.id, "P1 must win tiebreak after both clamp to 1.0");
+});
+// ---------------------------------------------------------------------------
 // SLICE-41 / FEAT-040 Tests — shared pre-branch filter (deferred + depends_on)
 // ---------------------------------------------------------------------------
 test("FEAT-040 AC-7: autoSafe=true with all deps done → planned", async () => {

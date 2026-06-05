@@ -16,8 +16,8 @@ function compareWalkerOrder(
   a: { frontmatter: Record<string, any> },
   b: { frontmatter: Record<string, any> }
 ): number {
-  const scoreA = Number(a.frontmatter.composite_score) || 0;
-  const scoreB = Number(b.frontmatter.composite_score) || 0;
+  const scoreA = Math.min(Number(a.frontmatter.composite_score) || 0, 1.0);
+  const scoreB = Math.min(Number(b.frontmatter.composite_score) || 0, 1.0);
   if (scoreB !== scoreA) return scoreB - scoreA;
 
   const prA = PRIORITY_ORDER.indexOf(a.frontmatter.priority || "P3");
