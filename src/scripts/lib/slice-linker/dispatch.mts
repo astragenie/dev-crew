@@ -55,7 +55,8 @@ export function buildDispatchInstruction({
   sliceContent = null,
   featureExcerpt = null,
   featurePath = null,
-  dispatchLimits = null as any
+  dispatchLimits = null as any,
+  useOrchestrateSlice = false
 }: {
   sliceId: string;
   title: string;
@@ -67,7 +68,11 @@ export function buildDispatchInstruction({
   featureExcerpt?: string | null;
   featurePath?: string | null;
   dispatchLimits?: any;
+  useOrchestrateSlice?: boolean;
 }) {
+  if (useOrchestrateSlice) {
+    return buildOrchestrateSliceInstruction(sliceId);
+  }
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
@@ -80,6 +85,18 @@ export function buildDispatchInstruction({
   appendProgressSignals(lines);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
   return lines.join("\n");
+}
+
+function buildOrchestrateSliceInstruction(sliceId: string): string {
+  return [
+    `Invoke /crew:orchestrate-slice to run the full specialist ladder for this slice:`,
+    ``,
+    `> /crew:orchestrate-slice --id ${sliceId}`,
+    ``,
+    `The command dispatches specialists in sequence from the main thread (architect if needed,`,
+    `builder, reviewer, validator, copywriter, doc-writer). All dispatches are visible in this`,
+    `window. When the ladder completes, close with /loop:slice complete --id ${sliceId}.`
+  ].join("\n");
 }
 
 // Locates the slice file under slicesRoot and reads frontmatter + objective

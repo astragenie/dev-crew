@@ -70,17 +70,40 @@ test("startSlice tolerates missing plan and missing slice file", async () => {
     // best-effort dashboard write succeeds even with no plan.
     assert.ok(result.sliceProgress && !result.sliceProgress.error);
 });
-test("startSlice emits dispatchInstruction by default", async () => {
+test("startSlice emits dispatchInstruction by default (legacy crew:builder fallback)", async () => {
     const repo = await tmpRepo("al-slice-start-dispatch-");
     await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
     const feat = await addFeature(repo, { title: "Test feature" });
     const { slice } = await sliceFromFeature(repo, feat.id);
     await fillPlaceholderACs(slice.path);
-    const result = await startSlice(repo, slice.id);
+    // Force old crew version to get deterministic legacy path regardless of installed crew.
+    const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
     assert.ok(result.dispatchInstruction, "dispatchInstruction should be present by default");
     assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
     assert.match(result.dispatchInstruction, new RegExp(slice.id));
     assert.match(result.dispatchInstruction, /parent loop drives those gates/);
+    assert.match(result.nextAction, /Dispatch crew:builder subagent/);
+});
+test("FEAT-047 AC-1: slice-start emits orchestrate-slice instruction when crew >= 0.10.0", async () => {
+    const repo = await tmpRepo("al-slice-start-orchestrate-");
+    await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+    const feat = await addFeature(repo, { title: "Orchestrate feature" });
+    const { slice } = await sliceFromFeature(repo, feat.id);
+    await fillPlaceholderACs(slice.path);
+    const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.10.0" });
+    assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+    assert.match(result.dispatchInstruction, /\/crew:orchestrate-slice/, "instruction must reference /crew:orchestrate-slice");
+    assert.match(result.dispatchInstruction, new RegExp(slice.id));
+    assert.match(result.nextAction, /\/crew:orchestrate-slice/, "nextAction must reference /crew:orchestrate-slice");
+});
+test("FEAT-047 AC-3: falls back to crew:builder when crew < orchestrate-slice min version", async () => {
+    const repo = await tmpRepo("al-slice-start-fallback-");
+    await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+    const feat = await addFeature(repo, { title: "Fallback feature" });
+    const { slice } = await sliceFromFeature(repo, feat.id);
+    await fillPlaceholderACs(slice.path);
+    const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.9" });
+    assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
     assert.match(result.nextAction, /Dispatch crew:builder subagent/);
 });
 test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-038)", async () => {
@@ -89,7 +112,8 @@ test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-
     const feat = await addFeature(repo, { title: "Visibility feature" });
     const { slice } = await sliceFromFeature(repo, feat.id);
     await fillPlaceholderACs(slice.path);
-    const result = await startSlice(repo, slice.id);
+    // Use legacy crew version so the instruction contains the builder prompt body with progress signals.
+    const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
     assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
     // Header for the new block
     assert.match(result.dispatchInstruction, /## Progress signals/, "progress signals section header missing");

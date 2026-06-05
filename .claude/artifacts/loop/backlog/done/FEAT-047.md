@@ -1,6 +1,6 @@
 ---
 id: FEAT-047
-status: triaged
+status: done
 priority: P0
 category: workflow
 target_release: null
@@ -11,6 +11,7 @@ slices: []
 derived_from: null
 autonomous_safe: false
 triage_notes: "autonomous_safe: false — touches dispatch critical path; human review required per FEAT notes"
+completed_at: 2026-06-05
 ---
 # FEAT-047: Wire /crew:orchestrate-slice as default dispatchInstruction in slice-start
 

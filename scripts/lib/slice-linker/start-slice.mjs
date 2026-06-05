@@ -11,6 +11,7 @@ import { runPlanPreflight } from "../slice-plan.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
 import { detectAcceptanceCriteria } from "../backlog-triage.mjs";
 import { computeConfidence } from "../confidence-signal.mjs";
+import { checkOrchestrateSliceSupport } from "../plugin-identity.mjs";
 function computeRecentGradeAvg(scores) {
     if (!scores || scores.length === 0)
         return null;
@@ -83,7 +84,7 @@ async function runSliceStartGates(sliceId, content, repoPath, config) {
 // `/crew:build` (per Dispatch Discipline HARD RULE in rules.md). Pass
 // dispatch: false for manual / debugging invocations where the agent
 // is doing the slice work in-conversation.
-export async function startSlice(repoPath, sliceId, { config = null, goal = null, dispatch = true } = {}) {
+export async function startSlice(repoPath, sliceId, { config = null, goal = null, dispatch = true, _crewVersionOverride = undefined } = {}) {
     if (!sliceId)
         throw new Error("startSlice requires a sliceId.");
     const resolved = config || (await resolveConfig(repoPath));
@@ -105,6 +106,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
     });
     const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
     const { confidence, confidenceReason, requiresApprovalGate } = await resolveFeatureSignals(repoPath, featureId, resolved, ctx.content ?? "", recentGradeAvg, dispatch);
+    const useOrchestrateSlice = await checkOrchestrateSliceSupport(_crewVersionOverride);
     const result = buildStartSliceReturn({
         sliceId,
         title,
@@ -127,7 +129,8 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         planPreflight: planPreflight ?? null,
         requiresApprovalGate,
         confidence,
-        confidenceReason
+        confidenceReason,
+        useOrchestrateSlice
     });
     await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
     return result;
@@ -181,11 +184,17 @@ async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
     const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
     return { activePlan, title };
 }
+function resolveActivePlanSummary(activePlan) {
+    return activePlan.planPath ? { source: activePlan.source, path: activePlan.planPath } : null;
+}
 // Compute nextAction text based on requiresApprovalGate, dispatch, and planPreflight.
 // Extracted to keep buildStartSliceReturn under the eslint complexity cap.
-function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight) {
+function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight, useOrchestrateSlice = false) {
     if (requiresApprovalGate) {
         return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:builder for ${sliceId}.`;
+    }
+    if (dispatch && useOrchestrateSlice) {
+        return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
     }
     if (dispatch) {
         return `Dispatch crew:builder subagent for ${sliceId}; then dispatch crew:reviewer (and crew:validator if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
@@ -193,7 +202,7 @@ function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPrefligh
     return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }
 // Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.
-function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits) {
+function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits, useOrchestrateSlice = false) {
     return dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -205,18 +214,17 @@ function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPat
             sliceContent,
             featureExcerpt,
             featurePath,
-            dispatchLimits
+            dispatchLimits,
+            useOrchestrateSlice
         })
         : null;
 }
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
-function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false, confidence = null, confidenceReason = null }) {
-    const dispatchInstruction = resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits);
-    const activePlanSummary = activePlan.planPath
-        ? { source: activePlan.source, path: activePlan.planPath }
-        : null;
-    const nextAction = computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight);
+function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false, confidence = null, confidenceReason = null, useOrchestrateSlice = false }) {
+    const dispatchInstruction = resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits, useOrchestrateSlice);
+    const activePlanSummary = resolveActivePlanSummary(activePlan);
+    const nextAction = computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight, useOrchestrateSlice);
     return {
         slice: { id: sliceId, title },
         activePlan: activePlanSummary,

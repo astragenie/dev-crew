@@ -27,7 +27,10 @@ function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt,
 function appendProgressSignals(lines) {
     lines.push("", "## Progress signals", "", "Emit two advisory line-tags so the parent orchestrator has early visibility into your mode choice and per-AC progress. Advisory only — parent degrades gracefully on absence.", "", "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:builder for src/foo/`.", "- `[CHECKPOINT] AC-<N>: <pass|fail|skip> — <≤80 char note>` — emit one per AC AFTER the AC is verified. Status `fail` is the parent's interrupt signal; status `skip` carries a reason in the note.");
 }
-export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, dispatchLimits = null }) {
+export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, dispatchLimits = null, useOrchestrateSlice = false }) {
+    if (useOrchestrateSlice) {
+        return buildOrchestrateSliceInstruction(sliceId);
+    }
     const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
     const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
     const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
@@ -40,6 +43,17 @@ export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, 
     appendProgressSignals(lines);
     appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
     return lines.join("\n");
+}
+function buildOrchestrateSliceInstruction(sliceId) {
+    return [
+        `Invoke /crew:orchestrate-slice to run the full specialist ladder for this slice:`,
+        ``,
+        `> /crew:orchestrate-slice --id ${sliceId}`,
+        ``,
+        `The command dispatches specialists in sequence from the main thread (architect if needed,`,
+        `builder, reviewer, validator, copywriter, doc-writer). All dispatches are visible in this`,
+        `window. When the ladder completes, close with /loop:slice complete --id ${sliceId}.`
+    ].join("\n");
 }
 // Locates the slice file under slicesRoot and reads frontmatter + objective
 // text. Returns null fields when the slice file is missing — callers fall
