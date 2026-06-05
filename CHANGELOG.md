@@ -3,6 +3,21 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.6 — 2026-06-05 — chore: relaxed release ceremony (validator no longer locks marketplace.json version)
+
+### Tooling
+
+`validate-manifests.mjs` no longer requires `plugin.json.version` to equal
+`marketplace.json.plugins[loop].version`. Loop's own marketplace.json is
+consumed by nobody remote (canonical consumer is hero-crew's parent
+marketplace). Releases now require bumping only `plugin.json` + the
+hero-crew pointer; marketplace.json drift is allowed.
+
+This release exists to validate the relaxed ceremony end-to-end —
+plugin.json bumped to 0.8.6, marketplace.json left at 0.8.5.
+
+---
+
 ## v0.8.5 — 2026-06-05 — fix(commands): /loop:backlog-enrich runs inline, not via broken marker CLI
 
 ### Fixes
