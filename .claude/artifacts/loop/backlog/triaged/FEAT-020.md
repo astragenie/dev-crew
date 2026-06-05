@@ -29,6 +29,9 @@ triage_notes: "PM re-scored 2026-06-05 for scale normalization: prior composite_
 github_issue: 22
 github_milestone: 2
 phase: 2
+tags: [infra, workflow]
+needs_contract: true
+needs_ux: false
 ---
 # FEAT-020: Async hierarchical subagent dispatch
 

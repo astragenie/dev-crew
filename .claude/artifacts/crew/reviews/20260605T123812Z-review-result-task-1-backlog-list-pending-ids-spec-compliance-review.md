@@ -1,0 +1,32 @@
+# Review Result: Task 1: backlog list-pending-ids — spec compliance review
+
+- Created: 2026-06-05T12:38:12.182Z
+- Reviewer: reviewer
+- Decision: approved_with_notes
+- Summary: Implementation is spec-compliant on all seven checked steps; the runBacklogAdd extraction is legitimate and one minor test deviation is behaviorally equivalent.
+- Evidence Checked:
+  - Step 1.1: test file matches spec exactly (imports
+  - tmpRepo helper
+  - all 3 test cases present). Step 1.3: helper body is character-for-character identical to spec. Step 1.5: list-pending-ids branch added in runBacklogSubcommand
+  - co-located with triage branch as instructed. Step 1.6: main() prints JSON.stringify(result) to stdout and resolves --repo via parseArgs
+  - exit-0 path confirmed. Step 1.7: git status confirms src/scripts/lib/backlog-list-ids.mts
+  - src/tests/backlog-list-ids.test.mts
+  - src/scripts/loop.mts staged. Step 1.8: no commit present — correct
+  - gated on user approval. runBacklogAdd extraction: CLAUDE.md states reduce complexity by extracting helpers
+  - not suppressing; this is textbook application of the rule. The spec says keep complexity <=15 after adding the new branch — extraction is the only compliant path. One test deviation: spec uses path.join(repo
+  - docs/backlog/pending
+  - a.id+.md) as moveFeature first arg; impl uses a.filePath. addFeature returns filePath = path.join(root
+  - pending
+  - id+.md)
+  - which is identical. Behaviorally equivalent.
+- Files Reviewed:
+  - src/scripts/lib/backlog-list-ids.mts
+  - src/tests/backlog-list-ids.test.mts
+  - src/scripts/loop.mts
+  - scripts/lib/backlog-list-ids.mjs
+  - scripts/loop.mjs
+  - tests/backlog-list-ids.test.mjs
+- Test Adequacy: 3 unit tests present matching spec exactly: sorted-return, exclusion-of-non-pending, empty-case. TDD gate: tests are in a separate file created for this feature; spec prescribed them before implementation (step 1.1 before 1.3). All 3 cases test the described behavior.
+- Risks: listBacklog uses a process-scoped in-memory cache (cache.mts). For this CLI subcommand invoked in a single process call, the cache is benign. Not a spec deviation, but worth noting if the helper is ever called from a long-running process that also mutates backlog state.
+- Required Follow-up: Proceed to Task 2 (pm-write FEAT-id existence guard). No rework required on Task 1.
+
