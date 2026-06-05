@@ -7,7 +7,7 @@ priority: P2
 target_release: null
 requires_validation: false
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-05
 completed_at: 2026-06-04
 ---
 # SLICE-36: static confidence signal at slice-start (FEAT-010 SLICE-A)

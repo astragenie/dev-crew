@@ -1,11 +1,11 @@
 ---
 id: FEAT-010
-status: in-progress
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-06-04
+updated: 2026-06-05
 depends_on: []
 slices: [SLICE-36]
 derived_from: null
@@ -23,6 +23,8 @@ github_issue: 15
 github_milestone: 2
 phase: 2
 started_at: 2026-06-04
+slices_complete: [SLICE-36]
+completed_at: 2026-06-05
 ---
 # FEAT-010: Confidence reporting per slice (traffic-light signal)
 

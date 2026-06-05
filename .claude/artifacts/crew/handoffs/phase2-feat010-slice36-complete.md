@@ -5,7 +5,7 @@ owner: lead
 slice: SLICE-36
 feature: FEAT-010
 phase: 2
-created_at: 2026-06-04
+created_at: 2026-06-05
 confidence: high
 next_handoff: grade-and-continue
 ---
@@ -25,6 +25,7 @@ Slice SLICE-36 closed with acceptance criteria PASS. Capture lessons + decisions
 - Any extracted `.claude/artifacts/loop/decisions/DEC-NNN.md` files
 ## Changed files / evidence
 - slice file (completed): `.claude/artifacts/loop/ai-loop/slices/completed/SLICE_36_CONFIDENCE-REPORTING-PER-SLICE-TRAFFIC-LIGHT-SIGNAL.md`
+- feature file (done): `.claude/artifacts/loop/backlog/done/FEAT-010.md`
 ## Confidence
 High — slice + feature moves atomic; spec reconciliation idempotent.
 ## Risks or open questions

@@ -1,7 +1,7 @@
 ---
 id: FEAT-007
 status: pending
-priority: null
+priority: P0
 category: workflow
 target_release: null
 created: 2026-06-05
