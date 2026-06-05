@@ -1,7 +1,7 @@
 {
-  "name": "astra",
+  "name": "loop",
   "metadata": {
-    "description": "Development marketplace for the loop Claude Code plugin. The plugin is also registered in the astra marketplace (parent repo) so a single install picks up both crew and loop."
+    "description": "Standalone marketplace for the loop Claude Code plugin. Add this marketplace to install loop directly, decoupled from the astra (hero-crew) marketplace."
   },
   "owner": {
     "name": "shishkosv"
@@ -10,8 +10,11 @@
     {
       "name": "loop",
       "description": "Wiggin-Loop methodology layer for Claude Code with HARD RULE blocks, slice scaffold, and phase-gate runner",
-      "version": "0.8.5",
-      "source": "./",
+      "version": "0.8.7",
+      "source": {
+        "source": "github",
+        "repo": "sergeymilashico/loop"
+      },
       "author": {
         "name": "astra"
       }

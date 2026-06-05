@@ -3,6 +3,67 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.9.0 — TBD
+
+### Breaking changes
+
+- `/loop:backlog-triage` (regex triage) public command removed.
+- `/loop:pm-triage` renamed to `/loop:triage` and now PM-first with a regex
+  fallback on PM error, budget exceed, or output validation fail.
+- The CLI subcommand `node scripts/loop.mjs backlog triage` is unchanged and
+  is now invoked only as the internal fallback. Direct callers (CI scripts,
+  cron jobs) keep working.
+
+### Added
+
+- `node scripts/loop.mjs backlog list-pending-ids` — deterministic FEAT-id
+  enumeration. Used by the triage skill to hand PM an explicit id list so
+  fabricated ids are structurally impossible to write.
+- `backlog pm-write` rejects `--id` values not found in
+  `pending/`/`triaged/`/`in-progress/` — second-line defense against
+  fabricated-id pollution.
+- `loop.json` keys: `loop.triageBudgetUsdPerBatch` (default 5.0),
+  `loop.triageBudgetTokensPerBatch` (default 500000),
+  `loop.triageFallbackOnBudgetExceeded` (default true).
+- Schema parity: regex-fallback triage now writes all five `pm_*` dimension
+  keys (0.5 defaults) so downstream readers do not branch on triage path.
+
+---
+
+## v0.8.7 — 2026-06-05 — chore: standalone marketplace — decouple loop release from hero-crew
+
+### Breaking change to install path
+
+Loop now ships from its own marketplace at `github:sergeymilashico/loop`,
+independent of the astra (hero-crew) marketplace. New install command:
+
+```
+/plugin marketplace add https://github.com/sergeymilashico/loop
+/plugin install loop@loop
+```
+
+Previously: `/plugin install loop@astra` after adding the hero-crew
+marketplace. That entry was removed from hero-crew's marketplace.json in
+the paired commit; existing installs continue to work until the user runs
+`/plugin marketplace update astra`, after which loop must be re-installed
+via the new marketplace.
+
+### Why
+
+Release ceremony required a paired commit in `sergeymilashico/hero-crew`
+to bump the parent marketplace pointer. Standalone marketplace cuts that
+coupling — a tag in this repo propagates directly via `/plugin update`.
+
+### Tooling
+
+- `loop/.claude-plugin/marketplace.json`: `source: "./"` →
+  `source: { source: "github", repo: "sergeymilashico/loop" }`,
+  marketplace name `astra` → `loop`.
+- `hero-crew/.claude-plugin/marketplace.json`: loop entry removed.
+- `README.md`: install instructions updated.
+
+---
+
 ## v0.8.6 — 2026-06-05 — chore: relaxed release ceremony (validator no longer locks marketplace.json version)
 
 ### Tooling
@@ -50,9 +111,9 @@ the marker consumer ships.
 
 Wraps the existing `backlog enrich` CLI subcommand (shipped in v0.8.2) so the
 batch classification sweep is reachable from the slash surface, not Bash-only.
-Mirrors the `/loop:backlog-triage` invocation contract. The wrapper is
+Mirrors the `/loop:triage` invocation contract. The wrapper is
 idempotent — already-tagged FEATs are left untouched. Run after
-`/loop:backlog-triage` to backfill `tags` / `needs_contract` / `needs_ux` on
+`/loop:triage` to backfill `tags` / `needs_contract` / `needs_ux` on
 the triaged queue so `/crew:orchestrate-slice` routes the full specialist
 ladder instead of falling back to AC-text heuristics.
 
@@ -838,7 +899,7 @@ Repos that were silently skipping validation must do one of:
   derivation (P0–P3), autonomous_safe classification.
 - `pm-artifact-writer.mjs` — writes PM review artifacts to
   `.claude/artifacts/loop/pm-reviews/`.
-- PM agent prompt (`agents/pm.md`) + 3 skills (pm-triage, pm-review,
+- PM agent prompt (`agents/pm.md`) + 3 skills (triage, pm-review,
   pm-decompose). PM triage step inserted in Cross-Slice Continuation rule.
 - Backlog parser/writer enhanced with PM review frontmatter support.
 
