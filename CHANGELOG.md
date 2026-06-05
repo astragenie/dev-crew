@@ -3,6 +3,26 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.7.7 — 2026-06-05 — /crew:orchestrate-slice as default dispatch + inline AC prefix detection
+
+### Features
+
+**`/crew:orchestrate-slice` as default dispatch instruction (FEAT-047 / SLICE-44)**
+
+`slice-start` now emits `/crew:orchestrate-slice --id SLICE-NN` as the `dispatchInstruction` when the installed crew plugin is >= v0.11.0 (the first crew release shipping `commands/orchestrate-slice.md`). The orchestrate command runs the full tag-driven specialist ladder (architect → uxdesigner → builder → reviewer → validator → copywriter → doc-writer) from the main thread, keeping all dispatches visible. Installations on crew < 0.11.0 fall back gracefully to the legacy `crew:builder` subagent prompt.
+
+New constant `ORCHESTRATE_SLICE_MIN_CREW_VERSION = "0.11.0"` in `plugin-identity.mts` is the soft feature gate; `MIN_CREW_VERSION = "0.3.6"` (the hard install gate) is unchanged. `checkOrchestrateSliceSupport(versionOverride?)` is the check function; `_crewVersionOverride` test seam injected into `startSlice()` for deterministic unit tests without filesystem reads.
+
+**Inline AC prefix detection fix (FEAT-041 / SLICE-43)**
+
+`detectAcceptanceCriteria` in `backlog-triage.mts` now recognises the inline prefix form `Acceptance criteria: AC-1: ...` (single-paragraph body written by `/loop:backlog-add`). Previous implementation only matched `## Acceptance criteria` headings, causing newly added features to score `acCount=0` and get `autonomous_safe: false` incorrectly.
+
+### Tests
+
+734/734 pass.
+
+---
+
 ## v0.7.6 — 2026-06-04 — crew:builder direct dispatch + checkpointCommit + contextRules
 
 ### Features
