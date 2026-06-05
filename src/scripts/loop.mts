@@ -39,6 +39,7 @@ const FLAG_SPEC = {
   "--no-research": { key: "noResearch", boolean: true },
   "--no-architect": { key: "noArchitect", boolean: true },
   "--no-doc-writer": { key: "noDocWriter", boolean: true },
+  "--no-classify": { key: "noClassify", boolean: true },
   "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
   "--force-close": { key: "forceClose", boolean: true },
   "--skip-validation-check": { key: "skipValidationCheck" },
@@ -108,6 +109,7 @@ function parseArgs(argv) {
     noResearch: false,
     noArchitect: false,
     noDocWriter: false,
+    noClassify: false,
     scores: null,
     autonomousSafe: null,
     evidence: null,
@@ -187,7 +189,7 @@ const COMMANDS = {
   backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
   spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
   release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
-  slice: ({ repoPath, flags, positionals }) => runSliceSubcommand(repoPath, positionals, flags),
+  slice: ({ repoPath, flags, positionals }) => runSliceSubcommand(repoPath, positionals, flags, {}),
   decisions: ({ repoPath, flags, positionals }) =>
     runDecisionsSubcommand(repoPath, positionals, flags),
   retrospective: async ({ repoPath, flags }) => {
@@ -406,6 +408,73 @@ async function runBacklogPmWrite(repoPath, flags, rest) {
   });
 }
 
+export async function runBacklogEnrich(
+  repoPath,
+  _flags,
+  opts: { dispatchFn?: DispatchFn } = {}
+) {
+  const { parseClassifyOutput } = await import("./lib/classify-parser.mjs");
+  const { listBacklog } = await import("./lib/backlog-parser.mjs");
+  const { updateFeatureFrontmatter } = await import("./lib/backlog-writer.mjs");
+  const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
+  const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+
+  const allEntries = await listBacklog(repoPath);
+  const triaged = allEntries.filter((e) => e.state === "triaged");
+
+  function isUnclassified(entry): boolean {
+    const fm = entry.frontmatter;
+    const tagsEmpty = !Array.isArray(fm.tags) || fm.tags.length === 0;
+    const tagsNull = fm.tags == null || fm.tags === "";
+    const noTags = tagsEmpty && tagsNull;
+    return noTags && fm.needs_contract == null && fm.needs_ux == null;
+  }
+
+  const needsClassify = triaged.filter(isUnclassified);
+  const alreadyTagged = triaged.length - needsClassify.length;
+
+  let enriched = 0;
+  let failed = 0;
+
+  for (const entry of needsClassify) {
+    try {
+      const prompt =
+        `Classify this feature for the orchestrate-slice router.\n` +
+        `Read ${entry.filePath} for context. Respond with ONLY this key:value block — no preamble, no headings:\n` +
+        `tags: [<labels from: api-change, storage, workflow, ux, auth, infra, test, docs, refactor>]\n` +
+        `needs_contract: <true|false>\n` +
+        `needs_ux: <true|false>`;
+      const dispatchOut = await dispatchFn({
+        agent: "loop:architect",
+        prompt,
+        parentCommand: "backlog enrich",
+        repoRoot: repoPath,
+        argv: [],
+        skipFlag: "--no-classify"
+      });
+      if (dispatchOut.ok && !dispatchOut.skipped && dispatchOut.output) {
+        const parsed = parseClassifyOutput(dispatchOut.output);
+        const updates: Record<string, unknown> = {};
+        if (parsed.tags.length > 0) updates.tags = parsed.tags;
+        if (parsed.needs_contract !== null) updates.needs_contract = parsed.needs_contract;
+        if (parsed.needs_ux !== null) updates.needs_ux = parsed.needs_ux;
+        if (Object.keys(updates).length > 0) {
+          await updateFeatureFrontmatter(entry.filePath, updates);
+          enriched += 1;
+        }
+      }
+    } catch (err) {
+      console.warn(
+        `[backlog enrich] classify failed for ${entry.id}: ${err instanceof Error ? err.message : String(err)}`
+      );
+      failed += 1;
+    }
+  }
+
+  console.log(`Enriched: ${enriched} / Already tagged: ${alreadyTagged}`);
+  return { enriched, alreadyTagged, failed };
+}
+
 async function runBacklogSubcommand(
   repoPath,
   positionals,
@@ -471,6 +540,9 @@ async function runBacklogSubcommand(
   if (sub === "pm-write") {
     return runBacklogPmWrite(repoPath, flags, rest);
   }
+  if (sub === "enrich") {
+    return runBacklogEnrich(repoPath, flags, opts);
+  }
   throw new Error(`Unknown backlog subcommand: ${sub}`);
 }
 
@@ -506,6 +578,8 @@ function stripListMarker(line: string): string {
   s = s.replace(/^[*_`]+|[*_`]+$/g, "");
   return s.trim();
 }
+
+export { parseClassifyOutput } from "./lib/classify-parser.mjs";
 
 export function parseArchitectOutput(raw: string): string[] {
   if (!raw || !raw.trim()) return [];
@@ -718,10 +792,15 @@ function requireId(value, errMsg) {
 }
 
 const SLICE_HANDLERS = {
-  "from-feature": async (repoPath, _flags, _rest, featureId) => {
+  "from-feature": async (repoPath, flags, _rest, featureId, opts: { dispatchFn?: DispatchFn } = {}) => {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
-    const out = await sliceFromFeature(repoPath, featureId);
+    const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
+    const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+    const out = await sliceFromFeature(repoPath, featureId, {
+      noClassify: Boolean(flags.noClassify),
+      dispatchFn
+    });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
       command: "slice from-feature",
@@ -812,7 +891,12 @@ const SLICE_HANDLERS = {
   }
 };
 
-async function runSliceSubcommand(repoPath, positionals, flags) {
+async function runSliceSubcommand(
+  repoPath,
+  positionals,
+  flags,
+  opts: { dispatchFn?: DispatchFn } = {}
+) {
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
@@ -821,7 +905,7 @@ async function runSliceSubcommand(repoPath, positionals, flags) {
   const handler = SLICE_HANDLERS[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
   const id = flags.id || rest[0];
-  return handler(repoPath, flags, rest, id);
+  return handler(repoPath, flags, rest, id, opts);
 }
 
 async function runDecisionsSubcommand(repoPath, positionals, flags) {

@@ -1,9 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveConfig } from "../config-resolver.mjs";
-import { parseFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
+import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
 import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
+import { parseClassifyOutput } from "../classify-parser.mjs";
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 // Walks slicesRoot recursively, returns the max numeric slice id found.
 async function maxSliceIdUnder(dir) {
@@ -98,15 +99,67 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
     ].join("\n");
     return serializeFrontmatter(frontmatter, body);
 }
+function featureHasTags(fm) {
+    if (Array.isArray(fm.tags))
+        return fm.tags.length > 0;
+    return fm.tags != null && fm.tags !== "";
+}
+function buildClassifyUpdates(parsed) {
+    const updates = {};
+    if (parsed.tags.length > 0)
+        updates.tags = parsed.tags;
+    if (parsed.needs_contract !== null)
+        updates.needs_contract = parsed.needs_contract;
+    if (parsed.needs_ux !== null)
+        updates.needs_ux = parsed.needs_ux;
+    return Object.keys(updates).length > 0 ? updates : null;
+}
+async function classifySlice({ repoPath, slicePath, featureFM, noClassify, dispatchFn }) {
+    if (noClassify || featureHasTags(featureFM))
+        return null;
+    try {
+        const { dispatchAgent } = await import("../auto-dispatch.mjs");
+        const dispatch = dispatchFn ?? dispatchAgent;
+        const prompt = `Classify this slice for the orchestrate-slice router.\n` +
+            `Read ${slicePath} for context. Respond with ONLY this key:value block — no preamble, no headings:\n` +
+            `tags: [<labels from: api-change, storage, workflow, ux, auth, infra, test, docs, refactor>]\n` +
+            `needs_contract: <true|false>\n` +
+            `needs_ux: <true|false>`;
+        const dispatchOut = await dispatch({
+            agent: "loop:architect",
+            prompt,
+            parentCommand: "slice from-feature",
+            repoRoot: repoPath,
+            argv: [],
+            skipFlag: "--no-classify"
+        });
+        if (dispatchOut.ok && !dispatchOut.skipped && dispatchOut.output) {
+            const parsed = parseClassifyOutput(dispatchOut.output);
+            const updates = buildClassifyUpdates(parsed);
+            if (updates) {
+                const sliceContent = await fs.readFile(slicePath, "utf8");
+                await fs.writeFile(slicePath, mergeFrontmatter(sliceContent, updates), "utf8");
+                return parsed;
+            }
+        }
+    }
+    catch (err) {
+        console.warn(`[slice from-feature] classify dispatch failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return null;
+}
 // Creates a slice file under <slicesRoot>/pending/ from a feature.
 // - Looks up feature in any backlog state.
 // - Moves feature -> in-progress/ if not already there.
 // - Allocates next SLICE id by scanning slicesRoot recursively.
 // - Writes the slice file with cross-reference to the feature.
 // - Updates feature.slices += [SLICE-NN] in frontmatter.
+// - Optionally dispatches loop:architect to classify the slice
+//   (tags, needs_contract, needs_ux); skipped when noClassify is true
+//   or when the feature already has tags set.
 //
-// Returns { slice: {id, path}, feature: {id, path, fromState, toState} }.
-export async function sliceFromFeature(repoPath, featureId, { config = null } = {}) {
+// Returns { slice: {id, path}, feature: {id, path, fromState, toState}, classify }.
+export async function sliceFromFeature(repoPath, featureId, { config = null, noClassify = false, dispatchFn } = {}) {
     if (!featureId)
         throw new Error("sliceFromFeature requires a featureId.");
     const resolved = config || (await resolveConfig(repoPath));
@@ -144,6 +197,15 @@ export async function sliceFromFeature(repoPath, featureId, { config = null } = 
         featureBody
     });
     await fs.writeFile(slicePath, slice);
+    // Classify the slice (tags, needs_contract, needs_ux) unless opted out
+    // or the feature already has tags.
+    const classifyResult = await classifySlice({
+        repoPath,
+        slicePath,
+        featureFM,
+        noClassify,
+        dispatchFn
+    });
     // Cross-link on the feature side: append slice id to slices[] frontmatter
     const existingSlices = Array.isArray(featureFM.slices) ? featureFM.slices : [];
     if (!existingSlices.includes(id)) {
@@ -158,6 +220,7 @@ export async function sliceFromFeature(repoPath, featureId, { config = null } = 
             path: featureFilePath,
             fromState: movedFromState,
             toState: "in-progress"
-        }
+        },
+        classify: classifyResult
     };
 }
