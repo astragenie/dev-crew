@@ -3,7 +3,7 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## v0.9.0 — TBD
+## v0.9.0 — 2026-06-05 — feat(triage): consolidate /loop:backlog-triage + /loop:pm-triage into /loop:triage
 
 ### Breaking changes
 
