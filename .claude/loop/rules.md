@@ -6,6 +6,20 @@ Plugin-managed by `/loop:install`. Do not edit by hand.
 
 **Run autonomously until ALL acceptance criteria for the current slice are met. Do NOT ask the user for confirmation, clarification, or approval at any point during implementation. Do NOT stop after implementation — run review, fix all findings, run validation, then write artifacts and push. Only stop when every acceptance criterion is marked PASS with evidence (per `docs/ai-loop/01-loop-control/EVIDENCE_RULES.md`), or the work is externally blocked (missing infrastructure, secret, or external dependency that cannot be resolved without the user). If blocked, state the blocker clearly and stop there.**
 
+## Auto Mode No-Approval — HARD RULE
+
+When `.claude/loop.json::loop.autoMode` is `true` (default for this repo), the autonomous loop MUST NOT raise per-slice approval gates — not for `autonomous_safe: false` items, not for plan-preflight artifacts, not for architect recommendations. Treat all architect / plan / PM recommendations as ratified by the standing operator authorization and proceed with dispatch.
+
+The walker's `requiresApprovalGate` flag and `start-slice.mts::computeApprovalGate` already honor this by returning `false` when `autoMode` is true. This HARD RULE binds the SESSION LEVEL: never paraphrase the gate as an approval question in chat. Plan-preflight artifacts are recorded for audit, not for sign-off.
+
+Stop only on:
+- `crew run escalated_to_human` badge from the artifact trail
+- Cost cap exceeded (`loop.costStopThreshold` per `loop.json`)
+- Stop conditions per `commands/stop-check.md`
+- External blocker (missing infra / secret / sibling repo dep) that cannot be resolved without the user
+
+If you find yourself drafting a chat message asking "approve a/b/c?" while `autoMode: true` — stop. Pick the architect's recommendation as the default and proceed.
+
 ## Cross-Slice Continuation — HARD RULE
 
 After all acceptance criteria for the current slice are PASS with evidence and all artifacts written, automatically pick the next unit of work using the following scan order — without user confirmation:
