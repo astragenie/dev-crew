@@ -100,13 +100,13 @@ test("startSlice emits dispatchInstruction by default (legacy crew:builder fallb
   assert.match(result.nextAction, /Dispatch crew:builder subagent/);
 });
 
-test("FEAT-047 AC-1: slice-start emits orchestrate-slice instruction when crew >= 0.10.0", async () => {
+test("FEAT-047 AC-1: slice-start emits orchestrate-slice instruction when crew >= 0.11.0", async () => {
   const repo = await tmpRepo("al-slice-start-orchestrate-");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
   const feat = await addFeature(repo, { title: "Orchestrate feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
-  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.10.0" });
+  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.11.0" });
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
   assert.match(
     result.dispatchInstruction,
@@ -128,6 +128,17 @@ test("FEAT-047 AC-3: falls back to crew:builder when crew < orchestrate-slice mi
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.9" });
+  assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
+  assert.match(result.nextAction, /Dispatch crew:builder subagent/);
+});
+
+test("FEAT-047 AC-3: crew 0.10.x also falls back (orchestrate-slice not yet in that series)", async () => {
+  const repo = await tmpRepo("al-slice-start-fallback-010-");
+  await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+  const feat = await addFeature(repo, { title: "Fallback 010" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.10.9" });
   assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
   assert.match(result.nextAction, /Dispatch crew:builder subagent/);
 });

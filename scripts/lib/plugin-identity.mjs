@@ -79,10 +79,10 @@ export async function findCrewCli() {
 // when invoking crew artifact writers.
 export const MIN_CREW_VERSION = "0.3.6";
 // Minimum crew version that ships /crew:orchestrate-slice.
-// When installed crew meets this threshold, slice-start emits the orchestrate
-// command instead of the legacy crew:builder dispatch. Falls back gracefully
-// when crew is below this version.
-export const ORCHESTRATE_SLICE_MIN_CREW_VERSION = "0.10.0";
+// v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the
+// UX-validation gate. When installed crew meets this threshold, slice-start emits
+// the orchestrate command instead of the legacy crew:builder dispatch.
+export const ORCHESTRATE_SLICE_MIN_CREW_VERSION = "0.11.0";
 // Read the crew plugin's version from the plugin.json next to a crew CLI path.
 // Returns null if the manifest is missing or unreadable.
 export async function getCrewVersion(crewCliPath) {
