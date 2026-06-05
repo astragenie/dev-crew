@@ -108,6 +108,8 @@ Slash flows that orchestrate role agents:
 - `/loop:spec-decompose` — architect derives FEAT titles from a SPEC
 - `/loop:slice-complete` — document-writer drafts CHANGELOG / ADR /
   release notes after slice close
+- `/loop:slice-from-feature` — architect writes FEAT-scoped contracts artifact
+  when needs_contract: true and artifact missing
 
 `dispatchAgent` remains exported for callers that want marker-write
 semantics. The marker queue at

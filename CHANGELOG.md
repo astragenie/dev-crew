@@ -3,6 +3,128 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.11.0 — 2026-06-05 — feat: FEAT-scoped contracts artifact (FEAT-050 / SLICE-51, loop-side)
+
+### New surface — slash flow extensions
+
+Two existing loop slash flows gain a contracts-artifact orchestration
+step. Both extensions hinge on the same FEAT-scoped artifact path,
+`.claude/artifacts/crew/designs/<FEAT-ID>-contracts.md`, and on the same
+canonical architect prompt — there is no copy-paste of the prompt body
+between the two flows.
+
+- `/loop:backlog-enrich` gains **pass 2 — contracts pre-population**.
+  After pass 1 finishes classifying tags into FEAT frontmatter, pass 2
+  globs the same triaged FEAT set, filters to entries where
+  `needs_contract: true`, checks artifact existence via
+  `contractsArtifactExists`, and dispatches `crew:architect` inline (Agent
+  tool) for every FEAT that is still missing its contracts file. Pass 2
+  is idempotent — a FEAT with a present artifact is skipped on every
+  re-run. Architect dispatches batch up to 5 in parallel in a single
+  message; above that, sequential to avoid rate limits. On empty or
+  malformed architect output, pass 2 logs a one-line warning naming the
+  FEAT and continues without writing a partial artifact. Pass 1 and
+  pass 2 are independent — an operator may invoke either alone.
+- `/loop:slice-from-feature` gains an **on-demand contracts trigger**.
+  After the CLI subcommand returns (slice created, FEAT moved to
+  `in-progress/`), the calling agent reads the FEAT frontmatter; when
+  `needs_contract: true` and the contracts artifact is missing, the flow
+  dispatches `crew:architect` with the canonical prompt and writes the
+  artifact **before** any other specialist (`crew:builder`,
+  `crew:uxdesigner`, etc.) runs. The check is artifact existence — not
+  slice index — so the trigger fires on any slice of a FEAT, not only
+  the first one. Idempotent and fail-open with the same warning wording
+  as pass 2.
+
+### New helper module
+
+- `src/scripts/lib/contracts-artifact.mts` exposes two pure, read-only
+  functions for any caller that needs to resolve or check the canonical
+  contracts artifact path:
+  - `getContractsPath(repoPath, featureId)` — returns the absolute path
+    `<repoPath>/.claude/artifacts/crew/designs/<featureId>-contracts.md`.
+  - `contractsArtifactExists(repoPath, featureId)` — returns a Promise
+    resolving to `true`/`false` for that path.
+
+  No dispatch logic, no filesystem writes — by design. The directory
+  constant is hardcoded inside the module (single source of truth for
+  the rename point) rather than added to `PATH_DEFAULTS`, because the
+  designs directory is owned by hero-crew's artifact convention and is
+  not loop-tunable.
+
+### Canonical architect prompt template
+
+- `templates/contracts-architect-prompt.md` is the single source of truth
+  for the four-section contracts prompt (`## TypeScript Interfaces`,
+  `## API Contracts`, `## Event Schemas`, `## Data Contracts`). Both
+  `/loop:backlog-enrich` pass 2 and `/loop:slice-from-feature` reference
+  this file by path — neither inlines the prompt body. Future changes to
+  the contracts prompt are a single-file edit.
+
+### Tests
+
+- 777/777 pass (`npm test`). Five new tests in
+  `src/tests/contracts-artifact.test.mts` cover: deterministic path
+  resolution for several FEAT ids, `contractsArtifactExists` returning
+  `false` when the file is absent, returning `true` after the file is
+  created in a tmp repo, no-side-effect behavior on read, and absolute
+  forward-slash path formatting. Linter clean (zero warnings).
+
+### Out of scope, tracked upstream
+
+The matching `/crew:orchestrate-slice` Step 1 no-op detection — which
+teaches the orchestrator to skip architect dispatch when the FEAT-scoped
+contracts artifact already exists — and the `revises_contract: true`
+revision-path heuristic both live in hero-crew (`commands/orchestrate-slice.md`),
+not in loop. Until those upstream changes ship, the loop-side triggers in
+this release write the artifact early so the orchestrator's per-slice
+architect dispatch becomes the no-op path on the next slice start.
+FEAT-051 (parallel `uxdesigner` + `builder` dispatch once contracts are
+present) is a separate FEAT and is not part of this release.
+
+### Evidence
+
+- Builder handoff: `.claude/artifacts/crew/handoffs/20260605T144153Z-handoff-slice-51-feat-scoped-contracts-artifact-triggers.md`
+- Validation: PASS — `.claude/artifacts/crew/validations/20260605T145501Z-validation-result-slice-51-feat-050-contracts-artifact-triggers.md`
+- Review: SKIPPED — reviewer subagent paused mid-investigation twice
+  without completing a verdict; lead attested the change against the
+  acceptance criteria and validator confirmed AC-1 through AC-8 with
+  evidence above. Future SLICE-51-class work should re-attempt
+  `crew:reviewer` once the artifact-protocol pause issue is resolved.
+- Slice file: `.claude/artifacts/loop/ai-loop/slices/pending/SLICE_51_IMPLEMENT-FEAT-050.md`
+- Plan: `.claude/artifacts/loop/plans/20260605T143430Z-plan-SLICE-51.md`
+
+### Release notes
+
+v0.11.0 delivers the loop half of FEAT-050: the FEAT-scoped contracts
+artifact. Where every slice with `needs_contract: true` previously
+triggered a fresh architect dispatch inside `/crew:orchestrate-slice`
+Step 1, the contracts file at
+`.claude/artifacts/crew/designs/<FEAT-ID>-contracts.md` is now written
+once per FEAT and reused across every slice of that FEAT. Two loop slash
+flows now drive that artifact: `/loop:backlog-enrich` pre-populates
+contracts for every triaged FEAT in a single sweep, and
+`/loop:slice-from-feature` writes the artifact on demand when a FEAT
+reaches slice promotion without one.
+
+Both triggers are idempotent and fail open — a present artifact is
+skipped, an empty or malformed architect response logs a warning and
+lets the calling flow continue. A new read-only helper
+(`src/scripts/lib/contracts-artifact.mts`) exposes
+`getContractsPath` and `contractsArtifactExists` for any future caller
+that needs to resolve or check the canonical path, and a new prompt
+template at `templates/contracts-architect-prompt.md` is the single
+source of truth for the four-section contracts prompt (TypeScript
+Interfaces / API Contracts / Event Schemas / Data Contracts).
+
+The matching upstream change — `/crew:orchestrate-slice` Step 1
+detecting an existing artifact and skipping its own architect dispatch —
+lives in hero-crew and ships separately. Until then, the loop-side
+triggers in this release write the artifact early so the orchestrator's
+per-slice dispatch hits the no-op path on the next slice start. The
+follow-on parallel-specialist work (FEAT-051) builds on this contract
+and remains a separate FEAT.
+
 ## v0.10.0 — 2026-06-05 — feat: remove CLI auto-dispatch (FEAT-049 / SLICE-50)
 
 ### Breaking changes

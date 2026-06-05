@@ -64,6 +64,42 @@ is the right call when:
   triage (set its frontmatter manually then call this).
 - Reproducing an engineering plan from an external roadmap reference.
 
+## Contracts pre-population (when needs_contract: true)
+
+After the CLI subcommand returns (slice file created, FEAT moved to
+`in-progress/`), the calling agent MUST run this pre-population check before
+dispatching any downstream specialist (`crew:builder`, `crew:reviewer`, etc.):
+
+1. **Read FEAT frontmatter** at the path returned by the CLI in
+   `feature.path`.
+2. **Check the flag.** If `needs_contract: false` or the field is absent,
+   stop — no architect dispatch needed.
+3. **Check artifact existence.** Look up
+   `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.md` (the path resolved
+   by `getContractsPath` from `src/scripts/lib/contracts-artifact.mts`). If
+   the artifact is already present, skip — do nothing (idempotence: this
+   trigger fires on ANY slice for the FEAT, not just SLICE-1; the check is
+   artifact existence, not slice index).
+4. **Dispatch `crew:architect` inline.** Use the Agent tool with the
+   canonical prompt from `templates/contracts-architect-prompt.md`. Single
+   dispatch — one FEAT, one artifact.
+5. **Validate and write.** Parse the response. If the response is empty OR
+   any of the four required section headers (`## TypeScript Interfaces`,
+   `## API Contracts`, `## Event Schemas`, `## Data Contracts`) is missing,
+   log:
+
+   ```
+   WARNING: contracts artifact for <FEAT-ID> not written — architect response
+   empty/malformed. Re-run /loop:backlog-enrich or rely on
+   /crew:orchestrate-slice Step 1 retry.
+   ```
+
+   and continue without writing a partial file (fail-open per FEAT-049
+   lesson). On a well-formed response, write the artifact at
+   `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.md` via the Write tool.
+6. **Proceed.** Only after this check (whether artifact was written, was
+   already present, or dispatch was skipped) proceed to downstream specialists.
+
 ## Slice file body
 
 The generated slice file is a starter — fill in:
