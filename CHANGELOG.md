@@ -3,6 +3,25 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.4 — 2026-06-05 — feat(commands): /loop:backlog-enrich slash wrapper
+
+### Features
+
+**`/loop:backlog-enrich` slash command**
+
+Wraps the existing `backlog enrich` CLI subcommand (shipped in v0.8.2) so the
+batch classification sweep is reachable from the slash surface, not Bash-only.
+Mirrors the `/loop:backlog-triage` invocation contract. The wrapper is
+idempotent — already-tagged FEATs are left untouched. Run after
+`/loop:backlog-triage` to backfill `tags` / `needs_contract` / `needs_ux` on
+the triaged queue so `/crew:orchestrate-slice` routes the full specialist
+ladder instead of falling back to AC-text heuristics.
+
+No code changes — wrapper only. Existing tests cover the underlying
+subcommand.
+
+---
+
 ## v0.8.3 — 2026-06-05 — chore: SLICE-46 ceremony artifacts + version alignment
 
 ### Housekeeping
