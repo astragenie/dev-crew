@@ -1,6 +1,6 @@
 ---
 id: FEAT-050
-status: pending
+status: triaged
 priority: P1
 category: feature
 target_release: null
@@ -9,6 +9,14 @@ updated: 2026-06-05
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.55
+pm_effort_estimate: 0.65
+pm_strategic_alignment: 0.75
+pm_technical_risk: 0.55
+pm_dependency_depth: 0.55
+composite_score: 0.555
+autonomous_safe: false
+triage_notes: Cross-plugin coupling + fuzzy revision-detection heuristic + agent-prompt change in upstream crew = not autonomous-safe. Three named test simulations required.
 ---
 ## Context
 

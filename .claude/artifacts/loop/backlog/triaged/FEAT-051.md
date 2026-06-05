@@ -1,6 +1,6 @@
 ---
 id: FEAT-051
-status: pending
+status: triaged
 priority: P2
 category: feature
 target_release: null
@@ -9,6 +9,14 @@ updated: 2026-06-05
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.35
+pm_effort_estimate: 0.4
+pm_strategic_alignment: 0.55
+pm_technical_risk: 0.55
+pm_dependency_depth: 0.7
+composite_score: 0.4675
+autonomous_safe: false
+triage_notes: "Hard cross-plugin sequencing + AC#5 contradicts FEAT-050 on artifact-path scope (FEAT-ID vs FEAT-ID+SLICE-ID) — resolve drift before slicing. Not autonomous-safe."
 ---
 ## Context
 
