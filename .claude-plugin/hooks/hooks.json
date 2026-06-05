@@ -10,6 +10,16 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-feat-dispatch.mjs\"",
+            "description": "loop:feat-dispatch-guard"
+          }
+        ]
       }
     ]
   }

@@ -3,6 +3,58 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.9.1 — 2026-06-05 — feat(hook): ship guard-feat-dispatch PreToolUse hook
+
+### Hook surface
+
+New plugin-shipped hook `hooks/guard-feat-dispatch.mjs` registered as
+`PreToolUse:Agent` matcher in `.claude-plugin/hooks/hooks.json`. Fires on
+every Agent dispatch from any session in any repo where loop is
+installed. Inspects the prompt for `\bFEAT-\d{3}\b`. When a FEAT-NNN is
+mentioned, blocks ad-hoc / general-purpose / 3rdparty subagents and
+forces dispatch through the loop slice ceremony +
+`/crew:orchestrate-slice` specialist ladder.
+
+### Allowlist (does NOT block on FEAT-NNN)
+
+- Crew ceremony specialists: `crew:builder`, `crew:build`, `crew:lead`,
+  `crew:reviewer`, `crew:validator`, `crew:deployer`,
+  `crew:researcher`, `crew:architect`, `crew:uxdesigner`,
+  `crew:copywriter`, `crew:document-writer`
+- Loop methodology agents: `loop:architect`, `loop:document-writer`,
+  `loop:pm`, `loop:researcher`
+- Read-only locator: `Explore`
+
+`/crew:orchestrate-slice` is the source of truth for slice dispatch —
+the specialists it invokes are first-class FEAT participants and stay
+allowlisted. Only subagents that skip the artifact protocol stay
+blocked.
+
+### Why
+
+Going around the slice ceremony with a general-purpose subagent breaks
+cost attribution, grading, run-brief, the slice-progress dashboard, and
+the audit trail downstream tools rely on. The guard was already deployed
+in downstream consumer repos (loopobserver) — promoting it into the
+loop plugin makes the protection universal for every loop consumer.
+
+### Tests
+
+Behavioral matrix run via subprocess against `hooks/guard-feat-dispatch.mjs`:
+- Allows `crew:architect` on FEAT
+- Allows `crew:uxdesigner` on FEAT
+- Allows `loop:architect` on FEAT (`/loop:backlog-enrich` path)
+- Allows `loop:pm` on FEAT
+- Allows `crew:document-writer` on FEAT
+- Blocks `general-purpose` on FEAT (exit 2)
+- Blocks `crew:3rdparty:typescript-pro` on FEAT (exit 2)
+- Allows `Explore` on FEAT
+- Allows any subagent when no FEAT mentioned
+
+9/9 PASS.
+
+---
+
 ## v0.9.0 — 2026-06-05 — feat(triage): consolidate /loop:backlog-triage + /loop:pm-triage into /loop:triage
 
 ### Breaking changes
