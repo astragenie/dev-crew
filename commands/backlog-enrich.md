@@ -1,54 +1,86 @@
 ---
-description: Classify every triaged feature — dispatch loop:architect to write tags / needs_contract / needs_ux frontmatter so orchestrate-slice routes the full ladder.
+description: Classify every triaged feature — dispatch loop:architect inline for each, write tags / needs_contract / needs_ux into FEAT frontmatter so /crew:orchestrate-slice routes the full ladder.
 ---
 
 # Backlog Enrich
 
-Sweeps `docs/backlog/triaged/*.md` and for each entry missing
-classification fields:
+Sweeps `.claude/artifacts/loop/backlog/triaged/FEAT-*.md` (or the
+configured backlog root) and, for every entry missing classification
+fields, dispatches `loop:architect` from the current session, parses
+the response, and writes `tags` + `needs_contract` + `needs_ux` into
+the FEAT frontmatter.
 
-1. Reads body + frontmatter.
-2. Filters to unclassified entries — no `tags`, no `needs_contract`,
-   no `needs_ux` set.
-3. Dispatches `loop:architect` with the canonical classify prompt
-   (constrained key:value block — `tags`, `needs_contract`, `needs_ux`).
-4. Parses the response via `lib/classify-parser.mts`. Unknown tag
-   tokens drop; vocabulary is `api-change | storage | workflow | ux |
-   auth | infra | test | docs | refactor`.
-5. Writes the resolved fields back to FEAT frontmatter via
-   `updateFeatureFrontmatter`. Skips writes when nothing parsed.
+Why this matters: `/crew:orchestrate-slice` reads those three fields
+to decide which specialists fire. Without them the ladder falls back
+to AC-text heuristics and silently skips architect + uxdesigner.
 
-Already-tagged entries are left untouched. Idempotent — re-running
-only hits new triaged FEATs.
+## Execution (Claude-driven, not CLI)
 
-Why this matters: `/crew:orchestrate-slice` reads `frontmatter.tags`,
-`needs_contract`, `needs_ux` from the slice / parent FEAT to decide
-which specialists fire. Without these fields the ladder falls back to
-AC-text heuristics and silently skips architect + uxdesigner for CLI
-repos whose ACs lack UI vocabulary.
+The Node CLI subcommand (`node scripts/loop.mjs backlog enrich`) only
+writes pending-dispatch markers — it does NOT spawn subagents. See
+`docs/code-conventions.md` and `auto-dispatch.mts` for the consumer
+gap (tracked as a known followup). Use the slash flow below instead;
+it dispatches inline and writes results synchronously.
 
-Usage:
+Steps:
+
+1. **List triaged FEATs.** Glob
+   `.claude/artifacts/loop/backlog/triaged/FEAT-*.md` (or the path
+   resolved via `loop.json::backlogRoot`). Read the frontmatter of
+   each.
+2. **Filter unclassified.** Skip entries where `tags` is non-empty
+   OR `needs_contract` is set OR `needs_ux` is set. Already-tagged
+   entries are left untouched.
+3. **Dispatch `loop:architect` in parallel.** Send all classify
+   requests in a single message containing one `Agent` tool call
+   per unclassified FEAT. Prompt template per FEAT:
+
+   ```
+   Classify this feature for the orchestrate-slice router.
+   Read <ABSOLUTE_PATH_TO_FEAT> for context. Respond with ONLY this
+   key:value block — no preamble, no headings:
+   tags: [<labels from: api-change, storage, workflow, ux, auth, infra, test, docs, refactor>]
+   needs_contract: <true|false>
+   needs_ux: <true|false>
+   ```
+
+4. **Parse responses.** For each architect response, extract the
+   three fields tolerantly (ignore prose, headings, blank lines).
+   Tags must be filtered to the known vocabulary; drop unknowns.
+5. **Write frontmatter via `Edit`.** For each FEAT with at least
+   one parsed field, edit the YAML frontmatter to insert / update
+   `tags`, `needs_contract`, `needs_ux`. Preserve all other fields
+   verbatim. If nothing parsed, skip the write.
+6. **Report.** Print a one-line summary:
+   `Enriched: <count> / Already tagged: <count> / Failed: <count>`.
+
+## Idempotence
+
+Re-running only hits FEATs that still lack tags. Already-classified
+FEATs are filtered in step 2. Safe to run after every
+`/loop:backlog-triage` sweep.
+
+## CLI fallback (audit-only)
+
+The CLI subcommand exists but its dispatch path writes markers to
+`.claude/artifacts/loop/pending-dispatch/` without a consumer. Useful
+only for audit-log trace via `.claude/artifacts/loop/auto-dispatch.jsonl`
+when an outer harness is wired in future.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog enrich \
-  --repo "$PWD"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog enrich --repo "$PWD"
 ```
 
-Returns JSON: `{ enriched: <count>, alreadyTagged: <count>, failed: <count> }`.
+Until the consumer ships, the CLI reports `Enriched: 0` even when
+markers are written. Prefer the slash flow above.
 
 ## Cost note
 
-One `loop:architect` dispatch per unclassified FEAT. Audit log:
-`.claude/artifacts/loop/auto-dispatch.jsonl`. Check cost-cap before
-running on a large backlog.
+One `loop:architect` dispatch per unclassified FEAT. Run on small
+batches (≤10) or check cost-cap first. Each dispatch reads the FEAT
+file and emits ~3 lines of structured output.
 
 ## Skip dispatch
 
-Pass `--no-classify` to short-circuit — useful for dry-run audits or
-when an upstream classifier already wrote the fields.
-
-## Auto-invocation
-
-Not currently auto-invoked by the autonomous loop. Run manually after
-`/loop:backlog triage` (or after bulk import) so newly triaged FEATs
-carry the tags `/crew:orchestrate-slice` needs.
+The CLI accepts `--no-classify` to short-circuit (audit log only).
+The slash flow has no skip — simply don't invoke it.

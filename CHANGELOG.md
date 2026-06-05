@@ -3,6 +3,30 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.5 — 2026-06-05 — fix(commands): /loop:backlog-enrich runs inline, not via broken marker CLI
+
+### Fixes
+
+**`/loop:backlog-enrich` slash command now Claude-driven**
+
+The v0.8.4 wrapper delegated to the Node CLI subcommand, but the CLI's
+`dispatchAgent` writes pending-dispatch markers to
+`.claude/artifacts/loop/pending-dispatch/` and there is no consumer wired —
+the architect classification never runs and FEAT frontmatter is never
+updated. CLI silently reports `Enriched: 0` even when markers are written
+(known gap, GRADE-SLICE-23 DEC-004).
+
+Rewrote the slash command body to orchestrate via Claude's `Agent` + `Edit`
+tools directly: glob triaged FEATs, filter unclassified, dispatch
+`loop:architect` in parallel, parse the key:value response, write `tags` /
+`needs_contract` / `needs_ux` into FEAT frontmatter. Idempotent — re-runs
+only hit FEATs still missing tags.
+
+CLI subcommand retained as audit-only (writes markers + audit log) until
+the marker consumer ships.
+
+---
+
 ## v0.8.4 — 2026-06-05 — feat(commands): /loop:backlog-enrich slash wrapper
 
 ### Features
