@@ -10,10 +10,10 @@ depends_on: []
 slices: []
 derived_from: null
 autonomous_safe: true
-composite_score: 0.55
+composite_score: 0.527
 pm_customer_impact: 0.25
 pm_effort_estimate: 0.25
-pm_strategic_alignment: 0.50
+pm_strategic_alignment: 0.5
 pm_technical_risk: 0.08
 pm_dependency_depth: 0.05
 triage_notes: "P2 tech-debt — 487 lines, gate helpers are I/O-free making extraction clean, pre-emptive hygiene"

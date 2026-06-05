@@ -10,7 +10,7 @@ depends_on: []
 slices: []
 derived_from: null
 autonomous_safe: false
-composite_score: 0.62
+composite_score: 0.634
 pm_customer_impact: 0.65
 pm_effort_estimate: 0.55
 pm_strategic_alignment: 0.78

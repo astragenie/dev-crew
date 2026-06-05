@@ -56,7 +56,11 @@ const FLAG_SPEC = {
     "--dry-run": { key: "dryRun", boolean: true },
     "--auto-mode": { key: "autoMode", boolean: true },
     "--provider": { key: "provider" },
-    "--pr": { key: "pr" }
+    "--pr": { key: "pr" },
+    "--scores": { key: "scores" },
+    "--autonomous-safe": { key: "autonomousSafe" },
+    "--evidence": { key: "evidence" },
+    "--reasoning": { key: "reasoning" }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -98,7 +102,11 @@ function parseArgs(argv) {
         pr: null,
         noResearch: false,
         noArchitect: false,
-        noDocWriter: false
+        noDocWriter: false,
+        scores: null,
+        autonomousSafe: null,
+        evidence: null,
+        reasoning: null
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -344,6 +352,35 @@ async function resolveBacklogAddBody(repoPath, title, suppliedBody, dispatchFn) 
     }
     return "";
 }
+async function runBacklogPmWrite(repoPath, flags, rest) {
+    const featureId = flags.id || rest[0];
+    if (!featureId)
+        throw new Error("backlog pm-write requires --id FEAT-NNN.");
+    if (!flags.scores)
+        throw new Error("backlog pm-write requires --scores '{...}'.");
+    let parsedScores;
+    try {
+        parsedScores = JSON.parse(flags.scores);
+    }
+    catch (err) {
+        throw new Error(`--scores must be valid JSON: ${err.message}`);
+    }
+    const priority = flags.priority ?? null;
+    const autonomousSafe = flags.autonomousSafe === "true"
+        ? true
+        : flags.autonomousSafe === "false"
+            ? false
+            : Boolean(flags.autonomousSafe);
+    const triageNotes = flags.reasoning ?? flags.evidence ?? undefined;
+    const { writePmScores } = await import("./lib/backlog-pm-write.mjs");
+    return writePmScores(repoPath, {
+        id: featureId,
+        scores: parsedScores,
+        priority,
+        autonomousSafe,
+        triageNotes
+    });
+}
 async function runBacklogSubcommand(repoPath, positionals, flags, opts = {}) {
     const [sub, ...rest] = positionals;
     if (!sub)
@@ -404,6 +441,9 @@ async function runBacklogSubcommand(repoPath, positionals, flags, opts = {}) {
             throw new Error(`Feature not found: ${featureId}`);
         const moved = await moveFeature(entry.filePath, "in-progress");
         return { id: featureId, moved };
+    }
+    if (sub === "pm-write") {
+        return runBacklogPmWrite(repoPath, flags, rest);
     }
     throw new Error(`Unknown backlog subcommand: ${sub}`);
 }

@@ -3,6 +3,32 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.0 — 2026-06-05 — feat: backlog pm-write CLI subcommand (FEAT-043)
+
+### Features
+
+**`backlog pm-write` CLI subcommand — PM score write-back (FEAT-043 / SLICE-45)**
+
+`node scripts/loop.mjs backlog pm-write --id FEAT-NNN --scores '{"customer_impact":0.8,...}' --priority P1 --autonomous-safe true` now exists and writes all five `pm_*` dimension fields plus `composite_score` to FEAT frontmatter without changing `status` or moving the file. Fixes the broken PM triage loop: previously scores were computed but never persisted, leaving every new FEAT with `composite_score: 0` and sorting it last in the auto-walker.
+
+`composite_score` uses a weighted formula: `impact×0.35 + alignment×0.30 + (1−effort)×0.20 + (1−risk)×0.10 + (1−dep)×0.05`. This matches PM agent judgment where high impact/alignment is positive and high effort/risk/dependency is negative.
+
+**`computeWeightedCompositeScore(scores)` added to `pm-scorer.mts`**
+
+Exported from `pm-scorer.mts` for shared use. Replaces the naive `averagePmScore` call that was computing the wrong values for the composite ranking.
+
+### Bug fixes
+
+**PM composite scores corrected for FEAT-043/044/045/048**
+
+Manually patched composite scores updated to formula-computed values: FEAT-043=0.84, FEAT-044=0.53, FEAT-045=0.53, FEAT-048=0.63.
+
+### Tests
+
+8 new tests in `backlog-pm-write.test.mts`. 743/743 pass.
+
+---
+
 ## v0.7.9 — 2026-06-05 — fix: auto-walker passes config to stop-condition check
 
 ### Bug fixes
