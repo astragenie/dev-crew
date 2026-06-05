@@ -196,6 +196,14 @@ export function triageEntry(entry) {
     const resolvedScores = isLegacy
         ? applyLegacyMigration(entry.frontmatter, today, updates)
         : resolveNewSchemaScores(entry.frontmatter);
+    // Schema parity: always emit pm_* dimension keys so consumers see a
+    // consistent shape regardless of whether scores pre-existed in frontmatter
+    // (already written by applyLegacyMigration on the legacy branch).
+    if (!isLegacy) {
+        for (const dim of NEW_PM_DIMENSIONS) {
+            updates[`pm_${dim}`] = resolvedScores[dim];
+        }
+    }
     const autonomousSafe = computeAutonomousSafe(resolvedScores, { hasSpec, hasAcceptanceCriteria });
     updates.autonomous_safe = autonomousSafe;
     updates.triage_notes = buildTriageNotes(updates, acCount, derivedFrom, autonomousSafe);

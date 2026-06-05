@@ -152,3 +152,24 @@ test("writePmScores score field mapping: customer_impact maps to pm_customer_imp
     assert.equal(frontmatter.pm_technical_risk, scores.technical_risk);
     assert.equal(frontmatter.pm_dependency_depth, scores.dependency_depth);
 });
+test("writePmScores rejects --id for FEAT not present on disk", async () => {
+    const repo = await tmpRepo("al-pmwrite-reject-");
+    await fs.mkdir(path.join(repo, "docs/backlog/pending"), { recursive: true });
+    await fs.mkdir(path.join(repo, "docs/backlog/triaged"), { recursive: true });
+    await fs.mkdir(path.join(repo, "docs/backlog/in-progress"), { recursive: true });
+    const scores = {
+        customer_impact: 0.5,
+        effort_estimate: 0.5,
+        strategic_alignment: 0.5,
+        technical_risk: 0.5,
+        dependency_depth: 0.5
+    };
+    await assert.rejects(() => writePmScores(repo, {
+        id: "FEAT-999",
+        scores,
+        priority: "P2",
+        autonomousSafe: false,
+        evidence: "n/a",
+        reasoning: "n/a"
+    }), /FEAT-999 not found in backlog/i);
+});

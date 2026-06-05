@@ -27,7 +27,10 @@
       "gradeWrite": "opus",
       "build": "sonnet",
       "validate": "sonnet"
-    }
+    },
+    "triageBudgetUsdPerBatch": 5.0,
+    "triageBudgetTokensPerBatch": 500000,
+    "triageFallbackOnBudgetExceeded": true
   },
   "stack": {
     "build": [

@@ -12,6 +12,7 @@ import {
   validatePmScores
 } from "../scripts/lib/pm-scorer.mjs";
 import { writePmReviewArtifact } from "../scripts/lib/pm-artifact-writer.mjs";
+import { triagePending } from "../scripts/lib/backlog-triage.mjs";
 
 async function tmpRepo(prefix) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -86,4 +87,34 @@ test("validatePmScores catches out-of-range values", () => {
   };
   const errors = validatePmScores(bad);
   assert.equal(errors.length, 2);
+});
+
+test("regex fallback writes same frontmatter shape as PM happy path", async () => {
+  const repo = await tmpRepo("al-fallback-shape-");
+  await addFeature(repo, {
+    title: "Fallback shape parity",
+    body: "## Acceptance criteria\n\n- AC-1: x\n- AC-2: y\n- AC-3: z",
+    category: "feature"
+  });
+
+  const results = await triagePending(repo);
+  assert.equal(results.length, 1);
+  const r = results[0];
+
+  // Every PM dimension key must be present in the regex-fallback frontmatter
+  // so consumers do not need to branch on the triage path.
+  for (const dim of [
+    "pm_customer_impact",
+    "pm_effort_estimate",
+    "pm_strategic_alignment",
+    "pm_technical_risk",
+    "pm_dependency_depth"
+  ]) {
+    assert.ok(
+      dim in r,
+      `regex fallback must write ${dim} (got keys: ${Object.keys(r).join(", ")})`
+    );
+  }
+  assert.equal(typeof r.autonomous_safe, "boolean");
+  assert.ok(typeof r.triage_notes === "string" && r.triage_notes.length > 0);
 });

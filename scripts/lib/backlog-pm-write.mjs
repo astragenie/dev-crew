@@ -5,6 +5,7 @@
  * change `status` or move the file; only patches frontmatter in-place.
  */
 import { findFeatureById, updateFeatureFrontmatter } from "./backlog-writer.mjs";
+import { listBacklog } from "./backlog-parser.mjs";
 import { computeWeightedCompositeScore } from "./pm-scorer.mjs";
 /**
  * Write PM score dimensions and derived fields into a FEAT's frontmatter.
@@ -14,6 +15,14 @@ import { computeWeightedCompositeScore } from "./pm-scorer.mjs";
  */
 export async function writePmScores(repoPath, opts) {
     const { id, scores, priority, autonomousSafe, triageNotes } = opts;
+    // Deterministic ID guard: verify the FEAT exists on disk before writing.
+    // Rejects fabricated IDs that the PM agent may have hallucinated.
+    const allEntries = await listBacklog(repoPath);
+    const known = allEntries.find((e) => e.id === id);
+    if (!known) {
+        throw new Error(`FEAT-id existence guard: ${id} not found in backlog (pending/triaged/in-progress). ` +
+            `Refusing pm-write to prevent fabricated-id pollution.`);
+    }
     const entry = await findFeatureById(repoPath, id);
     if (!entry) {
         throw new Error(`Feature not found: ${id}`);

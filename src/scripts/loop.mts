@@ -380,6 +380,28 @@ async function resolveBacklogAddBody(
   return "";
 }
 
+async function runBacklogListPendingIds(repoPath: string) {
+  const { listPendingFeatureIds } = await import("./lib/backlog-list-ids.mjs");
+  const ids = await listPendingFeatureIds(repoPath);
+  return { ids };
+}
+
+async function runBacklogAdd(repoPath, flags, rest, opts: { dispatchFn?: DispatchFn } = {}) {
+  const title = flags.title || rest.join(" ");
+  if (!title) throw new Error("backlog add requires a title (positional or --title).");
+  const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
+  const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+  const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body, dispatchFn);
+  const { addFeature } = await import("./lib/backlog-writer.mjs");
+  return await addFeature(repoPath, {
+    title,
+    priority: flags.priority,
+    category: flags.category,
+    target_release: flags.targetRelease,
+    body: resolvedBody
+  });
+}
+
 async function runBacklogPmWrite(repoPath, flags, rest) {
   const featureId = flags.id || rest[0];
   if (!featureId) throw new Error("backlog pm-write requires --id FEAT-NNN.");
@@ -408,11 +430,7 @@ async function runBacklogPmWrite(repoPath, flags, rest) {
   });
 }
 
-export async function runBacklogEnrich(
-  repoPath,
-  _flags,
-  opts: { dispatchFn?: DispatchFn } = {}
-) {
+export async function runBacklogEnrich(repoPath, _flags, opts: { dispatchFn?: DispatchFn } = {}) {
   const { parseClassifyOutput } = await import("./lib/classify-parser.mjs");
   const { listBacklog } = await import("./lib/backlog-parser.mjs");
   const { updateFeatureFrontmatter } = await import("./lib/backlog-writer.mjs");
@@ -482,21 +500,12 @@ async function runBacklogSubcommand(
   opts: { dispatchFn?: DispatchFn } = {}
 ) {
   const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("backlog requires a subcommand: add | list | triage | promote");
+  if (!sub)
+    throw new Error(
+      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote"
+    );
   if (sub === "add") {
-    const title = flags.title || rest.join(" ");
-    if (!title) throw new Error("backlog add requires a title (positional or --title).");
-    const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
-    const dispatchFn = opts.dispatchFn ?? dispatchAgent;
-    const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body, dispatchFn);
-    const { addFeature } = await import("./lib/backlog-writer.mjs");
-    return await addFeature(repoPath, {
-      title,
-      priority: flags.priority,
-      category: flags.category,
-      target_release: flags.targetRelease,
-      body: resolvedBody
-    });
+    return runBacklogAdd(repoPath, flags, rest, opts);
   }
   if (sub === "list") {
     const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");
@@ -527,6 +536,9 @@ async function runBacklogSubcommand(
     const { triagePending } = await import("./lib/backlog-triage.mjs");
     const results = await triagePending(repoPath);
     return { triaged: results.length, results };
+  }
+  if (sub === "list-pending-ids") {
+    return runBacklogListPendingIds(repoPath);
   }
   if (sub === "promote") {
     const featureId = flags.id || rest[0];
@@ -792,7 +804,13 @@ function requireId(value, errMsg) {
 }
 
 const SLICE_HANDLERS = {
-  "from-feature": async (repoPath, flags, _rest, featureId, opts: { dispatchFn?: DispatchFn } = {}) => {
+  "from-feature": async (
+    repoPath,
+    flags,
+    _rest,
+    featureId,
+    opts: { dispatchFn?: DispatchFn } = {}
+  ) => {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
     const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
