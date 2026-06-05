@@ -26,29 +26,50 @@ function compareWalkerOrder(a, b) {
     return fitB - fitA;
 }
 /**
+ * SLICE-41: Check whether a backlog entry's depends_on are satisfied.
+ *
+ * A dep is satisfied when it exists in allKnownIds AND is in doneSet.
+ * A dep not found in allKnownIds is reported with a "(missing)" suffix.
+ *
+ * @param entry        The backlog entry to evaluate.
+ * @param doneSet      Set of IDs in the done/ folder.
+ * @param allKnownIds  Set of all known backlog IDs (all statuses).
+ */
+function checkDependsOn(entry, doneSet, allKnownIds) {
+    const fm = entry.frontmatter;
+    if (!Array.isArray(fm.depends_on) || fm.depends_on.length === 0) {
+        return { skip: false };
+    }
+    const unsatisfied = [];
+    for (const dep of fm.depends_on) {
+        if (!allKnownIds.has(dep)) {
+            unsatisfied.push(`${dep} (missing)`);
+        }
+        else if (!doneSet.has(dep)) {
+            unsatisfied.push(dep);
+        }
+        // if dep is in allKnownIds AND in doneSet → satisfied, skip
+    }
+    if (unsatisfied.length > 0) {
+        return { skip: true, reason: `depends_on: ${unsatisfied.join(", ")}` };
+    }
+    return { skip: false };
+}
+/**
  * SLICE-B: Evaluate risk gate for autonomous_safe=false items.
  *
  * Returns { skip, skipReason?, warn? }:
- *   - deferred flag → skip with reason "deferred"
- *   - unfinished depends_on → skip with reason listing deps
  *   - pm_risk_level >= 0.7 → do NOT skip, but warn (SPEC recommended)
  *   - otherwise → do not skip, no warn
+ *
+ * Note: deferred and depends_on checks have been moved to the shared
+ * pre-branch filter in walkCandidates (SLICE-41) so they apply to ALL
+ * entries regardless of autonomous_safe value.
  *
  * @param entry  The backlog entry to evaluate.
  */
 export function evaluateRiskGate(entry) {
     const fm = entry.frontmatter;
-    // Honor deferred flag
-    if (fm.deferred === true) {
-        return { skip: true, skipReason: "deferred" };
-    }
-    // Unfinished dependencies
-    if (Array.isArray(fm.depends_on) && fm.depends_on.length > 0) {
-        return {
-            skip: true,
-            skipReason: `depends_on: ${fm.depends_on.join(", ")}`
-        };
-    }
     // High risk → warn but don't skip (SPEC requirement check handled at orchestrator layer)
     if (Number(fm.pm_risk_level) >= 0.7) {
         return {
@@ -106,16 +127,47 @@ function buildSafePlan(entry, autoMode) {
     return plan;
 }
 /**
+ * SLICE-41: Evaluate a single candidate entry through the shared pre-branch filter
+ * and the autonomous_safe branch. Returns { skipReason } if the entry should be
+ * skipped, or { plan } if it should be planned.
+ */
+function evaluateCandidate(entry, autoMode, doneSet, allKnownIds) {
+    // Shared pre-branch filter (applies to ALL entries, AC-17: deferred first).
+    if (entry.frontmatter.deferred === true) {
+        return { skipReason: "deferred" };
+    }
+    const depsResult = checkDependsOn(entry, doneSet, allKnownIds);
+    if (depsResult.skip) {
+        return { skipReason: depsResult.reason };
+    }
+    const autonSafe = entry.frontmatter.autonomous_safe;
+    // Only skip if autonomous_safe is null/undefined (not explicitly set).
+    if (autonSafe !== true && autonSafe !== false) {
+        return { skipReason: "not_autonomous_safe" };
+    }
+    if (autonSafe === false) {
+        const result = processUnsafeEntry(entry, autoMode);
+        if (result.shouldSkip) {
+            return { skipReason: result.skipReason || "risk gate blocked" };
+        }
+        return { plan: result.plan };
+    }
+    // autonomous_safe === true: build standard plan.
+    return { plan: buildSafePlan(entry, autoMode) };
+}
+/**
  * Process the walk loop: iterate candidates, build plans, check stop conditions.
  *
- * @param candidates       The triaged candidates to walk.
- * @param maxFeatures      Cap on number of plans to build.
- * @param autoMode         If true, include autoMode flag in plans.
+ * @param candidates        The triaged candidates to walk.
+ * @param maxFeatures       Cap on number of plans to build.
+ * @param autoMode          If true, include autoMode flag in plans.
  * @param costStopThreshold SLICE-C: halt after this many plans (plan-count proxy for cost).
- * @param repoPath         For stop condition checks.
- * @returns                { skipped, plans, halted, stopReason }
+ * @param repoPath          For stop condition checks.
+ * @param doneSet           SLICE-41: Set of IDs in the done/ folder for depends_on resolution.
+ * @param allKnownIds       SLICE-41: Set of all known backlog IDs for missing-dep detection.
+ * @returns                 { skipped, plans, halted, stopReason }
  */
-async function walkCandidates(candidates, maxFeatures, autoMode, costStopThreshold, repoPath) {
+async function walkCandidates(candidates, maxFeatures, autoMode, costStopThreshold, repoPath, doneSet, allKnownIds) {
     const skipped = [];
     const plans = [];
     let halted = false;
@@ -125,26 +177,12 @@ async function walkCandidates(candidates, maxFeatures, autoMode, costStopThresho
         if (maxFeatures !== undefined && plans.length >= maxFeatures) {
             break;
         }
-        const autonSafe = entry.frontmatter.autonomous_safe;
-        // SLICE-B: only skip if autonomous_safe is null/undefined (not explicitly set)
-        // If autonomous_safe === false, process it with risk gate
-        if (autonSafe !== true && autonSafe !== false) {
-            skipped.push({ id: entry.id, reason: "not_autonomous_safe" });
+        const evalResult = evaluateCandidate(entry, autoMode, doneSet, allKnownIds);
+        if ("skipReason" in evalResult) {
+            skipped.push({ id: entry.id, reason: evalResult.skipReason });
             continue;
         }
-        // SLICE-B: evaluate risk gate for autonomous_safe=false items
-        if (autonSafe === false) {
-            const result = processUnsafeEntry(entry, autoMode);
-            if (result.shouldSkip) {
-                skipped.push({ id: entry.id, reason: result.skipReason || "risk gate blocked" });
-                continue;
-            }
-            plans.push(result.plan);
-        }
-        else {
-            // autonomous_safe === true: build standard plan
-            plans.push(buildSafePlan(entry, autoMode));
-        }
+        plans.push(evalResult.plan);
         // SLICE-C: enforce cost cap after each plan
         if (costStopThreshold !== undefined && plans.length >= costStopThreshold) {
             halted = true;
@@ -200,7 +238,11 @@ export async function runAutoWalker(repoPath, options = {}) {
     const allEntries = await listBacklog(repoPath);
     const triaged = filterBacklog(allEntries, { status: "triaged" });
     triaged.sort(compareWalkerOrder);
-    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, costStopThreshold, repoPath);
+    // SLICE-41: Build done-set and all-known-ids for depends_on resolution.
+    const doneEntries = filterBacklog(allEntries, { status: "done" });
+    const doneSet = new Set(doneEntries.map((e) => String(e.id)));
+    const allKnownIds = new Set(allEntries.map((e) => String(e.id)));
+    const { skipped, plans, halted, stopReason } = await walkCandidates(triaged, maxFeatures, autoMode, costStopThreshold, repoPath, doneSet, allKnownIds);
     // SLICE-B: Write auto-run summary artifact (best-effort; don't fail if it errors)
     let summaryPath;
     try {

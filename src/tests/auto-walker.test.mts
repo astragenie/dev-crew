@@ -263,6 +263,8 @@ test("SLICE-B: depends_on with unfinished deps → skipped with deps listed", as
     skip.reason.includes("FEAT-999") && skip.reason.includes("FEAT-888"),
     "skip reason must list the dependencies"
   );
+  // AC-9: Both are missing from backlog, so reason will contain "(missing)" suffix
+  assert.ok(skip.reason.includes("(missing)"), "missing dep ids get (missing) suffix");
 });
 
 test("SLICE-B: pm_risk_level >= 0.7 → planned with riskGateWarn", async () => {
@@ -433,4 +435,140 @@ test("SLICE-C: config-provided costStopThreshold read from loop.json → applied
     1,
     "orchConfig.costStopThreshold must reflect config value"
   );
+});
+
+// ---------------------------------------------------------------------------
+// SLICE-41 / FEAT-040 Tests — shared pre-branch filter (deferred + depends_on)
+// ---------------------------------------------------------------------------
+
+test("FEAT-040 AC-7: autoSafe=true with all deps done → planned", async () => {
+  const repo = await tmpRepo("aw-deps-done-");
+
+  // Create a dep feature, triage it, then move it through in-progress to done
+  const dep = await addFeature(repo, { title: "Dependency feature" });
+  await triageFeature(dep.filePath, { autonomous_safe: true });
+
+  const { listBacklog } = await import("../scripts/lib/backlog-parser.mjs");
+
+  const triagedDep = (await listBacklog(repo)).find((e: any) => e.id === dep.id);
+  await moveFeature(triagedDep.filePath, "in-progress", {});
+
+  const inProgressDep = (await listBacklog(repo)).find((e: any) => e.id === dep.id);
+  await moveFeature(inProgressDep.filePath, "done", {});
+
+  // Create the feature with depends_on pointing to the done dep
+  const feat = await addFeature(repo, { title: "Feature with satisfied dep" });
+  await triageFeature(feat.filePath, {
+    autonomous_safe: true,
+    depends_on: [dep.id]
+  });
+
+  const result = await runAutoWalker(repo, { dryRun: true });
+
+  // The dep is in done/ → dep satisfied → feat should be planned
+  const planned = result.plans.find((p: any) => p.featureId === feat.id);
+  assert.ok(
+    planned,
+    `feature with all deps done must be planned, got skipped: ${JSON.stringify(result.skipped)}`
+  );
+});
+
+test("FEAT-040 AC-8: autoSafe=true with dep in triaged → skipped with dep id", async () => {
+  const repo = await tmpRepo("aw-deps-triaged-");
+
+  const dep = await addFeature(repo, { title: "Unfinished dep" });
+  await triageFeature(dep.filePath, { autonomous_safe: true });
+
+  const feat = await addFeature(repo, { title: "Feature blocked by dep" });
+  await triageFeature(feat.filePath, {
+    autonomous_safe: true,
+    depends_on: [dep.id]
+  });
+
+  const result = await runAutoWalker(repo, { dryRun: true });
+
+  const skip = result.skipped.find((s: any) => s.id === feat.id);
+  assert.ok(skip, "feature with unfinished dep must be skipped");
+  assert.ok(skip.reason.includes("depends_on"), "reason must mention depends_on");
+  assert.ok(skip.reason.includes(dep.id), `reason must name the unsatisfied dep ${dep.id}`);
+});
+
+test("FEAT-040 AC-10: mixed dep states (done + missing) → skipped, lists only unsatisfied", async () => {
+  const repo = await tmpRepo("aw-deps-mixed-");
+
+  const { listBacklog } = await import("../scripts/lib/backlog-parser.mjs");
+
+  // One dep that exists and is done
+  const doneDep = await addFeature(repo, { title: "Done dep" });
+  await triageFeature(doneDep.filePath, { autonomous_safe: true });
+
+  const triagedDoneDep = (await listBacklog(repo)).find((e: any) => e.id === doneDep.id);
+  await moveFeature(triagedDoneDep.filePath, "in-progress", {});
+
+  const inProgressDoneDep = (await listBacklog(repo)).find((e: any) => e.id === doneDep.id);
+  await moveFeature(inProgressDoneDep.filePath, "done", {});
+
+  const feat = await addFeature(repo, { title: "Feature with mixed deps" });
+  await triageFeature(feat.filePath, {
+    autonomous_safe: true,
+    depends_on: [doneDep.id, "FEAT-MISSING-999"]
+  });
+
+  const result = await runAutoWalker(repo, { dryRun: true });
+
+  const skip = result.skipped.find((s: any) => s.id === feat.id);
+  assert.ok(skip, "feature must be skipped when any dep unsatisfied");
+  assert.ok(skip.reason.includes("FEAT-MISSING-999"), "reason must list missing dep");
+  assert.ok(!skip.reason.includes(doneDep.id), "reason must NOT list the satisfied dep");
+});
+
+test("FEAT-040 AC-15: autoSafe=true with deferred=true → skipped with reason 'deferred'", async () => {
+  const repo = await tmpRepo("aw-deferred-safe-");
+
+  const entry = await addFeature(repo, { title: "Deferred safe feature" });
+  await triageFeature(entry.filePath, {
+    autonomous_safe: true,
+    deferred: true
+  });
+
+  const result = await runAutoWalker(repo, { dryRun: true });
+
+  assert.equal(result.planned, 0, "deferred autoSafe=true feature must not be planned");
+  assert.equal(result.skipped.length, 1);
+  const skip = result.skipped[0];
+  assert.equal(skip.id, entry.id);
+  assert.equal(skip.reason, "deferred");
+});
+
+test("FEAT-040 AC-16: autoSafe=false with deferred=true still skipped (regression guard)", async () => {
+  const repo = await tmpRepo("aw-deferred-unsafe-");
+
+  const entry = await addFeature(repo, { title: "Deferred unsafe feature" });
+  await triageFeature(entry.filePath, {
+    autonomous_safe: false,
+    deferred: true
+  });
+
+  const result = await runAutoWalker(repo, { dryRun: true });
+
+  assert.equal(result.planned, 0, "deferred autoSafe=false feature must not be planned");
+  assert.equal(result.skipped.length, 1);
+  assert.equal(result.skipped[0].reason, "deferred");
+});
+
+test("FEAT-040 AC-12: auto-run summary lists deferred skip reason correctly", async () => {
+  const repo = await tmpRepo("aw-summary-deferred-");
+
+  const entry = await addFeature(repo, { title: "Deferred feature" });
+  await triageFeature(entry.filePath, {
+    autonomous_safe: true,
+    deferred: true
+  });
+
+  const result = await runAutoWalker(repo, { dryRun: true });
+
+  assert.ok(result.summaryPath, "summaryPath must be set");
+  const content = await fs.readFile(result.summaryPath, "utf-8");
+  assert.ok(content.includes("deferred"), "summary must include 'deferred' skip reason");
+  assert.ok(content.includes(entry.id), "summary must include the skipped feature id");
 });
