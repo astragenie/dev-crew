@@ -3,6 +3,28 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.8.2 — 2026-06-05 — feat: architect classification tags for slices and features (FEAT-048)
+
+### Features
+
+**`sliceFromFeature` auto-classifies new slices via `loop:architect` (FEAT-048 / SLICE-46)**
+
+After writing the slice file, `sliceFromFeature` dispatches `loop:architect` with a constrained prompt to classify the slice. The agent returns a key:value block (`tags`, `needs_contract`, `needs_ux`); results are merged into the slice frontmatter before the function returns. Classification is skipped when: the feature already has `tags` set (AC-3), `--no-classify` is passed, or the dispatch errors (soft-fail — a warning is logged but no exception is thrown).
+
+**`backlog enrich` CLI subcommand**
+
+`node scripts/loop.mjs backlog enrich [--no-classify]` iterates all triaged FEATs missing `tags`, dispatches `loop:architect` for each, and patches FEAT frontmatter with the results. Prints `Enriched: N / Already tagged: M` summary. Per-feature dispatch failures are logged and skipped — the loop continues.
+
+**`classify-parser.mts` — tolerant key:value parser**
+
+New module `src/scripts/lib/classify-parser.mts` exports `parseClassifyOutput(raw: string): ClassifyResult`. Parses architect output tolerantly (ignores prose, headings, blank lines). Tags are filtered to the known vocabulary (`api-change`, `storage`, `workflow`, `ux`, `auth`, `infra`, `test`, `docs`, `refactor`). Unknown or missing fields default to `[]` / `null` so callers can safely spread into frontmatter.
+
+### Tests
+
+772/772 pass. 11 new tests: `backlog-enrich.test.mts` (7 tests covering all 5 ACs) + `slice-classify.test.mts` (4 tests covering `--no-classify`, dispatch failure, unparseable output).
+
+---
+
 ## v0.8.1 — 2026-06-05 — refactor: module splits + post-builder confidence (FEAT-044/045/046)
 
 ### Refactors
