@@ -312,8 +312,16 @@ test("FEAT-042 AC-2: legacy score 6 clamps to 1.0 — equal to score 1.0, tiebre
     // score 6 clamps to 1.0; score 1.0 stays 1.0 — they tie, priority wins
     const legacy = await addFeature(repo, { title: "Legacy scored P2" });
     const current = await addFeature(repo, { title: "Current scored P1" });
-    await triageFeature(legacy.filePath, { autonomous_safe: true, composite_score: 6, priority: "P2" });
-    await triageFeature(current.filePath, { autonomous_safe: true, composite_score: 1.0, priority: "P1" });
+    await triageFeature(legacy.filePath, {
+        autonomous_safe: true,
+        composite_score: 6,
+        priority: "P2"
+    });
+    await triageFeature(current.filePath, {
+        autonomous_safe: true,
+        composite_score: 1.0,
+        priority: "P1"
+    });
     const result = await runAutoWalker(repo, { dryRun: true });
     assert.equal(result.plans.length, 2, "both plans must be returned");
     assert.equal(result.plans[0].featureId, current.id, "P1 (score 1.0) must beat P2 (score 6 clamped to 1.0) on priority tiebreak");

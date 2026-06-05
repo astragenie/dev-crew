@@ -321,3 +321,45 @@ test("triageEntry: 2 AC bullets (below threshold) + no SPEC → autonomous_safe:
   const updates = triageEntry(entry);
   assert.equal(updates.autonomous_safe, false);
 });
+
+// ---------------------------------------------------------------------------
+// FEAT-041: inline prefix pattern detection
+// ---------------------------------------------------------------------------
+
+test("FEAT-041 AC-1: inline 'Acceptance criteria:' prefix with bullet ACs → detected", () => {
+  const body = `Some description.\n\nAcceptance criteria:\n- AC-1: first\n- AC-2: second\n- AC-3: third\n`;
+  const result = detectAcceptanceCriteria(body);
+  assert.equal(result.count, 3);
+  assert.equal(result.hasMin, true);
+});
+
+test("FEAT-041 AC-1: inline prefix with all ACs on same line → detected", () => {
+  // Format used by /loop:backlog add bodies: "Acceptance criteria: AC-1: ... AC-2: ..."
+  const body = `Description text. Acceptance criteria: AC-1: do x. AC-2: verify y. AC-3: confirm z. AC-4: check w. AC-5: done.`;
+  const result = detectAcceptanceCriteria(body);
+  assert.equal(result.count, 5);
+  assert.equal(result.hasMin, true);
+});
+
+test("FEAT-041 AC-2: existing ## heading detection unaffected", () => {
+  const body = `## Acceptance criteria\n\n- [ ] AC-1: x\n- [ ] AC-2: y\n- [ ] AC-3: z\n`;
+  const result = detectAcceptanceCriteria(body);
+  assert.equal(result.count, 3);
+  assert.equal(result.hasMin, true);
+});
+
+test("FEAT-041 AC-3: inline prefix with mixed inline+bullet ACs → all counted", () => {
+  const body = `Acceptance criteria: AC-1: inline item.\n- AC-2: bullet item\n- AC-3: another bullet\n`;
+  const result = detectAcceptanceCriteria(body);
+  assert.equal(result.count, 3);
+  assert.equal(result.hasMin, true);
+});
+
+test("FEAT-041 AC-4: triageEntry with inline-prefix body → autonomous_safe: true", () => {
+  const entry = {
+    body: `Feature description.\n\nAcceptance criteria:\n- AC-1: first req\n- AC-2: second req\n- AC-3: third req\n`,
+    frontmatter: {}
+  };
+  const updates = triageEntry(entry);
+  assert.equal(updates.autonomous_safe, true);
+});

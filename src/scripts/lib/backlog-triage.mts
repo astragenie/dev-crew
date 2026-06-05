@@ -41,9 +41,17 @@ const DEFAULT_SCORES: Record<string, number> = {
 };
 
 /**
- * detectAcceptanceCriteria — scan `body` for a "## Acceptance criteria"
- * heading (case-insensitive) and count subsequent bullet lines matching
- * `^- (\[[ x]\] )?\S` until the next `##` heading.
+ * detectAcceptanceCriteria — scan `body` for an AC section and count items.
+ *
+ * Recognizes two section-opener patterns (case-insensitive):
+ *   1. `## Acceptance criteria` — ATX heading (original)
+ *   2. `Acceptance criteria:` — bare line-prefix (inline style used by /loop:backlog add)
+ *
+ * After the opener, counts:
+ *   - Bullet lines: `^- (\[[ x]\] )?\S`
+ *   - Inline AC labels on the opener line itself: `AC-\d+:` occurrences
+ *
+ * Stops counting at the next `##` heading.
  *
  * Returns { count, hasMin } where hasMin is count >= 3.
  */
@@ -55,6 +63,15 @@ export function detectAcceptanceCriteria(body: string): { count: number; hasMin:
   for (const line of lines) {
     if (/^##\s+acceptance\s+criteria/i.test(line)) {
       inSection = true;
+      continue;
+    }
+    // Inline prefix: "Acceptance criteria: AC-1: ..." — may appear anywhere on the line
+    // (e.g. /loop:backlog add stores body as a single paragraph)
+    if (/acceptance\s+criteria\s*:/i.test(line)) {
+      inSection = true;
+      // Count any AC-N: labels on the same line as the opener.
+      const inlineMatches = line.match(/\bAC-\d+:/gi);
+      if (inlineMatches) count += inlineMatches.length;
       continue;
     }
     if (inSection) {

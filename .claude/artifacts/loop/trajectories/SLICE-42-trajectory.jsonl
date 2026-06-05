@@ -1,0 +1,3 @@
+{"type":"slice_start","sliceId":"SLICE-42","timestamp":"2026-06-05T06:39:47.282Z","featureId":"FEAT-042","title":"SLICE-42","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260605T063947Z-plan-SLICE-42.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-42","timestamp":"2026-06-05T06:43:49.622Z","featureId":"FEAT-042","featureMovedTo":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-042.md","validationSatisfied":true}
+{"type":"slice_complete","sliceId":"SLICE-42","timestamp":"2026-06-05T06:43:52.678Z","featureId":"FEAT-042","featureMovedTo":null,"validationSatisfied":true}
