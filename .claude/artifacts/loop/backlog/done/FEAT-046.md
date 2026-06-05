@@ -1,6 +1,6 @@
 ---
 id: FEAT-046
-status: in-progress
+status: done
 priority: P3
 category: feature
 target_release: null
@@ -18,6 +18,8 @@ pm_technical_risk: 0.25
 pm_dependency_depth: 0.1
 composite_score: 0.4275
 started_at: 2026-06-05
+slices_complete: [SLICE-49]
+completed_at: 2026-06-05
 ---
 # FEAT-046: Confidence signal mid-execution update after builder returns (SLICE-B of FEAT-010)
 

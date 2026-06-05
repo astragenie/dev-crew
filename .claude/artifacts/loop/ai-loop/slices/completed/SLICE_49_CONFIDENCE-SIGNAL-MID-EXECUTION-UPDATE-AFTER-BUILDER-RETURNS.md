@@ -1,6 +1,6 @@
 ---
 id: SLICE-49
-status: pending
+status: completed
 feature: FEAT-046
 phase: null
 priority: P3
@@ -8,6 +8,7 @@ target_release: null
 requires_validation: true
 created: 2026-06-05
 updated: 2026-06-05
+completed_at: 2026-06-05
 ---
 # SLICE-49: Confidence signal mid-execution update after builder returns (SLICE-B of FEAT-010)
 

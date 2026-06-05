@@ -1,6 +1,6 @@
 ---
 id: SLICE-48
-status: pending
+status: completed
 feature: FEAT-045
 phase: null
 priority: P2
@@ -8,6 +8,7 @@ target_release: null
 requires_validation: false
 created: 2026-06-05
 updated: 2026-06-05
+completed_at: 2026-06-05
 ---
 # SLICE-48: Split auto-walker.mts gate helpers to walker-gates.mts (487 lines near 400-line convention)
 

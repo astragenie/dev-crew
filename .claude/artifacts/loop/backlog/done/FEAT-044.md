@@ -1,6 +1,6 @@
 ---
 id: FEAT-044
-status: in-progress
+status: done
 priority: P2
 category: tech-debt
 target_release: null
@@ -18,6 +18,8 @@ pm_technical_risk: 0.1
 pm_dependency_depth: 0.05
 triage_notes: "P2 tech-debt — 533 lines confirmed, pure structural split, no behavior change, no customer-visible impact"
 started_at: 2026-06-05
+slices_complete: [SLICE-47]
+completed_at: 2026-06-05
 ---
 # FEAT-044: Split loop-installer.mts — extract token helpers and scaffold writers (533 lines over 400-line convention)
 

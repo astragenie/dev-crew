@@ -1,6 +1,6 @@
 ---
 id: FEAT-045
-status: in-progress
+status: done
 priority: P2
 category: tech-debt
 target_release: null
@@ -18,6 +18,8 @@ pm_technical_risk: 0.08
 pm_dependency_depth: 0.05
 triage_notes: "P2 tech-debt — 487 lines, gate helpers are I/O-free making extraction clean, pre-emptive hygiene"
 started_at: 2026-06-05
+slices_complete: [SLICE-48]
+completed_at: 2026-06-05
 ---
 # FEAT-045: Split auto-walker.mts gate helpers to walker-gates.mts (487 lines near 400-line convention)
 
