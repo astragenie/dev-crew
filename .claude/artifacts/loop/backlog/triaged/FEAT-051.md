@@ -16,7 +16,7 @@ pm_technical_risk: 0.55
 pm_dependency_depth: 0.7
 composite_score: 0.4675
 autonomous_safe: false
-triage_notes: "Hard cross-plugin sequencing + AC#5 contradicts FEAT-050 on artifact-path scope (FEAT-ID vs FEAT-ID+SLICE-ID) — resolve drift before slicing. Not autonomous-safe."
+triage_notes: "Hard cross-plugin sequencing — hero-crew commands/orchestrate-slice.md edit. AC#5 reconciled with FEAT-050 (contracts artifact = FEAT-ID only; UX spec stays SLICE-scoped). Not autonomous-safe."
 ---
 ## Context
 
@@ -37,7 +37,7 @@ User intent: dispatch uxdesigner and builder concurrently from main thread (sing
 - [ ] Single user-visible message contains both `Agent(crew:uxdesigner)` and `Agent(crew:builder)` tool calls — they show as concurrent dispatches in the UI
 - [ ] Builder prompt references contracts artifact only (not UX spec); reviewer prompt receives BOTH artifacts and checks UX spec conformance separately
 - [ ] When only one branch fires (NEEDS_UX=false OR BEHAVIOR_CHANGED=false), behavior reverts to single-thread (no spurious empty Agent call)
-- [ ] Race-safety: contracts artifact path computed deterministically from FEAT-ID + SLICE-ID so both subagents read the same file
+- [ ] Race-safety: contracts artifact path computed deterministically from FEAT-ID alone (`.claude/artifacts/crew/designs/<FEAT-ID>-contracts.md`, per FEAT-050 canonical scope) so both subagents read the same file. UX spec artifact remains SLICE-scoped (`<FEAT-ID>-ux-<SLICE-ID>.md`) since UX spec covers one slice's interaction surface.
 
 ## Dependencies
 
