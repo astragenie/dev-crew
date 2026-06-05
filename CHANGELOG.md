@@ -3,6 +3,109 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.10.0 — 2026-06-05 — feat: remove CLI auto-dispatch (FEAT-049 / SLICE-50)
+
+### Breaking changes
+
+The four CLI subcommands that previously called `dispatchAgent` no longer
+auto-spawn role agents. Each surface now exits non-zero (or degrades
+gracefully) when invoked without explicit data flags, because the old
+auto-dispatch path wrote pending-dispatch marker files that no consumer
+ever drained. See DEC-011 (supersedes DEC-004).
+
+- `/loop:backlog enrich` (CLI) — refuses with non-zero exit and a stderr
+  message naming the slash flow. Use `/loop:backlog-enrich` to classify
+  triaged FEATs (architect tags / `needs_contract` / `needs_ux`).
+- `/loop:backlog add` (CLI, no `--body`) — no longer auto-dispatches
+  `loop:researcher`. The FEAT is still created, but with an empty body.
+  Use `/loop:backlog-add` for researcher enrichment, or pass `--body`
+  explicitly.
+- `/loop:spec decompose` (CLI, no `--features` / `--features-json`) —
+  refuses with non-zero exit. Supply `--features 'Title 1; Title 2'`
+  (or `--features-json`) for scripted use, or use the
+  `/loop:spec-decompose` slash flow for architect-derived FEAT titles.
+- `/loop:slice complete` (CLI) — the async doc-writer fire-and-forget
+  dispatch is removed. Slice close still succeeds and writes an audit
+  line. The document-writer only runs via the `/loop:slice-complete`
+  slash flow.
+
+### Backward compatibility
+
+The opt-out flags `--no-research`, `--no-architect`, and
+`--no-doc-writer` still parse and are accepted by the CLI. They are now
+no-ops and emit a one-line stderr deprecation notice naming DEC-011.
+This keeps existing CI invocations and scripts running without "unknown
+flag" failures while telemetry confirms no remaining usage. A follow-up
+FEAT can remove the flags entirely once usage drops to zero.
+
+### Why
+
+DEC-004 (SLICE-23) introduced the pending-dispatch marker file as a
+cross-process spawn primitive on the assumption that a future
+SLICE-D would ship a harness consumer to drain markers and invoke role
+agents. That consumer never shipped. Every CLI subcommand that called
+`dispatchAgent` wrote a marker file and returned a placeholder string
+(`<marker-written:...>`); no agent ever ran. v0.8.5 shipped a workaround
+for `/loop:backlog-enrich` that proved the slash-flow pattern
+(orchestrating role agents via Claude tools inside the session) is
+viable and produces better results than the deferred-consumer approach.
+DEC-011 makes that contract permanent and supersedes DEC-004.
+
+### Migration
+
+Operators and CI: switch direct invocations of the four CLI subcommands
+to the matching slash flow:
+
+| Old CLI                                      | New contract                  |
+|----------------------------------------------|-------------------------------|
+| `node scripts/loop.mjs backlog enrich`       | `/loop:backlog-enrich`        |
+| `node scripts/loop.mjs backlog add` (no body)| `/loop:backlog-add`           |
+| `node scripts/loop.mjs spec decompose`       | `/loop:spec-decompose`        |
+| `node scripts/loop.mjs slice complete`       | `/loop:slice-complete`        |
+
+The CLI subcommands themselves remain available for audit-only use
+(refusal + audit-log line). `dispatchAgent` and `appendAuditLog` are
+still exported from `src/scripts/lib/auto-dispatch.mts` for callers
+(e.g. `feature-lifecycle.mts::classifySlice`) that genuinely want
+marker-write audit semantics; the marker queue at
+`.claude/artifacts/loop/pending-dispatch/` is deprecated for production
+use and no consumer is planned.
+
+### Evidence
+
+- Builder commit: `7e8790a` on `main` (`feat(SLICE-50): remove CLI
+  auto-dispatch ...`)
+- Review: PASS — `.claude/artifacts/crew/reviews/20260605T142553Z-review-result-slice-50-remove-cli-auto-dispatch-slash-flows-are-the-contra.md`
+- Validation: PASS — `.claude/artifacts/crew/validations/20260605T142928Z-validation-result-slice-50-cli-auto-dispatch-removal-runtime-validation.md`
+- Decision: `.claude/artifacts/loop/decisions/DEC-011.md` (supersedes
+  DEC-004)
+
+### Release notes
+
+v0.10.0 finishes the work started in v0.8.5: slash flows are now the
+single, documented contract for orchestrating role agents in loop. The
+four CLI subcommands that previously auto-dispatched (`backlog enrich`,
+`backlog add` researcher path, `spec decompose` architect path,
+`slice complete` doc-writer) no longer write marker files that nobody
+consumes. Instead they refuse cleanly with an exit code and a message
+naming the slash flow you should use.
+
+This is a breaking change for any CI script or cron job that called the
+four CLI subcommands directly expecting agent enrichment. Update those
+callers to invoke the matching slash command (`/loop:backlog-enrich`,
+`/loop:backlog-add`, `/loop:spec-decompose`, `/loop:slice-complete`).
+The opt-out flags (`--no-research`, `--no-architect`,
+`--no-doc-writer`) are accepted as no-ops with a deprecation notice to
+keep existing scripts running while you migrate.
+
+Background on the decision is in DEC-011, which supersedes DEC-004's
+"future consumer will ship" assumption. The marker-file mechanism in
+`auto-dispatch.mts` is retained as opt-in audit infrastructure for
+callers that want it, but is no longer the loop's orchestration
+primitive — slash flows are.
+
+---
+
 ## v0.9.1 — 2026-06-05 — feat(hook): ship guard-feat-dispatch PreToolUse hook
 
 ### Hook surface
