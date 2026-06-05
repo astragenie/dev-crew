@@ -38,3 +38,4 @@
 {"timestamp":"2026-06-05T10:28:50.894Z","agent":"loop:document-writer","parentCommand":"slice-complete","costUsd":null,"durationMs":1,"ok":true,"skipped":false,"skipReason":null}
 {"timestamp":"2026-06-05T10:41:04.081Z","agent":"loop:document-writer","parentCommand":"slice-complete","costUsd":null,"durationMs":1,"ok":true,"skipped":false,"skipReason":null}
 {"timestamp":"2026-06-05T10:41:18.699Z","agent":"loop:document-writer","parentCommand":"slice-complete","costUsd":null,"durationMs":2,"ok":true,"skipped":false,"skipReason":null}
+{"timestamp":"2026-06-05T14:31:33.603Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}

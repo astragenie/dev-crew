@@ -1,6 +1,6 @@
 ---
 id: FEAT-049
-status: triaged
+status: done
 priority: P1
 category: tech-debt
 target_release: null
@@ -17,6 +17,7 @@ pm_dependency_depth: 0.15
 composite_score: 0.7075
 autonomous_safe: false
 triage_notes: "AC #1 is plugin-contract decision (build consumer vs remove dispatchAgent from CLI paths). Cross-cuts four commands + CLAUDE.md + DEC-004 supersession. Not autonomous-safe — requires architect input."
+completed_at: 2026-06-05
 ---
 ## Context
 
