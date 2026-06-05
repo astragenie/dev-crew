@@ -49,11 +49,7 @@ async function ensureSlicesRoot(repoRoot: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 test("parseClassifyOutput: compact block parses all three fields", () => {
-  const raw = [
-    "tags: [api-change, storage]",
-    "needs_contract: true",
-    "needs_ux: false"
-  ].join("\n");
+  const raw = ["tags: [api-change, storage]", "needs_contract: true", "needs_ux: false"].join("\n");
   const result = parseClassifyOutput(raw);
   assert.deepEqual(result.tags, ["api-change", "storage"]);
   assert.equal(result.needs_contract, true);
@@ -186,7 +182,11 @@ test("sliceFromFeature when feature already has tags: dispatch not called (AC-3)
 
   const out = await sliceFromFeature(repo, "FEAT-001", { dispatchFn: mockDispatch });
 
-  assert.equal(dispatchCalled, false, "dispatch should not be called when feature already has tags");
+  assert.equal(
+    dispatchCalled,
+    false,
+    "dispatch should not be called when feature already has tags"
+  );
   assert.equal(out.classify, null);
 });
 

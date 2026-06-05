@@ -96,21 +96,27 @@ Dispatch via `Agent(subagent_type: ...)`:
 ## Auto-dispatch primitives
 
 `src/scripts/lib/auto-dispatch.mts` exposes `dispatchAgent`,
-`parseSkipFlag`, `appendAuditLog` for CLI commands that auto-spawn
-role agents. Three integration sites today:
+`parseSkipFlag`, `appendAuditLog` as opt-in audit infrastructure.
+CLI subcommands do NOT auto-dispatch role agents — slash flows are
+the contract. See DEC-011 (supersedes DEC-004).
 
-- `/loop:backlog-add` → `loop:researcher` (skip via `--no-research`
-  or by supplying `--body`)
-- `/loop:spec-decompose` → `loop:architect` (skip via
-  `--no-architect` or by supplying `--features`)
-- `/loop:slice-complete` → `loop:document-writer` (async
-  fire-and-forget; skip via `--no-doc-writer`)
+Slash flows that orchestrate role agents:
 
-Every dispatch appends one JSON line to
-`.claude/artifacts/loop/auto-dispatch.jsonl` — audit trail for cost
-attribution + retry of failed dispatches. Marker files for the
-out-of-band consumer queue at `.claude/artifacts/loop/pending-dispatch/`
-(consumer + cleanup is a known followup; see GRADE-SLICE-23 DEC-004).
+- `/loop:backlog-enrich` — architect classifies triaged FEATs (tags,
+  needs_contract, needs_ux)
+- `/loop:backlog-add` — researcher enriches new FEAT body
+- `/loop:spec-decompose` — architect derives FEAT titles from a SPEC
+- `/loop:slice-complete` — document-writer drafts CHANGELOG / ADR /
+  release notes after slice close
+
+`dispatchAgent` remains exported for callers that want marker-write
+semantics. The marker queue at
+`.claude/artifacts/loop/pending-dispatch/` is deprecated for
+production use — no consumer is planned (see DEC-011).
+
+Every dispatch (via the function, when used) still appends one JSON
+line to `.claude/artifacts/loop/auto-dispatch.jsonl` — audit trail
+for cost attribution.
 
 ## Safety
 

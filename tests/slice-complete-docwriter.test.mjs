@@ -1,12 +1,11 @@
 // @ts-nocheck
-// Unit tests: doc-writer auto-dispatch in slice-complete ceremony (FEAT-030 / SLICE-27)
+// Unit tests: doc-writer behavior at slice-complete after DEC-011 removal
 //
-// Test 1: --no-doc-writer flag set → audit log entry has skipped:true, slice-complete returns success
-// Test 2: Default (no flag) → dispatch fired, audit log written, ceremony returns immediately
-//         (fire-and-forget: mockDispatch is async but slice-complete returns before it resolves)
-// Test 3: Dispatch failure (mock returns {ok:false}) → slice-complete still returns success,
-//         audit log records failure
-// Test 4: Regression guard — existing slice-complete behavior unchanged
+// Test 1: --no-doc-writer flag → deprecated no-op warning on stderr, audit log
+//         entry written with cli-refusal-cli-doc-writer-disabled, ceremony succeeds
+// Test 2: Default (no flag) → audit log entry written (cli-refusal), no marker
+//         file, ceremony still returns ok
+// Test 3: Regression — existing slice-complete behavior unchanged (FEAT lifecycle)
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -91,150 +90,76 @@ async function createSlice(repo, sliceId, featId, extraFm = {}) {
     return filePath;
 }
 // ---------------------------------------------------------------------------
-// Test 1: --no-doc-writer → audit log has skipped:true, ceremony succeeds
+// Test 1: --no-doc-writer → deprecated no-op warning, audit log written
 // ---------------------------------------------------------------------------
-test("slice-complete docwriter: --no-doc-writer → audit log skipped:true, ceremony returns success", async () => {
+test("slice-complete docwriter: --no-doc-writer → deprecated warning on stderr, audit log written with cli-refusal, ceremony succeeds", async () => {
     const repo = await tmpRepo("scd-no-docwriter-");
     const featId = "FEAT-DW01";
     const sliceId = "SLICE-DW01";
     await createFeat(repo, featId, "triaged");
     await createSlice(repo, sliceId, featId);
-    // When noDocWriter=true, the dispatch function is never called — the
-    // opt-out path short-circuits before invoking effectiveDispatch.
-    // We still pass a mock to ensure it is NOT called.
-    let dispatchCallCount = 0;
-    const mockDispatch = async (_opts) => {
-        dispatchCallCount++;
-        return { ok: true, skipped: false, durationMs: 0 };
-    };
-    const result = await completeSlice(repo, sliceId, {
-        noDocWriter: true,
-        dispatchFn: mockDispatch
-    });
+    const stderrLines = [];
+    const origError = console.error.bind(console);
+    console.error = (...args) => stderrLines.push(args.join(" "));
+    let result;
+    try {
+        result = await completeSlice(repo, sliceId, { noDocWriter: true });
+    }
+    finally {
+        console.error = origError;
+    }
     // Ceremony returns successfully
     assert.ok(result?.slice?.id === sliceId, "slice id should be present in result");
     assert.match(result.slice.to, /completed[\\/]/, "slice should be moved to completed/");
-    // Allow the fire-and-forget async work to complete so audit log is flushed.
+    // Deprecated warning on stderr
+    const stderrText = stderrLines.join(" ");
+    assert.ok(stderrText.includes("deprecated") && stderrText.includes("no-op"), `stderr must include deprecated/no-op, got: ${stderrText}`);
+    assert.ok(stderrText.includes("DEC-011"), `stderr must cite DEC-011, got: ${stderrText}`);
+    // Allow the fire-and-forget audit log write to complete
     await new Promise((res) => setTimeout(res, 100));
-    // Dispatch was NOT called (opt-out path never invokes effectiveDispatch)
-    assert.equal(dispatchCallCount, 0, "mockDispatch must NOT be called when --no-doc-writer");
-    // Audit log entry written with skipped:true
+    // Audit log entry written with cli-refusal-cli-doc-writer-disabled
     const lines = await readJsonLines(auditLogPath(repo));
     const docWriterEntries = lines.filter((e) => e.agent === "loop:document-writer");
-    assert.equal(docWriterEntries.length, 1, "exactly one doc-writer audit log entry");
+    assert.ok(docWriterEntries.length >= 1, "at least one doc-writer audit log entry");
     const entry = docWriterEntries[0];
     assert.equal(entry.skipped, true, "audit entry skipped must be true");
-    assert.equal(entry.skipReason, "opt-out", "audit entry skipReason must be opt-out");
-    assert.equal(entry.parentCommand, "slice-complete", "audit entry parentCommand");
+    assert.equal(entry.skipReason, "cli-refusal-cli-doc-writer-disabled", "audit entry skipReason must be cli-refusal-cli-doc-writer-disabled");
+    assert.equal(entry.parentCommand, "slice-complete", "audit entry parentCommand must be slice-complete");
+    assert.equal(entry.ok, true, "audit entry ok must be true (slice closed cleanly)");
 });
 // ---------------------------------------------------------------------------
-// Test 2: Default (no flag) → dispatch fired async, ceremony returns immediately
+// Test 2: Default (no flag) → audit log entry written, no marker file
 // ---------------------------------------------------------------------------
-test("slice-complete docwriter: default path → dispatch fired, audit log written, ceremony returns before dispatch resolves", async () => {
-    const repo = await tmpRepo("scd-default-dispatch-");
+test("slice-complete docwriter: default path → audit log written with cli-refusal, no marker file, ceremony succeeds", async () => {
+    const repo = await tmpRepo("scd-default-");
     const featId = "FEAT-DW02";
     const sliceId = "SLICE-DW02";
     await createFeat(repo, featId, "triaged");
     await createSlice(repo, sliceId, featId);
-    let dispatchCallCount = 0;
-    let capturedOpts = null;
-    // Dispatch that takes "a long time" — we'll use a deferred promise to
-    // verify that completeSlice returns BEFORE this resolves.
-    let resolveDispatch;
-    const dispatchPromise = new Promise((res) => {
-        resolveDispatch = res;
-    });
-    const mockDispatch = async (opts) => {
-        dispatchCallCount++;
-        capturedOpts = opts;
-        // Write audit log entry (the real dispatchAgent does this inside)
-        const { appendAuditLog } = await import("../scripts/lib/auto-dispatch.mjs");
-        await appendAuditLog(repo, {
-            timestamp: new Date().toISOString(),
-            agent: opts.agent,
-            parentCommand: opts.parentCommand,
-            ok: true,
-            skipped: false
-        });
-        // Wait for external signal before "completing"
-        return dispatchPromise;
-    };
-    // completeSlice should return before resolveDispatch() is called.
-    // Since dispatch is fire-and-forget, completeSlice MUST settle first.
-    const completePromise = completeSlice(repo, sliceId, {
-        dispatchFn: mockDispatch
-    });
-    // Race: completeSlice vs a timeout. completeSlice must win.
-    const winner = await Promise.race([
-        completePromise.then((r) => ({ who: "ceremony", result: r })),
-        new Promise((res) => setTimeout(() => res({ who: "timeout" }), 3000))
-    ]);
-    assert.equal(winner.who, "ceremony", "completeSlice must return before the slow dispatchFn resolves (fire-and-forget)");
-    const result = winner.result;
+    const result = await completeSlice(repo, sliceId, {});
+    // Ceremony returns successfully
     assert.ok(result?.slice?.id === sliceId, "slice id present in result");
-    // Allow the detached async work() coroutine to make progress so that
-    // mockDispatch is reached (it awaits the deferred promise, so it won't
-    // *complete*, but it should have been *called* by now).
-    await new Promise((res) => setTimeout(res, 50));
-    // Dispatch was fired (called at least once)
-    assert.ok(dispatchCallCount >= 1, `dispatch should have been called, got ${dispatchCallCount}`);
-    // Verify prompt content
-    assert.ok(capturedOpts?.prompt?.includes(sliceId), `prompt should reference slice id, got: ${capturedOpts?.prompt}`);
-    assert.equal(capturedOpts?.agent, "loop:document-writer", "agent should be loop:document-writer");
-    assert.equal(capturedOpts?.parentCommand, "slice-complete", "parentCommand should be slice-complete");
-    // Audit log entry written (mock writes it synchronously inside mockDispatch before awaiting)
+    assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
+    // Allow the fire-and-forget audit log write to complete
+    await new Promise((res) => setTimeout(res, 100));
+    // Audit log entry written with cli-refusal-cli-doc-writer-disabled
     const lines = await readJsonLines(auditLogPath(repo));
     const docWriterEntries = lines.filter((e) => e.agent === "loop:document-writer");
     assert.ok(docWriterEntries.length >= 1, "at least one doc-writer audit log entry");
-    // Let dispatch resolve to avoid unhandled-rejection in test runner
-    resolveDispatch({ ok: true, skipped: false, durationMs: 0 });
-});
-// ---------------------------------------------------------------------------
-// Test 3: Dispatch failure → ceremony still returns success, audit log records failure
-// ---------------------------------------------------------------------------
-test("slice-complete docwriter: dispatch failure → ceremony returns success, audit log records failure", async () => {
-    const repo = await tmpRepo("scd-dispatch-fail-");
-    const featId = "FEAT-DW03";
-    const sliceId = "SLICE-DW03";
-    await createFeat(repo, featId, "triaged");
-    await createSlice(repo, sliceId, featId);
-    const mockDispatch = async (opts) => {
-        // Write failure audit log entry
-        const { appendAuditLog } = await import("../scripts/lib/auto-dispatch.mjs");
-        await appendAuditLog(repo, {
-            timestamp: new Date().toISOString(),
-            agent: opts.agent,
-            parentCommand: opts.parentCommand,
-            ok: false,
-            skipped: false,
-            error: "doc-writer exploded"
-        });
-        return { ok: false, skipped: false, error: "doc-writer exploded", durationMs: 5 };
-    };
-    let thrown = null;
-    let result;
-    try {
-        result = await completeSlice(repo, sliceId, {
-            dispatchFn: mockDispatch
-        });
-    }
-    catch (err) {
-        thrown = err;
-    }
-    assert.equal(thrown, null, "completeSlice must NOT throw when dispatch fails");
-    assert.ok(result?.slice?.id === sliceId, "slice id present in result");
-    assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/ despite dispatch failure");
-    // Allow detached async work() to complete (dispatch is fast — no deferred promise)
-    await new Promise((res) => setTimeout(res, 100));
-    // Audit log records the failure
-    const lines = await readJsonLines(auditLogPath(repo));
-    const docWriterEntries = lines.filter((e) => e.agent === "loop:document-writer");
-    assert.ok(docWriterEntries.length >= 1, "audit log entry for doc-writer must exist");
     const entry = docWriterEntries[0];
-    assert.equal(entry.ok, false, "audit entry ok should be false");
-    assert.ok(entry.error?.includes("exploded"), "audit entry should record error message");
+    assert.equal(entry.skipped, true, "audit entry skipped must be true");
+    assert.equal(entry.skipReason, "cli-refusal-cli-doc-writer-disabled", "skipReason must be cli-refusal-cli-doc-writer-disabled");
+    // No marker files under pending-dispatch/
+    const markerDir = path.join(repo, ".claude/artifacts/loop/pending-dispatch");
+    const markerExists = await fs
+        .access(markerDir)
+        .then(() => true)
+        .catch(() => false);
+    if (markerExists) {
+        const markers = await fs.readdir(markerDir);
+        assert.equal(markers.length, 0, "no marker files should be written — dispatch removed");
+    }
 });
 // Regression coverage for FEAT-lifecycle behavior at slice-complete lives in
-// src/tests/slice-complete-multi-slice.test.mts. Doc-writer dispatch adds
-// zero coupling to that close path (proven by the three tests above), so the
-// duplicative regression test is dropped.
+// src/tests/slice-complete-multi-slice.test.mts. Doc-writer dispatch removal adds
+// zero coupling to that close path (proven by the two tests above).

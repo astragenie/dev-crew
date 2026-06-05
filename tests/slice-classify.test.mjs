@@ -37,11 +37,7 @@ async function ensureSlicesRoot(repoRoot) {
 // parseClassifyOutput unit tests
 // ---------------------------------------------------------------------------
 test("parseClassifyOutput: compact block parses all three fields", () => {
-    const raw = [
-        "tags: [api-change, storage]",
-        "needs_contract: true",
-        "needs_ux: false"
-    ].join("\n");
+    const raw = ["tags: [api-change, storage]", "needs_contract: true", "needs_ux: false"].join("\n");
     const result = parseClassifyOutput(raw);
     assert.deepEqual(result.tags, ["api-change", "storage"]);
     assert.equal(result.needs_contract, true);

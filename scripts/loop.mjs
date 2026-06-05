@@ -312,46 +312,22 @@ async function main() {
     const result = await handler({ repoPath, flags, positionals });
     console.log(JSON.stringify(result, null, 2));
 }
-function sanitizeResearcherBody(raw) {
-    let text = raw;
-    // Strip leading frontmatter block (--- ... ---).
-    if (text.trimStart().startsWith("---")) {
-        const after = text.trimStart().slice(3);
-        const endIdx = after.indexOf("---");
-        if (endIdx !== -1) {
-            text = after.slice(endIdx + 3);
-        }
-    }
-    // Strip leading # <heading> line (title heading; CLI adds its own).
-    text = text.replace(/^\s*#[^\n]*\n/, "");
-    return text.trim();
-}
-async function resolveBacklogAddBody(repoPath, title, suppliedBody, dispatchFn) {
+async function resolveBacklogAddBody(repoPath, title, suppliedBody) {
     if (suppliedBody)
         return suppliedBody;
-    const prompt = `Research repo context relevant to the new FEAT titled "${title}". ` +
-        "Find prior FEATs in done/in-progress, recent grades mentioning this area, " +
-        "decisions affecting it. Return a 200-400 word findings document with file:line " +
-        "citations suitable for use as the FEAT body. Output only the body content " +
-        "(no frontmatter, no title heading — those are added by the CLI).";
-    try {
-        const result = await dispatchFn({
-            agent: "loop:researcher",
-            prompt,
-            parentCommand: "backlog-add",
-            repoRoot: repoPath,
-            argv: process.argv,
-            skipFlag: "--no-research"
-        });
-        if (result.ok && !result.skipped && result.output && result.output.trim()) {
-            const sanitized = sanitizeResearcherBody(result.output);
-            if (sanitized.length > 0)
-                return sanitized;
-        }
-    }
-    catch {
-        // Researcher failure must never block backlog add.
-    }
+    const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+    await appendAuditLog(repoPath, {
+        timestamp: new Date().toISOString(),
+        agent: "loop:researcher",
+        parentCommand: "backlog-add",
+        ok: false,
+        skipped: true,
+        skipReason: "cli-refusal-researcher-disabled",
+        durationMs: 0
+    });
+    console.error("[backlog add] researcher auto-dispatch removed (see DEC-011). " +
+        "Creating FEAT with empty body — run /loop:backlog-add for researcher enrichment, " +
+        "or pass --body explicitly.");
     return "";
 }
 async function runBacklogListPendingIds(repoPath) {
@@ -359,13 +335,15 @@ async function runBacklogListPendingIds(repoPath) {
     const ids = await listPendingFeatureIds(repoPath);
     return { ids };
 }
-async function runBacklogAdd(repoPath, flags, rest, opts = {}) {
+async function runBacklogAdd(repoPath, flags, rest) {
     const title = flags.title || rest.join(" ");
     if (!title)
         throw new Error("backlog add requires a title (positional or --title).");
-    const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
-    const dispatchFn = opts.dispatchFn ?? dispatchAgent;
-    const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body, dispatchFn);
+    if (flags.noResearch) {
+        console.error("[backlog add] --no-research is deprecated and now a no-op (see DEC-011). " +
+            "Researcher auto-dispatch is already removed.");
+    }
+    const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body);
     const { addFeature } = await import("./lib/backlog-writer.mjs");
     return await addFeature(repoPath, {
         title,
@@ -404,69 +382,45 @@ async function runBacklogPmWrite(repoPath, flags, rest) {
         triageNotes
     });
 }
-export async function runBacklogEnrich(repoPath, _flags, opts = {}) {
-    const { parseClassifyOutput } = await import("./lib/classify-parser.mjs");
+function isUnclassifiedEntry(entry) {
+    const fm = entry.frontmatter;
+    const tagsEmpty = !Array.isArray(fm.tags) || fm.tags.length === 0;
+    const tagsNull = fm.tags == null || fm.tags === "";
+    const noTags = tagsEmpty && tagsNull;
+    return noTags && fm.needs_contract == null && fm.needs_ux == null;
+}
+export async function runBacklogEnrich(repoPath, _flags) {
     const { listBacklog } = await import("./lib/backlog-parser.mjs");
-    const { updateFeatureFrontmatter } = await import("./lib/backlog-writer.mjs");
-    const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
-    const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+    const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
     const allEntries = await listBacklog(repoPath);
     const triaged = allEntries.filter((e) => e.state === "triaged");
-    function isUnclassified(entry) {
-        const fm = entry.frontmatter;
-        const tagsEmpty = !Array.isArray(fm.tags) || fm.tags.length === 0;
-        const tagsNull = fm.tags == null || fm.tags === "";
-        const noTags = tagsEmpty && tagsNull;
-        return noTags && fm.needs_contract == null && fm.needs_ux == null;
-    }
-    const needsClassify = triaged.filter(isUnclassified);
+    const needsClassify = triaged.filter(isUnclassifiedEntry);
     const alreadyTagged = triaged.length - needsClassify.length;
-    let enriched = 0;
-    let failed = 0;
-    for (const entry of needsClassify) {
-        try {
-            const prompt = `Classify this feature for the orchestrate-slice router.\n` +
-                `Read ${entry.filePath} for context. Respond with ONLY this key:value block — no preamble, no headings:\n` +
-                `tags: [<labels from: api-change, storage, workflow, ux, auth, infra, test, docs, refactor>]\n` +
-                `needs_contract: <true|false>\n` +
-                `needs_ux: <true|false>`;
-            const dispatchOut = await dispatchFn({
-                agent: "loop:architect",
-                prompt,
-                parentCommand: "backlog enrich",
-                repoRoot: repoPath,
-                argv: [],
-                skipFlag: "--no-classify"
-            });
-            if (dispatchOut.ok && !dispatchOut.skipped && dispatchOut.output) {
-                const parsed = parseClassifyOutput(dispatchOut.output);
-                const updates = {};
-                if (parsed.tags.length > 0)
-                    updates.tags = parsed.tags;
-                if (parsed.needs_contract !== null)
-                    updates.needs_contract = parsed.needs_contract;
-                if (parsed.needs_ux !== null)
-                    updates.needs_ux = parsed.needs_ux;
-                if (Object.keys(updates).length > 0) {
-                    await updateFeatureFrontmatter(entry.filePath, updates);
-                    enriched += 1;
-                }
-            }
-        }
-        catch (err) {
-            console.warn(`[backlog enrich] classify failed for ${entry.id}: ${err instanceof Error ? err.message : String(err)}`);
-            failed += 1;
-        }
+    if (needsClassify.length === 0) {
+        console.log(`Enriched: 0 / Already tagged: ${alreadyTagged}`);
+        return { enriched: 0, alreadyTagged, failed: 0 };
     }
-    console.log(`Enriched: ${enriched} / Already tagged: ${alreadyTagged}`);
-    return { enriched, alreadyTagged, failed };
+    await appendAuditLog(repoPath, {
+        timestamp: new Date().toISOString(),
+        agent: "loop:architect",
+        parentCommand: "backlog enrich",
+        ok: false,
+        skipped: true,
+        skipReason: "cli-refusal",
+        durationMs: 0
+    });
+    console.error(`[backlog enrich] CLI auto-dispatch removed (see DEC-011). ` +
+        `Use the slash flow: /loop:backlog-enrich. ` +
+        `${needsClassify.length} feature(s) need classification.`);
+    process.exitCode = 1;
+    return { enriched: 0, alreadyTagged, failed: 0, refused: true };
 }
-async function runBacklogSubcommand(repoPath, positionals, flags, opts = {}) {
+async function runBacklogSubcommand(repoPath, positionals, flags) {
     const [sub, ...rest] = positionals;
     if (!sub)
         throw new Error("backlog requires a subcommand: add | list | list-pending-ids | triage | promote");
     if (sub === "add") {
-        return runBacklogAdd(repoPath, flags, rest, opts);
+        return runBacklogAdd(repoPath, flags, rest);
     }
     if (sub === "list") {
         const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");
@@ -516,7 +470,7 @@ async function runBacklogSubcommand(repoPath, positionals, flags, opts = {}) {
         return runBacklogPmWrite(repoPath, flags, rest);
     }
     if (sub === "enrich") {
-        return runBacklogEnrich(repoPath, flags, opts);
+        return runBacklogEnrich(repoPath, flags);
     }
     throw new Error(`Unknown backlog subcommand: ${sub}`);
 }
@@ -582,56 +536,6 @@ export function detectMissingSpecFields(spec) {
         missing.push("scope");
     return missing;
 }
-async function architectOptOut(repoPath, dispatchFn) {
-    await dispatchFn({
-        agent: "loop:architect",
-        prompt: "",
-        parentCommand: "spec-decompose",
-        repoRoot: repoPath,
-        argv: ["--no-architect"],
-        skipFlag: "--no-architect"
-    });
-    const msg = "spec-decompose requires --features or architect dispatch; you opted out of architect with --no-architect";
-    console.error(msg);
-    process.exitCode = 1;
-    return { error: msg };
-}
-async function dispatchArchitectForSpec(repoPath, specId, dispatchFn) {
-    const { findSpecById } = await import("./lib/spec-parser.mjs");
-    const spec = await findSpecById(repoPath, specId);
-    if (!spec)
-        throw new Error(`Spec not found: ${specId}`);
-    for (const field of detectMissingSpecFields(spec)) {
-        console.warn(`[spec-decompose] SPEC ${specId} missing ${field}; architect best-effort decomposition may produce low-quality FEATs`);
-    }
-    const prompt = `Decompose ${specId} (file: ${spec.filePath}) into 3-7 implementation FEATs. ` +
-        "Return them as a semicolon-separated list of feature titles (no FEAT-NNN prefix; the CLI assigns ids). " +
-        "Optionally include scope hints in parentheses, e.g. " +
-        '"Audio ingestion pipeline (in-scope: src/audio/; out: streaming); Multi-tenant key scoping (depends_on: auth)". ' +
-        "Output ONLY the semicolon-separated list — no preamble, no markdown headings.";
-    const dispatchResult = await dispatchFn({
-        agent: "loop:architect",
-        prompt,
-        parentCommand: "spec-decompose",
-        repoRoot: repoPath,
-        argv: process.argv,
-        skipFlag: "--no-architect"
-    });
-    if (!dispatchResult.ok) {
-        const msg = `architect dispatch failed: ${dispatchResult.error ?? "unknown error"}`;
-        console.error(`[spec-decompose] ${msg}. Run with --features to skip architect.`);
-        process.exitCode = 1;
-        return { error: msg };
-    }
-    const titles = parseArchitectOutput(dispatchResult.output ?? "");
-    if (titles.length === 0) {
-        const msg = "architect returned empty feature list";
-        console.error(`[spec-decompose] ${msg}. Run with --features to provide titles explicitly.`);
-        process.exitCode = 1;
-        return { error: msg };
-    }
-    return { titles };
-}
 const SPEC_HANDLERS = {
     add: async (repoPath, flags, rest) => {
         const title = flags.title || rest.join(" ");
@@ -672,7 +576,7 @@ const SPEC_HANDLERS = {
             }))
         };
     },
-    decompose: async (repoPath, flags, rest, opts = {}) => {
+    decompose: async (repoPath, flags, rest) => {
         const specId = flags.id || rest[0];
         if (!specId)
             throw new Error("spec decompose requires --id SPEC-NNN.");
@@ -682,18 +586,27 @@ const SPEC_HANDLERS = {
             const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
             return decomposeSpec(repoPath, specId, entries);
         }
-        const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
-        const dispatchFn = opts.dispatchFn ?? dispatchAgent;
-        // --no-architect opt-out: write audit log skip entry + exit non-zero.
         if (flags.noArchitect) {
-            return architectOptOut(repoPath, dispatchFn);
+            console.error("[spec decompose] --no-architect is deprecated and now a no-op (see DEC-011). " +
+                "Architect auto-dispatch is already removed.");
         }
-        // Neither flag: dispatch architect to produce feature list.
-        const { titles, error } = await dispatchArchitectForSpec(repoPath, specId, dispatchFn);
-        if (error)
-            return { error };
-        const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-        return decomposeSpec(repoPath, specId, titles);
+        // No --features / --features-json supplied: refuse with clear message.
+        const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+        await appendAuditLog(repoPath, {
+            timestamp: new Date().toISOString(),
+            agent: "loop:architect",
+            parentCommand: "spec-decompose",
+            ok: false,
+            skipped: true,
+            skipReason: "cli-refusal-architect-disabled",
+            durationMs: 0
+        });
+        const msg = `[spec decompose] architect auto-dispatch removed (see DEC-011). ` +
+            `Use the slash flow: /loop:spec-decompose --id ${specId}, ` +
+            `or pass --features 'Title 1; Title 2; ...'`;
+        console.error(msg);
+        process.exitCode = 1;
+        return { error: "architect auto-dispatch removed; pass --features or use slash flow" };
     },
     status: async (repoPath) => {
         const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
@@ -702,14 +615,14 @@ const SPEC_HANDLERS = {
         return { satisfaction: before, statusChanges: reconciled };
     }
 };
-async function runSpecSubcommand(repoPath, positionals, flags, opts = {}) {
+async function runSpecSubcommand(repoPath, positionals, flags) {
     const [sub, ...rest] = positionals;
     if (!sub)
         throw new Error("spec requires a subcommand: add | list | decompose | status");
     const handler = SPEC_HANDLERS[sub];
     if (!handler)
         throw new Error(`Unknown spec subcommand: ${sub}`);
-    return handler(repoPath, flags, rest, opts);
+    return handler(repoPath, flags, rest);
 }
 async function runReleaseSubcommand(repoPath, positionals, flags) {
     const [sub] = positionals;

@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,65 +25,134 @@ async function readJsonLines(filePath) {
         .map((l) => JSON.parse(l));
 }
 /**
- * Thin wrapper that exercises the same logic as the `backlog add` CLI handler
- * but with an injected dispatchFn so tests never touch real audit logs or
- * spawn real subagents.
- *
- * This mirrors the `opts.dispatchFn` injection seam added to
- * `runBacklogSubcommand` in loop.mts.
+ * Thin wrapper that exercises the actual backlog add logic from loop.mts.
+ * Captures stderr output and exit code changes.
  */
-async function backlogAddWithDispatch(repoPath, { title, body, noResearch = false, dispatchFn }) {
-    // Build synthetic argv mirroring what the CLI would have.
-    const argv = ["node", "loop.mjs", "backlog", "add", "--title", title];
-    if (noResearch)
-        argv.push("--no-research");
-    if (body != null)
-        argv.push("--body", body);
-    const flags = {
-        title,
-        body: body ?? null,
-        noResearch,
-        priority: null,
-        category: null,
-        targetRelease: null
-    };
-    let resolvedBody = flags.body || "";
-    if (!flags.body) {
-        const { dispatchAgent: realDispatch } = await import("../scripts/lib/auto-dispatch.mjs");
-        const dispatch = dispatchFn ?? realDispatch;
-        const prompt = `Research repo context relevant to the new FEAT titled "${title}". ` +
-            "Find prior FEATs in done/in-progress, recent grades mentioning this area, " +
-            "decisions affecting it. Return a 200-400 word findings document with file:line " +
-            "citations suitable for use as the FEAT body. Output only the body content " +
-            "(no frontmatter, no title heading — those are added by the CLI).";
-        try {
-            const result = await dispatch({
-                agent: "loop:researcher",
-                prompt,
-                parentCommand: "backlog-add",
-                repoRoot: repoPath,
-                argv,
-                skipFlag: "--no-research"
-            });
-            if (result.ok && !result.skipped && result.output && result.output.trim()) {
-                const sanitized = sanitizeResearcherBody(result.output);
-                if (sanitized.length > 0) {
-                    resolvedBody = sanitized;
-                }
+async function backlogAdd(repoPath, { title, body, noResearch = false }) {
+    const stderrLines = [];
+    const origError = console.error.bind(console);
+    console.error = (...args) => stderrLines.push(args.join(" "));
+    let result;
+    try {
+        const { clearAll } = await import("../scripts/lib/cache.mjs");
+        clearAll();
+        // Resolve body using the same logic as loop.mts resolveBacklogAddBody
+        let resolvedBody = body ?? null;
+        if (!resolvedBody) {
+            if (noResearch) {
+                console.error("[backlog add] --no-research is deprecated and now a no-op (see DEC-011). " +
+                    "Researcher auto-dispatch is already removed.");
             }
+            // Researcher auto-dispatch removed — write audit log entry, empty body
+            const { appendAuditLog } = await import("../scripts/lib/auto-dispatch.mjs");
+            await appendAuditLog(repoPath, {
+                timestamp: new Date().toISOString(),
+                agent: "loop:researcher",
+                parentCommand: "backlog-add",
+                ok: false,
+                skipped: true,
+                skipReason: "cli-refusal-researcher-disabled",
+                durationMs: 0
+            });
+            console.error("[backlog add] researcher auto-dispatch removed (see DEC-011). " +
+                "Creating FEAT with empty body — run /loop:backlog-add for researcher enrichment, " +
+                "or pass --body explicitly.");
+            resolvedBody = "";
         }
-        catch {
-            // Researcher failure must not block backlog add.
-        }
+        const { addFeature } = await import("../scripts/lib/backlog-writer.mjs");
+        result = await addFeature(repoPath, {
+            title,
+            priority: null,
+            category: null,
+            target_release: null,
+            body: resolvedBody
+        });
     }
-    return addFeature(repoPath, {
-        title,
-        priority: flags.priority,
-        category: flags.category,
-        target_release: flags.targetRelease,
-        body: resolvedBody
-    });
+    finally {
+        console.error = origError;
+    }
+    return { result, stderrLines };
 }
+// ---------------------------------------------------------------------------
+// Test 1: --body provided → no researcher dispatch, no audit log, FEAT body matches
+// ---------------------------------------------------------------------------
+test("backlog add with --body: no researcher dispatch, FEAT body matches explicit text", async () => {
+    const repo = await tmpRepo("bar-explicit-body-");
+    const explicitBody = "Explicit body content supplied by the user.";
+    const { result, stderrLines } = await backlogAdd(repo, {
+        title: "Explicit body test",
+        body: explicitBody
+    });
+    // No stderr about researcher removal when body is provided
+    const stderrText = stderrLines.join(" ");
+    assert.ok(!stderrText.includes("researcher auto-dispatch removed"), `should not warn about researcher when --body provided, got: ${stderrText}`);
+    // Audit log must have NO entry for loop:researcher
+    const lines = await readJsonLines(auditLogPath(repo));
+    const researcherEntries = lines.filter((e) => e.agent === "loop:researcher");
+    assert.equal(researcherEntries.length, 0, "no audit log entry expected for loop:researcher");
+    // FEAT file must exist with explicit body
+    const content = await fs.readFile(result.filePath, "utf8");
+    const { body } = parseFrontmatter(content);
+    assert.ok(body.includes(explicitBody), `FEAT body should contain explicit text, got:\n${body}`);
+});
+// ---------------------------------------------------------------------------
+// Test 2: no --body → audit log written, stderr deprecation note, FEAT created (AC-3)
+// ---------------------------------------------------------------------------
+test("backlog add without --body: audit log written, stderr warns about DEC-011, FEAT created (AC-3)", async () => {
+    const repo = await tmpRepo("bar-no-body-");
+    const { result, stderrLines } = await backlogAdd(repo, {
+        title: "No body test"
+    });
+    // FEAT file must exist
+    assert.ok(result?.filePath, "FEAT file should be created");
+    const content = await fs.readFile(result.filePath, "utf8");
+    assert.ok(content.length > 0, "FEAT file must not be empty");
+    // Stderr must include researcher removal warning
+    const stderrText = stderrLines.join(" ");
+    assert.ok(stderrText.includes("researcher auto-dispatch removed"), `stderr must include removal warning, got: ${stderrText}`);
+    assert.ok(stderrText.includes("DEC-011"), `stderr must cite DEC-011, got: ${stderrText}`);
+    assert.ok(stderrText.includes("/loop:backlog-add"), `stderr must name the slash flow, got: ${stderrText}`);
+    // Audit log must have exactly one entry for loop:researcher with cli-refusal
+    const lines = await readJsonLines(auditLogPath(repo));
+    const researcherEntries = lines.filter((e) => e.agent === "loop:researcher");
+    assert.equal(researcherEntries.length, 1, "expected one audit entry for loop:researcher");
+    const entry = researcherEntries[0];
+    assert.equal(entry.skipped, true, "audit entry should have skipped=true");
+    assert.equal(entry.skipReason, "cli-refusal-researcher-disabled", "audit entry skipReason must be cli-refusal-researcher-disabled");
+});
+// ---------------------------------------------------------------------------
+// Test 3: --no-research → deprecated no-op warning, FEAT still created
+// ---------------------------------------------------------------------------
+test("backlog add with --no-research: deprecated no-op warning, FEAT still created", async () => {
+    const repo = await tmpRepo("bar-no-research-");
+    const { result, stderrLines } = await backlogAdd(repo, {
+        title: "No research test",
+        noResearch: true
+    });
+    // FEAT file must exist
+    assert.ok(result?.filePath, "FEAT file should be created");
+    const content = await fs.readFile(result.filePath, "utf8");
+    assert.ok(content.length > 0, "FEAT file must not be empty");
+    // Stderr must include deprecated no-op note
+    const stderrText = stderrLines.join(" ");
+    assert.ok(stderrText.includes("deprecated") && stderrText.includes("no-op"), `stderr must include deprecated/no-op, got: ${stderrText}`);
+    assert.ok(stderrText.includes("DEC-011"), `stderr must cite DEC-011, got: ${stderrText}`);
+});
+// ---------------------------------------------------------------------------
+// Test 4: backlog add does NOT exit non-zero even when body is empty (graceful degrade)
+// ---------------------------------------------------------------------------
+test("backlog add without --body: exits 0 (graceful degrade, not a refusal)", async () => {
+    const repo = await tmpRepo("bar-no-exit-1-");
+    const originalExitCode = process.exitCode;
+    process.exitCode = undefined;
+    await backlogAdd(repo, { title: "Exit code test" });
+    const exitCode = process.exitCode ?? 0;
+    process.exitCode = originalExitCode;
+    assert.notEqual(exitCode, 1, "backlog add must NOT set exitCode=1 when body is empty");
+});
+// ---------------------------------------------------------------------------
+// Test 5: body sanitization helpers (regression guard)
+// ---------------------------------------------------------------------------
 function sanitizeResearcherBody(raw) {
     let text = raw;
     if (text.trimStart().startsWith("---")) {
@@ -97,116 +165,6 @@ function sanitizeResearcherBody(raw) {
     text = text.replace(/^\s*#[^\n]*\n/, "");
     return text.trim();
 }
-// ---------------------------------------------------------------------------
-// Test 1: --body provided → researcher NOT dispatched
-// ---------------------------------------------------------------------------
-test("backlog add with --body: researcher not dispatched, FEAT body matches explicit text", async () => {
-    const repo = await tmpRepo("bar-explicit-body-");
-    const explicitBody = "Explicit body content supplied by the user.";
-    let dispatchCallCount = 0;
-    const mockDispatch = async (_opts) => {
-        dispatchCallCount++;
-        return { ok: true, skipped: false, output: "should not be used", durationMs: 0 };
-    };
-    const result = await backlogAddWithDispatch(repo, {
-        title: "Explicit body test",
-        body: explicitBody,
-        dispatchFn: mockDispatch
-    });
-    // Researcher must NOT have been dispatched.
-    assert.equal(dispatchCallCount, 0, "dispatchFn should not be called when --body is provided");
-    // Audit log must have NO entry for loop:researcher.
-    const lines = await readJsonLines(auditLogPath(repo));
-    const researcherEntries = lines.filter((e) => e.agent === "loop:researcher");
-    assert.equal(researcherEntries.length, 0, "no audit log entry expected for loop:researcher");
-    // FEAT file must exist.
-    const content = await fs.readFile(result.filePath, "utf8");
-    const { body } = parseFrontmatter(content);
-    assert.ok(body.includes(explicitBody), `FEAT body should contain explicit text, got:\n${body}`);
-});
-// ---------------------------------------------------------------------------
-// Test 2: --no-research → researcher dispatched-with-skip
-// ---------------------------------------------------------------------------
-test("backlog add with --no-research: audit log has skipped=true entry, FEAT body is placeholder", async () => {
-    const repo = await tmpRepo("bar-no-research-");
-    // Use the real dispatchAgent but route its audit log to the tmp repo.
-    const result = await backlogAddWithDispatch(repo, {
-        title: "No research test",
-        noResearch: true
-    });
-    // FEAT file must exist.
-    assert.ok(result.filePath, "FEAT file should be created");
-    const content = await fs.readFile(result.filePath, "utf8");
-    assert.ok(content.length > 0, "FEAT file must not be empty");
-    // Audit log must have exactly one entry for loop:researcher with skipped=true.
-    const lines = await readJsonLines(auditLogPath(repo));
-    const researcherEntries = lines.filter((e) => e.agent === "loop:researcher");
-    assert.equal(researcherEntries.length, 1, "expected one audit entry for loop:researcher");
-    const entry = researcherEntries[0];
-    assert.equal(entry.skipped, true, "audit entry should have skipped=true");
-    assert.equal(entry.skipReason, "opt-out", "audit entry should have skipReason=opt-out");
-    // Body must be the placeholder template (no researcher output).
-    const { body } = parseFrontmatter(content);
-    assert.ok(body.includes("describe the feature") || body.includes("Acceptance hints"), `FEAT body should be placeholder template, got:\n${body}`);
-});
-// ---------------------------------------------------------------------------
-// Test 3: no flags → researcher dispatched normally, body merged
-// ---------------------------------------------------------------------------
-test("backlog add with no flags: researcher dispatched, audit entry written, body from researcher output", async () => {
-    const repo = await tmpRepo("bar-normal-dispatch-");
-    const researcherOutput = "This is the citation-backed body from the researcher agent.";
-    let capturedOpts = null;
-    const mockDispatch = async (opts) => {
-        capturedOpts = opts;
-        return { ok: true, skipped: false, output: researcherOutput, durationMs: 10 };
-    };
-    const result = await backlogAddWithDispatch(repo, {
-        title: "Normal dispatch test",
-        dispatchFn: mockDispatch
-    });
-    // dispatchFn must have been called.
-    assert.ok(capturedOpts !== null, "dispatchFn should have been called");
-    assert.equal(capturedOpts.agent, "loop:researcher");
-    assert.equal(capturedOpts.parentCommand, "backlog-add");
-    assert.equal(capturedOpts.skipFlag, "--no-research");
-    assert.ok(capturedOpts.prompt.includes("Normal dispatch test"), "prompt should include the FEAT title");
-    // FEAT body should contain the researcher output.
-    const content = await fs.readFile(result.filePath, "utf8");
-    const { body } = parseFrontmatter(content);
-    assert.ok(body.includes(researcherOutput), `FEAT body should contain researcher output, got:\n${body}`);
-});
-// ---------------------------------------------------------------------------
-// Test 4: researcher dispatch FAILURE → FEAT still created, no throw
-// ---------------------------------------------------------------------------
-test("backlog add with researcher failure: FEAT created with placeholder body, no throw", async () => {
-    const repo = await tmpRepo("bar-dispatch-fail-");
-    const mockDispatch = async (_opts) => {
-        return { ok: false, skipped: false, error: "researcher exploded", durationMs: 5 };
-    };
-    let thrown = null;
-    let result = null;
-    try {
-        result = await backlogAddWithDispatch(repo, {
-            title: "Dispatch failure test",
-            dispatchFn: mockDispatch
-        });
-    }
-    catch (err) {
-        thrown = err;
-    }
-    // Must NOT have thrown.
-    assert.equal(thrown, null, "backlog add must not throw when researcher dispatch fails");
-    // FEAT file must still be created.
-    assert.ok(result?.filePath, "FEAT file should be created even when researcher fails");
-    const content = await fs.readFile(result.filePath, "utf8");
-    assert.ok(content.length > 0, "FEAT file must not be empty");
-    // Body must fall back to placeholder template.
-    const { body } = parseFrontmatter(content);
-    assert.ok(body.includes("describe the feature") || body.includes("Acceptance hints"), `FEAT body should be placeholder when researcher fails, got:\n${body}`);
-});
-// ---------------------------------------------------------------------------
-// Test 5: body sanitization — frontmatter stripped, title heading stripped
-// ---------------------------------------------------------------------------
 test("sanitizeResearcherBody strips frontmatter block", () => {
     const raw = "---\nfoo: bar\n---\n\nActual body content here.";
     const sanitized = sanitizeResearcherBody(raw);
