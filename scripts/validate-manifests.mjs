@@ -29,9 +29,10 @@ export async function validateManifests(repoRoot) {
     if (!ownEntry) {
         fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
     }
-    else if (ownEntry.version !== plugin.version) {
-        fail(`marketplace.json: entry "${plugin.name}" version=${ownEntry.version} but plugin.json=${plugin.version}`);
-    }
+    // Version drift between plugin.json and marketplace.json's own entry is allowed.
+    // marketplace.json is forward-looking infrastructure for a decoupled install path;
+    // the canonical consumer is hero-crew's parent marketplace, which pins loop@version
+    // independently. Forcing them in lockstep added release ceremony with no consumer.
     for (const entry of marketplace.plugins) {
         if (!entry.name)
             fail(`marketplace.json: a plugins[] entry is missing "name"`);
