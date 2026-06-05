@@ -9,18 +9,23 @@ updated: 2026-05-28
 depends_on: []
 slices: []
 derived_from: null
-composite_score: 6
+composite_score: 0.71
+composite_priority: P2
 source_competitors: [Cursor agents]
 autonomous_safe: true
 deferred: true
 defer_reason: medium-high risk — implement after PR autofix loop ships. Needs depth limit + file-claim system.
-triage_notes: no fields needed inference
-pm_customer_impact: 0.65
-pm_strategic_fit: 0.6
+pm_customer_impact: 0.55
+pm_effort_estimate: 0.85
+pm_strategic_alignment: 0.60
+pm_technical_risk: 0.85
+pm_dependency_depth: 0.70
+pm_strategic_fit: 0.60
+pm_risk_level: 0.85
 pm_implementation_confidence: 0.25
 pm_demand_signal: 0.6
-pm_risk_level: 0.85
 pm_reasoning: Explicitly deferred — depth limit and file-claim system unresolved; highest risk_level in batch
+triage_notes: "PM re-scored 2026-06-05 for scale normalization: prior composite_score=6 was a raw 0-9 legacy value that broke walker numeric-sort against current 0.0-1.0 composites. Re-scored under the canonical five dimensions; composite 0.71; formula yields composite_priority=P2 (impact<0.7, alignment<0.8). User-facing priority=P3 kept. deferred=true and defer_reason preserved verbatim. autonomous_safe=true preserved; note formula would compute false (technical_risk, effort, dependency_depth all >0.6) — deferred flag is the active walker gate per FEAT-040 risk-gate fix."
 github_issue: 22
 github_milestone: 2
 phase: 2
