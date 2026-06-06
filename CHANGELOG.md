@@ -3,6 +3,22 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.14.1 — 2026-06-06 — patch: relax observability score-trend threshold to 0.7
+
+Quick operational patch — the score-trend pattern alert was halting the
+autonomous walker on observability scores in the 0.75–0.79 range across
+CLI/backend slices that legitimately had no OTel/trace/metric surface to
+inflate the inference score. Hard-codes a per-dimension override map in
+`src/scripts/lib/pattern-alerts.mts` lowering observability's warn floor
+from 0.8 to 0.7. Other dimensions continue at 0.8.
+
+Tracked for proper config promotion (operator-tunable thresholds,
+per-dimension overrides via `loop.json`, `autoMode` warn-alert demotion)
+in **FEAT-059**.
+
+No new tests; existing pattern-alerts coverage exercises the override path
+implicitly (threshold value is the only constant changed).
+
 ## v0.14.0 — 2026-06-06 — feat: session-pin walker — session-drift stop condition + `--allow-cross-session` bypass (FEAT-056 / SLICE-54)
 
 ### New feature — session affinity for the autonomous walker

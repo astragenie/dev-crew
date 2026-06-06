@@ -7,21 +7,31 @@ import { listSpecs } from "./spec-parser.mjs";
 // Each alert: { severity: "warn"|"info", category, message, suggested_action }.
 const SCORE_THRESHOLD = 0.8;
 const TRAILING_SLICES = 3;
+// Per-dimension threshold override. Looser floor for subjective dimensions
+// where the score-inference regex rarely fires (observability vocabulary is
+// sparse in CLI/backend slices). Quick patch; FEAT-059 promotes to config.
+const PER_DIMENSION_THRESHOLD = {
+    observability: 0.7
+};
+function thresholdFor(dim) {
+    return PER_DIMENSION_THRESHOLD[dim] ?? SCORE_THRESHOLD;
+}
 function detectScoreTrendAlerts(grades) {
     if (grades.length < TRAILING_SLICES)
         return [];
     const recent = grades.slice(-TRAILING_SLICES);
     const out = [];
     for (const dim of SCORE_DIMENSIONS) {
+        const threshold = thresholdFor(dim);
         const allLow = recent.every((g) => {
             const v = g.scores?.[dim];
-            return typeof v === "number" && v < SCORE_THRESHOLD;
+            return typeof v === "number" && v < threshold;
         });
         if (allLow) {
             out.push({
                 severity: "warn",
                 category: "score-trend",
-                message: `${dim} below ${SCORE_THRESHOLD} across last ${TRAILING_SLICES} slices`,
+                message: `${dim} below ${threshold} across last ${TRAILING_SLICES} slices`,
                 suggested_action: `Author a SPEC (type=sre or type=adr) addressing the ${dim} gap, or revisit the slice template for that dimension.`
             });
         }
