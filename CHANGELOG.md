@@ -3,6 +3,39 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.13.0 — 2026-06-06 — feat: auto-derive slice AC scaffold from parent FEAT body (FEAT-053 / SLICE-53)
+
+### New feature — FEAT-derived acceptance criteria scaffold
+
+`/loop:slice from-feature` now auto-populates the `## Acceptance criteria`
+block in the generated slice scaffold from the parent FEAT body. When the
+FEAT contains an `## Acceptance criteria` section with `- [ ]` lines, those
+items are copied verbatim into the scaffold (any `[x]` checked items are
+normalized back to `[ ]`, since the slice starts fresh). When the FEAT has
+no AC section or the section contains no checkbox lines, the existing
+placeholder behavior is preserved — no regression.
+
+**Why this matters.** SLICE-50, SLICE-51, and SLICE-52 all required the lead
+to manually copy ACs from the parent FEAT into the slice scaffold before
+`/loop:slice start` could proceed, because placeholder ACs failed the AC
+linter. This change eliminates that manual fill step for any FEAT that follows
+the `## Acceptance criteria` heading convention.
+
+**Note on existing FEATs.** FEAT bodies already in this repo (e.g.
+FEAT-055/056/057) use inline `AC-N:` text rather than the heading format; they
+fall through to the placeholder path unchanged. Future FEATs should use the
+`## Acceptance criteria` heading + `- [ ]` format to benefit from auto-derive.
+
+### Implementation details
+
+- New export `extractAcceptanceCriteria(body: string): string[]` in
+  `src/scripts/lib/slice-linker/feature-lifecycle.mts`. Heading match is
+  case-insensitive; extraction stops at the next `##` heading; checkbox state
+  is normalized on read.
+- 12 new unit tests added; full suite passes at 809/809.
+
+---
+
 ## v0.12.0 — 2026-06-06 — feat: walker aggregate cost gate + contracts template path fix (FEAT-052 / SLICE-52)
 
 ### New feature — walker aggregate cost gate

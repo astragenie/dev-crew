@@ -1,13 +1,13 @@
 ---
 id: FEAT-053
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-53]
 derived_from: null
 pm_customer_impact: 0.75
 pm_effort_estimate: 0.3
@@ -17,6 +17,9 @@ pm_dependency_depth: 0.1
 autonomous_safe: true
 triage_notes: "Confirmed friction on SLICE-50+51; contained to /loop:slice from-feature scaffold; clear testable ACs"
 composite_score: 0.7025
+started_at: 2026-06-06
+slices_complete: [SLICE-53]
+completed_at: 2026-06-06
 ---
 ## Context
 

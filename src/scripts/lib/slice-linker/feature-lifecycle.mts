@@ -18,6 +18,42 @@ type DispatchFn = (opts: {
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
+/**
+ * Parses the `## Acceptance criteria` section from a FEAT body and returns
+ * the checkbox lines verbatim.
+ *
+ * Returns an empty array when:
+ * - body is falsy
+ * - no `## Acceptance criteria` heading found (case-insensitive)
+ * - the section contains no `- [ ]` or `- [x]` lines (malformed)
+ *
+ * Stops at the next `##`-level heading so lines from later sections are
+ * not included.
+ */
+export function extractAcceptanceCriteria(body: string): string[] {
+  if (!body) return [];
+  const lines = body.split("\n");
+  let inSection = false;
+  const results: string[] = [];
+  for (const line of lines) {
+    if (/^##\s+acceptance criteria\s*$/i.test(line.trim())) {
+      inSection = true;
+      continue;
+    }
+    if (inSection) {
+      // Stop at the next ## heading
+      if (/^##\s/.test(line)) break;
+      // Collect checkbox lines (checked or unchecked).
+      // Normalize to unchecked per AC-3: slice scaffold ACs start as work,
+      // not as already-done work, even if the parent FEAT had check marks.
+      if (/^- \[[ x]\]/.test(line)) {
+        results.push(line.replace(/^- \[x\]/i, "- [ ]"));
+      }
+    }
+  }
+  return results;
+}
+
 // Walks slicesRoot recursively, returns the max numeric slice id found.
 async function maxSliceIdUnder(dir) {
   if (!(await pathExists(dir))) return 0;
@@ -70,6 +106,16 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
   const featureDescriptionLine = (featureBody || "")
     .split(/\n+/)
     .find((line) => line && !line.startsWith("#") && !line.startsWith("---"));
+
+  const derivedAcs = extractAcceptanceCriteria(featureBody);
+  const acLines =
+    derivedAcs.length > 0
+      ? derivedAcs
+      : [
+          "- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)",
+          "- [ ] AC-2: <replace with a concrete, testable acceptance criterion>"
+        ];
+
   const body = [
     `# ${id}: ${title}`,
     "",
@@ -92,8 +138,7 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
     "",
     "## Acceptance criteria",
     "",
-    "- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)",
-    "- [ ] AC-2: <replace with a concrete, testable acceptance criterion>",
+    ...acLines,
     "",
     "## Done When",
     "",

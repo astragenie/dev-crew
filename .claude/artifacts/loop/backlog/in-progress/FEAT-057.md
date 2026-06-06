@@ -1,13 +1,13 @@
 ---
 id: FEAT-057
-status: triaged
+status: in-progress
 priority: P2
 category: cost-governance
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-54]
 derived_from: null
 pm_customer_impact: 0.7
 pm_effort_estimate: 0.3
@@ -17,6 +17,7 @@ pm_dependency_depth: 0.1
 autonomous_safe: true
 triage_notes: 30 redundant Reads = concrete cost waste; existing hook -> deny verdict + config threshold; low blast radius
 composite_score: 0.695
+started_at: 2026-06-06
 ---
 # FEAT-057: Promote check-redundant-read hook to block
 
