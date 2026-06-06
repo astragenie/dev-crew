@@ -3,6 +3,43 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.22.0 — 2026-06-06 — test: halt-badge schema regression test (FEAT-066 / SLICE-62)
+
+Third derived FEAT from SPEC-003. Closes the SPEC loop-side by enforcing the three-way contract:
+
+1. `HALT_BADGES` registry in `src/scripts/lib/halt-badges.mts` (FEAT-065)
+2. `### snapshot.<field>` headings in `docs/halt-badges.md` (FEAT-063)
+3. snapshot keys emitted by `assembleStopResult` in `src/scripts/lib/stop-conditions.mts`
+
+### New test
+
+`src/tests/halt-badge-schema.test.mts` — 5 cases:
+
+1. Every `HALT_BADGES[i].field` has a `### snapshot.<field>` heading in the docs
+2. Every `### snapshot.<x>` heading in the docs has a `HALT_BADGES` entry
+3. Every snapshot.* key emitted by `assembleStopResult` is either in `HALT_BADGES` or in `SNAPSHOT_BOOKKEEPING_ALLOWLIST`
+4. `stop-check` output has all required top-level keys
+5. `HALT_BADGES` is non-empty
+
+Failure messages cite the exact remediation needed when the contract drifts (e.g., "Add `### snapshot.foo` to docs/halt-badges.md OR remove `foo` from HALT_BADGES").
+
+### Bookkeeping allow-list
+
+`SNAPSHOT_BOOKKEEPING_ALLOWLIST` lists 13 snapshot fields that are loop telemetry (NOT halt-badges): `pendingOrTriaged`, `inProgress`, `approvedUndecomposed`, `totalAlerts`, `warnAlerts`, `warnAlertsDemoted`, `iterationCount`, `iterationCap`, `costAlerts`, `crewBlocked`, `crewEscalated`, `autoMode`, `marathonMode`. When a future FEAT adds a new bookkeeping field, add it to this list in the same slice.
+
+### Tests total
+
+877/878 + 1 pre-existing skip.
+
+### SPEC-003 progress
+
+- ✅ FEAT-063 registry (v0.20.0)
+- ✅ FEAT-065 `--explain-halts` (v0.21.0)
+- ✅ FEAT-066 schema regression test (this release)
+- ⏳ FEAT-064 crew brief-me upstream-request (file when ready; loop-side SPEC complete)
+
+Grade avg 0.900 (highest of the session).
+
 ## v0.21.0 — 2026-06-06 — feat: `loop brief --explain-halts` (FEAT-065 / SLICE-61)
 
 Second derived FEAT from SPEC-003. Delivers the SPEC SLO loop-side without depending on crew brief-me upstream.
