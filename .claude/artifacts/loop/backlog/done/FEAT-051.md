@@ -1,14 +1,16 @@
 ---
 id: FEAT-051
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-06-05
-updated: 2026-06-05
+updated: 2026-06-06
 depends_on: []
 slices: []
 derived_from: null
+external_delta: "Shipped upstream in hero-crew v0.15.0 (commit 3597220, tag v0.15.0). No loop slice required."
+completed_at: 2026-06-06
 pm_customer_impact: 0.35
 pm_effort_estimate: 0.4
 pm_strategic_alignment: 0.55
