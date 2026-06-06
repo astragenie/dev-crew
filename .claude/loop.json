@@ -1,5 +1,5 @@
 {
-  "preset": null,
+  "preset": "typescript-plugin-dev",
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",

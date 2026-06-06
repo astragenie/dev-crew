@@ -3,6 +3,43 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.19.0 — 2026-06-06 — feat: two new presets — `typescript-plugin-dev` + `dotnet-only`
+
+Two new presets shipped under `scripts/presets/`:
+
+### `typescript-plugin-dev`
+
+For TypeScript Claude Code plugin repos (loop, hero-crew, etc.). Source in `src/scripts/**/*.mts` → compiled to `scripts/**/*.mjs` (committed; CI checks drift). Pure Node ESM runtime.
+
+Stack:
+- `build`: `npm run lint`
+- `test`: `npm test`, `node ./scripts/validate-manifests.mjs`, `node ./scripts/validate-content-length.mjs`
+- `frontendBuild`, `infraPlan`, `aspireBoot`: null
+
+Mandatory docs: `README.md`, `CHANGELOG.md`, `docs/code-conventions.md`.
+
+### `dotnet-only`
+
+For standalone C# .NET service / library repos with no frontend, no Aspire, no Python sidecars. Fills the gap between `dotnet-aspire-python` (full monorepo) and `dotnet-react` (.NET + UI).
+
+Stack:
+- `build`: `dotnet build -c Release --nologo`
+- `test`: `dotnet test -c Release --nologo`
+- `frontendBuild`, `infraPlan`, `aspireBoot`: null
+
+### This repo's `loop.json` preset fixed
+
+`preset: "dotnet-aspire-python"` → `preset: "typescript-plugin-dev"`. The label now matches the actual stack (Node ESM plugin dev). Stack section unchanged; preset is metadata only.
+
+### Recommended labels for other AstraGenie repos (sibling work)
+
+- `hero-crew` → `typescript-plugin-dev` (same Node ESM plugin stack as loop)
+- `cortex` → `dotnet-react` (.NET backend + React dashboard)
+- `loopobserver` → `dotnet-react` (.NET backend + LoopBrain.Web React UI)
+- `authentic` → `dotnet-only` (.NET backend only, no frontend)
+
+Each consumer's `loop.json::preset` field can be updated independently — operator action, no loop CLI invocation needed.
+
 ## v0.18.0 — 2026-06-06 — chore: cleanup followups + Sonnet routing for non-architect phases
 
 Bundle of three small followups from today's slice grades.
