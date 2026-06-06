@@ -6,7 +6,7 @@ category: workflow
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
-depends_on: []
+depends_on: [FEAT-060, FEAT-061]
 slices: []
 derived_from: null
 ---
