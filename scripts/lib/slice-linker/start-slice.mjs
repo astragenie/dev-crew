@@ -176,15 +176,14 @@ export async function applyWorktreeResult(repoPath, sliceId, sliceFile, config, 
     }
     // Write state first (prior value captured for rollback)
     const prior = await writeWorktreePathToState(repoPath, result.worktreePath);
-    // Write slice frontmatter — roll back state on failure
-    if (sliceFile) {
-        try {
-            await writeWorktreePathToFrontmatter(sliceFile, result.worktreePath);
-        }
-        catch (err) {
-            await rollbackWorktreePathInState(repoPath, prior);
-            throw err;
-        }
+    // Write slice frontmatter — roll back state on failure.
+    // sliceFile is non-null here (guarded above) — direct call, no nested if.
+    try {
+        await writeWorktreePathToFrontmatter(sliceFile, result.worktreePath);
+    }
+    catch (err) {
+        await rollbackWorktreePathInState(repoPath, prior);
+        throw err;
     }
     return result;
 }

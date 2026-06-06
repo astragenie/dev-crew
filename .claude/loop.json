@@ -23,11 +23,14 @@
     "modelRouting": {
       "default": "sonnet",
       "sliceStart": "opus",
+      "architect": "opus",
       "review": "sonnet",
       "decompose": "sonnet",
-      "gradeWrite": "opus",
+      "gradeWrite": "sonnet",
       "build": "sonnet",
-      "validate": "sonnet"
+      "validate": "sonnet",
+      "copywriter": "sonnet",
+      "docwriter": "sonnet"
     },
     "triageBudgetUsdPerBatch": 5.0,
     "triageBudgetTokensPerBatch": 500000,

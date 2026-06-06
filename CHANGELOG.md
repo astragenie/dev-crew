@@ -3,6 +3,44 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.18.0 — 2026-06-06 — chore: cleanup followups + Sonnet routing for non-architect phases
+
+Bundle of three small followups from today's slice grades.
+
+### Cleanup
+
+- Removed dead `if (sliceFile)` guard in `applyWorktreeResult` (`src/scripts/lib/slice-linker/start-slice.mts`). The block is unreachable after the failure-atomicity throw added in SLICE-56 (DEC-019). Reviewer flagged as Finding-3 non-blocking on SLICE-56 re-review.
+- `detectCostMode` test now uses an isolated `mkdtemp` directory instead of `os.tmpdir()` so it is resilient when the user home dir is itself a git repo (DEC-022 surfaced this). Stops false-fail when running tests after worktree-creating tests left tmp state.
+
+### Sonnet routing — model defaults
+
+`.claude/loop.json` `modelRouting` extended:
+
+```json
+{
+  "default": "sonnet",
+  "sliceStart": "opus",
+  "architect": "opus",
+  "review": "sonnet",
+  "decompose": "sonnet",
+  "gradeWrite": "sonnet",
+  "build": "sonnet",
+  "validate": "sonnet",
+  "copywriter": "sonnet",
+  "docwriter": "sonnet"
+}
+```
+
+Changes from v0.17.0 defaults:
+
+- `gradeWrite` flipped `opus → sonnet` (grade-writes are templated + short; opus is overkill)
+- New phases listed explicitly: `architect`, `copywriter`, `docwriter` (was missing from `MODEL_PHASES` constant)
+- Only `sliceStart` and `architect` stay on opus (design-shaped work)
+
+`src/scripts/lib/model-router.mts::MODEL_PHASES` extended to match.
+
+Note: routing is metadata exposed by the resolver — orchestrator uses it as a hint but does NOT force-dispatch subagents on the named model. Operator still drives session model via `/model`.
+
 ## v0.17.0 — 2026-06-06 — docs: specialist-pause SOP + upstream-request artifact (FEAT-052 / SLICE-58, FEAT-058 / SLICE-59)
 
 Two doc-only slices codifying institutional knowledge from today's session arc.

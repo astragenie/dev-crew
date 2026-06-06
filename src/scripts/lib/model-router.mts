@@ -4,7 +4,10 @@ export const MODEL_PHASES = [
   "build",
   "review",
   "validate",
-  "gradeWrite"
+  "gradeWrite",
+  "decompose",
+  "copywriter",
+  "docwriter"
 ];
 
 const FALLBACK_MODEL = "opus";

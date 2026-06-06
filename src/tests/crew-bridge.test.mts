@@ -129,9 +129,17 @@ test("detectCostMode returns scoped when config.loop.costProject is set", async 
 });
 
 test("detectCostMode returns aggregate when config has no costProject", async () => {
-  // No git repo at tmp path → falls through to catch → aggregate
-  const mode = await detectCostMode(os.tmpdir(), {});
-  assert.equal(mode, "aggregate");
+  // Use a fresh non-git temp directory so the git rev-parse calls fail and we
+  // fall through to the catch → aggregate. Using os.tmpdir() directly is
+  // unreliable when the user home or a parent dir is itself a git repo (the
+  // Windows home-is-git-repo case surfaced via SLICE-57 fix DEC-022).
+  const isolated = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-iso-"));
+  try {
+    const mode = await detectCostMode(isolated, {});
+    assert.equal(mode, "aggregate");
+  } finally {
+    await fs.rm(isolated, { recursive: true, force: true });
+  }
 });
 
 // --- appendSourceProjectArgs tests ---
