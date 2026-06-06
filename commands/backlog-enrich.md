@@ -81,8 +81,12 @@ Steps:
    existing artifact is left untouched).
 4. **Dispatch `crew:architect` inline.** For each missing artifact, dispatch
    `crew:architect` via the Agent tool using the canonical prompt at
-   `templates/contracts-architect-prompt.md`. Parallel dispatches are allowed
-   for batches of ≤5; above that, dispatch sequentially to avoid rate limits.
+   `${CLAUDE_PLUGIN_ROOT}/templates/contracts-architect-prompt.md` (plugin-root
+   absolute path — consumer repos do not ship `templates/`). Parallel dispatches
+   are allowed for batches of ≤5; above that, dispatch sequentially to avoid
+   rate limits. If the template cannot be read, STOP and surface the error —
+   do NOT fall back to ad-hoc sections (silent fallback masks plugin install
+   drift).
 5. **Validate and write.** Parse each response. If the response is empty OR
    does not contain all four required section headers
    (`## TypeScript Interfaces`, `## API Contracts`, `## Event Schemas`,

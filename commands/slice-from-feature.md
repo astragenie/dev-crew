@@ -81,8 +81,11 @@ dispatching any downstream specialist (`crew:builder`, `crew:reviewer`, etc.):
    trigger fires on ANY slice for the FEAT, not just SLICE-1; the check is
    artifact existence, not slice index).
 4. **Dispatch `crew:architect` inline.** Use the Agent tool with the
-   canonical prompt from `templates/contracts-architect-prompt.md`. Single
-   dispatch — one FEAT, one artifact.
+   canonical prompt from `${CLAUDE_PLUGIN_ROOT}/templates/contracts-architect-prompt.md`
+   (plugin-root absolute path — consumer repos do not ship `templates/`).
+   Single dispatch — one FEAT, one artifact. If the template cannot be read,
+   STOP and surface the error — do NOT fall back to ad-hoc sections (silent
+   fallback masks plugin install drift).
 5. **Validate and write.** Parse the response. If the response is empty OR
    any of the four required section headers (`## TypeScript Interfaces`,
    `## API Contracts`, `## Event Schemas`, `## Data Contracts`) is missing,
