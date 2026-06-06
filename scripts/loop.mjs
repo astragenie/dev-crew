@@ -62,7 +62,8 @@ const FLAG_SPEC = {
     "--autonomous-safe": { key: "autonomousSafe" },
     "--evidence": { key: "evidence" },
     "--reasoning": { key: "reasoning" },
-    "--allow-cross-session": { key: "allowCrossSession", boolean: true }
+    "--allow-cross-session": { key: "allowCrossSession", boolean: true },
+    "--explain-halts": { key: "explainHalts", boolean: true }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -198,9 +199,17 @@ const COMMANDS = {
         });
         return result;
     },
-    brief: async ({ repoPath }) => {
+    brief: async ({ repoPath, flags }) => {
         const { buildBrief } = await import("./lib/brief.mjs");
-        return buildBrief(repoPath);
+        const result = await buildBrief(repoPath);
+        if (flags?.explainHalts) {
+            const { explainHalts } = await import("./lib/halt-badges.mjs");
+            console.log(JSON.stringify(result, null, 2));
+            console.log("");
+            console.log(explainHalts(result));
+            return { _suppressDefaultOutput: true };
+        }
+        return result;
     },
     "snapshot-memory": async ({ repoPath }) => {
         const { writeMemorySnapshot } = await import("./lib/memory-snapshot.mjs");
@@ -313,6 +322,8 @@ async function main() {
         throw new Error(`Unknown command: ${command}`);
     }
     const result = await handler({ repoPath, flags, positionals });
+    if (result && result._suppressDefaultOutput)
+        return;
     console.log(JSON.stringify(result, null, 2));
 }
 async function resolveBacklogAddBody(repoPath, title, suppliedBody) {

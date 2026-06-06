@@ -3,6 +3,40 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.21.0 — 2026-06-06 — feat: `loop brief --explain-halts` (FEAT-065 / SLICE-61)
+
+Second derived FEAT from SPEC-003. Delivers the SPEC SLO loop-side without depending on crew brief-me upstream.
+
+### New CLI flag
+
+`node scripts/loop.mjs brief --explain-halts` — prints the existing JSON body, then appends a `## Halt summary` markdown block summarizing each fired halt-badge with: gate name, key values, suggested operator action.
+
+When no halt-badges are populated, prints `No halts active.` Without the flag, brief output is byte-identical to v0.20.0 (existing JSON consumers untouched).
+
+### New module
+
+`src/scripts/lib/halt-badges.mts`:
+- `HALT_BADGES` registry — typed list mirroring `docs/halt-badges.md` (FEAT-063)
+- Per-field renderers for `costRegression`, `sessionDrift`, `sliceCostCeiling`, `gradeTrend`
+- `explainHalts(brief): string` — iterator that skips fields the registry doesn't know about (graceful degrade for future halt-badges)
+
+### Main CLI dispatch
+
+Added `_suppressDefaultOutput` sentinel — handlers that want to take over stdout (printing JSON + extra content) can return `{ _suppressDefaultOutput: true }` to skip the default `console.log(JSON.stringify(result, null, 2))`. Brief handler uses this when `--explain-halts` is set.
+
+### Tests
+
+11 new unit cases (no-halt, each single-halt path, multi-halt combined render in registry order, malformed snapshot graceful degrade, top-level vs snapshot lookup, unknown field skip). Total 873 / 872 pass + 1 skip.
+
+Grade avg 0.883 (observability + test_confidence both 0.90+).
+
+### SPEC-003 progress
+
+- ✅ FEAT-063 registry (v0.20.0)
+- ✅ FEAT-065 loop --explain-halts (this release)
+- ⏳ FEAT-066 schema regression test (next)
+- ⏳ FEAT-064 crew brief-me upstream-request (file when ready; loop-side SLO already delivered)
+
 ## v0.20.0 — 2026-06-06 — docs: halt-badge registry source-of-truth (FEAT-063 / SLICE-60)
 
 Doc-only slice. First derived FEAT from SPEC-003 (halt-badge observability cross-plugin SLO).
