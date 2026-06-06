@@ -3,6 +3,31 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.17.0 — 2026-06-06 — docs: specialist-pause SOP + upstream-request artifact (FEAT-052 / SLICE-58, FEAT-058 / SLICE-59)
+
+Two doc-only slices codifying institutional knowledge from today's session arc.
+
+### FEAT-052 / SLICE-58 — Specialist-pause SOP
+
+- New `docs/sop/specialist-pause-handling.md` — documents the recurring pattern across 6 slices today (SLICE-51/52/53/54/56/57) where crew:builder / crew:reviewer / crew:validator subagents pause mid-investigation without writing the required artifact (handoff / review-result / validation-result)
+- SOP defines: (1) how to detect the pause (verify artifact landed), (2) Option A = lead writes artifact inline via crew CLI, (3) Option B = mark skip badge with explicit reason, (4) never silently pass an unresolved gate
+- Required `--note` content for skip badges: what was checked locally + why skip is safe + risk acceptance
+- "When NOT to skip" list — full ladder required for new public schemas, multi-file scope, BEHAVIOR_CHANGED without exercise, partial test coverage, safety-critical paths
+- CLAUDE.md updated to reference the SOP as load-at-start item
+
+### FEAT-058 / SLICE-59 — Upstream-request artifact for hero-crew
+
+- New `docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md` — filed against `hooks/check-redundant-read.mjs` (lives in hero-crew, not loop)
+- Captures problem (current decision: approve + warning; should be decision: block at configurable cap), evidence (cost-advisor 30-reread observation), suggested ACs for hero-crew implementation, loop-side alternative if upstream stalls
+- Tracking table for `pending-upstream-fix → shipped-upstream` status evolution
+- New `docs/upstream-requests/` directory convention for future cross-plugin requests
+- FEAT-058 backlog body now cross-links to the doc via new `upstream_request_doc` frontmatter field
+- CLAUDE.md references the directory alongside the SOP
+
+### Why two doc slices together
+
+Both shipped under one minor release because (a) zero source code changed, (b) they're operational artifacts the next session reads at startup via CLAUDE.md, (c) batching keeps the changelog readable. Combined ~25 minutes of slice work.
+
 ## v0.16.0 — 2026-06-06 — feat: configurable grade-trend threshold + autoMode warn-alert demotion (FEAT-059 / SLICE-57)
 
 Replaces v0.14.1 hard-coded `PER_DIMENSION_THRESHOLD = { observability: 0.7 }` patch with operator-tunable config knobs. Marathon mode now optionally demotes subjective warn-alerts to suggestions instead of halting — cost / safety halts stay strict.

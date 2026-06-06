@@ -1,13 +1,13 @@
 ---
 id: FEAT-058
-status: triaged
+status: done
 priority: P2
 category: upstream-request
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-59]
 derived_from: null
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.2
@@ -17,8 +17,14 @@ pm_dependency_depth: 0.85
 composite_score: 0.565
 autonomous_safe: true
 triage_notes: "Operator override: track as upstream-request doc artifact only; no loop code change; mark satisfied when hero-crew ships"
+started_at: 2026-06-06
+upstream_request_doc: docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md
+slices_complete: [SLICE-59]
+completed_at: 2026-06-06
 ---
 # FEAT-058: Upstream-request check-redundant-read hook deny verdict in hero-crew
+
+**Upstream-request artifact:** `docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md` (filed 2026-06-06, status: pending-upstream-fix).
 
 Upstream-request against hero-crew: hooks/check-redundant-read.mjs currently emits decision: approve with a warning systemMessage. Should emit decision: block (deny verdict) at configurable threshold so the assistant cannot continue re-reading the same path.
 

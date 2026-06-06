@@ -1,13 +1,13 @@
 ---
 id: FEAT-052
-status: triaged
+status: done
 priority: P2
 category: tech-debt
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-58]
 derived_from: null
 pm_customer_impact: 0.7
 pm_effort_estimate: 0.4
@@ -17,6 +17,9 @@ pm_dependency_depth: 0.1
 autonomous_safe: true
 triage_notes: "Operator override: ship as autonomous slice; reviewer-pause investigation can be authored as ADR + SOP doc-only, no cross-plugin code change required"
 composite_score: 0.665
+started_at: 2026-06-06
+slices_complete: [SLICE-58]
+completed_at: 2026-06-06
 ---
 ## Context
 

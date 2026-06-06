@@ -9,8 +9,10 @@ phase-gate runner, and the autonomous-development loop primitives.
 1. `README.md` — what this plugin is, install instructions, pinned release.
 2. `ADOPTION.md` — preconditions, backup advice, and a manual install walk-through.
 3. `docs/code-conventions.md` — ESM / Node conventions for this repo.
-4. `.claude/artifacts/loop/backlog/product-backlog.md` — current roadmap (Phase 3 loop safety + telemetry).
-5. `CHANGELOG.md` — recent releases.
+4. `docs/sop/specialist-pause-handling.md` — SOP when builder/reviewer/validator subagents pause without writing artifact (recurring 2026-06-06 pattern).
+5. `docs/upstream-requests/` — open requests against hero-crew or other upstream plugins; check status before reopening dependent FEATs.
+5. `.claude/artifacts/loop/backlog/product-backlog.md` — current roadmap (Phase 3 loop safety + telemetry).
+6. `CHANGELOG.md` — recent releases.
 
 ## Engineering standards
 
