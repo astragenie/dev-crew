@@ -3,6 +3,30 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.20.0 — 2026-06-06 — docs: halt-badge registry source-of-truth (FEAT-063 / SLICE-60)
+
+Doc-only slice. First derived FEAT from SPEC-003 (halt-badge observability cross-plugin SLO).
+
+New `docs/halt-badges.md` documents every currently-emitted halt-badge field under `stop-check.snapshot.*`:
+
+- `snapshot.costRegression` (FEAT-055 / v0.12.0) — current spend > multiplier × rolling median
+- `snapshot.sessionDrift` (FEAT-056 / v0.14.0) — walker resumed in different Claude session
+- `snapshot.sliceCostCeiling` (pre-existing) — absolute USD ceiling exceeded
+- `snapshot.gradeTrend` (pre-existing) — consecutive sub-threshold grade averages
+
+Each entry: TypeScript-style shape, meaning, fire condition, suggested operator action, originating FEAT/SLICE/release.
+
+"How to add a new halt-badge" checklist at the bottom — future FEATs adding halt fields MUST update this registry in the same slice (will be enforced by FEAT-066 schema regression test).
+
+CLAUDE.md updated to load registry at session start. FEAT-063 frontmatter cross-links to `docs/halt-badges.md` via new `registry_doc:` field.
+
+Unblocks the rest of SPEC-003:
+- **FEAT-065** loop `brief --explain-halts` flag — iterates this registry
+- **FEAT-066** schema regression test — diffs actual snapshot against documented shapes
+- **FEAT-064** crew brief-me upstream-request — iterates this registry for Blocked/Missing rendering
+
+Grade avg 0.867 (observability 0.92).
+
 ## v0.19.0 — 2026-06-06 — feat: two new presets — `typescript-plugin-dev` + `dotnet-only`
 
 Two new presets shipped under `scripts/presets/`:
