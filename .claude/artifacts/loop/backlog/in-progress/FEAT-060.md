@@ -1,14 +1,24 @@
 ---
 id: FEAT-060
-status: pending
+status: in-progress
 priority: P1
 category: workflow
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-55, SLICE-56]
 derived_from: null
+pm_customer_impact: 0.8
+pm_effort_estimate: 0.45
+pm_strategic_alignment: 0.85
+pm_technical_risk: 0.35
+pm_dependency_depth: 0.05
+composite_score: 0.7575
+autonomous_safe: true
+triage_notes: "autonomous_safe inferred: AC count=8, derived_from=null → true"
+started_at: 2026-06-06
+slices_complete: [SLICE-56]
 ---
 # FEAT-060: Worktree creation at slice-start
 

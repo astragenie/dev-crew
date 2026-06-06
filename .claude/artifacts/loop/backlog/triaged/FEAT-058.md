@@ -1,6 +1,6 @@
 ---
 id: FEAT-058
-status: pending
+status: triaged
 priority: P2
 category: upstream-request
 target_release: null
@@ -9,6 +9,14 @@ updated: 2026-06-06
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.55
+pm_effort_estimate: 0.3
+pm_strategic_alignment: 0.4
+pm_technical_risk: 0.2
+pm_dependency_depth: 0.85
+composite_score: 0.54
+autonomous_safe: false
+triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false"
 ---
 # FEAT-058: Upstream-request check-redundant-read hook deny verdict in hero-crew
 

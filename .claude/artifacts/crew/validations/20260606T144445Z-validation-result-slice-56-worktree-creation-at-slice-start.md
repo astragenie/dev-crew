@@ -1,0 +1,37 @@
+# Validation Result: SLICE-56: Worktree creation at slice-start
+
+- Created: 2026-06-06T14:44:45.883Z
+- Validator: validator
+- Environment: local — Windows 11, Node.js, git 2.x, tmp repo at C:\Temp\wt-validate-56
+- Decision: passed
+- Scenario: Verify ensureSliceWorktree + applyWorktreeResult behavior for all 9 ACs: CI gates, fresh creation, idempotent reuse, gated-off no-op, custom root, dirty-tree guard, no partial state, and test coverage
+- Evidence Collected:
+  - AC-1: npm test → 841 total / 840 pass / 1 skip; lint exit 0; format:check clean; typecheck clean; validate-manifests OK loop@0.14.1; validate-content-length OK. AC-2: ensureSliceWorktree(repoPath
+  - 'SLICE-56'
+  - {config:{loop:{worktreeMode:true
+  - worktreeRoot}}
+  - featureId:'FEAT-060'}) → {created:true
+  - reused:false}. AC-3: existsSync(result.worktreePath)=true. AC-4: git branch --show-current in worktree = 'slice/SLICE-56-FEAT-060'. AC-5: re-invoke same args → {created:false
+  - reused:true}. AC-6: worktreeMode:false → null. AC-7: custom worktreeRoot 'C:/Temp/wt-custom-root-test' → worktreePath inside that dir
+  - dir exists. AC-8: tracked file modified in repo → WorktreeError{code:DIRTY_TREE} thrown; worktree dir absent (no partial state). AC-9: worktree-manager.test.mjs runs 17 tests (16 pass/1 skip) covering gated-off
+  - fresh
+  - reuse
+  - dirty-tree
+  - no-partial-state
+  - custom-root
+  - relative-root
+  - default-root
+  - startSlice-on
+  - startSlice-off
+  - rollback
+  - null-sliceFile.
+- Files / Surfaces Checked:
+  - src/scripts/lib/worktree-manager.mts
+  - src/scripts/lib/slice-linker/start-slice.mts
+  - src/tests/worktree-manager.test.mts
+  - scripts/lib/worktree-manager.mjs
+  - scripts/lib/slice-linker/start-slice.mjs
+  - tests/worktree-manager.test.mjs
+- Risks: 1. Redundant if(sliceFile) guard at start-slice.mts:223 is dead code (harmless, reviewer-noted follow-up). 2. When sliceFile===null and worktreeMode===true, ensureSliceWorktree completes before null-guard throw — orphan worktree not cleaned up; acceptable given rarity and operator-visible throw.
+- Required Follow-up: Run /loop:slice complete --id SLICE-56 to close the slice.
+

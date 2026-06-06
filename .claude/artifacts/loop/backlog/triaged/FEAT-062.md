@@ -1,6 +1,6 @@
 ---
 id: FEAT-062
-status: pending
+status: triaged
 priority: P1
 category: workflow
 target_release: null
@@ -9,6 +9,14 @@ updated: 2026-06-06
 depends_on: [FEAT-060, FEAT-061]
 slices: []
 derived_from: null
+pm_customer_impact: 0.65
+pm_effort_estimate: 0.55
+pm_strategic_alignment: 0.78
+pm_technical_risk: 0.55
+pm_dependency_depth: 0.7
+composite_score: 0.6115
+autonomous_safe: false
+triage_notes: "autonomous_safe inferred: AC count=9, derived_from=null → false"
 ---
 # FEAT-062: Auto-merge slice branch on validation pass
 

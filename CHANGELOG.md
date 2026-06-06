@@ -3,6 +3,68 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.15.0 — 2026-06-06 — feat: per-slice git worktree creation at slice-start (FEAT-060 / SLICE-56)
+
+### New feature — isolated worktrees for autonomous slice work
+
+Slices previously shared the repository working tree. Mid-slice failures could
+block subsequent slices and hold the operator's editor hostage. SLICE-56 adds
+the foundation: each slice can now receive its own git worktree when
+`loop.worktreeMode` is enabled.
+
+**`src/scripts/lib/worktree-manager.mts`** — new module exposing:
+
+- `ensureSliceWorktree(repoPath, sliceId, { config, featureId })` — creates or
+  reuses a per-slice worktree gated by `loop.worktreeMode` (default `false`).
+  Returns `WorktreeResult` on success or `null` when the gate is off; throws
+  `WorktreeError` on hard git failure with no partial state left behind.
+
+**Error codes:**
+
+| Code | Cause |
+|---|---|
+| `DIRTY_TREE` | Tracked-file modifications block worktree creation; untracked files under `.claude/state/` are ignored via `-uno` |
+| `WORKTREE_ADD_FAILED` | `git worktree add` exited non-zero |
+| `BRANCH_EXISTS` | Target branch already exists on a different worktree |
+| `PATH_COLLISION` | Destination directory already exists and is not a managed worktree |
+| `ROOT_NOT_WRITABLE` | `worktreeRoot` directory cannot be created or written |
+| `GIT_NOT_AVAILABLE` | `git` binary not found on PATH |
+
+**Slice-start ceremony changes:**
+
+- `worktreePath` is written to BOTH `workflow-state.currentRun.worktreePath`
+  AND the slice frontmatter `worktreePath:` field.
+- Failure-atomicity invariant: if either write fails the other rolls back.
+- If `sliceFile` is null, slice-start throws before any state write
+  (fail-loud invariant).
+
+**New config keys in `.claude/loop.json`:**
+
+- `loop.worktreeMode` (default `false`) — opt-in gate.
+- `loop.worktreeRoot` (default `../<repoBasename>-worktrees` sibling directory,
+  or a custom absolute path).
+
+**Conventions:**
+
+- Branch naming: `slice/<SLICE-NN>-<FEAT-ID>`
+- Worktree directory layout: `<worktreeRoot>/<SLICE-NN>/`
+
+**Tests:** 17 new unit tests including rollback-on-EISDIR and
+null-sliceFile-throws-failure-atomicity. Total suite 840/841 pass + 1 legacy
+structural skip.
+
+**Opt-in by default.** `worktreeMode: false` keeps all existing consumer
+behavior identical. Set `loop.worktreeMode: true` in `.claude/loop.json` to
+enable. FEAT-061 (operate inside worktree) and FEAT-062 (auto-merge on
+validation pass) will land in v0.16.0 and v0.17.0 respectively.
+
+**Reviewer note:** A real correctness bug was caught on the first review pass
+(`--allow-cross-session` override only checked `firstReason` instead of
+filtering all reasons) plus a partial-state risk when `sliceFile` is null —
+both fixed inline before validation.
+
+---
+
 ## v0.14.1 — 2026-06-06 — patch: relax observability score-trend threshold to 0.7
 
 Quick operational patch — the score-trend pattern alert was halting the

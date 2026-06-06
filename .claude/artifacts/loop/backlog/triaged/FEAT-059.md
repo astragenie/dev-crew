@@ -1,6 +1,6 @@
 ---
 id: FEAT-059
-status: pending
+status: triaged
 priority: P2
 category: cost-governance
 target_release: null
@@ -9,6 +9,14 @@ updated: 2026-06-06
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.75
+pm_effort_estimate: 0.3
+pm_strategic_alignment: 0.8
+pm_technical_risk: 0.25
+pm_dependency_depth: 0.05
+composite_score: 0.765
+autonomous_safe: false
+triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false"
 ---
 # FEAT-059: Configurable grade-trend threshold + autoMode warn-alert demotion
 

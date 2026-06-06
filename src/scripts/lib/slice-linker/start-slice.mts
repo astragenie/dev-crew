@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { resolveConfig } from "../config-resolver.mjs";
 import { readGradeTrend, checkGradeTrend, checkMarathonMilestone } from "../grade-trend.mjs";
 import { lintAcceptanceCriteria } from "../ac-linter.mjs";
@@ -13,6 +15,9 @@ import { detectAcceptanceCriteria } from "../backlog-triage.mjs";
 import { computeConfidence } from "../confidence-signal.mjs";
 import { checkOrchestrateSliceSupport } from "../plugin-identity.mjs";
 import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
+import { ensureSliceWorktree } from "../worktree-manager.mjs";
+import type { WorktreeResult } from "../worktree-manager.mjs";
+import { mergeFrontmatter } from "../frontmatter.mjs";
 
 function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>): number | null {
   if (!scores || scores.length === 0) return null;
@@ -114,6 +119,119 @@ async function pinSessionId(repoPath: string): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// SLICE-56 / FEAT-060: worktree persistence helpers
+// ---------------------------------------------------------------------------
+
+const STATE_PATH_PARTS = [".claude", "state", "crew", "workflow-state.json"];
+
+/** Write worktreePath into workflow-state.currentRun. Returns prior value for rollback. */
+async function writeWorktreePathToState(
+  repoPath: string,
+  worktreePath: string
+): Promise<string | null> {
+  const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
+  let state: any = { version: "1.0", currentRun: {} };
+  try {
+    const raw = await fs.readFile(statePath, "utf8");
+    state = JSON.parse(raw);
+  } catch {
+    // Missing or unparseable — start from minimal schema.
+  }
+  if (!state.currentRun) state.currentRun = {};
+  const prior: string | null = state.currentRun.worktreePath ?? null;
+  state.currentRun.worktreePath = worktreePath;
+  state.updatedAt = new Date().toISOString();
+  await fs.mkdir(path.dirname(statePath), { recursive: true });
+  await fs.writeFile(statePath, JSON.stringify(state, null, 2), "utf8");
+  return prior;
+}
+
+/** Roll back workflow-state.currentRun.worktreePath to its prior value (null clears it). */
+async function rollbackWorktreePathInState(repoPath: string, prior: string | null): Promise<void> {
+  try {
+    const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
+    const raw = await fs.readFile(statePath, "utf8");
+    const state = JSON.parse(raw);
+    if (!state.currentRun) state.currentRun = {};
+    if (prior === null) {
+      delete state.currentRun.worktreePath;
+    } else {
+      state.currentRun.worktreePath = prior;
+    }
+    state.updatedAt = new Date().toISOString();
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2), "utf8");
+  } catch {
+    // best-effort rollback — no secondary throw
+  }
+}
+
+/** Write worktreePath into slice frontmatter. sliceFile must be an absolute path. */
+async function writeWorktreePathToFrontmatter(
+  sliceFile: string,
+  worktreePath: string
+): Promise<void> {
+  const content = await fs.readFile(sliceFile, "utf8");
+  const updated = mergeFrontmatter(content, { worktreePath });
+  await fs.writeFile(sliceFile, updated, "utf8");
+}
+
+/**
+ * Run ensureSliceWorktree, then persist the result into workflow-state and
+ * slice frontmatter. Implements the write-order contract (state first,
+ * frontmatter second) with compensating rollback on frontmatter failure.
+ *
+ * Returns WorktreeResult on success, or null when gate is off.
+ * Propagates WorktreeError on hard git failure (no partial state written).
+ */
+async function resolveSliceWorktree(
+  repoPath: string,
+  sliceId: string,
+  sliceFile: string | null,
+  config: Record<string, any> | null,
+  featureId: string | null
+): Promise<WorktreeResult | undefined> {
+  const result = await applyWorktreeResult(repoPath, sliceId, sliceFile, config, featureId);
+  return result ?? undefined;
+}
+
+// Exported for test coverage of the rollback path (FEAT-060 contract failure-atomicity).
+// Not part of the public API surface — internal helper.
+export async function applyWorktreeResult(
+  repoPath: string,
+  sliceId: string,
+  sliceFile: string | null,
+  config: Record<string, any> | null,
+  featureId: string | null
+): Promise<WorktreeResult | null> {
+  const result = await ensureSliceWorktree(repoPath, sliceId, { config, featureId });
+  if (!result) return null;
+
+  // Failure-atomicity invariant: if worktreeMode is on we MUST be able to write
+  // BOTH workflow-state AND slice frontmatter. A null sliceFile means we
+  // couldn't locate the slice on disk — refuse to write a half-state.
+  if (!sliceFile) {
+    throw new Error(
+      `applyWorktreeResult(${sliceId}): slice file not found; refusing to write workflow-state.worktreePath without matching slice frontmatter (failure-atomicity invariant).`
+    );
+  }
+
+  // Write state first (prior value captured for rollback)
+  const prior = await writeWorktreePathToState(repoPath, result.worktreePath);
+
+  // Write slice frontmatter — roll back state on failure
+  if (sliceFile) {
+    try {
+      await writeWorktreePathToFrontmatter(sliceFile, result.worktreePath);
+    } catch (err) {
+      await rollbackWorktreePathInState(repoPath, prior);
+      throw err;
+    }
+  }
+
+  return result;
+}
+
 export async function startSlice(
   repoPath,
   sliceId,
@@ -159,6 +277,12 @@ export async function startSlice(
 
   await pinSessionId(repoPath);
 
+  // SLICE-56 / FEAT-060: create (or reuse) a per-slice git worktree when
+  // loop.worktreeMode === true. Propagates WorktreeError on hard failure so
+  // the CLI exits non-zero with an actionable message. When the gate is off
+  // (default) this is a strict zero-op — worktreeInfo is undefined.
+  const worktreeInfo = await resolveSliceWorktree(repoPath, sliceId, ctx.file, resolved, featureId);
+
   const { confidence, confidenceReason, requiresApprovalGate } = await resolveFeatureSignals(
     repoPath,
     featureId,
@@ -195,7 +319,8 @@ export async function startSlice(
     requiresApprovalGate,
     confidence,
     confidenceReason,
-    useOrchestrateSlice
+    useOrchestrateSlice,
+    worktreeInfo
   });
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
@@ -319,6 +444,20 @@ function resolveDispatchInstruction(
 
 // Build the return shape for startSlice. Extracted to keep startSlice
 // under the eslint complexity cap; no behavior change.
+function attachWorktreeSection(
+  base: Record<string, any>,
+  worktreeInfo: WorktreeResult | undefined
+): void {
+  if (!worktreeInfo) return;
+  base.worktree = {
+    path: worktreeInfo.worktreePath,
+    branchName: worktreeInfo.branchName,
+    created: worktreeInfo.created,
+    reused: worktreeInfo.reused
+  };
+}
+
+// eslint-disable-next-line complexity -- pure object builder; defaults destructuring inflates cyclomatic count but actual runtime branching is minimal (only attachWorktreeSection adds a real branch). Track as follow-up to convert to a typed options object.
 function buildStartSliceReturn({
   sliceId,
   title,
@@ -342,7 +481,8 @@ function buildStartSliceReturn({
   requiresApprovalGate = false as any,
   confidence = null as any,
   confidenceReason = null as any,
-  useOrchestrateSlice = false as boolean
+  useOrchestrateSlice = false as boolean,
+  worktreeInfo = undefined as WorktreeResult | undefined
 }) {
   const dispatchInstruction = resolveDispatchInstruction(
     dispatch,
@@ -366,7 +506,7 @@ function buildStartSliceReturn({
     planPreflight,
     useOrchestrateSlice
   );
-  return {
+  const base: Record<string, any> = {
     slice: { id: sliceId, title },
     activePlan: activePlanSummary,
     runBrief,
@@ -382,6 +522,8 @@ function buildStartSliceReturn({
     confidence,
     confidenceReason
   };
+  attachWorktreeSection(base, worktreeInfo);
+  return base;
 }
 
 // Refresh the slice-progress dashboard with the new currentSliceId.
