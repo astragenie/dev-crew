@@ -126,7 +126,13 @@ export async function detectCostMode(repoPath, config) {
             cwd: repoPath,
             maxBuffer: 64 * 1024
         });
-        if (commonDir.trim() !== gitDir.trim())
+        // Resolve both to absolute paths against repoPath before comparing —
+        // git may emit one as relative and the other as absolute (Windows w/
+        // home-dir git repo surfaced this), making string-equality false.
+        const path = await import("node:path");
+        const commonAbs = path.resolve(repoPath, commonDir.trim());
+        const gitAbs = path.resolve(repoPath, gitDir.trim());
+        if (commonAbs !== gitAbs)
             return "scoped";
         const { stdout: list } = await execFile("git", ["worktree", "list", "--porcelain"], {
             cwd: repoPath,

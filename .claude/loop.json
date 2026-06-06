@@ -32,7 +32,9 @@
     "triageBudgetUsdPerBatch": 5.0,
     "triageBudgetTokensPerBatch": 500000,
     "triageFallbackOnBudgetExceeded": true,
-    "costRegressionMultiplier": 6.0
+    "costRegressionMultiplier": 6.0,
+    "costSliceCeiling": 200,
+    "gradeTrendPerDimension": { "observability": 0.7 }
   },
   "stack": {
     "build": [

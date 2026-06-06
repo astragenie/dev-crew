@@ -1,13 +1,13 @@
 ---
 id: FEAT-059
-status: triaged
+status: done
 priority: P2
 category: cost-governance
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-57]
 derived_from: null
 pm_customer_impact: 0.75
 pm_effort_estimate: 0.3
@@ -15,8 +15,11 @@ pm_strategic_alignment: 0.8
 pm_technical_risk: 0.25
 pm_dependency_depth: 0.05
 composite_score: 0.765
-autonomous_safe: false
-triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false"
+autonomous_safe: true
+triage_notes: "Reaffirm autonomous; bounded loop-side config promotion of today's v0.14.1 hard-coded patch"
+started_at: 2026-06-06
+slices_complete: [SLICE-57]
+completed_at: 2026-06-06
 ---
 # FEAT-059: Configurable grade-trend threshold + autoMode warn-alert demotion
 

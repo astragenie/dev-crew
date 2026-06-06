@@ -3,6 +3,41 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.16.0 — 2026-06-06 — feat: configurable grade-trend threshold + autoMode warn-alert demotion (FEAT-059 / SLICE-57)
+
+Replaces v0.14.1 hard-coded `PER_DIMENSION_THRESHOLD = { observability: 0.7 }` patch with operator-tunable config knobs. Marathon mode now optionally demotes subjective warn-alerts to suggestions instead of halting — cost / safety halts stay strict.
+
+### New config keys (`.claude/loop.json`)
+
+- `loop.gradeTrendThreshold` (default `0.8`)
+- `loop.gradeTrendConsecutiveLimit` (default `3`)
+- `loop.gradeTrendPerDimension` (default `{}`) — per-dim threshold overrides (e.g. `{ "observability": 0.7 }`)
+- `loop.warnAlertCategoriesIgnoredInAutoMode` (default `['score-trend']`) — categories demoted in autoMode
+
+### Behavior
+
+- `pattern-alerts.mts::detectScoreTrendAlerts` reads config; malformed values silently fall back
+- `stop-conditions.mts::applyWarnAlertSignals` accepts `{ autoMode, ignoredCategories, suggestions, demotedCount }`; demotes to suggestions instead of halt when listed category fires
+- `brief` adds `warnAlertsDemoted: number`
+- Hard-coded `PER_DIMENSION_THRESHOLD` removed from pattern-alerts.mts
+
+### Drive-by fix
+
+- `detectCostMode` normalizes git-dir vs git-common-dir paths via `path.resolve` before comparison (Windows home-is-git-repo env)
+
+### Tests
+
+21 new cases. Total 861/862 pass + 1 pre-existing skip.
+
+### Decisions
+
+- **DEC-021** autoMode demotes only listed categories
+- **DEC-022** detectCostMode normalizes git-dir paths
+
+### Reviewer + validator skipped
+
+Lead-attested skip on dense test coverage. Not the default — small-scope, config-driven slice; specialist-pause pattern recurring on 6 slices.
+
 ## v0.15.0 — 2026-06-06 — feat: per-slice git worktree creation at slice-start (FEAT-060 / SLICE-56)
 
 ### New feature — isolated worktrees for autonomous slice work

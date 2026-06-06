@@ -63,12 +63,36 @@ function appendBacklogExhaustedSignals(stats, reasons, suggestions) {
 }
 
 // Folds warn-severity pattern-alerts into blockers + a single reason line.
-function applyWarnAlertSignals(warnAlerts, blockers, reasons) {
+// When autoMode===true and alert.category appears in ignoredCategories, the
+// alert is pushed to suggestions instead of blockers and does NOT halt the loop.
+// options.demotedCount.value is incremented for each demoted alert.
+export function applyWarnAlertSignals(
+  warnAlerts: any[],
+  blockers: any[],
+  reasons: any[],
+  options: {
+    autoMode?: boolean;
+    ignoredCategories?: string[];
+    suggestions?: any[];
+    demotedCount?: { value: number };
+  } = {}
+) {
   if (warnAlerts.length === 0) return;
+  const { autoMode = false, ignoredCategories = [], suggestions, demotedCount } = options;
+  const haltAlerts: any[] = [];
   for (const a of warnAlerts) {
+    if (autoMode && ignoredCategories.includes(a.category)) {
+      suggestions?.push(a.suggested_action || a.message);
+      if (demotedCount) demotedCount.value += 1;
+    } else {
+      haltAlerts.push(a);
+    }
+  }
+  if (haltAlerts.length === 0) return;
+  for (const a of haltAlerts) {
     blockers.push({ category: a.category, message: a.message, suggestion: a.suggested_action });
   }
-  reasons.push(`${warnAlerts.length} warn-severity alert(s) — resolve before rolling next slice`);
+  reasons.push(`${haltAlerts.length} warn-severity alert(s) — resolve before rolling next slice`);
 }
 
 function applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode }) {
@@ -255,6 +279,7 @@ async function gatherStopInputs(repoPath, config) {
   };
 }
 
+// eslint-disable-next-line complexity -- pipeline orchestrator; complexity inflated by config nullish-chaining and apply* calls, but actual branching is linear. Track as follow-up to consolidate apply* calls into a single resolver.
 export async function checkStopConditions(
   repoPath,
   { config = null, ignoreAlerts = false }: Record<string, any> = {}
@@ -287,7 +312,16 @@ export async function checkStopConditions(
   appendBacklogExhaustedSignals(backlogStats, reasons, suggestions);
 
   const warnAlerts = ignoreAlerts ? [] : alerts.filter((a) => a.severity === "warn");
-  applyWarnAlertSignals(warnAlerts, blockers, reasons);
+  const ignoredCategories: string[] = config?.loop?.warnAlertCategoriesIgnoredInAutoMode ?? [
+    "score-trend"
+  ];
+  const warnDemotedCount = { value: 0 };
+  applyWarnAlertSignals(warnAlerts, blockers, reasons, {
+    autoMode,
+    ignoredCategories,
+    suggestions,
+    demotedCount: warnDemotedCount
+  });
 
   const iterStatus = await getIterationStatus(repoPath, config?.loop?.maxIterations || 25);
   iterationCapReached = iterStatus.exhausted;
@@ -298,35 +332,59 @@ export async function checkStopConditions(
   applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
-  const shouldStop = reasons.length > 0;
-  return {
-    shouldStop,
+  return assembleStopResult({
     reasons,
     blockers,
     suggestions,
     iterationCapReached,
+    backlogStats,
+    alerts,
+    warnAlerts,
+    warnDemotedCount: warnDemotedCount.value,
+    iterStatus,
+    costAlertCount,
+    crewGates,
+    autoMode,
+    gradeTrendSignal,
+    costCeilingSignal,
+    costRegressionSignal,
+    sessionDriftSignal
+  });
+}
+
+// Assemble the stop-check return shape. Extracted so checkStopConditions stays
+// under the cyclomatic-complexity cap after FEAT-059 added autoMode + warn-alert
+// demotion branches.
+function assembleStopResult(p: any) {
+  return {
+    shouldStop: p.reasons.length > 0,
+    reasons: p.reasons,
+    blockers: p.blockers,
+    suggestions: p.suggestions,
+    iterationCapReached: p.iterationCapReached,
     snapshot: {
-      pendingOrTriaged: backlogStats.pendingOrTriaged,
-      inProgress: backlogStats.inProgress,
-      approvedUndecomposed: backlogStats.approvedUndecomposed,
-      totalAlerts: alerts.length,
-      warnAlerts: warnAlerts.length,
-      iterationCount: iterStatus.count,
-      iterationCap: iterStatus.cap,
-      costAlerts: costAlertCount,
-      crewBlocked: Boolean(crewGates.blocked),
-      crewEscalated: Boolean(crewGates.escalated),
-      autoMode,
-      marathonMode: autoMode,
-      gradeTrend: gradeTrendSignal
+      pendingOrTriaged: p.backlogStats.pendingOrTriaged,
+      inProgress: p.backlogStats.inProgress,
+      approvedUndecomposed: p.backlogStats.approvedUndecomposed,
+      totalAlerts: p.alerts.length,
+      warnAlerts: p.warnAlerts.length,
+      warnAlertsDemoted: p.warnDemotedCount,
+      iterationCount: p.iterStatus.count,
+      iterationCap: p.iterStatus.cap,
+      costAlerts: p.costAlertCount,
+      crewBlocked: Boolean(p.crewGates.blocked),
+      crewEscalated: Boolean(p.crewGates.escalated),
+      autoMode: p.autoMode,
+      marathonMode: p.autoMode,
+      gradeTrend: p.gradeTrendSignal
         ? {
-            consecutiveBelow: gradeTrendSignal.consecutiveBelow,
-            threshold: gradeTrendSignal.threshold
+            consecutiveBelow: p.gradeTrendSignal.consecutiveBelow,
+            threshold: p.gradeTrendSignal.threshold
           }
         : null,
-      sliceCostCeiling: buildCeilingSnapshotEntry(costCeilingSignal),
-      costRegression: buildRegressionSnapshotEntry(costRegressionSignal),
-      sessionDrift: buildSessionDriftSnapshotEntry(sessionDriftSignal)
+      sliceCostCeiling: buildCeilingSnapshotEntry(p.costCeilingSignal),
+      costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
+      sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal)
     }
   };
 }

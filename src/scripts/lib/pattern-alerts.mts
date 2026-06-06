@@ -7,34 +7,62 @@ import { listSpecs } from "./spec-parser.mjs";
 //
 // Each alert: { severity: "warn"|"info", category, message, suggested_action }.
 
-const SCORE_THRESHOLD = 0.8;
-const TRAILING_SLICES = 3;
-// Per-dimension threshold override. Looser floor for subjective dimensions
-// where the score-inference regex rarely fires (observability vocabulary is
-// sparse in CLI/backend slices). Quick patch; FEAT-059 promotes to config.
-const PER_DIMENSION_THRESHOLD: Record<string, number> = {
-  observability: 0.7
-};
+const DEFAULT_SCORE_THRESHOLD = 0.8;
+const DEFAULT_TRAILING_SLICES = 3;
 
-function thresholdFor(dim: string): number {
-  return PER_DIMENSION_THRESHOLD[dim] ?? SCORE_THRESHOLD;
+function isValidThreshold(v: unknown): v is number {
+  return typeof v === "number" && v > 0 && v <= 1;
 }
 
-function detectScoreTrendAlerts(grades) {
-  if (grades.length < TRAILING_SLICES) return [];
-  const recent = grades.slice(-TRAILING_SLICES);
+function isValidTrailing(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 1;
+}
+
+export function resolveScoreTrendConfig(config: any): {
+  threshold: number;
+  trailing: number;
+  perDim: Record<string, number>;
+} {
+  const loop = config?.loop ?? {};
+
+  const threshold = isValidThreshold(loop.gradeTrendThreshold)
+    ? loop.gradeTrendThreshold
+    : DEFAULT_SCORE_THRESHOLD;
+
+  const trailing = isValidTrailing(loop.gradeTrendConsecutiveLimit)
+    ? loop.gradeTrendConsecutiveLimit
+    : DEFAULT_TRAILING_SLICES;
+
+  const perDimRaw = loop.gradeTrendPerDimension;
+  const perDim: Record<string, number> = {};
+  if (perDimRaw && typeof perDimRaw === "object" && !Array.isArray(perDimRaw)) {
+    for (const [dim, val] of Object.entries(perDimRaw)) {
+      if (isValidThreshold(val)) {
+        perDim[dim] = val as number;
+      }
+      // invalid per-dim values silently fall back to global threshold (no entry added)
+    }
+  }
+
+  return { threshold, trailing, perDim };
+}
+
+function detectScoreTrendAlerts(grades, config: any) {
+  const { threshold, trailing, perDim } = resolveScoreTrendConfig(config);
+  if (grades.length < trailing) return [];
+  const recent = grades.slice(-trailing);
   const out: any[] = [];
   for (const dim of SCORE_DIMENSIONS) {
-    const threshold = thresholdFor(dim);
+    const dimThreshold = perDim[dim] ?? threshold;
     const allLow = recent.every((g) => {
       const v = g.scores?.[dim];
-      return typeof v === "number" && v < threshold;
+      return typeof v === "number" && v < dimThreshold;
     });
     if (allLow) {
       out.push({
         severity: "warn",
         category: "score-trend",
-        message: `${dim} below ${threshold} across last ${TRAILING_SLICES} slices`,
+        message: `${dim} below ${dimThreshold} across last ${trailing} slices`,
         suggested_action: `Author a SPEC (type=sre or type=adr) addressing the ${dim} gap, or revisit the slice template for that dimension.`
       });
     }
@@ -121,7 +149,7 @@ export async function detectPatterns(repoPath, { config = null }: Record<string,
     listSpecs(repoPath, { config })
   ]);
   return [
-    ...detectScoreTrendAlerts(grades),
+    ...detectScoreTrendAlerts(grades, config),
     ...detectDecompositionAlerts(backlog),
     ...detectSpecFlowAlerts(specs),
     ...detectBacklogFlowAlerts(backlog),

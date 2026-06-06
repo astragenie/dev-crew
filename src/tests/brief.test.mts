@@ -1,3 +1,4 @@
+// @ts-nocheck
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -76,4 +77,34 @@ test("buildBrief includes pattern alerts", async () => {
   const out = await buildBrief(repo);
   assert.ok(Array.isArray(out.alerts));
   assert.ok(out.alerts.find((a) => a.category === "in-progress-orphan"));
+});
+
+// AC-5: warnAlertsDemoted field present in brief output
+test("buildBrief: warnAlertsDemoted field is present and is a non-negative number", async () => {
+  const repo = await tmpRepo("al-brief-demoted-zero-");
+  const out = await buildBrief(repo);
+  assert.ok("warnAlertsDemoted" in out, "warnAlertsDemoted field must be present");
+  assert.equal(typeof out.warnAlertsDemoted, "number", "warnAlertsDemoted must be a number");
+  assert.ok(out.warnAlertsDemoted >= 0, "warnAlertsDemoted must be >= 0");
+});
+
+test("buildBrief: warnAlertsDemoted is 0 when no warn alerts present", async () => {
+  const repo = await tmpRepo("al-brief-demoted-clean-");
+  const out = await buildBrief(repo);
+  assert.equal(out.warnAlertsDemoted, 0);
+});
+
+test("buildBrief: warnAlertsDemoted counts demoted alerts when autoMode + ignoredCategories configured", async () => {
+  const repo = await tmpRepo("al-brief-demoted-count-");
+  // Create an in-progress orphan which generates an in-progress-orphan warn alert
+  const orphan = await addFeature(repo, { title: "orphan" });
+  await moveFeature(orphan.filePath, "in-progress");
+  const config = {
+    loop: {
+      autoMode: true,
+      warnAlertCategoriesIgnoredInAutoMode: ["in-progress-orphan"]
+    }
+  };
+  const out = await buildBrief(repo, { config });
+  assert.equal(out.warnAlertsDemoted, 1, "one alert demoted");
 });

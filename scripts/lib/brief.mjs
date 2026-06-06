@@ -16,6 +16,17 @@ function avg(values) {
         return null;
     return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
 }
+// Count how many warn alerts would be demoted under current autoMode + ignoredCategories config.
+function countDemotedAlerts(alerts, config) {
+    const autoMode = config?.loop?.autoMode ?? config?.loop?.marathonMode ?? true;
+    if (!autoMode)
+        return 0;
+    const ignoredCategories = config?.loop?.warnAlertCategoriesIgnoredInAutoMode ?? [
+        "score-trend"
+    ];
+    return alerts.filter((a) => a.severity === "warn" && ignoredCategories.includes(a.category))
+        .length;
+}
 export async function buildBrief(repoPath, { config = null } = {}) {
     const [backlog, specs, grades, decisions, alerts, recentEvents, crewGates, costRegression, sessionDrift] = await Promise.all([
         listBacklog(repoPath, { config }),
@@ -85,6 +96,7 @@ export async function buildBrief(repoPath, { config = null } = {}) {
             reverted: decisions.filter((d) => d.status === "reverted").length
         },
         alerts,
+        warnAlertsDemoted: countDemotedAlerts(alerts, config),
         recentEvents: recentEvents.map((e) => ({
             timestamp: e.timestamp,
             command: e.command,

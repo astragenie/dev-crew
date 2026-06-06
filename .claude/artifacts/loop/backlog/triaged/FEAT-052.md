@@ -10,13 +10,13 @@ depends_on: []
 slices: []
 derived_from: null
 pm_customer_impact: 0.7
-pm_effort_estimate: 0.55
+pm_effort_estimate: 0.4
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.55
-pm_dependency_depth: 0.2
-autonomous_safe: false
-triage_notes: "Real reviewer-pause incident in SLICE-51; cross-plugin (crew:reviewer) branch needs human direction"
-composite_score: 0.615
+pm_technical_risk: 0.4
+pm_dependency_depth: 0.1
+autonomous_safe: true
+triage_notes: "Operator override: ship as autonomous slice; reviewer-pause investigation can be authored as ADR + SOP doc-only, no cross-plugin code change required"
+composite_score: 0.665
 ---
 ## Context
 

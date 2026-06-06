@@ -129,3 +129,178 @@ test("detectPatterns suggests triage when pending backlog grows large", async ()
   assert.ok(flow);
   assert.match(flow.message, /pending triage/);
 });
+
+// AC-2: threshold and trailing from config
+test("detectPatterns: threshold from config honored — no alert when score above config threshold", async () => {
+  const repo = await tmpRepo("al-cfg-threshold-above-");
+  // seed 3 grades with observability=0.75 (above global 0.80 would fire, but config sets 0.6)
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.observability = 0.75;
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  // With global threshold 0.8 this would fire an observability alert
+  // but with threshold 0.6 it must NOT fire
+  const config = { loop: { gradeTrendThreshold: 0.6 } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("observability")
+  );
+  assert.equal(trend, undefined, "should NOT fire when threshold < score");
+});
+
+test("detectPatterns: threshold from config honored — alert fires when score below config threshold", async () => {
+  const repo = await tmpRepo("al-cfg-threshold-below-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.test_confidence = 0.65;
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  // config sets threshold to 0.7, score 0.65 < 0.7 → should fire
+  const config = { loop: { gradeTrendThreshold: 0.7 } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("test_confidence")
+  );
+  assert.ok(trend, "should fire when score below config threshold");
+});
+
+// AC-2: trailing slices from config
+test("detectPatterns: gradeTrendConsecutiveLimit from config — fewer trailing slices needed", async () => {
+  const repo = await tmpRepo("al-cfg-trailing-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.observability = 0.6;
+  // Seed only 2 grades — with default trailing=3 this would NOT fire
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  // config sets trailing to 2 → should fire
+  const config = { loop: { gradeTrendConsecutiveLimit: 2 } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("observability")
+  );
+  assert.ok(trend, "should fire with only 2 grades when trailing limit is 2");
+});
+
+// AC-2: missing config falls back to defaults (0.8 threshold, 3 trailing)
+test("detectPatterns: missing config falls back to default threshold 0.8 and trailing 3", async () => {
+  const repo = await tmpRepo("al-cfg-default-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.test_confidence = 0.75; // 0.75 < 0.8 → should fire with default
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const alerts = await detectPatterns(repo); // no config
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("test_confidence")
+  );
+  assert.ok(trend, "should fire with default threshold when score is 0.75");
+});
+
+// AC-2: malformed threshold (string) falls back to default
+test("detectPatterns: malformed threshold string falls back to default 0.8", async () => {
+  const repo = await tmpRepo("al-cfg-malformed-str-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.test_confidence = 0.75;
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const config = { loop: { gradeTrendThreshold: "not-a-number" } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("test_confidence")
+  );
+  assert.ok(trend, "malformed threshold should fall back to 0.8, causing alert for 0.75 score");
+});
+
+// AC-2: out-of-range threshold (negative) falls back to default
+test("detectPatterns: out-of-range threshold (negative) falls back to default 0.8", async () => {
+  const repo = await tmpRepo("al-cfg-malformed-neg-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.test_confidence = 0.75;
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const config = { loop: { gradeTrendThreshold: -0.5 } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("test_confidence")
+  );
+  assert.ok(trend, "negative threshold should fall back to 0.8");
+});
+
+// AC-2: out-of-range threshold (>1) falls back to default
+test("detectPatterns: out-of-range threshold (>1) falls back to default 0.8", async () => {
+  const repo = await tmpRepo("al-cfg-malformed-gt1-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.test_confidence = 0.75;
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const config = { loop: { gradeTrendThreshold: 1.5 } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("test_confidence")
+  );
+  assert.ok(trend, "threshold > 1 should fall back to 0.8");
+});
+
+// AC-3: per-dimension override honored
+test("detectPatterns: per-dim override allows lower threshold for observability", async () => {
+  const repo = await tmpRepo("al-cfg-perdim-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.observability = 0.75; // 0.75 < default 0.8, but per-dim says 0.7 → no alert
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const config = { loop: { gradeTrendPerDimension: { observability: 0.7 } } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("observability")
+  );
+  assert.equal(trend, undefined, "per-dim 0.7 threshold, score 0.75 — no alert");
+});
+
+test("detectPatterns: per-dim override fires when score below per-dim threshold", async () => {
+  const repo = await tmpRepo("al-cfg-perdim-fires-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.observability = 0.65; // 0.65 < per-dim 0.7 → alert
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const config = { loop: { gradeTrendPerDimension: { observability: 0.7 } } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("observability")
+  );
+  assert.ok(trend, "per-dim 0.7 threshold, score 0.65 — alert fires");
+});
+
+// AC-3: invalid per-dim value falls back to global threshold
+test("detectPatterns: invalid per-dim value (string) falls back to global threshold", async () => {
+  const repo = await tmpRepo("al-cfg-perdim-invalid-");
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  scores.observability = 0.75; // 0.75 < global 0.8 → should fire after fallback
+  await seedGrade(repo, "SLICE-01", scores);
+  await seedGrade(repo, "SLICE-02", scores);
+  await seedGrade(repo, "SLICE-03", scores);
+  const config = { loop: { gradeTrendPerDimension: { observability: "bad" } } };
+  const alerts = await detectPatterns(repo, { config });
+  const trend = alerts.find(
+    (a) => a.category === "score-trend" && a.message.includes("observability")
+  );
+  assert.ok(
+    trend,
+    "invalid per-dim value should fall back to global threshold (0.8), causing alert for 0.75"
+  );
+});
