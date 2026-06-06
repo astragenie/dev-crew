@@ -2,6 +2,57 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const COST_INSIGHTS_DIR_PARTS = [".claude", "artifacts", "crew", "cost-insights"];
+const COST_DIR_PARTS = [".claude", "artifacts", "crew", "cost"];
+
+// ---------------------------------------------------------------------------
+// Types — Aggregate cost reports (SLICE-52)
+// ---------------------------------------------------------------------------
+
+/** Single parsed aggregate cost report. */
+export interface AggregateCostReport {
+  /** Absolute path to the source markdown file. */
+  path: string;
+  /** Frontmatter `slice` value. Null if missing. */
+  slice: string | null;
+  /** Frontmatter `run_title` value. Null if missing. */
+  runTitle: string | null;
+  /** Frontmatter `usd` value parsed to number. Null if unparseable. */
+  usd: number | null;
+  /** Frontmatter `created_at` ISO-8601 string. Null if missing. */
+  createdAt: string | null;
+  /** Always true for files this loader returns (aggregate_all === true). */
+  aggregateAll: true;
+  /** Frontmatter `source_count` (number of sibling projects merged). */
+  sourceCount: number | null;
+}
+
+/** Return shape of `loadAggregateCostReport`. */
+export interface AggregateCostReportSet {
+  /** Most recent aggregate report (reports[0]) or null when none exist. */
+  current: AggregateCostReport | null;
+  /** All matched reports newest-first, up to opts.limit. */
+  reports: AggregateCostReport[];
+  /** Directory scanned (absolute path). */
+  dir: string;
+}
+
+/** Input for rolling-median computation. */
+export interface RollingMedianInput {
+  /** Reports newest-first. reports[0] is the current slice and is excluded. */
+  reports: AggregateCostReport[];
+  /** Window size (e.g. 5). Default 5. */
+  window: number;
+}
+
+/** Result of rolling-median computation. */
+export interface RollingMedianResult {
+  /** Median of historical usd values, or null when no samples. */
+  median: number | null;
+  /** Number of historical reports actually used (≤ window). */
+  sampleCount: number;
+  /** usd values that fed into the median, newest-first. For audit. */
+  sampleValues: number[];
+}
 
 async function parseFrontmatter(text) {
   if (!text.startsWith("---")) return { fm: null, body: text };
@@ -88,4 +139,148 @@ export async function getHighSeverityCostAlerts(repoPath, windowSlices = 3) {
 export async function countHighSeverityCostAlerts(repoPath, windowSlices = 3) {
   const alerts = await getHighSeverityCostAlerts(repoPath, windowSlices);
   return alerts.filter((a) => a.severity === "high").length;
+}
+
+// ---------------------------------------------------------------------------
+// Aggregate cost report loader (SLICE-52)
+// ---------------------------------------------------------------------------
+
+function parseUsd(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw === "string") {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function parseSourceCount(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isInteger(raw) ? raw : null;
+  if (typeof raw === "string") {
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Parse a single markdown file into an AggregateCostReport.
+ * Returns null when the file cannot be read or frontmatter is missing/invalid.
+ */
+async function parseAggregateReportFile(filepath: string): Promise<AggregateCostReport | null> {
+  let text: string;
+  try {
+    text = await fs.readFile(filepath, "utf8");
+  } catch {
+    return null;
+  }
+  // Re-use the inline parseFrontmatter pattern (same shape as slice-cost-ceiling.mts)
+  if (!text.startsWith("---")) return null;
+  const end = text.indexOf("\n---", 3);
+  if (end < 0) return null;
+  const block = text.slice(3, end).trim();
+  const fm: Record<string, any> = {};
+  for (const line of block.split(/\r?\n/)) {
+    const m = line.match(/^([\w_]+):\s*(.*)$/);
+    if (!m) continue;
+    let v: any = m[2].trim();
+    if (v.startsWith('"') && v.endsWith('"')) {
+      try {
+        v = JSON.parse(v);
+      } catch {
+        /* keep raw string */
+      }
+    }
+    fm[m[1]] = v;
+  }
+
+  // Defense-in-depth: frontmatter must declare aggregate_all === true
+  if (fm.aggregate_all !== true && fm.aggregate_all !== "true") return null;
+
+  return {
+    path: filepath,
+    slice: typeof fm.slice === "string" ? fm.slice : null,
+    runTitle: typeof fm.run_title === "string" ? fm.run_title : null,
+    usd: parseUsd(fm.usd),
+    createdAt: typeof fm.created_at === "string" ? fm.created_at : null,
+    aggregateAll: true,
+    sourceCount: parseSourceCount(fm.source_count)
+  };
+}
+
+/**
+ * Load aggregate cost reports from `.claude/artifacts/crew/cost/`.
+ * Filename must match `/-cost-report-aggregate-.+\.md$/` and frontmatter
+ * must declare `aggregate_all: true`. Sorted newest-first by filename.
+ * Returns `{ current: null, reports: [], dir }` when the directory
+ * does not exist or no reports match — callers MUST fail-open.
+ */
+export async function loadAggregateCostReport(
+  repoPath: string,
+  opts?: { limit?: number }
+): Promise<AggregateCostReportSet> {
+  const dir = path.join(repoPath, ...COST_DIR_PARTS);
+  const limit = opts?.limit ?? 10;
+
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return { current: null, reports: [], dir };
+  }
+
+  const candidates = entries
+    .filter((e) => /-cost-report-aggregate-.+\.md$/.test(e))
+    .sort((a, b) => b.localeCompare(a)) // newest-first
+    .slice(0, limit);
+
+  const reports: AggregateCostReport[] = [];
+  for (const name of candidates) {
+    const parsed = await parseAggregateReportFile(path.join(dir, name));
+    if (parsed) reports.push(parsed);
+  }
+
+  return {
+    current: reports.length > 0 ? reports[0] : null,
+    reports,
+    dir
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rolling median helper (SLICE-52)
+// ---------------------------------------------------------------------------
+
+/** Compute the median of a sorted numeric array (ascending). Pure function. */
+function medianOfSorted(sorted: number[]): number {
+  const n = sorted.length;
+  if (n === 0) return 0;
+  const mid = Math.floor(n / 2);
+  return n % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Compute rolling median of `reports.slice(1)` (excludes current at [0]).
+ * Returns `{ median: null, sampleCount: 0, sampleValues: [] }` when no
+ * historical reports are present — single-report fallback.
+ * Pure function. Suitable for unit testing without filesystem I/O.
+ */
+export function computeRollingMedian(input: RollingMedianInput): RollingMedianResult {
+  // reports[0] = current slice; historical = reports[1..window]
+  const historicalSlice = input.reports.slice(1, 1 + input.window);
+  // Keep order (newest-first) for sampleValues audit; filter nulls for math
+  const sampleValues = historicalSlice
+    .map((r) => r.usd)
+    .filter((u): u is number => typeof u === "number" && Number.isFinite(u));
+
+  if (sampleValues.length === 0) {
+    return { median: null, sampleCount: 0, sampleValues: [] };
+  }
+
+  const sorted = [...sampleValues].sort((a, b) => a - b);
+  return {
+    median: medianOfSorted(sorted),
+    sampleCount: sampleValues.length,
+    sampleValues
+  };
 }

@@ -3,6 +3,97 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.12.0 — 2026-06-06 — feat: walker aggregate cost gate + contracts template path fix (FEAT-052 / SLICE-52)
+
+### New feature — walker aggregate cost gate
+
+The walker's existing `costStopThreshold` guard fires per-session; a
+single slice spanning multiple Claude sessions can consume many times
+the per-session budget before the guard activates. The aggregate cost
+gate fills this gap by comparing current slice spend against a rolling
+median of recent aggregate cost reports.
+
+**Why this matters.** In the consumer-cost-hotspot incident a slice
+accumulated ~$1,550 in spend across six sessions while the per-session
+gate (calibrated to an ~$81 median) remained silent for each
+individual session. The new gate would have halted the loop at the
+3× boundary after the first session whose cumulative spend crossed
+~$243.
+
+#### New modules
+
+- `src/scripts/lib/cost-alert-loader.mts` — two new exports:
+  - `loadAggregateCostReport(repoPath)` — reads the walker's aggregate
+    cost report JSON from its canonical path; returns `null` on missing
+    or malformed file (fail-open).
+  - `computeRollingMedian(reports, window)` — pure function; returns
+    the median spend value over the last `window` entries, or `null`
+    when the slice is too short to form a verdict (also fail-open).
+- `src/scripts/lib/cost-regression.mts` — `checkCostRegression`
+  evaluator; given current slice spend, the aggregate report, and the
+  config knobs, returns `{ stop: boolean; reason?: string }`. All
+  error paths resolve `{ stop: false }` — the gate never halts the
+  loop on a read failure.
+
+#### Stop-conditions integration
+
+- `src/scripts/lib/stop-conditions.mts` emits a `cost_regression_stop`
+  badge in the `reasons` array and writes a `snapshot.costRegression`
+  entry when `checkCostRegression` returns `stop: true`. The badge is
+  surfaced in the same stop-check payload as existing badges
+  (`budget_exceeded`, `escalated_to_human`, etc.).
+
+#### Brief surface
+
+- `src/scripts/lib/brief.mts` exposes a `costRegression` field in the
+  `node scripts/loop.mjs brief` output, giving operators a live view
+  of the current median and multiplier before the loop resumes.
+
+#### Configuration knobs (`.claude/loop.json`)
+
+| Key | Default | Description |
+|---|---|---|
+| `loop.costRegressionWindow` | `5` | Number of recent aggregate cost reports used to compute the rolling median. |
+| `loop.costRegressionMultiplier` | `3.0` | Stop threshold expressed as a multiple of that median. |
+
+Both knobs are optional; defaults apply when absent.
+
+#### Tests
+
+- 20 new unit tests in `src/tests/` covering: median math for odd/even
+  windows, threshold boundary (exactly 3× passes, just above 3×
+  stops), fail-open on null median, fail-open on loader read error, and
+  stop-conditions badge emission.
+
+### Bug fix — contracts template resolved via `${CLAUDE_PLUGIN_ROOT}`
+
+`/loop:backlog-enrich` pass 2 and `/loop:slice-from-feature` previously
+constructed the contracts template path from a relative reference that
+resolved correctly only when the working directory happened to match
+the plugin root. In consumer repos with a different working directory
+the template fell back to an ad-hoc, inline contracts section with no
+warning. The path is now resolved via `${CLAUDE_PLUGIN_ROOT}` (the
+same variable used by all other plugin-root references in the repo),
+making template resolution deterministic regardless of `cwd`.
+
+### Evidence
+
+- Builder handoff: `.claude/artifacts/crew/handoffs/20260606T111313Z-handoff-slice-52-builder-complete.md`
+- Slice file: `.claude/artifacts/loop/ai-loop/slices/pending/SLICE_52_WALKER-AGGREGATE-COST-GATE.md`
+
+### Release notes
+
+v0.12.0 closes the gap between the walker's per-session cost guard and
+multi-session slice spend. The new aggregate gate (`cost_regression_stop`)
+halts the loop when current slice spend exceeds `loop.costRegressionMultiplier`
+× the rolling median of the last `loop.costRegressionWindow` aggregate cost
+reports. Both thresholds are configurable; all read-error paths are
+fail-open so a missing or malformed cost report never blocks the loop.
+This release also ships a path-resolution fix for the contracts template,
+eliminating silent fallback to ad-hoc contract sections in consumer repos.
+
+---
+
 ## v0.11.0 — 2026-06-05 — feat: FEAT-scoped contracts artifact (FEAT-050 / SLICE-51, loop-side)
 
 ### New surface — slash flow extensions

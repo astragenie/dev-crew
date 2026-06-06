@@ -1,0 +1,31 @@
+# Validation Result: SLICE-52: Walker aggregate cost gate
+
+- Created: 2026-06-06T11:19:34.503Z
+- Validator: validator
+- Environment: local — Windows 11, Node (npm test), loop CLI
+- Decision: passed_with_notes
+- Scenario: Verify all 7 ACs for the walker aggregate cost gate: CI green, exports, config read, stop emission, stop-check CLI shape, brief CLI shape, 20 unit tests covering 5 edge cases
+- Evidence Collected:
+  - AC-1: 797/797 pass
+  - lint exit 0
+  - format:check clean
+  - typecheck clean
+  - validate-manifests OK
+  - validate-content-length OK. AC-2: cost-alert-loader.mjs exports loadAggregateCostReport (function) and computeRollingMedian (function). AC-3: cost-regression.mts reads config?.loop?.costRegressionWindow and config?.loop?.costRegressionMultiplier with defaults (window=5
+  - multiplier=3.0). AC-4: stop-conditions.mts cost_regression_stop emission path confirmed via grep and 2 stop-check integration tests (stops/does-not-stop). AC-5: node ./scripts/loop.mjs stop-check --repo PWD outputs snapshot.costRegression: null (key present
+  - null in this repo with no aggregate cost reports — correct fail-open behavior). AC-6: node ./scripts/loop.mjs brief --repo PWD outputs top-level costRegression: null key present in JSON. AC-7: 20 cost-regression tests: median-exact-5
+  - median-<5-fallback
+  - threshold-3x-exact/just-over/just-under
+  - missing-aggregate (fail-open)
+  - single-report-fallback (null)
+  - plus 8 additional edge cases — all 20 pass.
+- Files / Surfaces Checked:
+  - src/scripts/lib/cost-alert-loader.mts
+  - src/scripts/lib/cost-regression.mts
+  - src/scripts/lib/stop-conditions.mts
+  - src/scripts/lib/brief.mts
+  - src/tests/cost-regression.test.mts
+  - scripts/loop.mjs (stop-check + brief CLI)
+- Risks: snapshot.costRegression omits slice and report_path fields from CostRegressionBadge contract (minor, additive gap). crew brief-me lacks explicit Blocked/Missing rendering for costRegression field (cross-plugin upstream gap, pre-documented in AC-6 caveat).
+- Required Follow-up: Log upstream crew brief-me rendering gap as a separate FEAT or crew issue. Decide whether snapshot.costRegression should add slice+report_path fields.
+

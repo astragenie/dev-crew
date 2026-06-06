@@ -5,6 +5,7 @@ import { listDecisions } from "./decisions-store.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { readEvents } from "./telemetry.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { checkCostRegression } from "./cost-regression.mjs";
 
 // Standalone loop situational report. Complements crew's brief-me;
 // surfaces backlog/specs/grades/decisions/alerts without modifying the
@@ -17,15 +18,17 @@ function avg(values) {
 }
 
 export async function buildBrief(repoPath, { config = null }: Record<string, unknown> = {}) {
-  const [backlog, specs, grades, decisions, alerts, recentEvents, crewGates] = await Promise.all([
-    listBacklog(repoPath, { config }),
-    listSpecs(repoPath, { config }),
-    listGrades(repoPath, { config }),
-    listDecisions(repoPath, { config }),
-    detectPatterns(repoPath, { config }),
-    readEvents(repoPath, { limit: 10 }),
-    readCrewBlockingGates(repoPath)
-  ]);
+  const [backlog, specs, grades, decisions, alerts, recentEvents, crewGates, costRegression] =
+    await Promise.all([
+      listBacklog(repoPath, { config }),
+      listSpecs(repoPath, { config }),
+      listGrades(repoPath, { config }),
+      listDecisions(repoPath, { config }),
+      detectPatterns(repoPath, { config }),
+      readEvents(repoPath, { limit: 10 }),
+      readCrewBlockingGates(repoPath),
+      checkCostRegression(repoPath, config as Record<string, any> | null)
+    ]);
 
   const backlogCounts = {
     pending: filterBacklog(backlog, { status: "pending" }).length,
@@ -102,6 +105,18 @@ export async function buildBrief(repoPath, { config = null }: Record<string, unk
         ? { note: crewGates.blocked.note || null, blockedBy: crewGates.blocked.blockedBy || null }
         : null,
       escalated: crewGates.escalated ? { note: crewGates.escalated.note || null } : null
-    }
+    },
+    costRegression: costRegression
+      ? {
+          triggered: costRegression.triggered,
+          currentUsd: costRegression.currentUsd,
+          medianUsd: costRegression.medianUsd,
+          thresholdUsd: costRegression.thresholdUsd,
+          multiplier: costRegression.multiplier,
+          window: costRegression.window,
+          sampleCount: costRegression.sampleCount,
+          slice: costRegression.slice
+        }
+      : null
   };
 }

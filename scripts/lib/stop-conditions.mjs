@@ -6,6 +6,7 @@ import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling } from "./slice-cost-ceiling.mjs";
+import { checkCostRegression } from "./cost-regression.mjs";
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
 // Used by Cross-Slice Continuation HARD RULE (and crew brief) to decide
@@ -79,6 +80,39 @@ function buildCeilingSnapshotEntry(sig) {
         return null;
     return { exceeded: true, actualUsd: sig.actualUsd, ceilingUsd: sig.ceilingUsd };
 }
+function buildRegressionSnapshotEntry(sig) {
+    if (!sig)
+        return null;
+    return {
+        triggered: true,
+        currentUsd: sig.currentUsd,
+        medianUsd: sig.medianUsd,
+        thresholdUsd: sig.thresholdUsd,
+        multiplier: sig.multiplier,
+        window: sig.window,
+        sampleCount: sig.sampleCount
+    };
+}
+function applyCostRegressionSignal(regressionSignal, reasons, suggestions, blockers) {
+    if (!regressionSignal)
+        return;
+    const current = regressionSignal.currentUsd.toFixed(2);
+    const median = regressionSignal.medianUsd.toFixed(2);
+    const threshold = regressionSignal.thresholdUsd.toFixed(2);
+    const { multiplier, window: w, sampleCount } = regressionSignal;
+    reasons.push(`cost_regression_stop: current $${current} > median $${median} × ${multiplier}` +
+        ` (threshold $${threshold}, window ${w}, sample ${sampleCount})`);
+    blockers.push({
+        category: "cost-regression",
+        message: `aggregate spend $${current} exceeded rolling-median threshold $${threshold}` +
+            ` (median $${median} × ${multiplier}, sample ${sampleCount})`,
+        suggestion: "Review the latest aggregate cost report and address inefficiencies before resuming. " +
+            "Adjust loop.costRegressionMultiplier or loop.costRegressionWindow in .claude/loop.json to change this behavior."
+    });
+    suggestions.push(`Current aggregate spend $${current} is more than ${multiplier}× the rolling median $${median}` +
+        ` (threshold $${threshold}). Inspect .claude/artifacts/crew/cost/ for opus-overuse / cache-busted findings. ` +
+        "Adjust loop.costRegressionMultiplier or loop.costRegressionWindow in .claude/loop.json to change this behavior.");
+}
 function applySliceCostCeilingSignal(ceilingSignal, reasons, suggestions, blockers) {
     if (!ceilingSignal)
         return;
@@ -114,19 +148,29 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
     }
 }
 async function gatherStopInputs(repoPath, config) {
-    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal] = await Promise.all([
+    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal] = await Promise.all([
         listBacklog(repoPath, { config }),
         listSpecs(repoPath, { config }),
         detectPatterns(repoPath, { config }),
         countHighSeverityCostAlerts(repoPath, 3),
         readCrewBlockingGates(repoPath),
         checkGradeTrend(repoPath, config),
-        checkSliceCostCeiling(repoPath, config)
+        checkSliceCostCeiling(repoPath, config),
+        checkCostRegression(repoPath, config)
     ]);
-    return { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal };
+    return {
+        backlog,
+        specs,
+        alerts,
+        costAlertCount,
+        crewGates,
+        gradeTrendSignal,
+        costCeilingSignal,
+        costRegressionSignal
+    };
 }
 export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
-    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal } = await gatherStopInputs(repoPath, config);
+    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal } = await gatherStopInputs(repoPath, config);
     // autoMode defaults to true so freshly hand-rolled .claude/loop.json
     // (without the key) get the new behavior. Presets ship the key explicitly
     // for documentation, but the default here is the source of truth.
@@ -146,6 +190,7 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
     applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode });
     applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
     applySliceCostCeilingSignal(costCeilingSignal, reasons, suggestions, blockers);
+    applyCostRegressionSignal(costRegressionSignal, reasons, suggestions, blockers);
     applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
     const shouldStop = reasons.length > 0;
     return {
@@ -173,7 +218,8 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
                     threshold: gradeTrendSignal.threshold
                 }
                 : null,
-            sliceCostCeiling: buildCeilingSnapshotEntry(costCeilingSignal)
+            sliceCostCeiling: buildCeilingSnapshotEntry(costCeilingSignal),
+            costRegression: buildRegressionSnapshotEntry(costRegressionSignal)
         }
     };
 }
