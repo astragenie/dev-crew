@@ -61,7 +61,8 @@ const FLAG_SPEC = {
     "--scores": { key: "scores" },
     "--autonomous-safe": { key: "autonomousSafe" },
     "--evidence": { key: "evidence" },
-    "--reasoning": { key: "reasoning" }
+    "--reasoning": { key: "reasoning" },
+    "--allow-cross-session": { key: "allowCrossSession", boolean: true }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -108,7 +109,8 @@ function parseArgs(argv) {
         scores: null,
         autonomousSafe: null,
         evidence: null,
-        reasoning: null
+        reasoning: null,
+        allowCrossSession: false
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -236,6 +238,7 @@ const COMMANDS = {
             maxFeatures: flags.maxFeatures ? Number(flags.maxFeatures) : undefined,
             dryRun: Boolean(flags.dryRun),
             autoMode: Boolean(flags.autoMode),
+            allowCrossSession: Boolean(flags.allowCrossSession),
             config
         });
     },

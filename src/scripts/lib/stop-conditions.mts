@@ -7,6 +7,7 @@ import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
+import { checkSessionDrift, type SessionDriftSignal } from "./session-drift.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -109,6 +110,38 @@ function buildRegressionSnapshotEntry(sig: CostRegressionSignal | null) {
   };
 }
 
+function buildSessionDriftSnapshotEntry(sig: SessionDriftSignal | null) {
+  if (!sig) return null;
+  return {
+    triggered: true,
+    sessionIdAtStart: sig.sessionIdAtStart,
+    sessionIdNow: sig.sessionIdNow
+  };
+}
+
+function applySessionDriftSignal(
+  driftSignal: SessionDriftSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!driftSignal) return;
+  const { sessionIdAtStart, sessionIdNow } = driftSignal;
+  reasons.push(
+    `session_drift_stop: current session ${sessionIdNow} differs from slice-start session ${sessionIdAtStart}`
+  );
+  blockers.push({
+    category: "session-drift",
+    message: `walker resumed in a different Claude session (was: ${sessionIdAtStart}, now: ${sessionIdNow})`,
+    suggestion:
+      "Complete the slice in the original session, or re-run with --allow-cross-session to bypass the halt and log the override."
+  });
+  suggestions.push(
+    `The walker pinned session ${sessionIdAtStart} at slice-start but resumed in session ${sessionIdNow}. ` +
+      "Complete the slice in the original session, or pass --allow-cross-session on the auto CLI to override."
+  );
+}
+
 function applyCostRegressionSignal(
   regressionSignal: CostRegressionSignal | null,
   reasons: any[],
@@ -196,7 +229,8 @@ async function gatherStopInputs(repoPath, config) {
     crewGates,
     gradeTrendSignal,
     costCeilingSignal,
-    costRegressionSignal
+    costRegressionSignal,
+    sessionDriftSignal
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
@@ -205,7 +239,8 @@ async function gatherStopInputs(repoPath, config) {
     readCrewBlockingGates(repoPath),
     checkGradeTrend(repoPath, config),
     checkSliceCostCeiling(repoPath, config),
-    checkCostRegression(repoPath, config)
+    checkCostRegression(repoPath, config),
+    checkSessionDrift(repoPath)
   ]);
   return {
     backlog,
@@ -215,7 +250,8 @@ async function gatherStopInputs(repoPath, config) {
     crewGates,
     gradeTrendSignal,
     costCeilingSignal,
-    costRegressionSignal
+    costRegressionSignal,
+    sessionDriftSignal
   };
 }
 
@@ -231,7 +267,8 @@ export async function checkStopConditions(
     crewGates,
     gradeTrendSignal,
     costCeilingSignal,
-    costRegressionSignal
+    costRegressionSignal,
+    sessionDriftSignal
   } = await gatherStopInputs(repoPath, config);
 
   // autoMode defaults to true so freshly hand-rolled .claude/loop.json
@@ -258,6 +295,7 @@ export async function checkStopConditions(
   applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
   applySliceCostCeilingSignal(costCeilingSignal, reasons, suggestions, blockers);
   applyCostRegressionSignal(costRegressionSignal, reasons, suggestions, blockers);
+  applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
   const shouldStop = reasons.length > 0;
@@ -287,7 +325,8 @@ export async function checkStopConditions(
           }
         : null,
       sliceCostCeiling: buildCeilingSnapshotEntry(costCeilingSignal),
-      costRegression: buildRegressionSnapshotEntry(costRegressionSignal)
+      costRegression: buildRegressionSnapshotEntry(costRegressionSignal),
+      sessionDrift: buildSessionDriftSnapshotEntry(sessionDriftSignal)
     }
   };
 }

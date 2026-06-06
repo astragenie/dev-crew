@@ -1,13 +1,13 @@
 ---
 id: FEAT-056
-status: triaged
+status: done
 priority: P2
 category: cost-governance
 target_release: null
 created: 2026-06-06
 updated: 2026-06-06
 depends_on: []
-slices: []
+slices: [SLICE-54]
 derived_from: null
 pm_customer_impact: 0.6
 pm_effort_estimate: 0.45
@@ -17,6 +17,9 @@ pm_dependency_depth: 0.3
 autonomous_safe: true
 triage_notes: Cross-session incident motivates session-pinning; partial value without FEAT-055; ACs contained to walker
 composite_score: 0.61
+started_at: 2026-06-06
+slices_complete: [SLICE-54]
+completed_at: 2026-06-06
 ---
 # FEAT-056: Session-pin walker
 

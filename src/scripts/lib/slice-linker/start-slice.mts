@@ -12,6 +12,7 @@ import { findFeatureById } from "../backlog-writer.mjs";
 import { detectAcceptanceCriteria } from "../backlog-triage.mjs";
 import { computeConfidence } from "../confidence-signal.mjs";
 import { checkOrchestrateSliceSupport } from "../plugin-identity.mjs";
+import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
 
 function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>): number | null {
   if (!scores || scores.length === 0) return null;
@@ -103,6 +104,16 @@ async function runSliceStartGates(sliceId, content, repoPath, config) {
 // `/crew:build` (per Dispatch Discipline HARD RULE in rules.md). Pass
 // dispatch: false for manual / debugging invocations where the agent
 // is doing the slice work in-conversation.
+// AC-2 (SLICE-54 FEAT-056): wrap writeSessionIdToWorkflowState in a fail-open
+// helper so startSlice's complexity stays under the lint cap.
+async function pinSessionId(repoPath: string): Promise<void> {
+  try {
+    await writeSessionIdToWorkflowState(repoPath);
+  } catch {
+    // best-effort — never blocks slice start
+  }
+}
+
 export async function startSlice(
   repoPath,
   sliceId,
@@ -145,6 +156,8 @@ export async function startSlice(
     resolved
   });
   const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
+
+  await pinSessionId(repoPath);
 
   const { confidence, confidenceReason, requiresApprovalGate } = await resolveFeatureSignals(
     repoPath,

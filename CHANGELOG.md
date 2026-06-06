@@ -3,6 +3,51 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.14.0 — 2026-06-06 — feat: session-pin walker — session-drift stop condition + `--allow-cross-session` bypass (FEAT-056 / SLICE-54)
+
+### New feature — session affinity for the autonomous walker
+
+The loop walker previously had no session affinity, allowing slice work to spread
+silently across multiple Claude sessions. This fragmented inference cache and obscured
+spend attribution in many-sources cost alerts (observed during the v0.12.0 cost-hotspot
+incident). SLICE-54 closes that gap.
+
+**`src/scripts/lib/session-drift.mts`** — new module exposing two primitives:
+
+- `checkSessionDrift` — fail-open evaluator. Reads `workflow-state.json::currentRun.sessionId`;
+  if the stored value differs from the current `CLAUDE_SESSION_ID` environment variable,
+  it returns a structured `session_drift_stop` badge. If the state file is absent or the
+  field is missing, it returns `ok` (fail-open) so cold starts are not blocked.
+- `writeSessionIdToWorkflowState` — slice-start hook. Pins the current `CLAUDE_SESSION_ID`
+  into `workflow-state.json::currentRun.sessionId`, creating the file with a minimal schema
+  if it does not exist.
+
+**Walker integration:**
+
+- Slice-start (`/loop:slice start`) calls `writeSessionIdToWorkflowState` to record the
+  originating session.
+- The stop-conditions reader calls `checkSessionDrift`; a mismatch emits `session_drift_stop`
+  in the `reasons` array and populates `snapshot.sessionDrift` with both session identifiers.
+- `node scripts/loop.mjs brief` output now exposes a `sessionDrift` field (parallel to
+  the existing `costRegression` field).
+
+**`--allow-cross-session` flag** on `node scripts/loop.mjs auto`:
+
+- Bypasses the session-drift halt only. Filters `session_drift_stop` from all halt-reason
+  arrays before the walker evaluates them.
+- Appends a structured `session-drift-override` event to `auto-dispatch.jsonl` with
+  timestamp and both session identifiers for audit traceability.
+- Bypass is surgical: if any non-drift halt condition fires (cost regression, cost cap,
+  escalation, etc.), the walker still halts on that condition.
+
+**Tests:** 15 new unit tests added; total suite 824/824 pass.
+
+### Known gap
+
+`crew brief-me` consumes the `sessionDrift` JSON field but has no explicit
+Blocked/Missing renderer for it. Logged as upstream follow-up (same pattern as the
+v0.12.0 `costRegression` gap).
+
 ## v0.13.0 — 2026-06-06 — feat: auto-derive slice AC scaffold from parent FEAT body (FEAT-053 / SLICE-53)
 
 ### New feature — FEAT-derived acceptance criteria scaffold

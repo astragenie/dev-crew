@@ -3,6 +3,8 @@ import path from "node:path";
 import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 import { checkStopConditions } from "./stop-conditions.mjs";
 import { compareWalkerOrder, evaluateCandidate } from "./walker-gates.mjs";
+import { checkSessionDrift } from "./session-drift.mjs";
+import { appendAuditLog } from "./auto-dispatch.mjs";
 
 export type { DispatchPlan } from "./walker-gates.mjs";
 export { evaluateRiskGate } from "./walker-gates.mjs";
@@ -42,6 +44,8 @@ export interface AutoWalkerOptions {
   costStopThreshold?: number;
   /** SLICE-C: resolved config from loop.json (loaded automatically if not provided). */
   config?: any;
+  /** SLICE-54 (FEAT-056): bypass session-drift halt + log override event. */
+  allowCrossSession?: boolean;
 }
 
 /**
@@ -56,6 +60,43 @@ export interface AutoWalkerOptions {
  * @param allKnownIds       SLICE-41: Set of all known backlog IDs for missing-dep detection.
  * @returns                 { skipped, plans, halted, stopReason }
  */
+// FEAT-056: collapse stop-condition + cross-session override into one helper so
+// walkCandidates stays under the complexity cap.
+//
+// Override semantics (per SLICE-54 reviewer finding): filter session_drift_stop
+// from all reasons. If other halt reasons remain, halt with the first remaining
+// reason — the override does NOT swallow unrelated halts. If only drift reasons
+// were present, log override audit and continue.
+async function evaluateStopCondition(
+  repoPath: string,
+  config: any,
+  allowCrossSession: boolean
+): Promise<{ halt: boolean; reason: string | null }> {
+  const stopResult = await checkStopConditions(repoPath, { config });
+  if (!stopResult.shouldStop) return { halt: false, reason: null };
+  const reasons: string[] = stopResult.reasons ?? [];
+  const firstReason = reasons[0] ?? "stop condition fired";
+  if (!allowCrossSession) return { halt: true, reason: firstReason };
+
+  const nonDrift = reasons.filter((r) => !r.startsWith("session_drift_stop"));
+  const driftPresent = reasons.length > nonDrift.length;
+  if (!driftPresent) return { halt: true, reason: firstReason };
+
+  try {
+    const drift = await checkSessionDrift(repoPath);
+    await appendAuditLog(repoPath, {
+      timestamp: new Date().toISOString(),
+      event: "session-drift-override",
+      sessionIdAtStart: drift?.sessionIdAtStart ?? null,
+      sessionIdNow: drift?.sessionIdNow ?? null
+    });
+  } catch {
+    // Best-effort audit log; do not halt on logging failure.
+  }
+  if (nonDrift.length > 0) return { halt: true, reason: nonDrift[0] ?? firstReason };
+  return { halt: false, reason: null };
+}
+
 async function walkCandidates(
   candidates: any[],
   maxFeatures: number | undefined,
@@ -64,7 +105,8 @@ async function walkCandidates(
   repoPath: string,
   doneSet: Set<string>,
   allKnownIds: Set<string>,
-  config: any = null
+  config: any = null,
+  allowCrossSession = false
 ): Promise<{
   skipped: SkippedEntry[];
   plans: DispatchPlan[];
@@ -97,10 +139,10 @@ async function walkCandidates(
     }
 
     // Check stop conditions after each plan to allow early halt.
-    const stopResult = await checkStopConditions(repoPath, { config });
-    if (stopResult.shouldStop) {
+    const stopAction = await evaluateStopCondition(repoPath, config, allowCrossSession);
+    if (stopAction.halt) {
       halted = true;
-      stopReason = stopResult.reasons?.[0] ?? "stop condition fired";
+      stopReason = stopAction.reason;
       break;
     }
   }
@@ -130,7 +172,13 @@ export async function runAutoWalker(
   repoPath: string,
   options: AutoWalkerOptions = {}
 ): Promise<AutoWalkerResult> {
-  const { maxFeatures, dryRun: _dryRun = true, autoMode = false, config: providedConfig } = options;
+  const {
+    maxFeatures,
+    dryRun: _dryRun = true,
+    autoMode = false,
+    config: providedConfig,
+    allowCrossSession = false
+  } = options;
 
   // SLICE-C: Load config if not provided and read costStopThreshold
   let resolvedConfig = providedConfig;
@@ -167,7 +215,8 @@ export async function runAutoWalker(
     repoPath,
     doneSet,
     allKnownIds,
-    resolvedConfig
+    resolvedConfig,
+    allowCrossSession
   );
 
   // SLICE-B: Write auto-run summary artifact (best-effort; don't fail if it errors)
