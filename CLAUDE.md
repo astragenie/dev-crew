@@ -132,13 +132,22 @@ the contract. See DEC-011 (supersedes DEC-004).
 Slash flows that orchestrate role agents:
 
 - `/loop:backlog-enrich` — architect classifies triaged FEATs (tags,
-  needs_contract, needs_ux)
-- `/loop:backlog-add` — researcher enriches new FEAT body
-- `/loop:spec-decompose` — architect derives FEAT titles from a SPEC
+  needs_contract, needs_ux). **Wired to resolver since v0.28.0**: skill
+  block from `preset.roles.architect` is prepended to the dispatch prompt.
+- `/loop:triage` (via `skills/triage/SKILL.md`) — PM scores pending FEATs.
+  **Wired to resolver since v0.28.1**: skill block from `preset.roles.pm`
+  is prepended to the dispatch prompt.
+- `/loop:backlog-add` — researcher enriches new FEAT body. Auto-dispatch
+  was removed in DEC-011; researcher work happens via separate user
+  invocation, not inline.
+- `/loop:spec-decompose` — agent reads SPEC and identifies features. No
+  inline role-agent dispatch from the slash flow itself.
 - `/loop:slice-complete` — document-writer drafts CHANGELOG / ADR /
-  release notes after slice close
-- `/loop:slice-from-feature` — architect writes FEAT-scoped contracts artifact
-  when needs_contract: true and artifact missing
+  release notes after slice close. Currently invoked by the orchestrating
+  agent, not by the CLI subcommand. Will wire to the resolver when a
+  CLI-driven dispatch is added.
+- `/loop:slice-from-feature` — dispatches `crew:architect` (not
+  `loop:architect`) for contracts. Cross-plugin; wire on hero-crew side.
 
 `dispatchAgent` remains exported for callers that want marker-write
 semantics. The marker queue at

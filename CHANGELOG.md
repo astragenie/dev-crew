@@ -3,6 +3,20 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.28.1 — 2026-06-07 — wire `/loop:triage` PM dispatch to resolver
+
+- **changed:** `skills/triage/SKILL.md` resolves `preset.roles.pm` skills via
+  `node scripts/loop.mjs resolve-skills --variant pm` and prepends the
+  resolved block to the `loop:pm` dispatch prompt. Falls back to PM agent's
+  baked-in routing table on resolver exit 2.
+- **changed:** `CLAUDE.md` "Slash flows that orchestrate role agents"
+  section updated to mark which flows are wired to the resolver (architect
+  via backlog-enrich, PM via triage) and which are not yet (backlog-add,
+  spec-decompose, slice-complete, slice-from-feature). Records the
+  cross-plugin nature of slice-from-feature (dispatches `crew:architect`).
+
+---
+
 ## v0.28.0 — 2026-06-07 — role-agent skill activation (FEAT-075)
 
 ### Added

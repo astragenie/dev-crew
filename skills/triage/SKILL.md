@@ -25,20 +25,40 @@ PM-first triage with regex fallback. Single public command for the loop.
 
 2. **Capture cost baseline** from the most recent cost-report or cost-advisor sample. Record `(baselineUsd, baselineTokens)`.
 
-3. **Dispatch `loop:pm` agent.** Prompt MUST include the explicit id list:
+3. **Resolve PM skills via preset.** Before dispatching, run:
 
-   > Score the following FEATs (and ONLY these): FEAT-XXX, FEAT-YYY, ...
-   > For each, return the JSON contract from `agents/pm.md`.
-   > Do not return entries for any other id.
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" resolve-skills \
+     --variant pm \
+     --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/$(jq -r .preset .claude/loop.json).json" \
+     --override .claude/loop.json
+   ```
 
-4. **Validate PM output.** For each returned result:
+   On exit 0, capture `.dispatchInstructionBlock` from the JSON output.
+   On exit 2, proceed without the block (PM falls back to its baked-in
+   "Required skills" list in `agents/pm.md`). On exit 1, halt and
+   surface the stderr.
+
+4. **Dispatch `loop:pm` agent.** Prepend the resolved-skills block (when
+   present) to the prompt so PM invokes the right `Skill` tools before
+   scoring. Prompt MUST include the explicit id list:
+
+   ```
+   <dispatchInstructionBlock from step 3 — omit if exit was 2>
+
+   Score the following FEATs (and ONLY these): FEAT-XXX, FEAT-YYY, ...
+   For each, return the JSON contract from `agents/pm.md`.
+   Do not return entries for any other id.
+   ```
+
+5. **Validate PM output.** For each returned result:
    - `result.id` MUST be in the input id list. Reject otherwise.
    - All 5 dimension scores MUST be numeric in `[0, 1]`. Reject otherwise.
    - Required fields present (`scores`, `compositePriority`, `autonomousSafe`, `reasoning`).
 
-5. **Check budget delta.** After PM completes, sample cost again. If `(currentUsd - baselineUsd) > triageBudgetUsdPerBatch` OR `tokens > triageBudgetTokensPerBatch`, mark `BudgetExceeded` and go to fallback (step 7).
+6. **Check budget delta.** After PM completes, sample cost again. If `(currentUsd - baselineUsd) > triageBudgetUsdPerBatch` OR `tokens > triageBudgetTokensPerBatch`, mark `BudgetExceeded` and go to fallback (step 8).
 
-6. **Write PM scores** via the existing CLI:
+7. **Write PM scores** via the existing CLI:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog pm-write \
      --id FEAT-NNN \
@@ -52,18 +72,18 @@ PM-first triage with regex fallback. Single public command for the loop.
    Write a PM review artifact per FEAT to `.claude/artifacts/loop/pm-reviews/`.
    Return `{ triaged: N, path: "pm", results: [...] }`.
 
-7. **Fallback (PM error | BudgetExceeded | ValidationFail):**
+8. **Fallback (PM error | BudgetExceeded | ValidationFail):**
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog triage --repo "$PWD"
    ```
    This invokes the regex `triagePending()` deterministically. It writes the same `pm_*` frontmatter keys with 0.5 defaults and moves entries pending → triaged.
 
-8. **Log fallback to audit JSONL** at `.claude/artifacts/loop/auto-dispatch.jsonl`:
+9. **Log fallback to audit JSONL** at `.claude/artifacts/loop/auto-dispatch.jsonl`:
    ```json
    { "event": "triage_fallback", "reason": "<pm_error|budget_exceeded|validation_fail>", "cost_usd": 0.0, "ids": ["FEAT-NNN", ...] }
    ```
 
-9. **Tag `triage_notes`** on every entry — `via=pm` or `via=regex_fallback (reason=...)`.
+10. **Tag `triage_notes`** on every entry — `via=pm` or `via=regex_fallback (reason=...)`.
 
 ## Return contract
 
