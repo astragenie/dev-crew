@@ -18,11 +18,8 @@ import { deriveValidationGate } from "../validation-gate.mjs";
 import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../paths.mjs";
-import type { DrainOpts, DrainResult } from "../marker-drain.mjs";
 import { clearWorktreePathInState } from "../auto-merge.mjs";
 import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
-
-type DrainFn = (repoPath: string, opts?: DrainOpts) => Promise<DrainResult>;
 
 function deriveBlockingGates(workflowState) {
   const gates = workflowState?.currentRun?.gates || {};
@@ -414,9 +411,7 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
     keepFeatureOpen = false,
     forceClose = false,
     skipValidationCheck = null,
-    noMarkerDrain = false,
     noDocWriter = false,
-    drainFn = undefined,
     builderEvidence = null as BuilderEvidence | null,
     noMerge = false,
     dryRun = false
@@ -479,7 +474,6 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
 
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
   void writeDocWriterSkipAuditLog(repoPath);
-  fireMarkerDrain(repoPath, { noMarkerDrain, drainFn });
 
   const autoMergeResult = await runAutoMergeStage(repoPath, sliceId, sliceFm, resolved, {
     noMerge,
@@ -534,55 +528,6 @@ async function writeDocWriterSkipAuditLog(repoPath: string): Promise<void> {
   } catch {
     // best-effort — never blocks slice complete
   }
-}
-
-// Fires the marker-drain step asynchronously (fire-and-forget). Never throws —
-// all failures are recorded in the audit log. Returns void immediately so the
-// close ceremony is not blocked.
-function fireMarkerDrain(
-  repoPath: string,
-  opts: { noMarkerDrain?: boolean; drainFn?: DrainFn }
-): void {
-  const { noMarkerDrain = false, drainFn } = opts;
-
-  const work = async () => {
-    const { appendAuditLog, parseSkipFlag } = await import("../auto-dispatch.mjs");
-    const argv = noMarkerDrain ? ["--no-marker-drain"] : [];
-
-    if (parseSkipFlag(argv, "--no-marker-drain")) {
-      await appendAuditLog(repoPath, {
-        timestamp: new Date().toISOString(),
-        agent: "system:marker-drain",
-        parentCommand: "slice-complete",
-        ok: true,
-        skipped: true,
-        skipReason: "opt-out",
-        durationMs: 0
-      });
-      return;
-    }
-
-    const { drainPendingDispatchMarkers } = await import("../marker-drain.mjs");
-    const effectiveDrain: DrainFn = drainFn ?? drainPendingDispatchMarkers;
-    await effectiveDrain(repoPath);
-  };
-
-  work().catch(async (err) => {
-    try {
-      const { appendAuditLog } = await import("../auto-dispatch.mjs");
-      await appendAuditLog(repoPath, {
-        timestamp: new Date().toISOString(),
-        agent: "system:marker-drain",
-        parentCommand: "slice-complete",
-        ok: false,
-        skipped: false,
-        error: err instanceof Error ? err.message : String(err),
-        durationMs: 0
-      });
-    } catch {
-      // Absolute last-resort: never propagate from the catch handler.
-    }
-  });
 }
 
 async function recordCompleteTrajectory(

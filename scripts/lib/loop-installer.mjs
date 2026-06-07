@@ -3,42 +3,11 @@ import path from "node:path";
 import { resolveConfig, writeConfigIfMissing } from "./config-resolver.mjs";
 import { findCrewCli, getCrewVersion, compareSemver, MIN_CREW_VERSION } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
-import { migrateLegacyAutonomousLoop } from "./legacy-migrator.mjs";
 import { pathExists } from "./paths.mjs";
 import { buildTokens } from "./loop-installer-tokens.mjs";
 import { writeBacklogScaffold, writeBacklogStateMachine, writeSpecsScaffold, writeGradesScaffold, writeDecisionsScaffold, writeLoopControlFiles, writeLoopRules, registerReadGuardHook, updateClaudeMd, MARKER_START, MARKER_END } from "./loop-installer-scaffold.mjs";
 export { buildContextRulesList } from "./loop-installer-tokens.mjs";
 export { MARKER_START, MARKER_END } from "./loop-installer-scaffold.mjs";
-function appendLegacyMigrationWrites(legacyMigration, writes) {
-    if (!legacyMigration?.migrated)
-        return;
-    for (const step of legacyMigration.steps) {
-        if (step.action === "renamed") {
-            writes.push(`${step.from} -> ${step.to} (legacy rename)`);
-        }
-        else if (step.action === "rewritten") {
-            writes.push(`${step.file} (legacy markers rewritten)`);
-        }
-    }
-}
-async function runAdhocMigration(repoPath, writes) {
-    try {
-        const { migrateAdhocInstall } = await import("./adhoc-migrator.mjs");
-        const migration = await migrateAdhocInstall(repoPath);
-        if (migration.extractedConfig) {
-            await writeConfigIfMissing(repoPath, migration.extractedConfig);
-        }
-        if (migration.claudeMdRewritten) {
-            writes.push("CLAUDE.md (ad-hoc HARD RULE blocks removed)");
-        }
-    }
-    catch (error) {
-        // Module may not exist yet during bootstrap; that's fine.
-        if (!String(error.message || "").includes("Cannot find module")) {
-            throw error;
-        }
-    }
-}
 export async function installLoop(repoPath, options = {}) {
     if (!(await pathExists(repoPath))) {
         throw new Error(`Repository path does not exist: ${repoPath}`);
@@ -58,17 +27,6 @@ export async function installLoop(repoPath, options = {}) {
             `Update crew (\`/plugin install crew@astra\`) and retry.`);
     }
     const writes = [];
-    // Migrate legacy `autonomous-loop` state from < v0.3.0 BEFORE any other
-    // install step runs. This renames the config file, rules dir, and CLAUDE.md
-    // markers so the rest of the installer operates on the new identifiers.
-    // Idempotent — re-running on an already-migrated repo is a no-op.
-    const legacyMigration = await migrateLegacyAutonomousLoop(repoPath);
-    appendLegacyMigrationWrites(legacyMigration, writes);
-    // Optional ad-hoc migration. Imported lazily so installer also works in
-    // tests that don't need it.
-    if (options.migrateAdhoc !== false) {
-        await runAdhocMigration(repoPath, writes);
-    }
     const config = await resolveConfig(repoPath, { preset: options.preset });
     const tokens = buildTokens(config);
     await updateClaudeMd(repoPath, tokens, writes);
@@ -101,8 +59,7 @@ export async function installLoop(repoPath, options = {}) {
         preset: config.preset,
         repoPath,
         crewCli,
-        writes,
-        legacyMigration
+        writes
     };
 }
 export async function reportStatus(repoPath) {

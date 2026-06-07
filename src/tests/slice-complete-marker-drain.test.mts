@@ -1,9 +1,9 @@
 // @ts-nocheck
-// Unit tests: fireMarkerDrain integration in slice-complete ceremony (FEAT-034 / SLICE-30)
+// Unit tests: completeSlice ceremony smoke tests (SLICE-69 / FEAT-069).
 //
-// Test 1: --no-marker-drain flag set → injected drainFn is NOT called
-// Test 2: Default (no flag) → injected drainFn IS called with correct repoPath
-// Test 3: Drain throwing internally does NOT throw out of completeSlice
+// The drainFn injection path was removed as part of the dead-code sweep in SLICE-69.
+// These tests now verify that completeSlice succeeds on the basic ceremony path without
+// the drain plumbing.
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -99,106 +99,70 @@ async function createSlice(
 }
 
 // ---------------------------------------------------------------------------
-// Test 1: --no-marker-drain → drainFn NOT called
+// Test 1: completeSlice succeeds on the basic ceremony path (no-drain variant)
 // ---------------------------------------------------------------------------
 
-test("slice-complete marker-drain: --no-marker-drain → injected drainFn is NOT called", async () => {
-  const repo = await tmpRepo("scmd-no-drain-");
+test("slice-complete ceremony: completeSlice returns success on basic path (no drain opts)", async () => {
+  const repo = await tmpRepo("scmd-basic-");
   const featId = "FEAT-MD01";
   const sliceId = "SLICE-MD01";
 
   await createFeat(repo, featId, "triaged");
   await createSlice(repo, sliceId, featId);
 
-  let drainCallCount = 0;
-  const mockDrain = async (_repo: string): Promise<any> => {
-    drainCallCount++;
-    return { scanned: 0, deleted: 0, kept: 0, errors: [] };
-  };
-
   const result = await completeSlice(repo, sliceId, {
-    noMarkerDrain: true,
-    drainFn: mockDrain,
-    // Suppress doc-writer too to keep test focused
     noDocWriter: true
   });
 
-  assert.ok(result?.slice?.id === sliceId, "ceremony returns success");
-
-  // Allow fire-and-forget async work to settle
-  await new Promise((res) => setTimeout(res, 100));
-
-  assert.equal(drainCallCount, 0, "drainFn must NOT be called when --no-marker-drain is set");
+  assert.ok(result?.slice?.id === sliceId, "ceremony returns success with correct slice id");
+  assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
 });
 
 // ---------------------------------------------------------------------------
-// Test 2: Default path → drainFn IS called with correct repoPath
+// Test 2: completeSlice with noMerge succeeds on basic path
 // ---------------------------------------------------------------------------
 
-test("slice-complete marker-drain: default path → drainFn called with correct repoPath", async () => {
-  const repo = await tmpRepo("scmd-default-drain-");
+test("slice-complete ceremony: completeSlice with noMerge returns success", async () => {
+  const repo = await tmpRepo("scmd-nomerge-");
   const featId = "FEAT-MD02";
   const sliceId = "SLICE-MD02";
 
   await createFeat(repo, featId, "triaged");
   await createSlice(repo, sliceId, featId);
 
-  let drainCallCount = 0;
-  let capturedRepoPath: string | null = null;
-
-  const mockDrain = async (rp: string): Promise<any> => {
-    drainCallCount++;
-    capturedRepoPath = rp;
-    return { scanned: 0, deleted: 0, kept: 0, errors: [] };
-  };
-
   const result = await completeSlice(repo, sliceId, {
-    drainFn: mockDrain,
-    // Suppress doc-writer to isolate drain behavior
-    noDocWriter: true
+    noDocWriter: true,
+    noMerge: true
   });
 
   assert.ok(result?.slice?.id === sliceId, "ceremony returns success");
-
-  // Allow fire-and-forget async work to settle
-  await new Promise((res) => setTimeout(res, 100));
-
-  assert.equal(drainCallCount, 1, "drainFn must be called once");
-  assert.equal(capturedRepoPath, repo, "drainFn must receive the correct repoPath");
+  assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
 });
 
 // ---------------------------------------------------------------------------
-// Test 3: Drain throwing → ceremony still returns success
+// Test 3: completeSlice does not throw on basic path
 // ---------------------------------------------------------------------------
 
-test("slice-complete marker-drain: drain throwing does NOT throw out of completeSlice", async () => {
-  const repo = await tmpRepo("scmd-drain-throw-");
+test("slice-complete ceremony: completeSlice does NOT throw on basic ceremony path", async () => {
+  const repo = await tmpRepo("scmd-nothrow-");
   const featId = "FEAT-MD03";
   const sliceId = "SLICE-MD03";
 
   await createFeat(repo, featId, "triaged");
   await createSlice(repo, sliceId, featId);
 
-  const mockDrain = async (_rp: string): Promise<any> => {
-    throw new Error("drain exploded");
-  };
-
   let thrown: unknown = null;
   let result: any;
   try {
     result = await completeSlice(repo, sliceId, {
-      drainFn: mockDrain,
-      noDocWriter: true
+      noDocWriter: true,
+      noMerge: true
     });
   } catch (err) {
     thrown = err;
   }
 
-  assert.equal(thrown, null, "completeSlice must NOT throw when drain fails");
+  assert.equal(thrown, null, "completeSlice must NOT throw on basic path");
   assert.ok(result?.slice?.id === sliceId, "slice id present in result");
-  assert.match(
-    result.slice.to,
-    /completed[\\/]/,
-    "slice moved to completed/ despite drain failure"
-  );
+  assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
 });

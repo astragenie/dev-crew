@@ -210,33 +210,6 @@ test(
 );
 
 test(
-  "installLoop migrates an ad-hoc HARD RULE block when migrateAdhoc is true",
-  {
-    skip: crewAvailable
-      ? false
-      : `crew CLI >= v${MIN_CREW_VERSION} not installed in plugin cache (found: ${installedCrewVersion || "none"})`
-  },
-  async () => {
-    const repo = await initGitRepo("al-install-migrate-");
-    await fs.writeFile(
-      path.join(repo, "CLAUDE.md"),
-      `# CLAUDE.md\n\n## Autonomous Loop Instruction — HARD RULE\n\n**Run autonomously...**\n\n**Phase Completion Gate — HARD RULE:**\n1. \`dotnet build solution.slnx -c Release\`\n2. \`pytest tests/\`\n\n---\n\n## Other content\n\nMust survive.\n`
-    );
-    await installLoop(repo, { migrateAdhoc: true });
-    const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
-    assert.ok(claudeMd.includes(MARKER_START), "new marker block should be present");
-    assert.ok(!claudeMd.includes("**Run autonomously...**"), "ad-hoc block text should be removed");
-    assert.ok(claudeMd.includes("## Other content"), "unrelated content must remain");
-
-    const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
-    assert.ok(
-      cfg.stack.build.length > 0 || cfg.stack.test.length > 0,
-      "extracted commands should land in the config"
-    );
-  }
-);
-
-test(
   "installLoop registers the read-guard PreToolUse hook in .claude/settings.json",
   {
     skip: crewAvailable

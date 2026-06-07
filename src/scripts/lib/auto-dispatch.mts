@@ -1,12 +1,8 @@
 // auto-dispatch.mts — shared module for spawning role agents from loop CLI commands.
 //
-// Dispatch mechanism: writes a pending-dispatch.json marker file under
-// <repoRoot>/.claude/artifacts/loop/pending-dispatch/<timestamp>-<agent>.json
-// that an outer harness or future SLICE-D picks up. The function returns
-// immediately after writing the marker so CLI commands stay non-blocking.
-// SLICE-B/C/D will wire real harness consumption; the marker approach is the
-// simplest correct contract that lets callers observe dispatch intent
-// without requiring an actual sub-process in this scaffolding slice.
+// Dispatch mechanism: acknowledges dispatch intent immediately and appends an
+// audit log entry so callers can observe it. The marker-write path (pending-dispatch/
+// directory) was deprecated per DEC-011 — no consumer is planned.
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -32,7 +28,6 @@ export interface DispatchResult {
 }
 
 const AUDIT_LOG_REL = ".claude/artifacts/loop/auto-dispatch.jsonl";
-const PENDING_DISPATCH_REL = ".claude/artifacts/loop/pending-dispatch";
 
 export interface AuditLogOpts {
   config?: { loop?: { auditLogPath?: string } };
@@ -61,7 +56,7 @@ export async function appendAuditLog(
 }
 
 export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult> {
-  const { agent, prompt, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor } = opts;
+  const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor } = opts;
   const start = Date.now();
 
   const buildAuditEntry = (
@@ -98,22 +93,11 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
       }
     }
 
-    // Write marker file so the outer harness can pick up and execute the dispatch.
-    const dispatchDir = path.join(repoRoot, PENDING_DISPATCH_REL);
-    await fs.mkdir(dispatchDir, { recursive: true });
-    const markerName = `${Date.now()}-${agent.replace(/[^A-Za-z0-9]/g, "-")}.json`;
-    const markerPath = path.join(dispatchDir, markerName);
-    await fs.writeFile(
-      markerPath,
-      JSON.stringify({ agent, prompt, parentCommand, createdAt: new Date().toISOString() }),
-      "utf8"
-    );
-
     const durationMs = Date.now() - start;
     const result: DispatchResult = {
       ok: true,
       skipped: false,
-      output: `<marker-written:${path.relative(repoRoot, markerPath).replace(/\\/g, "/")}>`,
+      output: "<dispatch-acknowledged>",
       durationMs
     };
     await appendAuditLog(repoRoot, buildAuditEntry(result));
