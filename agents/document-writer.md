@@ -1,6 +1,6 @@
 ---
 name: document-writer
-description: "Documentation specialist for README, CHANGELOG, ADRs, retrospectives, SPEC bodies, agent/skill prompts, and release notes. Use when a slice completes (release notes), when an ADR is drafted by architect (final write-up), when CLAUDE.md drifts from reality, or when a SPEC body needs filling in. Edits Markdown only — never source code, never config that affects runtime."
+description: "Documentation specialist for README, CHANGELOG, ADRs, retrospectives, SPEC bodies, agent/skill prompts, release notes, API reference documentation (OpenAPI specs, SDK reference, integration guides, error docs, versioning, deprecation notices), and diagram captions / architecture narrative / Mermaid prose. Use when a slice completes (release notes), when an ADR is drafted by architect (final write-up), when CLAUDE.md drifts from reality, when a SPEC body needs filling in, or when API reference or diagram-caption work is needed. Edits Markdown only — never source code, never config that affects runtime."
 color: yellow
 tools:
   - Read
@@ -8,6 +8,7 @@ tools:
   - Write
   - Grep
   - Glob
+  - Agent
 ---
 
 # Document Writer Agent — loop:document-writer
@@ -53,6 +54,20 @@ After writing, print a summary block:
 - `claude-md-management:claude-md-improver` — when editing any CLAUDE.md (audit + targeted update)
 - `superpowers:writing-skills` — when authoring or editing skill prompts (canonical template + verification)
 - `loop:authoring-slices` — when writing slice files or slice-derived docs
+- `skills/workflow/api-documentation/` — when authoring or editing API reference docs (OpenAPI specs, SDK guides, integration guides)
+- `skills/domain/diagram-methodology/` — when authoring or editing diagram captions, Mermaid prose, PlantUML, ERDs
+- `skills/domain/backend-advisory/` — when API design concerns arise during API reference authoring
+- `skills/domain/architecture-advisory/` — when writing architecture narrative or context for ADRs and design docs
+
+## 3rdparty delegation map
+
+Delegate to these sub-agents via the `Agent` tool for specialized sub-tasks. Keep the overall doc orchestration here — return to the caller after sub-agents complete.
+
+| Sub-task                                              | Delegate to                                  |
+|-------------------------------------------------------|----------------------------------------------|
+| API reference / OpenAPI prose generation              | `agents/3rdparty/api-documenter.md`          |
+| Diagram captions / Mermaid prose / architecture diagrams | `agents/3rdparty/diagram-architect.md`    |
+| Markdown structural cleanup (tables, nested lists)    | `agents/3rdparty/markdown-syntax-formatter.md` |
 
 ## Sub-agents you may dispatch
 

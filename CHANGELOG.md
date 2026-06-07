@@ -3,6 +3,27 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## [0.29.0] — 2026-06-07
+
+### Added
+- Extended `loop:document-writer` scope to cover API reference documentation
+  (OpenAPI specs, SDK guides, integration guides, error docs, versioning,
+  deprecation notices) and diagram captions / Mermaid prose / architecture
+  narrative. (FEAT-124)
+- `Agent` tool added to `loop:document-writer` to enable 3rdparty delegation
+  (api-documenter, diagram-architect, markdown-syntax-formatter).
+- Four new consult-skills rows in `loop:document-writer`:
+  `skills/workflow/api-documentation/`, `skills/domain/diagram-methodology/`,
+  `skills/domain/backend-advisory/`, `skills/domain/architecture-advisory/`.
+
+### Deprecation
+- `crew:copywriter` (hero-crew) will be removed in hero-crew v0.21.0 as part
+  of FEAT-124 consolidation. Migrate `subagent_type: crew:copywriter` to
+  `subagent_type: loop:document-writer`. The deprecation banner in
+  `agents/copywriter.md` will be active in hero-crew v0.20.0.
+
+---
+
 ## v0.28.2 — 2026-06-07 — triage tighten + post-release backfill
 
 ### Changed

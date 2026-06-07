@@ -116,7 +116,7 @@ function buildOrchestrateSliceInstruction(sliceId: string): string {
     `> /crew:orchestrate-slice --id ${sliceId}`,
     ``,
     `The command dispatches specialists in sequence from the main thread (architect if needed,`,
-    `builder, reviewer, validator, copywriter, doc-writer). All dispatches are visible in this`,
+    `builder, reviewer, validator, loop:document-writer). All dispatches are visible in this`,
     `window. When the ladder completes, close with /loop:slice complete --id ${sliceId}.`
   ].join("\n");
 }

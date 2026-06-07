@@ -12,10 +12,12 @@
 //
 // /crew:orchestrate-slice is the source of truth for slice dispatch. The
 // ceremony specialists it invokes (architect, uxdesigner, builder,
-// reviewer, validator, copywriter, document-writer) are legitimate FEAT
+// reviewer, validator, loop:document-writer) are legitimate FEAT
 // participants and stay allowlisted. The loop methodology agents
 // (loop:architect, loop:pm, loop:document-writer, loop:researcher) are
 // also allowlisted because they participate in the loop ceremony.
+// Note: crew:copywriter is deprecated (FEAT-124); loop:document-writer
+// is the canonical documentation agent going forward.
 //
 // Exit codes:
 //   0  allow
