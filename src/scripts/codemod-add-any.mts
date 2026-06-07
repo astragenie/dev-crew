@@ -23,11 +23,11 @@ function parseDiagnostics(output: string) {
   let m;
   while ((m = re.exec(output)) !== null) {
     diags.push({
-      file: m[1],
-      line: parseInt(m[2], 10),
-      col: parseInt(m[3], 10),
-      code: parseInt(m[4], 10),
-      msg: m[5]
+      file: m[1]!,
+      line: parseInt(m[2]!, 10),
+      col: parseInt(m[3]!, 10),
+      code: parseInt(m[4]!, 10),
+      msg: m[5]!
     });
   }
   return diags;
@@ -69,13 +69,15 @@ function applyDestructureFix(file: string, line: number, col: number) {
   // Concatenate to a flat offset for easier brace matching
   // Simpler: find on same line, walk back to nearest `(` or `,` outside braces, then find next `}` and insert `: any`
   const ln = lines[line - 1];
+  if (ln === undefined) return false;
   // Find the `{` to the left of col-1
   let i = col - 2;
   let depth = 0;
   let braceStart = -1;
   while (i >= 0) {
-    if (ln[i] === "}") depth++;
-    else if (ln[i] === "{") {
+    const ch = ln[i];
+    if (ch === "}") depth++;
+    else if (ch === "{") {
       if (depth === 0) {
         braceStart = i;
         break;
@@ -89,8 +91,9 @@ function applyDestructureFix(file: string, line: number, col: number) {
   let j = braceStart + 1;
   depth = 1;
   while (j < ln.length) {
-    if (ln[j] === "{") depth++;
-    else if (ln[j] === "}") {
+    const ch = ln[j];
+    if (ch === "{") depth++;
+    else if (ch === "}") {
       depth--;
       if (depth === 0) break;
     }

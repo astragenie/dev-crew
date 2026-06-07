@@ -12,7 +12,7 @@ function normalizeMsysPath(value) {
     if (!match) {
         return value;
     }
-    return `${match[1].toUpperCase()}:/${match[2]}`;
+    return `${(match[1] ?? "").toUpperCase()}:/${match[2] ?? ""}`;
 }
 // Flag schema. See hero-crew/scripts/crew.mjs for the same pattern.
 const FLAG_SPEC = {

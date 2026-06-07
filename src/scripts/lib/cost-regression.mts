@@ -80,7 +80,7 @@ export async function checkCostRegression(
 
   if (reports.length === 0) return null;
 
-  const current = reports[0];
+  const current = reports[0]!;
   if (current.usd === null) return null;
 
   const { median, sampleCount } = computeRollingMedian({ reports, window });

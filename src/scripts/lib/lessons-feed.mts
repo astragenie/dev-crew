@@ -17,7 +17,7 @@ function parseListSection(body: string, sectionHeader: string) {
     if (inSection && /^##\s+/.test(trimmed)) break;
     if (!inSection) continue;
     const m = trimmed.match(/^-\s+(.+)$/);
-    if (m && m[1].trim() && !/bullet \d/.test(m[1])) items.push(m[1].trim());
+    if (m && m[1]!.trim() && !/bullet \d/.test(m[1]!)) items.push(m[1]!.trim());
   }
   return items;
 }

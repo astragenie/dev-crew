@@ -42,7 +42,7 @@ export function parseScoresFromBody(body: string) {
     if (!inScores) continue;
     const m = trimmed.match(/^-\s+([a-z_]+)\s*:\s*([0-9]*\.?[0-9]+)/i);
     if (m) {
-      scores[m[1]] = Number(m[2]);
+      scores[m[1]!] = Number(m[2]!);
     }
   }
   return scores;
@@ -88,11 +88,11 @@ export function parseDecisionsFromBody(body: string) {
     if (!current) return;
     const text = buffer.join("\n");
     const rationaleMatch = text.match(/\*\*Rationale\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i);
-    current.rationale = rationaleMatch ? rationaleMatch[1].trim() : "";
+    current.rationale = rationaleMatch ? rationaleMatch[1]!.trim() : "";
     const consequencesMatch = text.match(
       /\*\*Consequences\*\*\s*:\s*([\s\S]*?)(?=\n\*\*|\n##|\n###|$)/i
     );
-    current.consequences = consequencesMatch ? consequencesMatch[1].trim() : "";
+    current.consequences = consequencesMatch ? consequencesMatch[1]!.trim() : "";
     decisions.push(current);
     current = null;
     buffer = [];
@@ -112,7 +112,7 @@ export function parseDecisionsFromBody(body: string) {
     const heading = trimmed.match(/^###\s+(DEC-(?:TBD|\d+))\s*:\s*(.+)$/i);
     if (heading) {
       flush();
-      current = { id: heading[1].toUpperCase(), title: heading[2].trim() };
+      current = { id: heading[1]!.toUpperCase(), title: heading[2]!.trim() };
       continue;
     }
     if (current) buffer.push(line);

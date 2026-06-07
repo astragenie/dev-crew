@@ -48,7 +48,7 @@ export async function findActivePlan(repoPath: string, config: Record<string, an
         planFiles.map(async (file) => ({ file, mtimeMs: (await fs.stat(file)).mtimeMs }))
       );
       stats.sort((a, b) => b.mtimeMs - a.mtimeMs);
-      const planPath = stats[0].file;
+      const planPath = stats[0]!.file;
       const slices = await parseSuperpowersPlan(planPath);
       if (slices.length > 0) {
         return { source: "superpowers", planPath, slices };
@@ -73,7 +73,7 @@ export async function parseSuperpowersPlan(planPath: string) {
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(TASK_HEADING_RE);
     if (m) {
-      slices.push({ id: normalizeSliceId(m[1]), title: m[2].trim(), checked: false });
+      slices.push({ id: normalizeSliceId(m[1] ?? ""), title: (m[2] ?? "").trim(), checked: false });
     }
   }
   return slices;
@@ -86,9 +86,9 @@ export async function parseApprovedSlices(filePath: string) {
     const m = line.match(APPROVED_SLICE_RE);
     if (m) {
       slices.push({
-        id: normalizeSliceId(m[2]),
-        title: m[3].trim(),
-        checked: m[1].toLowerCase() === "x"
+        id: normalizeSliceId(m[2] ?? ""),
+        title: (m[3] ?? "").trim(),
+        checked: (m[1] ?? "").toLowerCase() === "x"
       });
     }
   }

@@ -67,7 +67,7 @@ function extractInScopeHints(frontmatter: Record<string, any>, body: string): st
   const inScopeMatch = body.match(/^##\s+In scope\s*\n([\s\S]*?)(?=\n##\s|\s*$)/im);
   if (!inScopeMatch) return [];
 
-  const sectionText = inScopeMatch[1];
+  const sectionText = inScopeMatch[1]!;
   const hints: string[] = [];
 
   for (const line of sectionText.split("\n")) {
@@ -156,7 +156,7 @@ function extractExports(source: string): string[] {
   const names: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
-    names.push(m[1]);
+    names.push(m[1]!);
   }
   return names;
 }
@@ -179,9 +179,9 @@ async function parseSliceFile(sliceFilePath: string | null, sliceId: string): Pr
   const raw = await fs.readFile(sliceFilePath, "utf8");
   const { frontmatter, body } = parseFrontmatter(raw);
   const h1 = body.match(/^#\s+(.+)$/m);
-  const title = h1 ? h1[1].trim() : sliceId;
+  const title = h1 ? h1[1]!.trim() : sliceId;
   const objMatch = body.match(/^##\s+Objective\s*\n([\s\S]*?)(?=\n##\s|\s*$)/im);
-  const objective = objMatch ? objMatch[1].trim() : "";
+  const objective = objMatch ? objMatch[1]!.trim() : "";
   return { title, objective, frontmatter, body };
 }
 

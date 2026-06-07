@@ -61,13 +61,13 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
   if (!match) {
     return { frontmatter: {}, body: content };
   }
-  const block = match[1];
+  const block = match[1]!;
   const body = content.slice(match[0].length);
   const lines = block.split("\n");
   const frontmatter: Frontmatter = {};
   let currentArrayKey: string | null = null;
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i].replace(CRLF_STRIP_RE, "");
+    const line = lines[i]!.replace(CRLF_STRIP_RE, "");
     if (line.trim() === "") {
       currentArrayKey = null;
       continue;
@@ -84,15 +84,15 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
       currentArrayKey = null;
       continue;
     }
-    const key = m[1];
-    const value = m[2];
+    const key = m[1]!;
+    const value = m[2]!;
     if (value === "") {
       // Empty value. Could be: (a) null/missing, (b) start of a block array.
       // Disambiguate by peeking at the next non-empty line. If it starts
       // with whitespace + "- ", we have a block array; otherwise null.
       let blockArray = false;
       for (let j = i + 1; j < lines.length; j += 1) {
-        const peek = lines[j].replace(CRLF_STRIP_RE, "");
+        const peek = lines[j]!.replace(CRLF_STRIP_RE, "");
         if (peek.trim() === "") continue;
         if (BLOCK_ARRAY_ITEM_RE.test(peek)) blockArray = true;
         break;

@@ -146,9 +146,9 @@ export async function inferScoresForSlice(repoPath, sliceId) {
         scores,
         sources: sourcesPerDim,
         artifactCounts: {
-            reviews: sources.reviews.length,
-            validations: sources.validations.length,
-            deployments: sources.deployments.length
+            reviews: sources.reviews?.length ?? 0,
+            validations: sources.validations?.length ?? 0,
+            deployments: sources.deployments?.length ?? 0
         }
     };
 }

@@ -65,14 +65,17 @@ function applyDestructureFix(file, line, col) {
     // Concatenate to a flat offset for easier brace matching
     // Simpler: find on same line, walk back to nearest `(` or `,` outside braces, then find next `}` and insert `: any`
     const ln = lines[line - 1];
+    if (ln === undefined)
+        return false;
     // Find the `{` to the left of col-1
     let i = col - 2;
     let depth = 0;
     let braceStart = -1;
     while (i >= 0) {
-        if (ln[i] === "}")
+        const ch = ln[i];
+        if (ch === "}")
             depth++;
-        else if (ln[i] === "{") {
+        else if (ch === "{") {
             if (depth === 0) {
                 braceStart = i;
                 break;
@@ -87,9 +90,10 @@ function applyDestructureFix(file, line, col) {
     let j = braceStart + 1;
     depth = 1;
     while (j < ln.length) {
-        if (ln[j] === "{")
+        const ch = ln[j];
+        if (ch === "{")
             depth++;
-        else if (ln[j] === "}") {
+        else if (ch === "}") {
             depth--;
             if (depth === 0)
                 break;

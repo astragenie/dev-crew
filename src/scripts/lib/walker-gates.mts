@@ -219,7 +219,7 @@ function extractTitle(entry: {
   if (fm.title && typeof fm.title === "string") return fm.title;
   // Try to extract heading from body: "# FEAT-NNN: Some Title"
   const match = entry.body.match(/^#\s+\S+:\s+(.+)$/m);
-  if (match) return match[1].trim();
+  if (match) return match[1]!.trim();
   return entry.id;
 }
 

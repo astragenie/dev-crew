@@ -23,7 +23,7 @@ async function parseFrontmatter(text: string): Promise<{
   for (const line of block.split(/\r?\n/)) {
     const m = line.match(/^([\w_]+):\s*(.*)$/);
     if (!m) continue;
-    let v: any = m[2].trim();
+    let v: any = m[2]!.trim();
     if (v.startsWith('"') && v.endsWith('"')) {
       try {
         v = JSON.parse(v);
@@ -31,7 +31,7 @@ async function parseFrontmatter(text: string): Promise<{
         /* keep raw string on parse failure */
       }
     }
-    fm[m[1]] = v;
+    fm[m[1]!] = v;
   }
   return { fm, body };
 }
