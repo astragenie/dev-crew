@@ -2,6 +2,7 @@
 
 import path from "node:path";
 import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
+import { resolveSkills } from "./lib/skill-resolver.mjs";
 
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
@@ -24,6 +25,9 @@ const FLAG_SPEC = {
   "-h": { key: "help", boolean: true },
   "--repo": { key: "repo" },
   "--preset": { key: "preset" },
+  "--variant": { key: "variant" },
+  "--override": { key: "override" },
+  "--strict": { key: "strict", boolean: true },
   "--phase": { key: "phase" },
   "--note": { key: "note" },
   "--status": { key: "status" },
@@ -79,6 +83,9 @@ function parseArgs(argv: string[]) {
   const flags: Record<string, any> = {
     repo: process.cwd(),
     preset: null,
+    variant: null,
+    override: null,
+    strict: false,
     phase: null,
     note: null,
     help: false,
@@ -344,12 +351,59 @@ async function runArchitectSubcommand(repoPath: string, flags: Record<string, an
   };
 }
 
+function runResolveSkillsCommand(flags: Record<string, any>): void {
+  if (!flags.variant) {
+    process.stderr.write("error: --variant <fe|be|single> required\n");
+    process.exitCode = 1;
+    return;
+  }
+  if (!["fe", "be", "single"].includes(flags.variant)) {
+    process.stderr.write(`error: --variant must be fe, be, or single (got ${flags.variant})\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const preset = flags.preset;
+  if (!preset) {
+    process.stderr.write("error: --preset <path> required\n");
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    const resolved = resolveSkills({
+      presetPath: preset,
+      ...(flags.override ? { overridePath: flags.override } : {}),
+      variant: flags.variant
+    });
+    if (resolved === null) {
+      process.stderr.write(
+        "warn: no skills resolved for this variant (split mismatch or empty array)\n"
+      );
+      process.exitCode = 2;
+      return;
+    }
+    process.stdout.write(JSON.stringify(resolved, null, 2) + "\n");
+    process.exitCode = 0;
+  } catch (err: unknown) {
+    const msg = (err as { message?: string } | undefined)?.message ?? String(err);
+    process.stderr.write(`error: ${msg}\n`);
+    process.exitCode = 1;
+  }
+}
+
 async function main() {
   const { command, flags, positionals } = parseArgs(process.argv.slice(2));
   const repoPath = path.resolve(normalizeMsysPath(flags.repo));
 
   if (command === "help") {
     console.log(usage());
+    return;
+  }
+
+  if (command === "resolve-skills") {
+    runResolveSkillsCommand(flags);
+    clearFrontmatterCache();
     return;
   }
 
