@@ -3,6 +3,12 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.1 — 2026-06-06 — fix: allowlist new crew BE/FE/integrator specialists in guard-feat-dispatch hook
+
+`hooks/guard-feat-dispatch.mjs` now accepts `crew:builder-be`, `crew:builder-fe`, and `crew:integrator` as legitimate ceremony specialists. Previously these new agents (released in upstream crew) were treated as ad-hoc subagents and blocked from FEAT work, breaking the `/crew:fix` and `/crew:orchestrate-slice` flows that route to them.
+
+Override hint string updated to list the new agents.
+
 ## v0.24.0 — 2026-06-06 — feat: auto-merge slice branch on validation pass (FEAT-062 / SLICE-64)
 
 Closes the worktree trilogy (FEAT-060 creation, FEAT-061 ceremony cwd, FEAT-062 close + merge). `loop slice complete` now squash-merges the slice branch into `main` and cleans up the worktree automatically when a slice is running in a worktree and the validation gate is satisfied.

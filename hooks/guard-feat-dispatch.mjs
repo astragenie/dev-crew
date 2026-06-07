@@ -47,6 +47,8 @@ if (!featMatches || featMatches.length === 0) process.exit(0);
 // artifact protocol orchestrate-slice depends on.
 const allowed = [
   "crew:builder",
+  "crew:builder-be",
+  "crew:builder-fe",
   "crew:build",
   "crew:lead",
   "crew:reviewer",
@@ -57,6 +59,7 @@ const allowed = [
   "crew:uxdesigner",
   "crew:copywriter",
   "crew:document-writer",
+  "crew:integrator",
   "loop:architect",
   "loop:document-writer",
   "loop:pm",
@@ -77,7 +80,7 @@ process.stderr.write(
     `  4. /loop:slice-complete --id SLICE-NN`,
     `  5. /loop:slice-grade`,
     `If /loop:auto halted on warn alerts, address alerts or escalate — do NOT bypass.`,
-    `Override: change subagent_type to a crew or loop ceremony specialist (crew:builder, crew:lead, crew:reviewer, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore.`
+    `Override: change subagent_type to a crew or loop ceremony specialist (crew:builder, crew:builder-be, crew:builder-fe, crew:lead, crew:reviewer, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore.`
   ].join("\n")
 );
 process.exit(2);
