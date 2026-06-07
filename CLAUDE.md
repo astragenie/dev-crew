@@ -107,17 +107,19 @@ is superseded by the resolver CLI (no FEAT-level reader required).
 
 ## Owned agents
 
-Dispatch via `Agent(subagent_type: ...)`:
+Dispatch via `Agent(subagent_type: ...)`. The plugin runtime namespaces
+owned agents with the `loop:` prefix — use the namespaced ID, not the
+bare frontmatter `name:` field:
 
-- `pm` — backlog scoring across 5 dimensions; `compositePriority:
+- `loop:pm` — backlog scoring across 5 dimensions; `compositePriority:
   "needs-review"` escape valve when scope exceeds PM ability.
-- `architect` — read-only Node ESM design + ADR drafter for
+- `loop:architect` — read-only Node ESM design + ADR drafter for
   structural change. Use before SLICE-A of any new contract / provider
   / cross-module refactor.
-- `researcher` — read-only citation-backed code archaeology + fact
+- `loop:researcher` — read-only citation-backed code archaeology + fact
   gathering. Use when a question needs evidence from the repo before a
   change is proposed.
-- `document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
+- `loop:document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
   retros, release notes, agent / skill prompts). Will NOT edit source.
 
 ## Auto-dispatch primitives
