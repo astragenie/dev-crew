@@ -372,7 +372,7 @@ async function writeAuditEntry(repoPath: string, entry: object): Promise<void> {
 // Cleanup helpers
 // ---------------------------------------------------------------------------
 
-async function runCleanup(
+async function cleanupWorktreeAndBranch(
   repoPath: string,
   worktreePath: string,
   branchName: string
@@ -400,7 +400,7 @@ async function runCleanup(
   // different sha + tree than the branch tip). So `branch -d` would refuse
   // with "not fully merged" even though the content is on main. Use `-D`
   // safely here because the caller has already verified that the squash
-  // commit landed on main before calling runCleanup.
+  // commit landed on main before calling cleanupWorktreeAndBranch.
   try {
     await git(repoPath, ["branch", "-D", branchName]);
     cleanup.branchDeleted = true;
@@ -493,7 +493,7 @@ async function checkValidationGate(ctx: MergeContext): Promise<void> {
     attemptedBranch: ctx.branchName,
     attemptedWorktree: ctx.worktreePath
   });
-  await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+  await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
   throw mergeErr;
 }
 
@@ -510,7 +510,7 @@ async function fetchOrigin(ctx: MergeContext): Promise<void> {
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+    await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
     throw mergeErr;
   }
 }
@@ -534,7 +534,7 @@ async function rebaseBranchOntoMain(ctx: MergeContext): Promise<void> {
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+    await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
     throw mergeErr;
   }
 }
@@ -558,7 +558,7 @@ async function checkoutAndSquash(ctx: MergeContext): Promise<void> {
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+    await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
     throw mergeErr;
   }
 
@@ -573,7 +573,7 @@ async function checkoutAndSquash(ctx: MergeContext): Promise<void> {
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+    await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
     throw mergeErr;
   }
 }
@@ -596,7 +596,7 @@ async function commitSquash(ctx: MergeContext, commitMessage: string): Promise<s
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+    await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
     throw mergeErr;
   }
 
@@ -638,7 +638,7 @@ async function pushIfEnabled(
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(
+    await markFailureAndThrow(
       ctx.repoPath,
       mergeErr,
       ctx.sliceId,
@@ -703,7 +703,7 @@ export async function runAutoMerge(opts: AutoMergeOptions): Promise<MergeResult 
   try {
     await preflightChecks(repoPath, worktreePath, branchName);
   } catch (err: any) {
-    await handleMergeError(repoPath, err, sliceId, featureId, startTime);
+    await markFailureAndThrow(repoPath, err, sliceId, featureId, startTime);
     throw err;
   }
 
@@ -717,7 +717,7 @@ export async function runAutoMerge(opts: AutoMergeOptions): Promise<MergeResult 
   const { pushed, pushSkippedReason } = await pushIfEnabled(ctx, autoPushOnMerge, mergeCommitSha);
 
   // 9. Cleanup (best-effort, individually isolated)
-  const cleanup = await runCleanup(repoPath, worktreePath, branchName);
+  const cleanup = await cleanupWorktreeAndBranch(repoPath, worktreePath, branchName);
 
   // Write audit log on success
   await writeAuditEntry(repoPath, {
@@ -752,7 +752,7 @@ export async function runAutoMerge(opts: AutoMergeOptions): Promise<MergeResult 
 // Error handler (badge write + audit log)
 // ---------------------------------------------------------------------------
 
-async function handleMergeError(
+async function markFailureAndThrow(
   repoPath: string,
   err: MergeError,
   sliceId: string,

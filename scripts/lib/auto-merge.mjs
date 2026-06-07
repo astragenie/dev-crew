@@ -26,7 +26,8 @@ export class MergeError extends Error {
         this.code = opts.code;
         this.failedStep = opts.failedStep;
         this.gitStderr = opts.gitStderr ?? "";
-        this.fixHint = opts.fixHint ?? `Run \`/crew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
+        this.fixHint =
+            opts.fixHint ?? `Run \`/crew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
         this.attemptedBranch = opts.attemptedBranch;
         this.attemptedWorktree = opts.attemptedWorktree;
     }
@@ -231,7 +232,7 @@ async function writeAuditEntry(repoPath, entry) {
 // ---------------------------------------------------------------------------
 // Cleanup helpers
 // ---------------------------------------------------------------------------
-async function runCleanup(repoPath, worktreePath, branchName) {
+async function cleanupWorktreeAndBranch(repoPath, worktreePath, branchName) {
     const cleanup = {
         branchDeleted: false,
         branchDeleteError: null,
@@ -254,7 +255,7 @@ async function runCleanup(repoPath, worktreePath, branchName) {
     // different sha + tree than the branch tip). So `branch -d` would refuse
     // with "not fully merged" even though the content is on main. Use `-D`
     // safely here because the caller has already verified that the squash
-    // commit landed on main before calling runCleanup.
+    // commit landed on main before calling cleanupWorktreeAndBranch.
     try {
         await git(repoPath, ["branch", "-D", branchName]);
         cleanup.branchDeleted = true;
@@ -324,7 +325,7 @@ async function checkValidationGate(ctx) {
         attemptedBranch: ctx.branchName,
         attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+    await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
     throw mergeErr;
 }
 /** Run git fetch origin. Throws MergeError on failure. */
@@ -341,7 +342,7 @@ async function fetchOrigin(ctx) {
             attemptedBranch: ctx.branchName,
             attemptedWorktree: ctx.worktreePath
         });
-        await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+        await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
         throw mergeErr;
     }
 }
@@ -354,7 +355,9 @@ async function rebaseBranchOntoMain(ctx) {
         try {
             await git(ctx.worktreePath, ["rebase", "--abort"]);
         }
-        catch { /* ignore */ }
+        catch {
+            /* ignore */
+        }
         const mergeErr = new MergeError({
             code: "REBASE_CONFLICT",
             message: `git rebase origin/main failed for branch ${ctx.branchName}: ${(err?.stderr ?? err?.message ?? "").trim()}`,
@@ -364,7 +367,7 @@ async function rebaseBranchOntoMain(ctx) {
             attemptedBranch: ctx.branchName,
             attemptedWorktree: ctx.worktreePath
         });
-        await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+        await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
         throw mergeErr;
     }
 }
@@ -387,7 +390,7 @@ async function checkoutAndSquash(ctx) {
             attemptedBranch: ctx.branchName,
             attemptedWorktree: ctx.worktreePath
         });
-        await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+        await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
         throw mergeErr;
     }
     try {
@@ -402,7 +405,7 @@ async function checkoutAndSquash(ctx) {
             attemptedBranch: ctx.branchName,
             attemptedWorktree: ctx.worktreePath
         });
-        await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+        await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
         throw mergeErr;
     }
 }
@@ -415,7 +418,9 @@ async function commitSquash(ctx, commitMessage) {
         try {
             await git(ctx.repoPath, ["reset", "--hard", "HEAD"]);
         }
-        catch { /* ignore */ }
+        catch {
+            /* ignore */
+        }
         const mergeErr = new MergeError({
             code: "MERGE_FAILED",
             message: `git commit failed: ${(err?.stderr ?? err?.message ?? "").trim()}`,
@@ -424,7 +429,7 @@ async function commitSquash(ctx, commitMessage) {
             attemptedBranch: ctx.branchName,
             attemptedWorktree: ctx.worktreePath
         });
-        await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
+        await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime);
         throw mergeErr;
     }
     let mergeCommitSha = "";
@@ -432,7 +437,9 @@ async function commitSquash(ctx, commitMessage) {
         const { stdout } = await git(ctx.repoPath, ["rev-parse", "HEAD"]);
         mergeCommitSha = stdout.trim();
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     return mergeCommitSha;
 }
 /** Squash, commit, and return SHA — thin orchestrator over the two single-step helpers. */
@@ -459,7 +466,7 @@ async function pushIfEnabled(ctx, autoPushOnMerge, mergeCommitSha) {
             attemptedBranch: ctx.branchName,
             attemptedWorktree: ctx.worktreePath
         });
-        await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime, mergeCommitSha);
+        await markFailureAndThrow(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime, mergeCommitSha);
         throw mergeErr;
     }
 }
@@ -479,7 +486,13 @@ export async function runAutoMerge(opts) {
     const startTime = Date.now();
     const ctx = { repoPath, worktreePath, branchName, sliceId, featureId, startTime };
     // Render commit message (throws MergeError on empty sliceTitle/sliceId)
-    const commitMessage = renderCommitMessage({ sliceTitle, sliceId, featureId, gradeAvg, decisionIds });
+    const commitMessage = renderCommitMessage({
+        sliceTitle,
+        sliceId,
+        featureId,
+        gradeAvg,
+        decisionIds
+    });
     // --dry-run: pure derivation — no git mutations, no state writes, no audit
     if (dryRun) {
         return buildDryRunPlan(opts, commitMessage, autoPushOnMerge);
@@ -493,7 +506,7 @@ export async function runAutoMerge(opts) {
         await preflightChecks(repoPath, worktreePath, branchName);
     }
     catch (err) {
-        await handleMergeError(repoPath, err, sliceId, featureId, startTime);
+        await markFailureAndThrow(repoPath, err, sliceId, featureId, startTime);
         throw err;
     }
     // 3+4. Fetch + rebase (throws on failure)
@@ -503,7 +516,7 @@ export async function runAutoMerge(opts) {
     // 8. Optional push
     const { pushed, pushSkippedReason } = await pushIfEnabled(ctx, autoPushOnMerge, mergeCommitSha);
     // 9. Cleanup (best-effort, individually isolated)
-    const cleanup = await runCleanup(repoPath, worktreePath, branchName);
+    const cleanup = await cleanupWorktreeAndBranch(repoPath, worktreePath, branchName);
     // Write audit log on success
     await writeAuditEntry(repoPath, {
         timestamp: new Date().toISOString(),
@@ -534,7 +547,7 @@ export async function runAutoMerge(opts) {
 // ---------------------------------------------------------------------------
 // Error handler (badge write + audit log)
 // ---------------------------------------------------------------------------
-async function handleMergeError(repoPath, err, sliceId, featureId, startTime, mergeCommitSha = "") {
+async function markFailureAndThrow(repoPath, err, sliceId, featureId, startTime, mergeCommitSha = "") {
     const badge = {
         status: "failed",
         code: err.code,

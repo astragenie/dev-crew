@@ -3,6 +3,15 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.7 — 2026-06-07 — chore: rename auto-merge helpers to match contract artifact (FEAT-067 / SLICE-66)
+
+Closes the FEAT-067 follow-up from GRADE-SLICE-64. The substantive complexity refactor was already shipped during SLICE-64's late builder passes (`runAutoMerge` is 86 lines and lint-clean). This release aligns 2 helper identifiers to the contract artifact at `.claude/artifacts/crew/designs/FEAT-062-contracts.md`:
+
+- `runCleanup` → `cleanupWorktreeAndBranch`
+- `handleMergeError` → `markFailureAndThrow`
+
+Pure rename — no behavior change. All 32+ auto-merge tests pass unchanged.
+
 ## v0.24.6 — 2026-06-07 — docs: upstream-request for crew brief-me halt-badge renderer (FEAT-064 / SLICE-65)
 
 Filed `docs/upstream-requests/2026-06-07-hero-crew-brief-me-halt-badge-rendering.md` requesting hero-crew's `brief-me` render a Blocked/Missing section for every halt-badge field loop emits (5 fields: `costRegression`, `sessionDrift`, `sliceCostCeiling`, `gradeTrend`, `mergeFailed`). Includes concrete expected output + fail-open contract for unknown future fields. Closes the cross-plugin side of SPEC-003 (loop side already closed by FEAT-063 / FEAT-065 / FEAT-066). SPEC-003 auto-rolled to satisfied.
