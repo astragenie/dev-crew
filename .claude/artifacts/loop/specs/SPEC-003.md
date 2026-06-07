@@ -2,11 +2,11 @@
 id: SPEC-003
 type: sre
 title: Loop-side halt badge observability across plugin boundary
-status: draft
+status: satisfied
 priority: P1
 target_release: v0.21.0
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-07
 owner: null
 derived_features: [FEAT-063, FEAT-064, FEAT-065, FEAT-066]
 ---

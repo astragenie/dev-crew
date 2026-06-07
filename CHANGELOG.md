@@ -3,6 +3,10 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.6 — 2026-06-07 — docs: upstream-request for crew brief-me halt-badge renderer (FEAT-064 / SLICE-65)
+
+Filed `docs/upstream-requests/2026-06-07-hero-crew-brief-me-halt-badge-rendering.md` requesting hero-crew's `brief-me` render a Blocked/Missing section for every halt-badge field loop emits (5 fields: `costRegression`, `sessionDrift`, `sliceCostCeiling`, `gradeTrend`, `mergeFailed`). Includes concrete expected output + fail-open contract for unknown future fields. Closes the cross-plugin side of SPEC-003 (loop side already closed by FEAT-063 / FEAT-065 / FEAT-066). SPEC-003 auto-rolled to satisfied.
+
 ## v0.24.5 — 2026-06-07 — feat: SessionStart hook warns when installed version is behind marketplace
 
 Claude Code's per-user marketplace clone (`~/.claude/plugins/marketplaces/loop/`) is only refreshed when the user runs `/plugin marketplace update loop`. Tag pushes do not auto-propagate, so sessions silently stay on stale versions (incident 2026-06-06: stuck on v0.22.0 for three releases). New SessionStart hook compares the installed version to the marketplace pinned version and prints a one-line upgrade reminder when they disagree. Fail-open — any error inside the hook exits silently.
