@@ -1,0 +1,40 @@
+# Task Handoff: SLICE-64 builder complete
+
+- Created: 2026-06-07T00:59:17.344Z
+- From: builder
+- To: lead
+- Objective: FEAT-062: auto-merge slice branch on validation pass. New runAutoMerge orchestrator (validation-gate read → fetch+rebase onto origin/main → squash-merge → optional push → cleanup). New --no-merge / --dry-run flags. New autoPushOnMerge config (default false). New mergeFailed halt-badge. Failure paths preserve worktree + branch and set mergeFailed badge for /crew:fix. 32+ tests cover all 6 scenarios in AC-9.
+- Allowed Scope:
+  - src/scripts/lib/auto-merge.mts (NEW orchestrator
+  - contracts conform)
+  - src/scripts/lib/slice-linker/complete-slice.mts (runAutoMergeStage wrapper integrated into completeSlice)
+  - src/scripts/lib/halt-badges.mts (mergeFailed registry entry)
+  - src/scripts/lib/stop-conditions.mts (mergeFailed gate read)
+  - src/scripts/loop.mts (--no-merge / --dry-run flags)
+  - src/tests/auto-merge.test.mts (NEW
+  - 32+ tests)
+  - src/tests/explain-halts.test.mts (updated for 5-field registry)
+  - docs/halt-badges.md (updated registry docs)
+- Forbidden Scope: -
+- Deliverable: AC-1..AC-10 PASS. Cleanup order swapped (worktree first, then branch -D) because git refuses branch deletion while the worktree holds the checkout — and squash-merge requires -D since git does not see the source branch as merged. AC-5 wording updated in slice + reviewer-ladder. Two test setup bugs fixed (double remote add; rebase-conflict tests now push conflict to origin so rebase-onto-origin/main actually fails). npm test: 914/915 PASS (1 pre-existing skip). lint clean. typecheck clean.
+- Changed Files:
+  - src/scripts/lib/auto-merge.mts
+  - src/scripts/lib/slice-linker/complete-slice.mts
+  - src/scripts/lib/halt-badges.mts
+  - src/scripts/lib/stop-conditions.mts
+  - src/scripts/loop.mts
+  - src/tests/auto-merge.test.mts
+  - src/tests/explain-halts.test.mts
+  - docs/halt-badges.md
+  - scripts/lib/auto-merge.mjs
+  - scripts/lib/slice-linker/complete-slice.mjs
+  - scripts/lib/halt-badges.mjs
+  - scripts/lib/stop-conditions.mjs
+  - scripts/loop.mjs
+  - tests/auto-merge.test.mjs
+  - tests/explain-halts.test.mjs
+  - .claude/artifacts/loop/ai-loop/slices/pending/SLICE_64_AUTO-MERGE-SLICE-BRANCH-ON-VALIDATION-PASS.md
+- Confidence: high
+- Risks: Builder subagent paused twice mid-implementation; lead inline-fixed (1) cleanup ordering (worktree before branch -D), (2) AC-5 wording from -d to -D with rationale (squash-merge invariant), (3) test fixture bugs (origin double-add, rebase conflict not pushed). Real complexity warnings remain in auto-merge.mts runAutoMerge (208 lines, complexity 56) and complete-slice.mts runAutoMergeStage (complexity 24) — exceeds repo cap of 15; needs refactor pass. Did not block correctness gates (eslint reports as warnings, not errors) but VIOLATES CLAUDE.md convention. Flag for reviewer.
+- Suggested Next Handoff: Dispatch crew:reviewer with explicit complexity-warning callout.
+
