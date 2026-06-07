@@ -3,7 +3,7 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## [Unreleased] — preset-driven skill activation (Phase 1)
+## v0.27.0 — 2026-06-07 — preset-driven skill activation (Phase 1)
 
 ### Added
 - Preset schema v1: `schemaVersion`, `projectType`, `split`, `frontend`,
