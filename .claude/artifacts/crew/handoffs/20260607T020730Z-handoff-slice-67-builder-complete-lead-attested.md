@@ -1,0 +1,31 @@
+# Task Handoff: SLICE-67 builder complete (lead-attested)
+
+- Created: 2026-06-07T02:07:30.872Z
+- From: builder
+- To: lead
+- Objective: FEAT-057 Option B (loop-side surrogate): new redundantReadStop halt-badge. Reads upstream cost-hygiene state files, emits signal when any path's read_count exceeds threshold (default 5, configurable). Integrated into stop-conditions snapshot + reasons + suggestions + blockers. New renderer in halt-badges registry. 9 new detector tests, 1 explain-halts test bump (5→6 fields). docs/halt-badges.md updated with new field entry.
+- Allowed Scope:
+  - src/scripts/lib/redundant-read-detector.mts (NEW)
+  - src/scripts/lib/halt-badges.mts (added renderRedundantReadStop + registry entry)
+  - src/scripts/lib/stop-conditions.mts (gatherStopInputs + apply + build wiring + snapshot field)
+  - src/tests/redundant-read-detector.test.mts (NEW)
+  - src/tests/explain-halts.test.mts (5→6 fields)
+  - docs/halt-badges.md (new field section)
+- Forbidden Scope: -
+- Deliverable: AC-1..AC-10 PASS. Fail-open on missing dir / empty dir / malformed files / no offenders. Strict > threshold (default 5 trips at 6+). Honors loop.redundantReadCap config override. Picks worst offender across multiple session files. Skips .json.tmp.* in-flight files. 928/929 tests PASS (1 pre-existing skip). Lint clean. Typecheck clean. Format clean.
+- Changed Files:
+  - src/scripts/lib/redundant-read-detector.mts
+  - src/scripts/lib/halt-badges.mts
+  - src/scripts/lib/stop-conditions.mts
+  - src/tests/redundant-read-detector.test.mts
+  - src/tests/explain-halts.test.mts
+  - docs/halt-badges.md
+  - scripts/lib/redundant-read-detector.mjs
+  - scripts/lib/halt-badges.mjs
+  - scripts/lib/stop-conditions.mjs
+  - tests/redundant-read-detector.test.mjs
+  - tests/explain-halts.test.mjs
+- Confidence: high
+- Risks: Detector reads ALL session files cumulatively — a long-running repo could accumulate offender entries across stale sessions. Mitigation: hook itself owns state lifecycle (evictLRU in cost-hygiene/state.mjs); loop only reads what's present. If a future stale-session pile-up surfaces false positives, add session-id filter to detector (single-session mode).
+- Suggested Next Handoff: /loop:slice complete --id SLICE-67
+

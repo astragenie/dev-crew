@@ -470,9 +470,7 @@ async function resolveWorktreeAndBranch(repoPath, sliceId, sliceFm) {
         return { skipped: true, reason: "worktree-missing-on-disk" };
     }
     const featureId = sliceFm?.feature ?? null;
-    const branchName = featureId
-        ? `slice/${sliceId}-${featureId}`
-        : `slice/${sliceId}`;
+    const branchName = featureId ? `slice/${sliceId}-${featureId}` : `slice/${sliceId}`;
     const branchExists = await checkBranchExists(repoPath, branchName);
     if (!branchExists) {
         await clearWorktreePathInState(repoPath);
@@ -516,7 +514,9 @@ async function deriveGradeInfo(repoPath, sliceId) {
         const gradeAvg = vals.length > 0
             ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100
             : null;
-        const decisionIds = Array.isArray(grade?.frontmatter?.decisions) ? grade.frontmatter.decisions : [];
+        const decisionIds = Array.isArray(grade?.frontmatter?.decisions)
+            ? grade.frontmatter.decisions
+            : [];
         return { gradeAvg, decisionIds };
     }
     catch {

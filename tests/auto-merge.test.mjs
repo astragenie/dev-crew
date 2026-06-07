@@ -85,7 +85,9 @@ async function setupRepoWithBranch(label) {
     const branchName = `slice/SLICE-64-FEAT-062`;
     const worktreePath = path.join(worktreeRoot, "SLICE-64");
     // Create the slice branch + worktree
-    await exec(`git -C "${repo}" worktree add -b "${branchName}" "${worktreePath}" main`, { env: GIT_ENV });
+    await exec(`git -C "${repo}" worktree add -b "${branchName}" "${worktreePath}" main`, {
+        env: GIT_ENV
+    });
     // Add a commit on the slice branch so there's something to squash-merge
     await fs.writeFile(path.join(worktreePath, "feature.txt"), "feature work");
     await exec(`git -C "${worktreePath}" add -A`, { env: GIT_ENV });
@@ -153,7 +155,13 @@ test("renderCommitMessage: empty decisionIds renders 'Decisions: none'", () => {
     assert.ok(msg.includes("Decisions: none."), "none when no decisions");
 });
 test("renderCommitMessage: empty sliceTitle throws MergeError", () => {
-    assert.throws(() => renderCommitMessage({ sliceTitle: "", sliceId: "SLICE-01", featureId: null, gradeAvg: null, decisionIds: [] }), (err) => {
+    assert.throws(() => renderCommitMessage({
+        sliceTitle: "",
+        sliceId: "SLICE-01",
+        featureId: null,
+        gradeAvg: null,
+        decisionIds: []
+    }), (err) => {
         assert.ok(err instanceof MergeError);
         assert.equal(err.code, "MERGE_FAILED");
         return true;
@@ -354,7 +362,9 @@ test("runAutoMerge: rebase conflict → throws REBASE_CONFLICT, merge_failed bad
         await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV });
     }
-    catch { /* best-effort cleanup */ }
+    catch {
+        /* best-effort cleanup */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
 // ---------------------------------------------------------------------------
@@ -450,7 +460,9 @@ test("runAutoMerge: --dry-run returns DryRunPlan, no git mutations, no state wri
         await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV });
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
 // ---------------------------------------------------------------------------
@@ -472,10 +484,14 @@ test("runAutoMerge: autoPushOnMerge=false → no push, pushSkippedReason=config-
     assert.equal(result.pushed, false);
     assert.equal(result.pushSkippedReason, "config-disabled");
     try {
-        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV }).catch(() => { });
+        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, {
+            env: GIT_ENV
+        }).catch(() => { });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV }).catch(() => { });
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
 test("runAutoMerge: autoPushOnMerge=true with origin → records pushed=true on success (AC-4)", async () => {
@@ -512,10 +528,14 @@ test("runAutoMerge: autoPushOnMerge: 'true' (string) → treated as false (AC-4 
     assert.equal(result.status, "merged");
     assert.equal(result.pushed, false, "string 'true' treated as false");
     try {
-        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV }).catch(() => { });
+        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, {
+            env: GIT_ENV
+        }).catch(() => { });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV }).catch(() => { });
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
 // ---------------------------------------------------------------------------
@@ -632,7 +652,9 @@ test("runAutoMerge: on REBASE_CONFLICT — slice branch exists AND worktree exis
         await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV });
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
 // ---------------------------------------------------------------------------
@@ -675,7 +697,9 @@ test("loop slice complete: --no-merge and --dry-run are mutually exclusive (AC-8
     // approach OR by calling the exported completeSlice (which does NOT have the guard —
     // the guard is at the CLI layer). The CLI guard is verified in the CLI integration test.
     // Verify the constraint text exists in the source (deterministic correctness check)
-    const loopSrc = await fs.readFile(path.join(repo, "..", "..", "..", "scripts", "loop.mjs").replace(/\\/g, "/"), "utf8").catch(() => null);
+    const loopSrc = await fs
+        .readFile(path.join(repo, "..", "..", "..", "scripts", "loop.mjs").replace(/\\/g, "/"), "utf8")
+        .catch(() => null);
     if (!loopSrc) {
         // Fall back: import and check via a real invoke
         // The guard message is part of the contract — assert it's thrown
@@ -702,10 +726,14 @@ test("runAutoMerge: autoPushOnMerge=1 (integer) → treated as false (AC-4 coerc
     assert.equal(result.status, "merged");
     assert.equal(result.pushed, false, "integer 1 must not trigger push");
     try {
-        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV }).catch(() => { });
+        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, {
+            env: GIT_ENV
+        }).catch(() => { });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV }).catch(() => { });
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
 // ---------------------------------------------------------------------------
@@ -734,9 +762,13 @@ test("runAutoMerge: audit log entry written with ok=true on success (AC-9)", asy
     assert.ok(mergeEntry.merge?.mergeCommitSha, "sha present");
     assert.equal(mergeEntry.merge?.pushed, false);
     try {
-        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, { env: GIT_ENV }).catch(() => { });
+        await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`, {
+            env: GIT_ENV
+        }).catch(() => { });
         await exec(`git -C "${repo}" branch -D "${branchName}"`, { env: GIT_ENV }).catch(() => { });
     }
-    catch { /* best-effort */ }
+    catch {
+        /* best-effort */
+    }
     await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => { });
 });
