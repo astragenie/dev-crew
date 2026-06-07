@@ -2,9 +2,11 @@
 filed: 2026-06-07
 target_plugin: hero-crew
 target_repo: sergeymilashico/hero-crew
-status: pending-upstream-fix
-loop_tracking_feat: tbd
-loop_related_spec: tbd
+status: superseded-by-resolver-cli
+loop_tracking_feat: FEAT-075
+loop_related_spec: docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md
+resolved: 2026-06-07
+resolved_by: hero-crew v0.19.0 — orchestrate-slice now calls node loop.mjs resolve-skills and prepends the resolved block to builder dispatch prompts. No FEAT-level stack/surface reader needed — loop's resolver CLI is the contract.
 ---
 
 # Upstream-request: `/crew:orchestrate-slice` route builder variant by FEAT `surface` + `stack` frontmatter
