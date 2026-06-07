@@ -21,6 +21,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/version-check.mjs\"",
+            "description": "loop:version-drift-warning",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

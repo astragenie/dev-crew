@@ -3,6 +3,10 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.5 — 2026-06-07 — feat: SessionStart hook warns when installed version is behind marketplace
+
+Claude Code's per-user marketplace clone (`~/.claude/plugins/marketplaces/loop/`) is only refreshed when the user runs `/plugin marketplace update loop`. Tag pushes do not auto-propagate, so sessions silently stay on stale versions (incident 2026-06-06: stuck on v0.22.0 for three releases). New SessionStart hook compares the installed version to the marketplace pinned version and prints a one-line upgrade reminder when they disagree. Fail-open — any error inside the hook exits silently.
+
 ## v0.24.4 — 2026-06-07 — fix: cost-regression gate stays dormant until enough samples
 
 `checkCostRegression` fired the halt-badge as soon as `sampleCount >= 1`. With `sampleCount=2` a single $1500 retro/snapshot batch sets the median and every subsequent normal-priced slice trips the gate. New `loop.costRegressionMinSamples` config (default 3) keeps the gate dormant until enough samples have accumulated for a stable median. 3 new regression tests.
