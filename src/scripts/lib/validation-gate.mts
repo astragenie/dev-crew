@@ -15,7 +15,7 @@ function normalizeSliceId(sliceId: string) {
   const upper = sliceId.toUpperCase();
   const m = upper.match(/^SLICE[_-]?(\d+)/);
   if (!m) return [upper];
-  const n = m[1];
+  const n = m[1]!;
   const padded = n.padStart(2, "0");
   const unpadded = String(parseInt(n, 10));
   const set = new Set([

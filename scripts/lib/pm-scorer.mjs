@@ -50,10 +50,10 @@ export function validatePmScores(scores) {
  * @returns {"P0"|"P1"|"P2"|"P3"}
  */
 export function computeCompositePriority(scores, category = "feature") {
-    const impact = scores.customer_impact;
-    const effort = scores.effort_estimate;
-    const alignment = scores.strategic_alignment;
-    const risk = scores.technical_risk;
+    const impact = scores.customer_impact ?? 0;
+    const effort = scores.effort_estimate ?? 0;
+    const alignment = scores.strategic_alignment ?? 0;
+    const risk = scores.technical_risk ?? 0;
     if (impact >= 0.8 && (category === "bugfix" || risk >= 0.8)) {
         return "P0";
     }
@@ -80,11 +80,11 @@ export function computeCompositePriority(scores, category = "feature") {
  */
 export function computeAutonomousSafe(scores, context = {}) {
     const { hasSpec = false, hasAcceptanceCriteria = false } = context;
-    if (scores.technical_risk > 0.6)
+    if ((scores.technical_risk ?? 0) > 0.6)
         return false;
-    if (scores.effort_estimate > 0.6)
+    if ((scores.effort_estimate ?? 0) > 0.6)
         return false;
-    if (scores.dependency_depth > 0.6)
+    if ((scores.dependency_depth ?? 0) > 0.6)
         return false;
     if (!hasSpec && !hasAcceptanceCriteria)
         return false;

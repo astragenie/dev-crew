@@ -74,7 +74,7 @@ function parseListSection(body: string, sectionHeader: string) {
     if (inSection && /^##\s+/.test(trimmed)) break;
     if (!inSection) continue;
     const m = trimmed.match(/^-\s+(.+)$/);
-    if (m && m[1].trim()) items.push(m[1].trim());
+    if (m && (m[1] ?? "").trim()) items.push((m[1] ?? "").trim());
   }
   return items;
 }
@@ -114,7 +114,7 @@ export async function buildRetrospective(
     scoreAverages[dim] = avg(gradesInWindow.map((g: Record<string, any>) => g.scores?.[dim]));
   }
   const dimensionsBelowThreshold = SCORE_DIMENSIONS.filter((dim: string) => {
-    const v = scoreAverages[dim];
+    const v = scoreAverages[dim] ?? null;
     return v !== null && v < 0.8;
   });
 

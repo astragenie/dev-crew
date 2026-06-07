@@ -14,7 +14,7 @@ function normalizePayloadPath(payloadPath) {
         return payloadPath;
     const m = payloadPath.match(/^\/([a-z])(\/.*)?$/);
     if (m)
-        return `${m[1].toUpperCase()}:${(m[2] || "").replace(/\//g, "\\")}`;
+        return `${m[1].toUpperCase()}:${(m[2] ?? "").replace(/\//g, "\\")}`;
     return payloadPath;
 }
 // Read events.jsonl filtered to subagent events at or after startedAt.
@@ -265,9 +265,11 @@ function computeParallelGroups(agentPairs) {
     const adj = new Map(withTs.map((p) => [p.agentId, new Set()]));
     for (let i = 0; i < withTs.length; i++) {
         for (let j = i + 1; j < withTs.length; j++) {
-            if (overlaps(withTs[i], withTs[j])) {
-                adj.get(withTs[i].agentId).add(withTs[j].agentId);
-                adj.get(withTs[j].agentId).add(withTs[i].agentId);
+            const pi = withTs[i];
+            const pj = withTs[j];
+            if (overlaps(pi, pj)) {
+                adj.get(pi.agentId).add(pj.agentId);
+                adj.get(pj.agentId).add(pi.agentId);
             }
         }
     }

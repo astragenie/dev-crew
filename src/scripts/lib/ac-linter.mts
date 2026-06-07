@@ -39,7 +39,7 @@ export function lintAcceptanceCriteria(content: string) {
 
   const acBullets: any[] = [];
   for (let i = startIdx + 1; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     if (SECTION_HEADING_RE.test(line)) break;
     if (AC_BULLET_RE.test(line)) acBullets.push(line);
   }

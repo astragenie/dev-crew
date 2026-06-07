@@ -31,10 +31,10 @@ function parseFrontmatter(text: string) {
   for (const line of block.split(/\r?\n/)) {
     const m = line.match(/^([\w_]+):\s*(.*)$/);
     if (!m) continue;
-    const raw = m[2].trim();
+    const raw = (m[2] ?? "").trim();
     // Try to parse as number (for usd field)
     const v: string | number = /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
-    fm[m[1]] = v;
+    fm[m[1]!] = v;
   }
   return { fm, body };
 }

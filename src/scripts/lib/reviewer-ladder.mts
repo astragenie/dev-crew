@@ -18,7 +18,7 @@ export function extractFilesSection(content: string) {
   const m = content.match(
     /(?:\*\*Files:\*\*[ \t]*|(?:^|\n)## Files[^\n]*)\n([\s\S]*?)(?=\n## |\s*$)/
   );
-  return m ? m[1].trim() || null : null;
+  return m ? (m[1] ?? "").trim() || null : null;
 }
 
 async function runGitDiffStat(repoPath: string) {

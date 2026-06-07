@@ -339,12 +339,12 @@ async function runRetrospectiveSincePreviousGate(repoPath: string, phase: unknow
   const prior = entries
     .map((name) => name.match(phaseRe))
     .filter((m): m is RegExpMatchArray => m !== null)
-    .map((m) => ({ phase: m[1], stamp: m[2] }))
+    .map((m) => ({ phase: m[1]!, stamp: m[2]! }))
     .filter((e) => e.phase !== String(phase))
     .sort((a, b) => b.stamp.localeCompare(a.stamp));
   const sinceDate =
     prior.length > 0
-      ? `${prior[0].stamp.slice(0, 4)}-${prior[0].stamp.slice(4, 6)}-${prior[0].stamp.slice(6, 8)}`
+      ? `${prior[0]!.stamp.slice(0, 4)}-${prior[0]!.stamp.slice(4, 6)}-${prior[0]!.stamp.slice(6, 8)}`
       : null;
   const { writeRetrospective } = await import("./retrospective.mjs");
   const result = await writeRetrospective(

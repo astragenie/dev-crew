@@ -58,7 +58,7 @@ export async function parseSuperpowersPlan(planPath) {
     for (const line of text.split(/\r?\n/)) {
         const m = line.match(TASK_HEADING_RE);
         if (m) {
-            slices.push({ id: normalizeSliceId(m[1]), title: m[2].trim(), checked: false });
+            slices.push({ id: normalizeSliceId(m[1] ?? ""), title: (m[2] ?? "").trim(), checked: false });
         }
     }
     return slices;
@@ -70,9 +70,9 @@ export async function parseApprovedSlices(filePath) {
         const m = line.match(APPROVED_SLICE_RE);
         if (m) {
             slices.push({
-                id: normalizeSliceId(m[2]),
-                title: m[3].trim(),
-                checked: m[1].toLowerCase() === "x"
+                id: normalizeSliceId(m[2] ?? ""),
+                title: (m[3] ?? "").trim(),
+                checked: (m[1] ?? "").toLowerCase() === "x"
             });
         }
     }

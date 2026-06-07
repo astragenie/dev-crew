@@ -150,7 +150,7 @@ export async function writeLoopControlFiles(
   tokens: Record<string, string>,
   writes: string[]
 ): Promise<void> {
-  const loopRoot = tokens.aiLoopRoot;
+  const loopRoot = tokens.aiLoopRoot!;
   const targets = [
     {
       template: "wiggin-loop.md",
@@ -180,7 +180,7 @@ export async function writeLoopControlFiles(
     }
   ];
   // Slice template actually goes into 00-entry/:
-  targets[targets.length - 1].target = path.join(
+  targets[targets.length - 1]!.target = path.join(
     repoPath,
     loopRoot,
     "00-entry",
@@ -206,7 +206,7 @@ export async function writeBacklogScaffold(
   tokens: Record<string, string>,
   writes: string[]
 ): Promise<void> {
-  const backlogPath = tokens.backlogPath;
+  const backlogPath = tokens.backlogPath!;
   const targets = [
     {
       template: "backlog/approved-slices.md",
@@ -234,7 +234,7 @@ export async function writeBacklogScaffold(
   }
 
   // Ensure slices/pending/ exists as a trackable empty dir.
-  const slicesPending = path.join(repoPath, tokens.slicesRoot, "pending");
+  const slicesPending = path.join(repoPath, tokens.slicesRoot!, "pending");
   await ensureDir(slicesPending);
   const gitkeepPath = path.join(slicesPending, ".gitkeep");
   if (!(await pathExists(gitkeepPath))) {

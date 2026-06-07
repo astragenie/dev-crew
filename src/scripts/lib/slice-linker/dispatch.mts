@@ -183,7 +183,7 @@ export function extractSection(
   if (startIdx === -1) return null;
   const body: string[] = [];
   for (let i = startIdx + 1; i < lines.length; i += 1) {
-    const line = lines[i];
+    const line = lines[i] ?? "";
     if (/^##\s+/.test(line)) break;
     if (line.trim().length === 0 && body.length === 0) continue;
     body.push(line);

@@ -111,10 +111,10 @@ export async function reportStatus(repoPath: string): Promise<Record<string, any
     phaseGateArtifactDir: tokens.phaseGateArtifactDir,
     hasMarkerBlock: claudeMd.includes(MARKER_START) && claudeMd.includes(MARKER_END),
     hasApprovedSlices: await pathExists(
-      path.join(repoPath, tokens.backlogPath, "approved-slices.md")
+      path.join(repoPath, tokens.backlogPath!, "approved-slices.md")
     ),
     hasMasterPrompt: await pathExists(
-      path.join(repoPath, tokens.aiLoopRoot, "00-entry", "MASTER_PROMPT.md")
+      path.join(repoPath, tokens.aiLoopRoot!, "00-entry", "MASTER_PROMPT.md")
     ),
     crewCli: await findCrewCli()
   };

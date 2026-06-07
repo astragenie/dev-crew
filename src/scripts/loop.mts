@@ -15,7 +15,7 @@ function normalizeMsysPath(value: string): string {
   if (!match) {
     return value;
   }
-  return `${match[1].toUpperCase()}:/${match[2]}`;
+  return `${(match[1] ?? "").toUpperCase()}:/${match[2] ?? ""}`;
 }
 
 // Flag schema. See hero-crew/scripts/crew.mjs for the same pattern.
@@ -128,7 +128,7 @@ function parseArgs(argv: string[]) {
   const positionals: any[] = [];
 
   for (let index = 0; index < rest.length; index += 1) {
-    const value = rest[index];
+    const value = rest[index]!;
     if (value === "--") {
       for (let tail = index + 1; tail < rest.length; tail += 1) {
         positionals.push(rest[tail]);

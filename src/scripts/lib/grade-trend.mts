@@ -101,7 +101,7 @@ function computeConsecutiveBelow(
 ) {
   let count = 0;
   for (let i = scores.length - 1; i >= 0; i--) {
-    if (scores[i].avg < threshold) {
+    if (scores[i]!.avg < threshold) {
       count++;
     } else {
       break;

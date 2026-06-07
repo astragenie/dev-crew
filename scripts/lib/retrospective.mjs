@@ -72,8 +72,8 @@ function parseListSection(body, sectionHeader) {
         if (!inSection)
             continue;
         const m = trimmed.match(/^-\s+(.+)$/);
-        if (m && m[1].trim())
-            items.push(m[1].trim());
+        if (m && (m[1] ?? "").trim())
+            items.push((m[1] ?? "").trim());
     }
     return items;
 }
@@ -102,7 +102,7 @@ export async function buildRetrospective(repoPath, { since = null, spanDays = nu
         scoreAverages[dim] = avg(gradesInWindow.map((g) => g.scores?.[dim]));
     }
     const dimensionsBelowThreshold = SCORE_DIMENSIONS.filter((dim) => {
-        const v = scoreAverages[dim];
+        const v = scoreAverages[dim] ?? null;
         return v !== null && v < 0.8;
     });
     // Aggregate lessons / surprises / followups from grade bodies

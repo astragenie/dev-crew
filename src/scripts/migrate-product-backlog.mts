@@ -25,7 +25,7 @@ function parseArgs(argv: string[]) {
   const flags = { repo: process.cwd(), dryRun: false };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--repo") {
-      flags.repo = argv[i + 1];
+      flags.repo = argv[i + 1] ?? process.cwd();
       i += 1;
       continue;
     }
@@ -67,7 +67,7 @@ function parseBacklog(content: string) {
     const line = raw.replace(/\r$/, "");
     const p = line.match(/^##\s+(P[0-3])\b/);
     if (p) {
-      currentPriority = p[1];
+      currentPriority = p[1] ?? currentPriority;
       currentCategoryHint = null;
       continue;
     }
@@ -78,9 +78,9 @@ function parseBacklog(content: string) {
     }
     const todo = line.match(/^-\s+\[( |x|X)\]\s+\*\*(.+?)\*\*\s*(?:—|--|—|:)?\s*(.*)$/);
     if (todo) {
-      const done = todo[1].toLowerCase() === "x";
-      const title = todo[2].trim();
-      const desc = todo[3].trim();
+      const done = (todo[1] ?? "").toLowerCase() === "x";
+      const title = (todo[2] ?? "").trim();
+      const desc = (todo[3] ?? "").trim();
       const inferText = `${title} ${desc} ${currentCategoryHint || ""}`;
       entries.push({
         title,

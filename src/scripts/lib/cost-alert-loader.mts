@@ -71,7 +71,7 @@ async function parseFrontmatter(text: string) {
   for (const line of block.split(CRLF_SPLIT_RE)) {
     const m = line.match(FM_KEY_VALUE_RE);
     if (!m) continue;
-    let v = m[2].trim();
+    let v = m[2]!.trim();
     if (v.startsWith('"') && v.endsWith('"')) {
       try {
         v = JSON.parse(v);
@@ -79,7 +79,7 @@ async function parseFrontmatter(text: string) {
         /* keep raw string on parse failure */
       }
     }
-    fm[m[1]] = v;
+    fm[m[1]!] = v;
   }
   return { fm, body };
 }
@@ -190,7 +190,7 @@ async function parseAggregateReportFile(filepath: string): Promise<AggregateCost
   for (const line of block.split(CRLF_SPLIT_RE)) {
     const m = line.match(FM_KEY_VALUE_RE);
     if (!m) continue;
-    let v: any = m[2].trim();
+    let v: any = m[2]!.trim();
     if (v.startsWith('"') && v.endsWith('"')) {
       try {
         v = JSON.parse(v);
@@ -198,7 +198,7 @@ async function parseAggregateReportFile(filepath: string): Promise<AggregateCost
         /* keep raw string */
       }
     }
-    fm[m[1]] = v;
+    fm[m[1]!] = v;
   }
 
   // Defense-in-depth: frontmatter must declare aggregate_all === true
@@ -248,7 +248,7 @@ export async function loadAggregateCostReport(
   }
 
   return {
-    current: reports.length > 0 ? reports[0] : null,
+    current: reports.length > 0 ? reports[0]! : null,
     reports,
     dir
   };
@@ -263,7 +263,7 @@ function medianOfSorted(sorted: number[]): number {
   const n = sorted.length;
   if (n === 0) return 0;
   const mid = Math.floor(n / 2);
-  return n % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return n % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 /**

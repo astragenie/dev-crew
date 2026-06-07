@@ -112,35 +112,35 @@ export function parseClassifyOutput(raw: string): ClassifyResult {
     // tags: [api-change, storage] or tags: api-change, storage
     const tagsMatch = trimmed.match(TAGS_LINE_RE);
     if (tagsMatch) {
-      result.tags = parseTags(tagsMatch[1]);
+      result.tags = parseTags(tagsMatch[1]!);
       continue;
     }
 
     // needs_contract: true|false
     const contractMatch = trimmed.match(CONTRACT_LINE_RE);
     if (contractMatch) {
-      result.needs_contract = parseBool(contractMatch[1]);
+      result.needs_contract = parseBool(contractMatch[1]!);
       continue;
     }
 
     // needs_ux: true|false
     const uxMatch = trimmed.match(UX_LINE_RE);
     if (uxMatch) {
-      result.needs_ux = parseBool(uxMatch[1]);
+      result.needs_ux = parseBool(uxMatch[1]!);
       continue;
     }
 
     // surface: frontend|backend|mixed|none
     const surfaceMatch = trimmed.match(/^surface:\s*(.+)$/i);
     if (surfaceMatch) {
-      result.surface = parseSurface(surfaceMatch[1]);
+      result.surface = parseSurface(surfaceMatch[1]!);
       continue;
     }
 
     // stack: [typescript, csharp] or stack: typescript, csharp
     const stackMatch = trimmed.match(/^stack:\s*(.+)$/i);
     if (stackMatch) {
-      result.stack = parseTags(stackMatch[1]).map((s) => s.toLowerCase());
+      result.stack = parseTags(stackMatch[1]!).map((s) => s.toLowerCase());
       continue;
     }
   }

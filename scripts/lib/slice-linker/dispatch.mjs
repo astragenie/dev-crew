@@ -115,7 +115,7 @@ export function extractSection(sliceContent, headingPattern, { maxLen = 500, joi
         return null;
     const body = [];
     for (let i = startIdx + 1; i < lines.length; i += 1) {
-        const line = lines[i];
+        const line = lines[i] ?? "";
         if (/^##\s+/.test(line))
             break;
         if (line.trim().length === 0 && body.length === 0)
