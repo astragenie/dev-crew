@@ -3,6 +3,10 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.26.1 — 2026-06-07 — noUncheckedIndexedAccess B5 tsconfig tighten (FEAT-074)
+
+Enable `noUncheckedIndexedAccess: true` in `tsconfig.json` (SLICE-77). Fixes 130 type errors across 27 source files using non-null assertions on regex match groups and bounded array accesses, and `?? 0` defaults on score Record lookups. Pure type-safety enforcement — no behavior change. 922 tests pass.
+
 ## v0.26.0 — 2026-06-07 — SPEC-004 code-quality pivot + builder-fe/be routing fields + crew:lead decommission
 
 Aggregate release bundling eight commits since v0.25.1: the SPEC-004 code-quality pivot work (Phases A–C), the FE/BE routing schema additions, and crew:lead removal from this repo's dispatch surface.
