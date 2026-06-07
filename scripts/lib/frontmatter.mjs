@@ -10,7 +10,11 @@
 // anchors/aliases). Schema enforcement happens at the caller.
 //
 // Zero deps — pure Node. Keeps the plugin install-light.
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n*/;
+// Tolerate CRLF line endings (Windows). Earlier this regex required LF only,
+// silently returning {} on every CRLF-encoded backlog file. parseFrontmatter
+// failed open and the auto-walker read autonomous_safe as undefined, skipping
+// every FEAT. Confirmed 2026-06-07 on Windows checkout.
+const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n*/;
 function stripQuotes(value) {
     const v = value.trim();
     if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {

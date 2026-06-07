@@ -3,6 +3,10 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.3 — 2026-06-07 — fix: frontmatter parser tolerates CRLF line endings
+
+`FRONTMATTER_RE` required LF (`\n`) at the `---` delimiters and silently returned `{}` on every CRLF-encoded backlog file. On Windows checkouts the auto-walker therefore read `autonomous_safe` as undefined and skipped every triaged FEAT. Fix: accept `\r?\n` at every delimiter. 2 regression tests added (pure CRLF + git-autocrlf mixed-endings).
+
 ## v0.24.2 — 2026-06-07 — fix: enforce plugin.json/marketplace.json version lockstep
 
 Marketplace consumers were silently stuck on `0.22.0` for three minor releases (0.23.0 / 0.24.0 / 0.24.1) because `.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json` were allowed to drift. `validate-manifests` now refuses pushes / CI runs when the versions disagree.

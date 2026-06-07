@@ -52,6 +52,29 @@ test("parseFrontmatter returns empty when no frontmatter present", () => {
   assert.equal(body, input);
 });
 
+test("parseFrontmatter tolerates CRLF line endings (Windows checkout regression)", () => {
+  // Confirmed 2026-06-07: backlog files written with CRLF on Windows silently
+  // returned {} from parseFrontmatter, so the auto-walker read autonomous_safe
+  // as undefined and skipped every FEAT. Regex must accept \r?\n at every
+  // frontmatter delimiter.
+  const input =
+    "---\r\nid: FEAT-001\r\nstatus: triaged\r\nautonomous_safe: true\r\npriority: P1\r\n---\r\n\r\nbody";
+  const { frontmatter, body } = parseFrontmatter(input);
+  assert.equal(frontmatter.id, "FEAT-001");
+  assert.equal(frontmatter.status, "triaged");
+  assert.equal(frontmatter.autonomous_safe, true);
+  assert.equal(frontmatter.priority, "P1");
+  assert.equal(body.trim(), "body");
+});
+
+test("parseFrontmatter handles mixed CRLF + LF (git autocrlf edge case)", () => {
+  // Some files mix line endings — defensive check.
+  const input = "---\r\nid: FEAT-002\nautonomous_safe: false\r\n---\nbody";
+  const { frontmatter } = parseFrontmatter(input);
+  assert.equal(frontmatter.id, "FEAT-002");
+  assert.equal(frontmatter.autonomous_safe, false);
+});
+
 test("serializeFrontmatter round-trips a basic doc", () => {
   const input =
     "---\nid: FEAT-001\nstatus: pending\nderived_features: [FEAT-007, FEAT-008]\n---\nbody text";
