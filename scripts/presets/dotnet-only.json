@@ -1,6 +1,13 @@
 {
+  "schemaVersion": 1,
   "presetName": "dotnet-only",
   "description": "C# .NET backend only. No frontend, no Aspire, no Python sidecars. Fits standalone .NET service or library repos.",
+  "projectType": "service",
+  "split": false,
+  "frontend": { "framework": "none", "language": "none" },
+  "backend": { "framework": "dotnet", "language": "csharp", "storage": "postgres" },
+  "contract": "openapi",
+  "deployment": "docker",
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
@@ -31,5 +38,6 @@
   ],
   "productName": "Untitled .NET product",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core (typical)\n- xUnit for tests\n- No frontend / no Aspire / no Python sidecars"
+  "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core (typical)\n- xUnit for tests\n- No frontend / no Aspire / no Python sidecars",
+  "skills": ["csharp-pro", "backend-advisory", "database-architecture", "contract-codegen"]
 }

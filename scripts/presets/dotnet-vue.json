@@ -1,6 +1,13 @@
 {
+  "schemaVersion": 1,
   "presetName": "dotnet-vue",
   "description": "C# .NET backend + Vue 3 / Vite frontend + .NET Aspire orchestration. Fits LoopBrain-style projects.",
+  "projectType": "saas",
+  "split": true,
+  "frontend": { "framework": "vue", "language": "typescript" },
+  "backend": { "framework": "dotnet", "language": "csharp", "storage": "postgres" },
+  "contract": "openapi",
+  "deployment": "docker",
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
@@ -30,5 +37,11 @@
   ],
   "productName": "Untitled product",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- Vue 3 + Vite + TypeScript + Pinia + Tailwind dashboard\n- .NET Aspire AppHost for local orchestration\n- xUnit, FluentAssertions for backend tests"
+  "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- Vue 3 + Vite + TypeScript + Pinia + Tailwind dashboard\n- .NET Aspire AppHost for local orchestration\n- xUnit, FluentAssertions for backend tests",
+  "fe": {
+    "skills": ["vue-engineering", "typescript-pro", "frontend-advisory", "contract-codegen", "a11y-advisory"]
+  },
+  "be": {
+    "skills": ["csharp-pro", "backend-advisory", "database-architecture", "contract-codegen"]
+  }
 }

@@ -1,6 +1,13 @@
 {
+  "schemaVersion": 1,
   "presetName": "python-only",
   "description": "Pure Python project (LangGraph, FastAPI, or library). No C# / no frontend / no Aspire. Phase gate runs pytest only.",
+  "projectType": "service",
+  "split": false,
+  "frontend": { "framework": "none", "language": "none" },
+  "backend": { "framework": "python", "language": "python", "storage": "postgres" },
+  "contract": "openapi",
+  "deployment": "docker",
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
@@ -28,5 +35,6 @@
   ],
   "productName": "Untitled product",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- Python 3 (LangGraph / FastAPI / library depending on the project)\n- pytest for tests\n- pip-managed dependencies"
+  "stackDescription": "- Python 3 (LangGraph / FastAPI / library depending on the project)\n- pytest for tests\n- pip-managed dependencies",
+  "skills": ["python-pro", "backend-advisory", "database-architecture", "contract-codegen"]
 }

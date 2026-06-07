@@ -1,6 +1,13 @@
 {
+  "schemaVersion": 1,
   "presetName": "dotnet-aspire-python",
   "description": "C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra. Default stack for AstraGenie-style monorepos.",
+  "projectType": "saas",
+  "split": true,
+  "frontend": { "framework": "react", "language": "typescript" },
+  "backend": { "framework": "dotnet", "language": "csharp", "storage": "postgres" },
+  "contract": "openapi",
+  "deployment": "aspire",
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
@@ -31,5 +38,11 @@
   ],
   "productName": "Untitled product",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- C# .NET (Aspire local orchestration when configured)\n- Python agents (LangGraph or FastAPI) when configured\n- Terraform for infrastructure when configured"
+  "stackDescription": "- C# .NET (Aspire local orchestration when configured)\n- Python agents (LangGraph or FastAPI) when configured\n- Terraform for infrastructure when configured",
+  "fe": {
+    "skills": ["react-engineering", "typescript-pro", "frontend-advisory", "contract-codegen", "a11y-advisory"]
+  },
+  "be": {
+    "skills": ["csharp-pro", "python-pro", "backend-advisory", "database-architecture", "contract-codegen"]
+  }
 }
