@@ -170,12 +170,14 @@ function buildSliceContent({
   return serializeFrontmatter(frontmatter, body);
 }
 
+// Mirror of classify-parser's ClassifyResult — kept local to avoid a circular
+// `import type` from a sibling lib module. Stack / surface are deliberately
+// absent: preset-driven skill activation (scripts/presets/*.json) is the sole
+// source of project-level stack identity.
 type ClassifyResult = {
   tags: string[];
   needs_contract: boolean | null;
   needs_ux: boolean | null;
-  surface: "frontend" | "backend" | "mixed" | "none" | null;
-  stack: string[];
 };
 
 function featureHasTags(fm: Record<string, unknown>): boolean {
@@ -188,8 +190,6 @@ function buildClassifyUpdates(parsed: ClassifyResult): Record<string, unknown> |
   if (parsed.tags.length > 0) updates.tags = parsed.tags;
   if (parsed.needs_contract !== null) updates.needs_contract = parsed.needs_contract;
   if (parsed.needs_ux !== null) updates.needs_ux = parsed.needs_ux;
-  if (parsed.surface !== null) updates.surface = parsed.surface;
-  if (parsed.stack.length > 0) updates.stack = parsed.stack;
   return Object.keys(updates).length > 0 ? updates : null;
 }
 

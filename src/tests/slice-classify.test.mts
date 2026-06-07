@@ -117,54 +117,26 @@ test("parseClassifyOutput: bare (non-array) tags line is parsed", () => {
 });
 
 // ---------------------------------------------------------------------------
-// surface + stack parsing (FE/BE routing fix — 2026-06-07)
+// surface + stack removed (preset-driven skill activation — 2026-06-07)
+// Project-level stack identity now lives in scripts/presets/*.json. The
+// classifier no longer emits these fields; the result type no longer carries
+// them, and frontmatter writers must not propagate them.
 // ---------------------------------------------------------------------------
 
-test("parseClassifyOutput: surface frontend|backend|mixed|none are accepted", () => {
-  for (const s of ["frontend", "backend", "mixed", "none"]) {
-    const result = parseClassifyOutput(`surface: ${s}`);
-    assert.equal(result.surface, s);
-  }
+test("parseClassifyOutput: surface input is ignored (no longer emitted)", () => {
+  const r = parseClassifyOutput("surface: frontend");
+  assert.ok(
+    !("surface" in r) || (r as any).surface === undefined,
+    "surface must not be emitted anymore"
+  );
 });
 
-test("parseClassifyOutput: surface uppercase + quoted are normalized", () => {
-  const r1 = parseClassifyOutput("surface: FRONTEND");
-  assert.equal(r1.surface, "frontend");
-  const r2 = parseClassifyOutput(`surface: "backend"`);
-  assert.equal(r2.surface, "backend");
+test("parseClassifyOutput: stack input is ignored (no longer emitted)", () => {
+  const r = parseClassifyOutput("stack: [typescript, csharp]");
+  assert.ok(!("stack" in r) || (r as any).stack === undefined, "stack must not be emitted anymore");
 });
 
-test("parseClassifyOutput: surface invalid value returns null", () => {
-  const r = parseClassifyOutput("surface: fullstack");
-  assert.equal(r.surface, null);
-});
-
-test("parseClassifyOutput: surface missing returns null", () => {
-  const r = parseClassifyOutput("tags: [docs]");
-  assert.equal(r.surface, null);
-});
-
-test("parseClassifyOutput: stack accepts known vocabulary + filters unknown", () => {
-  const r = parseClassifyOutput("stack: [typescript, fortran, csharp, cobol]");
-  assert.deepEqual(r.stack, ["typescript", "csharp"]);
-});
-
-test("parseClassifyOutput: stack is lowercased before vocab filter", () => {
-  const r = parseClassifyOutput("stack: [TypeScript, GO, Python]");
-  assert.deepEqual(r.stack, ["typescript", "go", "python"]);
-});
-
-test("parseClassifyOutput: stack bare comma-separated parses", () => {
-  const r = parseClassifyOutput("stack: node, java");
-  assert.deepEqual(r.stack, ["node", "java"]);
-});
-
-test("parseClassifyOutput: stack missing returns empty array", () => {
-  const r = parseClassifyOutput("tags: [docs]");
-  assert.deepEqual(r.stack, []);
-});
-
-test("parseClassifyOutput: full five-field block parses end-to-end", () => {
+test("parseClassifyOutput: full block with surface+stack still parses tags/needs_contract/needs_ux", () => {
   const raw = [
     "tags: [api-change, infra]",
     "needs_contract: true",
@@ -176,8 +148,11 @@ test("parseClassifyOutput: full five-field block parses end-to-end", () => {
   assert.deepEqual(r.tags, ["api-change", "infra"]);
   assert.equal(r.needs_contract, true);
   assert.equal(r.needs_ux, false);
-  assert.equal(r.surface, "backend");
-  assert.deepEqual(r.stack, ["typescript", "node"]);
+  assert.ok(
+    !("surface" in r) || (r as any).surface === undefined,
+    "surface must not be emitted anymore"
+  );
+  assert.ok(!("stack" in r) || (r as any).stack === undefined, "stack must not be emitted anymore");
 });
 
 // ---------------------------------------------------------------------------
@@ -213,7 +188,7 @@ test("sliceFromFeature with mock dispatch: tags/needs_contract/needs_ux written 
   assert.equal(frontmatter.needs_ux, false);
 });
 
-test("sliceFromFeature with mock dispatch: surface/stack written to slice frontmatter", async () => {
+test("sliceFromFeature with mock dispatch: surface/stack NOT written to slice frontmatter", async () => {
   const repo = await tmpRepo("sfc-surface-stack-");
   await createFeature(repo, "FEAT-001", "triaged");
   await ensureSlicesRoot(repo);
@@ -235,14 +210,25 @@ test("sliceFromFeature with mock dispatch: surface/stack written to slice frontm
 
   const out = await sliceFromFeature(repo, "FEAT-001", { dispatchFn: mockDispatch });
 
+  // Classify result keeps tags/needs_contract/needs_ux but drops surface/stack —
+  // preset-driven skill activation is now the sole source for stack identity.
   assert.ok(out.classify, "classify result should be present");
-  assert.equal((out.classify as any).surface, "frontend");
-  assert.deepEqual((out.classify as any).stack, ["typescript"]);
+  assert.deepEqual(out.classify!.tags, ["ux"]);
+  assert.equal(out.classify!.needs_contract, false);
+  assert.equal(out.classify!.needs_ux, true);
+  assert.ok(
+    !("surface" in out.classify!) || (out.classify as any).surface === undefined,
+    "surface must not be emitted anymore"
+  );
+  assert.ok(
+    !("stack" in out.classify!) || (out.classify as any).stack === undefined,
+    "stack must not be emitted anymore"
+  );
 
   const sliceContent = await fs.readFile(out.slice.path, "utf8");
   const { frontmatter } = parseFrontmatter(sliceContent);
-  assert.equal(frontmatter.surface, "frontend");
-  assert.deepEqual(frontmatter.stack, ["typescript"]);
+  assert.ok(!("surface" in frontmatter), "frontmatter.surface must not be written");
+  assert.ok(!("stack" in frontmatter), "frontmatter.stack must not be written");
 });
 
 test("sliceFromFeature with --no-classify: dispatch not called", async () => {

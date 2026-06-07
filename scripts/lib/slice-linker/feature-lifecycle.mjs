@@ -155,10 +155,6 @@ function buildClassifyUpdates(parsed) {
         updates.needs_contract = parsed.needs_contract;
     if (parsed.needs_ux !== null)
         updates.needs_ux = parsed.needs_ux;
-    if (parsed.surface !== null)
-        updates.surface = parsed.surface;
-    if (parsed.stack.length > 0)
-        updates.stack = parsed.stack;
     return Object.keys(updates).length > 0 ? updates : null;
 }
 async function classifySlice({ repoPath, slicePath, featureFM, noClassify, dispatchFn }) {

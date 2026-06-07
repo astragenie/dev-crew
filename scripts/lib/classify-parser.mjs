@@ -6,13 +6,13 @@
 //   tags: [<label>, ...]
 //   needs_contract: <true|false>
 //   needs_ux: <true|false>
-//   surface: <frontend|backend|mixed|none>
-//   stack: [<technology>, ...]
 //
-// surface + stack drive crew:orchestrate-slice routing to builder-fe vs
-// builder-be vs generic builder. Without them, the upstream router falls
-// back to the generic crew:builder for every dispatch (observed gap as of
-// 2026-06-07). See docs/upstream-requests/ for the matching crew change.
+// Note: `stack` and `surface` are no longer FEAT-level fields. Project-level
+// stack identity now lives in `scripts/presets/*.json` (consumed by
+// `node scripts/loop.mjs resolve-skills`). The parser tolerates input lines
+// for those fields (architect may still emit them transitionally) but does
+// not surface them on the result — callers must not propagate stack/surface
+// into FEAT or slice frontmatter.
 //
 // The parser is tolerant: it scans every line for recognisable patterns and
 // ignores prose, headings, blank lines. Unrecognised or missing fields default
@@ -32,20 +32,6 @@ const VALID_TAGS = new Set([
     "test",
     "docs",
     "refactor"
-]);
-const VALID_SURFACES = new Set(["frontend", "backend", "mixed", "none"]);
-const VALID_STACKS = new Set([
-    "typescript",
-    "javascript",
-    "node",
-    "csharp",
-    "dotnet",
-    "python",
-    "go",
-    "java",
-    "rust",
-    "ruby",
-    "php"
 ]);
 function parseTags(raw) {
     // Accept inline array: [a, b, c] or bare comma-separated: a, b, c
@@ -68,13 +54,6 @@ function parseBool(raw) {
         return false;
     return null;
 }
-function parseSurface(raw) {
-    const v = raw
-        .trim()
-        .toLowerCase()
-        .replace(/^["']|["']$/g, "");
-    return VALID_SURFACES.has(v) ? v : null;
-}
 /**
  * Parse a classify-output block returned by loop:architect.
  *
@@ -85,9 +64,7 @@ export function parseClassifyOutput(raw) {
     const result = {
         tags: [],
         needs_contract: null,
-        needs_ux: null,
-        surface: null,
-        stack: []
+        needs_ux: null
     };
     if (!raw || typeof raw !== "string")
         return result;
@@ -111,21 +88,11 @@ export function parseClassifyOutput(raw) {
             result.needs_ux = parseBool(uxMatch[1]);
             continue;
         }
-        // surface: frontend|backend|mixed|none
-        const surfaceMatch = trimmed.match(/^surface:\s*(.+)$/i);
-        if (surfaceMatch) {
-            result.surface = parseSurface(surfaceMatch[1]);
-            continue;
-        }
-        // stack: [typescript, csharp] or stack: typescript, csharp
-        const stackMatch = trimmed.match(/^stack:\s*(.+)$/i);
-        if (stackMatch) {
-            result.stack = parseTags(stackMatch[1]).map((s) => s.toLowerCase());
-            continue;
-        }
+        // surface / stack lines are intentionally not parsed — preset-driven
+        // skill activation is the sole source of project-level stack identity
+        // (see scripts/presets/*.json + `node scripts/loop.mjs resolve-skills`).
     }
-    // Filter tags + stack to known vocabularies so free-form prose tokens don't leak in.
+    // Filter tags to known vocabularies so free-form prose tokens don't leak in.
     result.tags = result.tags.filter((t) => VALID_TAGS.has(t));
-    result.stack = result.stack.filter((s) => VALID_STACKS.has(s));
     return result;
 }

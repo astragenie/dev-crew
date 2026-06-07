@@ -14,13 +14,10 @@ Why this matters: `/crew:orchestrate-slice` reads those fields to
 decide which specialists fire. Without them the ladder falls back to
 AC-text heuristics and silently skips architect + uxdesigner.
 
-Surface + stack additionally route the builder variant:
-`surface: frontend` → `crew:builder-fe`; `surface: backend` →
-`crew:builder-be`; `mixed` / `none` → generic `crew:builder`. Without
-them, every dispatch falls back to the generic builder (observed gap
-2026-06-07: 63× crew:builder, 0× crew:builder-fe/be). The crew plugin
-must implement the read side — see `docs/upstream-requests/` for the
-matching request.
+Note: `stack` and `surface` are no longer FEAT-level fields. Project-level
+stack identity now lives in `scripts/presets/*.json` (consumed by
+`node scripts/loop.mjs resolve-skills`). Builder-variant routing is driven
+from preset skill activation, not per-FEAT classification.
 
 ## Execution (Claude-driven, not CLI)
 
@@ -50,24 +47,15 @@ Steps:
    tags: [<labels from: api-change, storage, workflow, ux, auth, infra, test, docs, refactor>]
    needs_contract: <true|false>
    needs_ux: <true|false>
-   surface: <one of: frontend, backend, mixed, none>
-   stack: [<technologies from: typescript, javascript, node, csharp, dotnet, python, go, java, rust, ruby, php>]
    ```
 
-   Surface guidance for the architect:
-   - `frontend` — UI / component / browser-only / styling / a11y work
-   - `backend` — server / db / API / CLI / library / build-script work
-   - `mixed` — touches both layers in one slice
-   - `none` — docs-only / config-only / no code change
-
 4. **Parse responses.** For each architect response, extract the
-   five fields tolerantly (ignore prose, headings, blank lines).
-   Tags and stack must be filtered to known vocabularies; drop unknowns.
-   Surface must be one of the four enum values; otherwise null.
+   three fields tolerantly (ignore prose, headings, blank lines).
+   Tags must be filtered to the known vocabulary; drop unknowns.
 5. **Write frontmatter via `Edit`.** For each FEAT with at least
    one parsed field, edit the YAML frontmatter to insert / update
-   `tags`, `needs_contract`, `needs_ux`, `surface`, `stack`. Preserve
-   all other fields verbatim. If nothing parsed, skip the write.
+   `tags`, `needs_contract`, `needs_ux`. Preserve all other fields
+   verbatim. If nothing parsed, skip the write.
 6. **Report.** Print a one-line summary:
    `Enriched: <count> / Already tagged: <count> / Failed: <count>`.
 
