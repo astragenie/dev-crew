@@ -1,22 +1,25 @@
 ---
 id: FEAT-057
-status: triaged
+status: done
 priority: P2
 category: cost-governance
 target_release: null
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-07
 depends_on: []
-slices: []
+slices: [SLICE-67]
 derived_from: null
 pm_customer_impact: 0.7
 pm_effort_estimate: 0.3
 pm_strategic_alignment: 0.65
 pm_technical_risk: 0.3
 pm_dependency_depth: 0.1
-autonomous_safe: false
-triage_notes: 30 redundant Reads = concrete cost waste. SCOPE: hook lives in hero-crew plugin (cache/astra/crew/0.15.0/hooks/check-redundant-read.mjs), not loop. Loop cannot deny a hook it doesn't own. Re-route as upstream-request to hero-crew, or rescope to loop-side surrogate halt that reads hook events.jsonl and emits redundant_read_stop badge.
+autonomous_safe: true
+triage_notes: "30 redundant Reads = concrete cost waste. SCOPE: hook lives in hero-crew plugin (cache/astra/crew/0.15.0/hooks/check-redundant-read.mjs), not loop. Loop cannot deny a hook it doesn't own. Re-route as upstream-request to hero-crew, or rescope to loop-side surrogate halt that reads hook events.jsonl and emits redundant_read_stop badge."
 composite_score: 0.695
+started_at: 2026-06-07
+slices_complete: [SLICE-67]
+completed_at: 2026-06-07
 ---
 # FEAT-057: Promote check-redundant-read hook to block
 

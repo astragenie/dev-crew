@@ -118,11 +118,19 @@ test("explainHalts: multiple halts → renders ALL fired in registry order", () 
                 code: "REBASE_CONFLICT",
                 attemptedBranch: "slice/SLICE-64",
                 attemptedWorktree: "/tmp/worktree"
+            },
+            redundantReadStop: {
+                triggered: true,
+                maxReadCount: 30,
+                path: "/repo/CLAUDE.md",
+                sessionId: "abc123",
+                threshold: 5,
+                offendingPathCount: 1
             }
         }
     };
     const out = explainHalts(brief);
-    // All 5 gate headings present
+    // All 6 gate headings present
     for (const badge of HALT_BADGES) {
         assert.ok(out.includes(`### ${badge.gateName}`), `expected gate heading for ${badge.field} in output`);
     }
@@ -177,13 +185,14 @@ test("explainHalts: unknown registry field on snapshot is ignored (graceful degr
     assert.match(out, /No halts active\./);
     assert.equal(out.includes("futureHalt"), false);
 });
-test("HALT_BADGES registry has the 5 known fields in expected order", () => {
+test("HALT_BADGES registry has the 6 known fields in expected order", () => {
     const fields = HALT_BADGES.map((b) => b.field);
     assert.deepEqual(fields, [
         "costRegression",
         "sessionDrift",
         "sliceCostCeiling",
         "gradeTrend",
-        "mergeFailed"
+        "mergeFailed",
+        "redundantReadStop"
     ]);
 });

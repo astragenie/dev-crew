@@ -8,6 +8,7 @@ import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
 import { checkSessionDrift, type SessionDriftSignal } from "./session-drift.mjs";
+import { checkRedundantReadStop, type RedundantReadSignal } from "./redundant-read-detector.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -150,6 +151,18 @@ export function buildMergeFailedSnapshotEntry(workflowState: any): any | null {
   return badge;
 }
 
+function buildRedundantReadSnapshotEntry(sig: RedundantReadSignal | null) {
+  if (!sig) return null;
+  return {
+    triggered: true,
+    maxReadCount: sig.maxReadCount,
+    path: sig.path,
+    sessionId: sig.sessionId,
+    threshold: sig.threshold,
+    offendingPathCount: sig.offendingPathCount
+  };
+}
+
 function applySessionDriftSignal(
   driftSignal: SessionDriftSignal | null,
   reasons: any[],
@@ -170,6 +183,29 @@ function applySessionDriftSignal(
   suggestions.push(
     `The walker pinned session ${sessionIdAtStart} at slice-start but resumed in session ${sessionIdNow}. ` +
       "Complete the slice in the original session, or pass --allow-cross-session on the auto CLI to override."
+  );
+}
+
+function applyRedundantReadStopSignal(
+  sig: RedundantReadSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!sig) return;
+  const { maxReadCount, path: filePath, threshold, sessionId, offendingPathCount } = sig;
+  reasons.push(
+    `redundant_read_stop: path \`${filePath}\` re-read ${maxReadCount} times (cap ${threshold}, ${offendingPathCount} offending path${offendingPathCount === 1 ? "" : "s"} in session ${sessionId})`
+  );
+  blockers.push({
+    category: "redundant-read-stop",
+    message: `file \`${filePath}\` was Read ${maxReadCount} times in session ${sessionId} (cap ${threshold}). Cumulative redundant reads waste tokens and bust the prompt cache.`,
+    suggestion:
+      "Trust prior Read results; avoid re-reading unchanged paths. Tune the cap via loop.redundantReadCap in .claude/loop.json if the threshold is too aggressive."
+  });
+  suggestions.push(
+    `Redundant Read detected: \`${filePath}\` read ${maxReadCount} times (cap ${threshold}). ` +
+      "Use prior content; raise loop.redundantReadCap in .claude/loop.json to relax the gate."
   );
 }
 
@@ -262,6 +298,7 @@ async function gatherStopInputs(repoPath, config) {
     costCeilingSignal,
     costRegressionSignal,
     sessionDriftSignal,
+    redundantReadSignal,
     workflowState
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
@@ -273,6 +310,7 @@ async function gatherStopInputs(repoPath, config) {
     checkSliceCostCeiling(repoPath, config),
     checkCostRegression(repoPath, config),
     checkSessionDrift(repoPath),
+    checkRedundantReadStop(repoPath, config),
     readCrewWorkflowState(repoPath)
   ]);
   return {
@@ -285,6 +323,7 @@ async function gatherStopInputs(repoPath, config) {
     costCeilingSignal,
     costRegressionSignal,
     sessionDriftSignal,
+    redundantReadSignal,
     workflowState
   };
 }
@@ -304,6 +343,7 @@ export async function checkStopConditions(
     costCeilingSignal,
     costRegressionSignal,
     sessionDriftSignal,
+    redundantReadSignal,
     workflowState
   } = await gatherStopInputs(repoPath, config);
 
@@ -341,6 +381,7 @@ export async function checkStopConditions(
   applySliceCostCeilingSignal(costCeilingSignal, reasons, suggestions, blockers);
   applyCostRegressionSignal(costRegressionSignal, reasons, suggestions, blockers);
   applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
+  applyRedundantReadStopSignal(redundantReadSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
   return assembleStopResult({
@@ -360,6 +401,7 @@ export async function checkStopConditions(
     costCeilingSignal,
     costRegressionSignal,
     sessionDriftSignal,
+    redundantReadSignal,
     workflowState
   });
 }
@@ -397,7 +439,8 @@ function assembleStopResult(p: any) {
       sliceCostCeiling: buildCeilingSnapshotEntry(p.costCeilingSignal),
       costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
       sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
-      mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState)
+      mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState),
+      redundantReadStop: buildRedundantReadSnapshotEntry(p.redundantReadSignal)
     }
   };
 }

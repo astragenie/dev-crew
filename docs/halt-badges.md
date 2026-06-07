@@ -154,6 +154,31 @@ Each halt-badge is `null` when not triggered; populated with a structured object
 
 ---
 
+### `snapshot.redundantReadStop`
+
+**Shape:**
+
+```ts
+{
+  triggered: true;
+  maxReadCount: number;        // highest read_count across any session entry
+  path: string;                // worst-offender file path
+  sessionId: string;           // session file that holds the offending entry
+  threshold: number;           // effective cap (default 5, override via config)
+  offendingPathCount: number;  // total distinct paths over threshold
+}
+```
+
+**Meaning:** the upstream `check-redundant-read` hook (hero-crew plugin) has recorded one or more files re-Read enough times to bust the prompt cache and waste tokens. Loop cannot modify the upstream hook; this gate is a loop-side surrogate that reads the hook's per-session state files and halts the autonomous walker before more redundant reads accumulate.
+
+**Fires when:** any entry in `.claude/state/cost-hygiene/*.json` has `read_count > threshold`. Strict `>` (not `>=`), so the default cap of 5 trips at 6+ reads.
+
+**Suggested operator action:** trust prior Read results; avoid re-reading unchanged paths. Tune `loop.redundantReadCap` in `.claude/loop.json` to relax the gate.
+
+**Origin:** FEAT-057 / SLICE-67 / v0.25.0. Source: `src/scripts/lib/redundant-read-detector.mts::checkRedundantReadStop`. Companion to the still-pending upstream-request `docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.

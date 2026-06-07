@@ -53,13 +53,29 @@ function renderMergeFailed(e) {
         `- Suggested action: ${fixHint}`
     ];
 }
+function renderRedundantReadStop(e) {
+    if (!e)
+        return [];
+    return [
+        `- Worst-offender path: \`${e.path}\``,
+        `- Reads counted: ${e.maxReadCount} (threshold ${e.threshold})`,
+        `- Session: ${e.sessionId}`,
+        `- Total offending paths: ${e.offendingPathCount}`,
+        `- Suggested action: trust prior Read; tune \`loop.redundantReadCap\` in \`.claude/loop.json\` to adjust the gate.`
+    ];
+}
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES = [
     { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
     { field: "sessionDrift", gateName: "Session drift", render: renderSessionDrift },
     { field: "sliceCostCeiling", gateName: "Slice cost ceiling", render: renderSliceCostCeiling },
     { field: "gradeTrend", gateName: "Grade trend", render: renderGradeTrend },
-    { field: "mergeFailed", gateName: "Merge failed", render: renderMergeFailed }
+    { field: "mergeFailed", gateName: "Merge failed", render: renderMergeFailed },
+    {
+        field: "redundantReadStop",
+        gateName: "Redundant read stop",
+        render: renderRedundantReadStop
+    }
 ];
 /**
  * Build the `## Halt summary` markdown block from a brief object's snapshot.

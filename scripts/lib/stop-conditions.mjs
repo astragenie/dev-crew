@@ -8,6 +8,7 @@ import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression } from "./cost-regression.mjs";
 import { checkSessionDrift } from "./session-drift.mjs";
+import { checkRedundantReadStop } from "./redundant-read-detector.mjs";
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
 // Used by Cross-Slice Continuation HARD RULE (and crew brief) to decide
@@ -127,6 +128,18 @@ export function buildMergeFailedSnapshotEntry(workflowState) {
         return null;
     return badge;
 }
+function buildRedundantReadSnapshotEntry(sig) {
+    if (!sig)
+        return null;
+    return {
+        triggered: true,
+        maxReadCount: sig.maxReadCount,
+        path: sig.path,
+        sessionId: sig.sessionId,
+        threshold: sig.threshold,
+        offendingPathCount: sig.offendingPathCount
+    };
+}
 function applySessionDriftSignal(driftSignal, reasons, suggestions, blockers) {
     if (!driftSignal)
         return;
@@ -139,6 +152,19 @@ function applySessionDriftSignal(driftSignal, reasons, suggestions, blockers) {
     });
     suggestions.push(`The walker pinned session ${sessionIdAtStart} at slice-start but resumed in session ${sessionIdNow}. ` +
         "Complete the slice in the original session, or pass --allow-cross-session on the auto CLI to override.");
+}
+function applyRedundantReadStopSignal(sig, reasons, suggestions, blockers) {
+    if (!sig)
+        return;
+    const { maxReadCount, path: filePath, threshold, sessionId, offendingPathCount } = sig;
+    reasons.push(`redundant_read_stop: path \`${filePath}\` re-read ${maxReadCount} times (cap ${threshold}, ${offendingPathCount} offending path${offendingPathCount === 1 ? "" : "s"} in session ${sessionId})`);
+    blockers.push({
+        category: "redundant-read-stop",
+        message: `file \`${filePath}\` was Read ${maxReadCount} times in session ${sessionId} (cap ${threshold}). Cumulative redundant reads waste tokens and bust the prompt cache.`,
+        suggestion: "Trust prior Read results; avoid re-reading unchanged paths. Tune the cap via loop.redundantReadCap in .claude/loop.json if the threshold is too aggressive."
+    });
+    suggestions.push(`Redundant Read detected: \`${filePath}\` read ${maxReadCount} times (cap ${threshold}). ` +
+        "Use prior content; raise loop.redundantReadCap in .claude/loop.json to relax the gate.");
 }
 function applyCostRegressionSignal(regressionSignal, reasons, suggestions, blockers) {
     if (!regressionSignal)
@@ -195,7 +221,7 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
     }
 }
 async function gatherStopInputs(repoPath, config) {
-    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal, workflowState] = await Promise.all([
+    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal, redundantReadSignal, workflowState] = await Promise.all([
         listBacklog(repoPath, { config }),
         listSpecs(repoPath, { config }),
         detectPatterns(repoPath, { config }),
@@ -205,6 +231,7 @@ async function gatherStopInputs(repoPath, config) {
         checkSliceCostCeiling(repoPath, config),
         checkCostRegression(repoPath, config),
         checkSessionDrift(repoPath),
+        checkRedundantReadStop(repoPath, config),
         readCrewWorkflowState(repoPath)
     ]);
     return {
@@ -217,12 +244,13 @@ async function gatherStopInputs(repoPath, config) {
         costCeilingSignal,
         costRegressionSignal,
         sessionDriftSignal,
+        redundantReadSignal,
         workflowState
     };
 }
 // eslint-disable-next-line complexity -- pipeline orchestrator; complexity inflated by config nullish-chaining and apply* calls, but actual branching is linear. Track as follow-up to consolidate apply* calls into a single resolver.
 export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
-    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal, workflowState } = await gatherStopInputs(repoPath, config);
+    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal, redundantReadSignal, workflowState } = await gatherStopInputs(repoPath, config);
     // autoMode defaults to true so freshly hand-rolled .claude/loop.json
     // (without the key) get the new behavior. Presets ship the key explicitly
     // for documentation, but the default here is the source of truth.
@@ -253,6 +281,7 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
     applySliceCostCeilingSignal(costCeilingSignal, reasons, suggestions, blockers);
     applyCostRegressionSignal(costRegressionSignal, reasons, suggestions, blockers);
     applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
+    applyRedundantReadStopSignal(redundantReadSignal, reasons, suggestions, blockers);
     applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
     return assembleStopResult({
         reasons,
@@ -271,6 +300,7 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
         costCeilingSignal,
         costRegressionSignal,
         sessionDriftSignal,
+        redundantReadSignal,
         workflowState
     });
 }
@@ -307,7 +337,8 @@ function assembleStopResult(p) {
             sliceCostCeiling: buildCeilingSnapshotEntry(p.costCeilingSignal),
             costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
             sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
-            mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState)
+            mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState),
+            redundantReadStop: buildRedundantReadSnapshotEntry(p.redundantReadSignal)
         }
     };
 }

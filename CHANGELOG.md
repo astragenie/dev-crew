@@ -3,6 +3,19 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.25.0 — 2026-06-07 — feat: redundantReadStop halt-badge (FEAT-057 / SLICE-67)
+
+New 6th halt-badge field: `redundantReadStop`. Loop-side surrogate for the upstream `check-redundant-read` hook (hero-crew plugin) — reads the hook's per-session cost-hygiene state files and emits a halt signal when any file path's `read_count` exceeds `loop.redundantReadCap` (default 5, strict `>`). Fail-open on missing/empty/malformed state. Surfaces in `stop-check` JSON, `loop brief --explain-halts`, and the registry doc.
+
+- New module `src/scripts/lib/redundant-read-detector.mts` (9 unit tests cover all branches)
+- New registry entry + renderer in `src/scripts/lib/halt-badges.mts`
+- Wired into `stop-conditions.mts` pipeline (gather, apply, snapshot)
+- `docs/halt-badges.md` updated with new field section
+- `explain-halts` registry-order test bumped 5→6 fields
+- New config `loop.redundantReadCap` (default 5)
+
+Closes the loop-side of the original deny-verdict ask. The hero-crew upstream-request (`docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md`) remains open as a separate concern.
+
 ## v0.24.7 — 2026-06-07 — chore: rename auto-merge helpers to match contract artifact (FEAT-067 / SLICE-66)
 
 Closes the FEAT-067 follow-up from GRADE-SLICE-64. The substantive complexity refactor was already shipped during SLICE-64's late builder passes (`runAutoMerge` is 86 lines and lint-clean). This release aligns 2 helper identifiers to the contract artifact at `.claude/artifacts/crew/designs/FEAT-062-contracts.md`:
