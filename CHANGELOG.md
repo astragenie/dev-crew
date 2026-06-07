@@ -3,6 +3,39 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.28.2 — 2026-06-07 — triage tighten + post-release backfill
+
+### Changed
+- **`backlog pm-write` auto-promotes pending → triaged.** When the FEAT being
+  scored is currently under `pending/`, `writePmScores` now moves it to
+  `triaged/` and sets `status: triaged` in the same call. Closes the gap
+  surfaced during v0.28.0 release where the `/loop:triage` skill body
+  promised a one-step PM path but the CLI silently left the file under
+  `pending/`. Triaged entries that get re-scored stay in place.
+- **`resolve-skills --strict` emits a stderr warn.** Flag is reserved for a
+  future skill-ID-lint registry; today it is a no-op. Stop silently
+  swallowing the operator intent — surface the no-op honestly so the
+  pattern is visible.
+- **Resolver inputs narrowed to `unknown`.** `presetRaw` and `overrideRaw`
+  inside `resolveSkills` are now `unknown` rather than implicit `any`. Cast
+  at the `deepMerge` boundary is the explicit trust transfer; downstream
+  `validatePreset` narrows. Tightens type-safety per the v0.27.0 final
+  review (I1 follow-up).
+
+### Added
+- **Negative-path test for `validateAllPresets`.** New
+  `src/tests/validate-manifests.test.mts` (5 tests) covers happy path,
+  missing presets dir, single SchemaError, single SyntaxError, and
+  multi-error accumulation with non-JSON-file filtering.
+- **Upstream-request: forward-declared skill IDs.** New doc
+  `docs/upstream-requests/2026-06-07-hero-crew-forward-declared-skill-ids.md`
+  lists every skill ID loop presets reference that does not yet have a
+  matching `skills/domain/<id>/` upstream. Asks hero-crew to author the top
+  three (`csharp-pro`, `a11y-advisory`, `vue-engineering`) and defer the
+  rest until a preset references them.
+
+---
+
 ## v0.28.1 — 2026-06-07 — wire `/loop:triage` PM dispatch to resolver
 
 - **changed:** `skills/triage/SKILL.md` resolves `preset.roles.pm` skills via

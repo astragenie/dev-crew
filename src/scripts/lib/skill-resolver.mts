@@ -31,9 +31,12 @@ export function isRoleVariant(v: Variant): v is RoleName {
 }
 
 export function resolveSkills(args: ResolveArgs): ResolvedSkills | null {
-  const presetRaw = JSON.parse(readFileSync(args.presetPath, "utf8"));
-  const overrideRaw = args.overridePath ? readOverride(args.overridePath) : {};
-  const merged = deepMerge(presetRaw, overrideRaw);
+  const presetRaw: unknown = JSON.parse(readFileSync(args.presetPath, "utf8"));
+  const overrideRaw: unknown = args.overridePath ? readOverride(args.overridePath) : {};
+  // validatePreset narrows the merged result; the cast at the deepMerge
+  // boundary is the explicit trust transfer between unvalidated JSON and the
+  // schema-checked PresetV1 returned below.
+  const merged = deepMerge(presetRaw as Record<string, any>, overrideRaw as Record<string, any>);
   const preset: PresetV1 = validatePreset(merged);
 
   const block = pickBlock(preset, args.variant);

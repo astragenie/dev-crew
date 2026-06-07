@@ -331,15 +331,7 @@ async function runArchitectSubcommand(repoPath, flags) {
     };
 }
 function runResolveSkillsCommand(flags) {
-    const VALID_VARIANTS = [
-        "fe",
-        "be",
-        "single",
-        "pm",
-        "researcher",
-        "architect",
-        "document-writer"
-    ];
+    const VALID_VARIANTS = ["fe", "be", "single", "pm", "researcher", "architect", "document-writer"];
     if (!flags.variant) {
         process.stderr.write(`error: --variant <${VALID_VARIANTS.join("|")}> required\n`);
         process.exitCode = 1;
@@ -355,6 +347,9 @@ function runResolveSkillsCommand(flags) {
         process.stderr.write("error: --preset <path> required\n");
         process.exitCode = 1;
         return;
+    }
+    if (flags.strict) {
+        process.stderr.write("warn: --strict is reserved for a future skill-ID-lint registry and is a no-op today\n");
     }
     try {
         const resolved = resolveSkills({

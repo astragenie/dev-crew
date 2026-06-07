@@ -75,3 +75,13 @@ test("CLI honors --override path", () => {
     const parsed = JSON.parse(r.stdout);
     assert.deepEqual(parsed.skills, ["csharp-pro", "go-pro"]);
 });
+test("CLI --strict emits stderr warn that the flag is reserved", () => {
+    const presetPath = writePreset(SAAS_PRESET);
+    const r = run(["--variant", "fe", "--preset", presetPath, "--strict"]);
+    // Exit code unchanged (still 0 on happy path); behavior is a no-op
+    assert.equal(r.status, 0);
+    assert.match(r.stderr, /--strict.*reserved.*no-op/i);
+    // Successful resolve still emits the expected JSON shape on stdout
+    const parsed = JSON.parse(r.stdout);
+    assert.equal(parsed.variant, "fe");
+});

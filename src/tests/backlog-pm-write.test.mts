@@ -24,14 +24,14 @@ test("writePmScores writes all pm_* fields to a pending FEAT frontmatter", async
   const repo = await tmpRepo("al-pm-write-happy-");
   const feat = await addFeature(repo, { title: "Test feature" });
 
-  await writePmScores(repo, {
+  const result = await writePmScores(repo, {
     id: feat.id,
     scores: FULL_SCORES,
     priority: "P1",
     autonomousSafe: true
   });
 
-  const content = await fs.readFile(feat.filePath, "utf8");
+  const content = await fs.readFile(result.filePath, "utf8");
   const { frontmatter } = parseFrontmatter(content);
 
   assert.equal(frontmatter.pm_customer_impact, 0.8);
@@ -45,14 +45,14 @@ test("writePmScores writes composite_score using weighted formula (impact/alignm
   const repo = await tmpRepo("al-pm-write-composite-");
   const feat = await addFeature(repo, { title: "Composite score check" });
 
-  await writePmScores(repo, {
+  const result = await writePmScores(repo, {
     id: feat.id,
     scores: FULL_SCORES,
     priority: "P1",
     autonomousSafe: true
   });
 
-  const content = await fs.readFile(feat.filePath, "utf8");
+  const content = await fs.readFile(result.filePath, "utf8");
   const { frontmatter } = parseFrontmatter(content);
 
   // Weighted: impact*0.35 + alignment*0.30 + (1-effort)*0.20 + (1-risk)*0.10 + (1-dep)*0.05
@@ -70,35 +70,49 @@ test("writePmScores writes --priority and --autonomous-safe to frontmatter", asy
   const repo = await tmpRepo("al-pm-write-priority-");
   const feat = await addFeature(repo, { title: "Priority and safe flags" });
 
-  await writePmScores(repo, {
+  const result = await writePmScores(repo, {
     id: feat.id,
     scores: FULL_SCORES,
     priority: "P0",
     autonomousSafe: false
   });
 
-  const content = await fs.readFile(feat.filePath, "utf8");
+  const content = await fs.readFile(result.filePath, "utf8");
   const { frontmatter } = parseFrontmatter(content);
 
   assert.equal(frontmatter.priority, "P0");
   assert.equal(frontmatter.autonomous_safe, false);
 });
 
-test("writePmScores does not change status field of a pending FEAT", async () => {
-  const repo = await tmpRepo("al-pm-write-status-pending-");
-  const feat = await addFeature(repo, { title: "Status preserved pending" });
+test("writePmScores auto-promotes pending FEAT to triaged (matches /loop:triage skill contract)", async () => {
+  const repo = await tmpRepo("al-pm-write-auto-promote-");
+  const feat = await addFeature(repo, { title: "Pending feature gets promoted" });
 
-  await writePmScores(repo, {
+  const result = await writePmScores(repo, {
     id: feat.id,
     scores: FULL_SCORES,
     priority: "P2",
     autonomousSafe: true
   });
 
-  const content = await fs.readFile(feat.filePath, "utf8");
-  const { frontmatter } = parseFrontmatter(content);
+  // File moved out of pending/
+  assert.notEqual(result.filePath, feat.filePath);
+  assert.ok(
+    path.basename(path.dirname(result.filePath)) === "triaged",
+    `expected file under triaged/, got ${result.filePath}`
+  );
 
-  assert.equal(frontmatter.status, "pending");
+  // Status frontmatter flipped to triaged
+  const content = await fs.readFile(result.filePath, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.status, "triaged");
+
+  // Original pending path no longer exists
+  const pendingExists = await fs
+    .access(feat.filePath)
+    .then(() => true)
+    .catch(() => false);
+  assert.equal(pendingExists, false, "original pending file should be removed");
 });
 
 test("writePmScores does not change status field of a triaged FEAT and does not move the file", async () => {
@@ -151,7 +165,7 @@ test("writePmScores accepts optional triage_notes from reasoning argument", asyn
   const repo = await tmpRepo("al-pm-write-notes-");
   const feat = await addFeature(repo, { title: "Feature with notes" });
 
-  await writePmScores(repo, {
+  const result = await writePmScores(repo, {
     id: feat.id,
     scores: FULL_SCORES,
     priority: "P2",
@@ -159,7 +173,7 @@ test("writePmScores accepts optional triage_notes from reasoning argument", asyn
     triageNotes: "high demand from enterprise segment"
   });
 
-  const content = await fs.readFile(feat.filePath, "utf8");
+  const content = await fs.readFile(result.filePath, "utf8");
   const { frontmatter } = parseFrontmatter(content);
 
   assert.equal(frontmatter.triage_notes, "high demand from enterprise segment");
@@ -177,14 +191,14 @@ test("writePmScores score field mapping: customer_impact maps to pm_customer_imp
     dependency_depth: 0.2
   };
 
-  await writePmScores(repo, {
+  const result = await writePmScores(repo, {
     id: feat.id,
     scores,
     priority: "P1",
     autonomousSafe: true
   });
 
-  const content = await fs.readFile(feat.filePath, "utf8");
+  const content = await fs.readFile(result.filePath, "utf8");
   const { frontmatter } = parseFrontmatter(content);
 
   // Explicit field-by-field mapping verification

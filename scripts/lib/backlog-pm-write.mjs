@@ -1,10 +1,14 @@
 /**
  * backlog-pm-write.mts — Writes PM score fields to a FEAT's frontmatter.
  *
- * Called by the `backlog pm-write` CLI subcommand (loop.mts). Does NOT
- * change `status` or move the file; only patches frontmatter in-place.
+ * Called by the `backlog pm-write` CLI subcommand (loop.mts). Patches
+ * frontmatter in-place. When the FEAT is currently under `pending/`, the
+ * file is also moved to `triaged/` and `status` is set to `triaged` — this
+ * matches the `/loop:triage` skill contract that the PM path must promote
+ * entries pending → triaged in one step.
  */
-import { findFeatureById, updateFeatureFrontmatter } from "./backlog-writer.mjs";
+import path from "node:path";
+import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "./backlog-writer.mjs";
 import { listBacklog } from "./backlog-parser.mjs";
 import { computeWeightedCompositeScore } from "./pm-scorer.mjs";
 /**
@@ -42,9 +46,17 @@ export async function writePmScores(repoPath, opts) {
         updates.triage_notes = triageNotes;
     }
     await updateFeatureFrontmatter(entry.filePath, updates);
+    // Auto-promote pending → triaged. The triage skill contract (skills/triage/SKILL.md)
+    // assumes a single CLI call writes scores AND moves the entry. Detect "pending"
+    // via the file path (entries live under .../backlog/<state>/FEAT-NNN.md).
+    let finalFilePath = entry.filePath;
+    if (path.basename(path.dirname(entry.filePath)) === "pending") {
+        const moved = await moveFeature(entry.filePath, "triaged");
+        finalFilePath = moved.to;
+    }
     return {
         id,
-        filePath: entry.filePath,
+        filePath: finalFilePath,
         composite_score: compositeScore
     };
 }

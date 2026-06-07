@@ -68,7 +68,10 @@ PM-first triage with regex fallback. Single public command for the loop.
      --evidence "..." \
      --reasoning "..."
    ```
-   Then move each entry pending → triaged.
+   When the FEAT is currently under `pending/`, `pm-write` also moves it
+   to `triaged/` and sets `status: triaged` in the same call — no
+   separate `mv` step required (since v0.28.2). Triaged entries that get
+   re-scored stay in place.
    Write a PM review artifact per FEAT to `.claude/artifacts/loop/pm-reviews/`.
    Return `{ triaged: N, path: "pm", results: [...] }`.
 
