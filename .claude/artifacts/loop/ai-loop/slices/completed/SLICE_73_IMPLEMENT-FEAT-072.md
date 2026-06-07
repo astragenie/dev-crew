@@ -1,6 +1,6 @@
 ---
 id: SLICE-73
-status: pending
+status: completed
 feature: FEAT-072
 phase: 3
 priority: P1
@@ -8,7 +8,8 @@ target_release: v0.26.0
 requires_validation: false
 created: 2026-06-07
 updated: 2026-06-07
-tags: [stack:node, surface:none, concern:types]
+tags: ["stack:node", "surface:none", "concern:types"]
+completed_at: 2026-06-07
 ---
 # SLICE-73: tsconfig B2+B3 — noUnusedLocals + noUnusedParameters + noImplicitOverride + noFallthroughCasesInSwitch
 

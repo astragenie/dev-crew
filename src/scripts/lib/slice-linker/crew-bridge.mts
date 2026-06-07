@@ -444,7 +444,12 @@ export async function tryWriteAgentReport(
   }
 ) {
   const { writeAgentReport } = await import("./agent-report-writer.mjs");
-  return writeAgentReport(repoPath, { sliceId, featureId, phase, startedAt });
+  return writeAgentReport(repoPath, {
+    sliceId,
+    ...(featureId !== undefined ? { featureId } : {}),
+    ...(phase !== undefined ? { phase } : {}),
+    ...(startedAt !== undefined ? { startedAt } : {})
+  });
 }
 
 export async function writeCrewHandoff(

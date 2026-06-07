@@ -19,7 +19,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true
   },
   "include": [
     "src/scripts/**/*.mts"

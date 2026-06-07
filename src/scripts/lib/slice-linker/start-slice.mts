@@ -328,7 +328,7 @@ export async function startSlice(
     resolvedGoal,
     gradeTrendCaution,
     featureId,
-    sliceContent: ctx.content,
+    sliceContent: ctx.content ?? null,
     featureExcerpt,
     featurePath,
     marathonMilestone,

@@ -198,7 +198,10 @@ export async function runPrFix(
   const { ghExec, repo, maxAttemptsPerCategory = 3, priorAttempts = {} } = options;
 
   // Fetch PR status
-  const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, { ghExec, repo });
+  const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, {
+    ...(ghExec !== undefined ? { ghExec } : {}),
+    ...(repo !== undefined ? { repo } : {})
+  });
 
   if (haltReason) {
     return {

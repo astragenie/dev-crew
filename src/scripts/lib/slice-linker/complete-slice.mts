@@ -376,7 +376,14 @@ async function writeCeremonyArtifacts(
     bestEffort(() => writeCrewHandoff(repoPath, crewArgs as unknown as CrewArgs)),
     bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs as unknown as CrewArgs)),
     bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }, resolved)),
-    bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
+    bestEffort(() =>
+      tryWriteAgentReport(repoPath, {
+        sliceId,
+        featureId,
+        ...(phase !== undefined ? { phase } : {}),
+        startedAt
+      })
+    )
   ]);
 
   const sliceProgress = await bestEffort(async () => {

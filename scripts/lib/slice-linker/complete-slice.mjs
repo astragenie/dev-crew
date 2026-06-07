@@ -241,7 +241,12 @@ async function writeCeremonyArtifacts(repoPath, { sliceId, featureId, phase, fea
         bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
         bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
         bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }, resolved)),
-        bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
+        bestEffort(() => tryWriteAgentReport(repoPath, {
+            sliceId,
+            featureId,
+            ...(phase !== undefined ? { phase } : {}),
+            startedAt
+        }))
     ]);
     const sliceProgress = await bestEffort(async () => {
         const activePlan = await findActivePlan(repoPath, resolved);

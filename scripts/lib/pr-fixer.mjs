@@ -29,7 +29,7 @@ export function assertPrViewShape(parsed) {
 /**
  * Fetch PR status from GitHub using gh CLI.
  *
- * @param {string} repoPath - repo root directory
+ * @param {string} _repoPath - repo root directory (retained for API shape; not used in body)
  * @param {number | string} prNumber - PR number
  * @param {object} options
  * @param {function} options.ghExec - gh CLI executor (default: loaded dynamically)
@@ -135,7 +135,10 @@ export function categorizePrIssues(raw) {
 export async function runPrFix(repoPath, prNumber, options = {}) {
     const { ghExec, repo, maxAttemptsPerCategory = 3, priorAttempts = {} } = options;
     // Fetch PR status
-    const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, { ghExec, repo });
+    const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, {
+        ...(ghExec !== undefined ? { ghExec } : {}),
+        ...(repo !== undefined ? { repo } : {})
+    });
     if (haltReason) {
         return {
             prNumber,

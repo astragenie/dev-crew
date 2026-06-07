@@ -272,7 +272,7 @@ const COMMANDS = {
     const { resolveConfig } = await import("./lib/config-resolver.mjs");
     const config = await resolveConfig(repoPath);
     return runAutoWalker(repoPath, {
-      maxFeatures: flags.maxFeatures ? Number(flags.maxFeatures) : undefined,
+      ...(flags.maxFeatures ? { maxFeatures: Number(flags.maxFeatures) } : {}),
       dryRun: Boolean(flags.dryRun),
       autoMode: Boolean(flags.autoMode),
       allowCrossSession: Boolean(flags.allowCrossSession),
@@ -438,7 +438,7 @@ async function runBacklogPmWrite(repoPath: string, flags: Record<string, any>, r
     scores: parsedScores as any,
     priority,
     autonomousSafe,
-    triageNotes
+    ...(triageNotes !== undefined ? { triageNotes } : {})
   });
 }
 

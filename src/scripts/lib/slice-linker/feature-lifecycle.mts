@@ -309,7 +309,7 @@ export async function sliceFromFeature(
     slicePath,
     featureFM,
     noClassify,
-    dispatchFn
+    ...(dispatchFn !== undefined ? { dispatchFn } : {})
   });
 
   // Cross-link on the feature side: append slice id to slices[] frontmatter

@@ -343,7 +343,12 @@ export async function writeCrewFinalSynthesis(repoPath, { sliceId, slicePath, fe
 }
 export async function tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }) {
     const { writeAgentReport } = await import("./agent-report-writer.mjs");
-    return writeAgentReport(repoPath, { sliceId, featureId, phase, startedAt });
+    return writeAgentReport(repoPath, {
+        sliceId,
+        ...(featureId !== undefined ? { featureId } : {}),
+        ...(phase !== undefined ? { phase } : {}),
+        ...(startedAt !== undefined ? { startedAt } : {})
+    });
 }
 export async function writeCrewHandoff(repoPath, { sliceId, slicePath, featureId, phase = null, featureResult, specChanges, config = null }) {
     const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");

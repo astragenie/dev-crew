@@ -251,7 +251,7 @@ export async function sliceFromFeature(repoPath, featureId, { config = null, noC
         slicePath,
         featureFM,
         noClassify,
-        dispatchFn
+        ...(dispatchFn !== undefined ? { dispatchFn } : {})
     });
     // Cross-link on the feature side: append slice id to slices[] frontmatter
     const existingSlices = Array.isArray(featureFM.slices) ? featureFM.slices : [];

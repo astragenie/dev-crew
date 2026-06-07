@@ -241,7 +241,7 @@ export async function runAutoWalker(
     halted,
     stopReason,
     plans,
-    summaryPath,
+    ...(summaryPath !== undefined ? { summaryPath } : {}),
     // SLICE-C: Include orchestrator hints
     orchConfig: {
       costStopThreshold: costStopThreshold ?? null,

@@ -235,7 +235,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         resolvedGoal,
         gradeTrendCaution,
         featureId,
-        sliceContent: ctx.content,
+        sliceContent: ctx.content ?? null,
         featureExcerpt,
         featurePath,
         marathonMilestone,
