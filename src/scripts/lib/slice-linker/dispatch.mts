@@ -45,6 +45,20 @@ function appendProgressSignals(lines) {
   );
 }
 
+function appendWorktreeSection(lines: string[], worktreePath: string | null | undefined): void {
+  if (!worktreePath) return;
+  lines.push(
+    "",
+    "## Worktree",
+    "",
+    `This slice operates inside a dedicated git worktree at:`,
+    ``,
+    `  ${worktreePath}`,
+    ``,
+    `Keep ALL file edits, state writes, and artifact writes inside this worktree path. Do NOT edit files under the main repo path. When running crew shell-outs (write-handoff, mark-badge, etc.) pass \`--repo ${worktreePath}\`.`
+  );
+}
+
 export function buildDispatchInstruction({
   sliceId,
   title,
@@ -56,7 +70,8 @@ export function buildDispatchInstruction({
   featureExcerpt = null,
   featurePath = null,
   dispatchLimits = null as any,
-  useOrchestrateSlice = false
+  useOrchestrateSlice = false,
+  worktreePath = null as string | null
 }: {
   sliceId: string;
   title: string;
@@ -69,6 +84,7 @@ export function buildDispatchInstruction({
   featurePath?: string | null;
   dispatchLimits?: any;
   useOrchestrateSlice?: boolean;
+  worktreePath?: string | null;
 }) {
   if (useOrchestrateSlice) {
     return buildOrchestrateSliceInstruction(sliceId);
@@ -83,6 +99,7 @@ export function buildDispatchInstruction({
     `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:validator yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:validator if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
   ];
   appendProgressSignals(lines);
+  appendWorktreeSection(lines, worktreePath);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
   return lines.join("\n");
 }

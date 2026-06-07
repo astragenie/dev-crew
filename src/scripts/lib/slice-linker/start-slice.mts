@@ -422,7 +422,8 @@ function resolveDispatchInstruction(
   featureExcerpt,
   featurePath,
   dispatchLimits,
-  useOrchestrateSlice = false
+  useOrchestrateSlice = false,
+  worktreePath: string | null = null
 ) {
   return dispatch
     ? buildDispatchInstruction({
@@ -436,7 +437,8 @@ function resolveDispatchInstruction(
         featureExcerpt,
         featurePath,
         dispatchLimits,
-        useOrchestrateSlice
+        useOrchestrateSlice,
+        worktreePath
       })
     : null;
 }
@@ -483,6 +485,7 @@ function buildStartSliceReturn({
   useOrchestrateSlice = false as boolean,
   worktreeInfo = undefined as WorktreeResult | undefined
 }) {
+  const worktreePath = worktreeInfo?.worktreePath ?? null;
   const dispatchInstruction = resolveDispatchInstruction(
     dispatch,
     sliceId,
@@ -495,7 +498,8 @@ function buildStartSliceReturn({
     featureExcerpt,
     featurePath,
     dispatchLimits,
-    useOrchestrateSlice
+    useOrchestrateSlice,
+    worktreePath
   );
   const activePlanSummary = resolveActivePlanSummary(activePlan);
   const nextAction = computeNextAction(

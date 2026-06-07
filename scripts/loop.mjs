@@ -63,7 +63,8 @@ const FLAG_SPEC = {
     "--evidence": { key: "evidence" },
     "--reasoning": { key: "reasoning" },
     "--allow-cross-session": { key: "allowCrossSession", boolean: true },
-    "--explain-halts": { key: "explainHalts", boolean: true }
+    "--explain-halts": { key: "explainHalts", boolean: true },
+    "--worktree": { key: "worktree" }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -111,7 +112,9 @@ function parseArgs(argv) {
         autonomousSafe: null,
         evidence: null,
         reasoning: null,
-        allowCrossSession: false
+        allowCrossSession: false,
+        worktree: null,
+        explainHalts: false
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -200,8 +203,10 @@ const COMMANDS = {
         return result;
     },
     brief: async ({ repoPath, flags }) => {
+        const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+        const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { buildBrief } = await import("./lib/brief.mjs");
-        const result = await buildBrief(repoPath);
+        const result = await buildBrief(cwd);
         if (flags?.explainHalts) {
             const { explainHalts } = await import("./lib/halt-badges.mjs");
             console.log(JSON.stringify(result, null, 2));
@@ -211,11 +216,13 @@ const COMMANDS = {
         }
         return result;
     },
-    "snapshot-memory": async ({ repoPath }) => {
+    "snapshot-memory": async ({ repoPath, flags }) => {
+        const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+        const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { writeMemorySnapshot } = await import("./lib/memory-snapshot.mjs");
-        const result = await writeMemorySnapshot(repoPath);
+        const result = await writeMemorySnapshot(cwd);
         const { logEvent } = await import("./lib/telemetry.mjs");
-        await logEvent(repoPath, { command: "snapshot-memory", grades: result.counts.grades });
+        await logEvent(cwd, { command: "snapshot-memory", grades: result.counts.grades });
         return result;
     },
     lessons: async ({ repoPath, positionals }) => {
@@ -233,11 +240,13 @@ const COMMANDS = {
         await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
         return result;
     },
-    "stop-check": async ({ repoPath }) => {
+    "stop-check": async ({ repoPath, flags }) => {
+        const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+        const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
         const { resolveConfig } = await import("./lib/config-resolver.mjs");
-        const config = await resolveConfig(repoPath);
-        return checkStopConditions(repoPath, { config });
+        const config = await resolveConfig(cwd);
+        return checkStopConditions(cwd, { config });
     },
     auto: async ({ repoPath, flags }) => {
         const { runAutoWalker } = await import("./lib/auto-walker.mjs");
@@ -680,30 +689,36 @@ const SLICE_HANDLERS = {
         });
         return out;
     },
-    grade: async (repoPath, _flags, _rest, sliceId) => {
+    grade: async (repoPath, flags, _rest, sliceId) => {
         requireId(sliceId, "slice grade requires --id SLICE-NN.");
+        const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+        const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { createGradeFile } = await import("./lib/grade-writer.mjs");
-        const out = await createGradeFile(repoPath, sliceId);
+        const out = await createGradeFile(cwd, sliceId);
         const { logEvent } = await import("./lib/telemetry.mjs");
-        await logEvent(repoPath, { command: "slice grade", slice: sliceId, created: out.created });
+        await logEvent(cwd, { command: "slice grade", slice: sliceId, created: out.created });
         return out;
     },
-    "grade-write": async (repoPath, _flags, _rest, sliceId) => {
+    "grade-write": async (repoPath, flags, _rest, sliceId) => {
         requireId(sliceId, "slice grade-write requires --id SLICE-NN.");
+        const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+        const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { writeGrade } = await import("./lib/grade-writer.mjs");
-        return writeGrade(repoPath, sliceId);
+        return writeGrade(cwd, sliceId);
     },
     complete: async (repoPath, flags, _rest, sliceId) => {
         requireId(sliceId, "slice complete requires --id SLICE-NN.");
+        const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+        const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { completeSlice } = await import("./lib/slice-linker.mjs");
-        const out = await completeSlice(repoPath, sliceId, {
+        const out = await completeSlice(cwd, sliceId, {
             keepFeatureOpen: Boolean(flags.keepFeatureOpen),
             forceClose: Boolean(flags.forceClose),
             skipValidationCheck: flags.skipValidationCheck || null,
             noDocWriter: Boolean(flags.noDocWriter)
         });
         const { logEvent } = await import("./lib/telemetry.mjs");
-        await logEvent(repoPath, {
+        await logEvent(cwd, {
             command: "slice complete",
             slice: sliceId,
             feature: out.feature?.id || null,

@@ -142,6 +142,42 @@ test("buildDispatchInstruction with dispatchLimits injects budget block", () => 
     assert.match(result, /single-file-edit/);
     assert.match(result, /test-fix/);
 });
+// --- SLICE-63 / FEAT-061: appendWorktreeSection coverage (AC-1 / AC-4) ---
+test("buildDispatchInstruction with worktreePath embeds ## Worktree section and --repo hint", () => {
+    const worktreePath = "C:\\work\\mega\\loop-worktrees\\slice-63";
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-63",
+        title: "SLICE-63: Lead operates inside slice worktree",
+        sliceFile: "/repo/slices/SLICE_63.md",
+        repoPath: "/repo",
+        resolvedGoal: "Wire worktreePath",
+        worktreePath
+    });
+    assert.match(result, /## Worktree/);
+    assert.ok(result.includes(worktreePath), "dispatch prompt should embed the absolute worktree path");
+    assert.match(result, /--repo /, "dispatch prompt should remind the builder to forward --repo to crew shell-outs");
+});
+test("buildDispatchInstruction without worktreePath omits ## Worktree section", () => {
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-63",
+        title: "SLICE-63: Lead operates inside slice worktree",
+        sliceFile: "/repo/slices/SLICE_63.md",
+        repoPath: "/repo",
+        resolvedGoal: "Wire worktreePath"
+    });
+    assert.doesNotMatch(result, /## Worktree/);
+});
+test("buildDispatchInstruction with null worktreePath omits ## Worktree section", () => {
+    const result = buildDispatchInstruction({
+        sliceId: "SLICE-63",
+        title: "SLICE-63: Lead operates inside slice worktree",
+        sliceFile: "/repo/slices/SLICE_63.md",
+        repoPath: "/repo",
+        resolvedGoal: "Wire worktreePath",
+        worktreePath: null
+    });
+    assert.doesNotMatch(result, /## Worktree/);
+});
 test("buildDispatchInstruction without dispatchLimits omits budget block", () => {
     const result = buildDispatchInstruction({
         sliceId: "SLICE-05",

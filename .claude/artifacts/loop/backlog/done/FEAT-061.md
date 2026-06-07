@@ -1,13 +1,13 @@
 ---
 id: FEAT-061
-status: triaged
+status: done
 priority: P1
 category: workflow
 target_release: null
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-07
 depends_on: [FEAT-060]
-slices: []
+slices: [SLICE-63]
 derived_from: null
 pm_customer_impact: 0.7
 pm_effort_estimate: 0.6
@@ -17,6 +17,9 @@ pm_dependency_depth: 0.5
 composite_score: 0.651
 autonomous_safe: true
 triage_notes: "autonomous_safe inferred: AC count=7, derived_from=null → true"
+started_at: 2026-06-06
+slices_complete: [SLICE-63]
+completed_at: 2026-06-07
 ---
 # FEAT-061: Lead operates inside slice worktree
 

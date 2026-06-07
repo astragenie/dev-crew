@@ -3,6 +3,40 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.23.0 — 2026-06-06 — feat: lead operates inside slice worktree (FEAT-061 / SLICE-63)
+
+All loop CLI subcommands and crew shell-out dispatches now honour the slice worktree recorded in `workflow-state.currentRun.worktreePath`, ensuring that artifact writes, state mutations, and builder instructions are isolated to the active branch until merge.
+
+### New helper
+
+`src/scripts/lib/effective-cwd.mts` — `resolveEffectiveCwd(opts)` with a three-level precedence chain:
+
+1. `--worktree <path>` flag (explicit override, highest precedence)
+2. `workflow-state.currentRun.worktreePath` (set by `slice start` when a worktree is active)
+3. `--repo <path>` fallback (original repo root, unchanged behaviour when no worktree is present)
+
+### New `--worktree` flag
+
+Added to every affected subcommand: `brief`, `snapshot-memory`, `stop-check`, `slice complete`, `slice grade`, `slice grade-write`. Useful for manual debugging or scripted invocations that need to target a specific worktree path without modifying state.
+
+### Builder dispatch prompt — Worktree section
+
+`src/scripts/lib/slice-linker/dispatch.mts` now calls `appendWorktreeSection` when a worktree is active. The injected `## Worktree` block gives the builder subagent the absolute worktree path and an explicit reminder to keep all edits inside that directory, preventing accidental writes back to the main-repo working tree.
+
+### State isolation
+
+`workflow-state.json` and `slice-progress.md` writes that occur while a worktree-active slice is running land in the worktree's `.claude/state/crew/` directory, not the main repo's. The main-repo state tree is read-only for the duration of the slice.
+
+### Tests
+
+17 new cases in `src/tests/effective-cwd.test.mts`:
+
+- State isolation: worktree writes do not touch main-repo `.claude/state/crew/`
+- Override precedence: `--worktree` beats `currentRun.worktreePath` beats `--repo`
+- Fallback: missing `worktreePath` in state degrades gracefully to `repoPath`
+
+Total: 889 pass / 0 fail / 1 pre-existing skip. `npm run lint` and `npm run typecheck` clean.
+
 ## v0.22.0 — 2026-06-06 — test: halt-badge schema regression test (FEAT-066 / SLICE-62)
 
 Third derived FEAT from SPEC-003. Closes the SPEC loop-side by enforcing the three-way contract:

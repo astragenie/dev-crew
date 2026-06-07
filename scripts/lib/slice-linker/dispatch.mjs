@@ -27,7 +27,12 @@ function appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt,
 function appendProgressSignals(lines) {
     lines.push("", "## Progress signals", "", "Emit two advisory line-tags so the parent orchestrator has early visibility into your mode choice and per-AC progress. Advisory only — parent degrades gracefully on absence.", "", "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:builder for src/foo/`.", "- `[CHECKPOINT] AC-<N>: <pass|fail|skip> — <≤80 char note>` — emit one per AC AFTER the AC is verified. Status `fail` is the parent's interrupt signal; status `skip` carries a reason in the note.");
 }
-export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, dispatchLimits = null, useOrchestrateSlice = false }) {
+function appendWorktreeSection(lines, worktreePath) {
+    if (!worktreePath)
+        return;
+    lines.push("", "## Worktree", "", `This slice operates inside a dedicated git worktree at:`, ``, `  ${worktreePath}`, ``, `Keep ALL file edits, state writes, and artifact writes inside this worktree path. Do NOT edit files under the main repo path. When running crew shell-outs (write-handoff, mark-badge, etc.) pass \`--repo ${worktreePath}\`.`);
+}
+export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolvedGoal, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, dispatchLimits = null, useOrchestrateSlice = false, worktreePath = null }) {
     if (useOrchestrateSlice) {
         return buildOrchestrateSliceInstruction(sliceId);
     }
@@ -41,6 +46,7 @@ export function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, 
         `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:validator yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:validator if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
     ];
     appendProgressSignals(lines);
+    appendWorktreeSection(lines, worktreePath);
     appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
     return lines.join("\n");
 }

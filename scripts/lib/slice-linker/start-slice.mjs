@@ -312,7 +312,7 @@ function computeNextAction(sliceId, requiresApprovalGate, dispatch, planPrefligh
     return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }
 // Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.
-function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits, useOrchestrateSlice = false) {
+function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits, useOrchestrateSlice = false, worktreePath = null) {
     return dispatch
         ? buildDispatchInstruction({
             sliceId,
@@ -325,7 +325,8 @@ function resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPat
             featureExcerpt,
             featurePath,
             dispatchLimits,
-            useOrchestrateSlice
+            useOrchestrateSlice,
+            worktreePath
         })
         : null;
 }
@@ -343,7 +344,8 @@ function attachWorktreeSection(base, worktreeInfo) {
 }
 // eslint-disable-next-line complexity -- pure object builder; defaults destructuring inflates cyclomatic count but actual runtime branching is minimal (only attachWorktreeSection adds a real branch). Track as follow-up to convert to a typed options object.
 function buildStartSliceReturn({ sliceId, title, activePlan, runBrief, sliceProgress, dispatch, sliceFile, repoPath, resolvedGoal, gradeTrendCaution = null, featureId = null, sliceContent = null, featureExcerpt = null, featurePath = null, marathonMilestone = null, dispatchLimits = null, orchestratorModel = null, learningsDigest = null, planPreflight = null, requiresApprovalGate = false, confidence = null, confidenceReason = null, useOrchestrateSlice = false, worktreeInfo = undefined }) {
-    const dispatchInstruction = resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits, useOrchestrateSlice);
+    const worktreePath = worktreeInfo?.worktreePath ?? null;
+    const dispatchInstruction = resolveDispatchInstruction(dispatch, sliceId, title, sliceFile, repoPath, resolvedGoal, featureId, sliceContent, featureExcerpt, featurePath, dispatchLimits, useOrchestrateSlice, worktreePath);
     const activePlanSummary = resolveActivePlanSummary(activePlan);
     const nextAction = computeNextAction(sliceId, requiresApprovalGate, dispatch, planPreflight, useOrchestrateSlice);
     const base = {
