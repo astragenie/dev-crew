@@ -3,6 +3,44 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## [Unreleased] — preset-driven skill activation (Phase 1)
+
+### Added
+- Preset schema v1: `schemaVersion`, `projectType`, `split`, `frontend`,
+  `backend`, `contract`, `deployment`, plus `skills` (when `split: false`)
+  or `fe.skills` + `be.skills` (when `split: true`).
+- `node scripts/loop.mjs resolve-skills --variant <fe|be|single>` CLI
+  subcommand. Exit codes: 0 ok, 1 error, 2 no-match.
+- Manifest validator now validates every `scripts/presets/*.json` against
+  the new schema via `validatePreset`.
+- `src/scripts/lib/skill-resolver.mts` — pure resolver function that
+  loads a preset, merges optional `.claude/loop.json` override (with
+  `$replace` marker and concat-dedup defaults), validates, and returns
+  the resolved skill loadout plus a ready-to-paste
+  `## Required skills (resolved)` Markdown block.
+
+### Changed
+- All six shipped presets updated to schema v1 with explicit skill arrays.
+- `.claude/loop.json` for this repo carries new axis fields (matches
+  `typescript-plugin-dev` preset).
+- `/loop:backlog-enrich` no longer asks the architect to emit `stack:*`
+  or `surface` fields — project-level stack identity lives in the preset.
+- `CLAUDE.md` updated: classifier writes three routing fields
+  (`tags`, `needs_contract`, `needs_ux`), not five.
+
+### Removed
+- `buildClassifyUpdates` no longer writes `stack:*` or `surface` into
+  FEAT / slice frontmatter. `classify-parser.mts` no longer ships
+  `SurfaceValue`, `VALID_SURFACES`, `VALID_STACKS`, `parseSurface`.
+  Historical FEAT frontmatter is unaffected; readers stop consuming
+  the fields.
+
+### Roadmap (not in this slice)
+- Phase 2: `/crew:orchestrate-slice` automatic invocation of the resolver
+  CLI. Blocked on upstream `hero-crew` change documented in
+  `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`.
+- Phase 3: Delete baked-in routing tables from `crew:builder*` agents.
+
 ## v0.26.1 — 2026-06-07 — noUncheckedIndexedAccess B5 tsconfig tighten (FEAT-074)
 
 Enable `noUncheckedIndexedAccess: true` in `tsconfig.json` (SLICE-77). Fixes 130 type errors across 27 source files using non-null assertions on regex match groups and bounded array accesses, and `?? 0` defaults on score Record lookups. Pure type-safety enforcement — no behavior change. 922 tests pass.
