@@ -19,7 +19,7 @@ import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 const LEADING_TS_RE = /^\d{8}T\d{6}Z-/;
 const GRADE_SUFFIX = "-grade.md";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(

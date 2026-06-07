@@ -21,25 +21,37 @@ import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../
 import { clearWorktreePathInState } from "../auto-merge.mjs";
 import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
 
-function deriveBlockingGates(workflowState) {
+function deriveBlockingGates(workflowState: Record<string, any> | null) {
   const gates = workflowState?.currentRun?.gates || {};
   const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;
   const escalated = gates.escalation?.status === "escalated" ? gates.escalation : null;
   return { blocked, escalated };
 }
 
-async function bestEffort(fn) {
+async function bestEffort(fn: (...args: any[]) => any) {
   try {
     return await fn();
-  } catch (err) {
-    return { error: err.message };
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
   }
 }
 
 // Decides the target path (pending/active/in-progress -> completed; else
 // flat), stamps frontmatter, writes the updated file, removes the old one
 // if it moved. Returns the new path.
-async function moveAndStampSlice({ sliceFile, sliceContent, sliceFm, slicesRoot, today }) {
+async function moveAndStampSlice({
+  sliceFile,
+  sliceContent,
+  sliceFm,
+  slicesRoot,
+  today
+}: {
+  sliceFile: string;
+  sliceContent: string;
+  sliceFm: Record<string, any>;
+  slicesRoot: string;
+  today: string;
+}) {
   const parentDir = path.basename(path.dirname(sliceFile));
   let targetSlicePath = sliceFile;
   if (parentDir === "pending" || parentDir === "active" || parentDir === "in-progress") {
@@ -64,7 +76,12 @@ async function moveAndStampSlice({ sliceFile, sliceContent, sliceFm, slicesRoot,
 // Skips the move when:
 //   - feat.frontmatter.feature_complete === false (operator opts out for multi-slice features)
 //   - keepFeatureOpen === true (runtime CLI override via --keep-feature-open)
-async function moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen = false) {
+async function moveFeatureToDone(
+  repoPath: string,
+  featureId: string | null,
+  config: Record<string, any> | null,
+  keepFeatureOpen = false
+) {
   if (!featureId) return null;
   const feat = await findFeatureById(repoPath, featureId, config);
   if (!feat) return null;
@@ -104,6 +121,12 @@ function describeBlockedGate({
   blockingGates,
   validationGate,
   testAdequacyGate
+}: {
+  isBlocked: boolean;
+  isSimplifyBlocked: boolean;
+  blockingGates: Record<string, any>;
+  validationGate: Record<string, any> | null;
+  testAdequacyGate: Record<string, any> | null;
 }) {
   if (isBlocked) {
     return blockingGates.escalated
@@ -114,18 +137,18 @@ function describeBlockedGate({
     return "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
   }
   if (testAdequacyGate?.satisfied === false) return testAdequacyGate.reason;
-  return `validation-gate: ${validationGate.reason}`;
+  return `validation-gate: ${validationGate?.reason ?? "no evidence"}`;
 }
 
 async function evaluateFeatureGates(
-  repoPath,
-  featureId,
-  blockingGates,
-  validationGate,
-  testAdequacyGate
+  repoPath: string,
+  featureId: string | null,
+  blockingGates: Record<string, any>,
+  validationGate: Record<string, any> | null,
+  testAdequacyGate: Record<string, any> | null
 ) {
   const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
-  const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
+  const simplifyCeremony = featureId ? await readFeatureEndCeremony(repoPath, featureId) : null;
   const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
   const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
   const isTestAdequacyBlocked = Boolean(testAdequacyGate && testAdequacyGate.satisfied === false);
@@ -159,13 +182,13 @@ async function updateSlicesComplete(
 // Returns a result object to short-circuit computeFeatureResult, or null to
 // fall through to the default moveFeatureToDone path.
 async function applyMultiSliceLogic(
-  _repoPath,
+  _repoPath: string,
   feat: any,
   featureId: string,
   sliceId: string,
   keepFeatureOpen: boolean,
   forceClose: boolean,
-  _config
+  _config: Record<string, any> | null
 ) {
   const planned: string[] = Array.isArray(feat.frontmatter?.slices)
     ? [...feat.frontmatter.slices]
@@ -205,9 +228,9 @@ function buildBlockedResult(
     isValidationBlocked: boolean;
     isTestAdequacyBlocked: boolean;
   },
-  blockingGates,
-  validationGate,
-  testAdequacyGate
+  blockingGates: Record<string, any>,
+  validationGate: Record<string, any> | null,
+  testAdequacyGate: Record<string, any> | null
 ) {
   const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } = gateState;
   return {
@@ -227,15 +250,15 @@ function buildBlockedResult(
 }
 
 async function computeFeatureResult(
-  repoPath,
-  featureId,
-  blockingGates,
-  config,
+  repoPath: string,
+  featureId: string | null,
+  blockingGates: Record<string, any>,
+  config: Record<string, any> | null,
   sliceId: string,
   keepFeatureOpen = false,
   forceClose = false,
-  validationGate = null as any,
-  testAdequacyGate = null as any
+  validationGate: Record<string, any> | null = null,
+  testAdequacyGate: Record<string, any> | null = null
 ) {
   const gateState = await evaluateFeatureGates(
     repoPath,
@@ -273,10 +296,10 @@ async function computeFeatureResult(
 // validation_skipped badge first so the bypass is auditable, then shortcuts
 // the gate to satisfied. Otherwise derives from artifacts / badges / waiver.
 async function resolveValidationGate(
-  repoPath,
-  sliceId,
-  sliceFm,
-  skipValidationCheck
+  repoPath: string,
+  sliceId: string,
+  sliceFm: Record<string, any>,
+  skipValidationCheck: string | null
 ): Promise<{ validationGate: any; validationSkippedBadge: any }> {
   if (!skipValidationCheck) {
     const validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm });
@@ -295,14 +318,14 @@ async function resolveValidationGate(
   const validationGate = {
     satisfied: true,
     reason: `--skip-validation-check: ${reason}`,
-    evidence: []
+    evidence: [] as string[]
   };
   return { validationGate, validationSkippedBadge };
 }
 
 // Reads slice file, parses frontmatter, and resolves workflow state. Extracted
 // to keep completeSlice under the complexity budget.
-async function resolveSliceContext(repoPath, sliceFile) {
+async function resolveSliceContext(repoPath: string, sliceFile: string) {
   const sliceContent = await fs.readFile(sliceFile, "utf8");
   const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
   const featureId = sliceFm.feature || null;
@@ -317,10 +340,28 @@ async function resolveSliceContext(repoPath, sliceFile) {
 // Writes all best-effort ceremony artifacts in parallel. Extracted to keep
 // completeSlice under the complexity budget.
 async function writeCeremonyArtifacts(
-  repoPath,
-  { sliceId, featureId, phase, featureResult, specChanges, targetSlicePath, startedAt, resolved }
+  repoPath: string,
+  {
+    sliceId,
+    featureId,
+    phase,
+    featureResult,
+    specChanges,
+    targetSlicePath,
+    startedAt,
+    resolved
+  }: {
+    sliceId: string;
+    featureId: string | null;
+    phase: string | null | undefined;
+    featureResult: Record<string, any> | null;
+    specChanges: Record<string, any>[];
+    targetSlicePath: string;
+    startedAt: string | null;
+    resolved: Record<string, any> | null;
+  }
 ) {
-  const crewArgs = {
+  const crewArgs: Record<string, any> = {
     sliceId,
     slicePath: targetSlicePath,
     featureId,
@@ -330,9 +371,10 @@ async function writeCeremonyArtifacts(
     config: resolved
   };
 
+  type CrewArgs = Parameters<typeof writeCrewHandoff>[1];
   const [handoff, synthesis, costReport, agentReport] = await Promise.all([
-    bestEffort(() => writeCrewHandoff(repoPath, crewArgs)),
-    bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs)),
+    bestEffort(() => writeCrewHandoff(repoPath, crewArgs as unknown as CrewArgs)),
+    bestEffort(() => writeCrewFinalSynthesis(repoPath, crewArgs as unknown as CrewArgs)),
     bestEffort(() => tryWriteCostReport(repoPath, { sliceId, featureId, phase }, resolved)),
     bestEffort(() => tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }))
   ]);
@@ -405,7 +447,11 @@ function buildCompleteResult({
 
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
-export async function completeSlice(repoPath, sliceId, opts: Record<string, any> = {}) {
+export async function completeSlice(
+  repoPath: string,
+  sliceId: string,
+  opts: Record<string, any> = {}
+) {
   const {
     config: cfgIn = null,
     keepFeatureOpen = false,
@@ -531,11 +577,11 @@ async function writeDocWriterSkipAuditLog(repoPath: string): Promise<void> {
 }
 
 async function recordCompleteTrajectory(
-  repoPath,
-  sliceId,
-  featureId,
-  featureResult,
-  validationGate
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  featureResult: Record<string, any> | null,
+  validationGate: Record<string, any> | null
 ) {
   try {
     const { recordStep } = await import("../trajectory-writer.mjs");

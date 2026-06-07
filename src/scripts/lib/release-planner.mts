@@ -13,12 +13,12 @@ import { releasesRoot, backlogRoot } from "./paths.mjs";
 // readiness — release is "ready to cut" only when every targeted feature is
 // in done/. Otherwise lists what's still in flight.
 
-function normalizeVersion(version) {
+function normalizeVersion(version: string | null | undefined) {
   if (!version) throw new Error("release plan requires --version");
   return version.startsWith("v") ? version : `v${version}`;
 }
 
-function statusBadge(state) {
+function statusBadge(state: string) {
   switch (state) {
     case "done":
       return "✓ shipped";
@@ -33,12 +33,12 @@ function statusBadge(state) {
   }
 }
 
-function groupFeaturesBySpec(features) {
-  const grouped = new Map();
+function groupFeaturesBySpec(features: Record<string, any>[]) {
+  const grouped = new Map<string, Record<string, any>[]>();
   for (const f of features) {
     const sid = f.frontmatter.derived_from || "_standalone_";
     if (!grouped.has(sid)) grouped.set(sid, []);
-    grouped.get(sid).push(f);
+    grouped.get(sid)!.push(f);
   }
   // _standalone_ last; specs in id order.
   const keys = [...grouped.keys()].sort((a, b) => {
@@ -49,8 +49,12 @@ function groupFeaturesBySpec(features) {
   return { grouped, keys };
 }
 
-function renderGroupSection(sid, entries, specs) {
-  const lines: any[] = [];
+function renderGroupSection(
+  sid: string,
+  entries: Record<string, any>[],
+  specs: Record<string, any>[]
+) {
+  const lines: string[] = [];
   if (sid === "_standalone_") {
     lines.push("## Standalone features");
   } else {
@@ -64,7 +68,7 @@ function renderGroupSection(sid, entries, specs) {
   lines.push("");
   for (const entry of entries) {
     const title =
-      (entry.body || "")
+      String(entry.body || "")
         .split("\n")
         .find((l) => l.startsWith("# "))
         ?.replace(/^#\s+[A-Z]+-\d+:\s*/, "") || entry.id;
@@ -74,7 +78,7 @@ function renderGroupSection(sid, entries, specs) {
   return lines;
 }
 
-function renderReadyFooter(version, repoPath, config) {
+function renderReadyFooter(version: string, repoPath: string, config: Record<string, any> | null) {
   const doneRel = path
     .relative(repoPath, path.join(backlogRoot(repoPath, config), "done"))
     .replace(/\\/g, "/");
@@ -99,6 +103,14 @@ function buildReleaseBody({
   generatedAt,
   repoPath,
   config
+}: {
+  version: string;
+  features: Record<string, any>[];
+  specs: Record<string, any>[];
+  releaseStatus: string;
+  generatedAt: string;
+  repoPath: string;
+  config: Record<string, any> | null;
 }) {
   const { grouped, keys } = groupFeaturesBySpec(features);
   const lines = [
@@ -112,7 +124,7 @@ function buildReleaseBody({
     ""
   ];
   for (const sid of keys) {
-    const entries = grouped.get(sid).sort((a, b) => a.idNumber - b.idNumber);
+    const entries = grouped.get(sid)!.sort((a, b) => a.idNumber - b.idNumber);
     lines.push(...renderGroupSection(sid, entries, specs));
   }
   if (releaseStatus === "READY") {
@@ -126,15 +138,17 @@ function buildReleaseBody({
  * @param {{ version?: string, config?: any }} [options]
  */
 export async function planRelease(
-  repoPath,
-  { version, config = null }: Record<string, unknown> = {}
+  repoPath: string,
+  { version, config = null }: { version?: string; config?: Record<string, any> | null } = {}
 ) {
   const normalized = normalizeVersion(version);
   const [backlog, specs] = await Promise.all([
-    listBacklog(repoPath, { config }),
-    listSpecs(repoPath, { config })
+    listBacklog(repoPath, { config }) as Promise<Record<string, any>[]>,
+    listSpecs(repoPath, { config }) as Promise<Record<string, any>[]>
   ]);
-  const targeted = backlog.filter((f) => f.frontmatter.target_release === normalized);
+  const targeted: Record<string, any>[] = backlog.filter(
+    (f) => f.frontmatter.target_release === normalized
+  );
   const releaseStatus =
     targeted.length === 0
       ? "EMPTY"
@@ -150,7 +164,7 @@ export async function planRelease(
     releaseStatus,
     generatedAt,
     repoPath,
-    config
+    config: config ?? null
   });
 
   const releasesDir = releasesRoot(repoPath, config);
@@ -174,12 +188,14 @@ export async function planRelease(
  * @param {{ version?: string, config?: any }} [options]
  */
 export async function releaseStatus(
-  repoPath,
-  { version, config = null }: Record<string, unknown> = {}
+  repoPath: string,
+  { version, config = null }: { version?: string; config?: Record<string, any> | null } = {}
 ) {
   const normalized = normalizeVersion(version);
-  const backlog = await listBacklog(repoPath, { config });
-  const targeted = backlog.filter((f) => f.frontmatter.target_release === normalized);
+  const backlog = (await listBacklog(repoPath, { config })) as Record<string, any>[];
+  const targeted: Record<string, any>[] = backlog.filter(
+    (f) => f.frontmatter.target_release === normalized
+  );
   return {
     version: normalized,
     total: targeted.length,

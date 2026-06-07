@@ -3,7 +3,12 @@ import path from "node:path";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { locateSliceFile, backlogRoot as resolveBacklogRoot } from "../paths.mjs";
 
-function buildBudgetLine(dispatchLimits) {
+interface DispatchLimits {
+  maxSubagentsPerSlice: number;
+  preferInlineFor?: string[];
+}
+
+function buildBudgetLine(dispatchLimits: DispatchLimits | null) {
   if (!dispatchLimits) return "";
   const preferInline = (dispatchLimits.preferInlineFor || []).join(", ");
   return (
@@ -33,7 +38,7 @@ function appendContextBlock(
   }
 }
 
-function appendProgressSignals(lines) {
+function appendProgressSignals(lines: string[]) {
   lines.push(
     "",
     "## Progress signals",
@@ -69,7 +74,7 @@ export function buildDispatchInstruction({
   sliceContent = null,
   featureExcerpt = null,
   featurePath = null,
-  dispatchLimits = null as any,
+  dispatchLimits = null as DispatchLimits | null,
   useOrchestrateSlice = false,
   worktreePath = null as string | null
 }: {
@@ -82,7 +87,7 @@ export function buildDispatchInstruction({
   sliceContent?: string | null;
   featureExcerpt?: string | null;
   featurePath?: string | null;
-  dispatchLimits?: any;
+  dispatchLimits?: DispatchLimits | null;
   useOrchestrateSlice?: boolean;
   worktreePath?: string | null;
 }) {
@@ -120,15 +125,19 @@ function buildOrchestrateSliceInstruction(sliceId: string): string {
 // text. Returns null fields when the slice file is missing — callers fall
 // back gracefully (run-brief emits with bare sliceId; dispatchInstruction
 // omits goalLine).
-export async function readSliceContext(slicesRoot, sliceId) {
-  let file: any = null;
+export async function readSliceContext(slicesRoot: string, sliceId: string) {
+  let file: string | null = null;
   try {
     file = await locateSliceFile(slicesRoot, sliceId);
   } catch {
     file = null;
   }
   if (!file) {
-    return { file: null, frontmatter: {} as import("../frontmatter.mjs").Frontmatter, goal: null };
+    return {
+      file: null as string | null,
+      frontmatter: {} as import("../frontmatter.mjs").Frontmatter,
+      goal: null as string | null
+    };
   }
   const content = await fs.readFile(file, "utf8");
   const frontmatter = parseFrontmatter(content).frontmatter || {};
@@ -145,14 +154,14 @@ export async function readSliceContext(slicesRoot, sliceId) {
 }
 
 export async function readFeatureExcerpt(
-  repoPath,
-  featureId,
-  config
+  repoPath: string,
+  featureId: string,
+  config: Record<string, any> | null | undefined
 ): Promise<{ path: string; excerpt: string } | null> {
   const root = resolveBacklogRoot(repoPath, config);
   for (const dir of ["in-progress", "triaged", "pending", "done"]) {
     const p = path.join(root, dir, `${featureId}.md`);
-    const content = await fs.readFile(p, "utf8").catch(() => null);
+    const content = await fs.readFile(p, "utf8").catch((): null => null);
     if (content) {
       const excerpt = extractSection(content, /^##\s+Description\s*$/i, {
         maxLen: 400,
@@ -165,14 +174,14 @@ export async function readFeatureExcerpt(
 }
 
 export function extractSection(
-  sliceContent,
-  headingPattern,
-  { maxLen = 500, joinChar = " " }: Record<string, any> = {}
+  sliceContent: string,
+  headingPattern: RegExp,
+  { maxLen = 500, joinChar = " " }: { maxLen?: number; joinChar?: string } = {}
 ) {
   const lines = sliceContent.split(/\r?\n/);
-  const startIdx = lines.findIndex((l) => headingPattern.test(l));
+  const startIdx = lines.findIndex((l: string) => headingPattern.test(l));
   if (startIdx === -1) return null;
-  const body: any[] = [];
+  const body: string[] = [];
   for (let i = startIdx + 1; i < lines.length; i += 1) {
     const line = lines[i];
     if (/^##\s+/.test(line)) break;
@@ -183,6 +192,6 @@ export function extractSection(
   return text.length > 0 ? text.slice(0, maxLen) : null;
 }
 
-function extractObjective(sliceContent) {
+function extractObjective(sliceContent: string) {
   return extractSection(sliceContent, /^##\s+Objective\s*$/i);
 }

@@ -7,7 +7,7 @@ import { findCrewCli } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
 const execFile = promisify(execFileCallback);
-function renderReport(repoPath, config, phase, note, stageResults, overallStatus, startedAt, endedAt) {
+function renderReport(config, phase, note, stageResults, overallStatus, startedAt, endedAt) {
     const lines = [];
     lines.push(`# Phase Gate Report — phase ${phase} — ${endedAt}`);
     lines.push("");
@@ -119,7 +119,7 @@ async function safeIncrementIteration(repoPath) {
 }
 export async function runPhaseGate(repoPath, options = {}) {
     const startedAt = nowIso();
-    const config = await resolveConfig(repoPath);
+    const config = (await resolveConfig(repoPath));
     const phase = options.phase || "unspecified";
     const note = options.note || "";
     const crewCli = await findCrewCli();
@@ -135,7 +135,7 @@ export async function runPhaseGate(repoPath, options = {}) {
     const anyFailed = stageResults.some((s) => !s.skipped && !s.ok);
     const overallStatus = anyFailed ? "FAIL" : "PASS";
     const endedAt = nowIso();
-    const body = renderReport(repoPath, config, phase, note, stageResults, overallStatus, startedAt, endedAt);
+    const body = renderReport(config, phase, note, stageResults, overallStatus, startedAt, endedAt);
     const artifactPath = await writeReport(repoPath, config, phase, body);
     const summary = `phase ${phase} ${overallStatus} — preset ${config.preset} — ${stageResults.filter((s) => !s.skipped).length} stages run`;
     const crewResult = await recordWithCrew(crewCli, repoPath, `Phase ${phase} gate`, anyFailed ? "failed" : "passed", summary, artifactPath, phase);
@@ -190,7 +190,7 @@ export async function runPhaseGate(repoPath, options = {}) {
 // "ready-to-deploy-<version>" handoff before writing again.
 async function emitDeployHandoffsForReadyReleases(repoPath) {
     const { listBacklog } = await import("./backlog-parser.mjs");
-    const backlog = await listBacklog(repoPath);
+    const backlog = (await listBacklog(repoPath));
     const byRelease = new Map();
     for (const f of backlog) {
         const tr = f.frontmatter.target_release;
@@ -275,9 +275,9 @@ async function emitDeployHandoffsForReadyReleases(repoPath) {
 // artifact and use its date as the retrospective lower bound. Falls back to
 // 30 days if no prior gate exists.
 async function runRetrospectiveSincePreviousGate(repoPath, phase) {
-    const config = await resolveConfig(repoPath);
+    const config = (await resolveConfig(repoPath));
     const dir = path.resolve(repoPath, config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations");
-    let entries;
+    let entries = [];
     try {
         entries = await fs.readdir(dir);
     }
@@ -287,7 +287,7 @@ async function runRetrospectiveSincePreviousGate(repoPath, phase) {
     const phaseRe = /^phase-(.+)-gate-(\d{8})T\d+Z?\.md$/;
     const prior = entries
         .map((name) => name.match(phaseRe))
-        .filter((m) => m)
+        .filter((m) => m !== null)
         .map((m) => ({ phase: m[1], stamp: m[2] }))
         .filter((e) => e.phase !== String(phase))
         .sort((a, b) => b.stamp.localeCompare(a.stamp));

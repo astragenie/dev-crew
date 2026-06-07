@@ -130,7 +130,7 @@ function parseArgs(argv) {
         }
         const spec = FLAG_SPEC[value];
         if (spec) {
-            if (spec.boolean) {
+            if ("boolean" in spec && spec.boolean) {
                 flags[spec.key] = true;
             }
             else {

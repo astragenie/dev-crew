@@ -8,5 +8,5 @@ import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 export async function listPendingFeatureIds(repoPath) {
     const entries = await listBacklog(repoPath);
     const pending = filterBacklog(entries, { status: "pending" });
-    return pending.map((e) => e.id);
+    return pending.map((e) => String(e.id));
 }

@@ -36,7 +36,7 @@ export async function listPresets() {
   return presets;
 }
 
-export async function loadPreset(presetName) {
+export async function loadPreset(presetName: string) {
   if (!presetName) {
     throw new Error("Preset name is required.");
   }
@@ -44,38 +44,40 @@ export async function loadPreset(presetName) {
   try {
     const raw = await fs.readFile(presetPath, "utf8");
     return JSON.parse(raw);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       const known = (await listPresets()).map((p) => p.name).join(", ");
       throw new Error(`Unknown preset "${presetName}". Known presets: ${known}`);
     }
-    throw error;
+    throw err;
   }
 }
 
-async function readConfigFile(repoPath) {
+async function readConfigFile(repoPath: string) {
   const configPath = path.join(repoPath, CONFIG_FILENAME);
   try {
     const raw = await fs.readFile(configPath, "utf8");
     return JSON.parse(raw);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
     }
-    throw error;
+    throw err;
   }
 }
 
-function isPlainObject(value) {
+function isPlainObject(value: unknown) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function deepMerge(base, overrides) {
+function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
   if (!isPlainObject(overrides)) {
-    return overrides === undefined ? base : overrides;
+    return (overrides === undefined ? base : overrides) as Record<string, unknown>;
   }
-  const result = { ...(isPlainObject(base) ? base : {}) };
-  for (const [key, value] of Object.entries(overrides)) {
+  const overridesObj = overrides as Record<string, unknown>;
+  const baseObj = isPlainObject(base) ? (base as Record<string, unknown>) : {};
+  const result: Record<string, unknown> = { ...baseObj };
+  for (const [key, value] of Object.entries(overridesObj)) {
     if (value === null) {
       // Explicit null disables the field even if the preset defined a default.
       result[key] = null;
@@ -88,7 +90,7 @@ function deepMerge(base, overrides) {
   return result;
 }
 
-export async function resolveConfig(repoPath, options: Record<string, any> = {}) {
+export async function resolveConfig(repoPath: string, options: Record<string, unknown> = {}) {
   const userConfig = await readConfigFile(repoPath);
   const presetName = options.preset || userConfig?.preset || "dotnet-aspire-python";
   const preset = await loadPreset(presetName);
@@ -98,7 +100,7 @@ export async function resolveConfig(repoPath, options: Record<string, any> = {})
   return merged;
 }
 
-export async function writeConfigIfMissing(repoPath, config) {
+export async function writeConfigIfMissing(repoPath: string, config: unknown) {
   const configPath = path.join(repoPath, CONFIG_FILENAME);
   try {
     await fs.access(configPath);
@@ -111,6 +113,6 @@ export async function writeConfigIfMissing(repoPath, config) {
   return { written: true, path: configPath };
 }
 
-export function configPath(repoPath) {
+export function configPath(repoPath: string) {
   return path.join(repoPath, CONFIG_FILENAME);
 }

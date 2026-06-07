@@ -12,10 +12,29 @@ import { checkSessionDrift } from "./session-drift.mjs";
 // surfaces backlog/specs/grades/decisions/alerts without modifying the
 // crew plugin. Designed to be called as part of /loop:brief.
 
-function avg(values) {
-  const nums = values.filter((v) => typeof v === "number");
+function avg(values: unknown[]) {
+  const nums = values.filter((v): v is number => typeof v === "number");
   if (nums.length === 0) return null;
   return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
+}
+
+function computeGradeSignal(grades: Record<string, any>[]) {
+  const recentGrades = grades.slice(-5);
+  const scoreSnapshot: Record<string, unknown> = {};
+  for (const dim of SCORE_DIMENSIONS) {
+    scoreSnapshot[dim] = avg(recentGrades.map((g: Record<string, any>) => g.scores?.[dim]));
+  }
+  return {
+    total: grades.length,
+    lastFive: recentGrades.map((g: Record<string, any>) => ({
+      slice: g.frontmatter.slice,
+      avg: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d]))
+    })),
+    avgRecent: avg(
+      recentGrades.map((g: Record<string, any>) => avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d])))
+    ),
+    perDimensionRecent: scoreSnapshot
+  };
 }
 
 // Count how many warn alerts would be demoted under current autoMode + ignoredCategories config.
@@ -29,7 +48,10 @@ function countDemotedAlerts(alerts: any[], config: any): number {
     .length;
 }
 
-export async function buildBrief(repoPath, { config = null }: Record<string, unknown> = {}) {
+export async function buildBrief(
+  repoPath: string,
+  { config = null }: { config?: Record<string, any> | null } = {}
+) {
   const [
     backlog,
     specs,
@@ -63,7 +85,7 @@ export async function buildBrief(repoPath, { config = null }: Record<string, unk
   const topTriaged = filterBacklog(backlog, { status: "triaged" })
     .sort(comparePickOrder)
     .slice(0, 3)
-    .map((f) => ({
+    .map((f: Record<string, any>) => ({
       id: f.id,
       priority: f.frontmatter.priority,
       category: f.frontmatter.category,
@@ -72,44 +94,34 @@ export async function buildBrief(repoPath, { config = null }: Record<string, unk
     }));
 
   // In-flight features (in-progress) — caller acts on these next
-  const inFlight = filterBacklog(backlog, { status: "in-progress" }).map((f) => ({
-    id: f.id,
-    slices: f.frontmatter.slices || [],
-    priority: f.frontmatter.priority
-  }));
+  const inFlight = filterBacklog(backlog, { status: "in-progress" }).map(
+    (f: Record<string, any>) => ({
+      id: f.id,
+      slices: f.frontmatter.slices || [],
+      priority: f.frontmatter.priority
+    })
+  );
 
   // Spec flow: approved + undecomposed
   const specsToDecompose = specs
     .filter(
-      (s) =>
+      (s: Record<string, any>) =>
         s.frontmatter.status === "approved" &&
         (!Array.isArray(s.frontmatter.derived_features) ||
           s.frontmatter.derived_features.length === 0)
     )
-    .map((s) => ({ id: s.id, type: s.frontmatter.type, title: s.frontmatter.title }));
-
-  // Score signal over last 5 grades
-  const recentGrades = grades.slice(-5);
-  const scoreSnapshot = {};
-  for (const dim of SCORE_DIMENSIONS) {
-    scoreSnapshot[dim] = avg(recentGrades.map((g) => g.scores?.[dim]));
-  }
-  const avgRecent = avg(recentGrades.map((g) => avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d]))));
+    .map((s: Record<string, any>) => ({
+      id: s.id,
+      type: s.frontmatter.type,
+      title: s.frontmatter.title
+    }));
 
   return {
     backlogCounts,
     topTriaged,
     inFlight,
     specsToDecompose,
-    grades: {
-      total: grades.length,
-      lastFive: recentGrades.map((g) => ({
-        slice: g.frontmatter.slice,
-        avg: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d]))
-      })),
-      avgRecent,
-      perDimensionRecent: scoreSnapshot
-    },
+    grades: computeGradeSignal(grades),
     decisions: {
       total: decisions.length,
       accepted: decisions.filter((d) => d.status === "accepted").length,

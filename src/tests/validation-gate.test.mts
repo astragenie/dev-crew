@@ -6,17 +6,17 @@ import assert from "node:assert/strict";
 
 import { deriveValidationGate } from "../scripts/lib/validation-gate.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-async function writeValidationsArtifact(repo, filename, body = "# validation\n") {
+async function writeValidationsArtifact(repo: string, filename: string, body = "# validation\n") {
   const dir = path.join(repo, ".claude", "artifacts", "crew", "validations");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, filename), body);
 }
 
-async function writeWorkflowState(repo, currentRun) {
+async function writeWorkflowState(repo: string, currentRun: Record<string, any>) {
   const dir = path.join(repo, ".claude", "state", "crew");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(

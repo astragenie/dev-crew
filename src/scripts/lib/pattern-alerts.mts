@@ -47,14 +47,14 @@ export function resolveScoreTrendConfig(config: any): {
   return { threshold, trailing, perDim };
 }
 
-function detectScoreTrendAlerts(grades, config: any) {
+function detectScoreTrendAlerts(grades: Record<string, any>[], config: unknown) {
   const { threshold, trailing, perDim } = resolveScoreTrendConfig(config);
   if (grades.length < trailing) return [];
   const recent = grades.slice(-trailing);
-  const out: any[] = [];
+  const out: Record<string, string>[] = [];
   for (const dim of SCORE_DIMENSIONS) {
     const dimThreshold = perDim[dim] ?? threshold;
-    const allLow = recent.every((g) => {
+    const allLow = recent.every((g: Record<string, any>) => {
       const v = g.scores?.[dim];
       return typeof v === "number" && v < dimThreshold;
     });
@@ -70,8 +70,8 @@ function detectScoreTrendAlerts(grades, config: any) {
   return out;
 }
 
-function detectDecompositionAlerts(backlog) {
-  const out: any[] = [];
+function detectDecompositionAlerts(backlog: Record<string, any>[]) {
+  const out: Record<string, string>[] = [];
   for (const f of backlog) {
     const slices = Array.isArray(f.frontmatter.slices) ? f.frontmatter.slices : [];
     if (slices.length >= 3) {
@@ -95,8 +95,8 @@ function detectDecompositionAlerts(backlog) {
   return out;
 }
 
-function detectSpecFlowAlerts(specs) {
-  const out: any[] = [];
+function detectSpecFlowAlerts(specs: Record<string, any>[]) {
+  const out: Record<string, string>[] = [];
   for (const s of specs) {
     const derived = Array.isArray(s.frontmatter.derived_features)
       ? s.frontmatter.derived_features
@@ -113,7 +113,7 @@ function detectSpecFlowAlerts(specs) {
   return out;
 }
 
-function detectBacklogFlowAlerts(backlog) {
+function detectBacklogFlowAlerts(backlog: Record<string, any>[]) {
   const pending = backlog.filter((f) => f.state === "pending");
   if (pending.length < 10) return [];
   return [
@@ -126,8 +126,8 @@ function detectBacklogFlowAlerts(backlog) {
   ];
 }
 
-function detectInProgressOrphanAlerts(backlog) {
-  const out: any[] = [];
+function detectInProgressOrphanAlerts(backlog: Record<string, any>[]) {
+  const out: Record<string, string>[] = [];
   for (const f of backlog.filter((b) => b.state === "in-progress")) {
     const slices = Array.isArray(f.frontmatter.slices) ? f.frontmatter.slices : [];
     if (slices.length === 0) {
@@ -142,7 +142,10 @@ function detectInProgressOrphanAlerts(backlog) {
   return out;
 }
 
-export async function detectPatterns(repoPath, { config = null }: Record<string, unknown> = {}) {
+export async function detectPatterns(
+  repoPath: string,
+  { config = null }: Record<string, unknown> = {}
+) {
   const [grades, backlog, specs] = await Promise.all([
     listGrades(repoPath, { config }),
     listBacklog(repoPath, { config }),

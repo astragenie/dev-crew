@@ -14,28 +14,26 @@ import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
 // after material state changes (slice complete, release cut, spec
 // satisfied). Pure aggregation — no LLM.
 
-function avg(values) {
-  const nums = values.filter((v) => typeof v === "number");
+function avg(values: unknown[]) {
+  const nums = values.filter((v): v is number => typeof v === "number");
   if (nums.length === 0) return null;
   return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
 }
 
 // Parse frontmatter from markdown to extract metadata.
-function parseFrontmatter(text) {
+function parseFrontmatter(text: string) {
   if (!text.startsWith("---")) return { fm: null, body: text };
   const end = text.indexOf("\n---", 3);
   if (end < 0) return { fm: null, body: text };
   const block = text.slice(3, end).trim();
   const body = text.slice(end + 4);
-  const fm = {};
+  const fm: Record<string, unknown> = {};
   for (const line of block.split(/\r?\n/)) {
     const m = line.match(/^([\w_]+):\s*(.*)$/);
     if (!m) continue;
-    let v = m[2].trim();
+    const raw = m[2].trim();
     // Try to parse as number (for usd field)
-    if (/^\d+(\.\d+)?$/.test(v)) {
-      v = Number(v);
-    }
+    const v: string | number = /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
     fm[m[1]] = v;
   }
   return { fm, body };
@@ -43,7 +41,7 @@ function parseFrontmatter(text) {
 
 // Load cost report USD values from the most recent cost reports.
 // Returns array of USD values for cost trajectory calculation.
-async function loadCostReportUSDValues(repoPath, limit = 20) {
+async function loadCostReportUSDValues(repoPath: string, limit = 20) {
   const costDirParts = [".claude", "artifacts", "crew", "cost"];
   const legacyDirParts = [".claude", "artifacts", "crew", "runs"];
 
@@ -72,8 +70,8 @@ async function loadCostReportUSDValues(repoPath, limit = 20) {
     try {
       const text = await fs.readFile(f, "utf8");
       const { fm } = parseFrontmatter(text);
-      if (fm && typeof (fm as any).usd === "number") {
-        usdValues.push((fm as any).usd);
+      if (fm && typeof fm.usd === "number") {
+        usdValues.push(fm.usd);
       }
     } catch {
       /* skip unreadable files silently */
@@ -83,7 +81,7 @@ async function loadCostReportUSDValues(repoPath, limit = 20) {
   return usdValues;
 }
 
-function renderSnapshotHeader(today) {
+function renderSnapshotHeader(today: string) {
   return [
     `# Autonomous Loop snapshot — ${today}`,
     "",
@@ -92,7 +90,7 @@ function renderSnapshotHeader(today) {
   ];
 }
 
-function renderBacklogState(backlog, inFlight) {
+function renderBacklogState(backlog: Record<string, any>[], inFlight: Record<string, any>[]) {
   return [
     "## Backlog state",
     "",
@@ -104,7 +102,7 @@ function renderBacklogState(backlog, inFlight) {
   ];
 }
 
-function renderInFlight(inFlight) {
+function renderInFlight(inFlight: Record<string, any>[]) {
   if (inFlight.length === 0) return [];
   const out = ["## In-flight features", ""];
   for (const f of inFlight) {
@@ -116,7 +114,7 @@ function renderInFlight(inFlight) {
   return out;
 }
 
-function renderTriagedTop(triagedTop) {
+function renderTriagedTop(triagedTop: Record<string, any>[]) {
   if (triagedTop.length === 0) return [];
   const out = ["## Top triaged (next to slice)", ""];
   for (const f of triagedTop) {
@@ -128,14 +126,14 @@ function renderTriagedTop(triagedTop) {
   return out;
 }
 
-function renderSpecs(specs, specsByStatus) {
+function renderSpecs(specs: Record<string, any>[], specsByStatus: Record<string, number>) {
   const out = [
     "## Specs",
     "",
     `- Total: ${specs.length} (draft: ${specsByStatus.draft}, approved: ${specsByStatus.approved}, decomposed: ${specsByStatus.decomposed}, satisfied: ${specsByStatus.satisfied})`
   ];
   const undecomposed = specs.filter(
-    (s) =>
+    (s: Record<string, any>) =>
       s.frontmatter.status === "approved" &&
       (!s.frontmatter.derived_features || s.frontmatter.derived_features.length === 0)
   );
@@ -149,14 +147,17 @@ function renderSpecs(specs, specsByStatus) {
   return out;
 }
 
-function renderGradeSignal(grades, recentScoreAverages) {
+function renderGradeSignal(
+  grades: Record<string, any>[],
+  recentScoreAverages: Record<string, number | null>
+) {
   const out = [
     "## Recent grade signal",
     "",
     `- Total grades: ${grades.length}`,
     `- Last 5 averages:`
   ];
-  for (const [dim, value] of Object.entries(recentScoreAverages as Record<string, any>)) {
+  for (const [dim, value] of Object.entries(recentScoreAverages)) {
     const flag = value !== null && value < 0.8 ? " ⚠" : "";
     out.push(`  - ${dim}: ${value === null ? "n/a" : value}${flag}`);
   }
@@ -164,7 +165,7 @@ function renderGradeSignal(grades, recentScoreAverages) {
   return out;
 }
 
-function renderDecisions(recentDecisions) {
+function renderDecisions(recentDecisions: Record<string, any>[]) {
   const out = ["## Recent decisions", ""];
   if (recentDecisions.length === 0) {
     out.push("_(none yet)_");
@@ -179,7 +180,10 @@ function renderDecisions(recentDecisions) {
   return out;
 }
 
-function renderLoopTelemetry(iterationStatus, costTrajectory) {
+function renderLoopTelemetry(
+  iterationStatus: Record<string, any> | null,
+  costTrajectory: { avgUSD: number | null; count: number; lastCostAdvisorVerdict: string | null }
+) {
   const out = ["## Loop telemetry", ""];
 
   const iterCount = iterationStatus?.count ?? 0;
@@ -216,8 +220,8 @@ function renderUsageFooter() {
 }
 
 export async function writeMemorySnapshot(
-  repoPath,
-  { config = null }: Record<string, unknown> = {}
+  repoPath: string,
+  { config = null }: { config?: Record<string, any> | null } = {}
 ) {
   const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues] =
     await Promise.all([
@@ -235,15 +239,16 @@ export async function writeMemorySnapshot(
     .sort(comparePickOrder)
     .slice(0, 5);
   const specsByStatus = {
-    draft: specs.filter((s) => s.frontmatter.status === "draft").length,
-    approved: specs.filter((s) => s.frontmatter.status === "approved").length,
-    decomposed: specs.filter((s) => s.frontmatter.status === "decomposed").length,
-    satisfied: specs.filter((s) => s.frontmatter.status === "satisfied").length
+    draft: specs.filter((s: Record<string, any>) => s.frontmatter.status === "draft").length,
+    approved: specs.filter((s: Record<string, any>) => s.frontmatter.status === "approved").length,
+    decomposed: specs.filter((s: Record<string, any>) => s.frontmatter.status === "decomposed")
+      .length,
+    satisfied: specs.filter((s: Record<string, any>) => s.frontmatter.status === "satisfied").length
   };
   const recentGrades = grades.slice(-5);
-  const recentScoreAverages = {};
+  const recentScoreAverages: Record<string, number | null> = {};
   for (const dim of SCORE_DIMENSIONS) {
-    recentScoreAverages[dim] = avg(recentGrades.map((g) => g.scores?.[dim]));
+    recentScoreAverages[dim] = avg(recentGrades.map((g: Record<string, any>) => g.scores?.[dim]));
   }
   const recentDecisions = decisions.slice(-5);
 
@@ -251,7 +256,7 @@ export async function writeMemorySnapshot(
   const costTrajectory = {
     avgUSD: avg(costReportUSDValues),
     count: costReportUSDValues.length,
-    lastCostAdvisorVerdict: null // Would be populated if we had cost advisor verdicts
+    lastCostAdvisorVerdict: null as string | null // Would be populated if we had cost advisor verdicts
   };
 
   const lines = [

@@ -5,11 +5,11 @@ import path from "node:path";
 // stringification. Best-effort — failures (e.g. read-only filesystem)
 // don't crash the caller.
 
-export function telemetryPath(repoPath) {
+export function telemetryPath(repoPath: string) {
   return path.join(repoPath, ".claude", "logs", "loop.jsonl");
 }
 
-export async function logEvent(repoPath, event) {
+export async function logEvent(repoPath: string, event: Record<string, unknown>) {
   if (!event || typeof event !== "object") return { logged: false, reason: "invalid event" };
   const target = telemetryPath(repoPath);
   const line = JSON.stringify({
@@ -21,11 +21,11 @@ export async function logEvent(repoPath, event) {
     await fs.appendFile(target, `${line}\n`);
     return { logged: true, path: target };
   } catch (error) {
-    return { logged: false, reason: error.message };
+    return { logged: false, reason: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function readEvents(repoPath, { limit = null }: Record<string, unknown> = {}) {
+export async function readEvents(repoPath: string, { limit = null }: Record<string, unknown> = {}) {
   const target = telemetryPath(repoPath);
   let content;
   try {

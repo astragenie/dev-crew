@@ -10,5 +10,5 @@ import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 export async function listPendingFeatureIds(repoPath: string): Promise<string[]> {
   const entries = await listBacklog(repoPath);
   const pending = filterBacklog(entries, { status: "pending" });
-  return pending.map((e) => e.id);
+  return pending.map((e: Record<string, any>) => String(e.id));
 }

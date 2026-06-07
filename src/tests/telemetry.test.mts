@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { logEvent, readEvents, telemetryPath } from "../scripts/lib/telemetry.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 

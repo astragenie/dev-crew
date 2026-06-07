@@ -19,7 +19,7 @@ import { buildArtifactSlug } from "./artifact-naming.mjs";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
-async function readTemplate(rel) {
+async function readTemplate(rel: string) {
   return fs.readFile(path.join(templateDir, rel), "utf8");
 }
 
@@ -39,23 +39,31 @@ function utcTimestamp() {
 // Format: <gradesRoot>/<TS>-<slug>-grade.md
 // where slug = [phaseN-][featNNN-]sliceNN (via buildArtifactSlug).
 function newGradeFilePath(
-  repoRoot,
-  sliceId,
-  { featureId, phase, config }: Record<string, unknown> = {}
+  repoRoot: string,
+  sliceId: string,
+  {
+    featureId,
+    phase,
+    config
+  }: { featureId?: string | null; phase?: string | null; config?: Record<string, any> | null } = {}
 ) {
   const slug = buildArtifactSlug({ featureId: featureId || null, phase: phase || null, sliceId });
   const filename = `${utcTimestamp()}-${slug}-grade.md`;
   return path.join(gradesRoot(repoRoot, config), filename);
 }
 
-async function findSliceFile(repoPath, sliceId, config) {
+async function findSliceFile(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null
+) {
   const slicesRootDir = resolveSlicesRoot(repoPath, config);
   return locateSliceFile(slicesRootDir, sliceId);
 }
 
 // Resolves feature/spec/phase/target_release for the prefill block. Each
 // field walks through whichever level (slice → feature → spec) carries it.
-async function readSlicePrefillFields(sliceFile) {
+async function readSlicePrefillFields(sliceFile: string | null) {
   if (!sliceFile) return { featureId: null, phase: null, targetRelease: null };
   const content = await fs.readFile(sliceFile, "utf8");
   const { frontmatter } = parseFrontmatter(content);
@@ -66,7 +74,11 @@ async function readSlicePrefillFields(sliceFile) {
   };
 }
 
-async function readFeaturePrefill(repoPath, featureId, config) {
+async function readFeaturePrefill(
+  repoPath: string,
+  featureId: string | null,
+  config: Record<string, any> | null
+) {
   if (!featureId) return { specId: null, targetRelease: null };
   const feat = await findFeatureById(repoPath, featureId, config);
   if (!feat) return { specId: null, targetRelease: null };
@@ -77,7 +89,11 @@ async function readFeaturePrefill(repoPath, featureId, config) {
   };
 }
 
-async function resolveGradePrefill(repoPath, sliceId, config) {
+async function resolveGradePrefill(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null
+) {
   const sliceFile = await findSliceFile(repoPath, sliceId, config);
   const fromSlice = await readSlicePrefillFields(sliceFile);
   const fromFeature = await readFeaturePrefill(repoPath, fromSlice.featureId, config);
@@ -94,7 +110,7 @@ async function resolveGradePrefill(repoPath, sliceId, config) {
   };
 }
 
-function applyInferredScores(tpl, inference) {
+function applyInferredScores(tpl: string, inference: Record<string, any>) {
   let out = tpl;
   for (const [dim, value] of Object.entries(inference.scores as Record<string, any>)) {
     const fixed = value.toFixed(2);
@@ -113,7 +129,20 @@ function applyInferredScores(tpl, inference) {
   return out;
 }
 
-function patchGradeFrontmatter(tpl, { featureId, specId, phase, targetRelease }) {
+function patchGradeFrontmatter(
+  tpl: string,
+  {
+    featureId,
+    specId,
+    phase,
+    targetRelease
+  }: {
+    featureId: string | null;
+    specId: string | null;
+    phase: string | null;
+    targetRelease: string | null;
+  }
+) {
   return tpl
     .replace(/GRADE-SLICE-NN/g, `GRADE-${tpl.match(/SLICE-\d+/)?.[0] || "SLICE-NN"}`)
     .replace(/^(spec):\s*null/m, `$1: ${specId || "null"}`)
@@ -123,8 +152,8 @@ function patchGradeFrontmatter(tpl, { featureId, specId, phase, targetRelease })
 }
 
 export async function createGradeFile(
-  repoPath,
-  sliceId,
+  repoPath: string,
+  sliceId: string,
   { config = null }: Record<string, any> = {}
 ) {
   if (!sliceId) throw new Error("createGradeFile requires sliceId");
@@ -174,7 +203,11 @@ export async function createGradeFile(
 // Write back the grade after agent edits: validate scores, extract DEC-TBD
 // blocks into docs/decisions/, replace TBD ids in grade body with allocated
 // ids, update frontmatter `decisions: [DEC-NNN, ...]`. Idempotent.
-export async function writeGrade(repoPath, sliceId, { config = null }: Record<string, any> = {}) {
+export async function writeGrade(
+  repoPath: string,
+  sliceId: string,
+  { config = null }: Record<string, any> = {}
+) {
   // Locate the grade file regardless of format (new timestamped or legacy).
   const target = await findGradeFileForSlice(repoPath, sliceId, config);
   if (!target) {
@@ -240,13 +273,19 @@ export async function writeGrade(repoPath, sliceId, { config = null }: Record<st
   };
 }
 
-function averageOf(scores) {
-  const vals = Object.values(scores).filter((v) => typeof v === "number");
+function averageOf(scores: Record<string, unknown>) {
+  const vals = Object.values(scores).filter((v) => typeof v === "number") as number[];
   if (vals.length === 0) return null;
   return Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(3));
 }
 
-async function extractDecisions(repoPath, sliceId, body, decisions, config) {
+async function extractDecisions(
+  repoPath: string,
+  sliceId: string,
+  body: string,
+  decisions: Record<string, any>[],
+  config: Record<string, any> | null
+) {
   if (!decisions || decisions.length === 0) {
     return { allocated: [], updatedBody: body };
   }

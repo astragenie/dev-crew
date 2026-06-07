@@ -24,7 +24,8 @@ export function renderTemplate(template, tokens) {
 }
 // Resolves a loop path token: prefer config.loop override, fall back to PATH_DEFAULTS.
 export function resolveLoopPath(config, key) {
-    return (config.loop && config.loop[key]) || PATH_DEFAULTS[key];
+    const loopOverrides = config.loop;
+    return (loopOverrides && loopOverrides[key]) || PATH_DEFAULTS[key];
 }
 // Builds the numbered mandatory-docs list embedded in the CLAUDE.md block.
 export function buildMandatoryDocsList(config, aiLoopRoot) {

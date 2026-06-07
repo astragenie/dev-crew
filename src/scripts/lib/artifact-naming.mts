@@ -26,14 +26,14 @@ import path from "node:path";
 //   - Crew-owned filenames built by crew's slugifier from the title
 //     emitted by buildArtifactTitle. Tight uppercase tags survive crew
 //     slugify as the same tight lowercase segments.
-function tight(value) {
+function tight(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function tightUpper(value) {
+function tightUpper(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value)
     .toUpperCase()
@@ -45,7 +45,7 @@ function tightUpper(value) {
 const LEADING_TS_RE = /^\d{8}T\d{6}Z-/;
 
 // True when the filename starts with the crew CLI timestamp prefix.
-export function hasLeadingTimestamp(filePath) {
+export function hasLeadingTimestamp(filePath: string) {
   return LEADING_TS_RE.test(path.basename(String(filePath)));
 }
 
@@ -54,7 +54,7 @@ export function hasLeadingTimestamp(filePath) {
 // on directories, missing files, or files without a TS prefix. The caller
 // gets back whichever path is now on disk so it can update downstream
 // references in the same step.
-export async function stripArtifactTimestamp(filePath) {
+export async function stripArtifactTimestamp(filePath: string) {
   if (!filePath) return filePath;
   const dir = path.dirname(filePath);
   const base = path.basename(filePath);

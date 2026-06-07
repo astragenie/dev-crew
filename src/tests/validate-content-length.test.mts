@@ -15,13 +15,13 @@ async function mkTmp() {
   return await fs.mkdtemp(path.join(os.tmpdir(), "loop-len-"));
 }
 
-async function writeFile(root, rel, content) {
+async function writeFile(root: string, rel: string, content: string) {
   const full = path.join(root, rel);
   await fs.mkdir(path.dirname(full), { recursive: true });
   await fs.writeFile(full, content, "utf8");
 }
 
-function nLines(n) {
+function nLines(n: number) {
   // n lines = n "\n" chars (wc -l semantics).
   return "x\n".repeat(n);
 }

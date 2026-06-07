@@ -76,6 +76,8 @@ export async function locateSliceFile(slicesRootDir, sliceId) {
         const stack = [slicesRootDir];
         while (stack.length > 0) {
             const dir = stack.pop();
+            if (!dir)
+                continue;
             let entries;
             try {
                 entries = await fs.readdir(dir, { withFileTypes: true });

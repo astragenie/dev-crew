@@ -11,7 +11,7 @@ import {
   CONFIG_FILENAME
 } from "../scripts/lib/config-resolver.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
@@ -24,7 +24,7 @@ test("listPresets returns dotnet-aspire-python with required fields", async () =
 
 test("resolveConfig returns preset defaults when no user config exists", async () => {
   const repo = await tmpRepo("al-resolve-default-");
-  const config = await resolveConfig(repo);
+  const config = (await resolveConfig(repo)) as Record<string, any>;
   assert.equal(config.preset, "dotnet-aspire-python");
   assert.equal(config.loop.aiLoopRoot, ".claude/artifacts/loop/ai-loop");
   assert.ok(Array.isArray(config.stack.build));
@@ -44,7 +44,7 @@ test("resolveConfig deep-merges user overrides on top of preset", async () => {
       }
     })
   );
-  const config = await resolveConfig(repo);
+  const config = (await resolveConfig(repo)) as Record<string, any>;
   assert.equal(config.productName, "My Test Product");
   assert.equal(
     config.stack.test[0].cmd,
@@ -61,7 +61,7 @@ test("resolveConfig treats explicit null as disable", async () => {
     path.join(repo, CONFIG_FILENAME),
     JSON.stringify({ preset: "dotnet-aspire-python", stack: { build: null } })
   );
-  const config = await resolveConfig(repo);
+  const config = (await resolveConfig(repo)) as Record<string, any>;
   assert.equal(
     config.stack.build,
     null,

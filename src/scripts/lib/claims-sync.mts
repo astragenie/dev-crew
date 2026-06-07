@@ -22,7 +22,7 @@ import { pathExists } from "./paths.mjs";
 const CLAIMS_STATE = path.join(".claude", "state", "crew", "claims.json");
 const FEAT_RE = /\b(FEAT-\d+)\b/;
 
-async function readClaimsState(repoPath) {
+async function readClaimsState(repoPath: string) {
   const target = path.join(repoPath, CLAIMS_STATE);
   if (!(await pathExists(target))) return { claims: {} };
   try {
@@ -33,7 +33,7 @@ async function readClaimsState(repoPath) {
   }
 }
 
-function extractFeatureIdsFromClaims(claims) {
+function extractFeatureIdsFromClaims(claims: Record<string, unknown>) {
   // claims is a map of filepath -> claim record. Pull FEAT-NNN refs from
   // either the path itself or the claim's optional metadata.feature field.
   const ids = new Set();
@@ -49,7 +49,7 @@ function extractFeatureIdsFromClaims(claims) {
 }
 
 export async function syncClaims(
-  repoPath,
+  repoPath: string,
   { config = null, apply = true }: Record<string, unknown> = {}
 ) {
   const state = await readClaimsState(repoPath);
@@ -60,7 +60,7 @@ export async function syncClaims(
 
   // Direction 1: claimed features that aren't in in-progress yet -> move them
   for (const featureId of claimedFeatureIds) {
-    const entry = backlog.find((f) => f.id === featureId);
+    const entry = backlog.find((f: Record<string, unknown>) => f.id === featureId);
     if (!entry) {
       actions.push({
         type: "claim-without-feature",

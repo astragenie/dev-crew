@@ -16,6 +16,22 @@ function avg(values) {
         return null;
     return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
 }
+function computeGradeSignal(grades) {
+    const recentGrades = grades.slice(-5);
+    const scoreSnapshot = {};
+    for (const dim of SCORE_DIMENSIONS) {
+        scoreSnapshot[dim] = avg(recentGrades.map((g) => g.scores?.[dim]));
+    }
+    return {
+        total: grades.length,
+        lastFive: recentGrades.map((g) => ({
+            slice: g.frontmatter.slice,
+            avg: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d]))
+        })),
+        avgRecent: avg(recentGrades.map((g) => avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d])))),
+        perDimensionRecent: scoreSnapshot
+    };
+}
 // Count how many warn alerts would be demoted under current autoMode + ignoredCategories config.
 function countDemotedAlerts(alerts, config) {
     const autoMode = config?.loop?.autoMode ?? config?.loop?.marathonMode ?? true;
@@ -67,28 +83,17 @@ export async function buildBrief(repoPath, { config = null } = {}) {
         .filter((s) => s.frontmatter.status === "approved" &&
         (!Array.isArray(s.frontmatter.derived_features) ||
             s.frontmatter.derived_features.length === 0))
-        .map((s) => ({ id: s.id, type: s.frontmatter.type, title: s.frontmatter.title }));
-    // Score signal over last 5 grades
-    const recentGrades = grades.slice(-5);
-    const scoreSnapshot = {};
-    for (const dim of SCORE_DIMENSIONS) {
-        scoreSnapshot[dim] = avg(recentGrades.map((g) => g.scores?.[dim]));
-    }
-    const avgRecent = avg(recentGrades.map((g) => avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d]))));
+        .map((s) => ({
+        id: s.id,
+        type: s.frontmatter.type,
+        title: s.frontmatter.title
+    }));
     return {
         backlogCounts,
         topTriaged,
         inFlight,
         specsToDecompose,
-        grades: {
-            total: grades.length,
-            lastFive: recentGrades.map((g) => ({
-                slice: g.frontmatter.slice,
-                avg: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d]))
-            })),
-            avgRecent,
-            perDimensionRecent: scoreSnapshot
-        },
+        grades: computeGradeSignal(grades),
         decisions: {
             total: decisions.length,
             accepted: decisions.filter((d) => d.status === "accepted").length,

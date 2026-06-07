@@ -20,7 +20,7 @@ export const PM_DIMENSIONS = [
  * @param {Record<string, unknown>} scores
  * @returns {string[]} Array of error strings; empty when valid.
  */
-export function validatePmScores(scores) {
+export function validatePmScores(scores: Record<string, unknown>) {
   const errors: any[] = [];
   for (const dim of PM_DIMENSIONS) {
     const v = scores[dim];
@@ -52,7 +52,7 @@ export function validatePmScores(scores) {
  * @param {string} [category="feature"]
  * @returns {"P0"|"P1"|"P2"|"P3"}
  */
-export function computeCompositePriority(scores, category = "feature") {
+export function computeCompositePriority(scores: Record<string, number>, category = "feature") {
   const impact = scores.customer_impact;
   const effort = scores.effort_estimate;
   const alignment = scores.strategic_alignment;
@@ -86,7 +86,10 @@ export function computeCompositePriority(scores, category = "feature") {
  * @param {{ hasSpec?: boolean, hasAcceptanceCriteria?: boolean }} [context={}]
  * @returns {boolean}
  */
-export function computeAutonomousSafe(scores, context: Record<string, any> = {}) {
+export function computeAutonomousSafe(
+  scores: Record<string, number>,
+  context: Record<string, any> = {}
+) {
   const { hasSpec = false, hasAcceptanceCriteria = false } = context;
 
   if (scores.technical_risk > 0.6) return false;
@@ -109,7 +112,7 @@ export function computeAutonomousSafe(scores, context: Record<string, any> = {})
  *
  * Returns null when any required dimension is missing or non-numeric.
  */
-export function computeWeightedCompositeScore(scores): number | null {
+export function computeWeightedCompositeScore(scores: Record<string, unknown>): number | null {
   const impact = Number(scores.customer_impact);
   const effort = Number(scores.effort_estimate);
   const alignment = Number(scores.strategic_alignment);
@@ -128,9 +131,9 @@ export function computeWeightedCompositeScore(scores): number | null {
  * @param {Record<string, unknown>} scores
  * @returns {number|null} Mean value, or null when no valid dimension exists.
  */
-export function averagePmScore(scores) {
+export function averagePmScore(scores: Record<string, unknown>) {
   const values = PM_DIMENSIONS.map((d) => scores[d]).filter(
-    (v) => typeof v === "number" && !Number.isNaN(v)
+    (v): v is number => typeof v === "number" && !Number.isNaN(v)
   );
   if (values.length === 0) return null;
   const raw = values.reduce((a, b) => a + b, 0) / values.length;
@@ -147,8 +150,8 @@ export function averagePmScore(scores) {
  * @param {Record<string, unknown>} frontmatter
  * @returns {Record<string, number>}
  */
-export function parsePmScoresFromFrontmatter(frontmatter) {
-  const scores = {};
+export function parsePmScoresFromFrontmatter(frontmatter: Record<string, unknown>) {
+  const scores: Record<string, unknown> = {};
   for (const dim of PM_DIMENSIONS) {
     const key = `pm_${dim}`;
     if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {

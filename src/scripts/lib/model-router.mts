@@ -12,16 +12,18 @@ export const MODEL_PHASES = [
 
 const FALLBACK_MODEL = "opus";
 
-export function resolveModel(phase, config) {
-  const routing = config?.loop?.modelRouting;
+export function resolveModel(phase: string, config: Record<string, unknown>): string {
+  const loop = config?.loop as Record<string, unknown> | undefined;
+  const routing = loop?.modelRouting as Record<string, string> | undefined;
   if (!routing) return FALLBACK_MODEL;
   return routing[phase] || routing.default || FALLBACK_MODEL;
 }
 
 // Returns the configured orchestrator session model, or null if not set.
 // Used by startSlice to surface a model-mismatch gate to the orchestrator.
-export function resolveOrchestratorModel(config): string | null {
-  return config?.loop?.orchestratorModel ?? null;
+export function resolveOrchestratorModel(config: Record<string, unknown>): string | null {
+  const loop = config?.loop as Record<string, unknown> | undefined;
+  return (loop?.orchestratorModel as string) ?? null;
 }
 
 /**
@@ -32,7 +34,7 @@ export function resolveOrchestratorModel(config): string | null {
  *
  * Default split: architect=opus, editor=sonnet (when loop.json ships the standard preset).
  */
-export function resolveArchitectModels(config: any): {
+export function resolveArchitectModels(config: Record<string, unknown>): {
   architectModel: string;
   editorModel: string;
 } {

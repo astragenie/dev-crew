@@ -11,7 +11,7 @@ import {
   checkMarathonMilestone
 } from "../scripts/lib/grade-trend.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude", "state"), { recursive: true });
   return repo;

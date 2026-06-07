@@ -19,13 +19,17 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function parseDate(iso) {
+function parseDate(iso: string | null | undefined) {
   if (!iso) return null;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function withinWindow(itemDate, sinceDate, untilDate) {
+function withinWindow(
+  itemDate: string | null | undefined,
+  sinceDate: Date | null,
+  untilDate: Date | null
+) {
   if (!itemDate) return false;
   const d = parseDate(itemDate);
   if (!d) return false;
@@ -34,13 +38,13 @@ function withinWindow(itemDate, sinceDate, untilDate) {
   return true;
 }
 
-function avg(values) {
-  const nums = values.filter((v) => typeof v === "number");
+function avg(values: unknown[]) {
+  const nums = values.filter((v): v is number => typeof v === "number");
   if (nums.length === 0) return null;
   return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
 }
 
-function topRepeats(strings, limit = 5) {
+function topRepeats(strings: string[], limit = 5) {
   // Counts repeated lessons / surprises / followups via token-shingle similarity.
   // For MVP: exact-prefix match on the first 40 chars (case-insensitive).
   const counts = new Map();
@@ -57,7 +61,7 @@ function topRepeats(strings, limit = 5) {
     .map(([key, count]) => ({ key, count }));
 }
 
-function parseListSection(body, sectionHeader) {
+function parseListSection(body: string, sectionHeader: string) {
   const items: any[] = [];
   const lines = body.split("\n");
   let inSection = false;
@@ -76,7 +80,7 @@ function parseListSection(body, sectionHeader) {
 }
 
 export async function buildRetrospective(
-  repoPath,
+  repoPath: string,
   { since = null, spanDays = null, until = null, config = null }: Record<string, any> = {}
 ) {
   const untilStr = until || todayIso();
@@ -97,7 +101,7 @@ export async function buildRetrospective(
   ]);
 
   // Filter to window using frontmatter graded_at / introduced_at / updated / completed_at
-  const gradesInWindow = grades.filter((g) =>
+  const gradesInWindow = grades.filter((g: Record<string, any>) =>
     withinWindow(g.frontmatter.graded_at, sinceDate, untilDate)
   );
   const decisionsInWindow = decisions.filter((d) =>
@@ -105,32 +109,40 @@ export async function buildRetrospective(
   );
 
   // Score averages per dimension
-  const scoreAverages = {};
+  const scoreAverages: Record<string, number | null> = {};
   for (const dim of SCORE_DIMENSIONS) {
-    scoreAverages[dim] = avg(gradesInWindow.map((g) => g.scores?.[dim]));
+    scoreAverages[dim] = avg(gradesInWindow.map((g: Record<string, any>) => g.scores?.[dim]));
   }
-  const dimensionsBelowThreshold = SCORE_DIMENSIONS.filter((dim) => {
+  const dimensionsBelowThreshold = SCORE_DIMENSIONS.filter((dim: string) => {
     const v = scoreAverages[dim];
     return v !== null && v < 0.8;
   });
 
   // Aggregate lessons / surprises / followups from grade bodies
-  const allLessons = gradesInWindow.flatMap((g) => parseListSection(g.body, "Lessons"));
-  const allSurprises = gradesInWindow.flatMap((g) => parseListSection(g.body, "Surprises"));
-  const allFollowups = gradesInWindow.flatMap((g) => parseListSection(g.body, "Followups"));
+  const allLessons = gradesInWindow.flatMap((g: Record<string, any>) =>
+    parseListSection(g.body, "Lessons")
+  );
+  const allSurprises = gradesInWindow.flatMap((g: Record<string, any>) =>
+    parseListSection(g.body, "Surprises")
+  );
+  const allFollowups = gradesInWindow.flatMap((g: Record<string, any>) =>
+    parseListSection(g.body, "Followups")
+  );
 
   // Slice cadence: graded_at distribution
   const cadenceCount = gradesInWindow.length;
 
   // Backlog flow during window: features that moved in / out
   const movedToDone = backlog.filter(
-    (f) =>
+    (f: Record<string, any>) =>
       f.state === "done" &&
       withinWindow(f.frontmatter.completed_at || f.frontmatter.updated, sinceDate, untilDate)
   );
 
   // Specs satisfied in window (status changed to satisfied — coarse: just count)
-  const specsSatisfied = specs.filter((s) => s.frontmatter.status === "satisfied");
+  const specsSatisfied = specs.filter(
+    (s: Record<string, any>) => s.frontmatter.status === "satisfied"
+  );
 
   return {
     range: { since: sinceStr, until: untilStr },
@@ -150,10 +162,10 @@ export async function buildRetrospective(
       title: d.title,
       slice: d.introduced_by_slice
     })),
-    gradesList: gradesInWindow.map((g) => ({
+    gradesList: gradesInWindow.map((g: Record<string, any>) => ({
       slice: g.frontmatter.slice,
       feature: g.frontmatter.feature,
-      avg: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d])),
+      avg: avg(SCORE_DIMENSIONS.map((d: string) => g.scores?.[d])),
       gradedAt: g.frontmatter.graded_at
     })),
     cadenceSlicesPerWeek:
@@ -168,7 +180,7 @@ export async function buildRetrospective(
   };
 }
 
-function renderRetroSummary(report) {
+function renderRetroSummary(report: Record<string, any>) {
   const lines = [
     "## Summary",
     `- Slices graded: ${report.counts.gradesInWindow}`,
@@ -183,7 +195,7 @@ function renderRetroSummary(report) {
   return lines;
 }
 
-function renderRetroScores(report) {
+function renderRetroScores(report: Record<string, any>) {
   const out = ["## Score averages"];
   for (const [dim, value] of Object.entries(report.scoreAverages)) {
     const flag = report.dimensionsBelowThreshold.includes(dim) ? " ⚠ below 0.80" : "";
@@ -193,7 +205,7 @@ function renderRetroScores(report) {
   return out;
 }
 
-function renderRetroDimensionGaps(report) {
+function renderRetroDimensionGaps(report: Record<string, any>) {
   if (report.dimensionsBelowThreshold.length === 0) return [];
   const out = ["## Improvement opportunities"];
   for (const dim of report.dimensionsBelowThreshold) {
@@ -205,7 +217,7 @@ function renderRetroDimensionGaps(report) {
   return out;
 }
 
-function renderRetroTopList(heading, items) {
+function renderRetroTopList(heading: string, items: Array<Record<string, any>>) {
   if (items.length === 0) return [];
   const out = [`## ${heading}`];
   for (const { key, count } of items) {
@@ -215,7 +227,7 @@ function renderRetroTopList(heading, items) {
   return out;
 }
 
-function renderRetroDecisions(report) {
+function renderRetroDecisions(report: Record<string, any>) {
   if (report.decisionsList.length === 0) return [];
   const out = ["## Decisions made"];
   for (const d of report.decisionsList) {
@@ -225,7 +237,7 @@ function renderRetroDecisions(report) {
   return out;
 }
 
-function renderRetroGrades(report) {
+function renderRetroGrades(report: Record<string, any>) {
   if (report.gradesList.length === 0) return [];
   const out = ["## Slices graded"];
   for (const g of report.gradesList) {
@@ -237,7 +249,7 @@ function renderRetroGrades(report) {
   return out;
 }
 
-function renderMarkdown(report) {
+function renderMarkdown(report: Record<string, any>) {
   return [
     `# Retrospective ${report.range.since ?? "(all time)"} → ${report.range.until}`,
     "",
@@ -252,7 +264,7 @@ function renderMarkdown(report) {
   ].join("\n");
 }
 
-export async function writeRetrospective(repoPath, options: Record<string, any> = {}) {
+export async function writeRetrospective(repoPath: string, options: Record<string, any> = {}) {
   const report = await buildRetrospective(repoPath, options);
   const md = renderMarkdown(report);
   const dir = retroRoot(repoPath, options.config || null);

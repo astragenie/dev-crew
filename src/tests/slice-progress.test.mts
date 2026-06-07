@@ -13,11 +13,11 @@ import {
   refreshSliceProgress
 } from "../scripts/lib/slice-linker/slice-progress.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-async function writeFile(repo, rel, content) {
+async function writeFile(repo: string, rel: string, content: string) {
   const full = path.join(repo, rel);
   await fs.mkdir(path.dirname(full), { recursive: true });
   await fs.writeFile(full, content);
@@ -119,9 +119,27 @@ test("detectSliceStatus marks completed when slice file frontmatter status is co
 test("writeSliceProgress produces a dashboard file with status rows", async () => {
   const repo = await tmpRepo("al-slice-progress-write-");
   const slices = [
-    { id: "SLICE-17", title: "Auth", completed: true, exists: true, slicePath: null },
-    { id: "SLICE-18", title: "Sources", completed: false, exists: true, slicePath: null },
-    { id: "SLICE-19", title: "GitHub", completed: false, exists: false, slicePath: null }
+    {
+      id: "SLICE-17",
+      title: "Auth",
+      completed: true,
+      exists: true,
+      slicePath: null as string | null
+    },
+    {
+      id: "SLICE-18",
+      title: "Sources",
+      completed: false,
+      exists: true,
+      slicePath: null as string | null
+    },
+    {
+      id: "SLICE-19",
+      title: "GitHub",
+      completed: false,
+      exists: false,
+      slicePath: null as string | null
+    }
   ];
   const result = await writeSliceProgress(repo, {
     activePlan: { source: "superpowers", planPath: path.join(repo, "plan.md"), slices: [] },

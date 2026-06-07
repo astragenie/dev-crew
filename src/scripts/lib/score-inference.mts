@@ -69,7 +69,12 @@ const INFERENCE_RULES = {
 // Loads artifacts via frontmatter linkage (slice frontmatter arrays) when
 // available, falling back to body-scrape if no linkage exists. Linkage path
 // is preferred — it's deterministic and survives content edits.
-async function readLinkedOrScrapedArtifacts(repoPath, dirRelative, sliceId, kind) {
+async function readLinkedOrScrapedArtifacts(
+  repoPath: string,
+  dirRelative: string,
+  sliceId: string,
+  kind: string
+) {
   const { getLinkedArtifacts } = await import("./artifact-linkage.mjs");
   const linked = await getLinkedArtifacts(repoPath, sliceId, kind);
   if (linked.length > 0) {
@@ -91,7 +96,11 @@ async function readLinkedOrScrapedArtifacts(repoPath, dirRelative, sliceId, kind
 // Reads all .md files in a crew artifact dir whose body or filename mentions
 // the given slice id (e.g. "SLICE-52" or "SLICE_52"). Returns the file list.
 // Used as fallback when slice frontmatter has no linkage arrays.
-async function readArtifactsMentioningSlice(repoPath, dirRelative, sliceId) {
+async function readArtifactsMentioningSlice(
+  repoPath: string,
+  dirRelative: string,
+  sliceId: string
+) {
   const dir = path.join(repoPath, dirRelative);
   if (!(await pathExists(dir))) return [];
   const files = await fs.readdir(dir);
@@ -111,9 +120,9 @@ async function readArtifactsMentioningSlice(repoPath, dirRelative, sliceId) {
   return matching;
 }
 
-export async function inferScoresForSlice(repoPath, sliceId) {
+export async function inferScoresForSlice(repoPath: string, sliceId: string) {
   if (!sliceId) return { scores: {}, sources: {} };
-  const sources = {
+  const sources: Record<string, { path: string; content: string; filename: string }[]> = {
     reviews: await readLinkedOrScrapedArtifacts(
       repoPath,
       ARTIFACT_DIRS.reviews,
@@ -151,14 +160,16 @@ export async function inferScoresForSlice(repoPath, sliceId) {
     }
   }
 
-  const scores = {};
-  const sourcesPerDim = {};
+  const scores: Record<string, number> = {};
+  const sourcesPerDim: Record<string, string[]> = {};
   for (const [dim, contribs] of Object.entries(contributions)) {
     if (contribs.length === 0) continue;
-    const values = contribs.map((c) => c.value);
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const values = contribs.map((c: { value: number }) => c.value);
+    const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length;
     scores[dim] = Number(avg.toFixed(2));
-    sourcesPerDim[dim] = contribs.map((c) => `${c.dir}/${c.source}`);
+    sourcesPerDim[dim] = contribs.map(
+      (c: { dir: string; source: string }) => `${c.dir}/${c.source}`
+    );
   }
 
   return {

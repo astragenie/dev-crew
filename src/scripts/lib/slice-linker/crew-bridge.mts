@@ -36,7 +36,7 @@ async function findHeroCrewCli() {
     "C:/work/mega/hero-crew/scripts/crew.mjs",
     home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
     home ? `${home}/hero-crew/scripts/crew.mjs` : null
-  ].filter(Boolean);
+  ].filter((c): c is string => c !== null);
   for (const candidate of localCandidates) {
     if (await pathExists(candidate)) return candidate;
   }
@@ -57,15 +57,35 @@ async function findHeroCrewCli() {
 // Invokes `crew write-run-brief` to rotate workflow-state.currentRun to
 // the new slice. Best-effort: missing crew is a soft no-op so the agent
 // can still proceed; the loop driver inspects the return.
-function pushOptionalFlags(args, pairs) {
+function pushOptionalFlags(args: string[], pairs: [string, string | null | undefined][]) {
   for (const [flag, value] of pairs) {
     if (value) args.push(flag, String(value));
   }
 }
 
 export async function writeCrewRunBrief(
-  repoPath,
-  { sliceId, title, goal, featureId, phase, mode, pace, scope, outOfScope }
+  repoPath: string,
+  {
+    sliceId,
+    title,
+    goal,
+    featureId,
+    phase,
+    mode,
+    pace,
+    scope,
+    outOfScope
+  }: {
+    sliceId: string;
+    title?: string | null;
+    goal?: string | null;
+    featureId?: string | null;
+    phase?: string | null;
+    mode?: string | null;
+    pace?: string | null;
+    scope?: string | null;
+    outOfScope?: string | null;
+  }
 ) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
@@ -106,8 +126,8 @@ export async function writeCrewRunBrief(
       return { stdout: stdout.slice(0, 500) };
     }
     return parsed;
-  } catch (err) {
-    return { error: err.message };
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
   }
 }
 
@@ -120,7 +140,7 @@ export async function writeCrewRunBrief(
 // with that value — avoids false-high alerts from aggregate mode when
 // running a single repo alongside other active repos.
 // Auto-detect fallback: linked worktree OR multiple worktrees → scoped.
-export async function detectCostMode(repoPath, config) {
+export async function detectCostMode(repoPath: string, config: Record<string, any> | null) {
   if (config?.loop?.costProject) return "scoped";
   try {
     const { stdout: commonDir } = await execFile("git", ["rev-parse", "--git-common-dir"], {
@@ -155,7 +175,11 @@ export async function detectCostMode(repoPath, config) {
 // the cost-report filename.
 // Append --feature / --phase flags to a crew CLI arg list when present.
 // Keeps argv terse and the caller's branch count low.
-function appendFeaturePhaseArgs(args, featureId, phase) {
+function appendFeaturePhaseArgs(
+  args: string[],
+  featureId: string | null | undefined,
+  phase: string | null | undefined
+) {
   if (featureId) args.push("--feature", String(featureId));
   if (phase !== null && phase !== undefined && String(phase).length > 0) {
     args.push("--phase", String(phase));
@@ -165,7 +189,7 @@ function appendFeaturePhaseArgs(args, featureId, phase) {
 // Spawn the crew CLI, return parsed JSON or fall back to a truncated stdout
 // envelope. Captures execFile errors as `{ error }` so the caller does not
 // need its own try/catch around every invocation.
-async function runCrew(args) {
+async function runCrew(args: string[]) {
   try {
     const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
     try {
@@ -173,8 +197,8 @@ async function runCrew(args) {
     } catch {
       return { stdout: stdout.slice(0, 500) };
     }
-  } catch (err) {
-    return { error: err.message };
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
   }
 }
 
@@ -184,7 +208,11 @@ async function runCrew(args) {
 // aliases are pushed FIRST and primary is pushed LAST — this ensures the
 // primary wins in current crew builds while the full alias list is present
 // for future crew versions that may support multi-source aggregation.
-export function appendSourceProjectArgs(args, primary, aliases) {
+export function appendSourceProjectArgs(
+  args: string[],
+  primary: string,
+  aliases: string[] | null | undefined
+) {
   if (Array.isArray(aliases)) {
     for (const alias of aliases) {
       if (typeof alias === "string" && alias.length > 0) {
@@ -195,9 +223,13 @@ export function appendSourceProjectArgs(args, primary, aliases) {
   args.push("--source-project", primary);
 }
 
-export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
+export async function tryWriteCostReport(
+  repoPath: string,
+  sliceOrInfo: string | Record<string, any> | null,
+  config: Record<string, any> | null
+) {
   const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
-  const { sliceId, featureId = null, phase = null } = info;
+  const { sliceId, featureId = null, phase = null } = info as Record<string, any>;
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
 
@@ -216,7 +248,7 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
 
   const adviseArgs = [cli, "cost-advise", "--repo", repoPath, "--title", runTitle];
   appendFeaturePhaseArgs(adviseArgs, featureId, phase);
-  let advise: any = null;
+  let advise: Record<string, any> | null = null;
   try {
     const { stdout } = await execFile("node", adviseArgs, {
       maxBuffer: 1024 * 1024
@@ -226,8 +258,8 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
     } catch {
       advise = { stdout: stdout.slice(0, 500) };
     }
-  } catch (err) {
-    advise = { error: err.message };
+  } catch (err: unknown) {
+    advise = { error: (err as Error).message };
   }
 
   return { ...report, advise, costMode: mode };
@@ -238,7 +270,7 @@ export async function tryWriteCostReport(repoPath, sliceOrInfo, config) {
 // missing crew is reported via `{ skipped }`, identical to other bridge
 // calls. The slice close still proceeds — the bypass already passed the
 // gate in completeSlice; this call only records *why*.
-export async function markValidationSkippedBadge(repoPath, reason) {
+export async function markValidationSkippedBadge(repoPath: string, reason: string) {
   const cli = await findHeroCrewCli();
   if (!cli) return { skipped: "hero-crew CLI not found" };
   const args = [
@@ -254,17 +286,21 @@ export async function markValidationSkippedBadge(repoPath, reason) {
   return runCrew(args);
 }
 
-function renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS) {
+function renderSynthesisScores(
+  grade: Record<string, any> | null,
+  sliceId: string,
+  SCORE_DIMENSIONS: string[]
+) {
   if (!grade) {
     return `_(no grade yet — run \`/loop:slice grade --id ${sliceId}\`)_`;
   }
   return SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n");
 }
 
-function renderSynthesisDecisions(grade) {
+function renderSynthesisDecisions(grade: Record<string, any> | null) {
   const decisions = grade?.frontmatter?.decisions;
   if (!decisions || decisions.length === 0) return "_(no decisions captured)_";
-  return decisions.map((d) => `- ${d}`).join("\n");
+  return decisions.map((d: string) => `- ${d}`).join("\n");
 }
 
 function renderSynthesisBody({
@@ -279,6 +315,18 @@ function renderSynthesisBody({
   config,
   featureId,
   phase
+}: {
+  sliceId: string;
+  sliceRel: string;
+  featureRel: string | null;
+  specChanges: Record<string, any>[] | null | undefined;
+  scoresBlock: string;
+  decisionsBlock: string;
+  grade: Record<string, any> | null;
+  repoPath: string;
+  config: Record<string, any> | null;
+  featureId: string | null | undefined;
+  phase: string | null | undefined;
 }) {
   const gradeRel = path
     .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
@@ -292,7 +340,7 @@ function renderSynthesisBody({
     "",
     `- Slice: \`${sliceRel}\` (completed)`,
     featureRel ? `- Feature: \`${featureRel}\` (done)` : "",
-    specChanges?.length > 0
+    specChanges && specChanges.length > 0
       ? `- Spec status changes: ${specChanges.map((c) => `${c.id} → ${c.to}`).join(", ")}`
       : "",
     "",
@@ -320,8 +368,24 @@ function renderSynthesisBody({
 }
 
 export async function writeCrewFinalSynthesis(
-  repoPath,
-  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges, config = null }
+  repoPath: string,
+  {
+    sliceId,
+    slicePath,
+    featureId,
+    phase = null,
+    featureResult,
+    specChanges,
+    config = null
+  }: {
+    sliceId: string;
+    slicePath: string;
+    featureId?: string | null;
+    phase?: string | null;
+    featureResult?: Record<string, any> | null;
+    specChanges?: Record<string, any>[] | null;
+    config?: Record<string, any> | null;
+  }
 ) {
   const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
   await ensureDir(runsDir);
@@ -351,12 +415,12 @@ export async function writeCrewFinalSynthesis(
     sliceId,
     sliceRel,
     featureRel,
-    specChanges,
+    specChanges: specChanges ?? null,
     scoresBlock: renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS),
     decisionsBlock: renderSynthesisDecisions(grade),
     grade,
     repoPath,
-    config,
+    config: config ?? null,
     featureId,
     phase
   });
@@ -365,14 +429,43 @@ export async function writeCrewFinalSynthesis(
   return { synthesisPath: target, hasGrade: Boolean(grade) };
 }
 
-export async function tryWriteAgentReport(repoPath, { sliceId, featureId, phase, startedAt }) {
+export async function tryWriteAgentReport(
+  repoPath: string,
+  {
+    sliceId,
+    featureId,
+    phase,
+    startedAt
+  }: {
+    sliceId: string;
+    featureId?: string | null;
+    phase?: string | null;
+    startedAt?: string | null;
+  }
+) {
   const { writeAgentReport } = await import("./agent-report-writer.mjs");
   return writeAgentReport(repoPath, { sliceId, featureId, phase, startedAt });
 }
 
 export async function writeCrewHandoff(
-  repoPath,
-  { sliceId, slicePath, featureId, phase = null, featureResult, specChanges, config = null }
+  repoPath: string,
+  {
+    sliceId,
+    slicePath,
+    featureId,
+    phase = null,
+    featureResult,
+    specChanges,
+    config = null
+  }: {
+    sliceId: string;
+    slicePath: string;
+    featureId?: string | null;
+    phase?: string | null;
+    featureResult?: Record<string, any> | null;
+    specChanges?: Record<string, any>[] | null;
+    config?: Record<string, any> | null;
+  }
 ) {
   const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
   await ensureDir(handoffDir);

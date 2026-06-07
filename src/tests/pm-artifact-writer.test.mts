@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { writePmReviewArtifact } from "../scripts/lib/pm-artifact-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 

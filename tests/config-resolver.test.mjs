@@ -15,7 +15,7 @@ test("listPresets returns dotnet-aspire-python with required fields", async () =
 });
 test("resolveConfig returns preset defaults when no user config exists", async () => {
     const repo = await tmpRepo("al-resolve-default-");
-    const config = await resolveConfig(repo);
+    const config = (await resolveConfig(repo));
     assert.equal(config.preset, "dotnet-aspire-python");
     assert.equal(config.loop.aiLoopRoot, ".claude/artifacts/loop/ai-loop");
     assert.ok(Array.isArray(config.stack.build));
@@ -31,7 +31,7 @@ test("resolveConfig deep-merges user overrides on top of preset", async () => {
             test: [{ cmd: "custom-test", args: ["--all"] }]
         }
     }));
-    const config = await resolveConfig(repo);
+    const config = (await resolveConfig(repo));
     assert.equal(config.productName, "My Test Product");
     assert.equal(config.stack.test[0].cmd, "custom-test", "user test override should replace preset test array");
     assert.ok(config.stack.build.length > 0, "preset build should remain after merge");
@@ -40,7 +40,7 @@ test("resolveConfig treats explicit null as disable", async () => {
     const repo = await tmpRepo("al-resolve-null-");
     await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
     await fs.writeFile(path.join(repo, CONFIG_FILENAME), JSON.stringify({ preset: "dotnet-aspire-python", stack: { build: null } }));
-    const config = await resolveConfig(repo);
+    const config = (await resolveConfig(repo));
     assert.equal(config.stack.build, null, "explicit null disables the stage even if preset has a default");
 });
 test("resolveConfig throws on unknown preset", async () => {

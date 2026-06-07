@@ -74,7 +74,11 @@ export async function readSliceContext(slicesRoot, sliceId) {
         file = null;
     }
     if (!file) {
-        return { file: null, frontmatter: {}, goal: null };
+        return {
+            file: null,
+            frontmatter: {},
+            goal: null
+        };
     }
     const content = await fs.readFile(file, "utf8");
     const frontmatter = parseFrontmatter(content).frontmatter || {};

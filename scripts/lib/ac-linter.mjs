@@ -21,7 +21,11 @@ export function lintAcceptanceCriteria(content) {
     const lines = content.split(/\r?\n/);
     const startIdx = lines.findIndex((l) => /^##\s+Acceptance\s+criteria\s*$/i.test(l));
     if (startIdx === -1) {
-        return { ok: false, violations: [], error: "No '## Acceptance criteria' section found" };
+        return {
+            ok: false,
+            violations: [],
+            error: "No '## Acceptance criteria' section found"
+        };
     }
     const acBullets = [];
     for (let i = startIdx + 1; i < lines.length; i++) {

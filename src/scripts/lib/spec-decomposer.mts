@@ -14,12 +14,28 @@ import { linkFeatureToSpec } from "./linkage.mjs";
 //   2. Agent calls /loop:spec decompose with the feature titles
 //   3. This module creates each FEAT in pending/ + links back to the spec
 
-export async function decomposeSpec(repoPath, specId, featureTitles, config = null) {
+export async function decomposeSpec(
+  repoPath: string,
+  specId: string,
+  featureTitles: Array<
+    | string
+    | {
+        title?: string;
+        priority?: string | null;
+        category?: string | null;
+        target_release?: string | null;
+        body?: string;
+      }
+  >,
+  config: Record<string, any> | null = null
+) {
   if (!Array.isArray(featureTitles) || featureTitles.length === 0) {
     throw new Error("decomposeSpec requires a non-empty array of feature titles.");
   }
   const specs = await listSpecs(repoPath, { config });
-  const spec = specs.find((s) => s.id === specId);
+  const spec = specs.find(
+    (s: { id: string; frontmatter: Record<string, unknown> }) => s.id === specId
+  );
   if (!spec) {
     throw new Error(`Spec not found: ${specId}`);
   }

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { deriveTestAdequacyGate } from "../scripts/lib/test-adequacy-gate.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -25,7 +25,7 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function writeSlice(repo, reviews = []) {
+async function writeSlice(repo: string, reviews: string[] = []) {
   const sliceDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
   await fs.mkdir(sliceDir, { recursive: true });
   const slicePath = path.join(sliceDir, "SLICE_01_test.md");
@@ -37,8 +37,8 @@ async function writeSlice(repo, reviews = []) {
 }
 
 async function writeReviewArtifact(
-  repo,
-  relPath,
+  repo: string,
+  relPath: string,
   { testAdequacy = null, skipReason = null }: Record<string, unknown> = {}
 ) {
   const absPath = path.join(repo, relPath);

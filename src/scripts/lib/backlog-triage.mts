@@ -203,10 +203,7 @@ function buildTriageNotes(
   return notes.join("; ");
 }
 
-export function triageEntry(entry: {
-  body?: string;
-  frontmatter: Record<string, any>;
-}): Record<string, any> {
+export function triageEntry(entry: Record<string, any>): Record<string, any> {
   const text = `${entry.body || ""}\n${entry.frontmatter.title || ""}`;
   const updates: Record<string, any> = {};
 

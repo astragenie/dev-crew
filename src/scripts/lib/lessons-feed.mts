@@ -4,7 +4,7 @@ import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 // agent reads this before drafting acceptance criteria so prior pain doesn't
 // repeat. Returns structured data + a ready-to-include markdown digest.
 
-function parseListSection(body, sectionHeader) {
+function parseListSection(body: string, sectionHeader: string) {
   const items: any[] = [];
   const lines = body.split("\n");
   let inSection = false;
@@ -23,12 +23,12 @@ function parseListSection(body, sectionHeader) {
 }
 
 export async function recentLessons(
-  repoPath,
-  { limit = 5, config = null }: Record<string, any> = {}
+  repoPath: string,
+  { limit = 5, config = null }: { limit?: number; config?: unknown } = {}
 ) {
   const grades = await listGrades(repoPath, { config });
   const recent = grades.slice(-limit);
-  const items = recent.map((g) => ({
+  const items = recent.map((g: Record<string, any>) => ({
     slice: g.frontmatter.slice,
     graded_at: g.frontmatter.graded_at,
     avg_score: avg(SCORE_DIMENSIONS.map((d) => g.scores?.[d])),
@@ -43,15 +43,15 @@ export async function recentLessons(
   };
 }
 
-function avg(values) {
-  const nums = values.filter((v) => typeof v === "number");
+function avg(values: unknown[]): number | null {
+  const nums = values.filter((v): v is number => typeof v === "number");
   if (nums.length === 0) return null;
-  return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
+  return Number((nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(3));
 }
 
-function renderDigest(items) {
+function renderDigest(items: Record<string, any>[]): string {
   if (items.length === 0) return "_(no grades yet — first slice has no feed-forward signal)_";
-  const lines: any[] = [];
+  const lines: string[] = [];
   lines.push(`# Lessons feed-forward — last ${items.length} slice(s)`);
   lines.push("");
   for (const item of items) {

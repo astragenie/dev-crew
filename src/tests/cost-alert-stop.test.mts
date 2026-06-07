@@ -8,7 +8,7 @@ import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 import { countHighSeverityCostAlerts } from "../scripts/lib/cost-alert-loader.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude/state/crew"), { recursive: true });
   await fs.mkdir(path.join(repo, ".claude/artifacts/crew/cost-insights"), { recursive: true });
@@ -28,7 +28,7 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function writeCostAdvise(repo, sliceId, content) {
+async function writeCostAdvise(repo: string, sliceId: string, content: string) {
   const dir = path.join(repo, ".claude/artifacts/crew/cost-insights");
   await fs.mkdir(dir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";
@@ -134,7 +134,7 @@ status: pending
   const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true, "should stop when high-severity cost alert exists");
   assert.ok(
-    result.reasons.some((r) => r.includes("cost_alert_high")),
+    result.reasons.some((r: string) => r.includes("cost_alert_high")),
     "should include cost_alert_high in reasons"
   );
   assert.equal(result.snapshot.costAlerts, 1, "cost alerts snapshot should be 1");

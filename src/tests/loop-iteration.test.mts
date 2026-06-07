@@ -12,7 +12,7 @@ import {
 } from "../scripts/lib/loop-iteration.mjs";
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
@@ -144,8 +144,8 @@ test("checkStopConditions returns iterationCapReached=true when cap exhausted", 
   const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true);
   assert.equal(result.iterationCapReached, true);
-  assert.ok(result.reasons.some((r) => r.includes("iteration cap reached")));
-  assert.ok(result.suggestions.some((s) => s.includes("maxIterations")));
+  assert.ok(result.reasons.some((r: string) => r.includes("iteration cap reached")));
+  assert.ok(result.suggestions.some((s: string) => s.includes("maxIterations")));
   assert.equal(result.snapshot.iterationCount, 25);
 });
 
@@ -220,6 +220,6 @@ test("stop-conditions keeps backward-compat: still checks backlog + alerts", asy
   const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true);
   // Should have empty backlog reason, not iteration cap reason
-  assert.ok(result.reasons.some((r) => r.includes("backlog empty")));
+  assert.ok(result.reasons.some((r: string) => r.includes("backlog empty")));
   assert.equal(result.iterationCapReached, false);
 });

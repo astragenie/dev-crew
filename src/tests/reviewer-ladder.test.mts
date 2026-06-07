@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { buildReviewLadder, extractFilesSection } from "../scripts/lib/reviewer-ladder.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -27,8 +27,8 @@ async function tmpRepo(prefix) {
 }
 
 async function seedSlice(
-  repo,
-  sliceId,
+  repo: string,
+  sliceId: string,
   { feature = null, phase = null }: Record<string, unknown> = {}
 ) {
   const dir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");

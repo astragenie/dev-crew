@@ -53,7 +53,7 @@ export async function updateClaudeMd(
   const blockTemplate = await readTemplate("claude-md-hard-rules.md");
   const renderedBlock = renderTemplate(blockTemplate, tokens).trimEnd();
 
-  const existing = await fs.readFile(claudePath, "utf8").catch(() => null);
+  const existing = await fs.readFile(claudePath, "utf8").catch((): null => null);
   if (existing === null) {
     // Create a minimal CLAUDE.md if none exists.
     const initial = `# CLAUDE.md\n\nProject memory for Claude Code. Read this first before making changes.\n\n${renderedBlock}\n`;
@@ -82,7 +82,7 @@ export async function registerReadGuardHook(repoPath: string, writes: string[]):
   await ensureDir(path.dirname(settingsPath));
 
   let settings: Record<string, any> = {};
-  const existing = await fs.readFile(settingsPath, "utf8").catch(() => null);
+  const existing = await fs.readFile(settingsPath, "utf8").catch((): null => null);
   if (existing !== null) {
     try {
       settings = JSON.parse(existing);
@@ -135,7 +135,7 @@ export async function writeLoopRules(
   const contents = renderTemplate(tpl, tokens);
   const target = path.join(repoPath, ".claude", "loop", "rules.md");
   await ensureDir(path.dirname(target));
-  const existing = await fs.readFile(target, "utf8").catch(() => null);
+  const existing = await fs.readFile(target, "utf8").catch((): null => null);
   if (existing !== contents) {
     await fs.writeFile(target, contents);
     writes.push(path.relative(repoPath, target));
@@ -191,7 +191,7 @@ export async function writeLoopControlFiles(
     const tpl = await readTemplate(template);
     const contents = tokenize ? renderTemplate(tpl, tokens) : tpl;
     await ensureDir(path.dirname(target));
-    const existing = await fs.readFile(target, "utf8").catch(() => null);
+    const existing = await fs.readFile(target, "utf8").catch((): null => null);
     if (existing !== contents) {
       await fs.writeFile(target, contents);
       writes.push(path.relative(repoPath, target));

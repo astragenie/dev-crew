@@ -9,13 +9,13 @@ import { fileURLToPath } from "node:url";
 
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
-async function readJson(p) {
+async function readJson(p: string) {
   return JSON.parse(await fs.readFile(p, "utf8"));
 }
 
-export async function validateManifests(repoRoot) {
-  const failures: any[] = [];
-  const fail = (msg) => failures.push(msg);
+export async function validateManifests(repoRoot: string) {
+  const failures: string[] = [];
+  const fail = (msg: string) => failures.push(msg);
 
   const plugin = await readJson(path.join(repoRoot, ".claude-plugin", "plugin.json"));
   const marketplace = await readJson(path.join(repoRoot, ".claude-plugin", "marketplace.json"));
@@ -34,7 +34,9 @@ export async function validateManifests(repoRoot) {
   if (!SEMVER_RE.test(plugin.version))
     fail(`plugin.json: version "${plugin.version}" is not parseable semver`);
 
-  const ownEntry = marketplace.plugins.find((entry) => entry.name === plugin.name);
+  const ownEntry = marketplace.plugins.find(
+    (entry: { name: string; version: string; source?: string }) => entry.name === plugin.name
+  );
   if (!ownEntry) {
     fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
   } else if (ownEntry.version !== plugin.version) {

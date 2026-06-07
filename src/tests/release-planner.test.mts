@@ -10,7 +10,7 @@ import { addSpec, updateSpecFrontmatter } from "../scripts/lib/spec-parser.mjs";
 import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 

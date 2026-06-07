@@ -11,16 +11,15 @@ import { incrementIteration } from "./loop-iteration.mjs";
 const execFile = promisify(execFileCallback);
 
 function renderReport(
-  repoPath,
-  config,
-  phase,
-  note,
-  stageResults,
-  overallStatus,
-  startedAt,
-  endedAt
+  config: Record<string, any>,
+  phase: unknown,
+  note: string,
+  stageResults: Record<string, any>[],
+  overallStatus: string,
+  startedAt: string,
+  endedAt: string
 ) {
-  const lines: any[] = [];
+  const lines: string[] = [];
   lines.push(`# Phase Gate Report — phase ${phase} — ${endedAt}`);
   lines.push("");
   lines.push("## Summary");
@@ -78,7 +77,12 @@ function renderReport(
   return lines.join("\n");
 }
 
-async function writeReport(repoPath, config, phase, body) {
+async function writeReport(
+  repoPath: string,
+  config: Record<string, any>,
+  phase: unknown,
+  body: string
+) {
   const artifactDir = path.resolve(
     repoPath,
     config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations"
@@ -95,7 +99,15 @@ async function writeReport(repoPath, config, phase, body) {
   return target;
 }
 
-async function recordWithCrew(crewCli, repoPath, title, decision, summary, artifactPath, phase) {
+async function recordWithCrew(
+  crewCli: string,
+  repoPath: string,
+  title: string,
+  decision: string,
+  summary: string,
+  artifactPath: string,
+  phase: unknown
+) {
   try {
     const args = [
       crewCli,
@@ -117,7 +129,7 @@ async function recordWithCrew(crewCli, repoPath, title, decision, summary, artif
     const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
     // Capture the crew-written artifact path so we can strip the leading
     // timestamp prefix (matches the repo-owned phase-gate filename surface).
-    let crewArtifactPath: any = null;
+    let crewArtifactPath: string | null = null;
     try {
       const parsed = JSON.parse(stdout);
       const candidate = parsed?.artifactPath || parsed?.path || parsed?.outputPath || null;
@@ -128,22 +140,22 @@ async function recordWithCrew(crewCli, repoPath, title, decision, summary, artif
       // crew CLI may not emit JSON — best-effort only.
     }
     return { ok: true, crewArtifactPath };
-  } catch (error) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return { ok: false, error: (error as Error).message };
   }
 }
 
-async function safeIncrementIteration(repoPath) {
+async function safeIncrementIteration(repoPath: string) {
   try {
     return await incrementIteration(repoPath);
-  } catch (err) {
-    return { error: err.message };
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
   }
 }
 
-export async function runPhaseGate(repoPath, options: Record<string, any> = {}) {
+export async function runPhaseGate(repoPath: string, options: Record<string, any> = {}) {
   const startedAt = nowIso();
-  const config = await resolveConfig(repoPath);
+  const config = (await resolveConfig(repoPath)) as Record<string, any>;
   const phase = options.phase || "unspecified";
   const note = options.note || "";
 
@@ -154,7 +166,7 @@ export async function runPhaseGate(repoPath, options: Record<string, any> = {}) 
     );
   }
 
-  const stageResults: any[] = [];
+  const stageResults: Record<string, any>[] = [];
   stageResults.push(await runStageList(repoPath, "build", config.stack?.build));
   stageResults.push(await runStageList(repoPath, "test", config.stack?.test));
   stageResults.push(await runSingleStage(repoPath, "frontendBuild", config.stack?.frontendBuild));
@@ -165,16 +177,7 @@ export async function runPhaseGate(repoPath, options: Record<string, any> = {}) 
   const overallStatus = anyFailed ? "FAIL" : "PASS";
   const endedAt = nowIso();
 
-  const body = renderReport(
-    repoPath,
-    config,
-    phase,
-    note,
-    stageResults,
-    overallStatus,
-    startedAt,
-    endedAt
-  );
+  const body = renderReport(config, phase, note, stageResults, overallStatus, startedAt, endedAt);
   const artifactPath = await writeReport(repoPath, config, phase, body);
 
   const summary = `phase ${phase} ${overallStatus} — preset ${config.preset} — ${stageResults.filter((s) => !s.skipped).length} stages run`;
@@ -196,21 +199,21 @@ export async function runPhaseGate(repoPath, options: Record<string, any> = {}) 
   // Auto-invoke retrospective when phase gate PASSes. Captures lessons /
   // score trends / decisions over the window since the previous phase-gate
   // artifact (default span 30 days if no prior gate found).
-  let retrospective: any = null;
-  let deployHandoffs: any[] = [];
+  let retrospective: Record<string, any> | null = null;
+  let deployHandoffs: Record<string, any>[] = [];
   if (overallStatus === "PASS") {
     try {
       retrospective = await runRetrospectiveSincePreviousGate(repoPath, phase);
-    } catch (err) {
-      retrospective = { error: err.message };
+    } catch (err: unknown) {
+      retrospective = { error: (err as Error).message };
     }
     // After retrospective, scan for any release where all targeted features
     // are done — if found, write a handoff to crew deployer surfacing the
     // ready-to-cut version. Best-effort; failures don't break phase-gate.
     try {
       deployHandoffs = await emitDeployHandoffsForReadyReleases(repoPath);
-    } catch (err) {
-      deployHandoffs = [{ error: err.message }];
+    } catch (err: unknown) {
+      deployHandoffs = [{ error: (err as Error).message }];
     }
   }
 
@@ -226,7 +229,7 @@ export async function runPhaseGate(repoPath, options: Record<string, any> = {}) 
       name: s.name,
       skipped: Boolean(s.skipped),
       ok: s.skipped ? null : s.ok,
-      failingCount: (s.runs || []).filter((r) => !r.ok).length
+      failingCount: ((s.runs as Record<string, any>[]) || []).filter((r) => !r.ok).length
     })),
     retrospective,
     deployHandoffs,
@@ -238,20 +241,20 @@ export async function runPhaseGate(repoPath, options: Record<string, any> = {}) 
 // feature is in done/. For each, writes a handoff to crew deployer in
 // .claude/artifacts/crew/handoffs/. Idempotent — checks for existing
 // "ready-to-deploy-<version>" handoff before writing again.
-async function emitDeployHandoffsForReadyReleases(repoPath) {
+async function emitDeployHandoffsForReadyReleases(repoPath: string) {
   const { listBacklog } = await import("./backlog-parser.mjs");
-  const backlog = await listBacklog(repoPath);
-  const byRelease = new Map();
+  const backlog = (await listBacklog(repoPath)) as Record<string, any>[];
+  const byRelease = new Map<string, Record<string, any>[]>();
   for (const f of backlog) {
     const tr = f.frontmatter.target_release;
     if (!tr) continue;
     if (!byRelease.has(tr)) byRelease.set(tr, []);
-    byRelease.get(tr).push(f);
+    byRelease.get(tr)!.push(f);
   }
   const handoffsDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
   await fs.mkdir(handoffsDir, { recursive: true });
-  const existing = await fs.readdir(handoffsDir).catch(() => []);
-  const written: any[] = [];
+  const existing = await fs.readdir(handoffsDir).catch(() => [] as string[]);
+  const written: Record<string, any>[] = [];
   for (const [version, features] of byRelease) {
     if (features.length === 0) continue;
     const allDone = features.every((f) => f.state === "done");
@@ -320,13 +323,13 @@ async function emitDeployHandoffsForReadyReleases(repoPath) {
 // Look back at docs/<phaseGateArtifactDir> for the previous phase-N-gate-*.md
 // artifact and use its date as the retrospective lower bound. Falls back to
 // 30 days if no prior gate exists.
-async function runRetrospectiveSincePreviousGate(repoPath, phase) {
-  const config = await resolveConfig(repoPath);
+async function runRetrospectiveSincePreviousGate(repoPath: string, phase: unknown) {
+  const config = (await resolveConfig(repoPath)) as Record<string, any>;
   const dir = path.resolve(
     repoPath,
     config.loop?.phaseGateArtifactDir || ".claude/artifacts/crew/validations"
   );
-  let entries;
+  let entries: string[] = [];
   try {
     entries = await fs.readdir(dir);
   } catch {
@@ -335,7 +338,7 @@ async function runRetrospectiveSincePreviousGate(repoPath, phase) {
   const phaseRe = /^phase-(.+)-gate-(\d{8})T\d+Z?\.md$/;
   const prior = entries
     .map((name) => name.match(phaseRe))
-    .filter((m) => m)
+    .filter((m): m is RegExpMatchArray => m !== null)
     .map((m) => ({ phase: m[1], stamp: m[2] }))
     .filter((e) => e.phase !== String(phase))
     .sort((a, b) => b.stamp.localeCompare(a.stamp));

@@ -1,0 +1,878 @@
+
+> loop-plugin@0.8.3 typecheck
+> tsc --project tsconfig.json --noEmit && tsc --project tsconfig.test.json --noEmit
+
+src/scripts/lib/auto-walker.mts(203,16): error TS2345: Argument of type '(a: { frontmatter: Record<string, any>; }, b: { frontmatter: Record<string, any>; }) => number' is not assignable to parameter of type '(a: Record<string, any>, b: Record<string, any>) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'frontmatter' is missing in type 'Record<string, any>' but required in type '{ frontmatter: Record<string, any>; }'.
+src/scripts/lib/backlog-list-ids.mts(13,22): error TS2345: Argument of type '(e: { id: string; }) => string' is not assignable to parameter of type '(value: Record<string, any>, index: number, array: Record<string, any>[]) => string'.
+  Types of parameters 'e' and 'value' are incompatible.
+    Property 'id' is missing in type 'Record<string, any>' but required in type '{ id: string; }'.
+src/scripts/lib/backlog-triage.mts(258,33): error TS2345: Argument of type 'Record<string, any>' is not assignable to parameter of type '{ body?: string | undefined; frontmatter: Record<string, any>; }'.
+  Property 'frontmatter' is missing in type 'Record<string, any>' but required in type '{ body?: string | undefined; frontmatter: Record<string, any>; }'.
+src/scripts/lib/backlog-writer.mts(91,48): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/backlog-writer.mts(91,58): error TS7006: Parameter 'updates' implicitly has an 'any' type.
+src/scripts/lib/backlog-writer.mts(99,35): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/backlog-writer.mts(99,45): error TS7006: Parameter 'toState' implicitly has an 'any' type.
+src/scripts/lib/backlog-writer.mts(134,39): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/backlog-writer.mts(134,49): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/backlog-writer.mts(136,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(15,14): error TS7006: Parameter 'values' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(16,31): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(18,31): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(18,34): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(32,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(64,11): error TS2345: Argument of type '(a: { frontmatter: { priority?: string | undefined; }; idNumber: number; }, b: { frontmatter: { priority?: string | undefined; }; idNumber: number; }) => number' is not assignable to parameter of type '(a: Record<string, any>, b: Record<string, any>) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Type 'Record<string, any>' is missing the following properties from type '{ frontmatter: { priority?: string | undefined; }; idNumber: number; }': frontmatter, idNumber
+src/scripts/lib/brief.mts(84,8): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(89,11): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(95,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/brief.mts(95,48): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(97,43): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/brief.mts(106,35): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/cache.mts(7,24): error TS7006: Parameter 'key' implicitly has an 'any' type.
+src/scripts/lib/cache.mts(7,29): error TS7006: Parameter 'asyncFn' implicitly has an 'any' type.
+src/scripts/lib/cache.mts(14,22): error TS7006: Parameter 'key' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(10,28): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(23,26): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(36,30): error TS7006: Parameter 'feat' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(50,28): error TS7006: Parameter 'feat' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(64,28): error TS7006: Parameter 'phases' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(100,47): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(100,57): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(115,46): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/ceremonies.mts(115,56): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/claims-sync.mts(25,32): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/claims-sync.mts(36,38): error TS7006: Parameter 'claims' implicitly has an 'any' type.
+src/scripts/lib/claims-sync.mts(52,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/claims-sync.mts(63,33): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(39,34): error TS7006: Parameter 'presetName' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(48,9): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/config-resolver.mts(56,31): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(62,9): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/config-resolver.mts(69,24): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(73,20): error TS7006: Parameter 'base' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(73,26): error TS7006: Parameter 'overrides' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(91,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(101,44): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(101,54): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/config-resolver.mts(114,28): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/cost-alert-loader.mts(57,33): error TS7006: Parameter 'text' implicitly has an 'any' type.
+src/scripts/lib/cost-alert-loader.mts(75,5): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/scripts/lib/cost-alert-loader.mts(80,38): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/cost-alert-loader.mts(92,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/cost-alert-loader.mts(120,49): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/cost-alert-loader.mts(139,51): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/crew-workflow-reader.mts(14,31): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/crew-workflow-reader.mts(27,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/crew-workflow-reader.mts(42,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(15,29): error TS7006: Parameter 'rel' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(24,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(52,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(66,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(67,5): error TS7031: Binding element 'id' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(67,9): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(67,16): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(107,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(107,55): error TS7006: Parameter 'changedFiles' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(138,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(138,46): error TS7006: Parameter 'decisionId' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(147,41): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(147,53): error TS7031: Binding element 'oldId' implicitly has an 'any' type.
+src/scripts/lib/decisions-store.mts(147,60): error TS7031: Binding element 'newId' implicitly has an 'any' type.
+src/scripts/lib/frontmatter.mts(20,22): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/scripts/lib/frontmatter.mts(28,22): error TS7006: Parameter 'raw' implicitly has an 'any' type.
+src/scripts/lib/frontmatter.mts(38,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/scripts/lib/frontmatter.mts(104,10): error TS7023: 'serializeScalar' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+src/scripts/lib/frontmatter.mts(104,26): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(31,37): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(45,7): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/scripts/lib/grade-parser.mts(51,30): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(58,32): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(80,40): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(124,33): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(136,22): error TS7006: Parameter 'filename' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(140,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(162,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(162,55): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(180,41): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(180,51): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(189,31): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-parser.mts(189,41): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(12,20): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(20,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(33,27): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(33,37): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(47,40): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(47,52): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(47,61): error TS7031: Binding element 'avg' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(70,39): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(88,34): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(88,42): error TS7006: Parameter 'threshold' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(109,46): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(116,22): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(119,32): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/scripts/lib/grade-trend.mts(119,37): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(22,29): error TS7006: Parameter 'rel' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(42,3): error TS7006: Parameter 'repoRoot' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(43,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(51,30): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(51,40): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(51,49): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(58,39): error TS7006: Parameter 'sliceFile' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(69,35): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(69,45): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(69,56): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(80,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(80,46): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(80,55): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(97,30): error TS7006: Parameter 'tpl' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(97,35): error TS7006: Parameter 'inference' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(116,32): error TS7006: Parameter 'tpl' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(116,39): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(116,50): error TS7031: Binding element 'specId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(116,58): error TS7031: Binding element 'phase' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(116,65): error TS7031: Binding element 'targetRelease' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(126,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(127,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(177,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(177,44): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(243,20): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(249,33): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(249,43): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(249,52): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(249,58): error TS7006: Parameter 'decisions' implicitly has an 'any' type.
+src/scripts/lib/grade-writer.mts(249,69): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(7,27): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(7,33): error TS7006: Parameter 'sectionHeader' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(26,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(31,29): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(46,14): error TS7006: Parameter 'values' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(47,31): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(49,31): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(49,34): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/lessons-feed.mts(52,23): error TS7006: Parameter 'items' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(9,40): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(21,38): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(22,35): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(30,32): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(30,55): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(38,43): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(47,38): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(49,37): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(60,41): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(60,51): error TS7006: Parameter 'specId' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(60,59): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/linkage.mts(62,28): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/loop-installer-tokens.mts(32,47): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ artifactRoot: string; aiLoopRoot: string; backlogPath: string; slicesRoot: string; backlogRoot: string; specsRoot: string; gradesRoot: string; decisionsRoot: string; releasesRoot: string; retrospectivesRoot: string; snapshotPath: string; phaseGateArtifactDir: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ artifactRoot: string; aiLoopRoot: string; backlogPath: string; slicesRoot: string; backlogRoot: string; specsRoot: string; gradesRoot: string; decisionsRoot: string; releasesRoot: string; retrospectivesRoot: string; snapshotPath: string; phaseGateArtifactDir: string; }'.
+src/scripts/lib/loop-iteration.mts(11,33): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(15,31): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(21,35): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(27,9): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/loop-iteration.mts(35,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(35,46): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(44,50): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(58,42): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(76,42): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/loop-iteration.mts(84,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(17,14): error TS7006: Parameter 'values' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(18,31): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(20,31): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(20,34): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(24,27): error TS7006: Parameter 'text' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(39,5): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+src/scripts/lib/memory-snapshot.mts(46,40): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(86,31): error TS7006: Parameter 'today' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(95,29): error TS7006: Parameter 'backlog' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(95,38): error TS7006: Parameter 'inFlight' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(107,25): error TS7006: Parameter 'inFlight' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(119,27): error TS7006: Parameter 'triagedTop' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(131,22): error TS7006: Parameter 'specs' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(131,29): error TS7006: Parameter 'specsByStatus' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(138,6): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(152,28): error TS7006: Parameter 'grades' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(152,36): error TS7006: Parameter 'recentScoreAverages' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(167,26): error TS7006: Parameter 'recentDecisions' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(182,30): error TS7006: Parameter 'iterationStatus' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(182,47): error TS7006: Parameter 'costTrajectory' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(219,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(235,11): error TS2345: Argument of type '(a: { frontmatter: { priority?: string | undefined; }; idNumber: number; }, b: { frontmatter: { priority?: string | undefined; }; idNumber: number; }) => number' is not assignable to parameter of type '(a: Record<string, any>, b: Record<string, any>) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Type 'Record<string, any>' is missing the following properties from type '{ frontmatter: { priority?: string | undefined; }; idNumber: number; }': frontmatter, idNumber
+src/scripts/lib/memory-snapshot.mts(238,26): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(239,29): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(240,31): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(241,30): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/memory-snapshot.mts(246,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/memory-snapshot.mts(246,54): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/model-router.mts(15,30): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/model-router.mts(15,37): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/model-router.mts(23,42): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(20,18): error TS7006: Parameter 'key' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(20,23): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(21,33): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ artifactRoot: string; aiLoopRoot: string; backlogPath: string; slicesRoot: string; backlogRoot: string; specsRoot: string; gradesRoot: string; decisionsRoot: string; releasesRoot: string; retrospectivesRoot: string; snapshotPath: string; phaseGateArtifactDir: string; }'.
+src/scripts/lib/paths.mts(24,30): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(24,40): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(27,28): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(27,38): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(30,29): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(30,39): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(33,28): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(33,38): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(36,29): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(36,39): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(39,27): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(39,37): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(42,28): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(42,38): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(45,31): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(45,41): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(48,30): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(48,40): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(51,27): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(51,37): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(54,30): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(54,40): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(57,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(57,48): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(61,34): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(70,33): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(74,39): error TS7006: Parameter 'slicesRootDir' implicitly has an 'any' type.
+src/scripts/lib/paths.mts(74,54): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(50,33): error TS7006: Parameter 'grades' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(57,34): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(73,36): error TS7006: Parameter 'backlog' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(98,31): error TS7006: Parameter 'specs' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(116,34): error TS7006: Parameter 'backlog' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(117,35): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(129,39): error TS7006: Parameter 'backlog' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(131,35): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/pattern-alerts.mts(145,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(14,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(15,3): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(16,3): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(17,3): error TS7006: Parameter 'note' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(18,3): error TS7006: Parameter 'stageResults' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(19,3): error TS7006: Parameter 'overallStatus' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(20,3): error TS7006: Parameter 'startedAt' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(21,3): error TS7006: Parameter 'endedAt' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(81,28): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(81,38): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(81,46): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(81,53): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,31): error TS7006: Parameter 'crewCli' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,40): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,50): error TS7006: Parameter 'title' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,57): error TS7006: Parameter 'decision' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,67): error TS7006: Parameter 'summary' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,76): error TS7006: Parameter 'artifactPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(98,90): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(132,32): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/phase-gate.mts(136,39): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(140,21): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/phase-gate.mts(144,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(205,32): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/phase-gate.mts(213,34): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/phase-gate.mts(229,44): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(241,51): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(257,37): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(281,13): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(323,50): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(323,60): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/phase-gate.mts(329,7): error TS7034: Variable 'entries' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/scripts/lib/phase-gate.mts(336,17): error TS7005: Variable 'entries' implicitly has an 'any[]' type.
+src/scripts/lib/phase-gate/runners.mts(19,15): error TS7006: Parameter 'text' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(28,30): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(28,40): error TS7006: Parameter 'step' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(52,20): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/phase-gate/runners.mts(52,46): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/phase-gate/runners.mts(54,20): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/phase-gate/runners.mts(55,20): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/phase-gate/runners.mts(55,36): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/phase-gate/runners.mts(61,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(61,46): error TS7006: Parameter 'name' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(61,52): error TS7006: Parameter 'steps' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(81,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(81,48): error TS7006: Parameter 'name' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(81,54): error TS7006: Parameter 'step' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(89,33): error TS7006: Parameter 'url' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(101,32): error TS7006: Parameter 'url' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(120,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/phase-gate/runners.mts(120,48): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/plugin-identity.mts(14,25): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/plugin-identity.mts(100,38): error TS7006: Parameter 'crewCliPath' implicitly has an 'any' type.
+src/scripts/lib/plugin-identity.mts(119,31): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/plugin-identity.mts(119,34): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/pm-artifact-writer.mts(33,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(23,34): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(55,42): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(89,39): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(112,47): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(131,32): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(150,46): error TS7006: Parameter 'frontmatter' implicitly has an 'any' type.
+src/scripts/lib/pm-scorer.mts(155,7): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/release-planner.mts(16,27): error TS7006: Parameter 'version' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(21,22): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(36,30): error TS7006: Parameter 'features' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(52,29): error TS7006: Parameter 'sid' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(52,34): error TS7006: Parameter 'entries' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(52,43): error TS7006: Parameter 'specs' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(57,30): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(60,34): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(69,16): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(77,28): error TS7006: Parameter 'version' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(77,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(77,47): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(95,3): error TS7031: Binding element 'version' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(96,3): error TS7031: Binding element 'features' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(97,3): error TS7031: Binding element 'specs' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(98,3): error TS7031: Binding element 'releaseStatus' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(99,3): error TS7031: Binding element 'generatedAt' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(100,3): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(101,3): error TS7031: Binding element 'config' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(110,36): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(111,38): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(115,44): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(115,47): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(129,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(137,36): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(141,25): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(166,31): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(167,32): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(168,39): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(177,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(182,36): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(186,28): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(187,34): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(188,31): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/release-planner.mts(189,31): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(22,20): error TS7006: Parameter 'iso' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(28,23): error TS7006: Parameter 'itemDate' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(28,33): error TS7006: Parameter 'sinceDate' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(28,44): error TS7006: Parameter 'untilDate' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(37,14): error TS7006: Parameter 'values' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(38,31): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(40,31): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(40,34): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(43,21): error TS7006: Parameter 'strings' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(60,27): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(60,33): error TS7006: Parameter 'sectionHeader' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(79,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(100,41): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(110,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/retrospective.mts(110,50): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(113,15): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/retrospective.mts(118,46): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(119,48): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(120,48): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(127,6): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(133,40): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(153,37): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(171,29): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(186,28): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(196,35): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(208,29): error TS7006: Parameter 'heading' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(208,38): error TS7006: Parameter 'items' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(218,31): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(228,28): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(240,25): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/scripts/lib/retrospective.mts(255,42): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/reviewer-ladder.mts(17,37): error TS7006: Parameter 'content' implicitly has an 'any' type.
+src/scripts/lib/reviewer-ladder.mts(24,31): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/reviewer-ladder.mts(39,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/reviewer-ladder.mts(40,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/reviewer-ladder.mts(66,29): error TS7006: Parameter 'reviewerId' implicitly has an 'any' type.
+src/scripts/lib/reviewer-ladder.mts(69,7): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ A: string; B: string; }'.
+src/scripts/lib/score-inference.mts(72,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(72,55): error TS7006: Parameter 'dirRelative' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(72,68): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(72,77): error TS7006: Parameter 'kind' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(94,45): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(94,55): error TS7006: Parameter 'dirRelative' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(94,68): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(114,43): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(114,53): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(141,25): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ reviews: any[]; validations: any[]; deployments: any[]; }'.
+  No index signature with a parameter of type 'string' was found on type '{ reviews: any[]; validations: any[]; deployments: any[]; }'.
+src/scripts/lib/score-inference.mts(158,34): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(159,32): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(159,35): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/score-inference.mts(160,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/score-inference.mts(161,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/score-inference.mts(161,40): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(13,31): error TS7006: Parameter 'payloadPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(24,35): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(24,45): error TS7006: Parameter 'startedAt' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(50,28): error TS7006: Parameter 'payloadPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(60,25): error TS7006: Parameter 'stopPayload' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(60,38): error TS7006: Parameter 'stopTs' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(60,46): error TS7006: Parameter 'startEntry' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(75,29): error TS7006: Parameter 'startPayload' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(75,43): error TS7006: Parameter 'startTs' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(133,26): error TS7006: Parameter 'startPayloads' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(133,41): error TS7006: Parameter 'stopPayloads' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(133,55): error TS7006: Parameter 'startTimestamps' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(133,72): error TS7006: Parameter 'stopTimestamps' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(159,28): error TS7006: Parameter 'block' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(159,35): error TS7006: Parameter 'tools' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(159,42): error TS7006: Parameter 'skills' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(166,35): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(166,42): error TS7006: Parameter 'obj' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(179,32): error TS7006: Parameter 'transcriptPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(205,31): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/slice-linker/agent-report-writer.mts(210,19): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(210,22): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(218,30): error TS7006: Parameter 'ids' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(218,35): error TS7006: Parameter 'adj' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(240,32): error TS7006: Parameter 'agentPairs' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(241,37): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(243,35): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(255,25): error TS7006: Parameter 'ms' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(263,19): error TS7006: Parameter 'toolMap' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(272,25): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(282,27): error TS7006: Parameter 'agents' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(289,31): error TS7006: Parameter 'groups' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(289,39): error TS7006: Parameter 'agentPairs' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(291,44): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(293,11): error TS7006: Parameter 'group' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(293,18): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(294,34): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(300,25): error TS7006: Parameter 'agents' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(314,28): error TS7006: Parameter 'agents' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(328,38): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(328,45): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(328,56): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(339,3): error TS7006: Parameter 'agents' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(340,3): error TS7006: Parameter 'groups' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(376,37): error TS7006: Parameter 'events' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(394,43): error TS7006: Parameter 'pairs' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(396,22): error TS7006: Parameter 'pair' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(416,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/agent-report-writer.mts(417,5): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(24,30): error TS7006: Parameter 'workflowState' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(31,27): error TS7006: Parameter 'fn' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(35,21): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/slice-linker/complete-slice.mts(42,36): error TS7031: Binding element 'sliceFile' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(42,47): error TS7031: Binding element 'sliceContent' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(42,61): error TS7031: Binding element 'sliceFm' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(42,70): error TS7031: Binding element 'slicesRoot' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(42,82): error TS7031: Binding element 'today' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(67,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(67,44): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(67,55): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(102,3): error TS7031: Binding element 'isBlocked' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(103,3): error TS7031: Binding element 'isSimplifyBlocked' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(104,3): error TS7031: Binding element 'blockingGates' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(105,3): error TS7031: Binding element 'validationGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(106,3): error TS7031: Binding element 'testAdequacyGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(121,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(122,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(123,3): error TS7006: Parameter 'blockingGates' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(124,3): error TS7006: Parameter 'validationGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(125,3): error TS7006: Parameter 'testAdequacyGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(162,3): error TS7006: Parameter '_repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(168,3): error TS7006: Parameter '_config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(208,3): error TS7006: Parameter 'blockingGates' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(209,3): error TS7006: Parameter 'validationGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(210,3): error TS7006: Parameter 'testAdequacyGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(230,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(231,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(232,3): error TS7006: Parameter 'blockingGates' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(233,3): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(276,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(277,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(278,3): error TS7006: Parameter 'sliceFm' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(279,3): error TS7006: Parameter 'skipValidationCheck' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(305,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(305,46): error TS7006: Parameter 'sliceFile' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(320,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,5): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,14): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,25): error TS7031: Binding element 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,32): error TS7031: Binding element 'featureResult' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,47): error TS7031: Binding element 'specChanges' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,60): error TS7031: Binding element 'targetSlicePath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,77): error TS7031: Binding element 'startedAt' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(321,88): error TS7031: Binding element 'resolved' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(408,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(408,47): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(534,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(535,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(536,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(537,3): error TS7006: Parameter 'featureResult' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(538,3): error TS7006: Parameter 'validationGate' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/complete-slice.mts(670,46): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/scripts/lib/slice-linker/crew-bridge.mts(60,28): error TS7006: Parameter 'args' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(60,34): error TS7006: Parameter 'pairs' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(67,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,5): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,14): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,21): error TS7031: Binding element 'goal' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,27): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,38): error TS7031: Binding element 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,45): error TS7031: Binding element 'mode' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,51): error TS7031: Binding element 'pace' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,57): error TS7031: Binding element 'scope' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(68,64): error TS7031: Binding element 'outOfScope' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(110,21): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/slice-linker/crew-bridge.mts(123,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(123,48): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(158,33): error TS7006: Parameter 'args' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(158,39): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(158,50): error TS7006: Parameter 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(168,24): error TS7006: Parameter 'args' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(177,21): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/slice-linker/crew-bridge.mts(187,41): error TS7006: Parameter 'args' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(187,47): error TS7006: Parameter 'primary' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(187,56): error TS7006: Parameter 'aliases' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(198,42): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(198,52): error TS7006: Parameter 'sliceOrInfo' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(198,65): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(230,23): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/slice-linker/crew-bridge.mts(241,50): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(241,60): error TS7006: Parameter 'reason' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(257,32): error TS7006: Parameter 'grade' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(257,39): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(257,48): error TS7006: Parameter 'SCORE_DIMENSIONS' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(261,32): error TS7006: Parameter 'dim' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(264,35): error TS7006: Parameter 'grade' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(267,25): error TS7006: Parameter 'd' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(271,3): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(272,3): error TS7031: Binding element 'sliceRel' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(273,3): error TS7031: Binding element 'featureRel' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(274,3): error TS7031: Binding element 'specChanges' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(275,3): error TS7031: Binding element 'scoresBlock' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(276,3): error TS7031: Binding element 'decisionsBlock' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(277,3): error TS7031: Binding element 'grade' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(278,3): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(279,3): error TS7031: Binding element 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(280,3): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(281,3): error TS7031: Binding element 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(296,52): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(323,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(324,5): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(324,14): error TS7031: Binding element 'slicePath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(324,25): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(324,50): error TS7031: Binding element 'featureResult' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(324,65): error TS7031: Binding element 'specChanges' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(368,43): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(368,55): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(368,64): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(368,75): error TS7031: Binding element 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(368,82): error TS7031: Binding element 'startedAt' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(374,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(375,5): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(375,14): error TS7031: Binding element 'slicePath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(375,25): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(375,50): error TS7031: Binding element 'featureResult' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(375,65): error TS7031: Binding element 'specChanges' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/crew-bridge.mts(434,52): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(6,26): error TS7006: Parameter 'dispatchLimits' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(36,32): error TS7006: Parameter 'lines' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(123,40): error TS7006: Parameter 'slicesRoot' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(123,52): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(148,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(149,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(150,3): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(168,3): error TS7006: Parameter 'sliceContent' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(169,3): error TS7006: Parameter 'headingPattern' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(173,37): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/dispatch.mts(186,27): error TS7006: Parameter 'sliceContent' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(58,32): error TS7006: Parameter 'dir' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(81,18): error TS7006: Parameter 'n' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(85,16): error TS7006: Parameter 'text' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(93,30): error TS7031: Binding element 'id' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(93,34): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(93,41): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(93,52): error TS7031: Binding element 'featureFrontmatter' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(93,72): error TS7031: Binding element 'featureBody' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(108,12): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(163,25): error TS7006: Parameter 'fm' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(236,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/feature-lifecycle.mts(237,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(33,27): error TS7006: Parameter 'raw' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(39,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(70,44): error TS7006: Parameter 'planPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(82,43): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(102,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(103,3): error TS7006: Parameter 'slices' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(111,23): error TS7006: Parameter 'slice' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(133,43): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(152,22): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(157,32): error TS7006: Parameter 'root' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(184,22): error TS7031: Binding element 'slice' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(184,29): error TS7031: Binding element 'isCurrent' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(202,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(219,21): error TS7006: Parameter 'slice' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(226,41): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/slice-progress.mts(252,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(31,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(32,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(33,3): error TS7006: Parameter 'resolved' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(35,3): error TS7006: Parameter 'recentGradeAvg' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(57,27): error TS7006: Parameter 'fn' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(61,21): error TS18046: 'err' is of type 'unknown'.
+src/scripts/lib/slice-linker/start-slice.mts(77,35): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(77,44): error TS7006: Parameter 'content' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(77,53): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(77,63): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(235,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(236,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(332,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,5): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,14): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,21): error TS7031: Binding element 'resolvedGoal' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,35): error TS7031: Binding element 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,46): error TS7031: Binding element 'phase' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,53): error TS7031: Binding element 'ctx' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(333,58): error TS7031: Binding element 'resolved' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(380,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(380,46): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(387,35): error TS7006: Parameter 'activePlan' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(414,3): error TS7006: Parameter 'dispatch' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(415,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(416,3): error TS7006: Parameter 'title' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(417,3): error TS7006: Parameter 'sliceFile' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(418,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(419,3): error TS7006: Parameter 'resolvedGoal' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(420,3): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(421,3): error TS7006: Parameter 'sliceContent' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(422,3): error TS7006: Parameter 'featureExcerpt' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(423,3): error TS7006: Parameter 'featurePath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(424,3): error TS7006: Parameter 'dispatchLimits' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(463,3): error TS7031: Binding element 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(464,3): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(465,3): error TS7031: Binding element 'activePlan' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(466,3): error TS7031: Binding element 'runBrief' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(467,3): error TS7031: Binding element 'sliceProgress' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(468,3): error TS7031: Binding element 'dispatch' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(469,3): error TS7031: Binding element 'sliceFile' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(470,3): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(471,3): error TS7031: Binding element 'resolvedGoal' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(534,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(534,47): error TS7006: Parameter 'activePlan' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(534,59): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(547,38): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(547,48): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(547,57): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(547,65): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/lib/slice-linker/start-slice.mts(547,76): error TS7006: Parameter 'title' implicitly has an 'any' type.
+src/scripts/lib/spec-decomposer.mts(17,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/spec-decomposer.mts(17,47): error TS7006: Parameter 'specId' implicitly has an 'any' type.
+src/scripts/lib/spec-decomposer.mts(17,55): error TS7006: Parameter 'featureTitles' implicitly has an 'any' type.
+src/scripts/lib/spec-decomposer.mts(22,28): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(15,25): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(32,33): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(49,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(51,29): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(51,34): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(55,29): error TS7006: Parameter 'specs' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(56,24): error TS7006: Parameter 'spec' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(66,36): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(66,46): error TS7006: Parameter 'specId' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(68,22): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(71,45): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(71,55): error TS7006: Parameter 'updates' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(81,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(82,5): error TS7031: Binding element 'type' implicitly has an 'any' type.
+src/scripts/lib/spec-parser.mts(82,11): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(43,30): error TS7006: Parameter 'backlog' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(43,39): error TS7006: Parameter 'specs' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(49,6): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(57,40): error TS7006: Parameter 'stats' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(57,47): error TS7006: Parameter 'reasons' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(57,56): error TS7006: Parameter 'suggestions' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(99,35): error TS7006: Parameter 'iterStatus' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(99,47): error TS7006: Parameter 'reasons' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(99,56): error TS7006: Parameter 'suggestions' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(99,71): error TS7031: Binding element 'autoMode' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(109,31): error TS7006: Parameter 'costAlertCount' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(109,47): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(109,55): error TS7006: Parameter 'reasons' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(109,64): error TS7006: Parameter 'suggestions' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(243,38): error TS7006: Parameter 'ceilingSignal' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(243,53): error TS7006: Parameter 'reasons' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(243,62): error TS7006: Parameter 'suggestions' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(243,75): error TS7006: Parameter 'blockers' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(261,32): error TS7006: Parameter 'gradeTrendSignal' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(261,50): error TS7006: Parameter 'reasons' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(261,59): error TS7006: Parameter 'suggestions' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(271,32): error TS7006: Parameter 'crewGates' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(271,43): error TS7006: Parameter 'reasons' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(271,52): error TS7006: Parameter 'suggestions' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(271,67): error TS7031: Binding element 'autoMode' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(290,33): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(290,43): error TS7006: Parameter 'config' implicitly has an 'any' type.
+src/scripts/lib/stop-conditions.mts(333,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/telemetry.mts(8,31): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/telemetry.mts(12,32): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/telemetry.mts(12,42): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/scripts/lib/telemetry.mts(24,37): error TS18046: 'error' is of type 'unknown'.
+src/scripts/lib/telemetry.mts(28,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/test-adequacy-gate.mts(8,34): error TS7006: Parameter 'content' implicitly has an 'any' type.
+src/scripts/lib/test-adequacy-gate.mts(24,36): error TS7031: Binding element 'testAdequacy' implicitly has an 'any' type.
+src/scripts/lib/test-adequacy-gate.mts(24,50): error TS7031: Binding element 'skipReason' implicitly has an 'any' type.
+src/scripts/lib/test-adequacy-gate.mts(34,46): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/test-adequacy-gate.mts(34,56): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/validation-gate.mts(13,27): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/validation-gate.mts(37,40): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/validation-gate.mts(37,50): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/lib/validation-gate.mts(57,25): error TS7006: Parameter 'workflowState' implicitly has an 'any' type.
+src/scripts/lib/validation-gate.mts(80,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/lib/validation-gate.mts(81,3): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(9,28): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/scripts/loop.mts(76,20): error TS7006: Parameter 'argv' implicitly has an 'any' type.
+src/scripts/loop.mts(137,18): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ "--help": { key: string; boolean: boolean; }; "-h": { key: string; boolean: boolean; }; "--repo": { key: string; }; "--preset": { key: string; }; "--phase": { key: string; }; "--note": { key: string; }; "--status": { key: string; }; ... 43 more ...; "--no-merge": { ...; }; }'.
+src/scripts/loop.mts(140,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ repo: string; preset: null; phase: null; note: null; help: boolean; status: null; priority: null; category: null; targetRelease: null; type: null; title: null; id: null; body: null; features: null; version: null; ... 31 more ...; noMerge: boolean; }'.
+src/scripts/loop.mts(142,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ repo: string; preset: null; phase: null; note: null; help: boolean; status: null; priority: null; category: null; targetRelease: null; type: null; title: null; id: null; body: null; features: null; version: null; ... 31 more ...; noMerge: boolean; }'.
+src/scripts/loop.mts(178,21): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(178,31): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(182,26): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(182,36): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(186,20): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(198,15): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(198,25): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(198,32): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(199,12): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(199,22): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(199,29): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(200,15): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(200,25): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(200,32): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(201,13): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(201,23): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(201,30): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(202,17): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(202,27): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(202,34): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(204,27): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(204,37): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(219,19): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(219,29): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(233,31): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(233,41): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(242,21): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(242,31): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(249,27): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(256,26): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(256,36): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(264,18): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(264,28): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(276,17): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(276,27): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(276,34): error TS7031: Binding element 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(278,23): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(278,33): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(279,24): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(279,34): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(286,22): error TS7031: Binding element 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(286,32): error TS7031: Binding element 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(349,19): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ install: ({ repoPath, flags }: { repoPath: any; flags: any; }) => Promise<Record<string, any>>; "phase-gate": ({ repoPath, flags }: { repoPath: any; flags: any; }) => Promise<{ mode: string; status: string; phase: any; ... 7 more ...; iterationState: any; }>; ... 19 more ...; "pr-fix": ({ repoPath, flags }: { ...;...'.
+src/scripts/loop.mts(391,30): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(391,40): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(391,47): error TS7006: Parameter 'rest' implicitly has an 'any' type.
+src/scripts/loop.mts(411,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(411,44): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(411,51): error TS7006: Parameter 'rest' implicitly has an 'any' type.
+src/scripts/loop.mts(439,30): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/scripts/loop.mts(447,40): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(447,50): error TS7006: Parameter '_flags' implicitly has an 'any' type.
+src/scripts/loop.mts(452,38): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/scripts/loop.mts(480,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(480,47): error TS7006: Parameter 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(480,60): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(540,30): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(546,62): error TS18046: 'err' is of type 'unknown'.
+src/scripts/loop.mts(553,11): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/loop.mts(613,15): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(613,25): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(613,32): error TS7006: Parameter 'rest' implicitly has an 'any' type.
+src/scripts/loop.mts(628,16): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(628,26): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(639,28): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/loop.mts(651,21): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(651,31): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(651,38): error TS7006: Parameter 'rest' implicitly has an 'any' type.
+src/scripts/loop.mts(688,18): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(696,34): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(696,44): error TS7006: Parameter 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(696,57): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(699,19): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ add: (repoPath: any, flags: any, rest: any) => Promise<{ id: string; filePath: string; frontmatter: { id: string; type: any; title: string; status: string; priority: null; target_release: null; created: string; updated: string; owner: null; derived_features: never[]; }; }>; list: (repoPath: any, flags: any) => Pro...'.
+src/scripts/loop.mts(704,37): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(704,47): error TS7006: Parameter 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(704,60): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(721,20): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/scripts/loop.mts(721,27): error TS7006: Parameter 'errMsg' implicitly has an 'any' type.
+src/scripts/loop.mts(728,5): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(729,5): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(730,5): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(731,5): error TS7006: Parameter 'featureId' implicitly has an 'any' type.
+src/scripts/loop.mts(750,17): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(750,27): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(750,34): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(750,41): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(760,25): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(760,35): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(760,42): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(760,49): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(767,20): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(767,30): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(767,37): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(767,44): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(797,17): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(797,27): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(797,34): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(797,41): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(814,16): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(814,26): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(825,27): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(825,37): error TS7006: Parameter '_flags' implicitly has an 'any' type.
+src/scripts/loop.mts(825,45): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(825,52): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(830,16): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(830,26): error TS7006: Parameter '_flags' implicitly has an 'any' type.
+src/scripts/loop.mts(830,34): error TS7006: Parameter '_rest' implicitly has an 'any' type.
+src/scripts/loop.mts(830,41): error TS7006: Parameter 'sliceId' implicitly has an 'any' type.
+src/scripts/loop.mts(846,3): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(847,3): error TS7006: Parameter 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(848,3): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(856,19): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ "from-feature": (repoPath: any, flags: any, _rest: any, featureId: any, opts?: { dispatchFn?: ((opts: DispatchOpts) => Promise<DispatchResult>) | undefined; }) => Promise<...>; ... 6 more ...; plan: (repoPath: any, _flags: any, _rest: any, sliceId: any) => Promise<...>; }'.
+src/scripts/loop.mts(862,39): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(862,49): error TS7006: Parameter 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(862,62): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/loop.mts(902,13): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/scripts/loop.mts(910,39): error TS7006: Parameter 'repoPath' implicitly has an 'any' type.
+src/scripts/loop.mts(910,49): error TS7006: Parameter 'positionals' implicitly has an 'any' type.
+src/scripts/loop.mts(910,62): error TS7006: Parameter 'flags' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(24,20): error TS7006: Parameter 'argv' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(49,24): error TS7006: Parameter 'text' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(56,24): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(58,23): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(61,23): error TS7006: Parameter 'content' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(104,27): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/scripts/migrate-product-backlog.mts(104,31): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/scripts/pre-push-validate.mts(37,56): error TS18046: 'e' is of type 'unknown'.
+src/scripts/pre-push-validate.mts(37,68): error TS18046: 'e' is of type 'unknown'.
+src/scripts/validate-content-length.mts(21,21): error TS7006: Parameter 'dir' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(21,26): error TS7006: Parameter 'predicate' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(40,21): error TS7006: Parameter 'content' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(45,45): error TS7006: Parameter 'repoRoot' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(53,45): error TS7006: Parameter '_full' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(53,52): error TS7006: Parameter 'name' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(54,45): error TS7006: Parameter '_full' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(54,52): error TS7006: Parameter 'name' implicitly has an 'any' type.
+src/scripts/validate-content-length.mts(61,41): error TS7006: Parameter 'prefix' implicitly has an 'any' type.
+src/scripts/validate-manifests.mts(12,25): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/scripts/validate-manifests.mts(16,41): error TS7006: Parameter 'repoRoot' implicitly has an 'any' type.
+src/scripts/validate-manifests.mts(18,17): error TS7006: Parameter 'msg' implicitly has an 'any' type.
+src/scripts/validate-manifests.mts(37,46): error TS7006: Parameter 'entry' implicitly has an 'any' type.

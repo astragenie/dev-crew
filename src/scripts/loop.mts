@@ -6,7 +6,7 @@ import path from "node:path";
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
 // the same way at the command line.
 
-function normalizeMsysPath(value) {
+function normalizeMsysPath(value: string): string {
   if (!value || process.platform !== "win32") {
     return value;
   }
@@ -73,9 +73,9 @@ const FLAG_SPEC = {
   "--no-merge": { key: "noMerge", boolean: true }
 };
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   const [command, ...rest] = argv;
-  const flags = {
+  const flags: Record<string, any> = {
     repo: process.cwd(),
     preset: null,
     phase: null,
@@ -134,12 +134,12 @@ function parseArgs(argv) {
       }
       break;
     }
-    const spec = FLAG_SPEC[value];
+    const spec = FLAG_SPEC[value as keyof typeof FLAG_SPEC];
     if (spec) {
-      if (spec.boolean) {
-        flags[spec.key] = true;
+      if ("boolean" in spec && spec.boolean) {
+        (flags as Record<string, any>)[spec.key] = true;
       } else {
-        flags[spec.key] = rest[index + 1];
+        (flags as Record<string, any>)[spec.key] = rest[index + 1];
         index += 1;
       }
       continue;
@@ -155,6 +155,8 @@ function parseArgs(argv) {
   }
   return { command, flags, positionals };
 }
+
+type CmdCtx = { repoPath: string; flags: Record<string, any>; positionals: string[] };
 
 function usage() {
   return [
@@ -175,15 +177,15 @@ function usage() {
 // to stdout. Lazy imports stay per-handler to keep start-up cheap when a user
 // only invokes one command.
 const COMMANDS = {
-  install: async ({ repoPath, flags }) => {
+  install: async ({ repoPath, flags }: CmdCtx) => {
     const { installLoop } = await import("./lib/loop-installer.mjs");
     return installLoop(repoPath, { preset: flags.preset });
   },
-  "phase-gate": async ({ repoPath, flags }) => {
+  "phase-gate": async ({ repoPath, flags }: CmdCtx) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
     return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note });
   },
-  status: async ({ repoPath }) => {
+  status: async ({ repoPath }: CmdCtx) => {
     const { reportStatus } = await import("./lib/loop-installer.mjs");
     return reportStatus(repoPath);
   },
@@ -191,17 +193,21 @@ const COMMANDS = {
     const { listPresets } = await import("./lib/config-resolver.mjs");
     return { presets: await listPresets() };
   },
-  github: ({ repoPath, flags, positionals }: any) =>
+  github: ({ repoPath, flags, positionals }: CmdCtx) =>
     runGithubSubcommand(repoPath, positionals, flags),
-  "task-store": ({ repoPath, flags, positionals }: any) =>
+  "task-store": ({ repoPath, flags, positionals }: CmdCtx) =>
     runGithubSubcommand(repoPath, positionals, flags),
-  backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
-  spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
-  release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
-  slice: ({ repoPath, flags, positionals }) => runSliceSubcommand(repoPath, positionals, flags, {}),
-  decisions: ({ repoPath, flags, positionals }) =>
+  backlog: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runBacklogSubcommand(repoPath, positionals, flags),
+  spec: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runSpecSubcommand(repoPath, positionals, flags),
+  release: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runReleaseSubcommand(repoPath, positionals, flags),
+  slice: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runSliceSubcommand(repoPath, positionals, flags, {}),
+  decisions: ({ repoPath, flags, positionals }: CmdCtx) =>
     runDecisionsSubcommand(repoPath, positionals, flags),
-  retrospective: async ({ repoPath, flags }) => {
+  retrospective: async ({ repoPath, flags }: CmdCtx) => {
     const { writeRetrospective } = await import("./lib/retrospective.mjs");
     const result = await writeRetrospective(repoPath, {
       since: flags.since,
@@ -216,7 +222,7 @@ const COMMANDS = {
     });
     return result;
   },
-  brief: async ({ repoPath, flags }) => {
+  brief: async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { buildBrief } = await import("./lib/brief.mjs");
@@ -230,7 +236,7 @@ const COMMANDS = {
     }
     return result;
   },
-  "snapshot-memory": async ({ repoPath, flags }) => {
+  "snapshot-memory": async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { writeMemorySnapshot } = await import("./lib/memory-snapshot.mjs");
@@ -239,21 +245,21 @@ const COMMANDS = {
     await logEvent(cwd, { command: "snapshot-memory", grades: result.counts.grades });
     return result;
   },
-  lessons: async ({ repoPath, positionals }) => {
+  lessons: async ({ repoPath, positionals }: CmdCtx) => {
     const [sub] = positionals;
     if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
     const { recentLessons } = await import("./lib/lessons-feed.mjs");
     const limit = positionals[1] ? Number(positionals[1]) : 5;
     return recentLessons(repoPath, { limit });
   },
-  "sync-claims": async ({ repoPath }) => {
+  "sync-claims": async ({ repoPath }: CmdCtx) => {
     const { syncClaims } = await import("./lib/claims-sync.mjs");
     const result = await syncClaims(repoPath);
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
     return result;
   },
-  "stop-check": async ({ repoPath, flags }) => {
+  "stop-check": async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
@@ -261,7 +267,7 @@ const COMMANDS = {
     const config = await resolveConfig(cwd);
     return checkStopConditions(cwd, { config });
   },
-  auto: async ({ repoPath, flags }) => {
+  auto: async ({ repoPath, flags }: CmdCtx) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
     const { resolveConfig } = await import("./lib/config-resolver.mjs");
     const config = await resolveConfig(repoPath);
@@ -273,17 +279,17 @@ const COMMANDS = {
       config
     });
   },
-  learnings: ({ repoPath, flags, positionals }) =>
+  learnings: ({ repoPath, flags, positionals }: CmdCtx) =>
     runLearningsSubcommand(repoPath, positionals, flags),
-  architect: async ({ repoPath, flags }) => runArchitectSubcommand(repoPath, flags),
-  trajectory: async ({ repoPath, flags }) => {
+  architect: async ({ repoPath, flags }: CmdCtx) => runArchitectSubcommand(repoPath, flags),
+  trajectory: async ({ repoPath, flags }: CmdCtx) => {
     const { readTrajectory, trajectoryPath } = await import("./lib/trajectory-writer.mjs");
     const sliceId = flags.id;
     if (!sliceId) throw new Error("trajectory requires --id SLICE-NN");
     const steps = await readTrajectory(repoPath, sliceId);
     return { sliceId, steps, count: steps.length, path: trajectoryPath(repoPath, sliceId) };
   },
-  "pr-fix": async ({ repoPath, flags }) => {
+  "pr-fix": async ({ repoPath, flags }: CmdCtx) => {
     const { runPrFix } = await import("./lib/pr-fixer.mjs");
     const prNumber = flags.pr;
     if (!prNumber) throw new Error("pr-fix requires --pr <number>");
@@ -292,7 +298,7 @@ const COMMANDS = {
   }
 };
 
-async function runArchitectSubcommand(repoPath: any, flags: any) {
+async function runArchitectSubcommand(repoPath: string, flags: Record<string, any>) {
   const sliceId = flags.id;
   if (!sliceId) throw new Error("architect requires --id SLICE-NN");
 
@@ -346,7 +352,7 @@ async function main() {
     return;
   }
 
-  const handler = COMMANDS[command];
+  const handler = (COMMANDS as Record<string, (ctx: CmdCtx) => Promise<unknown>>)[command];
   if (!handler) {
     throw new Error(`Unknown command: ${command}`);
   }
@@ -388,7 +394,7 @@ async function runBacklogListPendingIds(repoPath: string) {
   return { ids };
 }
 
-async function runBacklogAdd(repoPath, flags, rest) {
+async function runBacklogAdd(repoPath: string, flags: Record<string, any>, rest: string[]) {
   const title = flags.title || rest.join(" ");
   if (!title) throw new Error("backlog add requires a title (positional or --title).");
   if (flags.noResearch) {
@@ -408,15 +414,15 @@ async function runBacklogAdd(repoPath, flags, rest) {
   });
 }
 
-async function runBacklogPmWrite(repoPath, flags, rest) {
+async function runBacklogPmWrite(repoPath: string, flags: Record<string, any>, rest: string[]) {
   const featureId = flags.id || rest[0];
   if (!featureId) throw new Error("backlog pm-write requires --id FEAT-NNN.");
   if (!flags.scores) throw new Error("backlog pm-write requires --scores '{...}'.");
   let parsedScores: Record<string, number>;
   try {
     parsedScores = JSON.parse(flags.scores);
-  } catch (err: any) {
-    throw new Error(`--scores must be valid JSON: ${err.message}`);
+  } catch (err: unknown) {
+    throw new Error(`--scores must be valid JSON: ${(err as Error).message}`);
   }
   const priority = flags.priority ?? null;
   const autonomousSafe =
@@ -436,7 +442,7 @@ async function runBacklogPmWrite(repoPath, flags, rest) {
   });
 }
 
-function isUnclassifiedEntry(entry): boolean {
+function isUnclassifiedEntry(entry: Record<string, any>): boolean {
   const fm = entry.frontmatter;
   const tagsEmpty = !Array.isArray(fm.tags) || fm.tags.length === 0;
   const tagsNull = fm.tags == null || fm.tags === "";
@@ -444,12 +450,12 @@ function isUnclassifiedEntry(entry): boolean {
   return noTags && fm.needs_contract == null && fm.needs_ux == null;
 }
 
-export async function runBacklogEnrich(repoPath, _flags) {
+export async function runBacklogEnrich(repoPath: string, _flags: Record<string, any>) {
   const { listBacklog } = await import("./lib/backlog-parser.mjs");
   const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
 
   const allEntries = await listBacklog(repoPath);
-  const triaged = allEntries.filter((e) => e.state === "triaged");
+  const triaged = allEntries.filter((e: Record<string, any>) => e.state === "triaged");
 
   const needsClassify = triaged.filter(isUnclassifiedEntry);
   const alreadyTagged = triaged.length - needsClassify.length;
@@ -477,7 +483,11 @@ export async function runBacklogEnrich(repoPath, _flags) {
   return { enriched: 0, alreadyTagged, failed: 0, refused: true };
 }
 
-async function runBacklogSubcommand(repoPath, positionals, flags) {
+async function runBacklogSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
@@ -537,20 +547,20 @@ async function runBacklogSubcommand(repoPath, positionals, flags) {
   throw new Error(`Unknown backlog subcommand: ${sub}`);
 }
 
-function parseFeatureEntries(flags) {
+function parseFeatureEntries(flags: Record<string, any>): string[] {
   if (flags.featuresJson) {
     let entries;
     try {
-      entries = JSON.parse(flags.featuresJson);
-    } catch (err) {
-      throw new Error(`--features-json must be valid JSON: ${err.message}`);
+      entries = JSON.parse(flags.featuresJson as string);
+    } catch (err: unknown) {
+      throw new Error(`--features-json must be valid JSON: ${(err as Error).message}`);
     }
     if (!Array.isArray(entries)) throw new Error("--features-json must be a JSON array");
     return entries;
   }
-  return flags.features
+  return (flags.features as string)
     .split(";")
-    .map((s) => s.trim())
+    .map((s: string) => s.trim())
     .filter(Boolean);
 }
 
@@ -585,7 +595,7 @@ export function parseArchitectOutput(raw: string): string[] {
 // ---------------------------------------------------------------------------
 
 export function detectMissingSpecFields(spec: {
-  frontmatter: Record<string, unknown>;
+  frontmatter: Record<string, any>;
   body: string;
 }): string[] {
   const missing: string[] = [];
@@ -610,7 +620,7 @@ export function detectMissingSpecFields(spec: {
 }
 
 const SPEC_HANDLERS = {
-  add: async (repoPath, flags, rest) => {
+  add: async (repoPath: string, flags: Record<string, any>, rest: string[]) => {
     const title = flags.title || rest.join(" ");
     if (!title) throw new Error("spec add requires a title (positional or --title).");
     if (!flags.type) {
@@ -625,7 +635,7 @@ const SPEC_HANDLERS = {
       body: flags.body || ""
     });
   },
-  list: async (repoPath, flags) => {
+  list: async (repoPath: string, flags: Record<string, any>) => {
     const { listSpecs, filterSpecs } = await import("./lib/spec-parser.mjs");
     const specs = await listSpecs(repoPath);
     const filtered = filterSpecs(specs, {
@@ -648,7 +658,7 @@ const SPEC_HANDLERS = {
       }))
     };
   },
-  decompose: async (repoPath, flags, rest) => {
+  decompose: async (repoPath: string, flags: Record<string, any>, rest: string[]) => {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
 
@@ -685,7 +695,7 @@ const SPEC_HANDLERS = {
     process.exitCode = 1;
     return { error: "architect auto-dispatch removed; pass --features or use slash flow" };
   },
-  status: async (repoPath) => {
+  status: async (repoPath: string) => {
     const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
     const before = await specSatisfaction(repoPath);
     const reconciled = await reconcileSpecStatus(repoPath);
@@ -693,15 +703,23 @@ const SPEC_HANDLERS = {
   }
 };
 
-async function runSpecSubcommand(repoPath, positionals, flags) {
+async function runSpecSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
   const [sub, ...rest] = positionals;
   if (!sub) throw new Error("spec requires a subcommand: add | list | decompose | status");
-  const handler = SPEC_HANDLERS[sub];
+  const handler = (SPEC_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
   if (!handler) throw new Error(`Unknown spec subcommand: ${sub}`);
   return handler(repoPath, flags, rest);
 }
 
-async function runReleaseSubcommand(repoPath, positionals, flags) {
+async function runReleaseSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
   const [sub] = positionals;
   if (!sub) throw new Error("release requires a subcommand: plan | status");
   const { planRelease, releaseStatus } = await import("./lib/release-planner.mjs");
@@ -718,17 +736,17 @@ async function runReleaseSubcommand(repoPath, positionals, flags) {
 
 // Resolves a required ID flag/positional or throws. Centralizes the
 // "missing --id" error shape across slice subcommands.
-function requireId(value, errMsg) {
+function requireId(value: string | null | undefined, errMsg: string): string {
   if (!value) throw new Error(errMsg);
   return value;
 }
 
 const SLICE_HANDLERS = {
   "from-feature": async (
-    repoPath,
-    flags,
-    _rest,
-    featureId,
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    featureId: string,
     opts: { dispatchFn?: DispatchFn } = {}
   ) => {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
@@ -747,7 +765,7 @@ const SLICE_HANDLERS = {
     });
     return out;
   },
-  grade: async (repoPath, flags, _rest, sliceId) => {
+  grade: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string) => {
     requireId(sliceId, "slice grade requires --id SLICE-NN.");
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
@@ -757,14 +775,24 @@ const SLICE_HANDLERS = {
     await logEvent(cwd, { command: "slice grade", slice: sliceId, created: out.created });
     return out;
   },
-  "grade-write": async (repoPath, flags, _rest, sliceId) => {
+  "grade-write": async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string
+  ) => {
     requireId(sliceId, "slice grade-write requires --id SLICE-NN.");
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { writeGrade } = await import("./lib/grade-writer.mjs");
     return writeGrade(cwd, sliceId);
   },
-  complete: async (repoPath, flags, _rest, sliceId) => {
+  complete: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string
+  ) => {
     requireId(sliceId, "slice complete requires --id SLICE-NN.");
     // SLICE-64: --no-merge and --dry-run are mutually exclusive
     if (flags.noMerge && flags.dryRun) {
@@ -794,7 +822,7 @@ const SLICE_HANDLERS = {
     });
     return out;
   },
-  start: async (repoPath, flags, _rest, sliceId) => {
+  start: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string) => {
     requireId(sliceId, "slice start requires --id SLICE-NN.");
     const { startSlice } = await import("./lib/slice-linker.mjs");
     const out = await startSlice(repoPath, sliceId, {
@@ -811,7 +839,7 @@ const SLICE_HANDLERS = {
     });
     return out;
   },
-  link: async (repoPath, flags) => {
+  link: async (repoPath: string, flags: Record<string, any>) => {
     const sliceId = requireId(flags.id, "slice link requires --id SLICE-NN.");
     if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
     if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
@@ -822,12 +850,17 @@ const SLICE_HANDLERS = {
       kind: flags.kind
     });
   },
-  "review-ladder": async (repoPath, _flags, _rest, sliceId) => {
+  "review-ladder": async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string
+  ) => {
     requireId(sliceId, "slice review-ladder requires --id SLICE-NN.");
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
     return buildReviewLadder(repoPath, sliceId);
   },
-  plan: async (repoPath, _flags, _rest, sliceId) => {
+  plan: async (repoPath: string, _flags: Record<string, any>, _rest: string[], sliceId: string) => {
     requireId(sliceId, "slice plan requires --id SLICE-NN.");
     const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
     const out = await runPlanPreflight(repoPath, sliceId);
@@ -843,9 +876,9 @@ const SLICE_HANDLERS = {
 };
 
 async function runSliceSubcommand(
-  repoPath,
-  positionals,
-  flags,
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
   opts: { dispatchFn?: DispatchFn } = {}
 ) {
   const [sub, ...rest] = positionals;
@@ -853,13 +886,17 @@ async function runSliceSubcommand(
     throw new Error(
       "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | plan"
     );
-  const handler = SLICE_HANDLERS[sub];
+  const handler = (SLICE_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
   const id = flags.id || rest[0];
   return handler(repoPath, flags, rest, id, opts);
 }
 
-async function runDecisionsSubcommand(repoPath, positionals, flags) {
+async function runDecisionsSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
   const [sub, ...rest] = positionals;
   if (!sub) throw new Error("decisions requires a subcommand: list | show");
   const { listDecisions, showDecision } = await import("./lib/decisions-store.mjs");
@@ -899,7 +936,7 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
     if (!flags.files) throw new Error('decisions relevant requires --files "a.cs,b.cs,..."');
     const files = flags.files
       .split(",")
-      .map((f) => f.trim())
+      .map((f: string) => f.trim())
       .filter(Boolean);
     const matches = await findRelevantDecisions(repoPath, files);
     return { count: matches.length, decisions: matches };
@@ -907,7 +944,11 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
   throw new Error(`Unknown decisions subcommand: ${sub}`);
 }
 
-async function runLearningsSubcommand(repoPath, positionals, flags) {
+async function runLearningsSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
   const [sub] = positionals;
   if (!sub) throw new Error("learnings requires a subcommand: log | recent");
   const { logLearning, recentLearnings } = await import("./lib/learnings.mjs");

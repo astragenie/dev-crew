@@ -4,14 +4,14 @@
 // make repeated calls within one invocation. Not useful for multi-agent flows.
 const _store = new Map();
 
-export function cached(key, asyncFn) {
+export function cached(key: string, asyncFn: () => Promise<unknown>) {
   if (_store.has(key)) return _store.get(key);
   const promise = asyncFn();
   _store.set(key, promise);
   return promise;
 }
 
-export function bust(key) {
+export function bust(key: string) {
   _store.delete(key);
 }
 

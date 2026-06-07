@@ -32,7 +32,7 @@ async function findHeroCrewCli() {
         "C:/work/mega/hero-crew/scripts/crew.mjs",
         home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
         home ? `${home}/hero-crew/scripts/crew.mjs` : null
-    ].filter(Boolean);
+    ].filter((c) => c !== null);
     for (const candidate of localCandidates) {
         if (await pathExists(candidate))
             return candidate;
@@ -275,7 +275,7 @@ function renderSynthesisBody({ sliceId, sliceRel, featureRel, specChanges, score
         "",
         `- Slice: \`${sliceRel}\` (completed)`,
         featureRel ? `- Feature: \`${featureRel}\` (done)` : "",
-        specChanges?.length > 0
+        specChanges && specChanges.length > 0
             ? `- Spec status changes: ${specChanges.map((c) => `${c.id} → ${c.to}`).join(", ")}`
             : "",
         "",
@@ -328,12 +328,12 @@ export async function writeCrewFinalSynthesis(repoPath, { sliceId, slicePath, fe
         sliceId,
         sliceRel,
         featureRel,
-        specChanges,
+        specChanges: specChanges ?? null,
         scoresBlock: renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS),
         decisionsBlock: renderSynthesisDecisions(grade),
         grade,
         repoPath,
-        config,
+        config: config ?? null,
         featureId,
         phase
     });

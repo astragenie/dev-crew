@@ -8,23 +8,23 @@ import path from "node:path";
 const STATE_DIR = ".claude/state/loop";
 const ITERATION_FILE = "iteration.json";
 
-async function getIterationPath(repoPath) {
+async function getIterationPath(repoPath: string) {
   return path.join(repoPath, STATE_DIR, ITERATION_FILE);
 }
 
-async function ensureStateDir(repoPath) {
+async function ensureStateDir(repoPath: string) {
   const stateDir = path.join(repoPath, STATE_DIR);
   await fs.mkdir(stateDir, { recursive: true });
 }
 
 // Read current iteration state. Returns { count: number, initializedAt: string } or null.
-async function readIterationState(repoPath) {
+async function readIterationState(repoPath: string) {
   try {
     const filePath = await getIterationPath(repoPath);
     const raw = await fs.readFile(filePath, "utf8");
-    return JSON.parse(raw);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
     }
     throw error;
@@ -32,7 +32,7 @@ async function readIterationState(repoPath) {
 }
 
 // Write iteration state. Returns the written state.
-async function writeIterationState(repoPath, state) {
+async function writeIterationState(repoPath: string, state: Record<string, unknown>) {
   await ensureStateDir(repoPath);
   const filePath = await getIterationPath(repoPath);
   await fs.writeFile(filePath, JSON.stringify(state, null, 2) + "\n");
@@ -41,7 +41,7 @@ async function writeIterationState(repoPath, state) {
 
 // Initialize iteration counter if not present. Idempotent.
 // Called at loop install.
-export async function initializeIterationCounter(repoPath) {
+export async function initializeIterationCounter(repoPath: string) {
   const existing = await readIterationState(repoPath);
   if (existing) {
     return existing;
@@ -55,7 +55,7 @@ export async function initializeIterationCounter(repoPath) {
 
 // Increment iteration counter by 1. Returns the new state.
 // Called at end of each phase gate completion.
-export async function incrementIteration(repoPath) {
+export async function incrementIteration(repoPath: string) {
   const state = await readIterationState(repoPath);
   if (!state) {
     // Auto-init if counter doesn't exist (should not happen in normal flow,
@@ -65,7 +65,7 @@ export async function incrementIteration(repoPath) {
   }
   const next = {
     ...state,
-    count: state.count + 1,
+    count: (state.count as number) + 1,
     lastIncrementedAt: new Date().toISOString()
   };
   return writeIterationState(repoPath, next);
@@ -73,15 +73,15 @@ export async function incrementIteration(repoPath) {
 
 // Get current iteration state and cap. Returns { count, cap, exhausted }.
 // Used by stop-conditions to decide halt.
-export async function getIterationStatus(repoPath, maxIterations = 25) {
+export async function getIterationStatus(repoPath: string, maxIterations = 25) {
   const state = await readIterationState(repoPath);
-  const count = state?.count ?? 0;
+  const count = Number(state?.count ?? 0);
   const exhausted = count >= maxIterations;
   return { count, cap: maxIterations, exhausted };
 }
 
 // Reset counter to 0. Called when loop ends cleanly (final-synthesis).
-export async function resetIterationCounter(repoPath) {
+export async function resetIterationCounter(repoPath: string) {
   return writeIterationState(repoPath, {
     count: 0,
     resetAt: new Date().toISOString()

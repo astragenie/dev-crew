@@ -54,7 +54,8 @@ async function findValidationArtifacts(repoPath, sliceId) {
  * @returns {object|null}
  */
 function readGateStatus(workflowState) {
-    const v = workflowState?.currentRun?.gates?.validation;
+    const state = workflowState;
+    const v = state?.currentRun?.gates?.validation;
     if (!v || typeof v !== "object")
         return null;
     return v;

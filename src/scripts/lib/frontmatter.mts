@@ -17,7 +17,7 @@
 // every FEAT. Confirmed 2026-06-07 on Windows checkout.
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n*/;
 
-function stripQuotes(value) {
+function stripQuotes(value: string) {
   const v = value.trim();
   if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
     return v.slice(1, -1);
@@ -25,7 +25,7 @@ function stripQuotes(value) {
   return v;
 }
 
-function parseScalar(raw) {
+function parseScalar(raw: string) {
   const v = raw.trim();
   if (v === "" || v === "~" || v === "null") return null;
   if (v === "true") return true;
@@ -35,7 +35,7 @@ function parseScalar(raw) {
   if (v.startsWith("[") && v.endsWith("]")) {
     const inner = v.slice(1, -1).trim();
     if (inner === "") return [];
-    return inner.split(",").map((item) => stripQuotes(item.trim()));
+    return inner.split(",").map((item: string) => stripQuotes(item.trim()));
   }
   return stripQuotes(v);
 }
@@ -101,7 +101,7 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
   return { frontmatter, body };
 }
 
-function serializeScalar(value) {
+function serializeScalar(value: unknown): string {
   if (value === null || value === undefined) return "null";
   if (typeof value === "boolean" || typeof value === "number") return String(value);
   if (Array.isArray(value)) {

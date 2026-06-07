@@ -29,6 +29,7 @@ try {
     process.exit(0);
 }
 catch (e) {
-    process.stderr.write(`Plugin validation failed — fix before pushing:\n${e.stderr || e.message}\n`);
+    const err = e;
+    process.stderr.write(`Plugin validation failed — fix before pushing:\n${err.stderr || err.message}\n`);
     process.exit(2);
 }

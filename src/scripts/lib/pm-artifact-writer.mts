@@ -30,7 +30,18 @@ function today() {
  * @param {string}  [options.reasoning]       - Optional one-line priority reasoning
  * @returns {Promise<{ artifactPath: string, id: string }>}
  */
-export async function writePmReviewArtifact(repoPath, options: Record<string, any> = {}) {
+interface PmReviewOptions {
+  featureId?: string;
+  scores?: Record<string, number>;
+  compositePriority?: string;
+  autonomousSafe?: boolean;
+  demandEvidence?: string;
+  scopeNotes?: string;
+  risks?: string[];
+  reasoning?: string;
+}
+
+export async function writePmReviewArtifact(repoPath: string, options: PmReviewOptions = {}) {
   const {
     featureId,
     scores = {},

@@ -17,48 +17,51 @@ const PATH_DEFAULTS = {
   phaseGateArtifactDir: ".claude/artifacts/crew/validations"
 };
 
-function resolve(key, config) {
-  return config?.loop?.[key] || PATH_DEFAULTS[key];
+function resolve(key: string, config: Record<string, any> | null | undefined) {
+  return config?.loop?.[key] || PATH_DEFAULTS[key as keyof typeof PATH_DEFAULTS];
 }
 
-export function artifactRoot(repoPath, config) {
+export function artifactRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("artifactRoot", config));
 }
-export function aiLoopRoot(repoPath, config) {
+export function aiLoopRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("aiLoopRoot", config));
 }
-export function backlogPath(repoPath, config) {
+export function backlogPath(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("backlogPath", config));
 }
-export function slicesRoot(repoPath, config) {
+export function slicesRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("slicesRoot", config));
 }
-export function backlogRoot(repoPath, config) {
+export function backlogRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("backlogRoot", config));
 }
-export function specsRoot(repoPath, config) {
+export function specsRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("specsRoot", config));
 }
-export function gradesRoot(repoPath, config) {
+export function gradesRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("gradesRoot", config));
 }
-export function decisionsRoot(repoPath, config) {
+export function decisionsRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("decisionsRoot", config));
 }
-export function releasesRoot(repoPath, config) {
+export function releasesRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("releasesRoot", config));
 }
-export function retroRoot(repoPath, config) {
+export function retroRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("retrospectivesRoot", config));
 }
-export function snapshotPath(repoPath, config) {
+export function snapshotPath(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("snapshotPath", config));
 }
-export function phaseGateArtifactDir(repoPath, config) {
+export function phaseGateArtifactDir(
+  repoPath: string,
+  config: Record<string, any> | null | undefined
+) {
   return path.join(repoPath, resolve("phaseGateArtifactDir", config));
 }
 
-export async function pathExists(p) {
+export async function pathExists(p: string) {
   try {
     await fs.access(p);
     return true;
@@ -67,11 +70,11 @@ export async function pathExists(p) {
   }
 }
 
-export async function ensureDir(p) {
+export async function ensureDir(p: string) {
   await fs.mkdir(p, { recursive: true });
 }
 
-export async function locateSliceFile(slicesRootDir, sliceId) {
+export async function locateSliceFile(slicesRootDir: string, sliceId: string) {
   const cacheKey = `locateSlice:${slicesRootDir}:${sliceId}`;
   return cached(cacheKey, async () => {
     if (!(await pathExists(slicesRootDir))) return null;
@@ -80,6 +83,7 @@ export async function locateSliceFile(slicesRootDir, sliceId) {
     const stack = [slicesRootDir];
     while (stack.length > 0) {
       const dir = stack.pop();
+      if (!dir) continue;
       let entries;
       try {
         entries = await fs.readdir(dir, { withFileTypes: true });

@@ -67,7 +67,7 @@ export async function incrementIteration(repoPath) {
 // Used by stop-conditions to decide halt.
 export async function getIterationStatus(repoPath, maxIterations = 25) {
     const state = await readIterationState(repoPath);
-    const count = state?.count ?? 0;
+    const count = Number(state?.count ?? 0);
     const exhausted = count >= maxIterations;
     return { count, cap: maxIterations, exhausted };
 }

@@ -27,7 +27,7 @@ const FEATURE_FILE_RE = /^FEAT-(\d+)(?:-.*)?\.md$/;
  * @param {string} state
  * @returns {Promise<BacklogEntry | null>}
  */
-async function readEntry(filePath, state) {
+async function readEntry(filePath: string, state: string) {
   const filename = path.basename(filePath);
   const match = filename.match(FEATURE_FILE_RE);
   if (!match) return null;
@@ -45,7 +45,7 @@ async function readEntry(filePath, state) {
   };
 }
 
-export async function listBacklog(repoPath, options: Record<string, any> = {}) {
+export async function listBacklog(repoPath: string, options: Record<string, any> = {}) {
   const cacheKey = `listBacklog:${repoPath}`;
   return cached(cacheKey, async () => {
     const root = backlogRoot(repoPath, options.config);
@@ -65,9 +65,12 @@ export async function listBacklog(repoPath, options: Record<string, any> = {}) {
   });
 }
 
-export async function nextFeatureId(repoPath, options: Record<string, any> = {}) {
+export async function nextFeatureId(repoPath: string, options: Record<string, any> = {}) {
   const entries = await listBacklog(repoPath, options);
-  const max = entries.reduce((acc, e) => Math.max(acc, e.idNumber), 0);
+  const max = entries.reduce(
+    (acc: number, e: { idNumber: number }) => Math.max(acc, e.idNumber),
+    0
+  );
   return `FEAT-${String(max + 1).padStart(3, "0")}`;
 }
 
@@ -77,15 +80,15 @@ export async function nextFeatureId(repoPath, options: Record<string, any> = {})
 // priority sorts as "P3". Tiebreaker: lowest FEAT-NNN id ascending (oldest
 // feature wins) — deterministic and independent of frontmatter timestamps,
 // which batch triage collapses to a single value.
-export function comparePickOrder(a, b) {
+export function comparePickOrder(a: Record<string, any>, b: Record<string, any>) {
   const ap = a.frontmatter.priority || "P3";
   const bp = b.frontmatter.priority || "P3";
   if (ap !== bp) return ap.localeCompare(bp);
   return a.idNumber - b.idNumber;
 }
 
-export function filterBacklog(entries, filters: Record<string, any> = {}) {
-  return entries.filter((entry) => {
+export function filterBacklog(entries: Record<string, any>[], filters: Record<string, any> = {}) {
+  return entries.filter((entry: Record<string, any>) => {
     if (filters.status && entry.state !== filters.status) return false;
     if (filters.priority && entry.frontmatter.priority !== filters.priority) return false;
     if (filters.category && entry.frontmatter.category !== filters.category) return false;

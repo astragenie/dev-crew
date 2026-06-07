@@ -55,7 +55,7 @@ export async function writePmScores(
   // Deterministic ID guard: verify the FEAT exists on disk before writing.
   // Rejects fabricated IDs that the PM agent may have hallucinated.
   const allEntries = await listBacklog(repoPath);
-  const known = allEntries.find((e) => e.id === id);
+  const known = allEntries.find((e: { id: string }) => e.id === id);
   if (!known) {
     throw new Error(
       `FEAT-id existence guard: ${id} not found in backlog (pending/triaged/in-progress). ` +
@@ -68,7 +68,8 @@ export async function writePmScores(
     throw new Error(`Feature not found: ${id}`);
   }
 
-  const compositeScore = computeWeightedCompositeScore(scores) ?? 0;
+  const compositeScore =
+    computeWeightedCompositeScore(scores as unknown as Record<string, unknown>) ?? 0;
 
   const updates: Record<string, unknown> = {
     pm_customer_impact: scores.customer_impact,

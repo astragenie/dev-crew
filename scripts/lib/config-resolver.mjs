@@ -40,12 +40,12 @@ export async function loadPreset(presetName) {
         const raw = await fs.readFile(presetPath, "utf8");
         return JSON.parse(raw);
     }
-    catch (error) {
-        if (error.code === "ENOENT") {
+    catch (err) {
+        if (err.code === "ENOENT") {
             const known = (await listPresets()).map((p) => p.name).join(", ");
             throw new Error(`Unknown preset "${presetName}". Known presets: ${known}`);
         }
-        throw error;
+        throw err;
     }
 }
 async function readConfigFile(repoPath) {
@@ -54,11 +54,11 @@ async function readConfigFile(repoPath) {
         const raw = await fs.readFile(configPath, "utf8");
         return JSON.parse(raw);
     }
-    catch (error) {
-        if (error.code === "ENOENT") {
+    catch (err) {
+        if (err.code === "ENOENT") {
             return null;
         }
-        throw error;
+        throw err;
     }
 }
 function isPlainObject(value) {
@@ -66,10 +66,12 @@ function isPlainObject(value) {
 }
 function deepMerge(base, overrides) {
     if (!isPlainObject(overrides)) {
-        return overrides === undefined ? base : overrides;
+        return (overrides === undefined ? base : overrides);
     }
-    const result = { ...(isPlainObject(base) ? base : {}) };
-    for (const [key, value] of Object.entries(overrides)) {
+    const overridesObj = overrides;
+    const baseObj = isPlainObject(base) ? base : {};
+    const result = { ...baseObj };
+    for (const [key, value] of Object.entries(overridesObj)) {
         if (value === null) {
             // Explicit null disables the field even if the preset defined a default.
             result[key] = null;

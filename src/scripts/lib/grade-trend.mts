@@ -9,7 +9,7 @@ const STATE_PATH = [".claude", "state", "grade-trend.json"];
 const DEFAULT_THRESHOLD = 0.65;
 const WINDOW_SIZE = 3;
 
-function statePath(repoPath) {
+function statePath(repoPath: string) {
   return path.join(repoPath, ...STATE_PATH);
 }
 
@@ -17,12 +17,16 @@ function statePath(repoPath) {
  * Read current grade-trend state.
  * @returns {{ scores: Array<{sliceId:string, avg:number}>, consecutiveBelow: number }}
  */
-export async function readGradeTrend(repoPath) {
+export async function readGradeTrend(
+  repoPath: string
+): Promise<{ scores: Array<{ sliceId: string; avg: number }>; consecutiveBelow: number }> {
   try {
     const raw = await fs.readFile(statePath(repoPath), "utf8");
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
-      scores: Array.isArray(parsed.scores) ? parsed.scores : [],
+      scores: Array.isArray(parsed.scores)
+        ? (parsed.scores as Array<{ sliceId: string; avg: number }>)
+        : [],
       consecutiveBelow: typeof parsed.consecutiveBelow === "number" ? parsed.consecutiveBelow : 0
     };
   } catch {
@@ -30,7 +34,10 @@ export async function readGradeTrend(repoPath) {
   }
 }
 
-async function writeState(repoPath, state) {
+async function writeState(
+  repoPath: string,
+  state: { scores: Array<{ sliceId: string; avg: number }>; consecutiveBelow: number }
+) {
   const p = statePath(repoPath);
   await fs.mkdir(path.dirname(p), { recursive: true });
   await fs.writeFile(p, JSON.stringify(state, null, 2));
@@ -44,7 +51,10 @@ async function writeState(repoPath, state) {
  * @param {{ sliceId: string, avg: number }} entry
  * @returns {Promise<{ scores: Array<{sliceId:string,avg:number}>, consecutiveBelow: number }>}
  */
-export async function recordGradeScore(repoPath, { sliceId, avg }) {
+export async function recordGradeScore(
+  repoPath: string,
+  { sliceId, avg }: { sliceId: string; avg: number }
+) {
   if (!avg) return readGradeTrend(repoPath);
 
   const state = await readGradeTrend(repoPath);
@@ -67,7 +77,7 @@ export async function recordGradeScore(repoPath, { sliceId, avg }) {
  * @param {object|null} [config]
  * @returns {Promise<null|{ shouldStop: true, reason: string, consecutiveBelow: number, threshold: number }>}
  */
-export async function checkGradeTrend(repoPath, config: any = null) {
+export async function checkGradeTrend(repoPath: string, config: Record<string, any> | null = null) {
   const threshold = config?.loop?.gradeTrendThreshold ?? DEFAULT_THRESHOLD;
   const limit = config?.loop?.gradeTrendConsecutiveLimit ?? 2;
   const state = await readGradeTrend(repoPath);
@@ -85,7 +95,10 @@ export async function checkGradeTrend(repoPath, config: any = null) {
   };
 }
 
-function computeConsecutiveBelow(scores, threshold) {
+function computeConsecutiveBelow(
+  scores: Array<{ sliceId: string; avg: number }>,
+  threshold: number
+) {
   let count = 0;
   for (let i = scores.length - 1; i >= 0; i--) {
     if (scores[i].avg < threshold) {
@@ -106,7 +119,10 @@ function computeConsecutiveBelow(scores, threshold) {
  * @param {object|null} [config]
  * @returns {Promise<null|{ milestone: true, consecutiveAbove: number, avgScore: number, threshold: number }>}
  */
-export async function checkMarathonMilestone(repoPath, config: any = null) {
+export async function checkMarathonMilestone(
+  repoPath: string,
+  config: Record<string, any> | null = null
+) {
   const threshold = config?.loop?.gradeTrendThreshold ?? DEFAULT_THRESHOLD;
   const milestoneLength = config?.loop?.marathonMilestoneLength ?? WINDOW_SIZE;
   const state = await readGradeTrend(repoPath);

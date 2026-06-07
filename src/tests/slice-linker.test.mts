@@ -12,7 +12,7 @@ import {
 import { addFeature, findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   // Write a minimal .claude/loop.json so config-resolver works.
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });

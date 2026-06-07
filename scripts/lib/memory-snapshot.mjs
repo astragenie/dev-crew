@@ -31,11 +31,9 @@ function parseFrontmatter(text) {
         const m = line.match(/^([\w_]+):\s*(.*)$/);
         if (!m)
             continue;
-        let v = m[2].trim();
+        const raw = m[2].trim();
         // Try to parse as number (for usd field)
-        if (/^\d+(\.\d+)?$/.test(v)) {
-            v = Number(v);
-        }
+        const v = /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
         fm[m[1]] = v;
     }
     return { fm, body };
@@ -208,7 +206,8 @@ export async function writeMemorySnapshot(repoPath, { config = null } = {}) {
     const specsByStatus = {
         draft: specs.filter((s) => s.frontmatter.status === "draft").length,
         approved: specs.filter((s) => s.frontmatter.status === "approved").length,
-        decomposed: specs.filter((s) => s.frontmatter.status === "decomposed").length,
+        decomposed: specs.filter((s) => s.frontmatter.status === "decomposed")
+            .length,
         satisfied: specs.filter((s) => s.frontmatter.status === "satisfied").length
     };
     const recentGrades = grades.slice(-5);

@@ -28,11 +28,11 @@ function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>):
 // Resolve all feature-level signals + confidence verdict in one call.
 // Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
 async function resolveFeatureSignals(
-  repoPath,
-  featureId,
-  resolved,
+  repoPath: string,
+  featureId: string | null,
+  resolved: Record<string, any>,
   sliceContent: string,
-  recentGradeAvg,
+  recentGradeAvg: number | null,
   dispatch: boolean
 ) {
   const feat = featureId
@@ -54,11 +54,11 @@ async function resolveFeatureSignals(
   return { autonomousSafe, confidence, confidenceReason, requiresApprovalGate };
 }
 
-async function bestEffort(fn) {
+async function bestEffort(fn: (...args: any[]) => any) {
   try {
     return await fn();
-  } catch (err) {
-    return { error: err.message };
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
   }
 }
 
@@ -74,7 +74,12 @@ export function computeApprovalGate(
 
 // Quality gates that must pass before startSlice can proceed.
 // Extracted to keep startSlice under the complexity cap.
-async function runSliceStartGates(sliceId, content, repoPath, config) {
+async function runSliceStartGates(
+  sliceId: string,
+  content: string | null,
+  repoPath: string,
+  config: Record<string, any> | null
+) {
   if (content) {
     const acResult = lintAcceptanceCriteria(content);
     if (!acResult.ok) {
@@ -231,28 +236,44 @@ export async function applyWorktreeResult(
   return result;
 }
 
+// Derive resolvedGoal/featureId/phase from slice ctx + caller goal.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+function resolveSliceMetaFields(
+  goal: string | null,
+  ctx: Record<string, any>
+): { resolvedGoal: string | null; featureId: string | null; phase: string | null } {
+  return {
+    resolvedGoal: goal || ctx.goal,
+    featureId: ctx.frontmatter.feature || null,
+    phase: ctx.frontmatter.phase || null
+  };
+}
+
 export async function startSlice(
-  repoPath,
-  sliceId,
+  repoPath: string,
+  sliceId: string,
   {
     config = null,
     goal = null,
     dispatch = true,
     _crewVersionOverride = undefined as string | null | undefined
-  }: Record<string, unknown> = {}
+  }: {
+    config?: Record<string, any> | null;
+    goal?: string | null;
+    dispatch?: boolean;
+    _crewVersionOverride?: string | null;
+  } = {}
 ) {
   if (!sliceId) throw new Error("startSlice requires a sliceId.");
-  const resolved = config || (await resolveConfig(repoPath));
+  const resolved: Record<string, any> = config ?? (await resolveConfig(repoPath));
   const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
   const { activePlan, title } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
 
   const ctx = await readSliceContext(slicesRoot, sliceId);
-  const resolvedGoal = goal || ctx.goal;
-  const featureId = ctx.frontmatter.feature || null;
-  const phase = ctx.frontmatter.phase || null;
+  const { resolvedGoal, featureId, phase } = resolveSliceMetaFields(goal, ctx);
 
-  await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
+  await runSliceStartGates(sliceId, ctx.content ?? null, repoPath, resolved);
 
   const {
     runBrief,
@@ -329,8 +350,24 @@ export async function startSlice(
 // Gathers all parallel async resources for a slice start in one Promise.all.
 // Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
 async function gatherSliceResources(
-  repoPath,
-  { sliceId, title, resolvedGoal, featureId, phase, ctx, resolved }
+  repoPath: string,
+  {
+    sliceId,
+    title,
+    resolvedGoal,
+    featureId,
+    phase,
+    ctx,
+    resolved
+  }: {
+    sliceId: string;
+    title: string;
+    resolvedGoal: string | null;
+    featureId: string | null;
+    phase: string | null;
+    ctx: Record<string, any>;
+    resolved: Record<string, any>;
+  }
 ) {
   const [runBrief, gradeTrend, featureResult, marathonMilestone, learningsResult, planPreflight] =
     await Promise.all([
@@ -377,14 +414,18 @@ async function gatherSliceResources(
 // Locate the active plan + derive the human-readable title for this slice
 // from the plan match, falling back to bare sliceId. Extracted from
 // startSlice to keep its cyclomatic complexity under the eslint cap.
-async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
+async function resolvePlanAndTitle(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
   const activePlan = await findActivePlan(repoPath, config);
   const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
   const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
   return { activePlan, title };
 }
 
-function resolveActivePlanSummary(activePlan) {
+function resolveActivePlanSummary(activePlan: Record<string, any>) {
   return activePlan.planPath ? { source: activePlan.source, path: activePlan.planPath } : null;
 }
 
@@ -411,17 +452,17 @@ function computeNextAction(
 
 // Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.
 function resolveDispatchInstruction(
-  dispatch,
-  sliceId,
-  title,
-  sliceFile,
-  repoPath,
-  resolvedGoal,
-  featureId,
-  sliceContent,
-  featureExcerpt,
-  featurePath,
-  dispatchLimits,
+  dispatch: boolean,
+  sliceId: string,
+  title: string,
+  sliceFile: string | null,
+  repoPath: string,
+  resolvedGoal: string | null,
+  featureId: string | null,
+  sliceContent: string | null,
+  featureExcerpt: string | null,
+  featurePath: string | null,
+  dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
   useOrchestrateSlice = false,
   worktreePath: string | null = null
 ) {
@@ -469,21 +510,46 @@ function buildStartSliceReturn({
   sliceFile,
   repoPath,
   resolvedGoal,
-  gradeTrendCaution = null as any,
-  featureId = null as any,
-  sliceContent = null as any,
-  featureExcerpt = null as any,
-  featurePath = null as any,
-  marathonMilestone = null as any,
-  dispatchLimits = null as any,
-  orchestratorModel = null as any,
-  learningsDigest = null as any,
-  planPreflight = null as any,
-  requiresApprovalGate = false as any,
-  confidence = null as any,
-  confidenceReason = null as any,
-  useOrchestrateSlice = false as boolean,
-  worktreeInfo = undefined as WorktreeResult | undefined
+  gradeTrendCaution = null,
+  featureId = null,
+  sliceContent = null,
+  featureExcerpt = null,
+  featurePath = null,
+  marathonMilestone = null,
+  dispatchLimits = null,
+  orchestratorModel = null,
+  learningsDigest = null,
+  planPreflight = null,
+  requiresApprovalGate = false,
+  confidence = null,
+  confidenceReason = null,
+  useOrchestrateSlice = false,
+  worktreeInfo = undefined
+}: {
+  sliceId: string;
+  title: string;
+  activePlan: Record<string, any>;
+  runBrief: Record<string, any> | null;
+  sliceProgress: Record<string, any> | null;
+  dispatch: boolean;
+  sliceFile: string | null;
+  repoPath: string;
+  resolvedGoal: string | null;
+  gradeTrendCaution?: string | null;
+  featureId?: string | null;
+  sliceContent?: string | null;
+  featureExcerpt?: string | null;
+  featurePath?: string | null;
+  marathonMilestone?: Record<string, any> | null;
+  dispatchLimits?: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null;
+  orchestratorModel?: string | null;
+  learningsDigest?: string | null;
+  planPreflight?: Record<string, any> | null;
+  requiresApprovalGate?: boolean;
+  confidence?: string | null;
+  confidenceReason?: string | null;
+  useOrchestrateSlice?: boolean;
+  worktreeInfo?: WorktreeResult | undefined;
 }) {
   const worktreePath = worktreeInfo?.worktreePath ?? null;
   const dispatchInstruction = resolveDispatchInstruction(
@@ -531,7 +597,12 @@ function buildStartSliceReturn({
 
 // Refresh the slice-progress dashboard with the new currentSliceId.
 // Extracted from startSlice purely to lower its cyclomatic complexity.
-async function refreshSliceProgress(repoPath, activePlan, sliceId, config = null) {
+async function refreshSliceProgress(
+  repoPath: string,
+  activePlan: Record<string, any>,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
   return bestEffort(async () => {
     const enriched = await detectSliceStatus(repoPath, activePlan.slices, {
       slicesRoot: resolveSlicesRoot(repoPath, config)
@@ -544,7 +615,13 @@ async function refreshSliceProgress(repoPath, activePlan, sliceId, config = null
   });
 }
 
-async function recordStartTrajectory(repoPath, sliceId, result, featureId, title) {
+async function recordStartTrajectory(
+  repoPath: string,
+  sliceId: string,
+  result: Record<string, any>,
+  featureId: string | null,
+  title: string
+) {
   try {
     const { recordStep } = await import("../trajectory-writer.mjs");
     await recordStep(repoPath, sliceId, "slice_start", {

@@ -54,13 +54,13 @@ export interface RollingMedianResult {
   sampleValues: number[];
 }
 
-async function parseFrontmatter(text) {
+async function parseFrontmatter(text: string) {
   if (!text.startsWith("---")) return { fm: null, body: text };
   const end = text.indexOf("\n---", 3);
   if (end < 0) return { fm: null, body: text };
   const block = text.slice(3, end).trim();
   const body = text.slice(end + 4);
-  const fm = {};
+  const fm: Record<string, string> = {};
   for (const line of block.split(/\r?\n/)) {
     const m = line.match(/^([\w_]+):\s*(.*)$/);
     if (!m) continue;
@@ -77,7 +77,7 @@ async function parseFrontmatter(text) {
   return { fm, body };
 }
 
-function extractHighSeverityFindings(body) {
+function extractHighSeverityFindings(body: string) {
   const findings: any[] = [];
   const lines = body.split(/\r?\n/);
   for (const line of lines) {
@@ -89,7 +89,7 @@ function extractHighSeverityFindings(body) {
   return findings;
 }
 
-async function loadCostAdviseFiles(repoPath, limit = 20) {
+async function loadCostAdviseFiles(repoPath: string, limit = 20) {
   const dir = path.join(repoPath, ...COST_INSIGHTS_DIR_PARTS);
   const files: any[] = [];
   let entries;
@@ -117,7 +117,7 @@ async function loadCostAdviseFiles(repoPath, limit = 20) {
   return results;
 }
 
-export async function getHighSeverityCostAlerts(repoPath, windowSlices = 3) {
+export async function getHighSeverityCostAlerts(repoPath: string, windowSlices = 3) {
   const adviseFiles = await loadCostAdviseFiles(repoPath, windowSlices);
   const alerts: any[] = [];
   for (const file of adviseFiles) {
@@ -136,7 +136,7 @@ export async function getHighSeverityCostAlerts(repoPath, windowSlices = 3) {
 
 // Count high-severity cost alerts across recent reports.
 // Used by checkStopConditions to decide whether to halt.
-export async function countHighSeverityCostAlerts(repoPath, windowSlices = 3) {
+export async function countHighSeverityCostAlerts(repoPath: string, windowSlices = 3) {
   const alerts = await getHighSeverityCostAlerts(repoPath, windowSlices);
   return alerts.filter((a) => a.severity === "high").length;
 }

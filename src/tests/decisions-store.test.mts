@@ -11,7 +11,7 @@ import {
   showDecision
 } from "../scripts/lib/decisions-store.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 

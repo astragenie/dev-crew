@@ -14,7 +14,7 @@ import {
 import { writePmReviewArtifact } from "../scripts/lib/pm-artifact-writer.mjs";
 import { triagePending } from "../scripts/lib/backlog-triage.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 

@@ -55,12 +55,12 @@ export function extractAcceptanceCriteria(body: string): string[] {
 }
 
 // Walks slicesRoot recursively, returns the max numeric slice id found.
-async function maxSliceIdUnder(dir) {
+async function maxSliceIdUnder(dir: string) {
   if (!(await pathExists(dir))) return 0;
   let max = 0;
   const stack = [dir];
   while (stack.length > 0) {
-    const current = stack.pop();
+    const current = stack.pop() as string;
     const entries = await fs.readdir(current, { withFileTypes: true });
     for (const entry of entries) {
       const full = path.join(current, entry.name);
@@ -78,11 +78,11 @@ async function maxSliceIdUnder(dir) {
   return max;
 }
 
-function sliceId(n) {
+function sliceId(n: number) {
   return `SLICE-${String(n).padStart(2, "0")}`;
 }
 
-function kebab(text) {
+function kebab(text: string) {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -90,7 +90,19 @@ function kebab(text) {
     .slice(0, 60);
 }
 
-function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBody }) {
+function buildSliceContent({
+  id,
+  title,
+  featureId,
+  featureFrontmatter,
+  featureBody
+}: {
+  id: string;
+  title: string;
+  featureId: string;
+  featureFrontmatter: Record<string, unknown>;
+  featureBody: string;
+}) {
   const today = new Date().toISOString().slice(0, 10);
   const frontmatter = {
     id,
@@ -166,7 +178,7 @@ type ClassifyResult = {
   stack: string[];
 };
 
-function featureHasTags(fm): boolean {
+function featureHasTags(fm: Record<string, unknown>): boolean {
   if (Array.isArray(fm.tags)) return fm.tags.length > 0;
   return fm.tags != null && fm.tags !== "";
 }
@@ -241,8 +253,8 @@ async function classifySlice({
 //
 // Returns { slice: {id, path}, feature: {id, path, fromState, toState}, classify }.
 export async function sliceFromFeature(
-  repoPath,
-  featureId,
+  repoPath: string,
+  featureId: string,
   {
     config = null,
     noClassify = false,

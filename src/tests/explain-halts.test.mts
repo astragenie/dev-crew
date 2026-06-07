@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { explainHalts, HALT_BADGES } from "../scripts/lib/halt-badges.mjs";
 
 test("explainHalts: all halt-badges null → 'No halts active.'", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: null,
       sessionDrift: null,
@@ -29,7 +29,7 @@ test("explainHalts: missing snapshot AND missing top-level → 'No halts active.
 });
 
 test("explainHalts: costRegression populated → renders gate name + values + action", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: {
         triggered: true,
@@ -54,7 +54,7 @@ test("explainHalts: costRegression populated → renders gate name + values + ac
 });
 
 test("explainHalts: sessionDrift populated → renders both sessionIds + override action", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: null,
       sessionDrift: {
@@ -74,7 +74,7 @@ test("explainHalts: sessionDrift populated → renders both sessionIds + overrid
 });
 
 test("explainHalts: sliceCostCeiling populated → renders actual vs ceiling + action", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: null,
       sessionDrift: null,
@@ -90,7 +90,7 @@ test("explainHalts: sliceCostCeiling populated → renders actual vs ceiling + a
 });
 
 test("explainHalts: gradeTrend populated → renders consecutiveBelow + threshold + action", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: null,
       sessionDrift: null,
@@ -106,7 +106,7 @@ test("explainHalts: gradeTrend populated → renders consecutiveBelow + threshol
 });
 
 test("explainHalts: multiple halts → renders ALL fired in registry order", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: {
         triggered: true,
@@ -158,7 +158,7 @@ test("explainHalts: multiple halts → renders ALL fired in registry order", () 
 
 test("explainHalts: top-level fields (loop brief shape, not stop-check) also detected", () => {
   // loop brief currently surfaces costRegression + sessionDrift at top level.
-  const brief = {
+  const brief: Record<string, any> = {
     costRegression: {
       triggered: true,
       currentUsd: 50,
@@ -175,7 +175,7 @@ test("explainHalts: top-level fields (loop brief shape, not stop-check) also det
 });
 
 test("explainHalts: malformed snapshot field (missing inner fields) does not crash", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: { triggered: true }, // no numeric fields
       sessionDrift: null,
@@ -189,7 +189,7 @@ test("explainHalts: malformed snapshot field (missing inner fields) does not cra
 });
 
 test("explainHalts: unknown registry field on snapshot is ignored (graceful degrade)", () => {
-  const brief = {
+  const brief: Record<string, any> = {
     snapshot: {
       costRegression: null,
       sessionDrift: null,

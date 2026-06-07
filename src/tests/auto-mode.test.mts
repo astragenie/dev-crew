@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude/state/crew"), { recursive: true });
   await fs.mkdir(path.join(repo, ".claude/state/loop"), { recursive: true });
@@ -28,7 +28,7 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function seedIterationCount(repo, count) {
+async function seedIterationCount(repo: string, count: number) {
   const target = path.join(repo, ".claude/state/loop/iteration.json");
   await fs.writeFile(
     target,
@@ -36,7 +36,7 @@ async function seedIterationCount(repo, count) {
   );
 }
 
-async function writeCrewWorkflow(repo, gates) {
+async function writeCrewWorkflow(repo: string, gates: Record<string, any>) {
   const target = path.join(repo, ".claude/state/crew/workflow-state.json");
   await fs.writeFile(
     target,
@@ -52,7 +52,7 @@ async function writeCrewWorkflow(repo, gates) {
   );
 }
 
-async function writeCostAdvise(repo, sliceId, content) {
+async function writeCostAdvise(repo: string, sliceId: string, content: string) {
   const dir = path.join(repo, ".claude/artifacts/crew/cost-insights");
   await fs.mkdir(dir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";
@@ -120,7 +120,7 @@ test("auto mode: crew escalated_to_human still halts the loop", async () => {
 
   assert.equal(out.shouldStop, true, "escalation is a hard external block even in auto mode");
   assert.ok(
-    out.reasons.some((r) => r.includes("escalated_to_human")),
+    out.reasons.some((r: string) => r.includes("escalated_to_human")),
     "reasons include escalation marker"
   );
   assert.equal(out.snapshot.crewEscalated, true);
@@ -135,7 +135,7 @@ test("auto mode: warn pattern alert still halts the loop", async () => {
   const out = await checkStopConditions(repo);
 
   assert.equal(out.shouldStop, true, "warn alerts still gate in auto mode");
-  assert.ok(out.blockers.some((b) => b.category === "in-progress-orphan"));
+  assert.ok(out.blockers.some((b: Record<string, any>) => b.category === "in-progress-orphan"));
 });
 
 test("auto mode: high-severity cost alert still halts the loop", async () => {
@@ -147,7 +147,7 @@ test("auto mode: high-severity cost alert still halts the loop", async () => {
   const out = await checkStopConditions(repo, { config });
 
   assert.equal(out.shouldStop, true, "cost alerts still gate in auto mode");
-  assert.ok(out.reasons.some((r) => r.includes("cost_alert_high")));
+  assert.ok(out.reasons.some((r: string) => r.includes("cost_alert_high")));
 });
 
 test("legacy mode (autoMode=false): iteration cap halts the loop", async () => {
@@ -159,7 +159,7 @@ test("legacy mode (autoMode=false): iteration cap halts the loop", async () => {
   const out = await checkStopConditions(repo, { config });
 
   assert.equal(out.shouldStop, true, "legacy mode halts on iteration cap");
-  assert.ok(out.reasons.some((r) => /iteration cap reached/.test(r)));
+  assert.ok(out.reasons.some((r: string) => /iteration cap reached/.test(r)));
   assert.equal(out.iterationCapReached, true);
   assert.equal(out.snapshot.autoMode, false);
 });
@@ -175,7 +175,7 @@ test("legacy mode (autoMode=false): crew blocked badge halts the loop", async ()
   const out = await checkStopConditions(repo, { config });
 
   assert.equal(out.shouldStop, true, "legacy mode halts on soft blocked badge");
-  assert.ok(out.reasons.some((r) => /crew run blocked/.test(r)));
+  assert.ok(out.reasons.some((r: string) => /crew run blocked/.test(r)));
 });
 
 test("snapshot field surfaces autoMode for dashboards", async () => {
@@ -223,7 +223,7 @@ test("back-compat: marathonMode=false halts iteration cap (same as autoMode=fals
 
   assert.equal(out.shouldStop, true, "deprecated marathonMode=false still halts on cap");
   assert.equal(out.snapshot.autoMode, false, "snapshot reflects autoMode=false");
-  assert.ok(out.reasons.some((r) => /iteration cap reached/.test(r)));
+  assert.ok(out.reasons.some((r: string) => /iteration cap reached/.test(r)));
 });
 
 test("back-compat: autoMode wins when both keys set with conflicting values", async () => {

@@ -28,8 +28,9 @@ export function renderTemplate(template: string, tokens: Record<string, unknown>
 }
 
 // Resolves a loop path token: prefer config.loop override, fall back to PATH_DEFAULTS.
-export function resolveLoopPath(config: Record<string, any>, key: string): string {
-  return (config.loop && config.loop[key]) || PATH_DEFAULTS[key];
+export function resolveLoopPath(config: Record<string, unknown>, key: string): string {
+  const loopOverrides = config.loop as Record<string, string> | undefined;
+  return (loopOverrides && loopOverrides[key]) || PATH_DEFAULTS[key as keyof typeof PATH_DEFAULTS];
 }
 
 // Builds the numbered mandatory-docs list embedded in the CLAUDE.md block.

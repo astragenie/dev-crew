@@ -11,11 +11,11 @@ import { findCrewCli } from "../scripts/lib/plugin-identity.mjs";
 
 const execFile = promisify(execFileCallback);
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-async function initRepoWithCrewState(prefix) {
+async function initRepoWithCrewState(prefix: string) {
   const repo = await tmpRepo(prefix);
   await execFile("git", ["init", "--quiet"], { cwd: repo });
   await execFile("git", ["config", "user.email", "t@e"], { cwd: repo });
@@ -30,7 +30,7 @@ async function initRepoWithCrewState(prefix) {
   return repo;
 }
 
-async function writeConfig(repo, stack) {
+async function writeConfig(repo: string, stack: Record<string, any>) {
   const dir = path.join(repo, ".claude");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(

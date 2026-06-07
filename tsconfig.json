@@ -14,8 +14,8 @@
     "types": [
       "node"
     ],
-    "noImplicitAny": false,
-    "useUnknownInCatchVariables": false
+    "noImplicitAny": true,
+    "useUnknownInCatchVariables": true
   },
   "include": [
     "src/scripts/**/*.mts"

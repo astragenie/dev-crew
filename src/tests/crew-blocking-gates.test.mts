@@ -8,17 +8,17 @@ import { readCrewBlockingGates } from "../scripts/lib/crew-workflow-reader.mjs";
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 import { buildBrief } from "../scripts/lib/brief.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-async function writeCrewState(repoPath, state) {
+async function writeCrewState(repoPath: string, state: Record<string, any>) {
   const dir = path.join(repoPath, ".claude", "state", "crew");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "workflow-state.json"), JSON.stringify(state, null, 2));
 }
 
-async function seedMinimalAlRepo(repoPath) {
+async function seedMinimalAlRepo(repoPath: string) {
   await fs.mkdir(path.join(repoPath, "docs", "backlog", "pending"), { recursive: true });
   await fs.mkdir(path.join(repoPath, "docs", "specs"), { recursive: true });
   await fs.writeFile(path.join(repoPath, "docs", "backlog", "pending", ".gitkeep"), "");
@@ -75,7 +75,7 @@ test("checkStopConditions stops when crew run is escalated_to_human", async () =
   });
   const result = await checkStopConditions(repo);
   assert.equal(result.shouldStop, true);
-  assert.ok(result.reasons.some((r) => r.includes("escalated_to_human")));
+  assert.ok(result.reasons.some((r: string) => r.includes("escalated_to_human")));
   assert.equal(result.snapshot.crewEscalated, true);
 });
 
@@ -90,7 +90,7 @@ test("checkStopConditions stops when crew run is blocked (legacy gating)", async
   const config = { loop: { autoMode: false } };
   const result = await checkStopConditions(repo, { config });
   assert.equal(result.shouldStop, true);
-  assert.ok(result.reasons.some((r) => r.includes("blocked")));
+  assert.ok(result.reasons.some((r: string) => r.includes("blocked")));
   assert.equal(result.snapshot.crewBlocked, true);
 });
 

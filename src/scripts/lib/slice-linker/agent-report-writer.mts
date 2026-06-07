@@ -10,7 +10,7 @@ const EVENTS_JSONL = [".claude", "logs", "events.jsonl"];
 
 // Translate POSIX-style /c/work/... paths written by git-bash on Windows
 // into native Windows paths. Native absolute paths pass through unchanged.
-function normalizePayloadPath(payloadPath) {
+function normalizePayloadPath(payloadPath: string): string | null {
   if (!payloadPath) return null;
   if (/^[A-Za-z]:[/\\]/.test(payloadPath)) return payloadPath;
   const m = payloadPath.match(/^\/([a-z])(\/.*)?$/);
@@ -21,7 +21,7 @@ function normalizePayloadPath(payloadPath) {
 // Read events.jsonl filtered to subagent events at or after startedAt.
 // Returns { events, fileFound }. When startedAt is null, startMs is
 // -Infinity so all events pass the time filter (no floor).
-async function readEventsInWindow(repoPath, startedAt) {
+async function readEventsInWindow(repoPath: string, startedAt: string | null) {
   const eventsPath = path.join(repoPath, ...EVENTS_JSONL);
   const startMs = startedAt ? new Date(startedAt).getTime() : -Infinity;
   let raw;
@@ -47,9 +47,10 @@ async function readEventsInWindow(repoPath, startedAt) {
   return { events, fileFound: true };
 }
 
-async function loadPayload(payloadPath) {
+async function loadPayload(payloadPath: string) {
   if (!payloadPath) return null;
   const normalized = normalizePayloadPath(payloadPath);
+  if (!normalized) return null;
   try {
     return JSON.parse(await fs.readFile(normalized, "utf8"));
   } catch {
@@ -57,7 +58,11 @@ async function loadPayload(payloadPath) {
   }
 }
 
-function buildAgentPair(stopPayload, stopTs, startEntry) {
+function buildAgentPair(
+  stopPayload: Record<string, any>,
+  stopTs: string | null,
+  startEntry: Record<string, any> | undefined
+) {
   return {
     agentId: stopPayload.agent_id,
     agentType: stopPayload.agent_type || startEntry?.payload?.agent_type || "unknown",
@@ -72,14 +77,14 @@ function buildAgentPair(stopPayload, stopTs, startEntry) {
   };
 }
 
-function buildPairFromStart(startPayload, startTs) {
+function buildPairFromStart(startPayload: Record<string, any>, startTs: string | null) {
   return {
     agentId: startPayload.agent_id,
     agentType: startPayload.agent_type || "unknown",
     sessionId: startPayload.session_id || null,
     startTs,
-    stopTs: null,
-    transcriptPath: null,
+    stopTs: null as string | null,
+    transcriptPath: null as string | null,
     backgroundTasks: 0,
     stopHookActive: false
   };
@@ -130,7 +135,12 @@ function dedupePairsByTranscript(pairs: any[]): any[] {
 // After pairing by agent_id, pairs are deduped by transcriptPath so that
 // duplicate hook fires (which produce distinct agent_ids referencing the
 // same dispatch) collapse to one row in the report.
-function pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimestamps) {
+function pairAgentEvents(
+  startPayloads: Record<string, any>[],
+  stopPayloads: Record<string, any>[],
+  startTimestamps: string[],
+  stopTimestamps: string[]
+) {
   const startByAgentId = new Map();
   for (let i = 0; i < startPayloads.length; i++) {
     const p = startPayloads[i];
@@ -156,14 +166,18 @@ function pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimes
   return dedupePairsByTranscript(pairs);
 }
 
-function accumulateToolUse(block, tools, skills) {
+function accumulateToolUse(
+  block: Record<string, any>,
+  tools: Map<string, number>,
+  skills: Set<string>
+) {
   const toolName = block.name;
   if (!toolName) return;
   tools.set(toolName, (tools.get(toolName) || 0) + 1);
   if (toolName === "Skill" && block.input?.skill) skills.add(block.input.skill);
 }
 
-function accumulateTranscriptLine(state, obj) {
+function accumulateTranscriptLine(state: Record<string, any>, obj: Record<string, any>) {
   if (obj.type !== "assistant") return;
   state.turns++;
   if (state.model === "n/a" && obj.message?.model) state.model = obj.message.model;
@@ -176,8 +190,13 @@ function accumulateTranscriptLine(state, obj) {
 
 // Stream the agent transcript JSONL line-by-line to avoid buffering large files.
 // Returns zeroed stats on any I/O or parse failure (best-effort).
-async function parseTranscript(transcriptPath) {
-  const empty = { turns: 0, model: "n/a", tools: new Map(), skills: [] };
+async function parseTranscript(transcriptPath: string) {
+  const empty = {
+    turns: 0,
+    model: "n/a",
+    tools: new Map<string, number>(),
+    skills: [] as string[]
+  };
   if (!transcriptPath) return { ...empty, error: "no transcript path" };
   try {
     await fs.access(transcriptPath);
@@ -201,13 +220,13 @@ async function parseTranscript(transcriptPath) {
       }
       accumulateTranscriptLine(state, obj);
     }
-  } catch (err) {
-    return { ...empty, error: err.message };
+  } catch (err: unknown) {
+    return { ...empty, error: (err as Error).message };
   }
   return { turns: state.turns, model: state.model, tools: state.tools, skills: [...state.skills] };
 }
 
-function overlaps(a, b) {
+function overlaps(a: Record<string, any>, b: Record<string, any>) {
   const aStart = new Date(a.startTs).getTime();
   const aStop = new Date(a.stopTs).getTime();
   const bStart = new Date(b.startTs).getTime();
@@ -215,7 +234,7 @@ function overlaps(a, b) {
   return aStart < bStop && bStart < aStop;
 }
 
-function connectedComponents(ids, adj) {
+function connectedComponents(ids: string[], adj: Map<string, Set<string>>) {
   const visited = new Set();
   const groups: any[] = [];
   for (const id of ids) {
@@ -224,7 +243,7 @@ function connectedComponents(ids, adj) {
     const queue = [id];
     while (queue.length > 0) {
       const current = queue.shift();
-      if (visited.has(current)) continue;
+      if (current === undefined || visited.has(current)) continue;
       visited.add(current);
       group.push(current);
       for (const neighbor of adj.get(current) || []) {
@@ -237,22 +256,24 @@ function connectedComponents(ids, adj) {
 }
 
 // O(n²) sweep — n is typically < 20 agents per slice.
-function computeParallelGroups(agentPairs) {
-  const withTs = agentPairs.filter((p) => p.startTs !== null && p.stopTs !== null);
+function computeParallelGroups(agentPairs: Record<string, any>[]) {
+  const withTs = agentPairs.filter(
+    (p: Record<string, any>) => p.startTs !== null && p.stopTs !== null
+  );
   if (withTs.length < 2) return [];
-  const adj = new Map(withTs.map((p) => [p.agentId, new Set()]));
+  const adj = new Map(withTs.map((p: Record<string, any>) => [p.agentId, new Set<string>()]));
   for (let i = 0; i < withTs.length; i++) {
     for (let j = i + 1; j < withTs.length; j++) {
       if (overlaps(withTs[i], withTs[j])) {
-        (adj.get(withTs[i].agentId) as any).add(withTs[j].agentId);
-        (adj.get(withTs[j].agentId) as any).add(withTs[i].agentId);
+        adj.get(withTs[i].agentId)!.add(withTs[j].agentId);
+        adj.get(withTs[j].agentId)!.add(withTs[i].agentId);
       }
     }
   }
   return connectedComponents([...adj.keys()], adj);
 }
 
-function formatDuration(ms) {
+function formatDuration(ms: number) {
   if (ms === null || ms === undefined || isNaN(ms) || ms < 0) return "n/a";
   const totalSec = Math.floor(ms / 1000);
   const min = Math.floor(totalSec / 60);
@@ -260,7 +281,7 @@ function formatDuration(ms) {
   return min === 0 ? `${sec}s` : `${min}m ${sec}s`;
 }
 
-function topTools(toolMap, n = 3) {
+function topTools(toolMap: Map<string, number>, n = 3) {
   if (!toolMap || toolMap.size === 0) return "—";
   return [...toolMap.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -269,7 +290,7 @@ function topTools(toolMap, n = 3) {
     .join(", ");
 }
 
-function renderAgentRow(a) {
+function renderAgentRow(a: Record<string, any>) {
   const role = a.agentType || "unknown";
   const model = a.model || "n/a";
   const turns = a.turns ?? 0;
@@ -279,25 +300,27 @@ function renderAgentRow(a) {
   return `| ${role} | ${model} | ${turns} | ${dur} | ${tools} | ${skills} |`;
 }
 
-function renderAgentTable(agents) {
+function renderAgentTable(agents: Record<string, any>[]) {
   if (agents.length === 0) return "_No agents were dispatched during this slice._";
   const header = "| Role | Model | Turns | Duration | Top tools | Skills |";
   const sep = "|------|-------|-------|----------|-----------|--------|";
   return [header, sep, ...agents.map(renderAgentRow)].join("\n");
 }
 
-function renderParallelGroups(groups, agentPairs) {
+function renderParallelGroups(groups: string[][], agentPairs: Record<string, any>[]) {
   if (groups.length === 0) return "No parallel groups detected.";
-  const agentMap = new Map(agentPairs.map((p) => [p.agentId, p]));
+  const agentMap = new Map(agentPairs.map((p: Record<string, any>) => [p.agentId, p]));
   return groups
-    .map((group, i) => {
-      const members = group.map((id) => (agentMap.get(id) as any)?.agentType ?? id.slice(0, 8));
+    .map((group: string[], i: number) => {
+      const members = group.map(
+        (id: string) => (agentMap.get(id) as any)?.agentType ?? id.slice(0, 8)
+      );
       return `**Group ${i + 1}** (${group.length} agents, concurrent): ${members.join(", ")}`;
     })
     .join("\n");
 }
 
-function aggregateTools(agents) {
+function aggregateTools(agents: Record<string, any>[]) {
   const totals = new Map();
   const attribution = new Map();
   for (const a of agents) {
@@ -311,7 +334,7 @@ function aggregateTools(agents) {
   return { totals, attribution };
 }
 
-function renderToolSummary(agents) {
+function renderToolSummary(agents: Record<string, any>[]) {
   const { totals, attribution } = aggregateTools(agents);
   if (totals.size === 0) return "_No tool usage recorded._";
   const header = "| Tool | Total calls | Top agents |";
@@ -325,7 +348,11 @@ function renderToolSummary(agents) {
   return [header, sep, ...rows].join("\n");
 }
 
-export function renderIdentification(phase, featureId, sliceId) {
+export function renderIdentification(
+  phase: string | null | undefined,
+  featureId: string | null | undefined,
+  sliceId: string | null | undefined
+) {
   const parts: any[] = [];
   if (phase !== null && phase !== undefined && String(phase).length > 0) {
     parts.push(`**Phase:** ${phase}`);
@@ -336,9 +363,19 @@ export function renderIdentification(phase, featureId, sliceId) {
 }
 
 function buildBody(
-  agents,
-  groups,
-  { phase, featureId, sliceId, eventsFound }: Record<string, unknown> = {}
+  agents: Record<string, any>[],
+  groups: string[][],
+  {
+    phase,
+    featureId,
+    sliceId,
+    eventsFound
+  }: {
+    phase?: string | null;
+    featureId?: string | null;
+    sliceId?: string | null;
+    eventsFound?: boolean;
+  } = {}
 ) {
   const sections = [""];
   const id = renderIdentification(phase, featureId, sliceId);
@@ -373,7 +410,7 @@ function buildBody(
   return sections.join("\n");
 }
 
-async function collectEventPayloads(events) {
+async function collectEventPayloads(events: Record<string, any>[]) {
   const startPayloads: any[] = [];
   const startTimestamps: any[] = [];
   const stopPayloads: any[] = [];
@@ -391,9 +428,9 @@ async function collectEventPayloads(events) {
   return { startPayloads, startTimestamps, stopPayloads, stopTimestamps };
 }
 
-async function enrichPairsWithTranscripts(pairs) {
+async function enrichPairsWithTranscripts(pairs: Record<string, any>[]) {
   return Promise.all(
-    pairs.map(async (pair) => {
+    pairs.map(async (pair: Record<string, any>) => {
       const transcript = await parseTranscript(pair.transcriptPath);
       const startMs = pair.startTs ? new Date(pair.startTs).getTime() : null;
       const stopMs = pair.stopTs ? new Date(pair.stopTs).getTime() : null;
@@ -412,9 +449,16 @@ async function enrichPairsWithTranscripts(pairs) {
  * @param {{ sliceId: string, featureId?: string|null, phase?: string|null, startedAt?: string|null }} opts
  * @returns {Promise<{ reportPath: string, agentCount: number, totalTurns: number, totalDurationMs: number }>}
  */
+interface WriteAgentReportOpts {
+  sliceId: string;
+  featureId?: string | null;
+  phase?: string | null;
+  startedAt?: string | null;
+}
+
 export async function writeAgentReport(
-  repoPath,
-  { sliceId, featureId = null, phase = null, startedAt = null }
+  repoPath: string,
+  { sliceId, featureId = null, phase = null, startedAt = null }: WriteAgentReportOpts
 ) {
   if (!sliceId) throw new Error("writeAgentReport requires sliceId");
 
@@ -433,7 +477,7 @@ export async function writeAgentReport(
     await collectEventPayloads(events);
 
   const pairs = pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimestamps);
-  const agents = await enrichPairsWithTranscripts(pairs);
+  const agents = (await enrichPairsWithTranscripts(pairs)) as Record<string, any>[];
   const groups = computeParallelGroups(agents);
 
   const agentCount = agents.length;

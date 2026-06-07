@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { lintAcceptanceCriteria } from "../scripts/lib/ac-linter.mjs";
 
-function makeContent(acs) {
+function makeContent(acs: string[]) {
   return [
     "# SLICE-01",
     "",

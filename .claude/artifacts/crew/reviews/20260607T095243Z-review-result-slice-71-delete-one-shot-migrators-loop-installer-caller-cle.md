@@ -1,0 +1,32 @@
+# Review Result: SLICE-71: delete one-shot migrators + loop-installer caller cleanup
+
+- Created: 2026-06-07T09:52:43.663Z
+- Reviewer: reviewer
+- Decision: rejected
+- Summary: Builder left a failing test after deleting adhoc-migrator, and made three explicit out-of-scope deletions/modifications (marker-drain.mts, auto-dispatch.mts, complete-slice.mts) that the slice spec forbade.
+- Evidence Checked:
+  - 1. npm test: 909 tests
+  - 907 pass
+  - 1 FAIL — 'installLoop migrates an ad-hoc HARD RULE block when migrateAdhoc is true' (tests/loop-installer.test.mjs:137) fails because adhoc-migrator was deleted but the test was not updated; 2. Scope violation: marker-drain.mts deleted (src + compiled + test) — slice spec explicitly forbids changes to marker-drain.mts; 3. Scope violation: auto-dispatch.mts modified — slice spec explicitly forbids changes to auto-dispatch.mts; 4. Scope violation: complete-slice.mts modified — fireMarkerDrain removed
+  - noMarkerDrain/drainFn opts removed
+  - DrainFn type removed — not in assigned scope; 5. AC-1 partial: codemod-add-any.mts and migrate-product-backlog.mts were already absent (correctly noted in handoff); 6. AC-2: adhoc + legacy test files deleted — confirmed; 7. AC-3: loop-installer.mts has no import/call for deleted modules — confirmed clean; 8. AC-4: typecheck exits 0 — confirmed; 9. AC-5: lint exits 0
+  - zero warnings — confirmed; 10. AC-7: stale .mjs absent for adhoc + legacy — confirmed; 11. Builder handoff falsely claims all gates pass.
+- Files Reviewed:
+  - src/scripts/lib/loop-installer.mts
+  - src/scripts/lib/adhoc-migrator.mts (deleted)
+  - src/scripts/lib/legacy-migrator.mts (deleted)
+  - src/tests/adhoc-migrator.test.mts (deleted)
+  - src/tests/legacy-migrator.test.mts (deleted)
+  - scripts/lib/adhoc-migrator.mjs (deleted)
+  - scripts/lib/legacy-migrator.mjs (deleted)
+  - tests/adhoc-migrator.test.mjs (deleted)
+  - tests/legacy-migrator.test.mjs (deleted)
+  - src/scripts/lib/marker-drain.mts (out-of-scope deleted)
+  - src/scripts/lib/auto-dispatch.mts (out-of-scope modified)
+  - src/scripts/lib/slice-linker/complete-slice.mts (out-of-scope modified)
+  - src/tests/slice-complete-marker-drain.test.mts (out-of-scope modified)
+  - src/tests/marker-drain.test.mts (out-of-scope deleted)
+- Test Adequacy: 1 test actively failing (AC-6 FAIL): loop-installer migrateAdhoc test not updated after adhoc-migrator deletion; 907/909 pass; no new tests added (refactor/deletion)
+- Risks: Out-of-scope changes to marker-drain, auto-dispatch, and complete-slice increase blast radius without independent review coverage for those modules; failing test breaks npm test gate
+- Required Follow-up: Builder must: (1) fix the failing test in loop-installer.test.mts — either delete the migrateAdhoc:true test or stub the behavior so it passes; (2) out-of-scope changes to marker-drain/auto-dispatch/complete-slice must either be reverted or formally assigned to a new/existing slice with reviewer sign-off
+

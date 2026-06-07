@@ -28,8 +28,8 @@ export const SCORE_DIMENSIONS = [
 // Parse the "## Scores" section out of the markdown body. Returns
 // { dimension: value } object. Used because the simple frontmatter parser
 // doesn't handle nested mappings.
-export function parseScoresFromBody(body) {
-  const scores = {};
+export function parseScoresFromBody(body: string) {
+  const scores: Record<string, number> = {};
   const lines = body.split("\n");
   let inScores = false;
   for (const line of lines) {
@@ -48,14 +48,14 @@ export function parseScoresFromBody(body) {
   return scores;
 }
 
-export function averageScore(scores) {
+export function averageScore(scores: Record<string, number> | null | undefined) {
   if (!scores) return null;
   const values = SCORE_DIMENSIONS.map((d) => scores[d]).filter((v) => typeof v === "number");
   if (values.length === 0) return null;
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-export function validateScores(scores) {
+export function validateScores(scores: Record<string, unknown>) {
   const errors: any[] = [];
   for (const dim of SCORE_DIMENSIONS) {
     const v = scores[dim];
@@ -77,7 +77,7 @@ export function validateScores(scores) {
 // Parse the "## Decisions" section out of the body. Returns array of
 // { id, title, rationale, consequences } extracted from "### DEC-XXX: title"
 // blocks. id is "TBD" for blocks not yet extracted.
-export function parseDecisionsFromBody(body) {
+export function parseDecisionsFromBody(body: string) {
   const decisions: any[] = [];
   const lines = body.split("\n");
   let inDecisions = false;
@@ -121,7 +121,7 @@ export function parseDecisionsFromBody(body) {
   return decisions;
 }
 
-export async function readGrade(filePath) {
+export async function readGrade(filePath: string) {
   const content = await fs.readFile(filePath, "utf8");
   const { frontmatter, body } = parseFrontmatter(content);
   return {
@@ -133,11 +133,11 @@ export async function readGrade(filePath) {
   };
 }
 
-function isGradeFile(filename) {
+function isGradeFile(filename: string) {
   return GRADE_FILE_RE_LEGACY.test(filename) || GRADE_FILE_RE_NEW.test(filename);
 }
 
-export async function listGrades(repoPath, options: Record<string, any> = {}) {
+export async function listGrades(repoPath: string, options: Record<string, any> = {}) {
   const cacheKey = `listGrades:${repoPath}`;
   return cached(cacheKey, async () => {
     const root = gradesRoot(repoPath, options.config);
@@ -159,7 +159,11 @@ export async function listGrades(repoPath, options: Record<string, any> = {}) {
 // sliceId. Recognises both the legacy bare format (SLICE-NN-grade.md) and the
 // new timestamped format (YYYYMMDDTHHMMSSZ-...-sliceNN-grade.md). Returns the
 // full path of the first match, or null.
-export async function findGradeFileForSlice(repoPath, sliceId, config = null) {
+export async function findGradeFileForSlice(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
   const root = gradesRoot(repoPath, config);
   if (!(await pathExists(root))) return null;
   // Legacy path — fast check before full scan.
@@ -177,7 +181,11 @@ export async function findGradeFileForSlice(repoPath, sliceId, config = null) {
   return null;
 }
 
-export async function findGradeForSlice(repoPath, sliceId, config = null) {
+export async function findGradeForSlice(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
   const filePath = await findGradeFileForSlice(repoPath, sliceId, config);
   if (!filePath) return null;
   return readGrade(filePath);
@@ -186,6 +194,10 @@ export async function findGradeForSlice(repoPath, sliceId, config = null) {
 // Returns a deterministic (legacy-format) path for the given slice. Used as a
 // fallback for callers that need a predictable write target when no existing
 // file is found. Prefer findGradeFileForSlice when reading.
-export function gradeFilePath(repoPath, sliceId, config = null) {
+export function gradeFilePath(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
   return path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`);
 }

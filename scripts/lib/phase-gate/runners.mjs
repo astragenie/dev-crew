@@ -41,14 +41,15 @@ async function runOneCommand(repoPath, step) {
         };
     }
     catch (error) {
+        const err = error;
         return {
             cmd: step.cmd,
             args: step.args || [],
             cwd: path.relative(repoPath, cwd) || ".",
-            exit: typeof error.code === "number" ? error.code : 1,
+            exit: typeof err.code === "number" ? err.code : 1,
             durationMs: Date.now() - startedAt,
-            stdout: tail(error.stdout || ""),
-            stderr: tail(error.stderr || error.message || ""),
+            stdout: tail(err.stdout || ""),
+            stderr: tail(err.stderr || err.message || ""),
             ok: false
         };
     }

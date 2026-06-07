@@ -40,13 +40,13 @@ import { checkRedundantReadStop, type RedundantReadSignal } from "./redundant-re
 //   - In hand-driven mode: surface in brief
 //   - In phase-gate: include in retrospective + handoff
 
-function computeBacklogStats(backlog, specs) {
+function computeBacklogStats(backlog: any[], specs: any[]) {
   const pendingOrTriaged =
     filterBacklog(backlog, { status: "pending" }).length +
     filterBacklog(backlog, { status: "triaged" }).length;
   const inProgress = filterBacklog(backlog, { status: "in-progress" }).length;
   const approvedUndecomposed = specs.filter(
-    (s) =>
+    (s: Record<string, any>) =>
       s.frontmatter.status === "approved" &&
       (!Array.isArray(s.frontmatter.derived_features) ||
         s.frontmatter.derived_features.length === 0)
@@ -54,7 +54,11 @@ function computeBacklogStats(backlog, specs) {
   return { pendingOrTriaged, inProgress, approvedUndecomposed };
 }
 
-function appendBacklogExhaustedSignals(stats, reasons, suggestions) {
+function appendBacklogExhaustedSignals(
+  stats: Record<string, number>,
+  reasons: string[],
+  suggestions: string[]
+) {
   if (stats.pendingOrTriaged === 0 && stats.inProgress === 0 && stats.approvedUndecomposed === 0) {
     reasons.push("backlog empty + no undecomposed specs → no actionable work");
     suggestions.push(
@@ -96,7 +100,12 @@ export function applyWarnAlertSignals(
   reasons.push(`${haltAlerts.length} warn-severity alert(s) — resolve before rolling next slice`);
 }
 
-function applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode }) {
+function applyIterationCapSignals(
+  iterStatus: Record<string, any>,
+  reasons: string[],
+  suggestions: string[],
+  { autoMode }: { autoMode: boolean }
+) {
   if (!iterStatus.exhausted || autoMode) return;
   reasons.push(`iteration cap reached (${iterStatus.count}/${iterStatus.cap})`);
   suggestions.push(
@@ -106,7 +115,12 @@ function applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode }
   );
 }
 
-function applyCostAlertSignal(costAlertCount, config, reasons, suggestions) {
+function applyCostAlertSignal(
+  costAlertCount: number,
+  config: Record<string, any> | null,
+  reasons: string[],
+  suggestions: string[]
+) {
   if (costAlertCount < (config?.loop?.costStopThreshold || 1)) return;
   reasons.push(
     `cost_alert_high: ${costAlertCount} high-severity cost recommendation(s) across last 3 slices`
@@ -240,7 +254,12 @@ function applyCostRegressionSignal(
   );
 }
 
-function applySliceCostCeilingSignal(ceilingSignal, reasons, suggestions, blockers) {
+function applySliceCostCeilingSignal(
+  ceilingSignal: SliceCostCeilingSignal | null,
+  reasons: string[],
+  suggestions: string[],
+  blockers: Array<Record<string, string>>
+) {
   if (!ceilingSignal) return;
   const actual = ceilingSignal.actualUsd.toFixed(2);
   const ceiling = ceilingSignal.ceilingUsd;
@@ -258,7 +277,11 @@ function applySliceCostCeilingSignal(ceilingSignal, reasons, suggestions, blocke
   );
 }
 
-function applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions) {
+function applyGradeTrendSignal(
+  gradeTrendSignal: Record<string, any> | null,
+  reasons: string[],
+  suggestions: string[]
+) {
   if (!gradeTrendSignal) return;
   reasons.push(gradeTrendSignal.reason);
   suggestions.push(
@@ -268,7 +291,12 @@ function applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions) {
   );
 }
 
-function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
+function appendCrewGateSignals(
+  crewGates: Record<string, any>,
+  reasons: string[],
+  suggestions: string[],
+  { autoMode }: { autoMode: boolean }
+) {
   if (crewGates.escalated) {
     reasons.push(
       `crew run escalated_to_human: ${crewGates.escalated.note || "(no note)"} — hard stop`
@@ -287,7 +315,7 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
   }
 }
 
-async function gatherStopInputs(repoPath, config) {
+async function gatherStopInputs(repoPath: string, config: Record<string, any> | null) {
   const [
     backlog,
     specs,
@@ -330,7 +358,7 @@ async function gatherStopInputs(repoPath, config) {
 
 // eslint-disable-next-line complexity -- pipeline orchestrator; complexity inflated by config nullish-chaining and apply* calls, but actual branching is linear. Track as follow-up to consolidate apply* calls into a single resolver.
 export async function checkStopConditions(
-  repoPath,
+  repoPath: string,
   { config = null, ignoreAlerts = false }: Record<string, any> = {}
 ) {
   const {

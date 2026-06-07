@@ -7,7 +7,7 @@ import path from "node:path";
  * @param {{ id: string, title: string }} phase
  * @returns {CeremonyResult}
  */
-export function phaseStart(phase) {
+export function phaseStart(phase: { id: string; title: string }) {
   return {
     type: "phase-start",
     id: phase.id,
@@ -20,7 +20,7 @@ export function phaseStart(phase) {
  * @param {{ id: string, title: string }} phase
  * @returns {CeremonyResult}
  */
-export function phaseEnd(phase) {
+export function phaseEnd(phase: { id: string; title: string }) {
   return {
     type: "phase-end",
     id: phase.id,
@@ -33,7 +33,7 @@ export function phaseEnd(phase) {
  * @param {{ id: string, title: string, phase: string }} feat
  * @returns {CeremonyResult}
  */
-export function featureStart(feat) {
+export function featureStart(feat: { id: string; title: string; phase: string }) {
   return {
     type: "feature-start",
     id: feat.id,
@@ -47,7 +47,10 @@ export function featureStart(feat) {
  * @param {{ simplifyRan?: boolean }} [opts]
  * @returns {{ type: string, id: string, timestamp: string, status: string, simplifyRan: boolean }}
  */
-export function featureEnd(feat, opts: Record<string, any> = {}) {
+export function featureEnd(
+  feat: { id: string; title: string; phase: string },
+  opts: Record<string, any> = {}
+) {
   return {
     type: "feature-end",
     id: feat.id,
@@ -61,7 +64,19 @@ export function featureEnd(feat, opts: Record<string, any> = {}) {
  * @param {Array<{ id: string, title: string, status: string, features: Array<{ id: string, title: string, status: string, slices: Array<{ id: string, title: string, status: string }> }> }>} phases
  * @returns {string}
  */
-export function renderTree(phases) {
+export function renderTree(
+  phases: Array<{
+    id: string;
+    title: string;
+    status: string;
+    features?: Array<{
+      id: string;
+      title: string;
+      status: string;
+      slices?: Array<{ id: string; title: string; status: string }>;
+    }>;
+  }>
+) {
   if (!phases || phases.length === 0) return "";
 
   const lines: any[] = [];
@@ -97,7 +112,10 @@ export function renderTree(phases) {
  * @param {{ type: string, id: string, timestamp: string, status: string, simplifyRan: boolean }} result
  * @returns {Promise<string>} written file path
  */
-export async function writeFeatureEndCeremony(repoPath, result) {
+export async function writeFeatureEndCeremony(
+  repoPath: string,
+  result: { timestamp: string; id: string; type: string; status: string; simplifyRan: boolean }
+) {
   const dir = path.join(repoPath, ".claude", "artifacts", "crew", "ceremonies");
   await fs.mkdir(dir, { recursive: true });
   const stamp = result.timestamp.replace(/[^0-9]/g, "");
@@ -112,7 +130,7 @@ export async function writeFeatureEndCeremony(repoPath, result) {
  * @param {string} featureId
  * @returns {Promise<{ type: string, id: string, timestamp: string, status: string, simplifyRan: boolean } | null>}
  */
-export async function readFeatureEndCeremony(repoPath, featureId) {
+export async function readFeatureEndCeremony(repoPath: string, featureId: string) {
   const dir = path.join(repoPath, ".claude", "artifacts", "crew", "ceremonies");
   let entries;
   try {

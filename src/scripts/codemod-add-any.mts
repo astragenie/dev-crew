@@ -11,12 +11,12 @@ function runTsc() {
   try {
     execSync("npx tsc --project tsconfig.json --noEmit --pretty false", { encoding: "utf8" });
     return "";
-  } catch (err) {
-    return err.stdout || "";
+  } catch (err: unknown) {
+    return (err as NodeJS.ErrnoException & { stdout?: string }).stdout || "";
   }
 }
 
-function parseDiagnostics(output) {
+function parseDiagnostics(output: string) {
   // Format: src/path/file.mts(line,col): error TSnnnn: message
   const re = /^(.+?)\((\d+),(\d+)\): error TS(\d+): (.+)$/gm;
   const diags: any[] = [];
@@ -33,7 +33,12 @@ function parseDiagnostics(output) {
   return diags;
 }
 
-function applyFix(file, line, col, fix) {
+function applyFix(
+  file: string,
+  line: number,
+  col: number,
+  fix: { kind: string; skipFromCol: number }
+) {
   const content = readFileSync(file, "utf8");
   const lines = content.split("\n");
   const original = lines[line - 1];
@@ -55,7 +60,7 @@ function applyFix(file, line, col, fix) {
   return true;
 }
 
-function applyDestructureFix(file, line, col) {
+function applyDestructureFix(file: string, line: number, col: number) {
   // TS7031: binding element. We need to find the enclosing { ... } and add `: any` after the closing `}`.
   // Strategy: from (line, col), walk back to find the opening `{`, then forward to matching `}`, then insert `: any`.
   const content = readFileSync(file, "utf8");
@@ -132,7 +137,10 @@ while (true) {
     byFile.get(d.file).push(d);
   }
   for (const [file, list] of byFile) {
-    list.sort((a, b) => b.line - a.line || b.col - a.col);
+    list.sort(
+      (a: { line: number; col: number }, b: { line: number; col: number }) =>
+        b.line - a.line || b.col - a.col
+    );
     for (const d of list) {
       if (d.code === 7031) {
         applyDestructureFix(file, d.line, d.col);

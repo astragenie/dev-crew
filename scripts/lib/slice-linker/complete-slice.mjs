@@ -100,11 +100,11 @@ function describeBlockedGate({ isBlocked, isSimplifyBlocked, blockingGates, vali
     }
     if (testAdequacyGate?.satisfied === false)
         return testAdequacyGate.reason;
-    return `validation-gate: ${validationGate.reason}`;
+    return `validation-gate: ${validationGate?.reason ?? "no evidence"}`;
 }
 async function evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate) {
     const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
-    const simplifyCeremony = await readFeatureEndCeremony(repoPath, featureId);
+    const simplifyCeremony = featureId ? await readFeatureEndCeremony(repoPath, featureId) : null;
     const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
     const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
     const isTestAdequacyBlocked = Boolean(testAdequacyGate && testAdequacyGate.satisfied === false);

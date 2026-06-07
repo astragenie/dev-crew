@@ -8,11 +8,11 @@ import { writeMemorySnapshot } from "../scripts/lib/memory-snapshot.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { initializeIterationCounter, incrementIteration } from "../scripts/lib/loop-iteration.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-async function writeCostReport(repo, sliceId, usdValue) {
+async function writeCostReport(repo: string, sliceId: string, usdValue: number) {
   const dir = path.join(repo, ".claude/artifacts/crew/cost");
   await fs.mkdir(dir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";

@@ -13,7 +13,7 @@ import { addSpec, updateSpecFrontmatter } from "../scripts/lib/spec-parser.mjs";
 import { SCORE_DIMENSIONS } from "../scripts/lib/grade-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -32,7 +32,13 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function seedGrade(repo, sliceId, scores, lessons = [], surprises = []) {
+async function seedGrade(
+  repo: string,
+  sliceId: string,
+  scores: Record<string, number>,
+  lessons: string[] = [],
+  surprises: string[] = []
+) {
   const { gradePath } = await createGradeFile(repo, sliceId);
   let content = await fs.readFile(gradePath, "utf8");
   for (const [dim, value] of Object.entries(scores)) {
@@ -76,7 +82,7 @@ test("completeSlice filename embeds FEAT + phase from slice frontmatter", async 
   // Inject phase into slice frontmatter (sliceFromFeature defaults phase: null).
   const slicesRoot = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
   let slicePath: any = null;
-  async function walk(dir) {
+  async function walk(dir: string) {
     for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) await walk(full);
@@ -139,7 +145,7 @@ test("completeSlice synthesis embeds grade summary when grade exists", async () 
   const feat = await addFeature(repo, { title: "graded" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Seed grade BEFORE complete (recommended order)
-  const scores = {};
+  const scores: Record<string, number> = {};
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   await seedGrade(repo, slice.id, scores);
   const result = await completeSlice(repo, slice.id, {
@@ -170,7 +176,7 @@ test("writeMemorySnapshot produces a structured doc with backlog + specs + grade
 
 test("recentLessons aggregates last N grades' lessons + surprises + followups", async () => {
   const repo = await tmpRepo("al-v110-lessons-");
-  const scores = {};
+  const scores: Record<string, number> = {};
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   // Seed 3 grades with distinct lessons
   for (let i = 1; i <= 3; i += 1) {

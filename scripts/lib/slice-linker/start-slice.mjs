@@ -187,17 +187,24 @@ export async function applyWorktreeResult(repoPath, sliceId, sliceFile, config, 
     }
     return result;
 }
+// Derive resolvedGoal/featureId/phase from slice ctx + caller goal.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+function resolveSliceMetaFields(goal, ctx) {
+    return {
+        resolvedGoal: goal || ctx.goal,
+        featureId: ctx.frontmatter.feature || null,
+        phase: ctx.frontmatter.phase || null
+    };
+}
 export async function startSlice(repoPath, sliceId, { config = null, goal = null, dispatch = true, _crewVersionOverride = undefined } = {}) {
     if (!sliceId)
         throw new Error("startSlice requires a sliceId.");
-    const resolved = config || (await resolveConfig(repoPath));
+    const resolved = config ?? (await resolveConfig(repoPath));
     const slicesRoot = resolveSlicesRoot(repoPath, resolved);
     const { activePlan, title } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
     const ctx = await readSliceContext(slicesRoot, sliceId);
-    const resolvedGoal = goal || ctx.goal;
-    const featureId = ctx.frontmatter.feature || null;
-    const phase = ctx.frontmatter.phase || null;
-    await runSliceStartGates(sliceId, ctx.content, repoPath, resolved);
+    const { resolvedGoal, featureId, phase } = resolveSliceMetaFields(goal, ctx);
+    await runSliceStartGates(sliceId, ctx.content ?? null, repoPath, resolved);
     const { runBrief, featureExcerpt, featurePath, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight, recentGradeAvg } = await gatherSliceResources(repoPath, {
         sliceId,
         title,

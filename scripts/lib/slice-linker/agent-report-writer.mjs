@@ -54,6 +54,8 @@ async function loadPayload(payloadPath) {
     if (!payloadPath)
         return null;
     const normalized = normalizePayloadPath(payloadPath);
+    if (!normalized)
+        return null;
     try {
         return JSON.parse(await fs.readFile(normalized, "utf8"));
     }
@@ -185,7 +187,12 @@ function accumulateTranscriptLine(state, obj) {
 // Stream the agent transcript JSONL line-by-line to avoid buffering large files.
 // Returns zeroed stats on any I/O or parse failure (best-effort).
 async function parseTranscript(transcriptPath) {
-    const empty = { turns: 0, model: "n/a", tools: new Map(), skills: [] };
+    const empty = {
+        turns: 0,
+        model: "n/a",
+        tools: new Map(),
+        skills: []
+    };
     if (!transcriptPath)
         return { ...empty, error: "no transcript path" };
     try {
@@ -236,7 +243,7 @@ function connectedComponents(ids, adj) {
         const queue = [id];
         while (queue.length > 0) {
             const current = queue.shift();
-            if (visited.has(current))
+            if (current === undefined || visited.has(current))
                 continue;
             visited.add(current);
             group.push(current);
@@ -392,15 +399,6 @@ async function enrichPairsWithTranscripts(pairs) {
         return { ...pair, ...transcript, duration_ms };
     }));
 }
-/**
- * Write a loop-owned agent-report artifact summarising which agents ran
- * during the slice, their turn counts, models, tool usage, and skill
- * invocations. Best-effort: I/O failures degrade to partial/zero data.
- *
- * @param {string} repoPath
- * @param {{ sliceId: string, featureId?: string|null, phase?: string|null, startedAt?: string|null }} opts
- * @returns {Promise<{ reportPath: string, agentCount: number, totalTurns: number, totalDurationMs: number }>}
- */
 export async function writeAgentReport(repoPath, { sliceId, featureId = null, phase = null, startedAt = null }) {
     if (!sliceId)
         throw new Error("writeAgentReport requires sliceId");
@@ -415,7 +413,7 @@ export async function writeAgentReport(repoPath, { sliceId, featureId = null, ph
     const { events, fileFound } = await readEventsInWindow(repoPath, startedAt);
     const { startPayloads, startTimestamps, stopPayloads, stopTimestamps } = await collectEventPayloads(events);
     const pairs = pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimestamps);
-    const agents = await enrichPairsWithTranscripts(pairs);
+    const agents = (await enrichPairsWithTranscripts(pairs));
     const groups = computeParallelGroups(agents);
     const agentCount = agents.length;
     const totalTurns = agents.reduce((sum, a) => sum + (a.turns || 0), 0);

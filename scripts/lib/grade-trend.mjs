@@ -18,7 +18,9 @@ export async function readGradeTrend(repoPath) {
         const raw = await fs.readFile(statePath(repoPath), "utf8");
         const parsed = JSON.parse(raw);
         return {
-            scores: Array.isArray(parsed.scores) ? parsed.scores : [],
+            scores: Array.isArray(parsed.scores)
+                ? parsed.scores
+                : [],
             consecutiveBelow: typeof parsed.consecutiveBelow === "number" ? parsed.consecutiveBelow : 0
         };
     }

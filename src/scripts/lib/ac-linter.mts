@@ -10,7 +10,7 @@ const PLACEHOLDER_PATTERNS = [
   /^\s*-\s+\[[x\s]\]\s+AC-\d+:\s*$/ // AC-1: (empty)
 ];
 
-function isPlaceholder(line) {
+function isPlaceholder(line: string) {
   return PLACEHOLDER_PATTERNS.some((p) => p.test(line));
 }
 
@@ -20,11 +20,15 @@ function isPlaceholder(line) {
  * @param {string} content - full slice file text
  * @returns {{ ok: boolean, violations: string[], error?: string }}
  */
-export function lintAcceptanceCriteria(content) {
+export function lintAcceptanceCriteria(content: string) {
   const lines = content.split(/\r?\n/);
-  const startIdx = lines.findIndex((l) => /^##\s+Acceptance\s+criteria\s*$/i.test(l));
+  const startIdx = lines.findIndex((l: string) => /^##\s+Acceptance\s+criteria\s*$/i.test(l));
   if (startIdx === -1) {
-    return { ok: false, violations: [], error: "No '## Acceptance criteria' section found" };
+    return {
+      ok: false,
+      violations: [] as string[],
+      error: "No '## Acceptance criteria' section found"
+    };
   }
 
   const acBullets: any[] = [];

@@ -30,13 +30,13 @@ const TASK_HEADING_RE = /^##\s+Task\s+\d+:\s+(SLICE[-_]\d+)\s*[—–-]\s*(.+?)\
 const APPROVED_SLICE_RE = /^[-*]\s+\[([ xX])\]\s+(SLICE[-_]\d+)\s*[—–:-]\s*(.+?)\s*$/;
 const SLICE_FILENAME_RE = /^SLICE[-_](\d+)/i;
 
-function normalizeSliceId(raw) {
+function normalizeSliceId(raw: string) {
   return raw.replace(/_/g, "-").toUpperCase();
 }
 
 // Returns { source: "superpowers"|"approved-slices"|null, planPath, slices }
 // where slices is [{ id: "SLICE-18", title, checked: bool }].
-export async function findActivePlan(repoPath, config = null) {
+export async function findActivePlan(repoPath: string, config: Record<string, any> | null = null) {
   const plansDir = path.join(repoPath, "docs/superpowers/plans");
   if (await pathExists(plansDir)) {
     const entries = await fs.readdir(plansDir, { withFileTypes: true });
@@ -67,7 +67,7 @@ export async function findActivePlan(repoPath, config = null) {
   return { source: null, planPath: null, slices: [] };
 }
 
-export async function parseSuperpowersPlan(planPath) {
+export async function parseSuperpowersPlan(planPath: string) {
   const text = await fs.readFile(planPath, "utf8");
   const slices: any[] = [];
   for (const line of text.split(/\r?\n/)) {
@@ -79,7 +79,7 @@ export async function parseSuperpowersPlan(planPath) {
   return slices;
 }
 
-export async function parseApprovedSlices(filePath) {
+export async function parseApprovedSlices(filePath: string) {
   const text = await fs.readFile(filePath, "utf8");
   const slices: any[] = [];
   for (const line of text.split(/\r?\n/)) {
@@ -99,8 +99,8 @@ export async function parseApprovedSlices(filePath) {
 // exists under slicesRoot and whether its frontmatter is status:
 // completed. Returns slices augmented with { exists, completed, slicePath }.
 export async function detectSliceStatus(
-  repoPath,
-  slices,
+  repoPath: string,
+  slices: Record<string, any>[],
   { slicesRoot }: Record<string, any> = {}
 ) {
   const root = slicesRoot || resolveSlicesRoot(repoPath, null);
@@ -108,7 +108,7 @@ export async function detectSliceStatus(
   const filesByNumber = hasRoot ? await indexSliceFiles(root) : new Map();
   const completedFromGit = await sliceNumbersCompletedInGit(repoPath);
   return Promise.all(
-    slices.map(async (slice) => {
+    slices.map(async (slice: Record<string, any>) => {
       const number = sliceNumber(slice.id);
       const slicePath = number != null ? filesByNumber.get(number) : null;
       let completed = slice.checked === true;
@@ -130,7 +130,7 @@ export async function detectSliceStatus(
 // a Set of numeric slice ids that have been marked complete via that
 // commit convention. Falls back to an empty Set if git is unavailable or
 // the repo isn't a git checkout.
-async function sliceNumbersCompletedInGit(repoPath) {
+async function sliceNumbersCompletedInGit(repoPath: string) {
   const out = new Set();
   try {
     const { stdout } = await execFile("git", ["log", "--pretty=%s", "--grep", "mark SLICE", "-i"], {
@@ -149,16 +149,16 @@ async function sliceNumbersCompletedInGit(repoPath) {
   return out;
 }
 
-function sliceNumber(sliceId) {
+function sliceNumber(sliceId: string) {
   const m = sliceId.match(/SLICE-(\d+)/i);
   return m ? Number(m[1]) : null;
 }
 
-async function indexSliceFiles(root) {
+async function indexSliceFiles(root: string) {
   const out = new Map();
   const stack = [root];
   while (stack.length > 0) {
-    const dir = stack.pop();
+    const dir = stack.pop()!;
     let entries;
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
@@ -181,7 +181,7 @@ async function indexSliceFiles(root) {
   return out;
 }
 
-function renderRow({ slice, isCurrent }) {
+function renderRow({ slice, isCurrent }: { slice: Record<string, any>; isCurrent: boolean }) {
   const status = isCurrent
     ? "IN_PROGRESS"
     : slice.completed
@@ -199,7 +199,7 @@ function renderRow({ slice, isCurrent }) {
 // and per-slice status. currentSliceId, when provided, marks that row as
 // IN_PROGRESS regardless of the file's status frontmatter.
 export async function writeSliceProgress(
-  repoPath,
+  repoPath: string,
   { activePlan, slices, currentSliceId = null }: Record<string, any> = {}
 ) {
   const stateDir = path.join(repoPath, ".claude/state/crew");
@@ -216,14 +216,14 @@ export async function writeSliceProgress(
   const rows =
     slices.length === 0
       ? ["_(no slices parsed)_"]
-      : slices.map((slice) =>
+      : slices.map((slice: Record<string, any>) =>
           renderRow({
             slice: { ...slice, repoPath },
             isCurrent: currentSliceId ? normalizeSliceId(currentSliceId) === slice.id : false
           })
         );
 
-  const completedCount = slices.filter((s) => s.completed).length;
+  const completedCount = slices.filter((s: Record<string, any>) => s.completed).length;
   const totalCount = slices.length;
   const summary = totalCount > 0 ? `Progress: ${completedCount}/${totalCount} completed` : "";
 
@@ -249,7 +249,7 @@ export async function writeSliceProgress(
 
 // Convenience: parse active plan, detect status, write dashboard.
 export async function refreshSliceProgress(
-  repoPath,
+  repoPath: string,
   { currentSliceId = null, config = null }: Record<string, any> = {}
 ) {
   const activePlan = await findActivePlan(repoPath, config);

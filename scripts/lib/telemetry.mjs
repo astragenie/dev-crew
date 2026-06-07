@@ -20,7 +20,7 @@ export async function logEvent(repoPath, event) {
         return { logged: true, path: target };
     }
     catch (error) {
-        return { logged: false, reason: error.message };
+        return { logged: false, reason: error instanceof Error ? error.message : String(error) };
     }
 }
 export async function readEvents(repoPath, { limit = null } = {}) {

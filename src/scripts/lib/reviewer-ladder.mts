@@ -14,14 +14,14 @@ const DEFAULT_FOCUS = {
   B: "Production-readiness, observability (OTel spans / structured logs), security posture, edge cases. Check for hardcoded secrets, missing healthchecks, and absent error paths."
 };
 
-export function extractFilesSection(content) {
+export function extractFilesSection(content: string) {
   const m = content.match(
     /(?:\*\*Files:\*\*[ \t]*|(?:^|\n)## Files[^\n]*)\n([\s\S]*?)(?=\n## |\s*$)/
   );
   return m ? m[1].trim() || null : null;
 }
 
-async function runGitDiffStat(repoPath) {
+async function runGitDiffStat(repoPath: string) {
   try {
     const { execFile } = await import("node:child_process");
     const { promisify } = await import("node:util");
@@ -36,9 +36,9 @@ async function runGitDiffStat(repoPath) {
 }
 
 export async function buildReviewLadder(
-  repoPath,
-  sliceId,
-  { config = null }: Record<string, unknown> = {}
+  repoPath: string,
+  sliceId: string,
+  { config = null }: { config?: Record<string, any> | null } = {}
 ) {
   if (!sliceId) throw new Error("buildReviewLadder requires sliceId");
   const resolved = config || (await resolveConfig(repoPath));
@@ -63,10 +63,10 @@ export async function buildReviewLadder(
     runGitDiffStat(repoPath)
   ]);
 
-  const tasks = ladder.map((reviewerId) => {
+  const tasks = ladder.map((reviewerId: string) => {
     const focus =
-      focusOverrides[reviewerId] ||
-      DEFAULT_FOCUS[reviewerId] ||
+      (focusOverrides as Record<string, string>)[reviewerId] ||
+      (DEFAULT_FOCUS as Record<string, string>)[reviewerId] ||
       `Review ${sliceId} from your assigned perspective.`;
     return {
       reviewer: reviewerId,

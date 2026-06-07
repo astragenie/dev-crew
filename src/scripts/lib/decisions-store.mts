@@ -12,7 +12,7 @@ const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 
 const DEC_FILE_RE = /^DEC-(\d+)\.md$/;
 
-async function readTemplate(rel) {
+async function readTemplate(rel: string) {
   return fs.readFile(path.join(templateDir, rel), "utf8");
 }
 
@@ -21,8 +21,11 @@ function today() {
 }
 
 export async function listDecisions(
-  repoPath,
-  { config = null, status = null }: Record<string, unknown> = {}
+  repoPath: string,
+  {
+    config = null,
+    status = null
+  }: { config?: Record<string, any> | null; status?: string | null } = {}
 ) {
   const root = decisionsRoot(repoPath, config);
   if (!(await pathExists(root))) return [];
@@ -49,7 +52,7 @@ export async function listDecisions(
   return filtered.sort((a, b) => (a.id || "").localeCompare(b.id || ""));
 }
 
-export async function nextDecisionId(repoPath, config = null) {
+export async function nextDecisionId(repoPath: string, config: Record<string, any> | null = null) {
   const all = await listDecisions(repoPath, { config });
   let max = 0;
   for (const d of all) {
@@ -63,8 +66,22 @@ export async function nextDecisionId(repoPath, config = null) {
 }
 
 export async function writeDecisionFile(
-  repoPath,
-  { id, title, sliceId, rationale = "", consequences = "", config = null }
+  repoPath: string,
+  {
+    id,
+    title,
+    sliceId,
+    rationale = "",
+    consequences = "",
+    config = null
+  }: {
+    id: string;
+    title: string;
+    sliceId: string;
+    rationale?: string;
+    consequences?: string;
+    config?: Record<string, any> | null;
+  }
 ) {
   if (!id || !title || !sliceId) {
     throw new Error("writeDecisionFile requires id, title, sliceId");
@@ -104,7 +121,11 @@ export async function writeDecisionFile(
 // Returns decisions whose `affects_files` frontmatter array matches any of
 // the supplied changed files. Match is literal path-suffix. Used by reviewer
 // to surface prior architectural decisions touching the same code.
-export async function findRelevantDecisions(repoPath, changedFiles, config = null) {
+export async function findRelevantDecisions(
+  repoPath: string,
+  changedFiles: string[],
+  config: Record<string, any> | null = null
+) {
   if (!Array.isArray(changedFiles) || changedFiles.length === 0) return [];
   const all = await listDecisions(repoPath, { config });
   const normalized = changedFiles.map((f) => f.replace(/\\/g, "/").toLowerCase());
@@ -135,7 +156,11 @@ export async function findRelevantDecisions(repoPath, changedFiles, config = nul
   return matched;
 }
 
-export async function showDecision(repoPath, decisionId, config = null) {
+export async function showDecision(
+  repoPath: string,
+  decisionId: string,
+  config: Record<string, any> | null = null
+) {
   const all = await listDecisions(repoPath, { config });
   return all.find((d) => d.id === decisionId) || null;
 }
@@ -144,7 +169,18 @@ export async function showDecision(repoPath, decisionId, config = null) {
 // - old: status = superseded, superseded_by = newDecId
 // - new: nothing (caller can edit "supersedes: OLD" in body manually)
 // Idempotent — re-running with same args is a no-op.
-export async function supersedeDecision(repoPath, { oldId, newId, config = null }) {
+export async function supersedeDecision(
+  repoPath: string,
+  {
+    oldId,
+    newId,
+    config = null
+  }: {
+    oldId: string;
+    newId: string;
+    config?: Record<string, any> | null;
+  }
+) {
   if (!oldId || !newId) throw new Error("supersedeDecision requires oldId and newId");
   if (oldId === newId) throw new Error("oldId and newId must differ");
   const all = await listDecisions(repoPath, { config });

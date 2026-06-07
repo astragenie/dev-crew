@@ -21,7 +21,7 @@ import path from "node:path";
 
 import { serializeFrontmatter } from "./lib/frontmatter.mjs";
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   const flags = { repo: process.cwd(), dryRun: false };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--repo") {
@@ -46,19 +46,19 @@ const CATEGORY_HINTS = [
   { test: /bug|broken|fix/i, cat: "bugfix" }
 ];
 
-function inferCategory(text) {
+function inferCategory(text: string) {
   for (const { test, cat } of CATEGORY_HINTS) {
     if (test.test(text)) return cat;
   }
   return "feature";
 }
 
-function extractSlices(line) {
+function extractSlices(line: string) {
   const matches = line.match(/SLICE-\d+/gi) || [];
-  return matches.map((s) => s.toUpperCase());
+  return matches.map((s: string) => s.toUpperCase());
 }
 
-function parseBacklog(content) {
+function parseBacklog(content: string) {
   const lines = content.split("\n");
   const entries: any[] = [];
   let currentPriority = "P2";
@@ -101,18 +101,28 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildFeatureFile(id, entry) {
+interface BacklogEntry {
+  title: string;
+  description: string;
+  priority: string;
+  category: string;
+  section: string | null;
+  slices: string[];
+  done: boolean;
+}
+
+function buildFeatureFile(id: string, entry: BacklogEntry) {
   const frontmatter = {
     id,
     status: entry.done ? "done" : "pending",
     priority: entry.priority,
     category: entry.category,
-    target_release: null,
+    target_release: null as string | null,
     created: today(),
     updated: today(),
-    depends_on: [],
+    depends_on: [] as string[],
     slices: entry.slices,
-    derived_from: null,
+    derived_from: null as string | null,
     source_section: entry.section
   };
   const body = [

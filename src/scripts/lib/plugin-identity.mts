@@ -11,7 +11,7 @@ const pluginRoot = path.resolve(scriptDir, "..", "..");
 
 let cached: any = null;
 
-async function readJson(filePath) {
+async function readJson(filePath: string) {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw);
 }
@@ -97,7 +97,7 @@ export const ORCHESTRATE_SLICE_MIN_CREW_VERSION = "0.11.0";
 
 // Read the crew plugin's version from the plugin.json next to a crew CLI path.
 // Returns null if the manifest is missing or unreadable.
-export async function getCrewVersion(crewCliPath) {
+export async function getCrewVersion(crewCliPath: string | null) {
   if (!crewCliPath) return null;
   const manifestPath = path.resolve(
     path.dirname(crewCliPath),
@@ -116,7 +116,7 @@ export async function getCrewVersion(crewCliPath) {
 // Naive semver compare: returns -1/0/1 for a vs b. Treats missing parts as 0.
 // Sufficient for the plugin's pre-1.0 version line; does not parse pre-release
 // tags. If you ever ship `0.2.0-rc.1`, expand this.
-export function compareSemver(a, b) {
+export function compareSemver(a: string | null, b: string | null) {
   const pa = String(a)
     .split(".")
     .map((n) => parseInt(n, 10) || 0);

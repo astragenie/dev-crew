@@ -12,7 +12,7 @@ const SPEC_FILE_RE = /^SPEC-(\d+)(?:-.*)?\.md$/;
 export const SPEC_TYPES = ["prd", "user-journey", "sre", "research", "adr", "other"];
 export const SPEC_STATUSES = ["draft", "approved", "decomposed", "satisfied", "archived"];
 
-async function readSpec(filePath) {
+async function readSpec(filePath: string) {
   const filename = path.basename(filePath);
   const match = filename.match(SPEC_FILE_RE);
   if (!match) return null;
@@ -29,7 +29,7 @@ async function readSpec(filePath) {
   };
 }
 
-export async function listSpecs(repoPath, options: Record<string, any> = {}) {
+export async function listSpecs(repoPath: string, options: Record<string, any> = {}) {
   const cacheKey = `listSpecs:${repoPath}`;
   return cached(cacheKey, async () => {
     const root = specRoot(repoPath, options.config);
@@ -46,14 +46,14 @@ export async function listSpecs(repoPath, options: Record<string, any> = {}) {
   });
 }
 
-export async function nextSpecId(repoPath, options: Record<string, any> = {}) {
+export async function nextSpecId(repoPath: string, options: Record<string, any> = {}) {
   const specs = await listSpecs(repoPath, options);
-  const max = specs.reduce((acc, s) => Math.max(acc, s.idNumber), 0);
+  const max = specs.reduce((acc: number, s: { idNumber: number }) => Math.max(acc, s.idNumber), 0);
   return `SPEC-${String(max + 1).padStart(3, "0")}`;
 }
 
-export function filterSpecs(specs, filters: Record<string, any> = {}) {
-  return specs.filter((spec) => {
+export function filterSpecs(specs: Record<string, any>[], filters: Record<string, any> = {}) {
+  return specs.filter((spec: Record<string, any>) => {
     if (filters.status && spec.frontmatter.status !== filters.status) return false;
     if (filters.type && spec.frontmatter.type !== filters.type) return false;
     if (filters.priority && spec.frontmatter.priority !== filters.priority) return false;
@@ -63,12 +63,16 @@ export function filterSpecs(specs, filters: Record<string, any> = {}) {
   });
 }
 
-export async function findSpecById(repoPath, specId, config = null) {
+export async function findSpecById(
+  repoPath: string,
+  specId: string,
+  config: Record<string, any> | null = null
+) {
   const specs = await listSpecs(repoPath, { config });
-  return specs.find((s) => s.id === specId) || null;
+  return specs.find((s: { id: string }) => s.id === specId) || null;
 }
 
-export async function updateSpecFrontmatter(filePath, updates) {
+export async function updateSpecFrontmatter(filePath: string, updates: Record<string, any>) {
   const content = await fs.readFile(filePath, "utf8");
   const today = new Date().toISOString().slice(0, 10);
   const merged = mergeFrontmatter(content, { ...updates, updated: today });
@@ -78,8 +82,24 @@ export async function updateSpecFrontmatter(filePath, updates) {
 }
 
 export async function addSpec(
-  repoPath,
-  { type, title, body = "", priority = null, target_release = null, owner = null, config = null }
+  repoPath: string,
+  {
+    type,
+    title,
+    body = "",
+    priority = null,
+    target_release = null,
+    owner = null,
+    config = null
+  }: {
+    type: string;
+    title: string;
+    body?: string;
+    priority?: string | null;
+    target_release?: string | null;
+    owner?: string | null;
+    config?: Record<string, any> | null;
+  }
 ) {
   if (!type || !SPEC_TYPES.includes(type)) {
     throw new Error(`spec type must be one of: ${SPEC_TYPES.join(", ")}`);
@@ -101,7 +121,7 @@ export async function addSpec(
     created: today,
     updated: today,
     owner,
-    derived_features: []
+    derived_features: [] as string[]
   };
   const docBody =
     body ||

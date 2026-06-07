@@ -10,7 +10,10 @@ function nowIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function ensureBacklogScaffold(repoPath, config) {
+export async function ensureBacklogScaffold(
+  repoPath: string,
+  config: Record<string, unknown> | null
+) {
   const root = backlogRoot(repoPath, config);
   for (const state of BACKLOG_STATES) {
     const dir = path.join(root, state);
@@ -36,7 +39,7 @@ export async function ensureBacklogScaffold(repoPath, config) {
  * }} [options]
  */
 export async function addFeature(
-  repoPath,
+  repoPath: string,
   {
     title,
     body = "",
@@ -61,8 +64,8 @@ export async function addFeature(
     target_release,
     created: today,
     updated: today,
-    depends_on: [],
-    slices: [],
+    depends_on: [] as string[],
+    slices: [] as string[],
     derived_from: derived_from || null
   };
   const docBody =
@@ -88,7 +91,7 @@ export async function addFeature(
   return { id, filePath, frontmatter };
 }
 
-export async function updateFeatureFrontmatter(filePath, updates) {
+export async function updateFeatureFrontmatter(filePath: string, updates: Record<string, any>) {
   const content = await fs.readFile(filePath, "utf8");
   const merged = mergeFrontmatter(content, { ...updates, updated: nowIsoDate() });
   await fs.writeFile(filePath, merged);
@@ -96,7 +99,11 @@ export async function updateFeatureFrontmatter(filePath, updates) {
   return parseFrontmatter(merged).frontmatter;
 }
 
-export async function moveFeature(filePath, toState, updates: Record<string, any> = {}) {
+export async function moveFeature(
+  filePath: string,
+  toState: string,
+  updates: Record<string, any> = {}
+) {
   if (!BACKLOG_STATES.includes(toState)) {
     throw new Error(`Unknown backlog state: ${toState}`);
   }
@@ -131,7 +138,11 @@ export async function moveFeature(filePath, toState, updates: Record<string, any
   return { from: filePath, to: targetPath };
 }
 
-export async function findFeatureById(repoPath, featureId, config = null) {
+export async function findFeatureById(
+  repoPath: string,
+  featureId: string,
+  config: Record<string, any> | null = null
+) {
   const entries = await listBacklog(repoPath, { config });
-  return entries.find((e) => e.id === featureId) || null;
+  return entries.find((e: Record<string, any>) => e.id === featureId) || null;
 }

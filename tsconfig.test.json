@@ -4,7 +4,7 @@
     "outDir": ".",
     "rootDir": "src",
     "strict": false,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "strictNullChecks": false
   },
   "include": [

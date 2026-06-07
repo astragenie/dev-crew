@@ -18,10 +18,10 @@ async function walk(dir, predicate, acc = []) {
     try {
         entries = await fs.readdir(dir, { withFileTypes: true });
     }
-    catch (e) {
-        if (e.code === "ENOENT")
+    catch (err) {
+        if (err.code === "ENOENT")
             return acc;
-        throw e;
+        throw err;
     }
     for (const entry of entries) {
         const full = path.join(dir, entry.name);

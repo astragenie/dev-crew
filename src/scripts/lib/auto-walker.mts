@@ -200,7 +200,7 @@ export async function runAutoWalker(
   // Load triaged entries and sort by walker priority ordering.
   const allEntries = await listBacklog(repoPath);
   const triaged = filterBacklog(allEntries, { status: "triaged" });
-  triaged.sort(compareWalkerOrder);
+  triaged.sort(compareWalkerOrder as (a: Record<string, any>, b: Record<string, any>) => number);
 
   // SLICE-41: Build done-set and all-known-ids for depends_on resolution.
   const doneEntries = filterBacklog(allEntries, { status: "done" });

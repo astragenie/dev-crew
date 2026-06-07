@@ -7,7 +7,7 @@ import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./
 
 const SUPPORTED_KINDS = ["reviews", "validations", "deployments", "agents"];
 
-function relativize(repoPath, target) {
+function relativize(repoPath: string, target: string) {
   return path.relative(repoPath, target).replace(/\\/g, "/");
 }
 
@@ -16,7 +16,7 @@ function relativize(repoPath, target) {
  * @param {{ sliceId?: string, artifactPath?: string, kind?: string, config?: any }} [options]
  */
 export async function linkArtifactToSlice(
-  repoPath,
+  repoPath: string,
   { sliceId, artifactPath, kind, config = null }: Record<string, any> = {}
 ) {
   if (!sliceId) throw new Error("linkArtifactToSlice requires sliceId");
@@ -52,7 +52,12 @@ export async function linkArtifactToSlice(
 
 // Returns the list of artifact paths linked to a slice for a given kind.
 // Used by score-inference to walk frontmatter instead of scraping body text.
-export async function getLinkedArtifacts(repoPath, sliceId, kind, config = null) {
+export async function getLinkedArtifacts(
+  repoPath: string,
+  sliceId: string,
+  kind: string,
+  config: Record<string, unknown> | null = null
+) {
   if (!SUPPORTED_KINDS.includes(kind)) return [];
   const resolved = config || (await resolveConfig(repoPath));
   const slicesRoot = resolveSlicesRoot(repoPath, resolved);

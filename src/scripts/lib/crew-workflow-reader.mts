@@ -11,7 +11,7 @@ import path from "node:path";
 const STATE_PATH = [".claude", "state", "crew", "workflow-state.json"];
 const LEGACY_STATE_PATH = [".claude", "state", "engineering-os", "workflow-state.json"];
 
-async function readJsonOrNull(filePath) {
+async function readJsonOrNull(filePath: string) {
   try {
     const raw = await fs.readFile(filePath, "utf8");
     return JSON.parse(raw);
@@ -24,7 +24,7 @@ async function readJsonOrNull(filePath) {
  * @param {string} repoPath
  * @returns {Promise<object | null>}
  */
-export async function readCrewWorkflowState(repoPath) {
+export async function readCrewWorkflowState(repoPath: string) {
   const primary = await readJsonOrNull(path.join(repoPath, ...STATE_PATH));
   if (primary) return primary;
   return readJsonOrNull(path.join(repoPath, ...LEGACY_STATE_PATH));
@@ -39,7 +39,7 @@ export async function readCrewWorkflowState(repoPath) {
  *   escalated: { status: string, note?: string, updatedAt?: string } | null
  * }>}
  */
-export async function readCrewBlockingGates(repoPath) {
+export async function readCrewBlockingGates(repoPath: string) {
   const state = await readCrewWorkflowState(repoPath);
   const gates = state?.currentRun?.gates || {};
   const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;

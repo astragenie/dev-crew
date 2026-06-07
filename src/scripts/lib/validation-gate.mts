@@ -10,7 +10,7 @@ const DEFAULT_VALIDATION_DIR = path.join(".claude", "artifacts", "crew", "valida
  * @param {string} sliceId
  * @returns {string[]}
  */
-function normalizeSliceId(sliceId) {
+function normalizeSliceId(sliceId: string) {
   if (!sliceId) return [];
   const upper = sliceId.toUpperCase();
   const m = upper.match(/^SLICE[_-]?(\d+)/);
@@ -34,7 +34,7 @@ function normalizeSliceId(sliceId) {
  * @param {string} sliceId
  * @returns {Promise<string[]>}
  */
-async function findValidationArtifacts(repoPath, sliceId) {
+async function findValidationArtifacts(repoPath: string, sliceId: string) {
   const dir = path.join(repoPath, DEFAULT_VALIDATION_DIR);
   if (!(await pathExists(dir))) return [];
   const entries = await fs.readdir(dir);
@@ -54,8 +54,9 @@ async function findValidationArtifacts(repoPath, sliceId) {
  * @param {object|null} workflowState
  * @returns {object|null}
  */
-function readGateStatus(workflowState) {
-  const v = workflowState?.currentRun?.gates?.validation;
+function readGateStatus(workflowState: unknown) {
+  const state = workflowState as Record<string, any> | null;
+  const v = state?.currentRun?.gates?.validation;
   if (!v || typeof v !== "object") return null;
   return v;
 }
@@ -77,8 +78,8 @@ function readGateStatus(workflowState) {
  * @returns {Promise<{ satisfied: boolean, reason: string, evidence: string[] }>}
  */
 export async function deriveValidationGate(
-  repoPath,
-  sliceId,
+  repoPath: string,
+  sliceId: string,
   { sliceFm = null }: Record<string, any> = {}
 ) {
   if (sliceFm && sliceFm.requires_validation === false) {

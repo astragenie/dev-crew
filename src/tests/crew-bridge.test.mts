@@ -12,7 +12,7 @@ import {
 } from "../scripts/lib/slice-linker/crew-bridge.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -30,7 +30,7 @@ async function tmpRepo(prefix) {
 }
 
 // Minimal fake slice path helper
-async function makeSliceFile(repo, sliceId) {
+async function makeSliceFile(repo: string, sliceId: string) {
   const slicesDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/completed");
   await fs.mkdir(slicesDir, { recursive: true });
   const slicePath = path.join(slicesDir, `${sliceId}.md`);

@@ -62,7 +62,7 @@ function renderGroupSection(sid, entries, specs) {
     }
     lines.push("");
     for (const entry of entries) {
-        const title = (entry.body || "")
+        const title = String(entry.body || "")
             .split("\n")
             .find((l) => l.startsWith("# "))
             ?.replace(/^#\s+[A-Z]+-\d+:\s*/, "") || entry.id;
@@ -132,7 +132,7 @@ export async function planRelease(repoPath, { version, config = null } = {}) {
         releaseStatus,
         generatedAt,
         repoPath,
-        config
+        config: config ?? null
     });
     const releasesDir = releasesRoot(repoPath, config);
     await fs.mkdir(releasesDir, { recursive: true });
@@ -154,7 +154,7 @@ export async function planRelease(repoPath, { version, config = null } = {}) {
  */
 export async function releaseStatus(repoPath, { version, config = null } = {}) {
     const normalized = normalizeVersion(version);
-    const backlog = await listBacklog(repoPath, { config });
+    const backlog = (await listBacklog(repoPath, { config }));
     const targeted = backlog.filter((f) => f.frontmatter.target_release === normalized);
     return {
         version: normalized,

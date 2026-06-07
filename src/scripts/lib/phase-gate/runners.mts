@@ -16,7 +16,7 @@ export function nowIso() {
   return new Date().toISOString();
 }
 
-function tail(text, maxBytes = MAX_OUTPUT_BYTES) {
+function tail(text: string, maxBytes = MAX_OUTPUT_BYTES) {
   if (!text) return "";
   const buffer = Buffer.from(text);
   if (buffer.length <= maxBytes) {
@@ -25,7 +25,7 @@ function tail(text, maxBytes = MAX_OUTPUT_BYTES) {
   return `... (truncated, showing last ${maxBytes} bytes)\n${buffer.slice(buffer.length - maxBytes).toString("utf8")}`;
 }
 
-async function runOneCommand(repoPath, step) {
+async function runOneCommand(repoPath: string, step: Record<string, any>) {
   const cwd = step.cwd ? path.resolve(repoPath, step.cwd) : repoPath;
   const startedAt = Date.now();
   try {
@@ -45,22 +45,23 @@ async function runOneCommand(repoPath, step) {
       ok: true
     };
   } catch (error) {
+    const err = error as Record<string, any>;
     return {
       cmd: step.cmd,
       args: step.args || [],
       cwd: path.relative(repoPath, cwd) || ".",
-      exit: typeof error.code === "number" ? error.code : 1,
+      exit: typeof err.code === "number" ? err.code : 1,
       durationMs: Date.now() - startedAt,
-      stdout: tail(error.stdout || ""),
-      stderr: tail(error.stderr || error.message || ""),
+      stdout: tail(err.stdout || ""),
+      stderr: tail(err.stderr || err.message || ""),
       ok: false
     };
   }
 }
 
-export async function runStageList(repoPath, name, steps) {
+export async function runStageList(repoPath: string, name: string, steps: Record<string, any>[]) {
   if (!Array.isArray(steps) || steps.length === 0) {
-    return { name, skipped: true, runs: [] };
+    return { name, skipped: true, runs: [] as Record<string, any>[] };
   }
   const runs: any[] = [];
   for (const step of steps) {
@@ -78,15 +79,15 @@ export async function runStageList(repoPath, name, steps) {
   return { name, skipped: false, runs, ok: allOk };
 }
 
-export async function runSingleStage(repoPath, name, step) {
+export async function runSingleStage(repoPath: string, name: string, step: Record<string, any>) {
   if (!step || !step.cmd) {
-    return { name, skipped: true, runs: [] };
+    return { name, skipped: true, runs: [] as Record<string, any>[] };
   }
   const run = await runOneCommand(repoPath, step);
   return { name, skipped: false, runs: [run], ok: run.ok };
 }
 
-function validateHealthcheckUrl(url) {
+function validateHealthcheckUrl(url: string) {
   try {
     const parsed = new URL(url);
     if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -98,7 +99,7 @@ function validateHealthcheckUrl(url) {
   }
 }
 
-async function pollHealthcheck(url) {
+async function pollHealthcheck(url: string) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < HEALTHCHECK_TIMEOUT_MS) {
     try {
@@ -117,11 +118,11 @@ async function pollHealthcheck(url) {
   return { url, status: null, ok: false, durationMs: Date.now() - startedAt };
 }
 
-export async function runAspireStage(repoPath, config) {
+export async function runAspireStage(repoPath: string, config: Record<string, any>) {
   const aspire = config.stack?.aspireBoot;
   const healthchecks = config.stack?.healthchecks || [];
   if (!aspire || !aspire.cmd) {
-    return { name: "aspireBoot", skipped: true, runs: [] };
+    return { name: "aspireBoot", skipped: true, runs: [] as Record<string, any>[] };
   }
   // Aspire boots a long-running process; we don't wait for it to "finish" via
   // execFile. We spawn it detached and rely on healthchecks for liveness.
@@ -134,7 +135,7 @@ export async function runAspireStage(repoPath, config) {
       name: "aspireBoot",
       skipped: true,
       reason: "no healthchecks configured; skipping aspireBoot to avoid hanging",
-      runs: []
+      runs: [] as Record<string, any>[]
     };
   }
 

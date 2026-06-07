@@ -18,13 +18,17 @@ export const SKILL_MAX_LINES = 200;
 // under the strict cap.
 export const AGENT_SKIP_PATHS = ["agents/3rdparty/"];
 
-async function walk(dir, predicate, acc: any[] = []) {
+async function walk(
+  dir: string,
+  predicate: (full: string, name: string) => boolean,
+  acc: string[] = []
+) {
   let entries;
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
-  } catch (e: any) {
-    if (e.code === "ENOENT") return acc;
-    throw e;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return acc;
+    throw err;
   }
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
@@ -37,12 +41,15 @@ async function walk(dir, predicate, acc: any[] = []) {
   return acc;
 }
 
-function countLines(content) {
+function countLines(content: string): number {
   // Match `wc -l` semantics: count of '\n' characters. Empty file = 0.
   return (content.match(/\n/g) || []).length;
 }
 
-export async function validateContentLength(repoRoot, opts: any = {}) {
+export async function validateContentLength(
+  repoRoot: string,
+  opts: { agentMax?: number; skillMax?: number; agentSkipPaths?: string[] } = {}
+) {
   const agentMax = opts.agentMax ?? AGENT_MAX_LINES;
   const skillMax = opts.skillMax ?? SKILL_MAX_LINES;
   const agentSkipPaths = opts.agentSkipPaths ?? AGENT_SKIP_PATHS;

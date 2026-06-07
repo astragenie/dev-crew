@@ -9,7 +9,7 @@ import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 import { addFeature, moveFeature, findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { addSpec, updateSpecFrontmatter } from "../scripts/lib/spec-parser.mjs";
 
-async function tmpRepo(prefix) {
+async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude/state/crew"), { recursive: true });
   await fs.writeFile(
@@ -28,7 +28,7 @@ async function tmpRepo(prefix) {
   return repo;
 }
 
-async function writeClaims(repo, claims) {
+async function writeClaims(repo: string, claims: Record<string, any>) {
   const target = path.join(repo, ".claude/state/crew/claims.json");
   await fs.writeFile(
     target,
@@ -111,7 +111,7 @@ test("checkStopConditions: shouldStop=true when backlog empty + no undecomposed 
   const repo = await tmpRepo("al-v111-stop-empty-");
   const out = await checkStopConditions(repo);
   assert.equal(out.shouldStop, true);
-  assert.ok(out.reasons.some((r) => /backlog empty/.test(r)));
+  assert.ok(out.reasons.some((r: string) => /backlog empty/.test(r)));
   assert.ok(out.suggestions.length > 0);
 });
 
@@ -131,7 +131,7 @@ test("checkStopConditions: shouldStop=true when warn alerts present", async () =
   await moveFeature(f2.filePath, "in-progress");
   const out = await checkStopConditions(repo);
   assert.equal(out.shouldStop, true);
-  assert.ok(out.blockers.some((b) => b.category === "in-progress-orphan"));
+  assert.ok(out.blockers.some((b: Record<string, any>) => b.category === "in-progress-orphan"));
 });
 
 test("checkStopConditions: ignoreAlerts=true suppresses warn-stop", async () => {
