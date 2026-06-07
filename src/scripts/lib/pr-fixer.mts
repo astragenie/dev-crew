@@ -55,7 +55,7 @@ export interface PrFixResult {
 /**
  * Fetch PR status from GitHub using gh CLI.
  *
- * @param {string} repoPath - repo root directory
+ * @param {string} _repoPath - repo root directory (retained for API shape; not used in body)
  * @param {number | string} prNumber - PR number
  * @param {object} options
  * @param {function} options.ghExec - gh CLI executor (default: loaded dynamically)
@@ -63,7 +63,7 @@ export interface PrFixResult {
  * @returns {Promise<{ raw: any; haltReason: string | null }>}
  */
 export async function fetchPrStatus(
-  repoPath: string,
+  _repoPath: string,
   prNumber: number | string,
   options: { ghExec?: any; repo?: string } = {}
 ): Promise<{ raw: any; haltReason: string | null }> {

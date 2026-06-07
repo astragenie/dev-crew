@@ -1,6 +1,6 @@
 ---
 id: SLICE-72
-status: pending
+status: completed
 feature: FEAT-070
 phase: 3
 priority: P2
@@ -12,6 +12,7 @@ tags: [refactor, infra]
 needs_contract: true
 needs_ux: false
 skip: [uxdesigner]
+completed_at: 2026-06-07
 ---
 # SLICE-72: B1 — enable noImplicitAny + useUnknownInCatchVariables
 

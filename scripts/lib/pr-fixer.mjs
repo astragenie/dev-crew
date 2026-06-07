@@ -36,7 +36,7 @@ export function assertPrViewShape(parsed) {
  * @param {string} options.repo - repo string (owner/name) for gh (default: auto-detect)
  * @returns {Promise<{ raw: any; haltReason: string | null }>}
  */
-export async function fetchPrStatus(repoPath, prNumber, options = {}) {
+export async function fetchPrStatus(_repoPath, prNumber, options = {}) {
     const { ghExec = undefined, repo = undefined } = options;
     // Dynamic import to match github-sync pattern
     // Use dynamic import path to avoid TypeScript path resolution issues

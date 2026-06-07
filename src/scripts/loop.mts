@@ -366,7 +366,7 @@ type DispatchFn = typeof import("./lib/auto-dispatch.mjs").dispatchAgent;
 
 async function resolveBacklogAddBody(
   repoPath: string,
-  title: string,
+  _title: string,
   suppliedBody: string | null | undefined
 ): Promise<string> {
   if (suppliedBody) return suppliedBody;

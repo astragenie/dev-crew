@@ -338,7 +338,7 @@ async function main() {
         return;
     console.log(JSON.stringify(result, null, 2));
 }
-async function resolveBacklogAddBody(repoPath, title, suppliedBody) {
+async function resolveBacklogAddBody(repoPath, _title, suppliedBody) {
     if (suppliedBody)
         return suppliedBody;
     const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");

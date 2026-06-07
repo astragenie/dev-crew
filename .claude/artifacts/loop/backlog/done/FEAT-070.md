@@ -1,6 +1,6 @@
 ---
 id: FEAT-070
-status: in-progress
+status: done
 priority: P2
 category: tech-debt
 target_release: v0.26.0
@@ -27,6 +27,8 @@ tags: [refactor, infra]
 needs_contract: true
 needs_ux: false
 started_at: 2026-06-07
+slices_complete: [SLICE-72]
+completed_at: 2026-06-07
 ---
 # FEAT-070: Tsconfig tighten + standards alignment — graduated flag rollout + Result/branded/discriminated unions
 
