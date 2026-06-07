@@ -81,18 +81,18 @@ Each FEAT has frontmatter declaring priority, status, and an
 `autonomous_safe: true` items without per-slice human review; creative
 items still require a human in the loop on review.
 
-`/loop:backlog-enrich` writes five routing fields into FEAT
-frontmatter: `tags`, `needs_contract`, `needs_ux`, `surface`, `stack`.
-`surface` ∈ {`frontend`, `backend`, `mixed`, `none`} drives the
-builder-variant choice in `/crew:orchestrate-slice`:
-- `frontend` → `crew:builder-fe`
-- `backend` → `crew:builder-be`
-- `mixed` / `none` → `crew:builder` (generic)
+`/loop:backlog-enrich` writes three routing fields into FEAT
+frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
+stack identity (language, framework, contract type, deployment) lives
+in `scripts/presets/*.json` and is read at builder-dispatch time via
+`node scripts/loop.mjs resolve-skills --variant <fe|be|single>`. See
+`docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md`
+for the design.
 
-Crew plugin must implement the read side — see
-`docs/upstream-requests/2026-06-07-orchestrate-slice-surface-stack-routing.md`.
-Until then, FEAT frontmatter is populated correctly but all dispatches
-fall back to the generic `crew:builder`.
+Prior `surface` / `stack` per-FEAT classification was dropped on
+feat/preset-skill-activation — preset is sole source. The earlier
+upstream-request `docs/upstream-requests/2026-06-07-...orchestrate-slice-surface-stack-routing.md`
+is superseded by the resolver CLI (no FEAT-level reader required).
 
 ## Decommissioned roles
 
