@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
-import { validatePreset } from "./preset-schema.mjs";
+import { validatePreset, VALID_ROLES } from "./preset-schema.mjs";
 import { deepMerge } from "./deep-merge.mjs";
+export function isRoleVariant(v) {
+    return VALID_ROLES.includes(v);
+}
 export function resolveSkills(args) {
     const presetRaw = JSON.parse(readFileSync(args.presetPath, "utf8"));
     const overrideRaw = args.overridePath ? readOverride(args.overridePath) : {};
@@ -32,6 +35,12 @@ function isEnoent(err) {
     return typeof err === "object" && err !== null && err.code === "ENOENT";
 }
 function pickBlock(preset, variant) {
+    if (isRoleVariant(variant)) {
+        const block = preset.roles?.[variant];
+        if (!block)
+            return null;
+        return { skills: block.skills, source: `preset.roles.${variant}` };
+    }
     if (preset.split && (variant === "fe" || variant === "be")) {
         const block = variant === "fe" ? preset.fe : preset.be;
         if (!block)

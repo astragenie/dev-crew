@@ -118,3 +118,62 @@ test("resolveSkills attaches rendered block to result", () => {
   const out = resolveSkills({ presetPath, variant: "single" });
   assert.ok(out!.dispatchInstructionBlock.startsWith("## Required skills (resolved)"));
 });
+
+const PLUGIN_WITH_ROLES = {
+  ...PLUGIN_PRESET,
+  roles: {
+    pm: { skills: ["pm-priority-frameworks"] },
+    architect: { skills: ["architecture-advisory", "adr-writing"] },
+    researcher: { skills: ["code-archaeology"] },
+    "document-writer": { skills: ["markdown-formatting"] }
+  }
+};
+
+test("resolveSkills returns role block for variant=pm", () => {
+  const presetPath = tmpJson("preset.json", PLUGIN_WITH_ROLES);
+  const out = resolveSkills({ presetPath, variant: "pm" });
+  assert.ok(out);
+  assert.equal(out!.variant, "pm");
+  assert.equal(out!.source, "preset.roles.pm");
+  assert.deepEqual(out!.skills, ["pm-priority-frameworks"]);
+});
+
+test("resolveSkills returns role block for variant=architect", () => {
+  const presetPath = tmpJson("preset.json", PLUGIN_WITH_ROLES);
+  const out = resolveSkills({ presetPath, variant: "architect" });
+  assert.ok(out);
+  assert.equal(out!.source, "preset.roles.architect");
+  assert.deepEqual(out!.skills, ["architecture-advisory", "adr-writing"]);
+});
+
+test("resolveSkills returns role block for variant=document-writer", () => {
+  const presetPath = tmpJson("preset.json", PLUGIN_WITH_ROLES);
+  const out = resolveSkills({ presetPath, variant: "document-writer" });
+  assert.ok(out);
+  assert.equal(out!.source, "preset.roles.document-writer");
+});
+
+test("resolveSkills returns null for role variant when preset omits roles", () => {
+  const presetPath = tmpJson("preset.json", PLUGIN_PRESET);
+  const out = resolveSkills({ presetPath, variant: "pm" });
+  assert.equal(out, null);
+});
+
+test("resolveSkills returns null for role variant when that specific role block missing", () => {
+  const presetPath = tmpJson("preset.json", {
+    ...PLUGIN_PRESET,
+    roles: { architect: { skills: ["a"] } }
+  });
+  const out = resolveSkills({ presetPath, variant: "pm" });
+  assert.equal(out, null);
+});
+
+test("resolveSkills role variant supports override append + dedup", () => {
+  const presetPath = tmpJson("preset.json", PLUGIN_WITH_ROLES);
+  const overridePath = tmpJson("loop.json", {
+    roles: { pm: { skills: ["pm-extra-skill"] } }
+  });
+  const out = resolveSkills({ presetPath, overridePath, variant: "pm" });
+  assert.ok(out);
+  assert.deepEqual(out!.skills, ["pm-priority-frameworks", "pm-extra-skill"]);
+});

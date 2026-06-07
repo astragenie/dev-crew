@@ -92,3 +92,66 @@ test("validatePreset rejects unknown projectType", () => {
     SchemaError
   );
 });
+
+test("validatePreset accepts optional roles block", () => {
+  const preset = {
+    schemaVersion: 1,
+    presetName: "tpd",
+    projectType: "claude-plugin",
+    split: false,
+    skills: ["typescript-pro"],
+    roles: {
+      pm: { skills: ["pm-skill-a"] },
+      architect: { skills: ["arch-a", "arch-b"] }
+    }
+  };
+  const out = validatePreset(preset);
+  assert.deepEqual(out.roles?.pm?.skills, ["pm-skill-a"]);
+});
+
+test("validatePreset accepts all four valid role keys", () => {
+  const preset = {
+    schemaVersion: 1,
+    presetName: "x",
+    projectType: "saas",
+    split: false,
+    skills: ["a"],
+    roles: {
+      pm: { skills: ["p"] },
+      researcher: { skills: ["r"] },
+      architect: { skills: ["a"] },
+      "document-writer": { skills: ["d"] }
+    }
+  };
+  validatePreset(preset);
+});
+
+test("validatePreset rejects unknown role key", () => {
+  assert.throws(
+    () =>
+      validatePreset({
+        schemaVersion: 1,
+        presetName: "x",
+        projectType: "saas",
+        split: false,
+        skills: ["a"],
+        roles: { ceo: { skills: ["a"] } }
+      }),
+    SchemaError
+  );
+});
+
+test("validatePreset rejects role block with non-array skills", () => {
+  assert.throws(
+    () =>
+      validatePreset({
+        schemaVersion: 1,
+        presetName: "x",
+        projectType: "saas",
+        split: false,
+        skills: ["a"],
+        roles: { pm: { skills: "not-an-array" } }
+      }),
+    SchemaError
+  );
+});

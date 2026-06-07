@@ -7,6 +7,15 @@ export class SchemaError extends Error {
 
 export type ProjectType = "claude-plugin" | "library" | "service" | "saas";
 
+export type RoleName = "pm" | "researcher" | "architect" | "document-writer";
+
+export const VALID_ROLES: ReadonlyArray<RoleName> = [
+  "pm",
+  "researcher",
+  "architect",
+  "document-writer"
+];
+
 export interface PresetV1 {
   schemaVersion: 1;
   presetName: string;
@@ -20,6 +29,7 @@ export interface PresetV1 {
   skills?: string[];
   fe?: { skills: string[] };
   be?: { skills: string[] };
+  roles?: Partial<Record<RoleName, { skills: string[] }>>;
 }
 
 const VALID_PROJECT_TYPES: ReadonlyArray<ProjectType> = [
@@ -43,7 +53,27 @@ export function validatePreset(input: unknown): PresetV1 {
     validateSplitFalse(obj);
   }
 
+  if (obj.roles !== undefined) {
+    validateRoles(obj.roles);
+  }
+
   return obj as unknown as PresetV1;
+}
+
+function validateRoles(roles: unknown): void {
+  if (typeof roles !== "object" || roles === null || Array.isArray(roles)) {
+    throw new SchemaError("preset.roles must be an object");
+  }
+  for (const [key, block] of Object.entries(roles)) {
+    if (!VALID_ROLES.includes(key as RoleName)) {
+      throw new SchemaError(
+        `preset.roles.${key} is not a known role; valid roles: ${VALID_ROLES.join(", ")}`
+      );
+    }
+    if (!isSkillBlock(block)) {
+      throw new SchemaError(`preset.roles.${key}.skills must be a string array`);
+    }
+  }
 }
 
 function validateCommonHeader(obj: Record<string, unknown>): void {

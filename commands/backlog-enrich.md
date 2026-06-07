@@ -36,11 +36,29 @@ Steps:
 2. **Filter unclassified.** Skip entries where `tags` is non-empty
    OR `needs_contract` is set OR `needs_ux` is set. Already-tagged
    entries are left untouched.
-3. **Dispatch `loop:architect` in parallel.** Send all classify
+3. **Resolve architect skills via preset.** Before dispatching, run:
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" resolve-skills \
+     --variant architect \
+     --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/$(jq -r .preset .claude/loop.json).json" \
+     --override .claude/loop.json
+   ```
+
+   On exit 0, capture `.dispatchInstructionBlock` from the JSON
+   output. On exit 2, proceed without the block (architect falls
+   back to its baked-in routing table). On exit 1, halt and surface
+   the stderr.
+
+4. **Dispatch `loop:architect` in parallel.** Send all classify
    requests in a single message containing one `Agent` tool call
-   per unclassified FEAT. Prompt template per FEAT:
+   per unclassified FEAT. Prepend the resolved-skills block (when
+   present) to each prompt so the agent invokes the right Skill
+   tools before classifying. Prompt template per FEAT:
 
    ```
+   <dispatchInstructionBlock from step 3 — omit if exit was 2>
+
    Classify this feature for the orchestrate-slice router.
    Read <ABSOLUTE_PATH_TO_FEAT> for context. Respond with ONLY this
    key:value block — no preamble, no headings:
@@ -49,14 +67,14 @@ Steps:
    needs_ux: <true|false>
    ```
 
-4. **Parse responses.** For each architect response, extract the
+5. **Parse responses.** For each architect response, extract the
    three fields tolerantly (ignore prose, headings, blank lines).
    Tags must be filtered to the known vocabulary; drop unknowns.
-5. **Write frontmatter via `Edit`.** For each FEAT with at least
+6. **Write frontmatter via `Edit`.** For each FEAT with at least
    one parsed field, edit the YAML frontmatter to insert / update
    `tags`, `needs_contract`, `needs_ux`. Preserve all other fields
    verbatim. If nothing parsed, skip the write.
-6. **Report.** Print a one-line summary:
+7. **Report.** Print a one-line summary:
    `Enriched: <count> / Already tagged: <count> / Failed: <count>`.
 
 ## Idempotence

@@ -1,18 +1,33 @@
 import { readFileSync } from "node:fs";
-import { validatePreset, type PresetV1 } from "./preset-schema.mjs";
+import { validatePreset, VALID_ROLES, type PresetV1, type RoleName } from "./preset-schema.mjs";
 import { deepMerge } from "./deep-merge.mjs";
 
+export type Variant = "fe" | "be" | "single" | RoleName;
+
+export type SkillSource =
+  | "preset.fe"
+  | "preset.be"
+  | "preset.skills"
+  | "preset.roles.pm"
+  | "preset.roles.researcher"
+  | "preset.roles.architect"
+  | "preset.roles.document-writer";
+
 export interface ResolvedSkills {
-  variant: "fe" | "be" | "single";
+  variant: Variant;
   skills: string[];
-  source: "preset.fe" | "preset.be" | "preset.skills";
+  source: SkillSource;
   dispatchInstructionBlock: string;
 }
 
 export interface ResolveArgs {
   presetPath: string;
   overridePath?: string;
-  variant: "fe" | "be" | "single";
+  variant: Variant;
+}
+
+export function isRoleVariant(v: Variant): v is RoleName {
+  return (VALID_ROLES as ReadonlyArray<string>).includes(v);
 }
 
 export function resolveSkills(args: ResolveArgs): ResolvedSkills | null {
@@ -48,8 +63,13 @@ function isEnoent(err: unknown): boolean {
 
 function pickBlock(
   preset: PresetV1,
-  variant: ResolveArgs["variant"]
-): { skills: string[]; source: ResolvedSkills["source"] } | null {
+  variant: Variant
+): { skills: string[]; source: SkillSource } | null {
+  if (isRoleVariant(variant)) {
+    const block = preset.roles?.[variant];
+    if (!block) return null;
+    return { skills: block.skills, source: `preset.roles.${variant}` as SkillSource };
+  }
   if (preset.split && (variant === "fe" || variant === "be")) {
     const block = variant === "fe" ? preset.fe : preset.be;
     if (!block) return null;

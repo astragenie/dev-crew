@@ -331,13 +331,22 @@ async function runArchitectSubcommand(repoPath, flags) {
     };
 }
 function runResolveSkillsCommand(flags) {
+    const VALID_VARIANTS = [
+        "fe",
+        "be",
+        "single",
+        "pm",
+        "researcher",
+        "architect",
+        "document-writer"
+    ];
     if (!flags.variant) {
-        process.stderr.write("error: --variant <fe|be|single> required\n");
+        process.stderr.write(`error: --variant <${VALID_VARIANTS.join("|")}> required\n`);
         process.exitCode = 1;
         return;
     }
-    if (!["fe", "be", "single"].includes(flags.variant)) {
-        process.stderr.write(`error: --variant must be fe, be, or single (got ${flags.variant})\n`);
+    if (!VALID_VARIANTS.includes(flags.variant)) {
+        process.stderr.write(`error: --variant must be one of ${VALID_VARIANTS.join(", ")} (got ${flags.variant})\n`);
         process.exitCode = 1;
         return;
     }

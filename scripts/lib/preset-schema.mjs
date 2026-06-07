@@ -4,6 +4,12 @@ export class SchemaError extends Error {
         this.name = "SchemaError";
     }
 }
+export const VALID_ROLES = [
+    "pm",
+    "researcher",
+    "architect",
+    "document-writer"
+];
 const VALID_PROJECT_TYPES = [
     "claude-plugin",
     "library",
@@ -22,7 +28,23 @@ export function validatePreset(input) {
     else {
         validateSplitFalse(obj);
     }
+    if (obj.roles !== undefined) {
+        validateRoles(obj.roles);
+    }
     return obj;
+}
+function validateRoles(roles) {
+    if (typeof roles !== "object" || roles === null || Array.isArray(roles)) {
+        throw new SchemaError("preset.roles must be an object");
+    }
+    for (const [key, block] of Object.entries(roles)) {
+        if (!VALID_ROLES.includes(key)) {
+            throw new SchemaError(`preset.roles.${key} is not a known role; valid roles: ${VALID_ROLES.join(", ")}`);
+        }
+        if (!isSkillBlock(block)) {
+            throw new SchemaError(`preset.roles.${key}.skills must be a string array`);
+        }
+    }
 }
 function validateCommonHeader(obj) {
     if (obj.schemaVersion !== 1) {

@@ -3,6 +3,36 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.28.0 — 2026-06-07 — role-agent skill activation (FEAT-075)
+
+### Added
+- Preset schema gains optional `roles.{pm,researcher,architect,document-writer}.skills`
+  block. Mirrors Phase 1's `fe.skills` / `be.skills` / `skills` pattern for
+  loop-owned role agents.
+- `resolveSkills` accepts new role variants (`pm`, `researcher`, `architect`,
+  `document-writer`) in addition to `fe`/`be`/`single`. Returns
+  `source: "preset.roles.<name>"`.
+- `node scripts/loop.mjs resolve-skills --variant <role>` exposes the new
+  variants via the existing CLI. Exit codes unchanged (0/1/2).
+- All six shipped presets ship a default `roles` block with sensible
+  defaults (`superpowers:verification-before-completion`, `loop:loop-discipline`,
+  `superpowers:brainstorming` per role).
+- `validateAllPresets` (manifest validator) checks the new block.
+
+### Changed
+- `/loop:backlog-enrich` now resolves the architect skill loadout from the
+  preset and prepends the resolved block to the architect dispatch prompt.
+  Falls back to the agent's baked-in routing table when the resolver returns
+  exit 2.
+
+### Roadmap (not in this slice)
+- Wire `loop:pm`, `loop:researcher`, `loop:document-writer` dispatchers in
+  their respective slash flows (mirror the architect change above).
+- Remove static "Required skills" tables from `agents/{pm,researcher,architect,document-writer}.md`
+  once preset-driven activation has been stable for one release cycle.
+
+---
+
 ## v0.27.0 — 2026-06-07 — preset-driven skill activation (Phase 1)
 
 ### Added
