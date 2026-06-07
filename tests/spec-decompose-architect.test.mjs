@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseArchitectOutput, detectMissingSpecFields } from "../scripts/loop.mjs";
+import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -104,6 +105,7 @@ async function specDecompose(repoPath, { specId, features, featuresJson, noArchi
                 skipReason: "cli-refusal-architect-disabled",
                 durationMs: 0
             });
+            await flushAuditLog(repoPath);
             const msg = `[spec decompose] architect auto-dispatch removed (see DEC-011). ` +
                 `Use the slash flow: /loop:spec-decompose --id ${specId}, ` +
                 `or pass --features 'Title 1; Title 2; ...'`;

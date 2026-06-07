@@ -10,6 +10,12 @@ const PLACEHOLDER_PATTERNS = [
   /^\s*-\s+\[[x\s]\]\s+AC-\d+:\s*$/ // AC-1: (empty)
 ];
 
+// Module-scope regex constants for hot-path functions (Win 6 — perf).
+const CRLF_SPLIT_RE = /\r?\n/;
+const AC_HEADING_RE = /^##\s+Acceptance\s+criteria\s*$/i;
+const SECTION_HEADING_RE = /^##\s+/;
+const AC_BULLET_RE = /^\s*-\s+\[[x\s]\]/;
+
 function isPlaceholder(line: string) {
   return PLACEHOLDER_PATTERNS.some((p) => p.test(line));
 }
@@ -21,8 +27,8 @@ function isPlaceholder(line: string) {
  * @returns {{ ok: boolean, violations: string[], error?: string }}
  */
 export function lintAcceptanceCriteria(content: string) {
-  const lines = content.split(/\r?\n/);
-  const startIdx = lines.findIndex((l: string) => /^##\s+Acceptance\s+criteria\s*$/i.test(l));
+  const lines = content.split(CRLF_SPLIT_RE);
+  const startIdx = lines.findIndex((l: string) => AC_HEADING_RE.test(l));
   if (startIdx === -1) {
     return {
       ok: false,
@@ -34,8 +40,8 @@ export function lintAcceptanceCriteria(content: string) {
   const acBullets: any[] = [];
   for (let i = startIdx + 1; i < lines.length; i++) {
     const line = lines[i];
-    if (/^##\s+/.test(line)) break;
-    if (/^\s*-\s+\[[x\s]\]/.test(line)) acBullets.push(line);
+    if (SECTION_HEADING_RE.test(line)) break;
+    if (AC_BULLET_RE.test(line)) acBullets.push(line);
   }
 
   if (acBullets.length === 0) {

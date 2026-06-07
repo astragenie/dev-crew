@@ -1,6 +1,6 @@
 ---
 id: FEAT-073
-status: in-progress
+status: done
 priority: P1
 category: refactor
 target_release: v0.26.0
@@ -18,6 +18,8 @@ pm_dependency_depth: 0.15
 composite_priority: P1
 triage_notes: "autonomous_safe inferred: AC count=0, derived_from=SPEC-004 → true"
 started_at: 2026-06-07
+slices_complete: [SLICE-74]
+completed_at: 2026-06-07
 ---
 ## Description
 

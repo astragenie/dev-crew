@@ -4,6 +4,13 @@ import path from "node:path";
 const COST_INSIGHTS_DIR_PARTS = [".claude", "artifacts", "crew", "cost-insights"];
 const COST_DIR_PARTS = [".claude", "artifacts", "crew", "cost"];
 
+// Module-scope regex constants for hot-path functions (Win 6 — perf).
+const CRLF_SPLIT_RE = /\r?\n/;
+const FM_KEY_VALUE_RE = /^([\w_]+):\s*(.*)$/;
+const HIGH_SEVERITY_HEADING_RE = /^###\s+\[HIGH\]\s+([\w-]+)/i;
+const COST_ADVISE_FILE_RE = /-cost-advise-.+\.md$/;
+const COST_REPORT_AGGREGATE_FILE_RE = /-cost-report-aggregate-.+\.md$/;
+
 // ---------------------------------------------------------------------------
 // Types — Aggregate cost reports (SLICE-52)
 // ---------------------------------------------------------------------------
@@ -61,8 +68,8 @@ async function parseFrontmatter(text: string) {
   const block = text.slice(3, end).trim();
   const body = text.slice(end + 4);
   const fm: Record<string, string> = {};
-  for (const line of block.split(/\r?\n/)) {
-    const m = line.match(/^([\w_]+):\s*(.*)$/);
+  for (const line of block.split(CRLF_SPLIT_RE)) {
+    const m = line.match(FM_KEY_VALUE_RE);
     if (!m) continue;
     let v = m[2].trim();
     if (v.startsWith('"') && v.endsWith('"')) {
@@ -79,9 +86,9 @@ async function parseFrontmatter(text: string) {
 
 function extractHighSeverityFindings(body: string) {
   const findings: any[] = [];
-  const lines = body.split(/\r?\n/);
+  const lines = body.split(CRLF_SPLIT_RE);
   for (const line of lines) {
-    const m = line.match(/^###\s+\[HIGH\]\s+([\w-]+)/i);
+    const m = line.match(HIGH_SEVERITY_HEADING_RE);
     if (m) {
       findings.push({ id: m[1], severity: "high" });
     }
@@ -99,7 +106,7 @@ async function loadCostAdviseFiles(repoPath: string, limit = 20) {
     return [];
   }
   for (const e of entries) {
-    if (/-cost-advise-.+\.md$/.test(e)) files.push({ dir, name: e });
+    if (COST_ADVISE_FILE_RE.test(e)) files.push({ dir, name: e });
   }
   files.sort((a, b) => b.name.localeCompare(a.name));
   const top = files.slice(0, limit);
@@ -180,8 +187,8 @@ async function parseAggregateReportFile(filepath: string): Promise<AggregateCost
   if (end < 0) return null;
   const block = text.slice(3, end).trim();
   const fm: Record<string, any> = {};
-  for (const line of block.split(/\r?\n/)) {
-    const m = line.match(/^([\w_]+):\s*(.*)$/);
+  for (const line of block.split(CRLF_SPLIT_RE)) {
+    const m = line.match(FM_KEY_VALUE_RE);
     if (!m) continue;
     let v: any = m[2].trim();
     if (v.startsWith('"') && v.endsWith('"')) {
@@ -230,7 +237,7 @@ export async function loadAggregateCostReport(
   }
 
   const candidates = entries
-    .filter((e) => /-cost-report-aggregate-.+\.md$/.test(e))
+    .filter((e) => COST_REPORT_AGGREGATE_FILE_RE.test(e))
     .sort((a, b) => b.localeCompare(a)) // newest-first
     .slice(0, limit);
 

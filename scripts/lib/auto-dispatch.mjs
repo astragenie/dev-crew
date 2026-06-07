@@ -16,10 +16,30 @@ export function resolveAuditLogPath(repoRoot, opts = {}) {
     }
     return path.join(repoRoot, AUDIT_LOG_REL);
 }
+const pendingBatches = new Map();
 export async function appendAuditLog(repoRoot, entry, opts = {}) {
     const logPath = resolveAuditLogPath(repoRoot, opts);
+    const line = JSON.stringify(entry);
+    let batch = pendingBatches.get(logPath);
+    if (!batch) {
+        batch = { lines: [], resolvedPath: logPath };
+        pendingBatches.set(logPath, batch);
+    }
+    batch.lines.push(line);
+}
+/**
+ * Flush all buffered audit log lines to disk in a single appendFile call.
+ * Call once per command invocation at completion. Safe to call when no lines
+ * are buffered (no-op). Clears the buffer after writing.
+ */
+export async function flushAuditLog(repoRoot, opts = {}) {
+    const logPath = resolveAuditLogPath(repoRoot, opts);
+    const batch = pendingBatches.get(logPath);
+    if (!batch || batch.lines.length === 0)
+        return;
     await fs.mkdir(path.dirname(logPath), { recursive: true });
-    await fs.appendFile(logPath, JSON.stringify(entry) + "\n", "utf8");
+    await fs.appendFile(logPath, batch.lines.join("\n") + "\n", "utf8");
+    pendingBatches.delete(logPath);
 }
 export async function dispatchAgent(opts) {
     const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor } = opts;

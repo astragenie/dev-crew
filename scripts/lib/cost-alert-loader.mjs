@@ -2,6 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 const COST_INSIGHTS_DIR_PARTS = [".claude", "artifacts", "crew", "cost-insights"];
 const COST_DIR_PARTS = [".claude", "artifacts", "crew", "cost"];
+// Module-scope regex constants for hot-path functions (Win 6 — perf).
+const CRLF_SPLIT_RE = /\r?\n/;
+const FM_KEY_VALUE_RE = /^([\w_]+):\s*(.*)$/;
+const HIGH_SEVERITY_HEADING_RE = /^###\s+\[HIGH\]\s+([\w-]+)/i;
+const COST_ADVISE_FILE_RE = /-cost-advise-.+\.md$/;
+const COST_REPORT_AGGREGATE_FILE_RE = /-cost-report-aggregate-.+\.md$/;
 async function parseFrontmatter(text) {
     if (!text.startsWith("---"))
         return { fm: null, body: text };
@@ -11,8 +17,8 @@ async function parseFrontmatter(text) {
     const block = text.slice(3, end).trim();
     const body = text.slice(end + 4);
     const fm = {};
-    for (const line of block.split(/\r?\n/)) {
-        const m = line.match(/^([\w_]+):\s*(.*)$/);
+    for (const line of block.split(CRLF_SPLIT_RE)) {
+        const m = line.match(FM_KEY_VALUE_RE);
         if (!m)
             continue;
         let v = m[2].trim();
@@ -30,9 +36,9 @@ async function parseFrontmatter(text) {
 }
 function extractHighSeverityFindings(body) {
     const findings = [];
-    const lines = body.split(/\r?\n/);
+    const lines = body.split(CRLF_SPLIT_RE);
     for (const line of lines) {
-        const m = line.match(/^###\s+\[HIGH\]\s+([\w-]+)/i);
+        const m = line.match(HIGH_SEVERITY_HEADING_RE);
         if (m) {
             findings.push({ id: m[1], severity: "high" });
         }
@@ -50,7 +56,7 @@ async function loadCostAdviseFiles(repoPath, limit = 20) {
         return [];
     }
     for (const e of entries) {
-        if (/-cost-advise-.+\.md$/.test(e))
+        if (COST_ADVISE_FILE_RE.test(e))
             files.push({ dir, name: e });
     }
     files.sort((a, b) => b.name.localeCompare(a.name));
@@ -132,8 +138,8 @@ async function parseAggregateReportFile(filepath) {
         return null;
     const block = text.slice(3, end).trim();
     const fm = {};
-    for (const line of block.split(/\r?\n/)) {
-        const m = line.match(/^([\w_]+):\s*(.*)$/);
+    for (const line of block.split(CRLF_SPLIT_RE)) {
+        const m = line.match(FM_KEY_VALUE_RE);
         if (!m)
             continue;
         let v = m[2].trim();
@@ -178,7 +184,7 @@ export async function loadAggregateCostReport(repoPath, opts) {
         return { current: null, reports: [], dir };
     }
     const candidates = entries
-        .filter((e) => /-cost-report-aggregate-.+\.md$/.test(e))
+        .filter((e) => COST_REPORT_AGGREGATE_FILE_RE.test(e))
         .sort((a, b) => b.localeCompare(a)) // newest-first
         .slice(0, limit);
     const reports = [];

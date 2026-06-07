@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
 // the same way at the command line.
@@ -329,14 +330,24 @@ async function main() {
         console.log(usage());
         return;
     }
+    clearFrontmatterCache(); // ensure cold start for each invocation
     const handler = COMMANDS[command];
     if (!handler) {
         throw new Error(`Unknown command: ${command}`);
     }
-    const result = await handler({ repoPath, flags, positionals });
-    if (result && result._suppressDefaultOutput)
-        return;
-    console.log(JSON.stringify(result, null, 2));
+    try {
+        const result = await handler({ repoPath, flags, positionals });
+        if (result && result._suppressDefaultOutput)
+            return;
+        console.log(JSON.stringify(result, null, 2));
+    }
+    finally {
+        // Win 10: flush buffered audit log lines in a single write per invocation.
+        const { flushAuditLog } = await import("./lib/auto-dispatch.mjs");
+        await flushAuditLog(repoPath).catch(() => {
+            /* non-fatal: best-effort audit log flush */
+        });
+    }
 }
 async function resolveBacklogAddBody(repoPath, _title, suppliedBody) {
     if (suppliedBody)

@@ -6,6 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { runBacklogEnrich } from "../scripts/loop.mjs";
 import { clearAll } from "../scripts/lib/cache.mjs";
+import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -72,6 +73,7 @@ test("backlog enrich: refuses with non-zero exit when triaged features need clas
     assert.ok(stderrText.includes("CLI auto-dispatch removed"), `stderr must include refusal reason, got: ${stderrText}`);
     assert.ok(stderrText.includes("2 feature(s)"), `stderr must quote count of features needing classification, got: ${stderrText}`);
     // Audit log must have an entry with skipReason: cli-refusal
+    await flushAuditLog(repo);
     const lines = await readJsonLines(auditLogPath(repo));
     const enrichEntries = lines.filter((e) => e.agent === "loop:architect" && e.parentCommand === "backlog enrich");
     assert.equal(enrichEntries.length, 1, "exactly one audit log entry for backlog enrich");

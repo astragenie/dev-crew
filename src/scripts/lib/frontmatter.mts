@@ -17,6 +17,17 @@
 // every FEAT. Confirmed 2026-06-07 on Windows checkout.
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n*/;
 
+// Module-scope regex constants for hot-path functions (Win 6 — perf).
+const SCALAR_NUMBER_RE = /^-?\d+(\.\d+)?$/;
+const CRLF_STRIP_RE = /\r$/;
+const BLOCK_ARRAY_ITEM_RE = /^\s+-\s/;
+const BLOCK_ARRAY_ITEM_STRIP_RE = /^\s+-\s+/;
+const KEY_VALUE_RE = /^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
+const QUOTE_NEEDED_RE = /[:#[\]{}'",]/;
+const LEADING_SPACE_RE = /^\s/;
+const TRAILING_SPACE_RE = /\s$/;
+const LEADING_NEWLINES_RE = /^\n+/;
+
 function stripQuotes(value: string) {
   const v = value.trim();
   if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
@@ -30,7 +41,7 @@ function parseScalar(raw: string) {
   if (v === "" || v === "~" || v === "null") return null;
   if (v === "true") return true;
   if (v === "false") return false;
-  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  if (SCALAR_NUMBER_RE.test(v)) return Number(v);
   // Inline array: [a, b, c]
   if (v.startsWith("[") && v.endsWith("]")) {
     const inner = v.slice(1, -1).trim();
@@ -56,19 +67,19 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
   const frontmatter: Frontmatter = {};
   let currentArrayKey: string | null = null;
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i].replace(/\r$/, "");
+    const line = lines[i].replace(CRLF_STRIP_RE, "");
     if (line.trim() === "") {
       currentArrayKey = null;
       continue;
     }
     // Block-array continuation: leading whitespace then "- value"
-    if (currentArrayKey && /^\s+-\s/.test(line)) {
-      const itemRaw = line.replace(/^\s+-\s+/, "");
+    if (currentArrayKey && BLOCK_ARRAY_ITEM_RE.test(line)) {
+      const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
       frontmatter[currentArrayKey].push(stripQuotes(itemRaw));
       continue;
     }
     // key: value (possibly empty)
-    const m = line.match(/^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/);
+    const m = line.match(KEY_VALUE_RE);
     if (!m) {
       currentArrayKey = null;
       continue;
@@ -81,9 +92,9 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
       // with whitespace + "- ", we have a block array; otherwise null.
       let blockArray = false;
       for (let j = i + 1; j < lines.length; j += 1) {
-        const peek = lines[j].replace(/\r$/, "");
+        const peek = lines[j].replace(CRLF_STRIP_RE, "");
         if (peek.trim() === "") continue;
-        if (/^\s+-\s/.test(peek)) blockArray = true;
+        if (BLOCK_ARRAY_ITEM_RE.test(peek)) blockArray = true;
         break;
       }
       if (blockArray) {
@@ -111,7 +122,7 @@ function serializeScalar(value: unknown): string {
   const s = String(value);
   if (s === "") return '""';
   // Quote when the value contains characters that confuse the parser
-  if (/[:#[\]{}'",]/.test(s) || /^\s/.test(s) || /\s$/.test(s)) {
+  if (QUOTE_NEEDED_RE.test(s) || LEADING_SPACE_RE.test(s) || TRAILING_SPACE_RE.test(s)) {
     return `"${s.replace(/"/g, '\\"')}"`;
   }
   return s;
@@ -125,7 +136,7 @@ export function serializeFrontmatter(frontmatter: Frontmatter, body = "") {
     lines.push(`${key}: ${serializeScalar(value)}`);
   }
   lines.push("---", "");
-  return `${lines.join("\n")}${body.replace(/^\n+/, "")}`;
+  return `${lines.join("\n")}${body.replace(LEADING_NEWLINES_RE, "")}`;
 }
 
 export function mergeFrontmatter(content: string, updates: Frontmatter) {

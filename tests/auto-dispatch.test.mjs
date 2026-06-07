@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseSkipFlag, appendAuditLog, dispatchAgent, resolveAuditLogPath } from "../scripts/lib/auto-dispatch.mjs";
+import { parseSkipFlag, appendAuditLog, dispatchAgent, flushAuditLog, resolveAuditLogPath } from "../scripts/lib/auto-dispatch.mjs";
 async function tmpRepo(prefix) {
     return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
@@ -43,6 +43,7 @@ test("dispatchAgent returns skipped=true when skipFlag present, no dispatch, aud
     assert.equal(result.skipped, true);
     assert.equal(result.skipReason, "opt-out");
     assert.equal(result.durationMs, 0);
+    await flushAuditLog(repo);
     const lines = await readJsonLines(auditLogPath(repo));
     assert.equal(lines.length, 1);
     const entry = lines[0];
@@ -67,6 +68,7 @@ test("dispatchAgent returns ok=false on internal failure, does not throw, audit 
     assert.equal(result.ok, false);
     assert.equal(result.skipped, false);
     assert.ok(typeof result.error === "string" && result.error.length > 0);
+    await flushAuditLog(repo);
     const lines = await readJsonLines(auditLogPath(repo));
     assert.equal(lines.length, 1);
     const entry = lines[0];
@@ -91,6 +93,7 @@ test("dispatchAgent proceeds when costAdvisor returns warn, logs warning, audit 
         // A warning must have been logged
         const warnLogged = warnings.some((w) => w.includes("[auto-dispatch] cost-warn"));
         assert.ok(warnLogged, "expected a cost-warn console.warn message");
+        await flushAuditLog(repo);
         const lines = await readJsonLines(auditLogPath(repo));
         assert.equal(lines.length, 1);
         const entry = lines[0];
@@ -114,6 +117,7 @@ test("appendAuditLog creates auto-dispatch.jsonl on first call", async () => {
         skipped: false,
         durationMs: 42
     });
+    await flushAuditLog(repo);
     await fs.access(logPath); // must exist now
     const lines = await readJsonLines(logPath);
     assert.equal(lines.length, 1);
@@ -131,6 +135,7 @@ test("appendAuditLog appends a second JSON line on subsequent call", async () =>
     };
     await appendAuditLog(repo, entry);
     await appendAuditLog(repo, { ...entry, durationMs: 20 });
+    await flushAuditLog(repo);
     const lines = await readJsonLines(logPath);
     assert.equal(lines.length, 2);
 });
@@ -146,6 +151,7 @@ test("each audit entry contains required keys: timestamp, agent, parentCommand, 
         argv: ["--no-research"],
         skipFlag: "--no-research"
     });
+    await flushAuditLog(repo);
     const lines = await readJsonLines(logPath);
     assert.equal(lines.length, 1);
     const entry = lines[0];
@@ -188,6 +194,7 @@ test("appendAuditLog with no opts writes to default path (regression guard)", as
     const repo = await tmpRepo("ad-noopt-");
     const entry = { agent: "smoke", ok: true, durationMs: 0 };
     await appendAuditLog(repo, entry);
+    await flushAuditLog(repo);
     const logPath = auditLogPath(repo);
     await fs.access(logPath);
     const lines = await readJsonLines(logPath);
@@ -197,6 +204,7 @@ test("appendAuditLog with custom relative auditLogPath writes to that path", asy
     const repo = await tmpRepo("ad-custom-");
     const entry = { agent: "smoke", ok: true, durationMs: 0 };
     await appendAuditLog(repo, entry, { config: { loop: { auditLogPath: "custom.jsonl" } } });
+    await flushAuditLog(repo, { config: { loop: { auditLogPath: "custom.jsonl" } } });
     const customPath = path.join(repo, "custom.jsonl");
     await fs.access(customPath);
     const lines = await readJsonLines(customPath);
@@ -208,6 +216,9 @@ test("appendAuditLog creates parent dir when custom path dir does not exist", as
     const repo = await tmpRepo("ad-mkdir-");
     const entry = { agent: "smoke", ok: true, durationMs: 0 };
     await appendAuditLog(repo, entry, {
+        config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
+    });
+    await flushAuditLog(repo, {
         config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
     });
     const customPath = path.join(repo, "deep/nested/dir/audit.jsonl");

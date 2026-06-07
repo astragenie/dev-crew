@@ -33,6 +33,7 @@ import {
   MergeError,
   isValidationGateSatisfied
 } from "../scripts/lib/auto-merge.mjs";
+import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
 
 const exec = promisify(execCb);
 
@@ -792,6 +793,7 @@ test("runAutoMerge: on REBASE_CONFLICT — slice branch exists AND worktree exis
 
   // Invariant 5: audit log written with ok=false
   const logPath = path.join(repo, ".claude", "artifacts", "loop", "auto-dispatch.jsonl");
+  await flushAuditLog(repo);
   const logContent = await fs.readFile(logPath, "utf8");
   const lastLine = logContent.trim().split("\n").at(-1);
   const logEntry = JSON.parse(lastLine!);
@@ -928,6 +930,7 @@ test("runAutoMerge: audit log entry written with ok=true on success (AC-9)", asy
   });
 
   const logPath = path.join(repo, ".claude", "artifacts", "loop", "auto-dispatch.jsonl");
+  await flushAuditLog(repo);
   const logContent = await fs.readFile(logPath, "utf8");
   // Find the auto-merge entry (last non-empty line)
   const lines = logContent.trim().split("\n").filter(Boolean);

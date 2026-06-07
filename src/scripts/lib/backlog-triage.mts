@@ -14,6 +14,14 @@ const DEBT_HINTS = /\b(refactor|cleanup|tech[-\s]?debt|simplify|deprecate)\b/i;
 const URGENT_HINTS = /\b(urgent|critical|asap|p0|blocker|incident|outage)\b/i;
 const SOON_HINTS = /\b(soon|next sprint|this week|deadline|due)\b/i;
 
+// Module-scope regex constants for hot-path functions (Win 6 — perf).
+const AC_HEADING_RE = /^##\s+acceptance\s+criteria/i;
+const INLINE_AC_PREFIX_RE = /acceptance\s+criteria\s*:/i;
+const INLINE_AC_LABELS_RE = /\bAC-\d+:/gi;
+const SECTION_HEADING_RE = /^##/;
+const AC_BULLET_RE = /^- (\[[ x]\] )?\S/;
+const LEGACY_KEY_PREFIX_RE = /^pm_/;
+
 // Legacy PM dimension keys that signal an old-schema FEAT.
 const LEGACY_PM_KEYS = [
   "pm_strategic_fit",
@@ -61,24 +69,24 @@ export function detectAcceptanceCriteria(body: string): { count: number; hasMin:
   let count = 0;
 
   for (const line of lines) {
-    if (/^##\s+acceptance\s+criteria/i.test(line)) {
+    if (AC_HEADING_RE.test(line)) {
       inSection = true;
       continue;
     }
     // Inline prefix: "Acceptance criteria: AC-1: ..." — may appear anywhere on the line
     // (e.g. /loop:backlog add stores body as a single paragraph)
-    if (/acceptance\s+criteria\s*:/i.test(line)) {
+    if (INLINE_AC_PREFIX_RE.test(line)) {
       inSection = true;
       // Count any AC-N: labels on the same line as the opener.
-      const inlineMatches = line.match(/\bAC-\d+:/gi);
+      const inlineMatches = line.match(INLINE_AC_LABELS_RE);
       if (inlineMatches) count += inlineMatches.length;
       continue;
     }
     if (inSection) {
       // Stop at the next ## heading.
-      if (/^##/.test(line)) break;
+      if (SECTION_HEADING_RE.test(line)) break;
       // Count bullet lines: bare "- " or "- [ ]" / "- [x]" forms.
-      if (/^- (\[[ x]\] )?\S/.test(line)) count++;
+      if (AC_BULLET_RE.test(line)) count++;
     }
   }
 
@@ -117,7 +125,7 @@ export function migrateLegacyScores(
   const allLegacyKeys = [...LEGACY_PM_KEYS, "pm_customer_impact"] as const;
   for (const key of allLegacyKeys) {
     if (Object.prototype.hasOwnProperty.call(fm, key)) {
-      const shortName = key.replace(/^pm_/, "");
+      const shortName = key.replace(LEGACY_KEY_PREFIX_RE, "");
       legacyKeys[`pm_legacy_${shortName}`] = fm[key];
     }
   }

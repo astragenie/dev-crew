@@ -2,7 +2,7 @@
 id: SPEC-004
 type: adr
 title: Code-Quality Pivot — dead-code sweep + tsconfig tighten + perf top-10
-status: decomposed
+status: satisfied
 priority: P2
 target_release: v0.26.0
 created: 2026-06-07

@@ -1,7 +1,9 @@
 import fs from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
+import { readFrontmatterCached } from "./frontmatter-cache.mjs";
 import { backlogRoot, pathExists } from "./paths.mjs";
 import { cached } from "./cache.mjs";
 
@@ -32,8 +34,11 @@ async function readEntry(filePath: string, state: string) {
   const match = filename.match(FEATURE_FILE_RE);
   if (!match) return null;
   const idNumber = Number(match[1]);
-  const content = await fs.readFile(filePath, "utf8");
-  const { frontmatter, body } = parseFrontmatter(content);
+  const mtime = (await fs.stat(filePath)).mtimeMs;
+  const result = readFrontmatterCached(filePath, mtime, parseFrontmatter, (p) =>
+    readFileSync(p, "utf8")
+  );
+  const { frontmatter, body } = result;
   return {
     id: frontmatter.id || `FEAT-${String(idNumber).padStart(3, "0")}`,
     idNumber,
@@ -45,21 +50,31 @@ async function readEntry(filePath: string, state: string) {
   };
 }
 
+async function readStateEntries(
+  root: string,
+  state: string
+): Promise<Array<Awaited<ReturnType<typeof readEntry>>>> {
+  const dir = path.join(root, state);
+  if (!(await pathExists(dir))) return [];
+  const files = await fs.readdir(dir);
+  const results = await Promise.all(
+    files
+      .filter((file) => file.endsWith(".md") && FEATURE_FILE_RE.test(file))
+      .map((file) => readEntry(path.join(dir, file), state))
+  );
+  return results.filter((e): e is NonNullable<typeof e> => e !== null);
+}
+
 export async function listBacklog(repoPath: string, options: Record<string, any> = {}) {
   const cacheKey = `listBacklog:${repoPath}`;
   return cached(cacheKey, async () => {
     const root = backlogRoot(repoPath, options.config);
-    const entries: any[] = [];
-    for (const state of BACKLOG_STATES) {
-      const dir = path.join(root, state);
-      if (!(await pathExists(dir))) continue;
-      const files = await fs.readdir(dir);
-      for (const file of files) {
-        if (!file.endsWith(".md") || !FEATURE_FILE_RE.test(file)) continue;
-        const entry = await readEntry(path.join(dir, file), state);
-        if (entry) entries.push(entry);
-      }
-    }
+    // Win 2 + Win 5: read all backlog state dirs in parallel (single snapshot
+    // per invocation via cache; parallel readdir across states).
+    const perStateBatches = await Promise.all(
+      BACKLOG_STATES.map((state) => readStateEntries(root, state))
+    );
+    const entries: any[] = perStateBatches.flat();
     entries.sort((a, b) => a.idNumber - b.idNumber);
     return entries;
   });

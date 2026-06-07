@@ -12,6 +12,7 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { completeSlice } from "../scripts/lib/slice-linker.mjs";
+import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -115,8 +116,8 @@ test("slice-complete docwriter: --no-doc-writer → deprecated warning on stderr
     const stderrText = stderrLines.join(" ");
     assert.ok(stderrText.includes("deprecated") && stderrText.includes("no-op"), `stderr must include deprecated/no-op, got: ${stderrText}`);
     assert.ok(stderrText.includes("DEC-011"), `stderr must cite DEC-011, got: ${stderrText}`);
-    // Allow the fire-and-forget audit log write to complete
-    await new Promise((res) => setTimeout(res, 100));
+    // Flush buffered audit log writes (Win 10 batch strategy).
+    await flushAuditLog(repo);
     // Audit log entry written with cli-refusal-cli-doc-writer-disabled
     const lines = await readJsonLines(auditLogPath(repo));
     const docWriterEntries = lines.filter((e) => e.agent === "loop:document-writer");
@@ -140,8 +141,8 @@ test("slice-complete docwriter: default path → audit log written with cli-refu
     // Ceremony returns successfully
     assert.ok(result?.slice?.id === sliceId, "slice id present in result");
     assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
-    // Allow the fire-and-forget audit log write to complete
-    await new Promise((res) => setTimeout(res, 100));
+    // Flush buffered audit log writes (Win 10 batch strategy).
+    await flushAuditLog(repo);
     // Audit log entry written with cli-refusal-cli-doc-writer-disabled
     const lines = await readJsonLines(auditLogPath(repo));
     const docWriterEntries = lines.filter((e) => e.agent === "loop:document-writer");

@@ -65,7 +65,7 @@ async function backlogAdd(
         );
       }
       // Researcher auto-dispatch removed — write audit log entry, empty body
-      const { appendAuditLog } = await import("../scripts/lib/auto-dispatch.mjs");
+      const { appendAuditLog, flushAuditLog } = await import("../scripts/lib/auto-dispatch.mjs");
       await appendAuditLog(repoPath, {
         timestamp: new Date().toISOString(),
         agent: "loop:researcher",
@@ -75,6 +75,7 @@ async function backlogAdd(
         skipReason: "cli-refusal-researcher-disabled",
         durationMs: 0
       });
+      await flushAuditLog(repoPath);
       console.error(
         "[backlog add] researcher auto-dispatch removed (see DEC-011). " +
           "Creating FEAT with empty body — run /loop:backlog-add for researcher enrichment, " +
