@@ -1,14 +1,24 @@
 ---
 id: FEAT-074
-status: pending
+status: done
 priority: P3
-category: null
+category: feature
 target_release: v0.27.0
 created: 2026-06-07
 updated: 2026-06-07
 depends_on: []
-slices: []
+slices: [SLICE-77]
 derived_from: null
+pm_customer_impact: 0.5
+pm_effort_estimate: 0.5
+pm_strategic_alignment: 0.5
+pm_technical_risk: 0.5
+pm_dependency_depth: 0.5
+autonomous_safe: false
+triage_notes: "category inferred as feature from body content; autonomous_safe inferred: AC count=0, derived_from=null → false"
+started_at: 2026-06-07
+slices_complete: [SLICE-77]
+completed_at: 2026-06-07
 ---
 # FEAT-074: noUncheckedIndexedAccess — B5 tsconfig tighten
 

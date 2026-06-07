@@ -1,6 +1,6 @@
 ---
 id: SLICE-77
-status: pending
+status: completed
 feature: FEAT-074
 phase: 3
 priority: P3
@@ -8,9 +8,10 @@ target_release: v0.27.0
 requires_validation: false
 created: 2026-06-07
 updated: 2026-06-07
-tags: [refactor, stack:node]
+tags: [refactor, "stack:node"]
 needs_contract: false
 needs_ux: false
+completed_at: 2026-06-07
 ---
 # SLICE-77: noUncheckedIndexedAccess — B5 tsconfig tighten
 
