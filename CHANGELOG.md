@@ -3,7 +3,7 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## [0.29.0] — 2026-06-07
+## v0.29.0 — 2026-06-07 — extend document-writer scope to API docs + diagram captions (FEAT-124)
 
 ### Added
 - Extended `loop:document-writer` scope to cover API reference documentation
