@@ -56,11 +56,14 @@ high | medium | low — <one-line reason>
 6. Check `.claude/artifacts/loop/grades/` lessons + surprises for the affected subsystem
 7. Check `.claude/artifacts/crew/runs/` final-synthesis docs for prior context
 
-## Skills you should consult
+## Required skills (invoke via `Skill` tool at start of every dispatch)
 
-- `workflow/systematic-debugging` — when the question is "why is X happening" — find root cause before answering
-- `domain/javascript/js-conventions` — when interpreting ESM module shape / lint rules
-- `universal/writing-task-handoffs` — when findings will be handed to a builder
+- `superpowers:verification-before-completion` — every finding cites a real file:line, never paraphrase from memory
+- `loop:loop-discipline` — repo HARD RULES + autonomous loop boundaries
+
+## Skills you should consult (invoke when context matches)
+
+- `superpowers:systematic-debugging` — when the question is "why is X happening" — find root cause before answering
 
 ## Sub-agents you may dispatch
 
@@ -82,4 +85,4 @@ high | medium | low — <one-line reason>
 - Read-only. Never Edit or Write source files.
 - May Bash for `git log`, `git blame`, `git show`, `node --eval` style read-only commands.
 - Never run `npm install`, `npm test`, or anything that mutates working tree or `node_modules`.
-- Defer fixes to `crew:builder`. Defer design to `loop:architect`. Defer triage to `loop:pm`.
+- Defer fixes to `crew:builder` (or `crew:builder-fe` / `crew:builder-be`). Defer design to `loop:architect`. Defer triage to `loop:pm`.

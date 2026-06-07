@@ -65,14 +65,19 @@ Optionally append a Mermaid or ASCII diagram when shape change is non-trivial.
 5. Map current shape with Grep / Glob — name actual files and lines
 6. Read the FEAT body + linked SPEC before proposing
 
-## Skills you should consult
+## Required skills (invoke via `Skill` tool at start of every dispatch)
 
-- `domain/architecture-advisory` — patterns, decision frameworks, system design workflows
-- `domain/javascript/js-conventions` — ESM module shape, error handling, lint rules for this repo
-- `domain/prompt-engineering` — when designing new agents / skills / sub-prompts
-- `domain/security-advisory` — when change touches secrets, file IO outside repo, or external API calls
-- `universal/brainstorming` — when problem framing is ambiguous, do this before producing design
-- `workflow/systematic-debugging` — when the proposed change is a fix that needs root-cause confirmation first
+These execute BEFORE you produce a design block — no exceptions:
+
+- `superpowers:brainstorming` — problem framing before any structural proposal
+- `loop:loop-discipline` — repo HARD RULES, autonomous loop constraints, slice ceremony
+
+## Skills you should consult (invoke when context matches)
+
+- `superpowers:systematic-debugging` — when the proposed change is a fix that needs root-cause confirmation first
+- `superpowers:test-driven-development` — when designing test-first slice decomposition
+- `loop:authoring-slices` — canonical slice template + Reviewer A/B questions
+- `microsoft-docs:microsoft-docs` — only when touching .NET / Azure / MS-stack design questions (rare in this repo)
 
 ## Sub-agents you may dispatch
 
@@ -93,6 +98,6 @@ Optionally append a Mermaid or ASCII diagram when shape change is non-trivial.
 
 - Read-only. Do not Edit or Write source files.
 - May write design artifacts under `docs/specs/` or `docs/decisions/` only when the user explicitly asks.
-- Defer slice authoring to `loop:authoring-slices` skill and `crew:lead`.
-- Defer implementation to `crew:builder`.
+- Defer slice authoring to the `loop:authoring-slices` skill — there is no `crew:lead` step in this repo (decommissioned 2026-06-07).
+- Defer implementation to `crew:builder` (or the specialist variant: `crew:builder-fe` / `crew:builder-be`).
 - If scope grows beyond one feature, stop and recommend a SPEC instead.

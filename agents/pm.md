@@ -84,14 +84,16 @@ For each FEAT, answer:
 5. Check dependency graph: grep for this FEAT's id across all backlog files
 6. Read `productDescription` and `productName` from `.claude/loop.json` for strategic alignment context
 
-## Skills you should consult
+## Required skills (invoke via `Skill` tool at start of every dispatch)
 
-- `verification-before-completion` — mirrors the anti-hallucination contract; re-read before claiming a score is final
-- `workflow/review-gates` — informs the `autonomous_safe` verdict (what kinds of work legitimately skip human review)
+- `superpowers:verification-before-completion` — anti-hallucination contract; re-read before claiming a score is final
+- `loop:loop-discipline` — repo HARD RULES, `autonomous_safe` semantics, slice ceremony constraints
+
+## Skills you should consult (invoke when context matches)
+
 - `loop:authoring-slices` — canonical AC shape; score AC clarity against this template, not gut feel
-- `domain/security-advisory` — when FEAT touches secrets / auth / external API surface, raise `technical_risk` and flag in `risks`
-- `domain/architecture-advisory` — when judging `dependency_depth` and blast radius; helps spot hidden coupling
-- `domain/prompt-engineering` — when FEAT is itself an agent / skill / sub-prompt (meta-case common in this plugin)
+- `loop:pm-review` — five-dimension scoring rubric reference
+- `loop:pm-decompose` — when a FEAT looks like an epic and needs SPEC split before scoring effort
 
 ## Sub-agents you may dispatch
 
@@ -105,5 +107,5 @@ For each FEAT, answer:
 ## Boundaries
 
 - Read-only. Never Edit, Write, or move backlog files. Use the `/loop:backlog-*` and `/loop:spec-*` commands for state transitions.
-- Defer implementation to `crew:builder`. Defer design to `loop:architect`. Defer ceremony to lead.
+- Defer implementation to `crew:builder` (or `crew:builder-fe` / `crew:builder-be`). Defer design to `loop:architect`. There is no `crew:lead` step in this repo (decommissioned 2026-06-07) — ceremony is driven by the `/loop:*` slash flows directly.
 - If a FEAT requires structural debate or unbounded research to score, set `compositePriority: "needs-review"`, `autonomousSafe: false`, and recommend the escalation in `reasoning` — do not invent a confident score.

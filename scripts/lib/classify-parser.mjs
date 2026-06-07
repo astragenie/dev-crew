@@ -6,6 +6,13 @@
 //   tags: [<label>, ...]
 //   needs_contract: <true|false>
 //   needs_ux: <true|false>
+//   surface: <frontend|backend|mixed|none>
+//   stack: [<technology>, ...]
+//
+// surface + stack drive crew:orchestrate-slice routing to builder-fe vs
+// builder-be vs generic builder. Without them, the upstream router falls
+// back to the generic crew:builder for every dispatch (observed gap as of
+// 2026-06-07). See docs/upstream-requests/ for the matching crew change.
 //
 // The parser is tolerant: it scans every line for recognisable patterns and
 // ignores prose, headings, blank lines. Unrecognised or missing fields default
@@ -20,6 +27,20 @@ const VALID_TAGS = new Set([
     "test",
     "docs",
     "refactor"
+]);
+const VALID_SURFACES = new Set(["frontend", "backend", "mixed", "none"]);
+const VALID_STACKS = new Set([
+    "typescript",
+    "javascript",
+    "node",
+    "csharp",
+    "dotnet",
+    "python",
+    "go",
+    "java",
+    "rust",
+    "ruby",
+    "php"
 ]);
 function parseTags(raw) {
     // Accept inline array: [a, b, c] or bare comma-separated: a, b, c
@@ -42,6 +63,13 @@ function parseBool(raw) {
         return false;
     return null;
 }
+function parseSurface(raw) {
+    const v = raw
+        .trim()
+        .toLowerCase()
+        .replace(/^["']|["']$/g, "");
+    return VALID_SURFACES.has(v) ? v : null;
+}
 /**
  * Parse a classify-output block returned by loop:architect.
  *
@@ -49,7 +77,13 @@ function parseBool(raw) {
  * contains no recognisable fields, returns the zero-value defaults.
  */
 export function parseClassifyOutput(raw) {
-    const result = { tags: [], needs_contract: null, needs_ux: null };
+    const result = {
+        tags: [],
+        needs_contract: null,
+        needs_ux: null,
+        surface: null,
+        stack: []
+    };
     if (!raw || typeof raw !== "string")
         return result;
     for (const line of raw.split("\n")) {
@@ -72,8 +106,21 @@ export function parseClassifyOutput(raw) {
             result.needs_ux = parseBool(uxMatch[1]);
             continue;
         }
+        // surface: frontend|backend|mixed|none
+        const surfaceMatch = trimmed.match(/^surface:\s*(.+)$/i);
+        if (surfaceMatch) {
+            result.surface = parseSurface(surfaceMatch[1]);
+            continue;
+        }
+        // stack: [typescript, csharp] or stack: typescript, csharp
+        const stackMatch = trimmed.match(/^stack:\s*(.+)$/i);
+        if (stackMatch) {
+            result.stack = parseTags(stackMatch[1]).map((s) => s.toLowerCase());
+            continue;
+        }
     }
-    // Filter tags to the known vocabulary so free-form prose tokens don't leak in.
+    // Filter tags + stack to known vocabularies so free-form prose tokens don't leak in.
     result.tags = result.tags.filter((t) => VALID_TAGS.has(t));
+    result.stack = result.stack.filter((s) => VALID_STACKS.has(s));
     return result;
 }

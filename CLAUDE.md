@@ -81,6 +81,30 @@ Each FEAT has frontmatter declaring priority, status, and an
 `autonomous_safe: true` items without per-slice human review; creative
 items still require a human in the loop on review.
 
+`/loop:backlog-enrich` writes five routing fields into FEAT
+frontmatter: `tags`, `needs_contract`, `needs_ux`, `surface`, `stack`.
+`surface` ∈ {`frontend`, `backend`, `mixed`, `none`} drives the
+builder-variant choice in `/crew:orchestrate-slice`:
+- `frontend` → `crew:builder-fe`
+- `backend` → `crew:builder-be`
+- `mixed` / `none` → `crew:builder` (generic)
+
+Crew plugin must implement the read side — see
+`docs/upstream-requests/2026-06-07-orchestrate-slice-surface-stack-routing.md`.
+Until then, FEAT frontmatter is populated correctly but all dispatches
+fall back to the generic `crew:builder`.
+
+## Decommissioned roles
+
+- `crew:lead` — DECOMMISSIONED 2026-06-07. Loop and crew slash flows
+  in this repo route directly to specialist agents
+  (`crew:builder`, `crew:builder-fe`, `crew:builder-be`,
+  `crew:reviewer`, `crew:validator`, etc.). The lead orchestrator step
+  is no longer used. `hooks/guard-feat-dispatch.mjs` blocks
+  `crew:lead` dispatches so accidental routing is surfaced. To
+  re-enable, restore the agent name to the allowlist and update this
+  section.
+
 ## Owned agents
 
 Dispatch via `Agent(subagent_type: ...)`:

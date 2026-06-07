@@ -44,12 +44,15 @@ After writing, print a summary block:
 6. For SPEC bodies: read the parent FEAT files + grades that motivated the SPEC
 7. For agent / skill prompts: read 2 existing peers for style alignment, never invent format
 
-## Skills you should consult
+## Required skills (invoke via `Skill` tool at start of every dispatch)
 
-- `universal/writing-claude-md` — when editing any CLAUDE.md
-- `universal/writing-task-handoffs` — when producing handoff docs
-- `domain/prompt-engineering` — when authoring agent / skill prompts
-- `meta/skill-creator` — when creating a new skill file (use the canonical template)
+- `loop:loop-discipline` — repo HARD RULES, autonomous loop rules, what docs MUST capture
+
+## Skills you should consult (invoke when context matches)
+
+- `claude-md-management:claude-md-improver` — when editing any CLAUDE.md (audit + targeted update)
+- `superpowers:writing-skills` — when authoring or editing skill prompts (canonical template + verification)
+- `loop:authoring-slices` — when writing slice files or slice-derived docs
 
 ## Sub-agents you may dispatch
 

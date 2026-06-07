@@ -96,6 +96,60 @@ test("parseClassifyOutput: bare (non-array) tags line is parsed", () => {
     assert.deepEqual(result.tags, ["api-change", "storage"]);
 });
 // ---------------------------------------------------------------------------
+// surface + stack parsing (FE/BE routing fix — 2026-06-07)
+// ---------------------------------------------------------------------------
+test("parseClassifyOutput: surface frontend|backend|mixed|none are accepted", () => {
+    for (const s of ["frontend", "backend", "mixed", "none"]) {
+        const result = parseClassifyOutput(`surface: ${s}`);
+        assert.equal(result.surface, s);
+    }
+});
+test("parseClassifyOutput: surface uppercase + quoted are normalized", () => {
+    const r1 = parseClassifyOutput("surface: FRONTEND");
+    assert.equal(r1.surface, "frontend");
+    const r2 = parseClassifyOutput(`surface: "backend"`);
+    assert.equal(r2.surface, "backend");
+});
+test("parseClassifyOutput: surface invalid value returns null", () => {
+    const r = parseClassifyOutput("surface: fullstack");
+    assert.equal(r.surface, null);
+});
+test("parseClassifyOutput: surface missing returns null", () => {
+    const r = parseClassifyOutput("tags: [docs]");
+    assert.equal(r.surface, null);
+});
+test("parseClassifyOutput: stack accepts known vocabulary + filters unknown", () => {
+    const r = parseClassifyOutput("stack: [typescript, fortran, csharp, cobol]");
+    assert.deepEqual(r.stack, ["typescript", "csharp"]);
+});
+test("parseClassifyOutput: stack is lowercased before vocab filter", () => {
+    const r = parseClassifyOutput("stack: [TypeScript, GO, Python]");
+    assert.deepEqual(r.stack, ["typescript", "go", "python"]);
+});
+test("parseClassifyOutput: stack bare comma-separated parses", () => {
+    const r = parseClassifyOutput("stack: node, java");
+    assert.deepEqual(r.stack, ["node", "java"]);
+});
+test("parseClassifyOutput: stack missing returns empty array", () => {
+    const r = parseClassifyOutput("tags: [docs]");
+    assert.deepEqual(r.stack, []);
+});
+test("parseClassifyOutput: full five-field block parses end-to-end", () => {
+    const raw = [
+        "tags: [api-change, infra]",
+        "needs_contract: true",
+        "needs_ux: false",
+        "surface: backend",
+        "stack: [typescript, node]"
+    ].join("\n");
+    const r = parseClassifyOutput(raw);
+    assert.deepEqual(r.tags, ["api-change", "infra"]);
+    assert.equal(r.needs_contract, true);
+    assert.equal(r.needs_ux, false);
+    assert.equal(r.surface, "backend");
+    assert.deepEqual(r.stack, ["typescript", "node"]);
+});
+// ---------------------------------------------------------------------------
 // sliceFromFeature with classify dispatch — integration-style tests
 // ---------------------------------------------------------------------------
 test("sliceFromFeature with mock dispatch: tags/needs_contract/needs_ux written to slice frontmatter", async () => {
@@ -121,6 +175,33 @@ test("sliceFromFeature with mock dispatch: tags/needs_contract/needs_ux written 
     assert.deepEqual(frontmatter.tags, ["api-change", "storage"]);
     assert.equal(frontmatter.needs_contract, true);
     assert.equal(frontmatter.needs_ux, false);
+});
+test("sliceFromFeature with mock dispatch: surface/stack written to slice frontmatter", async () => {
+    const repo = await tmpRepo("sfc-surface-stack-");
+    await createFeature(repo, "FEAT-001", "triaged");
+    await ensureSlicesRoot(repo);
+    const mockDispatch = async (_opts) => {
+        return {
+            ok: true,
+            skipped: false,
+            output: [
+                "tags: [ux]",
+                "needs_contract: false",
+                "needs_ux: true",
+                "surface: frontend",
+                "stack: [typescript]"
+            ].join("\n"),
+            durationMs: 1
+        };
+    };
+    const out = await sliceFromFeature(repo, "FEAT-001", { dispatchFn: mockDispatch });
+    assert.ok(out.classify, "classify result should be present");
+    assert.equal(out.classify.surface, "frontend");
+    assert.deepEqual(out.classify.stack, ["typescript"]);
+    const sliceContent = await fs.readFile(out.slice.path, "utf8");
+    const { frontmatter } = parseFrontmatter(sliceContent);
+    assert.equal(frontmatter.surface, "frontend");
+    assert.deepEqual(frontmatter.stack, ["typescript"]);
 });
 test("sliceFromFeature with --no-classify: dispatch not called", async () => {
     const repo = await tmpRepo("sfc-noclassify-");

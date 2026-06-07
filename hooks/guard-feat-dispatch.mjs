@@ -45,12 +45,16 @@ if (!featMatches || featMatches.length === 0) process.exit(0);
 // Allow crew specialist ceremony agents + loop methodology agents + Explore (read-only).
 // Only ad-hoc / 3rdparty / general-purpose subagents stay blocked — those skip the
 // artifact protocol orchestrate-slice depends on.
+// crew:lead is DECOMMISSIONED in this repo (2026-06-07). Routing in /loop:* and
+// /crew:* commands goes direct to specialist agents — no lead orchestrator step.
+// Leaving it off the allowlist surfaces accidental routing as a BLOCKED dispatch
+// so the operator can correct the flow instead of silently spawning an unused
+// lead.
 const allowed = [
   "crew:builder",
   "crew:builder-be",
   "crew:builder-fe",
   "crew:build",
-  "crew:lead",
   "crew:reviewer",
   "crew:validator",
   "crew:deployer",
@@ -80,7 +84,7 @@ process.stderr.write(
     `  4. /loop:slice-complete --id SLICE-NN`,
     `  5. /loop:slice-grade`,
     `If /loop:auto halted on warn alerts, address alerts or escalate — do NOT bypass.`,
-    `Override: change subagent_type to a crew or loop ceremony specialist (crew:builder, crew:builder-be, crew:builder-fe, crew:lead, crew:reviewer, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore.`
+    `Override: change subagent_type to a crew or loop ceremony specialist (crew:builder, crew:builder-be, crew:builder-fe, crew:reviewer, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore. NOTE: crew:lead is DECOMMISSIONED in this repo — route to the specialist directly.`
   ].join("\n")
 );
 process.exit(2);

@@ -158,7 +158,13 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
   return serializeFrontmatter(frontmatter, body);
 }
 
-type ClassifyResult = { tags: string[]; needs_contract: boolean | null; needs_ux: boolean | null };
+type ClassifyResult = {
+  tags: string[];
+  needs_contract: boolean | null;
+  needs_ux: boolean | null;
+  surface: "frontend" | "backend" | "mixed" | "none" | null;
+  stack: string[];
+};
 
 function featureHasTags(fm): boolean {
   if (Array.isArray(fm.tags)) return fm.tags.length > 0;
@@ -170,6 +176,8 @@ function buildClassifyUpdates(parsed: ClassifyResult): Record<string, unknown> |
   if (parsed.tags.length > 0) updates.tags = parsed.tags;
   if (parsed.needs_contract !== null) updates.needs_contract = parsed.needs_contract;
   if (parsed.needs_ux !== null) updates.needs_ux = parsed.needs_ux;
+  if (parsed.surface !== null) updates.surface = parsed.surface;
+  if (parsed.stack.length > 0) updates.stack = parsed.stack;
   return Object.keys(updates).length > 0 ? updates : null;
 }
 
