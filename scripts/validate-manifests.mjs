@@ -2,11 +2,37 @@
 // Lightweight manifest sanity check. See hero-crew's validator for rationale.
 // validateManifests() is exported so tests can call it without spawning.
 import fs from "node:fs/promises";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { validatePreset, SchemaError } from "./lib/preset-schema.mjs";
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 async function readJson(p) {
     return JSON.parse(await fs.readFile(p, "utf8"));
+}
+export function validateAllPresets(repoRoot) {
+    const dir = path.join(repoRoot, "scripts", "presets");
+    const errors = [];
+    if (!existsSync(dir))
+        return errors;
+    for (const entry of readdirSync(dir)) {
+        if (!entry.endsWith(".json"))
+            continue;
+        const full = path.join(dir, entry);
+        try {
+            const raw = JSON.parse(readFileSync(full, "utf8"));
+            validatePreset(raw);
+        }
+        catch (err) {
+            if (err instanceof SchemaError || err instanceof SyntaxError) {
+                errors.push(`presets/${entry}: ${err.message}`);
+            }
+            else {
+                throw err;
+            }
+        }
+    }
+    return errors;
 }
 export async function validateManifests(repoRoot) {
     const failures = [];
@@ -45,6 +71,9 @@ export async function validateManifests(repoRoot) {
         }
         if (!entry.source)
             fail(`marketplace.json: entry "${entry.name}" missing "source"`);
+    }
+    for (const presetErr of validateAllPresets(repoRoot)) {
+        fail(presetErr);
     }
     return { ok: failures.length === 0, failures, plugin, marketplace };
 }
