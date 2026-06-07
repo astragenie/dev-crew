@@ -4,6 +4,13 @@
 import { loadAggregateCostReport, computeRollingMedian } from "./cost-alert-loader.mjs";
 export const DEFAULT_COST_REGRESSION_WINDOW = 5;
 export const DEFAULT_COST_REGRESSION_MULTIPLIER = 3.0;
+// Gate stays dormant until at least this many historical samples have
+// accumulated. With sampleCount=2 the median is dominated by a single
+// outlier (e.g. retro/snapshot batch) and the gate false-trips at the
+// first real slice cost. 3 is the smallest window that survives one
+// contaminated sample without halting the loop. Tune via
+// loop.costRegressionMinSamples in .claude/loop.json.
+export const DEFAULT_COST_REGRESSION_MIN_SAMPLES = 3;
 function resolveWindow(config) {
     const raw = config?.loop?.costRegressionWindow;
     return typeof raw === "number" && Number.isInteger(raw) && raw > 0
@@ -15,6 +22,12 @@ function resolveMultiplier(config) {
     return typeof raw === "number" && Number.isFinite(raw) && raw > 0
         ? raw
         : DEFAULT_COST_REGRESSION_MULTIPLIER;
+}
+function resolveMinSamples(config) {
+    const raw = config?.loop?.costRegressionMinSamples;
+    return typeof raw === "number" && Number.isInteger(raw) && raw > 0
+        ? raw
+        : DEFAULT_COST_REGRESSION_MIN_SAMPLES;
 }
 /**
  * Fail-open evaluator for the rolling-median cost regression gate.
@@ -30,6 +43,7 @@ function resolveMultiplier(config) {
 export async function checkCostRegression(repoPath, config) {
     const window = resolveWindow(config);
     const multiplier = resolveMultiplier(config);
+    const minSamples = resolveMinSamples(config);
     // Load up to window+1 reports (current + window historical)
     const { reports } = await loadAggregateCostReport(repoPath, { limit: window + 1 });
     if (reports.length === 0)
@@ -39,6 +53,11 @@ export async function checkCostRegression(repoPath, config) {
         return null;
     const { median, sampleCount } = computeRollingMedian({ reports, window });
     if (sampleCount === 0 || median === null)
+        return null;
+    // Dormant until enough samples to make the median stable. Without this,
+    // a single outlier ($1500+ retro batch) sets the median and every
+    // subsequent normal-priced slice trips the gate.
+    if (sampleCount < minSamples)
         return null;
     const thresholdUsd = median * multiplier;
     if (current.usd <= thresholdUsd)

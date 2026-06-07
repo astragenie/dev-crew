@@ -163,6 +163,49 @@ test("checkCostRegression: currentUsd === median × multiplier exactly — does 
   assert.equal(signal, null, "exact threshold should NOT halt (> not >=)");
 });
 
+test("checkCostRegression: sampleCount < minSamples — gate stays dormant (n=2 false-trip fix)", async () => {
+  // Regression: with sampleCount=2, a single $1500 retro batch sets the
+  // median and every subsequent normal slice trips the gate. Gate must
+  // stay dormant until at least minSamples historical reports exist.
+  const repo = await tmpRepo("cr-min-samples-");
+  await writeAggregateReport(repo, "20260601T100000Z", "SLICE-01", 1500);
+  await writeAggregateReport(repo, "20260601T110000Z", "SLICE-02", 50);
+  // current = 1000 — would trigger at 3 × 775 = 2325? No — 3 × ((1500+50)/2)=2325.
+  // Drop to 200 to make halting obvious if gate were active.
+  await writeAggregateReport(repo, "20260601T120000Z", "SLICE-03", 1000);
+
+  const config = {
+    loop: { costRegressionWindow: 5, costRegressionMultiplier: 3.0, costRegressionMinSamples: 3 }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.equal(signal, null, "gate must stay dormant when sampleCount < minSamples");
+});
+
+test("checkCostRegression: sampleCount >= minSamples — gate active again", async () => {
+  const repo = await tmpRepo("cr-min-samples-active-");
+  await writeAggregateReport(repo, "20260601T100000Z", "SLICE-01", 10);
+  await writeAggregateReport(repo, "20260601T110000Z", "SLICE-02", 10);
+  await writeAggregateReport(repo, "20260601T120000Z", "SLICE-03", 10);
+  await writeAggregateReport(repo, "20260601T130000Z", "SLICE-04", 100);
+
+  const config = {
+    loop: { costRegressionWindow: 5, costRegressionMultiplier: 3.0, costRegressionMinSamples: 3 }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.ok(signal, "gate should fire once minSamples threshold met");
+  assert.equal(signal!.sampleCount, 3);
+});
+
+test("checkCostRegression: default minSamples=3 — n=2 history skips the gate (regression)", async () => {
+  // No config — falls back to DEFAULT_COST_REGRESSION_MIN_SAMPLES (3).
+  const repo = await tmpRepo("cr-default-min-");
+  await writeAggregateReport(repo, "20260601T100000Z", "SLICE-01", 50);
+  await writeAggregateReport(repo, "20260601T110000Z", "SLICE-02", 1500);
+
+  const signal = await checkCostRegression(repo, null);
+  assert.equal(signal, null, "default minSamples=3 should suppress gate with only 2 samples");
+});
+
 test("checkCostRegression: currentUsd slightly above threshold — halts", async () => {
   const repo = await tmpRepo("cr-above-");
   await writeAggregateReport(repo, "20260601T100000Z", "SLICE-01", 10);

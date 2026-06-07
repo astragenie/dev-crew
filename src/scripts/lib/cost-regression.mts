@@ -6,6 +6,13 @@ import { loadAggregateCostReport, computeRollingMedian } from "./cost-alert-load
 
 export const DEFAULT_COST_REGRESSION_WINDOW = 5;
 export const DEFAULT_COST_REGRESSION_MULTIPLIER = 3.0;
+// Gate stays dormant until at least this many historical samples have
+// accumulated. With sampleCount=2 the median is dominated by a single
+// outlier (e.g. retro/snapshot batch) and the gate false-trips at the
+// first real slice cost. 3 is the smallest window that survives one
+// contaminated sample without halting the loop. Tune via
+// loop.costRegressionMinSamples in .claude/loop.json.
+export const DEFAULT_COST_REGRESSION_MIN_SAMPLES = 3;
 
 /** Signal returned by checkCostRegression when the gate fires. */
 export interface CostRegressionSignal {
@@ -42,6 +49,13 @@ function resolveMultiplier(config: Record<string, any> | null): number {
     : DEFAULT_COST_REGRESSION_MULTIPLIER;
 }
 
+function resolveMinSamples(config: Record<string, any> | null): number {
+  const raw = config?.loop?.costRegressionMinSamples;
+  return typeof raw === "number" && Number.isInteger(raw) && raw > 0
+    ? raw
+    : DEFAULT_COST_REGRESSION_MIN_SAMPLES;
+}
+
 /**
  * Fail-open evaluator for the rolling-median cost regression gate.
  *
@@ -59,6 +73,7 @@ export async function checkCostRegression(
 ): Promise<CostRegressionSignal | null> {
   const window = resolveWindow(config);
   const multiplier = resolveMultiplier(config);
+  const minSamples = resolveMinSamples(config);
 
   // Load up to window+1 reports (current + window historical)
   const { reports } = await loadAggregateCostReport(repoPath, { limit: window + 1 });
@@ -70,6 +85,10 @@ export async function checkCostRegression(
 
   const { median, sampleCount } = computeRollingMedian({ reports, window });
   if (sampleCount === 0 || median === null) return null;
+  // Dormant until enough samples to make the median stable. Without this,
+  // a single outlier ($1500+ retro batch) sets the median and every
+  // subsequent normal-priced slice trips the gate.
+  if (sampleCount < minSamples) return null;
 
   const thresholdUsd = median * multiplier;
   if (current.usd <= thresholdUsd) return null;
