@@ -123,13 +123,7 @@ export class MergeError extends Error {
     | "DIRTY_MAIN"
     | "WORKTREE_MISSING";
 
-  failedStep:
-    | "validation-gate"
-    | "fetch"
-    | "rebase"
-    | "merge"
-    | "push"
-    | "preflight";
+  failedStep: "validation-gate" | "fetch" | "rebase" | "merge" | "push" | "preflight";
 
   gitStderr: string;
   fixHint: string;
@@ -150,7 +144,8 @@ export class MergeError extends Error {
     this.code = opts.code;
     this.failedStep = opts.failedStep;
     this.gitStderr = opts.gitStderr ?? "";
-    this.fixHint = opts.fixHint ?? `Run \`/crew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
+    this.fixHint =
+      opts.fixHint ?? `Run \`/crew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
     this.attemptedBranch = opts.attemptedBranch;
     this.attemptedWorktree = opts.attemptedWorktree;
   }
@@ -171,7 +166,9 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`;
  * Render the squash-merge commit message from AutoMergeOptions.
  * Throws when sliceTitle or sliceId are empty (REQUIRED fields).
  */
-export function renderCommitMessage(opts: Pick<AutoMergeOptions, "sliceTitle" | "sliceId" | "featureId" | "gradeAvg" | "decisionIds">): string {
+export function renderCommitMessage(
+  opts: Pick<AutoMergeOptions, "sliceTitle" | "sliceId" | "featureId" | "gradeAvg" | "decisionIds">
+): string {
   const { sliceTitle, sliceId, featureId, gradeAvg, decisionIds } = opts;
   if (!sliceTitle || !sliceTitle.trim()) {
     throw new MergeError({
@@ -194,9 +191,10 @@ export function renderCommitMessage(opts: Pick<AutoMergeOptions, "sliceTitle" | 
 
   const closesLine = featureId ? `Closes ${featureId}. ` : "";
   const gradeStr = gradeAvg !== null ? `Grade avg: ${gradeAvg.toFixed(2)}` : "Grade avg: n/a";
-  const decStr = decisionIds && decisionIds.length > 0
-    ? `Decisions: ${decisionIds.join(", ")}`
-    : "Decisions: none";
+  const decStr =
+    decisionIds && decisionIds.length > 0
+      ? `Decisions: ${decisionIds.join(", ")}`
+      : "Decisions: none";
 
   const body = [
     `${sliceTitle.trim()} (${sliceId})`,
@@ -238,7 +236,10 @@ function readValidationGateStatus(workflowState: any): "passed" | "skipped" | "f
  * Determine whether the validation gate is satisfied for auto-merge.
  * Returns { satisfied, status } where status is the raw gate value.
  */
-export function isValidationGateSatisfied(workflowState: any): { satisfied: boolean; status: string | null } {
+export function isValidationGateSatisfied(workflowState: any): {
+  satisfied: boolean;
+  status: string | null;
+} {
   const status = readValidationGateStatus(workflowState);
   if (status === "passed" || status === "skipped") return { satisfied: true, status };
   return { satisfied: false, status };
@@ -306,10 +307,7 @@ async function preflightChecks(
 
 const STATE_PATH_PARTS = [".claude", "state", "crew", "workflow-state.json"];
 
-async function writeMergeFailedBadge(
-  repoPath: string,
-  badge: MergeFailedBadge
-): Promise<void> {
+async function writeMergeFailedBadge(repoPath: string, badge: MergeFailedBadge): Promise<void> {
   // Write to workflow-state directly (crew mark-badge pattern; fallback to direct write)
   try {
     const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
@@ -361,10 +359,7 @@ export async function clearWorktreePathInState(repoPath: string): Promise<void> 
 // Audit log
 // ---------------------------------------------------------------------------
 
-async function writeAuditEntry(
-  repoPath: string,
-  entry: object
-): Promise<void> {
+async function writeAuditEntry(repoPath: string, entry: object): Promise<void> {
   try {
     const { appendAuditLog } = await import("./auto-dispatch.mjs");
     await appendAuditLog(repoPath, entry);
@@ -489,9 +484,10 @@ async function checkValidationGate(ctx: MergeContext): Promise<void> {
   const code = gateStatus === "failed" ? "VALIDATION_FAILED" : "VALIDATION_REQUIRED";
   const mergeErr = new MergeError({
     code,
-    message: code === "VALIDATION_FAILED"
-      ? `Validation gate explicitly failed for ${ctx.sliceId}. Cannot auto-merge.`
-      : `Validation gate not satisfied for ${ctx.sliceId}. Run /crew:validate or pass --skip-validation-check.`,
+    message:
+      code === "VALIDATION_FAILED"
+        ? `Validation gate explicitly failed for ${ctx.sliceId}. Cannot auto-merge.`
+        : `Validation gate not satisfied for ${ctx.sliceId}. Run /crew:validate or pass --skip-validation-check.`,
     failedStep: "validation-gate",
     fixHint: `Open the validation artifact to see what failed, then re-run /loop:slice complete.`,
     attemptedBranch: ctx.branchName,
@@ -524,7 +520,11 @@ async function rebaseBranchOntoMain(ctx: MergeContext): Promise<void> {
   try {
     await git(ctx.worktreePath, ["rebase", "origin/main"]);
   } catch (err: any) {
-    try { await git(ctx.worktreePath, ["rebase", "--abort"]); } catch { /* ignore */ }
+    try {
+      await git(ctx.worktreePath, ["rebase", "--abort"]);
+    } catch {
+      /* ignore */
+    }
     const mergeErr = new MergeError({
       code: "REBASE_CONFLICT",
       message: `git rebase origin/main failed for branch ${ctx.branchName}: ${(err?.stderr ?? err?.message ?? "").trim()}`,
@@ -583,7 +583,11 @@ async function commitSquash(ctx: MergeContext, commitMessage: string): Promise<s
   try {
     await git(ctx.repoPath, ["commit", "-m", commitMessage]);
   } catch (err: any) {
-    try { await git(ctx.repoPath, ["reset", "--hard", "HEAD"]); } catch { /* ignore */ }
+    try {
+      await git(ctx.repoPath, ["reset", "--hard", "HEAD"]);
+    } catch {
+      /* ignore */
+    }
     const mergeErr = new MergeError({
       code: "MERGE_FAILED",
       message: `git commit failed: ${(err?.stderr ?? err?.message ?? "").trim()}`,
@@ -600,7 +604,9 @@ async function commitSquash(ctx: MergeContext, commitMessage: string): Promise<s
   try {
     const { stdout } = await git(ctx.repoPath, ["rev-parse", "HEAD"]);
     mergeCommitSha = stdout.trim();
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
   return mergeCommitSha;
 }
 
@@ -632,7 +638,14 @@ async function pushIfEnabled(
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });
-    await handleMergeError(ctx.repoPath, mergeErr, ctx.sliceId, ctx.featureId, ctx.startTime, mergeCommitSha);
+    await handleMergeError(
+      ctx.repoPath,
+      mergeErr,
+      ctx.sliceId,
+      ctx.featureId,
+      ctx.startTime,
+      mergeCommitSha
+    );
     throw mergeErr;
   }
 }
@@ -648,9 +661,7 @@ async function pushIfEnabled(
  * on any failure path. NEVER swallows git errors silently. NEVER mutates
  * the slice branch destructively (no -D, no --force, no --force-with-lease).
  */
-export async function runAutoMerge(
-  opts: AutoMergeOptions
-): Promise<MergeResult | DryRunPlan> {
+export async function runAutoMerge(opts: AutoMergeOptions): Promise<MergeResult | DryRunPlan> {
   const {
     repoPath,
     worktreePath,
@@ -669,7 +680,13 @@ export async function runAutoMerge(
   const ctx: MergeContext = { repoPath, worktreePath, branchName, sliceId, featureId, startTime };
 
   // Render commit message (throws MergeError on empty sliceTitle/sliceId)
-  const commitMessage = renderCommitMessage({ sliceTitle, sliceId, featureId, gradeAvg, decisionIds });
+  const commitMessage = renderCommitMessage({
+    sliceTitle,
+    sliceId,
+    featureId,
+    gradeAvg,
+    decisionIds
+  });
 
   // --dry-run: pure derivation — no git mutations, no state writes, no audit
   if (dryRun) {

@@ -3,6 +3,14 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.2 — 2026-06-07 — fix: enforce plugin.json/marketplace.json version lockstep
+
+Marketplace consumers were silently stuck on `0.22.0` for three minor releases (0.23.0 / 0.24.0 / 0.24.1) because `.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json` were allowed to drift. `validate-manifests` now refuses pushes / CI runs when the versions disagree.
+
+- `npm run bump-version <semver>` atomically updates both files (use this for every release)
+- Pre-push hook + GitHub Actions both call the validator, so drift is caught at git push, never silently shipped
+- Comment in the validator documents the 2026-06-06 incident so the next reader understands why the lockstep is non-negotiable
+
 ## v0.24.1 — 2026-06-06 — fix: allowlist new crew BE/FE/integrator specialists in guard-feat-dispatch hook
 
 `hooks/guard-feat-dispatch.mjs` now accepts `crew:builder-be`, `crew:builder-fe`, and `crew:integrator` as legitimate ceremony specialists. Previously these new agents (released in upstream crew) were treated as ad-hoc subagents and blocked from FEAT work, breaking the `/crew:fix` and `/crew:orchestrate-slice` flows that route to them.

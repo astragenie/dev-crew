@@ -677,9 +677,7 @@ async function resolveWorktreeAndBranch(
   }
 
   const featureId: string | null = sliceFm?.feature ?? null;
-  const branchName: string = featureId
-    ? `slice/${sliceId}-${featureId}`
-    : `slice/${sliceId}`;
+  const branchName: string = featureId ? `slice/${sliceId}-${featureId}` : `slice/${sliceId}`;
 
   const branchExists = await checkBranchExists(repoPath, branchName);
   if (!branchExists) {
@@ -725,10 +723,13 @@ async function deriveGradeInfo(
     if (!grade) return { gradeAvg: null, decisionIds: [] };
     const scores = grade.scores ?? {};
     const vals = SCORE_DIMENSIONS.map((d) => scores[d]).filter((v) => typeof v === "number");
-    const gradeAvg = vals.length > 0
-      ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100
-      : null;
-    const decisionIds = Array.isArray(grade?.frontmatter?.decisions) ? grade.frontmatter.decisions : [];
+    const gradeAvg =
+      vals.length > 0
+        ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100
+        : null;
+    const decisionIds = Array.isArray(grade?.frontmatter?.decisions)
+      ? grade.frontmatter.decisions
+      : [];
     return { gradeAvg, decisionIds };
   } catch {
     return { gradeAvg: null, decisionIds: [] };

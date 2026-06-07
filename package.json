@@ -10,6 +10,7 @@
     "test": "npm run build && npm run build:tests && node --test tests/*.test.mjs",
     "validate:manifests": "node ./scripts/validate-manifests.mjs",
     "validate:lengths": "node ./scripts/validate-content-length.mjs",
+    "bump-version": "npm run build && node ./scripts/bump-version.mjs",
     "lint": "eslint src eslint.config.mjs",
     "format": "prettier --write \"src/**/*.mts\"",
     "format:check": "prettier --check \"src/**/*.mts\""

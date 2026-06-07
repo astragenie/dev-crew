@@ -37,11 +37,16 @@ export async function validateManifests(repoRoot) {
   const ownEntry = marketplace.plugins.find((entry) => entry.name === plugin.name);
   if (!ownEntry) {
     fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
+  } else if (ownEntry.version !== plugin.version) {
+    // Lockstep enforcement (reversed v0.24.2). Earlier comment said marketplace
+    // drift was acceptable "no consumer." Sessions installing via this repo's
+    // marketplace.json silently stayed on the pinned version (0.22.0) and missed
+    // v0.23.0..v0.24.1. Use scripts/bump-version.mjs to bump both files atomically.
+    fail(
+      `version drift: plugin.json="${plugin.version}" vs marketplace.json entry "${plugin.name}"="${ownEntry.version}". ` +
+        `Run "npm run bump-version <new-version>" to sync.`
+    );
   }
-  // Version drift between plugin.json and marketplace.json's own entry is allowed.
-  // marketplace.json is forward-looking infrastructure for a decoupled install path;
-  // the canonical consumer is hero-crew's parent marketplace, which pins loop@version
-  // independently. Forcing them in lockstep added release ceremony with no consumer.
 
   for (const entry of marketplace.plugins) {
     if (!entry.name) fail(`marketplace.json: a plugins[] entry is missing "name"`);
