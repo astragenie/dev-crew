@@ -3,6 +3,10 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.25.1 — 2026-06-07 — docs: upstream-request for hero-crew preflight chained-cd MSYS paths (FEAT-068 / SLICE-68)
+
+Filed `docs/upstream-requests/2026-06-07-hero-crew-preflight-chained-cd-msys-paths.md` requesting hero-crew's `preflight-shell` hook normalize MSYS mount-prefix paths (`/c/foo` → `C:\foo`) on Windows before `fs.stat`. Encountered while porting loopobserver: `cd /c/work/mega/loopobserver && git <cmd>` blocked by false-positive `chained cd target does not exist` warning despite path validity. Includes exact file:line citation (`scripts/lib/preflight/checks.mjs:120-128`), full `normalizeCdTarget` patch, all 6 ACs from FEAT-068, and operator workaround (`git -C "C:/path" cmd`).
+
 ## v0.25.0 — 2026-06-07 — feat: redundantReadStop halt-badge (FEAT-057 / SLICE-67)
 
 New 6th halt-badge field: `redundantReadStop`. Loop-side surrogate for the upstream `check-redundant-read` hook (hero-crew plugin) — reads the hook's per-session cost-hygiene state files and emits a halt signal when any file path's `read_count` exceeds `loop.redundantReadCap` (default 5, strict `>`). Fail-open on missing/empty/malformed state. Surfaces in `stop-check` JSON, `loop brief --explain-halts`, and the registry doc.

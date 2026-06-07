@@ -1,13 +1,13 @@
 ---
 id: FEAT-068
-status: triaged
+status: done
 priority: P2
 category: bug-fix
 target_release: null
 created: 2026-06-07
 updated: 2026-06-07
 depends_on: []
-slices: []
+slices: [SLICE-68]
 derived_from: null
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.2
@@ -17,6 +17,9 @@ pm_dependency_depth: 0.1
 composite_score: 0.55
 autonomous_safe: true
 triage_notes: "Self-triaged 2026-06-07. Small hook fix, pure path-normalization helper, fully unit-testable, no runtime IO change. Confirmed reproduction on Windows Git Bash during loopobserver port (`cd /c/work/mega/loopobserver` blocked by PreToolUse:Bash chained-cd-target-not-exist guard despite path being valid)."
+started_at: 2026-06-07
+slices_complete: [SLICE-68]
+completed_at: 2026-06-07
 ---
 # FEAT-068: PreToolUse:Bash chained-cd guard accepts MSYS mount-prefix paths on Windows
 
