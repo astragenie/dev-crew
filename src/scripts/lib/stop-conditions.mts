@@ -3,7 +3,7 @@ import { listSpecs } from "./spec-parser.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
-import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { readCrewBlockingGates, readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
@@ -143,6 +143,13 @@ function buildSessionDriftSnapshotEntry(sig: SessionDriftSignal | null) {
   };
 }
 
+/** Build the snapshot entry for the merge_failed halt-badge (FEAT-062 / SLICE-64). */
+export function buildMergeFailedSnapshotEntry(workflowState: any): any | null {
+  const badge = workflowState?.currentRun?.gates?.mergeFailed;
+  if (!badge || badge.status !== "failed") return null;
+  return badge;
+}
+
 function applySessionDriftSignal(
   driftSignal: SessionDriftSignal | null,
   reasons: any[],
@@ -254,7 +261,8 @@ async function gatherStopInputs(repoPath, config) {
     gradeTrendSignal,
     costCeilingSignal,
     costRegressionSignal,
-    sessionDriftSignal
+    sessionDriftSignal,
+    workflowState
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
@@ -264,7 +272,8 @@ async function gatherStopInputs(repoPath, config) {
     checkGradeTrend(repoPath, config),
     checkSliceCostCeiling(repoPath, config),
     checkCostRegression(repoPath, config),
-    checkSessionDrift(repoPath)
+    checkSessionDrift(repoPath),
+    readCrewWorkflowState(repoPath)
   ]);
   return {
     backlog,
@@ -275,7 +284,8 @@ async function gatherStopInputs(repoPath, config) {
     gradeTrendSignal,
     costCeilingSignal,
     costRegressionSignal,
-    sessionDriftSignal
+    sessionDriftSignal,
+    workflowState
   };
 }
 
@@ -293,7 +303,8 @@ export async function checkStopConditions(
     gradeTrendSignal,
     costCeilingSignal,
     costRegressionSignal,
-    sessionDriftSignal
+    sessionDriftSignal,
+    workflowState
   } = await gatherStopInputs(repoPath, config);
 
   // autoMode defaults to true so freshly hand-rolled .claude/loop.json
@@ -348,7 +359,8 @@ export async function checkStopConditions(
     gradeTrendSignal,
     costCeilingSignal,
     costRegressionSignal,
-    sessionDriftSignal
+    sessionDriftSignal,
+    workflowState
   });
 }
 
@@ -384,7 +396,8 @@ function assembleStopResult(p: any) {
         : null,
       sliceCostCeiling: buildCeilingSnapshotEntry(p.costCeilingSignal),
       costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
-      sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal)
+      sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
+      mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState)
     }
   };
 }

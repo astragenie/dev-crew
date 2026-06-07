@@ -123,6 +123,37 @@ Each halt-badge is `null` when not triggered; populated with a structured object
 
 ---
 
+### `snapshot.mergeFailed`
+
+**Shape:**
+
+```ts
+{
+  status: "failed";
+  code: "VALIDATION_REQUIRED" | "VALIDATION_FAILED" | "FETCH_FAILED" | "REBASE_CONFLICT" | "MERGE_FAILED" | "PUSH_FAILED" | "BRANCH_MISSING" | "DIRTY_MAIN" | "WORKTREE_MISSING";
+  slice: string;
+  feature: string | null;
+  attemptedBranch: string;
+  attemptedWorktree: string;
+  failedStep: "validation-gate" | "fetch" | "rebase" | "merge" | "push" | "preflight";
+  note: string;
+  markedAt: string;
+}
+```
+
+**Meaning:** the auto-merge stage detected `validation_failed`, a rebase conflict, a merge error, or a push error. The worktree and slice branch are preserved for `/crew:fix` to resume.
+
+**Fires when:** `runAutoMerge` throws `MergeError` AND `opts.dryRun === false`. NEVER set on `--dry-run` (zero-side-effect guarantee). NEVER set when `--no-merge` is passed or when no worktree is active (legacy slices).
+
+**Suggested operator action:**
+- `code: "REBASE_CONFLICT" | "MERGE_FAILED"`: run `/crew:fix` against the preserved worktree.
+- `code: "PUSH_FAILED"`: run `git push origin main` manually — the commit is already on local main.
+- `code: "VALIDATION_FAILED" | "VALIDATION_REQUIRED"`: open the validation artifact to see what failed, then re-run `/loop:slice complete`.
+
+**Origin:** FEAT-062 / SLICE-64 / v0.23.0. Source: `src/scripts/lib/auto-merge.mts::runAutoMerge`. Also surfaced as `currentRun.gates.mergeFailed` in `workflow-state.json`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.

@@ -39,12 +39,27 @@ function renderGradeTrend(e) {
         `- Suggested action: stop and review the slice template for the dimension that fell, or author a SPEC addressing the gap. Walker halts unless \`autoMode\` is on AND the category appears in \`loop.warnAlertCategoriesIgnoredInAutoMode\`.`
     ];
 }
+function renderMergeFailed(e) {
+    if (!e)
+        return [];
+    const fixHint = e.code === "PUSH_FAILED"
+        ? `Run \`git push origin main\` manually — the commit is on local main.`
+        : `Run \`/crew:fix\` against worktree \`${e.attemptedWorktree}\` to resume.`;
+    return [
+        `- Slice: ${e.slice}${e.feature ? ` / ${e.feature}` : ""}`,
+        `- Failed step: ${e.failedStep} (code ${e.code})`,
+        `- Branch: \`${e.attemptedBranch}\``,
+        `- Worktree: \`${e.attemptedWorktree}\``,
+        `- Suggested action: ${fixHint}`
+    ];
+}
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES = [
     { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
     { field: "sessionDrift", gateName: "Session drift", render: renderSessionDrift },
     { field: "sliceCostCeiling", gateName: "Slice cost ceiling", render: renderSliceCostCeiling },
-    { field: "gradeTrend", gateName: "Grade trend", render: renderGradeTrend }
+    { field: "gradeTrend", gateName: "Grade trend", render: renderGradeTrend },
+    { field: "mergeFailed", gateName: "Merge failed", render: renderMergeFailed }
 ];
 /**
  * Build the `## Halt summary` markdown block from a brief object's snapshot.

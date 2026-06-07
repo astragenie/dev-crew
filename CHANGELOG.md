@@ -3,6 +3,55 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.24.0 — 2026-06-06 — feat: auto-merge slice branch on validation pass (FEAT-062 / SLICE-64)
+
+Closes the worktree trilogy (FEAT-060 creation, FEAT-061 ceremony cwd, FEAT-062 close + merge). `loop slice complete` now squash-merges the slice branch into `main` and cleans up the worktree automatically when a slice is running in a worktree and the validation gate is satisfied.
+
+### Auto-merge stage
+
+At the end of `loop slice complete`, when `workflow-state.currentRun.worktreePath` is set, the close ceremony runs a four-step merge sequence:
+
+1. `git -C <mainRepo> fetch origin` — refresh remote refs
+2. Rebase slice branch onto latest `origin/main`
+3. Squash-merge into `main` with a synthesized commit message containing the slice title, grade average, and decision IDs; footer line `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
+4. Cleanup: `git worktree remove <worktreePath>`, `git branch -D slice/<SLICE-NN>` (only after the squash commit is verified on main), clear `workflow-state.currentRun.worktreePath`
+
+Validation gate is enforced before any git action: if the `validation_passed` or `validation_skipped` badge is absent, the command halts with a `validation_required` error and performs no merge.
+
+### New flags on `loop slice complete`
+
+- `--no-merge` — skips merge and cleanup entirely; worktree is preserved; slice file move, feature roll, and grade prefill still run
+- `--dry-run` — prints the planned actions (rebase target, commit message, push decision, cleanup steps) and exits with zero side effects; no git, worktree, or workflow-state writes occur
+
+### New `loop.autoPushOnMerge` config
+
+Default `false`. When `true`, runs `git push origin main` after a successful squash-merge. When `false` or absent, the operator pushes manually. The auto-push path is strictly opt-in; force-push is never attempted.
+
+### New `mergeFailed` halt-badge
+
+Set in `workflow-state` on any of: `validation_failed` badge present, rebase conflict, merge error, push failure, branch missing, or dirty main branch. When set, worktree and branch are preserved so the operator can resume via `/crew:fix`. The badge includes a diagnostic note pointing to the failure cause.
+
+### Failure-atomicity guarantees
+
+- Never force-pushes under any path
+- `git branch -D` runs only after the squash commit is verified on main — no orphaned branch deletes
+- Worktree removal runs before `branch -D` to avoid the checked-out-branch error
+- On any failure the worktree and branch are left intact
+
+### Tests
+
+New cases in `src/tests/auto-merge.test.mts`:
+
+- Pass-path: full merge sequence + cleanup verified
+- `validation_failed` badge halts before any git action
+- Rebase conflict sets `mergeFailed` badge, preserves worktree + branch
+- `--no-merge` flag: close ceremony runs, merge skipped, worktree intact
+- `--dry-run`: zero side effects including no workflow-state writes
+- `autoPushOnMerge: true` triggers `git push origin main`; `autoPushOnMerge: false` does not
+- No-worktree path (legacy slices): no-op, no error
+
+Total: 910 pass / 0 fail / 1 pre-existing skip. `npm run lint` and `npm run typecheck` clean.
+
 ## v0.23.0 — 2026-06-06 — feat: lead operates inside slice worktree (FEAT-061 / SLICE-63)
 
 All loop CLI subcommands and crew shell-out dispatches now honour the slice worktree recorded in `workflow-state.currentRun.worktreePath`, ensuring that artifact writes, state mutations, and builder instructions are isolated to the active branch until merge.

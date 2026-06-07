@@ -49,12 +49,28 @@ function renderGradeTrend(e: any): string[] {
   ];
 }
 
+function renderMergeFailed(e: any): string[] {
+  if (!e) return [];
+  const fixHint =
+    e.code === "PUSH_FAILED"
+      ? `Run \`git push origin main\` manually — the commit is on local main.`
+      : `Run \`/crew:fix\` against worktree \`${e.attemptedWorktree}\` to resume.`;
+  return [
+    `- Slice: ${e.slice}${e.feature ? ` / ${e.feature}` : ""}`,
+    `- Failed step: ${e.failedStep} (code ${e.code})`,
+    `- Branch: \`${e.attemptedBranch}\``,
+    `- Worktree: \`${e.attemptedWorktree}\``,
+    `- Suggested action: ${fixHint}`
+  ];
+}
+
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES: HaltBadgeRenderer[] = [
   { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
   { field: "sessionDrift", gateName: "Session drift", render: renderSessionDrift },
   { field: "sliceCostCeiling", gateName: "Slice cost ceiling", render: renderSliceCostCeiling },
-  { field: "gradeTrend", gateName: "Grade trend", render: renderGradeTrend }
+  { field: "gradeTrend", gateName: "Grade trend", render: renderGradeTrend },
+  { field: "mergeFailed", gateName: "Merge failed", render: renderMergeFailed }
 ];
 
 /**

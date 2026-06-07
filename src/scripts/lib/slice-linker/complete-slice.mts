@@ -19,6 +19,8 @@ import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../paths.mjs";
 import type { DrainOpts, DrainResult } from "../marker-drain.mjs";
+import { clearWorktreePathInState } from "../auto-merge.mjs";
+import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
 
 type DrainFn = (repoPath: string, opts?: DrainOpts) => Promise<DrainResult>;
 
@@ -365,7 +367,8 @@ function buildCompleteResult({
   validationGate,
   validationSkippedBadge,
   testAdequacyGate,
-  builderEvidence
+  builderEvidence,
+  autoMergeResult
 }: {
   sliceId: string;
   sliceFile: string;
@@ -381,6 +384,7 @@ function buildCompleteResult({
   validationSkippedBadge: any;
   testAdequacyGate: any;
   builderEvidence: BuilderEvidence | null;
+  autoMergeResult?: MergeResult | DryRunPlan | { skipped: true; reason: string } | null;
 }) {
   const updatedConfidence = builderEvidence ? computePostBuilderConfidence(builderEvidence) : null;
   return {
@@ -397,6 +401,7 @@ function buildCompleteResult({
     testAdequacyGate,
     updated_confidence: updatedConfidence?.confidence ?? null,
     updated_confidence_reason: updatedConfidence?.reason ?? null,
+    autoMerge: autoMergeResult ?? null,
     nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
 }
@@ -405,27 +410,24 @@ function buildCompleteResult({
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, opts: Record<string, any> = {}) {
   const {
-    config = null,
+    config: cfgIn = null,
     keepFeatureOpen = false,
     forceClose = false,
     skipValidationCheck = null,
     noMarkerDrain = false,
     noDocWriter = false,
     drainFn = undefined,
-    builderEvidence = null as BuilderEvidence | null
+    builderEvidence = null as BuilderEvidence | null,
+    noMerge = false,
+    dryRun = false
   } = opts;
 
-  if (noDocWriter) {
-    console.error(
-      "[slice complete] --no-doc-writer is deprecated and now a no-op (see DEC-011). " +
-        "Doc-writer auto-dispatch is already removed."
-    );
-  }
+  warnDeprecatedDocWriter(noDocWriter);
   if (!sliceId) throw new Error("completeSlice requires a sliceId.");
-  const resolved = config || (await resolveConfig(repoPath));
+
+  const resolved = cfgIn ?? (await resolveConfig(repoPath));
   const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
-  // Locate slice file recursively
   const sliceFile = await locateSliceFile(slicesRoot, sliceId);
   if (!sliceFile) throw new Error(`Slice file not found for ${sliceId} under ${slicesRoot}`);
 
@@ -452,7 +454,7 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
     repoPath,
     featureId,
     blockingGates,
-    config,
+    resolved,
     sliceId,
     keepFeatureOpen,
     forceClose,
@@ -460,9 +462,8 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
     testAdequacyGate
   );
 
-  // Reconcile parent spec status
   const { reconcileSpecStatus } = await import("../linkage.mjs");
-  const specChanges = await reconcileSpecStatus(repoPath, config);
+  const specChanges = await reconcileSpecStatus(repoPath, resolved);
 
   const { handoff, synthesis, costReport, agentReport, sliceProgress } =
     await writeCeremonyArtifacts(repoPath, {
@@ -477,14 +478,14 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
     });
 
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
-
-  // Doc-writer auto-dispatch removed (DEC-011). Slash flow is the contract.
-  // Write audit log entry so retros can see the slice closed without doc-writer dispatch.
   void writeDocWriterSkipAuditLog(repoPath);
-
-  // Drain stale pending-dispatch markers — async / fire-and-forget. Must not
-  // block the close ceremony. Drain failure is isolated via audit log.
   fireMarkerDrain(repoPath, { noMarkerDrain, drainFn });
+
+  const autoMergeResult = await runAutoMergeStage(repoPath, sliceId, sliceFm, resolved, {
+    noMerge,
+    dryRun,
+    validationGate
+  });
 
   return buildCompleteResult({
     sliceId,
@@ -500,8 +501,19 @@ export async function completeSlice(repoPath, sliceId, opts: Record<string, any>
     validationGate,
     validationSkippedBadge,
     testAdequacyGate,
-    builderEvidence
+    builderEvidence,
+    autoMergeResult
   });
+}
+
+/** Emit deprecation warning for --no-doc-writer flag. Extracted to keep completeSlice complexity ≤ 15. */
+function warnDeprecatedDocWriter(noDocWriter: boolean): void {
+  if (noDocWriter) {
+    console.error(
+      "[slice complete] --no-doc-writer is deprecated and now a no-op (see DEC-011). " +
+        "Doc-writer auto-dispatch is already removed."
+    );
+  }
 }
 
 // Writes an audit log entry recording that slice-complete ran without doc-writer
@@ -591,3 +603,136 @@ async function recordCompleteTrajectory(
     // best-effort — never blocks slice complete
   }
 }
+
+// ---------------------------------------------------------------------------
+// SLICE-64: Auto-merge stage
+// ---------------------------------------------------------------------------
+
+/**
+ * Auto-merge stage: runs after the existing close ceremony so all artifacts
+ * are on disk before the worktree is removed.
+ *
+ * Skip conditions (returns { skipped: true }):
+ *   1. opts.noMerge === true
+ *   2. workflow-state.currentRun.worktreePath is null/missing/""
+ *   3. Worktree path on disk is missing (operator already cleaned up)
+ *   4. Slice branch is missing (operator already merged manually — clears worktreePath)
+ *
+ * Throws MergeError on any failure, after setting the merge_failed badge.
+ */
+async function runAutoMergeStage(
+  repoPath: string,
+  sliceId: string,
+  sliceFm: Record<string, any>,
+  config: Record<string, any>,
+  opts: { noMerge?: boolean; dryRun?: boolean; validationGate?: any }
+): Promise<MergeResult | DryRunPlan | { skipped: true; reason: string } | null> {
+  const { noMerge = false, dryRun = false } = opts;
+
+  if (noMerge) return { skipped: true, reason: "no-merge-flag" };
+
+  const skipOrPaths = await resolveWorktreeAndBranch(repoPath, sliceId, sliceFm);
+  if ("skipped" in skipOrPaths) return skipOrPaths;
+
+  const { worktreePath, branchName, featureId } = skipOrPaths;
+  const { gradeAvg, decisionIds } = await deriveGradeInfo(repoPath, sliceId);
+
+  const { runAutoMerge } = await import("../auto-merge.mjs");
+  return runAutoMerge({
+    repoPath,
+    worktreePath,
+    branchName,
+    sliceId,
+    sliceTitle: sliceFm?.title ?? sliceId,
+    featureId,
+    gradeAvg,
+    decisionIds,
+    config,
+    dryRun
+  });
+}
+
+/**
+ * Resolve worktree and branch for the merge stage.
+ * Returns skip reason when any of conditions 2-4 apply, or the resolved paths.
+ */
+async function resolveWorktreeAndBranch(
+  repoPath: string,
+  sliceId: string,
+  sliceFm: Record<string, any>
+): Promise<
+  | { worktreePath: string; branchName: string; featureId: string | null }
+  | { skipped: true; reason: string }
+> {
+  const workflowState = await readCrewWorkflowState(repoPath);
+  const worktreePath: string | null = workflowState?.currentRun?.worktreePath ?? null;
+
+  if (!worktreePath || worktreePath === "") {
+    return { skipped: true, reason: "no-worktree" };
+  }
+
+  const worktreeExists = await checkWorktreeExists(worktreePath);
+  if (!worktreeExists) {
+    return { skipped: true, reason: "worktree-missing-on-disk" };
+  }
+
+  const featureId: string | null = sliceFm?.feature ?? null;
+  const branchName: string = featureId
+    ? `slice/${sliceId}-${featureId}`
+    : `slice/${sliceId}`;
+
+  const branchExists = await checkBranchExists(repoPath, branchName);
+  if (!branchExists) {
+    await clearWorktreePathInState(repoPath);
+    return { skipped: true, reason: "branch-already-merged" };
+  }
+
+  return { worktreePath, branchName, featureId };
+}
+
+/** Check whether a worktree path exists on disk. */
+async function checkWorktreeExists(worktreePath: string): Promise<boolean> {
+  try {
+    const fsModule = await import("node:fs/promises");
+    await fsModule.access(worktreePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Check whether a git branch exists in the repo. */
+async function checkBranchExists(repoPath: string, branchName: string): Promise<boolean> {
+  try {
+    const { execFile: execFileCb } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFile = promisify(execFileCb);
+    await execFile("git", ["-C", repoPath, "rev-parse", "--verify", branchName]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Derive grade info (gradeAvg + decisionIds) from the grade file. Best-effort: returns nulls on failure. */
+async function deriveGradeInfo(
+  repoPath: string,
+  sliceId: string
+): Promise<{ gradeAvg: number | null; decisionIds: string[] }> {
+  try {
+    const { findGradeForSlice, SCORE_DIMENSIONS } = await import("../grade-parser.mjs");
+    const grade = await findGradeForSlice(repoPath, sliceId);
+    if (!grade) return { gradeAvg: null, decisionIds: [] };
+    const scores = grade.scores ?? {};
+    const vals = SCORE_DIMENSIONS.map((d) => scores[d]).filter((v) => typeof v === "number");
+    const gradeAvg = vals.length > 0
+      ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100
+      : null;
+    const decisionIds = Array.isArray(grade?.frontmatter?.decisions) ? grade.frontmatter.decisions : [];
+    return { gradeAvg, decisionIds };
+  } catch {
+    return { gradeAvg: null, decisionIds: [] };
+  }
+}
+
+// clearWorktreePathInState is imported from ../auto-merge.mjs to avoid DRY duplication.

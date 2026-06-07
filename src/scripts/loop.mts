@@ -68,7 +68,9 @@ const FLAG_SPEC = {
   "--reasoning": { key: "reasoning" },
   "--allow-cross-session": { key: "allowCrossSession", boolean: true },
   "--explain-halts": { key: "explainHalts", boolean: true },
-  "--worktree": { key: "worktree" }
+  "--worktree": { key: "worktree" },
+  // SLICE-64: auto-merge flags
+  "--no-merge": { key: "noMerge", boolean: true }
 };
 
 function parseArgs(argv) {
@@ -119,7 +121,8 @@ function parseArgs(argv) {
     reasoning: null,
     allowCrossSession: false,
     worktree: null,
-    explainHalts: false
+    explainHalts: false,
+    noMerge: false
   };
   const positionals: any[] = [];
 
@@ -763,6 +766,10 @@ const SLICE_HANDLERS = {
   },
   complete: async (repoPath, flags, _rest, sliceId) => {
     requireId(sliceId, "slice complete requires --id SLICE-NN.");
+    // SLICE-64: --no-merge and --dry-run are mutually exclusive
+    if (flags.noMerge && flags.dryRun) {
+      throw new Error("slice complete: --no-merge and --dry-run are mutually exclusive.");
+    }
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { completeSlice } = await import("./lib/slice-linker.mjs");
@@ -770,7 +777,10 @@ const SLICE_HANDLERS = {
       keepFeatureOpen: Boolean(flags.keepFeatureOpen),
       forceClose: Boolean(flags.forceClose),
       skipValidationCheck: flags.skipValidationCheck || null,
-      noDocWriter: Boolean(flags.noDocWriter)
+      noDocWriter: Boolean(flags.noDocWriter),
+      // SLICE-64 additions:
+      noMerge: Boolean(flags.noMerge),
+      dryRun: Boolean(flags.dryRun)
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(cwd, {

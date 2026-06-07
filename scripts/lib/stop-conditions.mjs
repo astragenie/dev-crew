@@ -3,7 +3,7 @@ import { listSpecs } from "./spec-parser.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
-import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { readCrewBlockingGates, readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression } from "./cost-regression.mjs";
@@ -120,6 +120,13 @@ function buildSessionDriftSnapshotEntry(sig) {
         sessionIdNow: sig.sessionIdNow
     };
 }
+/** Build the snapshot entry for the merge_failed halt-badge (FEAT-062 / SLICE-64). */
+export function buildMergeFailedSnapshotEntry(workflowState) {
+    const badge = workflowState?.currentRun?.gates?.mergeFailed;
+    if (!badge || badge.status !== "failed")
+        return null;
+    return badge;
+}
 function applySessionDriftSignal(driftSignal, reasons, suggestions, blockers) {
     if (!driftSignal)
         return;
@@ -188,7 +195,7 @@ function appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode }) {
     }
 }
 async function gatherStopInputs(repoPath, config) {
-    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal] = await Promise.all([
+    const [backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal, workflowState] = await Promise.all([
         listBacklog(repoPath, { config }),
         listSpecs(repoPath, { config }),
         detectPatterns(repoPath, { config }),
@@ -197,7 +204,8 @@ async function gatherStopInputs(repoPath, config) {
         checkGradeTrend(repoPath, config),
         checkSliceCostCeiling(repoPath, config),
         checkCostRegression(repoPath, config),
-        checkSessionDrift(repoPath)
+        checkSessionDrift(repoPath),
+        readCrewWorkflowState(repoPath)
     ]);
     return {
         backlog,
@@ -208,12 +216,13 @@ async function gatherStopInputs(repoPath, config) {
         gradeTrendSignal,
         costCeilingSignal,
         costRegressionSignal,
-        sessionDriftSignal
+        sessionDriftSignal,
+        workflowState
     };
 }
 // eslint-disable-next-line complexity -- pipeline orchestrator; complexity inflated by config nullish-chaining and apply* calls, but actual branching is linear. Track as follow-up to consolidate apply* calls into a single resolver.
 export async function checkStopConditions(repoPath, { config = null, ignoreAlerts = false } = {}) {
-    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal } = await gatherStopInputs(repoPath, config);
+    const { backlog, specs, alerts, costAlertCount, crewGates, gradeTrendSignal, costCeilingSignal, costRegressionSignal, sessionDriftSignal, workflowState } = await gatherStopInputs(repoPath, config);
     // autoMode defaults to true so freshly hand-rolled .claude/loop.json
     // (without the key) get the new behavior. Presets ship the key explicitly
     // for documentation, but the default here is the source of truth.
@@ -261,7 +270,8 @@ export async function checkStopConditions(repoPath, { config = null, ignoreAlert
         gradeTrendSignal,
         costCeilingSignal,
         costRegressionSignal,
-        sessionDriftSignal
+        sessionDriftSignal,
+        workflowState
     });
 }
 // Assemble the stop-check return shape. Extracted so checkStopConditions stays
@@ -296,7 +306,8 @@ function assembleStopResult(p) {
                 : null,
             sliceCostCeiling: buildCeilingSnapshotEntry(p.costCeilingSignal),
             costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
-            sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal)
+            sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
+            mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState)
         }
     };
 }

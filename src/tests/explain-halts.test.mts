@@ -119,11 +119,19 @@ test("explainHalts: multiple halts → renders ALL fired in registry order", () 
       },
       sessionDrift: { triggered: true, sessionIdAtStart: "a", sessionIdNow: "b" },
       sliceCostCeiling: { exceeded: true, actualUsd: 80, ceilingUsd: 75 },
-      gradeTrend: { consecutiveBelow: 3, threshold: 0.8 }
+      gradeTrend: { consecutiveBelow: 3, threshold: 0.8 },
+      mergeFailed: {
+        slice: "SLICE-64",
+        feature: "FEAT-062",
+        failedStep: "rebase",
+        code: "REBASE_CONFLICT",
+        attemptedBranch: "slice/SLICE-64",
+        attemptedWorktree: "/tmp/worktree"
+      }
     }
   };
   const out = explainHalts(brief);
-  // All 4 gate headings present
+  // All 5 gate headings present
   for (const badge of HALT_BADGES) {
     assert.ok(
       out.includes(`### ${badge.gateName}`),
@@ -188,7 +196,13 @@ test("explainHalts: unknown registry field on snapshot is ignored (graceful degr
   assert.equal(out.includes("futureHalt"), false);
 });
 
-test("HALT_BADGES registry has the 4 known fields in expected order", () => {
+test("HALT_BADGES registry has the 5 known fields in expected order", () => {
   const fields = HALT_BADGES.map((b) => b.field);
-  assert.deepEqual(fields, ["costRegression", "sessionDrift", "sliceCostCeiling", "gradeTrend"]);
+  assert.deepEqual(fields, [
+    "costRegression",
+    "sessionDrift",
+    "sliceCostCeiling",
+    "gradeTrend",
+    "mergeFailed"
+  ]);
 });
