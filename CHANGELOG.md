@@ -3,6 +3,37 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.26.0 — 2026-06-07 — SPEC-004 code-quality pivot + builder-fe/be routing fields + crew:lead decommission
+
+Aggregate release bundling eight commits since v0.25.1: the SPEC-004 code-quality pivot work (Phases A–C), the FE/BE routing schema additions, and crew:lead removal from this repo's dispatch surface.
+
+**SPEC-004 Phase A — dead-code sweep (FEAT-069)**
+- Removed marker-drain consumer code, one-shot migrators, and the marker-write fallback path. Marker queue at `.claude/artifacts/loop/pending-dispatch/` is deprecated (DEC-011); no consumer remained.
+- Test file renamed: `slice-complete-marker-drain.test` → `slice-complete-ceremony.test`.
+
+**SPEC-004 Phase B — tsconfig tighten (FEAT-070 / FEAT-072 / FEAT-073)**
+- B1 (SLICE-72): `noImplicitAny: true` + `useUnknownInCatchVariables: true`.
+- B2 + B3 (SLICE-73): `noUnusedLocals` + `noUnusedParameters` + `noImplicitOverride` + `noFallthroughCasesInSwitch`.
+- B4 (SLICE-74): `exactOptionalPropertyTypes` on prod `tsconfig.json`; disabled on `tsconfig.test.json` per DEC-027 (test mocks legitimately pass `undefined` explicitly).
+- Knock-on refactors: helper extraction over `eslint-disable` for `startSlice` complexity (DEC-026); `Record<string, any>` over `Record<string, unknown>` for opaque property bags (DEC-025).
+
+**SPEC-004 Phase C — perf top-10 (FEAT-071)**
+- SLICE-75 + SLICE-76 land bench harness + ten perf wins: memo snapshot, lazy module loading, batched git invocations, regex hoisting to module scope (classify-parser, frontmatter, others), frontmatter-cache module, and other hot-path reductions.
+
+**FE/BE routing schema additions**
+- `/loop:backlog-enrich` architect prompt now emits `surface` (`frontend` / `backend` / `mixed` / `none`) and `stack` (vocab list) alongside the existing `tags` / `needs_contract` / `needs_ux` fields.
+- `classify-parser.mts` ships `SurfaceValue` type, `VALID_SURFACES`, `VALID_STACKS`, and parser branches for both fields.
+- `slice-linker/feature-lifecycle.mts::buildClassifyUpdates` writes the new fields into FEAT / slice frontmatter.
+- Upstream request filed at `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`: asks `/crew:orchestrate-slice` to read these fields and route to `crew:builder-fe` / `crew:builder-be` accordingly. Until crew ships the reader, all dispatches still fall through to the generic `crew:builder`.
+
+**crew:lead decommissioned in this repo**
+- Removed from `hooks/guard-feat-dispatch.mjs` allowlist; updated error message.
+- `CLAUDE.md` gained a "Decommissioned roles" section documenting the change and the path to re-enable.
+- `agents/architect.md` + `agents/pm.md` boundaries text updated to drop the lead-routing line.
+
+**Agent skill mappings**
+- `agents/{architect,pm,researcher,document-writer}.md` gained a "Required skills (invoke via `Skill` tool at start of every dispatch)" section using real installable skill names (`superpowers:brainstorming`, `superpowers:verification-before-completion`, `loop:loop-discipline`, `claude-md-management:claude-md-improver`, etc.). Aspirational skill paths kept in a separate "consult when context matches" section.
+
 ## v0.25.1 — 2026-06-07 — docs: upstream-request for hero-crew preflight chained-cd MSYS paths (FEAT-068 / SLICE-68)
 
 Filed `docs/upstream-requests/2026-06-07-hero-crew-preflight-chained-cd-msys-paths.md` requesting hero-crew's `preflight-shell` hook normalize MSYS mount-prefix paths (`/c/foo` → `C:\foo`) on Windows before `fs.stat`. Encountered while porting loopobserver: `cd /c/work/mega/loopobserver && git <cmd>` blocked by false-positive `chained cd target does not exist` warning despite path validity. Includes exact file:line citation (`scripts/lib/preflight/checks.mjs:120-128`), full `normalizeCdTarget` patch, all 6 ACs from FEAT-068, and operator workaround (`git -C "C:/path" cmd`).
