@@ -83,7 +83,7 @@ export function renderCommitMessage(opts) {
 // Internal git helper
 // ---------------------------------------------------------------------------
 async function git(repoPath, args) {
-    const { stdout, stderr } = await execFile("git", ["-C", repoPath, ...args]);
+    const { stdout, stderr } = await execFile("git", ["-C", repoPath, ...args], { timeout: 30_000 });
     return { stdout: stdout ?? "", stderr: stderr ?? "" };
 }
 // ---------------------------------------------------------------------------

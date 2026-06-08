@@ -407,9 +407,9 @@ export async function featureSimplify(
 
 async function collectChangedSourceFiles(repoPath: string, startedAt?: string): Promise<string[]> {
   try {
-    const args = ["log", "--name-only", "--format="];
+    const args = ["log", "--name-only", "--format=", "--diff-filter=AM"];
     if (startedAt) args.push(`--since=${startedAt}`);
-    const { stdout } = await execFileAsync("git", args, { cwd: repoPath });
+    const { stdout } = await execFileAsync("git", args, { cwd: repoPath, timeout: 30_000 });
     const seen = new Set<string>();
     for (const line of stdout.split("\n")) {
       const f = line.trim();

@@ -471,7 +471,7 @@ async function checkBranchExists(repoPath, branchName) {
         const { execFile: execFileCb } = await import("node:child_process");
         const { promisify } = await import("node:util");
         const execFile = promisify(execFileCb);
-        await execFile("git", ["-C", repoPath, "rev-parse", "--verify", branchName]);
+        await execFile("git", ["-C", repoPath, "rev-parse", "--verify", branchName], { timeout: 30_000 });
         return true;
     }
     catch {

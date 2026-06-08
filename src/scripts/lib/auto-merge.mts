@@ -212,7 +212,7 @@ export function renderCommitMessage(
 // ---------------------------------------------------------------------------
 
 async function git(repoPath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
-  const { stdout, stderr } = await execFile("git", ["-C", repoPath, ...args]);
+  const { stdout, stderr } = await execFile("git", ["-C", repoPath, ...args], { timeout: 30_000 });
   return { stdout: stdout ?? "", stderr: stderr ?? "" };
 }
 

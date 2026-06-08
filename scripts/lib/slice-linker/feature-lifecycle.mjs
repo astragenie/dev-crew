@@ -307,10 +307,10 @@ export async function featureSimplify(repoPath, featureId, opts = {}) {
 }
 async function collectChangedSourceFiles(repoPath, startedAt) {
     try {
-        const args = ["log", "--name-only", "--format="];
+        const args = ["log", "--name-only", "--format=", "--diff-filter=AM"];
         if (startedAt)
             args.push(`--since=${startedAt}`);
-        const { stdout } = await execFileAsync("git", args, { cwd: repoPath });
+        const { stdout } = await execFileAsync("git", args, { cwd: repoPath, timeout: 30_000 });
         const seen = new Set();
         for (const line of stdout.split("\n")) {
             const f = line.trim();
