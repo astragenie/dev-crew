@@ -71,7 +71,17 @@ content-length + format-check locally before any `git push`.
   `process.exitCode` from entry points only.
 - Runtime-only modules without `.mts` source (e.g. `github-sync/`)
   need ambient `.d.mts` shims under `src/scripts/lib/` so callers
-  can drop `@ts-ignore`.
+  can drop `@ts-ignore`. Tests for these modules SHOULD still live
+  under `src/tests/*.mts` (with `// @ts-nocheck` if they need to
+  import the runtime `.mjs` directly) — the `ban-ts-comment` rule is
+  disabled for `src/tests/**`.
+- Entry-point scripts that ship as hand-authored `.mjs` (no `.mts`
+  source) — currently `scripts/setup-github-sync.mjs`,
+  `scripts/setup-task-store.mjs`,
+  `scripts/competitor-audit/aggregate.mjs`, `eslint.config.mjs`, and
+  the two `hooks/*.mjs` files. These are intentional exceptions, not
+  drift. Anything else under `scripts/` without an `src/scripts/...mts`
+  counterpart is drift and should be ported.
 
 ## Backlog discipline
 

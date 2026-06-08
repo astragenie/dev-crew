@@ -73,13 +73,24 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
       const milestoneNum = feat.frontmatter.phase ? milestoneMap[feat.frontmatter.phase] : null;
       const milestoneTitle = feat.frontmatter.phase ? `Phase ${feat.frontmatter.phase}` : null;
       issueNum = createFeatureIssue(repo, feat, milestoneTitle, { ghExec });
+      const url = `https://github.com/${repo}/issues/${issueNum}`;
       const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
         github_issue: issueNum,
-        github_milestone: milestoneNum ?? null
+        github_milestone: milestoneNum ?? null,
+        github_url: url
       });
       await fs.writeFile(feat.filePath, updated);
       issueCount++;
       feat.frontmatter.github_issue = issueNum;
+      feat.frontmatter.github_url = url;
+    } else if (!feat.frontmatter.github_url) {
+      // Backfill URL for FEATs published before github_url was tracked.
+      const url = `https://github.com/${repo}/issues/${issueNum}`;
+      const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
+        github_url: url
+      });
+      await fs.writeFile(feat.filePath, updated);
+      feat.frontmatter.github_url = url;
     }
 
     // Always attempt sub-issue linking — idempotent for already-linked pairs
@@ -96,9 +107,18 @@ export async function publishAll(repoPath, { ghExec = defaultGhExec, config } = 
           { id: sliceId, frontmatter: sliceFm, body: sliceBody },
           { ghExec }
         );
-        const updatedSlice = mergeFrontmatter(sliceContent, { github_issue: sliceIssueNum });
+        const sliceUrl = `https://github.com/${repo}/issues/${sliceIssueNum}`;
+        const updatedSlice = mergeFrontmatter(sliceContent, {
+          github_issue: sliceIssueNum,
+          github_url: sliceUrl
+        });
         await fs.writeFile(sliceFile, updatedSlice);
         subissueCount++;
+      } else if (!sliceFm.github_url) {
+        // Backfill URL for slices published before github_url was tracked.
+        const sliceUrl = `https://github.com/${repo}/issues/${sliceIssueNum}`;
+        const updatedSlice = mergeFrontmatter(sliceContent, { github_url: sliceUrl });
+        await fs.writeFile(sliceFile, updatedSlice);
       }
       try {
         attachSubIssue(repo, issueNum, sliceIssueNum, { ghExec });
@@ -468,7 +488,8 @@ export async function bootstrapFromGithub(repoPath, { ghExec = defaultGhExec, co
       autonomous_safe: labelNames.includes("autonomous-safe") || null,
       phase,
       github_issue: issue.number,
-      github_milestone: issue.milestone?.number ?? null
+      github_milestone: issue.milestone?.number ?? null,
+      github_url: `https://github.com/${repo}/issues/${issue.number}`
     };
 
     const body = [
