@@ -335,13 +335,17 @@ async function resolveValidationGate(
 
 // Reads slice file, parses frontmatter, and resolves workflow state. Extracted
 // to keep completeSlice under the complexity budget.
-async function resolveSliceContext(repoPath: string, sliceFile: string) {
+async function resolveSliceContext(
+  repoPath: string,
+  sliceFile: string,
+  cachedWorkflowState?: Awaited<ReturnType<typeof readCrewWorkflowState>>
+) {
   const sliceContent = await fs.readFile(sliceFile, "utf8");
   const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
   const featureId = sliceFm.feature || null;
   const phase = sliceFm.phase || null;
   const today = new Date().toISOString().slice(0, 10);
-  const workflowState = await readCrewWorkflowState(repoPath);
+  const workflowState = cachedWorkflowState ?? (await readCrewWorkflowState(repoPath));
   const startedAt = workflowState?.currentRun?.startedAt ?? null;
   const blockingGates = deriveBlockingGates(workflowState);
   return { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates };
@@ -493,8 +497,10 @@ export async function completeSlice(
   ]);
   if (!sliceFile) throw new Error(`Slice file not found for ${sliceId} under ${slicesRoot}`);
 
+  const workflowState = await readCrewWorkflowState(repoPath);
+
   const { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates } =
-    await resolveSliceContext(repoPath, sliceFile);
+    await resolveSliceContext(repoPath, sliceFile, workflowState);
 
   const { validationGate, validationSkippedBadge } = await resolveValidationGate(
     repoPath,
@@ -553,7 +559,8 @@ export async function completeSlice(
   const autoMergeResult = await runAutoMergeStage(repoPath, sliceId, sliceFm, resolved, {
     noMerge,
     dryRun,
-    validationGate
+    validationGate,
+    workflowState
   });
 
   return buildCompleteResult({
@@ -645,13 +652,18 @@ async function runAutoMergeStage(
   sliceId: string,
   sliceFm: Record<string, any>,
   config: Record<string, any>,
-  opts: { noMerge?: boolean; dryRun?: boolean; validationGate?: any }
+  opts: {
+    noMerge?: boolean;
+    dryRun?: boolean;
+    validationGate?: any;
+    workflowState?: Awaited<ReturnType<typeof readCrewWorkflowState>>;
+  }
 ): Promise<MergeResult | DryRunPlan | { skipped: true; reason: string } | null> {
-  const { noMerge = false, dryRun = false } = opts;
+  const { noMerge = false, dryRun = false, workflowState } = opts;
 
   if (noMerge) return { skipped: true, reason: "no-merge-flag" };
 
-  const skipOrPaths = await resolveWorktreeAndBranch(repoPath, sliceId, sliceFm);
+  const skipOrPaths = await resolveWorktreeAndBranch(repoPath, sliceId, sliceFm, workflowState);
   if ("skipped" in skipOrPaths) return skipOrPaths;
 
   const { worktreePath, branchName, featureId } = skipOrPaths;
@@ -679,12 +691,13 @@ async function runAutoMergeStage(
 async function resolveWorktreeAndBranch(
   repoPath: string,
   sliceId: string,
-  sliceFm: Record<string, any>
+  sliceFm: Record<string, any>,
+  cachedWorkflowState?: Awaited<ReturnType<typeof readCrewWorkflowState>>
 ): Promise<
   | { worktreePath: string; branchName: string; featureId: string | null }
   | { skipped: true; reason: string }
 > {
-  const workflowState = await readCrewWorkflowState(repoPath);
+  const workflowState = cachedWorkflowState ?? (await readCrewWorkflowState(repoPath));
   const worktreePath: string | null = workflowState?.currentRun?.worktreePath ?? null;
 
   if (!worktreePath || worktreePath === "") {
