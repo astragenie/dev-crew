@@ -821,6 +821,8 @@ const SLICE_HANDLERS = {
             validation_gate_satisfied: Boolean(out.validationGate?.satisfied),
             validation_skipped_via_flag: Boolean(flags.skipValidationCheck)
         });
+        const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
+        await flushTrajectory(cwd, sliceId);
         return out;
     },
     start: async (repoPath, flags, _rest, sliceId) => {
@@ -838,6 +840,8 @@ const SLICE_HANDLERS = {
             slice_progress_written: Boolean(out.sliceProgress?.path),
             dispatch: out.dispatchInstruction ? "crew-build" : "inline"
         });
+        const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
+        await flushTrajectory(repoPath, sliceId);
         return out;
     },
     link: async (repoPath, flags) => {

@@ -8,9 +8,12 @@ export function trajectoryPath(repoPath: string, sliceId: string): string {
   return path.join(repoPath, TRAJECTORY_DIR, `${sliceId}-trajectory.jsonl`);
 }
 
+const _buffer = new Map<string, string[]>();
+
 /**
- * Append one step record to the slice trajectory JSONL.
- * Creates the file + directory on first call. Never throws — returns false on error.
+ * Buffer one step record for the slice trajectory JSONL.
+ * Does NOT write to disk immediately — call flushTrajectory to persist.
+ * Never throws — returns false on error.
  */
 export async function recordStep(
   repoPath: string,
@@ -19,10 +22,31 @@ export async function recordStep(
   data: Record<string, unknown>
 ): Promise<boolean> {
   try {
+    const key = `${repoPath}:${sliceId}`;
+    const line = JSON.stringify({ type, sliceId, timestamp: new Date().toISOString(), ...data });
+    const buf = _buffer.get(key) ?? [];
+    buf.push(line);
+    _buffer.set(key, buf);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Flush all buffered step records for a slice to disk in a single appendFile call.
+ * Clears the buffer after a successful write.
+ * No-ops if buffer is empty. Never throws — returns false on error.
+ */
+export async function flushTrajectory(repoPath: string, sliceId: string): Promise<boolean> {
+  const key = `${repoPath}:${sliceId}`;
+  const lines = _buffer.get(key);
+  if (!lines || lines.length === 0) return true;
+  try {
     const filePath = trajectoryPath(repoPath, sliceId);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
-    const line = JSON.stringify({ type, sliceId, timestamp: new Date().toISOString(), ...data });
-    await fs.appendFile(filePath, line + "\n");
+    await fs.appendFile(filePath, lines.join("\n") + "\n");
+    _buffer.delete(key);
     return true;
   } catch {
     return false;
