@@ -808,7 +808,8 @@ const SLICE_HANDLERS = {
             noDocWriter: Boolean(flags.noDocWriter),
             // SLICE-64 additions:
             noMerge: Boolean(flags.noMerge),
-            dryRun: Boolean(flags.dryRun)
+            dryRun: Boolean(flags.dryRun),
+            skipSimplify: Boolean(flags.skipSimplify)
         });
         const { logEvent } = await import("./lib/telemetry.mjs");
         await logEvent(cwd, {
