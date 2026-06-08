@@ -344,6 +344,7 @@ export async function startSlice(
   });
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
+  void recordSliceStartEvent(repoPath, sliceId, featureId);
   return result;
 }
 
@@ -632,5 +633,25 @@ async function recordStartTrajectory(
     });
   } catch {
     // best-effort — never blocks slice start
+  }
+}
+
+async function recordSliceStartEvent(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null
+): Promise<void> {
+  try {
+    const { appendSliceEvent } = await import("../slice-events.mjs");
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "workflow_state_changed",
+      sliceId,
+      featureId,
+      timestamp: new Date().toISOString(),
+      from: null,
+      to: "building"
+    });
+  } catch {
+    // best-effort
   }
 }
