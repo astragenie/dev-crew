@@ -142,6 +142,7 @@ function describeBlockedGate({
 
 async function evaluateFeatureGates(
   repoPath: string,
+  sliceId: string,
   featureId: string | null,
   blockingGates: Record<string, any>,
   validationGate: Record<string, any> | null,
@@ -152,6 +153,14 @@ async function evaluateFeatureGates(
   const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
   const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
   const isTestAdequacyBlocked = Boolean(testAdequacyGate && testAdequacyGate.satisfied === false);
+
+  void emitGateTransitionEvents(repoPath, sliceId, featureId, {
+    isBlocked,
+    isSimplifyBlocked,
+    isValidationBlocked,
+    isTestAdequacyBlocked
+  });
+
   return { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked };
 }
 
@@ -262,6 +271,7 @@ async function computeFeatureResult(
 ) {
   const gateState = await evaluateFeatureGates(
     repoPath,
+    sliceId,
     featureId,
     blockingGates,
     validationGate,
@@ -526,6 +536,7 @@ export async function completeSlice(
     });
 
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
+  void recordSliceCompleteEvent(repoPath, sliceId, featureId);
   void writeDocWriterSkipAuditLog(repoPath);
 
   const autoMergeResult = await runAutoMergeStage(repoPath, sliceId, sliceFm, resolved, {
@@ -731,6 +742,66 @@ async function deriveGradeInfo(
     return { gradeAvg, decisionIds };
   } catch {
     return { gradeAvg: null, decisionIds: [] };
+  }
+}
+
+async function emitGateTransitionEvents(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  gates: {
+    isBlocked: boolean;
+    isSimplifyBlocked: boolean;
+    isValidationBlocked: boolean;
+    isTestAdequacyBlocked: boolean;
+  }
+): Promise<void> {
+  try {
+    const { appendSliceEvent } = await import("../slice-events.mjs");
+    const ts = new Date().toISOString();
+    const base = { sliceId, featureId, timestamp: ts };
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "gate_transition", ...base,
+      gate: "blocked", from: null,
+      to: gates.isBlocked ? "failed" : "passed"
+    });
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "gate_transition", ...base,
+      gate: "validation", from: null,
+      to: gates.isValidationBlocked ? "failed" : "passed"
+    });
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "gate_transition", ...base,
+      gate: "test-adequacy", from: null,
+      to: gates.isTestAdequacyBlocked ? "failed" : "passed"
+    });
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "gate_transition", ...base,
+      gate: "simplify", from: null,
+      to: gates.isSimplifyBlocked ? "failed" : "passed"
+    });
+  } catch {
+    // best-effort
+  }
+}
+
+async function recordSliceCompleteEvent(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null
+): Promise<void> {
+  try {
+    const { appendSliceEvent } = await import("../slice-events.mjs");
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "workflow_state_changed",
+      sliceId,
+      featureId,
+      timestamp: new Date().toISOString(),
+      from: "building",
+      to: "done"
+    });
+  } catch {
+    // best-effort
   }
 }
 
