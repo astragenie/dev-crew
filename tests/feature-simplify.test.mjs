@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import process from "node:process";
 import { execFileSync } from "node:child_process";
 import { featureSimplify } from "../scripts/lib/slice-linker/feature-lifecycle.mjs";
 describe("featureSimplify", () => {

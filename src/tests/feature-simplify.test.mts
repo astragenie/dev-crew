@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import process from "node:process";
 import { execFileSync } from "node:child_process";
 import { featureSimplify } from "../scripts/lib/slice-linker/feature-lifecycle.mjs";
 
@@ -121,7 +122,7 @@ describe("featureSimplify", () => {
     // Ceremony written to .claude/artifacts/crew/ceremonies/
     const ceremoniesDir = path.join(tmpDir, ".claude", "artifacts", "crew", "ceremonies");
     const files = await fs.readdir(ceremoniesDir).catch(() => [] as string[]);
-    const ceremonyFile = files.find((f) => f.startsWith("feature-end-FEAT-002"));
+    const ceremonyFile = files.find((f: string) => f.startsWith("feature-end-FEAT-002"));
     assert.ok(ceremonyFile, "ceremony file not written");
     const ceremony = JSON.parse(await fs.readFile(path.join(ceremoniesDir, ceremonyFile!), "utf8"));
     assert.equal(ceremony.simplifyRan, true);
