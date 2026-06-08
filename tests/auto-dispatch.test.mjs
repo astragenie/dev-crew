@@ -31,48 +31,58 @@ test("parseSkipFlag handles multiple independent flags", () => {
 // --- dispatchAgent: opt-out via skipFlag ---
 test("dispatchAgent returns skipped=true when skipFlag present, no dispatch, audit entry written", async () => {
     const repo = await tmpRepo("ad-skip-");
-    const result = await dispatchAgent({
-        agent: "loop:researcher",
-        prompt: "research something",
-        parentCommand: "backlog-add",
-        repoRoot: repo,
-        argv: ["--no-research"],
-        skipFlag: "--no-research"
-    });
-    assert.equal(result.ok, true);
-    assert.equal(result.skipped, true);
-    assert.equal(result.skipReason, "opt-out");
-    assert.equal(result.durationMs, 0);
-    await flushAuditLog(repo);
-    const lines = await readJsonLines(auditLogPath(repo));
-    assert.equal(lines.length, 1);
-    const entry = lines[0];
-    assert.equal(entry.skipped, true);
-    assert.equal(entry.ok, true);
-    assert.equal(entry.skipReason, "opt-out");
+    try {
+        const result = await dispatchAgent({
+            agent: "loop:researcher",
+            prompt: "research something",
+            parentCommand: "backlog-add",
+            repoRoot: repo,
+            argv: ["--no-research"],
+            skipFlag: "--no-research"
+        });
+        assert.equal(result.ok, true);
+        assert.equal(result.skipped, true);
+        assert.equal(result.skipReason, "opt-out");
+        assert.equal(result.durationMs, 0);
+        await flushAuditLog(repo);
+        const lines = await readJsonLines(auditLogPath(repo));
+        assert.equal(lines.length, 1);
+        const entry = lines[0];
+        assert.equal(entry.skipped, true);
+        assert.equal(entry.ok, true);
+        assert.equal(entry.skipReason, "opt-out");
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 // --- dispatchAgent: dispatch failure isolation ---
 test("dispatchAgent returns ok=false on internal failure, does not throw, audit entry written", async () => {
     const repo = await tmpRepo("ad-fail-");
-    // Pass a costAdvisor that throws to force internal error path.
-    // The module must catch and return { ok: false } rather than propagating.
-    const result = await dispatchAgent({
-        agent: "loop:researcher",
-        prompt: "research something",
-        parentCommand: "backlog-add",
-        repoRoot: repo,
-        costAdvisor: () => {
-            throw new Error("advisor exploded");
-        }
-    });
-    assert.equal(result.ok, false);
-    assert.equal(result.skipped, false);
-    assert.ok(typeof result.error === "string" && result.error.length > 0);
-    await flushAuditLog(repo);
-    const lines = await readJsonLines(auditLogPath(repo));
-    assert.equal(lines.length, 1);
-    const entry = lines[0];
-    assert.equal(entry.ok, false);
+    try {
+        // Pass a costAdvisor that throws to force internal error path.
+        // The module must catch and return { ok: false } rather than propagating.
+        const result = await dispatchAgent({
+            agent: "loop:researcher",
+            prompt: "research something",
+            parentCommand: "backlog-add",
+            repoRoot: repo,
+            costAdvisor: () => {
+                throw new Error("advisor exploded");
+            }
+        });
+        assert.equal(result.ok, false);
+        assert.equal(result.skipped, false);
+        assert.ok(typeof result.error === "string" && result.error.length > 0);
+        await flushAuditLog(repo);
+        const lines = await readJsonLines(auditLogPath(repo));
+        assert.equal(lines.length, 1);
+        const entry = lines[0];
+        assert.equal(entry.ok, false);
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 // --- dispatchAgent: cost-warn does not skip ---
 test("dispatchAgent proceeds when costAdvisor returns warn, logs warning, audit entry ok=true", async () => {
@@ -106,62 +116,77 @@ test("dispatchAgent proceeds when costAdvisor returns warn, logs warning, audit 
 // --- appendAuditLog ---
 test("appendAuditLog creates auto-dispatch.jsonl on first call", async () => {
     const repo = await tmpRepo("ad-create-");
-    const logPath = auditLogPath(repo);
-    // File must not exist yet
-    await assert.rejects(() => fs.access(logPath));
-    await appendAuditLog(repo, {
-        timestamp: "2026-01-01T00:00:00.000Z",
-        agent: "loop:researcher",
-        parentCommand: "test",
-        ok: true,
-        skipped: false,
-        durationMs: 42
-    });
-    await flushAuditLog(repo);
-    await fs.access(logPath); // must exist now
-    const lines = await readJsonLines(logPath);
-    assert.equal(lines.length, 1);
+    try {
+        const logPath = auditLogPath(repo);
+        // File must not exist yet
+        await assert.rejects(() => fs.access(logPath));
+        await appendAuditLog(repo, {
+            timestamp: "2026-01-01T00:00:00.000Z",
+            agent: "loop:researcher",
+            parentCommand: "test",
+            ok: true,
+            skipped: false,
+            durationMs: 42
+        });
+        await flushAuditLog(repo);
+        await fs.access(logPath); // must exist now
+        const lines = await readJsonLines(logPath);
+        assert.equal(lines.length, 1);
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 test("appendAuditLog appends a second JSON line on subsequent call", async () => {
     const repo = await tmpRepo("ad-append-");
-    const logPath = auditLogPath(repo);
-    const entry = {
-        timestamp: "2026-01-01T00:00:00.000Z",
-        agent: "loop:researcher",
-        parentCommand: "test",
-        ok: true,
-        skipped: false,
-        durationMs: 10
-    };
-    await appendAuditLog(repo, entry);
-    await appendAuditLog(repo, { ...entry, durationMs: 20 });
-    await flushAuditLog(repo);
-    const lines = await readJsonLines(logPath);
-    assert.equal(lines.length, 2);
+    try {
+        const logPath = auditLogPath(repo);
+        const entry = {
+            timestamp: "2026-01-01T00:00:00.000Z",
+            agent: "loop:researcher",
+            parentCommand: "test",
+            ok: true,
+            skipped: false,
+            durationMs: 10
+        };
+        await appendAuditLog(repo, entry);
+        await appendAuditLog(repo, { ...entry, durationMs: 20 });
+        await flushAuditLog(repo);
+        const lines = await readJsonLines(logPath);
+        assert.equal(lines.length, 2);
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 // --- audit entry shape ---
 test("each audit entry contains required keys: timestamp, agent, parentCommand, ok, skipped, durationMs", async () => {
     const repo = await tmpRepo("ad-keys-");
-    const logPath = auditLogPath(repo);
-    await dispatchAgent({
-        agent: "loop:researcher",
-        prompt: "check keys",
-        parentCommand: "spec-decompose",
-        repoRoot: repo,
-        argv: ["--no-research"],
-        skipFlag: "--no-research"
-    });
-    await flushAuditLog(repo);
-    const lines = await readJsonLines(logPath);
-    assert.equal(lines.length, 1);
-    const entry = lines[0];
-    for (const key of ["timestamp", "agent", "parentCommand", "ok", "skipped", "durationMs"]) {
-        assert.ok(Object.prototype.hasOwnProperty.call(entry, key), `missing key: ${key}`);
+    try {
+        const logPath = auditLogPath(repo);
+        await dispatchAgent({
+            agent: "loop:researcher",
+            prompt: "check keys",
+            parentCommand: "spec-decompose",
+            repoRoot: repo,
+            argv: ["--no-research"],
+            skipFlag: "--no-research"
+        });
+        await flushAuditLog(repo);
+        const lines = await readJsonLines(logPath);
+        assert.equal(lines.length, 1);
+        const entry = lines[0];
+        for (const key of ["timestamp", "agent", "parentCommand", "ok", "skipped", "durationMs"]) {
+            assert.ok(Object.prototype.hasOwnProperty.call(entry, key), `missing key: ${key}`);
+        }
+        assert.equal(entry.agent, "loop:researcher");
+        assert.equal(entry.parentCommand, "spec-decompose");
+        assert.equal(typeof entry.timestamp, "string");
+        assert.equal(typeof entry.durationMs, "number");
     }
-    assert.equal(entry.agent, "loop:researcher");
-    assert.equal(entry.parentCommand, "spec-decompose");
-    assert.equal(typeof entry.timestamp, "string");
-    assert.equal(typeof entry.durationMs, "number");
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 // --- resolveAuditLogPath ---
 test("resolveAuditLogPath returns default path when opts is empty", () => {
@@ -192,39 +217,54 @@ test("resolveAuditLogPath uses absolute auditLogPath verbatim", () => {
 // --- appendAuditLog with opts ---
 test("appendAuditLog with no opts writes to default path (regression guard)", async () => {
     const repo = await tmpRepo("ad-noopt-");
-    const entry = { agent: "smoke", ok: true, durationMs: 0 };
-    await appendAuditLog(repo, entry);
-    await flushAuditLog(repo);
-    const logPath = auditLogPath(repo);
-    await fs.access(logPath);
-    const lines = await readJsonLines(logPath);
-    assert.equal(lines.length, 1);
+    try {
+        const entry = { agent: "smoke", ok: true, durationMs: 0 };
+        await appendAuditLog(repo, entry);
+        await flushAuditLog(repo);
+        const logPath = auditLogPath(repo);
+        await fs.access(logPath);
+        const lines = await readJsonLines(logPath);
+        assert.equal(lines.length, 1);
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 test("appendAuditLog with custom relative auditLogPath writes to that path", async () => {
     const repo = await tmpRepo("ad-custom-");
-    const entry = { agent: "smoke", ok: true, durationMs: 0 };
-    await appendAuditLog(repo, entry, { config: { loop: { auditLogPath: "custom.jsonl" } } });
-    await flushAuditLog(repo, { config: { loop: { auditLogPath: "custom.jsonl" } } });
-    const customPath = path.join(repo, "custom.jsonl");
-    await fs.access(customPath);
-    const lines = await readJsonLines(customPath);
-    assert.equal(lines.length, 1);
-    // default path must not exist
-    await assert.rejects(() => fs.access(auditLogPath(repo)));
+    try {
+        const entry = { agent: "smoke", ok: true, durationMs: 0 };
+        await appendAuditLog(repo, entry, { config: { loop: { auditLogPath: "custom.jsonl" } } });
+        await flushAuditLog(repo, { config: { loop: { auditLogPath: "custom.jsonl" } } });
+        const customPath = path.join(repo, "custom.jsonl");
+        await fs.access(customPath);
+        const lines = await readJsonLines(customPath);
+        assert.equal(lines.length, 1);
+        // default path must not exist
+        await assert.rejects(() => fs.access(auditLogPath(repo)));
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 test("appendAuditLog creates parent dir when custom path dir does not exist", async () => {
     const repo = await tmpRepo("ad-mkdir-");
-    const entry = { agent: "smoke", ok: true, durationMs: 0 };
-    await appendAuditLog(repo, entry, {
-        config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
-    });
-    await flushAuditLog(repo, {
-        config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
-    });
-    const customPath = path.join(repo, "deep/nested/dir/audit.jsonl");
-    await fs.access(customPath);
-    const lines = await readJsonLines(customPath);
-    assert.equal(lines.length, 1);
+    try {
+        const entry = { agent: "smoke", ok: true, durationMs: 0 };
+        await appendAuditLog(repo, entry, {
+            config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
+        });
+        await flushAuditLog(repo, {
+            config: { loop: { auditLogPath: "deep/nested/dir/audit.jsonl" } }
+        });
+        const customPath = path.join(repo, "deep/nested/dir/audit.jsonl");
+        await fs.access(customPath);
+        const lines = await readJsonLines(customPath);
+        assert.equal(lines.length, 1);
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
 });
 // --- slice event emission ---
 test("dispatchAgent emits agent_dispatched and agent_completed when sliceId provided", async () => {
