@@ -816,9 +816,9 @@ async function maybeRunFeatureSimplify(
   featureResult: Record<string, any> | null,
   skipSimplify: boolean
 ): Promise<void> {
-  const fr = featureResult as Record<string, any> | null;
+  const fr = featureResult;
   if (!fr || fr["skipped"] || fr["to"] !== "done" || !featureId) return;
-  await triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify);
+  void triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify);
 }
 
 async function triggerFeatureSimplify(

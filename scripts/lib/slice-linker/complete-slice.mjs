@@ -543,7 +543,7 @@ async function maybeRunFeatureSimplify(repoPath, featureId, sliceId, startedAt, 
     const fr = featureResult;
     if (!fr || fr["skipped"] || fr["to"] !== "done" || !featureId)
         return;
-    await triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify);
+    void triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify);
 }
 async function triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify) {
     try {
