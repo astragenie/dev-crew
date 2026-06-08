@@ -226,3 +226,54 @@ test("appendAuditLog creates parent dir when custom path dir does not exist", as
     const lines = await readJsonLines(customPath);
     assert.equal(lines.length, 1);
 });
+// --- slice event emission ---
+test("dispatchAgent emits agent_dispatched and agent_completed when sliceId provided", async () => {
+    const tmpEventsDir = await fs.mkdtemp(path.join(os.tmpdir(), "dispatch-events-"));
+    try {
+        await dispatchAgent({
+            agent: "crew:builder",
+            prompt: "build it",
+            parentCommand: "test",
+            repoRoot: tmpEventsDir,
+            sliceId: "SLICE-10",
+            featureId: "FEAT-020"
+        });
+        const { eventsPath } = await import("../scripts/lib/slice-events.mjs");
+        const raw = await fs.readFile(eventsPath(tmpEventsDir, "SLICE-10"), "utf8");
+        const lines = raw.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+        const dispatched = lines.find((l) => l.type === "agent_dispatched");
+        const completed = lines.find((l) => l.type === "agent_completed");
+        assert.ok(dispatched, "agent_dispatched missing");
+        assert.equal(dispatched.agent, "crew:builder");
+        assert.equal(dispatched.sliceId, "SLICE-10");
+        assert.ok(completed, "agent_completed missing");
+        assert.equal(completed.status, "ok");
+    }
+    finally {
+        await fs.rm(tmpEventsDir, { recursive: true, force: true });
+    }
+});
+test("dispatchAgent emits agent_completed:skipped when skip flag present and sliceId provided", async () => {
+    const tmpEventsDir = await fs.mkdtemp(path.join(os.tmpdir(), "dispatch-skip-"));
+    try {
+        await dispatchAgent({
+            agent: "crew:builder",
+            prompt: "build it",
+            parentCommand: "test",
+            repoRoot: tmpEventsDir,
+            argv: ["--skip-agent"],
+            skipFlag: "--skip-agent",
+            sliceId: "SLICE-11",
+            featureId: null
+        });
+        const { eventsPath } = await import("../scripts/lib/slice-events.mjs");
+        const raw = await fs.readFile(eventsPath(tmpEventsDir, "SLICE-11"), "utf8").catch(() => "");
+        const lines = raw.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+        const completed = lines.find((l) => l.type === "agent_completed");
+        assert.ok(completed, "agent_completed missing");
+        assert.equal(completed.status, "skipped");
+    }
+    finally {
+        await fs.rm(tmpEventsDir, { recursive: true, force: true });
+    }
+});

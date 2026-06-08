@@ -15,6 +15,8 @@ export interface DispatchOpts {
   argv?: string[];
   skipFlag?: string;
   costAdvisor?: () => { verdict: "ok" | "warn" | "stop" };
+  sliceId?: string;
+  featureId?: string | null;
 }
 
 export interface DispatchResult {
@@ -83,7 +85,7 @@ export async function flushAuditLog(repoRoot: string, opts: AuditLogOpts = {}): 
 }
 
 export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult> {
-  const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor } = opts;
+  const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor, sliceId, featureId } = opts;
   const start = Date.now();
 
   const buildAuditEntry = (
@@ -99,7 +101,22 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
     skipReason: partial.skipReason ?? null
   });
 
-  // Opt-out: if caller provided a skip flag and it appears in argv, short-circuit.
+  const emitEvent = async (event: import("./slice-events.mjs").SliceEvent) => {
+    if (!sliceId) return;
+    try {
+      const { appendSliceEvent } = await import("./slice-events.mjs");
+      await appendSliceEvent(repoRoot, sliceId, event);
+    } catch {
+      // best-effort
+    }
+  };
+
+  const eventBase = {
+    sliceId: sliceId ?? "",
+    featureId: featureId ?? null,
+    timestamp: new Date().toISOString()
+  };
+
   if (skipFlag && parseSkipFlag(argv, skipFlag)) {
     const result: DispatchResult = {
       ok: true,
@@ -108,8 +125,23 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
       durationMs: 0
     };
     await appendAuditLog(repoRoot, buildAuditEntry(result));
+    await emitEvent({
+      type: "agent_completed",
+      ...eventBase,
+      agent,
+      status: "skipped",
+      reason: "opt-out",
+      durationMs: 0
+    });
     return result;
   }
+
+  await emitEvent({
+    type: "agent_dispatched",
+    ...eventBase,
+    agent,
+    parentCommand
+  });
 
   try {
     // Cost-advisor check: warn but never block dispatch per FEAT-028 design decision.
@@ -128,12 +160,27 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
       durationMs
     };
     await appendAuditLog(repoRoot, buildAuditEntry(result));
+    await emitEvent({
+      type: "agent_completed",
+      ...eventBase,
+      timestamp: new Date().toISOString(),
+      agent,
+      status: "ok",
+      durationMs
+    });
     return result;
   } catch (err) {
     const durationMs = Date.now() - start;
     const error = err instanceof Error ? err.message : String(err);
     const result: DispatchResult = { ok: false, skipped: false, error, durationMs };
     await appendAuditLog(repoRoot, buildAuditEntry(result));
+    await emitEvent({
+      type: "agent_error",
+      ...eventBase,
+      timestamp: new Date().toISOString(),
+      agent,
+      error
+    });
     return result;
   }
 }

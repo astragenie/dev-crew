@@ -42,7 +42,7 @@ export async function flushAuditLog(repoRoot, opts = {}) {
     pendingBatches.delete(logPath);
 }
 export async function dispatchAgent(opts) {
-    const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor } = opts;
+    const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor, sliceId, featureId } = opts;
     const start = Date.now();
     const buildAuditEntry = (partial) => ({
         timestamp: new Date().toISOString(),
@@ -54,7 +54,22 @@ export async function dispatchAgent(opts) {
         skipped: partial.skipped,
         skipReason: partial.skipReason ?? null
     });
-    // Opt-out: if caller provided a skip flag and it appears in argv, short-circuit.
+    const emitEvent = async (event) => {
+        if (!sliceId)
+            return;
+        try {
+            const { appendSliceEvent } = await import("./slice-events.mjs");
+            await appendSliceEvent(repoRoot, sliceId, event);
+        }
+        catch {
+            // best-effort
+        }
+    };
+    const eventBase = {
+        sliceId: sliceId ?? "",
+        featureId: featureId ?? null,
+        timestamp: new Date().toISOString()
+    };
     if (skipFlag && parseSkipFlag(argv, skipFlag)) {
         const result = {
             ok: true,
@@ -63,8 +78,22 @@ export async function dispatchAgent(opts) {
             durationMs: 0
         };
         await appendAuditLog(repoRoot, buildAuditEntry(result));
+        await emitEvent({
+            type: "agent_completed",
+            ...eventBase,
+            agent,
+            status: "skipped",
+            reason: "opt-out",
+            durationMs: 0
+        });
         return result;
     }
+    await emitEvent({
+        type: "agent_dispatched",
+        ...eventBase,
+        agent,
+        parentCommand
+    });
     try {
         // Cost-advisor check: warn but never block dispatch per FEAT-028 design decision.
         if (costAdvisor) {
@@ -81,6 +110,14 @@ export async function dispatchAgent(opts) {
             durationMs
         };
         await appendAuditLog(repoRoot, buildAuditEntry(result));
+        await emitEvent({
+            type: "agent_completed",
+            ...eventBase,
+            timestamp: new Date().toISOString(),
+            agent,
+            status: "ok",
+            durationMs
+        });
         return result;
     }
     catch (err) {
@@ -88,6 +125,13 @@ export async function dispatchAgent(opts) {
         const error = err instanceof Error ? err.message : String(err);
         const result = { ok: false, skipped: false, error, durationMs };
         await appendAuditLog(repoRoot, buildAuditEntry(result));
+        await emitEvent({
+            type: "agent_error",
+            ...eventBase,
+            timestamp: new Date().toISOString(),
+            agent,
+            error
+        });
         return result;
     }
 }
