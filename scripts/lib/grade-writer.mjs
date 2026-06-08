@@ -109,9 +109,11 @@ export async function createGradeFile(repoPath, sliceId, { config = null } = {})
         return { gradePath: existing, created: false };
     }
     await ensureDir(gradesRoot(repoPath, config));
-    const prefill = await resolveGradePrefill(repoPath, sliceId, config);
     const { inferScoresForSlice } = await import("./score-inference.mjs");
-    const inference = await inferScoresForSlice(repoPath, sliceId);
+    const [prefill, inference] = await Promise.all([
+        resolveGradePrefill(repoPath, sliceId, config),
+        inferScoresForSlice(repoPath, sliceId)
+    ]);
     // Build the new timestamped filename using the artifact naming convention.
     const target = newGradeFilePath(repoPath, sliceId, {
         featureId: prefill.featureId,
