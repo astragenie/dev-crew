@@ -79,23 +79,32 @@ Callers of both results must be updated to use the destructured values instead o
 
 ---
 
-### A-4. Parallelize prefill reads in `grade-writer`
+### A-4. Parallelize `resolveGradePrefill` + `inferScoresForSlice` in `grade-writer`
 
-**File:** `src/scripts/lib/grade-writer.mts` lines ~97–104
+**File:** `src/scripts/lib/grade-writer.mts` lines ~168–170
 
-`findSliceFile()` and `readFeaturePrefill()` (which calls `findFeatureById()`) are independent reads. Currently sequential.
+`resolveGradePrefill` and `inferScoresForSlice` are called sequentially at the caller level but are completely independent — neither feeds the other's inputs.
+
+Note: within `resolveGradePrefill` itself (lines 97–104), the chain
+`findSliceFile → readSlicePrefillFields → readFeaturePrefill` is a true
+dependency chain and cannot be parallelized. The opportunity is at the call site.
 
 **Fix:**
 
 ```typescript
-const [sliceFile, featurePrefill] = await Promise.all([
-  findSliceFile(repoPath, sliceId),
-  readFeaturePrefill(repoPath, featureId)
+// current (sequential)
+const prefill = await resolveGradePrefill(repoPath, sliceId, config);
+const inference = await inferScoresForSlice(repoPath, sliceId);
+
+// fix
+const [prefill, inference] = await Promise.all([
+  resolveGradePrefill(repoPath, sliceId, config),
+  inferScoresForSlice(repoPath, sliceId)
 ]);
 ```
 
 **Metric:** grade-write latency  
-**Est. gain:** −80 ms (~15% of grade-write path)
+**Est. gain:** −100–200 ms (~20–30% of grade-write path; saves full `resolveGradePrefill` duration)
 
 ---
 
@@ -237,7 +246,7 @@ This is a logging-only change. No behavior change. Fire-and-forget semantics pre
 | 1 | Parallel I/O | `complete-slice.mts:653–701` | `slice complete` wall time | −100 ms (−3%) |
 | 2 | Parallel I/O | `complete-slice.mts:487–503` | `slice complete` wall time | −150 ms (−5%) |
 | 3 | Read cache | `complete-slice.mts` (4 call sites) | `slice complete` wall time | −60 ms (−2%) |
-| 4 | Parallel I/O | `grade-writer.mts:97–104` | grade-write latency | −80 ms (−15%) |
+| 4 | Parallel I/O | `grade-writer.mts:168–170` | grade-write latency | −100–200 ms (−20–30%) |
 | 5 | Timeout | all `execFileAsync("git", ...)` | loop hang rate | −100% hangs |
 | 6 | Git filter | `feature-lifecycle.mts` | simplify scan time | −20–30% |
 | 7 | Write batch | `trajectory-writer.mts` | trajectory write syscalls | −90% syscalls |
