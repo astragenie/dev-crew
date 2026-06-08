@@ -1,11 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { resolveConfig } from "../config-resolver.mjs";
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
 import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { parseClassifyOutput } from "../classify-parser.mjs";
+import { writeFeatureEndCeremony } from "../ceremonies.mjs";
 import type { DispatchResult } from "../auto-dispatch.mjs";
+
+const execFileAsync = promisify(execFile);
 
 type DispatchFn = (opts: {
   agent: string;
@@ -330,4 +335,107 @@ export async function sliceFromFeature(
     },
     classify: classifyResult
   };
+}
+
+export interface FeatureSimplifyOpts {
+  skipSimplify?: boolean;
+  sliceId?: string;
+  startedAt?: string;
+  dispatchFn?: (opts: {
+    agent: string;
+    prompt: string;
+    parentCommand: string;
+    repoRoot: string;
+    sliceId?: string;
+    featureId?: string;
+  }) => Promise<DispatchResult>;
+}
+
+export interface FeatureSimplifyResult {
+  simplifyRan: boolean;
+  skipped?: boolean;
+  skipReason?: string;
+  files?: string[];
+  dispatchResult?: DispatchResult;
+}
+
+export async function featureSimplify(
+  repoPath: string,
+  featureId: string,
+  opts: FeatureSimplifyOpts = {}
+): Promise<FeatureSimplifyResult> {
+  const { skipSimplify = false, sliceId, startedAt, dispatchFn } = opts;
+
+  if (skipSimplify) {
+    return { simplifyRan: false, skipped: true, skipReason: "skip-simplify-flag" };
+  }
+
+  const files = await collectChangedSourceFiles(repoPath, startedAt);
+
+  if (files.length === 0) {
+    return { simplifyRan: false, skipped: true, skipReason: "no-source-files" };
+  }
+
+  const dispatch = dispatchFn ?? (async (dispatchOpts) => {
+    const { dispatchAgent } = await import("../auto-dispatch.mjs");
+    return dispatchAgent(dispatchOpts);
+  });
+
+  const prompt = buildSimplifyPrompt(featureId, files);
+  const dispatchOpts: {
+    agent: string;
+    prompt: string;
+    parentCommand: string;
+    repoRoot: string;
+    sliceId?: string;
+    featureId?: string;
+  } = {
+    agent: "code-simplifier:code-simplifier",
+    prompt,
+    parentCommand: "feature-simplify",
+    repoRoot: repoPath
+  };
+  if (sliceId !== undefined) dispatchOpts.sliceId = sliceId;
+  dispatchOpts.featureId = featureId;
+  const dispatchResult = await dispatch(dispatchOpts);
+
+  await writeFeatureEndCeremony(repoPath, {
+    type: "feature-end",
+    id: featureId,
+    timestamp: new Date().toISOString(),
+    status: "scaffold",
+    simplifyRan: true
+  });
+
+  return { simplifyRan: true, files, dispatchResult };
+}
+
+async function collectChangedSourceFiles(
+  repoPath: string,
+  startedAt?: string
+): Promise<string[]> {
+  try {
+    const args = ["log", "--name-only", "--format="];
+    if (startedAt) args.push(`--since=${startedAt}`);
+    const { stdout } = await execFileAsync("git", args, { cwd: repoPath });
+    const seen = new Set<string>();
+    for (const line of stdout.split("\n")) {
+      const f = line.trim();
+      if ((f.endsWith(".mts") || f.endsWith(".mjs")) && !seen.has(f)) {
+        seen.add(f);
+      }
+    }
+    return [...seen];
+  } catch {
+    return [];
+  }
+}
+
+function buildSimplifyPrompt(featureId: string, files: string[]): string {
+  return [
+    `Simplify the source files changed during feature ${featureId}.`,
+    "Rules: simplify only — no behavior changes, no new tests, no scope expansion.",
+    "Files to simplify:",
+    ...files.map(f => `  - ${f}`)
+  ].join("\n");
 }
