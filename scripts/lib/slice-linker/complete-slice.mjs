@@ -102,12 +102,18 @@ function describeBlockedGate({ isBlocked, isSimplifyBlocked, blockingGates, vali
         return testAdequacyGate.reason;
     return `validation-gate: ${validationGate?.reason ?? "no evidence"}`;
 }
-async function evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate) {
+async function evaluateFeatureGates(repoPath, sliceId, featureId, blockingGates, validationGate, testAdequacyGate) {
     const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
     const simplifyCeremony = featureId ? await readFeatureEndCeremony(repoPath, featureId) : null;
     const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
     const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
     const isTestAdequacyBlocked = Boolean(testAdequacyGate && testAdequacyGate.satisfied === false);
+    void emitGateTransitionEvents(repoPath, sliceId, featureId, {
+        isBlocked,
+        isSimplifyBlocked,
+        isValidationBlocked,
+        isTestAdequacyBlocked
+    });
     return { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked };
 }
 // Appends sliceId to the FEAT's slices_complete array (dedupe), writes back
@@ -176,7 +182,7 @@ function buildBlockedResult(gateState, blockingGates, validationGate, testAdequa
     };
 }
 async function computeFeatureResult(repoPath, featureId, blockingGates, config, sliceId, keepFeatureOpen = false, forceClose = false, validationGate = null, testAdequacyGate = null) {
-    const gateState = await evaluateFeatureGates(repoPath, featureId, blockingGates, validationGate, testAdequacyGate);
+    const gateState = await evaluateFeatureGates(repoPath, sliceId, featureId, blockingGates, validationGate, testAdequacyGate);
     const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } = gateState;
     if (isBlocked || isSimplifyBlocked || isValidationBlocked || isTestAdequacyBlocked) {
         return buildBlockedResult(gateState, blockingGates, validationGate, testAdequacyGate);
@@ -315,6 +321,7 @@ export async function completeSlice(repoPath, sliceId, opts = {}) {
         resolved
     });
     await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
+    void recordSliceCompleteEvent(repoPath, sliceId, featureId);
     void writeDocWriterSkipAuditLog(repoPath);
     const autoMergeResult = await runAutoMergeStage(repoPath, sliceId, sliceFm, resolved, {
         noMerge,
@@ -483,6 +490,52 @@ async function deriveGradeInfo(repoPath, sliceId) {
     }
     catch {
         return { gradeAvg: null, decisionIds: [] };
+    }
+}
+async function emitGateTransitionEvents(repoPath, sliceId, featureId, gates) {
+    try {
+        const { appendSliceEvent } = await import("../slice-events.mjs");
+        const ts = new Date().toISOString();
+        const base = { sliceId, featureId, timestamp: ts };
+        await appendSliceEvent(repoPath, sliceId, {
+            type: "gate_transition", ...base,
+            gate: "blocked", from: null,
+            to: gates.isBlocked ? "failed" : "passed"
+        });
+        await appendSliceEvent(repoPath, sliceId, {
+            type: "gate_transition", ...base,
+            gate: "validation", from: null,
+            to: gates.isValidationBlocked ? "failed" : "passed"
+        });
+        await appendSliceEvent(repoPath, sliceId, {
+            type: "gate_transition", ...base,
+            gate: "test-adequacy", from: null,
+            to: gates.isTestAdequacyBlocked ? "failed" : "passed"
+        });
+        await appendSliceEvent(repoPath, sliceId, {
+            type: "gate_transition", ...base,
+            gate: "simplify", from: null,
+            to: gates.isSimplifyBlocked ? "failed" : "passed"
+        });
+    }
+    catch {
+        // best-effort
+    }
+}
+async function recordSliceCompleteEvent(repoPath, sliceId, featureId) {
+    try {
+        const { appendSliceEvent } = await import("../slice-events.mjs");
+        await appendSliceEvent(repoPath, sliceId, {
+            type: "workflow_state_changed",
+            sliceId,
+            featureId,
+            timestamp: new Date().toISOString(),
+            from: "building",
+            to: "done"
+        });
+    }
+    catch {
+        // best-effort
     }
 }
 // clearWorktreePathInState is imported from ../auto-merge.mjs to avoid DRY duplication.

@@ -8,7 +8,7 @@ import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backl
 import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
-import type { DispatchResult } from "../auto-dispatch.mjs";
+import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -341,14 +341,7 @@ export interface FeatureSimplifyOpts {
   skipSimplify?: boolean;
   sliceId?: string;
   startedAt?: string;
-  dispatchFn?: (opts: {
-    agent: string;
-    prompt: string;
-    parentCommand: string;
-    repoRoot: string;
-    sliceId?: string;
-    featureId?: string;
-  }) => Promise<DispatchResult>;
+  dispatchFn?: (opts: DispatchOpts) => Promise<DispatchResult>;
 }
 
 export interface FeatureSimplifyResult {

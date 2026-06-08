@@ -250,6 +250,7 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         worktreeInfo
     });
     await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
+    void recordSliceStartEvent(repoPath, sliceId, featureId);
     return result;
 }
 // Gathers all parallel async resources for a slice start in one Promise.all.
@@ -400,5 +401,21 @@ async function recordStartTrajectory(repoPath, sliceId, result, featureId, title
     }
     catch {
         // best-effort — never blocks slice start
+    }
+}
+async function recordSliceStartEvent(repoPath, sliceId, featureId) {
+    try {
+        const { appendSliceEvent } = await import("../slice-events.mjs");
+        await appendSliceEvent(repoPath, sliceId, {
+            type: "workflow_state_changed",
+            sliceId,
+            featureId,
+            timestamp: new Date().toISOString(),
+            from: null,
+            to: "building"
+        });
+    }
+    catch {
+        // best-effort
     }
 }
