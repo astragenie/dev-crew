@@ -12,7 +12,7 @@ export type SliceEventType =
   | "agent_completed"
   | "agent_error";
 
-interface SliceEventBase {
+export interface SliceEventBase {
   type: SliceEventType;
   sliceId: string;
   featureId: string | null;
@@ -21,7 +21,7 @@ interface SliceEventBase {
 
 export interface WorkflowStateChangedEvent extends SliceEventBase {
   type: "workflow_state_changed";
-  from: string | null;
+  from: WorkflowState | null;
   to: WorkflowState;
 }
 

@@ -4,8 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { appendSliceEvent, eventsPath } from "../scripts/lib/slice-events.mjs";
-
-const TRAJECTORY_REL = ".claude/artifacts/loop/trajectories";
+import { TRAJECTORY_DIR } from "../scripts/lib/trajectory-writer.mjs";
 
 describe("slice-events", () => {
   let tmpDir: string;
@@ -20,7 +19,7 @@ describe("slice-events", () => {
 
   it("eventsPath returns correct file path", () => {
     const p = eventsPath(tmpDir, "SLICE-42");
-    assert.equal(p, path.join(tmpDir, TRAJECTORY_REL, "SLICE-42-events.jsonl"));
+    assert.equal(p, path.join(tmpDir, TRAJECTORY_DIR, "SLICE-42-events.jsonl"));
   });
 
   it("appendSliceEvent creates file and writes JSONL line", async () => {
