@@ -44,12 +44,20 @@ describe("slice-events", () => {
   it("appendSliceEvent appends multiple lines", async () => {
     const sliceId = "SLICE-02";
     await appendSliceEvent(tmpDir, sliceId, {
-      type: "workflow_state_changed", sliceId, featureId: null,
-      timestamp: "2026-06-08T00:00:00.000Z", from: null, to: "building"
+      type: "workflow_state_changed",
+      sliceId,
+      featureId: null,
+      timestamp: "2026-06-08T00:00:00.000Z",
+      from: null,
+      to: "building"
     });
     await appendSliceEvent(tmpDir, sliceId, {
-      type: "workflow_state_changed", sliceId, featureId: null,
-      timestamp: "2026-06-08T00:01:00.000Z", from: "building", to: "done"
+      type: "workflow_state_changed",
+      sliceId,
+      featureId: null,
+      timestamp: "2026-06-08T00:01:00.000Z",
+      from: "building",
+      to: "done"
     });
     const raw = await fs.readFile(eventsPath(tmpDir, sliceId), "utf8");
     const lines = raw.trim().split("\n").filter(Boolean);

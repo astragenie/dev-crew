@@ -499,23 +499,31 @@ async function emitGateTransitionEvents(repoPath, sliceId, featureId, gates) {
         const ts = new Date().toISOString();
         const base = { sliceId, featureId, timestamp: ts };
         await appendSliceEvent(repoPath, sliceId, {
-            type: "gate_transition", ...base,
-            gate: "blocked", from: null,
+            type: "gate_transition",
+            ...base,
+            gate: "blocked",
+            from: null,
             to: gates.isBlocked ? "failed" : "passed"
         });
         await appendSliceEvent(repoPath, sliceId, {
-            type: "gate_transition", ...base,
-            gate: "validation", from: null,
+            type: "gate_transition",
+            ...base,
+            gate: "validation",
+            from: null,
             to: gates.isValidationBlocked ? "failed" : "passed"
         });
         await appendSliceEvent(repoPath, sliceId, {
-            type: "gate_transition", ...base,
-            gate: "test-adequacy", from: null,
+            type: "gate_transition",
+            ...base,
+            gate: "test-adequacy",
+            from: null,
             to: gates.isTestAdequacyBlocked ? "failed" : "passed"
         });
         await appendSliceEvent(repoPath, sliceId, {
-            type: "gate_transition", ...base,
-            gate: "simplify", from: null,
+            type: "gate_transition",
+            ...base,
+            gate: "simplify",
+            from: null,
             to: gates.isSimplifyBlocked ? "failed" : "passed"
         });
     }

@@ -3,7 +3,13 @@ import path from "node:path";
 import { TRAJECTORY_DIR } from "./trajectory-writer.mjs";
 
 export type WorkflowState = "building" | "reviewing" | "validating" | "done" | "blocked";
-export type GateName = "review" | "validation" | "deployment" | "blocked" | "simplify" | "test-adequacy";
+export type GateName =
+  | "review"
+  | "validation"
+  | "deployment"
+  | "blocked"
+  | "simplify"
+  | "test-adequacy";
 export type GateState = "open" | "passed" | "failed" | "skipped";
 export type SliceEventType =
   | "workflow_state_changed"

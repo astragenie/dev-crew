@@ -369,10 +369,12 @@ export async function featureSimplify(
     return { simplifyRan: false, skipped: true, skipReason: "no-source-files" };
   }
 
-  const dispatch = dispatchFn ?? (async (dispatchOpts) => {
-    const { dispatchAgent } = await import("../auto-dispatch.mjs");
-    return dispatchAgent(dispatchOpts);
-  });
+  const dispatch =
+    dispatchFn ??
+    (async (dispatchOpts) => {
+      const { dispatchAgent } = await import("../auto-dispatch.mjs");
+      return dispatchAgent(dispatchOpts);
+    });
 
   const prompt = buildSimplifyPrompt(featureId, files);
   const dispatchOpts: {
@@ -403,10 +405,7 @@ export async function featureSimplify(
   return { simplifyRan: true, files, dispatchResult };
 }
 
-async function collectChangedSourceFiles(
-  repoPath: string,
-  startedAt?: string
-): Promise<string[]> {
+async function collectChangedSourceFiles(repoPath: string, startedAt?: string): Promise<string[]> {
   try {
     const args = ["log", "--name-only", "--format="];
     if (startedAt) args.push(`--since=${startedAt}`);
@@ -429,6 +428,6 @@ function buildSimplifyPrompt(featureId: string, files: string[]): string {
     `Simplify the source files changed during feature ${featureId}.`,
     "Rules: simplify only — no behavior changes, no new tests, no scope expansion.",
     "Files to simplify:",
-    ...files.map(f => `  - ${f}`)
+    ...files.map((f) => `  - ${f}`)
   ].join("\n");
 }

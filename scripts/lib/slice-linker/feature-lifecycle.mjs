@@ -280,10 +280,11 @@ export async function featureSimplify(repoPath, featureId, opts = {}) {
     if (files.length === 0) {
         return { simplifyRan: false, skipped: true, skipReason: "no-source-files" };
     }
-    const dispatch = dispatchFn ?? (async (dispatchOpts) => {
-        const { dispatchAgent } = await import("../auto-dispatch.mjs");
-        return dispatchAgent(dispatchOpts);
-    });
+    const dispatch = dispatchFn ??
+        (async (dispatchOpts) => {
+            const { dispatchAgent } = await import("../auto-dispatch.mjs");
+            return dispatchAgent(dispatchOpts);
+        });
     const prompt = buildSimplifyPrompt(featureId, files);
     const dispatchOpts = {
         agent: "code-simplifier:code-simplifier",
@@ -328,6 +329,6 @@ function buildSimplifyPrompt(featureId, files) {
         `Simplify the source files changed during feature ${featureId}.`,
         "Rules: simplify only — no behavior changes, no new tests, no scope expansion.",
         "Files to simplify:",
-        ...files.map(f => `  - ${f}`)
+        ...files.map((f) => `  - ${f}`)
     ].join("\n");
 }

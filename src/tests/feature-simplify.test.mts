@@ -74,11 +74,9 @@ describe("featureSimplify", () => {
     // Ceremony written to .claude/artifacts/crew/ceremonies/
     const ceremoniesDir = path.join(tmpDir, ".claude", "artifacts", "crew", "ceremonies");
     const files = await fs.readdir(ceremoniesDir).catch(() => [] as string[]);
-    const ceremonyFile = files.find(f => f.startsWith("feature-end-FEAT-002"));
+    const ceremonyFile = files.find((f) => f.startsWith("feature-end-FEAT-002"));
     assert.ok(ceremonyFile, "ceremony file not written");
-    const ceremony = JSON.parse(
-      await fs.readFile(path.join(ceremoniesDir, ceremonyFile!), "utf8")
-    );
+    const ceremony = JSON.parse(await fs.readFile(path.join(ceremoniesDir, ceremonyFile!), "utf8"));
     assert.equal(ceremony.simplifyRan, true);
   });
 });

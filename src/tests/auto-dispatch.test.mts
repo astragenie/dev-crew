@@ -296,7 +296,11 @@ test("dispatchAgent emits agent_dispatched and agent_completed when sliceId prov
     });
     const { eventsPath } = await import("../scripts/lib/slice-events.mjs");
     const raw = await fs.readFile(eventsPath(tmpEventsDir, "SLICE-10"), "utf8");
-    const lines = raw.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    const lines = raw
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
     const dispatched = lines.find((l: any) => l.type === "agent_dispatched");
     const completed = lines.find((l: any) => l.type === "agent_completed");
     assert.ok(dispatched, "agent_dispatched missing");
@@ -324,7 +328,11 @@ test("dispatchAgent emits agent_completed:skipped when skip flag present and sli
     });
     const { eventsPath } = await import("../scripts/lib/slice-events.mjs");
     const raw = await fs.readFile(eventsPath(tmpEventsDir, "SLICE-11"), "utf8").catch(() => "");
-    const lines = raw.trim().split("\n").filter(Boolean).map((l: any) => JSON.parse(l));
+    const lines = raw
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((l: any) => JSON.parse(l));
     const completed = lines.find((l: any) => l.type === "agent_completed");
     assert.ok(completed, "agent_completed missing");
     assert.equal(completed.status, "skipped");

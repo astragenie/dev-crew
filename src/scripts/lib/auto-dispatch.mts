@@ -85,7 +85,16 @@ export async function flushAuditLog(repoRoot: string, opts: AuditLogOpts = {}): 
 }
 
 export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult> {
-  const { agent, parentCommand, repoRoot, argv = [], skipFlag, costAdvisor, sliceId, featureId } = opts;
+  const {
+    agent,
+    parentCommand,
+    repoRoot,
+    argv = [],
+    skipFlag,
+    costAdvisor,
+    sliceId,
+    featureId
+  } = opts;
   const start = Date.now();
 
   const buildAuditEntry = (
