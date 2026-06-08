@@ -75,7 +75,8 @@ const FLAG_SPEC = {
   "--explain-halts": { key: "explainHalts", boolean: true },
   "--worktree": { key: "worktree" },
   // SLICE-64: auto-merge flags
-  "--no-merge": { key: "noMerge", boolean: true }
+  "--no-merge": { key: "noMerge", boolean: true },
+  "--skip-simplify": { key: "skipSimplify", boolean: true }
 };
 
 function parseArgs(argv: string[]) {
@@ -130,7 +131,8 @@ function parseArgs(argv: string[]) {
     allowCrossSession: false,
     worktree: null,
     explainHalts: false,
-    noMerge: false
+    noMerge: false,
+    skipSimplify: false
   };
   const positionals: any[] = [];
 
@@ -213,6 +215,8 @@ const COMMANDS = {
     runReleaseSubcommand(repoPath, positionals, flags),
   slice: ({ repoPath, flags, positionals }: CmdCtx) =>
     runSliceSubcommand(repoPath, positionals, flags, {}),
+  feature: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runFeatureSubcommand(repoPath, positionals, flags),
   decisions: ({ repoPath, flags, positionals }: CmdCtx) =>
     runDecisionsSubcommand(repoPath, positionals, flags),
   retrospective: async ({ repoPath, flags }: CmdCtx) => {
@@ -1031,6 +1035,25 @@ async function runDecisionsSubcommand(
     return { count: matches.length, decisions: matches };
   }
   throw new Error(`Unknown decisions subcommand: ${sub}`);
+}
+
+async function runFeatureSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
+  const [sub, featId] = positionals;
+  if (!sub) throw new Error("feature requires a subcommand: simplify");
+  if (sub !== "simplify") throw new Error(`Unknown feature subcommand: ${sub}`);
+  if (!featId) throw new Error("feature simplify requires a feature ID: feature simplify FEAT-NNN");
+  const id = (flags.id as string | null) || featId;
+  const { featureSimplify } = await import("./lib/slice-linker/feature-lifecycle.mjs");
+  const opts: Record<string, any> = {
+    skipSimplify: flags.skipSimplify as boolean
+  };
+  if (flags.slice) opts.sliceId = flags.slice as string;
+  if (flags.since) opts.startedAt = flags.since as string;
+  return featureSimplify(repoPath, id, opts);
 }
 
 async function runLearningsSubcommand(

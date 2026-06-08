@@ -71,7 +71,8 @@ const FLAG_SPEC = {
     "--explain-halts": { key: "explainHalts", boolean: true },
     "--worktree": { key: "worktree" },
     // SLICE-64: auto-merge flags
-    "--no-merge": { key: "noMerge", boolean: true }
+    "--no-merge": { key: "noMerge", boolean: true },
+    "--skip-simplify": { key: "skipSimplify", boolean: true }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -125,7 +126,8 @@ function parseArgs(argv) {
         allowCrossSession: false,
         worktree: null,
         explainHalts: false,
-        noMerge: false
+        noMerge: false,
+        skipSimplify: false
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -197,6 +199,7 @@ const COMMANDS = {
     spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
     release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
     slice: ({ repoPath, flags, positionals }) => runSliceSubcommand(repoPath, positionals, flags, {}),
+    feature: ({ repoPath, flags, positionals }) => runFeatureSubcommand(repoPath, positionals, flags),
     decisions: ({ repoPath, flags, positionals }) => runDecisionsSubcommand(repoPath, positionals, flags),
     retrospective: async ({ repoPath, flags }) => {
         const { writeRetrospective } = await import("./lib/retrospective.mjs");
@@ -928,6 +931,25 @@ async function runDecisionsSubcommand(repoPath, positionals, flags) {
         return { count: matches.length, decisions: matches };
     }
     throw new Error(`Unknown decisions subcommand: ${sub}`);
+}
+async function runFeatureSubcommand(repoPath, positionals, flags) {
+    const [sub, featId] = positionals;
+    if (!sub)
+        throw new Error("feature requires a subcommand: simplify");
+    if (sub !== "simplify")
+        throw new Error(`Unknown feature subcommand: ${sub}`);
+    if (!featId)
+        throw new Error("feature simplify requires a feature ID: feature simplify FEAT-NNN");
+    const id = flags.id || featId;
+    const { featureSimplify } = await import("./lib/slice-linker/feature-lifecycle.mjs");
+    const opts = {
+        skipSimplify: flags.skipSimplify
+    };
+    if (flags.slice)
+        opts.sliceId = flags.slice;
+    if (flags.since)
+        opts.startedAt = flags.since;
+    return featureSimplify(repoPath, id, opts);
 }
 async function runLearningsSubcommand(repoPath, positionals, flags) {
     const [sub] = positionals;
