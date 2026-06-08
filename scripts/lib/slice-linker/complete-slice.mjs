@@ -294,12 +294,14 @@ export async function completeSlice(repoPath, sliceId, opts = {}) {
         throw new Error("completeSlice requires a sliceId.");
     const resolved = cfgIn ?? (await resolveConfig(repoPath));
     const slicesRoot = resolveSlicesRoot(repoPath, resolved);
-    const sliceFile = await locateSliceFile(slicesRoot, sliceId);
+    const [sliceFile, testAdequacyGate] = await Promise.all([
+        locateSliceFile(slicesRoot, sliceId),
+        deriveTestAdequacyGate(repoPath, sliceId, resolved)
+    ]);
     if (!sliceFile)
         throw new Error(`Slice file not found for ${sliceId} under ${slicesRoot}`);
     const { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates } = await resolveSliceContext(repoPath, sliceFile);
     const { validationGate, validationSkippedBadge } = await resolveValidationGate(repoPath, sliceId, sliceFm, skipValidationCheck);
-    const testAdequacyGate = await deriveTestAdequacyGate(repoPath, sliceId, resolved);
     const targetSlicePath = await moveAndStampSlice({
         sliceFile,
         sliceContent,
