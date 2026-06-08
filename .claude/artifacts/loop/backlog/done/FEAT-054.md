@@ -1,13 +1,13 @@
 ---
 id: FEAT-054
-status: triaged
+status: done
 priority: P3
 category: workflow
 target_release: null
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-08
 depends_on: []
-slices: []
+slices: [SLICE-81]
 derived_from: null
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.5
@@ -17,6 +17,9 @@ pm_dependency_depth: 0.5
 autonomous_safe: false
 triage_notes: "Hero-crew /crew:orchestrate-slice change (cross-plugin); depends on FEAT-052 outcome; route via crew repo"
 composite_score: 0.4875
+started_at: 2026-06-07
+slices_complete: [SLICE-81]
+completed_at: 2026-06-08
 ---
 ## Context
 
