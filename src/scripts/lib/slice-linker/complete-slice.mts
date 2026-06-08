@@ -690,15 +690,17 @@ async function resolveWorktreeAndBranch(
     return { skipped: true, reason: "no-worktree" };
   }
 
-  const worktreeExists = await checkWorktreeExists(worktreePath);
-  if (!worktreeExists) {
-    return { skipped: true, reason: "worktree-missing-on-disk" };
-  }
-
   const featureId: string | null = sliceFm?.feature ?? null;
   const branchName: string = featureId ? `slice/${sliceId}-${featureId}` : `slice/${sliceId}`;
 
-  const branchExists = await checkBranchExists(repoPath, branchName);
+  const [worktreeExists, branchExists] = await Promise.all([
+    checkWorktreeExists(worktreePath),
+    checkBranchExists(repoPath, branchName)
+  ]);
+
+  if (!worktreeExists) {
+    return { skipped: true, reason: "worktree-missing-on-disk" };
+  }
   if (!branchExists) {
     await clearWorktreePathInState(repoPath);
     return { skipped: true, reason: "branch-already-merged" };
