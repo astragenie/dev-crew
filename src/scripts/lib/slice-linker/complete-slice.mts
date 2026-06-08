@@ -477,7 +477,8 @@ export async function completeSlice(
     noDocWriter = false,
     builderEvidence = null as BuilderEvidence | null,
     noMerge = false,
-    dryRun = false
+    dryRun = false,
+    skipSimplify = false
   } = opts;
 
   warnDeprecatedDocWriter(noDocWriter);
@@ -519,6 +520,8 @@ export async function completeSlice(
     validationGate,
     testAdequacyGate
   );
+
+  await maybeRunFeatureSimplify(repoPath, featureId, sliceId, startedAt, featureResult, skipSimplify as boolean);
 
   const { reconcileSpecStatus } = await import("../linkage.mjs");
   const specChanges = await reconcileSpecStatus(repoPath, resolved);
@@ -802,6 +805,38 @@ async function recordSliceCompleteEvent(
     });
   } catch {
     // best-effort
+  }
+}
+
+async function maybeRunFeatureSimplify(
+  repoPath: string,
+  featureId: string | null,
+  sliceId: string,
+  startedAt: string | null,
+  featureResult: Record<string, any> | null,
+  skipSimplify: boolean
+): Promise<void> {
+  const fr = featureResult as Record<string, any> | null;
+  if (!fr || fr["skipped"] || fr["to"] !== "done" || !featureId) return;
+  await triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify);
+}
+
+async function triggerFeatureSimplify(
+  repoPath: string,
+  featureId: string,
+  sliceId: string,
+  startedAt: string | null,
+  skipSimplify: boolean
+): Promise<void> {
+  try {
+    const { featureSimplify } = await import("./feature-lifecycle.mjs");
+    await featureSimplify(repoPath, featureId, {
+      skipSimplify,
+      sliceId,
+      ...(startedAt != null ? { startedAt } : {})
+    });
+  } catch {
+    // best-effort — never blocks slice complete
   }
 }
 

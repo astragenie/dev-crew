@@ -288,7 +288,7 @@ function buildCompleteResult({ sliceId, sliceFile, targetSlicePath, featureResul
 //      auto-rolls to satisfied.
 //   5. Return paths + a hint that the agent should run `slice grade` next.
 export async function completeSlice(repoPath, sliceId, opts = {}) {
-    const { config: cfgIn = null, keepFeatureOpen = false, forceClose = false, skipValidationCheck = null, noDocWriter = false, builderEvidence = null, noMerge = false, dryRun = false } = opts;
+    const { config: cfgIn = null, keepFeatureOpen = false, forceClose = false, skipValidationCheck = null, noDocWriter = false, builderEvidence = null, noMerge = false, dryRun = false, skipSimplify = false } = opts;
     warnDeprecatedDocWriter(noDocWriter);
     if (!sliceId)
         throw new Error("completeSlice requires a sliceId.");
@@ -308,6 +308,7 @@ export async function completeSlice(repoPath, sliceId, opts = {}) {
         today
     });
     const featureResult = await computeFeatureResult(repoPath, featureId, blockingGates, resolved, sliceId, keepFeatureOpen, forceClose, validationGate, testAdequacyGate);
+    await maybeRunFeatureSimplify(repoPath, featureId, sliceId, startedAt, featureResult, skipSimplify);
     const { reconcileSpecStatus } = await import("../linkage.mjs");
     const specChanges = await reconcileSpecStatus(repoPath, resolved);
     const { handoff, synthesis, costReport, agentReport, sliceProgress } = await writeCeremonyArtifacts(repoPath, {
@@ -536,6 +537,25 @@ async function recordSliceCompleteEvent(repoPath, sliceId, featureId) {
     }
     catch {
         // best-effort
+    }
+}
+async function maybeRunFeatureSimplify(repoPath, featureId, sliceId, startedAt, featureResult, skipSimplify) {
+    const fr = featureResult;
+    if (!fr || fr["skipped"] || fr["to"] !== "done" || !featureId)
+        return;
+    await triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify);
+}
+async function triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, skipSimplify) {
+    try {
+        const { featureSimplify } = await import("./feature-lifecycle.mjs");
+        await featureSimplify(repoPath, featureId, {
+            skipSimplify,
+            sliceId,
+            ...(startedAt != null ? { startedAt } : {})
+        });
+    }
+    catch {
+        // best-effort — never blocks slice complete
     }
 }
 // clearWorktreePathInState is imported from ../auto-merge.mjs to avoid DRY duplication.
