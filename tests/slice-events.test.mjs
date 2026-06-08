@@ -38,12 +38,20 @@ describe("slice-events", () => {
     it("appendSliceEvent appends multiple lines", async () => {
         const sliceId = "SLICE-02";
         await appendSliceEvent(tmpDir, sliceId, {
-            type: "workflow_state_changed", sliceId, featureId: null,
-            timestamp: "2026-06-08T00:00:00.000Z", from: null, to: "building"
+            type: "workflow_state_changed",
+            sliceId,
+            featureId: null,
+            timestamp: "2026-06-08T00:00:00.000Z",
+            from: null,
+            to: "building"
         });
         await appendSliceEvent(tmpDir, sliceId, {
-            type: "workflow_state_changed", sliceId, featureId: null,
-            timestamp: "2026-06-08T00:01:00.000Z", from: "building", to: "done"
+            type: "workflow_state_changed",
+            sliceId,
+            featureId: null,
+            timestamp: "2026-06-08T00:01:00.000Z",
+            from: "building",
+            to: "done"
         });
         const raw = await fs.readFile(eventsPath(tmpDir, sliceId), "utf8");
         const lines = raw.trim().split("\n").filter(Boolean);
@@ -58,6 +66,31 @@ describe("slice-events", () => {
             from: null,
             to: "building"
         }));
+    });
+    it("appendSliceEvent warns on bad path via console.warn", async () => {
+        // Use a path where a file sits where a directory is expected — fails on all platforms.
+        const blockingFile = path.join(tmpDir, "blocking-file.txt");
+        await fs.writeFile(blockingFile, "block");
+        const badRoot = path.join(blockingFile, "not-a-dir");
+        const warns = [];
+        const orig = console.warn;
+        console.warn = (...args) => warns.push(args.join(" "));
+        try {
+            await appendSliceEvent(badRoot, "SLICE-00", {
+                type: "workflow_state_changed",
+                sliceId: "SLICE-00",
+                featureId: null,
+                timestamp: new Date().toISOString(),
+                from: null,
+                to: "building"
+            });
+        }
+        finally {
+            console.warn = orig;
+        }
+        assert.equal(warns.length, 1);
+        assert.ok(warns[0].includes("[slice-events]"), `expected [slice-events] prefix, got: ${warns[0]}`);
+        assert.ok(warns[0].includes("SLICE-00"), `expected sliceId in warn, got: ${warns[0]}`);
     });
     it("WorkflowStateChangedEvent has correct shape", () => {
         const event = {

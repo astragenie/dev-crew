@@ -85,7 +85,9 @@ export async function appendSliceEvent(
     const filePath = eventsPath(repoRoot, sliceId);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.appendFile(filePath, JSON.stringify(event) + "\n");
-  } catch {
-    // best-effort — never blocks callers
+  } catch (err) {
+    console.warn(
+      `[slice-events] write failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }

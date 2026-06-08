@@ -798,8 +798,10 @@ async function emitGateTransitionEvents(
       from: null,
       to: gates.isSimplifyBlocked ? "failed" : "passed"
     });
-  } catch {
-    // best-effort
+  } catch (err) {
+    console.warn(
+      `[slice-events] gate-events failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }
 
@@ -818,8 +820,10 @@ async function recordSliceCompleteEvent(
       from: "building",
       to: "done"
     });
-  } catch {
-    // best-effort
+  } catch (err) {
+    console.warn(
+      `[slice-events] complete-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }
 
@@ -850,8 +854,10 @@ async function triggerFeatureSimplify(
       sliceId,
       ...(startedAt != null ? { startedAt } : {})
     });
-  } catch {
-    // best-effort — never blocks slice complete
+  } catch (err) {
+    console.warn(
+      `[feature-simplify] failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }
 

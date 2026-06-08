@@ -527,8 +527,8 @@ async function emitGateTransitionEvents(repoPath, sliceId, featureId, gates) {
             to: gates.isSimplifyBlocked ? "failed" : "passed"
         });
     }
-    catch {
-        // best-effort
+    catch (err) {
+        console.warn(`[slice-events] gate-events failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 async function recordSliceCompleteEvent(repoPath, sliceId, featureId) {
@@ -543,8 +543,8 @@ async function recordSliceCompleteEvent(repoPath, sliceId, featureId) {
             to: "done"
         });
     }
-    catch {
-        // best-effort
+    catch (err) {
+        console.warn(`[slice-events] complete-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 async function maybeRunFeatureSimplify(repoPath, featureId, sliceId, startedAt, featureResult, skipSimplify) {
@@ -562,8 +562,8 @@ async function triggerFeatureSimplify(repoPath, featureId, sliceId, startedAt, s
             ...(startedAt != null ? { startedAt } : {})
         });
     }
-    catch {
-        // best-effort — never blocks slice complete
+    catch (err) {
+        console.warn(`[feature-simplify] failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 // clearWorktreePathInState is imported from ../auto-merge.mjs to avoid DRY duplication.

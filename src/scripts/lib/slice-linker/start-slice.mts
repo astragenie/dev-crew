@@ -651,7 +651,9 @@ async function recordSliceStartEvent(
       from: null,
       to: "building"
     });
-  } catch {
-    // best-effort
+  } catch (err) {
+    console.warn(
+      `[slice-events] start-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }
