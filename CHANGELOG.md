@@ -3,6 +3,29 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.30.0 — 2026-06-08 — auto-publish GitHub issues at point of FEAT/SLICE creation
+
+### Added
+- `publishFeat(repoPath, featId)` — targeted single-FEAT GitHub issue create; writes
+  `github_issue`, `github_milestone`, `github_url` back to frontmatter.
+- `publishSlice(repoPath, sliceId, featId)` — targeted single-SLICE sub-issue create;
+  ensures parent FEAT issue exists first, attaches sub-issue, writes frontmatter.
+- `github feat-publish --id FEAT-NNN` CLI subcommand for on-demand single-FEAT publish.
+- `backlog add` now calls `publishFeat` after writing the FEAT file — GitHub issue
+  created automatically when GitHub sync is enabled.
+- `spec decompose` now calls `publishFeat` for each new FEAT created from a spec.
+- `slice from-feature` now calls `publishSlice` after writing the SLICE file — GitHub
+  sub-issue created and attached to parent FEAT issue automatically.
+- Both new functions are idempotent (skip if `github_issue` already set) and return
+  `null` (no-op) when `github.enabled: false`; hard throw when enabled but gh fails.
+- 9 new unit tests covering create, idempotency, disabled, and error paths.
+
+### Fixed
+- `publishAll` and `syncMilestones` now persist `github_url` (full URL) alongside
+  `github_issue` (number) so callers can link directly without re-deriving the repo slug.
+- Backfill path: re-running `/loop:publish` on FEATs/SLICEs that have `github_issue`
+  but no `github_url` now writes the missing URL field.
+
 ## v0.29.0 — 2026-06-07 — extend document-writer scope to API docs + diagram captions (FEAT-124)
 
 ### Added
