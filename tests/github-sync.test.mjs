@@ -282,7 +282,7 @@ test("postComment calls gh issue comment with correct args", () => {
     assert.ok(call.includes("42"));
     assert.ok(call.includes("hello comment"));
 });
-import { publishAll, syncPull, postSliceComment } from "../scripts/lib/github-sync.mjs";
+import { publishAll, publishFeat, publishSlice, syncPull, postSliceComment } from "../scripts/lib/github-sync.mjs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -473,4 +473,120 @@ test("publishAll leaves github_url untouched when already set", async () => {
     // Idempotency: only one URL line for the feature.
     const matches = content.match(/github_url:/g) || [];
     assert.equal(matches.length, 1, "github_url should appear exactly once after re-run");
+});
+// --- publishFeat ---
+test("publishFeat returns null when github.enabled is false", async () => {
+    const repo = await tmpSyncRepo(); // enabled: false
+    const calls = [];
+    const ghExec = (args) => {
+        calls.push(args);
+        return "";
+    };
+    const result = await publishFeat(repo, "FEAT-001", { ghExec });
+    assert.equal(result, null);
+    assert.equal(calls.length, 0);
+});
+test("publishFeat creates issue and writes frontmatter on new FEAT", async () => {
+    const { repo, featPath } = await tmpPublishRepo();
+    const ghExec = (args) => {
+        if (args[0] === "--version")
+            return "gh version 2.0";
+        if (args[0] === "label" && args[1] === "list")
+            return JSON.stringify([]);
+        if (args[0] === "label" && args[1] === "create")
+            return "";
+        if (args[0] === "issue" && args[1] === "create")
+            return "https://github.com/org/testrepo/issues/99\n";
+        return "";
+    };
+    const result = await publishFeat(repo, "FEAT-001", { ghExec });
+    assert.equal(result.created, true);
+    assert.equal(result.issueNum, 99);
+    assert.equal(result.url, "https://github.com/org/testrepo/issues/99");
+    const content = await fs.readFile(featPath, "utf8");
+    assert.ok(content.includes("github_issue: 99"), "writes github_issue");
+    assert.ok(content.includes("https://github.com/org/testrepo/issues/99"), "writes github_url");
+});
+test("publishFeat is idempotent when github_issue already set", async () => {
+    const { repo } = await tmpPublishRepo({
+        featFm: 'github_issue: 55\ngithub_url: "https://github.com/org/testrepo/issues/55"\n'
+    });
+    const calls = [];
+    const ghExec = (args) => {
+        calls.push(args);
+        return "";
+    };
+    const result = await publishFeat(repo, "FEAT-001", { ghExec });
+    assert.equal(result.created, false);
+    assert.equal(result.issueNum, 55);
+    assert.equal(calls.length, 0, "no gh calls when already published");
+});
+test("publishFeat throws when github enabled but gh not installed", async () => {
+    const { repo } = await tmpPublishRepo();
+    const ghExec = (_args) => {
+        throw Object.assign(new Error("not found"), { code: "ENOENT" });
+    };
+    await assert.rejects(() => publishFeat(repo, "FEAT-001", { ghExec }), /gh CLI not found/);
+});
+// --- publishSlice ---
+async function tmpSliceRepo() {
+    const { repo, featPath } = await tmpPublishRepo({
+        featFm: "slices: [SLICE-01]\n"
+    });
+    const slicesDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
+    await fs.mkdir(slicesDir, { recursive: true });
+    const slicePath = path.join(slicesDir, "SLICE_01_DO-THING.md");
+    await fs.writeFile(slicePath, "---\nid: SLICE-01\nstatus: pending\nfeature: FEAT-001\n---\n## Objective\n\nDo thing.\n");
+    return { repo, featPath, slicePath };
+}
+test("publishSlice returns null when github.enabled is false", async () => {
+    const repo = await tmpSyncRepo();
+    const result = await publishSlice(repo, "SLICE-01", "FEAT-001", { ghExec: () => "" });
+    assert.equal(result, null);
+});
+test("publishSlice creates FEAT issue + SLICE sub-issue and writes frontmatter on both", async () => {
+    const { repo, featPath, slicePath } = await tmpSliceRepo();
+    let issueCreateCount = 0;
+    const ghExec = (args) => {
+        if (args[0] === "--version")
+            return "gh version 2.0";
+        if (args[0] === "label" && args[1] === "list")
+            return JSON.stringify([]);
+        if (args[0] === "label" && args[1] === "create")
+            return "";
+        if (args[0] === "issue" && args[1] === "create") {
+            issueCreateCount++;
+            return `https://github.com/org/testrepo/issues/${issueCreateCount === 1 ? 10 : 11}\n`;
+        }
+        if (args[0] === "api" && String(args[1]).includes("/issues/11"))
+            return JSON.stringify({ id: 999, number: 11 });
+        if (args[0] === "api" && String(args[1]).includes("sub_issues"))
+            return JSON.stringify({});
+        return "";
+    };
+    const result = await publishSlice(repo, "SLICE-01", "FEAT-001", { ghExec });
+    assert.equal(result.created, true);
+    assert.equal(result.issueNum, 11);
+    const featContent = await fs.readFile(featPath, "utf8");
+    assert.ok(featContent.includes("github_issue: 10"), "FEAT gets github_issue");
+    const sliceContent = await fs.readFile(slicePath, "utf8");
+    assert.ok(sliceContent.includes("github_issue: 11"), "SLICE gets github_issue");
+    assert.ok(sliceContent.includes("https://github.com/org/testrepo/issues/11"), "SLICE gets github_url");
+});
+test("publishSlice is idempotent when slice github_issue already set", async () => {
+    const { repo } = await tmpPublishRepo({
+        featFm: 'github_issue: 10\ngithub_url: "https://github.com/org/testrepo/issues/10"\nslices: [SLICE-01]\n'
+    });
+    const slicesDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices/pending");
+    await fs.mkdir(slicesDir, { recursive: true });
+    await fs.writeFile(path.join(slicesDir, "SLICE_01_DO-THING.md"), '---\nid: SLICE-01\nstatus: pending\nfeature: FEAT-001\ngithub_issue: 77\ngithub_url: "https://github.com/org/testrepo/issues/77"\n---\n## Objective\n\nDo thing.\n');
+    const calls = [];
+    const ghExec = (args) => {
+        calls.push(args);
+        return "";
+    };
+    const result = await publishSlice(repo, "SLICE-01", "FEAT-001", { ghExec });
+    assert.equal(result.created, false);
+    assert.equal(result.issueNum, 77);
+    assert.ok(!calls.some((c) => c[0] === "issue" && c[1] === "create"), "no issue create calls");
 });

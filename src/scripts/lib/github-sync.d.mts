@@ -4,6 +4,13 @@
 // without leaning on inferred shapes.
 
 export function publishAll(repoPath: string, opts?: any): Promise<any>;
+export function publishFeat(repoPath: string, featId: string, opts?: any): Promise<any>;
+export function publishSlice(
+  repoPath: string,
+  sliceId: string,
+  featId: string,
+  opts?: any
+): Promise<any>;
 export function syncPull(repoPath: string, opts?: any): Promise<any>;
 export function postSliceComment(...args: any[]): Promise<any>;
 export function updateIssueStatus(...args: any[]): Promise<any>;

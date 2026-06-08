@@ -435,13 +435,18 @@ async function runBacklogAdd(repoPath, flags, rest) {
     }
     const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body);
     const { addFeature } = await import("./lib/backlog-writer.mjs");
-    return await addFeature(repoPath, {
+    const result = await addFeature(repoPath, {
         title,
         priority: flags.priority,
         category: flags.category,
         target_release: flags.targetRelease,
         body: resolvedBody
     });
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const { publishFeat } = await import("./lib/github-sync.mjs");
+    await publishFeat(repoPath, result.id);
+    return result;
 }
 async function runBacklogPmWrite(repoPath, flags, rest) {
     const featureId = flags.id || rest[0];
@@ -674,7 +679,14 @@ const SPEC_HANDLERS = {
         if (flags.features || flags.featuresJson) {
             const entries = parseFeatureEntries(flags);
             const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-            return decomposeSpec(repoPath, specId, entries);
+            const out = await decomposeSpec(repoPath, specId, entries);
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            const { publishFeat } = await import("./lib/github-sync.mjs");
+            for (const feat of out.created) {
+                await publishFeat(repoPath, feat.id);
+            }
+            return out;
         }
         if (flags.noArchitect) {
             console.error("[spec decompose] --no-architect is deprecated and now a no-op (see DEC-011). " +
@@ -748,6 +760,10 @@ const SLICE_HANDLERS = {
             noClassify: Boolean(flags.noClassify),
             dispatchFn
         });
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const { publishSlice } = await import("./lib/github-sync.mjs");
+        await publishSlice(repoPath, out.slice.id, featureId);
         const { logEvent } = await import("./lib/telemetry.mjs");
         await logEvent(repoPath, {
             command: "slice from-feature",
@@ -939,11 +955,11 @@ async function runLearningsSubcommand(repoPath, positionals, flags) {
     }
     throw new Error(`Unknown learnings subcommand: ${sub}`);
 }
-async function runGithubSubcommand(repoPath, positionals, _flags) {
+async function runGithubSubcommand(repoPath, positionals, flags) {
     const [sub] = positionals;
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
-    const { publishAll, syncMilestones, setupGithubSync } = await import("./lib/github-sync.mjs");
+    const { publishAll, publishFeat, syncMilestones, setupGithubSync } = await import("./lib/github-sync.mjs");
     if (sub === "setup") {
         const result = await setupGithubSync(repoPath);
         console.log("[github-sync] Setup complete. Run 'github publish' next.");
@@ -951,6 +967,20 @@ async function runGithubSubcommand(repoPath, positionals, _flags) {
     }
     if (sub === "publish")
         return publishAll(repoPath);
+    if (sub === "feat-publish") {
+        const featId = flags?.id || positionals[1];
+        if (!featId)
+            throw new Error("github feat-publish requires --id FEAT-NNN.");
+        const result = await publishFeat(repoPath, featId);
+        if (!result) {
+            console.log("[github-sync] GitHub sync disabled — skipped.");
+            return { skipped: true };
+        }
+        console.log(result.created
+            ? `Published: #${result.issueNum} ${result.url}`
+            : `Already published: #${result.issueNum}`);
+        return result;
+    }
     if (sub === "status")
         return syncMilestones(repoPath);
     if (sub === "sync" || sub === "bootstrap") {
@@ -961,7 +991,7 @@ async function runGithubSubcommand(repoPath, positionals, _flags) {
         console.log(`[task-store] provider: ${provider.constructor.name}`);
         return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
     }
-    throw new Error("github requires a subcommand: setup | publish | sync | status | bootstrap");
+    throw new Error("github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap");
 }
 main().catch((error) => {
     console.error(error.message);

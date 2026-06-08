@@ -516,3 +516,114 @@ export async function bootstrapFromGithub(repoPath, { ghExec = defaultGhExec, co
   console.log(`[github-sync] bootstrap: ${created.length} created, ${skipped} skipped`);
   return { created: created.length, skipped, featIds: created };
 }
+
+/**
+ * Publish a single FEAT to GitHub — creates issue, writes frontmatter back.
+ * Returns null (no-op) when github.enabled is false.
+ * Throws when enabled but gh CLI is missing or the API call fails.
+ * Idempotent: returns existing issueNum/url without gh calls if already published.
+ *
+ * @param {string} repoPath
+ * @param {string} featId - e.g. "FEAT-007"
+ * @param {object} options
+ * @param {function} options.ghExec
+ * @param {object} options.config
+ * @returns {Promise<{ created: boolean, issueNum: number, url: string } | null>}
+ */
+export async function publishFeat(repoPath, featId, { ghExec = defaultGhExec, config } = {}) {
+  const resolved = await loadConfig(repoPath, config);
+  if (!isEnabled(resolved)) return null;
+  const repo = detectRepo(resolved.github.repo, repoPath);
+  const feats = await listBacklog(repoPath, { config: resolved });
+  const feat = feats.find((f) => f.id === featId);
+  if (!feat) throw new Error(`[github-sync] FEAT not found: ${featId}`);
+
+  if (feat.frontmatter.github_issue) {
+    return { created: false, issueNum: feat.frontmatter.github_issue, url: feat.frontmatter.github_url ?? null };
+  }
+
+  if (!isGhInstalled({ ghExec })) {
+    throw new Error("[github-sync] gh CLI not found — cannot publish FEAT. Run: gh auth login");
+  }
+
+  let milestoneNum = null;
+  let milestoneTitle = null;
+  if (feat.frontmatter.phase) {
+    milestoneTitle = `Phase ${feat.frontmatter.phase}`;
+    milestoneNum = upsertMilestone(repo, { title: milestoneTitle }, { ghExec });
+  }
+
+  const issueNum = createFeatureIssue(repo, feat, milestoneTitle, { ghExec });
+  const url = `https://github.com/${repo}/issues/${issueNum}`;
+  const updated = mergeFrontmatter(await fs.readFile(feat.filePath, "utf8"), {
+    github_issue: issueNum,
+    github_milestone: milestoneNum ?? null,
+    github_url: url,
+  });
+  await fs.writeFile(feat.filePath, updated);
+  console.log(`[github-sync] publishFeat: ${featId} → #${issueNum}`);
+  return { created: true, issueNum, url };
+}
+
+/**
+ * Publish a single SLICE to GitHub as a sub-issue of its parent FEAT.
+ * Ensures the parent FEAT issue exists first (calls publishFeat).
+ * Returns null (no-op) when github.enabled is false.
+ * Throws when enabled but gh CLI is missing or the API call fails.
+ * Idempotent: returns existing issueNum/url without gh calls if already published.
+ *
+ * @param {string} repoPath
+ * @param {string} sliceId - e.g. "SLICE-42"
+ * @param {string} featId - e.g. "FEAT-007"
+ * @param {object} options
+ * @param {function} options.ghExec
+ * @param {object} options.config
+ * @returns {Promise<{ created: boolean, issueNum: number, url: string } | null>}
+ */
+export async function publishSlice(repoPath, sliceId, featId, { ghExec = defaultGhExec, config } = {}) {
+  const resolved = await loadConfig(repoPath, config);
+  if (!isEnabled(resolved)) return null;
+  const repo = detectRepo(resolved.github.repo, repoPath);
+
+  // Check slice idempotency before any gh calls
+  const sliceFile = await findSliceFile(repoPath, sliceId, resolved);
+  if (!sliceFile) throw new Error(`[github-sync] Slice file not found: ${sliceId}`);
+  const sliceContent = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter: sliceFm, body: sliceBody } = parseFrontmatter(sliceContent);
+
+  if (sliceFm.github_issue) {
+    return { created: false, issueNum: sliceFm.github_issue, url: sliceFm.github_url ?? null };
+  }
+
+  if (!isGhInstalled({ ghExec })) {
+    throw new Error("[github-sync] gh CLI not found — cannot publish SLICE. Run: gh auth login");
+  }
+
+  const featResult = await publishFeat(repoPath, featId, { ghExec, config: resolved });
+  if (!featResult) return null;
+  const featIssueNum = featResult.issueNum;
+
+  const sliceIssueNum = createSliceIssue(
+    repo,
+    { id: sliceId, frontmatter: sliceFm, body: sliceBody },
+    { ghExec }
+  );
+  const sliceUrl = `https://github.com/${repo}/issues/${sliceIssueNum}`;
+  const updatedSlice = mergeFrontmatter(sliceContent, {
+    github_issue: sliceIssueNum,
+    github_url: sliceUrl,
+  });
+  await fs.writeFile(sliceFile, updatedSlice);
+
+  try {
+    attachSubIssue(repo, featIssueNum, sliceIssueNum, { ghExec });
+  } catch (err) {
+    const detail = `${err.message ?? ""} ${err.stderr ?? ""}`;
+    if (!detail.includes("422") && !detail.includes("duplicate")) {
+      throw err;
+    }
+  }
+
+  console.log(`[github-sync] publishSlice: ${sliceId} → #${sliceIssueNum} (sub of #${featIssueNum})`);
+  return { created: true, issueNum: sliceIssueNum, url: sliceUrl };
+}

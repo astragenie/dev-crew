@@ -478,13 +478,18 @@ async function runBacklogAdd(repoPath: string, flags: Record<string, any>, rest:
   }
   const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body);
   const { addFeature } = await import("./lib/backlog-writer.mjs");
-  return await addFeature(repoPath, {
+  const result = await addFeature(repoPath, {
     title,
     priority: flags.priority,
     category: flags.category,
     target_release: flags.targetRelease,
     body: resolvedBody
   });
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const { publishFeat } = await import("./lib/github-sync.mjs");
+  await (publishFeat as any)(repoPath, result.id);
+  return result;
 }
 
 async function runBacklogPmWrite(repoPath: string, flags: Record<string, any>, rest: string[]) {
@@ -739,7 +744,14 @@ const SPEC_HANDLERS = {
     if (flags.features || flags.featuresJson) {
       const entries = parseFeatureEntries(flags);
       const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-      return decomposeSpec(repoPath, specId, entries);
+      const out = await decomposeSpec(repoPath, specId, entries);
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { publishFeat } = await import("./lib/github-sync.mjs");
+      for (const feat of out.created) {
+        await (publishFeat as any)(repoPath, feat.id);
+      }
+      return out;
     }
 
     if (flags.noArchitect) {
@@ -830,6 +842,10 @@ const SLICE_HANDLERS = {
       noClassify: Boolean(flags.noClassify),
       dispatchFn
     });
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const { publishSlice } = await import("./lib/github-sync.mjs");
+    await (publishSlice as any)(repoPath, out.slice.id, featureId);
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
       command: "slice from-feature",
@@ -1043,17 +1059,33 @@ async function runLearningsSubcommand(
   throw new Error(`Unknown learnings subcommand: ${sub}`);
 }
 
-async function runGithubSubcommand(repoPath: any, positionals: any, _flags: any) {
+async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {
   const [sub] = positionals;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
-  const { publishAll, syncMilestones, setupGithubSync } = await import("./lib/github-sync.mjs");
+  const { publishAll, publishFeat, syncMilestones, setupGithubSync } =
+    await import("./lib/github-sync.mjs");
   if (sub === "setup") {
     const result = await (setupGithubSync as any)(repoPath);
     console.log("[github-sync] Setup complete. Run 'github publish' next.");
     return result;
   }
   if (sub === "publish") return (publishAll as any)(repoPath);
+  if (sub === "feat-publish") {
+    const featId = flags?.id || positionals[1];
+    if (!featId) throw new Error("github feat-publish requires --id FEAT-NNN.");
+    const result = await (publishFeat as any)(repoPath, featId);
+    if (!result) {
+      console.log("[github-sync] GitHub sync disabled — skipped.");
+      return { skipped: true };
+    }
+    console.log(
+      result.created
+        ? `Published: #${result.issueNum} ${result.url}`
+        : `Already published: #${result.issueNum}`
+    );
+    return result;
+  }
   if (sub === "status") return (syncMilestones as any)(repoPath);
   if (sub === "sync" || sub === "bootstrap") {
     const { resolveConfig } = await import("./lib/config-resolver.mjs");
@@ -1063,7 +1095,9 @@ async function runGithubSubcommand(repoPath: any, positionals: any, _flags: any)
     console.log(`[task-store] provider: ${provider.constructor.name}`);
     return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
   }
-  throw new Error("github requires a subcommand: setup | publish | sync | status | bootstrap");
+  throw new Error(
+    "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap"
+  );
 }
 
 main().catch((error) => {
