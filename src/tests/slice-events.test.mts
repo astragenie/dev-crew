@@ -99,7 +99,10 @@ describe("slice-events", () => {
       console.warn = orig;
     }
     assert.equal(warns.length, 1);
-    assert.ok(warns[0]!.includes("[slice-events]"), `expected [slice-events] prefix, got: ${warns[0]}`);
+    assert.ok(
+      warns[0]!.includes("[slice-events]"),
+      `expected [slice-events] prefix, got: ${warns[0]}`
+    );
     assert.ok(warns[0]!.includes("SLICE-00"), `expected sliceId in warn, got: ${warns[0]}`);
   });
 
