@@ -3,6 +3,21 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.31.0 — 2026-06-08 — competitor gap audit: 4 new briefs + 22 triaged FEATs
+
+### Added
+- Competitor gap audit expanded to 11 briefs: add OpenHands, GitHub Copilot
+  Workspace, Qodo, and Windsurf briefs; matrix grows from 47 to 68 ranked gaps.
+- 22 new triaged FEATs from audit (FEAT-082–FEAT-165, duplicates removed):
+  top two P1 items are FEAT-134 (rule activation triggers, autonomous_safe) and
+  FEAT-133 (budget enforcement, deferred pending architect design).
+  Active P2 `autonomous_safe` picks: FEAT-088 Iron Law tags, FEAT-089
+  evidence-before-claims skill, FEAT-111 `--from-issue` flag, FEAT-165
+  per-skill cost attribution.
+- Platform competitive positioning research (`docs/research/2026-06-08-platform-positioning/`):
+  14 briefs covering Codex, OpenHands, Cline, Mastra, n8n, Kestra, Temporal,
+  Trigger.dev, AutoGen, PydanticAI, Airflow, Windsurf, and Claude Code.
+
 ## Unreleased
 
 ### Added
