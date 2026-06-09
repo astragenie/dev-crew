@@ -101,6 +101,87 @@ export async function buildSkillActivationBlock(skillsDir) {
         throw err;
     }
 }
+function patternSubsumed(p1, p2) {
+    return p1 === p2 || p1.includes(p2) || p2.includes(p1);
+}
+function dirPrefixOverlaps(p1, p2) {
+    const dir1 = p1.split("*")[0];
+    const dir2 = p2.split("*")[0];
+    return Boolean(dir1 && dir2 && (dir1.startsWith(dir2) || dir2.startsWith(dir1)));
+}
+function extractExt(pattern) {
+    return pattern.match(/\.[\w]+(\s|$|\*)/)?.[0]?.replace(/[\s*]/g, "") ?? "";
+}
+function extensionOverlap(p1, p2) {
+    const ext1 = extractExt(p1);
+    const ext2 = extractExt(p2);
+    if (!ext1 || !ext2)
+        return null;
+    if (ext1 === ext2)
+        return true;
+    if (ext1.startsWith(".") && ext2.startsWith("."))
+        return false;
+    return null;
+}
+function globsOverlap(pattern1, pattern2) {
+    if (patternSubsumed(pattern1, pattern2))
+        return true;
+    if (dirPrefixOverlaps(pattern1, pattern2))
+        return true;
+    const extResult = extensionOverlap(pattern1, pattern2);
+    if (extResult !== null)
+        return extResult;
+    return false;
+}
+/**
+ * Builds a rules block by filtering rules based on glob overlap with inScopeGlobs.
+ *
+ * Rules are included if:
+ * - alwaysApply is true, OR
+ * - any of the rule's globs overlaps with any of the inScopeGlobs (via pattern matching)
+ *
+ * Returns empty string if no rules match or if rules array is empty.
+ *
+ * @param rules - array of Rule objects
+ * @param inScopeGlobs - array of glob patterns from the current slice
+ * @returns markdown-formatted rules block or empty string
+ */
+export function buildRulesBlock(rules, inScopeGlobs) {
+    if (!Array.isArray(rules) || rules.length === 0) {
+        return "";
+    }
+    if (!Array.isArray(inScopeGlobs)) {
+        inScopeGlobs = [];
+    }
+    // Filter rules that match: alwaysApply or any glob overlap
+    const matchingRules = rules.filter((rule) => {
+        if (rule.alwaysApply) {
+            return true;
+        }
+        // Check if any rule glob matches any inScopeGlob
+        if (rule.globs.length === 0) {
+            return false;
+        }
+        return rule.globs.some((ruleGlob) => inScopeGlobs.some((scopeGlob) => globsOverlap(scopeGlob, ruleGlob)));
+    });
+    if (matchingRules.length === 0) {
+        return "";
+    }
+    const lines = [];
+    lines.push("## Auto-attached rules");
+    lines.push("");
+    for (const rule of matchingRules) {
+        if (rule.description) {
+            lines.push(`### ${rule.id}`);
+            lines.push("");
+            lines.push(rule.description);
+            lines.push("");
+        }
+        lines.push(rule.body.trim());
+        lines.push("");
+    }
+    return lines.join("\n");
+}
 export function buildTokens(config, extras) {
     const aiLoopRoot = resolveLoopPath(config, "aiLoopRoot");
     return {

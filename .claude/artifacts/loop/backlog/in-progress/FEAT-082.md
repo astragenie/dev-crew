@@ -1,13 +1,13 @@
 ---
 id: FEAT-082
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-09
 depends_on: []
-slices: []
+slices: [SLICE-86]
 derived_from: null
 composite_score: 7
 source_competitors: [Cursor agents]
@@ -15,12 +15,13 @@ autonomous_safe: false
 tags: [skill-routing, rules, context-injection]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.40
-pm_effort_estimate: 0.40
+pm_customer_impact: 0.4
+pm_effort_estimate: 0.4
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.40
-pm_dependency_depth: 0.10
+pm_technical_risk: 0.4
+pm_dependency_depth: 0.1
 triage_notes: "Composite 7. Glob-scoped rule auto-attachment is directionally similar to FEAT-102 (rule activation triggers). Near-exact duplicate of FEAT-105. These two FEATs overlap heavily — if FEAT-102 (model_decision + glob triggers) ships, this is largely satisfied. autonomousSafe: false — needs schema design."
+started_at: 2026-06-09
 ---
 # FEAT-082: Glob-scoped auto-attach rules with remote import
 
