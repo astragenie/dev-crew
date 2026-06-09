@@ -1,7 +1,7 @@
 ---
 id: FEAT-166
 title: Per-repo cost attribution in regression check
-status: pending
+status: triaged
 priority: P1
 category: bug/observability
 target_release: null
@@ -15,6 +15,13 @@ autonomous_safe: false
 tags: [crew, cost, observability, bug]
 needs_contract: true
 needs_ux: false
+pm_customer_impact: 0.75
+pm_effort_estimate: 0.35
+pm_strategic_alignment: 0.8
+pm_technical_risk: 0.5
+pm_dependency_depth: 0.45
+composite_score: 0.71
+triage_notes: "High-impact bug fix, confirmed false-trip evidence (2026-06-09). Risk band 0.3-0.5: isolated module logic, additive frontmatter field, clean rollback. Cost analog SLICE-83 (USD 41.39) confirms effort 0.35. Weak dimension observability 0.66: AC must add parse/filter logging. Cross-plugin contract coordination with hero-crew blocks autonomous run."
 ---
 # FEAT-166: Per-repo cost attribution in regression check
 

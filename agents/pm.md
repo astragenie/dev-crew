@@ -82,7 +82,7 @@ Probes:
 
 Record the band rationale in `reasoning` — two PM dispatches scoring the same FEAT must land in the same band.
 
-### Pre-mortem (mandatory when technical_risk >= 0.6 OR priority P0/P1)
+### Pre-mortem (mandatory when technical_risk >= 0.6, OR compositePriority is P0, OR compositePriority is P1 — yes, P1 included)
 
 Answer in `risks[]`, one entry each:
 

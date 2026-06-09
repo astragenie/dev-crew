@@ -1,8 +1,8 @@
 ---
 id: FEAT-168
 title: Slice decomposition gate when effort_points >= 8
-status: pending
-priority: P2
+status: triaged
+priority: P1
 category: workflow
 target_release: null
 created: 2026-06-09
@@ -15,6 +15,13 @@ autonomous_safe: false
 tags: [pm, workflow, slice]
 needs_contract: true
 needs_ux: false
+pm_customer_impact: 0.65
+pm_effort_estimate: 0.4
+pm_strategic_alignment: 0.75
+pm_technical_risk: 0.45
+pm_dependency_depth: 0.95
+composite_score: 0.63
+triage_notes: "Decomposition forcing function (FEAT-020 worst case: 15 tasks one slice). Risk band 0.3-0.5: isolated CLI gate ~50 lines, clean rollback, but rollback-after-adoption leaves pending child slices in limbo - documented transition hazard. Cost analog SLICE-83 = effort 0.40. Weak dimension observability 0.66: refuse-path error must be logged, AC-2 underspecifies. Dispatch loop:spec-writer for proposed_slices schema contract. Hard dep FEAT-167 (dependency_depth 0.95)."
 ---
 # FEAT-168: Slice decomposition gate when effort_points >= 8
 

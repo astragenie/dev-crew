@@ -1,7 +1,7 @@
 ---
 id: FEAT-167
 title: Story-point sizing on FEATs with expected-cost regression formula
-status: pending
+status: triaged
 priority: P1
 category: workflow/observability
 target_release: null
@@ -15,6 +15,13 @@ autonomous_safe: false
 tags: [pm, cost, observability, sizing]
 needs_contract: true
 needs_ux: false
+pm_customer_impact: 0.7
+pm_effort_estimate: 0.6
+pm_strategic_alignment: 0.85
+pm_technical_risk: 0.55
+pm_dependency_depth: 0.8
+composite_score: 0.635
+triage_notes: "Strategic sizing feature unblocking FEAT-168. Risk band 0.3-0.5 leaning 0.6: new effort_points pattern + backfill of done/ FEATs, config-gated formula switch keeps rollback clean. Pre-mortem: Fibonacci mapping table must be validated against 5+ backfilled FEATs (collapse-to-13 risk). Cost analog SLICE-83 + 40 pct backfill overhead = effort 0.60. Weak dimension observability 0.66: needs AC logging expected_usd calc. Dispatch loop:spec-writer for AC-1 contract before slicing. Hard dep FEAT-166."
 ---
 # FEAT-167: Story-point sizing on FEATs with expected-cost regression formula
 
