@@ -1,6 +1,6 @@
 ---
 id: FEAT-082
-status: in-progress
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
@@ -22,6 +22,8 @@ pm_technical_risk: 0.4
 pm_dependency_depth: 0.1
 triage_notes: "Composite 7. Glob-scoped rule auto-attachment is directionally similar to FEAT-102 (rule activation triggers). Near-exact duplicate of FEAT-105. These two FEATs overlap heavily — if FEAT-102 (model_decision + glob triggers) ships, this is largely satisfied. autonomousSafe: false — needs schema design."
 started_at: 2026-06-09
+slices_complete: [SLICE-86]
+completed_at: 2026-06-09
 ---
 # FEAT-082: Glob-scoped auto-attach rules with remote import
 

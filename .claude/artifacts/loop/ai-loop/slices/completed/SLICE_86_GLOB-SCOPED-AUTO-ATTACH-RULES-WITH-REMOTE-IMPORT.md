@@ -1,6 +1,6 @@
 ---
 id: SLICE-86
-status: pending
+status: completed
 feature: FEAT-082
 phase: null
 priority: P2
@@ -8,6 +8,7 @@ target_release: null
 requires_validation: true
 created: 2026-06-09
 updated: 2026-06-09
+completed_at: 2026-06-09
 ---
 # SLICE-86: Glob-scoped auto-attach rules with remote import
 
