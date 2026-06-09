@@ -10,7 +10,7 @@ import {
 } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
 import { pathExists } from "./paths.mjs";
-import { buildTokens } from "./loop-installer-tokens.mjs";
+import { buildTokens, buildSkillActivationBlock } from "./loop-installer-tokens.mjs";
 import {
   writeBacklogScaffold,
   writeBacklogStateMachine,
@@ -58,7 +58,8 @@ export async function installLoop(
   const writes: any[] = [];
 
   const config = await resolveConfig(repoPath, { preset: options.preset });
-  const tokens = buildTokens(config);
+  const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
+  const tokens = buildTokens(config, { skillActivationBlock });
 
   await updateClaudeMd(repoPath, tokens, writes);
   await writeLoopRules(repoPath, tokens, writes);
@@ -100,7 +101,8 @@ export async function installLoop(
 
 export async function reportStatus(repoPath: string): Promise<Record<string, any>> {
   const config = await resolveConfig(repoPath);
-  const tokens = buildTokens(config);
+  const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
+  const tokens = buildTokens(config, { skillActivationBlock });
   const claudePath = path.join(repoPath, "CLAUDE.md");
   const claudeMd = await fs.readFile(claudePath, "utf8").catch(() => "");
   return {

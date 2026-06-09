@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PATH_DEFAULTS } from "./paths.mjs";
+import { parseSkillFrontmatter } from "./skill-frontmatter.mjs";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(scriptDir, "..", "..", "templates");
 export async function readTemplate(relativePath) {
@@ -54,7 +55,53 @@ export function buildContextRulesList(config) {
         lines.join("\n") +
         "\n");
 }
-export function buildTokens(config) {
+export async function buildSkillActivationBlock(skillsDir) {
+    try {
+        const skillDirs = await fs.readdir(skillsDir, { withFileTypes: true });
+        const skillMetas = [];
+        for (const entry of skillDirs) {
+            if (!entry.isDirectory()) {
+                continue;
+            }
+            const skillMdPath = path.join(skillsDir, entry.name, "SKILL.md");
+            try {
+                const content = await fs.readFile(skillMdPath, "utf8");
+                const meta = parseSkillFrontmatter(content);
+                skillMetas.push(meta);
+            }
+            catch {
+                // SKILL.md not found or unreadable, skip
+            }
+        }
+        // Filter to only manual and glob triggers
+        const conditionalSkills = skillMetas.filter((m) => m.trigger === "manual" || m.trigger === "glob");
+        if (conditionalSkills.length === 0) {
+            return "";
+        }
+        const lines = [];
+        lines.push("## Conditional skill activation");
+        lines.push("");
+        for (const skill of conditionalSkills) {
+            if (skill.trigger === "manual") {
+                lines.push(`- **${skill.name}** — invoke only when the user explicitly requests it.`);
+            }
+            else if (skill.trigger === "glob") {
+                const globsStr = skill.globs.map((g) => `\`${g}\``).join(", ");
+                lines.push(`- **${skill.name}** — activate when files match: ${globsStr}`);
+            }
+        }
+        lines.push("");
+        return lines.join("\n");
+    }
+    catch (err) {
+        // skillsDir does not exist or is not readable
+        if (err.code === "ENOENT") {
+            return "";
+        }
+        throw err;
+    }
+}
+export function buildTokens(config, extras) {
     const aiLoopRoot = resolveLoopPath(config, "aiLoopRoot");
     return {
         aiLoopRoot,
@@ -69,6 +116,7 @@ export function buildTokens(config) {
         productDescription: config.productDescription || "",
         stackDescription: config.stackDescription || "",
         mandatoryDocsList: buildMandatoryDocsList(config, aiLoopRoot),
-        contextRulesList: buildContextRulesList(config)
+        contextRulesList: buildContextRulesList(config),
+        skillActivationBlock: extras?.skillActivationBlock || ""
     };
 }

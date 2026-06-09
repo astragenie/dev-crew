@@ -22,6 +22,7 @@ better state than you found it.
 1. `CLAUDE.md` — repo memory, hard rules, anti-patterns
 {{mandatoryDocsList}}
 {{contextRulesList}}
+{{skillActivationBlock}}
 ## First-response checklist
 
 Before beginning any implementation work, run this checklist and report findings:

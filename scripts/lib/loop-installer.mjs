@@ -4,7 +4,7 @@ import { resolveConfig, writeConfigIfMissing } from "./config-resolver.mjs";
 import { findCrewCli, getCrewVersion, compareSemver, MIN_CREW_VERSION } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
 import { pathExists } from "./paths.mjs";
-import { buildTokens } from "./loop-installer-tokens.mjs";
+import { buildTokens, buildSkillActivationBlock } from "./loop-installer-tokens.mjs";
 import { writeBacklogScaffold, writeBacklogStateMachine, writeSpecsScaffold, writeGradesScaffold, writeDecisionsScaffold, writeLoopControlFiles, writeLoopRules, registerReadGuardHook, updateClaudeMd, MARKER_START, MARKER_END } from "./loop-installer-scaffold.mjs";
 export { buildContextRulesList } from "./loop-installer-tokens.mjs";
 export { MARKER_START, MARKER_END } from "./loop-installer-scaffold.mjs";
@@ -28,7 +28,8 @@ export async function installLoop(repoPath, options = {}) {
     }
     const writes = [];
     const config = await resolveConfig(repoPath, { preset: options.preset });
-    const tokens = buildTokens(config);
+    const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
+    const tokens = buildTokens(config, { skillActivationBlock });
     await updateClaudeMd(repoPath, tokens, writes);
     await writeLoopRules(repoPath, tokens, writes);
     await writeLoopControlFiles(repoPath, tokens, writes);
@@ -64,7 +65,8 @@ export async function installLoop(repoPath, options = {}) {
 }
 export async function reportStatus(repoPath) {
     const config = await resolveConfig(repoPath);
-    const tokens = buildTokens(config);
+    const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
+    const tokens = buildTokens(config, { skillActivationBlock });
     const claudePath = path.join(repoPath, "CLAUDE.md");
     const claudeMd = await fs.readFile(claudePath, "utf8").catch(() => "");
     return {
