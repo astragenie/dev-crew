@@ -119,6 +119,7 @@ export async function buildSkillActivationBlock(skillsDir: string): Promise<stri
 }
 
 function patternSubsumed(p1: string, p2: string): boolean {
+  if (!p1 || !p2) return false;
   return p1 === p2 || p1.includes(p2) || p2.includes(p1);
 }
 
@@ -211,7 +212,7 @@ export function buildRulesBlock(rules: Rule[], inScopeGlobs: string[]): string {
 
 export function buildTokens(
   config: Record<string, any>,
-  extras?: { skillActivationBlock?: string }
+  extras?: { skillActivationBlock?: string; rulesBlock?: string }
 ): Record<string, string> {
   const aiLoopRoot = resolveLoopPath(config, "aiLoopRoot");
   return {
@@ -228,6 +229,7 @@ export function buildTokens(
     stackDescription: config.stackDescription || "",
     mandatoryDocsList: buildMandatoryDocsList(config, aiLoopRoot),
     contextRulesList: buildContextRulesList(config),
-    skillActivationBlock: extras?.skillActivationBlock || ""
+    skillActivationBlock: extras?.skillActivationBlock || "",
+    rulesBlock: extras?.rulesBlock || ""
   };
 }

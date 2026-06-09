@@ -102,6 +102,8 @@ export async function buildSkillActivationBlock(skillsDir) {
     }
 }
 function patternSubsumed(p1, p2) {
+    if (!p1 || !p2)
+        return false;
     return p1 === p2 || p1.includes(p2) || p2.includes(p1);
 }
 function dirPrefixOverlaps(p1, p2) {
@@ -198,6 +200,7 @@ export function buildTokens(config, extras) {
         stackDescription: config.stackDescription || "",
         mandatoryDocsList: buildMandatoryDocsList(config, aiLoopRoot),
         contextRulesList: buildContextRulesList(config),
-        skillActivationBlock: extras?.skillActivationBlock || ""
+        skillActivationBlock: extras?.skillActivationBlock || "",
+        rulesBlock: extras?.rulesBlock || ""
     };
 }

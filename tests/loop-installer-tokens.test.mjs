@@ -310,3 +310,32 @@ test("buildRulesBlock returns empty string for non-array inScopeGlobs (converts 
     const result = buildRulesBlock(rules, null);
     assert.equal(result, "");
 });
+test("buildRulesBlock: rule with empty-string glob does not match any inScopeGlob", () => {
+    const rules = [
+        {
+            id: "empty-glob-rule",
+            globs: [""],
+            alwaysApply: false,
+            description: "Empty glob rule",
+            body: "Should not appear"
+        }
+    ];
+    const result = buildRulesBlock(rules, ["src/**/*.ts", "**/*.md", "anything"]);
+    assert.equal(result, "");
+});
+test("buildTokens includes rulesBlock when passed in extras", () => {
+    const config = { productName: "Test Product" };
+    const rulesBlock = "## Auto-attached rules\n\n### my-rule\n\nBody";
+    const tokens = buildTokens(config, { rulesBlock });
+    assert.equal(tokens.rulesBlock, rulesBlock);
+});
+test("buildTokens rulesBlock defaults to empty string when extras omitted", () => {
+    const config = { productName: "Test Product" };
+    const tokens = buildTokens(config);
+    assert.equal(tokens.rulesBlock, "");
+});
+test("buildTokens rulesBlock defaults to empty string when extras is empty object", () => {
+    const config = { productName: "Test Product" };
+    const tokens = buildTokens(config, {});
+    assert.equal(tokens.rulesBlock, "");
+});
