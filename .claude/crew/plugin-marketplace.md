@@ -6,7 +6,7 @@ The `loop` plugin ships from this repo. The `crew` plugin ships from a separate 
 
 | Plugin | Marketplace | GitHub Repo |
 |--------|-------------|-------------|
-| `loop` | `loop` | `sergeymilashico/hero-crew-autonomous-loop` |
+| `loop` | `loop` | `sergeymilashico/loop` |
 | `crew` | `astra` | `sergeymilashico/hero-crew` |
 
 ## IMPORTANT: Never create local marketplaces
@@ -25,7 +25,7 @@ Use `"source": "github"` in `known_marketplaces.json`.
 ## Re-register from scratch
 
 ```bash
-git clone --depth 1 https://github.com/sergeymilashico/hero-crew-autonomous-loop \
+git clone --depth 1 https://github.com/sergeymilashico/loop \
   ~/.claude/plugins/marketplaces/loop
 git clone --depth 1 https://github.com/sergeymilashico/hero-crew \
   ~/.claude/plugins/marketplaces/astra
@@ -33,7 +33,7 @@ git clone --depth 1 https://github.com/sergeymilashico/hero-crew \
 
 Add to `known_marketplaces.json`:
 ```json
-"loop":  { "source": { "source": "github", "repo": "sergeymilashico/hero-crew-autonomous-loop" },
+"loop":  { "source": { "source": "github", "repo": "sergeymilashico/loop" },
            "installLocation": "~/.claude/plugins/marketplaces/loop" },
 "astra": { "source": { "source": "github", "repo": "sergeymilashico/hero-crew" },
            "installLocation": "~/.claude/plugins/marketplaces/astra" }
