@@ -3,7 +3,7 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## Unreleased
+## v0.32.0 — 2026-06-09 — FEAT-020: hierarchical parallel dispatch primitive
 
 ### Added
 - **FEAT-020 SLICE-1** — Hierarchical parallel subagent dispatch primitive.
@@ -12,11 +12,19 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
   `node scripts/loop.mjs dispatch {prepare|finalize}`, and
   `loop:hierarchical-dispatcher` agent. Worktree-per-child isolation,
   blocking `awaitAll`, continue-on-failure, depth-capped recursion via
-  `.claude/loop.json` (`dispatchLimits.maxDepth`, default 3). SLICE-2
-  (upstream PR refactoring `crew:parallel-runner` to call this library)
-  is a follow-up.
+  `.claude/loop.json` (`dispatchLimits.maxDepth`, default 3).
   Spec: `docs/superpowers/specs/2026-06-09-feat020-hierarchical-dispatch-design.md`.
   Plan: `docs/superpowers/plans/2026-06-09-feat020-slice-1-hierarchical-dispatch.md`.
+
+### Cross-plugin coordination
+
+- **FEAT-020 SLICE-2** (hero-crew PR #114) refactors `crew:parallel-runner` to
+  delegate worktree creation + priority-ordered merge to the new dispatch CLI.
+  That PR documents loop >= v0.32.0 (this release) as a hard requirement.
+- Telemetry artifacts (`worktrees.jsonl`, `trace.jsonl`, per-child result
+  markers, `summary.md`) under `.claude/artifacts/loop/dispatch/<runId>/` are
+  the ingestion surface for **FEAT-133** (budget enforcement) and **FEAT-165**
+  (per-skill cost attribution) downstream.
 
 ## v0.31.0 — 2026-06-08 — competitor gap audit: 4 new briefs + 22 triaged FEATs
 
