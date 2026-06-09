@@ -18,6 +18,7 @@ jobs:
       - run: git diff --exit-code scripts/
       - run: node ./scripts/validate-manifests.mjs
       - run: node ./scripts/validate-content-length.mjs
+      - run: node ./scripts/validate-decline-citations.mjs --repo .
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

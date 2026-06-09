@@ -15,6 +15,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
   (≤15 tool calls, ≤8 min) and an inline-output fallback per
   `docs/sop/specialist-pause-handling.md`. See
   `commands/slice-review-ladder.md` for the full when-to-pick table.
+- Add `validate-decline-citations.mjs` validator + CLAUDE.md clause-id
+  annotations (FEAT-078, SLICE-83): every H2 in CLAUDE.md now carries
+  `<!-- clause: <id> -->`; PM declines with `composite_priority: P4`
+  must include `declined_per: [<clause-id>]` frontmatter; CI gate
+  enforces.
 
 ## v0.30.0 — 2026-06-08 — auto-publish GitHub issues at point of FEAT/SLICE creation
 

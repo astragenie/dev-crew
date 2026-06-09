@@ -5,6 +5,7 @@ of the `crew` plugin. Provides HARD RULE blocks, slice scaffold,
 phase-gate runner, and the autonomous-development loop primitives.
 
 ## Read first
+<!-- clause: read-first -->
 
 1. `README.md` — what this plugin is, install instructions, pinned release.
 2. `ADOPTION.md` — preconditions, backup advice, and a manual install walk-through.
@@ -16,6 +17,7 @@ phase-gate runner, and the autonomous-development loop primitives.
 6. `CHANGELOG.md` — recent releases.
 
 ## Engineering standards
+<!-- clause: engineering-standards -->
 
 For language-agnostic patterns and design guidance, consult
 [`Astragenie.Standards`](https://github.com/sergeymilashico/Astragenie.Standards)
@@ -25,12 +27,14 @@ local `docs/code-conventions.md` is self-contained and authoritative
 for this repo.
 
 ## Hard dependency
+<!-- clause: hard-dependency -->
 
 This plugin requires the [`crew`](https://github.com/sergeymilashico/hero-crew)
 plugin at the version pinned in `scripts/lib/plugin-identity.mjs::MIN_CREW_VERSION`.
 `/loop:install` refuses to run against an older crew.
 
 ## Local commands
+<!-- clause: local-commands -->
 
 - `npm test` — full test suite (`node --test tests/*.test.mjs`).
 - `npm run lint` — ESLint flat config.
@@ -40,6 +44,7 @@ plugin at the version pinned in `scripts/lib/plugin-identity.mjs::MIN_CREW_VERSI
   (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
 
 ## CI gates
+<!-- clause: ci-gates -->
 
 GitHub Actions runs on every push and PR:
 
@@ -55,6 +60,7 @@ Pre-push hook (`scripts/pre-push-validate.mjs`) runs manifest +
 content-length + format-check locally before any `git push`.
 
 ## Repo conventions
+<!-- clause: repo-conventions -->
 
 - ESM only (`.mjs`). No CommonJS. Source is `src/scripts/*.mts`; tsc
   emits `scripts/*.mjs` (CI checks `git diff --exit-code scripts/`).
@@ -84,6 +90,7 @@ content-length + format-check locally before any `git push`.
   counterpart is drift and should be ported.
 
 ## Backlog discipline
+<!-- clause: backlog-discipline -->
 
 Active backlog under `.claude/artifacts/loop/backlog/{pending,triaged,in-progress,done}/`.
 Each FEAT has frontmatter declaring priority, status, and an
@@ -104,7 +111,15 @@ feat/preset-skill-activation — preset is sole source. The earlier
 upstream-request `docs/upstream-requests/2026-06-07-...orchestrate-slice-surface-stack-routing.md`
 is superseded by the resolver CLI (no FEAT-level reader required).
 
+PM declines that set `composite_priority: P4` MUST cite a clause id
+from this file in `declined_per: [<clause-id>]` frontmatter — the
+clause-id annotations (`<!-- clause: <id> -->`) on every H2 above are
+the citation surface. See `agents/pm.md` § "Decline contract" for the
+full contract, and `scripts/validate-decline-citations.mjs` for the CI
+gate that enforces it.
+
 ## Decommissioned roles
+<!-- clause: decommissioned-roles -->
 
 - `crew:lead` — DECOMMISSIONED 2026-06-07. Loop and crew slash flows
   in this repo route directly to specialist agents
@@ -116,6 +131,7 @@ is superseded by the resolver CLI (no FEAT-level reader required).
   section.
 
 ## Reviewer ladder presets
+<!-- clause: reviewer-ladder-presets -->
 
 Configurable in `.claude/loop.json` under `reviewers.ladder`. Default is
 `["A", "B"]` — two `crew:reviewer` dispatches with the existing
@@ -148,6 +164,7 @@ Full preset documentation (focus copy, budget instruction, override
 recipes) lives in `commands/slice-review-ladder.md`.
 
 ## Owned agents
+<!-- clause: owned-agents -->
 
 Dispatch via `Agent(subagent_type: ...)`. The plugin runtime namespaces
 owned agents with the `loop:` prefix — use the namespaced ID, not the
@@ -165,6 +182,7 @@ bare frontmatter `name:` field:
   retros, release notes, agent / skill prompts). Will NOT edit source.
 
 ## Auto-dispatch primitives
+<!-- clause: auto-dispatch-primitives -->
 
 `src/scripts/lib/auto-dispatch.mts` exposes `dispatchAgent`,
 `parseSkipFlag`, `appendAuditLog` as opt-in audit infrastructure.
@@ -201,6 +219,7 @@ line to `.claude/artifacts/loop/auto-dispatch.jsonl` — audit trail
 for cost attribution.
 
 ## Safety
+<!-- clause: safety -->
 
 Never commit secrets. Never disable hooks (`--no-verify`) without
 explicit user request. Never force-push to `main`.
@@ -209,6 +228,7 @@ explicit user request. Never force-push to `main`.
 <!-- Installed by /loop:install. Edit .claude/loop.json to change stack-specific commands; re-run /loop:install to regenerate this block. The full HARD RULES live at .claude/loop/rules.md so this block stays small in per-session context. -->
 
 ## Autonomous Loop — HARD RULES (summary)
+<!-- clause: autonomous-loop-hard-rules -->
 
 This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`.
 

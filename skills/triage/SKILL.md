@@ -55,6 +55,7 @@ PM-first triage with regex fallback. Single public command for the loop.
    - `result.id` MUST be in the input id list. Reject otherwise.
    - All 5 dimension scores MUST be numeric in `[0, 1]`. Reject otherwise.
    - Required fields present (`scores`, `compositePriority`, `autonomousSafe`, `reasoning`).
+   - **Decline contract**: if `compositePriority` is `P4`, the result MUST include `declined_per: [<clause-id>, ...]` citing at least one clause ID from `CLAUDE.md`. Missing `declined_per` = validation fail → trigger fallback. See `agents/pm.md` § "Decline contract" for the full clause registry.
 
 6. **Check budget delta.** After PM completes, sample cost again. If `(currentUsd - baselineUsd) > triageBudgetUsdPerBatch` OR `tokens > triageBudgetTokensPerBatch`, mark `BudgetExceeded` and go to fallback (step 8).
 

@@ -104,6 +104,26 @@ For each FEAT, answer:
 - `loop:researcher` — when scoring `technical_risk` needs deeper code archaeology than PM read budget allows
 - `loop:architect` — when the FEAT reveals a structural question (new contract, provider abstraction, refactor); stop scoring and hand off
 
+## Decline contract
+
+When `compositePriority` is `P4` OR the decision is to decline a FEAT, the output FEAT frontmatter MUST include a `declined_per` field citing one or more clause IDs from `CLAUDE.md`. Missing or empty `declined_per` = invalid PM output.
+
+Format:
+
+```yaml
+declined_per: ["<clause-id>", ...]
+```
+
+Clause IDs are the kebab-case identifiers found in `<!-- clause: <id> -->` HTML comments immediately after each `## H2` heading in `CLAUDE.md`. Example:
+
+```yaml
+declined_per: ["repo-conventions"]
+```
+
+Valid clause IDs as of the current `CLAUDE.md`: `read-first`, `engineering-standards`, `hard-dependency`, `local-commands`, `ci-gates`, `repo-conventions`, `backlog-discipline`, `decommissioned-roles`, `reviewer-ladder-presets`, `owned-agents`, `auto-dispatch-primitives`, `safety`, `autonomous-loop-hard-rules`.
+
+If the decline reason does not map cleanly to a single clause, cite the closest one and note the mismatch in `scopeNotes`. Do not leave `declined_per` absent — a cite-less decline is an audit gap that the validator (`scripts/validate-decline-citations.mjs`) will flag as a CI failure.
+
 ## Boundaries
 
 - Read-only. Never Edit, Write, or move backlog files. Use the `/loop:backlog-*` and `/loop:spec-*` commands for state transitions.
