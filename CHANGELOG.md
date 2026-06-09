@@ -3,6 +3,32 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.33.0 — 2026-06-09 — skill activation triggers + verification skill hardening
+
+### Added
+- **FEAT-134 SLICE-84** — Skill activation triggers. New `parseSkillFrontmatter`
+  parser reads `trigger` (`always_on` | `glob` | `manual` | `model_decision`) and
+  `globs` from SKILL.md YAML frontmatter. New async `buildSkillActivationBlock`
+  renders conditional invocation instructions into MASTER_PROMPT via the new
+  `{{skillActivationBlock}}` token. `always_on` (default) emits nothing —
+  backward-compatible. `model_decision` parsed but not rendered (deferred to
+  SLICE-85+). 12 new unit tests; 1065 pass.
+  Files: `src/scripts/lib/skill-frontmatter.mts`,
+  `src/scripts/lib/loop-installer-tokens.mts`,
+  `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`.
+- **DEC-040** — `buildSkillActivationBlock` returns `""` on ENOENT (graceful
+  no-op for repos without a `skills/` directory).
+- **DEC-041** — Only `manual` and `glob` triggers emit activation lines;
+  `always_on` and `model_decision` are silently filtered.
+
+### Changed
+- **FEAT-089 SLICE-85** — Verification skill evidence table hardening.
+  `skills/verification-before-completion/SKILL.md` gains explicit
+  `trigger: "always_on"` frontmatter field and two new evidence rows:
+  `typecheck` (`npm run typecheck` exit 0) and `function-exists`
+  (grep/Read of compiled output). Addresses SLICE-81 fabrication pattern
+  where typecheck evidence was absent from completion claims.
+
 ## v0.32.0 — 2026-06-09 — FEAT-020: hierarchical parallel dispatch primitive
 
 ### Added
