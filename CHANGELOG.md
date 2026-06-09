@@ -3,6 +3,27 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.34.0 — 2026-06-09 — glob-scoped rule auto-attach (FEAT-082)
+
+### Added
+- **FEAT-082 SLICE-86** — Glob-scoped rule auto-attachment library. New
+  `loadRules(rulesDir)` in `src/scripts/lib/rule-loader.mts` reads `*.md`
+  files from a rules directory, parses YAML frontmatter (`id`, `globs`,
+  `alwaysApply`, `description`), and returns typed `Rule[]`; returns `[]`
+  on missing directory (ENOENT). New `buildRulesBlock(rules, inScopeGlobs)`
+  in `loop-installer-tokens.mts` filters rules by glob overlap with the
+  current slice's `in_scope_globs` (or `alwaysApply: true`) and renders
+  matching rule bodies as a fenced Markdown section. `buildTokens` now
+  accepts and returns `rulesBlock` via its `extras` parameter. New
+  `{{rulesBlock}}` template token added to `templates/master-prompt.md`
+  after `{{contextRulesList}}`. 1091 tests pass.
+  Files: `src/scripts/lib/rule-loader.mts`,
+  `src/scripts/lib/loop-installer-tokens.mts`, `templates/master-prompt.md`.
+- **DEC-042** — Empty-string glob guard in `patternSubsumed`: `if (!p1 || !p2)
+  return false` prevents `String.includes("")` from matching everything.
+- **DEC-043** — `buildTokens` extras interface extended with `rulesBlock?:
+  string`; all template tokens must be threaded through `buildTokens`.
+
 ## v0.33.0 — 2026-06-09 — skill activation triggers + verification skill hardening
 
 ### Added
