@@ -25,6 +25,10 @@ This design retires the deferred flag for SLICE-1 by addressing both named block
 
 FEAT-020 titles it "async hierarchical subagent dispatch." This design ships **hierarchical blocking parallel** dispatch. Children execute concurrently, but the parent's `dispatchHierarchical` call is blocking via `awaitAll`. Truly async (parent continues while children run) is an explicit non-goal for SLICE-1 — see §10.
 
+## Implementation-split note (annotation added during plan creation)
+
+Sections below describe the library as a single `src/scripts/lib/hierarchical-dispatch.mts` file. The implementation plan splits it into 10 small modules (`dispatch-types.mts`, `dispatch-config.mts`, `dispatch-gates.mts`, `dispatch-prompt.mts`, `dispatch-trace.mts`, `dispatch-worktree.mts`, `dispatch-batch.mts`, `dispatch-aggregate.mts`, `dispatch-merge.mts`, plus the `hierarchical-dispatch.mts` barrel that re-exports everything) to enable task-parallel execution. The API contract, exported names, types, and behavior are unchanged — external callers continue to import from `./hierarchical-dispatch.mjs`. See `docs/superpowers/plans/2026-06-09-feat020-slice-1-hierarchical-dispatch.md` § Parallel Execution Plan for the dependency waves.
+
 ## Decisions (locked during brainstorming)
 
 | # | Decision | Source |
