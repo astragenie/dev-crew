@@ -65,7 +65,7 @@ tests for changed writers.
 
 ## SLICE-39 — Glob-scoped context rules (FEAT-007, P3)
 
-**Status:** PENDING
+**Status:** COMPLETED — 2026-06-04. All 6 ACs pass. Commit: f11e7e9.
 
 **Goal:** Add `contextRules` array to `.claude/loop.json` config. Installer renders glob-to-docs mappings into `{{contextRulesList}}` token in MASTER_PROMPT, instructing the agent to read matching docs when a slice's `in_scope_globs` overlaps the rule patterns. Remote import (GitHub fetch) explicitly out of scope.
 
