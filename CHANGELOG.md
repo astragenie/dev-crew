@@ -3,6 +3,21 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased
+
+### Added
+- **FEAT-020 SLICE-1** — Hierarchical parallel subagent dispatch primitive.
+  New library `src/scripts/lib/hierarchical-dispatch.mts` (split into nine
+  `dispatch-*.mts` modules with a barrel re-export), CLI subcommand
+  `node scripts/loop.mjs dispatch {prepare|finalize}`, and
+  `loop:hierarchical-dispatcher` agent. Worktree-per-child isolation,
+  blocking `awaitAll`, continue-on-failure, depth-capped recursion via
+  `.claude/loop.json` (`dispatchLimits.maxDepth`, default 3). SLICE-2
+  (upstream PR refactoring `crew:parallel-runner` to call this library)
+  is a follow-up.
+  Spec: `docs/superpowers/specs/2026-06-09-feat020-hierarchical-dispatch-design.md`.
+  Plan: `docs/superpowers/plans/2026-06-09-feat020-slice-1-hierarchical-dispatch.md`.
+
 ## v0.31.0 — 2026-06-08 — competitor gap audit: 4 new briefs + 22 triaged FEATs
 
 ### Added

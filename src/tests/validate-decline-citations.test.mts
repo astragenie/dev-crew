@@ -51,11 +51,7 @@ test("non-P4 FEAT is ignored even without declined_per", async () => {
   const root = await mkTmp();
   const claudeMd = makeClaudeMd(["commit-discipline"]);
   await writeFile(root, "CLAUDE.md", claudeMd);
-  await writeFile(
-    root,
-    ".claude/artifacts/loop/backlog/triaged/FEAT-001.md",
-    makeFeat("P2")
-  );
+  await writeFile(root, ".claude/artifacts/loop/backlog/triaged/FEAT-001.md", makeFeat("P2"));
 
   const result = await validateDeclineCitations(root);
   assert.equal(result.ok, true);
@@ -81,11 +77,7 @@ test("P4 FEAT missing declined_per field fails with clear error naming the FEAT"
   const root = await mkTmp();
   const claudeMd = makeClaudeMd(["commit-discipline"]);
   await writeFile(root, "CLAUDE.md", claudeMd);
-  await writeFile(
-    root,
-    ".claude/artifacts/loop/backlog/triaged/FEAT-003.md",
-    makeFeat("P4")
-  );
+  await writeFile(root, ".claude/artifacts/loop/backlog/triaged/FEAT-003.md", makeFeat("P4"));
 
   const result = await validateDeclineCitations(root);
   assert.equal(result.ok, false);
@@ -115,11 +107,7 @@ test("done/ directory is also scanned for P4 violations", async () => {
   const root = await mkTmp();
   const claudeMd = makeClaudeMd(["commit-discipline"]);
   await writeFile(root, "CLAUDE.md", claudeMd);
-  await writeFile(
-    root,
-    ".claude/artifacts/loop/backlog/done/FEAT-005.md",
-    makeFeat("P4")
-  );
+  await writeFile(root, ".claude/artifacts/loop/backlog/done/FEAT-005.md", makeFeat("P4"));
 
   const result = await validateDeclineCitations(root);
   assert.equal(result.ok, false);

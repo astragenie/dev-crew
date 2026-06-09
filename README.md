@@ -130,6 +130,61 @@ More presets ship as new repo types surface. See `scripts/presets/` to author yo
 - `scripts/lib/config-resolver.mjs` — preset + per-repo config deep merge
 - `scripts/lib/plugin-identity.mjs` — marketplace/plugin name discovery,
   reused from the crew plugin's pattern
+- `scripts/lib/hierarchical-dispatch.mjs` — hierarchical parallel subagent
+  dispatch primitive (FEAT-020 SLICE-1); barrel re-export of nine
+  `dispatch-*.mjs` modules
+
+## Hierarchical dispatch (`loop:hierarchical-dispatcher`, FEAT-020 SLICE-1)
+
+A parent agent can spawn N parallel child subagents in isolated git worktrees,
+block on `awaitAll`, then merge DONE children to the parent branch in priority
+order. Children themselves can recurse (grandchildren fork off the child's
+branch).
+
+### Config (`.claude/loop.json`, namespace `dispatchLimits`)
+
+```json
+{
+  "dispatchLimits": {
+    "maxDepth": 3,
+    "maxChildrenPerBatch": 8,
+    "worktreeRoot": null,
+    "pruneStaleAfterDays": 7
+  }
+}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `maxDepth` | 3 | Recursion cap. `0` = top level. Child at `maxDepth` cannot spawn grandchildren. |
+| `maxChildrenPerBatch` | 8 | Per-call fanout cap. Refuse to spawn if `plans.length > cap`. |
+| `worktreeRoot` | `null` | Override worktree parent dir; `null` = sibling of repo (same as `parallel-runner`). |
+| `pruneStaleAfterDays` | 7 | Orphan `dispatch/<runId>/` directory warning threshold. |
+
+### CLI surface
+
+```bash
+node scripts/loop.mjs dispatch prepare \
+  --plan plan.json --parent-branch slice/SLICE-90 [--repo .] [--depth 0] [--json] [--dry-run]
+
+node scripts/loop.mjs dispatch finalize \
+  --run-id <id> --parent-branch slice/SLICE-90 --plan plan.json [--repo .] [--depth 0]
+```
+
+In production, the `loop:hierarchical-dispatcher` agent runs `prepare`, invokes
+the Agent tool with the returned batch in **one message**, then runs `finalize`.
+
+### Telemetry artifacts
+
+- `.claude/artifacts/loop/dispatch/<runId>/worktrees.jsonl` — spawn log
+- `.claude/artifacts/loop/dispatch/<runId>/trace.jsonl` — per-child result + duration + cost (`null` in SLICE-1; FEAT-165 populates)
+- `.claude/artifacts/loop/dispatch/<runId>/<childId>.result.json` — canonical child result (marker)
+- `.claude/artifacts/loop/dispatch/<runId>/summary.md` — human-readable run summary
+
+### Out of scope for SLICE-1
+
+`crew:parallel-runner` refactor (SLICE-2), truly-async non-blocking parent, cancellation,
+`--resume`, cost rollup, budget cap (FEAT-133), per-skill cost (FEAT-165).
 
 ## Tests
 
