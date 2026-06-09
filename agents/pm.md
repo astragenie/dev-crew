@@ -63,10 +63,32 @@ For each FEAT, answer:
 
 ## Framework 3: Risk Radar
 
+Probes:
+
 - **Technical unknowns?** New technology, external API, database migration, schema change.
 - **Dependency chain?** Check `depends_on` frontmatter. Check other FEATs' bodies for references to this feature's domain.
 - **Grade history?** Read recent grades under `.claude/artifacts/loop/grades/`. Did past slices in this area score low on reliability, security, or test_confidence?
 - **Blast radius?** Estimate how many files/services this touches.
+- **Failure modes?** Which classes apply: logic error, integration failure, data/shape corruption, timeout, permission, resource exhaustion, external dependency? A FEAT touching dispatch, halt, retry, or state-recovery paths can cascade — name the cascade in `risks[]`.
+
+### technical_risk scoring rubric (banded — score from the table, not gut feel)
+
+| Band | Criteria (highest matching row wins) |
+|---|---|
+| 0.0–0.2 | Known repo pattern, 1–2 files, trivially reverted by `git revert` |
+| 0.3–0.5 | New pattern in repo OR one module, no contract change, clean rollback |
+| 0.6–0.8 | New dependency, cross-module reach, OR schema/data-shape change (rollback needs migration or state cleanup) |
+| 0.9–1.0 | Public/cross-plugin contract change, hard-to-reverse effects (published artifact, halt-badge contract), OR unknowns needing a spike |
+
+Record the band rationale in `reasoning` — two PM dispatches scoring the same FEAT must land in the same band.
+
+### Pre-mortem (mandatory when technical_risk >= 0.6 OR priority P0/P1)
+
+Answer in `risks[]`, one entry each:
+
+1. **It is two weeks later and this slice failed review or validation — what was the most likely cause?**
+2. **This merged and broke the loop — what does rollback actually require?** (revert only / migration / cross-plugin coordination)
+3. **Which existing test would NOT catch a regression here?** (names the coverage gap the slice's AC must close)
 
 ## Anti-hallucination rules
 
@@ -102,6 +124,7 @@ For each FEAT, answer:
 - `3rdparty/task-decomposition-expert` — when FEAT looks like an epic (touches 5+ modules, multiple acceptance criteria), recommend SPEC split before scoring effort
 - `3rdparty/research-coordinator` — when `depends_on` graph spans 3+ distinct subsystems and parallel sub-research clarifies dependency depth
 - `3rdparty/context-manager` — when prior-session triage rationale or superseded decisions matter for this score
+- `crew:3rdparty:critical-thinking` — before finalizing any P0/P1 or `needs-review` score: one-question-at-a-time assumption challenge against the demand evidence and the pre-mortem answers; revise scores it dents
 - `loop:researcher` — when scoring `technical_risk` needs deeper code archaeology than PM read budget allows
 - `loop:architect` — when the FEAT reveals a structural question (new contract, provider abstraction, refactor); stop scoring and hand off
 
