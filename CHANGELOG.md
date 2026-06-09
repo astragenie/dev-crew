@@ -3,6 +3,46 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.35.0 — 2026-06-10 — PM enrichment: spec-writer agent, risk rubric, grade feedback
+
+### Added
+- **`loop:spec-writer` agent** — merges the vendored `3rdparty/sdd-spec-writer`
+  and `3rdparty/specification` agents into one owned agent with two output
+  modes: formal 10-section SPEC documents (REQ/SEC/CON ids, Given-When-Then
+  AC, test strategy) and executable SDD slice specs (exact contracts, ≥3
+  concrete test cases, verification commands). Emits `developer_type:
+  agent | human` to inform `autonomous_safe`. Dispatched by `loop:pm` when
+  AC clarity fails. The two 3rdparty source agents are removed.
+- **PM Framework 4: Grade Feedback** — weak-dimension rule (any grade
+  dimension averaging < 0.80 over the last 5 grades must be named in
+  `scopeNotes`; `autonomousSafe: true` requires a targeting AC). Lessons
+  digest (`loop.mjs lessons recent 5`) promoted to required pre-read.
+- **PM Framework 5: Effort Calibration** — `effort_estimate` calibrated
+  against actual aggregate cost reports (`.claude/artifacts/crew/cost/`);
+  analog comparison recorded in `scopeNotes`.
+- **Banded `technical_risk` rubric + pre-mortem** — 4-band scoring table
+  (pattern novelty, blast radius, rollback cost, contract reach) replaces
+  gut-feel floats; 3-question pre-mortem mandatory at `technical_risk >=
+  0.6` or P0/P1; `crew:3rdparty:critical-thinking` dispatched before
+  finalizing P0/P1 or `needs-review` scores; failure-mode probe added to
+  Risk Radar.
+- **AC quality checklist + INVEST check** in `loop:authoring-slices` —
+  Given-When-Then with concrete values, evidence-backed, 3–5 AC per slice,
+  mandatory edge + error coverage, NFRs as AC, weak-dimension AC mandatory,
+  DoD separate. `loop:pm-decompose` gains an INVEST gate and AC drafting
+  with `loop:spec-writer` dispatch.
+- **Retrospective synthesis step** — every repeat lesson must get a
+  disposition (`/loop:learn`, `/loop:backlog-add`, or covered-by-DEC);
+  dimensions weak across two consecutive retros escalate to a dedicated FEAT.
+- **`parseJsonFlag` helper** (`scripts/lib/json-flag.mjs`) — `backlog
+  pm-write --scores` now tolerates PowerShell backslash-escaped JSON;
+  5 new tests in `tests/json-flag.test.mjs`.
+
+### Changed
+- FEAT-166/167/168 triaged via the enriched PM (all P1,
+  `autonomous_safe: false`); FEAT-167/168 acceptance criteria rewritten to
+  the new AC standard via spec-writer dispatch.
+
 ## v0.34.0 — 2026-06-09 — glob-scoped rule auto-attach (FEAT-082)
 
 ### Added
