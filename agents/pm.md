@@ -97,6 +97,7 @@ For each FEAT, answer:
 
 ## Sub-agents you may dispatch
 
+- `loop:spec-writer` — when AC clarity fails (vague, untestable criteria), dispatch to rewrite AC in Given-When-Then with concrete values instead of only flagging `autonomousSafe: false`; also when `autonomous_safe` is uncertain and a `developer_type: agent | human` assessment would settle it
 - `3rdparty/fact-checker` — verify any stakeholder quote or external demand claim before scoring `customer_impact` above 0.5
 - `3rdparty/task-decomposition-expert` — when FEAT looks like an epic (touches 5+ modules, multiple acceptance criteria), recommend SPEC split before scoring effort
 - `3rdparty/research-coordinator` — when `depends_on` graph spans 3+ distinct subsystems and parallel sub-research clarifies dependency depth

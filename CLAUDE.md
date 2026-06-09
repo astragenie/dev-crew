@@ -180,6 +180,12 @@ bare frontmatter `name:` field:
   change is proposed.
 - `loop:document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
   retros, release notes, agent / skill prompts). Will NOT edit source.
+- `loop:spec-writer` — AI-ready specs at two levels: formal SPEC documents
+  (10-section, REQ/SEC/CON ids, Given-When-Then AC) and executable
+  slice-level SDD specs (exact contracts, ≥3 test cases, verify commands).
+  Dispatched by `loop:pm` when AC clarity fails or `autonomous_safe` is
+  uncertain. Supersedes the vendored `3rdparty/sdd-spec-writer` and
+  `3rdparty/specification` agents (merged + removed 2026-06-10).
 
 ## Auto-dispatch primitives
 <!-- clause: auto-dispatch-primitives -->
