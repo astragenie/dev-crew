@@ -1,13 +1,15 @@
 ---
 id: SLICE-84
-status: pending
+status: completed
 feature: FEAT-134
 phase: null
 priority: P1
 target_release: null
 requires_validation: true
 created: 2026-06-09
+reviews: [.claude/artifacts/crew/reviews/20260609T144908Z-review-result-feat-134-slice-84-skill-activation-triggers-parser-and-integ.md]
 updated: 2026-06-09
+completed_at: 2026-06-09
 ---
 # SLICE-84: Skill activation triggers (always_on | glob | manual)
 
