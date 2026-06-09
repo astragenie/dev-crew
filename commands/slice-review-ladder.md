@@ -61,6 +61,53 @@ Override per repo in `.claude/loop.json`:
 }
 ```
 
+## Multidim preset
+
+Set `reviewers.ladder` to an object with `preset: "multidim"` to expand the
+ladder to three orthogonal narrow-dimension reviewers dispatched in parallel:
+
+```jsonc
+{
+  "reviewers": {
+    "ladder": { "preset": "multidim" }
+  }
+}
+```
+
+This resolves to ladder `["correctness", "test-coverage", "conventions"]`.
+Each generated prompt:
+
+- Declares **one dimension only** and explicitly forbids out-of-scope findings
+  (scope-fence: "NOT in scope: …") to prevent overlap between parallel reviewers.
+- Enforces a **hard budget** (≤15 tool calls, ≤8 min) with an inline-output
+  fallback reminder per `docs/sop/specialist-pause-handling.md` — prevents
+  the pause-without-artifact pattern seen in earlier demo runs.
+
+### Multidim dimension focus areas
+
+| Reviewer | Focus |
+|---|---|
+| correctness | Logic correctness, behavior preservation, race conditions, error-propagation. |
+| test-coverage | Happy-path, partial-failure, and edge-case test coverage. Flag missing scenarios. |
+| conventions | ESM/.mts parity, line caps, complexity ≤15, comment hygiene, banned patterns. |
+
+### When to pick `multidim` vs default `["A", "B"]`
+
+| Signal | Recommendation |
+|---|---|
+| Diff touches >5 files or >200 lines changed | Use `multidim` — parallel dimensions catch more in less wall-clock time. |
+| Slice introduces new public API or schema | Use `multidim` — correctness + conventions reviewers both apply. |
+| Large feature slice with complex acceptance criteria | Use `multidim` — test-coverage reviewer validates AC surface systematically. |
+| Typo fix, single-line config change, doc-only update | Use default `["A", "B"]` — multidim cost overhead is not justified. |
+| Quick iterative fixup (e.g. lint/format only) | Use default `["A", "B"]` or skip review ladder entirely (mark `review_skipped`). |
+
+**Cost tradeoff**: multidim dispatches 3 concurrent reviewers (roughly 3× token
+cost) but wall-clock time is `max(dim)` instead of `sum(dim)`. On large diffs
+the quality gain outweighs the cost; on trivial diffs it is overkill.
+
+The preset is opt-in per repo via `reviewers.ladder`. A follow-up CLAUDE.md
+update will document the preset for autonomous-loop dispatch.
+
 ## Aggregation
 
 Slice passes when all reviewers return `PASS` or `PASS with minor`. Any

@@ -3,6 +3,19 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased
+
+### Added
+- Add `multidim` reviewer-ladder preset (FEAT-079, SLICE-82): 3 narrow
+  dimensions (correctness / test-coverage / conventions) with
+  scope-fence + hard tool budget per prompt. Default ladder unchanged.
+  Opt-in via `.claude/loop.json` →
+  `reviewers.ladder: { "preset": "multidim" }`. Each generated prompt
+  carries an explicit "NOT in scope" fence plus a hard tool budget
+  (≤15 tool calls, ≤8 min) and an inline-output fallback per
+  `docs/sop/specialist-pause-handling.md`. See
+  `commands/slice-review-ladder.md` for the full when-to-pick table.
+
 ## v0.30.0 — 2026-06-08 — auto-publish GitHub issues at point of FEAT/SLICE creation
 
 ### Added

@@ -148,3 +148,87 @@ test("buildReviewLadder prompt always includes Diff stat header", async () => {
     assert.match(task.prompt, /Diff stat/, "prompt always includes Diff stat header");
   }
 });
+
+// --- multidim preset tests ---
+
+async function tmpRepoMultidim(prefix: string) {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(
+    path.join(repo, ".claude/loop.json"),
+    JSON.stringify({
+      preset: "dotnet-aspire-python",
+      loop: {
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
+        phaseGateArtifactDir: ".claude/artifacts/crew/validations"
+      },
+      stack: {},
+      reviewers: { ladder: { preset: "multidim" } }
+    })
+  );
+  return repo;
+}
+
+test("multidim preset resolves ladder to correctness, test-coverage, conventions", async () => {
+  const repo = await tmpRepoMultidim("rl-multidim-ladder-");
+  await seedSlice(repo, "SLICE-20");
+  const result = await buildReviewLadder(repo, "SLICE-20");
+  assert.deepEqual(
+    result.ladder,
+    ["correctness", "test-coverage", "conventions"],
+    "multidim preset expands to three canonical reviewer IDs"
+  );
+  assert.equal(result.tasks.length, 3, "three tasks generated for multidim preset");
+});
+
+test("multidim preset each prompt contains scope-fence string NOT in scope", async () => {
+  const repo = await tmpRepoMultidim("rl-multidim-scope-fence-");
+  await seedSlice(repo, "SLICE-21");
+  const result = await buildReviewLadder(repo, "SLICE-21");
+  for (const task of result.tasks) {
+    assert.match(
+      task.prompt,
+      /NOT in scope/,
+      `reviewer ${task.reviewer} prompt must contain scope-fence "NOT in scope"`
+    );
+  }
+});
+
+test("multidim preset each prompt contains hard budget instruction ≤15 tool calls", async () => {
+  const repo = await tmpRepoMultidim("rl-multidim-budget-");
+  await seedSlice(repo, "SLICE-22");
+  const result = await buildReviewLadder(repo, "SLICE-22");
+  for (const task of result.tasks) {
+    assert.match(
+      task.prompt,
+      /≤15 tool calls/,
+      `reviewer ${task.reviewer} prompt must contain hard budget "≤15 tool calls"`
+    );
+  }
+});
+
+test("default ladder remains [A, B] when preset absent (backward compat)", async () => {
+  const repo = await tmpRepo("rl-backward-compat-");
+  await seedSlice(repo, "SLICE-23");
+  const result = await buildReviewLadder(repo, "SLICE-23");
+  assert.deepEqual(result.ladder, ["A", "B"], "default ladder is still [A, B] without preset");
+  assert.equal(result.tasks.length, 2, "two tasks for default A/B ladder");
+  for (const task of result.tasks) {
+    // Default prompts must NOT leak multidim scope-fence language
+    assert.doesNotMatch(
+      task.prompt,
+      /NOT in scope/,
+      `default reviewer ${task.reviewer} prompt must not contain multidim scope-fence`
+    );
+  }
+});
+
+test("multidim each task reviewer matches its dimension ID", async () => {
+  const repo = await tmpRepoMultidim("rl-multidim-ids-");
+  await seedSlice(repo, "SLICE-24");
+  const result = await buildReviewLadder(repo, "SLICE-24");
+  const ids = result.tasks.map((t: { reviewer: string }) => t.reviewer);
+  assert.deepEqual(ids, ["correctness", "test-coverage", "conventions"]);
+});

@@ -115,6 +115,38 @@ is superseded by the resolver CLI (no FEAT-level reader required).
   re-enable, restore the agent name to the allowlist and update this
   section.
 
+## Reviewer ladder presets
+
+Configurable in `.claude/loop.json` under `reviewers.ladder`. Default is
+`["A", "B"]` — two `crew:reviewer` dispatches with the existing
+Correctness / Production-readiness focus split. The slash flow that
+materializes the ladder lives in `commands/slice-review-ladder.md`.
+
+- **Default (`["A", "B"]`)** — unchanged. Reviewer A covers
+  correctness + AC coverage; Reviewer B covers production-readiness,
+  observability, security.
+- **`multidim` preset (FEAT-079 / SLICE-82)** — opt-in. Set
+  `reviewers.ladder: { "preset": "multidim" }` to expand to three
+  parallel narrow-dimension dispatches:
+  - **correctness** — logic, edge cases, regressions, AC coverage.
+  - **test-coverage** — test adequacy, gaps, mutation surface.
+  - **conventions** — repo conventions, lint posture, doc impact.
+  Each prompt declares one dimension only, carries an explicit
+  scope-fence ("NOT in scope" wording) so reviewers don't bleed into
+  adjacent concerns, and ships a hard tool budget (≤15 tool calls,
+  ≤8 min) plus an inline-output fallback per
+  `docs/sop/specialist-pause-handling.md`.
+
+**When to pick `multidim`.** Large or risky diffs spanning ≥5 files,
+or any slice touching public schemas / cross-module contracts.
+Wall-clock is ~2× faster than running a sequential three-pass review;
+token cost is ~3× a default two-reviewer ladder, so skip it for
+trivial fixups, single-line patches, doc-only slices, and refactors
+with `requires_validation: false`.
+
+Full preset documentation (focus copy, budget instruction, override
+recipes) lives in `commands/slice-review-ladder.md`.
+
 ## Owned agents
 
 Dispatch via `Agent(subagent_type: ...)`. The plugin runtime namespaces
