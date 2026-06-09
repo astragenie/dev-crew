@@ -10,7 +10,7 @@ export function aggregateResults(repoRoot, runId, plans, branchById, cwdById) {
             branch: branchById[plan.id] ?? "",
             worktreePath: cwdById[plan.id] ?? "",
             error: "no marker",
-            costUsd: null,
+            costUsd: null
         };
     });
 }

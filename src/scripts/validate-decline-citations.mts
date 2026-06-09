@@ -50,13 +50,7 @@ export async function validateDeclineCitations(repoRoot: string): Promise<Valida
   const errors: string[] = [];
   const knownClauses = await extractClauseIds(repoRoot);
 
-  const backlogRoot = path.join(
-    repoRoot,
-    ".claude",
-    "artifacts",
-    "loop",
-    "backlog"
-  );
+  const backlogRoot = path.join(repoRoot, ".claude", "artifacts", "loop", "backlog");
 
   const featFiles: string[] = [];
   for (const dir of BACKLOG_DIRS) {

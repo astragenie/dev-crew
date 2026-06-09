@@ -8,7 +8,7 @@ import { initRepo } from "./dispatch-test-helpers.mjs";
 import {
   createChildWorktree,
   removeChildWorktree,
-  preflightGitClean,
+  preflightGitClean
 } from "../scripts/lib/dispatch-worktree.mjs";
 
 test("createChildWorktree: creates worktree off parentBranch", () => {
@@ -19,12 +19,12 @@ test("createChildWorktree: creates worktree off parentBranch", () => {
     parentBranch: "slice/SLICE-1",
     childId: "FE",
     depth: 0,
-    runId: "test-run",
+    runId: "test-run"
   });
   assert.ok(fs.existsSync(result.worktreePath), "worktree path exists");
   assert.match(result.branch, /slice\/SLICE-1-FE/);
   const branchName = execSync("git rev-parse --abbrev-ref HEAD", {
-    cwd: result.worktreePath,
+    cwd: result.worktreePath
   })
     .toString()
     .trim();
@@ -39,11 +39,11 @@ test("createChildWorktree: writes worktrees.jsonl entry", () => {
     parentBranch: "slice/SLICE-2",
     childId: "BE",
     depth: 0,
-    runId: "test-run-2",
+    runId: "test-run-2"
   });
   const log = fs.readFileSync(
     path.join(repo, ".claude/artifacts/loop/dispatch/test-run-2/worktrees.jsonl"),
-    "utf8",
+    "utf8"
   );
   const entry = JSON.parse(log.trim());
   assert.equal(entry.childId, "BE");
@@ -58,7 +58,7 @@ test("removeChildWorktree: prunes worktree + deletes branch", () => {
     parentBranch: "slice/SLICE-3",
     childId: "RM",
     depth: 0,
-    runId: "test-run-3",
+    runId: "test-run-3"
   });
   removeChildWorktree(repo, result.worktreePath, result.branch);
   assert.ok(!fs.existsSync(result.worktreePath), "worktree gone");
@@ -71,7 +71,7 @@ test("preflightGitClean: dirty tree throws DispatchWorktreeError", () => {
   fs.writeFileSync(path.join(repo, "dirty.txt"), "x");
   assert.throws(
     () => preflightGitClean(repo, "main"),
-    (e) => e.name === "DispatchWorktreeError" && /dirty/i.test(e.message),
+    (e) => e.name === "DispatchWorktreeError" && /dirty/i.test(e.message)
   );
 });
 
@@ -79,7 +79,7 @@ test("preflightGitClean: missing branch throws DispatchWorktreeError", () => {
   const repo = initRepo();
   assert.throws(
     () => preflightGitClean(repo, "ghost-branch"),
-    (e) => e.name === "DispatchWorktreeError",
+    (e) => e.name === "DispatchWorktreeError"
   );
 });
 

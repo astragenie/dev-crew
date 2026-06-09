@@ -1,10 +1,7 @@
 // @ts-nocheck
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  buildAgentBatch,
-  type AgentBatchCall,
-} from "../scripts/lib/dispatch-batch.mjs";
+import { buildAgentBatch, type AgentBatchCall } from "../scripts/lib/dispatch-batch.mjs";
 
 test("buildAgentBatch: produces one call per plan with augmented prompt", () => {
   const plans: any[] = [
@@ -12,20 +9,20 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
       id: "FE",
       priority: 0,
       agentType: "crew:builder-fe",
-      prompt: "build fe",
+      prompt: "build fe"
     },
     {
       id: "BE",
       priority: 1,
       agentType: "crew:builder-be",
-      prompt: "build be",
-    },
+      prompt: "build be"
+    }
   ];
   const calls: AgentBatchCall[] = buildAgentBatch(plans, {
     runId: "r1",
     depth: 0,
     childCwdById: { FE: "/p/fe", BE: "/p/be" },
-    childBranchById: { FE: "slice/X-FE", BE: "slice/X-BE" },
+    childBranchById: { FE: "slice/X-FE", BE: "slice/X-BE" }
   });
   assert.equal(calls.length, 2);
   assert.equal(calls[0].subagent_type, "crew:builder-fe");

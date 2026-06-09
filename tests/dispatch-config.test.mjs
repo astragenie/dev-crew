@@ -17,7 +17,7 @@ test("readDispatchConfig: explicit override honored", () => {
     const dir = tmpRepo();
     const cfgPath = path.join(dir, "loop.json");
     fs.writeFileSync(cfgPath, JSON.stringify({
-        dispatchLimits: { maxDepth: 5, maxChildrenPerBatch: 12 },
+        dispatchLimits: { maxDepth: 5, maxChildrenPerBatch: 12 }
     }));
     const cfg = readDispatchConfig(cfgPath);
     assert.equal(cfg.maxDepth, 5);

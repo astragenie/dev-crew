@@ -14,10 +14,7 @@ type BatchArgs = {
   childBranchById: Record<string, string>;
 };
 
-export function buildAgentBatch(
-  plans: DispatchPlan[],
-  args: BatchArgs,
-): AgentBatchCall[] {
+export function buildAgentBatch(plans: DispatchPlan[], args: BatchArgs): AgentBatchCall[] {
   return plans.map((plan) => ({
     description: `dispatch ${plan.id}`,
     subagent_type: plan.agentType,
@@ -26,7 +23,7 @@ export function buildAgentBatch(
       depth: args.depth,
       childCwd: args.childCwdById[plan.id] ?? "",
       childBranch: args.childBranchById[plan.id] ?? "",
-      childId: plan.id,
-    }),
+      childId: plan.id
+    })
   }));
 }

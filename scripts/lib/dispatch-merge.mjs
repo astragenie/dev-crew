@@ -11,13 +11,7 @@ export function mergeChildren(repoRoot, parentBranch, results, plans) {
     const updated = new Map();
     for (const child of order) {
         try {
-            execFileSync("git", [
-                "merge",
-                "--no-ff",
-                child.branch,
-                "-m",
-                `merge ${child.id} (FEAT-020 dispatch)`,
-            ], { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] });
+            execFileSync("git", ["merge", "--no-ff", child.branch, "-m", `merge ${child.id} (FEAT-020 dispatch)`], { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] });
             removeChildWorktree(repoRoot, child.worktreePath, child.branch);
             updated.set(child.id, { ...child, status: "DONE" });
         }
@@ -31,7 +25,7 @@ export function mergeChildren(repoRoot, parentBranch, results, plans) {
             updated.set(child.id, {
                 ...child,
                 status: "CONFLICTED",
-                error: `merge conflict against ${parentBranch}`,
+                error: `merge conflict against ${parentBranch}`
             });
         }
     }

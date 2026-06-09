@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkDepth, checkFanout, checkUniqueIds, validateBranchName, } from "../scripts/lib/dispatch-gates.mjs";
+import { checkDepth, checkFanout, checkUniqueIds, validateBranchName } from "../scripts/lib/dispatch-gates.mjs";
 test("checkDepth: at cap throws DispatchDepthExceeded", () => {
     assert.throws(() => checkDepth(3, { maxDepth: 3 }), (e) => e.name === "DispatchDepthExceeded");
 });
@@ -22,7 +22,7 @@ test("checkFanout: at cap throws DispatchFanoutExceeded", () => {
         id: `c${i}`,
         priority: 0,
         agentType: "x",
-        prompt: "",
+        prompt: ""
     }));
     assert.throws(() => checkFanout(plans, { maxChildrenPerBatch: 8 }), (e) => e.name === "DispatchFanoutExceeded");
 });
@@ -31,7 +31,7 @@ test("checkFanout: below cap does not throw", () => {
         id: `c${i}`,
         priority: 0,
         agentType: "x",
-        prompt: "",
+        prompt: ""
     }));
     assert.doesNotThrow(() => checkFanout(plans, { maxChildrenPerBatch: 8 }));
 });
@@ -41,7 +41,7 @@ test("checkFanout: empty plans throws DispatchConfigError", () => {
 test("checkUniqueIds: duplicate id throws DispatchConfigError", () => {
     assert.throws(() => checkUniqueIds([
         { id: "FE", priority: 0, agentType: "x", prompt: "" },
-        { id: "FE", priority: 1, agentType: "x", prompt: "" },
+        { id: "FE", priority: 1, agentType: "x", prompt: "" }
     ]), (e) => e.name === "DispatchConfigError" && /duplicate child id/.test(e.message));
 });
 test("validateBranchName: rejects names with shell special chars", () => {

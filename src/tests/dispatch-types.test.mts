@@ -5,7 +5,7 @@ import {
   DispatchDepthExceeded,
   DispatchFanoutExceeded,
   DispatchWorktreeError,
-  DispatchConfigError,
+  DispatchConfigError
 } from "../scripts/lib/dispatch-types.mjs";
 
 test("DispatchDepthExceeded is an Error with .name set", () => {

@@ -8,7 +8,7 @@ export function buildAgentBatch(plans, args) {
             depth: args.depth,
             childCwd: args.childCwdById[plan.id] ?? "",
             childBranch: args.childBranchById[plan.id] ?? "",
-            childId: plan.id,
-        }),
+            childId: plan.id
+        })
     }));
 }

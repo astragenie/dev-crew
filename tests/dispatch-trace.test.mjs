@@ -18,7 +18,7 @@ test("readMarker: returns parsed DispatchResult when valid", () => {
         id: "FE",
         status: "DONE",
         branch: "b",
-        worktreePath: "/p",
+        worktreePath: "/p"
     }));
     const result = readMarker(repo, "run-y", "FE");
     assert.equal(result?.status, "DONE");
@@ -39,14 +39,14 @@ test("appendTrace: creates trace.jsonl with one line per call", () => {
         childId: "FE",
         status: "DONE",
         durationMs: 100,
-        costUsd: null,
+        costUsd: null
     });
     appendTrace(repo, "run-t", {
         depth: 0,
         childId: "BE",
         status: "FAILED",
         durationMs: 200,
-        costUsd: null,
+        costUsd: null
     });
     const log = fs.readFileSync(path.join(repo, ".claude/artifacts/loop/dispatch/run-t/trace.jsonl"), "utf8");
     const lines = log.trim().split("\n");

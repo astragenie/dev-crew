@@ -5,13 +5,13 @@ import {
   checkDepth,
   checkFanout,
   checkUniqueIds,
-  validateBranchName,
+  validateBranchName
 } from "../scripts/lib/dispatch-gates.mjs";
 
 test("checkDepth: at cap throws DispatchDepthExceeded", () => {
   assert.throws(
     () => checkDepth(3, { maxDepth: 3 } as any),
-    (e) => e.name === "DispatchDepthExceeded",
+    (e) => e.name === "DispatchDepthExceeded"
   );
 });
 
@@ -24,7 +24,7 @@ test("checkDepth: env var fallback when arg undefined", () => {
   try {
     assert.throws(
       () => checkDepth(undefined as any, { maxDepth: 3 } as any),
-      (e) => e.name === "DispatchDepthExceeded",
+      (e) => e.name === "DispatchDepthExceeded"
     );
   } finally {
     delete process.env.LOOP_DISPATCH_DEPTH;
@@ -36,11 +36,11 @@ test("checkFanout: at cap throws DispatchFanoutExceeded", () => {
     id: `c${i}`,
     priority: 0,
     agentType: "x",
-    prompt: "",
+    prompt: ""
   }));
   assert.throws(
     () => checkFanout(plans, { maxChildrenPerBatch: 8 } as any),
-    (e) => e.name === "DispatchFanoutExceeded",
+    (e) => e.name === "DispatchFanoutExceeded"
   );
 });
 
@@ -49,17 +49,15 @@ test("checkFanout: below cap does not throw", () => {
     id: `c${i}`,
     priority: 0,
     agentType: "x",
-    prompt: "",
+    prompt: ""
   }));
-  assert.doesNotThrow(() =>
-    checkFanout(plans, { maxChildrenPerBatch: 8 } as any),
-  );
+  assert.doesNotThrow(() => checkFanout(plans, { maxChildrenPerBatch: 8 } as any));
 });
 
 test("checkFanout: empty plans throws DispatchConfigError", () => {
   assert.throws(
     () => checkFanout([], { maxChildrenPerBatch: 8 } as any),
-    (e) => e.name === "DispatchConfigError",
+    (e) => e.name === "DispatchConfigError"
   );
 });
 
@@ -68,17 +66,16 @@ test("checkUniqueIds: duplicate id throws DispatchConfigError", () => {
     () =>
       checkUniqueIds([
         { id: "FE", priority: 0, agentType: "x", prompt: "" },
-        { id: "FE", priority: 1, agentType: "x", prompt: "" },
+        { id: "FE", priority: 1, agentType: "x", prompt: "" }
       ]),
-    (e) =>
-      e.name === "DispatchConfigError" && /duplicate child id/.test(e.message),
+    (e) => e.name === "DispatchConfigError" && /duplicate child id/.test(e.message)
   );
 });
 
 test("validateBranchName: rejects names with shell special chars", () => {
   assert.throws(
     () => validateBranchName("bad~name"),
-    (e) => e.name === "DispatchConfigError",
+    (e) => e.name === "DispatchConfigError"
   );
 });
 

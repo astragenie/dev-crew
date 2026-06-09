@@ -4,7 +4,7 @@ const DEFAULT_CONFIG = {
     maxDepth: 3,
     maxChildrenPerBatch: 8,
     worktreeRoot: null,
-    pruneStaleAfterDays: 7,
+    pruneStaleAfterDays: 7
 };
 export function readDispatchConfig(configPath) {
     if (!fs.existsSync(configPath)) {
@@ -26,17 +26,13 @@ export function readDispatchConfig(configPath) {
     }
     const limits = (parsed.dispatchLimits ?? {});
     return {
-        maxDepth: typeof limits.maxDepth === "number"
-            ? limits.maxDepth
-            : DEFAULT_CONFIG.maxDepth,
+        maxDepth: typeof limits.maxDepth === "number" ? limits.maxDepth : DEFAULT_CONFIG.maxDepth,
         maxChildrenPerBatch: typeof limits.maxChildrenPerBatch === "number"
             ? limits.maxChildrenPerBatch
             : DEFAULT_CONFIG.maxChildrenPerBatch,
-        worktreeRoot: typeof limits.worktreeRoot === "string"
-            ? limits.worktreeRoot
-            : DEFAULT_CONFIG.worktreeRoot,
+        worktreeRoot: typeof limits.worktreeRoot === "string" ? limits.worktreeRoot : DEFAULT_CONFIG.worktreeRoot,
         pruneStaleAfterDays: typeof limits.pruneStaleAfterDays === "number"
             ? limits.pruneStaleAfterDays
-            : DEFAULT_CONFIG.pruneStaleAfterDays,
+            : DEFAULT_CONFIG.pruneStaleAfterDays
     };
 }

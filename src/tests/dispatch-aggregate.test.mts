@@ -16,12 +16,12 @@ test("aggregateResults: present markers used as canonical", () => {
       id: "FE",
       status: "DONE",
       branch: "slice/X-FE",
-      worktreePath: "/p/fe",
-    }),
+      worktreePath: "/p/fe"
+    })
   );
   const plans: any[] = [
     { id: "FE", priority: 0, agentType: "x", prompt: "" },
-    { id: "BE", priority: 1, agentType: "x", prompt: "" },
+    { id: "BE", priority: 1, agentType: "x", prompt: "" }
   ];
   const branchById = { FE: "slice/X-FE", BE: "slice/X-BE" };
   const cwdById = { FE: "/p/fe", BE: "/p/be" };
@@ -36,14 +36,14 @@ test("aggregateResults: preserves input plan order", () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), "loop-agg-"));
   const plans: any[] = [
     { id: "B", priority: 1, agentType: "x", prompt: "" },
-    { id: "A", priority: 0, agentType: "x", prompt: "" },
+    { id: "A", priority: 0, agentType: "x", prompt: "" }
   ];
   const results = aggregateResults(
     repo,
     "run-empty",
     plans,
     { A: "ba", B: "bb" },
-    { A: "/a", B: "/b" },
+    { A: "/a", B: "/b" }
   );
   assert.equal(results[0].id, "B");
   assert.equal(results[1].id, "A");

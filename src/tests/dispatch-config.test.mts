@@ -21,8 +21,8 @@ test("readDispatchConfig: explicit override honored", () => {
   fs.writeFileSync(
     cfgPath,
     JSON.stringify({
-      dispatchLimits: { maxDepth: 5, maxChildrenPerBatch: 12 },
-    }),
+      dispatchLimits: { maxDepth: 5, maxChildrenPerBatch: 12 }
+    })
   );
   const cfg = readDispatchConfig(cfgPath);
   assert.equal(cfg.maxDepth, 5);
@@ -36,6 +36,6 @@ test("readDispatchConfig: malformed JSON throws DispatchConfigError", () => {
   fs.writeFileSync(cfgPath, "{ not json");
   assert.throws(
     () => readDispatchConfig(cfgPath),
-    (e) => e.name === "DispatchConfigError",
+    (e) => e.name === "DispatchConfigError"
   );
 });

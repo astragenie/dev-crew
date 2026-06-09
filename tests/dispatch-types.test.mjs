@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DispatchDepthExceeded, DispatchFanoutExceeded, DispatchWorktreeError, DispatchConfigError, } from "../scripts/lib/dispatch-types.mjs";
+import { DispatchDepthExceeded, DispatchFanoutExceeded, DispatchWorktreeError, DispatchConfigError } from "../scripts/lib/dispatch-types.mjs";
 test("DispatchDepthExceeded is an Error with .name set", () => {
     const e = new DispatchDepthExceeded("depth 3 >= cap 3");
     assert.ok(e instanceof Error);

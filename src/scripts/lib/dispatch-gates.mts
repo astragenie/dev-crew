@@ -2,40 +2,25 @@ import type { DispatchConfig, DispatchPlan } from "./dispatch-types.mjs";
 import {
   DispatchConfigError,
   DispatchDepthExceeded,
-  DispatchFanoutExceeded,
+  DispatchFanoutExceeded
 } from "./dispatch-types.mjs";
 
-export function checkDepth(
-  depth: number | undefined,
-  cfg: DispatchConfig,
-): void {
-  const resolved =
-    typeof depth === "number"
-      ? depth
-      : Number(process.env.LOOP_DISPATCH_DEPTH ?? 0);
+export function checkDepth(depth: number | undefined, cfg: DispatchConfig): void {
+  const resolved = typeof depth === "number" ? depth : Number(process.env.LOOP_DISPATCH_DEPTH ?? 0);
   if (!Number.isFinite(resolved) || resolved < 0) {
-    throw new DispatchDepthExceeded(
-      `invalid depth: ${depth ?? process.env.LOOP_DISPATCH_DEPTH}`,
-    );
+    throw new DispatchDepthExceeded(`invalid depth: ${depth ?? process.env.LOOP_DISPATCH_DEPTH}`);
   }
   if (resolved >= cfg.maxDepth) {
-    throw new DispatchDepthExceeded(
-      `depth ${resolved} >= cap ${cfg.maxDepth}`,
-    );
+    throw new DispatchDepthExceeded(`depth ${resolved} >= cap ${cfg.maxDepth}`);
   }
 }
 
-export function checkFanout(
-  plans: DispatchPlan[],
-  cfg: DispatchConfig,
-): void {
+export function checkFanout(plans: DispatchPlan[], cfg: DispatchConfig): void {
   if (plans.length === 0) {
     throw new DispatchConfigError("plans[] is empty — nothing to dispatch");
   }
   if (plans.length > cfg.maxChildrenPerBatch) {
-    throw new DispatchFanoutExceeded(
-      `${plans.length} > cap ${cfg.maxChildrenPerBatch}`,
-    );
+    throw new DispatchFanoutExceeded(`${plans.length} > cap ${cfg.maxChildrenPerBatch}`);
   }
 }
 
@@ -49,22 +34,15 @@ export function checkUniqueIds(plans: DispatchPlan[]): void {
   }
 }
 
+// git refs reject control chars + a specific set of shell-special chars.
+// eslint-disable-next-line no-control-regex
 const INVALID_REF_CHARS = /[\s~^:?*[\\\x00-\x1f]/;
 
 export function validateBranchName(name: string): void {
   if (!name || INVALID_REF_CHARS.test(name)) {
-    throw new DispatchConfigError(
-      `invalid branch name: ${JSON.stringify(name)}`,
-    );
+    throw new DispatchConfigError(`invalid branch name: ${JSON.stringify(name)}`);
   }
-  if (
-    name.startsWith("-") ||
-    name.endsWith(".") ||
-    name.includes("..") ||
-    name.includes("@{")
-  ) {
-    throw new DispatchConfigError(
-      `invalid branch name: ${JSON.stringify(name)}`,
-    );
+  if (name.startsWith("-") || name.endsWith(".") || name.includes("..") || name.includes("@{")) {
+    throw new DispatchConfigError(`invalid branch name: ${JSON.stringify(name)}`);
   }
 }

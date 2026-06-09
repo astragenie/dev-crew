@@ -12,20 +12,17 @@ type SpawnArgs = {
   runId: string;
 };
 
-export function preflightGitClean(
-  repoRoot: string,
-  parentBranch: string,
-): void {
+export function preflightGitClean(repoRoot: string, parentBranch: string): void {
   try {
     execFileSync("git", ["rev-parse", "--verify", parentBranch], {
       cwd: repoRoot,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"]
     });
   } catch {
     throw new DispatchWorktreeError(`parentBranch not found: ${parentBranch}`);
   }
   const status = execFileSync("git", ["status", "--porcelain"], {
-    cwd: repoRoot,
+    cwd: repoRoot
   }).toString();
   if (status.trim().length > 0) {
     throw new DispatchWorktreeError(`working tree dirty on ${parentBranch}`);
@@ -41,19 +38,15 @@ export function createChildWorktree(args: SpawnArgs): {
   const childBranch = `${parentBranch}-${childId}`;
   validateBranchName(childBranch);
   const baseName = path.basename(repoRoot);
-  const worktreePath = path.join(
-    path.dirname(repoRoot),
-    `${baseName}-${childId}-${depth}`,
-  );
+  const worktreePath = path.join(path.dirname(repoRoot), `${baseName}-${childId}-${depth}`);
   try {
-    execFileSync(
-      "git",
-      ["worktree", "add", worktreePath, parentBranch, "-b", childBranch],
-      { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] },
-    );
+    execFileSync("git", ["worktree", "add", worktreePath, parentBranch, "-b", childBranch], {
+      cwd: repoRoot,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
   } catch (err) {
     throw new DispatchWorktreeError(
-      `worktree add failed for ${childId}: ${(err as Error).message}`,
+      `worktree add failed for ${childId}: ${(err as Error).message}`
     );
   }
   const logDir = path.join(repoRoot, ".claude/artifacts/loop/dispatch", runId);
@@ -65,20 +58,16 @@ export function createChildWorktree(args: SpawnArgs): {
       childId,
       branch: childBranch,
       path: worktreePath,
-      depth,
-    }) + "\n",
+      depth
+    }) + "\n"
   );
   return { worktreePath, branch: childBranch };
 }
 
-export function removeChildWorktree(
-  repoRoot: string,
-  worktreePath: string,
-  branch: string,
-): void {
+export function removeChildWorktree(repoRoot: string, worktreePath: string, branch: string): void {
   try {
     execFileSync("git", ["worktree", "remove", "--force", worktreePath], {
-      cwd: repoRoot,
+      cwd: repoRoot
     });
   } catch {
     // worktree may already be gone; continue

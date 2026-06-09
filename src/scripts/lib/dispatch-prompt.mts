@@ -38,7 +38,7 @@ export function augmentPrompt(prompt: string, args: AugmentArgs): string {
     'If you don\'t write this file before returning, the parent will record your child as FAILED with `error: "no marker"`.',
     "",
     "---",
-    "",
+    ""
   ].join("\n");
   return header + prompt;
 }

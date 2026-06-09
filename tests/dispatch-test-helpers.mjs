@@ -31,8 +31,11 @@ export function makeStubAgent(repo, perChild) {
                 execSync(`git add . && git commit -qm "child ${id}"`, { cwd });
             }
             const marker = {
-                id, status: action.status, branch, worktreePath: cwd,
-                ...(action.status !== "DONE" ? { error: "stub failure" } : {}),
+                id,
+                status: action.status,
+                branch,
+                worktreePath: cwd,
+                ...(action.status !== "DONE" ? { error: "stub failure" } : {})
             };
             fs.writeFileSync(path.join(dir, `${id}.result.json`), JSON.stringify(marker));
         }

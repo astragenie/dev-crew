@@ -8,7 +8,7 @@ test("augmentPrompt: includes LOOP_DISPATCH_DEPTH with depth+1", () => {
         depth: 0,
         childCwd: "/tmp/x",
         childBranch: "slice/X-FE",
-        childId: "FE",
+        childId: "FE"
     });
     assert.match(out, /LOOP_DISPATCH_DEPTH=1/);
 });
@@ -18,7 +18,7 @@ test("augmentPrompt: includes runId for trace correlation", () => {
         depth: 1,
         childCwd: "/tmp/x",
         childBranch: "b",
-        childId: "c",
+        childId: "c"
     });
     assert.match(out, /LOOP_DISPATCH_RUN_ID=run-abc/);
 });
@@ -28,7 +28,7 @@ test("augmentPrompt: includes marker-write contract path", () => {
         depth: 0,
         childCwd: "/tmp/x",
         childBranch: "b",
-        childId: "FE",
+        childId: "FE"
     });
     assert.match(out, /\.claude\/artifacts\/loop\/dispatch\/r2\/FE\.result\.json/);
 });
@@ -38,7 +38,7 @@ test("augmentPrompt: instructs grandchild forwarding via env or --depth flag", (
         depth: 1,
         childCwd: "/tmp/x",
         childBranch: "b",
-        childId: "c",
+        childId: "c"
     });
     assert.match(out, /LOOP_DISPATCH_DEPTH=/);
     assert.match(out, /--depth/);
@@ -49,7 +49,7 @@ test("augmentPrompt: preserves original prompt body", () => {
         depth: 0,
         childCwd: "/x",
         childBranch: "b",
-        childId: "c",
+        childId: "c"
     });
     assert.match(out, /ORIGINAL_BODY_HERE/);
 });

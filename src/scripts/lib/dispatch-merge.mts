@@ -6,7 +6,7 @@ export function mergeChildren(
   repoRoot: string,
   parentBranch: string,
   results: DispatchResult[],
-  plans: DispatchPlan[],
+  plans: DispatchPlan[]
 ): DispatchResult[] {
   const priorityById = new Map(plans.map((p) => [p.id, p.priority]));
   execFileSync("git", ["checkout", parentBranch], { cwd: repoRoot });
@@ -20,14 +20,8 @@ export function mergeChildren(
     try {
       execFileSync(
         "git",
-        [
-          "merge",
-          "--no-ff",
-          child.branch,
-          "-m",
-          `merge ${child.id} (FEAT-020 dispatch)`,
-        ],
-        { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] },
+        ["merge", "--no-ff", child.branch, "-m", `merge ${child.id} (FEAT-020 dispatch)`],
+        { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] }
       );
       removeChildWorktree(repoRoot, child.worktreePath, child.branch);
       updated.set(child.id, { ...child, status: "DONE" });
@@ -40,7 +34,7 @@ export function mergeChildren(
       updated.set(child.id, {
         ...child,
         status: "CONFLICTED",
-        error: `merge conflict against ${parentBranch}`,
+        error: `merge conflict against ${parentBranch}`
       });
     }
   }

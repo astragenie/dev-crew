@@ -21,10 +21,7 @@ export function initRepo(): string {
   return dir;
 }
 
-export function makeStubAgent(
-  repo,
-  perChild,
-) {
+export function makeStubAgent(repo, perChild) {
   return async (batch, ctx) => {
     const dir = path.join(repo, ".claude/artifacts/loop/dispatch", ctx.runId);
     fs.mkdirSync(dir, { recursive: true });
@@ -38,8 +35,11 @@ export function makeStubAgent(
         execSync(`git add . && git commit -qm "child ${id}"`, { cwd });
       }
       const marker = {
-        id, status: action.status, branch, worktreePath: cwd,
-        ...(action.status !== "DONE" ? { error: "stub failure" } : {}),
+        id,
+        status: action.status,
+        branch,
+        worktreePath: cwd,
+        ...(action.status !== "DONE" ? { error: "stub failure" } : {})
       };
       fs.writeFileSync(path.join(dir, `${id}.result.json`), JSON.stringify(marker));
     }

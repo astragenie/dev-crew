@@ -6,7 +6,7 @@ export function aggregateResults(
   runId: string,
   plans: DispatchPlan[],
   branchById: Record<string, string>,
-  cwdById: Record<string, string>,
+  cwdById: Record<string, string>
 ): DispatchResult[] {
   return plans.map((plan) => {
     const marker = readMarker(repoRoot, runId, plan.id);
@@ -17,7 +17,7 @@ export function aggregateResults(
       branch: branchById[plan.id] ?? "",
       worktreePath: cwdById[plan.id] ?? "",
       error: "no marker",
-      costUsd: null,
+      costUsd: null
     };
   });
 }

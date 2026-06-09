@@ -7,14 +7,14 @@ export function preflightGitClean(repoRoot, parentBranch) {
     try {
         execFileSync("git", ["rev-parse", "--verify", parentBranch], {
             cwd: repoRoot,
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: ["ignore", "pipe", "pipe"]
         });
     }
     catch {
         throw new DispatchWorktreeError(`parentBranch not found: ${parentBranch}`);
     }
     const status = execFileSync("git", ["status", "--porcelain"], {
-        cwd: repoRoot,
+        cwd: repoRoot
     }).toString();
     if (status.trim().length > 0) {
         throw new DispatchWorktreeError(`working tree dirty on ${parentBranch}`);
@@ -28,7 +28,10 @@ export function createChildWorktree(args) {
     const baseName = path.basename(repoRoot);
     const worktreePath = path.join(path.dirname(repoRoot), `${baseName}-${childId}-${depth}`);
     try {
-        execFileSync("git", ["worktree", "add", worktreePath, parentBranch, "-b", childBranch], { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] });
+        execFileSync("git", ["worktree", "add", worktreePath, parentBranch, "-b", childBranch], {
+            cwd: repoRoot,
+            stdio: ["ignore", "pipe", "pipe"]
+        });
     }
     catch (err) {
         throw new DispatchWorktreeError(`worktree add failed for ${childId}: ${err.message}`);
@@ -40,14 +43,14 @@ export function createChildWorktree(args) {
         childId,
         branch: childBranch,
         path: worktreePath,
-        depth,
+        depth
     }) + "\n");
     return { worktreePath, branch: childBranch };
 }
 export function removeChildWorktree(repoRoot, worktreePath, branch) {
     try {
         execFileSync("git", ["worktree", "remove", "--force", worktreePath], {
-            cwd: repoRoot,
+            cwd: repoRoot
         });
     }
     catch {

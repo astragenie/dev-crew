@@ -15,7 +15,7 @@ test("mergeChildren: DONE children merged + cleaned up in priority order", () =>
         parentBranch: "slice/SLICE-MERGE",
         childId: "A",
         depth: 0,
-        runId: "merge-1",
+        runId: "merge-1"
     });
     fs.writeFileSync(path.join(a.worktreePath, "a.txt"), "A\n");
     execSync("git add . && git commit -q -m a", { cwd: a.worktreePath });
@@ -24,17 +24,17 @@ test("mergeChildren: DONE children merged + cleaned up in priority order", () =>
         parentBranch: "slice/SLICE-MERGE",
         childId: "B",
         depth: 0,
-        runId: "merge-1",
+        runId: "merge-1"
     });
     fs.writeFileSync(path.join(b.worktreePath, "b.txt"), "B\n");
     execSync("git add . && git commit -q -m b", { cwd: b.worktreePath });
     const results = [
         { id: "A", status: "DONE", branch: a.branch, worktreePath: a.worktreePath },
-        { id: "B", status: "DONE", branch: b.branch, worktreePath: b.worktreePath },
+        { id: "B", status: "DONE", branch: b.branch, worktreePath: b.worktreePath }
     ];
     const plans = [
         { id: "A", priority: 0, agentType: "x", prompt: "" },
-        { id: "B", priority: 1, agentType: "x", prompt: "" },
+        { id: "B", priority: 1, agentType: "x", prompt: "" }
     ];
     const final = mergeChildren(repo, "slice/SLICE-MERGE", results, plans);
     assert.equal(final[0].status, "DONE");
@@ -55,7 +55,7 @@ test("mergeChildren: merge conflict surfaces CONFLICTED, preserves branch", () =
         parentBranch: "slice/SLICE-CONF",
         childId: "X",
         depth: 0,
-        runId: "conf-1",
+        runId: "conf-1"
     });
     fs.writeFileSync(path.join(x.worktreePath, "shared.txt"), "X-version\n");
     execSync("git add . && git commit -q -m x", { cwd: x.worktreePath });
@@ -64,17 +64,17 @@ test("mergeChildren: merge conflict surfaces CONFLICTED, preserves branch", () =
         parentBranch: "slice/SLICE-CONF",
         childId: "Y",
         depth: 0,
-        runId: "conf-1",
+        runId: "conf-1"
     });
     fs.writeFileSync(path.join(y.worktreePath, "shared.txt"), "Y-version\n");
     execSync("git add . && git commit -q -m y", { cwd: y.worktreePath });
     const results = [
         { id: "X", status: "DONE", branch: x.branch, worktreePath: x.worktreePath },
-        { id: "Y", status: "DONE", branch: y.branch, worktreePath: y.worktreePath },
+        { id: "Y", status: "DONE", branch: y.branch, worktreePath: y.worktreePath }
     ];
     const plans = [
         { id: "X", priority: 0, agentType: "x", prompt: "" },
-        { id: "Y", priority: 1, agentType: "x", prompt: "" },
+        { id: "Y", priority: 1, agentType: "x", prompt: "" }
     ];
     const final = mergeChildren(repo, "slice/SLICE-CONF", results, plans);
     assert.equal(final[0].status, "DONE");
@@ -91,8 +91,8 @@ test("mergeChildren: skips non-DONE children", () => {
             status: "FAILED",
             branch: "ghost",
             worktreePath: "/dummy/x",
-            error: "boom",
-        },
+            error: "boom"
+        }
     ];
     const plans = [{ id: "X", priority: 0, agentType: "x", prompt: "" }];
     const final = mergeChildren(repo, "slice/SLICE-SKIP", results, plans);
