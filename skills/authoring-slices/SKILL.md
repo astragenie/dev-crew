@@ -51,6 +51,13 @@ Every acceptance criterion in the slice MUST satisfy:
   not assumed.
 - **DoD separate from AC** — tests green, lint clean, docs updated
   belong in "Done When", not in acceptance criteria.
+- **Weak-dimension AC (mandatory)** — check
+  `.claude/artifacts/loop/loop-snapshot.md` (or
+  `node scripts/loop.mjs lessons recent 5`) for grade dimensions
+  averaging below 0.80 over the last 5 grades. Every such dimension
+  MUST have at least one targeting AC in the slice (e.g. observability
+  weak → AC requiring a log line or metric on the new code path, with
+  the test that asserts it).
 
 When AC can't be written to this standard from the FEAT body alone,
 dispatch `loop:spec-writer` to draft them rather than shipping vague AC.

@@ -90,6 +90,21 @@ Answer in `risks[]`, one entry each:
 2. **This merged and broke the loop — what does rollback actually require?** (revert only / migration / cross-plugin coordination)
 3. **Which existing test would NOT catch a regression here?** (names the coverage gap the slice's AC must close)
 
+## Framework 4: Grade Feedback (closing the loop)
+
+Grades are the loop's outcome signal — scoring that ignores them repeats known failures.
+
+- **Weak-dimension rule.** Any grade dimension averaging below 0.80 over the last 5 grades (read from `.claude/artifacts/loop/loop-snapshot.md` or the lessons digest) is a *weak dimension*. Name every weak dimension in `scopeNotes`. A FEAT in an affected area is `autonomousSafe: true` only if its AC include at least one criterion targeting each weak dimension (e.g. observability below 0.80 → an AC requiring logs/metrics on the new code path).
+- **Lessons digest is a required pre-read**, not optional scanning: `node scripts/loop.mjs lessons recent 5`. If a lesson or followup names this FEAT's domain, quote it in `demandEvidence` or `risks[]`.
+
+## Framework 5: Effort Calibration
+
+`effort_estimate` must be calibrated against actuals, not vibes:
+
+- Read recent aggregate cost reports under `.claude/artifacts/crew/cost/` (`*-cost-report-aggregate-*.md`). Find 1–3 past slices with similar tags / blast radius.
+- Compare their actual cost and duration against what their effort scores predicted. State the comparison in `scopeNotes` (e.g. "similar to SLICE-84, actual $48 / 1 session — effort 0.4 confirmed" or "SLICE-79 analog ran 2× predicted — bumping effort to 0.7").
+- No comparable slice → score from the dimension table and note "no cost analog" in `reasoning`.
+
 ## Anti-hallucination rules
 
 - Quote evidence from files you actually read. Include the file path.
@@ -101,10 +116,11 @@ Answer in `risks[]`, one entry each:
 
 1. Read the FEAT file body and frontmatter
 2. If `derived_from` is set, read the linked SPEC file
-3. Read recent grades: `ls .claude/artifacts/loop/grades/` — scan lessons/surprises for mentions of this feature's domain
-4. Read recent decisions: `ls .claude/artifacts/loop/decisions/` — check for prior architectural choices affecting this area
-5. Check dependency graph: grep for this FEAT's id across all backlog files
-6. Read `productDescription` and `productName` from `.claude/loop.json` for strategic alignment context
+3. Run the lessons digest (required — Framework 4): `node scripts/loop.mjs lessons recent 5`; extract weak dimensions and domain-relevant lessons
+4. Read recent cost reports (Framework 5): `.claude/artifacts/crew/cost/*-cost-report-aggregate-*.md` for effort analogs
+5. Read recent decisions: `ls .claude/artifacts/loop/decisions/` — check for prior architectural choices affecting this area
+6. Check dependency graph: grep for this FEAT's id across all backlog files
+7. Read `productDescription` and `productName` from `.claude/loop.json` for strategic alignment context
 
 ## Required skills (invoke via `Skill` tool at start of every dispatch)
 
