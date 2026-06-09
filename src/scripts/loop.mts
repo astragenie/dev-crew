@@ -177,6 +177,7 @@ function usage() {
     "  node scripts/loop.mjs phase-gate --repo <path> [--phase <N>] [--note <text>]",
     "  node scripts/loop.mjs status --repo <path>",
     "  node scripts/loop.mjs list-presets",
+    "  node scripts/loop.mjs dispatch <subcommand> [args...]   (see: dispatch --help)",
     "",
     "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
     "artifact through `crew write-validation-result`."
@@ -406,7 +407,24 @@ function runResolveSkillsCommand(flags: Record<string, any>): void {
 }
 
 async function main() {
-  const { command, flags, positionals } = parseArgs(process.argv.slice(2));
+  // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
+  // --depth, --dry-run, --json, --run-id, --config) are not registered in
+  // FLAG_SPEC, and the parser would throw on them. Forward all remaining argv
+  // verbatim to scripts/dispatch.mjs as a child process.
+  const rawArgv = process.argv.slice(2);
+  if (rawArgv[0] === "dispatch") {
+    const { spawnSync } = await import("node:child_process");
+    const { fileURLToPath } = await import("node:url");
+    const thisFile = fileURLToPath(import.meta.url);
+    const dispatchCli = path.join(path.dirname(thisFile), "dispatch.mjs");
+    const result = spawnSync("node", [dispatchCli, ...rawArgv.slice(1)], {
+      stdio: "inherit"
+    });
+    process.exitCode = result.status ?? 1;
+    return;
+  }
+
+  const { command, flags, positionals } = parseArgs(rawArgv);
   const repoPath = path.resolve(normalizeMsysPath(flags.repo));
 
   if (command === "help") {
