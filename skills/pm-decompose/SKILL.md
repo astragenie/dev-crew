@@ -20,9 +20,16 @@ Split a SPEC into FEAT files with PM scores pre-filled.
    - Which features can be autonomous vs. need human review?
 3. For each proposed feature:
    a. Draft the FEAT title and description.
-   b. Pre-score all 5 PM dimensions based on the spec context.
-   c. Compute composite priority and autonomous_safe.
-   d. Identify dependencies between the proposed features.
+   b. Run the INVEST check from `loop:authoring-slices` — a proposed
+      feature failing Independent / Small / Testable gets re-cut before
+      scoring, not patched with caveats.
+   c. Draft acceptance criteria per the AC quality checklist in
+      `loop:authoring-slices` (Given-When-Then, concrete values, edge +
+      error coverage). If the spec context is too thin to write AC to
+      that standard, dispatch `loop:spec-writer` to draft them.
+   d. Pre-score all 5 PM dimensions based on the spec context.
+   e. Compute composite priority and autonomous_safe.
+   f. Identify dependencies between the proposed features.
 4. Present the decomposition to the user (or log if autonomous):
    - Feature list with scores and priorities
    - Dependency graph

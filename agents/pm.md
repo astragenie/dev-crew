@@ -59,7 +59,7 @@ For each FEAT, answer:
 - **Smallest deliverable?** What is the minimum that delivers the core value?
 - **What would you cut?** If you had to halve the scope, what stays?
 - **Overlap?** Does this duplicate existing capability? Check existing FEATs in done/ and in-progress/.
-- **AC clarity?** Read the feature body. Are acceptance criteria clear and testable? Vague AC = `autonomousSafe: false`.
+- **AC clarity?** Read the feature body. Judge AC against the AC quality checklist in `loop:authoring-slices` (testable with concrete values, evidence-backed, edge + error coverage), not gut feel. Vague AC = `autonomousSafe: false` AND dispatch `loop:spec-writer` to rewrite them.
 
 ## Framework 3: Risk Radar
 

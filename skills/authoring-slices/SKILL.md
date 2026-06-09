@@ -31,6 +31,42 @@ Every slice file MUST have:
 - Open questions
 </HARD-GATE>
 
+## AC quality checklist
+
+Every acceptance criterion in the slice MUST satisfy:
+
+- **Testable with concrete values** — Given-When-Then form or "system
+  shall X when Y", with specific data (not "handles errors gracefully"
+  but "returns exit code 1 and logs `rules: empty glob` when patterns
+  is `[]`").
+- **Evidence-backed** — names the proof: test file + case name, command
+  to run, file path, or endpoint URL.
+- **3–5 AC per slice** — fewer means the slice is under-specified;
+  more means it should be split.
+- **Edge + error coverage** — at least one AC for an edge case and one
+  for an error/failure path. A slice with only happy-path AC fails
+  review.
+- **NFRs where relevant** — performance bounds, security constraints,
+  observability hooks (logs/metrics for new code paths) stated as AC,
+  not assumed.
+- **DoD separate from AC** — tests green, lint clean, docs updated
+  belong in "Done When", not in acceptance criteria.
+
+When AC can't be written to this standard from the FEAT body alone,
+dispatch `loop:spec-writer` to draft them rather than shipping vague AC.
+
+## INVEST check (slice shape)
+
+Before approving, verify the slice is:
+
+- **Independent** — implementable without waiting on another pending slice.
+- **Negotiable** — out-of-scope list shows what was consciously punted.
+- **Valuable** — objective states a user-visible or loop-visible outcome.
+- **Estimable** — a builder can bound the work from in-scope + plan steps.
+- **Small** — one implementation pass; if the plan exceeds ~6 steps of
+  ≤1 hour each, split the slice.
+- **Testable** — every AC passes the checklist above.
+
 ## Naming convention
 
 `SLICE_<NN>_<UPPER_SNAKE_SHORT_NAME>.md`
