@@ -1,6 +1,6 @@
 ---
 id: SLICE-55
-status: pending
+status: superseded
 feature: FEAT-060
 phase: null
 priority: P1

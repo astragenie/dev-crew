@@ -1,13 +1,13 @@
 ---
 id: FEAT-134
-status: triaged
+status: in-progress
 priority: P1
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-09
 depends_on: []
-slices: []
+slices: [SLICE-84]
 derived_from: null
 composite_score: 8
 source_competitors: ["Windsurf (Codeium, now Cognition)"]

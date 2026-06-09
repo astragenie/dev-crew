@@ -78,3 +78,22 @@ tests for changed writers.
 - AC-6: Unit tests cover absent, empty, populated + instruction prose cases
 
 **Files:** `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`, `src/tests/loop-installer.test.mts`
+
+---
+
+## SLICE-84 — Skill activation triggers (FEAT-134, P1)
+
+**Status:** PENDING
+
+**Goal:** Add `trigger` field (`always_on` | `glob` | `manual`) to SKILL.md frontmatter. New `parseSkillFrontmatter` parser + async `buildSkillActivationBlock` renders conditional invocation instructions into MASTER_PROMPT via `{{skillActivationBlock}}` token. `always_on` (default) emits nothing — backward-compatible. `model_decision` deferred to SLICE-85.
+
+**Done When:**
+- AC-1: `npm test` + lint + typecheck + format-check + validators all pass
+- AC-2: `parseSkillFrontmatter` reads `trigger` (default `always_on`) and `globs` from SKILL.md string
+- AC-3: No conditional skills → empty string, no blank `##` heading in MASTER_PROMPT
+- AC-4: `trigger: "manual"` skill → instruction rendered stating explicit-request-only activation
+- AC-5: `trigger: "glob"` skill → instruction rendered containing skill name + glob patterns
+- AC-6: Unit tests cover absent trigger, `always_on`, `manual`, `glob`, `model_decision` (parsed but not rendered)
+- AC-7: `buildTokens` includes `skillActivationBlock` key; template token renders empty when no conditional skills
+
+**Files:** `src/scripts/lib/skill-frontmatter.mts`, `src/scripts/lib/loop-installer-tokens.mts`, `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`, `src/tests/skill-frontmatter.test.mts`, `src/tests/loop-installer-tokens.test.mts`
