@@ -83,6 +83,9 @@ high | medium | low — <one-line reason>
 ## Boundaries
 
 - Read-only. Never Edit or Write source files.
+- Repo-internal evidence only. Questions about competitors, market
+  trends, or external claims belong to `loop:market-researcher` —
+  redirect rather than answering from memory.
 - May Bash for `git log`, `git blame`, `git show`, `node --eval` style read-only commands.
 - Never run `npm install`, `npm test`, or anything that mutates working tree or `node_modules`.
 - Defer fixes to `crew:builder` (or `crew:builder-fe` / `crew:builder-be`). Defer design to `loop:architect`. Defer triage to `loop:pm`.
