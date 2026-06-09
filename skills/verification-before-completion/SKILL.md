@@ -1,6 +1,7 @@
 ---
 name: loop:verification-before-completion
 description: Use before making any completion claim ("tests pass", "bug fixed", "feature works", etc.). Loads the Iron Law and the claim→evidence lookup table. Trigger automatically when the agent is about to assert that work is done, passing, or fixed without having run the verification command in the current turn.
+trigger: "always_on"
 ---
 
 # Verification Before Completion
@@ -49,6 +50,8 @@ command, capture the output, post it inline before the claim.
 | "deploy succeeded" | Deploy command exit code + post-deploy health check output (HTTP 200 or equivalent) in this turn |
 | "format clean" | Full output of `npm run format:check` in this turn — no diff output, exit code 0 |
 | "manifest valid" | Full output of `node ./scripts/validate-manifests.mjs` in this turn — "Manifests OK" message |
+| "type-checks" | Full output of `npm run typecheck` in this turn — zero errors, exit code 0 |
+| "function/module added" | `grep` or `Read` of the compiled file in `scripts/` showing the exported symbol exists in this turn |
 
 ## Pre-Completion Checklist
 

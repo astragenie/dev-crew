@@ -1,13 +1,13 @@
 ---
 id: FEAT-089
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-09
 depends_on: []
-slices: []
+slices: [SLICE-85]
 derived_from: null
 composite_score: 7
 source_competitors: [superpowers]
@@ -16,11 +16,13 @@ tags: [skill-quality, verification, documentation]
 needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.45
-pm_effort_estimate: 0.20
+pm_effort_estimate: 0.2
 pm_strategic_alignment: 0.75
 pm_technical_risk: 0.15
 pm_dependency_depth: 0.05
 triage_notes: "Composite 7. Evidence-before-claims verification gate as a named loop skill with an evidence table. Near-exact duplicate of FEAT-116. CLAUDE.md already references superpowers:verification-before-completion as a required skill. The gap is a loop-native version. Grade history shows builder fabrication (SLICE-81 grade: builder fabricated results twice) — this skill would directly address that failure pattern. autonomousSafe: true — creating a new skills/verification/SKILL.md file; no runtime changes."
+slices_complete: [SLICE-85]
+completed_at: 2026-06-09
 ---
 # FEAT-089: Evidence-before-claims verification gate as a named skill with evidence table
 

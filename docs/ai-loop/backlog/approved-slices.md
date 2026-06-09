@@ -83,7 +83,7 @@ tests for changed writers.
 
 ## SLICE-84 — Skill activation triggers (FEAT-134, P1)
 
-**Status:** PENDING
+**Status:** COMPLETED — 2026-06-09. All 7 ACs pass. Commit: 21c1cf6.
 
 **Goal:** Add `trigger` field (`always_on` | `glob` | `manual`) to SKILL.md frontmatter. New `parseSkillFrontmatter` parser + async `buildSkillActivationBlock` renders conditional invocation instructions into MASTER_PROMPT via `{{skillActivationBlock}}` token. `always_on` (default) emits nothing — backward-compatible. `model_decision` deferred to SLICE-85.
 
@@ -97,3 +97,21 @@ tests for changed writers.
 - AC-7: `buildTokens` includes `skillActivationBlock` key; template token renders empty when no conditional skills
 
 **Files:** `src/scripts/lib/skill-frontmatter.mts`, `src/scripts/lib/loop-installer-tokens.mts`, `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`, `src/tests/skill-frontmatter.test.mts`, `src/tests/loop-installer-tokens.test.mts`
+
+---
+
+## SLICE-85 — Verification skill evidence table gaps (FEAT-089, P2)
+
+**Status:** PENDING
+
+**Goal:** Add `trigger: "always_on"` to `skills/verification-before-completion/SKILL.md` frontmatter and two missing evidence rows (`typecheck` + `function-exists`) to the Claim→Evidence table. Closes FEAT-089 — the SKILL.md existed from SLICE-09 but predates the trigger field and was missing the two rows that address the SLICE-81 fabrication pattern.
+
+**Done When:**
+- AC-1: SKILL.md frontmatter has `trigger: "always_on"`
+- AC-2: Evidence table has `typecheck` row (claim: "type-checks" → `npm run typecheck` exit 0)
+- AC-3: Evidence table has `function-exists` row (claim: "function/module added" → grep/file-read evidence)
+- AC-4: Existing Iron Law + checklist blocks preserved verbatim
+- AC-5: `npm test` green
+- AC-6: `node ./scripts/validate-manifests.mjs` passes
+
+**Files:** `skills/verification-before-completion/SKILL.md`
