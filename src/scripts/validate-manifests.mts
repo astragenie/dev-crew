@@ -36,12 +36,28 @@ export function validateAllPresets(repoRoot: string): string[] {
   return errors;
 }
 
+function validateMarketplaceEntries(
+  marketplace: Record<string, any>,
+  fail: (msg: string) => void
+): void {
+  for (const entry of marketplace.plugins) {
+    if (!entry.name) fail(`marketplace.json: a plugins[] entry is missing "name"`);
+    if (!entry.version || !SEMVER_RE.test(entry.version)) {
+      fail(
+        `marketplace.json: entry "${entry.name}" version "${entry.version}" is not parseable semver`
+      );
+    }
+    if (!entry.source) fail(`marketplace.json: entry "${entry.name}" missing "source"`);
+  }
+}
+
 export async function validateManifests(repoRoot: string) {
   const failures: string[] = [];
   const fail = (msg: string) => failures.push(msg);
 
   const plugin = await readJson(path.join(repoRoot, ".claude-plugin", "plugin.json"));
   const marketplace = await readJson(path.join(repoRoot, ".claude-plugin", "marketplace.json"));
+  const pkg = await readJson(path.join(repoRoot, "package.json"));
 
   for (const [label, manifest, requiredFields] of [
     ["plugin.json", plugin, ["name", "version", "description", "author", "license"]],
@@ -66,28 +82,27 @@ export async function validateManifests(repoRoot: string) {
     // Lockstep enforcement (reversed v0.24.2). Earlier comment said marketplace
     // drift was acceptable "no consumer." Sessions installing via this repo's
     // marketplace.json silently stayed on the pinned version (0.22.0) and missed
-    // v0.23.0..v0.24.1. Use scripts/bump-version.mjs to bump both files atomically.
+    // v0.23.0..v0.24.1. Use scripts/bump-version.mjs to bump all three files atomically.
     fail(
       `version drift: plugin.json="${plugin.version}" vs marketplace.json entry "${plugin.name}"="${ownEntry.version}". ` +
         `Run "npm run bump-version <new-version>" to sync.`
     );
   }
 
-  for (const entry of marketplace.plugins) {
-    if (!entry.name) fail(`marketplace.json: a plugins[] entry is missing "name"`);
-    if (!entry.version || !SEMVER_RE.test(entry.version)) {
-      fail(
-        `marketplace.json: entry "${entry.name}" version "${entry.version}" is not parseable semver`
-      );
-    }
-    if (!entry.source) fail(`marketplace.json: entry "${entry.name}" missing "source"`);
+  if (pkg.version !== plugin.version) {
+    fail(
+      `version drift: plugin.json="${plugin.version}" vs package.json="${pkg.version}". ` +
+        `Run "npm run bump-version <new-version>" to sync all three files.`
+    );
   }
+
+  validateMarketplaceEntries(marketplace, fail);
 
   for (const presetErr of validateAllPresets(repoRoot)) {
     fail(presetErr);
   }
 
-  return { ok: failures.length === 0, failures, plugin, marketplace };
+  return { ok: failures.length === 0, failures, plugin, marketplace, pkg };
 }
 
 function isMainEntry() {
@@ -107,6 +122,7 @@ if (isMainEntry()) {
   } else {
     console.log("Manifests OK:");
     console.log(`  plugin.json      ${result.plugin.name}@${result.plugin.version}`);
+    console.log(`  package.json     ${result.pkg.name}@${result.pkg.version}`);
     console.log(`  marketplace.json (${result.marketplace.plugins.length} entries)`);
     for (const entry of result.marketplace.plugins) {
       console.log(`    - ${entry.name}@${entry.version}`);
