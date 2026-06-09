@@ -474,13 +474,8 @@ async function runBacklogPmWrite(repoPath, flags, rest) {
         throw new Error("backlog pm-write requires --id FEAT-NNN.");
     if (!flags.scores)
         throw new Error("backlog pm-write requires --scores '{...}'.");
-    let parsedScores;
-    try {
-        parsedScores = JSON.parse(flags.scores);
-    }
-    catch (err) {
-        throw new Error(`--scores must be valid JSON: ${err.message}`);
-    }
+    const { parseJsonFlag } = await import("./lib/json-flag.mjs");
+    const parsedScores = parseJsonFlag(flags.scores, "scores");
     const priority = flags.priority ?? null;
     const autonomousSafe = flags.autonomousSafe === "true"
         ? true
