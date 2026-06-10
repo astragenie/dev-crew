@@ -15,8 +15,11 @@
 // install drift is best-effort and must not break SessionStart.
 
 import { readFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
+
+const MIN_BUN_VERSION = "1.3.14";
 
 function safeReadJson(p) {
   try {
@@ -41,6 +44,19 @@ function emit(message) {
   // SessionStart hooks surface text on stdout as additionalContext.
   process.stdout.write(message);
   process.exit(0);
+}
+
+try {
+  const bunResult = spawnSync("bun", ["--version"], { encoding: "utf8", windowsHide: true });
+  const bunVersion = bunResult.stdout?.trim() || null;
+  if (!bunVersion || compareSemver(bunVersion, MIN_BUN_VERSION) < 0) {
+    console.warn(
+      `\n⚠ loop plugin requires bun >= ${MIN_BUN_VERSION} (found: ${bunVersion ?? "not installed"}).\n` +
+        `  Install or upgrade: https://bun.sh\n`
+    );
+  }
+} catch {
+  // fail-open
 }
 
 try {

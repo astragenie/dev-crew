@@ -6,7 +6,8 @@ import {
   findCrewCli,
   getCrewVersion,
   compareSemver,
-  MIN_CREW_VERSION
+  MIN_CREW_VERSION,
+  checkBunVersion
 } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
 import { pathExists } from "./paths.mjs";
@@ -37,6 +38,15 @@ export async function installLoop(
   }
   if (!(await pathExists(path.join(repoPath, ".git")))) {
     throw new Error(`Not a git repository (missing .git): ${repoPath}`);
+  }
+
+  // Hard dependency: Bun must meet the minimum version.
+  const bunCheck = await checkBunVersion(options.bunVersionOverride);
+  if (!bunCheck.ok) {
+    throw new Error(
+      `loop requires bun >= ${bunCheck.required} (found: ${bunCheck.version ?? "not installed"}). ` +
+        `Install: https://bun.sh — then re-run /loop:install.`
+    );
   }
 
   // Hard dependency: crew CLI must be discoverable.
@@ -118,6 +128,7 @@ export async function reportStatus(repoPath: string): Promise<Record<string, any
     hasMasterPrompt: await pathExists(
       path.join(repoPath, tokens.aiLoopRoot!, "00-entry", "MASTER_PROMPT.md")
     ),
-    crewCli: await findCrewCli()
+    crewCli: await findCrewCli(),
+    bun: await checkBunVersion()
   };
 }

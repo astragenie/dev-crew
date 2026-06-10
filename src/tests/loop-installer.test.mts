@@ -49,6 +49,14 @@ test("installLoop errors when target is not a git repo", async () => {
   await assert.rejects(() => installLoop(repo, { migrateAdhoc: false }), /Not a git repository/);
 });
 
+test("installLoop refuses when bun below minimum", async () => {
+  const repo = await initGitRepo("al-install-bun-old-");
+  await assert.rejects(
+    () => installLoop(repo, { migrateAdhoc: false, bunVersionOverride: "0.0.1" }),
+    /bun >= /
+  );
+});
+
 test("installLoop errors when target dir does not exist", async () => {
   await assert.rejects(
     () =>
