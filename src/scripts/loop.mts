@@ -540,7 +540,6 @@ async function runBacklogAdd(
     body: resolvedBody,
     config
   });
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   const { publishFeat } = await importGithubSync("github-sync.mjs");
   try {
     await (publishFeat as any)(repoPath, result.id);
@@ -816,7 +815,6 @@ const SPEC_HANDLERS = {
       const entries = parseFeatureEntries(flags);
       const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
       const out = await decomposeSpec(repoPath, specId, entries, { config });
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       const { publishFeat } = await importGithubSync("github-sync.mjs");
       for (const feat of out.created) {
         try {
@@ -926,7 +924,6 @@ const SLICE_HANDLERS = {
       dispatchFn,
       config: opts.config
     });
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const { publishSlice } = await importGithubSync("github-sync.mjs");
     try {
       await (publishSlice as any)(repoPath, out.slice.id, featureId);
@@ -1198,7 +1195,6 @@ async function runLearningsSubcommand(
 
 async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {
   const [sub] = positionals;
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   const { publishAll, publishFeat, syncMilestones, setupGithubSync } =
     await importGithubSync("github-sync.mjs");
   if (sub === "setup") {

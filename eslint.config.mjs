@@ -2,6 +2,7 @@
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import sonarjs from "eslint-plugin-sonarjs";
 
 // Sub-module boundary rule: imports of slice-linker sub-modules
 // (scripts/lib/slice-linker/*.mjs) must go through the barrel
@@ -96,10 +97,16 @@ export default [
   },
   {
     files: ["src/tests/**/*.mts", "tests/**/*.mjs"],
+    plugins: { sonarjs },
     rules: {
       "max-lines-per-function": "off",
       "complexity": "off",
-      "@typescript-eslint/ban-ts-comment": "off"
+      "@typescript-eslint/ban-ts-comment": "off",
+      // Surface repeated literals (ids, paths, preset names) so they get
+      // hoisted into src/tests/_fixtures.mts. WARN for now — the remaining
+      // warnings are the incremental cleanup backlog; flip to "error" once
+      // the suite is migrated onto the shared fixtures.
+      "sonarjs/no-duplicate-string": ["warn", { threshold: 5 }]
     }
   },
   {

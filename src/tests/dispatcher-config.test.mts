@@ -1,26 +1,21 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { LOOP_CLI, makeTmpRepo, writeLoopJson } from "./_fixtures.mjs";
 
 const run = promisify(execFile);
-const LOOP = path.resolve("src/scripts/loop.mts");
 
 test("backlog add honors loop.json backlogRoot override", async () => {
-  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "loop-cfg-"));
+  const repo = await makeTmpRepo("loop-cfg-");
   try {
-    await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
-    await fs.writeFile(
-      path.join(repo, ".claude", "loop.json"),
-      JSON.stringify({ schemaVersion: 1, loop: { backlogRoot: "docs/backlog" } })
-    );
+    await writeLoopJson(repo, { backlogRoot: "docs/backlog" });
 
     // Try to run backlog add; tolerate github-sync errors (non-fatal for this test)
     try {
-      await run("bun", [LOOP, "backlog", "add", "--repo", repo, "--title", "T1"]);
+      await run("bun", [LOOP_CLI, "backlog", "add", "--repo", repo, "--title", "T1"]);
     } catch (err: any) {
       // Non-zero exit is ok if it's from github-sync; the file should still exist
       if (!err.stderr?.includes("github") && !err.stderr?.includes("sync")) {
