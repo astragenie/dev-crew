@@ -117,9 +117,14 @@ async function safeIncrementIteration(repoPath) {
         return { error: err.message };
     }
 }
+// Dispatcher passes config via options; direct callers (tests, ceremonies)
+// may omit it, falling back to a fresh resolve of the same repo config.
+async function resolveGateConfig(repoPath, options) {
+    return (options.config || (await resolveConfig(repoPath)));
+}
 export async function runPhaseGate(repoPath, options = {}) {
     const startedAt = nowIso();
-    const config = (await resolveConfig(repoPath));
+    const config = await resolveGateConfig(repoPath, options);
     const phase = options.phase || "unspecified";
     const note = options.note || "";
     const crewCli = await findCrewCli();

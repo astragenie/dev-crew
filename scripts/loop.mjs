@@ -182,9 +182,9 @@ const COMMANDS = {
         const { installLoop } = await import("./lib/loop-installer.mjs");
         return installLoop(repoPath, { preset: flags.preset });
     },
-    "phase-gate": async ({ repoPath, flags }) => {
+    "phase-gate": async ({ repoPath, flags, config }) => {
         const { runPhaseGate } = await import("./lib/phase-gate.mjs");
-        return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note });
+        return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note, config });
     },
     status: async ({ repoPath }) => {
         const { reportStatus } = await import("./lib/loop-installer.mjs");
@@ -196,7 +196,7 @@ const COMMANDS = {
     },
     github: ({ repoPath, flags, positionals }) => runGithubSubcommand(repoPath, positionals, flags),
     "task-store": ({ repoPath, flags, positionals }) => runGithubSubcommand(repoPath, positionals, flags),
-    backlog: ({ repoPath, flags, positionals }) => runBacklogSubcommand(repoPath, positionals, flags),
+    backlog: ({ repoPath, flags, positionals, config }) => runBacklogSubcommand(repoPath, positionals, flags, config),
     spec: ({ repoPath, flags, positionals }) => runSpecSubcommand(repoPath, positionals, flags),
     release: ({ repoPath, flags, positionals }) => runReleaseSubcommand(repoPath, positionals, flags),
     slice: ({ repoPath, flags, positionals }) => runSliceSubcommand(repoPath, positionals, flags, {}),
@@ -255,18 +255,14 @@ const COMMANDS = {
         await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
         return result;
     },
-    "stop-check": async ({ repoPath, flags }) => {
+    "stop-check": async ({ repoPath, flags, config }) => {
         const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
         const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
         const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-        const { resolveConfig } = await import("./lib/config-resolver.mjs");
-        const config = await resolveConfig(cwd);
         return checkStopConditions(cwd, { config });
     },
-    auto: async ({ repoPath, flags }) => {
+    auto: async ({ repoPath, flags, config }) => {
         const { runAutoWalker } = await import("./lib/auto-walker.mjs");
-        const { resolveConfig } = await import("./lib/config-resolver.mjs");
-        const config = await resolveConfig(repoPath);
         return runAutoWalker(repoPath, {
             ...(flags.maxFeatures ? { maxFeatures: Number(flags.maxFeatures) } : {}),
             dryRun: Boolean(flags.dryRun),
@@ -276,7 +272,7 @@ const COMMANDS = {
         });
     },
     learnings: ({ repoPath, flags, positionals }) => runLearningsSubcommand(repoPath, positionals, flags),
-    architect: async ({ repoPath, flags }) => runArchitectSubcommand(repoPath, flags),
+    architect: async ({ repoPath, flags, config }) => runArchitectSubcommand(repoPath, flags, config),
     trajectory: async ({ repoPath, flags }) => {
         const { readTrajectory, trajectoryPath } = await import("./lib/trajectory-writer.mjs");
         const sliceId = flags.id;
@@ -294,14 +290,12 @@ const COMMANDS = {
         return runPrFix(repoPath, prNumber, { priorAttempts });
     }
 };
-async function runArchitectSubcommand(repoPath, flags) {
+async function runArchitectSubcommand(repoPath, flags, config) {
     const sliceId = flags.id;
     if (!sliceId)
         throw new Error("architect requires --id SLICE-NN");
-    const { resolveConfig } = await import("./lib/config-resolver.mjs");
     const { resolveArchitectModels } = await import("./lib/model-router.mjs");
     const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
-    const config = await resolveConfig(repoPath);
     const { architectModel, editorModel } = resolveArchitectModels(config);
     const planResult = await runPlanPreflight(repoPath, sliceId, { config });
     const dispatchInstruction = [
@@ -404,12 +398,15 @@ async function main() {
         return;
     }
     clearFrontmatterCache(); // ensure cold start for each invocation
+    // Resolve config once at dispatcher level and pass to all handlers
+    const { resolveConfig } = await import("./lib/config-resolver.mjs");
+    const config = await resolveConfig(repoPath);
     const handler = COMMANDS[command];
     if (!handler) {
         throw new Error(`Unknown command: ${command}`);
     }
     try {
-        const result = await handler({ repoPath, flags, positionals });
+        const result = await handler({ repoPath, flags, positionals, config });
         if (result && result._suppressDefaultOutput)
             return;
         console.log(JSON.stringify(result, null, 2));
@@ -445,7 +442,7 @@ async function runBacklogListPendingIds(repoPath) {
     const ids = await listPendingFeatureIds(repoPath);
     return { ids };
 }
-async function runBacklogAdd(repoPath, flags, rest) {
+async function runBacklogAdd(repoPath, flags, rest, config) {
     const title = flags.title || rest.join(" ");
     if (!title)
         throw new Error("backlog add requires a title (positional or --title).");
@@ -460,7 +457,8 @@ async function runBacklogAdd(repoPath, flags, rest) {
         priority: flags.priority,
         category: flags.category,
         target_release: flags.targetRelease,
-        body: resolvedBody
+        body: resolvedBody,
+        config
     });
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -525,12 +523,12 @@ export async function runBacklogEnrich(repoPath, _flags) {
     process.exitCode = 1;
     return { enriched: 0, alreadyTagged, failed: 0, refused: true };
 }
-async function runBacklogSubcommand(repoPath, positionals, flags) {
+async function runBacklogSubcommand(repoPath, positionals, flags, config) {
     const [sub, ...rest] = positionals;
     if (!sub)
         throw new Error("backlog requires a subcommand: add | list | list-pending-ids | triage | promote");
     if (sub === "add") {
-        return runBacklogAdd(repoPath, flags, rest);
+        return runBacklogAdd(repoPath, flags, rest, config);
     }
     if (sub === "list") {
         const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");

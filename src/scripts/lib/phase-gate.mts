@@ -153,9 +153,18 @@ async function safeIncrementIteration(repoPath: string) {
   }
 }
 
+// Dispatcher passes config via options; direct callers (tests, ceremonies)
+// may omit it, falling back to a fresh resolve of the same repo config.
+async function resolveGateConfig(
+  repoPath: string,
+  options: Record<string, any>
+): Promise<Record<string, any>> {
+  return (options.config || (await resolveConfig(repoPath))) as Record<string, any>;
+}
+
 export async function runPhaseGate(repoPath: string, options: Record<string, any> = {}) {
   const startedAt = nowIso();
-  const config = (await resolveConfig(repoPath)) as Record<string, any>;
+  const config = await resolveGateConfig(repoPath, options);
   const phase = options.phase || "unspecified";
   const note = options.note || "";
 

@@ -32,8 +32,9 @@ export function resolveOrchestratorModel(config) {
  * Default split: architect=opus, editor=sonnet (when loop.json ships the standard preset).
  */
 export function resolveArchitectModels(config) {
+    const cfg = config ?? {};
     return {
-        architectModel: resolveModel("architect", config) || resolveModel("sliceStart", config),
-        editorModel: resolveModel("build", config)
+        architectModel: resolveModel("architect", cfg) || resolveModel("sliceStart", cfg),
+        editorModel: resolveModel("build", cfg)
     };
 }

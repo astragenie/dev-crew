@@ -166,7 +166,12 @@ function parseArgs(argv: string[]) {
   return { command, flags, positionals };
 }
 
-type CmdCtx = { repoPath: string; flags: Record<string, any>; positionals: string[] };
+type CmdCtx = {
+  repoPath: string;
+  flags: Record<string, any>;
+  positionals: string[];
+  config: Record<string, any> | null;
+};
 
 function usage() {
   return [
@@ -192,9 +197,9 @@ const COMMANDS = {
     const { installLoop } = await import("./lib/loop-installer.mjs");
     return installLoop(repoPath, { preset: flags.preset });
   },
-  "phase-gate": async ({ repoPath, flags }: CmdCtx) => {
+  "phase-gate": async ({ repoPath, flags, config }: CmdCtx) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
-    return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note });
+    return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note, config });
   },
   status: async ({ repoPath }: CmdCtx) => {
     const { reportStatus } = await import("./lib/loop-installer.mjs");
@@ -208,8 +213,8 @@ const COMMANDS = {
     runGithubSubcommand(repoPath, positionals, flags),
   "task-store": ({ repoPath, flags, positionals }: CmdCtx) =>
     runGithubSubcommand(repoPath, positionals, flags),
-  backlog: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runBacklogSubcommand(repoPath, positionals, flags),
+  backlog: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runBacklogSubcommand(repoPath, positionals, flags, config),
   spec: ({ repoPath, flags, positionals }: CmdCtx) =>
     runSpecSubcommand(repoPath, positionals, flags),
   release: ({ repoPath, flags, positionals }: CmdCtx) =>
@@ -272,18 +277,14 @@ const COMMANDS = {
     await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
     return result;
   },
-  "stop-check": async ({ repoPath, flags }: CmdCtx) => {
+  "stop-check": async ({ repoPath, flags, config }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    const { resolveConfig } = await import("./lib/config-resolver.mjs");
-    const config = await resolveConfig(cwd);
     return checkStopConditions(cwd, { config });
   },
-  auto: async ({ repoPath, flags }: CmdCtx) => {
+  auto: async ({ repoPath, flags, config }: CmdCtx) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
-    const { resolveConfig } = await import("./lib/config-resolver.mjs");
-    const config = await resolveConfig(repoPath);
     return runAutoWalker(repoPath, {
       ...(flags.maxFeatures ? { maxFeatures: Number(flags.maxFeatures) } : {}),
       dryRun: Boolean(flags.dryRun),
@@ -294,7 +295,7 @@ const COMMANDS = {
   },
   learnings: ({ repoPath, flags, positionals }: CmdCtx) =>
     runLearningsSubcommand(repoPath, positionals, flags),
-  architect: async ({ repoPath, flags }: CmdCtx) => runArchitectSubcommand(repoPath, flags),
+  architect: async ({ repoPath, flags, config }: CmdCtx) => runArchitectSubcommand(repoPath, flags, config),
   trajectory: async ({ repoPath, flags }: CmdCtx) => {
     const { readTrajectory, trajectoryPath } = await import("./lib/trajectory-writer.mjs");
     const sliceId = flags.id;
@@ -311,15 +312,17 @@ const COMMANDS = {
   }
 };
 
-async function runArchitectSubcommand(repoPath: string, flags: Record<string, any>) {
+async function runArchitectSubcommand(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
   const sliceId = flags.id;
   if (!sliceId) throw new Error("architect requires --id SLICE-NN");
 
-  const { resolveConfig } = await import("./lib/config-resolver.mjs");
   const { resolveArchitectModels } = await import("./lib/model-router.mjs");
   const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
 
-  const config = await resolveConfig(repoPath);
   const { architectModel, editorModel } = resolveArchitectModels(config);
   const planResult = await runPlanPreflight(repoPath, sliceId, { config });
 
@@ -439,13 +442,18 @@ async function main() {
   }
 
   clearFrontmatterCache(); // ensure cold start for each invocation
+
+  // Resolve config once at dispatcher level and pass to all handlers
+  const { resolveConfig } = await import("./lib/config-resolver.mjs");
+  const config = await resolveConfig(repoPath);
+
   const handler = (COMMANDS as Record<string, (ctx: CmdCtx) => Promise<unknown>>)[command];
   if (!handler) {
     throw new Error(`Unknown command: ${command}`);
   }
 
   try {
-    const result = await handler({ repoPath, flags, positionals });
+    const result = await handler({ repoPath, flags, positionals, config });
     if (result && (result as any)._suppressDefaultOutput) return;
     console.log(JSON.stringify(result, null, 2));
   } finally {
@@ -489,7 +497,12 @@ async function runBacklogListPendingIds(repoPath: string) {
   return { ids };
 }
 
-async function runBacklogAdd(repoPath: string, flags: Record<string, any>, rest: string[]) {
+async function runBacklogAdd(
+  repoPath: string,
+  flags: Record<string, any>,
+  rest: string[],
+  config: Record<string, any> | null
+) {
   const title = flags.title || rest.join(" ");
   if (!title) throw new Error("backlog add requires a title (positional or --title).");
   if (flags.noResearch) {
@@ -505,7 +518,8 @@ async function runBacklogAdd(repoPath: string, flags: Record<string, any>, rest:
     priority: flags.priority,
     category: flags.category,
     target_release: flags.targetRelease,
-    body: resolvedBody
+    body: resolvedBody,
+    config
   });
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -582,7 +596,8 @@ export async function runBacklogEnrich(repoPath: string, _flags: Record<string, 
 async function runBacklogSubcommand(
   repoPath: string,
   positionals: string[],
-  flags: Record<string, any>
+  flags: Record<string, any>,
+  config: Record<string, any> | null
 ) {
   const [sub, ...rest] = positionals;
   if (!sub)
@@ -590,7 +605,7 @@ async function runBacklogSubcommand(
       "backlog requires a subcommand: add | list | list-pending-ids | triage | promote"
     );
   if (sub === "add") {
-    return runBacklogAdd(repoPath, flags, rest);
+    return runBacklogAdd(repoPath, flags, rest, config);
   }
   if (sub === "list") {
     const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");
