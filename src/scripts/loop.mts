@@ -541,7 +541,11 @@ async function runBacklogAdd(
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const { publishFeat } = await import("./lib/github-sync.mjs");
-  await (publishFeat as any)(repoPath, result.id);
+  try {
+    await (publishFeat as any)(repoPath, result.id);
+  } catch (e) {
+    console.error(`[github] publish warning (backlog add): ${(e as Error).message}`);
+  }
   return result;
 }
 
@@ -815,7 +819,11 @@ const SPEC_HANDLERS = {
       // @ts-ignore
       const { publishFeat } = await import("./lib/github-sync.mjs");
       for (const feat of out.created) {
-        await (publishFeat as any)(repoPath, feat.id);
+        try {
+          await (publishFeat as any)(repoPath, feat.id);
+        } catch (e) {
+          console.error(`[github] publish warning (spec decompose ${feat.id}): ${(e as Error).message}`);
+        }
       }
       return out;
     }
@@ -919,7 +927,11 @@ const SLICE_HANDLERS = {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const { publishSlice } = await import("./lib/github-sync.mjs");
-    await (publishSlice as any)(repoPath, out.slice.id, featureId);
+    try {
+      await (publishSlice as any)(repoPath, out.slice.id, featureId);
+    } catch (e) {
+      console.error(`[github] publish warning (slice from-feature): ${(e as Error).message}`);
+    }
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
       command: "slice from-feature",
