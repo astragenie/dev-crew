@@ -3,6 +3,35 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.38.0 — 2026-06-10 — Bun migration complete
+
+### Changed
+- **Runtime is now Bun** — `.mts` sources run directly; the emitted
+  `scripts/*.mjs` / `tests/*.mjs` trees are gone (no build step). CI,
+  `package.json`, hooks, and presets invoke `bun ./src/scripts/*.mts`.
+  Tests run via `bun test src/tests/ --parallel --timeout 60000`. `/loop:install`
+  now requires Bun ≥ `MIN_BUN_VERSION`.
+
+### Fixed
+- **Migration fallout that left the CLI broken** — completed the cutover after
+  the emitted tree was dropped:
+  - `loop dispatch` spawned the deleted `node …/dispatch.mjs` → now `bun …/dispatch.mts`.
+  - `pre-push-validate` spawned deleted `node …/validate-*.mjs` → now Bun + `.mts`.
+  - github-sync runtime modules (`.mjs`, no `.mts` source) stay under `scripts/lib/`;
+    added `github-sync-loader.mts` (dual-layout resolver) so `loop.mts` / `pr-fixer.mts`
+    resolve them from `src/`.
+  - `bump-version`, `validate-manifests`, `validate-content-length` resolved repo
+    root one level up (correct from the old emitted `scripts/`); fixed to two levels
+    up for `src/scripts/`.
+- **CI test timeout** — `bun test` ignores the `bunfig.toml [test] timeout`, so
+  git-heavy tests hit Bun's 5s default and the suite went red. `--timeout 60000`
+  is now passed explicitly in `package.json` and CI.
+
+### Added
+- **`src/tests/_fixtures.mts`** — shared test constants + helpers (`makeTmpRepo`,
+  `writeLoopJson`, `initGitRepo`); `eslint-plugin-sonarjs` `no-duplicate-string`
+  (warn) guards against new hardcoded-literal duplication.
+
 ## v0.37.1 — 2026-06-10 — commit-time version-drift guard
 
 ### Fixed

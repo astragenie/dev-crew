@@ -95,7 +95,8 @@ function isMainEntry() {
 }
 
 if (isMainEntry()) {
-  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  // This script lives at src/scripts/ — repo root is two levels up.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
   const result = await validateContentLength(repoRoot);
   const agentChecks = result.checks.filter((c) => c.kind === "agent");
   const skillChecks = result.checks.filter((c) => c.kind === "skill");

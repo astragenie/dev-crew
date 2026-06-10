@@ -113,7 +113,8 @@ function isMainEntry() {
 }
 
 if (isMainEntry()) {
-  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  // This script lives at src/scripts/ — repo root is two levels up.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
   const result = await validateManifests(repoRoot);
   if (!result.ok) {
     console.error("Manifest validation failed:");

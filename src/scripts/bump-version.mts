@@ -29,7 +29,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  // This script lives at src/scripts/ — repo root is two levels up.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
   const pluginPath = path.join(repoRoot, ".claude-plugin", "plugin.json");
   const marketplacePath = path.join(repoRoot, ".claude-plugin", "marketplace.json");
   const packagePath = path.join(repoRoot, "package.json");
