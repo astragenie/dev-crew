@@ -102,6 +102,27 @@ test("--fix merges stray tree into authoritative root and writes report first", 
   }
 });
 
+test("--fix preserves non-FEAT files living in the stray root", async () => {
+  const repo = await makeRepo();
+  try {
+    await fs.mkdir(path.join(repo, "docs/backlog/pending"), { recursive: true });
+    await fs.writeFile(path.join(repo, "docs/backlog/pending/FEAT-009.md"), FEAT("FEAT-009", "pending"));
+    // A non-state file in the stray root must survive the merge.
+    await fs.writeFile(path.join(repo, "docs/backlog/product-backlog.md"), "# product backlog\n");
+    await runDoctor(repo, { fix: true });
+    const survivor = await fs.readFile(path.join(repo, "docs/backlog/product-backlog.md"), "utf8");
+    assert.match(survivor, /product backlog/);
+    // State dirs are gone, the FEAT was merged.
+    const pendingGone = await fs.access(path.join(repo, "docs/backlog/pending")).then(
+      () => false,
+      () => true
+    );
+    assert.ok(pendingGone, "stray state dir should be removed");
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
 test("--fix keeps newest-transition winner on contradiction, loser preserved in conflicts dir", async () => {
   const repo = await makeRepo();
   try {

@@ -169,8 +169,18 @@ async function applyFix(repoPath, config, authoritative, findings) {
                 }
             }
         }
-        // Clean up now-empty stray tree directory
-        await fs.rm(strayRoot, { recursive: true, force: true });
+        // Clean up only the known state dirs (their FEAT content was moved out).
+        // Anything else in the stray root (product-backlog.md, READMEs, …) is
+        // NOT ours to delete — leave it for manual inspection.
+        for (const state of STATES) {
+            await fs.rm(path.join(strayRoot, state), { recursive: true, force: true });
+        }
+        try {
+            await fs.rmdir(strayRoot); // succeeds only when nothing else remains
+        }
+        catch {
+            // Non-state files remain — preserved deliberately.
+        }
     }
     return reportPath;
 }
