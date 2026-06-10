@@ -4,7 +4,8 @@ const FEAT_ID = /^FEAT-\d{3,}$/;
 const SLICE_ID = /^SLICE-\d+$/;
 const DEC_ID = /^DEC-\d+$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const FEAT_STATUSES = new Set(["pending", "triaged", "in-progress", "done"]);
+// wont_fix: terminal state for declined features (filed under done/).
+const FEAT_STATUSES = new Set(["pending", "triaged", "in-progress", "done", "wont_fix"]);
 const PRIORITIES = new Set(["P0", "P1", "P2", "P3"]);
 function result(issues) {
     return { ok: issues.length === 0, issues };

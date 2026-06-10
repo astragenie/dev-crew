@@ -34,7 +34,7 @@ Once resolved at dispatcher startup, roots are threaded through all command hand
 | Field | Constraint | Required |
 |---|---|---|
 | `id` | Regex: `^FEAT-\d{3,}$` | Yes |
-| `status` | Enum: `pending`, `triaged`, `in-progress`, `done` | Yes |
+| `status` | Enum: `pending`, `triaged`, `in-progress`, `done`, `wont_fix` | Yes |
 | `created` | ISO-8601 date (YYYY-MM-DD) | Yes |
 | `updated` | ISO-8601 date (YYYY-MM-DD) | No |
 | `priority` | Enum: `P0`, `P1`, `P2`, `P3`, or null | No (null allowed) |
