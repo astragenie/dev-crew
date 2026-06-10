@@ -1,13 +1,13 @@
 ---
 id: FEAT-088
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-10
 depends_on: []
-slices: []
+slices: [SLICE-89]
 derived_from: null
 composite_score: 7
 source_competitors: [superpowers]
@@ -24,6 +24,9 @@ triage_notes: "Composite 7. Iron Law hard-gate tag convention in skill Markdown.
 github_issue: 169
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/169"
+started_at: 2026-06-10
+slices_complete: [SLICE-89]
+completed_at: 2026-06-10
 ---
 # FEAT-088: Iron Law hard-gate tag convention in skill Markdown
 
