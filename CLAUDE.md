@@ -125,17 +125,26 @@ the citation surface. See `agents/pm.md` § "Decline contract" for the
 full contract, and `scripts/validate-decline-citations.mjs` for the CI
 gate that enforces it.
 
-## Decommissioned roles
-<!-- clause: decommissioned-roles -->
+## Orchestrator mode
+<!-- clause: orchestrator-mode -->
 
-- `crew:lead` — DECOMMISSIONED 2026-06-07. Loop and crew slash flows
-  in this repo route directly to specialist agents
-  (`crew:builder`, `crew:builder-fe`, `crew:builder-be`,
-  `crew:reviewer`, `crew:validator`, etc.). The lead orchestrator step
-  is no longer used. `hooks/guard-feat-dispatch.mjs` blocks
-  `crew:lead` dispatches so accidental routing is surfaced. To
-  re-enable, restore the agent name to the allowlist and update this
-  section.
+`crew:lead` is the slice orchestrator. `/loop:slice start` emits a
+`Dispatch crew:lead subagent` instruction by default — lead dispatches
+architect (if needed), builder, the reviewer ladder, and validator;
+synthesizes results; closes the slice. Controlled by
+`config.loop.orchestratorMode` in `.claude/loop.json`:
+
+- `"lead"` (default) — emit `Dispatch crew:lead subagent...`
+- `"orchestrate-slice"` — emit `/crew:orchestrate-slice --id ...`
+  (specialists run sequentially from main thread; no lead)
+- `"direct-builder"` — legacy: emit `Dispatch crew:builder subagent...`
+  (main thread drives reviewer + validator after builder returns)
+
+Re-enabled 2026-06-10 (reversing the 2026-06-07 decommission). Hook
+`hooks/guard-feat-dispatch.mjs` allowlists `crew:lead`. Cross-plugin
+`/crew:build`, `/crew:validate`, `/crew:fix` routing to lead is
+tracked under
+`docs/upstream-requests/2026-06-10-hero-crew-lead-orchestrator-restoration.md`.
 
 ## Reviewer ladder presets
 <!-- clause: reviewer-ladder-presets -->

@@ -64,6 +64,16 @@ function appendWorktreeSection(lines: string[], worktreePath: string | null | un
   );
 }
 
+export type OrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder";
+
+function resolveOrchestratorMode(
+  orchestratorMode: OrchestratorMode | undefined,
+  useOrchestrateSlice: boolean
+): OrchestratorMode {
+  if (orchestratorMode) return orchestratorMode;
+  return useOrchestrateSlice ? "orchestrate-slice" : "direct-builder";
+}
+
 export function buildDispatchInstruction({
   sliceId,
   title,
@@ -76,6 +86,7 @@ export function buildDispatchInstruction({
   featurePath = null,
   dispatchLimits = null as DispatchLimits | null,
   useOrchestrateSlice = false,
+  orchestratorMode,
   worktreePath = null as string | null
 }: {
   sliceId: string;
@@ -89,12 +100,23 @@ export function buildDispatchInstruction({
   featurePath?: string | null;
   dispatchLimits?: DispatchLimits | null;
   useOrchestrateSlice?: boolean;
+  orchestratorMode?: OrchestratorMode;
   worktreePath?: string | null;
 }) {
-  if (useOrchestrateSlice) {
+  const mode = resolveOrchestratorMode(orchestratorMode, useOrchestrateSlice);
+  const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
+
+  if (mode === "lead") {
+    const lines = [buildLeadOrchestratorInstruction(sliceId, title, rel)];
+    appendProgressSignals(lines);
+    appendWorktreeSection(lines, worktreePath);
+    appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
+    return lines.join("\n");
+  }
+  if (mode === "orchestrate-slice") {
     return buildOrchestrateSliceInstruction(sliceId);
   }
-  const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
+
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
@@ -107,6 +129,21 @@ export function buildDispatchInstruction({
   appendWorktreeSection(lines, worktreePath);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
   return lines.join("\n");
+}
+
+function buildLeadOrchestratorInstruction(
+  sliceId: string,
+  title: string,
+  rel: string | null
+): string {
+  const sliceRef = rel
+    ? ` See \`${rel}\` for acceptance criteria, scope-fence, and reviewer ladder.`
+    : "";
+  return [
+    `Dispatch crew:lead subagent with this prompt:`,
+    "",
+    `> Orchestrate ${title}.${sliceRef} You own the slice ceremony end-to-end: dispatch architect (if contracts/topology need design), builder, reviewer ladder (per .claude/loop.json), and validator (if requires_validation). Synthesize specialist results into a final-synthesis artifact. Close by running /loop:slice complete --id ${sliceId} and /loop:slice grade --id ${sliceId}. Escalate to the parent loop only on irreversible destructive actions or when confidence falls below 0.4. If a needed cross-cutting change is out of scope, stop and surface it.`
+  ].join("\n");
 }
 
 function buildOrchestrateSliceInstruction(sliceId: string): string {

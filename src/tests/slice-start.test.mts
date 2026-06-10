@@ -40,6 +40,13 @@ async function fillPlaceholderACs(slicePath) {
   await fs.writeFile(slicePath, fixed);
 }
 
+async function pinOrchestratorMode(repo, mode) {
+  const configPath = path.join(repo, ".claude/loop.json");
+  const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+  config.loop.orchestratorMode = mode;
+  await fs.writeFile(configPath, JSON.stringify(config));
+}
+
 async function writePlan(repo, slices) {
   const lines = ["# Plan", ""];
   slices.forEach((s, i) => {
@@ -85,23 +92,37 @@ test("startSlice tolerates missing plan and missing slice file", async () => {
   assert.ok(result.sliceProgress && !result.sliceProgress.error);
 });
 
-test("startSlice emits dispatchInstruction by default (legacy crew:builder fallback)", async () => {
+test("startSlice emits 'Dispatch crew:lead subagent' instruction by default", async () => {
   const repo = await tmpRepo("al-slice-start-dispatch-");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
   const feat = await addFeature(repo, { title: "Test feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
-  // Force old crew version to get deterministic legacy path regardless of installed crew.
+  // Default orchestratorMode = "lead" — no config override needed.
   const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present by default");
-  assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
+  assert.match(result.dispatchInstruction, /Dispatch crew:lead subagent/);
   assert.match(result.dispatchInstruction, new RegExp(slice.id));
+  assert.match(result.dispatchInstruction, /Orchestrate /);
+  assert.match(result.nextAction, /Dispatch crew:lead subagent/);
+});
+
+test("startSlice with orchestratorMode='direct-builder' emits legacy crew:builder instruction", async () => {
+  const repo = await tmpRepo("al-slice-start-direct-builder-");
+  await pinOrchestratorMode(repo, "direct-builder");
+  await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+  const feat = await addFeature(repo, { title: "Direct builder feature" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+  assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
   assert.match(result.dispatchInstruction, /parent loop drives those gates/);
   assert.match(result.nextAction, /Dispatch crew:builder subagent/);
 });
 
-test("FEAT-047 AC-1: slice-start emits orchestrate-slice instruction when crew >= 0.11.0", async () => {
+test("FEAT-047 AC-1: slice-start emits orchestrate-slice when orchestratorMode='orchestrate-slice'", async () => {
   const repo = await tmpRepo("al-slice-start-orchestrate-");
+  await pinOrchestratorMode(repo, "orchestrate-slice");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
   const feat = await addFeature(repo, { title: "Orchestrate feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
@@ -121,8 +142,9 @@ test("FEAT-047 AC-1: slice-start emits orchestrate-slice instruction when crew >
   );
 });
 
-test("FEAT-047 AC-3: falls back to crew:builder when crew < orchestrate-slice min version", async () => {
+test("FEAT-047 AC-3: direct-builder mode falls back to crew:builder regardless of crew version", async () => {
   const repo = await tmpRepo("al-slice-start-fallback-");
+  await pinOrchestratorMode(repo, "direct-builder");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
   const feat = await addFeature(repo, { title: "Fallback feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
@@ -132,8 +154,9 @@ test("FEAT-047 AC-3: falls back to crew:builder when crew < orchestrate-slice mi
   assert.match(result.nextAction, /Dispatch crew:builder subagent/);
 });
 
-test("FEAT-047 AC-3: crew 0.10.x also falls back (orchestrate-slice not yet in that series)", async () => {
+test("FEAT-047 AC-3: direct-builder mode under crew 0.10.x emits builder instruction", async () => {
   const repo = await tmpRepo("al-slice-start-fallback-010-");
+  await pinOrchestratorMode(repo, "direct-builder");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
   const feat = await addFeature(repo, { title: "Fallback 010" });
   const { slice } = await sliceFromFeature(repo, feat.id);
