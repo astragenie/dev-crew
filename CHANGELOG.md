@@ -3,6 +3,26 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.38.1 — 2026-06-10 — backlog: AgentOps-adoption FEATs triaged
+
+### Added
+- Six pending FEATs adapting patterns from the AgentOps sibling project into
+  loop's methodology, PM-triaged (5-dimension scoring) into `triaged/`:
+  - **FEAT-181** (P1, autonomous-safe) — marathon session checkpoint: mandatory
+    retrospective every N slices to bound unobserved drift.
+  - **FEAT-183** (P2, autonomous-safe) — derive-only discipline: do-not-edit
+    headers on generated artifacts + regen `--check` drift gate.
+  - **FEAT-180** (P2, autonomous-safe) — review verdict schema: `not_checked[]`
+    field + author/judge separation.
+  - **FEAT-178** (P2) — promotion ratchet for grade lessons (noticed → store →
+    planning rule → stop gate).
+  - **FEAT-182** (P3) — backlog audit: flag likely-already-satisfied FEATs with
+    file:line evidence.
+  - **FEAT-179** (P3, depends on FEAT-178) — decay-ranked, citation-tracked
+    learnings retrieval at builder dispatch.
+
+No code/runtime changes — plugin behavior is identical to v0.38.0.
+
 ## v0.38.0 — 2026-06-10 — Bun migration complete
 
 ### Changed
