@@ -478,6 +478,17 @@ test("idempotent — second call overwrites cleanly", async () => {
     const stat = await fs.stat(result2.reportPath);
     assert.ok(stat.isFile());
 });
+test("reuses existing report file for same slice regardless of its timestamp", async () => {
+    const repo = await tmpRepo("al-arw-reuse-");
+    const agentsDir = path.join(repo, ".claude", "artifacts", "crew", "agents");
+    await fs.mkdir(agentsDir, { recursive: true });
+    const existing = path.join(agentsDir, "20260101T000000Z-agent-report-slice18.md");
+    await fs.writeFile(existing, "---\nkind: agent-report\n---\nold\n");
+    const result = await writeAgentReport(repo, { sliceId: "SLICE-18" });
+    assert.equal(result.reportPath, existing);
+    const files = await fs.readdir(agentsDir);
+    assert.equal(files.filter((f) => f.endsWith("-agent-report-slice18.md")).length, 1);
+});
 test("linkArtifactToSlice accepts 'agents' kind without throwing", async () => {
     const repo = await tmpRepo("al-arw-link-");
     const slicesDir = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");

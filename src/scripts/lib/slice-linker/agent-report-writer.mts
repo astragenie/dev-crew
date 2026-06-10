@@ -458,6 +458,25 @@ interface WriteAgentReportOpts {
   startedAt?: string | null;
 }
 
+// One report per slice: a rewrite for the same slug reuses the existing
+// file (overwrite-in-place) instead of minting a second timestamped name,
+// so repeated slice-complete runs cannot fork the artifact.
+async function resolveReportPath(agentsDir: string, slug: string) {
+  const suffix = `-agent-report-${slug}.md`;
+  let existing: string | undefined;
+  try {
+    existing = (await fs.readdir(agentsDir)).find((f) => f.endsWith(suffix));
+  } catch {
+    existing = undefined;
+  }
+  if (existing) return path.join(agentsDir, existing);
+  const ts = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
+  return path.join(agentsDir, `${ts}${suffix}`);
+}
+
 export async function writeAgentReport(
   repoPath: string,
   { sliceId, featureId = null, phase = null, startedAt = null }: WriteAgentReportOpts
@@ -468,11 +487,7 @@ export async function writeAgentReport(
   await fs.mkdir(agentsDir, { recursive: true });
 
   const slug = buildArtifactSlug({ featureId, phase, sliceId });
-  const ts = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
-  const target = path.join(agentsDir, `${ts}-agent-report-${slug}.md`);
+  const target = await resolveReportPath(agentsDir, slug);
 
   const { events, fileFound } = await readEventsInWindow(repoPath, startedAt);
   const { startPayloads, startTimestamps, stopPayloads, stopTimestamps } =
