@@ -40,7 +40,16 @@ async function seedGrade(repo, sliceId, scores) {
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
   }
+  // Replace placeholder bullets in Lessons
+  content = content.replace(
+    /## Lessons\n\n- bullet 1\n- bullet 2/,
+    `## Lessons\n\n- Lesson 1\n- Lesson 2`
+  );
+  // Remove the placeholder DEC-TBD section
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  // Replace placeholder Surprises and Followups
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Followup");
   await fs.writeFile(gradePath, content);
   await writeGrade(repo, sliceId);
 }

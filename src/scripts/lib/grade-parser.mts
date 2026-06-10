@@ -25,6 +25,14 @@ export const SCORE_DIMENSIONS = [
   "product_completeness"
 ];
 
+// Patterns that identify placeholder/unfilled content in grade templates.
+// Mirrored from ac-linter's approach (FEAT-145).
+export const GRADE_PLACEHOLDER_PATTERNS = [
+  /^\s*-\s+bullet\s*$/i, // Plain "- bullet" (standalone)
+  /^\s*-\s+bullet\s+\d+\s*$/i, // "- bullet 1", "- bullet 2", etc.
+  /^\s*###\s+DEC-TBD\s*:\s*Short\s+decision\s+title\s*$/i // "### DEC-TBD: Short decision title"
+];
+
 // Parse the "## Scores" section out of the markdown body. Returns
 // { dimension: value } object. Used because the simple frontmatter parser
 // doesn't handle nested mappings.
@@ -72,6 +80,33 @@ export function validateScores(scores: Record<string, unknown>) {
     }
   }
   return errors;
+}
+
+/**
+ * Detect if all score dimensions are exactly 0 (indicates unfilled template).
+ * A grade is considered all-zero only if EVERY dimension is 0.
+ * A grade with some 0s and some non-zero values is considered filled.
+ */
+export function isAllZeroScores(scores: Record<string, unknown>) {
+  return SCORE_DIMENSIONS.every((dim) => {
+    const v = scores[dim];
+    return typeof v === "number" && v === 0;
+  });
+}
+
+/**
+ * Detect placeholder text patterns in grade body (unfilled template bullets, DEC-TBD titles).
+ * Returns array of found placeholder lines.
+ */
+export function detectPlaceholders(body: string) {
+  const lines = body.split("\n");
+  const placeholders: string[] = [];
+  for (const line of lines) {
+    if (GRADE_PLACEHOLDER_PATTERNS.some((p) => p.test(line))) {
+      placeholders.push(line.trim());
+    }
+  }
+  return placeholders;
 }
 
 // Parse the "## Decisions" section out of the body. Returns array of

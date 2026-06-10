@@ -140,16 +140,70 @@ test("createGradeFile prefills feature + spec links from slice file", async () =
   assert.equal(frontmatter.target_release, "v1.0.0");
 });
 
-test("writeGrade rejects when scores are still 0 across the board", async () => {
-  const repo = await tmpRepo("al-grade-zero-");
-  const created = await createGradeFile(repo, "SLICE-01");
-  // Default template has 0 for all scores — that's a valid input (in range)
-  // but represents "not filled". writeGrade should pass since 0 is in [0,1].
-  // To prove validation catches a REAL invalid input, edit scores:
+test("writeGrade rejects when all scores are 0 (all-zero block)", async () => {
+  const repo = await tmpRepo("al-grade-all-zero-");
+  await createGradeFile(repo, "SLICE-01");
+  // Default template has all scores as 0 — this is an unfilled template.
+  // writeGrade should reject with GRADE_TEMPLATE_UNFILLED error.
+  await assert.rejects(
+    () => writeGrade(repo, "SLICE-01"),
+    (err) => err.code === "GRADE_TEMPLATE_UNFILLED"
+  );
+});
+
+test("writeGrade rejects grades with placeholder bullets like 'bullet 1'", async () => {
+  const repo = await tmpRepo("al-grade-placeholder-bullets-");
+  const created = await createGradeFile(repo, "SLICE-02");
   let content = await fs.readFile(created.gradePath, "utf8");
-  content = content.replace("- architecture_quality: 0.00", "- architecture_quality: 1.5");
+  // Fill all scores to real values to isolate the placeholder test
+  for (const dim of SCORE_DIMENSIONS) {
+    content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
+  }
+  // Keep "bullet 1" and "bullet 2" which are placeholders
   await fs.writeFile(created.gradePath, content);
-  await assert.rejects(() => writeGrade(repo, "SLICE-01"), /architecture_quality.*1\.5/);
+  await assert.rejects(
+    () => writeGrade(repo, "SLICE-02"),
+    (err) => err.code === "GRADE_TEMPLATE_UNFILLED"
+  );
+});
+
+test("writeGrade rejects grades with DEC-TBD placeholder title", async () => {
+  const repo = await tmpRepo("al-grade-placeholder-dec-");
+  const created = await createGradeFile(repo, "SLICE-03");
+  let content = await fs.readFile(created.gradePath, "utf8");
+  // Fill all scores to real values
+  for (const dim of SCORE_DIMENSIONS) {
+    content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
+  }
+  // Fill lessons to remove "bullet 1" placeholder
+  content = content.replace(/- bullet 1\n- bullet 2/, "- Lesson A\n- Lesson B");
+  // Keep "### DEC-TBD: Short decision title" which is a placeholder
+  await fs.writeFile(created.gradePath, content);
+  await assert.rejects(
+    () => writeGrade(repo, "SLICE-03"),
+    (err) => err.code === "GRADE_TEMPLATE_UNFILLED"
+  );
+});
+
+test("writeGrade accepts genuinely filled grades with real scores and content", async () => {
+  const repo = await tmpRepo("al-grade-filled-");
+  const created = await createGradeFile(repo, "SLICE-04");
+  let content = await fs.readFile(created.gradePath, "utf8");
+  // Fill all scores to real values
+  for (const dim of SCORE_DIMENSIONS) {
+    content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
+  }
+  // Replace placeholder lessons
+  content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  // Remove the placeholder DEC-TBD section entirely
+  content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  // Replace placeholder Surprises and Followups
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
+  await fs.writeFile(created.gradePath, content);
+  // This should NOT throw
+  const result = await writeGrade(repo, "SLICE-04");
+  assert.equal(result.sliceId, "SLICE-04");
 });
 
 test("writeGrade extracts DEC-TBD blocks into .claude/artifacts/loop/decisions/", async () => {
@@ -161,6 +215,16 @@ test("writeGrade extracts DEC-TBD blocks into .claude/artifacts/loop/decisions/"
   for (const dim of SCORE_DIMENSIONS) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
   }
+  // Replace placeholder bullet lessons with real ones
+  content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  // Replace placeholder DEC-TBD title with a real title (but keep DEC-TBD id for extraction)
+  content = content.replace(
+    /### DEC-TBD: Short decision title/,
+    "### DEC-TBD: Real architectural decision made"
+  );
+  // Replace placeholder Surprises and Followups
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
   await fs.writeFile(gradePath, content);
 
   const result = await writeGrade(repo, "SLICE-01");

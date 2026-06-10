@@ -12,7 +12,9 @@ import {
   findGradeFileForSlice,
   parseScoresFromBody,
   parseDecisionsFromBody,
-  validateScores
+  validateScores,
+  isAllZeroScores,
+  detectPlaceholders
 } from "./grade-parser.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "./paths.mjs";
 import { buildArtifactSlug } from "./artifact-naming.mjs";
@@ -231,6 +233,25 @@ export async function writeGrade(
       `Score validation failed:\n  - ${scoreErrors.join("\n  - ")}`
     ) as NodeJS.ErrnoException;
     err.code = "SCORE_VALIDATION";
+    throw err;
+  }
+
+  // FEAT-145: Check for unfilled/template grades (all-zero scores or placeholder text)
+  const allZeroErrors: string[] = [];
+  if (isAllZeroScores(scores)) {
+    allZeroErrors.push("All score dimensions are 0 (unfilled template)");
+  }
+  const placeholders = detectPlaceholders(body);
+  if (placeholders.length > 0) {
+    allZeroErrors.push(
+      `Found ${placeholders.length} placeholder text pattern(s):\n  - ${placeholders.join("\n  - ")}`
+    );
+  }
+  if (allZeroErrors.length > 0) {
+    const err = new Error(
+      `Grade template unfilled:\n  - ${allZeroErrors.join("\n  - ")}`
+    ) as NodeJS.ErrnoException;
+    err.code = "GRADE_TEMPLATE_UNFILLED";
     throw err;
   }
 

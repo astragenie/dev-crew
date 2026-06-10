@@ -38,16 +38,19 @@ async function seedGradedSlice(repo, scores, lessons = []) {
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
   }
-  // Inject lessons into the body
-  if (lessons.length > 0) {
-    const lessonsBlock = lessons.map((l) => `- ${l}`).join("\n");
-    content = content.replace(
-      /## Lessons\n\n- bullet 1\n- bullet 2/,
-      `## Lessons\n\n${lessonsBlock}`
-    );
-  }
-  // Remove the placeholder DEC-TBD section so grade-write doesn't try to extract
+  // Inject lessons into the body (replace both placeholder bullets)
+  const lessonsBlock = (lessons.length > 0 ? lessons : ["Default lesson 1", "Default lesson 2"])
+    .map((l) => `- ${l}`)
+    .join("\n");
+  content = content.replace(
+    /## Lessons\n\n- bullet 1\n- bullet 2/,
+    `## Lessons\n\n${lessonsBlock}`
+  );
+  // Remove the placeholder DEC-TBD section so grade-write doesn't reject it
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  // Replace placeholder Surprises and Followups bullets
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
   await fs.writeFile(gradePath, content);
   await writeGrade(repo, sliceResult.slice.id);
   return sliceResult.slice.id;
@@ -119,4 +122,32 @@ test("buildRetrospective with --span-days filters older grades", async () => {
   await fs.writeFile(gradePath, content);
   const r = await buildRetrospective(repo, { spanDays: 7 });
   assert.equal(r.counts.gradesInWindow, 0);
+});
+
+test("buildRetrospective excludes unfilled (all-zero) grades from scoreAverages", async () => {
+  const repo = await tmpRepo("al-retro-unfilled-");
+  // Create one filled grade with 0.85 scores
+  const filledScores = {};
+  for (const dim of SCORE_DIMENSIONS) filledScores[dim] = 0.85;
+  await seedGradedSlice(repo, filledScores);
+
+  // Create one unfilled grade with all-zero scores — don't call seedGradedSlice
+  // because that calls writeGrade which now rejects unfilled grades. Instead,
+  // manually create a template and leave it unfilled.
+  const feat = await addFeature(repo, { title: "Unfilled feature" });
+  const sliceResult = await sliceFromFeature(repo, feat.id);
+  await createGradeFile(repo, sliceResult.slice.id);
+  // Don't fill scores or call writeGrade — leave as template
+
+  // Now buildRetrospective should see 2 grades in the directory, but only count
+  // the filled one in scoreAverages (skip the all-zero unfilled one)
+  const r = await buildRetrospective(repo);
+  // With one filled (0.85) and one unfilled (0.0 all-zero):
+  // Expected: scoreAverages should be 0.85 (only the filled grade counted)
+  assert.equal(r.scoreAverages.architecture_quality, 0.85);
+  // Unfilled grades are not written to grade-write, so gradesInWindow should only
+  // count grades that were successfully written (have a graded_at date not matching template).
+  // However, since the unfilled one won't have a graded_at filled in, it won't match the window anyway.
+  // To be explicit: assert that we're only counting truly filled grades.
+  assert.ok(r.counts.gradesInWindow >= 1);
 });

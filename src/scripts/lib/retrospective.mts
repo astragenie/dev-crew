@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
+import {
+  listGrades,
+  SCORE_DIMENSIONS,
+  isAllZeroScores,
+  detectPlaceholders
+} from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
 import { listBacklog } from "./backlog-parser.mjs";
 import { listSpecs } from "./spec-parser.mjs";
@@ -36,6 +41,17 @@ function withinWindow(
   if (sinceDate && d < sinceDate) return false;
   if (untilDate && d > untilDate) return false;
   return true;
+}
+
+/**
+ * FEAT-145: Check if a grade is unfilled (all-zero scores or has placeholder text).
+ */
+function isUnfilledGrade(grade: Record<string, any>): boolean {
+  if (isAllZeroScores(grade.scores || {})) {
+    return true;
+  }
+  const placeholders = detectPlaceholders(grade.body || "");
+  return placeholders.length > 0;
 }
 
 function avg(values: unknown[]) {
@@ -108,29 +124,34 @@ export async function buildRetrospective(
     withinWindow(d.introduced_at, sinceDate, untilDate)
   );
 
-  // Score averages per dimension
+  // FEAT-145: Exclude unfilled grades from score averaging
+  const filledGradesInWindow = gradesInWindow.filter(
+    (g: Record<string, any>) => !isUnfilledGrade(g)
+  );
+
+  // Score averages per dimension (only over filled grades)
   const scoreAverages: Record<string, number | null> = {};
   for (const dim of SCORE_DIMENSIONS) {
-    scoreAverages[dim] = avg(gradesInWindow.map((g: Record<string, any>) => g.scores?.[dim]));
+    scoreAverages[dim] = avg(filledGradesInWindow.map((g: Record<string, any>) => g.scores?.[dim]));
   }
   const dimensionsBelowThreshold = SCORE_DIMENSIONS.filter((dim: string) => {
     const v = scoreAverages[dim] ?? null;
     return v !== null && v < 0.8;
   });
 
-  // Aggregate lessons / surprises / followups from grade bodies
-  const allLessons = gradesInWindow.flatMap((g: Record<string, any>) =>
+  // Aggregate lessons / surprises / followups from grade bodies (only from filled grades)
+  const allLessons = filledGradesInWindow.flatMap((g: Record<string, any>) =>
     parseListSection(g.body, "Lessons")
   );
-  const allSurprises = gradesInWindow.flatMap((g: Record<string, any>) =>
+  const allSurprises = filledGradesInWindow.flatMap((g: Record<string, any>) =>
     parseListSection(g.body, "Surprises")
   );
-  const allFollowups = gradesInWindow.flatMap((g: Record<string, any>) =>
+  const allFollowups = filledGradesInWindow.flatMap((g: Record<string, any>) =>
     parseListSection(g.body, "Followups")
   );
 
-  // Slice cadence: graded_at distribution
-  const cadenceCount = gradesInWindow.length;
+  // Slice cadence: graded_at distribution (only filled grades)
+  const cadenceCount = filledGradesInWindow.length;
 
   // Backlog flow during window: features that moved in / out
   const movedToDone = backlog.filter(
@@ -147,7 +168,7 @@ export async function buildRetrospective(
   return {
     range: { since: sinceStr, until: untilStr },
     counts: {
-      gradesInWindow: gradesInWindow.length,
+      gradesInWindow: filledGradesInWindow.length,
       decisionsInWindow: decisionsInWindow.length,
       featuresDoneInWindow: movedToDone.length,
       specsSatisfied: specsSatisfied.length
@@ -162,7 +183,7 @@ export async function buildRetrospective(
       title: d.title,
       slice: d.introduced_by_slice
     })),
-    gradesList: gradesInWindow.map((g: Record<string, any>) => ({
+    gradesList: filledGradesInWindow.map((g: Record<string, any>) => ({
       slice: g.frontmatter.slice,
       feature: g.frontmatter.feature,
       avg: avg(SCORE_DIMENSIONS.map((d: string) => g.scores?.[d])),

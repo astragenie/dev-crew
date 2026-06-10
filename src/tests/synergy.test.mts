@@ -44,15 +44,23 @@ async function seedGrade(
   for (const [dim, value] of Object.entries(scores)) {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
   }
-  if (lessons.length > 0) {
-    const block = lessons.map((l) => `- ${l}`).join("\n");
-    content = content.replace(/## Lessons\n\n- bullet 1\n- bullet 2/, `## Lessons\n\n${block}`);
-  }
-  if (surprises.length > 0) {
-    const block = surprises.map((s) => `- ${s}`).join("\n");
-    content = content.replace(/## Surprises\n\n- bullet/, `## Surprises\n\n${block}`);
-  }
+  // Replace Lessons: use provided lessons or default values
+  const lessonsBlock = (lessons.length > 0 ? lessons : ["Lesson 1", "Lesson 2"])
+    .map((l) => `- ${l}`)
+    .join("\n");
+  content = content.replace(
+    /## Lessons\n\n- bullet 1\n- bullet 2/,
+    `## Lessons\n\n${lessonsBlock}`
+  );
+  // Replace Surprises: use provided surprises or default value
+  const surprisesBlock = (surprises.length > 0 ? surprises : ["Surprise"])
+    .map((s) => `- ${s}`)
+    .join("\n");
+  content = content.replace(/## Surprises\n\n- bullet/, `## Surprises\n\n${surprisesBlock}`);
+  // Remove the placeholder DEC-TBD section
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  // Replace placeholder Followups
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Followup");
   await fs.writeFile(gradePath, content);
   await writeGrade(repo, sliceId);
 }
