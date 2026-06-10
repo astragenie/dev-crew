@@ -12,7 +12,7 @@ Designed to feed autonomous PR repair flows (FEAT-009): agents dispatch fixes, l
 tracks attempts, and circuit breaker halts after threshold.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" pr-fix \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" pr-fix \
   --repo "$PWD" \
   --pr <number> \
   [--body <priorAttemptsJson>]

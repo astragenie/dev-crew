@@ -23,7 +23,7 @@ Continuation HARD RULE. Atomic operation that:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice from-feature \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice from-feature \
   --repo "$PWD" \
   --id FEAT-007
 ```
@@ -31,7 +31,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice from-feature \
 Or positional:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice from-feature \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice from-feature \
   --repo "$PWD" -- FEAT-007
 ```
 

@@ -31,7 +31,7 @@ FEAT-006 SLICE-B.
 ## Usage
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice plan \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice plan \
   --repo "$PWD" \
   --id SLICE-NN
 ```

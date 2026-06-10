@@ -13,7 +13,7 @@ Workflow:
 1. Confirm the workspace and that the loop is installed:
    ```bash
    pwd
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" status --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" status --repo "$PWD"
    ```
 2. If `status` reports no marker block, run `/loop:install` first.
 3. Read in this order:

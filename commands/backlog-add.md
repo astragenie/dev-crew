@@ -11,7 +11,7 @@ state directories (no gaps reused).
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog add \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog add \
   --repo "$PWD" \
   --title "Bulk delete memories from dashboard" \
   [--priority P1] [--category feature] [--target-release v1.1.0] \
@@ -21,7 +21,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog add \
 Or positional title (everything after the subcommand becomes the title):
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog add \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog add \
   --repo "$PWD" -- Bulk delete memories from dashboard
 ```
 

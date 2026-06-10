@@ -53,7 +53,7 @@ Every acceptance criterion in the slice MUST satisfy:
   belong in "Done When", not in acceptance criteria.
 - **Weak-dimension AC (mandatory)** — check
   `.claude/artifacts/loop/loop-snapshot.md` (or
-  `node scripts/loop.mjs lessons recent 5`) for grade dimensions
+  `bun src/scripts/loop.mts lessons recent 5`) for grade dimensions
   averaging below 0.80 over the last 5 grades. Every such dimension
   MUST have at least one targeting AC in the slice (e.g. observability
   weak → AC requiring a log line or metric on the new code path, with
@@ -148,7 +148,7 @@ plan pre-flight to produce a structured plan artifact the builder can
 execute against:
 
 ```bash
-node scripts/loop.mjs slice plan --id SLICE-NN
+bun src/scripts/loop.mts slice plan --id SLICE-NN
 ```
 
 This writes `docs/specs/plans/SLICE_NN_PLAN.md` with four sections:

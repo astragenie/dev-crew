@@ -12,7 +12,7 @@ lead) reads the returned tasks and dispatches each via the Task tool with
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice review-ladder \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice review-ladder \
   --repo "$PWD" \
   --id SLICE-52
 ```

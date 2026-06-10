@@ -95,7 +95,7 @@ Answer in `risks[]`, one entry each:
 Grades are the loop's outcome signal — scoring that ignores them repeats known failures.
 
 - **Weak-dimension rule.** Any grade dimension averaging below 0.80 over the last 5 grades (read from `.claude/artifacts/loop/loop-snapshot.md` or the lessons digest) is a *weak dimension*. Name every weak dimension in `scopeNotes`. A FEAT in an affected area is `autonomousSafe: true` only if its AC include at least one criterion targeting each weak dimension (e.g. observability below 0.80 → an AC requiring logs/metrics on the new code path).
-- **Lessons digest is a required pre-read**, not optional scanning: `node scripts/loop.mjs lessons recent 5`. If a lesson or followup names this FEAT's domain, quote it in `demandEvidence` or `risks[]`.
+- **Lessons digest is a required pre-read**, not optional scanning: `bun src/scripts/loop.mts lessons recent 5`. If a lesson or followup names this FEAT's domain, quote it in `demandEvidence` or `risks[]`.
 
 ## Framework 5: Effort Calibration
 
@@ -116,7 +116,7 @@ Grades are the loop's outcome signal — scoring that ignores them repeats known
 
 1. Read the FEAT file body and frontmatter
 2. If `derived_from` is set, read the linked SPEC file
-3. Run the lessons digest (required — Framework 4): `node scripts/loop.mjs lessons recent 5`; extract weak dimensions and domain-relevant lessons
+3. Run the lessons digest (required — Framework 4): `bun src/scripts/loop.mts lessons recent 5`; extract weak dimensions and domain-relevant lessons
 4. Read recent cost reports (Framework 5): `.claude/artifacts/crew/cost/*-cost-report-aggregate-*.md` for effort analogs
 5. Read recent decisions: `ls .claude/artifacts/loop/decisions/` — check for prior architectural choices affecting this area
 6. Check dependency graph: grep for this FEAT's id across all backlog files

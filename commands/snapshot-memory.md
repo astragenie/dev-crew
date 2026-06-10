@@ -11,7 +11,7 @@ brief-me as cross-session context).
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" snapshot-memory \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" snapshot-memory \
   --repo "$PWD"
 ```
 

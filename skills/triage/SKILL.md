@@ -19,7 +19,7 @@ PM-first triage with regex fallback. Single public command for the loop.
 
 1. **Enumerate pending ids deterministically.**
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog list-pending-ids --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --repo "$PWD"
    ```
    Parse `{ "ids": ["FEAT-NNN", ...] }`. If `ids.length === 0`, return `{ triaged: 0, path: "noop" }` and stop.
 
@@ -28,7 +28,7 @@ PM-first triage with regex fallback. Single public command for the loop.
 3. **Resolve PM skills via preset.** Before dispatching, run:
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" resolve-skills \
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
      --variant pm \
      --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/$(jq -r .preset .claude/loop.json).json" \
      --override .claude/loop.json
@@ -61,7 +61,7 @@ PM-first triage with regex fallback. Single public command for the loop.
 
 7. **Write PM scores** via the existing CLI:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog pm-write \
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog pm-write \
      --id FEAT-NNN \
      --scores '{"customer_impact":0.8,...}' \
      --priority P1 \
@@ -78,7 +78,7 @@ PM-first triage with regex fallback. Single public command for the loop.
 
 8. **Fallback (PM error | BudgetExceeded | ValidationFail):**
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog triage --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog triage --repo "$PWD"
    ```
    This invokes the regex `triagePending()` deterministically. It writes the same `pm_*` frontmatter keys with 0.5 defaults and moves entries pending → triaged.
 

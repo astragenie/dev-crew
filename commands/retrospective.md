@@ -17,7 +17,7 @@ generates a markdown summary capturing:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" retrospective \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" retrospective \
   --repo "$PWD" \
   --since 2026-05-01
 ```
@@ -25,7 +25,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" retrospective \
 Or use rolling-window syntax via `--span-days`:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" retrospective \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" retrospective \
   --repo "$PWD" \
   --span-days 7
 ```

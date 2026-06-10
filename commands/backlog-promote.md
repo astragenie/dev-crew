@@ -19,7 +19,7 @@ will add `/loop:slice from-feature FEAT-NNN` to automate this.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog promote \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog promote \
   --repo "$PWD" \
   --id FEAT-007
 ```

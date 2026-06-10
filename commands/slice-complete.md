@@ -19,7 +19,7 @@ Atomic close ceremony at the end of a slice:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice complete \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice complete \
   --repo "$PWD" \
   --id SLICE-NN \
   [--keep-feature-open] \

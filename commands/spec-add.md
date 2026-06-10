@@ -10,7 +10,7 @@ SPEC-NNN id is computed across all existing specs (regardless of type).
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" spec add \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" spec add \
   --repo "$PWD" \
   --type prd \
   --title "MemoryService v2 — multi-tenant + audio ingestion" \

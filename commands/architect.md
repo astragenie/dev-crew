@@ -33,7 +33,7 @@ artifact.
 ## Usage
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" architect \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" architect \
   --repo "$PWD" \
   --id SLICE-NN
 ```

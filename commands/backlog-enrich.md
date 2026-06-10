@@ -16,12 +16,12 @@ AC-text heuristics and silently skips architect + uxdesigner.
 
 Note: `stack` and `surface` are no longer FEAT-level fields. Project-level
 stack identity now lives in `scripts/presets/*.json` (consumed by
-`node scripts/loop.mjs resolve-skills`). Builder-variant routing is driven
+`bun src/scripts/loop.mts resolve-skills`). Builder-variant routing is driven
 from preset skill activation, not per-FEAT classification.
 
 ## Execution (Claude-driven, not CLI)
 
-The Node CLI subcommand (`node scripts/loop.mjs backlog enrich`) only
+The Node CLI subcommand (`bun src/scripts/loop.mts backlog enrich`) only
 writes pending-dispatch markers — it does NOT spawn subagents. See
 `docs/code-conventions.md` and `auto-dispatch.mts` for the consumer
 gap (tracked as a known followup). Use the slash flow below instead;
@@ -39,7 +39,7 @@ Steps:
 3. **Resolve architect skills via preset.** Before dispatching, run:
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" resolve-skills \
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
      --variant architect \
      --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/$(jq -r .preset .claude/loop.json).json" \
      --override .claude/loop.json
@@ -150,7 +150,7 @@ only for audit-log trace via `.claude/artifacts/loop/auto-dispatch.jsonl`
 when an outer harness is wired in future.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog enrich --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog enrich --repo "$PWD"
 ```
 
 Until the consumer ships, the CLI reports `Enriched: 0` even when

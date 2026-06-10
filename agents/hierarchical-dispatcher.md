@@ -35,7 +35,7 @@ I do not own:
    - Parent branch (default: current `git branch --show-current`).
 2. Resolve loop CLI path:
    - Use `$LOOP_ROOT/scripts/loop.mjs` if set.
-   - Otherwise: `node scripts/loop.mjs` from repo root.
+   - Otherwise: `bun src/scripts/loop.mts` from repo root.
 3. Write the plan to `/tmp/plan-<random>.json`:
    ```json
    { "plans": [ {"id":"FE","priority":0,"agentType":"crew:builder-fe","prompt":"..."}, ... ] }
@@ -45,7 +45,7 @@ I do not own:
 
 Run:
 ```bash
-node scripts/loop.mjs dispatch prepare \
+bun src/scripts/loop.mts dispatch prepare \
   --plan /tmp/plan-<random>.json \
   --parent-branch <branch> \
   --repo "$PWD" \
@@ -77,7 +77,7 @@ After all Agent calls return, do NOT trust their text output. The library reads 
 
 Run:
 ```bash
-node scripts/loop.mjs dispatch finalize \
+bun src/scripts/loop.mts dispatch finalize \
   --run-id <runId> \
   --parent-branch <branch> \
   --plan /tmp/plan-<random>.json \

@@ -34,7 +34,7 @@ Previously-allocated decisions stay where they are.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice grade-write \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice grade-write \
   --repo "$PWD" \
   --id SLICE-52
 ```

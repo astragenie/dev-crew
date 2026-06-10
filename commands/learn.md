@@ -15,7 +15,7 @@ observations without manual recall.
 ## Usage
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" learnings log \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings log \
   --repo "$PWD" \
   --key "<short-key>" \
   --insight "<what you observed>" \
@@ -36,7 +36,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" learnings log \
 ## Example
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" learnings log \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings log \
   --repo "$PWD" \
   --key "tsc-compile-drift" \
   --insight "Always recompile after TypeScript edits; CI drift guard will fail otherwise" \
@@ -49,7 +49,7 @@ Returns the written record with `{ id, timestamp, key, insight, confidence, sour
 ## Viewing recent learnings
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" learnings recent \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings recent \
   --repo "$PWD" \
   --limit 5
 ```

@@ -38,6 +38,6 @@ Per-batch budget (`.claude/loop.json`):
 
 ## Fallback path
 
-On PM error, budget exceeded, or output validation fail, the skill calls the internal CLI subcommand `node scripts/loop.mjs backlog triage` which runs the deterministic regex baseline. The fallback writes the same frontmatter shape with 0.5 defaults.
+On PM error, budget exceeded, or output validation fail, the skill calls the internal CLI subcommand `bun src/scripts/loop.mts backlog triage` which runs the deterministic regex baseline. The fallback writes the same frontmatter shape with 0.5 defaults.
 
 Audit trail: every fallback appends to `.claude/artifacts/loop/auto-dispatch.jsonl` with `event: "triage_fallback"`. Pattern alert fires when fallback rate exceeds 50% over rolling 10 runs.

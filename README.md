@@ -164,10 +164,10 @@ branch).
 ### CLI surface
 
 ```bash
-node scripts/loop.mjs dispatch prepare \
+bun src/scripts/loop.mts dispatch prepare \
   --plan plan.json --parent-branch slice/SLICE-90 [--repo .] [--depth 0] [--json] [--dry-run]
 
-node scripts/loop.mjs dispatch finalize \
+bun src/scripts/loop.mts dispatch finalize \
   --run-id <id> --parent-branch slice/SLICE-90 --plan plan.json [--repo .] [--depth 0]
 ```
 

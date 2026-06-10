@@ -5,7 +5,7 @@ description: Show built-in loop presets with their stack defaults.
 # List Autonomous Loop Presets
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" list-presets
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" list-presets
 ```
 
 Returns an array of `{ name, description }` for each `scripts/presets/*.json`

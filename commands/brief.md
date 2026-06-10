@@ -5,7 +5,7 @@ description: Standalone loop situational report — backlog counts, top prioriti
 # Autonomous Loop Brief
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" brief --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" brief --repo "$PWD"
 ```
 
 Returns JSON with:

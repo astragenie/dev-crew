@@ -20,7 +20,7 @@ repeatedly.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" spec status \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" spec status \
   --repo "$PWD"
 ```
 

@@ -10,7 +10,7 @@ Workflow:
 
 1. Run:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" status --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" status --repo "$PWD"
    ```
 2. The output reports:
    - `preset` — active preset name

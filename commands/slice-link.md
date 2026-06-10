@@ -11,7 +11,7 @@ linkage arrays instead of scraping artifact bodies for slice mentions.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice link \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice link \
   --repo "$PWD" \
   --id SLICE-52 \
   --kind reviews \

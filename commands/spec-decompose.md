@@ -16,7 +16,7 @@ it belongs.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" spec decompose \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" spec decompose \
   --repo "$PWD" \
   --id SPEC-001 \
   --features "Audio ingestion pipeline; Multi-tenant key scoping; Health propagation"

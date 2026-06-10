@@ -15,7 +15,7 @@ literal path-suffix:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" decisions relevant \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" decisions relevant \
   --repo "$PWD" \
   --files "src/auth/middleware.cs,src/api/Controllers/AuthController.cs"
 ```

@@ -10,7 +10,7 @@ per FEAT file, sorted by numeric id.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" backlog list \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list \
   --repo "$PWD" \
   [--status pending|triaged|in-progress|done] \
   [--priority P0|P1|P2|P3] \

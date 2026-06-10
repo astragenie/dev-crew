@@ -28,7 +28,7 @@ Two-step ceremony for capturing what happened during a slice:
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" slice grade \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice grade \
   --repo "$PWD" \
   --id SLICE-52
 ```

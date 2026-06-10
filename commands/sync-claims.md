@@ -21,7 +21,7 @@ crew). Only adjusts the loop side.
 Usage:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" sync-claims \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" sync-claims \
   --repo "$PWD"
 ```
 

@@ -102,7 +102,7 @@ items still require a human in the loop on review.
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives
 in `scripts/presets/*.json` and is read at builder-dispatch time via
-`node scripts/loop.mjs resolve-skills --variant <fe|be|single>`. See
+`bun src/scripts/loop.mts resolve-skills --variant <fe|be|single>`. See
 `docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md`
 for the design.
 

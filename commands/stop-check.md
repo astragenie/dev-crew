@@ -7,7 +7,7 @@ description: Unified stop-condition resolver — should the autonomous loop halt
 Returns whether the autonomous loop has reached a stop condition:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/loop.mjs" stop-check \
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" stop-check \
   --repo "$PWD"
 ```
 
