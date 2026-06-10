@@ -1,4 +1,5 @@
-import fs from "node:fs/promises";
+import fs from "node:fs";
+import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,19 +15,25 @@ import { fileURLToPath } from "node:url";
 // - Missing keys fall back to the preset value.
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const presetDir = path.resolve(scriptDir, "..", "presets");
+// Support two execution layouts:
+// 1. Emitted (scripts/ tree): src/scripts/lib → scripts/presets
+// 2. Direct (src/ tree): src/scripts/lib → scripts/presets (fallback)
+let presetDir = path.resolve(scriptDir, "..", "presets");
+if (!fs.existsSync(presetDir)) {
+  presetDir = path.resolve(scriptDir, "..", "..", "..", "scripts", "presets");
+}
 
 export const CONFIG_FILENAME = ".claude/loop.json";
 
 export async function listPresets() {
-  const entries = await fs.readdir(presetDir);
+  const entries = await fsPromises.readdir(presetDir);
   const presets: any[] = [];
   for (const entry of entries.sort()) {
     if (!entry.endsWith(".json")) {
       continue;
     }
     const fullPath = path.join(presetDir, entry);
-    const raw = await fs.readFile(fullPath, "utf8");
+    const raw = await fsPromises.readFile(fullPath, "utf8");
     const parsed = JSON.parse(raw);
     presets.push({
       name: parsed.presetName || path.basename(entry, ".json"),
@@ -42,7 +49,7 @@ export async function loadPreset(presetName: string) {
   }
   const presetPath = path.join(presetDir, `${presetName}.json`);
   try {
-    const raw = await fs.readFile(presetPath, "utf8");
+    const raw = await fsPromises.readFile(presetPath, "utf8");
     return JSON.parse(raw);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
@@ -56,7 +63,7 @@ export async function loadPreset(presetName: string) {
 async function readConfigFile(repoPath: string) {
   const configPath = path.join(repoPath, CONFIG_FILENAME);
   try {
-    const raw = await fs.readFile(configPath, "utf8");
+    const raw = await fsPromises.readFile(configPath, "utf8");
     return JSON.parse(raw);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
@@ -103,13 +110,13 @@ export async function resolveConfig(repoPath: string, options: Record<string, un
 export async function writeConfigIfMissing(repoPath: string, config: unknown) {
   const configPath = path.join(repoPath, CONFIG_FILENAME);
   try {
-    await fs.access(configPath);
+    await fsPromises.access(configPath);
     return { written: false, path: configPath };
   } catch {
     // not present — write it
   }
-  await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+  await fsPromises.mkdir(path.dirname(configPath), { recursive: true });
+  await fsPromises.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
   return { written: true, path: configPath };
 }
 

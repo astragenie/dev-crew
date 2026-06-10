@@ -3,7 +3,7 @@
 // malformed snapshot (graceful degrade), brief-vs-snapshot lookup, unknown
 // fields (registry iteration ignores them).
 
-import test from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 
 import { explainHalts, HALT_BADGES } from "../scripts/lib/halt-badges.mjs";

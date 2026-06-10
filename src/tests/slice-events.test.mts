@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, beforeAll, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -9,11 +9,11 @@ import { TRAJECTORY_DIR } from "../scripts/lib/trajectory-writer.mjs";
 describe("slice-events", () => {
   let tmpDir: string;
 
-  before(async () => {
+  beforeAll(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "slice-events-"));
   });
 
-  after(async () => {
+  afterAll(async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 

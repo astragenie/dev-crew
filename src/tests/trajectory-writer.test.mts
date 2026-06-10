@@ -1,5 +1,5 @@
-import { describe, it, before, after } from "node:test";
-import test from "node:test";
+import { describe, it, beforeAll, afterAll } from "bun:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -135,11 +135,11 @@ test("readTrajectory parses all recorded events after flush", async () => {
 describe("trajectory-writer batching", () => {
   let tmpDir: string;
 
-  before(async () => {
+  beforeAll(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "traj-batch-"));
   });
 
-  after(async () => {
+  afterAll(async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 

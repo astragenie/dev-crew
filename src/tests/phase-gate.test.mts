@@ -1,7 +1,8 @@
+// @ts-nocheck
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
@@ -9,7 +10,9 @@ import { promisify } from "node:util";
 import { runPhaseGate } from "../scripts/lib/phase-gate.mjs";
 import { findCrewCli } from "../scripts/lib/plugin-identity.mjs";
 
-const execFile = promisify(execFileCallback);
+function execFile(file, args, opts) {
+  return promisify(execFileCallback)(file, args, { timeout: 10000, ...opts });
+}
 
 async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));

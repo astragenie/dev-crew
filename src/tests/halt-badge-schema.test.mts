@@ -11,14 +11,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 
 import { HALT_BADGES } from "../scripts/lib/halt-badges.mjs";
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
-const REPO_ROOT = path.resolve(path.dirname(__filename), "..");
+const REPO_ROOT = path.resolve(path.dirname(__filename), "..", "..");
 const HALT_BADGES_DOC = path.join(REPO_ROOT, "docs", "halt-badges.md");
 
 // Bookkeeping fields that legitimately appear under snapshot.* but are NOT

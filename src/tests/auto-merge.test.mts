@@ -24,7 +24,7 @@ import os from "node:os";
 import path from "node:path";
 import { exec as execCb } from "node:child_process";
 import { promisify } from "node:util";
-import test from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 
 import {
@@ -35,7 +35,9 @@ import {
 } from "../scripts/lib/auto-merge.mjs";
 import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
 
-const exec = promisify(execCb);
+function exec(cmd, opts) {
+  return promisify(execCb)(cmd, { timeout: 10000, ...opts });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers

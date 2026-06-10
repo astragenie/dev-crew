@@ -45,3 +45,309 @@ Notes
 - Benchmark regression gate was already failing on Node (brief & triage exceeded thresholds)
 - This baseline captures pre-Bun performance for migration evidence
 - MIN_BUN_VERSION: 1.3.14
+
+Compat Probe Results — 2026-06-10
+=================================
+
+Step 1: V1 Module Resolution (.mjs → .mts mapping)
+===================================================
+Status: PASS ✓
+
+Probe 1: Direct .mts import
+  Command: bun -e "import('./src/scripts/lib/slice-title.mts').then(m => console.log('direct .mts OK:', typeof m.resolveSliceTitle))"
+  Result: direct .mts OK: function
+
+Probe 2: .mjs → .mts mapping (specifier rewrite fallback test)
+  Command: bun -e "import('./src/scripts/lib/frontmatter.mjs').then(...)"
+  Fact: frontmatter.mjs does NOT exist on disk; only frontmatter.mts
+  Result: .mjs->.mts mapping OK
+
+Verdict: V1 HOLDS. Bun's default specifier mapping resolves .mjs imports to .mts sources.
+No specifier rewrite fallback needed for Task 3.
+
+Step 2: V2 node:test Compatibility — Full Suite Run
+=====================================================
+Command: bun test src/tests/ 2>&1
+Wall time: 736ms
+
+Summary:
+  27 pass
+  114 fail
+  113 errors
+  141 tests run across 115 files
+
+Failure Classification
+======================
+
+CLASS A: node:test Compat Blocker — Nested test() not implemented
+=================================================================
+Count: 108 test files AFFECTED
+Issue: Bun's node:test compat layer raises NotImplementedError when test() is called at
+  top-level file scope. GitHub Bun issue: oven-sh/bun#5090
+  Error message: "test() inside another test() is not yet implemented in Bun.
+  Use `bun:test` in the interim."
+
+Root cause: Test files use flat test() calls with NO describe() wrapper:
+  Example (artifact-naming.test.mts lines 1, 15, 20, 25, ...):
+    import test from "node:test";
+    test("...first test...", () => { ... });
+    test("...second test...", () => { ... });
+
+The Node.js test runner allows this pattern (flat call-site tests). Bun's compat
+layer rejects it, requiring either:
+  a) Switch affected files to `import test from "bun:test"`, OR
+  b) Wrap all tests in describe("...", () => { test(...); test(...); })
+
+Affected files (all 108):
+  artifact-naming.test.mts
+  auto-dispatch.test.mts
+  auto-merge.test.mts
+  auto-mode.test.mts
+  auto-walker.test.mts
+  backlog-add-research.test.mts
+  backlog-enrich.test.mts
+  backlog-list-ids.test.mts
+  backlog-pm-write.test.mts
+  backlog-triage-autosafe.test.mts
+  backlog.test.mts
+  brief.test.mts
+  cache.test.mts
+  ceremonies.test.mts
+  checkpoint-commit.test.mts
+  claims-stop.test.mts
+  cli-resolve-skills.test.mts
+  confidence-post-builder.test.mts
+  confidence-signal.test.mts
+  config-resolver.test.mts
+  contracts-artifact.test.mts
+  cost-alert-stop.test.mts
+  cost-regression.test.mts
+  crew-blocking-gates.test.mts
+  crew-bridge.test.mts
+  decisions-store.test.mts
+  deep-merge.test.mts
+  dispatch-aggregate.test.mts
+  dispatch-batch.test.mts
+  dispatch-config.test.mts
+  dispatch-gates.test.mts
+  dispatch-merge.test.mts
+  dispatch-prompt.test.mts
+  dispatch-trace.test.mts
+  dispatch-types.test.mts
+  dispatch-worktree.test.mts
+  dispatcher-config.test.mts
+  doctor.test.mts
+  effective-cwd.test.mts
+  explain-halts.test.mts
+  extract-acceptance-criteria.test.mts
+  extract-section.test.mts
+  features-service.test.mts
+  frontmatter.test.mts
+  gates.test.mts
+  grade-naming.test.mts
+  grade-trend.test.mts
+  grade-writer.test.mts
+  grade.test.mts
+  halt-badge-schema.test.mts
+  hierarchical-dispatch.integration.test.mts
+  hierarchical-dispatch.test.mts
+  integration.test.mts
+  integrations.test.mts
+  json-flag.test.mts
+  learnings.test.mts
+  loop-installer-tokens.test.mts
+  loop-installer.test.mts
+  loop-iteration.test.mts
+  memory-snapshot-telemetry.test.mts
+  model-router.test.mts
+  pattern-alerts.test.mts
+  phase-gate.test.mts
+  plugin-identity.test.mts
+  pm-artifact-writer.test.mts
+  pm-scorer.test.mts
+  pr-fixer.test.mts
+  preset-schema.test.mts
+  read-guard-hook.test.mts
+  redundant-read-detector.test.mts
+  release-planner.test.mts
+  retrospective.test.mts
+  reviewer-ladder.test.mts
+  rule-loader.test.mts
+  score-inference.test.mts
+  session-drift.test.mts
+  skill-frontmatter.test.mts
+  skill-resolver.test.mts
+  slice-classify.test.mts
+  slice-complete-ceremony.test.mts
+  slice-complete-docwriter.test.mts
+  slice-complete-multi-slice.test.mts
+  slice-complete.test.mts
+  slice-linker.test.mts
+  slice-plan.test.mts
+  slice-progress.test.mts
+  slice-start-plan-gate.test.mts
+  slice-start.test.mts
+  slice-title.test.mts
+  spec-decompose-architect.test.mts
+  specs.test.mts
+  state-paths.test.mts
+  state-schemas.test.mts
+  stop-check-cost-ceiling.test.mts
+  stop-conditions.test.mts
+  synergy.test.mts
+  task-store-github-provider.test.mts
+  task-store-index.test.mts
+  task-store-setup-writer.test.mts
+  telemetry.test.mts
+  test-adequacy-gate.test.mts
+  trajectory-writer.test.mts
+  triage-flow.test.mts
+  validate-content-length.test.mts
+  validate-decline-citations.test.mts
+  validate-manifests.test.mts
+  validation-gate.test.mts
+  worktree-manager.test.mts
+
+CLASS B: Module Resolution Errors — Runtime-only .mjs imports
+==============================================================
+Count: 2 test files AFFECTED
+Issue: Tests import runtime-only .mjs files (hand-authored, not generated from .mts)
+  using relative paths that resolve to the emitted scripts/ tree, not src/scripts/.
+
+Affected files:
+  1. competitor-audit-aggregate.test.mts
+     Imports: ../scripts/competitor-audit/aggregate.mjs
+     Status: aggregate.mjs exists at scripts/competitor-audit/aggregate.mjs
+     Problem: When tests run from src/tests/, ../scripts/ resolves to src/scripts/,
+              but aggregate.mjs is only at the root scripts/ level.
+     Solution: Per Bun migration spec Slice 2, these .mjs files stay under scripts/
+              (they're runtime-only exceptions). Test import paths must be adjusted
+              to reference the emitted location OR V1 mapping must resolve the
+              relative path correctly when tests import from src/.
+     Resolution: NEEDS TASK 3 INVESTIGATION. May require updating test imports to
+              use absolute package-relative paths or adding import rewrite logic.
+
+  2. github-sync.test.mts
+     Imports: ../scripts/lib/github-sync/repo-detect.mjs
+     Status: repo-detect.mjs exists at scripts/lib/github-sync/repo-detect.mjs
+     Problem: Same as above — relative path resolution from src/tests/ misaligns.
+     Solution: Same as above.
+
+CLASS C: ENOENT Errors (Config/Environment)
+============================================
+Count: 1 instance (not a compat blocker)
+File: agent-report-writer.test.mts
+Error: ENOENT scandir 'src/scripts/presets'
+Cause: Test setup assumes presets/ directory exists in the source tree.
+Status: This is a test-setup issue, not a Bun compat issue. Node suite would
+  fail identically if run without populating presets/. Likely a fixture
+  or mock setup problem. Does NOT block Bun adoption.
+
+Task 3 Scope Determination
+==========================
+
+Recommendation: Large-scale codemod required, but feasible.
+
+Option A: Codemods all 108 files from node:test to bun:test
+  Scope: sed/codemods to replace import statements per file
+  Effort: ~2-3 hours including verification
+  Advantages: Minimal test-logic changes; tests stay identical semantically
+  Disadvantages: Locks tests to Bun; no longer Node.js compatible
+
+Option B: Wrap all tests in describe() blocks (keep node:test compatible)
+  Scope: Wrap every test file's body in describe("...", () => { ... })
+  Effort: Higher; requires structural AST changes per file
+  Advantages: Tests remain Node.js compatible; Bun can run them later
+              when nested test() support lands in oven-sh/bun#5090
+  Disadvantages: Adds boilerplate; changes test structure significantly
+
+DECISION (from spec Slice 1): Option A — switch to bun:test.
+  Rationale: Bun is a hard requirement in Slice 2. Tests lock to Bun is acceptable.
+  Fallback: If oven-sh/bun#5090 lands before Slice 2, revert to node:test.
+
+Specifier Rewrite Fallback
+==========================
+Classes B and C: 3 files (out of 115) need import-path investigation in Task 3.
+  competitor-audit-aggregate.test.mts
+  github-sync.test.mts
+  agent-report-writer.test.mts (ENOENT, not compat)
+
+If relative-path resolution proves unfixable, Task 3 will implement specifier
+rewrite for these files OR update their import statements to use package-relative
+paths (e.g., "../../scripts/lib/github-sync/repo-detect.mjs" → absolute).
+
+Summary for Task 3
+==================
+1. Codemod 108 test files: import test from "node:test" → import test from "bun:test"
+2. Investigate 2 module resolution issues (competitor-audit-aggregate, github-sync)
+3. Verify 1 ENOENT fixture issue (agent-report-writer) — may be test-setup only
+4. Confirm suite runs green under bun test src/tests/ after codemods
+5. Record findings in this file (DO NOT commit)
+
+CORRECTION (Task 2 spec review, 2026-06-10)
+===========================================
+Class C reclassified: agent-report-writer.test.mts ENOENT is NOT a fixture
+issue. Root cause: src/scripts/lib/config-resolver.mts:16-17 resolves the
+presets data dir relative to import.meta.url; under src-direct execution it
+lands at src/scripts/presets (absent; real dir is scripts/presets). Genuine
+migration fallout -> fixed in Task 3 via existence-checked fallback chain.
+Verified by reviewer: bun:test transform is `import { test } from "bun:test"`
+(NAMED export); probe codemod of artifact-naming.test.mts -> 17/17 pass.
+Consequence of full 108-file codemod: the suite becomes bun-only in Phase A
+(node --test cannot load bun:test). test:node/build:tests retired in Task 4
+instead of Task 11.
+
+HANG DIAGNOSIS — 2026-06-10 (Reliability T1: Binary-search hanging test)
+=========================================================================
+
+Symptom: `bun test --parallel` sometimes hangs indefinitely on Windows for 15+ minutes
+
+Binary search result:
+  Total files: 115 test files
+  First half: 57 files → COMPLETES in ~60s ✓
+  Second half: 58 files → HANGS after 90s ✗
+
+  Narrowing down:
+    Second-quarter (29 files): COMPLETES ✓
+    Third-quarter (29 files): HANGS ✗
+
+    Third-eighth (15 files): HANGS ✗
+    Fourth-eighth (14 files): COMPLETES ✓
+
+    Third-16th A (7 files): HANGS ✗
+      - slice-complete-docwriter.test.mts → COMPLETES ✓
+      - slice-complete-multi-slice.test.mts → COMPLETES ✓
+      - slice-complete.test.mts → HANGS ✗ (CULPRIT)
+      - slice-events.test.mts → COMPLETES ✓
+      - slice-linker.test.mts → COMPLETES ✓
+      - slice-plan.test.mts → COMPLETES ✓
+      - slice-progress.test.mts → COMPLETES ✓
+
+Culprit file: slice-complete.test.mts
+  - Hangs consistently when run in isolation (verified 2 runs, both hanged)
+  - 30-second timeout confirms it's a hard hang, not slowness
+
+Root cause: src/scripts/lib/slice-linker/complete-slice.mts:741-753
+  Function checkBranchExists() uses:
+    ```
+    const execFile = promisify(execFileCb);
+    await execFile("git", ["-C", repoPath, "rev-parse", "--verify", branchName], {
+      timeout: 30_000
+    });
+    ```
+
+  Problem:
+    1. Test tmpRepo() creates a temporary directory with .claude/ folder BUT
+       does NOT initialize it as a git repository
+    2. On Windows, git hangs when trying to locate .git in a non-git directory,
+       even with a timeout set on execFile (the timeout only covers the git
+       process execution, not the initial git discovery phase which walks
+       parent directories)
+    3. Parallel test execution exacerbates this: multiple bun worker threads
+       simultaneously execute git on non-git tmpdirs, causing file lock
+       contention and indefinite blocking
+
+Solution path (Reliability T2):
+  - Add explicit git repo initialization to tmpRepo() test fixture, OR
+  - Add explicit timeout + Promise.race() at call-site to interrupt git discovery, OR
+  - Add afterAll cleanup hook to prevent worktree-path pollution across tests
