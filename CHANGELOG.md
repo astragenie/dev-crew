@@ -3,6 +3,47 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.36.0 — 2026-06-10 — state contract + doctor
+
+### Added
+- **Loop State Contract (Schema v1)** — New `docs/state-contract.md` documents
+  the authoritative state model for backlog, slices, grades, decisions, releases,
+  and retrospectives. Covers purpose, authoritative roots, field constraints for
+  all frontmatter types, write-guard rules, and versioning policy.
+- **State Schema Validators** — New `src/scripts/lib/state-schemas.mts` with
+  `validateFeat`, `validateSlice`, `validateGrade`, `validateDecision`, and
+  `validateLoopJson` functions. Versioning: absent `schemaVersion` ⇒ v1; only
+  v1 accepted in this release (commit 6aa544f).
+- **Dispatcher Config Resolution** — `src/scripts/lib/config-resolver.mts`
+  resolves `.claude/loop.json` once at CLI startup and threads through all
+  handlers. Path overrides (`loop.backlogRoot`, `loop.artifactRoot`, etc.)
+  apply globally (commits e117604, a801eef, 88c4a17).
+- **State Write-Guard** — `src/scripts/lib/state-paths.mts` with
+  `assertStatePath(repoPath, config, target)` prevents writes outside
+  resolved state roots. All state writers call this guard before `fs.writeFile` /
+  `fs.rename` (commit 09be485, 31a8cd5).
+- **Write-Time FEAT Validation** — `backlog-writer.mts` and other writers
+  validate frontmatter after rendering (commit f18a23b).
+- **`loop doctor` command** — Detects and repairs loop-state divergence.
+  - `loop doctor` — Report only (writes to `.claude/artifacts/loop/doctor/`).
+  - `loop doctor --check` — Report + exit 1 if findings (for CI).
+  - `loop doctor --fix` — Report first, then merge stray trees, resolve
+    conflicts by newest-transition, preserve non-FEAT files (commits 3775f64,
+    9ed36ff, ff689e0).
+- **Doctor Finding Kinds** — Five types: `stray-tree` (legacy backlog locations),
+  `id-collision` (same FEAT in multiple trees), `state-contradiction` (same ID,
+  different state), `schema-invalid` (failed frontmatter), `config-mismatch`
+  (authoritative root empty but stray populated).
+
+### Fixed
+- **Dual Backlog Tree Divergence** — `backlog add` and all path-bearing commands
+  now honor `.claude/loop.json` path overrides. Resolves hero-crew FEAT-144:
+  diverged backlog trees in dual-root setups are now merged and deduplicated
+  by the doctor tool.
+
+### Changed
+- `loop doctor` command added to usage banner and help output.
+
 ## v0.35.0 — 2026-06-10 — PM enrichment: spec-writer agent, risk rubric, grade feedback
 
 ### Added
