@@ -18,7 +18,7 @@ import { HALT_BADGES } from "../scripts/lib/halt-badges.mjs";
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
-const REPO_ROOT = path.resolve(path.dirname(__filename), "..");
+const REPO_ROOT = path.resolve(path.dirname(__filename), "..", "..");
 const HALT_BADGES_DOC = path.join(REPO_ROOT, "docs", "halt-badges.md");
 
 // Bookkeeping fields that legitimately appear under snapshot.* but are NOT

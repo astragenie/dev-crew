@@ -2,11 +2,16 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { test } from "bun:test";
+import { test, beforeEach } from "bun:test";
 import assert from "node:assert/strict";
 
 import { parseArchitectOutput, detectMissingSpecFields } from "../scripts/loop.mjs";
 import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
+
+// Reset process.exitCode before each test to prevent state leakage
+beforeEach(() => {
+  process.exitCode = 0;
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

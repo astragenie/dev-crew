@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +8,13 @@ import { fileURLToPath } from "node:url";
 // pull the identity from the manifests instead of hardcoding strings.
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const pluginRoot = path.resolve(scriptDir, "..", "..");
+// Support two execution layouts:
+// 1. Emitted (scripts/ tree): scripts/lib/ → repo root
+// 2. Direct (src/ tree): src/scripts/lib/ → repo root (fallback)
+let pluginRoot = path.resolve(scriptDir, "..", "..");
+if (!existsSync(path.join(pluginRoot, ".claude-plugin"))) {
+  pluginRoot = path.resolve(scriptDir, "..", "..", "..");
+}
 
 let cached: any = null;
 

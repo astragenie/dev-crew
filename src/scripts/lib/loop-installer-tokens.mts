@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +8,13 @@ import { parseSkillFrontmatter } from "./skill-frontmatter.mjs";
 import type { Rule } from "./rule-loader.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const templateDir = path.resolve(scriptDir, "..", "..", "templates");
+// Support two execution layouts:
+// 1. Emitted (scripts/ tree): scripts/lib/ → templates
+// 2. Direct (src/ tree): src/scripts/lib/ → templates (fallback)
+let templateDir = path.resolve(scriptDir, "..", "..", "templates");
+if (!existsSync(templateDir)) {
+  templateDir = path.resolve(scriptDir, "..", "..", "..", "templates");
+}
 
 export async function readTemplate(relativePath: string): Promise<string> {
   return fs.readFile(path.join(templateDir, relativePath), "utf8");
