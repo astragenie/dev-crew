@@ -60,6 +60,32 @@ test("listBacklog walks all four state dirs", async () => {
   assert.equal(entries.find((e) => e.id === "FEAT-002").state, "in-progress");
 });
 
+test("listBacklog includes letter-suffixed split features (FEAT-119a)", async () => {
+  const repo = await tmpRepo("al-backlog-suffix-");
+  await ensureBacklogScaffold(repo);
+  const pending = path.join(repo, ".claude", "artifacts", "loop", "backlog", "pending");
+  const mk = (name, id, priority) =>
+    fs.writeFile(
+      path.join(pending, name),
+      `---\nid: ${id}\nstatus: pending\npriority: ${priority}\n---\n# ${id}: split\n`
+    );
+  await mk("FEAT-119b.md", "FEAT-119b", "P2");
+  await mk("FEAT-119a.md", "FEAT-119a", "P1");
+  await mk("FEAT-120.md", "FEAT-120", "P2");
+  const entries = await listBacklog(repo);
+  assert.deepEqual(
+    entries.map((e) => e.id),
+    ["FEAT-119a", "FEAT-119b", "FEAT-120"]
+  );
+  assert.equal(entries[0].idNumber, 119);
+  assert.equal(entries[0].idSuffix, "a");
+  // comparePickOrder: P1 suffix entry wins; same-priority suffixes sort a < b
+  const sorted = [...entries].sort(comparePickOrder);
+  assert.equal(sorted[0].id, "FEAT-119a");
+  // nextFeatureId ignores suffixes, advances past the max numeric id
+  assert.equal(await nextFeatureId(repo), "FEAT-121");
+});
+
 test("filterBacklog filters by status and priority", async () => {
   const repo = await tmpRepo("al-backlog-filter-");
   const a = await addFeature(repo, { title: "A", priority: "P0" });

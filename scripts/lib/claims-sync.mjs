@@ -17,7 +17,7 @@ import { pathExists } from "./paths.mjs";
 // crew. We only read it + adjust backlog files (the loop side
 // of the contract).
 const CLAIMS_STATE = path.join(".claude", "state", "crew", "claims.json");
-const FEAT_RE = /\b(FEAT-\d+)\b/;
+const FEAT_RE = /\b(FEAT-\d+[a-z]?)\b/;
 async function readClaimsState(repoPath) {
     const target = path.join(repoPath, CLAIMS_STATE);
     if (!(await pathExists(target)))

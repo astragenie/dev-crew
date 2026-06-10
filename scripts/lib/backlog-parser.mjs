@@ -7,7 +7,9 @@ import { backlogRoot, pathExists } from "./paths.mjs";
 import { cached } from "./cache.mjs";
 export { backlogRoot };
 export const BACKLOG_STATES = ["pending", "triaged", "in-progress", "done"];
-const FEATURE_FILE_RE = /^FEAT-(\d+)(?:-.*)?\.md$/;
+// Letter suffix supports split features (FEAT-119a..FEAT-119e) — they share
+// the numeric id for sorting but remain distinct entries.
+const FEATURE_FILE_RE = /^FEAT-(\d+)([a-z])?(?:-.*)?\.md$/;
 /**
  * @typedef {object} BacklogEntry
  * @property {string} id
@@ -29,12 +31,14 @@ async function readEntry(filePath, state) {
     if (!match)
         return null;
     const idNumber = Number(match[1]);
+    const idSuffix = match[2] || "";
     const mtime = (await fs.stat(filePath)).mtimeMs;
     const result = readFrontmatterCached(filePath, mtime, parseFrontmatter, (p) => readFileSync(p, "utf8"));
     const { frontmatter, body } = result;
     return {
-        id: frontmatter.id || `FEAT-${String(idNumber).padStart(3, "0")}`,
+        id: frontmatter.id || `FEAT-${String(idNumber).padStart(3, "0")}${idSuffix}`,
         idNumber,
+        idSuffix,
         state,
         filePath,
         filename,
@@ -60,7 +64,7 @@ export async function listBacklog(repoPath, options = {}) {
         // per invocation via cache; parallel readdir across states).
         const perStateBatches = await Promise.all(BACKLOG_STATES.map((state) => readStateEntries(root, state)));
         const entries = perStateBatches.flat();
-        entries.sort((a, b) => a.idNumber - b.idNumber);
+        entries.sort((a, b) => a.idNumber - b.idNumber || (a.idSuffix || "").localeCompare(b.idSuffix || ""));
         return entries;
     });
 }
@@ -80,7 +84,7 @@ export function comparePickOrder(a, b) {
     const bp = b.frontmatter.priority || "P3";
     if (ap !== bp)
         return ap.localeCompare(bp);
-    return a.idNumber - b.idNumber;
+    return a.idNumber - b.idNumber || (a.idSuffix || "").localeCompare(b.idSuffix || "");
 }
 export function filterBacklog(entries, filters = {}) {
     return entries.filter((entry) => {

@@ -46,7 +46,7 @@ async function scanTree(root: string): Promise<FeatEntry[]> {
       continue;
     }
     for (const f of entries) {
-      if (!/^FEAT-\d+\.md$/.test(f)) continue;
+      if (!/^FEAT-\d+[a-z]?\.md$/.test(f)) continue;
       const file = path.join(dir, f);
       const content = await fs.readFile(file, "utf8");
       const { frontmatter } = parseFrontmatter(content);

@@ -22,7 +22,7 @@ async function listFeatFiles(dir) {
         throw err;
     }
     return entries
-        .filter((e) => e.isFile() && /^FEAT-\d+\.md$/.test(e.name))
+        .filter((e) => e.isFile() && /^FEAT-\d+[a-z]?\.md$/.test(e.name))
         .map((e) => path.join(dir, e.name));
 }
 function extractFeatId(filePath) {

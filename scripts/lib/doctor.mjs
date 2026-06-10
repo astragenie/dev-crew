@@ -27,7 +27,7 @@ async function scanTree(root) {
             continue;
         }
         for (const f of entries) {
-            if (!/^FEAT-\d+\.md$/.test(f))
+            if (!/^FEAT-\d+[a-z]?\.md$/.test(f))
                 continue;
             const file = path.join(dir, f);
             const content = await fs.readFile(file, "utf8");

@@ -6,7 +6,7 @@ export interface ValidationResult {
   issues: string[];
 }
 
-const FEAT_ID = /^FEAT-\d{3,}$/;
+const FEAT_ID = /^FEAT-\d{3,}[a-z]?$/;
 const SLICE_ID = /^SLICE-\d+$/;
 const DEC_ID = /^DEC-\d+$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
