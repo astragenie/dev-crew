@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import { parseFrontmatter, serializeFrontmatter } from "../lib/frontmatter.mjs";
 import { addFeature, updateFeatureFrontmatter } from "../lib/backlog-writer.mjs";
+import { listBacklog } from "../lib/backlog-parser.mjs";
 
 export const AXES = Object.freeze([
   "Workflow phases",
@@ -219,13 +220,13 @@ export function priorityFromComposite(composite) {
   return "P3";
 }
 
-function renderGapBody(featId, gap) {
+function renderGapBody(featId, gap, auditLabel) {
   return [
     `# ${featId}: ${gap.title}`,
     "",
     "## Source",
     "",
-    "Competitor gap audit (2026-05-28). Surfaced by:",
+    `Competitor gap audit (${auditLabel}). Surfaced by:`,
     ...gap.source_competitors.map((c) => `- ${c}`),
     "",
     "## Description",
@@ -259,7 +260,28 @@ async function listBriefFiles(briefsDir) {
     .map((entry) => path.join(briefsDir, entry));
 }
 
-export async function runAudit(repoPath, { auditDir, baselineName, baselineMatrix }) {
+async function findExistingGapFeat(repoPath, gapKey) {
+  const entries = await listBacklog(repoPath);
+  for (const entry of entries) {
+    if (entry.frontmatter.category !== "competitor-gap") continue;
+    // Extract title from frontmatter or body heading.
+    const titleMatch =
+      entry.body.match(/^# FEAT-\d+:\s*(.+)$/m) ||
+      entry.body.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : "";
+    if (normalizeTitle(title) === gapKey) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+export async function runAudit(repoPath, {
+  auditDir,
+  baselineName,
+  baselineMatrix,
+  auditLabel
+}) {
   const briefsDir = path.join(repoPath, auditDir, "briefs");
   const briefFiles = await listBriefFiles(briefsDir);
   const briefs = [];
@@ -285,7 +307,7 @@ export async function runAudit(repoPath, { auditDir, baselineName, baselineMatri
           })
           .join("\n");
   const matrixBody = [
-    "# Master matrix — 2026-05-28 competitor gap audit",
+    `# Master matrix — ${auditLabel} competitor gap audit`,
     "",
     "Legend: ● = full coverage, ◐ = partial, ○ = absent.",
     "",
@@ -299,42 +321,70 @@ export async function runAudit(repoPath, { auditDir, baselineName, baselineMatri
   await fs.writeFile(matrixPath, matrixBody);
 
   const draftedFeats = [];
+  const updatedFeats = [];
   for (const gap of ranked) {
     if (gap.composite < 6) continue;
-    const draft = await addFeature(repoPath, {
-      title: gap.title,
-      priority: priorityFromComposite(gap.composite),
-      category: "competitor-gap"
-    });
-    // addFeature can't take arbitrary frontmatter; layer the audit-specific
-    // fields on top via updateFeatureFrontmatter and re-render the body
-    // while preserving the frontmatter block addFeature wrote.
-    const body = renderGapBody(draft.id, gap);
-    const existing = await fs.readFile(draft.filePath, "utf8");
-    const { frontmatter } = parseFrontmatter(existing);
-    await fs.writeFile(draft.filePath, serializeFrontmatter(frontmatter, body));
-    await updateFeatureFrontmatter(draft.filePath, {
-      composite_score: gap.composite,
-      source_competitors: gap.source_competitors,
-      autonomous_safe: false
-    });
-    draftedFeats.push(draft);
+    const existing = await findExistingGapFeat(repoPath, gap.key);
+    if (existing) {
+      // Idempotent update: refresh scores and sources, preserve body and PM annotations
+      await updateFeatureFrontmatter(existing.filePath, {
+        composite_score: gap.composite,
+        source_competitors: gap.source_competitors,
+        last_audit: auditLabel
+      });
+      updatedFeats.push(existing);
+    } else {
+      // New feature
+      const draft = await addFeature(repoPath, {
+        title: gap.title,
+        priority: priorityFromComposite(gap.composite),
+        category: "competitor-gap"
+      });
+      const body = renderGapBody(draft.id, gap, auditLabel);
+      const draftContent = await fs.readFile(draft.filePath, "utf8");
+      const { frontmatter } = parseFrontmatter(draftContent);
+      await fs.writeFile(draft.filePath, serializeFrontmatter(frontmatter, body));
+      await updateFeatureFrontmatter(draft.filePath, {
+        composite_score: gap.composite,
+        source_competitors: gap.source_competitors,
+        last_audit: auditLabel,
+        autonomous_safe: false
+      });
+      draftedFeats.push(draft);
+    }
   }
 
-  return { briefs, ranked, matrixPath, draftedFeats };
+  return { briefs, ranked, matrixPath, draftedFeats, updatedFeats };
 }
 
 const isMain = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  const repoPath = process.cwd();
+  // Simple flag parser for --repo and --audit-dir
+  let repoPath = process.cwd();
+  let auditDir = "docs/research/2026-05-28-competitor-gap-audit";
+
+  for (let i = 2; i < process.argv.length; i++) {
+    if (process.argv[i] === "--repo" && i + 1 < process.argv.length) {
+      repoPath = process.argv[i + 1];
+      i++;
+    } else if (process.argv[i] === "--audit-dir" && i + 1 < process.argv.length) {
+      auditDir = process.argv[i + 1];
+      i++;
+    }
+  }
+
+  // Derive auditLabel from audit-dir basename (e.g., "2026-05-28-competitor-gap-audit")
+  const auditLabel = path.basename(auditDir).replace(/-competitor-gap-audit$/, "");
+
   const baselineMatrix = Object.fromEntries(
     AXES.map((axis) => [axis, { symbol: "●", note: "native" }])
   );
   try {
     const result = await runAudit(repoPath, {
-      auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+      auditDir,
       baselineName: "loop+crew",
-      baselineMatrix
+      baselineMatrix,
+      auditLabel
     });
     console.log(
       JSON.stringify(
@@ -342,6 +392,7 @@ if (isMain) {
           briefs: result.briefs.length,
           ranked: result.ranked.length,
           drafted: result.draftedFeats.length,
+          updated: result.updatedFeats.length,
           matrixPath: result.matrixPath
         },
         null,
@@ -352,7 +403,7 @@ if (isMain) {
     if (err && err.code === "ENOENT") {
       console.error(
         "Briefs directory not found. Run Task 5 (dispatch researchers) " +
-          "to populate docs/research/2026-05-28-competitor-gap-audit/briefs/ first."
+          `to populate ${auditDir}/briefs/ first.`
       );
       process.exitCode = 1;
     } else {

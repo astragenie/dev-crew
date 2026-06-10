@@ -6,6 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parseBrief, AXES, dedupeAndRank, renderMatrixMarkdown, priorityFromComposite, runAudit } from "../scripts/competitor-audit/aggregate.mjs";
 import { findFeatureById } from "../scripts/lib/backlog-writer.mjs";
+import { parseFrontmatter, serializeFrontmatter } from "../scripts/lib/frontmatter.mjs";
 async function tmpBriefsDir(prefix) {
     return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
@@ -239,7 +240,8 @@ test("runAudit reads briefs dir, writes matrix.md, drafts FEATs for composite >=
     const result = await runAudit(repo, {
         auditDir: "docs/research/2026-05-28-competitor-gap-audit",
         baselineName: "loop+crew",
-        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }]))
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
     });
     // matrix.md written
     const matrixContent = await fs.readFile(path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/matrix.md"), "utf8");
@@ -255,4 +257,177 @@ test("runAudit reads briefs dir, writes matrix.md, drafts FEATs for composite >=
     assert.equal(feat.frontmatter.composite_score, 8);
     assert.deepEqual(feat.frontmatter.source_competitors.sort(), ["alpha", "beta"]);
     assert.equal(feat.frontmatter.autonomous_safe, false);
+    assert.equal(feat.frontmatter.last_audit, "2026-05-28");
+});
+test("runAudit idempotently updates existing gaps on re-run with same briefs", async () => {
+    const repo = await fs.mkdtemp(path.join(os.tmpdir(), "audit-rerun-"));
+    const briefsDir = path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/briefs");
+    await fs.mkdir(briefsDir, { recursive: true });
+    const alphaBrief = SAMPLE_BRIEF.replace("superpowers", "alpha").replace("## Inadvisable mimics", `### GAP-2: Low-value experimental knob
+
+- Description: a knob with marginal value.
+- Source: skills/example-low-value
+- Impact (0-3): 2 — limited reach
+- Effort (0-3): 2 — moderate plumbing
+- Fit (0-3): 1 — weak alignment
+- Composite: 2 + (3 - 2) + 1 = 4
+
+## Inadvisable mimics`);
+    await fs.writeFile(path.join(briefsDir, "alpha.md"), alphaBrief);
+    await fs.writeFile(path.join(briefsDir, "beta.md"), SAMPLE_BRIEF.replace("superpowers", "beta"));
+    // First run: draft new FEATs
+    const result1 = await runAudit(repo, {
+        auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
+    });
+    assert.equal(result1.draftedFeats.length, 1);
+    assert.equal(result1.updatedFeats.length, 0);
+    const featId = result1.draftedFeats[0].id;
+    // Mark the drafted FEAT as autonomous_safe (simulating PM triage)
+    const featPath = result1.draftedFeats[0].filePath;
+    const featContent = await fs.readFile(featPath, "utf8");
+    const { frontmatter, body } = parseFrontmatter(featContent);
+    frontmatter.autonomous_safe = true;
+    const updated = serializeFrontmatter(frontmatter, body);
+    await fs.writeFile(featPath, updated);
+    // Second run: same briefs should update the existing FEAT, not draft a new one
+    const result2 = await runAudit(repo, {
+        auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
+    });
+    assert.equal(result2.draftedFeats.length, 0, "no new FEATs drafted");
+    assert.equal(result2.updatedFeats.length, 1, "existing FEAT updated");
+    assert.equal(result2.updatedFeats[0].id, featId);
+    // Verify autonomous_safe is preserved
+    const updatedFeat = await findFeatureById(repo, featId);
+    assert.equal(updatedFeat.frontmatter.autonomous_safe, true, "autonomous_safe preserved");
+    assert.equal(updatedFeat.frontmatter.composite_score, 8, "composite_score refreshed");
+});
+test("runAudit preserves PM annotations in FEAT body on idempotent update", async () => {
+    const repo = await fs.mkdtemp(path.join(os.tmpdir(), "audit-pm-notes-"));
+    const briefsDir = path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/briefs");
+    await fs.mkdir(briefsDir, { recursive: true });
+    const alphaBrief = SAMPLE_BRIEF.replace("superpowers", "alpha").replace("## Inadvisable mimics", `### GAP-2: Low-value experimental knob
+
+- Description: a knob with marginal value.
+- Source: skills/example-low-value
+- Impact (0-3): 2 — limited reach
+- Effort (0-3): 2 — moderate plumbing
+- Fit (0-3): 1 — weak alignment
+- Composite: 2 + (3 - 2) + 1 = 4
+
+## Inadvisable mimics`);
+    await fs.writeFile(path.join(briefsDir, "alpha.md"), alphaBrief);
+    await fs.writeFile(path.join(briefsDir, "beta.md"), SAMPLE_BRIEF.replace("superpowers", "beta"));
+    // First run: draft the FEAT
+    const result1 = await runAudit(repo, {
+        auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
+    });
+    assert.equal(result1.draftedFeats.length, 1);
+    const featId = result1.draftedFeats[0].id;
+    const featPath = result1.draftedFeats[0].filePath;
+    // Append PM annotation to the FEAT body (simulating PM triage feedback)
+    const featContent = await fs.readFile(featPath, "utf8");
+    const { frontmatter, body } = parseFrontmatter(featContent);
+    const annotatedBody = body + "\n## PM notes\n\nkeep this annotation on re-run\n";
+    const updated = serializeFrontmatter(frontmatter, annotatedBody);
+    await fs.writeFile(featPath, updated);
+    // Second run: same briefs should update the FEAT and preserve the PM annotation
+    const result2 = await runAudit(repo, {
+        auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
+    });
+    assert.equal(result2.draftedFeats.length, 0, "no new FEATs drafted");
+    assert.equal(result2.updatedFeats.length, 1, "existing FEAT updated");
+    // Verify the PM annotation is preserved in the body
+    const updatedFeat = await findFeatureById(repo, featId);
+    assert.match(updatedFeat.body, /## PM notes/, "PM notes section preserved");
+    assert.match(updatedFeat.body, /keep this annotation on re-run/, "PM annotation text preserved");
+    // Verify frontmatter was refreshed (composite_score and last_audit should still be set)
+    assert.equal(updatedFeat.frontmatter.composite_score, 8, "composite_score refreshed");
+    assert.equal(updatedFeat.frontmatter.last_audit, "2026-05-28", "last_audit refreshed");
+});
+test("runAudit matches gap FEAT even after moving to triaged state", async () => {
+    const repo = await fs.mkdtemp(path.join(os.tmpdir(), "audit-moved-"));
+    const briefsDir = path.join(repo, "docs/research/2026-05-28-competitor-gap-audit/briefs");
+    await fs.mkdir(briefsDir, { recursive: true });
+    await fs.writeFile(path.join(briefsDir, "alpha.md"), SAMPLE_BRIEF.replace("superpowers", "alpha"));
+    // First run: draft the FEAT
+    const result1 = await runAudit(repo, {
+        auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
+    });
+    assert.equal(result1.draftedFeats.length, 1);
+    const featId = result1.draftedFeats[0].id;
+    const featPath = result1.draftedFeats[0].filePath;
+    // Simulate PM moving the FEAT to triaged state
+    const newPath = path.join(path.dirname(path.dirname(featPath)), "triaged", path.basename(featPath));
+    await fs.mkdir(path.dirname(newPath), { recursive: true });
+    await fs.rename(featPath, newPath);
+    // Second run: should still find and update the FEAT in triaged state
+    const result2 = await runAudit(repo, {
+        auditDir: "docs/research/2026-05-28-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-05-28"
+    });
+    assert.equal(result2.draftedFeats.length, 0, "no new FEAT in pending/");
+    assert.equal(result2.updatedFeats.length, 1, "FEAT in triaged/ was matched and updated");
+    assert.equal(result2.updatedFeats[0].id, featId);
+});
+test("runAudit threads auditLabel into matrix heading and FEAT body", async () => {
+    const repo = await fs.mkdtemp(path.join(os.tmpdir(), "audit-label-"));
+    const briefsDir = path.join(repo, "docs/research/2026-06-10-competitor-gap-audit/briefs");
+    await fs.mkdir(briefsDir, { recursive: true });
+    await fs.writeFile(path.join(briefsDir, "alpha.md"), SAMPLE_BRIEF.replace("superpowers", "alpha"));
+    const result = await runAudit(repo, {
+        auditDir: "docs/research/2026-06-10-competitor-gap-audit",
+        baselineName: "loop+crew",
+        baselineMatrix: Object.fromEntries(AXES.map((a) => [a, { symbol: "●", note: "native" }])),
+        auditLabel: "2026-06-10"
+    });
+    // Check matrix.md heading
+    const matrixContent = await fs.readFile(result.matrixPath, "utf8");
+    assert.match(matrixContent, /# Master matrix — 2026-06-10 competitor gap audit/);
+    // Check FEAT body
+    const feat = await findFeatureById(repo, result.draftedFeats[0].id);
+    assert.match(feat.body, /Competitor gap audit \(2026-06-10\)/);
+});
+test("competitors.json registry parses and contains all 11 competitor slugs", async () => {
+    const registryPath = "docs/research/competitors.json";
+    const content = await fs.readFile(registryPath, "utf8");
+    const registry = JSON.parse(content);
+    assert.ok(registry.staleDays, "registry has staleDays");
+    assert.ok(Array.isArray(registry.competitors), "competitors is an array");
+    assert.equal(registry.competitors.length, 11, "all 11 competitors present");
+    const slugs = registry.competitors.map((c) => c.slug).sort();
+    const expected = [
+        "aider",
+        "crewai",
+        "cursor-agents",
+        "devin-swe-agent",
+        "github-copilot-workspace",
+        "gstack",
+        "langgraph",
+        "openhands",
+        "qodo",
+        "superpowers",
+        "windsurf"
+    ].sort();
+    assert.deepEqual(slugs, expected);
+    // Spot-check a few entries
+    const aider = registry.competitors.find((c) => c.slug === "aider");
+    assert.ok(aider.suggested_sources.length > 0);
+    assert.equal(aider.last_audited, "2026-05-28");
 });
