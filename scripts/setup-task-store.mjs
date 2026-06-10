@@ -1,6 +1,6 @@
 // One-shot setup: configure taskStore provider in a target repo.
 // Usage: node scripts/setup-task-store.mjs <repoPath> [--provider github|noop|linear]
-import { writeTaskStoreConfig, VALID_PROVIDERS } from "./lib/task-store/setup-writer.mjs";
+import { writeTaskStoreConfig, VALID_PROVIDERS } from "../src/scripts/lib/task-store/setup-writer.mts";
 
 // Parse flags and positionals. Each known flag that takes a value consumes
 // the next argument so it isn't mistaken for repoPath.

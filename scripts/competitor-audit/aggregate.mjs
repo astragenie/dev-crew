@@ -2,9 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { parseFrontmatter, serializeFrontmatter } from "../lib/frontmatter.mjs";
-import { addFeature, updateFeatureFrontmatter } from "../lib/backlog-writer.mjs";
-import { listBacklog } from "../lib/backlog-parser.mjs";
+import { parseFrontmatter, serializeFrontmatter } from "../../src/scripts/lib/frontmatter.mts";
+import { addFeature, updateFeatureFrontmatter } from "../../src/scripts/lib/backlog-writer.mts";
+import { listBacklog } from "../../src/scripts/lib/backlog-parser.mts";
 
 export const AXES = Object.freeze([
   "Workflow phases",

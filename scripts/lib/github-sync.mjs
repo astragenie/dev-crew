@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { resolveConfig, configPath as resolveConfigPath } from "./config-resolver.mjs";
-import { listBacklog } from "./backlog-parser.mjs";
-import { mergeFrontmatter, parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
+import { resolveConfig, configPath as resolveConfigPath } from "../../src/scripts/lib/config-resolver.mts";
+import { listBacklog } from "../../src/scripts/lib/backlog-parser.mts";
+import { mergeFrontmatter, parseFrontmatter, serializeFrontmatter } from "../../src/scripts/lib/frontmatter.mts";
 import { defaultGhExec, isGhInstalled } from "./github-sync/gh.mjs";
 import { detectRepo } from "./github-sync/repo-detect.mjs";
 import { upsertMilestone } from "./github-sync/milestone-sync.mjs";
@@ -14,7 +14,7 @@ import {
 import { createSliceIssue, attachSubIssue, closeSliceIssue } from "./github-sync/subissue-sync.mjs";
 import { buildSliceComment, postComment } from "./github-sync/comment-sync.mjs";
 import { diffBody, patchBody } from "./github-sync/body-diff.mjs";
-import { locateSliceFile, slicesRoot, backlogRoot as resolveBacklogRoot } from "./paths.mjs";
+import { locateSliceFile, slicesRoot, backlogRoot as resolveBacklogRoot } from "../../src/scripts/lib/paths.mts";
 
 function isEnabled(resolved) {
   return Boolean(resolved?.github?.enabled);

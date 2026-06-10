@@ -1,4 +1,4 @@
-import { parseFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
+import { parseFrontmatter, serializeFrontmatter } from "../../../src/scripts/lib/frontmatter.mts";
 
 export function extractSection(markdown, heading) {
   const lines = markdown.split("\n");

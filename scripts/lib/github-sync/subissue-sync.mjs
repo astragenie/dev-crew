@@ -1,6 +1,6 @@
 import { defaultGhExec } from "./gh.mjs";
 import { ensureLabels, truncateTitle } from "./issue-sync.mjs";
-import { displaySliceTitle } from "../slice-title.mjs";
+import { displaySliceTitle } from "../../../src/scripts/lib/slice-title.mts";
 
 function issueNumberFromUrl(url) {
   return parseInt(url.trim().split("/").pop(), 10);

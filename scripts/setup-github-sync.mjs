@@ -3,7 +3,7 @@
 // Example: node scripts/setup-github-sync.mjs /path/to/your-project
 import fs from "node:fs/promises";
 import path from "node:path";
-import { mergeFrontmatter } from "./lib/frontmatter.mjs";
+import { mergeFrontmatter } from "../src/scripts/lib/frontmatter.mts";
 
 const repoPath = process.argv[2];
 if (!repoPath) {
