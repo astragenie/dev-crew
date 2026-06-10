@@ -5,7 +5,7 @@ import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const LOOP_CLI = path.resolve("scripts/loop.mjs");
+const LOOP_CLI = path.resolve("src/scripts/loop.mts");
 
 function writePreset(obj: unknown): string {
   const dir = mkdtempSync(path.join(tmpdir(), "cli-resolver-"));
@@ -15,7 +15,7 @@ function writePreset(obj: unknown): string {
 }
 
 function run(args: string[]) {
-  return spawnSync("node", [LOOP_CLI, "resolve-skills", ...args], { encoding: "utf8" });
+  return spawnSync("bun", [LOOP_CLI, "resolve-skills", ...args], { encoding: "utf8" });
 }
 
 const SAAS_PRESET = {

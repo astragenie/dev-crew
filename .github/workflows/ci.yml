@@ -13,19 +13,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: npm ci
-      - run: npm run build
-      - run: git diff --exit-code scripts/
-      - run: node ./scripts/validate-manifests.mjs
-      - run: node ./scripts/validate-content-length.mjs
-      - run: node ./scripts/validate-decline-citations.mjs --repo .
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run format:check
+      - run: bun install --frozen-lockfile
+      - run: bun ./src/scripts/validate-manifests.mts
+      - run: bun ./src/scripts/validate-content-length.mts
+      - run: bun ./src/scripts/validate-decline-citations.mts --repo .
+      - run: bunx tsc --project tsconfig.json --noEmit
+      - run: bunx tsc --project tsconfig.test.json --noEmit
+      - run: bunx eslint src eslint.config.mjs
+      - run: bunx prettier --check "src/**/*.mts"
       - run: bun test src/tests/ --parallel
