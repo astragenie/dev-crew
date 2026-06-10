@@ -13,7 +13,12 @@ import { validateFeat } from "./state-schemas.mjs";
 const execFile = promisify(execFileCb);
 
 export interface Finding {
-  kind: "stray-tree" | "id-collision" | "schema-invalid" | "config-mismatch" | "state-contradiction";
+  kind:
+    | "stray-tree"
+    | "id-collision"
+    | "schema-invalid"
+    | "config-mismatch"
+    | "state-contradiction";
   path: string;
   detail: string;
 }
@@ -45,7 +50,12 @@ async function scanTree(root: string): Promise<FeatEntry[]> {
       const file = path.join(dir, f);
       const content = await fs.readFile(file, "utf8");
       const { frontmatter } = parseFrontmatter(content);
-      out.push({ id: String(frontmatter.id ?? f.replace(".md", "")), state, file, fm: frontmatter });
+      out.push({
+        id: String(frontmatter.id ?? f.replace(".md", "")),
+        state,
+        file,
+        fm: frontmatter
+      });
     }
   }
   return out;
@@ -56,10 +66,7 @@ async function treePopulated(root: string): Promise<boolean> {
   return entries.length > 0;
 }
 
-async function detectFindings(
-  repoPath: string,
-  authoritative: string
-): Promise<Finding[]> {
+async function detectFindings(repoPath: string, authoritative: string): Promise<Finding[]> {
   const findings: Finding[] = [];
 
   const authEntries = await scanTree(authoritative);

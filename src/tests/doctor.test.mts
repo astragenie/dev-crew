@@ -36,7 +36,10 @@ test("detects stray tree, id collision, and cross-tree contradiction", async () 
       path.join(repo, ".claude/artifacts/loop/backlog/pending/FEAT-001.md"),
       FEAT("FEAT-001", "pending")
     );
-    await fs.writeFile(path.join(repo, "docs/backlog/triaged/FEAT-001.md"), FEAT("FEAT-001", "triaged"));
+    await fs.writeFile(
+      path.join(repo, "docs/backlog/triaged/FEAT-001.md"),
+      FEAT("FEAT-001", "triaged")
+    );
     const { findings } = await runDoctor(repo, { fix: false });
     const kinds = findings.map((f) => f.kind).sort();
     assert.ok(kinds.includes("stray-tree"), kinds.join(","));
@@ -84,7 +87,10 @@ test("--fix merges stray tree into authoritative root and writes report first", 
   const repo = await makeRepo();
   try {
     await fs.mkdir(path.join(repo, "docs/backlog/pending"), { recursive: true });
-    await fs.writeFile(path.join(repo, "docs/backlog/pending/FEAT-009.md"), FEAT("FEAT-009", "pending"));
+    await fs.writeFile(
+      path.join(repo, "docs/backlog/pending/FEAT-009.md"),
+      FEAT("FEAT-009", "pending")
+    );
     const { reportPath } = await runDoctor(repo, { fix: true });
     assert.ok(reportPath, "report path expected");
     const report = await fs.readFile(reportPath!, "utf8");
@@ -106,7 +112,10 @@ test("--fix preserves non-FEAT files living in the stray root", async () => {
   const repo = await makeRepo();
   try {
     await fs.mkdir(path.join(repo, "docs/backlog/pending"), { recursive: true });
-    await fs.writeFile(path.join(repo, "docs/backlog/pending/FEAT-009.md"), FEAT("FEAT-009", "pending"));
+    await fs.writeFile(
+      path.join(repo, "docs/backlog/pending/FEAT-009.md"),
+      FEAT("FEAT-009", "pending")
+    );
     // A non-state file in the stray root must survive the merge.
     await fs.writeFile(path.join(repo, "docs/backlog/product-backlog.md"), "# product backlog\n");
     await runDoctor(repo, { fix: true });
@@ -137,10 +146,19 @@ test("--fix keeps newest-transition winner on contradiction, loser preserved in 
     await fs.utimes(strayFile, future, future);
     await runDoctor(repo, { fix: true });
     const winner = path.join(repo, ".claude/artifacts/loop/backlog/triaged/FEAT-001.md");
-    assert.ok(await fs.access(winner).then(() => true, () => false), "winner in triaged/");
+    assert.ok(
+      await fs.access(winner).then(
+        () => true,
+        () => false
+      ),
+      "winner in triaged/"
+    );
     const conflictsDir = path.join(repo, ".claude/artifacts/loop/doctor/conflicts");
     const conflicts = await fs.readdir(conflictsDir);
-    assert.ok(conflicts.some((f) => f.includes("FEAT-001")), conflicts.join(","));
+    assert.ok(
+      conflicts.some((f) => f.includes("FEAT-001")),
+      conflicts.join(",")
+    );
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }

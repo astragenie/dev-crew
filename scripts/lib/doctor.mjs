@@ -32,7 +32,12 @@ async function scanTree(root) {
             const file = path.join(dir, f);
             const content = await fs.readFile(file, "utf8");
             const { frontmatter } = parseFrontmatter(content);
-            out.push({ id: String(frontmatter.id ?? f.replace(".md", "")), state, file, fm: frontmatter });
+            out.push({
+                id: String(frontmatter.id ?? f.replace(".md", "")),
+                state,
+                file,
+                fm: frontmatter
+            });
         }
     }
     return out;
