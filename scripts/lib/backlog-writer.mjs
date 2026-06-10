@@ -4,6 +4,7 @@ import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./fron
 import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backlog-parser.mjs";
 import { pathExists, ensureDir } from "./paths.mjs";
 import { bust, clearAll } from "./cache.mjs";
+import { assertStatePath } from "./state-paths.mjs";
 function nowIsoDate() {
     return new Date().toISOString().slice(0, 10);
 }
@@ -67,18 +68,22 @@ export async function addFeature(repoPath, { title, body = "", priority = null, 
     const fullBody = docBody.startsWith("#") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
     const contents = serializeFrontmatter(frontmatter, fullBody);
     const filePath = path.join(root, "pending", `${id}.md`);
+    assertStatePath(repoPath, config, filePath);
     await fs.writeFile(filePath, contents);
     bust(`listBacklog:${repoPath}`);
     return { id, filePath, frontmatter };
 }
-export async function updateFeatureFrontmatter(filePath, updates) {
+export async function updateFeatureFrontmatter(filePath, updates, repoPath, config) {
+    if (repoPath) {
+        assertStatePath(repoPath, config, filePath);
+    }
     const content = await fs.readFile(filePath, "utf8");
     const merged = mergeFrontmatter(content, { ...updates, updated: nowIsoDate() });
     await fs.writeFile(filePath, merged);
     clearAll();
     return parseFrontmatter(merged).frontmatter;
 }
-export async function moveFeature(filePath, toState, updates = {}) {
+export async function moveFeature(filePath, toState, updates = {}, repoPath, config) {
     if (!BACKLOG_STATES.includes(toState)) {
         throw new Error(`Unknown backlog state: ${toState}`);
     }
@@ -86,6 +91,9 @@ export async function moveFeature(filePath, toState, updates = {}) {
     const targetDir = path.join(path.dirname(path.dirname(filePath)), toState);
     await ensureDir(targetDir);
     const targetPath = path.join(targetDir, filename);
+    if (repoPath) {
+        assertStatePath(repoPath, config, targetPath);
+    }
     const content = await fs.readFile(filePath, "utf8");
     const { frontmatter: existingFm } = parseFrontmatter(content);
     // Lifecycle timestamps. Set started_at the FIRST time a feature enters
