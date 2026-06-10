@@ -7,7 +7,9 @@ import path from "node:path";
 import {
   compareSemver,
   getCrewVersion,
-  MIN_CREW_VERSION
+  MIN_CREW_VERSION,
+  MIN_BUN_VERSION,
+  checkBunVersion
 } from "../scripts/lib/plugin-identity.mjs";
 
 test("compareSemver orders versions correctly", () => {
@@ -52,4 +54,25 @@ test("getCrewVersion reads plugin.json adjacent to a crew CLI path", async () =>
   assert.equal(await getCrewVersion(null), null);
   const emptyTmp = await fs.mkdtemp(path.join(os.tmpdir(), "crew-ver-missing-"));
   assert.equal(await getCrewVersion(path.join(emptyTmp, "scripts", "crew.mjs")), null);
+});
+
+test("MIN_BUN_VERSION is a parseable semver string", () => {
+  assert.match(MIN_BUN_VERSION, /^\d+\.\d+\.\d+$/);
+});
+
+test("checkBunVersion ok when override meets minimum", async () => {
+  const r = await checkBunVersion(MIN_BUN_VERSION);
+  assert.equal(r.ok, true);
+  assert.equal(r.required, MIN_BUN_VERSION);
+});
+
+test("checkBunVersion fails on older version", async () => {
+  const r = await checkBunVersion("0.0.1");
+  assert.equal(r.ok, false);
+});
+
+test("checkBunVersion fails when bun missing (null override)", async () => {
+  const r = await checkBunVersion(null);
+  assert.equal(r.ok, false);
+  assert.equal(r.version, null);
 });

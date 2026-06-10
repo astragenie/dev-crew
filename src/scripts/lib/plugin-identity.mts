@@ -1,7 +1,11 @@
+import { execFile as execFileCb } from "node:child_process";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+
+const execFileAsync = promisify(execFileCb);
 
 // Single source of truth for the plugin and marketplace name. Mirrors the
 // pattern from the crew plugin so generated hook scripts and bridge templates
@@ -147,6 +151,28 @@ export async function checkOrchestrateSliceSupport(
     versionOverride !== undefined ? versionOverride : await getCrewVersion(await findCrewCli());
   if (!version) return false;
   return compareSemver(version, ORCHESTRATE_SLICE_MIN_CREW_VERSION) >= 0;
+}
+
+// Minimum Bun version the plugin runs under. Set to the version verified
+// green in the Phase-A compat probe; bump only with a CHANGELOG note.
+export const MIN_BUN_VERSION = "1.3.14";
+
+export async function getBunVersion(): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync("bun", ["--version"], { windowsHide: true });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function checkBunVersion(versionOverride?: string | null) {
+  const version = versionOverride !== undefined ? versionOverride : await getBunVersion();
+  return {
+    ok: version !== null && compareSemver(version, MIN_BUN_VERSION) >= 0,
+    version,
+    required: MIN_BUN_VERSION
+  };
 }
 
 // Test-only helper.
