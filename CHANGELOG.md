@@ -3,6 +3,23 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.37.1 — 2026-06-10 — commit-time version-drift guard
+
+### Fixed
+- **Version drift caught at `git commit`, not just `git push`** — the
+  `pre-push-validate` PreToolUse hook now also runs manifest validation
+  (including the plugin.json / marketplace.json / package.json version
+  lockstep check) on `git commit`. Root cause of recurring drift: cutting a
+  release by hand-editing one or two manifests and forgetting the third; the
+  drift was only caught later (push/CI), then patched manually. The guard now
+  blocks the commit with the `npm run bump-version <v>` hint. Push retains the
+  fuller gate (manifests + content-length + format:check).
+
+### Process
+- Reminder enforced by the new guard: **always bump via `npm run bump-version
+  <version>`** — it updates all three manifests atomically. Never hand-edit a
+  single version field.
+
 ## v0.37.0 — 2026-06-10 — feature toggles + slice-title canonicalization
 
 ### Added
