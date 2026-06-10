@@ -1,7 +1,7 @@
 ---
 id: FEAT-180
-status: pending
-priority: null
+status: triaged
+priority: P2
 category: feature
 target_release: null
 created: 2026-06-10
@@ -9,6 +9,14 @@ updated: 2026-06-10
 depends_on: []
 slices: []
 derived_from: null
+autonomous_safe: true
+pm_customer_impact: 0.5
+pm_effort_estimate: 0.35
+pm_strategic_alignment: 0.65
+pm_technical_risk: 0.25
+pm_dependency_depth: 0.15
+composite_score: 0.64
+triage_notes: "Verdict schema: not_checked[] list + author/judge separation. Loop side is mechanical prompt + display change; backward-compatible; hero-crew owns the artifact write (upstream-request pattern). Low risk, addresses observability weak dim -> autonomous."
 ---
 # FEAT-180: Review verdict schema: not_checked[] field + author/judge separation
 
