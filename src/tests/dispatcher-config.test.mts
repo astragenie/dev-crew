@@ -79,3 +79,11 @@ test("no module outside loop.mts imports resolveConfig for direct use", async ()
     `lib modules must take config as a param (not import resolveConfig): ${offenders.join(",")}`
   );
 });
+
+test("path-bearing commands receive config from dispatcher context", async () => {
+  const src = await fs.readFile(path.resolve("src/scripts/loop.mts"), "utf8");
+  for (const name of ["backlog", "slice", "spec", "decisions", "release", "feature"]) {
+    const re = new RegExp(String.raw`\b${name}:\s*(?:async\s*)?\(\{[^}]*\bconfig\b[^}]*\}`);
+    assert.ok(re.test(src), `COMMANDS.${name} must destructure config`);
+  }
+});

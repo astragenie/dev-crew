@@ -215,16 +215,16 @@ const COMMANDS = {
     runGithubSubcommand(repoPath, positionals, flags),
   backlog: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runBacklogSubcommand(repoPath, positionals, flags, config),
-  spec: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runSpecSubcommand(repoPath, positionals, flags),
-  release: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runReleaseSubcommand(repoPath, positionals, flags),
-  slice: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runSliceSubcommand(repoPath, positionals, flags, {}),
-  feature: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runFeatureSubcommand(repoPath, positionals, flags),
-  decisions: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runDecisionsSubcommand(repoPath, positionals, flags),
+  spec: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runSpecSubcommand(repoPath, positionals, flags, config),
+  release: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runReleaseSubcommand(repoPath, positionals, flags, config),
+  slice: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runSliceSubcommand(repoPath, positionals, flags, { config }),
+  feature: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runFeatureSubcommand(repoPath, positionals, flags, config),
+  decisions: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runDecisionsSubcommand(repoPath, positionals, flags, config),
   retrospective: async ({ repoPath, flags }: CmdCtx) => {
     const { writeRetrospective } = await import("./lib/retrospective.mjs");
     const result = await writeRetrospective(repoPath, {
@@ -731,7 +731,7 @@ export function detectMissingSpecFields(spec: {
 }
 
 const SPEC_HANDLERS = {
-  add: async (repoPath: string, flags: Record<string, any>, rest: string[]) => {
+  add: async (repoPath: string, flags: Record<string, any>, rest: string[], config: Record<string, any> | null) => {
     const title = flags.title || rest.join(" ");
     if (!title) throw new Error("spec add requires a title (positional or --title).");
     if (!flags.type) {
@@ -743,12 +743,13 @@ const SPEC_HANDLERS = {
       title,
       priority: flags.priority,
       target_release: flags.targetRelease,
-      body: flags.body || ""
+      body: flags.body || "",
+      config
     });
   },
-  list: async (repoPath: string, flags: Record<string, any>) => {
+  list: async (repoPath: string, flags: Record<string, any>, _rest: string[], config: Record<string, any> | null) => {
     const { listSpecs, filterSpecs } = await import("./lib/spec-parser.mjs");
-    const specs = await listSpecs(repoPath);
+    const specs = await listSpecs(repoPath, { config });
     const filtered = filterSpecs(specs, {
       status: flags.status,
       type: flags.type,
@@ -769,7 +770,7 @@ const SPEC_HANDLERS = {
       }))
     };
   },
-  decompose: async (repoPath: string, flags: Record<string, any>, rest: string[]) => {
+  decompose: async (repoPath: string, flags: Record<string, any>, rest: string[], config: Record<string, any> | null) => {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
 
@@ -777,7 +778,7 @@ const SPEC_HANDLERS = {
     if (flags.features || flags.featuresJson) {
       const entries = parseFeatureEntries(flags);
       const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
-      const out = await decomposeSpec(repoPath, specId, entries);
+      const out = await decomposeSpec(repoPath, specId, entries, { config });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       const { publishFeat } = await import("./lib/github-sync.mjs");
@@ -813,10 +814,10 @@ const SPEC_HANDLERS = {
     process.exitCode = 1;
     return { error: "architect auto-dispatch removed; pass --features or use slash flow" };
   },
-  status: async (repoPath: string) => {
+  status: async (repoPath: string, _flags: Record<string, any>, _rest: string[], config: Record<string, any> | null) => {
     const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
-    const before = await specSatisfaction(repoPath);
-    const reconciled = await reconcileSpecStatus(repoPath);
+    const before = await specSatisfaction(repoPath, { config });
+    const reconciled = await reconcileSpecStatus(repoPath, { config });
     return { satisfaction: before, statusChanges: reconciled };
   }
 };
@@ -824,30 +825,32 @@ const SPEC_HANDLERS = {
 async function runSpecSubcommand(
   repoPath: string,
   positionals: string[],
-  flags: Record<string, any>
+  flags: Record<string, any>,
+  config: Record<string, any> | null
 ) {
   const [sub, ...rest] = positionals;
   if (!sub) throw new Error("spec requires a subcommand: add | list | decompose | status");
   const handler = (SPEC_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
   if (!handler) throw new Error(`Unknown spec subcommand: ${sub}`);
-  return handler(repoPath, flags, rest);
+  return handler(repoPath, flags, rest, config);
 }
 
 async function runReleaseSubcommand(
   repoPath: string,
   positionals: string[],
-  flags: Record<string, any>
+  flags: Record<string, any>,
+  config: Record<string, any> | null
 ) {
   const [sub] = positionals;
   if (!sub) throw new Error("release requires a subcommand: plan | status");
   const { planRelease, releaseStatus } = await import("./lib/release-planner.mjs");
   if (sub === "plan") {
     if (!flags.version) throw new Error("release plan requires --version vX.Y.Z");
-    return await planRelease(repoPath, { version: flags.version });
+    return await planRelease(repoPath, { version: flags.version, config });
   }
   if (sub === "status") {
     if (!flags.version) throw new Error("release status requires --version vX.Y.Z");
-    return await releaseStatus(repoPath, { version: flags.version });
+    return await releaseStatus(repoPath, { version: flags.version, config });
   }
   throw new Error(`Unknown release subcommand: ${sub}`);
 }
@@ -865,7 +868,7 @@ const SLICE_HANDLERS = {
     flags: Record<string, any>,
     _rest: string[],
     featureId: string,
-    opts: { dispatchFn?: DispatchFn } = {}
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
   ) => {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
@@ -873,7 +876,8 @@ const SLICE_HANDLERS = {
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
     const out = await sliceFromFeature(repoPath, featureId, {
       noClassify: Boolean(flags.noClassify),
-      dispatchFn
+      dispatchFn,
+      config: opts.config
     });
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -913,7 +917,8 @@ const SLICE_HANDLERS = {
     repoPath: string,
     flags: Record<string, any>,
     _rest: string[],
-    sliceId: string
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
   ) => {
     requireId(sliceId, "slice complete requires --id SLICE-NN.");
     // SLICE-64: --no-merge and --dry-run are mutually exclusive
@@ -931,7 +936,8 @@ const SLICE_HANDLERS = {
       // SLICE-64 additions:
       noMerge: Boolean(flags.noMerge),
       dryRun: Boolean(flags.dryRun),
-      skipSimplify: Boolean(flags.skipSimplify)
+      skipSimplify: Boolean(flags.skipSimplify),
+      config: opts.config
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(cwd, {
@@ -947,12 +953,13 @@ const SLICE_HANDLERS = {
     await flushTrajectory(cwd, sliceId);
     return out;
   },
-  start: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string) => {
+  start: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string, opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}) => {
     requireId(sliceId, "slice start requires --id SLICE-NN.");
     const { startSlice } = await import("./lib/slice-linker.mjs");
     const out = await startSlice(repoPath, sliceId, {
       goal: flags.goal || null,
-      dispatch: flags.noDispatch !== true
+      dispatch: flags.noDispatch !== true,
+      config: opts.config ?? null
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
@@ -966,31 +973,33 @@ const SLICE_HANDLERS = {
     await flushTrajectory(repoPath, sliceId);
     return out;
   },
-  link: async (repoPath: string, flags: Record<string, any>) => {
-    const sliceId = requireId(flags.id, "slice link requires --id SLICE-NN.");
+  link: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string, opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}) => {
+    const id = requireId(flags.id || sliceId, "slice link requires --id SLICE-NN.");
     if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
     if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
     const { linkArtifactToSlice } = await import("./lib/artifact-linkage.mjs");
     return linkArtifactToSlice(repoPath, {
-      sliceId,
+      sliceId: id,
       artifactPath: flags.artifact,
-      kind: flags.kind
+      kind: flags.kind,
+      config: opts.config
     });
   },
   "review-ladder": async (
     repoPath: string,
     _flags: Record<string, any>,
     _rest: string[],
-    sliceId: string
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
   ) => {
     requireId(sliceId, "slice review-ladder requires --id SLICE-NN.");
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
-    return buildReviewLadder(repoPath, sliceId);
+    return buildReviewLadder(repoPath, sliceId, { config: opts.config ?? null });
   },
-  plan: async (repoPath: string, _flags: Record<string, any>, _rest: string[], sliceId: string) => {
+  plan: async (repoPath: string, _flags: Record<string, any>, _rest: string[], sliceId: string, opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}) => {
     requireId(sliceId, "slice plan requires --id SLICE-NN.");
     const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
-    const out = await runPlanPreflight(repoPath, sliceId);
+    const out = await runPlanPreflight(repoPath, sliceId, { config: opts.config ?? null });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, {
       command: "slice plan",
@@ -1006,7 +1015,7 @@ async function runSliceSubcommand(
   repoPath: string,
   positionals: string[],
   flags: Record<string, any>,
-  opts: { dispatchFn?: DispatchFn } = {}
+  opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
 ) {
   const [sub, ...rest] = positionals;
   if (!sub)
@@ -1022,13 +1031,14 @@ async function runSliceSubcommand(
 async function runDecisionsSubcommand(
   repoPath: string,
   positionals: string[],
-  flags: Record<string, any>
+  flags: Record<string, any>,
+  config: Record<string, any> | null
 ) {
   const [sub, ...rest] = positionals;
   if (!sub) throw new Error("decisions requires a subcommand: list | show");
   const { listDecisions, showDecision } = await import("./lib/decisions-store.mjs");
   if (sub === "list") {
-    const decisions = await listDecisions(repoPath, { status: flags.status });
+    const decisions = await listDecisions(repoPath, { status: flags.status, config });
     return {
       count: decisions.length,
       decisions: decisions.map((d) => ({
@@ -1045,7 +1055,7 @@ async function runDecisionsSubcommand(
   if (sub === "show") {
     const decId = flags.id || rest[0];
     if (!decId) throw new Error("decisions show requires --id DEC-NNN.");
-    const dec = await showDecision(repoPath, decId);
+    const dec = await showDecision(repoPath, decId, { config });
     if (!dec) throw new Error(`Decision not found: ${decId}`);
     return dec;
   }
@@ -1053,7 +1063,7 @@ async function runDecisionsSubcommand(
     const { supersedeDecision } = await import("./lib/decisions-store.mjs");
     if (!flags.id || !flags.by)
       throw new Error("decisions supersede requires --id DEC-OLD --by DEC-NEW");
-    const out = await supersedeDecision(repoPath, { oldId: flags.id, newId: flags.by });
+    const out = await supersedeDecision(repoPath, { oldId: flags.id, newId: flags.by, config });
     const { logEvent } = await import("./lib/telemetry.mjs");
     await logEvent(repoPath, { command: "decisions supersede", old: flags.id, new: flags.by });
     return out;
@@ -1065,7 +1075,7 @@ async function runDecisionsSubcommand(
       .split(",")
       .map((f: string) => f.trim())
       .filter(Boolean);
-    const matches = await findRelevantDecisions(repoPath, files);
+    const matches = await findRelevantDecisions(repoPath, files, { config });
     return { count: matches.length, decisions: matches };
   }
   throw new Error(`Unknown decisions subcommand: ${sub}`);
@@ -1074,7 +1084,8 @@ async function runDecisionsSubcommand(
 async function runFeatureSubcommand(
   repoPath: string,
   positionals: string[],
-  flags: Record<string, any>
+  flags: Record<string, any>,
+  config: Record<string, any> | null
 ) {
   const [sub, featId] = positionals;
   if (!sub) throw new Error("feature requires a subcommand: simplify");
@@ -1083,7 +1094,8 @@ async function runFeatureSubcommand(
   const id = (flags.id as string | null) || featId;
   const { featureSimplify } = await import("./lib/slice-linker/feature-lifecycle.mjs");
   const opts: Record<string, any> = {
-    skipSimplify: flags.skipSimplify as boolean
+    skipSimplify: flags.skipSimplify as boolean,
+    config
   };
   if (flags.slice) opts.sliceId = flags.slice as string;
   if (flags.since) opts.startedAt = flags.since as string;
