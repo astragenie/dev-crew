@@ -177,3 +177,12 @@ test("updateFeatureFrontmatter preserves body", async () => {
   const { body: afterBody } = parseFrontmatter(after);
   assert.equal(body, afterBody);
 });
+
+test("addFeature refuses to write schema-invalid frontmatter", async () => {
+  const repo = await tmpRepo("loop-schema-");
+  try {
+    await assert.rejects(addFeature(repo, { title: "Bad", priority: "P9" }), /priority/);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});

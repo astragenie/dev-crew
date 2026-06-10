@@ -5,6 +5,7 @@ import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backl
 import { pathExists, ensureDir } from "./paths.mjs";
 import { bust, clearAll } from "./cache.mjs";
 import { assertStatePath } from "./state-paths.mjs";
+import { validateFeat } from "./state-schemas.mjs";
 function nowIsoDate() {
     return new Date().toISOString().slice(0, 10);
 }
@@ -67,6 +68,10 @@ export async function addFeature(repoPath, { title, body = "", priority = null, 
             ""
         ].join("\n");
     const fullBody = docBody.startsWith("#") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
+    const check = validateFeat(frontmatter);
+    if (!check.ok) {
+        throw new Error(`addFeature: schema-invalid frontmatter — ${check.issues.join("; ")}`);
+    }
     const contents = serializeFrontmatter(frontmatter, fullBody);
     const filePath = path.join(root, "pending", `${id}.md`);
     assertStatePath(repoPath, config, filePath);
