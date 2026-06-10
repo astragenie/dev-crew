@@ -53,7 +53,8 @@ test("no module outside loop.mts imports resolveConfig for direct use", async ()
 
     // Check for direct import of resolveConfig in lib modules
     // (they should accept it as a param instead)
-    const hasImport = /import\s*\{\s*resolveConfig\s*\}\s*from\s+["']\.\/config-resolver\.mjs["']/.test(
+    // Broader regex catches resolveConfig among multi-name imports
+    const hasImport = /import\s*\{[^}]*\bresolveConfig\b[^}]*\}\s*from\s+["']\.\/config-resolver\.mjs["']/.test(
       text
     );
     const hasUsage = /resolveConfig\s*\(/.test(text);
@@ -63,7 +64,8 @@ test("no module outside loop.mts imports resolveConfig for direct use", async ()
     const allowlist = [
       "artifact-linkage.mts",  // already accepts config param with fallback
       "reviewer-ladder.mts",   // already accepts config param with fallback
-      "phase-gate.mts"         // accepts config in options with fallback for standalone use
+      "phase-gate.mts",        // accepts config in options with fallback for standalone use
+      "loop-installer.mts"     // install-time resolution with preset merge — runs before loop.json exists; dispatcher config is not equivalent
     ];
 
     if (hasImport && hasUsage && !allowlist.includes(f)) {
