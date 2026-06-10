@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "presetName": "typescript-plugin-dev",
-  "description": "TypeScript Claude Code plugin development. Source in `src/scripts/**/*.mts` compiled to `scripts/**/*.mjs` (committed; CI checks `git diff --exit-code scripts/`). Pure Node ESM runtime, `node --test`, ESLint + Prettier. Fits loop / hero-crew / any AstraGenie Claude Code plugin repo.",
+  "description": "TypeScript Claude Code plugin development. Source in `src/scripts/**/*.mts` compiled to `scripts/**/*.mjs` (committed; CI checks `git diff --exit-code scripts/`). Node ESM runtime for CLI/validators; Bun test runner (`bun test --parallel`); ESLint + Prettier. Fits loop / hero-crew / any AstraGenie Claude Code plugin repo.",
   "projectType": "claude-plugin",
   "split": false,
   "frontend": { "framework": "none", "language": "typescript" },
@@ -22,10 +22,10 @@
   },
   "stack": {
     "build": [
-      { "cmd": "npm", "args": ["run", "lint"] }
+      { "cmd": "bun", "args": ["run", "lint"] }
     ],
     "test": [
-      { "cmd": "npm", "args": ["test"] },
+      { "cmd": "bun", "args": ["test", "--parallel"] },
       { "cmd": "node", "args": ["./scripts/validate-manifests.mjs"] },
       { "cmd": "node", "args": ["./scripts/validate-content-length.mjs"] }
     ],
@@ -42,7 +42,7 @@
   ],
   "productName": "Untitled Claude Code plugin",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- TypeScript source (`src/scripts/**/*.mts`) compiled to ECMAScript modules (`scripts/**/*.mjs`)\n- Node 20+ ESM runtime (NodeNext module resolution, ES2022 target)\n- `node --test` for tests (built artifacts at `tests/*.mjs` from `src/tests/*.mts`)\n- ESLint flat config + Prettier for lint/format (cap: cyclomatic complexity ≤15)\n- Manifest validators: `scripts/validate-manifests.mjs` (plugin.json + marketplace.json) and `scripts/validate-content-length.mjs` (agents ≤300, skills ≤200 lines)\n- CI checks `git diff --exit-code scripts/` to detect uncommitted .mts → .mjs drift",
+  "stackDescription": "- TypeScript source (`src/scripts/**/*.mts`) compiled to ECMAScript modules (`scripts/**/*.mjs`)\n- Node 20+ ESM runtime (NodeNext module resolution, ES2022 target)\n- `bun test --parallel` for tests (node:test-compatible; built artifacts at `tests/*.mjs` from `src/tests/*.mts`; `node --test` is the Bun-absent fallback)\n- ESLint flat config + Prettier for lint/format (cap: cyclomatic complexity ≤15)\n- Manifest validators: `scripts/validate-manifests.mjs` (plugin.json + marketplace.json) and `scripts/validate-content-length.mjs` (agents ≤300, skills ≤200 lines)\n- CI checks `git diff --exit-code scripts/` to detect uncommitted .mts → .mjs drift",
   "skills": ["typescript-pro", "frontend-advisory"],
   "roles": {
     "pm": {

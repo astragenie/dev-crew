@@ -24,6 +24,7 @@ import os from "node:os";
 import path from "node:path";
 import { exec as execCb } from "node:child_process";
 import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
@@ -113,7 +114,7 @@ async function setupRepoWithBranch(label: string): Promise<{
   await exec(`git -C "${repo}" remote add origin "${origin}"`, { env: GIT_ENV });
   await exec(`git -C "${repo}" push origin main`, { env: GIT_ENV });
 
-  const worktreeRoot = path.join(os.tmpdir(), `am-wt-root-${label}-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `am-wt-root-${label}-${randomUUID()}`);
   await fs.mkdir(worktreeRoot, { recursive: true });
 
   const branchName = `slice/SLICE-64-FEAT-062`;
