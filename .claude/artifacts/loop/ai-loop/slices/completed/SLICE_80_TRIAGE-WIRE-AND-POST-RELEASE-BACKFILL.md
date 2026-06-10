@@ -12,9 +12,9 @@ tags: [chore, workflow, "stack:node"]
 needs_contract: false
 needs_ux: false
 completed_at: 2026-06-07
-linkage:
-  - .claude/artifacts/loop/backlog/done/FEAT-077.md
-  - docs/upstream-requests/2026-06-07-hero-crew-forward-declared-skill-ids.md
+linkage: [.claude/artifacts/loop/backlog/done/FEAT-077.md, docs/upstream-requests/2026-06-07-hero-crew-forward-declared-skill-ids.md]
+github_issue: 163
+github_url: "https://github.com/sergeymilashico/loop/issues/163"
 ---
 # SLICE-80: Triage wire + post-release backfill (v0.28.1 + v0.28.2)
 

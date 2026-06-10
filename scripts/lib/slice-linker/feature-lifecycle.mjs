@@ -8,6 +8,7 @@ import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backl
 import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
+import { clampSliceTitle } from "../slice-title.mjs";
 const execFileAsync = promisify(execFile);
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 /**
@@ -84,8 +85,10 @@ function kebab(text) {
 }
 function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBody }) {
     const today = new Date().toISOString().slice(0, 10);
+    const safeTitle = clampSliceTitle(title);
     const frontmatter = {
         id,
+        title: safeTitle,
         status: "pending",
         feature: featureId,
         phase: featureFrontmatter.phase || null,
@@ -106,7 +109,7 @@ function buildSliceContent({ id, title, featureId, featureFrontmatter, featureBo
             "- [ ] AC-2: <replace with a concrete, testable acceptance criterion>"
         ];
     const body = [
-        `# ${id}: ${title}`,
+        `# ${id}: ${safeTitle}`,
         "",
         `Implements ${featureId}. See [feature file](../../../backlog/in-progress/${featureId}.md) for product context.`,
         "",

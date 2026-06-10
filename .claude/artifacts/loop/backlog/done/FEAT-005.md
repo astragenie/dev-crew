@@ -25,6 +25,7 @@ github_milestone: 2
 phase: 2
 started_at: 2026-06-03
 completed_at: 2026-06-03
+github_url: "https://github.com/sergeymilashico/loop/issues/10"
 ---
 # FEAT-005: Architect / editor two-model split as a built-in command
 

@@ -24,6 +24,7 @@ github_milestone: 2
 phase: 2
 started_at: 2026-06-02
 completed_at: 2026-06-02
+github_url: "https://github.com/sergeymilashico/loop/issues/21"
 ---
 # FEAT-014: Evidence-before-claims verification gate as a named skill with evidence table
 

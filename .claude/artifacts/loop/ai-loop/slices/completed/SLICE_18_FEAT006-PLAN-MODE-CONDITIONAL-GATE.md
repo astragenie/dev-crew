@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-03
 completed_at: 2026-06-03
+github_issue: 38
+github_url: "https://github.com/sergeymilashico/loop/issues/38"
 ---
 # SLICE-18: FEAT-006 SLICE-B — Plan Mode conditional approval gate
 

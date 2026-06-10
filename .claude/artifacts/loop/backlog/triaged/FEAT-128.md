@@ -15,12 +15,15 @@ autonomous_safe: false
 tags: [workflow, pause-resume, halt-badge]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.40
+pm_customer_impact: 0.4
 pm_effort_estimate: 0.55
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.50
+pm_technical_risk: 0.5
 pm_dependency_depth: 0.15
 triage_notes: "Composite 6. Pause/resume conversation lifecycle for async waits (CI/review delay). Real pain in marathonMode — CI waits currently require session-end-and-restart. The halt-badge pattern (snapshot.mergeFailed already exists) provides the persistence hook. A snapshot.pausedForExternalEvent badge + /loop:resume entry point would close this. Medium effort, medium-high strategic alignment. autonomousSafe: false — requires architect review for state persistence design."
+github_issue: 183
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/183"
 ---
 # FEAT-128: Pause / resume conversation lifecycle for async waits
 

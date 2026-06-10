@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-03
 completed_at: 2026-06-03
+github_issue: 51
+github_url: "https://github.com/sergeymilashico/loop/issues/51"
 ---
 # SLICE-19: FEAT-025 SLICE-B — auto-walker risk gate + plan preflight
 

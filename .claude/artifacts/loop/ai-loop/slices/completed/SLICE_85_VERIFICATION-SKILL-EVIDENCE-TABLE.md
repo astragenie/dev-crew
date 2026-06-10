@@ -8,6 +8,8 @@ autonomous_safe: true
 reviews: [20260609T171252Z-review-result-feat-089-slice-85-verification-skill-evidence-table.md]
 completed_at: 2026-06-09
 updated: 2026-06-09
+github_issue: 171
+github_url: "https://github.com/sergeymilashico/loop/issues/171"
 ---
 # SLICE-85: Verification skill — typecheck + function-exists evidence rows
 

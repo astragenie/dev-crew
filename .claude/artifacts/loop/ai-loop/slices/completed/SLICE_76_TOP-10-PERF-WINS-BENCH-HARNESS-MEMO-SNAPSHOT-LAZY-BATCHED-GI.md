@@ -12,6 +12,8 @@ tags: [test, refactor, infra]
 needs_contract: false
 needs_ux: false
 completed_at: 2026-06-07
+github_issue: 152
+github_url: "https://github.com/sergeymilashico/loop/issues/152"
 ---
 # SLICE-76: Phase C — perf wins 6-10
 

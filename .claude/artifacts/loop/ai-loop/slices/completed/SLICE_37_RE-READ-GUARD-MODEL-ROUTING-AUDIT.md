@@ -10,6 +10,8 @@ created: 2026-06-04
 updated: 2026-06-04
 autonomous_safe: true
 completed_at: 2026-06-04
+github_issue: 83
+github_url: "https://github.com/sergeymilashico/loop/issues/83"
 ---
 # SLICE-37: re-read guard hook + model routing audit
 

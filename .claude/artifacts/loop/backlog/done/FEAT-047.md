@@ -12,6 +12,9 @@ derived_from: null
 autonomous_safe: false
 triage_notes: "autonomous_safe: false — touches dispatch critical path; human review required per FEAT notes"
 completed_at: 2026-06-05
+github_issue: 102
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/102"
 ---
 # FEAT-047: Wire /crew:orchestrate-slice as default dispatchInstruction in slice-start
 

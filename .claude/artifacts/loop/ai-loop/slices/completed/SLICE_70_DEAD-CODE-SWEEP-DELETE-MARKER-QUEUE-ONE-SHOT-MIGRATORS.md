@@ -13,6 +13,8 @@ needs_contract: false
 needs_ux: false
 skip: [architect, uxdesigner]
 completed_at: 2026-06-07
+github_issue: 146
+github_url: "https://github.com/sergeymilashico/loop/issues/146"
 ---
 # SLICE-70: A2 — delete marker-write path in auto-dispatch
 

@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-02
 updated: 2026-06-02
 completed_at: 2026-06-02
+github_issue: 44
+github_url: "https://github.com/sergeymilashico/loop/issues/44"
 ---
 # SLICE-09: Evidence-before-claims verification gate as a named skill with evidence table
 

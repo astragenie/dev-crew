@@ -12,6 +12,7 @@ import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../paths.mjs";
 import { clearWorktreePathInState } from "../auto-merge.mjs";
+import { resolveSliceTitle } from "../slice-title.mjs";
 function deriveBlockingGates(workflowState) {
     const gates = workflowState?.currentRun?.gates || {};
     const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;
@@ -331,7 +332,8 @@ export async function completeSlice(repoPath, sliceId, opts = {}) {
         noMerge,
         dryRun,
         validationGate,
-        workflowState
+        workflowState,
+        sliceTitle: resolveSliceTitle(sliceFm, sliceContent, sliceId)
     });
     return buildCompleteResult({
         sliceId,
@@ -421,7 +423,7 @@ async function runAutoMergeStage(repoPath, sliceId, sliceFm, config, opts) {
         worktreePath,
         branchName,
         sliceId,
-        sliceTitle: sliceFm?.title ?? sliceId,
+        sliceTitle: opts.sliceTitle ?? sliceFm?.title ?? sliceId,
         featureId,
         gradeAvg,
         decisionIds,

@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-07
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 135
+github_url: "https://github.com/sergeymilashico/loop/issues/135"
 ---
 # SLICE-65: Upstream-request crew brief-me render Blocked/Missing for halt-badge fields
 

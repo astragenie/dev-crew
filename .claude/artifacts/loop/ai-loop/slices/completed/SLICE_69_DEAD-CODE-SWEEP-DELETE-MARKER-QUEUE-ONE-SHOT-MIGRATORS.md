@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-07
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 145
+github_url: "https://github.com/sergeymilashico/loop/issues/145"
 ---
 # SLICE-69: A1 — delete marker-drain module + caller in complete-slice
 

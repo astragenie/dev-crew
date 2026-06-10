@@ -151,6 +151,54 @@ test("writeMemorySnapshot handles zero cost reports gracefully", async () => {
   );
 });
 
+/** Extract the `- **FEAT-NNN**` bullet ids from the "Top triaged" section only. */
+function topTriagedIds(content: string): string[] {
+  const start = content.indexOf("## Top triaged (next to slice)");
+  if (start === -1) return [];
+  const rest = content.slice(start + 1);
+  const end = rest.indexOf("\n## ");
+  const section = end === -1 ? rest : rest.slice(0, end);
+  return [...section.matchAll(/- \*\*(FEAT-\d+)\*\*/g)].map((m) => m[1]!);
+}
+
+async function addTriaged(repo: string, title: string, updates: Record<string, any>) {
+  const f = await addFeature(repo, { title });
+  await moveFeature(f.filePath, "triaged", { priority: "P2", category: "feature", ...updates });
+  return f.id;
+}
+
+// AC-2: deferred FEAT excluded from Top-triaged when >=5 non-deferred exist
+test("writeMemorySnapshot excludes deferred FEAT from Top triaged (>=5 non-deferred)", async () => {
+  const repo = await tmpRepo("al-snapshot-deferred-excl-");
+  const deferredId = await addTriaged(repo, "Blocked upstream", { priority: "P1", deferred: true });
+  const liveIds: string[] = [];
+  for (let i = 0; i < 5; i++) liveIds.push(await addTriaged(repo, `Live feature ${i}`, {}));
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+  const top = topTriagedIds(content);
+
+  assert.ok(!top.includes(deferredId), `deferred ${deferredId} must not appear in Top triaged`);
+  assert.equal(top.length, 5, "Top triaged should show 5 non-deferred entries");
+  for (const id of top)
+    assert.ok(liveIds.includes(id), `${id} should be a live (non-deferred) feature`);
+});
+
+// AC-3: no padding with the deferred entry when fewer than 5 non-deferred exist
+test("writeMemorySnapshot does not pad Top triaged with deferred entry (<5 non-deferred)", async () => {
+  const repo = await tmpRepo("al-snapshot-deferred-nopad-");
+  const deferredId = await addTriaged(repo, "Blocked upstream", { priority: "P1", deferred: true });
+  const liveA = await addTriaged(repo, "Live A", {});
+  const liveB = await addTriaged(repo, "Live B", {});
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+  const top = topTriagedIds(content);
+
+  assert.ok(!top.includes(deferredId), `deferred ${deferredId} must not appear`);
+  assert.deepEqual(top.sort(), [liveA, liveB].sort(), "only the two non-deferred features appear");
+});
+
 test("writeMemorySnapshot parses cost report USD values correctly", async () => {
   const repo = await tmpRepo("al-snapshot-parse-usd-");
   await addFeature(repo, { title: "Test" });

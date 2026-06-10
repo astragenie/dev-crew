@@ -17,10 +17,13 @@ needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.65
-pm_strategic_alignment: 0.70
-pm_technical_risk: 0.60
+pm_strategic_alignment: 0.7
+pm_technical_risk: 0.6
 pm_dependency_depth: 0.25
 triage_notes: "Composite 7. Agent Merge — closed-loop PR follow-through. Overlaps FEAT-084 (Devin autofix) and FEAT-107. Impact: 3 in original. The GitHub Copilot App integration angle is more approachable than Devin's proprietary monitoring because GitHub owns the PR/check APIs and loop already uses gh CLI. autonomousSafe: false — requires architect design for the polling/event loop and safety gates."
+github_issue: 179
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/179"
 ---
 # FEAT-110: Agent Merge -- closed-loop PR follow-through that fixes failing checks and addresses review comments
 

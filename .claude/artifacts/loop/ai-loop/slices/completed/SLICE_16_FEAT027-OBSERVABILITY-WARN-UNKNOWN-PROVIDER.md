@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-02
 completed_at: 2026-06-03
+github_issue: 56
+github_url: "https://github.com/sergeymilashico/loop/issues/56"
 ---
 # SLICE-16: FEAT-027 — Observability: warn unknown provider, log resolved
 

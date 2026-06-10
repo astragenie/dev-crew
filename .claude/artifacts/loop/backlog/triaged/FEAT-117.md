@@ -10,17 +10,20 @@ depends_on: []
 slices: []
 derived_from: null
 composite_score: 7
-source_competitors: ["Windsurf (Codeium, now Cognition)"]
+source_competitors: ["\"Windsurf (Codeium", "now Cognition)\""]
 autonomous_safe: false
 tags: [workflow, slash-commands, documentation]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.40
-pm_effort_estimate: 0.40
+pm_customer_impact: 0.4
+pm_effort_estimate: 0.4
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.30
-pm_dependency_depth: 0.10
+pm_technical_risk: 0.3
+pm_dependency_depth: 0.1
 triage_notes: "Composite 7. Markdown Workflow recipes with frontmatter + slash invocation. loop already has slash commands via commands/*.md files. The Windsurf-specific innovations are: ordered numbered steps, nested /workflow composition, and auto_execute_steps flag. The 4-tier scope precedence requires multi-environment install setup. Medium strategic alignment. autonomousSafe: false — needs AC definition for how auto_execute_steps interacts with autoMode."
+github_issue: 182
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/182"
 ---
 # FEAT-117: Markdown Workflow recipes with frontmatter + slash invocation
 

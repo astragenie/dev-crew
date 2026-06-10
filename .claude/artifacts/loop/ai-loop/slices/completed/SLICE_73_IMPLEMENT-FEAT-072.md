@@ -10,6 +10,8 @@ created: 2026-06-07
 updated: 2026-06-07
 tags: ["stack:node", "surface:none", "concern:types"]
 completed_at: 2026-06-07
+github_issue: 154
+github_url: "https://github.com/sergeymilashico/loop/issues/154"
 ---
 # SLICE-73: tsconfig B2+B3 — noUnusedLocals + noUnusedParameters + noImplicitOverride + noFallthroughCasesInSwitch
 

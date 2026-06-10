@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-06
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 129
+github_url: "https://github.com/sergeymilashico/loop/issues/129"
 ---
 # SLICE-63: Lead operates inside slice worktree
 

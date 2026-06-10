@@ -9,6 +9,7 @@ created: 2026-05-27
 updated: 2026-06-01
 completed_at: 2026-05-28
 github_issue: 28
+github_url: "https://github.com/sergeymilashico/loop/issues/28"
 ---
 # SLICE-02: Implement FEAT-001
 

@@ -12,10 +12,9 @@ tags: [feature, workflow, "stack:node"]
 needs_contract: false
 needs_ux: false
 completed_at: 2026-06-07
-linkage:
-  - .claude/artifacts/crew/runs/20260607T132159Z-final-synthesis-fe-be-routing-skills-mapping-crew-lead-decommission.md
-  - docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md
-  - docs/superpowers/plans/2026-06-07-preset-driven-skill-activation.md
+linkage: [.claude/artifacts/crew/runs/20260607T132159Z-final-synthesis-fe-be-routing-skills-mapping-crew-lead-decommission.md, docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md, docs/superpowers/plans/2026-06-07-preset-driven-skill-activation.md]
+github_issue: 161
+github_url: "https://github.com/sergeymilashico/loop/issues/161"
 ---
 # SLICE-78: Preset-driven skill activation — Phase 1
 

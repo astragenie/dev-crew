@@ -26,6 +26,7 @@ github_issue: 11
 github_milestone: 2
 phase: 2
 completed_at: 2026-06-03
+github_url: "https://github.com/sergeymilashico/loop/issues/11"
 ---
 # FEAT-006: Plan Mode with codebase-research pre-flight
 

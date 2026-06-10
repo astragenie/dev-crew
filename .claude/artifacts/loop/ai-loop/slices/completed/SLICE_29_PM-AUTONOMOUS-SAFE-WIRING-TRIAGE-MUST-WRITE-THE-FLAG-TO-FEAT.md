@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 70
+github_url: "https://github.com/sergeymilashico/loop/issues/70"
 ---
 # SLICE-29: heuristic autonomous_safe inference in backlog-triage (FEAT-033 SLICE-A)
 

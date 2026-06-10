@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 79
+github_url: "https://github.com/sergeymilashico/loop/issues/79"
 ---
 # SLICE-35: test additions for pr-fixer gh paths (FEAT-037 Issues #6 + #7)
 

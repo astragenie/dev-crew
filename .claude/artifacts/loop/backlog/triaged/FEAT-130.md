@@ -16,11 +16,14 @@ tags: [safety, halt-badge, loop-detection]
 needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.45
-pm_effort_estimate: 0.50
-pm_strategic_alignment: 0.70
+pm_effort_estimate: 0.5
+pm_strategic_alignment: 0.7
 pm_technical_risk: 0.45
 pm_dependency_depth: 0.15
 triage_notes: "Composite 6. Runtime stuck-detector + iterative-refinement primitive. High strategic alignment — the loop's primary failure mode is silent runaway cost without detection (the costRegression halt-badge catches it post-hoc). A stuck-detector that emits a halt-badge when the builder is cycling without progress would be additive. Extends halt-badge infrastructure. autonomousSafe: false — needs architect design for stuck detection heuristics (what constitutes a loop?)."
+github_issue: 185
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/185"
 ---
 # FEAT-130: Runtime stuck-detector + iterative-refinement primitive
 

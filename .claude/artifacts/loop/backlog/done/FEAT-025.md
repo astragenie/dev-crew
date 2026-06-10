@@ -14,6 +14,9 @@ derived_from: null
 triage_notes: reopened — slice complete prematurely rolled FEAT to done after SLICE-A (dry-run walker primitive); SLICE-B (real dispatch + auto-commit) and SLICE-C (stop conditions + flip default to ship autonomous_safe=false items) still owed
 started_at: 2026-06-02
 completed_at: 2026-06-03
+github_issue: 49
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/49"
 ---
 # FEAT-025: /loop:auto — autonomous backlog walker that ships every FEAT/slice until exhaustion or hard halt
 

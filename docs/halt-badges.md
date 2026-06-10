@@ -175,6 +175,14 @@ Each halt-badge is `null` when not triggered; populated with a structured object
 
 **Suggested operator action:** trust prior Read results; avoid re-reading unchanged paths. Tune `loop.redundantReadCap` in `.claude/loop.json` to relax the gate.
 
+**Feature toggle (FEAT-170 / SLICE-87):** this gate is guarded by the `featuresService`. Set the top-level `features` block in `.claude/loop.json` to disable it cleanly instead of inflating the cap:
+
+```json
+{ "features": { "redundant-read-stop": { "enabled": false } } }
+```
+
+When disabled, `checkRedundantReadStop` short-circuits to `null` regardless of `redundantReadCap`. Policy is **default-ON** — a missing/malformed `features` entry keeps the gate active. Source: `src/scripts/lib/features-service.mts::isEnabled`.
+
 **Origin:** FEAT-057 / SLICE-67 / v0.25.0. Source: `src/scripts/lib/redundant-read-detector.mts::checkRedundantReadStop`. Companion to the still-pending upstream-request `docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md`.
 
 ---

@@ -20,6 +20,9 @@ triage_notes: "P1 workflow — orchestrate-slice ladder routes incorrectly for a
 started_at: 2026-06-05
 slices_complete: [SLICE-46]
 completed_at: 2026-06-05
+github_issue: 103
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/103"
 ---
 # FEAT-048: Architect classification tags for features and slices
 

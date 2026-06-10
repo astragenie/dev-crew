@@ -20,6 +20,9 @@ composite_score: 0.4875
 started_at: 2026-06-07
 slices_complete: [SLICE-81]
 completed_at: 2026-06-08
+github_issue: 113
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/113"
 ---
 ## Context
 

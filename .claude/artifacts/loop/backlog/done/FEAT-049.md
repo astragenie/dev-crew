@@ -18,6 +18,9 @@ composite_score: 0.7075
 autonomous_safe: false
 triage_notes: "AC #1 is plugin-contract decision (build consumer vs remove dispatchAgent from CLI paths). Cross-cuts four commands + CLAUDE.md + DEC-004 supersession. Not autonomous-safe — requires architect input."
 completed_at: 2026-06-05
+github_issue: 105
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/105"
 ---
 ## Context
 

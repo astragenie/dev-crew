@@ -22,6 +22,9 @@ pm_technical_risk: 0.5
 pm_dependency_depth: 0.45
 composite_score: 0.71
 triage_notes: "High-impact bug fix, confirmed false-trip evidence (2026-06-09). Risk band 0.3-0.5: isolated module logic, additive frontmatter field, clean rollback. Cost analog SLICE-83 (USD 41.39) confirms effort 0.35. Weak dimension observability 0.66: AC must add parse/filter logging. Cross-plugin contract coordination with hero-crew blocks autonomous run."
+github_issue: 189
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/189"
 ---
 # FEAT-166: Per-repo cost attribution in regression check
 

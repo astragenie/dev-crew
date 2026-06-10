@@ -15,12 +15,15 @@ autonomous_safe: false
 tags: [telemetry, observability]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.20
+pm_customer_impact: 0.2
 pm_effort_estimate: 0.25
 pm_strategic_alignment: 0.45
-pm_technical_risk: 0.30
+pm_technical_risk: 0.3
 pm_dependency_depth: 0.05
 triage_notes: "Composite 6. Post-run usage metrics object. Near-exact duplicate of FEAT-122. Impact: 1 (lowest tier). CrewAI's crew.usage_metrics is an in-process Python object after a programmatic run — this plugin is Markdown/CLI based, not a callable library. The concept does not map directly."
+github_issue: 174
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/174"
 ---
 # FEAT-094: Structured post-run usage metrics object
 

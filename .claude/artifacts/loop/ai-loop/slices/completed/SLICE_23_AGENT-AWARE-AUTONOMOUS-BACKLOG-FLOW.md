@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 58
+github_url: "https://github.com/sergeymilashico/loop/issues/58"
 ---
 # SLICE-23: auto-dispatch infrastructure foundation (FEAT-028 SLICE-A)
 

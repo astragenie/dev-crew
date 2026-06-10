@@ -20,6 +20,9 @@ triage_notes: "P2 tech-debt — 487 lines, gate helpers are I/O-free making extr
 started_at: 2026-06-05
 slices_complete: [SLICE-48]
 completed_at: 2026-06-05
+github_issue: 98
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/98"
 ---
 # FEAT-045: Split auto-walker.mts gate helpers to walker-gates.mts (487 lines near 400-line convention)
 

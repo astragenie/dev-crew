@@ -14,8 +14,10 @@ autonomous_safe: false
 tags: [crew, github, integration]
 needs_contract: true
 needs_ux: false
+github_issue: 177
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/177"
 ---
-
 # FEAT-101: GitHub `@crew` PR-comment teammate
 
 ## Source

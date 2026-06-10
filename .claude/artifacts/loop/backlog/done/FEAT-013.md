@@ -24,6 +24,7 @@ completed_at: 2026-05-28
 github_issue: 19
 github_milestone: 1
 phase: 1
+github_url: "https://github.com/sergeymilashico/loop/issues/19"
 ---
 # FEAT-013: Iron Law hard-gate tag convention in skill Markdown
 

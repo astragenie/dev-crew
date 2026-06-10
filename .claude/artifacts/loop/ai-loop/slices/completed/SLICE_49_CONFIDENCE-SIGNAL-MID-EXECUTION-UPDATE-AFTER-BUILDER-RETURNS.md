@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 101
+github_url: "https://github.com/sergeymilashico/loop/issues/101"
 ---
 # SLICE-49: Confidence signal mid-execution update after builder returns (SLICE-B of FEAT-010)
 

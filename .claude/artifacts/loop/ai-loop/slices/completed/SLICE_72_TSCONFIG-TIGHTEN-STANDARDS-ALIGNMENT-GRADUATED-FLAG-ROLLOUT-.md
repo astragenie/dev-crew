@@ -13,6 +13,8 @@ needs_contract: true
 needs_ux: false
 skip: [uxdesigner]
 completed_at: 2026-06-07
+github_issue: 149
+github_url: "https://github.com/sergeymilashico/loop/issues/149"
 ---
 # SLICE-72: B1 — enable noImplicitAny + useUnknownInCatchVariables
 

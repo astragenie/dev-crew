@@ -1,6 +1,7 @@
 // Ambient types for scripts/lib/github-sync/issue-sync.mjs.
 
 export function ensureLabels(repo: string, opts?: any): any;
+export function truncateTitle(title: string): string;
 export function createFeatureIssue(
   repo: string,
   feat: any,

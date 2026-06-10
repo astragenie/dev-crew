@@ -29,6 +29,9 @@ needs_ux: false
 started_at: 2026-06-07
 slices_complete: [SLICE-69, SLICE-70, SLICE-71]
 completed_at: 2026-06-07
+github_issue: 144
+github_milestone: 3
+github_url: "https://github.com/sergeymilashico/loop/issues/144"
 ---
 # FEAT-069: Dead-code sweep — delete marker-queue + one-shot migrators
 

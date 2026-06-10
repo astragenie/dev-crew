@@ -20,6 +20,9 @@ triage_notes: "category inferred as feature from body content; autonomous_safe i
 started_at: 2026-06-06
 slices_complete: [SLICE-61]
 completed_at: 2026-06-06
+github_issue: 136
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/136"
 ---
 # FEAT-065: Loop brief --explain-halts human-readable halt summary flag
 

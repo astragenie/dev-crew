@@ -15,12 +15,15 @@ autonomous_safe: false
 tags: [observability, confidence, slice-ceremony]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.40
-pm_effort_estimate: 0.30
+pm_customer_impact: 0.4
+pm_effort_estimate: 0.3
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.30
-pm_dependency_depth: 0.10
+pm_technical_risk: 0.3
+pm_dependency_depth: 0.1
 triage_notes: "Composite 7. Prospective confidence signal (green/yellow/red) at slice start. Near-exact duplicate of FEAT-108. The loop already emits retrospective grades; a prospective signal at slice-start (e.g., based on AC count, dependency depth, and recent grade trend) would be additive. Low effort if implemented as a simple heuristic badge in loop:pm output or slice-start ceremony. autonomousSafe: false — AC not specified."
+github_issue: 167
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/167"
 ---
 # FEAT-085: Confidence reporting per slice (traffic-light signal)
 

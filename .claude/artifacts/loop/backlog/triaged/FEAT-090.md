@@ -15,12 +15,15 @@ autonomous_safe: false
 tags: [telemetry, observability]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.20
+pm_customer_impact: 0.2
 pm_effort_estimate: 0.25
 pm_strategic_alignment: 0.45
 pm_technical_risk: 0.25
 pm_dependency_depth: 0.05
 triage_notes: "Composite 6. Per-session PostHog-compatible analytics JSONL. Near-exact duplicate of FEAT-118. Impact: 1 in original scoring (lowest tier). Primary use case is opt-in telemetry for Aider's own analytics pipeline — not a loop product need. loop already emits cost-insights artifacts and auto-dispatch.jsonl. PostHog-compatible format implies sending data to a third-party service which is out of scope for a local plugin."
+github_issue: 172
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/172"
 ---
 # FEAT-090: Per-session analytics log (local PostHog-compatible JSONL)
 

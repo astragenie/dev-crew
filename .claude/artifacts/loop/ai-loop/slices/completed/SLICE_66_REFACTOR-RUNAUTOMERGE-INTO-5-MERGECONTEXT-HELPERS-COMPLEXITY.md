@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-07
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 141
+github_url: "https://github.com/sergeymilashico/loop/issues/141"
 ---
 # SLICE-66: Refactor runAutoMerge into 5 MergeContext helpers (complexity cap)
 

@@ -18,9 +18,12 @@ needs_ux: false
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.35
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.30
-pm_dependency_depth: 0.10
+pm_technical_risk: 0.3
+pm_dependency_depth: 0.1
 triage_notes: "Composite 7. Cross-session learnings with auto-recall. Near-exact duplicate of FEAT-113. loop already uses MEMORY.md (via Claude Code native memory) and grades/lessons fields. gstack's innovation is JSONL storage + auto-surface top-3 at skill start. Partially addresses observability/product_completeness gaps noted in grades. autonomousSafe: false — unclear where JSONL lives and how recall is triggered."
+github_issue: 168
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/168"
 ---
 # FEAT-086: Cross-session learnings with automatic recall
 

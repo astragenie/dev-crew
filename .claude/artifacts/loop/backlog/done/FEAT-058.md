@@ -21,6 +21,9 @@ started_at: 2026-06-06
 upstream_request_doc: docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md
 slices_complete: [SLICE-59]
 completed_at: 2026-06-06
+github_issue: 121
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/121"
 ---
 # FEAT-058: Upstream-request check-redundant-read hook deny verdict in hero-crew
 

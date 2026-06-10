@@ -20,6 +20,9 @@ triage_notes: P1 bugfix — entire PM triage loop silently broken; composite_sco
 started_at: 2026-06-05
 slices_complete: [SLICE-45]
 completed_at: 2026-06-05
+github_issue: 94
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/94"
 ---
 # FEAT-043: Implement backlog pm-write CLI subcommand for PM score write-back
 

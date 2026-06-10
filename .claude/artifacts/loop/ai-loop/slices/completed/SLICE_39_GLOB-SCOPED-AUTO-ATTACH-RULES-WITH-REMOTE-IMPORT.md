@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 39
+github_url: "https://github.com/sergeymilashico/loop/issues/39"
 ---
 # SLICE-39: Glob-scoped context rules (contextRules config key)
 

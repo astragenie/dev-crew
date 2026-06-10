@@ -18,6 +18,9 @@ pm_dependency_depth: 0.1
 composite_score: 0.525
 autonomous_safe: true
 triage_notes: Low-risk mechanical mirror of just-shipped Phase 1 pattern; no external demand but strong internal coherence win; safe to autonomously slice.
+github_issue: 159
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/159"
 ---
 ## Context
 

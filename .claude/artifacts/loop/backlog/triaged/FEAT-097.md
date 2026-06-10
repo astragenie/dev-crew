@@ -16,11 +16,14 @@ tags: [model-routing, cost-optimization]
 needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.25
-pm_effort_estimate: 0.60
+pm_effort_estimate: 0.6
 pm_strategic_alignment: 0.45
 pm_technical_risk: 0.65
-pm_dependency_depth: 0.20
+pm_dependency_depth: 0.2
 triage_notes: "Composite 6. Role-specialized model family (purpose-built review/retrieval models). Near-exact duplicate of FEAT-125. SWE-Check and SWE-grep are Devin's proprietary models — this plugin cannot ship them. The actionable gap is updating loop.json modelRouting when new specialized models become available via Claude or other APIs. Configuring loop.json to use a faster review model when available is low-effort; building new models is out of scope."
+github_issue: 175
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/175"
 ---
 # FEAT-097: Role-specialized model family (purpose-built review and retrieval models)
 

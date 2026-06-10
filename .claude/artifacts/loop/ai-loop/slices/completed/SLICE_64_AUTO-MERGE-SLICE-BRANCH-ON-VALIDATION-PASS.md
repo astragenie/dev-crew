@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-07
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 131
+github_url: "https://github.com/sergeymilashico/loop/issues/131"
 ---
 # SLICE-64: Auto-merge slice branch on validation pass
 

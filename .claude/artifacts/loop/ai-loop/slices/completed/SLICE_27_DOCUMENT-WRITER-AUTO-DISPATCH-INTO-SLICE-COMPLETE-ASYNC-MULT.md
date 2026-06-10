@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 64
+github_url: "https://github.com/sergeymilashico/loop/issues/64"
 ---
 # SLICE-27: wire document-writer into slice-complete (async fire-and-forget)
 

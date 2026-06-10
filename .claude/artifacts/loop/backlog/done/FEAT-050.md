@@ -20,6 +20,9 @@ triage_notes: Cross-plugin coupling + fuzzy revision-detection heuristic + agent
 started_at: 2026-06-05
 slices_complete: [SLICE-51]
 completed_at: 2026-06-05
+github_issue: 106
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/106"
 ---
 ## Context
 

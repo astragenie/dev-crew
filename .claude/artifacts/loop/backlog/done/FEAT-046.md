@@ -20,6 +20,9 @@ composite_score: 0.4275
 started_at: 2026-06-05
 slices_complete: [SLICE-49]
 completed_at: 2026-06-05
+github_issue: 100
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/100"
 ---
 # FEAT-046: Confidence signal mid-execution update after builder returns (SLICE-B of FEAT-010)
 

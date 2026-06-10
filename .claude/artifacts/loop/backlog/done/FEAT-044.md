@@ -20,6 +20,9 @@ triage_notes: "P2 tech-debt — 533 lines confirmed, pure structural split, no b
 started_at: 2026-06-05
 slices_complete: [SLICE-47]
 completed_at: 2026-06-05
+github_issue: 96
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/96"
 ---
 # FEAT-044: Split loop-installer.mts — extract token helpers and scaffold writers (533 lines over 400-line convention)
 

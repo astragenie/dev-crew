@@ -29,6 +29,9 @@ needs_ux: false
 started_at: 2026-06-07
 slices_complete: [SLICE-75, SLICE-76]
 completed_at: 2026-06-07
+github_issue: 150
+github_milestone: 3
+github_url: "https://github.com/sergeymilashico/loop/issues/150"
 ---
 # FEAT-071: Top-10 perf wins — bench harness + memo + snapshot + lazy + batched-git + parallel-fs
 

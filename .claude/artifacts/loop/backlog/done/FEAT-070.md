@@ -29,6 +29,9 @@ needs_ux: false
 started_at: 2026-06-07
 slices_complete: [SLICE-72]
 completed_at: 2026-06-07
+github_issue: 148
+github_milestone: 3
+github_url: "https://github.com/sergeymilashico/loop/issues/148"
 ---
 # FEAT-070: Tsconfig tighten + standards alignment — graduated flag rollout + Result/branded/discriminated unions
 

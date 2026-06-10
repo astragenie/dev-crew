@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 104
+github_url: "https://github.com/sergeymilashico/loop/issues/104"
 ---
 # SLICE-46: Architect classification tags for features and slices
 

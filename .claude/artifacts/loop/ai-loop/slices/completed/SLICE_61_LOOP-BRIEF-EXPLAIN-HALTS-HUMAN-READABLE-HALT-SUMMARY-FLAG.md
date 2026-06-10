@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-06
 updated: 2026-06-06
 completed_at: 2026-06-06
+github_issue: 137
+github_url: "https://github.com/sergeymilashico/loop/issues/137"
 ---
 # SLICE-61: Loop brief --explain-halts human-readable halt summary flag
 

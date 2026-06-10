@@ -15,6 +15,7 @@
 // request `docs/upstream-requests/2026-06-06-hero-crew-redundant-read-hook-deny.md`.
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isEnabled } from "./features-service.mjs";
 export const DEFAULT_REDUNDANT_READ_CAP = 5;
 const STATE_DIR_REL = path.join(".claude", "state", "cost-hygiene");
 function resolveThreshold(config) {
@@ -57,6 +58,7 @@ async function readAllSessionStates(stateDir) {
 }
 /**
  * Fail-open evaluator. Returns null when:
+ *   - redundant-read-stop feature is disabled (gate off),
  *   - cost-hygiene state directory absent (hook never ran),
  *   - directory empty,
  *   - no entry exceeds the threshold.
@@ -66,6 +68,11 @@ async function readAllSessionStates(stateDir) {
  * reports the total count of offending paths.
  */
 export async function checkRedundantReadStop(repoPath, config) {
+    // Check if the feature is enabled via the features service. If disabled,
+    // gate off regardless of redundantReadCap.
+    if (!isEnabled("redundant-read-stop", config)) {
+        return null;
+    }
     const threshold = resolveThreshold(config);
     const stateDir = path.join(repoPath, STATE_DIR_REL);
     const sessions = await readAllSessionStates(stateDir);

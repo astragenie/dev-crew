@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 60
+github_url: "https://github.com/sergeymilashico/loop/issues/60"
 ---
 # SLICE-26: architect auto-dispatch into `/loop:spec-decompose` (FEAT-028 SLICE-C)
 

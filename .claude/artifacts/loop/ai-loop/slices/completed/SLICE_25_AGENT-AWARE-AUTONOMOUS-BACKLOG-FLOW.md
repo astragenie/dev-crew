@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 59
+github_url: "https://github.com/sergeymilashico/loop/issues/59"
 ---
 # SLICE-25: researcher auto-dispatch into `/loop:backlog-add` (FEAT-028 SLICE-B)
 

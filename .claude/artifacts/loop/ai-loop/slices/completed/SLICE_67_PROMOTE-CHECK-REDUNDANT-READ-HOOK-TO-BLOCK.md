@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-07
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 120
+github_url: "https://github.com/sergeymilashico/loop/issues/120"
 ---
 # SLICE-67: Promote check-redundant-read hook to block
 

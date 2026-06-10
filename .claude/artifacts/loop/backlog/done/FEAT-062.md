@@ -20,6 +20,9 @@ triage_notes: "autonomous_safe inferred: AC count=9, derived_from=null → false
 started_at: 2026-06-07
 slices_complete: [SLICE-64]
 completed_at: 2026-06-07
+github_issue: 130
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/130"
 ---
 # FEAT-062: Auto-merge slice branch on validation pass
 

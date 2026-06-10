@@ -10,6 +10,8 @@ created: 2026-06-09
 reviews: [.claude/artifacts/crew/reviews/20260609T144908Z-review-result-feat-134-slice-84-skill-activation-triggers-parser-and-integ.md]
 updated: 2026-06-09
 completed_at: 2026-06-09
+github_issue: 187
+github_url: "https://github.com/sergeymilashico/loop/issues/187"
 ---
 # SLICE-84: Skill activation triggers (always_on | glob | manual)
 

@@ -13,7 +13,10 @@ triage_notes: no fields needed inference
 started_at: 2026-06-04
 slices_complete: [SLICE-23, SLICE-25, SLICE-26]
 completed_at: 2026-06-04
-shipped_scope_note: "SLICE-D (document-writer into slice-complete) deferred to FEAT-030 due to decomposition pattern alert — FEAT shipped 3-of-4 originally-designed slices"
+shipped_scope_note: SLICE-D (document-writer into slice-complete) deferred to FEAT-030 due to decomposition pattern alert — FEAT shipped 3-of-4 originally-designed slices
+github_issue: 57
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/57"
 ---
 # FEAT-028: Agent-aware autonomous backlog flow
 

@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-02
 completed_at: 2026-06-03
+github_issue: 47
+github_url: "https://github.com/sergeymilashico/loop/issues/47"
 ---
 # SLICE-14: NoopProvider + LinearProvider stub + getProvider resolver
 

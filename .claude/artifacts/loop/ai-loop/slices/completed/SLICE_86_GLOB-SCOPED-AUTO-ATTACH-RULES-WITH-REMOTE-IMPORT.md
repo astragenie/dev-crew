@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-09
 updated: 2026-06-09
 completed_at: 2026-06-09
+github_issue: 165
+github_url: "https://github.com/sergeymilashico/loop/issues/165"
 ---
 # SLICE-86: Glob-scoped auto-attach rules with remote import
 

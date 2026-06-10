@@ -13,6 +13,8 @@ needs_contract: false
 needs_ux: false
 skip: [architect, uxdesigner]
 completed_at: 2026-06-07
+github_issue: 147
+github_url: "https://github.com/sergeymilashico/loop/issues/147"
 ---
 # SLICE-71: A3 — delete one-shot migrators + caller cleanup in loop-installer
 

@@ -14,6 +14,9 @@ triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false
 started_at: 2026-06-04
 slices_complete: [SLICE-35]
 completed_at: 2026-06-04
+github_issue: 78
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/78"
 ---
 ## Description
 

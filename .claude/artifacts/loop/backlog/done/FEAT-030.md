@@ -13,6 +13,9 @@ triage_notes: no fields needed inference
 started_at: 2026-06-04
 slices_complete: [SLICE-27]
 completed_at: 2026-06-04
+github_issue: 63
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/63"
 ---
 # FEAT-030: document-writer auto-dispatch into slice-complete (async multi-output)
 

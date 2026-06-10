@@ -25,6 +25,7 @@ phase: 2
 started_at: 2026-06-04
 slices_complete: [SLICE-39]
 completed_at: 2026-06-04
+github_url: "https://github.com/sergeymilashico/loop/issues/12"
 ---
 # FEAT-007: Glob-scoped auto-attach rules with remote import
 

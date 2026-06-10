@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-07
 updated: 2026-06-07
 completed_at: 2026-06-07
+github_issue: 143
+github_url: "https://github.com/sergeymilashico/loop/issues/143"
 ---
 # SLICE-68: PreToolUse:Bash chained-cd guard accepts MSYS mount-prefix paths on Windows
 

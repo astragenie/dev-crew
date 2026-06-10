@@ -13,6 +13,9 @@ triage_notes: no fields needed inference
 started_at: 2026-06-04
 slices_complete: [SLICE-34]
 completed_at: 2026-06-04
+github_issue: 67
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/67"
 ---
 # FEAT-032: Investigate crew:builder mid-cleanup stop pattern (research spike)
 

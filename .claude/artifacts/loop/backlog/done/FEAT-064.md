@@ -20,6 +20,9 @@ triage_notes: "category inferred as feature from body content; autonomous_safe i
 started_at: 2026-06-07
 slices_complete: [SLICE-65]
 completed_at: 2026-06-07
+github_issue: 134
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/134"
 ---
 # FEAT-064: Upstream-request crew brief-me render Blocked/Missing for halt-badge fields
 

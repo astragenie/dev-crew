@@ -25,6 +25,7 @@ phase: 2
 started_at: 2026-06-04
 slices_complete: [SLICE-38]
 completed_at: 2026-06-04
+github_url: "https://github.com/sergeymilashico/loop/issues/18"
 ---
 # FEAT-012: Continuous checkpoint commits with WIP squash on ship
 

@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 99
+github_url: "https://github.com/sergeymilashico/loop/issues/99"
 ---
 # SLICE-48: Split auto-walker.mts gate helpers to walker-gates.mts (487 lines near 400-line convention)
 

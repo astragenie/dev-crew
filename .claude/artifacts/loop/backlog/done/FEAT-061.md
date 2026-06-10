@@ -20,6 +20,9 @@ triage_notes: "autonomous_safe inferred: AC count=7, derived_from=null → true"
 started_at: 2026-06-06
 slices_complete: [SLICE-63]
 completed_at: 2026-06-07
+github_issue: 128
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/128"
 ---
 # FEAT-061: Lead operates inside slice worktree
 

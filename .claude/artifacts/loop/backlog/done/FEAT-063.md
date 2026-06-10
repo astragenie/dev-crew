@@ -21,6 +21,9 @@ started_at: 2026-06-06
 registry_doc: docs/halt-badges.md
 slices_complete: [SLICE-60]
 completed_at: 2026-06-06
+github_issue: 132
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/132"
 ---
 # FEAT-063: Publish docs/halt-badges.md halt-badge registry source-of-truth
 

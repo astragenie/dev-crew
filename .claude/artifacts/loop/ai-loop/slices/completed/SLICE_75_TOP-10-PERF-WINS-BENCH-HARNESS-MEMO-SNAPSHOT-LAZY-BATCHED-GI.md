@@ -12,6 +12,8 @@ tags: [test, refactor, infra]
 needs_contract: false
 needs_ux: false
 completed_at: 2026-06-07
+github_issue: 151
+github_url: "https://github.com/sergeymilashico/loop/issues/151"
 ---
 # SLICE-75: Phase C — bench harness + perf wins 1-5
 

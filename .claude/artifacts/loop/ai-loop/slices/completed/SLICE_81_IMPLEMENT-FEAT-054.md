@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-07
 updated: 2026-06-08
 completed_at: 2026-06-08
+github_issue: 114
+github_url: "https://github.com/sergeymilashico/loop/issues/114"
 ---
 # SLICE-81: Implement FEAT-054
 

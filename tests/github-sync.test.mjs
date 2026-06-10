@@ -590,3 +590,54 @@ test("publishSlice is idempotent when slice github_issue already set", async () 
     assert.equal(result.issueNum, 77);
     assert.ok(!calls.some((c) => c[0] === "issue" && c[1] === "create"), "no issue create calls");
 });
+import { truncateTitle } from "../scripts/lib/github-sync/issue-sync.mjs";
+// --- truncateTitle ---
+test("truncateTitle leaves short titles untouched", () => {
+    assert.equal(truncateTitle("FEAT-001: Short title"), "FEAT-001: Short title");
+});
+test("truncateTitle leaves a 256-char title untouched", () => {
+    const title = "x".repeat(256);
+    assert.equal(truncateTitle(title), title);
+});
+test("truncateTitle clamps over-limit titles to 256 chars with ellipsis", () => {
+    const result = truncateTitle("x".repeat(300));
+    assert.equal(result.length, 256);
+    assert.ok(result.endsWith("…"));
+});
+// --- createSliceIssue title resolution (frontmatter -> H1 -> id) ---
+function captureIssueCreateTitle(slice) {
+    const calls = [];
+    const ghExec = (args) => {
+        calls.push(args);
+        if (args[0] === "label" && args[1] === "list")
+            return JSON.stringify([{ name: "slice" }]);
+        return "https://github.com/org/repo/issues/60\n";
+    };
+    createSliceIssue("org/repo", slice, { ghExec });
+    const createCall = calls.find((c) => c[0] === "issue" && c[1] === "create");
+    return createCall[createCall.indexOf("--title") + 1];
+}
+test("createSliceIssue uses frontmatter title over H1 and Objective", () => {
+    const title = captureIssueCreateTitle({
+        id: "SLICE-07",
+        frontmatter: { title: "Frontmatter title" },
+        body: "# SLICE-07: H1 title\n\n## Objective\n\nVery long objective paragraph.\n"
+    });
+    assert.equal(title, "SLICE-07: Frontmatter title");
+});
+test("createSliceIssue falls back to H1 — never the Objective first line", () => {
+    const title = captureIssueCreateTitle({
+        id: "SLICE-08",
+        frontmatter: {},
+        body: `# SLICE-08: H1 title\n\n## Objective\n\n${"long objective ".repeat(100)}\n`
+    });
+    assert.equal(title, "SLICE-08: H1 title");
+});
+test("createSliceIssue title stays within GitHub's 256-char limit", () => {
+    const title = captureIssueCreateTitle({
+        id: "SLICE-09",
+        frontmatter: { title: "t".repeat(400) },
+        body: ""
+    });
+    assert.ok(title.length <= 256);
+});

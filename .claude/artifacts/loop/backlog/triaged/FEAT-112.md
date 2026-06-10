@@ -15,12 +15,15 @@ autonomous_safe: true
 tags: [documentation, ux, transparency]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.20
-pm_effort_estimate: 0.10
+pm_customer_impact: 0.2
+pm_effort_estimate: 0.1
 pm_strategic_alignment: 0.45
-pm_technical_risk: 0.10
+pm_technical_risk: 0.1
 pm_dependency_depth: 0.05
 triage_notes: "Composite 7 but original Impact: 1, Effort: 0. Named sub-agents with stable user-facing identity. loop already has well-named roles (builder/reviewer/validator/deployer/researcher/pm/architect). The gap is surfacing role attribution per phase in the slice-progress output. This is a docs/template change. Effort: 0 in original is accurate for minimum scope. P3: low customer impact, trivially achievable but marginal value."
+github_issue: 181
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/181"
 ---
 # FEAT-112: Named sub-agents with stable user-facing identity (brainstorm / plan / repair)
 

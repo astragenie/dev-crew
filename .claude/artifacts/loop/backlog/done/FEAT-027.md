@@ -12,6 +12,9 @@ slices_complete: [SLICE-16]
 derived_from: null
 started_at: 2026-06-03
 completed_at: 2026-06-02
+github_issue: 55
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/55"
 ---
 # FEAT-027: Observability: warn on unknown provider name, log resolved provider at task-store init
 

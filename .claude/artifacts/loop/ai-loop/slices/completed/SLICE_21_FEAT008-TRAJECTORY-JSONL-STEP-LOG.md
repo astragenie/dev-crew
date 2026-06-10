@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-03
 completed_at: 2026-06-03
+github_issue: 40
+github_url: "https://github.com/sergeymilashico/loop/issues/40"
 ---
 # SLICE-21: FEAT-008 — Trajectory JSONL step log per slice
 

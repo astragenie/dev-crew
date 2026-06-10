@@ -20,6 +20,9 @@ composite_score: 0.61
 started_at: 2026-06-06
 slices_complete: [SLICE-54]
 completed_at: 2026-06-06
+github_issue: 117
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/117"
 ---
 # FEAT-056: Session-pin walker
 

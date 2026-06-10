@@ -16,11 +16,14 @@ tags: [observability, telemetry, artifacts]
 needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.35
-pm_effort_estimate: 0.40
-pm_strategic_alignment: 0.60
+pm_effort_estimate: 0.4
+pm_strategic_alignment: 0.6
 pm_technical_risk: 0.35
-pm_dependency_depth: 0.10
+pm_dependency_depth: 0.1
 triage_notes: "Composite 7. Machine-parseable JSON step log per run. Existing auto-dispatch.jsonl is partial coverage but records only dispatch events, not full tool-call observations. Near-exact duplicate of FEAT-106. Primary use case (training data generation) is outside scope of this plugin's product description. Observability scores in recent grades average 0.756 flagged as warning — but existing gap is lack of runtime telemetry hooks, not absence of replay-format logs."
+github_issue: 166
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/166"
 ---
 # FEAT-083: Trajectory JSON -- machine-parseable step log per run
 

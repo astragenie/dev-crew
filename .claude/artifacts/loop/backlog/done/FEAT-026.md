@@ -13,6 +13,9 @@ triage_notes: no fields needed inference
 started_at: 2026-06-02
 slices_complete: [SLICE-12]
 completed_at: 2026-06-02
+github_issue: 53
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/53"
 ---
 # FEAT-026: slice complete auto-detection of remaining slices — block premature FEAT roll to done/
 

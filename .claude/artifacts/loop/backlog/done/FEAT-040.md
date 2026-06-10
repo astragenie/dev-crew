@@ -23,6 +23,9 @@ triage_notes: "PM re-scored 2026-06-05 (v2): FEAT body expanded to 17 ACs coveri
 started_at: 2026-06-05
 slices_complete: [SLICE-41]
 completed_at: 2026-06-05
+github_issue: 84
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/84"
 ---
 # FEAT-040: auto-walker honors all risk gates for autonomous_safe=true (depends_on + deferred + done-state check)
 

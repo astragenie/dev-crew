@@ -22,6 +22,9 @@ pm_technical_risk: 0.45
 pm_dependency_depth: 0.95
 composite_score: 0.63
 triage_notes: "Decomposition forcing function (FEAT-020 worst case: 15 tasks one slice). Risk band 0.3-0.5: isolated CLI gate ~50 lines, clean rollback, but rollback-after-adoption leaves pending child slices in limbo - documented transition hazard. Cost analog SLICE-83 = effort 0.40. Weak dimension observability 0.66: refuse-path error must be logged, AC-2 underspecifies. Dispatch loop:spec-writer for proposed_slices schema contract. Hard dep FEAT-167 (dependency_depth 0.95)."
+github_issue: 191
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/191"
 ---
 # FEAT-168: Slice decomposition gate when effort_points >= 8
 

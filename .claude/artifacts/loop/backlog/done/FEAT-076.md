@@ -21,9 +21,11 @@ composite_score: 0.72
 composite_priority: P1
 autonomous_safe: false
 tags: [feature, workflow]
-triage_notes: Retroactive FEAT documenting v0.27.0 preset-driven skill activation Phase 1. Spec brainstormed + designed + planned + implemented + shipped in a single session via /superpowers:brainstorming → writing-plans → subagent-driven-development → finishing-a-development-branch. Filed retroactively for ceremony linkage on 2026-06-07.
+triage_notes: "Retroactive FEAT documenting v0.27.0 preset-driven skill activation Phase 1. Spec brainstormed + designed + planned + implemented + shipped in a single session via /superpowers:brainstorming → writing-plans → subagent-driven-development → finishing-a-development-branch. Filed retroactively for ceremony linkage on 2026-06-07."
+github_issue: 160
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/160"
 ---
-
 # FEAT-076 — Preset-driven skill activation (Phase 1)
 
 ## Context

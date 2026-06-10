@@ -20,6 +20,9 @@ composite_score: 0.7975
 started_at: 2026-06-06
 slices_complete: [SLICE-52]
 completed_at: 2026-06-06
+github_issue: 115
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/115"
 ---
 # FEAT-055: Walker aggregate cost gate
 

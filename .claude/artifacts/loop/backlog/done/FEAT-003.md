@@ -14,6 +14,7 @@ completion_notes: "Completed via SLICE-04 (commit 5c02b2d). grade-writer, crew-b
 github_issue: 6
 github_milestone: 1
 phase: 1
+github_url: "https://github.com/sergeymilashico/loop/issues/6"
 ---
 ## Description
 

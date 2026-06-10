@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-03
 completed_at: 2026-06-03
+github_issue: 41
+github_url: "https://github.com/sergeymilashico/loop/issues/41"
 ---
 # SLICE-22: FEAT-009 — Autonomous PR autofix loop with circuit breaker
 

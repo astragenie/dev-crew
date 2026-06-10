@@ -25,6 +25,7 @@ github_issue: 13
 github_milestone: 2
 phase: 2
 completed_at: 2026-06-03
+github_url: "https://github.com/sergeymilashico/loop/issues/13"
 ---
 # FEAT-008: Trajectory JSON -- machine-parseable step log per run
 

@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 93
+github_url: "https://github.com/sergeymilashico/loop/issues/93"
 ---
 # SLICE-42: Walker composite-score scale normalization
 
@@ -16,7 +18,9 @@ Implements FEAT-042. See [feature file](../../../backlog/in-progress/FEAT-042.md
 
 ## Objective
 
-Walker numeric-sort breaks when legacy raw 0-9 composite scores coexist with current 0.0-1.0 PM formula scores. FEAT-020 had composite_score: 6 (raw) which sorted above all current-formula FEATs (max 1.0). Discovered when FEAT-020 (score 6) ranked above FEAT-040 (score 0.41) despite FEAT-040 being higher priority. Fix: walker should normalize or detect out-of-range scores before sort. Options: (a) clamp/normalize any score > 1.0 to 1.0, (b) detect legacy scale and re-normalize to 0-1 range by dividing by 9, (c) emit a warning and treat out-of-range scores as 0. Option (a) is safest — any score > 1.0 is definitionally off-scale for current formula. Acceptance criteria: AC-1: composite_score > 1.0 treated as out-of-range by walker. AC-2: out-of-range scores normalized to 1.0 (clamped) before sort. AC-3: FEAT with score 6 sorts below FEAT with score 0.9 (not above). AC-4: warning or skip-reason emitted when out-of-range score detected. AC-5: existing sort behavior unchanged for scores in 0.0-1.0 range. AC-6: tests cover mixed legacy/current score sets.
+Clamp out-of-range composite scores in the walker so legacy raw 0-9 scores cannot outrank current 0.0-1.0 PM formula scores.
+
+Walker numeric-sort breaks when legacy raw 0-9 composite scores coexist with current 0.0-1.0 PM formula scores. FEAT-020 had composite_score: 6 (raw) which sorted above all current-formula FEATs (max 1.0). Discovered when FEAT-020 (score 6) ranked above FEAT-040 (score 0.41) despite FEAT-040 being higher priority. Fix: clamp any score > 1.0 to 1.0 in `compareWalkerOrder` before sort — any score > 1.0 is definitionally off-scale for the current formula. Alternatives considered: re-normalize legacy scale by dividing by 9, or treat out-of-range as 0; clamping is safest.
 
 ## In scope
 

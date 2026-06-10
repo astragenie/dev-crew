@@ -24,6 +24,7 @@ completed_at: 2026-05-28
 github_issue: 16
 github_milestone: 1
 phase: 1
+github_url: "https://github.com/sergeymilashico/loop/issues/16"
 ---
 # FEAT-011: Cross-session learnings with automatic recall
 

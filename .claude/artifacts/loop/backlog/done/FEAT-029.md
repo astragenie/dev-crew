@@ -13,6 +13,9 @@ triage_notes: no fields needed inference
 started_at: 2026-06-04
 slices_complete: [SLICE-24]
 completed_at: 2026-06-04
+github_issue: 61
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/61"
 ---
 # FEAT-029: Pattern alerts — skip decomposition warn for DONE features
 

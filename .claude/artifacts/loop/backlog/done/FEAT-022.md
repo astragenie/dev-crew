@@ -15,6 +15,7 @@ started_at: 2026-05-28
 github_issue: 25
 github_milestone: 1
 phase: 1
+github_url: "https://github.com/sergeymilashico/loop/issues/25"
 ---
 # FEAT-022: TypeScript port — phase 2: refactoring
 

@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 75
+github_url: "https://github.com/sergeymilashico/loop/issues/75"
 ---
 # SLICE-32: cost-report sourceProject — current slug + legacy aliases
 

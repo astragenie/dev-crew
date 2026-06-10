@@ -27,6 +27,7 @@ github_issue: 14
 github_milestone: 2
 phase: 2
 completed_at: 2026-06-03
+github_url: "https://github.com/sergeymilashico/loop/issues/14"
 ---
 # FEAT-009: Autonomous PR autofix loop (lint / CI / scanner / review-bot driven)
 

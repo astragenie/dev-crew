@@ -20,6 +20,9 @@ composite_score: 0.695
 started_at: 2026-06-07
 slices_complete: [SLICE-67]
 completed_at: 2026-06-07
+github_issue: 119
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/119"
 ---
 # FEAT-057: Promote check-redundant-read hook to block
 

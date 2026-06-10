@@ -3,6 +3,38 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.37.0 — 2026-06-10 — feature toggles + slice-title canonicalization
+
+### Added
+- **`featuresService`** (`src/scripts/lib/features-service.mts`, FEAT-170) — a
+  simple named feature-toggle set: `isEnabled(feature, config)` reads a
+  top-level `features` block in `.claude/loop.json`
+  (`{ "features": { "<name>": { "enabled": <bool> } } }`). **Default-ON**:
+  a missing or malformed entry resolves to enabled so config drift can never
+  silently disable a guardrail. First consumer: the `redundant-read-stop`
+  gate (`checkRedundantReadStop`) now short-circuits when the feature is
+  disabled, replacing the magic-cap workaround. Documented in
+  `docs/halt-badges.md`.
+- **Canonical slice-title handling** (`src/scripts/lib/slice-title.mts`) —
+  `resolveSliceTitle` centralizes title precedence (frontmatter `title:` →
+  H1 → bare slice id) so slice-plan, the start/complete ceremony, and
+  github-sync all resolve titles identically.
+
+### Fixed
+- **Snapshot ↔ walker consistency** (FEAT-177) — `/loop:snapshot-memory` now
+  excludes `deferred: true` FEATs from "Top triaged (next to slice)", mirroring
+  the `/loop:auto` walker's pre-branch filter. Deferred items are still counted
+  in `Triaged: N`; only the next-to-slice list drops them.
+- **Diagnostic logging hygiene** — feature-gate diagnostics write to stderr
+  (not stdout via `console.debug`), keeping CLI JSON output parseable.
+- github-sync (issue / subissue) and slice-linker ceremony wired through
+  `resolveSliceTitle`.
+
+### Ops
+- Filed upstream-request against hero-crew for specialist-dispatch completion
+  enforcement (recurring pause-without-artifact pattern); tracked locally by
+  FEAT-176 (deferred until upstream lands).
+
 ## v0.36.0 — 2026-06-10 — state contract + doctor
 
 ### Added

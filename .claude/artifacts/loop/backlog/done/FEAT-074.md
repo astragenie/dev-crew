@@ -19,6 +19,9 @@ triage_notes: "category inferred as feature from body content; autonomous_safe i
 started_at: 2026-06-07
 slices_complete: [SLICE-77]
 completed_at: 2026-06-07
+github_issue: 157
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/157"
 ---
 # FEAT-074: noUncheckedIndexedAccess — B5 tsconfig tighten
 

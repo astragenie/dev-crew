@@ -20,6 +20,9 @@ triage_notes: Self-triaged at file time. Refactor under existing test coverage; 
 started_at: 2026-06-07
 slices_complete: [SLICE-66]
 completed_at: 2026-06-07
+github_issue: 140
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/140"
 ---
 # FEAT-067: Refactor runAutoMerge into 5 MergeContext helpers (complexity cap)
 

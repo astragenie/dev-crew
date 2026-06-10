@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-02
 updated: 2026-06-02
 completed_at: 2026-06-02
+github_issue: 46
+github_url: "https://github.com/sergeymilashico/loop/issues/46"
 ---
 # SLICE-13: Pluggable task-store backend — abstract GitHub/Linear/etc behind provider interface
 

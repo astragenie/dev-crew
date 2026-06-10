@@ -21,6 +21,9 @@ pm_strategic_alignment: 0.55
 pm_technical_risk: 0.55
 pm_dependency_depth: 0.15
 triage_notes: "Composite 6. Automated task output guardrails with retry. Near-exact duplicate of FEAT-120. Effort: 2 in original (higher than most). An auto-retry loop without human review could mask systematic failures and waste cost. The existing manual validator gate is intentional — it protects against fabrication (per SLICE-81 grade). Reducing friction at the validator gate risks the quality guarantees the loop is built around."
+github_issue: 173
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/173"
 ---
 # FEAT-092: Automated task output guardrails with retry
 

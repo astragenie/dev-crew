@@ -25,6 +25,7 @@ phase: 2
 started_at: 2026-06-04
 slices_complete: [SLICE-36]
 completed_at: 2026-06-05
+github_url: "https://github.com/sergeymilashico/loop/issues/15"
 ---
 # FEAT-010: Confidence reporting per slice (traffic-light signal)
 

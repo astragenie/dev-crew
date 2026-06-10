@@ -8,6 +8,7 @@ import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backl
 import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
+import { clampSliceTitle } from "../slice-title.mjs";
 import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -109,8 +110,10 @@ function buildSliceContent({
   featureBody: string;
 }) {
   const today = new Date().toISOString().slice(0, 10);
+  const safeTitle = clampSliceTitle(title);
   const frontmatter = {
     id,
+    title: safeTitle,
     status: "pending",
     feature: featureId,
     phase: featureFrontmatter.phase || null,
@@ -134,7 +137,7 @@ function buildSliceContent({
         ];
 
   const body = [
-    `# ${id}: ${title}`,
+    `# ${id}: ${safeTitle}`,
     "",
     `Implements ${featureId}. See [feature file](../../../backlog/in-progress/${featureId}.md) for product context.`,
     "",

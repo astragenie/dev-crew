@@ -15,12 +15,15 @@ autonomous_safe: true
 tags: [skill-quality, conventions, documentation]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.40
-pm_effort_estimate: 0.20
-pm_strategic_alignment: 0.70
+pm_customer_impact: 0.4
+pm_effort_estimate: 0.2
+pm_strategic_alignment: 0.7
 pm_technical_risk: 0.15
 pm_dependency_depth: 0.05
 triage_notes: "Composite 7. Iron Law hard-gate tag convention in skill Markdown. Near-exact duplicate of FEAT-115. This is a pure documentation/convention change — add XML-like HARD-GATE and EXTREMELY-IMPORTANT tags to owned SKILL.md files. validate-content-length.mjs already enforces line caps; no new validator needed for initial adoption. autonomousSafe: true — bounded to owned skills/*.md files, no runtime behavior change, content-length check still passes."
+github_issue: 169
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/169"
 ---
 # FEAT-088: Iron Law hard-gate tag convention in skill Markdown
 

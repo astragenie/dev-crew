@@ -9,6 +9,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { slicesRoot as resolveSlicesRoot, ensureDir, locateSliceFile } from "./paths.mjs";
+import { displaySliceTitle } from "./slice-title.mjs";
 // -------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------
@@ -139,8 +140,7 @@ async function parseSliceFile(sliceFilePath, sliceId) {
     }
     const raw = await fs.readFile(sliceFilePath, "utf8");
     const { frontmatter, body } = parseFrontmatter(raw);
-    const h1 = body.match(/^#\s+(.+)$/m);
-    const title = h1 ? h1[1].trim() : sliceId;
+    const title = displaySliceTitle(frontmatter, body, sliceId);
     const objMatch = body.match(/^##\s+Objective\s*\n([\s\S]*?)(?=\n##\s|\s*$)/im);
     const objective = objMatch ? objMatch[1].trim() : "";
     return { title, objective, frontmatter, body };

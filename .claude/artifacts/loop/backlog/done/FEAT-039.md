@@ -14,6 +14,9 @@ triage_notes: "autonomous_safe inferred: AC count=0, derived_from=null → false
 started_at: 2026-06-04
 slices_complete: [SLICE-37]
 completed_at: 2026-06-04
+github_issue: 82
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/82"
 ---
 # FEAT-039: re-read guard + model routing audit
 

@@ -16,11 +16,14 @@ tags: [session-init, hooks, context-injection]
 needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.45
-pm_effort_estimate: 0.40
-pm_strategic_alignment: 0.70
+pm_effort_estimate: 0.4
+pm_strategic_alignment: 0.7
 pm_technical_risk: 0.35
-pm_dependency_depth: 0.10
+pm_dependency_depth: 0.1
 triage_notes: "Composite 6. SessionStart hook that injects bootstrap context before any user turn. Near-exact duplicate of FEAT-132. hooks/hooks.json and hooks/session-start already exist in the repo (referenced in FEAT-100). The gap is a loop-specific injection of CLAUDE.md rules at session start. Medium-high strategic alignment — SLICE-81 grade shows context loss risk in long sessions. autonomousSafe: false — modifying hooks/ affects every session; needs architect review for safe injection."
+github_issue: 176
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/176"
 ---
 # FEAT-100: SessionStart hook that injects bootstrap context before any user turn
 

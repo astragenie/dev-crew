@@ -235,7 +235,12 @@ export async function writeMemorySnapshot(
 
   const today = new Date().toISOString().slice(0, 10);
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
+  // Exclude deferred items from "next to slice" — mirrors the auto walker's
+  // pre-branch filter (walker-gates.mts: `entry.frontmatter.deferred === true`
+  // → skip). Deferred FEATs are still counted in Triaged: N (renderBacklogState);
+  // only the next-to-slice candidate list drops them so the two views agree.
   const triagedTop = filterBacklog(backlog, { status: "triaged" })
+    .filter((f: Record<string, any>) => f.frontmatter.deferred !== true)
     .sort(comparePickOrder)
     .slice(0, 5);
   const specsByStatus = {

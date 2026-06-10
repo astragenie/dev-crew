@@ -19,6 +19,9 @@ autonomous_safe: true
 triage_notes: "autonomous_safe inferred: AC count=8, derived_from=null → true"
 started_at: 2026-06-06
 slices_complete: [SLICE-56]
+github_issue: 125
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/125"
 ---
 # FEAT-060: Worktree creation at slice-start
 

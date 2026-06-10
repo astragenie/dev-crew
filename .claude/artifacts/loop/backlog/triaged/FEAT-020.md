@@ -17,10 +17,10 @@ deferred: true
 defer_reason: medium-high risk — implement after PR autofix loop ships. Needs depth limit + file-claim system.
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.85
-pm_strategic_alignment: 0.60
+pm_strategic_alignment: 0.6
 pm_technical_risk: 0.85
-pm_dependency_depth: 0.70
-pm_strategic_fit: 0.60
+pm_dependency_depth: 0.7
+pm_strategic_fit: 0.6
 pm_risk_level: 0.85
 pm_implementation_confidence: 0.25
 pm_demand_signal: 0.6
@@ -32,6 +32,7 @@ phase: 2
 tags: [infra, workflow]
 needs_contract: true
 needs_ux: false
+github_url: "https://github.com/sergeymilashico/loop/issues/22"
 ---
 # FEAT-020: Async hierarchical subagent dispatch
 

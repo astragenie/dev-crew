@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 85
+github_url: "https://github.com/sergeymilashico/loop/issues/85"
 ---
 # SLICE-41: auto-walker honors all risk gates for autonomous_safe=true (depends_on + deferred + done-state check)
 

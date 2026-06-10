@@ -19,6 +19,9 @@ pm_dependency_depth: 0.7
 composite_score: 0.4675
 autonomous_safe: false
 triage_notes: "Hard cross-plugin sequencing — hero-crew commands/orchestrate-slice.md edit. AC#5 reconciled with FEAT-050 (contracts artifact = FEAT-ID only; UX spec stays SLICE-scoped). Not autonomous-safe."
+github_issue: 108
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/108"
 ---
 ## Context
 

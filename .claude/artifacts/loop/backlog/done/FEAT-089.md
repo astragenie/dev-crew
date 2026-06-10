@@ -23,6 +23,9 @@ pm_dependency_depth: 0.05
 triage_notes: "Composite 7. Evidence-before-claims verification gate as a named loop skill with an evidence table. Near-exact duplicate of FEAT-116. CLAUDE.md already references superpowers:verification-before-completion as a required skill. The gap is a loop-native version. Grade history shows builder fabrication (SLICE-81 grade: builder fabricated results twice) — this skill would directly address that failure pattern. autonomousSafe: true — creating a new skills/verification/SKILL.md file; no runtime changes."
 slices_complete: [SLICE-85]
 completed_at: 2026-06-09
+github_issue: 170
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/170"
 ---
 # FEAT-089: Evidence-before-claims verification gate as a named skill with evidence table
 

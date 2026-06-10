@@ -12,6 +12,8 @@ tags: [refactor, "stack:node"]
 needs_contract: false
 needs_ux: false
 completed_at: 2026-06-07
+github_issue: 158
+github_url: "https://github.com/sergeymilashico/loop/issues/158"
 ---
 # SLICE-77: noUncheckedIndexedAccess — B5 tsconfig tighten
 

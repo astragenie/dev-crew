@@ -10,7 +10,7 @@ depends_on: []
 slices: [SLICE-84]
 derived_from: null
 composite_score: 8
-source_competitors: ["\\"Windsurf (Codeium", "now Cognition)\\""]
+source_competitors: ["\\\"Windsurf (Codeium", "now Cognition)\\\""]
 autonomous_safe: true
 tags: [skills, context-budget, rules]
 needs_contract: false
@@ -23,6 +23,9 @@ pm_dependency_depth: 0.1
 triage_notes: "TOP PRIORITY. Adding a 'trigger' frontmatter field to SKILL.md files is a non-breaking schema extension with well-defined semantics. model_decision trigger (lazy-load) is particularly valuable for context-budget discipline — directly serves the plugin's autonomous loop mission. Scope is bounded: frontmatter parser + dispatch routing table update. autonomous_safe: true because no new external deps and change is additive."
 slices_complete: [SLICE-84]
 completed_at: 2026-06-09
+github_issue: 186
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/186"
 ---
 # FEAT-134: Rule activation triggers (`always_on` | `model_decision` | `glob` | `manual`)
 

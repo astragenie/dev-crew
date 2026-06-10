@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-06
 updated: 2026-06-06
 completed_at: 2026-06-06
+github_issue: 122
+github_url: "https://github.com/sergeymilashico/loop/issues/122"
 ---
 # SLICE-59: Upstream-request check-redundant-read hook deny verdict in hero-crew
 

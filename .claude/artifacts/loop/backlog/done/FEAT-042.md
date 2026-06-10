@@ -23,6 +23,9 @@ triage_notes: "PM scored 2026-06-05: trivial clamp in compareWalkerOrder (~5 LOC
 started_at: 2026-06-05
 slices_complete: [SLICE-42]
 completed_at: 2026-06-05
+github_issue: 87
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/87"
 ---
 # FEAT-042: Walker composite-score scale normalization
 

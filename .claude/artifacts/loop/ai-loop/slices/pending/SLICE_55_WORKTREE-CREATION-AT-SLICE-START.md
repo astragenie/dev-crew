@@ -8,6 +8,8 @@ target_release: null
 requires_validation: true
 created: 2026-06-06
 updated: 2026-06-06
+github_issue: 126
+github_url: "https://github.com/sergeymilashico/loop/issues/126"
 ---
 # SLICE-55: Worktree creation at slice-start
 

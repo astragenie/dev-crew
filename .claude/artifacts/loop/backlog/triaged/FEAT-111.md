@@ -16,11 +16,14 @@ tags: [workflow, backlog, github-integration]
 needs_contract: false
 needs_ux: false
 pm_customer_impact: 0.45
-pm_effort_estimate: 0.30
+pm_effort_estimate: 0.3
 pm_strategic_alignment: 0.75
 pm_technical_risk: 0.25
-pm_dependency_depth: 0.10
+pm_dependency_depth: 0.1
 triage_notes: "Composite 7. One-click task ingress from GitHub Issue/PR via /loop:backlog-add --from-issue <url>. High strategic alignment — gh CLI is already used; loop.json github.enabled: true. This is a well-scoped addition to an existing command. autonomousSafe: true — extends /loop:backlog-add with an optional flag; bounded to FEAT file creation using gh issue view output."
+github_issue: 180
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/180"
 ---
 # FEAT-111: One-click platform-native task ingress from Issue / PR
 

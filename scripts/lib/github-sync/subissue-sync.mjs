@@ -1,11 +1,6 @@
 import { defaultGhExec } from "./gh.mjs";
-import { ensureLabels } from "./issue-sync.mjs";
-
-function objectiveFromBody(body) {
-  const section = (body || "").split("## Objective")[1] || "";
-  const line = section.split("\n").find((l) => l.trim().length > 0);
-  return (line || "").trim();
-}
+import { ensureLabels, truncateTitle } from "./issue-sync.mjs";
+import { displaySliceTitle } from "../slice-title.mjs";
 
 function issueNumberFromUrl(url) {
   return parseInt(url.trim().split("/").pop(), 10);
@@ -14,7 +9,7 @@ function issueNumberFromUrl(url) {
 export function createSliceIssue(repo, slice, { ghExec = defaultGhExec } = {}) {
   if (slice.frontmatter?.github_issue) return slice.frontmatter.github_issue;
   ensureLabels(repo, { ghExec });
-  const title = `${slice.id}: ${objectiveFromBody(slice.body)}`;
+  const title = truncateTitle(displaySliceTitle(slice.frontmatter, slice.body, slice.id));
   const acSection = (slice.body || "").split("## Acceptance criteria")[1] || "";
   const bodyText = `## Acceptance criteria\n${acSection.split("##")[0]}`.trim();
   const url = ghExec([

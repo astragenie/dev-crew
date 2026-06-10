@@ -21,6 +21,9 @@ composite_score: 0.79
 composite_priority: P1
 triage_notes: "PM scored 2026-06-05: single-function bugfix in backlog-triage.mts; 5 ACs present (inline prefix — proves the bug); autonomous_safe=true (technical_risk 0.12, effort 0.90, dep_depth 0.05). Note: heuristic triage gave autonomous_safe=false because it missed inline AC prefix — exactly the bug this FEAT fixes."
 completed_at: 2026-06-05
+github_issue: 86
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/86"
 ---
 # FEAT-041: detectAcceptanceCriteria heuristic misses inline AC prefix
 

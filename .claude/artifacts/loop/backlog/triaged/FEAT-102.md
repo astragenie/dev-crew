@@ -14,8 +14,10 @@ autonomous_safe: false
 tags: [crew, loop, linear, integration]
 needs_contract: true
 needs_ux: true
+github_issue: 178
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/178"
 ---
-
 # FEAT-102: Linear teammate flow (assign-to-Crew)
 
 ## Source

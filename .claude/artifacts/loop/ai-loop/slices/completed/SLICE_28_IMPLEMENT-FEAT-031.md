@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-04
 updated: 2026-06-04
 completed_at: 2026-06-04
+github_issue: 66
+github_url: "https://github.com/sergeymilashico/loop/issues/66"
 ---
 # SLICE-28: FEAT-031 — agent-report-writer hardening + stop-hook diagnosis
 

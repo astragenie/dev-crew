@@ -17,6 +17,7 @@ import { checkOrchestrateSliceSupport } from "../plugin-identity.mjs";
 import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
 import { ensureSliceWorktree } from "../worktree-manager.mjs";
 import { mergeFrontmatter } from "../frontmatter.mjs";
+import { displaySliceTitle } from "../slice-title.mjs";
 function computeRecentGradeAvg(scores) {
     if (!scores || scores.length === 0)
         return null;
@@ -201,8 +202,9 @@ export async function startSlice(repoPath, sliceId, { config = null, goal = null
         throw new Error("startSlice requires a sliceId.");
     const resolved = config ?? (await resolveConfig(repoPath));
     const slicesRoot = resolveSlicesRoot(repoPath, resolved);
-    const { activePlan, title } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
+    const { activePlan, title: planTitle } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
     const ctx = await readSliceContext(slicesRoot, sliceId);
+    const title = resolveStartTitle(ctx, sliceId, planTitle);
     const { resolvedGoal, featureId, phase } = resolveSliceMetaFields(goal, ctx);
     await runSliceStartGates(sliceId, ctx.content ?? null, repoPath, resolved);
     const { runBrief, featureExcerpt, featurePath, marathonMilestone, gradeTrendCaution, learningsDigest, planPreflight, recentGradeAvg } = await gatherSliceResources(repoPath, {
@@ -296,6 +298,12 @@ async function gatherSliceResources(repoPath, { sliceId, title, resolvedGoal, fe
 // Locate the active plan + derive the human-readable title for this slice
 // from the plan match, falling back to bare sliceId. Extracted from
 // startSlice to keep its cyclomatic complexity under the eslint cap.
+// Canonical precedence: slice-file title (frontmatter -> H1) wins; the
+// approved-slices plan entry is the fallback for slices with no file yet.
+function resolveStartTitle(ctx, sliceId, planTitle) {
+    const fileTitle = displaySliceTitle(ctx.frontmatter, ctx.content ?? null, sliceId);
+    return fileTitle !== sliceId ? fileTitle : planTitle;
+}
 async function resolvePlanAndTitle(repoPath, sliceId, config = null) {
     const activePlan = await findActivePlan(repoPath, config);
     const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());

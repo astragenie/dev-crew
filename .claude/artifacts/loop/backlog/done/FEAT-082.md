@@ -24,6 +24,9 @@ triage_notes: "Composite 7. Glob-scoped rule auto-attachment is directionally si
 started_at: 2026-06-09
 slices_complete: [SLICE-86]
 completed_at: 2026-06-09
+github_issue: 164
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/164"
 ---
 # FEAT-082: Glob-scoped auto-attach rules with remote import
 

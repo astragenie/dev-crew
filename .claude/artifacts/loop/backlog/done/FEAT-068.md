@@ -20,6 +20,9 @@ triage_notes: "Self-triaged 2026-06-07. Small hook fix, pure path-normalization 
 started_at: 2026-06-07
 slices_complete: [SLICE-68]
 completed_at: 2026-06-07
+github_issue: 142
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/142"
 ---
 # FEAT-068: PreToolUse:Bash chained-cd guard accepts MSYS mount-prefix paths on Windows
 

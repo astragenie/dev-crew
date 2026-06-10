@@ -46,6 +46,14 @@ function buildLabels(frontmatter) {
   return labels;
 }
 
+// GitHub rejects issue titles longer than 256 characters (GraphQL createIssue).
+const MAX_TITLE_LENGTH = 256;
+
+export function truncateTitle(title) {
+  if (title.length <= MAX_TITLE_LENGTH) return title;
+  return `${title.slice(0, MAX_TITLE_LENGTH - 1)}…`;
+}
+
 function extractFirstDescriptionLine(body) {
   const section = body.split("## Description")[1] || "";
   const line = section.split("\n").find((l) => l.trim().length > 0);
@@ -75,7 +83,7 @@ export function createFeatureIssue(repo, feat, milestoneTitle, { ghExec = defaul
   const labels = buildLabels(feat.frontmatter || {});
   const knownNames = new Set(LABEL_DEFS.map((l) => l.name));
   labels.filter((l) => !knownNames.has(l)).forEach((l) => ensureLabelExists(repo, l, ghExec));
-  const title = `${feat.id}: ${extractFirstDescriptionLine(feat.body)}`;
+  const title = truncateTitle(`${feat.id}: ${extractFirstDescriptionLine(feat.body)}`);
   const args = [
     "issue",
     "create",

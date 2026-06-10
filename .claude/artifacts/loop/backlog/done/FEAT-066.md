@@ -20,6 +20,9 @@ triage_notes: "category inferred as feature from body content; autonomous_safe i
 started_at: 2026-06-06
 slices_complete: [SLICE-62]
 completed_at: 2026-06-06
+github_issue: 138
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/138"
 ---
 # FEAT-066: Brief halt-badge schema regression test
 

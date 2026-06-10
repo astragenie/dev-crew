@@ -13,6 +13,9 @@ triage_notes: no fields needed inference
 started_at: 2026-06-04
 slices_complete: [SLICE-29]
 completed_at: 2026-06-04
+github_issue: 69
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/69"
 ---
 # FEAT-033: PM autonomous_safe wiring — triage must write the flag to FEAT frontmatter
 

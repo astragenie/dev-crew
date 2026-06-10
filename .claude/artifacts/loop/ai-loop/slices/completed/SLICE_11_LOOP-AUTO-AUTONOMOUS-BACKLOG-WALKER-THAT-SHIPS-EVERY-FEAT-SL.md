@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-02
 updated: 2026-06-02
 completed_at: 2026-06-02
+github_issue: 50
+github_url: "https://github.com/sergeymilashico/loop/issues/50"
 ---
 # SLICE-11: /loop:auto — autonomous backlog walker that ships every FEAT/slice until exhaustion or hard halt
 

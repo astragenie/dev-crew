@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 97
+github_url: "https://github.com/sergeymilashico/loop/issues/97"
 ---
 # SLICE-47: Split loop-installer.mts — extract token helpers and scaffold writers (533 lines over 400-line convention)
 

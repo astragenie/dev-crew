@@ -20,6 +20,9 @@ triage_notes: "Reaffirm autonomous; bounded loop-side config promotion of today'
 started_at: 2026-06-06
 slices_complete: [SLICE-57]
 completed_at: 2026-06-06
+github_issue: 123
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/123"
 ---
 # FEAT-059: Configurable grade-trend threshold + autoMode warn-alert demotion
 

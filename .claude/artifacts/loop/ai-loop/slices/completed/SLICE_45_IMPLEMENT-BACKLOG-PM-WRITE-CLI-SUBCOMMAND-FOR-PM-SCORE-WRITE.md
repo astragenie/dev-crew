@@ -9,6 +9,8 @@ requires_validation: true
 created: 2026-06-05
 updated: 2026-06-05
 completed_at: 2026-06-05
+github_issue: 95
+github_url: "https://github.com/sergeymilashico/loop/issues/95"
 ---
 # SLICE-45: Implement backlog pm-write CLI subcommand for PM score write-back
 

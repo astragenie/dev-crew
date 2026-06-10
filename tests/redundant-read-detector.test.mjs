@@ -103,3 +103,22 @@ test("checkRedundantReadStop: unparseable session file is skipped (fail-open)", 
     assert.equal(sig.sessionId, "sess-2");
     assert.equal(sig.maxReadCount, 20);
 });
+test("checkRedundantReadStop: feature disabled (enabled: false) → returns null even with high read_count", async () => {
+    const repo = await tmpRepo("rrd-feature-disabled-");
+    await writeSessionState(repo, "sess-1", { "/a.md": { read_count: 99 } });
+    const config = { features: { "redundant-read-stop": { enabled: false } } };
+    const sig = await checkRedundantReadStop(repo, config);
+    assert.equal(sig, null, "feature disabled must skip the gate regardless of read_count");
+});
+test("checkRedundantReadStop: feature enabled (enabled: true) → fires signal with high read_count", async () => {
+    const repo = await tmpRepo("rrd-feature-enabled-");
+    await writeSessionState(repo, "sess-1", { "/a.md": { read_count: 99 } });
+    const config = {
+        features: { "redundant-read-stop": { enabled: true } },
+        loop: { redundantReadCap: 5 }
+    };
+    const sig = await checkRedundantReadStop(repo, config);
+    assert.ok(sig, "feature enabled must fire signal when read_count exceeds cap");
+    assert.equal(sig.maxReadCount, 99);
+    assert.equal(sig.threshold, 5);
+});

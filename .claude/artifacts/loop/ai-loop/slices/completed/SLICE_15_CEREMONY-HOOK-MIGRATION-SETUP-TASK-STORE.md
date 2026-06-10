@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-03
 updated: 2026-06-02
 completed_at: 2026-06-03
+github_issue: 48
+github_url: "https://github.com/sergeymilashico/loop/issues/48"
 ---
 # SLICE-15: Ceremony hook migration + setup-task-store.mjs
 

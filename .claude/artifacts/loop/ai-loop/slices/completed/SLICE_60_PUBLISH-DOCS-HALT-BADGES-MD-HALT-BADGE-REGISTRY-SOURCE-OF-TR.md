@@ -9,6 +9,8 @@ requires_validation: false
 created: 2026-06-06
 updated: 2026-06-06
 completed_at: 2026-06-06
+github_issue: 133
+github_url: "https://github.com/sergeymilashico/loop/issues/133"
 ---
 # SLICE-60: Publish docs/halt-badges.md halt-badge registry source-of-truth
 

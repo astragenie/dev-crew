@@ -21,9 +21,11 @@ composite_score: 0.48
 composite_priority: P3
 autonomous_safe: true
 tags: [chore, workflow]
-triage_notes: Retroactive FEAT bundling v0.28.1 + v0.28.2 — wire /loop:triage PM dispatch to resolver and close post-release follow-ups from v0.27.0 final review. Filed retroactively for ceremony linkage on 2026-06-07.
+triage_notes: "Retroactive FEAT bundling v0.28.1 + v0.28.2 — wire /loop:triage PM dispatch to resolver and close post-release follow-ups from v0.27.0 final review. Filed retroactively for ceremony linkage on 2026-06-07."
+github_issue: 162
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/162"
 ---
-
 # FEAT-077 — Post-Phase-1 triage tighten + review backfill
 
 ## Context

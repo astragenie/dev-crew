@@ -1,7 +1,7 @@
 ---
 id: FEAT-169
-status: pending
-priority: P3
+status: triaged
+priority: P2
 category: tech-debt
 target_release: null
 created: 2026-06-10
@@ -9,6 +9,17 @@ updated: 2026-06-10
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.25
+pm_effort_estimate: 0.5
+pm_strategic_alignment: 0.7
+pm_technical_risk: 0.4
+pm_dependency_depth: 0.2
+composite_score: 0.4975
+autonomous_safe: true
+triage_notes: "via=pm (re-score vs specs) | Blockers cleared: outline AC -> 20+ Given-When-Then; weak observability (0.66) -> explicit logging AC in both slices; split ambiguity -> two independent SDD specs. Effort 0.65->0.50 (cost-calibrated vs SLICE-71/86), risk 0.55->0.40 (Result + memoization are known patterns, compile-time/revertable). Composite ~0.57, stays P2. autonomous_safe FALSE->TRUE."
+github_issue: 192
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/192"
 ---
 # FEAT-169: Code-quality pivot leftovers — Result<T,E>, branded IDs, discriminated-union state + snapshot/memoization perf wins
 

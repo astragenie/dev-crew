@@ -15,12 +15,15 @@ autonomous_safe: false
 tags: [skill-routing, context-injection, keywords]
 needs_contract: false
 needs_ux: false
-pm_customer_impact: 0.40
+pm_customer_impact: 0.4
 pm_effort_estimate: 0.45
 pm_strategic_alignment: 0.65
-pm_technical_risk: 0.40
-pm_dependency_depth: 0.10
+pm_technical_risk: 0.4
+pm_dependency_depth: 0.1
 triage_notes: "Composite 6. Keyword-triggered skills (auto-inject prompt fragments by conversation content). Directionally aligned with FEAT-102 (rule activation triggers). A keywords: frontmatter field on SKILL.md + pre-dispatch content scanner is the minimum. Medium-high strategic alignment — would allow tech-specific skills (kubernetes, azure) to auto-activate without manual /skill invocation. autonomousSafe: false — pre-dispatch scanner is new infrastructure with security implications."
+github_issue: 184
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/184"
 ---
 # FEAT-129: Keyword-triggered skills (auto-inject prompt fragments by conversation content)
 
