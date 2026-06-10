@@ -147,17 +147,23 @@ async function applyFix(repoPath, config, authoritative, findings) {
                 const strayTime = await lastTouched(repoPath, strayEntry.file);
                 const authTime = await lastTouched(repoPath, authEntry.file);
                 if (strayTime > authTime) {
-                    // Stray wins: move it to authoritative, move auth loser to conflicts
-                    const winStateDir = path.join(authoritative, strayEntry.state);
-                    await fs.mkdir(winStateDir, { recursive: true });
-                    const winFile = path.join(winStateDir, path.basename(strayEntry.file));
-                    await fs.rename(strayEntry.file, winFile);
-                    // Move authoritative loser to conflicts
+                    // Stray wins. Archive the authoritative loser BEFORE the rename —
+                    // when both copies share a state dir, winFile === authEntry.file and
+                    // the rename overwrites it (reading afterwards would archive the
+                    // winner and the unlink below would delete it from the tree).
                     const loserContent = await fs.readFile(authEntry.file, "utf8");
                     const loserName = `${authEntry.id}-${authEntry.state}.md`;
                     const loserPath = path.join(conflictsDir, loserName);
                     await fs.writeFile(loserPath, loserContent);
-                    await fs.unlink(authEntry.file);
+                    const winStateDir = path.join(authoritative, strayEntry.state);
+                    await fs.mkdir(winStateDir, { recursive: true });
+                    const winFile = path.join(winStateDir, path.basename(strayEntry.file));
+                    await fs.rename(strayEntry.file, winFile);
+                    // Same-path overwrite already removed the loser; unlink only when
+                    // the loser lived in a different state dir than the winner.
+                    if (path.resolve(authEntry.file) !== path.resolve(winFile)) {
+                        await fs.unlink(authEntry.file);
+                    }
                 }
                 else {
                     // Auth wins: move stray loser to conflicts, keep auth

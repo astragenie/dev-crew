@@ -145,3 +145,34 @@ test("--fix keeps newest-transition winner on contradiction, loser preserved in 
     await fs.rm(repo, { recursive: true, force: true });
   }
 });
+
+test("--fix same-state collision with newer stray: winner stays in tree, true loser archived", async () => {
+  // Regression: when both copies share a state dir, the rename overwrites the
+  // authoritative file in place — the loser must be archived BEFORE the rename
+  // and the file must NOT be unlinked afterwards.
+  const repo = await makeRepo();
+  try {
+    const authFile = path.join(repo, ".claude/artifacts/loop/backlog/done/FEAT-007.md");
+    await fs.mkdir(path.dirname(authFile), { recursive: true });
+    await fs.writeFile(authFile, FEAT("FEAT-007", "done") + "auth-marker\n");
+    await fs.mkdir(path.join(repo, "docs/backlog/done"), { recursive: true });
+    const strayFile = path.join(repo, "docs/backlog/done/FEAT-007.md");
+    await fs.writeFile(strayFile, FEAT("FEAT-007", "done") + "stray-marker\n");
+    const future = new Date(Date.now() + 60_000);
+    await fs.utimes(strayFile, future, future);
+    await runDoctor(repo, { fix: true });
+    // Winner (stray content) must EXIST in the tree at the same path.
+    const survivor = await fs.readFile(authFile, "utf8");
+    assert.match(survivor, /stray-marker/);
+    // True loser (auth content) archived in conflicts.
+    const loser = await fs.readFile(
+      path.join(repo, ".claude/artifacts/loop/doctor/conflicts/FEAT-007-done.md"),
+      "utf8"
+    );
+    assert.match(loser, /auth-marker/);
+    const second = await runDoctor(repo, { fix: false });
+    assert.deepEqual(second.findings, []);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
