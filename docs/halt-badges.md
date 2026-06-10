@@ -74,7 +74,7 @@ Each halt-badge is `null` when not triggered; populated with a structured object
 
 **Fires when:** `workflow-state.currentRun.sessionId !== process.env.CLAUDE_SESSION_ID` AND both are present. Fail-open when either is missing.
 
-**Suggested operator action:** complete the slice in the original session, OR pass `--allow-cross-session` to `node scripts/loop.mjs auto` to override. The override logs a `session-drift-override` event with a timestamp to `.claude/artifacts/loop/auto-dispatch.jsonl`.
+**Suggested operator action:** complete the slice in the original session, OR pass `--allow-cross-session` to `node scripts/loop.mjs auto` to override. The override logs a `session-drift-override` event with a timestamp to `.claude/artifacts/loop/auto-dispatch.jsonl`. Each entry in `auto-dispatch.jsonl` carries a `stepType` discriminator (`"dispatch"` by default; `"session-drift-override"` for the walker's drift-override path) so consumers can distinguish dispatch events from non-dispatch events.
 
 **Origin:** FEAT-056 / SLICE-54 / v0.14.0. Source: `src/scripts/lib/session-drift.mts::checkSessionDrift`. Snapshot builder: `src/scripts/lib/stop-conditions.mts::buildSessionDriftSnapshotEntry`.
 

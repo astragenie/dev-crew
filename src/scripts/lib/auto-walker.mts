@@ -87,6 +87,7 @@ async function evaluateStopCondition(
     await appendAuditLog(repoPath, {
       timestamp: new Date().toISOString(),
       event: "session-drift-override",
+      stepType: "session-drift-override",
       sessionIdAtStart: drift?.sessionIdAtStart ?? null,
       sessionIdNow: drift?.sessionIdNow ?? null
     });

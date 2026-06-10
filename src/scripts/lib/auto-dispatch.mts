@@ -17,6 +17,9 @@ export interface DispatchOpts {
   costAdvisor?: () => { verdict: "ok" | "warn" | "stop" };
   sliceId?: string;
   featureId?: string | null;
+  stepType?: string;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
 }
 
 export interface DispatchResult {
@@ -93,7 +96,10 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
     skipFlag,
     costAdvisor,
     sliceId,
-    featureId
+    featureId,
+    stepType: optsStepType,
+    inputTokens: optsInputTokens,
+    outputTokens: optsOutputTokens
   } = opts;
   const start = Date.now();
 
@@ -107,7 +113,10 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
     durationMs: partial.durationMs ?? Date.now() - start,
     ok: partial.ok,
     skipped: partial.skipped,
-    skipReason: partial.skipReason ?? null
+    skipReason: partial.skipReason ?? null,
+    stepType: optsStepType ?? "dispatch",
+    inputTokens: optsInputTokens ?? null,
+    outputTokens: optsOutputTokens ?? null
   });
 
   const emitEvent = async (event: import("./slice-events.mjs").SliceEvent) => {

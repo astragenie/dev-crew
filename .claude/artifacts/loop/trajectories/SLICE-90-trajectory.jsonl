@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-90","timestamp":"2026-06-10T23:09:57.723Z","featureId":"FEAT-083","title":"SLICE-89: Trajectory JSON -- machine-parseable step log per run","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260610T230957Z-plan-SLICE-89.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-90","timestamp":"2026-06-10T23:28:07.705Z","featureId":"FEAT-083","featureMovedTo":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-083.md","validationSatisfied":true}

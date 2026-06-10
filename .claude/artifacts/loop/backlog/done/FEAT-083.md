@@ -1,13 +1,13 @@
 ---
 id: FEAT-083
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-10
 depends_on: []
-slices: []
+slices: [SLICE-90]
 derived_from: null
 composite_score: 7
 source_competitors: [Devin / SWE-Agent]
@@ -24,6 +24,9 @@ triage_notes: "Composite 7. Machine-parseable JSON step log per run. Existing au
 github_issue: 166
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/166"
+started_at: 2026-06-10
+slices_complete: [SLICE-90]
+completed_at: 2026-06-10
 ---
 # FEAT-083: Trajectory JSON -- machine-parseable step log per run
 

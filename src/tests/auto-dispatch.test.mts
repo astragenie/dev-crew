@@ -371,3 +371,85 @@ test("dispatchAgent emits agent_completed:skipped when skip flag present and sli
     await fs.rm(tmpEventsDir, { recursive: true, force: true });
   }
 });
+
+// --- AC-2: round-trip new fields (stepType + token counts) ---
+
+test("AC-2: dispatchAgent round-trips stepType, inputTokens, outputTokens when provided explicitly", async () => {
+  const repo = await tmpRepo("ad-ac2-");
+  try {
+    await dispatchAgent({
+      agent: "loop:researcher",
+      prompt: "test new fields",
+      parentCommand: "slice-complete",
+      repoRoot: repo,
+      stepType: "dispatch",
+      inputTokens: 1200,
+      outputTokens: 340
+    });
+
+    await flushAuditLog(repo);
+    const lines = await readJsonLines(auditLogPath(repo));
+    assert.equal(lines.length, 1);
+    const entry = lines[0] as any;
+    assert.equal(entry.stepType, "dispatch", "stepType must be dispatch");
+    assert.equal(entry.inputTokens, 1200, "inputTokens must be 1200");
+    assert.equal(entry.outputTokens, 340, "outputTokens must be 340");
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+// --- AC-3: backward-compat defaults when new fields are omitted ---
+
+test("AC-3: dispatchAgent defaults stepType to dispatch and token fields to null when not provided", async () => {
+  const repo = await tmpRepo("ad-ac3-");
+  try {
+    await dispatchAgent({
+      agent: "loop:researcher",
+      prompt: "legacy caller shape",
+      parentCommand: "backlog-add",
+      repoRoot: repo
+    });
+
+    await flushAuditLog(repo);
+    const lines = await readJsonLines(auditLogPath(repo));
+    assert.equal(lines.length, 1);
+    const entry = lines[0] as any;
+    assert.equal(entry.stepType, "dispatch", "stepType must default to dispatch");
+    assert.equal(entry.inputTokens, null, "inputTokens must default to null");
+    assert.equal(entry.outputTokens, null, "outputTokens must default to null");
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+// --- AC-4: session-drift-override path carries stepType discriminator ---
+
+test("AC-4: session-drift-override audit entry carries stepType: session-drift-override", async () => {
+  const repo = await tmpRepo("ad-ac4-");
+  try {
+    // Simulate what auto-walker.mts does on the drift-override path.
+    await appendAuditLog(repo, {
+      timestamp: new Date().toISOString(),
+      event: "session-drift-override",
+      stepType: "session-drift-override",
+      sessionIdAtStart: "session-old",
+      sessionIdNow: "session-new"
+    });
+
+    await flushAuditLog(repo);
+    const lines = await readJsonLines(auditLogPath(repo));
+    assert.equal(lines.length, 1);
+    const entry = lines[0] as any;
+    assert.equal(
+      entry.stepType,
+      "session-drift-override",
+      "stepType must be session-drift-override"
+    );
+    assert.equal(entry.event, "session-drift-override", "event must be preserved for back-compat");
+    assert.equal(entry.sessionIdAtStart, "session-old");
+    assert.equal(entry.sessionIdNow, "session-new");
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
