@@ -296,3 +296,58 @@ Verified by reviewer: bun:test transform is `import { test } from "bun:test"`
 Consequence of full 108-file codemod: the suite becomes bun-only in Phase A
 (node --test cannot load bun:test). test:node/build:tests retired in Task 4
 instead of Task 11.
+
+HANG DIAGNOSIS — 2026-06-10 (Reliability T1: Binary-search hanging test)
+=========================================================================
+
+Symptom: `bun test --parallel` sometimes hangs indefinitely on Windows for 15+ minutes
+
+Binary search result:
+  Total files: 115 test files
+  First half: 57 files → COMPLETES in ~60s ✓
+  Second half: 58 files → HANGS after 90s ✗
+
+  Narrowing down:
+    Second-quarter (29 files): COMPLETES ✓
+    Third-quarter (29 files): HANGS ✗
+
+    Third-eighth (15 files): HANGS ✗
+    Fourth-eighth (14 files): COMPLETES ✓
+
+    Third-16th A (7 files): HANGS ✗
+      - slice-complete-docwriter.test.mts → COMPLETES ✓
+      - slice-complete-multi-slice.test.mts → COMPLETES ✓
+      - slice-complete.test.mts → HANGS ✗ (CULPRIT)
+      - slice-events.test.mts → COMPLETES ✓
+      - slice-linker.test.mts → COMPLETES ✓
+      - slice-plan.test.mts → COMPLETES ✓
+      - slice-progress.test.mts → COMPLETES ✓
+
+Culprit file: slice-complete.test.mts
+  - Hangs consistently when run in isolation (verified 2 runs, both hanged)
+  - 30-second timeout confirms it's a hard hang, not slowness
+
+Root cause: src/scripts/lib/slice-linker/complete-slice.mts:741-753
+  Function checkBranchExists() uses:
+    ```
+    const execFile = promisify(execFileCb);
+    await execFile("git", ["-C", repoPath, "rev-parse", "--verify", branchName], {
+      timeout: 30_000
+    });
+    ```
+
+  Problem:
+    1. Test tmpRepo() creates a temporary directory with .claude/ folder BUT
+       does NOT initialize it as a git repository
+    2. On Windows, git hangs when trying to locate .git in a non-git directory,
+       even with a timeout set on execFile (the timeout only covers the git
+       process execution, not the initial git discovery phase which walks
+       parent directories)
+    3. Parallel test execution exacerbates this: multiple bun worker threads
+       simultaneously execute git on non-git tmpdirs, causing file lock
+       contention and indefinite blocking
+
+Solution path (Reliability T2):
+  - Add explicit git repo initialization to tmpRepo() test fixture, OR
+  - Add explicit timeout + Promise.race() at call-site to interrupt git discovery, OR
+  - Add afterAll cleanup hook to prevent worktree-path pollution across tests

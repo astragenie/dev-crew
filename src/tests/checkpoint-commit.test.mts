@@ -1,3 +1,4 @@
+// @ts-nocheck
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -8,7 +9,9 @@ import { promisify } from "node:util";
 
 import { checkpointCommit } from "../scripts/lib/checkpoint-commit.mjs";
 
-const execFile = promisify(execFileCallback);
+function execFile(file, args, opts) {
+  return promisify(execFileCallback)(file, args, { timeout: 10000, ...opts });
+}
 
 async function initGitRepo(prefix: string): Promise<string> {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));

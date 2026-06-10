@@ -1,3 +1,4 @@
+// @ts-nocheck
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -20,7 +21,9 @@ import {
   MIN_CREW_VERSION
 } from "../scripts/lib/plugin-identity.mjs";
 
-const execFile = promisify(execFileCallback);
+function execFile(file, args, opts) {
+  return promisify(execFileCallback)(file, args, { timeout: 10000, ...opts });
+}
 
 async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));

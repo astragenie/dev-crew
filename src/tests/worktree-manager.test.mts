@@ -22,7 +22,9 @@ import { ensureSliceWorktree, WorktreeError } from "../scripts/lib/worktree-mana
 import { startSlice, sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 
-const exec = promisify(execCb);
+function exec(cmd, opts) {
+  return promisify(execCb)(cmd, { timeout: 10000, ...opts });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers

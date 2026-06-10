@@ -7,12 +7,18 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - run: npm ci
       - run: npm run build
       - run: git diff --exit-code scripts/
@@ -22,5 +28,4 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
-      - run: npm run build:tests
-      - run: node --test dist/tests/*.test.mjs
+      - run: bun test src/tests/ --parallel

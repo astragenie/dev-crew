@@ -2,7 +2,9 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { test } from "bun:test";
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
+import { test, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 
 import { sliceFromFeature, completeSlice } from "../scripts/lib/slice-linker.mjs";
@@ -12,6 +14,10 @@ import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { writeFeatureEndCeremony, featureEnd } from "../scripts/lib/ceremonies.mjs";
+
+function execFile(file, args, opts) {
+  return promisify(execFileCb)(file, args, { timeout: 10000, ...opts });
+}
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -29,8 +35,23 @@ async function tmpRepo(prefix) {
       stack: {}
     })
   );
+  // Initialize git so discovery doesn't traverse the entire temp path on Windows
+  await execFile("git", ["init", "-b", "main"], { cwd: repo });
+  await execFile("git", ["config", "user.email", "test@test.com"], { cwd: repo });
+  await execFile("git", ["config", "user.name", "Test"], { cwd: repo });
+  await execFile("git", ["config", "commit.gpgsign", "false"], { cwd: repo });
+  await execFile("git", ["commit", "--allow-empty", "-m", "init"], { cwd: repo });
   return repo;
 }
+
+afterAll(() => {
+  try {
+    require("child_process").execSync("git worktree prune 2>/dev/null || true", {
+      timeout: 5000,
+      shell: true
+    });
+  } catch {}
+});
 
 test("completeSlice moves slice to completed/ and feature to done/", async () => {
   const repo = await tmpRepo("al-slice-complete-");
