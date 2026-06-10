@@ -295,7 +295,8 @@ const COMMANDS = {
   },
   learnings: ({ repoPath, flags, positionals }: CmdCtx) =>
     runLearningsSubcommand(repoPath, positionals, flags),
-  architect: async ({ repoPath, flags, config }: CmdCtx) => runArchitectSubcommand(repoPath, flags, config),
+  architect: async ({ repoPath, flags, config }: CmdCtx) =>
+    runArchitectSubcommand(repoPath, flags, config),
   trajectory: async ({ repoPath, flags }: CmdCtx) => {
     const { readTrajectory, trajectoryPath } = await import("./lib/trajectory-writer.mjs");
     const sliceId = flags.id;
@@ -731,7 +732,12 @@ export function detectMissingSpecFields(spec: {
 }
 
 const SPEC_HANDLERS = {
-  add: async (repoPath: string, flags: Record<string, any>, rest: string[], config: Record<string, any> | null) => {
+  add: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    rest: string[],
+    config: Record<string, any> | null
+  ) => {
     const title = flags.title || rest.join(" ");
     if (!title) throw new Error("spec add requires a title (positional or --title).");
     if (!flags.type) {
@@ -747,7 +753,12 @@ const SPEC_HANDLERS = {
       config
     });
   },
-  list: async (repoPath: string, flags: Record<string, any>, _rest: string[], config: Record<string, any> | null) => {
+  list: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    config: Record<string, any> | null
+  ) => {
     const { listSpecs, filterSpecs } = await import("./lib/spec-parser.mjs");
     const specs = await listSpecs(repoPath, { config });
     const filtered = filterSpecs(specs, {
@@ -770,7 +781,12 @@ const SPEC_HANDLERS = {
       }))
     };
   },
-  decompose: async (repoPath: string, flags: Record<string, any>, rest: string[], config: Record<string, any> | null) => {
+  decompose: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    rest: string[],
+    config: Record<string, any> | null
+  ) => {
     const specId = flags.id || rest[0];
     if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
 
@@ -814,7 +830,12 @@ const SPEC_HANDLERS = {
     process.exitCode = 1;
     return { error: "architect auto-dispatch removed; pass --features or use slash flow" };
   },
-  status: async (repoPath: string, _flags: Record<string, any>, _rest: string[], config: Record<string, any> | null) => {
+  status: async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    config: Record<string, any> | null
+  ) => {
     const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
     const before = await specSatisfaction(repoPath, { config });
     const reconciled = await reconcileSpecStatus(repoPath, { config });
@@ -953,7 +974,13 @@ const SLICE_HANDLERS = {
     await flushTrajectory(cwd, sliceId);
     return out;
   },
-  start: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string, opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}) => {
+  start: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
     requireId(sliceId, "slice start requires --id SLICE-NN.");
     const { startSlice } = await import("./lib/slice-linker.mjs");
     const out = await startSlice(repoPath, sliceId, {
@@ -973,7 +1000,13 @@ const SLICE_HANDLERS = {
     await flushTrajectory(repoPath, sliceId);
     return out;
   },
-  link: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string, opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}) => {
+  link: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
     const id = requireId(flags.id || sliceId, "slice link requires --id SLICE-NN.");
     if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
     if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
@@ -996,7 +1029,13 @@ const SLICE_HANDLERS = {
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
     return buildReviewLadder(repoPath, sliceId, { config: opts.config ?? null });
   },
-  plan: async (repoPath: string, _flags: Record<string, any>, _rest: string[], sliceId: string, opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}) => {
+  plan: async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
     requireId(sliceId, "slice plan requires --id SLICE-NN.");
     const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
     const out = await runPlanPreflight(repoPath, sliceId, { config: opts.config ?? null });

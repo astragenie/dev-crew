@@ -35,7 +35,10 @@ test("backlog add honors loop.json backlogRoot override", async () => {
     );
 
     const defaultRoot = path.join(repo, ".claude", "artifacts", "loop", "backlog");
-    const defaultExists = await fs.access(defaultRoot).then(() => true, () => false);
+    const defaultExists = await fs.access(defaultRoot).then(
+      () => true,
+      () => false
+    );
     assert.equal(defaultExists, false, "default root must not be created when overridden");
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
@@ -54,18 +57,19 @@ test("no module outside loop.mts imports resolveConfig for direct use", async ()
     // Check for direct import of resolveConfig in lib modules
     // (they should accept it as a param instead)
     // Broader regex catches resolveConfig among multi-name imports
-    const hasImport = /import\s*\{[^}]*\bresolveConfig\b[^}]*\}\s*from\s+["']\.\/config-resolver\.mjs["']/.test(
-      text
-    );
+    const hasImport =
+      /import\s*\{[^}]*\bresolveConfig\b[^}]*\}\s*from\s+["']\.\/config-resolver\.mjs["']/.test(
+        text
+      );
     const hasUsage = /resolveConfig\s*\(/.test(text);
 
     // Allowlist: functions that accept config as optional param but may fall back to resolveConfig
     // (only for backward compat when called from non-dispatcher contexts)
     const allowlist = [
-      "artifact-linkage.mts",  // already accepts config param with fallback
-      "reviewer-ladder.mts",   // already accepts config param with fallback
-      "phase-gate.mts",        // accepts config in options with fallback for standalone use
-      "loop-installer.mts"     // install-time resolution with preset merge — runs before loop.json exists; dispatcher config is not equivalent
+      "artifact-linkage.mts", // already accepts config param with fallback
+      "reviewer-ladder.mts", // already accepts config param with fallback
+      "phase-gate.mts", // accepts config in options with fallback for standalone use
+      "loop-installer.mts" // install-time resolution with preset merge — runs before loop.json exists; dispatcher config is not equivalent
     ];
 
     if (hasImport && hasUsage && !allowlist.includes(f)) {
