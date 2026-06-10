@@ -10,6 +10,7 @@ function nowIsoDate() {
 }
 export async function ensureBacklogScaffold(repoPath, config) {
     const root = backlogRoot(repoPath, config);
+    assertStatePath(repoPath, config, root);
     for (const state of BACKLOG_STATES) {
         const dir = path.join(root, state);
         await ensureDir(dir);

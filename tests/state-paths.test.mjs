@@ -14,3 +14,8 @@ test("assertStatePath accepts a target inside a resolved root", () => {
 test("assertStatePath throws loudly for a target outside all roots", () => {
     assert.throws(() => assertStatePath(repo, undefined, path.join(repo, "src", "FEAT-001.md")), /outside the resolved state roots/);
 });
+test("assertStatePath rejects a sibling dir sharing a root's name prefix", () => {
+    // ".../artifacts/loop-evil" must not pass as inside ".../artifacts/loop" —
+    // the root + path.sep suffix in the prefix check is what guarantees this.
+    assert.throws(() => assertStatePath(repo, undefined, path.join(repo, ".claude/artifacts/loop-evil/FEAT-001.md")), /outside the resolved state roots/);
+});
