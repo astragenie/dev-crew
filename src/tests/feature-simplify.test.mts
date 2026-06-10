@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, beforeAll, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -9,7 +9,7 @@ import { featureSimplify } from "../scripts/lib/slice-linker/feature-lifecycle.m
 describe("featureSimplify", () => {
   let tmpDir: string;
 
-  before(async () => {
+  beforeAll(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "feat-simplify-"));
     execFileSync("git", ["init"], { cwd: tmpDir });
     execFileSync("git", ["config", "user.email", "test@test.com"], { cwd: tmpDir });
@@ -17,7 +17,7 @@ describe("featureSimplify", () => {
     execFileSync("git", ["commit", "--allow-empty", "-m", "init"], { cwd: tmpDir });
   });
 
-  after(async () => {
+  afterAll(async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 

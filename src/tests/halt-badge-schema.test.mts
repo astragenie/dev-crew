@@ -11,7 +11,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 
 import { HALT_BADGES } from "../scripts/lib/halt-badges.mjs";

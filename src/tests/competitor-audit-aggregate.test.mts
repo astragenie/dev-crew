@@ -2,7 +2,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 
 import {
@@ -12,7 +12,7 @@ import {
   renderMatrixMarkdown,
   priorityFromComposite,
   runAudit
-} from "../scripts/competitor-audit/aggregate.mjs";
+} from "../../scripts/competitor-audit/aggregate.mjs";
 import { findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter, serializeFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
