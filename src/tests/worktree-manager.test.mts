@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { exec as execCb } from "node:child_process";
 import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
@@ -155,7 +156,7 @@ test("ensureSliceWorktree: worktreeMode true → creates worktree and returns Wo
   await initGitRepo(repo);
   // Do NOT write loop.json after initGitRepo (untracked files would make tree dirty).
   // Config is passed directly via opts.config.
-  const worktreeRoot = path.join(os.tmpdir(), `wm-create-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-create-root-${randomUUID()}`);
 
   const result = await ensureSliceWorktree(repo, "SLICE-56", {
     config: { loop: { worktreeMode: true, worktreeRoot } },
@@ -190,7 +191,7 @@ test("ensureSliceWorktree: featureId null → branch named slice/<SLICE-ID> only
   const repo = await tmpDir("wm-nofeat-");
   await initGitRepo(repo);
 
-  const worktreeRoot = path.join(os.tmpdir(), `wm-nofeat-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-nofeat-root-${randomUUID()}`);
   const result = await ensureSliceWorktree(repo, "SLICE-99", {
     config: { loop: { worktreeMode: true, worktreeRoot } },
     featureId: null
@@ -216,7 +217,7 @@ test("ensureSliceWorktree: re-entry reuses existing worktree (idempotent)", asyn
   const repo = await tmpDir("wm-reuse-");
   await initGitRepo(repo);
 
-  const worktreeRoot = path.join(os.tmpdir(), `wm-reuse-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-reuse-root-${randomUUID()}`);
   const opts = {
     config: { loop: { worktreeMode: true, worktreeRoot } },
     featureId: "FEAT-060"
@@ -269,7 +270,7 @@ test("ensureSliceWorktree: dirty working tree → throws WorktreeError{DIRTY_TRE
   // Modify without staging to make it dirty
   await fs.writeFile(trackedFile, "modified");
 
-  const worktreeRoot = path.join(os.tmpdir(), `wm-dirty-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-dirty-root-${randomUUID()}`);
 
   await assert.rejects(
     () =>
@@ -310,7 +311,7 @@ test("ensureSliceWorktree: git failure leaves no partial state in workflow-state
   });
   await fs.writeFile(trackedFile, "modified-unstaged");
 
-  const worktreeRoot = path.join(os.tmpdir(), `wm-no-partial-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-no-partial-root-${randomUUID()}`);
 
   // Pre-write workflow-state without worktreePath
   await writeWorkflowState(repo, { title: "test run", sessionId: null });
@@ -338,7 +339,7 @@ test("ensureSliceWorktree: custom worktreeRoot honored", async () => {
   const repo = await tmpDir("wm-custom-root-");
   await initGitRepo(repo);
 
-  const customRoot = path.join(os.tmpdir(), `custom-wt-root-${Date.now()}`);
+  const customRoot = path.join(os.tmpdir(), `custom-wt-root-${randomUUID()}`);
   await fs.mkdir(customRoot, { recursive: true });
 
   const result = await ensureSliceWorktree(repo, "SLICE-77", {
@@ -363,7 +364,7 @@ test("ensureSliceWorktree: relative worktreeRoot resolved against repoPath", asy
   await initGitRepo(repo);
 
   // Use a relative path — resolved against repoPath
-  const relRoot = "../wm-rel-wts-" + Date.now();
+  const relRoot = "../wm-rel-wts-" + randomUUID();
   const expectedRoot = path.resolve(repo, relRoot);
 
   const result = await ensureSliceWorktree(repo, "SLICE-88", {
@@ -418,7 +419,7 @@ test("ensureSliceWorktree: default worktreeRoot = sibling dir <repoBasename>-wor
 
 test("startSlice: worktreePath written to workflow-state and frontmatter when worktreeMode on", async () => {
   const repo = await tmpDir("wm-integration-");
-  const worktreeRoot = path.join(os.tmpdir(), `wm-int-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-int-root-${randomUUID()}`);
 
   // Write loop.json BEFORE initGitRepo so git add -A captures it in the initial commit.
   await writeLoopJson(repo, {
@@ -527,7 +528,7 @@ test("startSlice: worktreeMode false → no worktree field, no state mutation", 
 test("applyWorktreeResult: frontmatter write failure rolls back workflow-state.worktreePath", async () => {
   const repo = await tmpDir("wm-rollback-real-");
   await initGitRepo(repo);
-  const worktreeRoot = path.join(os.tmpdir(), `wm-rollback-real-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-rollback-real-root-${randomUUID()}`);
   const stateDir = path.join(repo, ".claude/state/crew");
   await fs.mkdir(stateDir, { recursive: true });
   await fs.writeFile(
@@ -579,7 +580,7 @@ test("applyWorktreeResult: frontmatter write failure rolls back workflow-state.w
 test("applyWorktreeResult: null sliceFile + worktreeMode on → throws (failure-atomicity)", async () => {
   const repo = await tmpDir("wm-null-slice-");
   await initGitRepo(repo);
-  const worktreeRoot = path.join(os.tmpdir(), `wm-null-slice-root-${Date.now()}`);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-null-slice-root-${randomUUID()}`);
 
   const { applyWorktreeResult } = await import("../scripts/lib/slice-linker/start-slice.mjs");
 
@@ -616,7 +617,7 @@ test.skip("legacy structural rollback check (skipped — superseded by direct ap
   await initGitRepo(repo);
   await writeLoopJson(repo, {
     worktreeMode: true,
-    worktreeRoot: path.join(os.tmpdir(), `wm-rollback-root-${Date.now()}`)
+    worktreeRoot: path.join(os.tmpdir(), `wm-rollback-root-${randomUUID()}`)
   });
   // Commit loop.json so tree stays clean
   await exec(`git -C "${repo}" add -A`, { env: GIT_ENV });
@@ -663,7 +664,7 @@ test.skip("legacy structural rollback check (skipped — superseded by direct ap
       config: {
         loop: {
           worktreeMode: true,
-          worktreeRoot: path.join(os.tmpdir(), `wm-rollback-direct-${Date.now()}`)
+          worktreeRoot: path.join(os.tmpdir(), `wm-rollback-direct-${randomUUID()}`)
         }
       },
       featureId: "FEAT-099"
