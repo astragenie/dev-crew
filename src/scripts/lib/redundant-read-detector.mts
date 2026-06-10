@@ -20,6 +20,11 @@ import { isEnabled } from "./features-service.mjs";
 
 export const DEFAULT_REDUNDANT_READ_CAP = 5;
 
+// Sessions whose state hasn't been touched in this many hours are dead — a
+// halt signal from them would block the loop forever (the offending session
+// can no longer "stop"). Override via loop.redundantReadStaleHours.
+export const DEFAULT_REDUNDANT_READ_STALE_HOURS = 6;
+
 const STATE_DIR_REL = path.join(".claude", "state", "cost-hygiene");
 
 /** Signal returned by checkRedundantReadStop when the gate fires. */
@@ -46,6 +51,8 @@ interface CostHygieneEntry {
 
 interface CostHygieneState {
   entries: Record<string, CostHygieneEntry>;
+  /** ISO timestamp of the session's most recent read event (upstream hook). */
+  last_seen?: string;
 }
 
 function resolveThreshold(config: Record<string, any> | null): number {
@@ -53,6 +60,26 @@ function resolveThreshold(config: Record<string, any> | null): number {
   return typeof raw === "number" && Number.isInteger(raw) && raw > 0
     ? raw
     : DEFAULT_REDUNDANT_READ_CAP;
+}
+
+function resolveStaleHours(config: Record<string, any> | null): number {
+  const raw = config?.loop?.redundantReadStaleHours;
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0
+    ? raw
+    : DEFAULT_REDUNDANT_READ_STALE_HOURS;
+}
+
+/**
+ * A session is stale when its last_seen is parseable and older than the
+ * staleness window. Missing/unparseable last_seen counts as fresh — older
+ * hook versions don't write the field, and fail-open there would silence
+ * the gate entirely for them.
+ */
+function isStaleSession(state: CostHygieneState, staleHours: number, nowMs: number): boolean {
+  if (typeof state.last_seen !== "string") return false;
+  const seen = Date.parse(state.last_seen);
+  if (Number.isNaN(seen)) return false;
+  return nowMs - seen > staleHours * 3_600_000;
 }
 
 /** Read all *.json session state files. Fail-open on any I/O error. */
@@ -98,10 +125,15 @@ async function readAllSessionStates(
  * Returns a RedundantReadSignal when ANY entry has read_count > threshold.
  * Picks the single worst offender (max read_count) for the signal body and
  * reports the total count of offending paths.
+ *
+ * Sessions whose last_seen is older than loop.redundantReadStaleHours
+ * (default 6h) are ignored — they ended; halting the loop on their behalf
+ * would block it permanently.
  */
 export async function checkRedundantReadStop(
   repoPath: string,
-  config: Record<string, any> | null
+  config: Record<string, any> | null,
+  nowMs: number = Date.now()
 ): Promise<RedundantReadSignal | null> {
   // Check if the feature is enabled via the features service. If disabled,
   // gate off regardless of redundantReadCap.
@@ -110,6 +142,7 @@ export async function checkRedundantReadStop(
   }
 
   const threshold = resolveThreshold(config);
+  const staleHours = resolveStaleHours(config);
   const stateDir = path.join(repoPath, STATE_DIR_REL);
   const sessions = await readAllSessionStates(stateDir);
   if (sessions.length === 0) return null;
@@ -118,6 +151,7 @@ export async function checkRedundantReadStop(
   let offendingPathCount = 0;
 
   for (const { sessionId, state } of sessions) {
+    if (isStaleSession(state, staleHours, nowMs)) continue;
     for (const [filePath, entry] of Object.entries(state.entries)) {
       const count = typeof entry?.read_count === "number" ? entry.read_count : 0;
       if (count <= threshold) continue;

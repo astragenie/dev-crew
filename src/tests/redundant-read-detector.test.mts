@@ -20,13 +20,14 @@ async function tmpRepo(prefix: string): Promise<string> {
 async function writeSessionState(
   repoPath: string,
   sessionId: string,
-  entries: Record<string, { read_count: number }>
+  entries: Record<string, { read_count: number }>,
+  lastSeen?: string
 ): Promise<void> {
   const dir = path.join(repoPath, ".claude", "state", "cost-hygiene");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
     path.join(dir, `${sessionId}.json`),
-    JSON.stringify({ entries }, null, 2),
+    JSON.stringify(lastSeen ? { entries, last_seen: lastSeen } : { entries }, null, 2),
     "utf8"
   );
 }
@@ -130,6 +131,59 @@ test("checkRedundantReadStop: unparseable session file is skipped (fail-open)", 
   assert.ok(sig);
   assert.equal(sig!.sessionId, "sess-2");
   assert.equal(sig!.maxReadCount, 20);
+});
+
+test("checkRedundantReadStop: stale session (last_seen beyond window) is ignored", async () => {
+  const repo = await tmpRepo("rrd-stale-");
+  const now = Date.parse("2026-06-10T12:00:00Z");
+  await writeSessionState(
+    repo,
+    "dead-sess",
+    { "/a.md": { read_count: 100 } },
+    "2026-06-09T19:48:00Z" // ~16h old — beyond the 6h default window
+  );
+  const sig = await checkRedundantReadStop(repo, null, now);
+  assert.equal(sig, null, "dead sessions must not halt the loop forever");
+});
+
+test("checkRedundantReadStop: fresh session (last_seen inside window) still fires", async () => {
+  const repo = await tmpRepo("rrd-fresh-");
+  const now = Date.parse("2026-06-10T12:00:00Z");
+  await writeSessionState(
+    repo,
+    "live-sess",
+    { "/a.md": { read_count: 100 } },
+    "2026-06-10T11:30:00Z"
+  );
+  const sig = await checkRedundantReadStop(repo, null, now);
+  assert.ok(sig, "fresh session over cap must fire");
+  assert.equal(sig!.sessionId, "live-sess");
+});
+
+test("checkRedundantReadStop: missing last_seen treated as fresh (old hook format)", async () => {
+  const repo = await tmpRepo("rrd-noseen-");
+  await writeSessionState(repo, "old-format", { "/a.md": { read_count: 100 } });
+  const sig = await checkRedundantReadStop(repo, null);
+  assert.ok(sig, "files without last_seen must still be considered");
+});
+
+test("checkRedundantReadStop: honors loop.redundantReadStaleHours override", async () => {
+  const repo = await tmpRepo("rrd-stalecfg-");
+  const now = Date.parse("2026-06-10T12:00:00Z");
+  await writeSessionState(
+    repo,
+    "sess-1",
+    { "/a.md": { read_count: 100 } },
+    "2026-06-10T08:00:00Z" // 4h old — fresh by default 6h, stale at 2h
+  );
+  const fired = await checkRedundantReadStop(repo, null, now);
+  assert.ok(fired, "4h-old session is fresh under the 6h default");
+  const sig = await checkRedundantReadStop(
+    repo,
+    { loop: { redundantReadStaleHours: 2 } },
+    now
+  );
+  assert.equal(sig, null, "4h-old session is stale under a 2h override");
 });
 
 test("checkRedundantReadStop: feature disabled (enabled: false) → returns null even with high read_count", async () => {

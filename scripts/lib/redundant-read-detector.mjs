@@ -17,12 +17,36 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { isEnabled } from "./features-service.mjs";
 export const DEFAULT_REDUNDANT_READ_CAP = 5;
+// Sessions whose state hasn't been touched in this many hours are dead — a
+// halt signal from them would block the loop forever (the offending session
+// can no longer "stop"). Override via loop.redundantReadStaleHours.
+export const DEFAULT_REDUNDANT_READ_STALE_HOURS = 6;
 const STATE_DIR_REL = path.join(".claude", "state", "cost-hygiene");
 function resolveThreshold(config) {
     const raw = config?.loop?.redundantReadCap;
     return typeof raw === "number" && Number.isInteger(raw) && raw > 0
         ? raw
         : DEFAULT_REDUNDANT_READ_CAP;
+}
+function resolveStaleHours(config) {
+    const raw = config?.loop?.redundantReadStaleHours;
+    return typeof raw === "number" && Number.isFinite(raw) && raw > 0
+        ? raw
+        : DEFAULT_REDUNDANT_READ_STALE_HOURS;
+}
+/**
+ * A session is stale when its last_seen is parseable and older than the
+ * staleness window. Missing/unparseable last_seen counts as fresh — older
+ * hook versions don't write the field, and fail-open there would silence
+ * the gate entirely for them.
+ */
+function isStaleSession(state, staleHours, nowMs) {
+    if (typeof state.last_seen !== "string")
+        return false;
+    const seen = Date.parse(state.last_seen);
+    if (Number.isNaN(seen))
+        return false;
+    return nowMs - seen > staleHours * 3_600_000;
 }
 /** Read all *.json session state files. Fail-open on any I/O error. */
 async function readAllSessionStates(stateDir) {
@@ -66,14 +90,19 @@ async function readAllSessionStates(stateDir) {
  * Returns a RedundantReadSignal when ANY entry has read_count > threshold.
  * Picks the single worst offender (max read_count) for the signal body and
  * reports the total count of offending paths.
+ *
+ * Sessions whose last_seen is older than loop.redundantReadStaleHours
+ * (default 6h) are ignored — they ended; halting the loop on their behalf
+ * would block it permanently.
  */
-export async function checkRedundantReadStop(repoPath, config) {
+export async function checkRedundantReadStop(repoPath, config, nowMs = Date.now()) {
     // Check if the feature is enabled via the features service. If disabled,
     // gate off regardless of redundantReadCap.
     if (!isEnabled("redundant-read-stop", config)) {
         return null;
     }
     const threshold = resolveThreshold(config);
+    const staleHours = resolveStaleHours(config);
     const stateDir = path.join(repoPath, STATE_DIR_REL);
     const sessions = await readAllSessionStates(stateDir);
     if (sessions.length === 0)
@@ -81,6 +110,8 @@ export async function checkRedundantReadStop(repoPath, config) {
     let worst = null;
     let offendingPathCount = 0;
     for (const { sessionId, state } of sessions) {
+        if (isStaleSession(state, staleHours, nowMs))
+            continue;
         for (const [filePath, entry] of Object.entries(state.entries)) {
             const count = typeof entry?.read_count === "number" ? entry.read_count : 0;
             if (count <= threshold)
