@@ -25,15 +25,27 @@ function discoverBash(): string | null {
 }
 
 const bashBin = discoverBash();
-// Resolve from the compiled test location (tests/*.mjs). The compiled tests
-// live one directory above hooks/ (repo root contains both `tests/` and
-// `hooks/` as siblings), so a single ".." is correct.
-const hookPath = path.resolve(
+// Resolve from the source test location. Under Bun (which runs .mts directly),
+// import.meta.url points to src/tests/. Under Node.js test runner, it pointed to
+// tests/. We use a dual-layout resolution: try one level up first (Node.js case),
+// fall back to two levels up (Bun case).
+let hookPath = path.resolve(
   path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/i, "$1")),
   "..",
   "hooks",
   "read-guard.sh"
 );
+// Bun case: if not found at ../, try ../../
+try {
+  await fs.stat(hookPath);
+} catch {
+  hookPath = path.resolve(
+    path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/i, "$1")),
+    "../..",
+    "hooks",
+    "read-guard.sh"
+  );
+}
 
 async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
