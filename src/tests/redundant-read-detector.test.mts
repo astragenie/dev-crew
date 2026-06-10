@@ -178,11 +178,7 @@ test("checkRedundantReadStop: honors loop.redundantReadStaleHours override", asy
   );
   const fired = await checkRedundantReadStop(repo, null, now);
   assert.ok(fired, "4h-old session is fresh under the 6h default");
-  const sig = await checkRedundantReadStop(
-    repo,
-    { loop: { redundantReadStaleHours: 2 } },
-    now
-  );
+  const sig = await checkRedundantReadStop(repo, { loop: { redundantReadStaleHours: 2 } }, now);
   assert.equal(sig, null, "4h-old session is stale under a 2h override");
 });
 
