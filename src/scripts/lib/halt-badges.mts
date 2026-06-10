@@ -27,7 +27,7 @@ function renderSessionDrift(e: any): string[] {
   return [
     `- Session at slice-start: ${e.sessionIdAtStart}`,
     `- Current session: ${e.sessionIdNow}`,
-    `- Suggested action: complete the slice in the original session, OR pass \`--allow-cross-session\` to \`node scripts/loop.mjs auto\` to override. Override logs a timestamped \`session-drift-override\` event to \`.claude/artifacts/loop/auto-dispatch.jsonl\`.`
+    `- Suggested action: complete the slice in the original session, OR pass \`--allow-cross-session\` to \`bun src/scripts/loop.mts auto\` to override. Override logs a timestamped \`session-drift-override\` event to \`.claude/artifacts/loop/auto-dispatch.jsonl\`.`
   ];
 }
 
@@ -96,7 +96,7 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
  *   1. brief.snapshot.{costRegression, sessionDrift, sliceCostCeiling, gradeTrend}
  *      (when called against stop-check output shape)
  *   2. brief.{costRegression, sessionDrift, sliceCostCeiling, gradeTrend}
- *      (when called against `node scripts/loop.mjs brief` output shape — loop's
+ *      (when called against `bun src/scripts/loop.mts brief` output shape — loop's
  *      own brief currently surfaces costRegression + sessionDrift at top level)
  *
  * When both exist, the snapshot.* form wins.

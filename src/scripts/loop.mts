@@ -3,6 +3,7 @@
 import path from "node:path";
 import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
 import { resolveSkills } from "./lib/skill-resolver.mjs";
+import { importGithubSync } from "./lib/github-sync-loader.mjs";
 
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
@@ -183,12 +184,12 @@ function usage() {
     "loop CLI",
     "",
     "Usage:",
-    "  node scripts/loop.mjs install --repo <path> [--preset <name>]",
-    "  node scripts/loop.mjs phase-gate --repo <path> [--phase <N>] [--note <text>]",
-    "  node scripts/loop.mjs status --repo <path>",
-    "  node scripts/loop.mjs list-presets",
-    "  node scripts/loop.mjs doctor --repo <path> [--check|--fix]",
-    "  node scripts/loop.mjs dispatch <subcommand> [args...]   (see: dispatch --help)",
+    "  bun src/scripts/loop.mts install --repo <path> [--preset <name>]",
+    "  bun src/scripts/loop.mts phase-gate --repo <path> [--phase <N>] [--note <text>]",
+    "  bun src/scripts/loop.mts status --repo <path>",
+    "  bun src/scripts/loop.mts list-presets",
+    "  bun src/scripts/loop.mts doctor --repo <path> [--check|--fix]",
+    "  bun src/scripts/loop.mts dispatch <subcommand> [args...]   (see: dispatch --help)",
     "",
     "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
     "artifact through `crew write-validation-result`."
@@ -430,15 +431,16 @@ async function main() {
   // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
   // --depth, --dry-run, --json, --run-id, --config) are not registered in
   // FLAG_SPEC, and the parser would throw on them. Forward all remaining argv
-  // verbatim to scripts/dispatch.mjs as a child process.
+  // verbatim to dispatch.mts as a child process (run under bun).
   const rawArgv = process.argv.slice(2);
   if (rawArgv[0] === "dispatch") {
     const { spawnSync } = await import("node:child_process");
     const { fileURLToPath } = await import("node:url");
     const thisFile = fileURLToPath(import.meta.url);
-    const dispatchCli = path.join(path.dirname(thisFile), "dispatch.mjs");
-    const result = spawnSync("node", [dispatchCli, ...rawArgv.slice(1)], {
-      stdio: "inherit"
+    const dispatchCli = path.join(path.dirname(thisFile), "dispatch.mts");
+    const result = spawnSync("bun", [dispatchCli, ...rawArgv.slice(1)], {
+      stdio: "inherit",
+      shell: process.platform === "win32"
     });
     process.exitCode = result.status ?? 1;
     return;
@@ -539,8 +541,7 @@ async function runBacklogAdd(
     config
   });
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const { publishFeat } = await import("./lib/github-sync.mjs");
+  const { publishFeat } = await importGithubSync("github-sync.mjs");
   try {
     await (publishFeat as any)(repoPath, result.id);
   } catch (e) {
@@ -816,13 +817,14 @@ const SPEC_HANDLERS = {
       const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
       const out = await decomposeSpec(repoPath, specId, entries, { config });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const { publishFeat } = await import("./lib/github-sync.mjs");
+      const { publishFeat } = await importGithubSync("github-sync.mjs");
       for (const feat of out.created) {
         try {
           await (publishFeat as any)(repoPath, feat.id);
         } catch (e) {
-          console.error(`[github] publish warning (spec decompose ${feat.id}): ${(e as Error).message}`);
+          console.error(
+            `[github] publish warning (spec decompose ${feat.id}): ${(e as Error).message}`
+          );
         }
       }
       return out;
@@ -925,8 +927,7 @@ const SLICE_HANDLERS = {
       config: opts.config
     });
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const { publishSlice } = await import("./lib/github-sync.mjs");
+    const { publishSlice } = await importGithubSync("github-sync.mjs");
     try {
       await (publishSlice as any)(repoPath, out.slice.id, featureId);
     } catch (e) {
@@ -1198,9 +1199,8 @@ async function runLearningsSubcommand(
 async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {
   const [sub] = positionals;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore — github-sync.mjs has no TypeScript source; exists at runtime
   const { publishAll, publishFeat, syncMilestones, setupGithubSync } =
-    await import("./lib/github-sync.mjs");
+    await importGithubSync("github-sync.mjs");
   if (sub === "setup") {
     const result = await (setupGithubSync as any)(repoPath);
     console.log("[github-sync] Setup complete. Run 'github publish' next.");

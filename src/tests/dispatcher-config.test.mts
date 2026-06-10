@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
-const LOOP = path.resolve("scripts/loop.mjs");
+const LOOP = path.resolve("src/scripts/loop.mts");
 
 test("backlog add honors loop.json backlogRoot override", async () => {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "loop-cfg-"));
@@ -20,7 +20,7 @@ test("backlog add honors loop.json backlogRoot override", async () => {
 
     // Try to run backlog add; tolerate github-sync errors (non-fatal for this test)
     try {
-      await run("node", [LOOP, "backlog", "add", "--repo", repo, "--title", "T1"]);
+      await run("bun", [LOOP, "backlog", "add", "--repo", repo, "--title", "T1"]);
     } catch (err: any) {
       // Non-zero exit is ok if it's from github-sync; the file should still exist
       if (!err.stderr?.includes("github") && !err.stderr?.includes("sync")) {

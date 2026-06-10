@@ -3,7 +3,9 @@
 // fix plans with circuit breaker (max N attempts per category).
 
 // Note: github-sync modules are .mjs files (JavaScript), not TypeScript.
-// We use dynamic imports for the gh module to avoid hard TypeScript dependencies.
+// The shared loader resolves their runtime location and imports dynamically,
+// so there is no hard TypeScript dependency on the github-sync surface.
+import { importGithubSync } from "./github-sync-loader.mjs";
 
 /**
  * Assert that a parsed `gh pr view` JSON response has the expected shape.
@@ -74,7 +76,7 @@ export async function fetchPrStatus(
   let resolvedGhExec = ghExec;
   if (!resolvedGhExec) {
     try {
-      const ghModule = await import("./github-sync/gh.mjs");
+      const ghModule = await importGithubSync("github-sync/gh.mjs");
       resolvedGhExec = ghModule.defaultGhExec;
     } catch {
       return { raw: null, haltReason: "gh_unavailable" };

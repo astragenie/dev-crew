@@ -71,8 +71,8 @@ function readPlanFile(planPath: string): DispatchPlan[] {
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  node scripts/dispatch.mjs prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json]
-  node scripts/dispatch.mjs finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N]
+  bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json]
+  bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N]
 
 Subcommands:
   prepare   Run pre-flight gates, spawn worktrees, build Agent batch.

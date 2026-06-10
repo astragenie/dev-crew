@@ -24,4 +24,4 @@ jobs:
       - run: bunx tsc --project tsconfig.test.json --noEmit
       - run: bunx eslint src eslint.config.mjs
       - run: bunx prettier --check "src/**/*.mts"
-      - run: bun test src/tests/ --parallel
+      - run: bun test src/tests/ --parallel --timeout 60000

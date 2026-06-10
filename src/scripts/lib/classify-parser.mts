@@ -9,7 +9,7 @@
 //
 // Note: `stack` and `surface` are no longer FEAT-level fields. Project-level
 // stack identity now lives in `scripts/presets/*.json` (consumed by
-// `node scripts/loop.mjs resolve-skills`). The parser tolerates input lines
+// `bun src/scripts/loop.mts resolve-skills`). The parser tolerates input lines
 // for those fields (architect may still emit them transitionally) but does
 // not surface them on the result — callers must not propagate stack/surface
 // into FEAT or slice frontmatter.
@@ -102,7 +102,7 @@ export function parseClassifyOutput(raw: string): ClassifyResult {
 
     // surface / stack lines are intentionally not parsed — preset-driven
     // skill activation is the sole source of project-level stack identity
-    // (see scripts/presets/*.json + `node scripts/loop.mjs resolve-skills`).
+    // (see scripts/presets/*.json + `bun src/scripts/loop.mts resolve-skills`).
   }
 
   // Filter tags to known vocabularies so free-form prose tokens don't leak in.

@@ -30,45 +30,52 @@ for this repo.
 <!-- clause: hard-dependency -->
 
 This plugin requires the [`crew`](https://github.com/sergeymilashico/hero-crew)
-plugin at the version pinned in `scripts/lib/plugin-identity.mjs::MIN_CREW_VERSION`.
+plugin at the version pinned in `src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`.
 `/loop:install` refuses to run against an older crew.
 
 ## Local commands
 <!-- clause: local-commands -->
 
-- `npm test` — full test suite (`node --test tests/*.test.mjs`).
-- `npm run lint` — ESLint flat config.
-- `npm run format` / `npm run format:check` — Prettier.
-- `node ./scripts/validate-manifests.mjs` — manifest sanity check.
-- `node ./scripts/validate-content-length.mjs` — owned-agent line cap
+Runtime is **Bun** — source `.mts` files run directly, no build/emit step.
+
+- `bun test src/tests/ --parallel --timeout 60000` — full test suite
+  (also `bun run test`).
+- `bun run lint` — ESLint flat config.
+- `bun run format` / `bun run format:check` — Prettier.
+- `bun ./src/scripts/validate-manifests.mts` — manifest sanity check.
+- `bun ./src/scripts/validate-content-length.mts` — owned-agent line cap
   (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
 
 ## CI gates
 <!-- clause: ci-gates -->
 
-GitHub Actions runs on every push and PR:
+GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 
-1. `npm ci`
-2. `node ./scripts/validate-manifests.mjs`
-3. `node ./scripts/validate-content-length.mjs`
-4. `npm run typecheck`
-5. `npm run lint`
-6. `npm run format:check`
-7. `node --test tests/*.test.mjs`
+1. `bun install --frozen-lockfile`
+2. `bun ./src/scripts/validate-manifests.mts`
+3. `bun ./src/scripts/validate-content-length.mts`
+4. `bun ./src/scripts/validate-decline-citations.mts --repo .`
+5. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
+6. `bunx eslint src eslint.config.mjs`
+7. `bunx prettier --check "src/**/*.mts"`
+8. `bun test src/tests/ --parallel --timeout 60000`
 
-Pre-push hook (`scripts/pre-push-validate.mjs`) runs manifest +
-content-length + format-check locally before any `git push`.
+Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
+manifest + content-length + format-check locally before any `git push`.
 
 ## Repo conventions
 <!-- clause: repo-conventions -->
 
-- ESM only (`.mjs`). No CommonJS. Source is `src/scripts/*.mts`; tsc
-  emits `scripts/*.mjs` (CI checks `git diff --exit-code scripts/`).
+- ESM only. No CommonJS. Source is `src/scripts/*.mts`, run directly
+  under Bun — there is **no emitted `scripts/*.mjs` tree** (the Bun
+  migration dropped it). Relative imports keep the `.mjs` specifier
+  extension (e.g. `./lib/foo.mjs`); Bun/tsc resolve it to the `.mts`
+  source. `tsc --noEmit` is typecheck-only.
 - One responsibility per module; split at ~400 lines.
 - Owned `agents/*.md` capped at 300 lines; `skills/**/SKILL.md` capped
   at 200 (enforced by `validate-content-length`). `agents/3rdparty/`
   exempt — vendored, kept as-is to avoid fork-and-trim chores.
-- Tests colocated in `src/tests/*.mts` → built to `tests/*.mjs`.
+- Tests colocated in `src/tests/*.mts`, run directly under Bun.
   Behavior-descriptive file names (no release-version prefixes).
 - Lint output must be clean. Zero warnings. ESLint cyclomatic
   complexity capped at 15 — reduce by extracting helpers, not by

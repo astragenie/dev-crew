@@ -124,8 +124,8 @@ function processUnsafeEntry(
   const plan: DispatchPlan = {
     featureId: entry.id,
     suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
-    fromFeatureCmd: `node scripts/loop.mjs slice from-feature --id ${entry.id}`,
-    startCmd: `node scripts/loop.mjs slice start --id SLICE-<TBD>`,
+    fromFeatureCmd: `bun src/scripts/loop.mts slice from-feature --id ${entry.id}`,
+    startCmd: `bun src/scripts/loop.mts slice start --id SLICE-<TBD>`,
     builderPrompt: buildPromptSummary(entry),
     requiresPlanPreflight: true
   };
@@ -154,8 +154,8 @@ function buildSafePlan(entry: any, autoMode: boolean): DispatchPlan {
   const plan: DispatchPlan = {
     featureId: entry.id,
     suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
-    fromFeatureCmd: `node scripts/loop.mjs slice from-feature --id ${entry.id}`,
-    startCmd: `node scripts/loop.mjs slice start --id SLICE-<TBD>`,
+    fromFeatureCmd: `bun src/scripts/loop.mts slice from-feature --id ${entry.id}`,
+    startCmd: `bun src/scripts/loop.mts slice start --id SLICE-<TBD>`,
     builderPrompt: buildPromptSummary(entry)
   };
 

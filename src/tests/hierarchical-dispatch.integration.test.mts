@@ -191,6 +191,8 @@ test("integration: dirty parent branch refused", async () => {
 });
 
 test("integration: loop dispatch --help routes via spawnSync child", () => {
-  const out = execFileSync("node", ["scripts/loop.mjs", "dispatch", "--help"]).toString();
-  assert.match(out, /node scripts\/dispatch\.mjs prepare/);
+  const out = execFileSync("bun", ["src/scripts/loop.mts", "dispatch", "--help"], {
+    shell: process.platform === "win32"
+  }).toString();
+  assert.match(out, /bun src\/scripts\/dispatch\.mts prepare/);
 });

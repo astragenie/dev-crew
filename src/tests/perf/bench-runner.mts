@@ -32,15 +32,15 @@ async function main() {
 
   const briefResult = await benchCommand(
     "brief",
-    "node",
-    ["scripts/loop.mjs", "brief", "--repo", repoPath],
+    "bun",
+    ["src/scripts/loop.mts", "brief", "--repo", repoPath],
     { warmup: WARMUP, runs: RUNS }
   );
 
   const triageResult = await benchCommand(
     "triage",
-    "node",
-    ["scripts/loop.mjs", "backlog", "list", "--repo", repoPath],
+    "bun",
+    ["src/scripts/loop.mts", "backlog", "list", "--repo", repoPath],
     { warmup: WARMUP, runs: RUNS }
   );
 

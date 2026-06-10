@@ -7,7 +7,7 @@
 //     check across plugin.json / marketplace.json / package.json). This is
 //     the earliest point version drift can be caught. Recurring root cause of
 //     drift: hand-editing one manifest and forgetting the others — always use
-//     `npm run bump-version <v>` to bump all three in lockstep.
+//     `bun run bump-version <v>` to bump all three in lockstep.
 //   - git push → manifest validation + content-length + prettier format:check
 //     (the full pre-push gate, mirrors CI).
 
@@ -33,17 +33,19 @@ try {
 
   // Manifest validation (version lockstep + schema) runs on BOTH commit and
   // push, so version drift is blocked at the commit gate, not just at push.
-  execFileSync("node", [path.join(scriptDir, "validate-manifests.mjs")], {
-    stdio: ["ignore", "pipe", "pipe"]
+  execFileSync("bun", [path.join(scriptDir, "validate-manifests.mts")], {
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: process.platform === "win32"
   });
 
   if (isPush) {
-    execFileSync("node", [path.join(scriptDir, "validate-content-length.mjs")], {
-      stdio: ["ignore", "pipe", "pipe"]
+    execFileSync("bun", [path.join(scriptDir, "validate-content-length.mts")], {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32"
     });
     // Prettier drift was undetected for several pushes; running format:check
     // here mirrors the CI gate so divergence blocks at git push, not in CI.
-    execFileSync("npm", ["run", "format:check"], {
+    execFileSync("bun", ["run", "format:check"], {
       stdio: ["ignore", "pipe", "pipe"],
       shell: process.platform === "win32"
     });

@@ -12,8 +12,8 @@ export interface BenchResult {
  * Benchmark a CLI command using spawnSync.
  *
  * @param label  Human-readable label for this benchmark.
- * @param cmd    Executable to run (e.g. "node").
- * @param args   Arguments array (e.g. ["scripts/loop.mjs", "brief", "--repo", "."]).
+ * @param cmd    Executable to run (e.g. "bun").
+ * @param args   Arguments array (e.g. ["src/scripts/loop.mts", "brief", "--repo", "."]).
  * @param opts   Optional: warmup (default 3) and runs (default 10).
  */
 export async function benchCommand(

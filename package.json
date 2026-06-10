@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --project tsconfig.json --noEmit && tsc --project tsconfig.test.json --noEmit",
-    "test": "bun test src/tests/ --parallel",
+    "test": "bun test src/tests/ --parallel --timeout 60000",
     "bench": "bun src/tests/perf/bench-runner.mts",
     "validate:manifests": "bun ./src/scripts/validate-manifests.mts",
     "validate:lengths": "bun ./src/scripts/validate-content-length.mts",

@@ -2,7 +2,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execFile as execFileCb } from "node:child_process";
+import { execFile as execFileCb, execSync } from "node:child_process";
 import { promisify } from "node:util";
 import { test, afterAll } from "bun:test";
 import assert from "node:assert/strict";
@@ -46,11 +46,13 @@ async function tmpRepo(prefix) {
 
 afterAll(() => {
   try {
-    require("child_process").execSync("git worktree prune 2>/dev/null || true", {
+    execSync("git worktree prune 2>/dev/null || true", {
       timeout: 5000,
       shell: true
     });
-  } catch {}
+  } catch {
+    /* worktree prune is best-effort cleanup; ignore failures */
+  }
 });
 
 test("completeSlice moves slice to completed/ and feature to done/", async () => {
