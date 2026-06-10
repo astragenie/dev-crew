@@ -61,12 +61,40 @@ test("detects config-vs-reality mismatch (configured root empty, default populat
         await fs.rm(repo, { recursive: true, force: true });
     }
 });
-test("--fix is not implemented yet (Task 6)", async () => {
+test("--fix merges stray tree into authoritative root and writes report first", async () => {
     const repo = await makeRepo();
     try {
         await fs.mkdir(path.join(repo, "docs/backlog/pending"), { recursive: true });
         await fs.writeFile(path.join(repo, "docs/backlog/pending/FEAT-009.md"), FEAT("FEAT-009", "pending"));
-        await assert.rejects(runDoctor(repo, { fix: true }), /not implemented/);
+        const { reportPath } = await runDoctor(repo, { fix: true });
+        assert.ok(reportPath, "report path expected");
+        const report = await fs.readFile(reportPath, "utf8");
+        assert.match(report, /stray-tree/);
+        assert.match(report, /docs.backlog/);
+        const moved = await fs.readFile(path.join(repo, ".claude/artifacts/loop/backlog/pending/FEAT-009.md"), "utf8");
+        assert.match(moved, /FEAT-009/);
+        const second = await runDoctor(repo, { fix: false });
+        assert.deepEqual(second.findings, []);
+    }
+    finally {
+        await fs.rm(repo, { recursive: true, force: true });
+    }
+});
+test("--fix keeps newest-transition winner on contradiction, loser preserved in conflicts dir", async () => {
+    const repo = await makeRepo();
+    try {
+        await fs.writeFile(path.join(repo, ".claude/artifacts/loop/backlog/pending/FEAT-001.md"), FEAT("FEAT-001", "pending"));
+        await fs.mkdir(path.join(repo, "docs/backlog/triaged"), { recursive: true });
+        const strayFile = path.join(repo, "docs/backlog/triaged/FEAT-001.md");
+        await fs.writeFile(strayFile, FEAT("FEAT-001", "triaged"));
+        const future = new Date(Date.now() + 60_000);
+        await fs.utimes(strayFile, future, future);
+        await runDoctor(repo, { fix: true });
+        const winner = path.join(repo, ".claude/artifacts/loop/backlog/triaged/FEAT-001.md");
+        assert.ok(await fs.access(winner).then(() => true, () => false), "winner in triaged/");
+        const conflictsDir = path.join(repo, ".claude/artifacts/loop/doctor/conflicts");
+        const conflicts = await fs.readdir(conflictsDir);
+        assert.ok(conflicts.some((f) => f.includes("FEAT-001")), conflicts.join(","));
     }
     finally {
         await fs.rm(repo, { recursive: true, force: true });
