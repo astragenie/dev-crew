@@ -50,7 +50,8 @@ test("no module outside loop.mts imports resolveConfig for direct use", async ()
             "artifact-linkage.mts", // already accepts config param with fallback
             "reviewer-ladder.mts", // already accepts config param with fallback
             "phase-gate.mts", // accepts config in options with fallback for standalone use
-            "loop-installer.mts" // install-time resolution with preset merge — runs before loop.json exists; dispatcher config is not equivalent
+            "loop-installer.mts", // install-time resolution with preset merge — runs before loop.json exists; dispatcher config is not equivalent
+            "doctor.mts" // param-with-fallback: doctor diagnoses config drift itself and must run standalone
         ];
         if (hasImport && hasUsage && !allowlist.includes(f)) {
             offenders.push(f);

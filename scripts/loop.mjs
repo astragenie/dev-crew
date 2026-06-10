@@ -72,7 +72,10 @@ const FLAG_SPEC = {
     "--worktree": { key: "worktree" },
     // SLICE-64: auto-merge flags
     "--no-merge": { key: "noMerge", boolean: true },
-    "--skip-simplify": { key: "skipSimplify", boolean: true }
+    "--skip-simplify": { key: "skipSimplify", boolean: true },
+    // doctor flags
+    "--check": { key: "check", boolean: true },
+    "--fix": { key: "fix", boolean: true }
 };
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -127,7 +130,9 @@ function parseArgs(argv) {
         worktree: null,
         explainHalts: false,
         noMerge: false,
-        skipSimplify: false
+        skipSimplify: false,
+        check: false,
+        fix: false
     };
     const positionals = [];
     for (let index = 0; index < rest.length; index += 1) {
@@ -168,6 +173,7 @@ function usage() {
         "  node scripts/loop.mjs phase-gate --repo <path> [--phase <N>] [--note <text>]",
         "  node scripts/loop.mjs status --repo <path>",
         "  node scripts/loop.mjs list-presets",
+        "  node scripts/loop.mjs doctor --repo <path> [--check|--fix]",
         "  node scripts/loop.mjs dispatch <subcommand> [args...]   (see: dispatch --help)",
         "",
         "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
@@ -288,6 +294,16 @@ const COMMANDS = {
             throw new Error("pr-fix requires --pr <number>");
         const priorAttempts = flags.body ? JSON.parse(flags.body) : {};
         return runPrFix(repoPath, prNumber, { priorAttempts });
+    },
+    doctor: async ({ repoPath, flags, config }) => {
+        const { runDoctor } = await import("./lib/doctor.mjs");
+        const result = await runDoctor(repoPath, { fix: Boolean(flags.fix), config });
+        if (flags.check && result.findings.length > 0) {
+            console.error(JSON.stringify(result, null, 2));
+            process.exitCode = 1;
+            return { _suppressDefaultOutput: true };
+        }
+        return result;
     }
 };
 async function runArchitectSubcommand(repoPath, flags, config) {
