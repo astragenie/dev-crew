@@ -1,11 +1,32 @@
 // Priority ordering for sort tiebreaker (lower index = higher rank).
 const PRIORITY_ORDER = ["P0", "P1", "P2", "P3"];
 
+export type WalkerOrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder";
+
 export interface DispatchPlan {
   featureId: string;
   suggestedSliceTitle: string;
   fromFeatureCmd: string;
   startCmd: string;
+  /**
+   * Prompt for the dispatched agent. When `orchestratorMode === "lead"`, frames
+   * the work as orchestration; otherwise frames as direct implementation.
+   * Populated identically to `builderPrompt` for back-compat with v0.38.x readers.
+   */
+  dispatchPrompt: string;
+  /**
+   * Which subagent the orchestrator should dispatch:
+   *   - "lead" (default) → dispatch crew:lead with the dispatchPrompt
+   *   - "orchestrate-slice" → invoke /crew:orchestrate-slice (no subagent dispatch)
+   *   - "direct-builder" → dispatch crew:builder with the dispatchPrompt
+   * Mirrors `loop.orchestratorMode` from `.claude/loop.json`. Defaults to "lead".
+   */
+  orchestratorMode: WalkerOrchestratorMode;
+  /**
+   * @deprecated since v0.39 — use `dispatchPrompt` + `orchestratorMode` instead.
+   * Retained so existing v0.38.x readers continue to work. Carries the same
+   * value as `dispatchPrompt` regardless of mode.
+   */
   builderPrompt: string;
   /** SLICE-B: set when autonomous_safe=false. Signals orchestrator to require plan preflight. */
   requiresPlanPreflight?: boolean;
@@ -16,6 +37,14 @@ export interface DispatchPlan {
   };
   /** SLICE-B/C: include in plan objects when autoMode=true to suppress approval gates. */
   autoMode?: boolean;
+}
+
+export function resolveWalkerOrchestratorMode(config: any): WalkerOrchestratorMode {
+  const explicit = config?.loop?.orchestratorMode;
+  if (explicit === "lead" || explicit === "orchestrate-slice" || explicit === "direct-builder") {
+    return explicit;
+  }
+  return "lead";
 }
 
 /**
@@ -114,19 +143,23 @@ export function evaluateRiskGate(entry: any): {
  */
 function processUnsafeEntry(
   entry: any,
-  autoMode: boolean
+  autoMode: boolean,
+  orchestratorMode: WalkerOrchestratorMode
 ): { shouldSkip: boolean; plan?: DispatchPlan; skipReason?: string } {
   const riskResult = evaluateRiskGate(entry);
   if (riskResult.skip) {
     return { shouldSkip: true, skipReason: riskResult.skipReason || "risk gate blocked" };
   }
 
+  const prompt = buildPromptSummary(entry, orchestratorMode);
   const plan: DispatchPlan = {
     featureId: entry.id,
     suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
     fromFeatureCmd: `bun src/scripts/loop.mts slice from-feature --id ${entry.id}`,
     startCmd: `bun src/scripts/loop.mts slice start --id SLICE-<TBD>`,
-    builderPrompt: buildPromptSummary(entry),
+    dispatchPrompt: prompt,
+    orchestratorMode,
+    builderPrompt: prompt,
     requiresPlanPreflight: true
   };
 
@@ -150,13 +183,20 @@ function processUnsafeEntry(
  * @param entry    The backlog entry.
  * @param autoMode If true, marks plan with autoMode flag.
  */
-function buildSafePlan(entry: any, autoMode: boolean): DispatchPlan {
+function buildSafePlan(
+  entry: any,
+  autoMode: boolean,
+  orchestratorMode: WalkerOrchestratorMode
+): DispatchPlan {
+  const prompt = buildPromptSummary(entry, orchestratorMode);
   const plan: DispatchPlan = {
     featureId: entry.id,
     suggestedSliceTitle: `Implement ${entry.id}: ${extractTitle(entry)}`,
     fromFeatureCmd: `bun src/scripts/loop.mts slice from-feature --id ${entry.id}`,
     startCmd: `bun src/scripts/loop.mts slice start --id SLICE-<TBD>`,
-    builderPrompt: buildPromptSummary(entry)
+    dispatchPrompt: prompt,
+    orchestratorMode,
+    builderPrompt: prompt
   };
 
   if (autoMode) {
@@ -175,7 +215,8 @@ export function evaluateCandidate(
   entry: any,
   autoMode: boolean,
   doneSet: Set<string>,
-  allKnownIds: Set<string>
+  allKnownIds: Set<string>,
+  orchestratorMode: WalkerOrchestratorMode = "lead"
 ): { skipReason: string } | { plan: DispatchPlan } {
   // Shared pre-branch filter (applies to ALL entries, AC-17: deferred first).
   if (entry.frontmatter.deferred === true) {
@@ -195,7 +236,7 @@ export function evaluateCandidate(
   }
 
   if (autonSafe === false) {
-    const result = processUnsafeEntry(entry, autoMode);
+    const result = processUnsafeEntry(entry, autoMode, orchestratorMode);
     if (result.shouldSkip) {
       return { skipReason: result.skipReason || "risk gate blocked" };
     }
@@ -203,7 +244,7 @@ export function evaluateCandidate(
   }
 
   // autonomous_safe === true: build standard plan.
-  return { plan: buildSafePlan(entry, autoMode) };
+  return { plan: buildSafePlan(entry, autoMode, orchestratorMode) };
 }
 
 // ---------------------------------------------------------------------------
@@ -223,12 +264,24 @@ function extractTitle(entry: {
   return entry.id;
 }
 
-function buildPromptSummary(entry: {
-  id: string;
-  frontmatter: Record<string, any>;
-  body: string;
-}): string {
+function buildPromptSummary(
+  entry: {
+    id: string;
+    frontmatter: Record<string, any>;
+    body: string;
+  },
+  orchestratorMode: WalkerOrchestratorMode = "lead"
+): string {
   const title = extractTitle(entry);
   const category = entry.frontmatter.category ? ` (${entry.frontmatter.category})` : "";
+  if (orchestratorMode === "lead") {
+    return (
+      `Orchestrate ${entry.id}: ${title}${category} — dispatch architect (if contracts/topology need design), builder, reviewer ladder, and validator. ` +
+      `See feature file + slice file for acceptance criteria; close via /loop:slice complete and /loop:slice grade.`
+    );
+  }
+  if (orchestratorMode === "orchestrate-slice") {
+    return `Run /crew:orchestrate-slice for ${entry.id}: ${title}${category} — see feature file for full acceptance criteria.`;
+  }
   return `Implement ${entry.id}: ${title}${category} — see feature file for full acceptance criteria.`;
 }

@@ -2,7 +2,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
 import { checkStopConditions } from "./stop-conditions.mjs";
-import { compareWalkerOrder, evaluateCandidate } from "./walker-gates.mjs";
+import {
+  compareWalkerOrder,
+  evaluateCandidate,
+  resolveWalkerOrchestratorMode
+} from "./walker-gates.mjs";
 import { checkSessionDrift } from "./session-drift.mjs";
 import { appendAuditLog } from "./auto-dispatch.mjs";
 
@@ -125,7 +129,13 @@ async function walkCandidates(
       break;
     }
 
-    const evalResult = evaluateCandidate(entry, autoMode, doneSet, allKnownIds);
+    const evalResult = evaluateCandidate(
+      entry,
+      autoMode,
+      doneSet,
+      allKnownIds,
+      resolveWalkerOrchestratorMode(config)
+    );
     if ("skipReason" in evalResult) {
       skipped.push({ id: entry.id, reason: evalResult.skipReason });
       continue;
