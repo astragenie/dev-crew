@@ -15,20 +15,21 @@ Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
 ## Install
 
 ```
-/plugin marketplace add https://github.com/sergeymilashico/hero-crew
+/plugin marketplace add sergeymilashico/astra-marketplace
 /plugin install crew@astra
-
-/plugin marketplace add https://github.com/sergeymilashico/loop
-/plugin install loop@loop
+/plugin install loop@astra
 ```
 
 `crew` must be installed first. Minimum compatible release: `v0.3.3`. See
 [ADOPTION.md](ADOPTION.md) for new-repo onboarding.
 
-> **Note (v0.8.7+):** Loop now ships from its own marketplace, decoupled
-> from `hero-crew`. Releases no longer require a paired hero-crew commit —
-> a tag in `sergeymilashico/loop` propagates directly via `/plugin update`.
-> Earlier versions installed via `loop@astra`; that path is removed.
+> **Marketplace history:**
+> - Pre-v0.8.7: shipped via the `hero-crew` repo (paired releases).
+> - v0.8.7–v0.41.x: shipped from its own `loop` marketplace, decoupled.
+> - v0.41.0+: shipped from the central `sergeymilashico/astra-marketplace`
+>   alongside `crew` and `cortex`. Plugin code stays in
+>   [`sergeymilashico/loop`](https://github.com/sergeymilashico/loop); the
+>   marketplace registry is its own repo.
 
 ## What it does
 
