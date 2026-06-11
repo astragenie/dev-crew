@@ -1,14 +1,14 @@
 ---
 id: FEAT-167
 title: Story-point sizing on FEATs with expected-cost regression formula
-status: triaged
+status: in-progress
 priority: P1
 category: workflow/observability
 target_release: null
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-06-11
 depends_on: [FEAT-166]
-slices: []
+slices: [SLICE-97]
 derived_from: null
 source_competitors: []
 autonomous_safe: false
@@ -25,6 +25,7 @@ triage_notes: "Strategic sizing feature unblocking FEAT-168. Risk band 0.3-0.5 l
 github_issue: 190
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/190"
+started_at: 2026-06-11
 ---
 # FEAT-167: Story-point sizing on FEATs with expected-cost regression formula
 

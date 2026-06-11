@@ -1,7 +1,7 @@
 ---
 id: FEAT-166
 title: Per-repo cost attribution in regression check
-status: in-progress
+status: done
 priority: P1
 category: bug/observability
 target_release: null
