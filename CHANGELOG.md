@@ -3,6 +3,47 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.41.0 — 2026-06-11 — FEAT-167 follow-up + FEAT-168 decomposition refuse-gate
+
+### Added
+- **FEAT-167 AC-3** — `cost-regression` observability log. Every
+  `checkCostRegression` evaluation emits a structured JSON line to
+  stderr: `{ event: "cost-regression-check", timestamp, mode,
+  actual_usd, expected_usd, median_usd_per_point, effort_points,
+  threshold_usd, triggered, multiplier, window, sample_count }`. Stays
+  in `"median"` mode (expected_usd / median_usd_per_point /
+  effort_points = null) until AC-4 lands the dual-mode switch. Silence
+  via `LOOP_DISABLE_COST_REGRESSION_LOG=1` (used by
+  `cost-regression.test.mts`).
+- **FEAT-167 AC-7** — `bun src/scripts/validate-effort-points.mts`
+  scans every FEAT in `pending/triaged/in-progress/done` and enforces
+  `effort_points ∈ [1, 2, 3, 5, 8, 13]`, `expected_usd` non-negative
+  finite, and `expected_usd ≈ effort_points × median_usd_per_point`
+  within ±0.01 when both fields plus the median are provided. Optional
+  field — FEATs without `effort_points` pass, so the gate is safe to
+  add to CI before backfill completes.
+- **FEAT-168 AC-2** — decomposition refuse-gate. `sliceFromFeature`
+  now throws `DecompositionRequiredError` BEFORE moving any backlog
+  state when a FEAT has `effort_points >= 8` and no `proposed_slices`
+  field. Verbatim message: `<FEAT-NNN> is sized N points — emit
+  proposed_slices first via /loop:pm-review <FEAT-NNN>`. The strict
+  `parseProposedSlices` validator (AC-1 / AC-7) ships under
+  `src/scripts/lib/proposed-slices.mts` for future callers but is NOT
+  wired through `sliceFromFeature` yet — the in-tree frontmatter
+  parser/writer can't round-trip nested mappings inside arrays, so
+  full proposed_slices integration waits on a parser extension slice.
+
+### Deferred to follow-up slices
+- FEAT-167 AC-2 (interactive backfill script for done/ FEATs).
+- FEAT-167 AC-4 (dual-mode regression formula with auto-flip at
+  sampleCount >= 3).
+- FEAT-167 AC-5 / AC-6 (sizing-aware integration tests through
+  `checkStopConditions`).
+- FEAT-168 AC-1 / AC-5 / AC-7 through full slice flow (waits on
+  frontmatter parser support for nested mappings in arrays).
+- FEAT-168 AC-3 (audit-trail entry on refuse event), AC-4 (idempotent
+  multi-slice re-run), AC-6 (PM agent emission of `proposed_slices`).
+
 ## v0.40.0 — 2026-06-11 — per-project cost attribution + marathon checkpoint + effort sizing seed
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "loop",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "description": "Wiggin-Loop methodology layer for Claude Code: HARD RULE blocks, slice scaffold, phase-gate runner. Stack-agnostic; per-repo config selects what test commands run at phase boundaries. Depends on the `crew` plugin for artifact writers.",
   "author": {
     "name": "astra"
