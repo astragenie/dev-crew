@@ -683,9 +683,9 @@ async function runBacklogSubcommand(
     };
   }
   if (sub === "triage") {
-    const { triagePending } = await import("./lib/backlog-triage.mjs");
-    const results = await triagePending(repoPath);
-    return { triaged: results.length, results };
+    throw new Error(
+      "`backlog triage` (regex fallback) was removed on 2026-06-11. Triage is PM-only — invoke `/loop:triage` (skill) instead. On PM error, halt and surface to the operator."
+    );
   }
   if (sub === "list-pending-ids") {
     return runBacklogListPendingIds(repoPath);

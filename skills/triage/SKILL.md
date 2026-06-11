@@ -1,11 +1,11 @@
 ---
 name: loop:triage
-description: Triage every pending backlog FEAT — PM-first (5-dimension LLM scoring), regex fallback on PM error/budget exceed/validation fail. Dispatched by Cross-Slice Continuation when pending/ is non-empty. Hidden internal command `backlog triage` still runs the regex baseline.
+description: Triage every pending backlog FEAT via the PM agent (5-dimension LLM scoring). PM-only — on agent error, validation failure, or budget exceedance, halt and surface to the operator. The regex fallback path was removed 2026-06-11.
 ---
 
 # Triage
 
-PM-first triage with regex fallback. Single public command for the loop.
+PM-only triage. Single public command for the loop.
 
 ## Inputs
 
@@ -13,7 +13,6 @@ PM-first triage with regex fallback. Single public command for the loop.
 - Per-batch cost budget from `.claude/loop.json`:
   - `loop.triageBudgetUsdPerBatch` (default 5.0)
   - `loop.triageBudgetTokensPerBatch` (default 500000)
-  - `loop.triageFallbackOnBudgetExceeded` (default true)
 
 ## Steps
 
@@ -55,9 +54,9 @@ PM-first triage with regex fallback. Single public command for the loop.
    - `result.id` MUST be in the input id list. Reject otherwise.
    - All 5 dimension scores MUST be numeric in `[0, 1]`. Reject otherwise.
    - Required fields present (`scores`, `compositePriority`, `autonomousSafe`, `reasoning`).
-   - **Decline contract**: if `compositePriority` is `P4`, the result MUST include `declined_per: [<clause-id>, ...]` citing at least one clause ID from `CLAUDE.md`. Missing `declined_per` = validation fail → trigger fallback. See `agents/pm.md` § "Decline contract" for the full clause registry.
+   - **Decline contract**: if `compositePriority` is `P4`, the result MUST include `declined_per: [<clause-id>, ...]` citing at least one clause ID from `CLAUDE.md`. Missing `declined_per` = validation fail → halt (step 8). See `agents/pm.md` § "Decline contract" for the full clause registry.
 
-6. **Check budget delta.** After PM completes, sample cost again. If `(currentUsd - baselineUsd) > triageBudgetUsdPerBatch` OR `tokens > triageBudgetTokensPerBatch`, mark `BudgetExceeded` and go to fallback (step 8).
+6. **Check budget delta.** After PM completes, sample cost again. If `(currentUsd - baselineUsd) > triageBudgetUsdPerBatch` OR `tokens > triageBudgetTokensPerBatch`, mark `BudgetExceeded` and halt (step 8).
 
 7. **Write PM scores** via the existing CLI:
    ```bash
@@ -76,27 +75,45 @@ PM-first triage with regex fallback. Single public command for the loop.
    Write a PM review artifact per FEAT to `.claude/artifacts/loop/pm-reviews/`.
    Return `{ triaged: N, path: "pm", results: [...] }`.
 
-8. **Fallback (PM error | BudgetExceeded | ValidationFail):**
-   ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog triage --repo "$PWD"
-   ```
-   This invokes the regex `triagePending()` deterministically. It writes the same `pm_*` frontmatter keys with 0.5 defaults and moves entries pending → triaged.
+8. **Halt on PM error | BudgetExceeded | ValidationFail.** No fallback. Surface to operator with a structured message:
 
-9. **Log fallback to audit JSONL** at `.claude/artifacts/loop/auto-dispatch.jsonl`:
    ```json
-   { "event": "triage_fallback", "reason": "<pm_error|budget_exceeded|validation_fail>", "cost_usd": 0.0, "ids": ["FEAT-NNN", ...] }
+   {
+     "triaged": <count-written-before-halt>,
+     "path": "pm",
+     "halted": true,
+     "halt_reason": "<pm_error|budget_exceeded|validation_fail>",
+     "halt_detail": "<stderr | dimension that failed validation | usd delta>",
+     "results": [...written so far...]
+   }
    ```
 
-10. **Tag `triage_notes`** on every entry — `via=pm` or `via=regex_fallback (reason=...)`.
+   Operator decides next step: re-run with adjusted budget, switch PM
+   model, hand-score the failing FEAT via `/loop:backlog pm-write`, or
+   skip the failing id and re-trigger with the remainder.
+
+9. **Tag `triage_notes`** on every entry — `via=pm` (the only path now).
 
 ## Return contract
 
 ```json
 {
   "triaged": <count>,
-  "path": "pm" | "regex_fallback" | "noop",
-  "fallback_reason": "<reason or null>",
+  "path": "pm",
   "results": [{ "id": "FEAT-NNN", "priority": "P1", "autonomous_safe": true }]
+}
+```
+
+On halt:
+
+```json
+{
+  "triaged": <count-written-before-halt>,
+  "path": "pm",
+  "halted": true,
+  "halt_reason": "<pm_error|budget_exceeded|validation_fail>",
+  "halt_detail": "<...>",
+  "results": [...written so far...]
 }
 ```
 
@@ -105,6 +122,12 @@ PM-first triage with regex fallback. Single public command for the loop.
 - **Automatically:** Cross-Slice Continuation HARD RULE dispatches when `pending/` is non-empty.
 - **Manually:** `/loop:triage`.
 
-## Pattern alert
+## Why no fallback
 
-If the fallback rate exceeds 50% over a rolling window of 10 runs, raise a warn-severity pattern alert. Sustained PM degradation is a real signal, not background noise.
+The regex-fallback path (formerly `bun src/scripts/loop.mts backlog triage`) was removed on 2026-06-11. Reasons:
+
+- **Quality drift**: regex scores defaulted every PM dimension to 0.5 — meaningless signal. The loop kept walking with bogus priorities, masking the upstream PM failure instead of forcing a fix.
+- **Operator surprise**: silent fallback meant slice budgets and priority routing came from a heuristic the operator never asked for.
+- **Maintenance burden**: two scoring paths to keep in sync; hint regexes (`BUG_HINTS`, `URGENT_HINTS`, etc.) drifted from real backlog vocabulary.
+
+PM failure is a real signal — halt and let the operator see it.

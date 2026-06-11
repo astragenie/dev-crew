@@ -26,8 +26,11 @@ Three ways:
 
 ## State transitions (plugin commands)
 
-- `/loop:backlog triage` — moves all `pending/*` → `triaged/`,
-  filling in priority / category / target_release via heuristic.
+- `/loop:triage` — dispatches the PM agent to score all `pending/*` on
+  5 dimensions (customer_impact, effort_estimate, strategic_alignment,
+  technical_risk, dependency_depth), then moves entries to `triaged/`.
+  PM-only since 2026-06-11 (regex fallback removed); on PM error / budget
+  exceed / validation fail, the skill halts and surfaces to the operator.
 - `/loop:backlog promote --id FEAT-NNN` — moves a triaged feature →
   `in-progress/` and creates a linked slice in `docs/ai-loop/slices/pending/`.
 - When the slice closes, plugin moves the feature → `done/`.

@@ -121,7 +121,7 @@ function detectBacklogFlowAlerts(backlog: Record<string, any>[]) {
       severity: "info",
       category: "backlog-flow",
       message: `${pending.length} features pending triage`,
-      suggested_action: `Run /loop:backlog triage to assign priority + category.`
+      suggested_action: `Run /loop:triage to dispatch the PM agent for 5-dimension scoring.`
     }
   ];
 }
