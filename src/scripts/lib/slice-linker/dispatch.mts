@@ -142,7 +142,7 @@ function buildLeadOrchestratorInstruction(
   return [
     `Dispatch crew:lead subagent with this prompt:`,
     "",
-    `> Orchestrate ${title}.${sliceRef} You own the slice ceremony end-to-end: dispatch architect (if contracts/topology need design), builder, reviewer ladder (per .claude/loop.json), and validator (if requires_validation). Synthesize specialist results into a final-synthesis artifact. Close by running /loop:slice complete --id ${sliceId} and /loop:slice grade --id ${sliceId}. Escalate to the parent loop only on irreversible destructive actions or when confidence falls below 0.4. If a needed cross-cutting change is out of scope, stop and surface it.`
+    `> Orchestrate ${title}.${sliceRef} You own the slice ceremony end-to-end: dispatch architect (if contracts/topology need design), then builder. After builder PASS, invoke \`bun src/scripts/loop.mts slice post-builder-fanout --id ${sliceId}\` and dispatch the 3 returned tasks (reviewer-A, reviewer-B, validator) in parallel — one message with 3 Agent tool calls. See \`commands/slice-post-builder-fanout.md\` for the contract. Synthesize specialist results into a final-synthesis artifact. Close by running /loop:slice complete --id ${sliceId} and /loop:slice grade --id ${sliceId}. Escalate to the parent loop only on irreversible destructive actions or when confidence falls below 0.4. If a needed cross-cutting change is out of scope, stop and surface it.`
   ].join("\n");
 }
 

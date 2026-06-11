@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { detectSerialReviewer } from "./reviewer-timing.mjs";
+import { readFanoutMarker } from "./fanout-marker.mjs";
 
 // Telemetry helpers for grade frontmatter timing.* fields (FEAT-184 / SLICE-92).
 //
@@ -92,12 +93,25 @@ export async function computeReviewerSpan(
 }
 
 // --------------------------------------------------------------------------
+// Post-builder fanout marker presence.
+// --------------------------------------------------------------------------
+
+export async function readPostBuilderFanout(
+  repoPath: string,
+  sliceId: string
+): Promise<true | null> {
+  const marker = await readFanoutMarker(repoPath, sliceId);
+  return marker !== null ? true : null;
+}
+
+// --------------------------------------------------------------------------
 // Telemetry aggregate.
 // --------------------------------------------------------------------------
 
 export type GradeTelemetry = {
   wall_clock_seconds: number | null;
   phase_gate_parallel: boolean | null;
+  post_builder_fanout: true | null;
   reviewer_span_ms: number | null;
   serial_reviewer_warning: boolean | null;
 };
@@ -107,14 +121,16 @@ export async function computeTelemetry(
   sliceId: string,
   config: Record<string, any> | null
 ): Promise<GradeTelemetry> {
-  const [wallClock, phaseGateParallel, reviewerSpan] = await Promise.all([
+  const [wallClock, phaseGateParallel, postBuilderFanout, reviewerSpan] = await Promise.all([
     computeWallClockSeconds(repoPath, sliceId),
     readPhaseGateParallel(repoPath, sliceId, config),
+    readPostBuilderFanout(repoPath, sliceId),
     computeReviewerSpan(repoPath, sliceId, config)
   ]);
   return {
     wall_clock_seconds: wallClock,
     phase_gate_parallel: phaseGateParallel,
+    post_builder_fanout: postBuilderFanout,
     reviewer_span_ms: reviewerSpan.spanMs > 0 ? reviewerSpan.spanMs : null,
     serial_reviewer_warning: reviewerSpan.spanMs > 0 ? reviewerSpan.serial : null
   };

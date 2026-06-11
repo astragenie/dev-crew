@@ -97,7 +97,15 @@ Skipping it leaves a hole in the self-improvement signal.
 
 ## Aggregation (post-builder fanout)
 
-When `slice.postBuilderFanout: true` (default), the ceremony dispatches reviewers A+B and the validator in parallel after builder PASS. Slice rules:
+The `dispatchInstruction` emitted by `slice start` (mode `lead`) now directs the orchestrator to invoke the fanout CLI after builder PASS:
+
+```bash
+bun src/scripts/loop.mts slice post-builder-fanout --id <slice-id>
+```
+
+This writes a marker file at `.claude/artifacts/loop/fanout-markers/<slice-id>.json` (used by grade telemetry) and emits a 3-task parallel payload. The orchestrator dispatches all three in one message (reviewer-A, reviewer-B, validator). See `commands/slice-post-builder-fanout.md` for the full contract.
+
+Aggregation rules:
 
 - Wait for all three artifacts to land.
 - Any reviewer FAIL halts the slice. Validator result preserved (informational).
@@ -105,3 +113,5 @@ When `slice.postBuilderFanout: true` (default), the ceremony dispatches reviewer
 - All PASS continues to grade.
 
 The validator prompt does not reference reviewer artifact paths — verdict is based on phase-gate evidence only.
+
+The presence of the marker file is recorded in grade telemetry as `timing.post_builder_fanout: true` when the slice is graded.

@@ -1093,7 +1093,10 @@ const SLICE_HANDLERS = {
   ) => {
     requireId(sliceId, "slice post-builder-fanout requires --id SLICE-NN.");
     const { buildPostBuilderFanout } = await import("./lib/post-builder-fanout.mjs");
-    return buildPostBuilderFanout(repoPath, sliceId, { config: opts.config ?? null });
+    const result = await buildPostBuilderFanout(repoPath, sliceId, { config: opts.config ?? null });
+    const { writeFanoutMarker } = await import("./lib/fanout-marker.mjs");
+    await writeFanoutMarker(repoPath, sliceId, result.tasks.length); // best-effort
+    return result;
   },
   plan: async (
     repoPath: string,
