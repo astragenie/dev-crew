@@ -229,6 +229,11 @@ export async function findGradeForSlice(
 // Returns a deterministic (legacy-format) path for the given slice. Used as a
 // fallback for callers that need a predictable write target when no existing
 // file is found. Prefer findGradeFileForSlice when reading.
+//
+// TODO(2026-09-11): all new grades use the timestamped filename pattern
+// (compactTs-feat<N>-slice<N>-grade.md) since FEAT-186 / SLICE-94. Once no
+// pre-v0.40 grades remain in active grade-trend windows, remove this helper
+// and its 5 consumers. Audit: `grep -rn "gradeFilePath" src/`.
 export function gradeFilePath(
   repoPath: string,
   sliceId: string,

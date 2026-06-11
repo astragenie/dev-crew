@@ -29,7 +29,10 @@ export async function writeTaskStoreConfig(
 
   cfg.taskStore = { provider };
 
-  // Back-compat: keep github.enabled for callers that still check it
+  // Back-compat: keep github.enabled for callers that still check it.
+  // TODO(2026-09-11): remove after one release cycle of taskStore.provider
+  // as sole source. Audit callers via `grep -rn "github.enabled" src/` before
+  // dropping — task-store.provider should be the only read path then.
   if (provider === "github" && !cfg.github) {
     cfg.github = { enabled: true, repo: null };
   }

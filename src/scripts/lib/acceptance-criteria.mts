@@ -1,15 +1,12 @@
 // Acceptance-criteria detection helper.
 //
-// Previously this module also hosted a deterministic regex-based triage
-// scorer (`triagePending`, `triageEntry`, category/priority inference
-// helpers) used as a fallback when the PM agent failed or exceeded its
-// budget. The regex path was deleted on 2026-06-11 — triage is PM-only
-// going forward. PM failure halts the loop; the operator decides whether
-// to re-run with adjusted budget, switch to a different model, or hand-
-// score the failing FEAT via `/loop:backlog pm-write`.
+// Used by slice-start.mts to count AC bullets in slice bodies.
 //
-// What remains: `detectAcceptanceCriteria`, used by slice-start.mts to
-// count AC bullets in slice bodies (unrelated to PM scoring).
+// History: this file used to be `backlog-triage.mts` and hosted a
+// regex-based triage scorer (`triagePending`, `triageEntry`,
+// category/priority inference) used as a PM-failure fallback. The regex
+// path was deleted on 2026-06-11; triage is PM-only. The file was
+// renamed on the same day after only the AC counter remained.
 
 const AC_HEADING_RE = /^##\s+acceptance\s+criteria/i;
 const INLINE_AC_PREFIX_RE = /acceptance\s+criteria\s*:/i;

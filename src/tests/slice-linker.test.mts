@@ -170,7 +170,7 @@ test("buildDispatchInstruction with featureExcerpt embeds feature section", () =
   assert.match(result, /Allow users to register/);
 });
 
-test("buildDispatchInstruction without optional fields is backward compatible", () => {
+test("buildDispatchInstruction without optional fields emits default lead orchestrator", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-03",
     title: "SLICE-03: Refactor",
@@ -178,17 +178,18 @@ test("buildDispatchInstruction without optional fields is backward compatible", 
     repoPath: "/repo",
     resolvedGoal: null
   });
-  assert.match(result, /Dispatch crew:builder subagent/);
+  assert.match(result, /Dispatch crew:lead subagent/);
   assert.doesNotMatch(result, /Slice context/);
 });
 
-test("buildDispatchInstruction with dispatchLimits injects budget block", () => {
+test("buildDispatchInstruction with dispatchLimits injects budget block in direct-builder mode", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-04",
     title: "SLICE-04: Add feature",
     sliceFile: "/repo/slices/SLICE_04.md",
     repoPath: "/repo",
     resolvedGoal: "Implement feature",
+    orchestratorMode: "direct-builder",
     dispatchLimits: {
       maxSubagentsPerSlice: 4,
       preferInlineFor: ["single-file-edit", "test-fix"]
@@ -303,28 +304,15 @@ test("buildDispatchInstruction with orchestratorMode='direct-builder' emits 'Dis
   assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
 });
 
-test("buildDispatchInstruction back-compat: useOrchestrateSlice=true (no orchestratorMode) still emits orchestrate-slice", () => {
+test("buildDispatchInstruction defaults to lead orchestrator mode when none specified", () => {
   const result = buildDispatchInstruction({
-    sliceId: "SLICE-BC1",
-    title: "SLICE-BC1: Back-compat boolean true",
-    sliceFile: "/repo/slices/SLICE_BC1.md",
+    sliceId: "SLICE-DEF1",
+    title: "SLICE-DEF1: Default lead",
+    sliceFile: "/repo/slices/SLICE_DEF1.md",
     repoPath: "/repo",
-    resolvedGoal: "Boolean back-compat",
-    useOrchestrateSlice: true
+    resolvedGoal: "Default mode"
   });
-  assert.match(result, /\/crew:orchestrate-slice --id SLICE-BC1/);
-});
-
-test("buildDispatchInstruction back-compat: useOrchestrateSlice=false (no orchestratorMode) still emits direct-builder", () => {
-  const result = buildDispatchInstruction({
-    sliceId: "SLICE-BC2",
-    title: "SLICE-BC2: Back-compat boolean false",
-    sliceFile: "/repo/slices/SLICE_BC2.md",
-    repoPath: "/repo",
-    resolvedGoal: "Boolean back-compat",
-    useOrchestrateSlice: false
-  });
-  assert.match(result, /Dispatch crew:builder subagent/);
+  assert.match(result, /Dispatch crew:lead subagent/);
 });
 
 test("readFeatureExcerpt returns {path, excerpt} object when feature found", async () => {

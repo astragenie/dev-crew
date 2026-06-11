@@ -683,6 +683,10 @@ async function runBacklogSubcommand(
     };
   }
   if (sub === "triage") {
+    // TODO(2026-09-11): remove this stub. Kept one release cycle so
+    // operators upgrading from <= v0.40 get a directive instead of a
+    // bare "unknown subcommand" error. Triage is PM-only since
+    // commit 505a8a5 (2026-06-11).
     throw new Error(
       "`backlog triage` (regex fallback) was removed on 2026-06-11. Triage is PM-only — invoke `/loop:triage` (skill) instead. On PM error, halt and surface to the operator."
     );

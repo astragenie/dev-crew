@@ -12,9 +12,8 @@ import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
 import { runPlanPreflight } from "../slice-plan.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
-import { detectAcceptanceCriteria } from "../backlog-triage.mjs";
+import { detectAcceptanceCriteria } from "../acceptance-criteria.mjs";
 import { computeConfidence } from "../confidence-signal.mjs";
-import { checkOrchestrateSliceSupport } from "../plugin-identity.mjs";
 import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
 import { ensureSliceWorktree } from "../worktree-manager.mjs";
 import type { WorktreeResult } from "../worktree-manager.mjs";
@@ -79,23 +78,12 @@ function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>):
 // Pick the orchestrator mode emitted in dispatchInstruction. Precedence:
 //   1. config.loop.orchestratorMode (explicit)
 //   2. "lead" by default — crew:lead orchestrates the slice ceremony.
-// The legacy `useOrchestrateSlice` boolean is retained as fallback for callers
-// that pre-date the config option: if no explicit mode is set and the boolean
-// is true, emit the /crew:orchestrate-slice path; otherwise legacy direct-builder.
-function resolveOrchestratorModeConfig(
-  config: Record<string, any>,
-  useOrchestrateSlice: boolean
-): OrchestratorMode {
+function resolveOrchestratorModeConfig(config: Record<string, any>): OrchestratorMode {
   const explicit = config?.loop?.orchestratorMode;
   if (explicit === "lead" || explicit === "orchestrate-slice" || explicit === "direct-builder") {
     return explicit;
   }
-  if (explicit !== undefined && explicit !== null) {
-    return "lead";
-  }
-  // No explicit setting → default to lead orchestration. Operators on older crew
-  // can pin "orchestrate-slice" or "direct-builder" in .claude/loop.json.
-  return useOrchestrateSlice ? "lead" : "lead";
+  return "lead";
 }
 
 // Resolve all feature-level signals + confidence verdict in one call.
@@ -329,12 +317,15 @@ export async function startSlice(
   {
     config = null,
     goal = null,
-    dispatch = true,
-    _crewVersionOverride = undefined as string | null | undefined
+    dispatch = true
   }: {
     config?: Record<string, any> | null;
     goal?: string | null;
     dispatch?: boolean;
+    // _crewVersionOverride was historically used to pin the crew version
+    // for testing checkOrchestrateSliceSupport (legacy useOrchestrateSlice
+    // fallback). The fallback was removed 2026-06-11; the option is kept
+    // in the type signature so existing tests compile, but it's a no-op.
     _crewVersionOverride?: string | null;
   } = {}
 ) {
@@ -387,10 +378,7 @@ export async function startSlice(
     dispatch as boolean
   );
 
-  const useOrchestrateSlice = await checkOrchestrateSliceSupport(
-    _crewVersionOverride as string | null | undefined
-  );
-  const orchestratorMode = resolveOrchestratorModeConfig(resolved, useOrchestrateSlice);
+  const orchestratorMode = resolveOrchestratorModeConfig(resolved);
 
   // SLICE-94 / FEAT-186: classify slice shape + write marker + build inline-path hint.
   const inlinePathHint = await applyShapeClassification(
@@ -423,7 +411,6 @@ export async function startSlice(
     requiresApprovalGate,
     confidence,
     confidenceReason,
-    useOrchestrateSlice,
     orchestratorMode,
     worktreeInfo,
     inlinePathHint
@@ -564,7 +551,6 @@ function resolveDispatchInstruction(
   featureExcerpt: string | null,
   featurePath: string | null,
   dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
-  useOrchestrateSlice = false,
   worktreePath: string | null = null,
   orchestratorMode: OrchestratorMode = "lead",
   inlinePathHint: string | null = null
@@ -581,7 +567,6 @@ function resolveDispatchInstruction(
     featureExcerpt,
     featurePath,
     dispatchLimits,
-    useOrchestrateSlice,
     orchestratorMode,
     worktreePath
   });
@@ -627,7 +612,6 @@ function buildStartSliceReturn({
   requiresApprovalGate = false,
   confidence = null,
   confidenceReason = null,
-  useOrchestrateSlice = false,
   orchestratorMode = "lead",
   worktreeInfo = undefined,
   inlinePathHint = null
@@ -654,7 +638,6 @@ function buildStartSliceReturn({
   requiresApprovalGate?: boolean;
   confidence?: string | null;
   confidenceReason?: string | null;
-  useOrchestrateSlice?: boolean;
   orchestratorMode?: OrchestratorMode;
   worktreeInfo?: WorktreeResult | undefined;
   inlinePathHint?: string | null;
@@ -672,7 +655,6 @@ function buildStartSliceReturn({
     featureExcerpt,
     featurePath,
     dispatchLimits,
-    useOrchestrateSlice,
     worktreePath,
     orchestratorMode,
     inlinePathHint

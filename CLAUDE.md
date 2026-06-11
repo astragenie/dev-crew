@@ -138,7 +138,7 @@ for the design.
 
 Prior `surface` / `stack` per-FEAT classification was dropped on
 feat/preset-skill-activation — preset is sole source. The earlier
-upstream-request `docs/upstream-requests/2026-06-07-...orchestrate-slice-surface-stack-routing.md`
+upstream-request `docs/upstream-requests/archive/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`
 is superseded by the resolver CLI (no FEAT-level reader required).
 
 PM declines that set `composite_priority: P4` MUST cite a clause id

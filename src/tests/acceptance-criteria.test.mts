@@ -2,7 +2,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { detectAcceptanceCriteria } from "../scripts/lib/backlog-triage.mjs";
+import { detectAcceptanceCriteria } from "../scripts/lib/acceptance-criteria.mjs";
 
 // ---------------------------------------------------------------------------
 // detectAcceptanceCriteria

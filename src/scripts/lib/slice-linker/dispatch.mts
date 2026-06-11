@@ -67,11 +67,9 @@ function appendWorktreeSection(lines: string[], worktreePath: string | null | un
 export type OrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder";
 
 function resolveOrchestratorMode(
-  orchestratorMode: OrchestratorMode | undefined,
-  useOrchestrateSlice: boolean
+  orchestratorMode: OrchestratorMode | undefined
 ): OrchestratorMode {
-  if (orchestratorMode) return orchestratorMode;
-  return useOrchestrateSlice ? "orchestrate-slice" : "direct-builder";
+  return orchestratorMode ?? "lead";
 }
 
 export function buildDispatchInstruction({
@@ -85,7 +83,6 @@ export function buildDispatchInstruction({
   featureExcerpt = null,
   featurePath = null,
   dispatchLimits = null as DispatchLimits | null,
-  useOrchestrateSlice = false,
   orchestratorMode,
   worktreePath = null as string | null
 }: {
@@ -99,11 +96,10 @@ export function buildDispatchInstruction({
   featureExcerpt?: string | null;
   featurePath?: string | null;
   dispatchLimits?: DispatchLimits | null;
-  useOrchestrateSlice?: boolean;
   orchestratorMode?: OrchestratorMode;
   worktreePath?: string | null;
 }) {
-  const mode = resolveOrchestratorMode(orchestratorMode, useOrchestrateSlice);
+  const mode = resolveOrchestratorMode(orchestratorMode);
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
 
   if (mode === "lead") {
