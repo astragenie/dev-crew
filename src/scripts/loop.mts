@@ -63,6 +63,7 @@ const FLAG_SPEC = {
   "--confidence": { key: "confidence" },
   "--slice": { key: "slice" },
   "--limit": { key: "limit" },
+  "--window": { key: "window" },
   "--max-features": { key: "maxFeatures" },
   "--dry-run": { key: "dryRun", boolean: true },
   "--auto-mode": { key: "autoMode", boolean: true },
@@ -119,6 +120,7 @@ function parseArgs(argv: string[]) {
     confidence: null,
     slice: null,
     limit: null,
+    window: null,
     maxFeatures: null,
     dryRun: false,
     autoMode: false,
@@ -260,6 +262,12 @@ const COMMANDS = {
       return { _suppressDefaultOutput: true };
     }
     return result;
+  },
+  "perf-report": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { buildPerfReport } = await import("./lib/perf-report.mjs");
+    const windowSize =
+      flags.window != null && flags.window !== "" ? Number.parseInt(String(flags.window), 10) : 10;
+    return buildPerfReport(repoPath, { window: windowSize, config });
   },
   "snapshot-memory": async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");

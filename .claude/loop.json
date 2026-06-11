@@ -51,7 +51,12 @@
     "triageFallbackOnBudgetExceeded": true,
     "costRegressionMultiplier": 6.0,
     "costSliceCeiling": 200,
-    "gradeTrendPerDimension": { "observability": 0.7 }
+    "gradeTrendPerDimension": { "observability": 0.7 },
+    "perfBaseline": {
+      "medianWallClockSeconds": 1200,
+      "avgGrade": 0.835,
+      "pinnedAt": "2026-06-11"
+    }
   },
   "stack": {
     "build": [

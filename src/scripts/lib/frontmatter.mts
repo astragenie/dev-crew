@@ -23,6 +23,8 @@ const CRLF_STRIP_RE = /\r$/;
 const BLOCK_ARRAY_ITEM_RE = /^\s+-\s/;
 const BLOCK_ARRAY_ITEM_STRIP_RE = /^\s+-\s+/;
 const KEY_VALUE_RE = /^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
+// Nested mapping item: indented "key: value" (no leading dash).
+const NESTED_KV_RE = /^\s+([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
 const QUOTE_NEEDED_RE = /[:#[\]{}'",]/;
 const LEADING_SPACE_RE = /^\s/;
 const TRAILING_SPACE_RE = /\s$/;
@@ -53,6 +55,68 @@ function parseScalar(raw: string) {
 
 export type Frontmatter = Record<string, any>;
 
+type ParseState = {
+  currentArrayKey: string | null;
+  currentMapKey: string | null;
+};
+
+function resetState(state: ParseState) {
+  state.currentArrayKey = null;
+  state.currentMapKey = null;
+}
+
+// Returns "array" | "map" | "scalar" by peeking at the next non-empty line.
+function detectEmptyValueShape(lines: string[], fromIndex: number): "array" | "map" | "scalar" {
+  for (let j = fromIndex; j < lines.length; j += 1) {
+    const peek = lines[j]!.replace(CRLF_STRIP_RE, "");
+    if (peek.trim() === "") continue;
+    if (BLOCK_ARRAY_ITEM_RE.test(peek)) return "array";
+    if (NESTED_KV_RE.test(peek)) return "map";
+    return "scalar";
+  }
+  return "scalar";
+}
+
+function applyEmptyValue(
+  frontmatter: Frontmatter,
+  state: ParseState,
+  key: string,
+  shape: "array" | "map" | "scalar"
+) {
+  resetState(state);
+  if (shape === "array") {
+    frontmatter[key] = [];
+    state.currentArrayKey = key;
+  } else if (shape === "map") {
+    frontmatter[key] = {};
+    state.currentMapKey = key;
+  } else {
+    frontmatter[key] = null;
+  }
+}
+
+// Try to consume the line as a continuation of the active array or map.
+// Returns true if consumed.
+function tryConsumeContinuation(
+  frontmatter: Frontmatter,
+  state: ParseState,
+  line: string
+): boolean {
+  if (state.currentArrayKey && BLOCK_ARRAY_ITEM_RE.test(line)) {
+    const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
+    frontmatter[state.currentArrayKey].push(stripQuotes(itemRaw));
+    return true;
+  }
+  if (state.currentMapKey && NESTED_KV_RE.test(line) && !BLOCK_ARRAY_ITEM_RE.test(line)) {
+    const nm = line.match(NESTED_KV_RE);
+    if (nm) {
+      frontmatter[state.currentMapKey][nm[1]!] = parseScalar(nm[2]!);
+      return true;
+    }
+  }
+  return false;
+}
+
 export function parseFrontmatter(content: string): { frontmatter: Frontmatter; body: string } {
   if (typeof content !== "string") {
     return { frontmatter: {}, body: "" };
@@ -65,48 +129,26 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
   const body = content.slice(match[0].length);
   const lines = block.split("\n");
   const frontmatter: Frontmatter = {};
-  let currentArrayKey: string | null = null;
+  const state: ParseState = { currentArrayKey: null, currentMapKey: null };
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!.replace(CRLF_STRIP_RE, "");
     if (line.trim() === "") {
-      currentArrayKey = null;
+      resetState(state);
       continue;
     }
-    // Block-array continuation: leading whitespace then "- value"
-    if (currentArrayKey && BLOCK_ARRAY_ITEM_RE.test(line)) {
-      const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
-      frontmatter[currentArrayKey].push(stripQuotes(itemRaw));
-      continue;
-    }
-    // key: value (possibly empty)
+    if (tryConsumeContinuation(frontmatter, state, line)) continue;
     const m = line.match(KEY_VALUE_RE);
     if (!m) {
-      currentArrayKey = null;
+      resetState(state);
       continue;
     }
     const key = m[1]!;
     const value = m[2]!;
     if (value === "") {
-      // Empty value. Could be: (a) null/missing, (b) start of a block array.
-      // Disambiguate by peeking at the next non-empty line. If it starts
-      // with whitespace + "- ", we have a block array; otherwise null.
-      let blockArray = false;
-      for (let j = i + 1; j < lines.length; j += 1) {
-        const peek = lines[j]!.replace(CRLF_STRIP_RE, "");
-        if (peek.trim() === "") continue;
-        if (BLOCK_ARRAY_ITEM_RE.test(peek)) blockArray = true;
-        break;
-      }
-      if (blockArray) {
-        frontmatter[key] = [];
-        currentArrayKey = key;
-      } else {
-        frontmatter[key] = null;
-        currentArrayKey = null;
-      }
+      applyEmptyValue(frontmatter, state, key, detectEmptyValueShape(lines, i + 1));
     } else {
+      resetState(state);
       frontmatter[key] = parseScalar(value);
-      currentArrayKey = null;
     }
   }
   return { frontmatter, body };
@@ -128,12 +170,28 @@ function serializeScalar(value: unknown): string {
   return s;
 }
 
+function isPlainMapping(value: unknown): value is Record<string, unknown> {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value as object) === Object.prototype
+  );
+}
+
 export function serializeFrontmatter(frontmatter: Frontmatter, body = "") {
   const keys = Object.keys(frontmatter);
   const lines = ["---"];
   for (const key of keys) {
     const value = frontmatter[key];
-    lines.push(`${key}: ${serializeScalar(value)}`);
+    if (isPlainMapping(value)) {
+      lines.push(`${key}:`);
+      for (const [innerKey, innerVal] of Object.entries(value)) {
+        lines.push(`  ${innerKey}: ${serializeScalar(innerVal)}`);
+      }
+    } else {
+      lines.push(`${key}: ${serializeScalar(value)}`);
+    }
   }
   lines.push("---", "");
   return `${lines.join("\n")}${body.replace(LEADING_NEWLINES_RE, "")}`;
