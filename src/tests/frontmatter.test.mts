@@ -102,3 +102,57 @@ test("serializeFrontmatter quotes values with special characters", () => {
   const parsed = parseFrontmatter(out);
   assert.equal(parsed.frontmatter.title, "Has: colon and , comma");
 });
+
+// FEAT-168 / SLICE-99 — arrays of mappings (proposed_slices shape).
+
+test("parseFrontmatter handles arrays of mappings", () => {
+  const input =
+    "---\nproposed_slices:\n  - id_suffix: -SLICE-1\n    title: Lib\n    points: 5\n  - id_suffix: -SLICE-2\n    title: CLI\n    points: 3\n---\nbody";
+  const { frontmatter } = parseFrontmatter(input);
+  assert.ok(Array.isArray(frontmatter.proposed_slices));
+  assert.equal(frontmatter.proposed_slices.length, 2);
+  assert.deepEqual(frontmatter.proposed_slices[0], {
+    id_suffix: "-SLICE-1",
+    title: "Lib",
+    points: 5
+  });
+  assert.deepEqual(frontmatter.proposed_slices[1], {
+    id_suffix: "-SLICE-2",
+    title: "CLI",
+    points: 3
+  });
+});
+
+test("serializeFrontmatter emits block form for arrays of mappings", () => {
+  const fm = {
+    proposed_slices: [
+      { id_suffix: "-SLICE-1", title: "Lib", points: 5 },
+      { id_suffix: "-SLICE-2", title: "CLI", points: 3 }
+    ]
+  };
+  const out = serializeFrontmatter(fm, "body");
+  assert.ok(!out.includes("[object Object]"), "must not stringify objects via toString");
+  assert.match(
+    out,
+    /proposed_slices:\n {2}- id_suffix: -SLICE-1\n {4}title: Lib\n {4}points: 5/
+  );
+  // Round-trip identity.
+  const reparsed = parseFrontmatter(out).frontmatter;
+  assert.deepEqual(reparsed.proposed_slices, fm.proposed_slices);
+});
+
+test("serializeFrontmatter regression — string block arrays still round-trip", () => {
+  const input =
+    "---\nderived_features:\n  - FEAT-007\n  - FEAT-008\n  - FEAT-009\nstatus: decomposed\n---\nbody";
+  const { frontmatter, body } = parseFrontmatter(input);
+  const out = serializeFrontmatter(frontmatter, body);
+  const reparsed = parseFrontmatter(out).frontmatter;
+  assert.deepEqual(reparsed.derived_features, ["FEAT-007", "FEAT-008", "FEAT-009"]);
+  assert.equal(reparsed.status, "decomposed");
+});
+
+test("serializeFrontmatter leaves empty arrays inline (preserves prior shape)", () => {
+  const fm = { tags: [] };
+  const out = serializeFrontmatter(fm, "");
+  assert.match(out, /tags: \[\]/);
+});

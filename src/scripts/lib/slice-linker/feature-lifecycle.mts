@@ -281,13 +281,11 @@ export async function sliceFromFeature(
   // BEFORE moving the file so a refuse-throw leaves backlog state
   // untouched. assertSized throws DecompositionRequiredError when a
   // >= 8-point FEAT lacks proposed_slices entirely. The strict shape
-  // validator (parseProposedSlices) is intentionally NOT wired here
-  // yet — the in-tree frontmatter parser/writer can't round-trip
-  // nested mappings inside arrays, so a manually-written
-  // proposed_slices currently surfaces as an array of opaque strings.
-  // Strict validation will land when the parser gains nested-mapping
-  // support (separate slice). Until then truthy-check is the
-  // intentional escape hatch.
+  // validator (parseProposedSlices) lives in proposed-slices.mts — the
+  // frontmatter parser now round-trips arrays of mappings (SLICE-99),
+  // but wiring parseProposedSlices + multi-slice materialization into
+  // sliceFromFeature lands in SLICE-100 (FEAT-168 AC-4 + AC-5). Until
+  // then assertSized's truthy-check on proposed_slices remains the gate.
   const sourceContent = await fs.readFile(entry.filePath, "utf8");
   const { frontmatter: sourceFM } = parseFrontmatter(sourceContent);
   assertSized(featureId, sourceFM.effort_points, sourceFM.proposed_slices);

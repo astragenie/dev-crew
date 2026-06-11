@@ -8,8 +8,15 @@
 //
 // Handles one level of nested mappings (`key:\n  inner: value`) so grade
 // frontmatter blocks like `scores:`, `timing:`, `shape:` round-trip
-// correctly. Rejects multi-level nesting, multiline scalars beyond
-// strings, anchors/aliases. Schema enforcement happens at the caller.
+// correctly. Also handles one level of arrays-of-mappings (FEAT-168 /
+// SLICE-99) for `proposed_slices`-shaped data:
+//   proposed_slices:
+//     - id_suffix: -SLICE-1
+//       title: Library
+//       points: 5
+// Rejects multi-level nesting beyond that (mappings inside mappings inside
+// arrays etc.), multiline scalars beyond strings, anchors/aliases. Schema
+// enforcement happens at the caller.
 //
 // Zero deps — pure Node. Keeps the plugin install-light.
 
@@ -60,11 +67,13 @@ export type Frontmatter = Record<string, any>;
 type ParseState = {
   currentArrayKey: string | null;
   currentMapKey: string | null;
+  arrayItemsAreMappings: boolean;
 };
 
 function resetState(state: ParseState) {
   state.currentArrayKey = null;
   state.currentMapKey = null;
+  state.arrayItemsAreMappings = false;
 }
 
 // Returns "array" | "map" | "scalar" by peeking at the next non-empty line.
@@ -97,6 +106,35 @@ function applyEmptyValue(
   }
 }
 
+function consumeBlockArrayItem(
+  frontmatter: Frontmatter,
+  state: ParseState,
+  line: string
+): void {
+  const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
+  const arr = frontmatter[state.currentArrayKey!];
+  const kv = itemRaw.match(KEY_VALUE_RE);
+  if (kv) {
+    const obj: Record<string, unknown> = {};
+    obj[kv[1]!] = parseScalar(kv[2]!);
+    arr.push(obj);
+    state.arrayItemsAreMappings = true;
+  } else {
+    arr.push(stripQuotes(itemRaw));
+    state.arrayItemsAreMappings = false;
+  }
+}
+
+function extendLastArrayMapping(frontmatter: Frontmatter, state: ParseState, line: string): boolean {
+  const nm = line.match(NESTED_KV_RE);
+  if (!nm) return false;
+  const arr = frontmatter[state.currentArrayKey!];
+  const last = arr[arr.length - 1];
+  if (!last || typeof last !== "object" || Array.isArray(last)) return false;
+  (last as Record<string, unknown>)[nm[1]!] = parseScalar(nm[2]!);
+  return true;
+}
+
 // Try to consume the line as a continuation of the active array or map.
 // Returns true if consumed.
 function tryConsumeContinuation(
@@ -105,9 +143,16 @@ function tryConsumeContinuation(
   line: string
 ): boolean {
   if (state.currentArrayKey && BLOCK_ARRAY_ITEM_RE.test(line)) {
-    const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
-    frontmatter[state.currentArrayKey].push(stripQuotes(itemRaw));
+    consumeBlockArrayItem(frontmatter, state, line);
     return true;
+  }
+  if (
+    state.currentArrayKey &&
+    state.arrayItemsAreMappings &&
+    NESTED_KV_RE.test(line) &&
+    !BLOCK_ARRAY_ITEM_RE.test(line)
+  ) {
+    if (extendLastArrayMapping(frontmatter, state, line)) return true;
   }
   if (state.currentMapKey && NESTED_KV_RE.test(line) && !BLOCK_ARRAY_ITEM_RE.test(line)) {
     const nm = line.match(NESTED_KV_RE);
@@ -131,7 +176,11 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
   const body = content.slice(match[0].length);
   const lines = block.split("\n");
   const frontmatter: Frontmatter = {};
-  const state: ParseState = { currentArrayKey: null, currentMapKey: null };
+  const state: ParseState = {
+    currentArrayKey: null,
+    currentMapKey: null,
+    arrayItemsAreMappings: false
+  };
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!.replace(CRLF_STRIP_RE, "");
     if (line.trim() === "") {
@@ -181,12 +230,35 @@ function isPlainMapping(value: unknown): value is Record<string, unknown> {
   );
 }
 
+function isArrayOfMappings(value: unknown): value is Array<Record<string, unknown>> {
+  return Array.isArray(value) && value.length > 0 && value.every(isPlainMapping);
+}
+
+function emitArrayOfMappings(lines: string[], key: string, value: Array<Record<string, unknown>>) {
+  lines.push(`${key}:`);
+  for (const item of value) {
+    const entries = Object.entries(item);
+    if (entries.length === 0) {
+      lines.push("  - {}");
+      continue;
+    }
+    const [firstKey, firstVal] = entries[0]!;
+    lines.push(`  - ${firstKey}: ${serializeScalar(firstVal)}`);
+    for (let i = 1; i < entries.length; i += 1) {
+      const [k, v] = entries[i]!;
+      lines.push(`    ${k}: ${serializeScalar(v)}`);
+    }
+  }
+}
+
 export function serializeFrontmatter(frontmatter: Frontmatter, body = "") {
   const keys = Object.keys(frontmatter);
   const lines = ["---"];
   for (const key of keys) {
     const value = frontmatter[key];
-    if (isPlainMapping(value)) {
+    if (isArrayOfMappings(value)) {
+      emitArrayOfMappings(lines, key, value);
+    } else if (isPlainMapping(value)) {
       lines.push(`${key}:`);
       for (const [innerKey, innerVal] of Object.entries(value)) {
         lines.push(`  ${innerKey}: ${serializeScalar(innerVal)}`);

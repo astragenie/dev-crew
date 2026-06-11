@@ -8,7 +8,7 @@ target_release: null
 created: 2026-06-09
 updated: 2026-06-11
 depends_on: [FEAT-167]
-slices: [SLICE-98]
+slices: [SLICE-98, SLICE-99]
 derived_from: null
 source_competitors: []
 autonomous_safe: false
