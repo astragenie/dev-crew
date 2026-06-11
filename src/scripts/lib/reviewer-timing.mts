@@ -44,7 +44,9 @@ export async function detectSerialReviewer(
     return { serial: false, spanMs: 0, reviewCount: 0, threshold: thresholdMs };
   }
   const slug = sliceId.toLowerCase();
-  const matching = entries.filter((f) => f.toLowerCase().includes(slug));
+  // Anchor to surrounding hyphens — `slice-9` must not match `slice-90` etc.
+  const needle = `-${slug}-`;
+  const matching = entries.filter((f) => f.toLowerCase().includes(needle));
   const stamps = matching.map(parseTimestamp).filter((n): n is number => n !== null);
   if (stamps.length < 2) {
     return { serial: false, spanMs: 0, reviewCount: stamps.length, threshold: thresholdMs };

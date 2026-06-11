@@ -53,3 +53,31 @@ test("no-op on single review", async () => {
     await fs.rm(repo, { recursive: true, force: true });
   }
 });
+
+test("short sliceId does not collide with longer-id reviews", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "rev-timing-collision-"));
+  try {
+    // Two reviews for slice-90 — would falsely match SLICE-9 with naive substring.
+    await makeReview(repo, "20260611T100000Z", "slice-90");
+    await makeReview(repo, "20260611T100400Z", "slice-90");
+    const result = await detectSerialReviewer(repo, "SLICE-9", { thresholdMs: 90000 });
+    assert.equal(result.serial, false);
+    assert.equal(result.reviewCount, 0);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+test("span exactly at threshold is not serial (strict >)", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "rev-timing-edge-"));
+  try {
+    await makeReview(repo, "20260611T100000Z", "slice-99");
+    await makeReview(repo, "20260611T100130Z", "slice-99");
+    // span = 90000ms, threshold = 90000ms → NOT serial.
+    const result = await detectSerialReviewer(repo, "SLICE-99", { thresholdMs: 90000 });
+    assert.equal(result.serial, false);
+    assert.equal(result.spanMs, 90000);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});

@@ -37,7 +37,7 @@ Returns:
       "prompt": "You are Reviewer B on the Wiggin Loop ladder ..."
     }
   ],
-  "instructions": "Dispatch each task in parallel using the Task tool..."
+  "instructions": "PARALLEL_DISPATCH_CONTRACT v1\nrequired: emit exactly ONE message containing N=2 Agent tool calls\nforbidden: send any message between dispatches\nforbidden: wait for one reviewer return before next dispatch\nviolation: serial-reviewer-warning badge logged to grade\n\nAggregate verdicts — slice passes when all reviewers return PASS or PASS with minor."
 }
 ```
 
