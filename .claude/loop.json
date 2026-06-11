@@ -32,6 +32,7 @@
     "orchestratorModel": "sonnet",
     "dispatchLimits": {
       "maxSubagentsPerSlice": 4,
+      "expandedInlineCriteria": true,
       "preferInlineFor": [
         "single-file-edit",
         "test-fix",

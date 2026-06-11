@@ -20,6 +20,55 @@ import { ensureSliceWorktree } from "../worktree-manager.mjs";
 import type { WorktreeResult } from "../worktree-manager.mjs";
 import { mergeFrontmatter } from "../frontmatter.mjs";
 import { displaySliceTitle } from "../slice-title.mjs";
+import { classifySliceShape } from "../classify-slice-shape.mjs";
+import type { FileChange } from "../classify-slice-shape.mjs";
+import { writeShapeMarker } from "../shape-marker.mjs";
+
+// ---------------------------------------------------------------------------
+// SLICE-94 / FEAT-186: shape classification helpers
+// ---------------------------------------------------------------------------
+
+/** Parse the "## Files" section from slice content into FileChange[]. */
+function parseSliceFiles(content: string | null): FileChange[] {
+  if (!content) return [];
+  const lines = content.split(/\r?\n/);
+  const startIdx = lines.findIndex((l) => /^##\s+Files\s*$/i.test(l));
+  if (startIdx === -1) return [];
+  const paths: string[] = [];
+  for (let i = startIdx + 1; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    if (/^##\s+/.test(line)) break;
+    const trimmed = line.replace(/^[-*]\s*/, "").trim();
+    if (trimmed.length > 0) paths.push(trimmed);
+  }
+  return paths.map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }));
+}
+
+/** Resolve whether the inline path is recommended for a given shape + config. */
+function resolveInlinePath(
+  shape: string,
+  dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null
+): boolean {
+  if (!dispatchLimits) return false;
+  const expanded = dispatchLimits.expandedInlineCriteria !== false;
+  const preferred = dispatchLimits.preferInlineFor ?? [];
+  return expanded && preferred.includes(shape) && shape !== "none";
+}
+
+/** Run classify-slice-shape, write marker (best-effort), return inline-path hint string or null. */
+async function applyShapeClassification(
+  repoPath: string,
+  sliceId: string,
+  sliceContent: string | null,
+  dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null
+): Promise<string | null> {
+  const files = parseSliceFiles(sliceContent);
+  const { shape, rationale } = classifySliceShape({ files });
+  const inlinePath = resolveInlinePath(shape, dispatchLimits);
+  void writeShapeMarker(repoPath, sliceId, shape, rationale, inlinePath);
+  if (!inlinePath) return null;
+  return `inline-path recommended (shape: ${shape}, rationale: ${rationale}) — orchestrator may skip dispatched specialists for tightly-scoped slices when other gates can be lead-attested per docs/sop/inline-criteria.md.`;
+}
 
 function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>): number | null {
   if (!scores || scores.length === 0) return null;
@@ -273,6 +322,7 @@ function resolveSliceMetaFields(
   };
 }
 
+// eslint-disable-next-line complexity -- orchestration function; each sequential async gate adds a branch but no extractable helper reduces it further. Track if complexity grows past 20.
 export async function startSlice(
   repoPath: string,
   sliceId: string,
@@ -342,6 +392,14 @@ export async function startSlice(
   );
   const orchestratorMode = resolveOrchestratorModeConfig(resolved, useOrchestrateSlice);
 
+  // SLICE-94 / FEAT-186: classify slice shape + write marker + build inline-path hint.
+  const inlinePathHint = await applyShapeClassification(
+    repoPath,
+    sliceId,
+    ctx.content ?? null,
+    resolved.loop?.dispatchLimits ?? null
+  );
+
   const result = buildStartSliceReturn({
     sliceId,
     title,
@@ -367,7 +425,8 @@ export async function startSlice(
     confidenceReason,
     useOrchestrateSlice,
     orchestratorMode,
-    worktreeInfo
+    worktreeInfo,
+    inlinePathHint
   });
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
@@ -507,25 +566,26 @@ function resolveDispatchInstruction(
   dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
   useOrchestrateSlice = false,
   worktreePath: string | null = null,
-  orchestratorMode: OrchestratorMode = "lead"
+  orchestratorMode: OrchestratorMode = "lead",
+  inlinePathHint: string | null = null
 ) {
-  return dispatch
-    ? buildDispatchInstruction({
-        sliceId,
-        title,
-        sliceFile,
-        repoPath,
-        resolvedGoal,
-        featureId,
-        sliceContent,
-        featureExcerpt,
-        featurePath,
-        dispatchLimits,
-        useOrchestrateSlice,
-        orchestratorMode,
-        worktreePath
-      })
-    : null;
+  if (!dispatch) return null;
+  const base = buildDispatchInstruction({
+    sliceId,
+    title,
+    sliceFile,
+    repoPath,
+    resolvedGoal,
+    featureId,
+    sliceContent,
+    featureExcerpt,
+    featurePath,
+    dispatchLimits,
+    useOrchestrateSlice,
+    orchestratorMode,
+    worktreePath
+  });
+  return inlinePathHint ? `${base}\n\n${inlinePathHint}` : base;
 }
 
 // Build the return shape for startSlice. Extracted to keep startSlice
@@ -569,7 +629,8 @@ function buildStartSliceReturn({
   confidenceReason = null,
   useOrchestrateSlice = false,
   orchestratorMode = "lead",
-  worktreeInfo = undefined
+  worktreeInfo = undefined,
+  inlinePathHint = null
 }: {
   sliceId: string;
   title: string;
@@ -596,6 +657,7 @@ function buildStartSliceReturn({
   useOrchestrateSlice?: boolean;
   orchestratorMode?: OrchestratorMode;
   worktreeInfo?: WorktreeResult | undefined;
+  inlinePathHint?: string | null;
 }) {
   const worktreePath = worktreeInfo?.worktreePath ?? null;
   const dispatchInstruction = resolveDispatchInstruction(
@@ -612,7 +674,8 @@ function buildStartSliceReturn({
     dispatchLimits,
     useOrchestrateSlice,
     worktreePath,
-    orchestratorMode
+    orchestratorMode,
+    inlinePathHint
   );
   const activePlanSummary = resolveActivePlanSummary(activePlan);
   const nextAction = computeNextAction(

@@ -8,16 +8,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { safeSliceId } from "./slice-id-guard.mjs";
+
 const MARKER_DIR_PARTS = [".claude", "artifacts", "loop", "fanout-markers"];
-
-const SLICE_ID_RE = /^[A-Za-z0-9_-]+$/;
-
-function safeSliceId(sliceId: string): string {
-  if (!SLICE_ID_RE.test(sliceId)) {
-    throw new Error(`Invalid sliceId for marker path: ${sliceId}`);
-  }
-  return sliceId;
-}
 
 export type FanoutMarker = {
   sliceId: string;

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { detectSerialReviewer } from "./reviewer-timing.mjs";
 import { readFanoutMarker } from "./fanout-marker.mjs";
+import { readShapeMarker } from "./shape-marker.mjs";
 
 // Telemetry helpers for grade frontmatter timing.* fields (FEAT-184 / SLICE-92).
 //
@@ -105,6 +106,26 @@ export async function readPostBuilderFanout(
 }
 
 // --------------------------------------------------------------------------
+// Shape classification from shape marker.
+// --------------------------------------------------------------------------
+
+export type ShapeClassification = {
+  classified: string | null;
+  inline_path_used: boolean;
+};
+
+export async function readShapeClassification(
+  repoPath: string,
+  sliceId: string
+): Promise<ShapeClassification> {
+  const marker = await readShapeMarker(repoPath, sliceId);
+  return {
+    classified: marker?.shape ?? null,
+    inline_path_used: marker?.inlinePath ?? false
+  };
+}
+
+// --------------------------------------------------------------------------
 // Telemetry aggregate.
 // --------------------------------------------------------------------------
 
@@ -114,6 +135,7 @@ export type GradeTelemetry = {
   post_builder_fanout: true | null;
   reviewer_span_ms: number | null;
   serial_reviewer_warning: boolean | null;
+  shape: ShapeClassification | null;
 };
 
 export async function computeTelemetry(
@@ -121,24 +143,29 @@ export async function computeTelemetry(
   sliceId: string,
   config: Record<string, any> | null
 ): Promise<GradeTelemetry> {
-  const [wallClock, phaseGateParallel, postBuilderFanout, reviewerSpan] = await Promise.all([
-    computeWallClockSeconds(repoPath, sliceId),
-    readPhaseGateParallel(repoPath, sliceId, config),
-    readPostBuilderFanout(repoPath, sliceId),
-    computeReviewerSpan(repoPath, sliceId, config)
-  ]);
+  const [wallClock, phaseGateParallel, postBuilderFanout, reviewerSpan, shapeClassification] =
+    await Promise.all([
+      computeWallClockSeconds(repoPath, sliceId),
+      readPhaseGateParallel(repoPath, sliceId, config),
+      readPostBuilderFanout(repoPath, sliceId),
+      computeReviewerSpan(repoPath, sliceId, config),
+      readShapeClassification(repoPath, sliceId)
+    ]);
   return {
     wall_clock_seconds: wallClock,
     phase_gate_parallel: phaseGateParallel,
     post_builder_fanout: postBuilderFanout,
     reviewer_span_ms: reviewerSpan.spanMs > 0 ? reviewerSpan.spanMs : null,
-    serial_reviewer_warning: reviewerSpan.spanMs > 0 ? reviewerSpan.serial : null
+    serial_reviewer_warning: reviewerSpan.spanMs > 0 ? reviewerSpan.serial : null,
+    shape: shapeClassification.classified !== null ? shapeClassification : null
   };
 }
 
 // --------------------------------------------------------------------------
 // Apply telemetry into frontmatter.timing map (idempotent).
 // Only overwrites null / missing fields — never clobbers an existing value.
+// The `shape` key is intentionally excluded here — use applyShapeTelemetry
+// for the frontmatter.shape block.
 // --------------------------------------------------------------------------
 
 export function applyTelemetry(
@@ -147,12 +174,36 @@ export function applyTelemetry(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { ...timing };
   for (const [key, value] of Object.entries(telemetry)) {
+    if (key === "shape") continue; // shape lives in frontmatter.shape, not timing
     if (value !== null && value !== undefined) {
       // Only write when current value is unset (null, undefined) or is the
       // boolean template seed (false). The grade template seeds boolean timing
       // fields as `false` — not `null` — as a YAML placeholder. We treat that
       // seed as "not yet measured" and overwrite it once. A populated numeric
       // value or an already-computed `true` is never clobbered (idempotency).
+      const current = out[key];
+      const isUnset = current === null || current === undefined || current === false;
+      if (isUnset) {
+        out[key] = value;
+      }
+    }
+  }
+  return out;
+}
+
+// --------------------------------------------------------------------------
+// Apply shape telemetry into frontmatter.shape map (idempotent).
+// Only overwrites null / missing fields — never clobbers populated values.
+// --------------------------------------------------------------------------
+
+export function applyShapeTelemetry(
+  shape: Record<string, unknown>,
+  telemetry: GradeTelemetry
+): Record<string, unknown> {
+  if (telemetry.shape === null || telemetry.shape === undefined) return shape;
+  const out: Record<string, unknown> = { ...shape };
+  for (const [key, value] of Object.entries(telemetry.shape)) {
+    if (value !== null && value !== undefined) {
       const current = out[key];
       const isUnset = current === null || current === undefined || current === false;
       if (isUnset) {
