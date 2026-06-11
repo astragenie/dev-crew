@@ -94,3 +94,14 @@ The returned `nextAction` is a literal prompt:
 
 Grading at slice close is what feeds the retrospective + pattern alerts.
 Skipping it leaves a hole in the self-improvement signal.
+
+## Aggregation (post-builder fanout)
+
+When `slice.postBuilderFanout: true` (default), the ceremony dispatches reviewers A+B and the validator in parallel after builder PASS. Slice rules:
+
+- Wait for all three artifacts to land.
+- Any reviewer FAIL halts the slice. Validator result preserved (informational).
+- Validator FAIL halts the slice. Reviewer results preserved.
+- All PASS continues to grade.
+
+The validator prompt does not reference reviewer artifact paths — verdict is based on phase-gate evidence only.

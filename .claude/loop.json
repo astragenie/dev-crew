@@ -98,6 +98,9 @@
     "strictParallel": true,
     "serialTimingThresholdMs": 90000
   },
+  "slice": {
+    "postBuilderFanout": true
+  },
   "phaseGate": {
     "parallel": true,
     "groups": {

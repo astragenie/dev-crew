@@ -1084,6 +1084,17 @@ const SLICE_HANDLERS = {
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
     return buildReviewLadder(repoPath, sliceId, { config: opts.config ?? null });
   },
+  "post-builder-fanout": async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice post-builder-fanout requires --id SLICE-NN.");
+    const { buildPostBuilderFanout } = await import("./lib/post-builder-fanout.mjs");
+    return buildPostBuilderFanout(repoPath, sliceId, { config: opts.config ?? null });
+  },
   plan: async (
     repoPath: string,
     _flags: Record<string, any>,
@@ -1114,7 +1125,7 @@ async function runSliceSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | plan"
+      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | post-builder-fanout | plan"
     );
   const handler = (SLICE_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
