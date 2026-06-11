@@ -46,7 +46,9 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
       "suggestedSliceTitle": "Implement FEAT-001: My safe feature",
       "fromFeatureCmd":      "bun src/scripts/loop.mts slice from-feature --id FEAT-001",
       "startCmd":            "bun src/scripts/loop.mts slice start --id SLICE-<TBD>",
-      "builderPrompt":       "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
+      "orchestratorMode":    "lead",
+      "dispatchPrompt":      "Orchestrate FEAT-001: My safe feature (feature) — dispatch architect (if contracts/topology need design), builder, reviewer ladder, and validator. See feature file + slice file for acceptance criteria; close via /loop:slice complete and /loop:slice grade.",
+      "builderPrompt":       "Orchestrate FEAT-001: My safe feature (feature) — dispatch architect (if contracts/topology need design), builder, reviewer ladder, and validator. See feature file + slice file for acceptance criteria; close via /loop:slice complete and /loop:slice grade.",
       "autoMode":            false
     }
   ]
@@ -67,6 +69,15 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
   - `escalationThreshold`: 3 (hard-coded; 3 consecutive fails per FEAT → escalate).
   - `autoMode`: reflects the `--auto-mode` option.
 - `plans` — ordered array of dispatch-plan objects.
+  - `orchestratorMode`: which subagent the orchestrator should dispatch
+    (`"lead"` default, `"orchestrate-slice"`, or `"direct-builder"`).
+    Mirrors `loop.orchestratorMode` from `.claude/loop.json`.
+  - `dispatchPrompt`: prompt for the dispatched agent. Framed as orchestration
+    when mode is `"lead"`, as direct implementation when `"direct-builder"`,
+    or as a `/crew:orchestrate-slice` invocation when `"orchestrate-slice"`.
+  - `builderPrompt`: **deprecated** alias of `dispatchPrompt` retained for
+    v0.38.x readers. New consumers should use `dispatchPrompt` and route
+    based on `orchestratorMode`.
   - `requiresPlanPreflight`: true for `autonomous_safe: false` FEATs.
   - `riskGate`: populated when `pm_risk_level >= 0.7`.
   - `autoMode`: set when `--auto-mode` passed.
