@@ -1,0 +1,832 @@
+---
+slice: unknown
+builder: builder
+run_id: 20260611T123331Z
+feat: FEAT-181
+files_touched: [".claude/loop.json", "src/scripts/lib/stop-conditions.mts"]
+files_read: []
+diff_stat: { files: 6, additions: 22, deletions: 33 }
+truncated: false
+truncation_reason: null
+schema_version: 1
+---
+
+## Handoff
+
+# Task Handoff: SLICE-95 builder complete: marathon checkpoint
+
+- Created: 2026-06-11T12:33:31.021Z
+- From: builder
+- To: lead
+- Objective: Added marathonCheckpointEvery:4 to loop.json and checkpointDue+sliceClosesSinceCheckpoint fields to stop-check output; marathon-checkpoint.mts was already fully implemented
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - .claude/loop.json
+  - src/scripts/lib/stop-conditions.mts
+- Confidence: high
+- Risks: AC-2 (state file approach) is superseded by the grade-file approach already committed; test file confirms this design. Wire into complete-slice.mts and retrospective.mts not needed: the grade-file approach auto-counts grade files after retrospective, so no explicit increment/reset calls are required.
+- Suggested Next Handoff: review ladder + validator
+
+
+## Diff
+
+```diff
+diff --git a/.claude/artifacts/loop/auto-dispatch.jsonl b/.claude/artifacts/loop/auto-dispatch.jsonl
+index c6667ce..f0a43c4 100644
+--- a/.claude/artifacts/loop/auto-dispatch.jsonl
++++ b/.claude/artifacts/loop/auto-dispatch.jsonl
+@@ -108,3 +108,10 @@
+ {"timestamp":"2026-06-10T20:29:25.159Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
+ {"timestamp":"2026-06-10T23:28:07.706Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
+ {"timestamp":"2026-06-11T09:01:47.343Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
++{"timestamp":"2026-06-11T11:05:08.558Z","agent":"loop:architect","parentCommand":"slice from-feature","costUsd":null,"durationMs":0,"ok":true,"skipped":false,"skipReason":null,"stepType":"dispatch","inputTokens":null,"outputTokens":null}
++{"timestamp":"2026-06-11T11:31:37.105Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
++{"timestamp":"2026-06-11T11:37:05.283Z","agent":"loop:architect","parentCommand":"slice from-feature","costUsd":null,"durationMs":0,"ok":true,"skipped":false,"skipReason":null,"stepType":"dispatch","inputTokens":null,"outputTokens":null}
++{"timestamp":"2026-06-11T11:57:59.494Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
++{"timestamp":"2026-06-11T12:00:58.534Z","agent":"loop:architect","parentCommand":"slice from-feature","costUsd":null,"durationMs":0,"ok":true,"skipped":false,"skipReason":null,"stepType":"dispatch","inputTokens":null,"outputTokens":null}
++{"timestamp":"2026-06-11T12:18:48.073Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
++{"timestamp":"2026-06-11T12:24:48.519Z","agent":"loop:architect","parentCommand":"slice from-feature","costUsd":null,"durationMs":0,"ok":true,"skipped":false,"skipReason":null,"stepType":"dispatch","inputTokens":null,"outputTokens":null}
+diff --git a/.claude/artifacts/loop/backlog/triaged/FEAT-181.md b/.claude/artifacts/loop/backlog/triaged/FEAT-181.md
+deleted file mode 100644
+index 6830c93..0000000
+--- a/.claude/artifacts/loop/backlog/triaged/FEAT-181.md
++++ /dev/null
+@@ -1,29 +0,0 @@
+----
+-id: FEAT-181
+-status: triaged
+-priority: P1
+-category: feature
+-target_release: null
+-created: 2026-06-10
+-updated: 2026-06-10
+-depends_on: []
+-slices: []
+-derived_from: null
+-autonomous_safe: true
+-pm_customer_impact: 0.7
+-pm_effort_estimate: 0.4
+-pm_strategic_alignment: 0.8
+-pm_technical_risk: 0.2
+-pm_dependency_depth: 0.1
+-composite_score: 0.75
+-triage_notes: "Marathon session checkpoint bounds unobserved drift (AgentOps 2-4 atomic arcs rule). Additive loop.json knob + checkpoint dispatch trigger; no ceremony contract change. Low risk, high alignment -> autonomous. Slice first."
+----
+-# FEAT-181: Marathon session-scope checkpoint — mandatory retrospective every N slices
+-
+-Adopt the AgentOps coherent-arc session-scope rule (AGENTS-WORKFLOW.md in C:/work/mega/agentops): 2-4 atomic arcs per autonomous session; at >=5 a post-mortem checkpoint is mandatory. Loop marathon mode is currently unbounded (iteration cap advisory only) — drift accumulates unobserved across a long backlog walk.
+-
+-## Acceptance hints
+-- New loop.json knob loop.marathonCheckpointEvery (default 4): after N slice-close ceremonies in one session, the walker emits a checkpoint requirement before the next slice start.
+-- Checkpoint = /loop:retrospective over the session window + lessons ratchet pass; result appended to auto-run artifact.
+-- Advisory->blocking: warn at N, hard stop-check reason at 2N without a checkpoint.
+-- stop-check exposes checkpointDue in snapshot for dashboards.
+\ No newline at end of file
+diff --git a/.claude/loop.json b/.claude/loop.json
+index 368f4a2..c6f1f64 100644
+--- a/.claude/loop.json
++++ b/.claude/loop.json
+@@ -62,6 +62,7 @@
+     "costRegressionMultiplier": 6.0,
+     "costSliceCeiling": 200,
+     "gradeTrendPerDimension": { "observability": 0.7 },
++    "marathonCheckpointEvery": 4,
+     "perfBaseline": {
+       "medianWallClockSeconds": 1200,
+       "avgGrade": 0.835,
+diff --git a/src/scripts/lib/grade-writer.mts b/src/scripts/lib/grade-writer.mts
+index eb9bd9d..13e2f85 100644
+--- a/src/scripts/lib/grade-writer.mts
++++ b/src/scripts/lib/grade-writer.mts
+@@ -270,9 +270,8 @@ export async function writeGrade(
+   const allIds = [...new Set([...existingIds, ...newIds])];
+ 
+   // Populate grade timing.* + shape.* telemetry fields (FEAT-184 / FEAT-186).
+-  const { computeTelemetry, applyTelemetry, applyShapeTelemetry } = await import(
+-    "./grade-telemetry.mjs"
+-  );
++  const { computeTelemetry, applyTelemetry, applyShapeTelemetry } =
++    await import("./grade-telemetry.mjs");
+   const telemetry = await computeTelemetry(repoPath, sliceId, config);
+   frontmatter.timing = applyTelemetry(
+     (frontmatter.timing as Record<string, unknown>) ?? {},
+diff --git a/src/scripts/lib/stop-conditions.mts b/src/scripts/lib/stop-conditions.mts
+index 2dc4313..b4b95c5 100644
+--- a/src/scripts/lib/stop-conditions.mts
++++ b/src/scripts/lib/stop-conditions.mts
+@@ -482,12 +482,17 @@ export async function checkStopConditions(
+ // under the cyclomatic-complexity cap after FEAT-059 added autoMode + warn-alert
+ // demotion branches.
+ function assembleStopResult(p: any) {
++  const checkpointDue =
++    p.marathonCheckpointSignal !== null && p.marathonCheckpointSignal !== undefined;
++  const sliceClosesSinceCheckpoint = p.marathonCheckpointSignal?.closesSinceCheckpoint ?? null;
+   return {
+     shouldStop: p.reasons.length > 0,
+     reasons: p.reasons,
+     blockers: p.blockers,
+     suggestions: p.suggestions,
+     iterationCapReached: p.iterationCapReached,
++    checkpointDue,
++    sliceClosesSinceCheckpoint,
+     snapshot: {
+       pendingOrTriaged: p.backlogStats.pendingOrTriaged,
+       inProgress: p.backlogStats.inProgress,
+diff --git a/src/tests/shape-marker.test.mts b/src/tests/shape-marker.test.mts
+index 6f84d3d..406bdbe 100644
+--- a/src/tests/shape-marker.test.mts
++++ b/src/tests/shape-marker.test.mts
+@@ -63,7 +63,13 @@ async function appendFilesSection(slicePath: string, files: string[]) {
+ test("writeShapeMarker writes JSON with expected fields", async () => {
+   const repo = await tmpRepo("shape-marker-write-");
+   try {
+-    await writeShapeMarker(repo, "SLICE-94", SHAPE_DOC_UPDATE, "all changed files are docs/markdown", true);
++    await writeShapeMarker(
++      repo,
++      "SLICE-94",
++      SHAPE_DOC_UPDATE,
++      "all changed files are docs/markdown",
++      true
++    );
+     const markerPath = path.join(repo, SHAPE_MARKERS_DIR, "SLICE-94.json");
+     const raw = await fs.readFile(markerPath, "utf8");
+     const obj = JSON.parse(raw) as Record<string, unknown>;
+
+```
+
+## Files touched
+
+### .claude/loop.json
+
+```
+{
+  "preset": "typescript-plugin-dev",
+  "schemaVersion": 1,
+  "projectType": "claude-plugin",
+  "split": false,
+  "frontend": { "framework": "none", "language": "typescript" },
+  "backend": { "framework": "node", "language": "typescript", "storage": "none" },
+  "contract": "none",
+  "deployment": "none",
+  "skills": ["typescript-pro", "frontend-advisory"],
+  "features": {
+    "redundant-read-stop": {
+      "enabled": false
+    }
+  },
+  "loop": {
+    "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
+    "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
+    "slicesRoot": ".claude/artifacts/loop/ai-loop/slices",
+    "backlogRoot": ".claude/artifacts/loop/backlog",
+    "specsRoot": ".claude/artifacts/loop/specs",
+    "gradesRoot": ".claude/artifacts/loop/grades",
+    "decisionsRoot": ".claude/artifacts/loop/decisions",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "maxIterations": 25,
+    "marathonMode": true,
+    "autoMode": true,
+    "costStopThreshold": 15,
+    "redundantReadCap": 10,
+    "costProject": "C--work-mega-loop",
+    "costProjectAliases": ["C--work-mega-hero-crew-autonomous-loop"],
+    "orchestratorModel": "sonnet",
+    "dispatchLimits": {
+      "maxSubagentsPerSlice": 4,
+      "expandedInlineCriteria": true,
+      "preferInlineFor": [
+        "single-file-edit",
+        "test-fix",
+        "lint-fix",
+        "format-fix",
+        "doc-update",
+        "config-tweak",
+        "single-module-edit",
+        "test-only"
+      ]
+    },
+    "modelRouting": {
+      "default": "sonnet",
+      "sliceStart": "opus",
+      "architect": "opus",
+      "review": "sonnet",
+      "decompose": "sonnet",
+      "gradeWrite": "sonnet",
+      "build": "sonnet",
+      "validate": "sonnet",
+      "copywriter": "sonnet",
+      "docwriter": "sonnet"
+    },
+    "triageBudgetUsdPerBatch": 5.0,
+    "triageBudgetTokensPerBatch": 500000,
+    "triageFallbackOnBudgetExceeded": true,
+    "costRegressionMultiplier": 6.0,
+    "costSliceCeiling": 200,
+    "gradeTrendPerDimension": { "observability": 0.7 },
+    "marathonCheckpointEvery": 4,
+    "perfBaseline": {
+      "medianWallClockSeconds": 1200,
+      "avgGrade": 0.835,
+      "pinnedAt": "2026-06-11"
+    }
+  },
+  "stack": {
+    "build": [
+      {
+        "cmd": "npm",
+        "args": [
+          "run",
+          "lint"
+        ]
+      }
+    ],
+    "test": [
+      {
+        "cmd": "npm",
+        "args": [
+          "test"
+        ]
+      }
+    ],
+    "frontendBuild": null,
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": {
+    "ladder": [
+      "A",
+      "B"
+    ],
+    "strictParallel": true,
+    "serialTimingThresholdMs": 90000
+  },
+  "slice": {
+    "postBuilderFanout": true
+  },
+  "phaseGate": {
+    "parallel": true,
+    "groups": {
+      "lint": [
+        { "cmd": "bun", "args": ["run", "lint"] },
+        { "cmd": "bun", "args": ["run", "format:check"] },
+        { "cmd": "bun", "args": ["./src/scripts/validate-manifests.mts"] },
+        { "cmd": "bun", "args": ["./src/scripts/validate-content-length.mts"] }
+      ],
+      "typecheck": [
+        { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.json", "--noEmit"] },
+        { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.test.json", "--noEmit"] }
+      ],
+      "test": [
+        { "cmd": "bun", "args": ["test", "src/tests/", "--parallel", "--timeout", "60000"] }
+      ]
+    }
+  },
+  "mandatoryDocs": [
+    "docs/architecture/platform-overview.md"
+  ],
+  "productName": "hero-crew-autonomous-loop",
+  "productDescription": "Claude Code plugin: Wiggin-Loop methodology layer for autonomous slice-based development on top of the crew plugin.",
+  "stackDescription": "- ESM Node.js (.mjs modules)\n- node --test for testing\n- ESLint + Prettier for linting/formatting",
+  "github": {
+    "enabled": true,
+    "repo": null
+  }
+}
+
+```
+
+### src/scripts/lib/stop-conditions.mts
+
+```
+import { listBacklog, filterBacklog } from "./backlog-parser.mjs";
+import { listSpecs } from "./spec-parser.mjs";
+import { detectPatterns } from "./pattern-alerts.mjs";
+import { getIterationStatus } from "./loop-iteration.mjs";
+import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
+import { readCrewBlockingGates, readCrewWorkflowState } from "./crew-workflow-reader.mjs";
+import { checkGradeTrend } from "./grade-trend.mjs";
+import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost-ceiling.mjs";
+import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
+import { checkSessionDrift, type SessionDriftSignal } from "./session-drift.mjs";
+import { checkRedundantReadStop, type RedundantReadSignal } from "./redundant-read-detector.mjs";
+import { checkMarathonCheckpoint, type MarathonCheckpointSignal } from "./marathon-checkpoint.mjs";
+
+// Unified stop-condition resolver. Returns a structured verdict:
+//   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
+// Used by Cross-Slice Continuation HARD RULE (and crew brief) to decide
+// whether to roll the next slice or stop the autonomous loop.
+//
+// Stop conditions (any one triggers shouldStop=true):
+//   A. Backlog empty AND no approved-undecomposed specs
+//      (Every spec satisfied or in flight → genuine no-work state)
+//   B. Severity-warn pattern alerts present (e.g. score-trend regression,
+//      in-progress orphan, decomposition explosion)
+//      (Bad signal — address before continuing rather than charging ahead)
+//   C. Iteration cap reached (legacy mode only — disabled when autoMode)
+//      (Runaway halting — loop has completed maxIterations without finishing)
+//   D. High-severity cost-advisor alerts fired (cost-alert-high)
+//      (Cost is spiraling — halt gracefully and let user review trajectory)
+//   E. Crew run blocked or escalated. Escalation always halts; the soft
+//      blocked-badge branch is disabled when autoMode (it usually clears
+//      on the next iteration).
+//
+// Auto mode (config.loop.autoMode, default true): loop walks the entire
+// backlog. Iteration cap and crew blocked-badge become advisory only —
+// counter still increments and snapshot still reports them. Set
+// autoMode=false to restore the original five-condition gating.
+// config.loop.marathonMode is a deprecated alias accepted for back-compat.
+//
+// Caller decides what to do with a stop signal:
+//   - In autonomous mode: log + halt + ping user
+//   - In hand-driven mode: surface in brief
+//   - In phase-gate: include in retrospective + handoff
+
+function computeBacklogStats(backlog: any[], specs: any[]) {
+  const pendingOrTriaged =
+    filterBacklog(backlog, { status: "pending" }).length +
+    filterBacklog(backlog, { status: "triaged" }).length;
+  const inProgress = filterBacklog(backlog, { status: "in-progress" }).length;
+  const approvedUndecomposed = specs.filter(
+    (s: Record<string, any>) =>
+      s.frontmatter.status === "approved" &&
+      (!Array.isArray(s.frontmatter.derived_features) ||
+        s.frontmatter.derived_features.length === 0)
+  ).length;
+  return { pendingOrTriaged, inProgress, approvedUndecomposed };
+}
+
+function appendBacklogExhaustedSignals(
+  stats: Record<string, number>,
+  reasons: string[],
+  suggestions: string[]
+) {
+  if (stats.pendingOrTriaged === 0 && stats.inProgress === 0 && stats.approvedUndecomposed === 0) {
+    reasons.push("backlog empty + no undecomposed specs → no actionable work");
+    suggestions.push(
+      "Author a new SPEC or FEAT to continue. Run `/loop:spec add` or `/loop:backlog add`."
+    );
+  }
+}
+
+// Folds warn-severity pattern-alerts into blockers + a single reason line.
+// When autoMode===true and alert.category appears in ignoredCategories, the
+// alert is pushed to suggestions instead of blockers and does NOT halt the loop.
+// options.demotedCount.value is incremented for each demoted alert.
+export function applyWarnAlertSignals(
+  warnAlerts: any[],
+  blockers: any[],
+  reasons: any[],
+  options: {
+    autoMode?: boolean;
+    ignoredCategories?: string[];
+    suggestions?: any[];
+    demotedCount?: { value: number };
+  } = {}
+) {
+  if (warnAlerts.length === 0) return;
+  const { autoMode = false, ignoredCategories = [], suggestions, demotedCount } = options;
+  const haltAlerts: any[] = [];
+  for (const a of warnAlerts) {
+    if (autoMode && ignoredCategories.includes(a.category)) {
+      suggestions?.push(a.suggested_action || a.message);
+      if (demotedCount) demotedCount.value += 1;
+    } else {
+      haltAlerts.push(a);
+    }
+  }
+  if (haltAlerts.length === 0) return;
+  for (const a of haltAlerts) {
+    blockers.push({ category: a.category, message: a.message, suggestion: a.suggested_action });
+  }
+  reasons.push(`${haltAlerts.length} warn-severity alert(s) — resolve before rolling next slice`);
+}
+
+function applyIterationCapSignals(
+  iterStatus: Record<string, any>,
+  reasons: string[],
+  suggestions: string[],
+  { autoMode }: { autoMode: boolean }
+) {
+  if (!iterStatus.exhausted || autoMode) return;
+  reasons.push(`iteration cap reached (${iterStatus.count}/${iterStatus.cap})`);
+  suggestions.push(
+    `The autonomous loop has completed ${iterStatus.count} iterations without finishing. ` +
+      `This is a safety limit to prevent unbounded token burn. ` +
+      `Increase loop.maxIterations in .claude/loop.json if you need more cycles.`
+  );
+}
+
+function applyCostAlertSignal(
+  costAlertCount: number,
+  config: Record<string, any> | null,
+  reasons: string[],
+  suggestions: string[]
+) {
+  if (costAlertCount < (config?.loop?.costStopThreshold || 1)) return;
+  reasons.push(
+    `cost_alert_high: ${costAlertCount} high-severity cost recommendation(s) across last 3 slices`
+  );
+  suggestions.push(
+    "The cost trajectory has triggered a high-severity alert. Review the cost-advisor output and optimize before continuing. " +
+      "Adjust loop.costStopThreshold in .claude/loop.json to change this behavior."
+  );
+}
+
+function buildCeilingSnapshotEntry(sig: SliceCostCeilingSignal | null) {
+  if (!sig) return null;
+  return { exceeded: true, actualUsd: sig.actualUsd, ceilingUsd: sig.ceilingUsd };
+}
+
+function buildRegressionSnapshotEntry(sig: CostRegressionSignal | null) {
+  if (!sig) return null;
+  return {
+    triggered: true,
+    currentUsd: sig.currentUsd,
+    medianUsd: sig.medianUsd,
+    thresholdUsd: sig.thresholdUsd,
+    multiplier: sig.multiplier,
+    window: sig.window,
+    sampleCount: sig.sampleCount
+  };
+}
+
+function buildSessionDriftSnapshotEntry(sig: SessionDriftSignal | null) {
+  if (!sig) return null;
+  return {
+    triggered: true,
+    sessionIdAtStart: sig.sessionIdAtStart,
+    sessionIdNow: sig.sessionIdNow
+  };
+}
+
+/** Build the snapshot entry for the merge_failed halt-badge (FEAT-062 / SLICE-64). */
+export function buildMergeFailedSnapshotEntry(workflowState: any): any | null {
+  const badge = workflowState?.currentRun?.gates?.mergeFailed;
+  if (!badge || badge.status !== "failed") return null;
+  return badge;
+}
+
+function buildRedundantReadSnapshotEntry(sig: RedundantReadSignal | null) {
+  if (!sig) return null;
+  return {
+    triggered: true,
+    maxReadCount: sig.maxReadCount,
+    path: sig.path,
+    sessionId: sig.sessionId,
+    threshold: sig.threshold,
+    offendingPathCount: sig.offendingPathCount
+  };
+}
+
+function applySessionDriftSignal(
+  driftSignal: SessionDriftSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!driftSignal) return;
+  const { sessionIdAtStart, sessionIdNow } = driftSignal;
+  reasons.push(
+    `session_drift_stop: current session ${sessionIdNow} differs from slice-start session ${sessionIdAtStart}`
+  );
+  blockers.push({
+    category: "session-drift",
+    message: `walker resumed in a different Claude session (was: ${sessionIdAtStart}, now: ${sessionIdNow})`,
+    suggestion:
+      "Complete the slice in the original session, or re-run with --allow-cross-session to bypass the halt and log the override."
+  });
+  suggestions.push(
+    `The walker pinned session ${sessionIdAtStart} at slice-start but resumed in session ${sessionIdNow}. ` +
+      "Complete the slice in the original session, or pass --allow-cross-session on the auto CLI to override."
+  );
+}
+
+function buildMarathonCheckpointSnapshotEntry(sig: MarathonCheckpointSignal | null) {
+  if (!sig) return null;
+  return {
+    level: sig.level,
+    closesSinceCheckpoint: sig.closesSinceCheckpoint,
+    every: sig.every,
+    hardThreshold: sig.hardThreshold,
+    lastRetroPath: sig.lastRetroPath
+  };
+}
+
+function applyMarathonCheckpointSignal(
+  sig: MarathonCheckpointSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!sig) return;
+  const due = `${sig.closesSinceCheckpoint} slice(s) closed since the last retrospective`;
+  const cmd = "Run `/loop:retrospective` to capture lessons before continuing.";
+  if (sig.level === "warn") {
+    suggestions.push(
+      `marathon_checkpoint_due: ${due} (advisory at >=${sig.every}, hard stop at >=${sig.hardThreshold}). ${cmd}`
+    );
+    return;
+  }
+  reasons.push(
+    `marathon_checkpoint_required: ${due} (hard threshold ${sig.hardThreshold}) — checkpoint mandatory before next slice`
+  );
+  blockers.push({
+    category: "marathon-checkpoint",
+    message: `${due}; hard threshold ${sig.hardThreshold} reached. Drift accumulates beyond this point.`,
+    suggestion: cmd
+  });
+  suggestions.push(cmd);
+}
+
+function applyRedundantReadStopSignal(
+  sig: RedundantReadSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!sig) return;
+  const { maxReadCount, path: filePath, threshold, sessionId, offendingPathCount } = sig;
+  reasons.push(
+    `redundant_read_stop: path \`${filePath}\` re-read ${maxReadCount} times (cap ${threshold}, ${offendingPathCount} offending path${offendingPathCount === 1 ? "" : "s"} in session ${sessionId})`
+  );
+  blockers.push({
+    category: "redundant-read-stop",
+    message: `file \`${filePath}\` was Read ${maxReadCount} times in session ${sessionId} (cap ${threshold}). Cumulative redundant reads waste tokens and bust the prompt cache.`,
+    suggestion:
+      "Trust prior Read results; avoid re-reading unchanged paths. Tune the cap via loop.redundantReadCap in .claude/loop.json if the threshold is too aggressive."
+  });
+  suggestions.push(
+    `Redundant Read detected: \`${filePath}\` read ${maxReadCount} times (cap ${threshold}). ` +
+      "Use prior content; raise loop.redundantReadCap in .claude/loop.json to relax the gate."
+  );
+}
+
+function applyCostRegressionSignal(
+  regressionSignal: CostRegressionSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!regressionSignal) return;
+  const current = regressionSignal.currentUsd.toFixed(2);
+  const median = regressionSignal.medianUsd.toFixed(2);
+  const threshold = regressionSignal.thresholdUsd.toFixed(2);
+  const { multiplier, window: w, sampleCount } = regressionSignal;
+  reasons.push(
+    `cost_regression_stop: current $${current} > median $${median} × ${multiplier}` +
+      ` (threshold $${threshold}, window ${w}, sample ${sampleCount})`
+  );
+  blockers.push({
+    category: "cost-regression",
+    message:
+      `aggregate spend $${current} exceeded rolling-median threshold $${threshold}` +
+      ` (median $${median} × ${multiplier}, sample ${sampleCount})`,
+    suggestion:
+      "Review the latest aggregate cost report and address inefficiencies before resuming. " +
+      "Adjust loop.costRegressionMultiplier or loop.costRegressionWindow in .claude/loop.json to change this behavior."
+  });
+  suggestions.push(
+    `Current aggregate spend $${current} is more than ${multiplier}× the rolling median $${median}` +
+      ` (threshold $${threshold}). Inspect .claude/artifacts/crew/cost/ for opus-overuse / cache-busted findings. ` +
+      "Adjust loop.costRegressionMultiplier or loop.costRegressionWindow in .claude/loop.json to change this behavior."
+  );
+}
+
+function applySliceCostCeilingSignal(
+  ceilingSignal: SliceCostCeilingSignal | null,
+  reasons: string[],
+  suggestions: string[],
+  blockers: Array<Record<string, string>>
+) {
+  if (!ceilingSignal) return;
+  const actual = ceilingSignal.actualUsd.toFixed(2);
+  const ceiling = ceilingSignal.ceilingUsd;
+  reasons.push(`[HIGH] slice-cost-ceiling:exceeded (actual: $${actual}, ceiling: $${ceiling})`);
+  blockers.push({
+    category: "slice-cost-ceiling",
+    message: `latest slice spend $${actual} exceeded ceiling $${ceiling}`,
+    suggestion:
+      "Review the latest cost report under .claude/artifacts/crew/cost/, address opus-overuse / cache-busted findings, then adjust loop.costSliceCeiling in .claude/loop.json if the new floor is intentional."
+  });
+  suggestions.push(
+    `Latest slice cost $${actual} exceeded loop.costSliceCeiling ($${ceiling}). ` +
+      "Inspect the cost report (referenced under .claude/artifacts/crew/cost/) for opus-overuse / cache-busted findings before rolling the next slice. " +
+      "Adjust loop.costSliceCeiling in .claude/loop.json to change this behavior."
+  );
+}
+
+function applyGradeTrendSignal(
+  gradeTrendSignal: Record<string, any> | null,
+  reasons: string[],
+  suggestions: string[]
+) {
+  if (!gradeTrendSignal) return;
+  reasons.push(gradeTrendSignal.reason);
+  suggestions.push(
+    `Grade trend below threshold (${gradeTrendSignal.threshold}) for ${gradeTrendSignal.consecutiveBelow} consecutive slice(s). ` +
+      "Review recent slice grades before resuming the autonomous loop. " +
+      "Adjust loop.gradeTrendThreshold or loop.gradeTrendConsecutiveLimit in .claude/loop.json to change this behavior."
+  );
+}
+
+function appendCrewGateSignals(
+  crewGates: Record<string, any>,
+  reasons: string[],
+  suggestions: string[],
+  { autoMode }: { autoMode: boolean }
+) {
+  if (crewGates.escalated) {
+    reasons.push(
+      `crew run escalated_to_human: ${crewGates.escalated.note || "(no note)"} — hard stop`
+    );
+    suggestions.push(
+      "The crew workflow has been escalated to a human. Resolve the escalation and clear the badge before resuming the loop."
+    );
+  } else if (crewGates.blocked && !autoMode) {
+    reasons.push(
+      `crew run blocked: ${crewGates.blocked.note || "(no note)"}` +
+        (crewGates.blocked.blockedBy ? ` (blockedBy ${crewGates.blocked.blockedBy})` : "")
+    );
+    suggestions.push(
+      "The crew workflow is blocked. Unblock the run (clear the badge or write the missing artifact) before continuing."
+    );
+  }
+}
+
+async function gatherStopInputs(repoPath: string, config: Record<string, any> | null) {
+  const [
+    backlog,
+    specs,
+    alerts,
+    costAlertCount,
+    crewGates,
+    gradeTrendSignal,
+    costCeilingSignal,
+    costRegressionSignal,
+    sessionDriftSignal,
+    redundantReadSignal,
+    marathonCheckpointSignal,
+    workflowState
+  ] = await Promise.all([
+    listBacklog(repoPath, { config }),
+    listSpecs(repoPath, { config }),
+    detectPatterns(repoPath, { config }),
+    countHighSeverityCostAlerts(repoPath, 3),
+    readCrewBlockingGates(repoPath),
+    checkGradeTrend(repoPath, config),
+    checkSliceCostCeiling(repoPath, config),
+    checkCostRegression(repoPath, config),
+    checkSessionDrift(repoPath),
+    checkRedundantReadStop(repoPath, config),
+    checkMarathonCheckpoint(repoPath, config),
+    readCrewWorkflowState(repoPath)
+  ]);
+  return {
+    backlog,
+    specs,
+    alerts,
+    costAlertCount,
+    crewGates,
+    gradeTrendSignal,
+    costCeilingSignal,
+    costRegressionSignal,
+    sessionDriftSignal,
+    redundantReadSignal,
+    marathonCheckpointSignal,
+    workflowState
+  };
+}
+
+// eslint-disable-next-line complexity -- pipeline orchestrator; complexity inflated by config nullish-chaining and apply* calls, but actual branching is linear. Track as follow-up to consolidate apply* calls into a single resolver.
+export async function checkStopConditions(
+  repoPath: string,
+  { config = null, ignoreAlerts = false }: Record<string, any> = {}
+) {
+  const {
+    backlog,
+    specs,
+    alerts,
+    costAlertCount,
+    crewGates,
+    gradeTrendSignal,
+    costCeilingSignal,
+    costRegressionSignal,
+    sessionDriftSignal,
+    redundantReadSignal,
+    marathonCheckpointSignal,
+    workflowState
+  } = await gatherStopInputs(repoPath, config);
+
+  // autoMode defaults to true so freshly hand-rolled .claude/loop.json
+  // (without the key) get the new behavior. Presets ship the key explicitly
+  // for documentation, but the default here is the source of truth.
+  // config.loop.marathonMode is a deprecated alias; autoMode wins if both set.
+  const autoMode = config?.loop?.autoMode ?? config?.loop?.marathonMode ?? true;
+
+  const reasons: any[] = [];
+  const blockers: any[] = [];
+  const suggestions: any[] = [];
+  let iterationCapReached = false;
+  appendCrewGateSignals(crewGates, reasons, suggestions, { autoMode });
+
+  const backlogStats = computeBacklogStats(backlog, specs);
+  appendBacklogExhaustedSignals(backlogStats, reasons, suggestions);
+
+  const warnAlerts = ignoreAlerts ? [] : alerts.filter((a) => a.severity === "warn");
+  const ignoredCategories: string[] = config?.loop?.warnAlertCategoriesIgnoredInAutoMode ?? [
+    "score-trend"
+  ];
+  const warnDemotedCount = { value: 0 };
+  applyWarnAlertSignals(warnAlerts, blockers, reasons, {
+    autoMode,
+    ignoredCategories,
+    suggestions,
+    demotedCount: warnDemotedCount
+  });
+
+  const iterStatus = await getIterationStatus(repoPath, config?.loop?.maxIterations || 25);
+  iterationCapReached = iterStatus.exhausted;
+  applyIterationCapSignals(iterStatus, reasons, suggestions, { autoMode });
+  applyCostAlertSignal(costAlertCount, config, reasons, suggestions);
+  applySliceCostCeilingSignal(costCeilingSignal, reasons, suggestions, blockers);
+  applyCostRegressionSignal(costRegressionSignal, reasons, suggestions, blockers);
+  applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
+  applyRedundantReadStopSignal(redundantReadSignal, reasons, suggestions, blockers);
+  applyMarathonCheckpointSignal(marathonCheckpointSignal, reasons, suggestions, blockers);
+  applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
+
+  return assembleStopResult({
+    reasons,
+    blockers,
+    suggestions,
+    iterationCapReached,
+    backlogStats,
+    alerts,
+    warnAlerts,
+    warnDemotedCount: warnDemotedCount.value,
+    iterStatus,
+    costAlertCount,
+    crewGates,
+    autoMode,
+    gradeTrendSignal,
+    costCeilingSignal,
+    costRegressionSignal,
+    sessionDriftSignal,
+    redundantReadSignal,
+    marathonCheckpointSignal,
+    workflowState
+  });
+}
+
+// Assemble the stop-check return shape. Extracted so checkStopConditions stays
+// under the cyclomatic-complexity cap after FEAT-059 added autoMode + warn-alert
+// demotion branches.
+function assembleStopResult(p: any) {
+  const checkpointDue =
+    p.marathonCheckpointSignal !== null && p.marathonCheckpointSignal !== undefined;
+  const sliceClosesSinceCheckpoint = p.marathonCheckpointSignal?.closesSinceCheckpoint ?? null;
+  return {
+    shouldStop: p.reasons.length > 0,
+    reasons: p.reasons,
+    blockers: p.blockers,
+    suggestions: p.suggestions,
+    iterationCapReached: p.iterationCapReached,
+    checkpointDue,
+    sliceClosesSinceCheckpoint,
+    snapshot: {
+      pendingOrTriaged: p.backlogStats.pendingOrTriaged,
+      inProgress: p.backlogStats.inProgress,
+      approvedUndecomposed: p.backlogStats.approvedUndecomposed,
+      totalAlerts: p.alerts.length,
+      warnAlerts: p.warnAlerts.length,
+      warnAlertsDemoted: p.warnDemotedCount,
+      iterationCount: p.iterStatus.count,
+      iterationCap: p.iterStatus.cap,
+      costAlerts: p.costAlertCount,
+      crewBlocked: Boolean(p.crewGates.blocked),
+      crewEscalated: Boolean(p.crewGates.escalated),
+      autoMode: p.autoMode,
+      marathonMode: p.autoMode,
+      gradeTrend: p.gradeTrendSignal
+        ? {
+            consecutiveBelow: p.gradeTrendSignal.consecutiveBelow,
+            threshold: p.gradeTrendSignal.threshold
+          }
+        : null,
+      sliceCostCeiling: buildCeilingSnapshotEntry(p.costCeilingSignal),
+      costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
+      sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
+      mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState),
+      redundantReadStop: buildRedundantReadSnapshotEntry(p.redundantReadSignal),
+      marathonCheckpoint: buildMarathonCheckpointSnapshotEntry(p.marathonCheckpointSignal)
+    }
+  };
+}
+
+```
+
+## Files read
+

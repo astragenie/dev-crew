@@ -63,7 +63,13 @@ async function appendFilesSection(slicePath: string, files: string[]) {
 test("writeShapeMarker writes JSON with expected fields", async () => {
   const repo = await tmpRepo("shape-marker-write-");
   try {
-    await writeShapeMarker(repo, "SLICE-94", SHAPE_DOC_UPDATE, "all changed files are docs/markdown", true);
+    await writeShapeMarker(
+      repo,
+      "SLICE-94",
+      SHAPE_DOC_UPDATE,
+      "all changed files are docs/markdown",
+      true
+    );
     const markerPath = path.join(repo, SHAPE_MARKERS_DIR, "SLICE-94.json");
     const raw = await fs.readFile(markerPath, "utf8");
     const obj = JSON.parse(raw) as Record<string, unknown>;

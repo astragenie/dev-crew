@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-94","timestamp":"2026-06-11T12:01:41.373Z","featureId":"FEAT-186","title":"SLICE-94: Wire classify-slice-shape into slice ceremony (inline-path hint)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260611T120141Z-plan-SLICE-94.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-94","timestamp":"2026-06-11T12:18:48.070Z","featureId":"FEAT-186","featureMovedTo":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-186.md","validationSatisfied":true}

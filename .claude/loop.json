@@ -62,6 +62,7 @@
     "costRegressionMultiplier": 6.0,
     "costSliceCeiling": 200,
     "gradeTrendPerDimension": { "observability": 0.7 },
+    "marathonCheckpointEvery": 4,
     "perfBaseline": {
       "medianWallClockSeconds": 1200,
       "avgGrade": 0.835,

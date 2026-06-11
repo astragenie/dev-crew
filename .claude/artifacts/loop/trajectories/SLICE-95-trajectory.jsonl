@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-95","timestamp":"2026-06-11T12:25:41.141Z","featureId":"FEAT-181","title":"SLICE-95: Marathon session-scope checkpoint — mandatory retrospective every N slices","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260611T122540Z-plan-SLICE-95.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-95","timestamp":"2026-06-11T12:38:43.981Z","featureId":"FEAT-181","featureMovedTo":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-181.md","validationSatisfied":true}

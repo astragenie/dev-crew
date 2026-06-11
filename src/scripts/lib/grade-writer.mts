@@ -270,9 +270,8 @@ export async function writeGrade(
   const allIds = [...new Set([...existingIds, ...newIds])];
 
   // Populate grade timing.* + shape.* telemetry fields (FEAT-184 / FEAT-186).
-  const { computeTelemetry, applyTelemetry, applyShapeTelemetry } = await import(
-    "./grade-telemetry.mjs"
-  );
+  const { computeTelemetry, applyTelemetry, applyShapeTelemetry } =
+    await import("./grade-telemetry.mjs");
   const telemetry = await computeTelemetry(repoPath, sliceId, config);
   frontmatter.timing = applyTelemetry(
     (frontmatter.timing as Record<string, unknown>) ?? {},

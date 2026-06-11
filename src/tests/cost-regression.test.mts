@@ -305,7 +305,7 @@ test("checkCostRegression: non-aggregate reports are ignored (filename/frontmatt
 
   // Write a non-aggregate report (no aggregate_all frontmatter)
   await fs.writeFile(
-    path.join(dir, "20260601T100000Z-cost-report-slice-slice-01.md"),
+    path.join(dir, "20260601T100000Z-cost-report-slice-slice01.md"),
     `---\nkind: cost-report\nslice: SLICE-01\nusd: 500\n---\n`
   );
   // Write a proper aggregate report as current

@@ -1,13 +1,13 @@
 ---
 id: FEAT-181
-status: triaged
+status: done
 priority: P1
 category: feature
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-11
 depends_on: []
-slices: []
+slices: [SLICE-95]
 derived_from: null
 autonomous_safe: true
 pm_customer_impact: 0.7
@@ -17,6 +17,12 @@ pm_technical_risk: 0.2
 pm_dependency_depth: 0.1
 composite_score: 0.75
 triage_notes: "Marathon session checkpoint bounds unobserved drift (AgentOps 2-4 atomic arcs rule). Additive loop.json knob + checkpoint dispatch trigger; no ceremony contract change. Low risk, high alignment -> autonomous. Slice first."
+started_at: 2026-06-11
+github_issue: 210
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/210"
+slices_complete: [SLICE-95]
+completed_at: 2026-06-11
 ---
 # FEAT-181: Marathon session-scope checkpoint — mandatory retrospective every N slices
 

@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-93","timestamp":"2026-06-11T11:38:07.123Z","featureId":"FEAT-185","title":"SLICE-93: Wire post-builder-fanout into slice ceremony","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260611T113806Z-plan-SLICE-93.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-93","timestamp":"2026-06-11T11:57:59.493Z","featureId":"FEAT-185","featureMovedTo":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-185.md","validationSatisfied":true}
