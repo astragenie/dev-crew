@@ -2,10 +2,13 @@
 filed: 2026-06-10
 target_plugin: hero-crew
 target_repo: sergeymilashico/hero-crew
-status: pending-upstream-fix
-loop_tracking_feat: TBD (assign loop FEAT for visibility)
-loop_related_slice: SLICE-87 (observed 3 pauses), SLICE-51..57 (original 2026-06-06 repro)
+status: in-progress-upstream (SLICE-A landed 2026-06-11)
+upstream_feat: FEAT-161 (hero-crew)
+upstream_commit_slice_a: b31ca77 (2026-06-11) — HARD OUTPUT CONTRACT block in lead/builder/reviewer/validator prompts
+loop_tracking_feat: n/a (tracked via upstream FEAT-161; loop's local prototype reverted at a9fde62)
+loop_related_slice: SLICE-87 (observed 3 pauses), SLICE-51..57 (original 2026-06-06 repro), SLICE-95..96 (crew:lead coverage 2026-06-11)
 related_sop: docs/sop/specialist-pause-handling.md
+last_updated: 2026-06-11
 ---
 
 # Upstream-request: specialist-dispatch completion enforcement (builder / reviewer / validator)
@@ -86,7 +89,9 @@ Option 1 is the real fix; Option 2 is a cheaper partial mitigation.
 | Date | Event |
 |---|---|
 | 2026-06-10 | Filed (this doc) — pattern persisted past the SOP's 5-slice threshold (now ≥9 slices) |
-| TBD | Assign loop FEAT (for autonomous loop visibility); link to `loop_tracking_feat:` frontmatter |
-| TBD | Upstream issue / PR opened against `sergeymilashico/hero-crew` |
-| TBD | Upstream merged / rejected — update `status:` frontmatter |
-| TBD | Cache version bumped → loop session sees the fix → retire SOP §2 manual fallback |
+| 2026-06-11 | Amended — `crew:lead` added (orchestrator pauses on SLICE-95 + SLICE-96); AC-9 + AC-10 added |
+| 2026-06-11 | Loop-side local prototype mitigation landed at loop commit `2c41272` then reverted at `a9fde62` after user pushback on bloat — replaced by upstream fix below |
+| 2026-06-11 | **Upstream FEAT-161 filed against hero-crew** at `.claude/artifacts/loop/backlog/pending/FEAT-161.md` (hero-crew repo); SLICE-A landed at hero-crew commit `b31ca77` — HARD OUTPUT CONTRACT block inserted into `agents/{lead,builder,builder-be,builder-fe,reviewer,validator}.md` immediately after each identity section |
+| TBD | SLICE-B (FEAT-161): stub-artifact pattern — builder/reviewer/validator write `decision: pending` artifact on entry, update at end. Depends on confirming `crew write-*` CLI supports double-call / `--update`. |
+| TBD | SLICE-C (FEAT-161, optional): instrument `crew write-*` to emit structured "artifact updated from pending" log so parent distinguishes normal completion from stub promotion |
+| TBD | Cache version bumped → loop session sees the upstream fix → retire SOP §2 manual fallback |
