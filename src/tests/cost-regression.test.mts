@@ -15,6 +15,8 @@ import {
 import { checkCostRegression } from "../scripts/lib/cost-regression.mjs";
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 
+const COST_DIR_REL = ".claude/artifacts/crew/cost";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -22,7 +24,7 @@ import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 async function tmpRepo(prefix: string): Promise<string> {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude/state/crew"), { recursive: true });
-  await fs.mkdir(path.join(repo, ".claude/artifacts/crew/cost"), { recursive: true });
+  await fs.mkdir(path.join(repo, COST_DIR_REL), { recursive: true });
   // Seed a pending FEAT so backlog-exhausted does not trip tests.
   const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
   await fs.mkdir(backlogDir, { recursive: true });
@@ -55,7 +57,7 @@ async function writeAggregateReport(
   usd: number | null,
   extra: Record<string, string | number | boolean> = {}
 ): Promise<string> {
-  const dir = path.join(repo, ".claude/artifacts/crew/cost");
+  const dir = path.join(repo, COST_DIR_REL);
   const filename = `${timestamp}-cost-report-aggregate-${slice.toLowerCase()}.md`;
   const filepath = path.join(dir, filename);
   const lines = [
@@ -245,7 +247,7 @@ test("checkCostRegression: currentUsd slightly below threshold — does NOT halt
 test("checkCostRegression: aggregate directory missing — returns null (fail-open)", async () => {
   const repo = await tmpRepo("cr-no-dir-");
   // Remove the cost dir so it doesn't exist
-  await fs.rm(path.join(repo, ".claude/artifacts/crew/cost"), { recursive: true, force: true });
+  await fs.rm(path.join(repo, COST_DIR_REL), { recursive: true, force: true });
 
   const config = { loop: { costRegressionWindow: 5, costRegressionMultiplier: 3.0 } };
   const signal = await checkCostRegression(repo, config);
@@ -294,7 +296,7 @@ test("checkCostRegression: uses default window=5 and multiplier=3.0 when config 
 
 test("checkCostRegression: non-aggregate reports are ignored (filename/frontmatter filter)", async () => {
   const repo = await tmpRepo("cr-ignore-non-agg-");
-  const dir = path.join(repo, ".claude/artifacts/crew/cost");
+  const dir = path.join(repo, COST_DIR_REL);
 
   // Write a non-aggregate report (no aggregate_all frontmatter)
   await fs.writeFile(
@@ -311,12 +313,215 @@ test("checkCostRegression: non-aggregate reports are ignored (filename/frontmatt
 });
 
 // ---------------------------------------------------------------------------
+// FEAT-166 / SLICE-91: per-project filter (perProjectUsd) tests
+// Cover AC-3 (filter active), AC-4 (back-compat fallback), AC-5 (false-trip fix).
+// ---------------------------------------------------------------------------
+
+async function writeAggregateReportWithPerProject(
+  repo: string,
+  timestamp: string,
+  slice: string,
+  totalUsd: number,
+  perProjectUsd: Record<string, number>
+): Promise<string> {
+  const dir = path.join(repo, COST_DIR_REL);
+  const filename = `${timestamp}-cost-report-aggregate-${slice.toLowerCase()}.md`;
+  const filepath = path.join(dir, filename);
+  const lines = [
+    "---",
+    "kind: cost-report",
+    `slice: ${slice}`,
+    `run_title: "${slice} run"`,
+    `usd: ${totalUsd}`,
+    "aggregate_all: true",
+    `source_count: ${Object.keys(perProjectUsd).length}`,
+    "per_project_usd:",
+    ...Object.entries(perProjectUsd).map(([k, v]) => `  ${k}: ${v}`),
+    `created_at: ${timestamp.replace("T", "-").replace("Z", ":00.000Z")}`,
+    "---",
+    "",
+    `# Aggregate Cost Report: ${slice}`,
+    ""
+  ].join("\n");
+  await fs.writeFile(filepath, lines);
+  return filepath;
+}
+
+test("AC-3 (case a): perProjectUsd present, current project's slice hits threshold — fires", async () => {
+  // Historical: project slice = 30 each → median 30, threshold 90
+  // Current: this project = 86 + alias = 5 → sum = 91 > 90 ⇒ FIRE
+  const repo = await tmpRepo("cr-ppu-hit-");
+  await writeAggregateReportWithPerProject(repo, "20260601T100000Z", "SLICE-01", 200, {
+    "C--work-mega-loop": 30,
+    "C--work-mega-other": 170
+  });
+  await writeAggregateReportWithPerProject(repo, "20260601T110000Z", "SLICE-02", 200, {
+    "C--work-mega-loop": 30,
+    "C--work-mega-other": 170
+  });
+  await writeAggregateReportWithPerProject(repo, "20260601T120000Z", "SLICE-03", 200, {
+    "C--work-mega-loop": 30,
+    "C--work-mega-other": 170
+  });
+  await writeAggregateReportWithPerProject(repo, "20260601T130000Z", "SLICE-04", 200, {
+    "C--work-mega-loop": 30,
+    "C--work-mega-other": 170
+  });
+  await writeAggregateReportWithPerProject(repo, "20260601T140000Z", "SLICE-05", 200, {
+    "C--work-mega-loop": 30,
+    "C--work-mega-other": 170
+  });
+  // current: this project = 86, alias = 5, summed slice = 91 (other projects irrelevant)
+  await writeAggregateReportWithPerProject(repo, "20260601T150000Z", "SLICE-06", 500, {
+    "C--work-mega-loop": 86,
+    "C--work-mega-hero-crew-autonomous-loop": 5,
+    "C--work-mega-other": 409
+  });
+
+  const config = {
+    loop: {
+      costRegressionWindow: 5,
+      costRegressionMultiplier: 3.0,
+      costProject: "C--work-mega-loop",
+      costProjectAliases: ["C--work-mega-hero-crew-autonomous-loop"]
+    }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.ok(signal, "project slice 91 > threshold 90 should fire");
+  assert.equal(signal!.triggered, true);
+  assert.equal(
+    signal!.currentUsd,
+    91,
+    "currentUsd reflects project + alias sum, not aggregate fm.usd"
+  );
+  assert.equal(
+    signal!.medianUsd,
+    30,
+    "median computed from per-project slices, not aggregate fm.usd"
+  );
+  assert.equal(signal!.thresholdUsd, 90);
+});
+
+test("AC-5 (case b): perProjectUsd present, project safe but others over — does NOT fire (the false-trip fix)", async () => {
+  // Historical project slices: 10 each → median 10, threshold 30
+  // Current: this project = 25 (below 30), aggregate fm.usd = 1000 (would trip pre-FEAT-166)
+  const repo = await tmpRepo("cr-ppu-safe-");
+  for (let i = 1; i <= 5; i++) {
+    await writeAggregateReportWithPerProject(repo, `20260601T1${i}0000Z`, `SLICE-0${i}`, 500, {
+      "C--work-mega-loop": 10,
+      "C--work-mega-other": 490
+    });
+  }
+  // current: project = 25, others = 975 → aggregate fm.usd = 1000 (would have tripped)
+  await writeAggregateReportWithPerProject(repo, "20260601T160000Z", "SLICE-06", 1000, {
+    "C--work-mega-loop": 25,
+    "C--work-mega-other": 975
+  });
+
+  const config = {
+    loop: {
+      costRegressionWindow: 5,
+      costRegressionMultiplier: 3.0,
+      costProject: "C--work-mega-loop"
+    }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.equal(
+    signal,
+    null,
+    "project slice 25 below threshold 30 should NOT trip despite aggregate fm.usd=1000"
+  );
+});
+
+test("AC-4 (case c): perProjectUsd absent, back-compat path uses fm.usd unchanged", async () => {
+  // Identical to the existing 'currentUsd slightly above threshold' test, but verifies
+  // that without perProjectUsd the per-project filter is a no-op and fm.usd drives the gate.
+  const repo = await tmpRepo("cr-ppu-backcompat-");
+  await writeAggregateReport(repo, "20260601T100000Z", "SLICE-01", 10);
+  await writeAggregateReport(repo, "20260601T110000Z", "SLICE-02", 20);
+  await writeAggregateReport(repo, "20260601T120000Z", "SLICE-03", 30);
+  await writeAggregateReport(repo, "20260601T130000Z", "SLICE-04", 40);
+  await writeAggregateReport(repo, "20260601T140000Z", "SLICE-05", 50);
+  await writeAggregateReport(repo, "20260601T150000Z", "SLICE-06", 91);
+
+  const config = {
+    loop: {
+      costRegressionWindow: 5,
+      costRegressionMultiplier: 3.0,
+      // Project IS configured — but no report has perProjectUsd, so back-compat applies.
+      costProject: "C--work-mega-loop",
+      costProjectAliases: ["C--work-mega-hero-crew-autonomous-loop"]
+    }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.ok(signal, "back-compat path must preserve pre-FEAT-166 behaviour exactly");
+  assert.equal(signal!.currentUsd, 91, "currentUsd falls through to fm.usd");
+  assert.equal(signal!.medianUsd, 30);
+  assert.equal(signal!.thresholdUsd, 90);
+});
+
+test("AC-3 alias coverage: project key absent but alias key present — alias slice used", async () => {
+  // Project key not in map (e.g. running in a sibling repo aliased back to this project).
+  const repo = await tmpRepo("cr-ppu-alias-only-");
+  for (let i = 1; i <= 5; i++) {
+    await writeAggregateReportWithPerProject(repo, `20260601T1${i}0000Z`, `SLICE-0${i}`, 300, {
+      "C--work-mega-hero-crew-autonomous-loop": 10,
+      "C--work-mega-other": 290
+    });
+  }
+  // current: only the alias is present in map, value 40 (> threshold 30)
+  await writeAggregateReportWithPerProject(repo, "20260601T160000Z", "SLICE-06", 500, {
+    "C--work-mega-hero-crew-autonomous-loop": 40,
+    "C--work-mega-other": 460
+  });
+
+  const config = {
+    loop: {
+      costRegressionWindow: 5,
+      costRegressionMultiplier: 3.0,
+      costProject: "C--work-mega-loop",
+      costProjectAliases: ["C--work-mega-hero-crew-autonomous-loop"]
+    }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.ok(signal, "alias-only slice must still drive the gate");
+  assert.equal(signal!.currentUsd, 40);
+  assert.equal(signal!.medianUsd, 10);
+});
+
+test("AC-3 unknown current project: falls back to fm.usd (defensive)", async () => {
+  // perProjectUsd present, but neither costProject nor any alias appears in the map.
+  // Defensive: treat the report as if perProjectUsd absent and use fm.usd.
+  const repo = await tmpRepo("cr-ppu-unknown-");
+  for (let i = 1; i <= 5; i++) {
+    await writeAggregateReportWithPerProject(repo, `20260601T1${i}0000Z`, `SLICE-0${i}`, 30, {
+      "C--work-mega-other": 30
+    });
+  }
+  await writeAggregateReportWithPerProject(repo, "20260601T160000Z", "SLICE-06", 91, {
+    "C--work-mega-other": 91
+  });
+
+  const config = {
+    loop: {
+      costRegressionWindow: 5,
+      costRegressionMultiplier: 3.0,
+      costProject: "C--work-mega-loop"
+    }
+  };
+  const signal = await checkCostRegression(repo, config);
+  assert.ok(signal, "unknown-project path must still expose runaway aggregate spend");
+  assert.equal(signal!.currentUsd, 91, "fm.usd used as fallback");
+  assert.equal(signal!.medianUsd, 30);
+});
+
+// ---------------------------------------------------------------------------
 // loadAggregateCostReport unit tests
 // ---------------------------------------------------------------------------
 
 test("loadAggregateCostReport: returns empty set when cost dir missing", async () => {
   const repo = await tmpRepo("cr-load-empty-");
-  await fs.rm(path.join(repo, ".claude/artifacts/crew/cost"), { recursive: true, force: true });
+  await fs.rm(path.join(repo, COST_DIR_REL), { recursive: true, force: true });
 
   const result = await loadAggregateCostReport(repo);
   assert.equal(result.current, null);

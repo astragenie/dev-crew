@@ -31,6 +31,15 @@ export interface AggregateCostReport {
   aggregateAll: true;
   /** Frontmatter `source_count` (number of sibling projects merged). */
   sourceCount: number | null;
+  /**
+   * Frontmatter `per_project_usd` map: project-id → usd slice.
+   * Null when the frontmatter omits the field (back-compat path) or
+   * when every entry was unparseable. Per FEAT-166 / SLICE-91 — the
+   * upstream hero-crew aggregate writer emits this map so the loop
+   * regression gate can filter by `config.loop.costProject` instead
+   * of tripping on cross-project aggregate inflation.
+   */
+  perProjectUsd: Record<string, number> | null;
 }
 
 /** Return shape of `loadAggregateCostReport`. */
@@ -170,6 +179,52 @@ function parseSourceCount(raw: unknown): number | null {
   return null;
 }
 
+// Indented child line under a YAML map key — captures `<key>: <value>`
+// where the key is permissive (allows `-`, `.`, `_` so project ids like
+// `C--work-mega-loop` parse) and the value is the rest of the line.
+const NESTED_KEY_VALUE_RE = /^\s+([\w.\-_]+):\s*(.*)$/;
+
+/**
+ * Parse a `per_project_usd:` nested YAML map out of a raw frontmatter
+ * block. The map appears as an indented child block:
+ *
+ *   per_project_usd:
+ *     C--work-mega-loop: 16.0366
+ *     C--work-mega-hero-crew: 25.3521
+ *
+ * Defensive: non-numeric values are skipped (not thrown). Returns null
+ * when the field is absent or every entry was unparseable. Used by
+ * `parseAggregateReportFile` to populate `AggregateCostReport.perProjectUsd`
+ * (FEAT-166 / SLICE-91).
+ */
+function parsePerProjectUsd(block: string): Record<string, number> | null {
+  const lines = block.split(CRLF_SPLIT_RE);
+  let inMap = false;
+  const map: Record<string, number> = {};
+  let found = false;
+  for (const line of lines) {
+    if (!inMap) {
+      // Match a top-level `per_project_usd:` header with no inline value.
+      if (/^per_project_usd:\s*$/.test(line)) {
+        inMap = true;
+      }
+      continue;
+    }
+    // Top-level key (no indent + `key:`) ends the nested block.
+    if (/^[\w_]+:/.test(line)) break;
+    const m = line.match(NESTED_KEY_VALUE_RE);
+    if (!m) continue;
+    const key = m[1]!;
+    const rawValue = m[2]!.trim();
+    const n = Number(rawValue);
+    if (Number.isFinite(n)) {
+      map[key] = n;
+      found = true;
+    }
+  }
+  return found ? map : null;
+}
+
 /**
  * Parse a single markdown file into an AggregateCostReport.
  * Returns null when the file cannot be read or frontmatter is missing/invalid.
@@ -211,7 +266,8 @@ async function parseAggregateReportFile(filepath: string): Promise<AggregateCost
     usd: parseUsd(fm.usd),
     createdAt: typeof fm.created_at === "string" ? fm.created_at : null,
     aggregateAll: true,
-    sourceCount: parseSourceCount(fm.source_count)
+    sourceCount: parseSourceCount(fm.source_count),
+    perProjectUsd: parsePerProjectUsd(block)
   };
 }
 
