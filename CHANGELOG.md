@@ -3,6 +3,39 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## [Unreleased]
+
+### Marketplace migration
+
+The marketplace registry has moved to its own repository:
+[sergeymilashico/astra-marketplace](https://github.com/sergeymilashico/astra-marketplace).
+
+- `loop` no longer carries `.claude-plugin/marketplace.json` (commit
+  `4a46687`). This repo is plain plugin code now.
+- `loop` is registered in `astra-marketplace` alongside `crew` and
+  `cortex`.
+- New install path:
+  ```
+  /plugin marketplace add sergeymilashico/astra-marketplace
+  /plugin install loop@astra
+  ```
+- Old install paths (`sergeymilashico/hero-crew` and `sergeymilashico/loop`
+  as marketplaces) no longer serve `marketplace.json`. Existing installs
+  need `/plugin marketplace remove <old-name>` + re-add `astra-marketplace`.
+
+### Action items for downstream consumers
+
+- Update install docs and CI bootstrap to use `astra-marketplace`.
+- `/plugin marketplace update` after re-adding.
+
+### Why
+
+`hero-crew` and `loop` were each acting as both plugin source and
+marketplace registry. With `cortex` joining the family, every new
+plugin required a paired marketplace.json commit somewhere — adding
+unnecessary coupling between unrelated release cadences. The central
+registry decouples them and gives users one entry point.
+
 ## v0.41.0 — 2026-06-11 — FEAT-167 follow-up + FEAT-168 decomposition refuse-gate
 
 ### Added
