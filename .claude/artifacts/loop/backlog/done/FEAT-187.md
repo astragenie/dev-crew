@@ -1,6 +1,6 @@
 ---
 id: FEAT-187
-status: in-progress
+status: done
 priority: P2
 category: tech-debt
 target_release: null

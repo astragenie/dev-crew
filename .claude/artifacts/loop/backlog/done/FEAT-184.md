@@ -1,6 +1,8 @@
 ---
 id: FEAT-184
-status: in-progress
+status: done
+completed_at: 2026-06-11
+slices_complete: [SLICE-92]
 priority: P1
 category: observability
 target_release: null
