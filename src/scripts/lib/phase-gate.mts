@@ -6,6 +6,8 @@ import { promisify } from "node:util";
 import { resolveConfig } from "./config-resolver.mjs";
 import { findCrewCli } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
+import { type Groups } from "./phase-gate/parallel-runner.mjs";
+import { runPhaseGateParallel } from "./phase-gate/parallel-orchestrator.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
 
 const execFile = promisify(execFileCallback);
@@ -153,6 +155,46 @@ async function safeIncrementIteration(repoPath: string) {
   }
 }
 
+// Post-gate hooks fired only when the gate PASSes. Returns retro + deploy
+// handoffs (both best-effort — errors collapse into the result rather than
+// throwing). Extracted to keep `runPhaseGate` under the cyclomatic-15 cap.
+async function runPassPostHooks(repoPath: string, phase: unknown, overallStatus: string) {
+  if (overallStatus !== "PASS") {
+    return {
+      retrospective: null as Record<string, any> | null,
+      deployHandoffs: [] as Record<string, any>[]
+    };
+  }
+  let retrospective: Record<string, any> | null = null;
+  try {
+    retrospective = await runRetrospectiveSincePreviousGate(repoPath, phase);
+  } catch (err: unknown) {
+    retrospective = { error: (err as Error).message };
+  }
+  let deployHandoffs: Record<string, any>[] = [];
+  try {
+    deployHandoffs = await emitDeployHandoffsForReadyReleases(repoPath);
+  } catch (err: unknown) {
+    deployHandoffs = [{ error: (err as Error).message }];
+  }
+  return { retrospective, deployHandoffs };
+}
+
+// Returns the parallel groups to run if all three preconditions hold:
+// (a) `config.phaseGate.parallel` is not explicitly false, (b) groups are
+// configured, (c) the caller did not pass `--serial`. Returns null otherwise
+// so `runPhaseGate` can fall through to the sequential stack.* runners.
+function resolveParallelGroups(
+  config: Record<string, any>,
+  options: Record<string, any>
+): Groups | null {
+  const cfg = (config.phaseGate ?? {}) as { parallel?: boolean; groups?: Groups };
+  if (options.serial) return null;
+  if (cfg.parallel === false) return null;
+  if (!cfg.groups) return null;
+  return cfg.groups;
+}
+
 // Dispatcher passes config via options; direct callers (tests, ceremonies)
 // may omit it, falling back to a fresh resolve of the same repo config.
 async function resolveGateConfig(
@@ -172,6 +214,21 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
   if (!crewCli) {
     throw new Error(
       "Hard dependency missing: crew CLI not found in plugin cache. Install crew first."
+    );
+  }
+
+  const parallelGroups = resolveParallelGroups(config, options);
+  if (parallelGroups) {
+    return runPhaseGateParallel(
+      repoPath,
+      config,
+      phase,
+      note,
+      startedAt,
+      crewCli,
+      parallelGroups,
+      options.only,
+      { writeReport, recordWithCrew, safeIncrementIteration }
     );
   }
 
@@ -207,24 +264,12 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
 
   // Auto-invoke retrospective when phase gate PASSes. Captures lessons /
   // score trends / decisions over the window since the previous phase-gate
-  // artifact (default span 30 days if no prior gate found).
-  let retrospective: Record<string, any> | null = null;
-  let deployHandoffs: Record<string, any>[] = [];
-  if (overallStatus === "PASS") {
-    try {
-      retrospective = await runRetrospectiveSincePreviousGate(repoPath, phase);
-    } catch (err: unknown) {
-      retrospective = { error: (err as Error).message };
-    }
-    // After retrospective, scan for any release where all targeted features
-    // are done — if found, write a handoff to crew deployer surfacing the
-    // ready-to-cut version. Best-effort; failures don't break phase-gate.
-    try {
-      deployHandoffs = await emitDeployHandoffsForReadyReleases(repoPath);
-    } catch (err: unknown) {
-      deployHandoffs = [{ error: (err as Error).message }];
-    }
-  }
+  // artifact (default span 30 days if no prior gate found). After retro,
+  // scan for releases where all targeted features are done and surface a
+  // deploy handoff. Best-effort; failures don't block phase-gate.
+  const post = await runPassPostHooks(repoPath, phase, overallStatus);
+  const retrospective: Record<string, any> | null = post.retrospective;
+  const deployHandoffs: Record<string, any>[] = post.deployHandoffs;
 
   return {
     mode: "phase-gate",

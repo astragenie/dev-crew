@@ -81,7 +81,10 @@ const FLAG_SPEC = {
   "--skip-simplify": { key: "skipSimplify", boolean: true },
   // doctor flags
   "--check": { key: "check", boolean: true },
-  "--fix": { key: "fix", boolean: true }
+  "--fix": { key: "fix", boolean: true },
+  // phase-gate flags
+  "--serial": { key: "serial", boolean: true },
+  "--only": { key: "only" }
 };
 
 function parseArgs(argv: string[]) {
@@ -140,7 +143,9 @@ function parseArgs(argv: string[]) {
     noMerge: false,
     skipSimplify: false,
     check: false,
-    fix: false
+    fix: false,
+    serial: false,
+    only: null
   };
   const positionals: any[] = [];
 
@@ -208,7 +213,13 @@ const COMMANDS = {
   },
   "phase-gate": async ({ repoPath, flags, config }: CmdCtx) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
-    return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note, config });
+    return runPhaseGate(repoPath, {
+      phase: flags.phase,
+      note: flags.note,
+      serial: Boolean(flags.serial),
+      only: flags.only || undefined,
+      config
+    });
   },
   status: async ({ repoPath }: CmdCtx) => {
     const { reportStatus } = await import("./lib/loop-installer.mjs");

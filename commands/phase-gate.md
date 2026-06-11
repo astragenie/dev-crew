@@ -43,3 +43,47 @@ Workflow:
 
 The plugin does NOT auto-detect phase boundaries. The agent decides when a
 phase closes based on slice metadata in `approved-slices.md`.
+
+## Parallel mode (SLICE-92)
+
+When `.claude/loop.json` defines a top-level `phaseGate` block, the gate
+runs each named group in parallel and fails-fast on the first non-zero exit.
+Each group is itself a serial list of commands; within a group, the first
+failing command stops the group. Output from every group is interleaved into
+one combined log, with each line prefixed by `[<group>] ` so the agent can
+grep for which group emitted what.
+
+Default config (matches the loop repo itself):
+
+```json
+"phaseGate": {
+  "parallel": true,
+  "groups": {
+    "lint": [
+      { "cmd": "bun", "args": ["run", "lint"] },
+      { "cmd": "bun", "args": ["run", "format:check"] },
+      { "cmd": "bun", "args": ["./src/scripts/validate-manifests.mts"] },
+      { "cmd": "bun", "args": ["./src/scripts/validate-content-length.mts"] }
+    ],
+    "typecheck": [
+      { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.json", "--noEmit"] },
+      { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.test.json", "--noEmit"] }
+    ],
+    "test": [
+      { "cmd": "bun", "args": ["test", "src/tests/", "--parallel", "--timeout", "60000"] }
+    ]
+  }
+}
+```
+
+CLI flags:
+
+- `--serial` — force the legacy sequential path even when `phaseGate.groups`
+  is configured. Useful when bisecting a flaky parallel run or when CI output
+  needs unambiguous stage ordering.
+- `--only <group>` — run a single group (e.g. `--only lint`, `--only test`).
+  Skips every other configured group. Handy for rapid iteration.
+
+If `phaseGate.groups` is missing, or `phaseGate.parallel: false` is set in
+`loop.json`, the gate falls through to the original `stack.{build,test,
+frontendBuild,infraPlan,aspireBoot}` runners — full back-compat.
