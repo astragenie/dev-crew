@@ -6,8 +6,10 @@
 //   - block arrays with "- item" continuation lines
 //   - quoted strings (single or double)
 //
-// Rejects anything fancier (nested mappings, multiline scalars beyond strings,
-// anchors/aliases). Schema enforcement happens at the caller.
+// Handles one level of nested mappings (`key:\n  inner: value`) so grade
+// frontmatter blocks like `scores:`, `timing:`, `shape:` round-trip
+// correctly. Rejects multi-level nesting, multiline scalars beyond
+// strings, anchors/aliases. Schema enforcement happens at the caller.
 //
 // Zero deps — pure Node. Keeps the plugin install-light.
 

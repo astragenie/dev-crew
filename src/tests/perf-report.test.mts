@@ -44,6 +44,16 @@ test("perf-report aggregates median wall_clock + avg grade across window", async
   await fs.rm(repo, { recursive: true, force: true });
 });
 
+test("perf-report short-circuits on window <= 0", async () => {
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "perf-report-zero-"));
+  await writeGrade(repo, "01", 600, 0.85);
+  const zero = await buildPerfReport(repo, { window: 0 });
+  assert.equal(zero.window, 0);
+  assert.equal(zero.slicesIncluded, 0);
+  assert.equal(zero.medianWallClockSeconds, null);
+  await fs.rm(repo, { recursive: true, force: true });
+});
+
 test("perf-report computes speedup vs pinned baseline", async () => {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "perf-report-baseline-"));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });

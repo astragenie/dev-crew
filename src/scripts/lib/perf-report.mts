@@ -88,13 +88,48 @@ function tallySliceMetrics(
   if (shape.inline_path_used === true) acc.inlinePath += 1;
 }
 
+function extractBaseline(config: Record<string, any> | null) {
+  const baselineCfg =
+    ((config?.loop?.perfBaseline ?? {}) as {
+      medianWallClockSeconds?: number;
+      avgGrade?: number;
+    }) || {};
+  return {
+    medianWallClockSeconds: baselineCfg.medianWallClockSeconds ?? null,
+    avgGrade: baselineCfg.avgGrade ?? null
+  };
+}
+
+function emptyReport(window: number, config: Record<string, any> | null): PerfReport {
+  return {
+    window,
+    slicesIncluded: 0,
+    medianWallClockSeconds: null,
+    p90WallClockSeconds: null,
+    avgGrade: null,
+    phaseGateParallelPct: 0,
+    postBuilderFanoutPct: 0,
+    serialReviewerWarningPct: 0,
+    inlinePathPct: 0,
+    baseline: extractBaseline(config),
+    speedupRatio: null
+  };
+}
+
 export async function buildPerfReport(
   repoPath: string,
   { window = 10, config = null }: { window?: number; config?: Record<string, any> | null } = {}
 ): Promise<PerfReport> {
+  // Guard: Array.prototype.slice(-0) and slice(NaN) both return the full
+  // array, so an unvalidated window of 0 / NaN / negative would silently
+  // aggregate every grade instead of zero. Short-circuit to an empty report.
+  const safeWindow = Number.isFinite(window) && window > 0 ? Math.floor(window) : 0;
+  if (safeWindow === 0) {
+    return emptyReport(0, config);
+  }
   const { dir, entries } = await readGradeEntries(repoPath, config);
   const grades = entries.filter((f) => f.endsWith("-grade.md")).sort();
-  const recent = grades.slice(-window);
+  const recent = grades.slice(-safeWindow);
   const acc = {
     walls: [] as number[],
     gradeAvgs: [] as number[],
@@ -108,15 +143,11 @@ export async function buildPerfReport(
     const { frontmatter } = parseFrontmatter(raw);
     tallySliceMetrics(frontmatter, acc);
   }
-  const baselineCfg =
-    ((config?.loop?.perfBaseline ?? {}) as {
-      medianWallClockSeconds?: number;
-      avgGrade?: number;
-    }) || {};
+  const baseline = extractBaseline(config);
   const medianWall = median(acc.walls);
-  const baseMedian = baselineCfg.medianWallClockSeconds ?? null;
+  const baseMedian = baseline.medianWallClockSeconds;
   return {
-    window,
+    window: safeWindow,
     slicesIncluded: recent.length,
     medianWallClockSeconds: medianWall,
     p90WallClockSeconds: percentile(acc.walls, 90),
@@ -125,10 +156,7 @@ export async function buildPerfReport(
     postBuilderFanoutPct: pct(acc.postBuilderFanout, recent.length),
     serialReviewerWarningPct: pct(acc.serialWarn, recent.length),
     inlinePathPct: pct(acc.inlinePath, recent.length),
-    baseline: {
-      medianWallClockSeconds: baseMedian,
-      avgGrade: baselineCfg.avgGrade ?? null
-    },
+    baseline,
     speedupRatio:
       medianWall && baseMedian ? Math.round((baseMedian / medianWall) * 100) / 100 : null
   };
