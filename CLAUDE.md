@@ -4,6 +4,13 @@ Claude Code plugin: the Wiggin-Loop methodology layer that sits on top
 of the `crew` plugin. Provides HARD RULE blocks, slice scaffold,
 phase-gate runner, and the autonomous-development loop primitives.
 
+## Cortex memory binding
+
+This repo's cortex `project_id` is **`loop`**. When calling any cortex MCP tool (`MemorySave`, `MemorySearch`, `MemoryRecent`, `DecisionRecord`, etc.), ALWAYS pass:
+
+- `projectId` = `loop`
+- `scope` = `["private", "project", "shared"]` unless explicitly different
+
 ## Read first
 <!-- clause: read-first -->
 
