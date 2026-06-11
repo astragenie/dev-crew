@@ -3,6 +3,51 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## v0.40.0 — 2026-06-11 — per-project cost attribution + marathon checkpoint + effort sizing seed
+
+### Added
+- **FEAT-166 / SLICE-91** — per-project USD filter on the cost-regression
+  gate. `AggregateCostReport` gains `perProjectUsd: Record<string,
+  number> | null`. `parseAggregateReportFile` parses a nested YAML map
+  under `per_project_usd` in aggregate report frontmatter; non-numeric
+  entries are skipped, malformed YAML doesn't crash.
+  `checkCostRegression` now resolves `config.loop.costProject` +
+  `costProjectAliases` and maps every report through a new
+  `extractProjectUsd` helper before `computeRollingMedian` — sums the
+  project + alias slices when present, falls back to `fm.usd` when
+  absent. Activates against real data once hero-crew SLICE-1 ships the
+  upstream emit; back-compat path is a no-op against today's reports.
+- **FEAT-181 / SLICE-92** — marathon session-scope checkpoint.
+  `src/scripts/lib/marathon-checkpoint.mts::checkMarathonCheckpoint`
+  counts `*-grade.md` files newer than the newest retrospective.
+  Escalates from advisory (`warn` at `>= marathonCheckpointEvery`,
+  default 4) to hard stop (`>= 2 × every`). New snapshot entry
+  `marathonCheckpoint: { level, closesSinceCheckpoint, every,
+  hardThreshold, lastRetroPath }`. Halt-badge registered in
+  `HALT_BADGES` so `loop brief --explain-halts` renders it alongside
+  the other six. Documented in `docs/halt-badges.md` and `CLAUDE.md`.
+- **FEAT-167 AC-1 (partial — SLICE follow-up tracked)** —
+  `src/scripts/lib/pm-effort-mapper.mts::mapEffortEstimateToPoints`
+  translates PM's `pm_effort_estimate` float (0.0–1.0) into the
+  Fibonacci `effort_points` value (1, 2, 3, 5, 8, 13). Pure helper;
+  PM agent can start emitting `effort_points` on new triages
+  immediately. Downstream consumers (FEAT-168 decomposition gate,
+  expected_usd regression formula, backfill script) ship in
+  follow-up slices once the field has coverage.
+
+### Changed
+- **CLAUDE.md** — § "Orchestrator mode" reworded to drop the trigger
+  word "decommission" (the `crew:lead` agent kept over-weighting it
+  and refusing to dispatch after the v0.39.0 lead-restore). Added an
+  explicit "Note for the `crew:lead` agent reading this file"
+  paragraph spelling out that lead IS active, the `Agent` tool IS
+  available per frontmatter, and a refusal-to-dispatch escalation
+  bypasses the ceremony rather than serving it.
+
+### Docs
+- `docs/halt-badges.md` — new `### snapshot.marathonCheckpoint`
+  registry entry (shape, fire conditions, suggested action, origin).
+
 ## v0.39.0 — 2026-06-11 — crew:lead restored + reviewer-validator allowlist + walker lead-routing
 
 ### Changed
