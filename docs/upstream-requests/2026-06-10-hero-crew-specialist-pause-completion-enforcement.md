@@ -4,8 +4,9 @@ target_plugin: hero-crew
 target_repo: sergeymilashico/hero-crew
 status: pending-upstream-fix
 loop_tracking_feat: TBD (assign loop FEAT for visibility)
-loop_related_slice: SLICE-87 (observed 3 pauses), SLICE-51..57 (original 2026-06-06 repro)
+loop_related_slice: SLICE-87 (observed 3 pauses), SLICE-51..57 (original 2026-06-06 repro), SLICE-95..96 (crew:lead coverage 2026-06-11)
 related_sop: docs/sop/specialist-pause-handling.md
+last_updated: 2026-06-11
 ---
 
 # Upstream-request: specialist-dispatch completion enforcement (builder / reviewer / validator)
@@ -13,8 +14,10 @@ related_sop: docs/sop/specialist-pause-handling.md
 ## Filed against
 
 - **Plugin:** hero-crew (`astra/crew/<version>`)
-- **Component:** the agent-dispatch loop / agent prompts for `crew:builder`, `crew:builder-fe`, `crew:builder-be`, `crew:reviewer`, `crew:validator`.
+- **Component:** the agent-dispatch loop / agent prompts for `crew:lead`, `crew:builder`, `crew:builder-fe`, `crew:builder-be`, `crew:reviewer`, `crew:validator`.
 - **Reason:** the dispatch loop and specialist agent definitions live in hero-crew, not loop. Loop tracks the request for visibility and applies the `specialist-pause-handling.md` SOP as a workaround.
+
+> **2026-06-11 amendment**: `crew:lead` added to the agent list. Originally scoped to specialists (builder/reviewer/validator); SLICE-95 and SLICE-96 (2026-06-11) repro'd the same voluntary-tool-less-exit pattern on the orchestrator role too. See evidence table below.
 
 ## Problem
 
@@ -36,6 +39,9 @@ Observed across ≥9 slices in two sessions:
 |---|---|---|
 | 2026-06-06 | SLICE-51..57 (6 slices) | reviewer ×2, builder ×5, validator ×4 (parent wrote artifacts) |
 | 2026-06-10 | SLICE-87 | builder ×2, reviewer ×1 — all ended mid-sentence, no artifact |
+| 2026-06-11 | SLICE-95, SLICE-96 | **lead ×2** — orchestrator returned "I'll dispatch the builder directly via the Agent tool now" without calling Agent; parent fell back to direct builder dispatch |
+
+**2026-06-11 SLICE-96 lead pause verbatim final turn**: `"I'll dispatch the builder directly via the Agent tool now:"` — followed by no tool call. Lead had spent 30 tool calls + 8 minutes orchestrating, then exited on a narration preamble. Pattern is identical to specialist pauses: voluntary tool-less termination mid-intent.
 
 SLICE-87 verbatim final turns (each is a preamble to a tool call that never fired):
 - builder #1: `"Let me check the auto command:"`
@@ -76,6 +82,8 @@ Option 1 is the real fix; Option 2 is a cheaper partial mitigation.
 - **AC-6**: tests cover: normal completion (no re-prompt), tool-less exit → re-prompt → artifact written → success, tool-less exit → re-prompt → still no artifact → `incomplete: true`.
 - **AC-7**: at ~80% of the agent's turn budget, dispatch harness injects a wrap-up nudge: *"You are approaching your turn limit. Finish your investigation and emit your artifact now."* Encourages specialists to converge and write their report before budget exhaustion causes hard termination.
 - **AC-8** (prerequisite for Option 2): builder self-writes its handoff artifact (today: lead writes builder handoff). Option 2's stub artifact implies a ownership change — only the specialist can write mid-work state if it may be interrupted. Decide whether builder becomes responsible for its own handoff before implementing front-loaded stubs.
+- **AC-9** (added 2026-06-11): the same enforcement applies to `crew:lead` orchestrator dispatches. Lead's "artifact" is either the next `Agent` tool call (dispatching builder/reviewer/validator) or the `Bash` shell-out to `/loop:slice complete`. Voluntary tool-less exits during orchestration must trigger the same re-prompt path as specialist dispatches.
+- **AC-10** (added 2026-06-11): pre-flight mode check option — optional dispatch flag `requireMode: true` causes the harness to inject a minimal probe ("respond with `[MODE] <single-session|assisted-single-session|team-run>`") and confirm a tool-call response before the full prompt body fires. Cheap (<$0.10) catch for specialists/leads that would have paused immediately. Opt-in to avoid double-spend on healthy dispatches.
 
 ## Loop-side workaround (in place today, not a substitute)
 
@@ -86,7 +94,28 @@ Option 1 is the real fix; Option 2 is a cheaper partial mitigation.
 | Date | Event |
 |---|---|
 | 2026-06-10 | Filed (this doc) — pattern persisted past the SOP's 5-slice threshold (now ≥9 slices) |
+| 2026-06-11 | Amended — `crew:lead` added (orchestrator pauses on SLICE-95 + SLICE-96); AC-9 + AC-10 added; loop-side mitigation landed in `src/scripts/lib/slice-linker/dispatch.mts` (HARD OUTPUT CONTRACT block injected into all dispatchInstructions) + `start-slice.mts` (`expectedHandoff` glob emitted in start-slice result for parent-side artifact detection) |
 | TBD | Assign loop FEAT (for autonomous loop visibility); link to `loop_tracking_feat:` frontmatter |
 | TBD | Upstream issue / PR opened against `sergeymilashico/hero-crew` |
 | TBD | Upstream merged / rejected — update `status:` frontmatter |
-| TBD | Cache version bumped → loop session sees the fix → retire SOP §2 manual fallback |
+| TBD | Cache version bumped → loop session sees the fix → retire SOP §2 manual fallback + loop-side HARD CONTRACT injection |
+
+## 2026-06-11 loop-side mitigations (in place)
+
+Loop applied two prompt-level mitigations that do not require hero-crew changes:
+
+1. **HARD OUTPUT CONTRACT injected into every dispatchInstruction** (`src/scripts/lib/slice-linker/dispatch.mts` — `appendHardOutputContract()`). Both lead-mode and direct-builder-mode prompts now end with:
+
+   > Your LAST tool call before returning MUST be one of: [...]. Returning narration ("I'll now do X", "Let me check Y") without a final tool call is a contract violation.
+
+   Variant-aware: lead gets `Agent` / `Bash slice complete` examples; specialists get `crew write-*` examples. This is prompt-level mitigation only — does not prevent hard mid-tool terminations (Option 2 territory) — but does shift the agent's incentive on voluntary tool-less exits.
+
+2. **`expectedHandoff` glob emitted in start-slice result** (`src/scripts/lib/slice-linker/start-slice.mts`). Parent gets a deterministic `{ dir, glob, sliceSlug, featureSlug }` payload it can use after dispatch to verify the artifact landed. Schema:
+
+   ```json
+   { "dir": ".claude/artifacts/crew/handoffs", "glob": "*feat187-slice96*.md", "sliceSlug": "slice96", "featureSlug": "feat187" }
+   ```
+
+   Consumers: `slice complete` already detects missing artifacts via its validationGate; the new field gives slice-start and dashboard consumers the same hint pre-completion. Useful when parent wants to poll-and-fail-fast instead of waiting until `slice complete`.
+
+Both mitigations retire automatically once hero-crew lands the harness-level enforcement — the prompt block becomes redundant noise rather than load-bearing.

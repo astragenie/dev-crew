@@ -685,12 +685,25 @@ function buildStartSliceReturn({
     planPreflight,
     orchestratorMode
   );
+  // expectedHandoff: hint so parent (or slice-complete) can detect
+  // specialist-pause missing-artifact case. See
+  // docs/upstream-requests/2026-06-10-hero-crew-specialist-pause-completion-enforcement.md
+  const featSlug = featureId ? String(featureId).toLowerCase().replace(/[^a-z0-9]+/g, "") : null;
+  const sliceSlug = String(sliceId).toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const handoffSlug = featSlug ? `${featSlug}-${sliceSlug}` : sliceSlug;
+  const expectedHandoff = {
+    dir: ".claude/artifacts/crew/handoffs",
+    glob: `*${handoffSlug}*.md`,
+    sliceSlug,
+    featureSlug: featSlug
+  };
   const base: Record<string, any> = {
     slice: { id: sliceId, title },
     activePlan: activePlanSummary,
     runBrief,
     sliceProgress,
     dispatchInstruction,
+    expectedHandoff,
     nextAction,
     gradeTrendCaution,
     marathonMilestone,

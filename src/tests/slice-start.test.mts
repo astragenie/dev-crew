@@ -211,6 +211,73 @@ test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-
   );
 });
 
+test("startSlice emits expectedHandoff hint for parent-side artifact detection (FEAT-187 SLICE-B follow-up)", async () => {
+  const repo = await tmpRepo("al-slice-start-expected-handoff-");
+  const feat = await addFeature(repo, { title: "Handoff hint feature" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+  const result = await startSlice(repo, slice.id, {});
+  assert.ok(result.expectedHandoff, "expectedHandoff should be present");
+  assert.equal(result.expectedHandoff.dir, ".claude/artifacts/crew/handoffs");
+  assert.equal(result.expectedHandoff.sliceSlug, slice.id.toLowerCase().replace(/-/g, ""));
+  assert.equal(result.expectedHandoff.featureSlug, feat.id.toLowerCase().replace(/-/g, ""));
+  assert.match(result.expectedHandoff.glob, /^\*.+\*\.md$/);
+  assert.ok(
+    result.expectedHandoff.glob.includes(result.expectedHandoff.sliceSlug),
+    "glob should contain the slice slug"
+  );
+});
+
+test("dispatchInstruction (direct-builder mode) includes HARD OUTPUT CONTRACT block (FEAT-187 SLICE-B follow-up)", async () => {
+  const repo = await tmpRepo("al-slice-start-hard-contract-builder-");
+  await pinOrchestratorMode(repo, "direct-builder");
+  const feat = await addFeature(repo, { title: "Builder dispatch" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+  assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+  assert.match(
+    result.dispatchInstruction,
+    /## Hard output contract \(specialist-pause prevention\)/,
+    "hard output contract section missing"
+  );
+  assert.match(
+    result.dispatchInstruction,
+    /Your LAST tool call before returning MUST be one of:/,
+    "contract preamble missing"
+  );
+  assert.match(
+    result.dispatchInstruction,
+    /crew write-handoff/,
+    "specialist variant should mention crew write-handoff"
+  );
+  assert.match(
+    result.dispatchInstruction,
+    /docs\/upstream-requests\/2026-06-10-hero-crew-specialist-pause-completion-enforcement\.md/,
+    "should cite the upstream-request doc"
+  );
+});
+
+test("dispatchInstruction (lead mode) includes HARD OUTPUT CONTRACT with orchestrator variant (FEAT-187 SLICE-B follow-up)", async () => {
+  const repo = await tmpRepo("al-slice-start-hard-contract-lead-");
+  const feat = await addFeature(repo, { title: "Lead orchestration" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+  // Default orchestratorMode is "lead" in current loop.json
+  const result = await startSlice(repo, slice.id, {});
+  assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+  assert.match(
+    result.dispatchInstruction,
+    /## Hard output contract \(specialist-pause prevention\)/,
+    "hard output contract section missing from lead instruction"
+  );
+  assert.match(
+    result.dispatchInstruction,
+    /An `Agent` tool call dispatching the next specialist/,
+    "lead variant should mention Agent dispatch"
+  );
+});
+
 test("startSlice with dispatch:false omits the instruction", async () => {
   const repo = await tmpRepo("al-slice-start-nodispatch-");
   const feat = await addFeature(repo, { title: "Manual" });

@@ -50,6 +50,38 @@ function appendProgressSignals(lines: string[]) {
   );
 }
 
+// Append the HARD OUTPUT CONTRACT block — counters the specialist-pause
+// pattern documented in `docs/upstream-requests/2026-06-10-hero-crew-specialist-pause-completion-enforcement.md`.
+// Recurring failure mode: specialist returns "I'll now do X" without
+// actually calling the tool. Block makes the contract explicit so prompt-
+// level guidance reaches the agent even when upstream harness enforcement
+// is missing. `role` shapes the example list of acceptable final tool
+// calls (orchestrators dispatch Agent; specialists call write-*).
+function appendHardOutputContract(lines: string[], role: "lead" | "specialist") {
+  const final =
+    role === "lead"
+      ? [
+          "- An `Agent` tool call dispatching the next specialist (builder, reviewer-A, reviewer-B, validator), OR",
+          "- A `Bash` command running `bun src/scripts/loop.mts slice complete --id <slice-id>` or `slice grade --id <slice-id>`."
+        ]
+      : [
+          "- A `Bash` command invoking `crew write-handoff` / `crew write-review-result` / `crew write-validation-result`, OR",
+          "- A `Write` / `Edit` / `NotebookEdit` tool call that lands a file change AND captures your verdict in the change itself."
+        ];
+  lines.push(
+    "",
+    "## Hard output contract (specialist-pause prevention)",
+    "",
+    "Your LAST tool call before returning MUST be one of:",
+    "",
+    ...final,
+    "",
+    'Returning narration ("I\'ll now do X", "Let me check Y", "Next I will...") without a final tool call is a contract violation. The recurring failure mode in this repo is responses ending mid-intent — do NOT do this. If you must stop early (blocker, scope creep), write a partial artifact that documents what you found and why you stopped, then return.',
+    "",
+    "See `docs/upstream-requests/2026-06-10-hero-crew-specialist-pause-completion-enforcement.md` for upstream-fix tracking and `docs/sop/specialist-pause-handling.md` for parent-side mitigation."
+  );
+}
+
 function appendWorktreeSection(lines: string[], worktreePath: string | null | undefined): void {
   if (!worktreePath) return;
   lines.push(
@@ -109,6 +141,7 @@ export function buildDispatchInstruction({
   if (mode === "lead") {
     const lines = [buildLeadOrchestratorInstruction(sliceId, title, rel)];
     appendProgressSignals(lines);
+    appendHardOutputContract(lines, "lead");
     appendWorktreeSection(lines, worktreePath);
     appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
     return lines.join("\n");
@@ -126,6 +159,7 @@ export function buildDispatchInstruction({
     `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:validator yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:validator if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
   ];
   appendProgressSignals(lines);
+  appendHardOutputContract(lines, "specialist");
   appendWorktreeSection(lines, worktreePath);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
   return lines.join("\n");
