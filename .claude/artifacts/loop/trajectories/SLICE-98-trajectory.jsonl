@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-98","timestamp":"2026-06-11T22:35:16.671Z","featureId":"FEAT-168","title":"SLICE-98: Decomposition gate: audit trail on refuse + PM emit proposed_slices rule (FEAT-168 slice-a)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260611T223516Z-plan-SLICE-98.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-98","timestamp":"2026-06-11T22:39:33.115Z","featureId":"FEAT-168","featureMovedTo":null,"validationSatisfied":false}

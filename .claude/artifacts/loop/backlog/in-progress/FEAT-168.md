@@ -1,14 +1,14 @@
 ---
 id: FEAT-168
 title: Slice decomposition gate when effort_points >= 8
-status: triaged
+status: in-progress
 priority: P1
 category: workflow
 target_release: null
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-06-11
 depends_on: [FEAT-167]
-slices: []
+slices: [SLICE-98]
 derived_from: null
 source_competitors: []
 autonomous_safe: false
@@ -25,6 +25,7 @@ triage_notes: "Decomposition forcing function (FEAT-020 worst case: 15 tasks one
 github_issue: 191
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/191"
+started_at: 2026-06-11
 ---
 # FEAT-168: Slice decomposition gate when effort_points >= 8
 

@@ -950,13 +950,29 @@ const SLICE_HANDLERS = {
   ) => {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
-    const { dispatchAgent } = await import("./lib/auto-dispatch.mjs");
+    const { dispatchAgent, appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+    const { DecompositionRequiredError } = await import("./lib/proposed-slices.mjs");
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
-    const out = await sliceFromFeature(repoPath, featureId, {
-      noClassify: Boolean(flags.noClassify),
-      dispatchFn,
-      config: opts.config
-    });
+    let out;
+    try {
+      out = await sliceFromFeature(repoPath, featureId, {
+        noClassify: Boolean(flags.noClassify),
+        dispatchFn,
+        config: opts.config
+      });
+    } catch (err) {
+      if (err instanceof DecompositionRequiredError) {
+        await appendAuditLog(repoPath, {
+          timestamp: new Date().toISOString(),
+          parentCommand: "slice from-feature",
+          featureId,
+          error: err.message,
+          ok: false,
+          skipped: false
+        });
+      }
+      throw err;
+    }
     const { publishSlice } = await importGithubSync("github-sync.mjs");
     try {
       await (publishSlice as any)(repoPath, out.slice.id, featureId);

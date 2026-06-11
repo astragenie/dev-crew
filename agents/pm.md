@@ -105,6 +105,29 @@ Grades are the loop's outcome signal — scoring that ignores them repeats known
 - Compare their actual cost and duration against what their effort scores predicted. State the comparison in `scopeNotes` (e.g. "similar to SLICE-84, actual $48 / 1 session — effort 0.4 confirmed" or "SLICE-79 analog ran 2× predicted — bumping effort to 0.7").
 - No comparable slice → score from the dimension table and note "no cost analog" in `reasoning`.
 
+## Framework 6: Decomposition gate (FEAT-168)
+
+After mapping `pm_effort_estimate` (0.0–1.0) to a Fibonacci `effort_points` via the `pm-effort-mapper` table (FEAT-167), if `effort_points >= 8` you MUST do one of the following — there is no third option:
+
+1. Emit a `proposed_slices:` YAML block in the FEAT frontmatter with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci). Example for a 13-point FEAT:
+
+   ```yaml
+   proposed_slices:
+     - id_suffix: -SLICE-1
+       title: Library + unit tests
+       points: 5
+     - id_suffix: -SLICE-2
+       title: CLI + agent
+       points: 3
+     - id_suffix: -SLICE-3
+       title: Integration + upstream PR
+       points: 5
+   ```
+
+2. If you cannot decompose the FEAT (genuinely single-wave work, or unclear scope), set `composite_priority: "needs-review"` and explain in `scopeNotes` why the FEAT resists decomposition. A human must size or split it before slicing.
+
+Why: `/loop:slice-from-feature` refuses to materialize exactly one slice for a `>= 8`-point FEAT. Without `proposed_slices`, the refuse-gate trips and the FEAT cannot advance. The refuse is logged to `.claude/artifacts/loop/auto-dispatch.jsonl` (FEAT-168 AC-3) — counts of refuse events surface PM under-decomposition.
+
 ## Anti-hallucination rules
 
 - Quote evidence from files you actually read. Include the file path.
