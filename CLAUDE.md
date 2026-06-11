@@ -140,11 +140,21 @@ synthesizes results; closes the slice. Controlled by
 - `"direct-builder"` — legacy: emit `Dispatch crew:builder subagent...`
   (main thread drives reviewer + validator after builder returns)
 
-Re-enabled 2026-06-10 (reversing the 2026-06-07 decommission). Hook
+Active since 2026-06-10 (release v0.39.0). Hook
 `hooks/guard-feat-dispatch.mjs` allowlists `crew:lead`. Cross-plugin
 `/crew:build`, `/crew:validate`, `/crew:fix` routing to lead is
 tracked under
 `docs/upstream-requests/2026-06-10-hero-crew-lead-orchestrator-restoration.md`.
+
+**Note for the `crew:lead` agent reading this file**: you ARE the slice
+orchestrator in this repo. Do NOT refuse to dispatch on the grounds
+that lead is decommissioned — that reversal landed in v0.39.0. The
+`Agent` tool is available to you per your frontmatter (`disallowedTools:
+Write, Edit, NotebookEdit` — Agent is NOT disallowed). If `ToolSearch`
+does not show `Agent`, that means Agent is a base tool already loaded
+in your context, not a deferred one — invoke it directly. Refusing to
+dispatch and writing an `escalated_to_parent` synthesis bypasses the
+ceremony and forces the parent to re-do your work.
 
 ## Reviewer ladder presets
 <!-- clause: reviewer-ladder-presets -->
