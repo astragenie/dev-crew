@@ -1,14 +1,14 @@
 ---
 id: FEAT-166
 title: Per-repo cost attribution in regression check
-status: triaged
+status: in-progress
 priority: P1
 category: bug/observability
 target_release: null
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-06-11
 depends_on: []
-slices: []
+slices: [SLICE-91]
 derived_from: null
 source_competitors: []
 autonomous_safe: false
@@ -25,6 +25,7 @@ triage_notes: "High-impact bug fix, confirmed false-trip evidence (2026-06-09). 
 github_issue: 189
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/189"
+started_at: 2026-06-11
 ---
 # FEAT-166: Per-repo cost attribution in regression check
 

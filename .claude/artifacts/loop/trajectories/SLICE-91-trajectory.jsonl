@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-91","timestamp":"2026-06-11T09:01:40.542Z","featureId":"FEAT-166","title":"SLICE-91: Per-repo cost attribution in regression check","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260611T090140Z-plan-SLICE-91.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-91","timestamp":"2026-06-11T09:01:47.342Z","featureId":"FEAT-166","featureMovedTo":null,"validationSatisfied":false}
