@@ -39,3 +39,21 @@ test("runParallelGroups --only filters to a single group", async () => {
   assert.ok(!result.combinedLog.includes("lint-ok"));
   assert.ok(result.combinedLog.includes("[test] test-ok"));
 });
+
+test("runParallelGroups records spawn-error in sink", async () => {
+  const groups = {
+    lint: [{ cmd: "this-binary-does-not-exist", args: [] }]
+  };
+  const result = await runParallelGroups(groups);
+  assert.notEqual(result.exitCode, 0);
+  assert.ok(result.combinedLog.includes("[lint] spawn-error:"));
+});
+
+test("runParallelGroups runs with injected cwd", async () => {
+  const groups = {
+    pwd: [{ cmd: "node", args: ["-e", "console.log(process.cwd())"], cwd: process.cwd() }]
+  };
+  const result = await runParallelGroups(groups);
+  assert.equal(result.exitCode, 0);
+  assert.ok(result.combinedLog.includes(process.cwd()));
+});

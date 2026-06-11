@@ -1,8 +1,11 @@
 // Parallel-mode orchestrator. Wraps `runParallelGroups` with the same
 // post-run side effects as the serial path: write the markdown artifact,
-// register through crew, and tick the loop-iteration counter. Returning
-// a result shape compatible with the serial caller (mode/status/phase/
-// preset/artifactPath/...) so dispatchers don't need to special-case.
+// register through crew, tick the loop-iteration counter, and (on PASS) fire
+// the retrospective + ready-release deploy handoffs. Returning a result shape
+// compatible with the serial caller (mode/status/phase/preset/artifactPath/
+// retrospective/deployHandoffs/...) so dispatchers don't need to special-case.
+
+import path from "node:path";
 
 import { nowIso } from "./runners.mjs";
 import { runParallelGroups, type Groups } from "./parallel-runner.mjs";
@@ -24,7 +27,31 @@ export type ParallelDeps = {
     phase: unknown
   ) => Promise<{ ok: boolean; error?: string; crewArtifactPath?: string | null }>;
   safeIncrementIteration: (repoPath: string) => Promise<unknown>;
+  runPassPostHooks: (
+    repoPath: string,
+    phase: unknown,
+    overallStatus: string
+  ) => Promise<{
+    retrospective: Record<string, any> | null;
+    deployHandoffs: Record<string, any>[];
+  }>;
 };
+
+// Resolve each command's cwd against `repoPath` so the parallel path matches
+// the serial runners' behavior (which default to `repoPath` when no cwd is
+// supplied on the stage step). Without this, spawn() falls back to the parent
+// process's working directory — which drifts when the loop CLI is invoked
+// from a different directory than the repo it is gating.
+function withRepoCwd(groups: Groups, repoPath: string): Groups {
+  const out: Groups = {};
+  for (const [name, cmds] of Object.entries(groups)) {
+    out[name] = cmds.map((c) => ({
+      ...c,
+      cwd: c.cwd ? path.resolve(repoPath, c.cwd) : repoPath
+    }));
+  }
+  return out;
+}
 
 function renderParallelReport(
   config: Record<string, any>,
@@ -71,7 +98,14 @@ export async function runPhaseGateParallel(
   only: string | undefined,
   deps: ParallelDeps
 ) {
-  const result = await runParallelGroups(groups, only ? { only } : {});
+  if (only && !Object.prototype.hasOwnProperty.call(groups, only)) {
+    throw new Error(
+      `--only "${only}" not found in phaseGate.groups (have: ${Object.keys(groups).join(", ")})`
+    );
+  }
+
+  const resolvedGroups = withRepoCwd(groups, repoPath);
+  const result = await runParallelGroups(resolvedGroups, only ? { only } : {});
   const endedAt = nowIso();
   const overallStatus = result.exitCode === 0 ? "PASS" : "FAIL";
 
@@ -89,6 +123,11 @@ export async function runPhaseGateParallel(
   );
   const iterationState = await deps.safeIncrementIteration(repoPath);
 
+  // Mirror the serial path: on PASS, run retrospective + emit deploy
+  // handoffs for ready releases. Best-effort — errors collapse into the
+  // returned shape rather than throwing.
+  const post = await deps.runPassPostHooks(repoPath, phase, overallStatus);
+
   return {
     mode: "phase-gate",
     parallel: true,
@@ -101,6 +140,8 @@ export async function runPhaseGateParallel(
     groups: result.groups,
     failedGroup: result.failedGroup,
     combinedLog: result.combinedLog,
-    iterationState
+    iterationState,
+    retrospective: post.retrospective,
+    deployHandoffs: post.deployHandoffs
   };
 }

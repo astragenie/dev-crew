@@ -182,8 +182,9 @@ async function runPassPostHooks(repoPath: string, phase: unknown, overallStatus:
 
 // Returns the parallel groups to run if all three preconditions hold:
 // (a) `config.phaseGate.parallel` is not explicitly false, (b) groups are
-// configured, (c) the caller did not pass `--serial`. Returns null otherwise
-// so `runPhaseGate` can fall through to the sequential stack.* runners.
+// configured and non-empty, (c) the caller did not pass `--serial`. Returns
+// null otherwise so `runPhaseGate` can fall through to the sequential
+// stack.* runners.
 function resolveParallelGroups(
   config: Record<string, any>,
   options: Record<string, any>
@@ -191,7 +192,7 @@ function resolveParallelGroups(
   const cfg = (config.phaseGate ?? {}) as { parallel?: boolean; groups?: Groups };
   if (options.serial) return null;
   if (cfg.parallel === false) return null;
-  if (!cfg.groups) return null;
+  if (!cfg.groups || Object.keys(cfg.groups).length === 0) return null;
   return cfg.groups;
 }
 
@@ -228,7 +229,7 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
       crewCli,
       parallelGroups,
       options.only,
-      { writeReport, recordWithCrew, safeIncrementIteration }
+      { writeReport, recordWithCrew, safeIncrementIteration, runPassPostHooks }
     );
   }
 
