@@ -1,7 +1,7 @@
 ---
 id: SLICE-96
 title: Unified report filename pattern for memory-engine tag parsing
-status: pending
+status: completed
 feature: FEAT-187
 phase: null
 priority: P2
@@ -11,6 +11,8 @@ created: 2026-06-11
 updated: 2026-06-11
 github_issue: 213
 github_url: "https://github.com/sergeymilashico/loop/issues/213"
+completed_at: 2026-06-11
+badges: [serial-reviewer-warning]
 ---
 # SLICE-96: Unified report filename pattern for memory-engine tag parsing
 

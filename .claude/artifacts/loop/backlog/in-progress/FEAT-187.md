@@ -20,6 +20,8 @@ slices: [SLICE-96]
 github_issue: 212
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/212"
+slices_complete: [SLICE-96]
+completed_at: 2026-06-11
 ---
 # FEAT-187: Unified report filename pattern for memory-engine tag parsing
 

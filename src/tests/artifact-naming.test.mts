@@ -9,7 +9,10 @@ import {
   buildArtifactSlug,
   buildArtifactTitle,
   hasLeadingTimestamp,
-  stripArtifactTimestamp
+  stripArtifactTimestamp,
+  buildArtifactFilename,
+  camelTight,
+  KIND_REGISTRY
 } from "../scripts/lib/artifact-naming.mjs";
 
 test("buildArtifactSlug emits tight phase → feat → slice when all three set", () => {
@@ -119,4 +122,194 @@ test("stripArtifactTimestamp returns falsy input untouched", async () => {
   assert.equal(await stripArtifactTimestamp(null), null);
   assert.equal(await stripArtifactTimestamp(undefined), undefined);
   assert.equal(await stripArtifactTimestamp(""), "");
+});
+
+// ---------------------------------------------------------------------------
+// camelTight
+// ---------------------------------------------------------------------------
+
+test("camelTight converts kebab-case to camelCase", () => {
+  assert.equal(camelTight("cost-report-slice"), "costReportSlice");
+});
+
+test("camelTight converts space-separated words to camelCase", () => {
+  assert.equal(camelTight("health page"), "healthPage");
+});
+
+test("camelTight converts mixed punctuation to camelCase", () => {
+  assert.equal(camelTight("FEAT-187"), "feat187");
+});
+
+test("camelTight returns empty string on overflow (> 24 chars)", () => {
+  assert.equal(camelTight("a".repeat(30)), "");
+});
+
+test("camelTight returns empty string for null", () => {
+  assert.equal(camelTight(null), "");
+});
+
+test("camelTight handles single word lowercase", () => {
+  assert.equal(camelTight("grade"), "grade");
+});
+
+// ---------------------------------------------------------------------------
+// KIND_REGISTRY
+// ---------------------------------------------------------------------------
+
+test("KIND_REGISTRY contains all 17 canonical kinds", () => {
+  const expected = [
+    "agentReport",
+    "costReportSlice",
+    "costReportAggregate",
+    "costAdvise",
+    "reviewResult",
+    "validationResult",
+    "finalSynthesis",
+    "pmReview",
+    "autoRun",
+    "handoff",
+    "grade",
+    "plan",
+    "retro",
+    "trajectory",
+    "fanoutMarker",
+    "shapeMarker",
+    "design"
+  ];
+  assert.equal(KIND_REGISTRY.size, 17);
+  for (const k of expected) {
+    assert.ok(KIND_REGISTRY.has(k as any), `KIND_REGISTRY missing: ${k}`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// buildArtifactFilename — AC-3 happy path
+// ---------------------------------------------------------------------------
+
+test("AC-3: buildArtifactFilename returns canonical filename", () => {
+  const out = buildArtifactFilename({
+    ts: "20260611T123843Z",
+    kind: "costReportSlice",
+    featureId: "FEAT-187",
+    sliceId: "SLICE-96",
+    ext: "md"
+  });
+  assert.equal(out, "20260611T123843Z-costReportSlice-feat187-slice96.md");
+});
+
+test("buildArtifactFilename omits title when not provided", () => {
+  const out = buildArtifactFilename({
+    ts: "20260611T000000Z",
+    kind: "grade",
+    featureId: "FEAT-001",
+    sliceId: "SLICE-01",
+    ext: "md"
+  });
+  assert.equal(out, "20260611T000000Z-grade-feat001-slice01.md");
+});
+
+test("buildArtifactFilename includes camelTight title when provided", () => {
+  const out = buildArtifactFilename({
+    ts: "20260611T000000Z",
+    kind: "agentReport",
+    featureId: "FEAT-166",
+    sliceId: "SLICE-91",
+    title: "expose-checkpoint-due",
+    ext: "md"
+  });
+  assert.equal(out, "20260611T000000Z-agentReport-feat166-slice91-exposeCheckpointDue.md");
+});
+
+test("buildArtifactFilename omits title segment when title overflows 24 chars", () => {
+  const longTitle = "this-is-an-extremely-long-title-that-will-overflow";
+  const out = buildArtifactFilename({
+    ts: "20260611T000000Z",
+    kind: "handoff",
+    featureId: "FEAT-010",
+    sliceId: "SLICE-10",
+    title: longTitle,
+    ext: "md"
+  });
+  // title should be omitted — basename splits into exactly 4 tokens
+  const tokens = path.basename(out, ".md").split("-");
+  assert.equal(tokens.length, 4);
+});
+
+// ---------------------------------------------------------------------------
+// AC-4: kebab-case kind throws containing "camelCase"
+// ---------------------------------------------------------------------------
+
+test("AC-4: buildArtifactFilename throws camelCase error for kebab kind", () => {
+  assert.throws(
+    () =>
+      buildArtifactFilename({
+        ts: "20260611T123843Z",
+        kind: "cost-report-slice",
+        featureId: "FEAT-187",
+        sliceId: "SLICE-96",
+        ext: "md"
+      }),
+    (err: Error) => err.message.includes("camelCase"),
+    "error message must contain 'camelCase'"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: unregistered camelCase kind throws containing "KIND_REGISTRY"
+// ---------------------------------------------------------------------------
+
+test("AC-5: buildArtifactFilename throws KIND_REGISTRY error for unknown kind", () => {
+  assert.throws(
+    () =>
+      buildArtifactFilename({
+        ts: "20260611T123843Z",
+        kind: "unregisteredKind",
+        featureId: "FEAT-187",
+        sliceId: "SLICE-96",
+        ext: "md"
+      }),
+    (err: Error) => err.message.includes("KIND_REGISTRY"),
+    "error message must contain 'KIND_REGISTRY'"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: path.basename(...).split('-') yields exactly 4 tokens for canonical
+// shape (ts, kind, featId, sliceId) — no junk segments. Tested for >= 3 kinds.
+// ---------------------------------------------------------------------------
+
+test("AC-6a: split('-') yields 4 tokens for costReportSlice", () => {
+  const filename = buildArtifactFilename({
+    ts: "20260611T123843Z",
+    kind: "costReportSlice",
+    featureId: "FEAT-187",
+    sliceId: "SLICE-96",
+    ext: "md"
+  });
+  const tokens = path.basename(filename, ".md").split("-");
+  assert.equal(tokens.length, 4, `Expected 4 tokens, got ${tokens.length}: ${tokens.join("|")}`);
+});
+
+test("AC-6b: split('-') yields 4 tokens for agentReport", () => {
+  const filename = buildArtifactFilename({
+    ts: "20260611T090146Z",
+    kind: "agentReport",
+    featureId: "FEAT-166",
+    sliceId: "SLICE-91",
+    ext: "md"
+  });
+  const tokens = path.basename(filename, ".md").split("-");
+  assert.equal(tokens.length, 4, `Expected 4 tokens, got ${tokens.length}: ${tokens.join("|")}`);
+});
+
+test("AC-6c: split('-') yields 4 tokens for reviewResult", () => {
+  const filename = buildArtifactFilename({
+    ts: "20260611T115758Z",
+    kind: "reviewResult",
+    featureId: "FEAT-185",
+    sliceId: "SLICE-93",
+    ext: "md"
+  });
+  const tokens = path.basename(filename, ".md").split("-");
+  assert.equal(tokens.length, 4, `Expected 4 tokens, got ${tokens.length}: ${tokens.join("|")}`);
 });
