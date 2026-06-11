@@ -2,7 +2,11 @@
 // Mirrors slice-cost-ceiling.mts — fail-open evaluator that returns a
 // structured signal when current aggregate spend > median × multiplier.
 
-import { loadAggregateCostReport, computeRollingMedian } from "./cost-alert-loader.mjs";
+import {
+  loadAggregateCostReport,
+  computeRollingMedian,
+  type AggregateCostReport
+} from "./cost-alert-loader.mjs";
 
 export const DEFAULT_COST_REGRESSION_WINDOW = 5;
 export const DEFAULT_COST_REGRESSION_MULTIPLIER = 3.0;
@@ -56,6 +60,50 @@ function resolveMinSamples(config: Record<string, any> | null): number {
     : DEFAULT_COST_REGRESSION_MIN_SAMPLES;
 }
 
+function resolveCostProject(config: Record<string, any> | null): string | null {
+  const raw = config?.loop?.costProject;
+  return typeof raw === "string" && raw.length > 0 ? raw : null;
+}
+
+function resolveCostProjectAliases(config: Record<string, any> | null): string[] {
+  const raw = config?.loop?.costProjectAliases;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((s): s is string => typeof s === "string" && s.length > 0);
+}
+
+/**
+ * Extract this project's slice of an aggregate report's USD spend.
+ *
+ * - When `perProjectUsd` is present on the report AND `costProject` is
+ *   configured, return the sum of the project's entry + all matching
+ *   alias entries. Missing keys contribute 0; if NO key matches the
+ *   map at all, fall back to `report.usd` (defensive — treats an
+ *   unknown current project as the legacy single-project case).
+ * - When `perProjectUsd` is absent (older aggregate reports written
+ *   before hero-crew SLICE-1 shipped) OR `costProject` is not
+ *   configured, return `report.usd` unchanged — back-compat path.
+ *
+ * FEAT-166 / SLICE-91. Pure function; no I/O.
+ */
+function extractProjectUsd(
+  report: AggregateCostReport,
+  costProject: string | null,
+  aliases: string[]
+): number | null {
+  if (!costProject || !report.perProjectUsd) return report.usd;
+  const keys = [costProject, ...aliases];
+  let sum = 0;
+  let matched = false;
+  for (const key of keys) {
+    const v = report.perProjectUsd[key];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      sum += v;
+      matched = true;
+    }
+  }
+  return matched ? sum : report.usd;
+}
+
 /**
  * Fail-open evaluator for the rolling-median cost regression gate.
  *
@@ -74,6 +122,8 @@ export async function checkCostRegression(
   const window = resolveWindow(config);
   const multiplier = resolveMultiplier(config);
   const minSamples = resolveMinSamples(config);
+  const costProject = resolveCostProject(config);
+  const aliases = resolveCostProjectAliases(config);
 
   // Load up to window+1 reports (current + window historical)
   const { reports } = await loadAggregateCostReport(repoPath, { limit: window + 1 });
@@ -81,9 +131,26 @@ export async function checkCostRegression(
   if (reports.length === 0) return null;
 
   const current = reports[0]!;
-  if (current.usd === null) return null;
+  // Filter current spend by this project (sums costProject + aliases when
+  // perProjectUsd is present on the report; falls back to fm.usd
+  // otherwise). FEAT-166 / SLICE-91 — prevents cross-project aggregate
+  // inflation from tripping the gate.
+  const currentUsd = extractProjectUsd(current, costProject, aliases);
+  if (currentUsd === null) return null;
 
-  const { median, sampleCount } = computeRollingMedian({ reports, window });
+  // Apply the same per-project view to historical reports so the
+  // rolling median is computed against THIS project's slice — not the
+  // cross-project sum. Reports without perProjectUsd fall back to their
+  // fm.usd transparently, preserving the existing baseline shape.
+  const projectFilteredReports = reports.map((r) => ({
+    ...r,
+    usd: extractProjectUsd(r, costProject, aliases)
+  }));
+
+  const { median, sampleCount } = computeRollingMedian({
+    reports: projectFilteredReports,
+    window
+  });
   if (sampleCount === 0 || median === null) return null;
   // Dormant until enough samples to make the median stable. Without this,
   // a single outlier ($1500+ retro batch) sets the median and every
@@ -91,11 +158,11 @@ export async function checkCostRegression(
   if (sampleCount < minSamples) return null;
 
   const thresholdUsd = median * multiplier;
-  if (current.usd <= thresholdUsd) return null;
+  if (currentUsd <= thresholdUsd) return null;
 
   return {
     triggered: true,
-    currentUsd: current.usd,
+    currentUsd,
     medianUsd: median,
     thresholdUsd,
     multiplier,
