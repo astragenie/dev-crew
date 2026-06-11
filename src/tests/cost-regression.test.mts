@@ -17,6 +17,11 @@ import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 
 const COST_DIR_REL = ".claude/artifacts/crew/cost";
 
+// Silence the FEAT-167 AC-3 observability logger — these tests invoke
+// the regression check dozens of times; the JSON line per call would
+// flood stderr. AC-3 emit itself has its own dedicated test file.
+process.env.LOOP_DISABLE_COST_REGRESSION_LOG = "1";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

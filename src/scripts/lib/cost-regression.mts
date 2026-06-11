@@ -158,7 +158,25 @@ export async function checkCostRegression(
   if (sampleCount < minSamples) return null;
 
   const thresholdUsd = median * multiplier;
-  if (currentUsd <= thresholdUsd) return null;
+  const triggered = currentUsd > thresholdUsd;
+
+  // FEAT-167 AC-3: structured JSON observability line on every evaluation
+  // (both modes). expected_usd / median_usd_per_point / effort_points stay
+  // null until FEAT-167 AC-4 lands the expected_usd formula switch.
+  emitObservabilityLog({
+    mode: "median",
+    actualUsd: currentUsd,
+    expectedUsd: null,
+    medianUsdPerPoint: null,
+    effortPoints: null,
+    thresholdUsd,
+    triggered,
+    multiplier,
+    window,
+    sampleCount
+  });
+
+  if (!triggered) return null;
 
   return {
     triggered: true,
@@ -171,4 +189,46 @@ export async function checkCostRegression(
     slice: current.slice,
     currentReportPath: current.path
   };
+}
+
+interface ObservabilityEvent {
+  mode: "median" | "expected_usd";
+  actualUsd: number;
+  expectedUsd: number | null;
+  medianUsdPerPoint: number | null;
+  effortPoints: number | null;
+  thresholdUsd: number;
+  triggered: boolean;
+  multiplier: number;
+  window: number;
+  sampleCount: number;
+}
+
+/**
+ * Emit one structured `cost-regression-check` JSON line per evaluation.
+ *
+ * Goes to stderr (stdout stays machine-parseable for CLI consumers).
+ * Set env `LOOP_DISABLE_COST_REGRESSION_LOG=1` to silence — tests that
+ * spawn the regression check repeatedly use this to keep output clean.
+ *
+ * FEAT-167 AC-3.
+ */
+export function emitObservabilityLog(event: ObservabilityEvent): void {
+  if (process.env.LOOP_DISABLE_COST_REGRESSION_LOG === "1") return;
+  process.stderr.write(
+    JSON.stringify({
+      event: "cost-regression-check",
+      timestamp: new Date().toISOString(),
+      mode: event.mode,
+      actual_usd: event.actualUsd,
+      expected_usd: event.expectedUsd,
+      median_usd_per_point: event.medianUsdPerPoint,
+      effort_points: event.effortPoints,
+      threshold_usd: event.thresholdUsd,
+      triggered: event.triggered,
+      multiplier: event.multiplier,
+      window: event.window,
+      sample_count: event.sampleCount
+    }) + "\n"
+  );
 }
