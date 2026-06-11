@@ -58,6 +58,7 @@ const allowed = [
   "crew:builder-fe",
   "crew:build",
   "crew:reviewer",
+  "crew:reviewer-validator",
   "crew:validator",
   "crew:deployer",
   "crew:researcher",
@@ -86,7 +87,7 @@ process.stderr.write(
     `  4. /loop:slice-complete --id SLICE-NN`,
     `  5. /loop:slice-grade`,
     `If /loop:auto halted on warn alerts, address alerts or escalate — do NOT bypass.`,
-    `Override: change subagent_type to a crew or loop ceremony specialist (crew:builder, crew:builder-be, crew:builder-fe, crew:reviewer, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore. NOTE: crew:lead is DECOMMISSIONED in this repo — route to the specialist directly.`
+    `Override: change subagent_type to a crew or loop ceremony specialist (crew:builder, crew:builder-be, crew:builder-fe, crew:reviewer, crew:reviewer-validator, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore. NOTE: crew:lead is DECOMMISSIONED in this repo — route to the specialist directly.`
   ].join("\n")
 );
 process.exit(2);
