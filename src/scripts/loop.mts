@@ -280,6 +280,16 @@ const COMMANDS = {
       flags.window != null && flags.window !== "" ? Number.parseInt(String(flags.window), 10) : 10;
     return buildPerfReport(repoPath, { window: windowSize, config });
   },
+  "classify-slice-shape": async ({ flags }: CmdCtx) => {
+    const { classifySliceShape } = await import("./lib/classify-slice-shape.mjs");
+    const filesArg = typeof flags.files === "string" ? flags.files : "";
+    const files = filesArg
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }));
+    return classifySliceShape({ files });
+  },
   "snapshot-memory": async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });

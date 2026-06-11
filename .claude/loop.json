@@ -32,7 +32,16 @@
     "orchestratorModel": "sonnet",
     "dispatchLimits": {
       "maxSubagentsPerSlice": 4,
-      "preferInlineFor": ["single-file-edit", "test-fix", "lint-fix", "format-fix"]
+      "preferInlineFor": [
+        "single-file-edit",
+        "test-fix",
+        "lint-fix",
+        "format-fix",
+        "doc-update",
+        "config-tweak",
+        "single-module-edit",
+        "test-only"
+      ]
     },
     "modelRouting": {
       "default": "sonnet",
