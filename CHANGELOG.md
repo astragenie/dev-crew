@@ -3,7 +3,7 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
-## Unreleased
+## v0.39.0 — 2026-06-11 — crew:lead restored + reviewer-validator allowlist + walker lead-routing
 
 ### Changed
 - `MIN_CREW_VERSION` bumped from `0.3.6` → `0.31.1` to reflect the current
@@ -12,6 +12,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
   (legacy emit) so locating the installed CLI works across the migration
   boundary. `getCrewCliCacheGlob` glob updated to
   `scripts/crew.{ts,mjs}`.
+- `loop:auto` walker plan now emits a `Dispatch crew:lead subagent`
+  routing instruction when `config.loop.orchestratorMode === "lead"`
+  (default) — matches the slice-start ceremony so autonomous-loop
+  iterations route through lead consistently with manual `/loop:slice
+  start`. `walker-gates.mts` carries the routing branch; covered by
+  `src/tests/auto-walker.test.mts`.
 
 ### Added
 - `auto-dispatch.jsonl` schema extended with three optional fields
@@ -20,7 +26,7 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
   tags the walker's drift-override path so downstream consumers
   (FEAT-165 per-skill cost attribution, FEAT-172 usage dashboard) can
   discriminate event kinds without parsing `event`. Schema rationale
-  recorded in DEC-046. (SLICE-89 / FEAT-083)
+  recorded in DEC-046. (SLICE-90 / FEAT-083)
 - `crew:lead` restored as the default slice orchestrator. `/loop:slice
   start` now emits a `Dispatch crew:lead subagent` instruction by
   default. Configurable via `config.loop.orchestratorMode` in
@@ -29,6 +35,15 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
   `crew:lead`. Reverses the 2026-06-07 decommission. Cross-plugin
   `/crew:build`, `/crew:validate`, `/crew:fix` routing tracked in
   `docs/upstream-requests/2026-06-10-hero-crew-lead-orchestrator-restoration.md`.
+- `crew:reviewer-validator` added to `hooks/guard-feat-dispatch.mjs`
+  allowlist so the combined reviewer-validator specialist can be
+  dispatched from FEAT-bearing prompts without being blocked.
+- FEAT-145: grade-hygiene linter rejects unfilled grades and excludes
+  them from retro averages so trend data reflects actually-completed
+  ceremonies. (SLICE / FEAT-145)
+- FEAT-088 / SLICE-89: `superpowers:systematic-debugging` Iron Law
+  wrapped in a HARD-GATE block so the verification step cannot be
+  silently skipped on bug-fix slices.
 
 ## v0.38.1 — 2026-06-10 — backlog: AgentOps-adoption FEATs triaged
 
