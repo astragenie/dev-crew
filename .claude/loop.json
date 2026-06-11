@@ -32,7 +32,16 @@
     "orchestratorModel": "sonnet",
     "dispatchLimits": {
       "maxSubagentsPerSlice": 4,
-      "preferInlineFor": ["single-file-edit", "test-fix", "lint-fix", "format-fix"]
+      "preferInlineFor": [
+        "single-file-edit",
+        "test-fix",
+        "lint-fix",
+        "format-fix",
+        "doc-update",
+        "config-tweak",
+        "single-module-edit",
+        "test-only"
+      ]
     },
     "modelRouting": {
       "default": "sonnet",
@@ -51,7 +60,12 @@
     "triageFallbackOnBudgetExceeded": true,
     "costRegressionMultiplier": 6.0,
     "costSliceCeiling": 200,
-    "gradeTrendPerDimension": { "observability": 0.7 }
+    "gradeTrendPerDimension": { "observability": 0.7 },
+    "perfBaseline": {
+      "medianWallClockSeconds": 1200,
+      "avgGrade": 0.835,
+      "pinnedAt": "2026-06-11"
+    }
   },
   "stack": {
     "build": [
@@ -80,7 +94,30 @@
     "ladder": [
       "A",
       "B"
-    ]
+    ],
+    "strictParallel": true,
+    "serialTimingThresholdMs": 90000
+  },
+  "slice": {
+    "postBuilderFanout": true
+  },
+  "phaseGate": {
+    "parallel": true,
+    "groups": {
+      "lint": [
+        { "cmd": "bun", "args": ["run", "lint"] },
+        { "cmd": "bun", "args": ["run", "format:check"] },
+        { "cmd": "bun", "args": ["./src/scripts/validate-manifests.mts"] },
+        { "cmd": "bun", "args": ["./src/scripts/validate-content-length.mts"] }
+      ],
+      "typecheck": [
+        { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.json", "--noEmit"] },
+        { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.test.json", "--noEmit"] }
+      ],
+      "test": [
+        { "cmd": "bun", "args": ["test", "src/tests/", "--parallel", "--timeout", "60000"] }
+      ]
+    }
   },
   "mandatoryDocs": [
     "docs/architecture/platform-overview.md"

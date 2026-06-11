@@ -15,6 +15,15 @@ scores:
   security: 0
   test_confidence: 0
   product_completeness: 0
+timing:
+  wall_clock_seconds: null
+  phase_gate_parallel: null
+  post_builder_fanout: null
+  reviewer_span_ms: null
+  serial_reviewer_warning: false
+shape:
+  classified: null
+  inline_path_used: false
 decisions: []
 ---
 # SLICE-NN: <title> — Grade

@@ -63,6 +63,7 @@ const FLAG_SPEC = {
   "--confidence": { key: "confidence" },
   "--slice": { key: "slice" },
   "--limit": { key: "limit" },
+  "--window": { key: "window" },
   "--max-features": { key: "maxFeatures" },
   "--dry-run": { key: "dryRun", boolean: true },
   "--auto-mode": { key: "autoMode", boolean: true },
@@ -80,7 +81,10 @@ const FLAG_SPEC = {
   "--skip-simplify": { key: "skipSimplify", boolean: true },
   // doctor flags
   "--check": { key: "check", boolean: true },
-  "--fix": { key: "fix", boolean: true }
+  "--fix": { key: "fix", boolean: true },
+  // phase-gate flags
+  "--serial": { key: "serial", boolean: true },
+  "--only": { key: "only" }
 };
 
 function parseArgs(argv: string[]) {
@@ -119,6 +123,7 @@ function parseArgs(argv: string[]) {
     confidence: null,
     slice: null,
     limit: null,
+    window: null,
     maxFeatures: null,
     dryRun: false,
     autoMode: false,
@@ -138,7 +143,9 @@ function parseArgs(argv: string[]) {
     noMerge: false,
     skipSimplify: false,
     check: false,
-    fix: false
+    fix: false,
+    serial: false,
+    only: null
   };
   const positionals: any[] = [];
 
@@ -206,7 +213,13 @@ const COMMANDS = {
   },
   "phase-gate": async ({ repoPath, flags, config }: CmdCtx) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
-    return runPhaseGate(repoPath, { phase: flags.phase, note: flags.note, config });
+    return runPhaseGate(repoPath, {
+      phase: flags.phase,
+      note: flags.note,
+      serial: Boolean(flags.serial),
+      only: flags.only || undefined,
+      config
+    });
   },
   status: async ({ repoPath }: CmdCtx) => {
     const { reportStatus } = await import("./lib/loop-installer.mjs");
@@ -260,6 +273,22 @@ const COMMANDS = {
       return { _suppressDefaultOutput: true };
     }
     return result;
+  },
+  "perf-report": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { buildPerfReport } = await import("./lib/perf-report.mjs");
+    const windowSize =
+      flags.window != null && flags.window !== "" ? Number.parseInt(String(flags.window), 10) : 10;
+    return buildPerfReport(repoPath, { window: windowSize, config });
+  },
+  "classify-slice-shape": async ({ flags }: CmdCtx) => {
+    const { classifySliceShape } = await import("./lib/classify-slice-shape.mjs");
+    const filesArg = typeof flags.files === "string" ? flags.files : "";
+    const files = filesArg
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }));
+    return classifySliceShape({ files });
   },
   "snapshot-memory": async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
@@ -1055,6 +1084,17 @@ const SLICE_HANDLERS = {
     const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
     return buildReviewLadder(repoPath, sliceId, { config: opts.config ?? null });
   },
+  "post-builder-fanout": async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice post-builder-fanout requires --id SLICE-NN.");
+    const { buildPostBuilderFanout } = await import("./lib/post-builder-fanout.mjs");
+    return buildPostBuilderFanout(repoPath, sliceId, { config: opts.config ?? null });
+  },
   plan: async (
     repoPath: string,
     _flags: Record<string, any>,
@@ -1085,7 +1125,7 @@ async function runSliceSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | plan"
+      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | post-builder-fanout | plan"
     );
   const handler = (SLICE_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
