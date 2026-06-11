@@ -19,7 +19,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { parseFrontmatter } from "./frontmatter.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 export type FanoutTask = {
@@ -58,7 +57,7 @@ function validatorPrompt(sliceId: string, slicePathRel: string): string {
     `You are the Validator on the post-builder fanout for slice ${sliceId}.`,
     `**Slice file**: \`${slicePathRel}\``,
     "",
-    `Run \`bun src/scripts/loop.mts phase-gate --repo "$PWD" --slice ${sliceId}\` to gather evidence.`,
+    `Run \`bun src/scripts/loop.mts phase-gate --repo "$PWD"\` to gather evidence for ${sliceId}.`,
     "Write your verdict via `crew write-validation-result`.",
     "",
     "You run INDEPENDENTLY of the other specialists. Do not read review artifacts. Verdict is based on behavior evidence only."
@@ -75,8 +74,10 @@ export async function buildPostBuilderFanout(
   const sliceFile = await locateSliceFile(slicesRootDir, sliceId);
   if (!sliceFile) throw new Error(`Slice not found: ${sliceId}`);
   const sliceContent = await fs.readFile(sliceFile, "utf8");
-  parseFrontmatter(sliceContent); // sanity parse — surfaces malformed frontmatter early
   const slicePathRel = path.relative(repoPath, sliceFile).replace(/\\/g, "/");
+  if (!sliceContent.startsWith("---")) {
+    throw new Error(`Slice file missing frontmatter header: ${slicePathRel}`);
+  }
 
   const tasks: FanoutTask[] = [
     {
