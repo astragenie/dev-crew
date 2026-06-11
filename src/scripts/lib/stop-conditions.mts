@@ -482,12 +482,17 @@ export async function checkStopConditions(
 // under the cyclomatic-complexity cap after FEAT-059 added autoMode + warn-alert
 // demotion branches.
 function assembleStopResult(p: any) {
+  const checkpointDue =
+    p.marathonCheckpointSignal !== null && p.marathonCheckpointSignal !== undefined;
+  const sliceClosesSinceCheckpoint = p.marathonCheckpointSignal?.closesSinceCheckpoint ?? null;
   return {
     shouldStop: p.reasons.length > 0,
     reasons: p.reasons,
     blockers: p.blockers,
     suggestions: p.suggestions,
     iterationCapReached: p.iterationCapReached,
+    checkpointDue,
+    sliceClosesSinceCheckpoint,
     snapshot: {
       pendingOrTriaged: p.backlogStats.pendingOrTriaged,
       inProgress: p.backlogStats.inProgress,
