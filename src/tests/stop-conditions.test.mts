@@ -243,3 +243,70 @@ test("checkStopConditions: default warnAlertCategoriesIgnoredInAutoMode is score
   );
   assert.ok(out.blockers.some((b) => b.category === "in-progress-orphan"));
 });
+
+// FEAT-181: marathon-checkpoint warn signal → advisory, no halt, snapshot populated
+test("checkStopConditions: marathon-checkpoint warn → suggestion (advisory), no halt", async () => {
+  const repo = await tmpRepo("sc-marathon-warn-");
+  await addFeature(repo, { title: "queued" });
+  // 2 grade files with marathonCheckpointEvery=2 → warn (not hard)
+  const gradesDir = path.join(repo, ".claude/artifacts/loop/grades");
+  await fs.mkdir(gradesDir, { recursive: true });
+  for (let i = 0; i < 2; i++) {
+    const p = path.join(gradesDir, `slice-0${i}-grade.md`);
+    await fs.writeFile(p, "---\nid: grade\n---\n");
+    await fs.utimes(p, new Date(2_000_000 + i), new Date(2_000_000 + i));
+  }
+  // No retro file at all — anchor at epoch
+  const config = { loop: { autoMode: true, marathonCheckpointEvery: 2 } };
+  const out = await checkStopConditions(repo, { config });
+  assert.equal(out.shouldStop, false, "warn level must NOT halt");
+  assert.ok(out.snapshot.marathonCheckpoint, "snapshot exposes marathonCheckpoint entry");
+  assert.equal(out.snapshot.marathonCheckpoint.level, "warn");
+  assert.equal(out.snapshot.marathonCheckpoint.every, 2);
+  assert.equal(out.snapshot.marathonCheckpoint.hardThreshold, 4);
+  assert.ok(
+    out.suggestions.some((s) => /marathon_checkpoint_due/.test(s)),
+    "warn message goes to suggestions"
+  );
+});
+
+// FEAT-181: marathon-checkpoint hard signal → halt + blocker
+test("checkStopConditions: marathon-checkpoint hard → halt + blocker", async () => {
+  const repo = await tmpRepo("sc-marathon-hard-");
+  await addFeature(repo, { title: "queued" });
+  const gradesDir = path.join(repo, ".claude/artifacts/loop/grades");
+  await fs.mkdir(gradesDir, { recursive: true });
+  // 4 grade files with marathonCheckpointEvery=2 → hardThreshold=4 reached
+  for (let i = 0; i < 4; i++) {
+    const p = path.join(gradesDir, `slice-0${i}-grade.md`);
+    await fs.writeFile(p, "---\nid: grade\n---\n");
+    await fs.utimes(p, new Date(2_000_000 + i), new Date(2_000_000 + i));
+  }
+  const config = { loop: { autoMode: true, marathonCheckpointEvery: 2 } };
+  const out = await checkStopConditions(repo, { config });
+  assert.equal(out.shouldStop, true, "hard level MUST halt the loop");
+  assert.equal(out.snapshot.marathonCheckpoint.level, "hard");
+  assert.ok(
+    out.reasons.some((r) => /marathon_checkpoint_required/.test(r)),
+    "hard message goes to reasons"
+  );
+  assert.ok(
+    out.blockers.some((b) => b.category === "marathon-checkpoint"),
+    "hard adds a blocker entry"
+  );
+});
+
+// FEAT-181: marathon-checkpoint quiet (below threshold) → no signal, snapshot null
+test("checkStopConditions: marathon-checkpoint below threshold → null snapshot, no signal", async () => {
+  const repo = await tmpRepo("sc-marathon-quiet-");
+  await addFeature(repo, { title: "queued" });
+  const gradesDir = path.join(repo, ".claude/artifacts/loop/grades");
+  await fs.mkdir(gradesDir, { recursive: true });
+  // Only 1 grade with every=4 → below warn threshold
+  const p = path.join(gradesDir, "slice-00-grade.md");
+  await fs.writeFile(p, "---\nid: grade\n---\n");
+  await fs.utimes(p, new Date(2_000_000), new Date(2_000_000));
+
+  const out = await checkStopConditions(repo, { config: { loop: { autoMode: true } } });
+  assert.equal(out.snapshot.marathonCheckpoint, null);
+});

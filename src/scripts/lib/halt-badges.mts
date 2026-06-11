@@ -75,6 +75,17 @@ function renderRedundantReadStop(e: any): string[] {
   ];
 }
 
+function renderMarathonCheckpoint(e: any): string[] {
+  if (!e) return [];
+  return [
+    `- Level: ${e.level} (warn = advisory, hard = stop)`,
+    `- Slices closed since last retrospective: ${e.closesSinceCheckpoint}`,
+    `- Configured threshold: \`marathonCheckpointEvery\` = ${e.every} (hard at ${e.hardThreshold})`,
+    `- Last retrospective: ${e.lastRetroPath ? `\`${e.lastRetroPath}\`` : "none"}`,
+    `- Suggested action: run \`/loop:retrospective\` to capture lessons. The walker resumes the next slice once a fresh retrospective lands under \`.claude/artifacts/loop/retrospectives/\`.`
+  ];
+}
+
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES: HaltBadgeRenderer[] = [
   { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
@@ -86,6 +97,11 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
     field: "redundantReadStop",
     gateName: "Redundant read stop",
     render: renderRedundantReadStop
+  },
+  {
+    field: "marathonCheckpoint",
+    gateName: "Marathon checkpoint",
+    render: renderMarathonCheckpoint
   }
 ];
 

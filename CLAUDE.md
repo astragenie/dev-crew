@@ -96,6 +96,29 @@ manifest + content-length + format-check locally before any `git push`.
   drift. Anything else under `scripts/` without an `src/scripts/...mts`
   counterpart is drift and should be ported.
 
+## Marathon session checkpoint
+<!-- clause: marathon-checkpoint -->
+
+Long autonomous backlog walks accumulate drift if the loop never pauses
+to reflect. `checkMarathonCheckpoint` counts grade files written after
+the newest retrospective. Configured via `loop.marathonCheckpointEvery`
+in `.claude/loop.json` (default **4** per the AgentOps coherent-arc rule):
+
+- At `>= every` closes → **advisory** suggestion `marathon_checkpoint_due`.
+  Loop continues; operator should run `/loop:retrospective` soon.
+- At `>= 2 * every` closes → **hard** stop with reason
+  `marathon_checkpoint_required` + `marathon-checkpoint` blocker. Loop
+  refuses the next slice until a retrospective lands under
+  `.claude/artifacts/loop/retrospectives/`.
+
+Snapshot exposes `marathonCheckpoint: { level, closesSinceCheckpoint,
+every, hardThreshold, lastRetroPath }` so dashboards can surface
+checkpoint pressure before it becomes a hard stop. Set
+`marathonCheckpointEvery: 0` or a negative value to opt out — the
+parser falls back to the default rather than disabling, so a true
+opt-out requires removing the snapshot consumer or running
+`/loop:retrospective` continuously.
+
 ## Backlog discipline
 <!-- clause: backlog-discipline -->
 

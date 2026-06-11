@@ -9,6 +9,7 @@ import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost
 import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
 import { checkSessionDrift, type SessionDriftSignal } from "./session-drift.mjs";
 import { checkRedundantReadStop, type RedundantReadSignal } from "./redundant-read-detector.mjs";
+import { checkMarathonCheckpoint, type MarathonCheckpointSignal } from "./marathon-checkpoint.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -200,6 +201,43 @@ function applySessionDriftSignal(
   );
 }
 
+function buildMarathonCheckpointSnapshotEntry(sig: MarathonCheckpointSignal | null) {
+  if (!sig) return null;
+  return {
+    level: sig.level,
+    closesSinceCheckpoint: sig.closesSinceCheckpoint,
+    every: sig.every,
+    hardThreshold: sig.hardThreshold,
+    lastRetroPath: sig.lastRetroPath
+  };
+}
+
+function applyMarathonCheckpointSignal(
+  sig: MarathonCheckpointSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!sig) return;
+  const due = `${sig.closesSinceCheckpoint} slice(s) closed since the last retrospective`;
+  const cmd = "Run `/loop:retrospective` to capture lessons before continuing.";
+  if (sig.level === "warn") {
+    suggestions.push(
+      `marathon_checkpoint_due: ${due} (advisory at >=${sig.every}, hard stop at >=${sig.hardThreshold}). ${cmd}`
+    );
+    return;
+  }
+  reasons.push(
+    `marathon_checkpoint_required: ${due} (hard threshold ${sig.hardThreshold}) — checkpoint mandatory before next slice`
+  );
+  blockers.push({
+    category: "marathon-checkpoint",
+    message: `${due}; hard threshold ${sig.hardThreshold} reached. Drift accumulates beyond this point.`,
+    suggestion: cmd
+  });
+  suggestions.push(cmd);
+}
+
 function applyRedundantReadStopSignal(
   sig: RedundantReadSignal | null,
   reasons: any[],
@@ -327,6 +365,7 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     costRegressionSignal,
     sessionDriftSignal,
     redundantReadSignal,
+    marathonCheckpointSignal,
     workflowState
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
@@ -339,6 +378,7 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     checkCostRegression(repoPath, config),
     checkSessionDrift(repoPath),
     checkRedundantReadStop(repoPath, config),
+    checkMarathonCheckpoint(repoPath, config),
     readCrewWorkflowState(repoPath)
   ]);
   return {
@@ -352,6 +392,7 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     costRegressionSignal,
     sessionDriftSignal,
     redundantReadSignal,
+    marathonCheckpointSignal,
     workflowState
   };
 }
@@ -372,6 +413,7 @@ export async function checkStopConditions(
     costRegressionSignal,
     sessionDriftSignal,
     redundantReadSignal,
+    marathonCheckpointSignal,
     workflowState
   } = await gatherStopInputs(repoPath, config);
 
@@ -410,6 +452,7 @@ export async function checkStopConditions(
   applyCostRegressionSignal(costRegressionSignal, reasons, suggestions, blockers);
   applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
   applyRedundantReadStopSignal(redundantReadSignal, reasons, suggestions, blockers);
+  applyMarathonCheckpointSignal(marathonCheckpointSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
   return assembleStopResult({
@@ -430,6 +473,7 @@ export async function checkStopConditions(
     costRegressionSignal,
     sessionDriftSignal,
     redundantReadSignal,
+    marathonCheckpointSignal,
     workflowState
   });
 }
@@ -468,7 +512,8 @@ function assembleStopResult(p: any) {
       costRegression: buildRegressionSnapshotEntry(p.costRegressionSignal),
       sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
       mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState),
-      redundantReadStop: buildRedundantReadSnapshotEntry(p.redundantReadSignal)
+      redundantReadStop: buildRedundantReadSnapshotEntry(p.redundantReadSignal),
+      marathonCheckpoint: buildMarathonCheckpointSnapshotEntry(p.marathonCheckpointSignal)
     }
   };
 }

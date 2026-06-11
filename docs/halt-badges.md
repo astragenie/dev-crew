@@ -187,6 +187,30 @@ When disabled, `checkRedundantReadStop` short-circuits to `null` regardless of `
 
 ---
 
+### `snapshot.marathonCheckpoint`
+
+**Shape:**
+
+```ts
+{
+  level: "warn" | "hard";          // warn = advisory, hard = stop
+  closesSinceCheckpoint: number;   // grade files written after the newest retro
+  every: number;                   // configured threshold (default 4)
+  hardThreshold: number;           // 2 × every
+  lastRetroPath: string | null;    // absolute path of the newest retrospective
+}
+```
+
+**Meaning:** the autonomous loop has shipped many slices in a row without pausing for a retrospective. Adopts the AgentOps coherent-arc rule — 2-4 atomic arcs per autonomous session, post-mortem mandatory at >=5 — so long backlog walks cannot accumulate unobserved drift.
+
+**Fires when:** the number of grade files (`*-grade.md` under `gradesRoot`, default `.claude/artifacts/loop/grades/`) with `mtime` newer than the newest retrospective file (under `retroRoot`, default `.claude/artifacts/loop/retrospectives/`) reaches `every` (warn) or `2 × every` (hard). When no retrospective exists, the anchor is the unix epoch, so every grade counts.
+
+**Suggested operator action:** run `/loop:retrospective` to capture lessons + decisions. The walker resumes once a fresh retrospective file lands under `retroRoot`. Tune `loop.marathonCheckpointEvery` in `.claude/loop.json` to widen the window for marathon-style sessions; values <= 0 or non-integer fall back to the default rather than disabling.
+
+**Origin:** FEAT-181 / SLICE-92 / v0.40.0. Source: `src/scripts/lib/marathon-checkpoint.mts::checkMarathonCheckpoint`. Snapshot builder: `src/scripts/lib/stop-conditions.mts::buildMarathonCheckpointSnapshotEntry`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.
