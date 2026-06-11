@@ -7,6 +7,7 @@ import { writeCrewRunBrief } from "./crew-bridge.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
+import type { OrchestratorMode } from "./dispatch.mjs";
 import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
 import { runPlanPreflight } from "../slice-plan.mjs";
@@ -24,6 +25,28 @@ function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>):
   if (!scores || scores.length === 0) return null;
   const recent = scores.slice(-3);
   return recent.reduce((sum, s) => sum + s.avg, 0) / recent.length;
+}
+
+// Pick the orchestrator mode emitted in dispatchInstruction. Precedence:
+//   1. config.loop.orchestratorMode (explicit)
+//   2. "lead" by default — crew:lead orchestrates the slice ceremony.
+// The legacy `useOrchestrateSlice` boolean is retained as fallback for callers
+// that pre-date the config option: if no explicit mode is set and the boolean
+// is true, emit the /crew:orchestrate-slice path; otherwise legacy direct-builder.
+function resolveOrchestratorModeConfig(
+  config: Record<string, any>,
+  useOrchestrateSlice: boolean
+): OrchestratorMode {
+  const explicit = config?.loop?.orchestratorMode;
+  if (explicit === "lead" || explicit === "orchestrate-slice" || explicit === "direct-builder") {
+    return explicit;
+  }
+  if (explicit !== undefined && explicit !== null) {
+    return "lead";
+  }
+  // No explicit setting → default to lead orchestration. Operators on older crew
+  // can pin "orchestrate-slice" or "direct-builder" in .claude/loop.json.
+  return useOrchestrateSlice ? "lead" : "lead";
 }
 
 // Resolve all feature-level signals + confidence verdict in one call.
@@ -317,6 +340,7 @@ export async function startSlice(
   const useOrchestrateSlice = await checkOrchestrateSliceSupport(
     _crewVersionOverride as string | null | undefined
   );
+  const orchestratorMode = resolveOrchestratorModeConfig(resolved, useOrchestrateSlice);
 
   const result = buildStartSliceReturn({
     sliceId,
@@ -342,6 +366,7 @@ export async function startSlice(
     confidence,
     confidenceReason,
     useOrchestrateSlice,
+    orchestratorMode,
     worktreeInfo
   });
 
@@ -450,12 +475,15 @@ function computeNextAction(
   requiresApprovalGate: boolean,
   dispatch: boolean,
   planPreflight: any,
-  useOrchestrateSlice = false
+  orchestratorMode: OrchestratorMode = "lead"
 ): string {
   if (requiresApprovalGate) {
-    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:builder for ${sliceId}.`;
+    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:lead for ${sliceId}.`;
   }
-  if (dispatch && useOrchestrateSlice) {
+  if (dispatch && orchestratorMode === "lead") {
+    return `Dispatch crew:lead subagent for ${sliceId}; lead orchestrates architect/builder/reviewer/validator and closes via /loop:slice complete --id ${sliceId}.`;
+  }
+  if (dispatch && orchestratorMode === "orchestrate-slice") {
     return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
   }
   if (dispatch) {
@@ -478,7 +506,8 @@ function resolveDispatchInstruction(
   featurePath: string | null,
   dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
   useOrchestrateSlice = false,
-  worktreePath: string | null = null
+  worktreePath: string | null = null,
+  orchestratorMode: OrchestratorMode = "lead"
 ) {
   return dispatch
     ? buildDispatchInstruction({
@@ -493,6 +522,7 @@ function resolveDispatchInstruction(
         featurePath,
         dispatchLimits,
         useOrchestrateSlice,
+        orchestratorMode,
         worktreePath
       })
     : null;
@@ -538,6 +568,7 @@ function buildStartSliceReturn({
   confidence = null,
   confidenceReason = null,
   useOrchestrateSlice = false,
+  orchestratorMode = "lead",
   worktreeInfo = undefined
 }: {
   sliceId: string;
@@ -563,6 +594,7 @@ function buildStartSliceReturn({
   confidence?: string | null;
   confidenceReason?: string | null;
   useOrchestrateSlice?: boolean;
+  orchestratorMode?: OrchestratorMode;
   worktreeInfo?: WorktreeResult | undefined;
 }) {
   const worktreePath = worktreeInfo?.worktreePath ?? null;
@@ -579,7 +611,8 @@ function buildStartSliceReturn({
     featurePath,
     dispatchLimits,
     useOrchestrateSlice,
-    worktreePath
+    worktreePath,
+    orchestratorMode
   );
   const activePlanSummary = resolveActivePlanSummary(activePlan);
   const nextAction = computeNextAction(
@@ -587,7 +620,7 @@ function buildStartSliceReturn({
     requiresApprovalGate,
     dispatch,
     planPreflight,
-    useOrchestrateSlice
+    orchestratorMode
   );
   const base: Record<string, any> = {
     slice: { id: sliceId, title },

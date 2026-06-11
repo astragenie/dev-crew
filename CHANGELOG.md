@@ -3,6 +3,33 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased
+
+### Changed
+- `MIN_CREW_VERSION` bumped from `0.3.6` → `0.31.1` to reflect the current
+  stable hero-crew release. `findCrewCli` now resolves both
+  `scripts/crew.ts` (Bun-migrated crew ≥0.31.0) and `scripts/crew.mjs`
+  (legacy emit) so locating the installed CLI works across the migration
+  boundary. `getCrewCliCacheGlob` glob updated to
+  `scripts/crew.{ts,mjs}`.
+
+### Added
+- `auto-dispatch.jsonl` schema extended with three optional fields
+  (`stepType`, `inputTokens`, `outputTokens`). Strictly additive —
+  existing readers unaffected. `stepType: "session-drift-override"`
+  tags the walker's drift-override path so downstream consumers
+  (FEAT-165 per-skill cost attribution, FEAT-172 usage dashboard) can
+  discriminate event kinds without parsing `event`. Schema rationale
+  recorded in DEC-046. (SLICE-89 / FEAT-083)
+- `crew:lead` restored as the default slice orchestrator. `/loop:slice
+  start` now emits a `Dispatch crew:lead subagent` instruction by
+  default. Configurable via `config.loop.orchestratorMode` in
+  `.claude/loop.json`: `"lead"` (default), `"orchestrate-slice"`,
+  `"direct-builder"`. `hooks/guard-feat-dispatch.mjs` allowlists
+  `crew:lead`. Reverses the 2026-06-07 decommission. Cross-plugin
+  `/crew:build`, `/crew:validate`, `/crew:fix` routing tracked in
+  `docs/upstream-requests/2026-06-10-hero-crew-lead-orchestrator-restoration.md`.
+
 ## v0.38.1 — 2026-06-10 — backlog: AgentOps-adoption FEATs triaged
 
 ### Added

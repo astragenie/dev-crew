@@ -61,14 +61,20 @@ export async function getPluginIdentity() {
 // (renamed from `crew-dev` in v0.3.0), which we hardcode here because we
 // depend on it. If the user installs crew via a different marketplace,
 // override CREW_MARKETPLACE_NAME in the environment.
+// After the crew Bun migration (>=0.31.0) the entry point is crew.ts; older
+// releases ship crew.mjs. The glob covers both.
 export function getCrewCliCacheGlob() {
   const marketplaceName = process.env.CREW_MARKETPLACE_NAME || "astra";
   const pluginName = "crew";
-  return `$HOME/.claude/plugins/cache/${marketplaceName}/${pluginName}/*/scripts/crew.mjs`;
+  return `$HOME/.claude/plugins/cache/${marketplaceName}/${pluginName}/*/scripts/crew.{ts,mjs}`;
 }
 
+// crew entry-point filenames in resolution order. crew.ts ships in the Bun-
+// migrated crew (>=0.31.0); crew.mjs is the legacy emit. Prefer the newer one.
+const CREW_CLI_FILENAMES = ["crew.ts", "crew.mjs"] as const;
+
 // Find the crew CLI on disk. Returns the path of the newest installed version
-// or null if no crew install is found.
+// (any supported entry filename) or null if no crew install is found.
 export async function findCrewCli() {
   const homedir = process.env.HOME || process.env.USERPROFILE;
   if (!homedir) {
@@ -80,12 +86,14 @@ export async function findCrewCli() {
   try {
     const versions = (await fs.readdir(cacheDir)).sort((a, b) => compareSemver(b, a));
     for (const v of versions) {
-      const candidate = path.join(cacheDir, v, "scripts", "crew.mjs");
-      try {
-        await fs.access(candidate);
-        return candidate;
-      } catch {
-        // try next version
+      for (const filename of CREW_CLI_FILENAMES) {
+        const candidate = path.join(cacheDir, v, "scripts", filename);
+        try {
+          await fs.access(candidate);
+          return candidate;
+        } catch {
+          // try next filename / version
+        }
       }
     }
   } catch {
@@ -95,10 +103,11 @@ export async function findCrewCli() {
 }
 
 // Minimum compatible crew plugin version. Bump when this plugin starts to
-// depend on a crew capability that older versions don't have. v0.3.3 added
-// the `--feature` / `--phase` / `--title` flags this plugin now passes
-// when invoking crew artifact writers.
-export const MIN_CREW_VERSION = "0.3.6";
+// depend on a crew capability that older versions don't have.
+// v0.31.1: current stable hero-crew release; bundled commands consumed by
+// loop slash flows (/crew:build, /crew:validate, /crew:fix, /crew:orchestrate-slice)
+// require this floor. Older crew installs may emit unrecognized-flag errors.
+export const MIN_CREW_VERSION = "0.31.1";
 
 // Minimum crew version that ships /crew:orchestrate-slice.
 // v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the

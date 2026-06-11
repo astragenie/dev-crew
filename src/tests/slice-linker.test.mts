@@ -220,6 +220,75 @@ test("buildDispatchInstruction without dispatchLimits omits budget block", () =>
   assert.doesNotMatch(result, /Dispatch budget/);
 });
 
+// --- orchestratorMode: "lead" emission tests ---
+
+test("buildDispatchInstruction with orchestratorMode='lead' emits 'Dispatch crew:lead subagent' instruction", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-89-LEAD",
+    title: "SLICE-89-LEAD: Wire crew:lead as default orchestrator",
+    sliceFile: "/repo/slices/SLICE_89.md",
+    repoPath: "/repo",
+    resolvedGoal: "Wire lead orchestrator",
+    orchestratorMode: "lead"
+  });
+  assert.match(result, /Dispatch crew:lead subagent/);
+  assert.match(result, /Orchestrate SLICE-89-LEAD/);
+  assert.match(result, /\/loop:slice complete --id SLICE-89-LEAD/);
+  assert.doesNotMatch(result, /Dispatch crew:builder subagent/);
+  assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
+});
+
+test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /crew:orchestrate-slice command", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-OS",
+    title: "SLICE-OS: Orchestrate-slice path",
+    sliceFile: "/repo/slices/SLICE_OS.md",
+    repoPath: "/repo",
+    resolvedGoal: "Use legacy orchestrate-slice",
+    orchestratorMode: "orchestrate-slice"
+  });
+  assert.match(result, /\/crew:orchestrate-slice --id SLICE-OS/);
+  assert.doesNotMatch(result, /Dispatch crew:lead subagent/);
+});
+
+test("buildDispatchInstruction with orchestratorMode='direct-builder' emits 'Dispatch crew:builder subagent' instruction", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-DB",
+    title: "SLICE-DB: Direct builder path",
+    sliceFile: "/repo/slices/SLICE_DB.md",
+    repoPath: "/repo",
+    resolvedGoal: "Use direct-builder fallback",
+    orchestratorMode: "direct-builder"
+  });
+  assert.match(result, /Dispatch crew:builder subagent/);
+  assert.doesNotMatch(result, /Dispatch crew:lead subagent/);
+  assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
+});
+
+test("buildDispatchInstruction back-compat: useOrchestrateSlice=true (no orchestratorMode) still emits orchestrate-slice", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-BC1",
+    title: "SLICE-BC1: Back-compat boolean true",
+    sliceFile: "/repo/slices/SLICE_BC1.md",
+    repoPath: "/repo",
+    resolvedGoal: "Boolean back-compat",
+    useOrchestrateSlice: true
+  });
+  assert.match(result, /\/crew:orchestrate-slice --id SLICE-BC1/);
+});
+
+test("buildDispatchInstruction back-compat: useOrchestrateSlice=false (no orchestratorMode) still emits direct-builder", () => {
+  const result = buildDispatchInstruction({
+    sliceId: "SLICE-BC2",
+    title: "SLICE-BC2: Back-compat boolean false",
+    sliceFile: "/repo/slices/SLICE_BC2.md",
+    repoPath: "/repo",
+    resolvedGoal: "Boolean back-compat",
+    useOrchestrateSlice: false
+  });
+  assert.match(result, /Dispatch crew:builder subagent/);
+});
+
 test("readFeatureExcerpt returns {path, excerpt} object when feature found", async () => {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "rfe-"));
   const dir = path.join(tmp, "in-progress");
