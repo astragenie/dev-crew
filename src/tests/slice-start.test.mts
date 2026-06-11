@@ -107,6 +107,22 @@ test("startSlice emits 'Dispatch crew:lead subagent' instruction by default", as
   assert.match(result.nextAction, /Dispatch crew:lead subagent/);
 });
 
+test("SLICE-93 AC-4: lead dispatch instruction contains slice post-builder-fanout invocation", async () => {
+  const repo = await tmpRepo("al-slice-start-fanout-ref-");
+  await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+  const feat = await addFeature(repo, { title: "Fanout ref feature" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+  // orchestratorMode defaults to "lead".
+  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+  assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+  assert.match(
+    result.dispatchInstruction,
+    /slice post-builder-fanout/,
+    "dispatchInstruction must reference slice post-builder-fanout"
+  );
+});
+
 test("startSlice with orchestratorMode='direct-builder' emits legacy crew:builder instruction", async () => {
   const repo = await tmpRepo("al-slice-start-direct-builder-");
   await pinOrchestratorMode(repo, "direct-builder");

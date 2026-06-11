@@ -81,6 +81,23 @@ test("readFanoutMarker returns object when marker is present", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Security: path-traversal guard on sliceId
+// ---------------------------------------------------------------------------
+
+test("write rejects traversal sliceId without crashing CLI (best-effort)", async () => {
+  const repo = await tmpRepo("fanout-traversal-");
+  try {
+    // Should not throw — best-effort swallows internally.
+    await writeFanoutMarker(repo, "../../etc/passwd", 3);
+    // Marker should NOT have landed at the traversal path.
+    const outside = path.resolve(repo, "..", "..", "etc", "passwd.json");
+    await assert.rejects(() => fs.access(outside), /ENOENT|EPERM|EACCES/);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // AC-4: computeTelemetry populates post_builder_fanout: true when marker present
 // ---------------------------------------------------------------------------
 

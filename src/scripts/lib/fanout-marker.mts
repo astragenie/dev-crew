@@ -10,6 +10,15 @@ import path from "node:path";
 
 const MARKER_DIR_PARTS = [".claude", "artifacts", "loop", "fanout-markers"];
 
+const SLICE_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+function safeSliceId(sliceId: string): string {
+  if (!SLICE_ID_RE.test(sliceId)) {
+    throw new Error(`Invalid sliceId for marker path: ${sliceId}`);
+  }
+  return sliceId;
+}
+
 export type FanoutMarker = {
   sliceId: string;
   taskCount: number;
@@ -22,10 +31,11 @@ export async function writeFanoutMarker(
   taskCount: number
 ): Promise<void> {
   try {
+    const id = safeSliceId(sliceId);
     const dir = path.join(repoPath, ...MARKER_DIR_PARTS);
     await fs.mkdir(dir, { recursive: true });
-    const marker: FanoutMarker = { sliceId, taskCount, ts: new Date().toISOString() };
-    await fs.writeFile(path.join(dir, `${sliceId}.json`), JSON.stringify(marker, null, 2), "utf8");
+    const marker: FanoutMarker = { sliceId: id, taskCount, ts: new Date().toISOString() };
+    await fs.writeFile(path.join(dir, `${id}.json`), JSON.stringify(marker, null, 2), "utf8");
   } catch {
     // best-effort — never throws
   }
@@ -36,7 +46,8 @@ export async function readFanoutMarker(
   sliceId: string
 ): Promise<FanoutMarker | null> {
   try {
-    const file = path.join(repoPath, ...MARKER_DIR_PARTS, `${sliceId}.json`);
+    const id = safeSliceId(sliceId);
+    const file = path.join(repoPath, ...MARKER_DIR_PARTS, `${id}.json`);
     const raw = await fs.readFile(file, "utf8");
     const obj = JSON.parse(raw) as Record<string, unknown>;
     if (
