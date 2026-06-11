@@ -153,10 +153,18 @@ export async function buildReviewLadder(
     };
   });
 
+  const contractBlock = [
+    "PARALLEL_DISPATCH_CONTRACT v1",
+    `required: emit exactly ONE message containing N=${ladder.length} Agent tool calls`,
+    "forbidden: send any message between dispatches",
+    "forbidden: wait for one reviewer return before next dispatch",
+    "violation: serial-reviewer-warning badge logged to grade"
+  ].join("\n");
+
   return {
     sliceId,
     ladder,
     tasks,
-    instructions: `Dispatch each task in parallel using the Task tool with the listed subagent_type. Aggregate verdicts — slice passes when all reviewers return PASS or PASS with minor.`
+    instructions: `${contractBlock}\n\nAggregate verdicts — slice passes when all reviewers return PASS or PASS with minor.`
   };
 }

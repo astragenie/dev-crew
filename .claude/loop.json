@@ -85,7 +85,9 @@
     "ladder": [
       "A",
       "B"
-    ]
+    ],
+    "strictParallel": true,
+    "serialTimingThresholdMs": 90000
   },
   "phaseGate": {
     "parallel": true,

@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveConfig } from "../config-resolver.mjs";
-import { parseFrontmatter, mergeFrontmatter } from "../frontmatter.mjs";
+import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
+import { detectSerialReviewer } from "../reviewer-timing.mjs";
 import { findFeatureById, moveFeature } from "../backlog-writer.mjs";
 import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "../ceremonies.mjs";
@@ -556,6 +557,7 @@ export async function completeSlice(
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
   void recordSliceCompleteEvent(repoPath, sliceId, featureId);
   void writeDocWriterSkipAuditLog(repoPath);
+  await recordSerialReviewerWarning(repoPath, sliceId, resolved);
 
   const autoMergeResult = await runAutoMergeStage(repoPath, sliceId, sliceFm, resolved, {
     noMerge,
@@ -609,6 +611,78 @@ async function writeDocWriterSkipAuditLog(repoPath: string): Promise<void> {
       skipReason: "cli-refusal-cli-doc-writer-disabled",
       durationMs: 0
     });
+  } catch {
+    // best-effort — never blocks slice complete
+  }
+}
+
+// Append a badge to the slice file's frontmatter `badges` array.
+// Idempotent: returns early when the badge already exists. Best-effort —
+// does nothing when the slice file cannot be located.
+async function appendSliceBadge(
+  repoPath: string,
+  sliceId: string,
+  badge: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  const slicesRootDir = resolveSlicesRoot(repoPath, config);
+  const sliceFile = await locateSliceFile(slicesRootDir, sliceId);
+  if (!sliceFile) return;
+  const raw = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter, body } = parseFrontmatter(raw);
+  const badges = Array.isArray(frontmatter.badges) ? (frontmatter.badges as string[]).slice() : [];
+  if (badges.includes(badge)) return;
+  badges.push(badge);
+  frontmatter.badges = badges;
+  await fs.writeFile(sliceFile, serializeFrontmatter(frontmatter, body));
+}
+
+// Append a bullet under the grade's "## Surprises" heading (creates it
+// when missing). Idempotent — returns early when the exact note text is
+// already present. Best-effort: no-op when the grade file has not been
+// written yet.
+async function appendGradeObservation(
+  repoPath: string,
+  sliceId: string,
+  note: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  const { findGradeFileForSlice } = await import("../grade-parser.mjs");
+  const gradeFile = await findGradeFileForSlice(repoPath, sliceId, config);
+  if (!gradeFile) return;
+  const raw = await fs.readFile(gradeFile, "utf8");
+  if (raw.includes(note)) return;
+  const marker = "## Surprises";
+  const idx = raw.indexOf(marker);
+  if (idx === -1) {
+    await fs.appendFile(gradeFile, `\n## Surprises\n\n- ${note}\n`);
+    return;
+  }
+  const insertAt = raw.indexOf("\n", idx) + 1;
+  const next = raw.slice(0, insertAt) + `\n- ${note}\n` + raw.slice(insertAt);
+  await fs.writeFile(gradeFile, next);
+}
+
+// Run the serial-reviewer detector after slice close. When the reviewer
+// span exceeds the configured threshold, stamp a `serial-reviewer-warning`
+// badge on the slice and (if a grade file exists) append a surprise note
+// so the parallel-dispatch contract violation surfaces in the next retro.
+async function recordSerialReviewerWarning(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  try {
+    const thresholdMs = (config?.reviewers?.serialTimingThresholdMs as number) ?? 90000;
+    const detector = await detectSerialReviewer(repoPath, sliceId, { thresholdMs });
+    if (!detector.serial) return;
+    await appendSliceBadge(repoPath, sliceId, "serial-reviewer-warning", config);
+    await appendGradeObservation(
+      repoPath,
+      sliceId,
+      `Reviewer ladder ran serially (span ${detector.spanMs}ms, threshold ${thresholdMs}ms). Parallel contract violated.`,
+      config
+    );
   } catch {
     // best-effort — never blocks slice complete
   }
