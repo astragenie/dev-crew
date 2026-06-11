@@ -102,6 +102,44 @@ test("sliceFromFeature throws when feature not found", async () => {
   await assert.rejects(() => sliceFromFeature(repo, "FEAT-999"), /Feature not found/);
 });
 
+// FEAT-168 AC-2: refuse-gate integration through sliceFromFeature.
+test("sliceFromFeature refuses when effort_points >= 8 and proposed_slices missing", async () => {
+  const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
+  const repo = await tmpRepo("al-slice-refuse-");
+  const feat = await addFeature(repo, { title: "Big work" });
+  await updateFeatureFrontmatter(feat.filePath, { effort_points: 13 });
+  await assert.rejects(
+    () => sliceFromFeature(repo, feat.id),
+    (err: Error) =>
+      err.name === "DecompositionRequiredError" &&
+      /sized 13 points/.test(err.message) &&
+      /\/loop:pm-review/.test(err.message)
+  );
+  // Backlog state untouched — feature stays in pending, no slice file created.
+  const found = await findFeatureById(repo, feat.id);
+  assert.equal(found.state, "pending");
+  assert.equal(found.frontmatter.slices?.length ?? 0, 0);
+});
+
+// FEAT-168 AC-2: gate is a no-op for FEATs sized < 8.
+test("sliceFromFeature allows when effort_points < 8 even without proposed_slices", async () => {
+  const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
+  const repo = await tmpRepo("al-slice-small-");
+  const feat = await addFeature(repo, { title: "Small work" });
+  await updateFeatureFrontmatter(feat.filePath, { effort_points: 5 });
+  const result = await sliceFromFeature(repo, feat.id);
+  assert.match(result.slice.id, /^SLICE-\d+$/);
+});
+
+// FEAT-168: full integration of proposed_slices (AC-1 schema validation +
+// AC-5 atomic create + AC-7 parse error visible through sliceFromFeature)
+// is deferred — the in-tree frontmatter parser/writer can't yet round-trip
+// nested mappings inside arrays. The proposed-slices validator itself is
+// covered unit-side in src/tests/proposed-slices.test.mts. Wiring AC-1 /
+// AC-5 / AC-7 through the full slice flow waits on a follow-up slice that
+// extends src/scripts/lib/frontmatter.mts with nested-list-of-mappings
+// support.
+
 // --- buildDispatchInstruction context embedding tests ---
 
 test("buildDispatchInstruction with sliceContent embeds context block", () => {

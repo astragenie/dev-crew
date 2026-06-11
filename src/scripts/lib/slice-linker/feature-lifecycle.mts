@@ -10,6 +10,7 @@ import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
 import { clampSliceTitle } from "../slice-title.mjs";
 import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
+import { assertSized } from "../proposed-slices.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -275,6 +276,21 @@ export async function sliceFromFeature(
 
   const entry = await findFeatureById(repoPath, featureId);
   if (!entry) throw new Error(`Feature not found: ${featureId}`);
+
+  // FEAT-168 AC-2: decomposition gate. Read the source FEAT frontmatter
+  // BEFORE moving the file so a refuse-throw leaves backlog state
+  // untouched. assertSized throws DecompositionRequiredError when a
+  // >= 8-point FEAT lacks proposed_slices entirely. The strict shape
+  // validator (parseProposedSlices) is intentionally NOT wired here
+  // yet — the in-tree frontmatter parser/writer can't round-trip
+  // nested mappings inside arrays, so a manually-written
+  // proposed_slices currently surfaces as an array of opaque strings.
+  // Strict validation will land when the parser gains nested-mapping
+  // support (separate slice). Until then truthy-check is the
+  // intentional escape hatch.
+  const sourceContent = await fs.readFile(entry.filePath, "utf8");
+  const { frontmatter: sourceFM } = parseFrontmatter(sourceContent);
+  assertSized(featureId, sourceFM.effort_points, sourceFM.proposed_slices);
 
   // Move feature to in-progress if not already.
   const movedFromState = entry.state;
