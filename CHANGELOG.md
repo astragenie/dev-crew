@@ -5,6 +5,8 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.3 — 2026-06-12 — PM ToolSearch precondition
+
 ### PM ToolSearch precondition for spec-writer dispatch (FEAT-196 / SLICE-112)
 
 Validated 2026-06-12 that granting `Agent` in PM frontmatter (FEAT-195) was necessary but not sufficient — `Agent` is a deferred tool, PM must call `ToolSearch(query: "select:Agent")` to load the Agent schema before invoking it. Without ToolSearch, PM saw only base tools (Read, Grep, Glob, Bash) and the spec-writer dispatch silently failed. Fix: add the ToolSearch precondition to the dispatch-discipline section of `agents/pm.md`.
