@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-103","timestamp":"2026-06-12T10:46:45.040Z","featureId":"FEAT-189","title":"SLICE-103: Intake slash command merges triage + enrich (FEAT-189)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T104644Z-plan-SLICE-103.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-103","timestamp":"2026-06-12T10:50:35.316Z","featureId":"FEAT-189","featureMovedTo":null,"validationSatisfied":false}

@@ -135,6 +135,13 @@ Each FEAT has frontmatter declaring priority, status, and an
 `autonomous_safe: true` items without per-slice human review; creative
 items still require a human in the loop on review.
 
+**Recommended default for fresh intake**: `/loop:intake` runs both
+phases in one invocation — PM scoring (Phase 1) then architect
+classification (Phase 2), with a halt-on-PM-error gate and a P4-decline
+filter on Phase 2. Replaces the two-step `/loop:triage` + `/loop:backlog-enrich`
+sequence. Both legacy commands still work for partial-intake scenarios
+(score-only or classify-only).
+
 `/loop:backlog-enrich` writes three routing fields into FEAT
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives

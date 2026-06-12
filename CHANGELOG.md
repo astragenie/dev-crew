@@ -5,6 +5,10 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Slash command: `/loop:intake` (FEAT-189 / SLICE-103)
+
+New slash command that runs the two-phase backlog intake in one invocation: Phase 1 PM scoring (delegates to the existing `/loop:triage` contract), Phase 2 architect classification (delegates to `/loop:backlog-enrich`). Halts before Phase 2 if PM errors; skips Phase 2 for `composite_priority: "P4"` declined FEATs. Existing `/loop:triage` and `/loop:backlog-enrich` remain unchanged for partial-intake scenarios.
+
 ### CLI: `slice close` (FEAT-188 / SLICE-102)
 
 New subcommand `bun src/scripts/loop.mts slice close --id SLICE-NN [--grade-yaml <path>]` collapses the 3-step closing ceremony (`slice complete` → `slice grade` → `slice grade-write`) into one CLI roundtrip when the FEAT is `autonomous_safe: true` and a pre-formatted grade file is supplied.
