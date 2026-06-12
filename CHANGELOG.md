@@ -5,6 +5,8 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.2 — 2026-06-12 — PM Agent grant + --include-triaged flag
+
 ### PM agent gains `Agent` tool to enable /loop:retriage gate (FEAT-195 / SLICE-111)
 
 Sample retriage run on 2026-06-12 surfaced a wiring bug: `loop:pm` frontmatter `tools` omitted `Agent`, so the `/loop:retriage` gate's step 4 (dispatch `loop:spec-writer` when AC vague) failed every time and PM escalated to `needs-review` instead of self-healing the AC. Fix: add `Agent` to PM's tool allowlist. Frontmatter `description` updated from "Read-only — no code edits" to "Read-only on disk; dispatches loop:spec-writer when AC need normalization under the /loop:retriage gate". Body adds an explicit dispatch-discipline rule restricting PM's inline `Agent` dispatches to `loop:spec-writer` only — other sub-agents in the "Sub-agents you may dispatch" list are recommended to the orchestrator, not spawned directly by PM in the same turn.
