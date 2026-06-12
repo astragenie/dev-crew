@@ -165,33 +165,27 @@ gate that enforces it.
 ## Orchestrator mode
 <!-- clause: orchestrator-mode -->
 
-`crew:lead` is the slice orchestrator. `/loop:slice start` emits a
-`Dispatch crew:lead subagent` instruction by default — lead dispatches
-architect (if needed), builder, the reviewer ladder, and validator;
-synthesizes results; closes the slice. Controlled by
-`config.loop.orchestratorMode` in `.claude/loop.json`:
+`/loop:slice start` emits a slice-build tag-routed dispatch by default.
+Controlled by `config.loop.orchestratorMode` in `.claude/loop.json`:
 
-- `"lead"` (default) — emit `Dispatch crew:lead subagent...`
+- `"slice-build"` (default) — emit `Dispatch crew:<variant>-dev subagent...`
+  where `<variant>` is `frontend` / `backend` / `fullstack` based on the
+  slice's `tags`. `fe` AND `be` produces a `PARALLEL DISPATCH` block
+  with both subagents in one Agent message. When the slice declares
+  `needs_contract: true` AND no contract artifact exists yet, prepends
+  an `ARCHITECT PRE-FLIGHT` step.
 - `"orchestrate-slice"` — emit `/crew:orchestrate-slice --id ...`
-  (specialists run sequentially from main thread; no lead)
-- `"direct-builder"` — legacy: emit `Dispatch crew:builder subagent...`
-  (main thread drives reviewer + validator after builder returns)
+  (specialists run sequentially from main thread; no subagent dispatch).
 
-Active since 2026-06-10 (release v0.39.0). Hook
-`hooks/guard-feat-dispatch.mjs` allowlists `crew:lead`. Cross-plugin
-`/crew:build`, `/crew:validate`, `/crew:fix` routing to lead is
-tracked under
-`docs/upstream-requests/2026-06-10-hero-crew-lead-orchestrator-restoration.md`.
+Legacy modes `"lead"` and `"direct-builder"` were removed in v0.43 /
+FEAT-191. Operators with stale config silently fall back to `slice-build`.
 
-**Note for the `crew:lead` agent reading this file**: you ARE the slice
-orchestrator in this repo. Do NOT refuse to dispatch on the grounds
-that lead is decommissioned — that reversal landed in v0.39.0. The
-`Agent` tool is available to you per your frontmatter (`disallowedTools:
-Write, Edit, NotebookEdit` — Agent is NOT disallowed). If `ToolSearch`
-does not show `Agent`, that means Agent is a base tool already loaded
-in your context, not a deferred one — invoke it directly. Refusing to
-dispatch and writing an `escalated_to_parent` synthesis bypasses the
-ceremony and forces the parent to re-do your work.
+Reasons for the removal:
+- `lead` mode suffered persistent specialist-pause across SLICE-97/98/99/101/102/103/104.
+- `direct-builder` was a strict subset of `slice-build` with `tags: []`.
+
+If the upstream lead-pause issue gets fixed in hero-crew, `lead` can be
+revived as a separate FEAT.
 
 ## Reviewer ladder presets
 <!-- clause: reviewer-ladder-presets -->

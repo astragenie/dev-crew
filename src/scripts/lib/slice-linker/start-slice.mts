@@ -76,19 +76,17 @@ function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>):
 }
 
 // Pick the orchestrator mode emitted in dispatchInstruction. Precedence:
-//   1. config.loop.orchestratorMode (explicit)
-//   2. "lead" by default — crew:lead orchestrates the slice ceremony.
+//   1. config.loop.orchestratorMode (explicit, validated against the union)
+//   2. "slice-build" by default — tag-driven dispatch with architect pre-flight.
+// Legacy values ("lead", "direct-builder") removed in v0.43 / FEAT-191; they
+// silently fall back to "slice-build" so operators don't see a hard error on
+// stale config.
 function resolveOrchestratorModeConfig(config: Record<string, any>): OrchestratorMode {
   const explicit = config?.loop?.orchestratorMode;
-  if (
-    explicit === "lead" ||
-    explicit === "orchestrate-slice" ||
-    explicit === "direct-builder" ||
-    explicit === "slice-build"
-  ) {
+  if (explicit === "slice-build" || explicit === "orchestrate-slice") {
     return explicit;
   }
-  return "lead";
+  return "slice-build";
 }
 
 // Resolve all feature-level signals + confidence verdict in one call.
@@ -526,19 +524,16 @@ function computeNextAction(
   requiresApprovalGate: boolean,
   dispatch: boolean,
   planPreflight: any,
-  orchestratorMode: OrchestratorMode = "lead"
+  orchestratorMode: OrchestratorMode = "slice-build"
 ): string {
   if (requiresApprovalGate) {
-    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch crew:lead for ${sliceId}.`;
-  }
-  if (dispatch && orchestratorMode === "lead") {
-    return `Dispatch crew:lead subagent for ${sliceId}; lead orchestrates architect/builder/reviewer/validator and closes via /loop:slice complete --id ${sliceId}.`;
+    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch the builder for ${sliceId}.`;
   }
   if (dispatch && orchestratorMode === "orchestrate-slice") {
     return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch crew:fullstack-dev subagent for ${sliceId}; then dispatch crew:inspector (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
+    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch crew:inspector (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
   }
   return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }
@@ -557,7 +552,7 @@ function resolveDispatchInstruction(
   featurePath: string | null,
   dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
   worktreePath: string | null = null,
-  orchestratorMode: OrchestratorMode = "lead",
+  orchestratorMode: OrchestratorMode = "slice-build",
   inlinePathHint: string | null = null
 ) {
   if (!dispatch) return null;
@@ -617,7 +612,7 @@ function buildStartSliceReturn({
   requiresApprovalGate = false,
   confidence = null,
   confidenceReason = null,
-  orchestratorMode = "lead",
+  orchestratorMode = "slice-build" as OrchestratorMode,
   worktreeInfo = undefined,
   inlinePathHint = null
 }: {

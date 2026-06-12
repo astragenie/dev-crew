@@ -5,6 +5,16 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### **BREAKING**: Orchestrator modes `lead` + `direct-builder` removed (FEAT-191 / SLICE-107)
+
+`OrchestratorMode` shrinks to `"slice-build" | "orchestrate-slice"`. Default flips from `"lead"` to `"slice-build"`. `buildLeadOrchestratorInstruction` deleted; no code path emits `Dispatch crew:lead subagent`.
+
+**Migration**: operators with `loop.orchestratorMode: "lead"` or `"direct-builder"` in `.claude/loop.json` get auto-fallback to `"slice-build"` (no hard error). Update the config to `"slice-build"` explicitly when convenient.
+
+**Why**: `lead` mode suffered persistent specialist-pause across 7+ slices (SLICE-97/98/99/101/102/103/104) — net negative until hero-crew fixes upstream. `direct-builder` was a strict subset of `slice-build` with no surface tags. Both added API + test surface with no unique behavior.
+
+Tests reorganized: 4 orphan tests removed (lead/direct-builder emission + default-mode assertions); 1 new test pins the v0.43 stale-config fallback to `slice-build`.
+
 ### sliceFromFeature consumes proposed_slices (FEAT-168 / SLICE-100) — **closes FEAT-168**
 
 `sliceFromFeature` now materializes ALL proposed sub-slices when a FEAT carries a `proposed_slices` block in frontmatter. Each sub-slice gets its own file with the proposed title and `effort_points`. Idempotent on rerun: an already-materialized FEAT short-circuits with `idempotent: true` (no duplicate slice files, no growth of `feature.slices`). Malformed `proposed_slices` (non-Fibonacci points, missing fields, sum < effort_points) throws `InvalidProposedSlicesError`; the CLI handler audit-logs the failure with the same shape as the `DecompositionRequiredError` entries from SLICE-98.

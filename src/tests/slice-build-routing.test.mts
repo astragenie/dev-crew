@@ -10,40 +10,47 @@ import {
 } from "../scripts/lib/slice-linker.mjs";
 
 // Internal resolver isn't exported. Re-implement the contract here by
-// mirroring resolveOrchestratorModeConfig: accept "slice-build" alongside the
-// three legacy modes. Production wiring is exercised through buildDispatchInstruction
-// in the integration tests below.
+// mirroring resolveOrchestratorModeConfig (FEAT-191: only "slice-build" and
+// "orchestrate-slice" are valid; legacy "lead" + "direct-builder" silently
+// fall back to "slice-build"). Production wiring is exercised through
+// buildDispatchInstruction in the integration tests below.
 function resolveOrchestratorModeConfig(config: Record<string, any>): string {
   const explicit = config?.loop?.orchestratorMode;
-  if (
-    explicit === "lead" ||
-    explicit === "orchestrate-slice" ||
-    explicit === "direct-builder" ||
-    explicit === "slice-build"
-  ) {
+  if (explicit === "slice-build" || explicit === "orchestrate-slice") {
     return explicit;
   }
-  return "lead";
+  return "slice-build";
 }
 
-test("resolveOrchestratorModeConfig accepts slice-build", () => {
+test("resolveOrchestratorModeConfig accepts slice-build + orchestrate-slice", () => {
   assert.equal(
     resolveOrchestratorModeConfig({ loop: { orchestratorMode: "slice-build" } }),
     "slice-build"
   );
-  // Legacy modes still accepted.
+  assert.equal(
+    resolveOrchestratorModeConfig({ loop: { orchestratorMode: "orchestrate-slice" } }),
+    "orchestrate-slice"
+  );
+});
+
+test("resolveOrchestratorModeConfig: stale legacy values fall back to slice-build (FEAT-191)", () => {
+  // Operators with `orchestratorMode: "lead"` or `"direct-builder"` in their
+  // .claude/loop.json get auto-fallback to slice-build (no hard error).
   assert.equal(
     resolveOrchestratorModeConfig({ loop: { orchestratorMode: "lead" } }),
-    "lead"
+    "slice-build"
   );
   assert.equal(
     resolveOrchestratorModeConfig({ loop: { orchestratorMode: "direct-builder" } }),
-    "direct-builder"
+    "slice-build"
   );
-  // Garbage falls back to lead.
+});
+
+test("resolveOrchestratorModeConfig: default + garbage fall back to slice-build", () => {
+  assert.equal(resolveOrchestratorModeConfig({}), "slice-build");
   assert.equal(
     resolveOrchestratorModeConfig({ loop: { orchestratorMode: "garbage" } }),
-    "lead"
+    "slice-build"
   );
 });
 
@@ -254,23 +261,22 @@ test("slice-build + needs_contract missing (default false): no pre-flight", asyn
   assert.ok(!out.startsWith("ARCHITECT PRE-FLIGHT"));
 });
 
-test("legacy modes (lead, direct-builder) ignore needs_contract — no pre-flight", async () => {
-  const repo = await tmpRepoWithContracts("sb-legacy-");
-  for (const mode of ["lead", "direct-builder"] as const) {
-    const out = buildDispatchInstruction({
-      sliceId: "SLICE-PF-5",
-      title: "Legacy",
-      sliceFile: null,
-      repoPath: repo,
-      resolvedGoal: null,
-      orchestratorMode: mode,
-      sliceContent: "---\nneeds_contract: true\ntags: [be]\n---\n# Slice\n"
-    });
-    assert.ok(
-      !out.startsWith("ARCHITECT PRE-FLIGHT"),
-      `mode ${mode} must not add pre-flight (legacy behavior)`
-    );
-  }
+test("orchestrate-slice mode ignores needs_contract — no pre-flight (in-thread slash flow)", async () => {
+  const repo = await tmpRepoWithContracts("sb-os-noflight-");
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-PF-5",
+    title: "Orchestrate-slice",
+    sliceFile: null,
+    repoPath: repo,
+    resolvedGoal: null,
+    orchestratorMode: "orchestrate-slice",
+    sliceContent: "---\nneeds_contract: true\ntags: [be]\n---\n# Slice\n"
+  });
+  assert.ok(
+    !out.startsWith("ARCHITECT PRE-FLIGHT"),
+    "orchestrate-slice mode must not add pre-flight — that's slice-build's path"
+  );
+  assert.match(out, /\/crew:orchestrate-slice/);
 });
 
 test("slice-build + needs_contract:true + parallel-fe-be: pre-flight precedes PARALLEL DISPATCH header", async () => {
@@ -290,16 +296,17 @@ test("slice-build + needs_contract:true + parallel-fe-be: pre-flight precedes PA
   assert.ok(out.includes("crew:backend-dev"));
 });
 
-test("buildDispatchInstruction direct-builder (back-compat) still emits crew:fullstack-dev", () => {
+test("slice-build (no sliceContent at all) emits crew:fullstack-dev (the no-tag fallback)", () => {
+  // No sliceContent → extractTags returns undefined → pickBuilderVariant
+  // returns "fullstack" → crew:fullstack-dev. This preserves the behavior
+  // operators had with the pre-FEAT-191 direct-builder mode.
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",
     title: "Test slice",
     sliceFile: null,
     repoPath: "/repo",
     resolvedGoal: null,
-    orchestratorMode: "direct-builder",
-    sliceContent: "---\ntags: [fe]\n---\n# Slice\n"
+    orchestratorMode: "slice-build"
   });
-  // direct-builder ignores tags by design (legacy behavior).
   assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
 });

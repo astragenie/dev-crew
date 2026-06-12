@@ -128,36 +128,21 @@ async function pinOrchestratorMode(repo: string, mode: string): Promise<void> {
   await fs.writeFile(configPath, JSON.stringify(config));
 }
 
-test("walker plan defaults to orchestratorMode='lead' and emits lead-routing prompt", async () => {
-  const repo = await tmpRepo("aw-lead-default-");
-  const f = await addFeature(repo, { title: "Lead default feature" });
+test("walker plan defaults to orchestratorMode='slice-build' and emits implementation prompt (FEAT-191)", async () => {
+  const repo = await tmpRepo("aw-slice-build-default-");
+  const f = await addFeature(repo, { title: "Slice-build default feature" });
   await triageFeature(f.filePath, { autonomous_safe: true });
 
   const result = await runAutoWalker(repo, { dryRun: true });
   assert.equal(result.plans.length, 1);
   const plan = result.plans[0];
-  assert.equal(plan.orchestratorMode, "lead", "default orchestratorMode must be 'lead'");
-  assert.match(plan.dispatchPrompt, /^Orchestrate /, "dispatchPrompt must frame as orchestration");
-  assert.match(plan.dispatchPrompt, /reviewer ladder/);
+  assert.equal(plan.orchestratorMode, "slice-build", "default orchestratorMode must be 'slice-build'");
+  assert.match(plan.dispatchPrompt, /^Implement /, "dispatchPrompt must frame as implementation");
   assert.equal(
     plan.builderPrompt,
     plan.dispatchPrompt,
     "builderPrompt (back-compat) must equal dispatchPrompt"
   );
-});
-
-test("walker plan emits 'direct-builder' prompt when loop.orchestratorMode='direct-builder'", async () => {
-  const repo = await tmpRepo("aw-direct-builder-");
-  await pinOrchestratorMode(repo, "direct-builder");
-  const f = await addFeature(repo, { title: "Direct builder feature" });
-  await triageFeature(f.filePath, { autonomous_safe: true });
-
-  const result = await runAutoWalker(repo, { dryRun: true });
-  assert.equal(result.plans.length, 1);
-  const plan = result.plans[0];
-  assert.equal(plan.orchestratorMode, "direct-builder");
-  assert.match(plan.dispatchPrompt, /^Implement /, "dispatchPrompt must frame as implementation");
-  assert.doesNotMatch(plan.dispatchPrompt, /Orchestrate /);
 });
 
 test("walker plan emits 'orchestrate-slice' prompt when loop.orchestratorMode='orchestrate-slice'", async () => {
@@ -173,17 +158,17 @@ test("walker plan emits 'orchestrate-slice' prompt when loop.orchestratorMode='o
   assert.match(plan.dispatchPrompt, /\/crew:orchestrate-slice/);
 });
 
-test("walker plan: unsafe entry (autonomous_safe=false) also carries orchestratorMode=lead by default", async () => {
-  const repo = await tmpRepo("aw-lead-unsafe-");
-  const f = await addFeature(repo, { title: "Unsafe lead feature" });
+test("walker plan: unsafe entry (autonomous_safe=false) also carries orchestratorMode=slice-build by default", async () => {
+  const repo = await tmpRepo("aw-slice-build-unsafe-");
+  const f = await addFeature(repo, { title: "Unsafe slice-build feature" });
   await triageFeature(f.filePath, { autonomous_safe: false, pm_risk_level: 0.3 });
 
   const result = await runAutoWalker(repo, { dryRun: true });
   assert.equal(result.plans.length, 1);
   const plan = result.plans[0];
-  assert.equal(plan.orchestratorMode, "lead");
+  assert.equal(plan.orchestratorMode, "slice-build");
   assert.equal(plan.requiresPlanPreflight, true);
-  assert.match(plan.dispatchPrompt, /^Orchestrate /);
+  assert.match(plan.dispatchPrompt, /^Implement /);
 });
 
 // ---------------------------------------------------------------------------

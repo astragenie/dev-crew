@@ -487,7 +487,7 @@ export async function writeCrewHandoff(
   const fm = {
     kind: "handoff",
     objective: `Slice ${sliceId} complete — grade + start next slice`,
-    owner: "lead",
+    owner: "parent-loop",
     slice: sliceId,
     feature: featureId || null,
     phase: phase || null,

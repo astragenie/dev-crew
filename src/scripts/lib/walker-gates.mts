@@ -1,7 +1,7 @@
 // Priority ordering for sort tiebreaker (lower index = higher rank).
 const PRIORITY_ORDER = ["P0", "P1", "P2", "P3"];
 
-export type WalkerOrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder";
+export type WalkerOrchestratorMode = "slice-build" | "orchestrate-slice";
 
 export interface DispatchPlan {
   featureId: string;
@@ -9,17 +9,22 @@ export interface DispatchPlan {
   fromFeatureCmd: string;
   startCmd: string;
   /**
-   * Prompt for the dispatched agent. When `orchestratorMode === "lead"`, frames
-   * the work as orchestration; otherwise frames as direct implementation.
-   * Populated identically to `builderPrompt` for back-compat with v0.38.x readers.
+   * Prompt for the dispatched agent. Frames the work as direct
+   * implementation; the slice-build path picks the right builder variant
+   * per slice tags. Populated identically to `builderPrompt` for back-compat
+   * with v0.38.x readers.
    */
   dispatchPrompt: string;
   /**
-   * Which subagent the orchestrator should dispatch:
-   *   - "lead" (default) → dispatch crew:lead with the dispatchPrompt
-   *   - "orchestrate-slice" → invoke /crew:orchestrate-slice (no subagent dispatch)
-   *   - "direct-builder" → dispatch crew:fullstack-dev with the dispatchPrompt
-   * Mirrors `loop.orchestratorMode` from `.claude/loop.json`. Defaults to "lead".
+   * Which dispatch path the orchestrator should take:
+   *   - "slice-build" (default) → dispatch the tag-routed crew builder variant
+   *     (frontend-dev / backend-dev / fullstack-dev / parallel fe+be) with
+   *     optional architect pre-flight when the slice declares needs_contract.
+   *   - "orchestrate-slice" → invoke /crew:orchestrate-slice (no subagent dispatch,
+   *     in-thread slash flow).
+   * Mirrors `loop.orchestratorMode` from `.claude/loop.json`. Defaults to
+   * "slice-build". Legacy "lead" / "direct-builder" modes were removed in
+   * v0.43 / FEAT-191; stale config silently falls back to "slice-build".
    */
   orchestratorMode: WalkerOrchestratorMode;
   /**
@@ -41,10 +46,12 @@ export interface DispatchPlan {
 
 export function resolveWalkerOrchestratorMode(config: any): WalkerOrchestratorMode {
   const explicit = config?.loop?.orchestratorMode;
-  if (explicit === "lead" || explicit === "orchestrate-slice" || explicit === "direct-builder") {
+  if (explicit === "slice-build" || explicit === "orchestrate-slice") {
     return explicit;
   }
-  return "lead";
+  // Legacy values ("lead", "direct-builder") removed in v0.43 / FEAT-191 —
+  // silently fall back to slice-build for stale config.
+  return "slice-build";
 }
 
 /**
@@ -216,7 +223,7 @@ export function evaluateCandidate(
   autoMode: boolean,
   doneSet: Set<string>,
   allKnownIds: Set<string>,
-  orchestratorMode: WalkerOrchestratorMode = "lead"
+  orchestratorMode: WalkerOrchestratorMode = "slice-build"
 ): { skipReason: string } | { plan: DispatchPlan } {
   // Shared pre-branch filter (applies to ALL entries, AC-17: deferred first).
   if (entry.frontmatter.deferred === true) {
@@ -270,16 +277,10 @@ function buildPromptSummary(
     frontmatter: Record<string, any>;
     body: string;
   },
-  orchestratorMode: WalkerOrchestratorMode = "lead"
+  orchestratorMode: WalkerOrchestratorMode = "slice-build"
 ): string {
   const title = extractTitle(entry);
   const category = entry.frontmatter.category ? ` (${entry.frontmatter.category})` : "";
-  if (orchestratorMode === "lead") {
-    return (
-      `Orchestrate ${entry.id}: ${title}${category} — dispatch architect (if contracts/topology need design), builder, reviewer ladder, and validator. ` +
-      `See feature file + slice file for acceptance criteria; close via /loop:slice complete and /loop:slice grade.`
-    );
-  }
   if (orchestratorMode === "orchestrate-slice") {
     return `Run /crew:orchestrate-slice for ${entry.id}: ${title}${category} — see feature file for full acceptance criteria.`;
   }

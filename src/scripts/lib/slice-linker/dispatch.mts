@@ -65,12 +65,12 @@ function appendWorktreeSection(lines: string[], worktreePath: string | null | un
   );
 }
 
-export type OrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder" | "slice-build";
+export type OrchestratorMode = "slice-build" | "orchestrate-slice";
 
 function resolveOrchestratorMode(
   orchestratorMode: OrchestratorMode | undefined
 ): OrchestratorMode {
-  return orchestratorMode ?? "lead";
+  return orchestratorMode ?? "slice-build";
 }
 
 export type BuilderVariant = "frontend" | "backend" | "fullstack" | "parallel-fe-be";
@@ -166,24 +166,15 @@ export function buildDispatchInstruction({
   const mode = resolveOrchestratorMode(orchestratorMode);
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
 
-  if (mode === "lead") {
-    const lines = [buildLeadOrchestratorInstruction(sliceId, title, rel)];
-    appendProgressSignals(lines);
-    appendWorktreeSection(lines, worktreePath);
-    appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
-    return lines.join("\n");
-  }
   if (mode === "orchestrate-slice") {
     return buildOrchestrateSliceInstruction(sliceId);
   }
 
-  const variant: BuilderVariant =
-    mode === "slice-build" ? pickBuilderVariant(extractTags(sliceContent)) : "fullstack";
-
-  const preflight =
-    mode === "slice-build" && needsContractPreflight(sliceContent, repoPath, sliceId)
-      ? buildArchitectPreflight(sliceId, title, rel) + "\n---\n\n"
-      : "";
+  // Default path: slice-build — tag-driven dispatch with optional architect pre-flight.
+  const variant: BuilderVariant = pickBuilderVariant(extractTags(sliceContent));
+  const preflight = needsContractPreflight(sliceContent, repoPath, sliceId)
+    ? buildArchitectPreflight(sliceId, title, rel) + "\n---\n\n"
+    : "";
 
   let header: string;
   if (variant === "parallel-fe-be") {
@@ -255,21 +246,6 @@ function buildArchitectPreflight(sliceId: string, title: string, rel: string | n
     "",
     `AWAIT the contract artifact. Then proceed with the builder dispatch below:`,
     ""
-  ].join("\n");
-}
-
-function buildLeadOrchestratorInstruction(
-  sliceId: string,
-  title: string,
-  rel: string | null
-): string {
-  const sliceRef = rel
-    ? ` See \`${rel}\` for acceptance criteria, scope-fence, and reviewer ladder.`
-    : "";
-  return [
-    `Dispatch crew:lead subagent with this prompt:`,
-    "",
-    `> Orchestrate ${title}.${sliceRef} You own the slice ceremony end-to-end: dispatch architect (if contracts/topology need design), then builder. After builder PASS, invoke \`bun src/scripts/loop.mts slice post-builder-fanout --id ${sliceId}\` and dispatch the 3 returned tasks (reviewer-A, reviewer-B, validator) in parallel — one message with 3 Agent tool calls. See \`commands/slice-post-builder-fanout.md\` for the contract. Synthesize specialist results into a final-synthesis artifact. Close by running /loop:slice complete --id ${sliceId} and /loop:slice grade --id ${sliceId}. Escalate to the parent loop only on irreversible destructive actions or when confidence falls below 0.4. If a needed cross-cutting change is out of scope, stop and surface it.`
   ].join("\n");
 }
 

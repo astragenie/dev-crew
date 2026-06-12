@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-107","timestamp":"2026-06-12T12:35:44.541Z","featureId":"FEAT-191","title":"SLICE-107: Drop lead + direct-builder orchestrator modes — slice-build becomes default (FEAT-191)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T123544Z-plan-SLICE-107.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-107","timestamp":"2026-06-12T12:46:40.137Z","featureId":"FEAT-191","featureMovedTo":null,"validationSatisfied":false}

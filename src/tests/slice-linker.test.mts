@@ -170,7 +170,7 @@ test("buildDispatchInstruction with featureExcerpt embeds feature section", () =
   assert.match(result, /Allow users to register/);
 });
 
-test("buildDispatchInstruction without optional fields emits default lead orchestrator", () => {
+test("buildDispatchInstruction without optional fields emits default slice-build (tag-routed) dispatch", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-03",
     title: "SLICE-03: Refactor",
@@ -178,18 +178,20 @@ test("buildDispatchInstruction without optional fields emits default lead orches
     repoPath: "/repo",
     resolvedGoal: null
   });
-  assert.match(result, /Dispatch crew:lead subagent/);
+  // No sliceContent → no tags → slice-build falls through to crew:fullstack-dev.
+  assert.match(result, /Dispatch crew:fullstack-dev subagent/);
   assert.doesNotMatch(result, /Slice context/);
 });
 
-test("buildDispatchInstruction with dispatchLimits injects budget block in direct-builder mode", () => {
+test("buildDispatchInstruction with dispatchLimits injects budget block in slice-build single-variant path", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-04",
     title: "SLICE-04: Add feature",
     sliceFile: "/repo/slices/SLICE_04.md",
     repoPath: "/repo",
     resolvedGoal: "Implement feature",
-    orchestratorMode: "direct-builder",
+    orchestratorMode: "slice-build",
+    sliceContent: "---\ntags: [be]\n---\n# SLICE-04",
     dispatchLimits: {
       maxSubagentsPerSlice: 4,
       preferInlineFor: ["single-file-edit", "test-fix"]
@@ -259,23 +261,7 @@ test("buildDispatchInstruction without dispatchLimits omits budget block", () =>
   assert.doesNotMatch(result, /Dispatch budget/);
 });
 
-// --- orchestratorMode: "lead" emission tests ---
-
-test("buildDispatchInstruction with orchestratorMode='lead' emits 'Dispatch crew:lead subagent' instruction", () => {
-  const result = buildDispatchInstruction({
-    sliceId: "SLICE-89-LEAD",
-    title: "SLICE-89-LEAD: Wire crew:lead as default orchestrator",
-    sliceFile: "/repo/slices/SLICE_89.md",
-    repoPath: "/repo",
-    resolvedGoal: "Wire lead orchestrator",
-    orchestratorMode: "lead"
-  });
-  assert.match(result, /Dispatch crew:lead subagent/);
-  assert.match(result, /Orchestrate SLICE-89-LEAD/);
-  assert.match(result, /\/loop:slice complete --id SLICE-89-LEAD/);
-  assert.doesNotMatch(result, /Dispatch crew:fullstack-dev subagent/);
-  assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
-});
+// --- orchestratorMode emission tests (FEAT-191: lead + direct-builder removed) ---
 
 test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /crew:orchestrate-slice command", () => {
   const result = buildDispatchInstruction({
@@ -287,32 +273,20 @@ test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /
     orchestratorMode: "orchestrate-slice"
   });
   assert.match(result, /\/crew:orchestrate-slice --id SLICE-OS/);
-  assert.doesNotMatch(result, /Dispatch crew:lead subagent/);
+  assert.doesNotMatch(result, /Dispatch crew:fullstack-dev subagent/);
 });
 
-test("buildDispatchInstruction with orchestratorMode='direct-builder' emits 'Dispatch crew:fullstack-dev subagent' instruction", () => {
-  const result = buildDispatchInstruction({
-    sliceId: "SLICE-DB",
-    title: "SLICE-DB: Direct builder path",
-    sliceFile: "/repo/slices/SLICE_DB.md",
-    repoPath: "/repo",
-    resolvedGoal: "Use direct-builder fallback",
-    orchestratorMode: "direct-builder"
-  });
-  assert.match(result, /Dispatch crew:fullstack-dev subagent/);
-  assert.doesNotMatch(result, /Dispatch crew:lead subagent/);
-  assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
-});
-
-test("buildDispatchInstruction defaults to lead orchestrator mode when none specified", () => {
+test("buildDispatchInstruction defaults to slice-build when no mode specified", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-DEF1",
-    title: "SLICE-DEF1: Default lead",
+    title: "SLICE-DEF1: Default slice-build",
     sliceFile: "/repo/slices/SLICE_DEF1.md",
     repoPath: "/repo",
     resolvedGoal: "Default mode"
   });
-  assert.match(result, /Dispatch crew:lead subagent/);
+  // Default mode = slice-build. With no sliceContent (no tags), variant
+  // falls through to crew:fullstack-dev.
+  assert.match(result, /Dispatch crew:fullstack-dev subagent/);
 });
 
 test("readFeatureExcerpt returns {path, excerpt} object when feature found", async () => {
