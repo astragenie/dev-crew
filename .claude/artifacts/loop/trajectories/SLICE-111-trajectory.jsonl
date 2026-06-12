@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-111","timestamp":"2026-06-12T14:20:05.257Z","featureId":"FEAT-195","title":"SLICE-111: Grant PM Agent tool + restrict prompt scope (FEAT-195)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T142005Z-plan-SLICE-111.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-111","timestamp":"2026-06-12T14:23:40.296Z","featureId":"FEAT-195","featureMovedTo":null,"validationSatisfied":false}

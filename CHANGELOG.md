@@ -5,6 +5,10 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### PM agent gains `Agent` tool to enable /loop:retriage gate (FEAT-195 / SLICE-111)
+
+Sample retriage run on 2026-06-12 surfaced a wiring bug: `loop:pm` frontmatter `tools` omitted `Agent`, so the `/loop:retriage` gate's step 4 (dispatch `loop:spec-writer` when AC vague) failed every time and PM escalated to `needs-review` instead of self-healing the AC. Fix: add `Agent` to PM's tool allowlist. Frontmatter `description` updated from "Read-only — no code edits" to "Read-only on disk; dispatches loop:spec-writer when AC need normalization under the /loop:retriage gate". Body adds an explicit dispatch-discipline rule restricting PM's inline `Agent` dispatches to `loop:spec-writer` only — other sub-agents in the "Sub-agents you may dispatch" list are recommended to the orchestrator, not spawned directly by PM in the same turn.
+
 ### `--include-triaged` flag for `/loop:triage` + `/loop:retriage` (FEAT-194 / SLICE-110)
 
 Both slash commands now accept `--include-triaged`. When set, the skill enumerates ids from `pending/` AND `triaged/`. PM re-scores the triaged FEATs in place (overwrites `pm_*` + `composite_score` + `autonomous_safe` + `composite_priority`); state stays at `triaged` (no state move). Default behavior unchanged (pending-only).
