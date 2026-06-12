@@ -5,6 +5,8 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.1 — 2026-06-12 — /loop:retriage opt-in PM pre-flight
+
 ### Slash command: `/loop:retriage` — opt-in higher-quality PM triage (FEAT-193 / SLICE-109)
 
 New slash command that prepends an AC-clarity-gate pre-flight to the PM dispatch. When PM finds vague AC, it dispatches `loop:spec-writer` to rewrite them in Given-When-Then form, waits, re-reads, and scores against the cleaned AC. Cost up to 2× per FEAT vs. `/loop:triage`; scoring accuracy (especially `effort_estimate` + `technical_risk`) up. On spec-writer failure, PM emits `composite_priority: "needs-review"` and explains in `scopeNotes` — walker won't auto-promote half-scored FEATs.
