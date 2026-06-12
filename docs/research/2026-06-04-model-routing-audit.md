@@ -1,5 +1,7 @@
 # Model Routing Audit — 2026-06-04
 
+> **HISTORICAL — frozen as of 2026-06-04.** The `crew:lead` orchestrator referenced throughout this audit was removed in v0.43 (FEAT-191). The current default is `slice-build` mode, which dispatches the tag-routed crew builder variant (`crew:frontend-dev` / `crew:backend-dev` / `crew:fullstack-dev`) directly — no lead step. Routing recommendations below pre-date the FEAT-191 removal; treat as historical context, not live guidance.
+
 **Slice:** SLICE-37 (FEAT-039 item 3) — Reduce per-slice Opus spend by
 auditing every dispatch site, recommending Sonnet routing for non-Opus
 work, and updating `loop.json::modelRouting` accordingly.

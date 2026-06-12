@@ -46,9 +46,9 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
       "suggestedSliceTitle": "Implement FEAT-001: My safe feature",
       "fromFeatureCmd":      "bun src/scripts/loop.mts slice from-feature --id FEAT-001",
       "startCmd":            "bun src/scripts/loop.mts slice start --id SLICE-<TBD>",
-      "orchestratorMode":    "lead",
-      "dispatchPrompt":      "Orchestrate FEAT-001: My safe feature (feature) — dispatch architect (if contracts/topology need design), builder, reviewer ladder, and validator. See feature file + slice file for acceptance criteria; close via /loop:slice complete and /loop:slice grade.",
-      "builderPrompt":       "Orchestrate FEAT-001: My safe feature (feature) — dispatch architect (if contracts/topology need design), builder, reviewer ladder, and validator. See feature file + slice file for acceptance criteria; close via /loop:slice complete and /loop:slice grade.",
+      "orchestratorMode":    "slice-build",
+      "dispatchPrompt":      "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
+      "builderPrompt":       "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
       "autoMode":            false
     }
   ]

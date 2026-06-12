@@ -1,16 +1,14 @@
 #!/usr/bin/env node
-// Atomically bump the plugin version in all three version files:
+// Atomically bump the plugin version in:
 //   .claude-plugin/plugin.json        — the plugin manifest
-//   .claude-plugin/marketplace.json   — the marketplace entry
 //   package.json                      — the npm package
-// The lockstep invariant is enforced by `validate-manifests.mts`. Manual
-// bumps of any single file are the source of version-drift bugs (incident
-// 2026-06-06: marketplace stayed pinned to 0.22.0 while plugin.json shipped
-// through 0.24.1).
+// And, if present locally, .claude-plugin/marketplace.json (the marketplace
+// registry moved to sergeymilashico/astra-marketplace after 4a46687; this
+// script tolerates its absence).
 //
 // Usage:
 //   npm run bump-version <new-version>
-//   node scripts/bump-version.mjs <new-version>
+//   bun src/scripts/bump-version.mts <new-version>
 //
 // Exits 1 on bad arg or write failure. Idempotent — re-running with the
 // same version is a no-op.
@@ -20,6 +18,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function main(): Promise<void> {
   const newVersion = process.argv[2];
@@ -36,31 +43,35 @@ async function main(): Promise<void> {
   const packagePath = path.join(repoRoot, "package.json");
 
   const plugin = JSON.parse(await fs.readFile(pluginPath, "utf8"));
-  const marketplace = JSON.parse(await fs.readFile(marketplacePath, "utf8"));
   const pkg = JSON.parse(await fs.readFile(packagePath, "utf8"));
 
-  const ownEntry = marketplace.plugins?.find((e: { name: string }) => e.name === plugin.name);
-  if (!ownEntry) {
-    console.error(`marketplace.json has no entry matching plugin.name="${plugin.name}"`);
-    process.exitCode = 1;
-    return;
-  }
-
   const oldPluginVersion = plugin.version;
-  const oldMarketplaceVersion = ownEntry.version;
   const oldPkgVersion = pkg.version;
 
   plugin.version = newVersion;
-  ownEntry.version = newVersion;
   pkg.version = newVersion;
 
   await fs.writeFile(pluginPath, JSON.stringify(plugin, null, 2) + "\n", "utf8");
-  await fs.writeFile(marketplacePath, JSON.stringify(marketplace, null, 2) + "\n", "utf8");
   await fs.writeFile(packagePath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
 
   console.log(`plugin.json      ${oldPluginVersion} -> ${newVersion}`);
-  console.log(`marketplace.json ${oldMarketplaceVersion} -> ${newVersion}`);
   console.log(`package.json     ${oldPkgVersion} -> ${newVersion}`);
+
+  if (await exists(marketplacePath)) {
+    const marketplace = JSON.parse(await fs.readFile(marketplacePath, "utf8"));
+    const ownEntry = marketplace.plugins?.find((e: { name: string }) => e.name === plugin.name);
+    if (!ownEntry) {
+      console.error(`marketplace.json has no entry matching plugin.name="${plugin.name}"`);
+      process.exitCode = 1;
+      return;
+    }
+    const oldMarketplaceVersion = ownEntry.version;
+    ownEntry.version = newVersion;
+    await fs.writeFile(marketplacePath, JSON.stringify(marketplace, null, 2) + "\n", "utf8");
+    console.log(`marketplace.json ${oldMarketplaceVersion} -> ${newVersion}`);
+  } else {
+    console.log("marketplace.json: skipped (registry moved to sergeymilashico/astra-marketplace)");
+  }
 }
 
 await main();

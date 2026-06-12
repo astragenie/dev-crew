@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.0 — 2026-06-12 — slice-build orchestrator, decomposition gate, intake, slice close, lead removed
+
+### Stale lead-orchestrator refs swept post-FEAT-191 (release cleanup)
+
+Hook `hooks/guard-feat-dispatch.mjs` allowlist no longer carries `crew:lead`; comments + error-message override path updated to point at the tag-routed `crew:fullstack-dev` / `crew:frontend-dev` / `crew:backend-dev` variants. Example config block in `commands/auto.md` flipped from `"orchestratorMode": "lead"` to `"slice-build"`. `docs/research/2026-06-04-model-routing-audit.md` gets a HISTORICAL banner at the top so future readers know the lead routing recommendations are pre-removal.
+
 ### Drop `_crewVersionOverride` from startSlice (FEAT-192 / SLICE-108)
 
 `_crewVersionOverride` was a no-op test hook since 2026-06-11 (the legacy `useOrchestrateSlice` fallback was already removed). Greenfield + system-stability cleanup: the option is removed from the `startSlice` signature; six test sites that passed the no-op argument were trimmed.

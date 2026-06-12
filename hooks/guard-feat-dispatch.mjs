@@ -44,15 +44,16 @@ const subagent = String(input.subagent_type ?? "");
 const featMatches = prompt.match(/\bFEAT-\d{3}\b/g);
 if (!featMatches || featMatches.length === 0) process.exit(0);
 
-// Allow crew specialist ceremony agents + lead orchestrator + loop methodology
-// agents + Explore (read-only). Only ad-hoc / 3rdparty / general-purpose
-// subagents stay blocked — those skip the artifact protocol the ceremony
-// depends on.
-// crew:lead is the slice orchestrator: it dispatches architect/builder/reviewer/
-// validator and synthesizes results. /loop:slice start emits a "Dispatch crew:lead"
-// instruction by default (controlled by config.loop.orchestratorMode).
+// Allow crew specialist ceremony agents + loop methodology agents + Explore
+// (read-only). Only ad-hoc / 3rdparty / general-purpose subagents stay
+// blocked — those skip the artifact protocol the ceremony depends on.
+// Slice dispatch is driven by `slice-build` mode (default since v0.43 /
+// FEAT-191): /loop:slice start emits the tag-routed crew builder variant
+// directly. The legacy crew:lead orchestrator was removed in v0.43.
 const allowed = [
-  "crew:lead",
+  "crew:fullstack-dev",
+  "crew:frontend-dev",
+  "crew:backend-dev",
   "crew:builder",
   "crew:builder-be",
   "crew:builder-fe",
@@ -66,6 +67,8 @@ const allowed = [
   "crew:uxdesigner",
   "crew:copywriter",
   "crew:document-writer",
+  "crew:inspector",
+  "crew:verifier",
   "crew:integrator",
   "loop:architect",
   "loop:document-writer",
@@ -83,11 +86,11 @@ process.stderr.write(
     `Loop ceremony required:`,
     `  1. /loop:slice-from-feature --id <FEAT-ID>`,
     `  2. /loop:slice-start --id SLICE-NN`,
-    `  3. /crew:orchestrate-slice --id SLICE-NN  (dispatches the specialist ladder)`,
+    `  3. Dispatch the tag-routed crew builder (slice-build mode) returned by /loop:slice start`,
     `  4. /loop:slice-complete --id SLICE-NN`,
     `  5. /loop:slice-grade`,
     `If /loop:auto halted on warn alerts, address alerts or escalate — do NOT bypass.`,
-    `Override: change subagent_type to crew:lead (slice orchestrator) or a ceremony specialist (crew:builder, crew:builder-be, crew:builder-fe, crew:reviewer, crew:reviewer-validator, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore.`
+    `Override: change subagent_type to a ceremony specialist (crew:fullstack-dev, crew:frontend-dev, crew:backend-dev, crew:builder, crew:builder-be, crew:builder-fe, crew:reviewer, crew:reviewer-validator, crew:validator, crew:deployer, crew:researcher, crew:architect, crew:uxdesigner, crew:copywriter, crew:document-writer, crew:inspector, crew:verifier, crew:integrator, loop:architect, loop:document-writer, loop:pm, loop:researcher) or Explore.`
   ].join("\n")
 );
 process.exit(2);
