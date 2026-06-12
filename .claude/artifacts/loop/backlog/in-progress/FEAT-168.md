@@ -6,9 +6,9 @@ priority: P1
 category: workflow
 target_release: null
 created: 2026-06-09
-updated: 2026-06-11
+updated: 2026-06-12
 depends_on: [FEAT-167]
-slices: [SLICE-98, SLICE-99]
+slices: [SLICE-98, SLICE-99, SLICE-100]
 derived_from: null
 source_competitors: []
 autonomous_safe: false

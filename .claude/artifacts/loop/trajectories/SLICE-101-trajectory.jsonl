@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-101","timestamp":"2026-06-12T08:07:03.132Z","featureId":"FEAT-167","title":"SLICE-101: Cost-regression formula switch (median ↔ expected_usd) — FEAT-167 closing slice","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T080703Z-plan-SLICE-101.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-101","timestamp":"2026-06-12T08:14:17.802Z","featureId":"FEAT-167","featureMovedTo":null,"validationSatisfied":false}

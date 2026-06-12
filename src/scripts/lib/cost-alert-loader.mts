@@ -40,6 +40,14 @@ export interface AggregateCostReport {
    * of tripping on cross-project aggregate inflation.
    */
   perProjectUsd: Record<string, number> | null;
+  /**
+   * Frontmatter `effort_points`: Fibonacci sizing of the slice's parent FEAT.
+   * Null when the cost-report writer omits it (current production state,
+   * pre-FEAT-167-AC-4 wiring). When non-null and `costRegressionMode` is
+   * `"expected_usd"`, it feeds the `expectedUsd = effortPoints × medianUsdPerPoint`
+   * threshold instead of the rolling median. FEAT-167 / SLICE-101.
+   */
+  effortPoints: number | null;
 }
 
 /** Return shape of `loadAggregateCostReport`. */
@@ -267,8 +275,17 @@ async function parseAggregateReportFile(filepath: string): Promise<AggregateCost
     createdAt: typeof fm.created_at === "string" ? fm.created_at : null,
     aggregateAll: true,
     sourceCount: parseSourceCount(fm.source_count),
-    perProjectUsd: parsePerProjectUsd(block)
+    perProjectUsd: parsePerProjectUsd(block),
+    effortPoints: parseEffortPoints(fm.effort_points)
   };
+}
+
+function parseEffortPoints(raw: unknown): number | null {
+  if (raw === null || raw === undefined) return null;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+  if (n !== 1 && n !== 2 && n !== 3 && n !== 5 && n !== 8 && n !== 13) return null;
+  return n;
 }
 
 /**

@@ -1,12 +1,28 @@
 // Aggregate cost regression gate (SLICE-52).
 // Mirrors slice-cost-ceiling.mts — fail-open evaluator that returns a
-// structured signal when current aggregate spend > median × multiplier.
+// structured signal when current aggregate spend > threshold.
+//
+// FEAT-167 / SLICE-101: two evaluation modes.
+//   - "median" (default): threshold = rolling median × multiplier
+//   - "expected_usd": threshold = effort_points × median_usd_per_point × multiplier
+// Selected by `config.loop.costRegressionMode`. When unset, auto-flips to
+// `expected_usd` once >= 3 done FEATs in backlog carry `effort_points`.
+// Falls back to `median` whenever the per-slice `effort_points` or bootstrap
+// `costMedianUsdPerPoint` is missing — never silently mis-evaluates.
+
+import fs from "node:fs/promises";
+import path from "node:path";
 
 import {
   loadAggregateCostReport,
   computeRollingMedian,
   type AggregateCostReport
 } from "./cost-alert-loader.mjs";
+import { parseFrontmatter } from "./frontmatter.mjs";
+
+export const COST_REGRESSION_MODES = ["median", "expected_usd"] as const;
+export type CostRegressionMode = (typeof COST_REGRESSION_MODES)[number];
+const EFFORT_POINTS_AUTOFLIP_THRESHOLD = 3;
 
 export const DEFAULT_COST_REGRESSION_WINDOW = 5;
 export const DEFAULT_COST_REGRESSION_MULTIPLIER = 3.0;
@@ -25,7 +41,7 @@ export interface CostRegressionSignal {
   currentUsd: number;
   /** Rolling median of the historical baseline in USD. */
   medianUsd: number;
-  /** Effective threshold = medianUsd × multiplier. */
+  /** Effective threshold = (medianUsd | expectedUsd) × multiplier. */
   thresholdUsd: number;
   /** Multiplier from config (default 3.0). */
   multiplier: number;
@@ -37,6 +53,10 @@ export interface CostRegressionSignal {
   slice: string | null;
   /** Path to the current aggregate report (audit). */
   currentReportPath: string;
+  /** Evaluation mode used for this decision. FEAT-167 / SLICE-101. */
+  mode: CostRegressionMode;
+  /** Expected USD when mode === "expected_usd"; null in median mode. */
+  expectedUsd: number | null;
 }
 
 function resolveWindow(config: Record<string, any> | null): number {
@@ -69,6 +89,80 @@ function resolveCostProjectAliases(config: Record<string, any> | null): string[]
   const raw = config?.loop?.costProjectAliases;
   if (!Array.isArray(raw)) return [];
   return raw.filter((s): s is string => typeof s === "string" && s.length > 0);
+}
+
+export function resolveCostRegressionMode(
+  config: Record<string, any> | null
+): CostRegressionMode | null {
+  const raw = config?.loop?.costRegressionMode;
+  if (raw === "median" || raw === "expected_usd") return raw;
+  return null;
+}
+
+export function resolveCostMedianUsdPerPoint(
+  config: Record<string, any> | null
+): number | null {
+  const raw = config?.loop?.costMedianUsdPerPoint;
+  return typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : null;
+}
+
+/**
+ * Schema-validate the cost-regression keys inside a parsed `.claude/loop.json`.
+ * Returns an array of human-readable error strings (empty when valid). Pure;
+ * does not throw, does not exit. Caller decides how to surface results — a
+ * future `.claude/loop.json` walker can collect these alongside other config
+ * validations.
+ */
+export function validateCostRegressionConfig(config: Record<string, any> | null): string[] {
+  const errors: string[] = [];
+  const loop = config?.loop;
+  if (!loop || typeof loop !== "object") return errors;
+  if ("costRegressionMode" in loop) {
+    const v = loop.costRegressionMode;
+    if (v !== null && v !== "median" && v !== "expected_usd") {
+      errors.push(
+        `.claude/loop.json: loop.costRegressionMode must be null, "median", or "expected_usd" (got ${JSON.stringify(v)})`
+      );
+    }
+  }
+  if ("costMedianUsdPerPoint" in loop) {
+    const v = loop.costMedianUsdPerPoint;
+    if (v !== null && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
+      errors.push(
+        `.claude/loop.json: loop.costMedianUsdPerPoint must be null or a non-negative finite number (got ${JSON.stringify(v)})`
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * Count done/ FEATs whose frontmatter carries an integer `effort_points`.
+ * Used to auto-flip from median to expected_usd mode once enough samples
+ * accumulate. Returns 0 when the backlog directory is missing — fail-open
+ * stays on median mode rather than tripping on an empty repo.
+ */
+export async function countDoneFeatsWithEffortPoints(repoPath: string): Promise<number> {
+  const dir = path.join(repoPath, ".claude/artifacts/loop/backlog/done");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return 0;
+  }
+  let count = 0;
+  for (const name of entries) {
+    if (!name.startsWith("FEAT-") || !name.endsWith(".md")) continue;
+    let content: string;
+    try {
+      content = await fs.readFile(path.join(dir, name), "utf8");
+    } catch {
+      continue;
+    }
+    const { frontmatter } = parseFrontmatter(content);
+    if (Number.isInteger(frontmatter.effort_points)) count += 1;
+  }
+  return count;
 }
 
 /**
@@ -157,18 +251,40 @@ export async function checkCostRegression(
   // subsequent normal-priced slice trips the gate.
   if (sampleCount < minSamples) return null;
 
-  const thresholdUsd = median * multiplier;
+  // FEAT-167 / SLICE-101: pick the evaluation mode. Explicit config wins;
+  // otherwise auto-flip to expected_usd once enough done FEATs carry
+  // effort_points. Falls back to median whenever the expected formula
+  // can't be computed (no per-slice effort_points or no bootstrap median).
+  const explicitMode = resolveCostRegressionMode(config);
+  let mode: CostRegressionMode = explicitMode ?? "median";
+  if (explicitMode === null) {
+    const sampleEligibleFeats = await countDoneFeatsWithEffortPoints(repoPath);
+    if (sampleEligibleFeats >= EFFORT_POINTS_AUTOFLIP_THRESHOLD) {
+      mode = "expected_usd";
+    }
+  }
+
+  const medianUsdPerPoint = resolveCostMedianUsdPerPoint(config);
+  const effortPoints = current.effortPoints;
+  let expectedUsd: number | null = null;
+  let thresholdUsd = median * multiplier;
+  if (mode === "expected_usd" && effortPoints !== null && medianUsdPerPoint !== null) {
+    expectedUsd = effortPoints * medianUsdPerPoint;
+    thresholdUsd = expectedUsd * multiplier;
+  } else {
+    // The expected formula needs both effort_points on the current report
+    // AND a bootstrap median per point. Missing either → degrade gracefully
+    // to median mode so the gate never silently mis-evaluates.
+    mode = "median";
+  }
   const triggered = currentUsd > thresholdUsd;
 
-  // FEAT-167 AC-3: structured JSON observability line on every evaluation
-  // (both modes). expected_usd / median_usd_per_point / effort_points stay
-  // null until FEAT-167 AC-4 lands the expected_usd formula switch.
   emitObservabilityLog({
-    mode: "median",
+    mode,
     actualUsd: currentUsd,
-    expectedUsd: null,
-    medianUsdPerPoint: null,
-    effortPoints: null,
+    expectedUsd,
+    medianUsdPerPoint: mode === "expected_usd" ? medianUsdPerPoint : null,
+    effortPoints: mode === "expected_usd" ? effortPoints : null,
     thresholdUsd,
     triggered,
     multiplier,
@@ -187,7 +303,9 @@ export async function checkCostRegression(
     window,
     sampleCount,
     slice: current.slice,
-    currentReportPath: current.path
+    currentReportPath: current.path,
+    mode,
+    expectedUsd
   };
 }
 

@@ -1,0 +1,24 @@
+---
+kind: agent-report
+phase: null
+feature: FEAT-167
+slice: SLICE-101
+created_at: "2026-06-12T08:14:17.149Z"
+session_id: null
+agent_count: 0
+total_turns: 0
+total_duration_ms: 0
+---
+**Feature:** FEAT-167 · **Slice:** SLICE-101
+
+## Agents
+
+_No agents were dispatched during this slice._
+
+## Parallel groups
+
+No parallel groups detected.
+
+## Tool summary
+
+_No tool usage recorded._

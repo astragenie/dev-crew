@@ -1,14 +1,18 @@
 ---
 id: FEAT-167
 title: Story-point sizing on FEATs with expected-cost regression formula
-status: in-progress
+status: done
+slices_complete: [SLICE-97, SLICE-101]
+ac_deferred: [AC-2]
+ac_deferred_rationale: "AC-2 interactive backfill script not shipping. Going-forward PM emits effort_points; cost-regression auto-flips to expected_usd mode once >=3 done FEATs accumulate the field. Historic FEATs without effort_points don't contribute to sample count. Manual backfill is guesswork — not worth the risk for the gate's needs. Revisit only if retrospective cost analytics require it."
+completed_at: 2026-06-12
 priority: P1
 category: workflow/observability
 target_release: null
 created: 2026-06-09
-updated: 2026-06-11
+updated: 2026-06-12
 depends_on: [FEAT-166]
-slices: [SLICE-97]
+slices: [SLICE-97, SLICE-101]
 derived_from: null
 source_competitors: []
 autonomous_safe: false
