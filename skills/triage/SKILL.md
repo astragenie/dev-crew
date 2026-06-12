@@ -20,6 +20,17 @@ PM-only triage. Single public command for the loop.
    ```bash
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --repo "$PWD"
    ```
+
+   When the operator invokes `/loop:triage --include-triaged` or
+   `/loop:retriage --include-triaged`, append the flag to the CLI call:
+
+   ```bash
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --include-triaged --repo "$PWD"
+   ```
+
+   This adds FEATs from `triaged/` to the id list. PM overwrites the existing
+   `pm_*` fields on those FEATs in place (no state move). FEAT-194 / SLICE-110.
+
    Parse `{ "ids": ["FEAT-NNN", ...] }`. If `ids.length === 0`, return `{ triaged: 0, path: "noop" }` and stop.
 
 2. **Capture cost baseline** from the most recent cost-report or cost-advisor sample. Record `(baselineUsd, baselineTokens)`.

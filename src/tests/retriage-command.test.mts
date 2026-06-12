@@ -99,3 +99,15 @@ test("retriage.md documents the acClarity field in the return contract", async (
     "body must describe the rewrite boolean"
   );
 });
+
+// FEAT-194 / SLICE-110 — --include-triaged flag
+
+test("retriage.md documents --include-triaged flag with overwrite semantics", async () => {
+  const { body } = await readRetriage();
+  assert.match(body, /--include-triaged/, "body must mention the --include-triaged flag");
+  assert.match(
+    body,
+    /overwrite|in.place|no state move|STAY in/i,
+    "body must explain that triaged FEATs are re-scored in place (no state move)"
+  );
+});

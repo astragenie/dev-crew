@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-110","timestamp":"2026-06-12T14:01:32.005Z","featureId":"FEAT-194","title":"SLICE-110: Add --include-triaged flag to triage + retriage (FEAT-194)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T140131Z-plan-SLICE-110.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-110","timestamp":"2026-06-12T14:07:40.032Z","featureId":"FEAT-194","featureMovedTo":null,"validationSatisfied":false}

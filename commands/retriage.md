@@ -18,9 +18,10 @@ When the AC are already concrete (measurable values, Given-When-Then, edge cases
 
 ```bash
 /loop:retriage
+/loop:retriage --include-triaged    # also re-score FEATs already in triaged/
 ```
 
-No arguments. Reads `pending/` directory, dispatches PM with the pre-flight instruction below per FEAT, halts on error.
+Default: reads `pending/` directory, dispatches PM with the pre-flight instruction below per FEAT, halts on error. With `--include-triaged`, the skill also enumerates ids from `triaged/` and re-runs the AC-clarity gate + scoring on each — PM overwrites the existing `pm_*` + composite + `autonomous_safe` + `composite_priority`. FEATs in `triaged/` STAY in `triaged/` (no state move). Use after `loop:spec-writer` rewrites AC on an already-triaged FEAT, or to validate the retriage cost/quality model on a known batch.
 
 ## PM dispatch — pre-flight contract
 

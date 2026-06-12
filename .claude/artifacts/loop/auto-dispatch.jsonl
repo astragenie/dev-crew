@@ -140,3 +140,6 @@
 {"timestamp":"2026-06-12T13:22:56.038Z","agent":"loop:researcher","parentCommand":"backlog-add","ok":false,"skipped":true,"skipReason":"cli-refusal-researcher-disabled","durationMs":0}
 {"timestamp":"2026-06-12T13:23:33.747Z","agent":"loop:architect","parentCommand":"slice from-feature","costUsd":null,"durationMs":1,"ok":true,"skipped":false,"skipReason":null,"stepType":"dispatch","inputTokens":null,"outputTokens":null}
 {"timestamp":"2026-06-12T13:28:03.364Z","agent":"crew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
+{"timestamp":"2026-06-12T13:59:58.575Z","agent":"loop:researcher","parentCommand":"backlog-add","ok":false,"skipped":true,"skipReason":"cli-refusal-researcher-disabled","durationMs":0}
+{"timestamp":"2026-06-12T14:00:27.308Z","agent":"loop:architect","parentCommand":"slice from-feature","costUsd":null,"durationMs":0,"ok":true,"skipped":false,"skipReason":null,"stepType":"dispatch","inputTokens":null,"outputTokens":null}
+{"timestamp":"2026-06-12T14:07:40.035Z","agent":"crew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}

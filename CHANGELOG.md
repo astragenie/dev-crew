@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### `--include-triaged` flag for `/loop:triage` + `/loop:retriage` (FEAT-194 / SLICE-110)
+
+Both slash commands now accept `--include-triaged`. When set, the skill enumerates ids from `pending/` AND `triaged/`. PM re-scores the triaged FEATs in place (overwrites `pm_*` + `composite_score` + `autonomous_safe` + `composite_priority`); state stays at `triaged` (no state move). Default behavior unchanged (pending-only).
+
+Lib: `listPendingFeatureIds(repoPath, opts?: { includeTriaged?: boolean })`. CLI: `bun src/scripts/loop.mts backlog list-pending-ids --include-triaged`.
+
 ## v0.43.1 — 2026-06-12 — /loop:retriage opt-in PM pre-flight
 
 ### Slash command: `/loop:retriage` — opt-in higher-quality PM triage (FEAT-193 / SLICE-109)

@@ -80,6 +80,7 @@ const FLAG_SPEC = {
   "--no-merge": { key: "noMerge", boolean: true },
   "--skip-simplify": { key: "skipSimplify", boolean: true },
   "--grade-yaml": { key: "gradeYaml" },
+  "--include-triaged": { key: "includeTriaged", boolean: true },
   // doctor flags
   "--check": { key: "check", boolean: true },
   "--fix": { key: "fix", boolean: true },
@@ -146,7 +147,8 @@ function parseArgs(argv: string[]) {
     check: false,
     fix: false,
     serial: false,
-    only: null
+    only: null,
+    includeTriaged: false
   };
   const positionals: any[] = [];
 
@@ -540,9 +542,11 @@ async function resolveBacklogAddBody(
   return "";
 }
 
-async function runBacklogListPendingIds(repoPath: string) {
+async function runBacklogListPendingIds(repoPath: string, flags: Record<string, any> = {}) {
   const { listPendingFeatureIds } = await import("./lib/backlog-list-ids.mjs");
-  const ids = await listPendingFeatureIds(repoPath);
+  const ids = await listPendingFeatureIds(repoPath, {
+    includeTriaged: Boolean(flags.includeTriaged)
+  });
   return { ids };
 }
 
@@ -693,7 +697,7 @@ async function runBacklogSubcommand(
     );
   }
   if (sub === "list-pending-ids") {
-    return runBacklogListPendingIds(repoPath);
+    return runBacklogListPendingIds(repoPath, flags);
   }
   if (sub === "promote") {
     const featureId = flags.id || rest[0];
