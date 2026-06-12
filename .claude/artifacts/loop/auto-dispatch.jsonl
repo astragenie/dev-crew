@@ -122,3 +122,5 @@
 {"timestamp":"2026-06-11T22:39:33.117Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
 {"timestamp":"2026-06-11T23:45:44.021Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
 {"timestamp":"2026-06-12T08:14:17.804Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
+{"timestamp":"2026-06-12T10:09:23.611Z","agent":"loop:researcher","parentCommand":"backlog-add","ok":false,"skipped":true,"skipReason":"cli-refusal-researcher-disabled","durationMs":0}
+{"timestamp":"2026-06-12T10:40:02.331Z","agent":"loop:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}

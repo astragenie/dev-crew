@@ -5,6 +5,16 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### CLI: `slice close` (FEAT-188 / SLICE-102)
+
+New subcommand `bun src/scripts/loop.mts slice close --id SLICE-NN [--grade-yaml <path>]` collapses the 3-step closing ceremony (`slice complete` → `slice grade` → `slice grade-write`) into one CLI roundtrip when the FEAT is `autonomous_safe: true` and a pre-formatted grade file is supplied.
+
+- Without `--grade-yaml`: scaffolds the grade template (returns `scaffoldOnly: true`), caller still runs `slice grade-write` after edit.
+- With `--grade-yaml <path>` AND autonomous_safe FEAT: writes the file's content over the scaffold, runs `writeGrade`, returns `scaffoldOnly: false`.
+- With `--grade-yaml` on autonomous_safe=false FEAT: refuses with a clear error pointing at the 3-step path (preserves human-in-loop discipline).
+
+Existing `slice complete`, `slice grade`, `slice grade-write` subcommands unchanged.
+
 ## v0.42.0 — 2026-06-12 — sync with crew v0.35.0/v0.35.1 agent renames
 
 Crew v0.35.0 renamed 6 subagents out of the colliding `crew:` namespace to fix Lead's Skill-misrouting failure mode (3 reproductions in one day on loop SLICE-152, SLICE-153, plus one during patch verification). Crew v0.35.1 followed up by also renaming the combined `crew:reviewer-validator` agent. Loop emits dispatch prompts that lead consumes — without this sync, lead's `Agent(subagent_type: "crew:reviewer")` calls would fail (agent doesn't exist anymore).

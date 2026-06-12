@@ -79,6 +79,7 @@ const FLAG_SPEC = {
   // SLICE-64: auto-merge flags
   "--no-merge": { key: "noMerge", boolean: true },
   "--skip-simplify": { key: "skipSimplify", boolean: true },
+  "--grade-yaml": { key: "gradeYaml" },
   // doctor flags
   "--check": { key: "check", boolean: true },
   "--fix": { key: "fix", boolean: true },
@@ -1008,6 +1009,42 @@ const SLICE_HANDLERS = {
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { writeGrade } = await import("./lib/grade-writer.mjs");
     return writeGrade(cwd, sliceId);
+  },
+  close: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice close requires --id SLICE-NN.");
+    if (flags.noMerge && flags.dryRun) {
+      throw new Error("slice close: --no-merge and --dry-run are mutually exclusive.");
+    }
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { closeSlice } = await import("./lib/slice-linker.mjs");
+    const out = await closeSlice(cwd, sliceId, {
+      gradeYamlPath: flags.gradeYaml || null,
+      keepFeatureOpen: Boolean(flags.keepFeatureOpen),
+      forceClose: Boolean(flags.forceClose),
+      skipValidationCheck: flags.skipValidationCheck || null,
+      noDocWriter: Boolean(flags.noDocWriter),
+      noMerge: Boolean(flags.noMerge),
+      dryRun: Boolean(flags.dryRun),
+      skipSimplify: Boolean(flags.skipSimplify),
+      config: opts.config
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, {
+      command: "slice close",
+      slice: sliceId,
+      scaffoldOnly: out.scaffoldOnly,
+      gradeYamlProvided: Boolean(flags.gradeYaml)
+    });
+    const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
+    await flushTrajectory(cwd, sliceId);
+    return out;
   },
   complete: async (
     repoPath: string,
