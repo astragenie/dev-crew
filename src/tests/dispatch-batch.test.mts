@@ -8,13 +8,13 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
     {
       id: "FE",
       priority: 0,
-      agentType: "crew:builder-fe",
+      agentType: "crew:frontend-dev",
       prompt: "build fe"
     },
     {
       id: "BE",
       priority: 1,
-      agentType: "crew:builder-be",
+      agentType: "crew:backend-dev",
       prompt: "build be"
     }
   ];
@@ -25,7 +25,7 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
     childBranchById: { FE: "slice/X-FE", BE: "slice/X-BE" }
   });
   assert.equal(calls.length, 2);
-  assert.equal(calls[0].subagent_type, "crew:builder-fe");
+  assert.equal(calls[0].subagent_type, "crew:frontend-dev");
   assert.match(calls[0].prompt, /build fe/);
   assert.match(calls[0].prompt, /LOOP_DISPATCH_DEPTH=1/);
   assert.equal(calls[0].description, "dispatch FE");

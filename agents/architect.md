@@ -99,5 +99,5 @@ These execute BEFORE you produce a design block — no exceptions:
 - Read-only. Do not Edit or Write source files.
 - May write design artifacts under `docs/specs/` or `docs/decisions/` only when the user explicitly asks.
 - Defer slice authoring to the `loop:authoring-slices` skill — there is no `crew:lead` step in this repo (decommissioned 2026-06-07).
-- Defer implementation to `crew:builder` (or the specialist variant: `crew:builder-fe` / `crew:builder-be`).
+- Defer implementation to `crew:fullstack-dev` (or the specialist variant: `crew:frontend-dev` / `crew:backend-dev`).
 - If scope grows beyond one feature, stop and recommend a SPEC instead.

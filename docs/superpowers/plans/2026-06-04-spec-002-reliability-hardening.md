@@ -142,7 +142,7 @@ Since FEAT-A is `autonomous_safe: false`, the orchestrator dispatches `/crew:bui
 /crew:build
 ```
 
-Then review handoff artifact from `crew:builder` per existing review ladder pattern (Reviewer A: correctness on dispatch lifecycle; Reviewer B: regression risk on `/loop:slice complete` ceremony). Run `node scripts/loop.mjs slice review-ladder --id <SLICE-id>` to emit reviewer prompts.
+Then review handoff artifact from `crew:fullstack-dev` per existing review ladder pattern (Reviewer A: correctness on dispatch lifecycle; Reviewer B: regression risk on `/loop:slice complete` ceremony). Run `node scripts/loop.mjs slice review-ladder --id <SLICE-id>` to emit reviewer prompts.
 
 - [ ] **Step 5: Run tests + lint + format check**
 

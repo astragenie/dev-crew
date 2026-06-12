@@ -112,7 +112,7 @@ export const MIN_CREW_VERSION = "0.31.1";
 // Minimum crew version that ships /crew:orchestrate-slice.
 // v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the
 // UX-validation gate. When installed crew meets this threshold, slice-start emits
-// the orchestrate command instead of the legacy crew:builder dispatch.
+// the orchestrate command instead of the legacy crew:fullstack-dev dispatch.
 export const ORCHESTRATE_SLICE_MIN_CREW_VERSION = "0.11.0";
 
 // Read the crew plugin's version from the plugin.json next to a crew CLI path.

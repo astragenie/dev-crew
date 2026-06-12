@@ -32,18 +32,18 @@ loop session (main thread, user sees every dispatch)
   │     │           → writes designs/SLICE-NN-contracts.md
   │     ├─ Step 2: IF needs_ux → dispatch crew:uxdesigner (reads contracts)
   │     │           → writes designs/SLICE-NN-ux.md
-  │     ├─ Step 3: dispatch crew:builder (reads contracts + ux spec)
+  │     ├─ Step 3: dispatch crew:fullstack-dev (reads contracts + ux spec)
   │     │           → writes code, returns handoff
-  │     ├─ Step 4: dispatch crew:reviewer (reads contracts + diff)
+  │     ├─ Step 4: dispatch crew:inspector (reads contracts + diff)
   │     │           → checks conformance, writes review-result
-  │     ├─ Step 5: IF behavior_changed → dispatch crew:validator
+  │     ├─ Step 5: IF behavior_changed → dispatch crew:verifier
   │     ├─ Step 6: IF release_content → dispatch crew:copywriter
-  │     ├─ Step 7: IF docs_needed → dispatch loop:document-writer
+  │     ├─ Step 7: IF docs_needed → dispatch crew:document-writer
   │     └─ Step 8: write-final-synthesis
   └─ /loop:slice complete --id SLICE-NN
 ```
 
-All dispatches happen from the main thread. User sees `Agent(crew:architect)`, `Agent(crew:builder)`, etc. as separate tool calls in their UI. Each specialist's child subagent context is isolated; their tool calls hide inside their own context, but the dispatch itself + the returned handoff path are fully visible.
+All dispatches happen from the main thread. User sees `Agent(crew:architect)`, `Agent(crew:fullstack-dev)`, etc. as separate tool calls in their UI. Each specialist's child subagent context is isolated; their tool calls hide inside their own context, but the dispatch itself + the returned handoff path are fully visible.
 
 ## Components
 
@@ -71,8 +71,8 @@ All dispatches happen from the main thread. User sees `Agent(crew:architect)`, `
 3. Command Step 0: read slice file via `Read`, parse frontmatter, classify slice (needs_contract, needs_ux, behavior_changed, release_content, docs_needed). Classification combines explicit frontmatter overrides with tag heuristics.
 4. Command Step 1: IF `needs_contract`, the main thread dispatches `crew:architect` via the `Agent` tool with a prompt naming the slice + the required contract sections + the output path. Architect runs in its own subagent context, writes `designs/<slice>-contracts.md`, returns the path. Main thread reads the path.
 5. Command Step 2: IF `needs_ux`, main thread dispatches `crew:uxdesigner` with the contract path injected into the prompt. UXdesigner reads the contract, produces UI spec at `designs/<slice>-ux.md`.
-6. Command Step 3: main thread dispatches `crew:builder` with contract path + ux spec path. Builder implements code per both. Returns handoff artifact path.
-7. Command Step 4: main thread dispatches `crew:reviewer` with contract path + builder handoff path + diff. Reviewer checks code conforms to contract.
+6. Command Step 3: main thread dispatches `crew:fullstack-dev` with contract path + ux spec path. Builder implements code per both. Returns handoff artifact path.
+7. Command Step 4: main thread dispatches `crew:inspector` with contract path + builder handoff path + diff. Reviewer checks code conforms to contract.
 8. Command Steps 5-7: conditional dispatches for validator, copywriter, document-writer.
 9. Command Step 8: main thread writes final synthesis via `scripts/crew.mjs write-final-synthesis`, referencing every child handoff path.
 10. User runs `/loop:slice complete --id SLICE-NN`. Loop closes the slice based on the synthesis.
@@ -141,9 +141,9 @@ All dispatches happen from the main thread. User sees `Agent(crew:architect)`, `
 
 ```
 Before (today):
-loop ─dispatch─> crew:builder
-              ─dispatch─> crew:reviewer
-              ─dispatch─> crew:validator (if behavior changed)
+loop ─dispatch─> crew:fullstack-dev
+              ─dispatch─> crew:inspector
+              ─dispatch─> crew:verifier (if behavior changed)
               ─close───> /loop:slice complete
 (only builder/reviewer/validator ever fire; specialists missed on 60% of slices)
 
@@ -154,11 +154,11 @@ loop ─dispatchInstruction: /crew:orchestrate-slice --id SLICE-NN
               ├─ classify slice
               ├─ IF needs_contract  → Agent(crew:architect)   ─writes─> designs/<slice>-contracts.md
               ├─ IF needs_ux        → Agent(crew:uxdesigner)  ─reads contract, writes─> designs/<slice>-ux.md
-              ├─                      Agent(crew:builder)     ─reads contract + ux spec, implements─> handoff
-              ├─                      Agent(crew:reviewer)    ─reads contract + diff, conformance check─> review-result
-              ├─ IF behavior_changed → Agent(crew:validator)
+              ├─                      Agent(crew:fullstack-dev)     ─reads contract + ux spec, implements─> handoff
+              ├─                      Agent(crew:inspector)    ─reads contract + diff, conformance check─> review-result
+              ├─ IF behavior_changed → Agent(crew:verifier)
               ├─ IF release_content  → Agent(crew:copywriter)
-              ├─ IF docs_needed      → Agent(loop:document-writer)
+              ├─ IF docs_needed      → Agent(crew:document-writer)
               └─                       write-final-synthesis
        │
        └─ /loop:slice complete

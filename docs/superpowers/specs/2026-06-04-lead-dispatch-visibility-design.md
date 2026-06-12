@@ -2,7 +2,7 @@
 
 **Status**: draft (awaiting implementation FEAT)
 **Date**: 2026-06-04
-**Origin**: SLICE-35 / FEAT-037 surfaced workflow ambiguity — parent (orchestrator) was surprised when crew:lead chose single-session inline mode for a 3-test slice instead of dispatching crew:builder. Lead followed the v0.7.2 `dispatchInstruction` prompt correctly ("Prefer inline for test-fix"); the surprise was a visibility gap, not a misbehavior.
+**Origin**: SLICE-35 / FEAT-037 surfaced workflow ambiguity — parent (orchestrator) was surprised when crew:lead chose single-session inline mode for a 3-test slice instead of dispatching crew:fullstack-dev. Lead followed the v0.7.2 `dispatchInstruction` prompt correctly ("Prefer inline for test-fix"); the surprise was a visibility gap, not a misbehavior.
 
 ## Goal
 
@@ -10,7 +10,7 @@ Give the parent orchestrator early visibility into crew:lead's chosen mode and p
 
 ## Non-goals
 
-- Forcing crew:lead to dispatch crew:builder for every code-bearing slice (HARD RULES vs v0.7.2 prompt reconciliation is a separate FEAT).
+- Forcing crew:lead to dispatch crew:fullstack-dev for every code-bearing slice (HARD RULES vs v0.7.2 prompt reconciliation is a separate FEAT).
 - Cross-plugin changes to `crew/agents/lead.md`. This FEAT is loop-side only.
 - Enforcement: if lead omits the conventions below, parent degrades gracefully — no retry, no error.
 
@@ -30,7 +30,7 @@ Two new line-tags lead is instructed to emit.
 
 - Emitted exactly once, in lead's first turn after dispatch.
 - One of three values, mirrors the crew lead workflow mode taxonomy.
-- Free-form note may follow `—`, e.g. `[MODE] team-run — delegating crew:builder for src/foo/`.
+- Free-form note may follow `—`, e.g. `[MODE] team-run — delegating crew:fullstack-dev for src/foo/`.
 
 ### `[CHECKPOINT]` — once per AC
 

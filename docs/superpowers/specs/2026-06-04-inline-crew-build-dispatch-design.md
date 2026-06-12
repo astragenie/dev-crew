@@ -6,7 +6,7 @@
 
 ## Problem
 
-After commit `7b8b90b` the autonomous loop dispatches a `crew:lead` subagent per slice. Lead is instructed to "frame → delegate to crew:builder → review → validate → synthesize". In practice, lead agents implement code inline (instability pattern A) rather than delegating, making the dispatch layer non-deterministic. The prior approach (`Dispatch /crew:build subagent`) was more stable but lacked a clear lead workflow.
+After commit `7b8b90b` the autonomous loop dispatches a `crew:lead` subagent per slice. Lead is instructed to "frame → delegate to crew:fullstack-dev → review → validate → synthesize". In practice, lead agents implement code inline (instability pattern A) rather than delegating, making the dispatch layer non-deterministic. The prior approach (`Dispatch /crew:build subagent`) was more stable but lacked a clear lead workflow.
 
 ## Goal
 
@@ -40,7 +40,7 @@ The orchestrator reads this and calls `Skill("crew:build", sliceContext)`. The c
 
 - `crew:build` explicitly allows single-session mode (orchestrator implements directly) — "implements inline" is the intended path, not a failure mode.
 - No delegation step where lead must choose to spawn builder vs. implement directly.
-- crew:build's review step dispatches `crew:reviewer` as a subagent only when warranted — same as before but now the decision is made by the orchestrator following an explicit workflow, not by a lead agent guessing.
+- crew:build's review step dispatches `crew:inspector` as a subagent only when warranted — same as before but now the decision is made by the orchestrator following an explicit workflow, not by a lead agent guessing.
 
 ### Feature path in context block
 

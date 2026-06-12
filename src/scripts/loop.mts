@@ -382,7 +382,7 @@ async function runArchitectSubcommand(
     `The architect model has completed the codebase research pre-flight.`,
     `Plan artifact written to: ${planResult.planPath}`,
     ``,
-    `Dispatch \`crew:builder\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`crew:reviewer\` (and \`crew:validator\` if behavior changed) before closing the slice.`,
+    `Dispatch \`crew:fullstack-dev\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`crew:inspector\` (and \`crew:verifier\` if behavior changed) before closing the slice.`,
     `The editor phase should reference the plan artifact to guide the implementation approach.`
   ].join("\n");
 

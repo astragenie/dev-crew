@@ -18,7 +18,7 @@ export interface DispatchPlan {
    * Which subagent the orchestrator should dispatch:
    *   - "lead" (default) → dispatch crew:lead with the dispatchPrompt
    *   - "orchestrate-slice" → invoke /crew:orchestrate-slice (no subagent dispatch)
-   *   - "direct-builder" → dispatch crew:builder with the dispatchPrompt
+   *   - "direct-builder" → dispatch crew:fullstack-dev with the dispatchPrompt
    * Mirrors `loop.orchestratorMode` from `.claude/loop.json`. Defaults to "lead".
    */
   orchestratorMode: WalkerOrchestratorMode;

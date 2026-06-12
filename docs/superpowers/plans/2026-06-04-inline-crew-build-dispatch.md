@@ -189,7 +189,7 @@ export function buildDispatchInstruction({
   const lines = [
     `Dispatch crew:lead subagent with this prompt:`,
     "",
-    `> Lead the implementation of ${title}.${sliceRef}${goalLine} Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`crew:builder\` when scope warrants), require independent review via \`crew:reviewer\` when code changes, and validation via \`crew:validator\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
+    `> Lead the implementation of ${title}.${sliceRef}${goalLine} Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`crew:fullstack-dev\` when scope warrants), require independent review via \`crew:inspector\` when code changes, and validation via \`crew:verifier\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
   ];
   appendProgressSignals(lines);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
@@ -444,7 +444,7 @@ git commit -m "feat(dispatch): invoke crew:build skill inline instead of crew:le
 Find the dispatch table row:
 
 ```
-| Slice implementation (acceptance criteria work)                   | `crew:lead` subagent (which delegates to `crew:builder`)    |
+| Slice implementation (acceptance criteria work)                   | `crew:lead` subagent (which delegates to `crew:fullstack-dev`)    |
 ```
 
 Change to:
@@ -457,7 +457,7 @@ Also find any prose that says "Dispatch crew:lead subagent" (in the numbered dis
 
 - [ ] **Step 2: Mirror the same change in `templates/loop-rules.md`**
 
-Same search-and-replace: `crew:lead subagent (which delegates to \`crew:builder\`)` → `crew:build skill (inline — orchestrator acts as lead)`.
+Same search-and-replace: `crew:lead subagent (which delegates to \`crew:fullstack-dev\`)` → `crew:build skill (inline — orchestrator acts as lead)`.
 
 - [ ] **Step 3: Verify manifests and content-length**
 

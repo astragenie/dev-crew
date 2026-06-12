@@ -99,7 +99,7 @@ export async function buildReviewLadder(
     const multidim = isMultidimId(reviewerId);
     return {
       reviewer: reviewerId,
-      subagent_type: "crew:reviewer",
+      subagent_type: "crew:inspector",
       description: `Reviewer ${reviewerId} review of ${sliceId}`,
       prompt: [
         `You are Reviewer ${reviewerId} on the Wiggin Loop ladder for slice ${sliceId}.`,

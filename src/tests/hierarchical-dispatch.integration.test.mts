@@ -36,8 +36,8 @@ test("integration: happy path — 2 children both DONE, both merge clean", async
   const repo = initRepo();
   execSync("git checkout -qb slice/HP", { cwd: repo });
   const plans: DispatchPlan[] = [
-    { id: "A", priority: 0, agentType: "crew:builder", prompt: "do A" },
-    { id: "B", priority: 1, agentType: "crew:builder", prompt: "do B" }
+    { id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "do A" },
+    { id: "B", priority: 1, agentType: "crew:fullstack-dev", prompt: "do B" }
   ];
   const stub = makeStubAgent(repo, (id) => ({
     status: "DONE",
@@ -59,8 +59,8 @@ test("integration: one child FAILED — sibling still merges", async () => {
   const repo = initRepo();
   execSync("git checkout -qb slice/MIX", { cwd: repo });
   const plans: DispatchPlan[] = [
-    { id: "OK", priority: 0, agentType: "crew:builder", prompt: "" },
-    { id: "BAD", priority: 1, agentType: "crew:builder", prompt: "" }
+    { id: "OK", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
+    { id: "BAD", priority: 1, agentType: "crew:fullstack-dev", prompt: "" }
   ];
   const stub = makeStubAgent(repo, (id) =>
     id === "OK" ? { status: "DONE", commit: "ok.txt" } : { status: "FAILED" }
@@ -81,8 +81,8 @@ test("integration: merge conflict surfaces CONFLICTED, both worktrees preserved"
   fs.writeFileSync(path.join(repo, "shared.txt"), "base\n");
   execSync("git add . && git commit -qm base", { cwd: repo });
   const plans: DispatchPlan[] = [
-    { id: "X", priority: 0, agentType: "crew:builder", prompt: "" },
-    { id: "Y", priority: 1, agentType: "crew:builder", prompt: "" }
+    { id: "X", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
+    { id: "Y", priority: 1, agentType: "crew:fullstack-dev", prompt: "" }
   ];
   const stub = async (batch: any, ctx: any) => {
     const dir = path.join(repo, ".claude/artifacts/loop/dispatch", ctx.runId);

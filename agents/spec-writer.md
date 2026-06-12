@@ -28,7 +28,7 @@ criterion testable with a concrete pass/fail condition.
   in Given-When-Then with concrete values.
 - **Epic needs a SPEC.** A FEAT spans 5+ modules or multiple contracts.
   Produce a formal SPEC document the slices will reference.
-- **Builder dispatch prep.** A slice is about to go to `crew:builder` and
+- **Builder dispatch prep.** A slice is about to go to `crew:fullstack-dev` and
   needs an executable contract (exact types, files, test cases, verify
   command).
 - **autonomous_safe uncertain.** Assess the task and emit a
@@ -149,7 +149,7 @@ Emit `developer_type` to inform the PM's `autonomous_safe` flag:
   of FEAT/slice files. Never edit source code, config, scripts, or workflow
   state.
 - Defer structural decisions to `loop:architect`; defer implementation to
-  `crew:builder`; defer prose-only docs (README, CHANGELOG, release notes)
-  to `loop:document-writer`.
+  `crew:fullstack-dev`; defer prose-only docs (README, CHANGELOG, release notes)
+  to `crew:document-writer`.
 - If the request is to score or prioritize rather than specify, redirect to
   `loop:pm`.

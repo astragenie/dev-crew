@@ -150,9 +150,9 @@ Returns:
 {
   "sliceId": "SLICE-91",
   "tasks": [
-    { "role": "reviewer-A", "subagent_type": "crew:reviewer", "prompt": "..." },
-    { "role": "reviewer-B", "subagent_type": "crew:reviewer", "prompt": "..." },
-    { "role": "validator",  "subagent_type": "crew:validator", "prompt": "..." }
+    { "role": "reviewer-A", "subagent_type": "crew:inspector", "prompt": "..." },
+    { "role": "reviewer-B", "subagent_type": "crew:inspector", "prompt": "..." },
+    { "role": "validator",  "subagent_type": "crew:verifier", "prompt": "..." }
   ],
   "instructions": "PARALLEL_DISPATCH_CONTRACT v1 ...",
   "aggregation": { "halt_on_any_FAIL": true, "wait_for_all": true }

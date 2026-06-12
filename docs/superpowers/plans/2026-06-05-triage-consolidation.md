@@ -771,7 +771,7 @@ No spec section uncovered.
 
 Two execution options:
 
-1. **Subagent-Driven (recommended)** — fresh `crew:builder` subagent per task, parent loop dispatches `crew:reviewer` between tasks, fast iteration with audit trail.
+1. **Subagent-Driven (recommended)** — fresh `crew:fullstack-dev` subagent per task, parent loop dispatches `crew:inspector` between tasks, fast iteration with audit trail.
 2. **Inline Execution** — execute tasks in this session using executing-plans, batch with checkpoints.
 
 Which approach?

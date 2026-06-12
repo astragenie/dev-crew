@@ -167,4 +167,4 @@ Use the plan artifact whenever:
 The `architect` agent is the right dispatcher when the plan surfaces a
 structural decision (provider abstraction, new contract). The
 `researcher` agent is the right dispatcher when the plan needs prior-art
-mapping. The `crew:builder` consumes the finished plan.
+mapping. The `crew:fullstack-dev` consumes the finished plan.

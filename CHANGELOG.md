@@ -5,6 +5,39 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.42.0 — 2026-06-12 — sync with crew v0.35.0/v0.35.1 agent renames
+
+Crew v0.35.0 renamed 6 subagents out of the colliding `crew:` namespace to fix Lead's Skill-misrouting failure mode (3 reproductions in one day on loop SLICE-152, SLICE-153, plus one during patch verification). Crew v0.35.1 followed up by also renaming the combined `crew:reviewer-validator` agent. Loop emits dispatch prompts that lead consumes — without this sync, lead's `Agent(subagent_type: "crew:reviewer")` calls would fail (agent doesn't exist anymore).
+
+### Agent name updates (loop-emitted dispatch prompts)
+
+Every loop file that emits a dispatch prompt or references a crew agent name was updated:
+
+- `crew:builder` → `crew:fullstack-dev`
+- `crew:builder-be` → `crew:backend-dev`
+- `crew:builder-fe` → `crew:frontend-dev`
+- `crew:reviewer` → `crew:inspector`
+- `crew:validator` → `crew:verifier`
+- `crew:deployer` → `crew:release-engineer`
+- `crew:reviewer-validator` → `crew:inspector-verifier`
+- `loop:document-writer` → `crew:document-writer` (unified to canonical crew namespace; loop never owned this agent definition)
+
+### Files touched
+
+53 files updated across `src/scripts/lib/`, `src/tests/`, `agents/`, `commands/`, `skills/`, `docs/backlog/`. Critical paths:
+
+- `src/scripts/lib/post-builder-fanout.mts` — fanout dispatch prompt builder. This is the helper lead invokes after builder PASS; if it emits an old agent name, lead's fanout fails.
+- `src/scripts/lib/reviewer-ladder.mts` — Reviewer A/B parallel dispatch prompts.
+- `src/scripts/lib/slice-linker/*.mts` — slice ceremony dispatch instructions.
+- `src/scripts/lib/walker-gates.mts` — `/loop:auto` dispatch plan emitter.
+- `src/scripts/lib/plugin-identity.mts` — crew agent name lookup table.
+- `src/scripts/loop.mts` — CLI argument + help text.
+- 7 test files — assertions updated. 1291 tests, 0 fail, 49 skip.
+
+### Compat
+
+Loop emits dispatch prompts; it does not own the agent definitions. The crew plugin is the source of truth for agent names. After this update both plugins use the new naming consistently.
+
 ### Marketplace migration
 
 The marketplace registry has moved to its own repository:

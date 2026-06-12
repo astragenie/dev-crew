@@ -533,7 +533,7 @@ function computeNextAction(
     return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch crew:builder subagent for ${sliceId}; then dispatch crew:reviewer (and crew:validator if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
+    return `Dispatch crew:fullstack-dev subagent for ${sliceId}; then dispatch crew:inspector (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
   }
   return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }

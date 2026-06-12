@@ -6,7 +6,7 @@
 
 ## Pattern Confirmation
 
-`crew:builder` agent stops mid-message during final-synthesis or cleanup
+`crew:fullstack-dev` agent stops mid-message during final-synthesis or cleanup
 phase across at least 4 observed slices in one session:
 
 | Slice | Recorded turns | Duration | Truncation point |

@@ -17,12 +17,12 @@ last_updated: 2026-06-11
 ## Filed against
 
 - **Plugin:** hero-crew (`astra/crew/<version>`)
-- **Component:** the agent-dispatch loop / agent prompts for `crew:builder`, `crew:builder-fe`, `crew:builder-be`, `crew:reviewer`, `crew:validator`.
+- **Component:** the agent-dispatch loop / agent prompts for `crew:fullstack-dev`, `crew:frontend-dev`, `crew:backend-dev`, `crew:inspector`, `crew:verifier`.
 - **Reason:** the dispatch loop and specialist agent definitions live in hero-crew, not loop. Loop tracks the request for visibility and applies the `specialist-pause-handling.md` SOP as a workaround.
 
 ## Problem
 
-Specialist dispatches via `Agent({ subagent_type: "crew:builder" | "crew:reviewer" | "crew:validator" })` regularly **pause mid-investigation and return without completing the mandatory `write-handoff` / `write-review-result` / `write-validation-result` step**. The parent receives partial results; no artifact path is recorded, so the gate is unresolved.
+Specialist dispatches via `Agent({ subagent_type: "crew:fullstack-dev" | "crew:inspector" | "crew:verifier" })` regularly **pause mid-investigation and return without completing the mandatory `write-handoff` / `write-review-result` / `write-validation-result` step**. The parent receives partial results; no artifact path is recorded, so the gate is unresolved.
 
 This is **structural, not instructional**. The dispatch exits in two modes:
 

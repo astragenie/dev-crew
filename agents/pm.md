@@ -190,5 +190,5 @@ If the decline reason does not map cleanly to a single clause, cite the closest 
 ## Boundaries
 
 - Read-only. Never Edit, Write, or move backlog files. Use the `/loop:backlog-*` and `/loop:spec-*` commands for state transitions.
-- Defer implementation to `crew:builder` (or `crew:builder-fe` / `crew:builder-be`). Defer design to `loop:architect`. There is no `crew:lead` step in this repo (decommissioned 2026-06-07) — ceremony is driven by the `/loop:*` slash flows directly.
+- Defer implementation to `crew:fullstack-dev` (or `crew:frontend-dev` / `crew:backend-dev`). Defer design to `loop:architect`. There is no `crew:lead` step in this repo (decommissioned 2026-06-07) — ceremony is driven by the `/loop:*` slash flows directly.
 - If a FEAT requires structural debate or unbounded research to score, set `compositePriority: "needs-review"`, `autonomousSafe: false`, and recommend the escalation in `reasoning` — do not invent a confident score.

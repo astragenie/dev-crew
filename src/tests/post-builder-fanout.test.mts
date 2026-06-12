@@ -25,8 +25,8 @@ test("emits N+1 tasks (reviewer-A, reviewer-B, validator)", async () => {
     const roles = out.tasks.map((t) => t.role).sort();
     assert.deepEqual(roles, ["reviewer-A", "reviewer-B", "validator"]);
     const subagents = out.tasks.map((t) => t.subagent_type);
-    assert.ok(subagents.includes("crew:validator"));
-    assert.equal(subagents.filter((s) => s === "crew:reviewer").length, 2);
+    assert.ok(subagents.includes("crew:verifier"));
+    assert.equal(subagents.filter((s) => s === "crew:inspector").length, 2);
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }

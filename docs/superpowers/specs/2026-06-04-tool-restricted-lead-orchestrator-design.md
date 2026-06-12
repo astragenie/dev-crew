@@ -24,9 +24,9 @@ loop session (Claude main thread)
         ├─ reads slice file + feature excerpt (Read)
         ├─ applies lead.md static routing table by tag + file group
         ├─ dispatches crew:architect child subagent IF new contract/refactor
-        ├─ dispatches crew:builder child subagent for implementation
-        ├─ dispatches crew:reviewer child subagent for review gate
-        ├─ dispatches crew:validator child subagent IF behavior changed
+        ├─ dispatches crew:fullstack-dev child subagent for implementation
+        ├─ dispatches crew:inspector child subagent for review gate
+        ├─ dispatches crew:verifier child subagent IF behavior changed
         ├─ dispatches crew:uxdesigner child subagent IF UI surface touched
         ├─ dispatches crew:copywriter child subagent IF release content
         ├─ writes final synthesis artifact
@@ -39,10 +39,10 @@ Each child subagent has fresh context. Lead reads each child's handoff artifact 
 ## Components
 
 - **`agents/lead.md` frontmatter change** (hero-crew). Add explicit `tools:` array: `[Read, Grep, Glob, Bash, Agent, TaskCreate, TaskUpdate]`. Drop `Edit`, `Write`, `NotebookEdit`. Body unchanged — existing static routing table at lines 67-125 and lead-only/do-not-delegate block at line 248 already match the orchestrator role.
-- **`commands/slice-start.md` body** (loop). Doc update — replace `crew:builder` dispatch language with `crew:lead`. JSON example updated. Post-action steps shrink from four to two (dispatch lead, then close).
-- **`src/scripts/lib/slice-linker/dispatch.mts`** (loop). Change `Dispatch crew:builder subagent` → `Dispatch crew:lead subagent`. Replace the "implementation only, parent loop drives gates" prompt with "orchestrate per agents/lead.md routing table — dispatch architect/builder/reviewer/validator/uxdesigner/copywriter/docwriter as needed". Remove the builder-only scope sentence.
+- **`commands/slice-start.md` body** (loop). Doc update — replace `crew:fullstack-dev` dispatch language with `crew:lead`. JSON example updated. Post-action steps shrink from four to two (dispatch lead, then close).
+- **`src/scripts/lib/slice-linker/dispatch.mts`** (loop). Change `Dispatch crew:fullstack-dev subagent` → `Dispatch crew:lead subagent`. Replace the "implementation only, parent loop drives gates" prompt with "orchestrate per agents/lead.md routing table — dispatch architect/builder/reviewer/validator/uxdesigner/copywriter/docwriter as needed". Remove the builder-only scope sentence.
 - **`src/scripts/lib/slice-linker/start-slice.mts`** (loop). `computeNextAction` returns "Dispatch crew:lead subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}." Two steps instead of four.
-- **`src/scripts/loop.mts`** (loop). Architect command output references `crew:lead` instead of `crew:builder`.
+- **`src/scripts/loop.mts`** (loop). Architect command output references `crew:lead` instead of `crew:fullstack-dev`.
 - **`src/tests/slice-linker.test.mts`, `src/tests/slice-start.test.mts`** (loop). Regex updates — match `Dispatch crew:lead subagent`.
 
 ## How It Works Together
@@ -69,7 +69,7 @@ Lead reads slice frontmatter `tags:` plus the file groups it audits in the slice
 ## Edge Cases
 
 - **Lead crashes mid-orchestration**. Whole slice stalls. Loop's existing escalation path (mark `escalated_to_human` badge) still applies — loop can detect a lead subagent timeout / error and badge accordingly. Same blast radius as a builder crash today.
-- **Lead skips a specialist that should have fired**. Mitigation: loop's `crew:reviewer` (still dispatched independently in `/loop:slice complete --review` flow if we keep one) can flag missing artifacts. Or accept that lead is the authority and trust its routing. Decision: trust lead by default; revisit if misses observed.
+- **Lead skips a specialist that should have fired**. Mitigation: loop's `crew:inspector` (still dispatched independently in `/loop:slice complete --review` flow if we keep one) can flag missing artifacts. Or accept that lead is the authority and trust its routing. Decision: trust lead by default; revisit if misses observed.
 - **Slice with no relevant specialists beyond builder** (4/10 in audit). Lead still dispatches but only spawns builder + reviewer + validator. The tax is one extra subagent layer. Cost ≈ +10-20% turn budget on those slices.
 - **Backward compatibility with in-flight slices**. SLICE-36 is in-progress. Should land this change after SLICE-36 closes to avoid mid-slice contract switch.
 - **`/crew:build` standalone (non-loop) entry point**. Unchanged — `commands/build.md` already drives lead in single-session mode. The tool restriction applies there too, and lead.md is already designed for that flow.
@@ -83,7 +83,7 @@ Lead reads slice frontmatter `tags:` plus the file groups it audits in the slice
 
 ## What Working Properly Means
 
-- Loop slice-start emits a `crew:lead` dispatch instruction (not `crew:builder`)
+- Loop slice-start emits a `crew:lead` dispatch instruction (not `crew:fullstack-dev`)
 - A real slice run shows the lead subagent dispatching multiple child subagents per its routing table — verified by inspecting `.claude/artifacts/crew/handoffs/` for child handoff artifacts named after architect/builder/reviewer/validator/uxdesigner/etc as appropriate
 - Lead's final synthesis artifact references every child handoff path
 - Loop's slice-complete reads lead's synthesis and closes the slice without separately driving review/validate
@@ -112,17 +112,17 @@ Lead reads slice frontmatter `tags:` plus the file groups it audits in the slice
 
 ```
 Before (today):
-loop ─dispatch─> crew:builder
-              ─dispatch─> crew:reviewer
-              ─dispatch─> crew:validator (if behavior changed)
+loop ─dispatch─> crew:fullstack-dev
+              ─dispatch─> crew:inspector
+              ─dispatch─> crew:verifier (if behavior changed)
               ─close───> /loop:slice complete
 
 After (this design):
 loop ─dispatch─> crew:lead (tool-restricted: no Edit/Write)
                     ├─dispatch─> crew:architect
-                    ├─dispatch─> crew:builder
-                    ├─dispatch─> crew:reviewer
-                    ├─dispatch─> crew:validator
+                    ├─dispatch─> crew:fullstack-dev
+                    ├─dispatch─> crew:inspector
+                    ├─dispatch─> crew:verifier
                     ├─dispatch─> crew:uxdesigner
                     ├─dispatch─> crew:copywriter
                     └─writes──> final synthesis artifact

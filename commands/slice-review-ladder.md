@@ -1,5 +1,5 @@
 ---
-description: Emit structured Reviewer A + B (configurable) task prompts for parallel crew:reviewer subagent dispatch.
+description: Emit structured Reviewer A + B (configurable) task prompts for parallel crew:inspector subagent dispatch.
 ---
 
 # Slice Review Ladder
@@ -7,7 +7,7 @@ description: Emit structured Reviewer A + B (configurable) task prompts for para
 Builds review-task prompts per the `reviewers.ladder` config (default
 `["A", "B"]`). Plugin does not spawn agents — the orchestrator (typically
 lead) reads the returned tasks and dispatches each via the Task tool with
-`subagent_type: crew:reviewer`.
+`subagent_type: crew:inspector`.
 
 Usage:
 
@@ -26,13 +26,13 @@ Returns:
   "tasks": [
     {
       "reviewer": "A",
-      "subagent_type": "crew:reviewer",
+      "subagent_type": "crew:inspector",
       "description": "Reviewer A review of SLICE-52",
       "prompt": "You are Reviewer A on the Wiggin Loop ladder ..."
     },
     {
       "reviewer": "B",
-      "subagent_type": "crew:reviewer",
+      "subagent_type": "crew:inspector",
       "description": "Reviewer B review of SLICE-52",
       "prompt": "You are Reviewer B on the Wiggin Loop ladder ..."
     }

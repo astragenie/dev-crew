@@ -68,7 +68,7 @@ is the right call when:
 
 After the CLI subcommand returns (slice file created, FEAT moved to
 `in-progress/`), the calling agent MUST run this pre-population check before
-dispatching any downstream specialist (`crew:builder`, `crew:reviewer`, etc.):
+dispatching any downstream specialist (`crew:fullstack-dev`, `crew:inspector`, etc.):
 
 1. **Read FEAT frontmatter** at the path returned by the CLI in
    `feature.path`.

@@ -13,7 +13,7 @@ related:
 ## Context
 
 The loop plugin previously decommissioned `crew:lead` (2026-06-07) and
-routed slice-start directly to `crew:builder`. As of 2026-06-10 the loop
+routed slice-start directly to `crew:fullstack-dev`. As of 2026-06-10 the loop
 side has reversed this: `/loop:slice start` now emits a `Dispatch
 crew:lead subagent` instruction by default (configurable via
 `config.loop.orchestratorMode` in `.claude/loop.json`).
@@ -27,10 +27,10 @@ rather than directly invoking the builder / validator specialist.
 Update the hero-crew plugin so the following commands emit a
 `Dispatch crew:lead subagent...` instruction by default:
 
-- `/crew:build` — currently dispatches `crew:builder` directly for
+- `/crew:build` — currently dispatches `crew:fullstack-dev` directly for
   feature work; should route through `crew:lead` so lead can run the
   full ceremony (architect → builder → reviewer → validator → synthesis).
-- `/crew:validate` — currently dispatches `crew:validator` directly;
+- `/crew:validate` — currently dispatches `crew:verifier` directly;
   should route through `crew:lead` for non-trivial validation work
   (or remain direct for simple gate runs — operator choice).
 - `/crew:fix` — currently dispatches builder + reviewer in a fix loop;

@@ -23,7 +23,7 @@ import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 export type FanoutTask = {
   role: "reviewer-A" | "reviewer-B" | "validator";
-  subagent_type: "crew:reviewer" | "crew:validator";
+  subagent_type: "crew:inspector" | "crew:verifier";
   description: string;
   prompt: string;
 };
@@ -82,19 +82,19 @@ export async function buildPostBuilderFanout(
   const tasks: FanoutTask[] = [
     {
       role: "reviewer-A",
-      subagent_type: "crew:reviewer",
+      subagent_type: "crew:inspector",
       description: `Reviewer A review of ${sliceId} (fanout)`,
       prompt: reviewerPrompt(sliceId, slicePathRel, "A")
     },
     {
       role: "reviewer-B",
-      subagent_type: "crew:reviewer",
+      subagent_type: "crew:inspector",
       description: `Reviewer B review of ${sliceId} (fanout)`,
       prompt: reviewerPrompt(sliceId, slicePathRel, "B")
     },
     {
       role: "validator",
-      subagent_type: "crew:validator",
+      subagent_type: "crew:verifier",
       description: `Validator behavior check of ${sliceId} (fanout)`,
       prompt: validatorPrompt(sliceId, slicePathRel)
     }

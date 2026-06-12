@@ -6,7 +6,7 @@
 
 ## Problem
 
-Subagent dispatches via `Agent({ subagent_type: "crew:builder" | "crew:reviewer" | "crew:validator" })` sometimes pause mid-investigation and return interim narration text WITHOUT calling the required write-* CLI to land their artifact (handoff, review-result, validation-result). The lead receives a partial textual response; the artifact path is missing.
+Subagent dispatches via `Agent({ subagent_type: "crew:fullstack-dev" | "crew:inspector" | "crew:verifier" })` sometimes pause mid-investigation and return interim narration text WITHOUT calling the required write-* CLI to land their artifact (handoff, review-result, validation-result). The lead receives a partial textual response; the artifact path is missing.
 
 When this happens, the lead must NOT treat the partial response as a completed gate. The gate is unresolved.
 
@@ -16,12 +16,12 @@ Pattern observed across 6 slices in a single autonomous session:
 
 | Slice | Role(s) that paused |
 |---|---|
-| SLICE-51 | crew:reviewer × 2 (both paused; review_skipped recorded with explicit reason) |
-| SLICE-52 | crew:builder (lead wrote handoff) |
-| SLICE-53 | crew:builder, crew:validator (lead wrote both) |
-| SLICE-54 | crew:builder, crew:validator (lead wrote both) |
-| SLICE-56 | crew:builder, crew:validator (lead wrote both) |
-| SLICE-57 | crew:builder (lead skipped both reviewer + validator via lead-attestation) |
+| SLICE-51 | crew:inspector × 2 (both paused; review_skipped recorded with explicit reason) |
+| SLICE-52 | crew:fullstack-dev (lead wrote handoff) |
+| SLICE-53 | crew:fullstack-dev, crew:verifier (lead wrote both) |
+| SLICE-54 | crew:fullstack-dev, crew:verifier (lead wrote both) |
+| SLICE-56 | crew:fullstack-dev, crew:verifier (lead wrote both) |
+| SLICE-57 | crew:fullstack-dev (lead skipped both reviewer + validator via lead-attestation) |
 
 Pattern is consistent across all three specialist roles in the crew plugin. Not a per-role bug.
 
@@ -119,7 +119,7 @@ The default remains: dispatch the full ladder, verify each artifact lands, fall 
 
 Persistent specialist-pause across 6 slices is most likely a model-side behavior, not a prompt-engineering issue. A separate **upstream-request FEAT against hero-crew** should propose either:
 
-- A prompt-level reminder added to crew:builder / crew:reviewer / crew:validator: "BEFORE returning, your LAST tool call MUST be write-handoff / write-review-result / write-validation-result"
+- A prompt-level reminder added to crew:fullstack-dev / crew:inspector / crew:verifier: "BEFORE returning, your LAST tool call MUST be write-handoff / write-review-result / write-validation-result"
 - OR a CLI-side completion enforcement that refuses to mark a dispatch successful without a recorded artifact path
 
 Log when the pattern persists past the next 5 slices. FEAT-058 (today's hero-crew upstream-request for the redundant-read hook) is a separate concern; this SOP cross-references it as the upstream pattern, not as a dependency.

@@ -273,7 +273,7 @@ test("buildDispatchInstruction with orchestratorMode='lead' emits 'Dispatch crew
   assert.match(result, /Dispatch crew:lead subagent/);
   assert.match(result, /Orchestrate SLICE-89-LEAD/);
   assert.match(result, /\/loop:slice complete --id SLICE-89-LEAD/);
-  assert.doesNotMatch(result, /Dispatch crew:builder subagent/);
+  assert.doesNotMatch(result, /Dispatch crew:fullstack-dev subagent/);
   assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
 });
 
@@ -290,7 +290,7 @@ test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /
   assert.doesNotMatch(result, /Dispatch crew:lead subagent/);
 });
 
-test("buildDispatchInstruction with orchestratorMode='direct-builder' emits 'Dispatch crew:builder subagent' instruction", () => {
+test("buildDispatchInstruction with orchestratorMode='direct-builder' emits 'Dispatch crew:fullstack-dev subagent' instruction", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-DB",
     title: "SLICE-DB: Direct builder path",
@@ -299,7 +299,7 @@ test("buildDispatchInstruction with orchestratorMode='direct-builder' emits 'Dis
     resolvedGoal: "Use direct-builder fallback",
     orchestratorMode: "direct-builder"
   });
-  assert.match(result, /Dispatch crew:builder subagent/);
+  assert.match(result, /Dispatch crew:fullstack-dev subagent/);
   assert.doesNotMatch(result, /Dispatch crew:lead subagent/);
   assert.doesNotMatch(result, /\/crew:orchestrate-slice/);
 });

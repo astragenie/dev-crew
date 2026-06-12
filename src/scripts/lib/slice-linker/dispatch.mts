@@ -45,7 +45,7 @@ function appendProgressSignals(lines: string[]) {
     "",
     "Emit two advisory line-tags so the parent orchestrator has early visibility into your mode choice and per-AC progress. Advisory only — parent degrades gracefully on absence.",
     "",
-    "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:builder for src/foo/`.",
+    "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:fullstack-dev for src/foo/`.",
     "- `[CHECKPOINT] AC-<N>: <pass|fail|skip> — <≤80 char note>` — emit one per AC AFTER the AC is verified. Status `fail` is the parent's interrupt signal; status `skip` carries a reason in the note."
   );
 }
@@ -117,9 +117,9 @@ export function buildDispatchInstruction({
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
   const lines = [
-    `Dispatch crew:builder subagent with this prompt:`,
+    `Dispatch crew:fullstack-dev subagent with this prompt:`,
     "",
-    `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:validator yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:validator if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
+    `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
   ];
   appendProgressSignals(lines);
   appendWorktreeSection(lines, worktreePath);
@@ -149,7 +149,7 @@ function buildOrchestrateSliceInstruction(sliceId: string): string {
     `> /crew:orchestrate-slice --id ${sliceId}`,
     ``,
     `The command dispatches specialists in sequence from the main thread (architect if needed,`,
-    `builder, reviewer, validator, loop:document-writer). All dispatches are visible in this`,
+    `builder, reviewer, validator, crew:document-writer). All dispatches are visible in this`,
     `window. When the ladder completes, close with /loop:slice complete --id ${sliceId}.`
   ].join("\n");
 }

@@ -11,8 +11,8 @@ test("prepareDispatch: enforces gates, spawns worktrees, returns batch", () => {
   const repo = initRepo();
   execSync("git checkout -q -b slice/SLICE-PD", { cwd: repo });
   const plans = [
-    { id: "A", priority: 0, agentType: "crew:builder", prompt: "do A" },
-    { id: "B", priority: 1, agentType: "crew:builder", prompt: "do B" }
+    { id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "do A" },
+    { id: "B", priority: 1, agentType: "crew:fullstack-dev", prompt: "do B" }
   ];
   const prepared = prepareDispatch(plans, {
     parentBranch: "slice/SLICE-PD",
@@ -29,7 +29,7 @@ test("prepareDispatch: enforces gates, spawns worktrees, returns batch", () => {
 test("dispatchHierarchical: end-to-end with mock runAgentBatch — happy path", async () => {
   const repo = initRepo();
   execSync("git checkout -q -b slice/SLICE-E2E", { cwd: repo });
-  const plans = [{ id: "A", priority: 0, agentType: "crew:builder", prompt: "noop" }];
+  const plans = [{ id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "noop" }];
   const runAgentBatch = async (batch, ctx) => {
     for (const call of batch) {
       const id = call.description.replace(/^dispatch /, "");

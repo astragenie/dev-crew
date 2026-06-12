@@ -11,7 +11,7 @@ tools:
   - Agent
 ---
 
-# Document Writer Agent — loop:document-writer
+# Document Writer Agent — crew:document-writer
 
 You are the documentation writer for this repository. Your job is to produce or maintain durable documentation that the next agent or session can rely on.
 
@@ -90,4 +90,4 @@ Delegate to these sub-agents via the `Agent` tool for specialized sub-tasks. Kee
 - Never edit `package.json` version field — that's a release script's job.
 - Never bump version numbers in headings without confirming the matching release script ran.
 - Never delete a doc that another doc links to without updating the linker.
-- If asked to write code, redirect to `crew:builder`.
+- If asked to write code, redirect to `crew:fullstack-dev`.

@@ -186,7 +186,7 @@ test("buildReviewLadder produces parallel tasks per reviewers.ladder", async () 
   assert.equal(out.tasks.length, 2);
   assert.equal(out.tasks[0].reviewer, "A");
   assert.equal(out.tasks[1].reviewer, "B");
-  assert.equal(out.tasks[0].subagent_type, "crew:reviewer");
+  assert.equal(out.tasks[0].subagent_type, "crew:inspector");
   // Prompts mention the slice id
   assert.match(out.tasks[0].prompt, new RegExp(slice.id));
   // Both prompts reference the slice link command

@@ -123,7 +123,7 @@ test("SLICE-93 AC-4: lead dispatch instruction contains slice post-builder-fanou
   );
 });
 
-test("startSlice with orchestratorMode='direct-builder' emits legacy crew:builder instruction", async () => {
+test("startSlice with orchestratorMode='direct-builder' emits legacy crew:fullstack-dev instruction", async () => {
   const repo = await tmpRepo("al-slice-start-direct-builder-");
   await pinOrchestratorMode(repo, "direct-builder");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
@@ -131,9 +131,9 @@ test("startSlice with orchestratorMode='direct-builder' emits legacy crew:builde
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
-  assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
+  assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
   assert.match(result.dispatchInstruction, /parent loop drives those gates/);
-  assert.match(result.nextAction, /Dispatch crew:builder subagent/);
+  assert.match(result.nextAction, /Dispatch crew:fullstack-dev subagent/);
 });
 
 test("FEAT-047 AC-1: slice-start emits orchestrate-slice when orchestratorMode='orchestrate-slice'", async () => {
@@ -158,7 +158,7 @@ test("FEAT-047 AC-1: slice-start emits orchestrate-slice when orchestratorMode='
   );
 });
 
-test("FEAT-047 AC-3: direct-builder mode falls back to crew:builder regardless of crew version", async () => {
+test("FEAT-047 AC-3: direct-builder mode falls back to crew:fullstack-dev regardless of crew version", async () => {
   const repo = await tmpRepo("al-slice-start-fallback-");
   await pinOrchestratorMode(repo, "direct-builder");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
@@ -166,8 +166,8 @@ test("FEAT-047 AC-3: direct-builder mode falls back to crew:builder regardless o
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.9" });
-  assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
-  assert.match(result.nextAction, /Dispatch crew:builder subagent/);
+  assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
+  assert.match(result.nextAction, /Dispatch crew:fullstack-dev subagent/);
 });
 
 test("FEAT-047 AC-3: direct-builder mode under crew 0.10.x emits builder instruction", async () => {
@@ -178,8 +178,8 @@ test("FEAT-047 AC-3: direct-builder mode under crew 0.10.x emits builder instruc
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.10.9" });
-  assert.match(result.dispatchInstruction, /Dispatch crew:builder subagent/);
-  assert.match(result.nextAction, /Dispatch crew:builder subagent/);
+  assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
+  assert.match(result.nextAction, /Dispatch crew:fullstack-dev subagent/);
 });
 
 test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-038)", async () => {

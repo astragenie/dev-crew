@@ -1231,8 +1231,8 @@ test("emits N+1 tasks (reviewer-A, reviewer-B, validator)", async () => {
   const roles = out.tasks.map((t) => t.role);
   assert.deepEqual(roles.sort(), ["reviewer-A", "reviewer-B", "validator"]);
   const subagents = out.tasks.map((t) => t.subagent_type);
-  assert.ok(subagents.includes("crew:validator"));
-  assert.equal(subagents.filter((s) => s === "crew:reviewer").length, 2);
+  assert.ok(subagents.includes("crew:verifier"));
+  assert.equal(subagents.filter((s) => s === "crew:inspector").length, 2);
   await fs.rm(repo, { recursive: true, force: true });
 });
 
@@ -1281,7 +1281,7 @@ import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 export type FanoutTask = {
   role: "reviewer-A" | "reviewer-B" | "validator";
-  subagent_type: "crew:reviewer" | "crew:validator";
+  subagent_type: "crew:inspector" | "crew:verifier";
   description: string;
   prompt: string;
 };
@@ -1337,19 +1337,19 @@ export async function buildPostBuilderFanout(
   const tasks: FanoutTask[] = [
     {
       role: "reviewer-A",
-      subagent_type: "crew:reviewer",
+      subagent_type: "crew:inspector",
       description: `Reviewer A review of ${sliceId} (fanout)`,
       prompt: reviewerPrompt(sliceId, slicePathRel, "A")
     },
     {
       role: "reviewer-B",
-      subagent_type: "crew:reviewer",
+      subagent_type: "crew:inspector",
       description: `Reviewer B review of ${sliceId} (fanout)`,
       prompt: reviewerPrompt(sliceId, slicePathRel, "B")
     },
     {
       role: "validator",
-      subagent_type: "crew:validator",
+      subagent_type: "crew:verifier",
       description: `Validator behavior check of ${sliceId} (fanout)`,
       prompt: validatorPrompt(sliceId, slicePathRel)
     }
