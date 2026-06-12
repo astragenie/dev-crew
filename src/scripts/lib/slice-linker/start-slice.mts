@@ -325,11 +325,6 @@ export async function startSlice(
     config?: Record<string, any> | null;
     goal?: string | null;
     dispatch?: boolean;
-    // _crewVersionOverride was historically used to pin the crew version
-    // for testing checkOrchestrateSliceSupport (legacy useOrchestrateSlice
-    // fallback). The fallback was removed 2026-06-11; the option is kept
-    // in the type signature so existing tests compile, but it's a no-op.
-    _crewVersionOverride?: string | null;
   } = {}
 ) {
   if (!sliceId) throw new Error("startSlice requires a sliceId.");

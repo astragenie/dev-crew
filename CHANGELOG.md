@@ -5,6 +5,10 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Drop `_crewVersionOverride` from startSlice (FEAT-192 / SLICE-108)
+
+`_crewVersionOverride` was a no-op test hook since 2026-06-11 (the legacy `useOrchestrateSlice` fallback was already removed). Greenfield + system-stability cleanup: the option is removed from the `startSlice` signature; six test sites that passed the no-op argument were trimmed.
+
 ### **BREAKING**: Orchestrator modes `lead` + `direct-builder` removed (FEAT-191 / SLICE-107)
 
 `OrchestratorMode` shrinks to `"slice-build" | "orchestrate-slice"`. Default flips from `"lead"` to `"slice-build"`. `buildLeadOrchestratorInstruction` deleted; no code path emits `Dispatch crew:lead subagent`.

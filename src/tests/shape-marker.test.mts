@@ -168,7 +168,7 @@ test("SLICE-94 AC-4 positive: dispatchInstruction contains inline-path recommend
     const { slice } = await sliceFromFeature(repo, feat.id);
     await fillPlaceholderACs(slice.path);
     await appendFilesSection(slice.path, ["docs/foo.md", "docs/bar.md"]);
-    const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+    const result = await startSlice(repo, slice.id);
     assert.ok(result.dispatchInstruction, "dispatchInstruction must be present");
     assert.ok(
       result.dispatchInstruction.includes("inline-path recommended"),
@@ -200,7 +200,7 @@ test("SLICE-94 AC-4 negative: dispatchInstruction omits inline-path hint when sh
     await fillPlaceholderACs(slice.path);
     // Mixed .md + .mts = shape "none"
     await appendFilesSection(slice.path, ["docs/foo.md", "src/scripts/lib/some-module.mts"]);
-    const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+    const result = await startSlice(repo, slice.id);
     assert.ok(result.dispatchInstruction, "dispatchInstruction must be present");
     assert.ok(
       !result.dispatchInstruction.includes("inline-path recommended"),

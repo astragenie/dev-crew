@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-108","timestamp":"2026-06-12T12:49:17.199Z","featureId":"FEAT-192","title":"SLICE-108: Drop _crewVersionOverride + version-pinned tests (FEAT-192)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T124917Z-plan-SLICE-108.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-108","timestamp":"2026-06-12T12:53:59.451Z","featureId":"FEAT-192","featureMovedTo":null,"validationSatisfied":false}

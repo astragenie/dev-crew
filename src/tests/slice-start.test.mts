@@ -99,7 +99,7 @@ test("startSlice emits slice-build tag-routed dispatch by default (FEAT-191: lea
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   // Default orchestratorMode = "slice-build" — no config override needed.
-  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+  const result = await startSlice(repo, slice.id);
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present by default");
   // No tags set on this slice → slice-build falls through to crew:fullstack-dev.
   assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
@@ -111,14 +111,14 @@ test("startSlice emits slice-build tag-routed dispatch by default (FEAT-191: lea
   );
 });
 
-test("FEAT-047 AC-1: slice-start emits orchestrate-slice when orchestratorMode='orchestrate-slice'", async () => {
+test("slice-start emits orchestrate-slice when orchestratorMode='orchestrate-slice'", async () => {
   const repo = await tmpRepo("al-slice-start-orchestrate-");
   await pinOrchestratorMode(repo, "orchestrate-slice");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
   const feat = await addFeature(repo, { title: "Orchestrate feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
-  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.11.0" });
+  const result = await startSlice(repo, slice.id);
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
   assert.match(
     result.dispatchInstruction,
@@ -140,7 +140,7 @@ test("slice-build mode falls back to crew:fullstack-dev when slice has no fe/be 
   const feat = await addFeature(repo, { title: "No surface tags" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
-  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.9" });
+  const result = await startSlice(repo, slice.id);
   assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
 });
 
@@ -150,8 +150,7 @@ test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-
   const feat = await addFeature(repo, { title: "Visibility feature" });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
-  // Use legacy crew version so the instruction contains the builder prompt body with progress signals.
-  const result = await startSlice(repo, slice.id, { _crewVersionOverride: "0.9.0" });
+  const result = await startSlice(repo, slice.id);
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
   // Header for the new block
   assert.match(
