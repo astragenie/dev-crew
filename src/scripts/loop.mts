@@ -952,7 +952,9 @@ const SLICE_HANDLERS = {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
     const { dispatchAgent, appendAuditLog } = await import("./lib/auto-dispatch.mjs");
-    const { DecompositionRequiredError } = await import("./lib/proposed-slices.mjs");
+    const { DecompositionRequiredError, InvalidProposedSlicesError } = await import(
+      "./lib/proposed-slices.mjs"
+    );
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
     let out;
     try {
@@ -962,12 +964,12 @@ const SLICE_HANDLERS = {
         config: opts.config
       });
     } catch (err) {
-      if (err instanceof DecompositionRequiredError) {
+      if (err instanceof DecompositionRequiredError || err instanceof InvalidProposedSlicesError) {
         await appendAuditLog(repoPath, {
           timestamp: new Date().toISOString(),
           parentCommand: "slice from-feature",
           featureId,
-          error: err.message,
+          error: (err as Error).message,
           ok: false,
           skipped: false
         });
@@ -975,17 +977,22 @@ const SLICE_HANDLERS = {
       throw err;
     }
     const { publishSlice } = await importGithubSync("github-sync.mjs");
-    try {
-      await (publishSlice as any)(repoPath, out.slice.id, featureId);
-    } catch (e) {
-      console.error(`[github] publish warning (slice from-feature): ${(e as Error).message}`);
+    const slicesList = Array.isArray((out as any).slices) ? (out as any).slices : [out.slice];
+    for (const sl of slicesList) {
+      try {
+        await (publishSlice as any)(repoPath, sl.id, featureId);
+      } catch (e) {
+        console.error(`[github] publish warning (slice from-feature): ${(e as Error).message}`);
+      }
     }
     const { logEvent } = await import("./lib/telemetry.mjs");
-    await logEvent(repoPath, {
-      command: "slice from-feature",
-      feature: featureId,
-      slice: out.slice.id
-    });
+    for (const sl of slicesList) {
+      await logEvent(repoPath, {
+        command: "slice from-feature",
+        feature: featureId,
+        slice: sl.id
+      });
+    }
     return out;
   },
   grade: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string) => {

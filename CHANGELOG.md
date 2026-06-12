@@ -5,6 +5,16 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### sliceFromFeature consumes proposed_slices (FEAT-168 / SLICE-100) — **closes FEAT-168**
+
+`sliceFromFeature` now materializes ALL proposed sub-slices when a FEAT carries a `proposed_slices` block in frontmatter. Each sub-slice gets its own file with the proposed title and `effort_points`. Idempotent on rerun: an already-materialized FEAT short-circuits with `idempotent: true` (no duplicate slice files, no growth of `feature.slices`). Malformed `proposed_slices` (non-Fibonacci points, missing fields, sum < effort_points) throws `InvalidProposedSlicesError`; the CLI handler audit-logs the failure with the same shape as the `DecompositionRequiredError` entries from SLICE-98.
+
+Return shape gains `slices: SliceInfo[]` (back-compat: `out.slice` still points at the first new slice) and `idempotent: boolean`. The CLI handler loops over `out.slices` for `publishSlice` + telemetry events.
+
+Bug also fixed during impl: `updateFeatureFrontmatter` now invalidates the frontmatter-cache (in addition to the listBacklog cache) — Windows mtime granularity (~16ms) was pinning rapid writes to the stale parse, which broke in-process orchestrators like the SLICE-102 `slice close` command on subsequent reads.
+
+This closes the three-slice FEAT-168 effort (SLICE-98 refuse-gate + audit, SLICE-99 frontmatter parser arrays-of-mappings, SLICE-100 multi-slice consumption).
+
 ### Orchestrator mode: `slice-build` — architect pre-flight (FEAT-190 / SLICE-106) — **closes FEAT-190**
 
 When `orchestratorMode: "slice-build"` AND the slice's frontmatter declares `needs_contract: true` AND no contract artifact exists yet at `.claude/artifacts/crew/contracts/<sliceId>-*.md`, `buildDispatchInstruction` now prepends an `ARCHITECT PRE-FLIGHT —` block instructing the orchestrating agent to dispatch `crew:architect` first and await a contract artifact before dispatching the builder(s). When the contract artifact already exists OR `needs_contract` is false, no pre-flight is added — straight builder dispatch (single-variant or parallel fe+be). Legacy modes (`lead`, `orchestrate-slice`, `direct-builder`) ignore `needs_contract` per their existing behavior.

@@ -1,7 +1,9 @@
 ---
 id: FEAT-168
 title: Slice decomposition gate when effort_points >= 8
-status: in-progress
+status: done
+slices_complete: [SLICE-98, SLICE-99, SLICE-100]
+completed_at: 2026-06-12
 priority: P1
 category: workflow
 target_release: null

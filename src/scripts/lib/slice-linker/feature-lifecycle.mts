@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { resolveConfig } from "../config-resolver.mjs";
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
+import { parseProposedSlices, type ProposedSlice } from "../proposed-slices.mjs";
 import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
@@ -102,17 +103,19 @@ function buildSliceContent({
   title,
   featureId,
   featureFrontmatter,
-  featureBody
+  featureBody,
+  effortPoints
 }: {
   id: string;
   title: string;
   featureId: string;
   featureFrontmatter: Record<string, unknown>;
   featureBody: string;
+  effortPoints?: number;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const safeTitle = clampSliceTitle(title);
-  const frontmatter = {
+  const frontmatter: Record<string, unknown> = {
     id,
     title: safeTitle,
     status: "pending",
@@ -124,6 +127,9 @@ function buildSliceContent({
     created: today,
     updated: today
   };
+  if (typeof effortPoints === "number") {
+    frontmatter.effort_points = effortPoints;
+  }
   const featureDescriptionLine = (featureBody || "")
     .split(/\n+/)
     .find((line) => line && !line.startsWith("#") && !line.startsWith("---"));
@@ -280,15 +286,18 @@ export async function sliceFromFeature(
   // FEAT-168 AC-2: decomposition gate. Read the source FEAT frontmatter
   // BEFORE moving the file so a refuse-throw leaves backlog state
   // untouched. assertSized throws DecompositionRequiredError when a
-  // >= 8-point FEAT lacks proposed_slices entirely. The strict shape
-  // validator (parseProposedSlices) lives in proposed-slices.mts — the
-  // frontmatter parser now round-trips arrays of mappings (SLICE-99),
-  // but wiring parseProposedSlices + multi-slice materialization into
-  // sliceFromFeature lands in SLICE-100 (FEAT-168 AC-4 + AC-5). Until
-  // then assertSized's truthy-check on proposed_slices remains the gate.
+  // >= 8-point FEAT lacks proposed_slices entirely. parseProposedSlices
+  // (SLICE-100) consumes the array shape and materializes one slice per
+  // proposal in the multi-slice path below. InvalidProposedSlicesError
+  // propagates up to the CLI handler which audit-logs it.
   const sourceContent = await fs.readFile(entry.filePath, "utf8");
   const { frontmatter: sourceFM } = parseFrontmatter(sourceContent);
   assertSized(featureId, sourceFM.effort_points, sourceFM.proposed_slices);
+  const proposed = parseProposedSlices(
+    sourceFM.proposed_slices,
+    featureId,
+    typeof sourceFM.effort_points === "number" ? sourceFM.effort_points : undefined
+  );
 
   // Move feature to in-progress if not already.
   const movedFromState = entry.state;
@@ -298,14 +307,63 @@ export async function sliceFromFeature(
     featureFilePath = result.to;
   }
 
-  // Allocate next slice id.
-  const maxId = await maxSliceIdUnder(slicesRoot);
-  const nextNumber = maxId + 1;
-  const id = sliceId(nextNumber);
-
-  // Title from first heading in feature body, fallback to first non-empty line.
   const featureContent = await fs.readFile(featureFilePath, "utf8");
   const { frontmatter: featureFM, body: featureBody } = parseFrontmatter(featureContent);
+
+  if (proposed && proposed.length > 0) {
+    return await materializeProposedSlices({
+      repoPath,
+      featureId,
+      featureFilePath,
+      featureFM,
+      featureBody,
+      movedFromState,
+      proposed,
+      slicesRoot
+    });
+  }
+
+  return await materializeSingleSlice({
+    repoPath,
+    featureId,
+    featureFilePath,
+    featureFM,
+    featureBody,
+    movedFromState,
+    slicesRoot,
+    noClassify,
+    dispatchFn
+  });
+}
+
+interface MaterializeSingleOpts {
+  repoPath: string;
+  featureId: string;
+  featureFilePath: string;
+  featureFM: Record<string, any>;
+  featureBody: string;
+  movedFromState: string;
+  slicesRoot: string;
+  noClassify?: boolean | undefined;
+  dispatchFn?: DispatchFn | undefined;
+}
+
+async function materializeSingleSlice(opts: MaterializeSingleOpts) {
+  const {
+    repoPath,
+    featureId,
+    featureFilePath,
+    featureFM,
+    featureBody,
+    movedFromState,
+    slicesRoot,
+    noClassify = false,
+    dispatchFn
+  } = opts;
+
+  const maxId = await maxSliceIdUnder(slicesRoot);
+  const id = sliceId(maxId + 1);
+
   const titleLine = (featureBody || "").split("\n").find((l) => l.startsWith("# "));
   const title = titleLine
     ? titleLine.replace(/^#\s+[A-Z]+-\d+:\s*/, "").trim()
@@ -324,8 +382,6 @@ export async function sliceFromFeature(
   });
   await fs.writeFile(slicePath, slice);
 
-  // Classify the slice (tags, needs_contract, needs_ux) unless opted out
-  // or the feature already has tags.
   const classifyResult = await classifySlice({
     repoPath,
     slicePath,
@@ -334,7 +390,6 @@ export async function sliceFromFeature(
     ...(dispatchFn !== undefined ? { dispatchFn } : {})
   });
 
-  // Cross-link on the feature side: append slice id to slices[] frontmatter
   const existingSlices = Array.isArray(featureFM.slices) ? featureFM.slices : [];
   if (!existingSlices.includes(id)) {
     await updateFeatureFrontmatter(featureFilePath, {
@@ -342,15 +397,110 @@ export async function sliceFromFeature(
     });
   }
 
+  const sliceInfo = { id, path: slicePath, title };
   return {
-    slice: { id, path: slicePath, title },
+    slice: sliceInfo,
+    slices: [sliceInfo],
     feature: {
       id: featureId,
       path: featureFilePath,
       fromState: movedFromState,
-      toState: "in-progress"
+      toState: "in-progress" as const
     },
-    classify: classifyResult
+    classify: classifyResult,
+    idempotent: false
+  };
+}
+
+interface MaterializeMultiOpts {
+  repoPath: string;
+  featureId: string;
+  featureFilePath: string;
+  featureFM: Record<string, any>;
+  featureBody: string;
+  movedFromState: string;
+  proposed: ProposedSlice[];
+  slicesRoot: string;
+}
+
+async function materializeProposedSlices(opts: MaterializeMultiOpts) {
+  const {
+    featureId,
+    featureFilePath,
+    featureFM,
+    featureBody,
+    movedFromState,
+    proposed,
+    slicesRoot
+  } = opts;
+
+  const sliceDir = path.join(slicesRoot, "pending");
+  await ensureDir(sliceDir);
+
+  const existingSlices = Array.isArray(featureFM.slices) ? featureFM.slices : [];
+
+  // Idempotent rerun: if the feature already has at least as many slices
+  // as proposed entries, do nothing further. Materialized slice files are
+  // recorded on `slices`; their paths are recoverable by the caller via
+  // the locate helpers if needed.
+  if (existingSlices.length >= proposed.length) {
+    const slicesInfo = existingSlices.slice(0, proposed.length).map((sid: string, i: number) => ({
+      id: sid,
+      path: null as string | null,
+      title: proposed[i]!.title,
+      points: proposed[i]!.points
+    }));
+    return {
+      slice: slicesInfo[0]!,
+      slices: slicesInfo,
+      feature: {
+        id: featureId,
+        path: featureFilePath,
+        fromState: movedFromState,
+        toState: "in-progress" as const
+      },
+      classify: null,
+      idempotent: true
+    };
+  }
+
+  const maxId = await maxSliceIdUnder(slicesRoot);
+  const toCreate = proposed.slice(existingSlices.length);
+  const newSlices: { id: string; path: string; title: string; points: number }[] = [];
+
+  for (let i = 0; i < toCreate.length; i += 1) {
+    const id = sliceId(maxId + 1 + i);
+    const title = toCreate[i]!.title;
+    const points = toCreate[i]!.points;
+    const slug = kebab(title);
+    const slicePath = path.join(sliceDir, `${id.replace("-", "_")}_${slug.toUpperCase()}.md`);
+    const slice = buildSliceContent({
+      id,
+      title,
+      featureId,
+      featureFrontmatter: featureFM,
+      featureBody,
+      effortPoints: points
+    });
+    await fs.writeFile(slicePath, slice);
+    newSlices.push({ id, path: slicePath, title, points });
+  }
+
+  await updateFeatureFrontmatter(featureFilePath, {
+    slices: [...existingSlices, ...newSlices.map((s) => s.id)]
+  });
+
+  return {
+    slice: newSlices[0]!,
+    slices: newSlices,
+    feature: {
+      id: featureId,
+      path: featureFilePath,
+      fromState: movedFromState,
+      toState: "in-progress" as const
+    },
+    classify: null,
+    idempotent: false
   };
 }
 

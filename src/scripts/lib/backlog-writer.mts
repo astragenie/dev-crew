@@ -5,6 +5,7 @@ import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./fron
 import { backlogRoot, listBacklog, nextFeatureId, BACKLOG_STATES } from "./backlog-parser.mjs";
 import { pathExists, ensureDir } from "./paths.mjs";
 import { bust, clearAll } from "./cache.mjs";
+import { clearFrontmatterCache } from "./frontmatter-cache.mjs";
 import { assertStatePath } from "./state-paths.mjs";
 import { validateFeat } from "./state-schemas.mjs";
 
@@ -114,6 +115,11 @@ export async function updateFeatureFrontmatter(
   const merged = mergeFrontmatter(content, { ...updates, updated: nowIsoDate() });
   await fs.writeFile(filePath, merged);
   clearAll();
+  // Windows mtime granularity (~16ms) lets rapid writes share an mtime with
+  // the previous content, which leaves readFrontmatterCached pinned to the
+  // stale parse. Clear the frontmatter cache so the next listBacklog read
+  // sees the new content.
+  clearFrontmatterCache();
   return parseFrontmatter(merged).frontmatter;
 }
 

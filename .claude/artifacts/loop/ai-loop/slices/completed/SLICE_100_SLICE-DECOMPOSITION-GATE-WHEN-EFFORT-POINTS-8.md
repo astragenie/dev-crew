@@ -1,7 +1,7 @@
 ---
 id: SLICE-100
 title: "Decomposition gate: consume proposed_slices, atomic multi-slice create, idempotent rerun (FEAT-168 slice-c)"
-status: pending
+status: completed
 feature: FEAT-168
 phase: null
 priority: P1
@@ -9,6 +9,7 @@ target_release: null
 requires_validation: true
 created: 2026-06-12
 updated: 2026-06-12
+completed_at: 2026-06-12
 ---
 # SLICE-100: Consume proposed_slices — atomic multi-slice + idempotent rerun (FEAT-168 slice-c)
 
