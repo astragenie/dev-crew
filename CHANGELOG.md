@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.4 — 2026-06-12 — PM ToolSearch grant
+
+### Add ToolSearch to PM tools list (FEAT-198 / SLICE-113)
+
+v0.43.3 added a ToolSearch INSTRUCTION to PM's body but missed granting the ToolSearch TOOL itself. Validated 2026-06-12: PM still saw `[Read, Grep, Glob, Bash]` only on a second FEAT-085 retriage attempt. Chicken-and-egg — to load deferred `Agent`, PM needs `ToolSearch` as a base tool. Fix: add `ToolSearch` to `agents/pm.md` frontmatter `tools` list.
+
 ## v0.43.3 — 2026-06-12 — PM ToolSearch precondition
 
 ### PM ToolSearch precondition for spec-writer dispatch (FEAT-196 / SLICE-112)

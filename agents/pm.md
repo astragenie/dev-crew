@@ -8,6 +8,7 @@ tools:
   - Glob
   - Bash
   - Agent
+  - ToolSearch
 ---
 
 # PM Agent — loop:pm

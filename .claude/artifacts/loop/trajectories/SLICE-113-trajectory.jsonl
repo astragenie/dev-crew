@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-113","timestamp":"2026-06-12T15:12:08.341Z","featureId":"FEAT-198","title":"SLICE-113: Add ToolSearch to PM tools list (FEAT-198)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T151208Z-plan-SLICE-113.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-113","timestamp":"2026-06-12T15:15:04.603Z","featureId":"FEAT-198","featureMovedTo":null,"validationSatisfied":false}

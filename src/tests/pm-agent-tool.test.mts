@@ -23,6 +23,16 @@ test("agents/pm.md frontmatter tools list includes Agent", async () => {
   );
 });
 
+// FEAT-198 / SLICE-113 — ToolSearch grant so PM can load the deferred Agent.
+
+test("agents/pm.md frontmatter tools list includes ToolSearch (FEAT-198)", async () => {
+  const { frontmatter } = await readPm();
+  assert.ok(
+    frontmatter.tools.includes("ToolSearch"),
+    `tools must include "ToolSearch" so PM can load deferred Agent (got ${JSON.stringify(frontmatter.tools)})`
+  );
+});
+
 test("agents/pm.md frontmatter description no longer claims read-only without qualification", async () => {
   const { frontmatter } = await readPm();
   assert.match(
