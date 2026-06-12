@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.5 — 2026-06-12 — PM model+maxTurns for deferred Agent surfacing
+
+### Add model: opus + effort: high + maxTurns: 30 to PM frontmatter (FEAT-199 / SLICE-114)
+
+Hypothesis (from comparing PM to working examples crew:architect + loop:hierarchical-dispatcher): deferred tools (Agent, ToolSearch) only surface to subagents that declare `model:` + `maxTurns:`. PM previously had neither. Now declares `model: opus`, `effort: high`, `maxTurns: 30`. If validation still fails after v0.43.5 install, deferred-tool surfacing is a deeper platform restriction and retriage will be reframed as flag-for-human (separate FEAT).
+
 ## v0.43.4 — 2026-06-12 — PM ToolSearch grant
 
 ### Add ToolSearch to PM tools list (FEAT-198 / SLICE-113)

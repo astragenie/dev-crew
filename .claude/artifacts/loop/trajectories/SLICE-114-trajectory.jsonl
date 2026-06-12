@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-114","timestamp":"2026-06-12T15:31:55.869Z","featureId":"FEAT-199","title":"SLICE-114: Add model+maxTurns to PM frontmatter (FEAT-199)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T153155Z-plan-SLICE-114.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-114","timestamp":"2026-06-12T15:35:04.807Z","featureId":"FEAT-199","featureMovedTo":null,"validationSatisfied":false}

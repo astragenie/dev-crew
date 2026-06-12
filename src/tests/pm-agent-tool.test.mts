@@ -33,6 +33,25 @@ test("agents/pm.md frontmatter tools list includes ToolSearch (FEAT-198)", async
   );
 });
 
+// FEAT-199 / SLICE-114 — model + maxTurns required for deferred Agent surfacing.
+
+test("agents/pm.md frontmatter declares model: opus (FEAT-199)", async () => {
+  const { frontmatter } = await readPm();
+  assert.equal(
+    frontmatter.model,
+    "opus",
+    `frontmatter must declare model: opus for deferred-tool surfacing (got ${JSON.stringify(frontmatter.model)})`
+  );
+});
+
+test("agents/pm.md frontmatter declares maxTurns >= 30 (FEAT-199)", async () => {
+  const { frontmatter } = await readPm();
+  assert.ok(
+    typeof frontmatter.maxTurns === "number" && frontmatter.maxTurns >= 30,
+    `frontmatter must declare maxTurns >= 30 (got ${JSON.stringify(frontmatter.maxTurns)})`
+  );
+});
+
 test("agents/pm.md frontmatter description no longer claims read-only without qualification", async () => {
   const { frontmatter } = await readPm();
   assert.match(
