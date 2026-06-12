@@ -956,9 +956,8 @@ const SLICE_HANDLERS = {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
     const { dispatchAgent, appendAuditLog } = await import("./lib/auto-dispatch.mjs");
-    const { DecompositionRequiredError, InvalidProposedSlicesError } = await import(
-      "./lib/proposed-slices.mjs"
-    );
+    const { DecompositionRequiredError, InvalidProposedSlicesError } =
+      await import("./lib/proposed-slices.mjs");
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
     let out;
     try {

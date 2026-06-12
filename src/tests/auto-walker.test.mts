@@ -136,7 +136,11 @@ test("walker plan defaults to orchestratorMode='slice-build' and emits implement
   const result = await runAutoWalker(repo, { dryRun: true });
   assert.equal(result.plans.length, 1);
   const plan = result.plans[0];
-  assert.equal(plan.orchestratorMode, "slice-build", "default orchestratorMode must be 'slice-build'");
+  assert.equal(
+    plan.orchestratorMode,
+    "slice-build",
+    "default orchestratorMode must be 'slice-build'"
+  );
   assert.match(plan.dispatchPrompt, /^Implement /, "dispatchPrompt must frame as implementation");
   assert.equal(
     plan.builderPrompt,

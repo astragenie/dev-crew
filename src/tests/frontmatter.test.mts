@@ -132,10 +132,7 @@ test("serializeFrontmatter emits block form for arrays of mappings", () => {
   };
   const out = serializeFrontmatter(fm, "body");
   assert.ok(!out.includes("[object Object]"), "must not stringify objects via toString");
-  assert.match(
-    out,
-    /proposed_slices:\n {2}- id_suffix: -SLICE-1\n {4}title: Lib\n {4}points: 5/
-  );
+  assert.match(out, /proposed_slices:\n {2}- id_suffix: -SLICE-1\n {4}title: Lib\n {4}points: 5/);
   // Round-trip identity.
   const reparsed = parseFrontmatter(out).frontmatter;
   assert.deepEqual(reparsed.proposed_slices, fm.proposed_slices);

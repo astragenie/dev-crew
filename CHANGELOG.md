@@ -5,6 +5,17 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.43.6 — 2026-06-12 — PM tools list — inline-array format + Edit/Write/Task* grants
+
+### Switch PM frontmatter to inline-array tool list; add Edit, Write, TaskCreate/Update/List/Get
+
+v0.43.5 added `model: opus` + `maxTurns: 30` to nudge deferred-tool surfacing. Validated 2026-06-12: PM still reported `[Read, Grep, Glob, Bash]` only and judged the AC-clarity gate as borderline-PASS instead of dispatching `loop:spec-writer`. Two hypotheses being trialed in this release:
+
+1. **YAML-list vs inline-array parsing**: the working examples (`crew:architect`, `loop:hierarchical-dispatcher`) all declare tools inline (`tools: [A, B, C]`). PM used a YAML list (`tools:\n  - A\n  - B`). Switch PM to inline array.
+2. **Self-task tracking**: granting `TaskCreate`/`TaskUpdate`/`TaskList`/`TaskGet` so PM can carve its own pre-flight (AC clarity gate → spec-writer dispatch → re-read → score) into trackable subtasks instead of reasoning the whole gate inline. `Edit` + `Write` added so PM can write its own pm-review artifact without a second hop.
+
+If validation still shows PM bypassing the AC-clarity gate after v0.43.6 install, the bug is not tool-surface — it's PM's discretion to call `acClarity: { rewrite: false }` on FEATs with `## Acceptance hints` headers and `tbd`/`to be confirmed` strings. Next FEAT would tighten the gate to a hard regex check.
+
 ## v0.43.5 — 2026-06-12 — PM model+maxTurns for deferred Agent surfacing
 
 ### Add model: opus + effort: high + maxTurns: 30 to PM frontmatter (FEAT-199 / SLICE-114)

@@ -5,13 +5,7 @@ model: opus
 effort: high
 maxTurns: 30
 color: purple
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - Agent
-  - ToolSearch
+tools: [Read, Grep, Glob, Bash, Edit, Write, Agent, ToolSearch, TaskCreate, TaskUpdate, TaskList, TaskGet]
 ---
 
 # PM Agent — loop:pm

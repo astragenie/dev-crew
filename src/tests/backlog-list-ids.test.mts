@@ -70,11 +70,9 @@ test("CLI backlog list-pending-ids (default) returns pending-only", async () => 
   await moveFeature(a.filePath, "triaged", { status: "triaged" });
   const b = await addFeature(repo, { title: "Bravo", body: "y", category: "feature" });
 
-  const r = spawnSync(
-    "bun",
-    [LOOP_CLI, "backlog", "list-pending-ids", "--repo", repo],
-    { encoding: "utf8" }
-  );
+  const r = spawnSync("bun", [LOOP_CLI, "backlog", "list-pending-ids", "--repo", repo], {
+    encoding: "utf8"
+  });
   assert.equal(r.status, 0, `expected exit 0; stderr=${r.stderr}`);
   const parsed = JSON.parse(r.stdout);
   assert.deepEqual(parsed.ids, [b.id]);

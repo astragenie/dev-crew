@@ -106,11 +106,7 @@ function applyEmptyValue(
   }
 }
 
-function consumeBlockArrayItem(
-  frontmatter: Frontmatter,
-  state: ParseState,
-  line: string
-): void {
+function consumeBlockArrayItem(frontmatter: Frontmatter, state: ParseState, line: string): void {
   const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
   const arr = frontmatter[state.currentArrayKey!];
   const kv = itemRaw.match(KEY_VALUE_RE);
@@ -125,7 +121,11 @@ function consumeBlockArrayItem(
   }
 }
 
-function extendLastArrayMapping(frontmatter: Frontmatter, state: ParseState, line: string): boolean {
+function extendLastArrayMapping(
+  frontmatter: Frontmatter,
+  state: ParseState,
+  line: string
+): boolean {
   const nm = line.match(NESTED_KV_RE);
   if (!nm) return false;
   const arr = frontmatter[state.currentArrayKey!];

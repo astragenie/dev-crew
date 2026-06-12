@@ -56,37 +56,44 @@ export async function validateManifests(repoRoot: string) {
   const fail = (msg: string) => failures.push(msg);
 
   const plugin = await readJson(path.join(repoRoot, ".claude-plugin", "plugin.json"));
-  const marketplace = await readJson(path.join(repoRoot, ".claude-plugin", "marketplace.json"));
+  const marketplacePath = path.join(repoRoot, ".claude-plugin", "marketplace.json");
+  const marketplace = existsSync(marketplacePath) ? await readJson(marketplacePath) : null;
   const pkg = await readJson(path.join(repoRoot, "package.json"));
 
-  for (const [label, manifest, requiredFields] of [
-    ["plugin.json", plugin, ["name", "version", "description", "author", "license"]],
-    ["marketplace.json", marketplace, ["name", "owner", "plugins"]]
-  ]) {
-    for (const field of requiredFields) {
-      if (manifest[field] === undefined || manifest[field] === null || manifest[field] === "") {
-        fail(`${label}: missing required field "${field}"`);
-      }
+  for (const field of ["name", "version", "description", "author", "license"]) {
+    if (plugin[field] === undefined || plugin[field] === null || plugin[field] === "") {
+      fail(`plugin.json: missing required field "${field}"`);
     }
   }
 
   if (!SEMVER_RE.test(plugin.version))
     fail(`plugin.json: version "${plugin.version}" is not parseable semver`);
 
-  const ownEntry = marketplace.plugins.find(
-    (entry: { name: string; version: string; source?: string }) => entry.name === plugin.name
-  );
-  if (!ownEntry) {
-    fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
-  } else if (ownEntry.version !== plugin.version) {
-    // Lockstep enforcement (reversed v0.24.2). Earlier comment said marketplace
-    // drift was acceptable "no consumer." Sessions installing via this repo's
-    // marketplace.json silently stayed on the pinned version (0.22.0) and missed
-    // v0.23.0..v0.24.1. Use scripts/bump-version.mjs to bump all three files atomically.
-    fail(
-      `version drift: plugin.json="${plugin.version}" vs marketplace.json entry "${plugin.name}"="${ownEntry.version}". ` +
-        `Run "npm run bump-version <new-version>" to sync.`
+  // marketplace.json moved to sergeymilashico/astra-marketplace (4a46687). When
+  // a local copy exists (mirror or transitional setup), enforce lockstep with
+  // plugin.json. When absent, treat as authoritative-elsewhere and skip.
+  if (marketplace) {
+    for (const field of ["name", "owner", "plugins"]) {
+      if (
+        marketplace[field] === undefined ||
+        marketplace[field] === null ||
+        marketplace[field] === ""
+      ) {
+        fail(`marketplace.json: missing required field "${field}"`);
+      }
+    }
+    const ownEntry = marketplace.plugins.find(
+      (entry: { name: string; version: string; source?: string }) => entry.name === plugin.name
     );
+    if (!ownEntry) {
+      fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
+    } else if (ownEntry.version !== plugin.version) {
+      fail(
+        `version drift: plugin.json="${plugin.version}" vs marketplace.json entry "${plugin.name}"="${ownEntry.version}". ` +
+          `Run "npm run bump-version <new-version>" to sync.`
+      );
+    }
+    validateMarketplaceEntries(marketplace, fail);
   }
 
   if (pkg.version !== plugin.version) {
@@ -95,8 +102,6 @@ export async function validateManifests(repoRoot: string) {
         `Run "npm run bump-version <new-version>" to sync all three files.`
     );
   }
-
-  validateMarketplaceEntries(marketplace, fail);
 
   for (const presetErr of validateAllPresets(repoRoot)) {
     fail(presetErr);
@@ -124,9 +129,13 @@ if (isMainEntry()) {
     console.log("Manifests OK:");
     console.log(`  plugin.json      ${result.plugin.name}@${result.plugin.version}`);
     console.log(`  package.json     ${result.pkg.name}@${result.pkg.version}`);
-    console.log(`  marketplace.json (${result.marketplace.plugins.length} entries)`);
-    for (const entry of result.marketplace.plugins) {
-      console.log(`    - ${entry.name}@${entry.version}`);
+    if (result.marketplace) {
+      console.log(`  marketplace.json (${result.marketplace.plugins.length} entries)`);
+      for (const entry of result.marketplace.plugins) {
+        console.log(`    - ${entry.name}@${entry.version}`);
+      }
+    } else {
+      console.log(`  marketplace.json (absent — registry at sergeymilashico/astra-marketplace)`);
     }
   }
 }

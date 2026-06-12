@@ -28,11 +28,7 @@ async function tmpRepo(prefix: string): Promise<string> {
   return repo;
 }
 
-async function writeDoneFeat(
-  repo: string,
-  id: string,
-  effortPoints: number | null
-): Promise<void> {
+async function writeDoneFeat(repo: string, id: string, effortPoints: number | null): Promise<void> {
   const fmLines = ["---", `id: ${id}`, "status: done"];
   if (effortPoints !== null) fmLines.push(`effort_points: ${effortPoints}`);
   fmLines.push("---", "", "# Done feat", "");
@@ -180,10 +176,7 @@ test("validateCostRegressionConfig: accepts valid + missing values", () => {
   assert.deepEqual(validateCostRegressionConfig(null), []);
   assert.deepEqual(validateCostRegressionConfig({}), []);
   assert.deepEqual(validateCostRegressionConfig({ loop: {} }), []);
-  assert.deepEqual(
-    validateCostRegressionConfig({ loop: { costRegressionMode: "median" } }),
-    []
-  );
+  assert.deepEqual(validateCostRegressionConfig({ loop: { costRegressionMode: "median" } }), []);
   assert.deepEqual(
     validateCostRegressionConfig({
       loop: { costRegressionMode: "expected_usd", costMedianUsdPerPoint: 12.5 }
@@ -191,7 +184,9 @@ test("validateCostRegressionConfig: accepts valid + missing values", () => {
     []
   );
   assert.deepEqual(
-    validateCostRegressionConfig({ loop: { costRegressionMode: null, costMedianUsdPerPoint: null } }),
+    validateCostRegressionConfig({
+      loop: { costRegressionMode: null, costMedianUsdPerPoint: null }
+    }),
     []
   );
 });

@@ -99,9 +99,7 @@ export function resolveCostRegressionMode(
   return null;
 }
 
-export function resolveCostMedianUsdPerPoint(
-  config: Record<string, any> | null
-): number | null {
+export function resolveCostMedianUsdPerPoint(config: Record<string, any> | null): number | null {
   const raw = config?.loop?.costMedianUsdPerPoint;
   return typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : null;
 }

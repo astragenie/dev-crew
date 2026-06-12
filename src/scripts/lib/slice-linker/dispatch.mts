@@ -67,9 +67,7 @@ function appendWorktreeSection(lines: string[], worktreePath: string | null | un
 
 export type OrchestratorMode = "slice-build" | "orchestrate-slice";
 
-function resolveOrchestratorMode(
-  orchestratorMode: OrchestratorMode | undefined
-): OrchestratorMode {
+function resolveOrchestratorMode(orchestratorMode: OrchestratorMode | undefined): OrchestratorMode {
   return orchestratorMode ?? "slice-build";
 }
 
@@ -118,8 +116,7 @@ function buildParallelFeBeInstruction(
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
-  const closeTail =
-    `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`;
+  const closeTail = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`;
   return [
     `PARALLEL DISPATCH — issue ONE Agent message with TWO parallel tool calls:`,
     "",

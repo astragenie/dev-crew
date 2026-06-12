@@ -9,7 +9,11 @@ import { test } from "bun:test";
 import { strict as assert } from "node:assert";
 
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
-import { addFeature, findFeatureById, updateFeatureFrontmatter } from "../scripts/lib/backlog-writer.mjs";
+import {
+  addFeature,
+  findFeatureById,
+  updateFeatureFrontmatter
+} from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
 const LOOP_CLI = path.resolve("src/scripts/loop.mts");
@@ -118,17 +122,11 @@ test("from-feature CLI on malformed proposed_slices writes audit + exits 1", asy
     ]
   });
 
-  const r = spawnSync(
-    "bun",
-    [LOOP_CLI, "slice", "from-feature", "--id", feat.id, "--repo", repo],
-    { encoding: "utf8" }
-  );
+  const r = spawnSync("bun", [LOOP_CLI, "slice", "from-feature", "--id", feat.id, "--repo", repo], {
+    encoding: "utf8"
+  });
   assert.equal(r.status, 1, `expected exit 1, got ${r.status}; stderr=${r.stderr}`);
-  assert.match(
-    r.stderr,
-    /proposed_slices parse failed/,
-    "stderr must mention parse failure"
-  );
+  assert.match(r.stderr, /proposed_slices parse failed/, "stderr must mention parse failure");
 
   // Audit log entry.
   const auditPath = path.join(repo, ".claude/artifacts/loop/auto-dispatch.jsonl");

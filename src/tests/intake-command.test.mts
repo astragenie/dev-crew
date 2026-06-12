@@ -52,11 +52,7 @@ test("intake.md documents decline filter for P4 composite_priority", async () =>
   const { body } = await readIntake();
   assert.match(body, /composite_priority/, "body must reference composite_priority");
   assert.match(body, /"P4"|`P4`|\bP4\b/, "body must mention the literal P4 priority");
-  assert.match(
-    body,
-    /declined|skip|skipped/i,
-    "body must describe declined FEATs being skipped"
-  );
+  assert.match(body, /declined|skip|skipped/i, "body must describe declined FEATs being skipped");
 });
 
 test("intake.md references the legacy commands for back-compat", async () => {

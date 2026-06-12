@@ -35,18 +35,14 @@ async function tmpRepoWithLoopConfig(prefix: string): Promise<string> {
 }
 
 test("refuse-emits-audit-entry: from-feature on 8-point FEAT without proposed_slices writes audit JSONL line", async () => {
-  const { updateFeatureFrontmatter } = await import(
-    "../scripts/lib/backlog-writer.mjs"
-  );
+  const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
   const repo = await tmpRepoWithLoopConfig("al-cli-refuse-audit-");
   const feat = await addFeature(repo, { title: "Big work needing decomposition" });
   await updateFeatureFrontmatter(feat.filePath, { effort_points: 8 });
 
-  const r = spawnSync(
-    "bun",
-    [LOOP_CLI, "slice", "from-feature", "--id", feat.id, "--repo", repo],
-    { encoding: "utf8" }
-  );
+  const r = spawnSync("bun", [LOOP_CLI, "slice", "from-feature", "--id", feat.id, "--repo", repo], {
+    encoding: "utf8"
+  });
 
   assert.equal(r.status, 1, `expected exit 1, got ${r.status}; stderr=${r.stderr}`);
   assert.match(
@@ -79,18 +75,14 @@ test("refuse-emits-audit-entry: from-feature on 8-point FEAT without proposed_sl
 });
 
 test("no-audit-on-happy-path: from-feature on small FEAT does not append a refuse audit entry", async () => {
-  const { updateFeatureFrontmatter } = await import(
-    "../scripts/lib/backlog-writer.mjs"
-  );
+  const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
   const repo = await tmpRepoWithLoopConfig("al-cli-no-audit-");
   const feat = await addFeature(repo, { title: "Small work" });
   await updateFeatureFrontmatter(feat.filePath, { effort_points: 3 });
 
-  const r = spawnSync(
-    "bun",
-    [LOOP_CLI, "slice", "from-feature", "--id", feat.id, "--repo", repo],
-    { encoding: "utf8" }
-  );
+  const r = spawnSync("bun", [LOOP_CLI, "slice", "from-feature", "--id", feat.id, "--repo", repo], {
+    encoding: "utf8"
+  });
 
   assert.equal(r.status, 0, `expected exit 0, got ${r.status}; stderr=${r.stderr}`);
 
@@ -107,8 +99,7 @@ test("no-audit-on-happy-path: from-feature on small FEAT does not append a refus
     .filter(Boolean)
     .map((l) => JSON.parse(l))
     .filter(
-      (e) =>
-        e.parentCommand === "slice from-feature" && e.featureId === feat.id && e.ok === false
+      (e) => e.parentCommand === "slice from-feature" && e.featureId === feat.id && e.ok === false
     );
   assert.equal(
     refuseLines.length,

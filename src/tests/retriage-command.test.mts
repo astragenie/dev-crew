@@ -28,11 +28,7 @@ test("commands/retriage.md exists with non-empty pre-flight description", async 
     /AC.clarity|spec.writer|pre.flight/i,
     "description must reference the AC-clarity gate or spec-writer pre-flight"
   );
-  assert.match(
-    frontmatter.description,
-    /PM|scor/i,
-    "description must reference PM scoring"
-  );
+  assert.match(frontmatter.description, /PM|scor/i, "description must reference PM scoring");
 });
 
 test("retriage.md documents the 7-step AC-clarity gate flow", async () => {
@@ -60,11 +56,7 @@ test("retriage.md documents the 7-step AC-clarity gate flow", async () => {
 
 test("retriage.md documents the failure-escalation rule", async () => {
   const { body } = await readRetriage();
-  assert.match(
-    body,
-    /needs.review/i,
-    "body must mention the needs-review escalation"
-  );
+  assert.match(body, /needs.review/i, "body must mention the needs-review escalation");
   assert.match(
     body,
     /scopeNotes/,
@@ -93,11 +85,7 @@ test("retriage.md documents the acClarity field in the return contract", async (
     /acClarity/,
     "body must document the new acClarity field on the PM result contract"
   );
-  assert.match(
-    body,
-    /rewrite/i,
-    "body must describe the rewrite boolean"
-  );
+  assert.match(body, /rewrite/i, "body must describe the rewrite boolean");
 });
 
 // FEAT-194 / SLICE-110 — --include-triaged flag

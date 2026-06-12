@@ -15,7 +15,11 @@ process.env.LOOP_DISABLE_COST_REGRESSION_LOG = "1";
 
 const COST_DIR_REL = ".claude/artifacts/crew/cost";
 
-async function setupRepo(prefix: string, currentUsd: number, effortPoints: number): Promise<string> {
+async function setupRepo(
+  prefix: string,
+  currentUsd: number,
+  effortPoints: number
+): Promise<string> {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, COST_DIR_REL), { recursive: true });
   // 3 historical reports, $10 each. Median = $10. (Median doesn't drive

@@ -154,17 +154,7 @@ test("CLI slice close: spawnSync happy path emits JSON with scaffoldOnly", async
   await fs.writeFile(yamlPath, gradeYamlBody(sliceId, featureId));
   const r = spawnSync(
     "bun",
-    [
-      LOOP_CLI,
-      "slice",
-      "close",
-      "--id",
-      sliceId,
-      "--grade-yaml",
-      yamlPath,
-      "--repo",
-      repo
-    ],
+    [LOOP_CLI, "slice", "close", "--id", sliceId, "--grade-yaml", yamlPath, "--repo", repo],
     { encoding: "utf8" }
   );
   assert.equal(r.status, 0, `expected exit 0, got ${r.status}; stderr=${r.stderr}`);
@@ -180,17 +170,7 @@ test("CLI slice close: --grade-yaml on autonomous_safe=false exits 1", async () 
   await fs.writeFile(yamlPath, gradeYamlBody(sliceId, featureId));
   const r = spawnSync(
     "bun",
-    [
-      LOOP_CLI,
-      "slice",
-      "close",
-      "--id",
-      sliceId,
-      "--grade-yaml",
-      yamlPath,
-      "--repo",
-      repo
-    ],
+    [LOOP_CLI, "slice", "close", "--id", sliceId, "--grade-yaml", yamlPath, "--repo", repo],
     { encoding: "utf8" }
   );
   assert.equal(r.status, 1);
