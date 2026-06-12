@@ -80,7 +80,12 @@ function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>):
 //   2. "lead" by default — crew:lead orchestrates the slice ceremony.
 function resolveOrchestratorModeConfig(config: Record<string, any>): OrchestratorMode {
   const explicit = config?.loop?.orchestratorMode;
-  if (explicit === "lead" || explicit === "orchestrate-slice" || explicit === "direct-builder") {
+  if (
+    explicit === "lead" ||
+    explicit === "orchestrate-slice" ||
+    explicit === "direct-builder" ||
+    explicit === "slice-build"
+  ) {
     return explicit;
   }
   return "lead";

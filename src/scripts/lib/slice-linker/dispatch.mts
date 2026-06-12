@@ -64,12 +64,43 @@ function appendWorktreeSection(lines: string[], worktreePath: string | null | un
   );
 }
 
-export type OrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder";
+export type OrchestratorMode = "lead" | "orchestrate-slice" | "direct-builder" | "slice-build";
 
 function resolveOrchestratorMode(
   orchestratorMode: OrchestratorMode | undefined
 ): OrchestratorMode {
   return orchestratorMode ?? "lead";
+}
+
+export type BuilderVariant = "frontend" | "backend" | "fullstack";
+
+/**
+ * Pick a crew builder variant from a slice's frontmatter `tags` array.
+ * FEAT-190 / SLICE-104.
+ *
+ * Mapping:
+ *   - tags ⊇ {"fe"} AND NOT ⊇ {"be"} → "frontend"
+ *   - tags ⊇ {"be"} AND NOT ⊇ {"fe"} → "backend"
+ *   - otherwise (neither / both / missing / malformed) → "fullstack"
+ *
+ * The fe+be → fullstack mapping is intentionally interim for SLICE-104.
+ * SLICE-105 (FEAT-190 slice-2) will swap that branch for a parallel
+ * frontend-dev + backend-dev fanout payload.
+ */
+export function pickBuilderVariant(tags: unknown): BuilderVariant {
+  if (!Array.isArray(tags)) return "fullstack";
+  const set = new Set(tags.filter((t): t is string => typeof t === "string"));
+  const hasFe = set.has("fe");
+  const hasBe = set.has("be");
+  if (hasFe && !hasBe) return "frontend";
+  if (hasBe && !hasFe) return "backend";
+  return "fullstack";
+}
+
+function variantToAgent(variant: BuilderVariant): string {
+  if (variant === "frontend") return "crew:frontend-dev";
+  if (variant === "backend") return "crew:backend-dev";
+  return "crew:fullstack-dev";
 }
 
 export function buildDispatchInstruction({
@@ -113,11 +144,14 @@ export function buildDispatchInstruction({
     return buildOrchestrateSliceInstruction(sliceId);
   }
 
+  const variant: BuilderVariant =
+    mode === "slice-build" ? pickBuilderVariant(extractTags(sliceContent)) : "fullstack";
+  const agentName = variantToAgent(variant);
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
   const lines = [
-    `Dispatch crew:fullstack-dev subagent with this prompt:`,
+    `Dispatch ${agentName} subagent with this prompt:`,
     "",
     `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
   ];
@@ -125,6 +159,12 @@ export function buildDispatchInstruction({
   appendWorktreeSection(lines, worktreePath);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
   return lines.join("\n");
+}
+
+function extractTags(sliceContent: string | null): unknown {
+  if (!sliceContent) return undefined;
+  const { frontmatter } = parseFrontmatter(sliceContent);
+  return frontmatter?.tags;
 }
 
 function buildLeadOrchestratorInstruction(

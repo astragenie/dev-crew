@@ -5,6 +5,16 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Orchestrator mode: `slice-build` — single-variant routing (FEAT-190 / SLICE-104)
+
+New `orchestratorMode: "slice-build"` value. When set, the slice dispatch instruction reads the slice's frontmatter `tags` and emits the right crew builder variant:
+
+- `tags ⊇ {"fe"}` only → `crew:frontend-dev`
+- `tags ⊇ {"be"}` only → `crew:backend-dev`
+- both, neither, or missing → `crew:fullstack-dev` (interim — SLICE-105 will swap fe+be for parallel fanout)
+
+Legacy modes (`lead`, `orchestrate-slice`, `direct-builder`) unchanged. Opt-in via `.claude/loop.json`. New exports: `pickBuilderVariant`, `OrchestratorMode`, `BuilderVariant`. Two follow-up slices (SLICE-105 parallel fanout, SLICE-106 architect pre-flight) remain for FEAT-190.
+
 ### Slash command: `/loop:intake` (FEAT-189 / SLICE-103)
 
 New slash command that runs the two-phase backlog intake in one invocation: Phase 1 PM scoring (delegates to the existing `/loop:triage` contract), Phase 2 architect classification (delegates to `/loop:backlog-enrich`). Halts before Phase 2 if PM errors; skips Phase 2 for `composite_priority: "P4"` declined FEATs. Existing `/loop:triage` and `/loop:backlog-enrich` remain unchanged for partial-intake scenarios.

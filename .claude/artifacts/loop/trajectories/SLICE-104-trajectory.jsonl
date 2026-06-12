@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-104","timestamp":"2026-06-12T11:11:01.666Z","featureId":"FEAT-190","title":"SLICE-104: slice-build mode — single-variant routing from tags (FEAT-190 slice-1)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T111101Z-plan-SLICE-104.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-104","timestamp":"2026-06-12T11:15:24.582Z","featureId":"FEAT-190","featureMovedTo":null,"validationSatisfied":false}
