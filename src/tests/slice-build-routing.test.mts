@@ -55,9 +55,10 @@ test("pickBuilderVariant: be-only -> backend", () => {
   assert.equal(pickBuilderVariant(["be"]), "backend");
 });
 
-test("pickBuilderVariant: fe + be (interim) -> fullstack", () => {
-  // SLICE-105 will swap this to a parallel fanout payload.
-  assert.equal(pickBuilderVariant(["fe", "be"]), "fullstack");
+test("pickBuilderVariant: fe + be -> parallel-fe-be (SLICE-105 retired the SLICE-104 interim fullstack mapping)", () => {
+  assert.equal(pickBuilderVariant(["fe", "be"]), "parallel-fe-be");
+  // Tag order does not matter.
+  assert.equal(pickBuilderVariant(["be", "fe"]), "parallel-fe-be");
 });
 
 test("pickBuilderVariant: empty array -> fullstack", () => {
@@ -104,9 +105,9 @@ test("buildDispatchInstruction slice-build + be-only emits crew:backend-dev", ()
   assert.match(out, /^Dispatch crew:backend-dev subagent/);
 });
 
-test("buildDispatchInstruction slice-build + fe+be (interim) emits crew:fullstack-dev", () => {
+test("buildDispatchInstruction slice-build + fe+be emits PARALLEL DISPATCH with both agents (SLICE-105)", () => {
   const out = buildDispatchInstruction({
-    sliceId: "SLICE-104",
+    sliceId: "SLICE-105",
     title: "Test slice",
     sliceFile: null,
     repoPath: "/repo",
@@ -114,7 +115,48 @@ test("buildDispatchInstruction slice-build + fe+be (interim) emits crew:fullstac
     orchestratorMode: "slice-build",
     sliceContent: "---\ntags:\n  - fe\n  - be\n---\n# Slice\n"
   });
-  assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
+  assert.match(out, /^PARALLEL DISPATCH/);
+  assert.ok(out.includes("crew:frontend-dev"), "must reference crew:frontend-dev");
+  assert.ok(out.includes("crew:backend-dev"), "must reference crew:backend-dev");
+  // The parent loop should still drive the inspector/verifier gates after both subagents finish.
+  assert.ok(out.includes("crew:inspector"), "must mention crew:inspector for gate-driving guidance");
+});
+
+test("buildDispatchInstruction slice-build + fe+be returns a SINGLE string (not an array or object)", () => {
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-105",
+    title: "Test slice",
+    sliceFile: null,
+    repoPath: "/repo",
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\ntags: [fe, be]\n---\n# Slice\n"
+  });
+  assert.equal(typeof out, "string", "callers expect a string back-compat");
+});
+
+test("buildDispatchInstruction slice-build + fe+be: tag order does not change output structure", () => {
+  const a = buildDispatchInstruction({
+    sliceId: "SLICE-105",
+    title: "Test slice",
+    sliceFile: null,
+    repoPath: "/repo",
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\ntags: [fe, be]\n---\n# Slice\n"
+  });
+  const b = buildDispatchInstruction({
+    sliceId: "SLICE-105",
+    title: "Test slice",
+    sliceFile: null,
+    repoPath: "/repo",
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\ntags: [be, fe]\n---\n# Slice\n"
+  });
+  // Both must invoke the parallel-fe-be branch, regardless of tag order.
+  assert.match(a, /^PARALLEL DISPATCH/);
+  assert.match(b, /^PARALLEL DISPATCH/);
 });
 
 test("buildDispatchInstruction slice-build + no tags falls back to crew:fullstack-dev", () => {

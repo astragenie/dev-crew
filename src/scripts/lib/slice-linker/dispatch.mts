@@ -72,28 +72,26 @@ function resolveOrchestratorMode(
   return orchestratorMode ?? "lead";
 }
 
-export type BuilderVariant = "frontend" | "backend" | "fullstack";
+export type BuilderVariant = "frontend" | "backend" | "fullstack" | "parallel-fe-be";
 
 /**
  * Pick a crew builder variant from a slice's frontmatter `tags` array.
- * FEAT-190 / SLICE-104.
+ * FEAT-190 / SLICE-104 (single-variant) + SLICE-105 (parallel fanout).
  *
  * Mapping:
  *   - tags ⊇ {"fe"} AND NOT ⊇ {"be"} → "frontend"
  *   - tags ⊇ {"be"} AND NOT ⊇ {"fe"} → "backend"
- *   - otherwise (neither / both / missing / malformed) → "fullstack"
- *
- * The fe+be → fullstack mapping is intentionally interim for SLICE-104.
- * SLICE-105 (FEAT-190 slice-2) will swap that branch for a parallel
- * frontend-dev + backend-dev fanout payload.
+ *   - tags ⊇ {"fe"} AND ⊇ {"be"}     → "parallel-fe-be"
+ *   - otherwise (missing / malformed / no surface tag) → "fullstack"
  */
 export function pickBuilderVariant(tags: unknown): BuilderVariant {
   if (!Array.isArray(tags)) return "fullstack";
   const set = new Set(tags.filter((t): t is string => typeof t === "string"));
   const hasFe = set.has("fe");
   const hasBe = set.has("be");
-  if (hasFe && !hasBe) return "frontend";
-  if (hasBe && !hasFe) return "backend";
+  if (hasFe && hasBe) return "parallel-fe-be";
+  if (hasFe) return "frontend";
+  if (hasBe) return "backend";
   return "fullstack";
 }
 
@@ -101,6 +99,40 @@ function variantToAgent(variant: BuilderVariant): string {
   if (variant === "frontend") return "crew:frontend-dev";
   if (variant === "backend") return "crew:backend-dev";
   return "crew:fullstack-dev";
+}
+
+/**
+ * Build the dispatch instruction body for a parallel-fe-be slice-build.
+ * Emits a single string that the orchestrating agent reads inline and turns
+ * into ONE Agent tool-call message with TWO tool calls (frontend-dev +
+ * backend-dev). The PARALLEL DISPATCH header is the unambiguous signal.
+ */
+function buildParallelFeBeInstruction(
+  sliceId: string,
+  title: string,
+  rel: string | null,
+  resolvedGoal: string | null,
+  dispatchLimits: DispatchLimits | null
+): string {
+  const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
+  const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
+  const suffix = buildBudgetLine(dispatchLimits);
+  const closeTail =
+    `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`;
+  return [
+    `PARALLEL DISPATCH — issue ONE Agent message with TWO parallel tool calls:`,
+    "",
+    `  1. crew:frontend-dev with the **Frontend prompt** below.`,
+    `  2. crew:backend-dev with the **Backend prompt** below.`,
+    "",
+    `Both subagents own their respective slice surface. The parent loop drives crew:inspector and crew:verifier AFTER both return. Never use caveman:* agents for slice work.`,
+    "",
+    `**Frontend prompt** (for crew:frontend-dev):`,
+    `> Implement the frontend portion of ${title}.${sliceRef}${goalLine} You own implementation of the frontend surface only. Do NOT dispatch crew:inspector or crew:verifier yourself. ${closeTail}`,
+    "",
+    `**Backend prompt** (for crew:backend-dev):`,
+    `> Implement the backend portion of ${title}.${sliceRef}${goalLine} You own implementation of the backend surface only. Do NOT dispatch crew:inspector or crew:verifier yourself. ${closeTail}`
+  ].join("\n");
 }
 
 export function buildDispatchInstruction({
@@ -146,15 +178,22 @@ export function buildDispatchInstruction({
 
   const variant: BuilderVariant =
     mode === "slice-build" ? pickBuilderVariant(extractTags(sliceContent)) : "fullstack";
-  const agentName = variantToAgent(variant);
-  const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
-  const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
-  const suffix = buildBudgetLine(dispatchLimits);
-  const lines = [
-    `Dispatch ${agentName} subagent with this prompt:`,
-    "",
-    `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
-  ];
+
+  let header: string;
+  if (variant === "parallel-fe-be") {
+    header = buildParallelFeBeInstruction(sliceId, title, rel, resolvedGoal, dispatchLimits);
+  } else {
+    const agentName = variantToAgent(variant);
+    const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
+    const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
+    const suffix = buildBudgetLine(dispatchLimits);
+    header = [
+      `Dispatch ${agentName} subagent with this prompt:`,
+      "",
+      `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
+    ].join("\n");
+  }
+  const lines = [header];
   appendProgressSignals(lines);
   appendWorktreeSection(lines, worktreePath);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);

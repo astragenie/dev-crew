@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-105","timestamp":"2026-06-12T12:07:11.656Z","featureId":"FEAT-190","title":"SLICE-105: slice-build mode — parallel fe+be fanout (FEAT-190 slice-2)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T120711Z-plan-SLICE-105.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-105","timestamp":"2026-06-12T12:10:08.126Z","featureId":"FEAT-190","featureMovedTo":null,"validationSatisfied":false}

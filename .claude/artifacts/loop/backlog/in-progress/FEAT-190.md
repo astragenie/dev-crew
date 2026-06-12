@@ -7,7 +7,7 @@ target_release: null
 created: 2026-06-12
 updated: 2026-06-12
 depends_on: []
-slices: [SLICE-104]
+slices: [SLICE-104, SLICE-105]
 derived_from: null
 autonomous_safe: false
 tags: [workflow, orchestrator, dispatch]

@@ -5,6 +5,10 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Orchestrator mode: `slice-build` — parallel fe+be fanout (FEAT-190 / SLICE-105)
+
+`pickBuilderVariant(["fe", "be"])` now returns `"parallel-fe-be"` (retires the SLICE-104 interim `"fullstack"` mapping). `buildDispatchInstruction` for a `slice-build` fullstack slice emits a single string starting with `PARALLEL DISPATCH —` and inlines BOTH prompts (frontend + backend). Orchestrating agent reads it as one Agent message with two parallel tool calls (`crew:frontend-dev` + `crew:backend-dev`). Single-variant routing from SLICE-104 unchanged.
+
 ### Orchestrator mode: `slice-build` — single-variant routing (FEAT-190 / SLICE-104)
 
 New `orchestratorMode: "slice-build"` value. When set, the slice dispatch instruction reads the slice's frontmatter `tags` and emits the right crew builder variant:
