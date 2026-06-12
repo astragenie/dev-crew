@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-112","timestamp":"2026-06-12T14:50:07.259Z","featureId":"FEAT-196","title":"SLICE-112: PM ToolSearch step in dispatch-discipline section (FEAT-196)","planPath":"C:\\work\\mega\\loop\\.claude\\artifacts\\loop\\plans\\20260612T145007Z-plan-SLICE-112.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-112","timestamp":"2026-06-12T14:53:28.220Z","featureId":"FEAT-196","featureMovedTo":null,"validationSatisfied":false}

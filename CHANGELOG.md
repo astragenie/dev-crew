@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### PM ToolSearch precondition for spec-writer dispatch (FEAT-196 / SLICE-112)
+
+Validated 2026-06-12 that granting `Agent` in PM frontmatter (FEAT-195) was necessary but not sufficient — `Agent` is a deferred tool, PM must call `ToolSearch(query: "select:Agent")` to load the Agent schema before invoking it. Without ToolSearch, PM saw only base tools (Read, Grep, Glob, Bash) and the spec-writer dispatch silently failed. Fix: add the ToolSearch precondition to the dispatch-discipline section of `agents/pm.md`.
+
+**Possible retroactive explanation for lead specialist-pause (FEAT-191)**: the same deferred-Agent gap may have caused N% of crew:lead's narration-only returns across SLICE-97/98/99/101/102/103/104. Lead's prompt didn't instruct it to ToolSearch either. Not the full story — lead also had prompt brittleness — but worth noting as future hero-crew investigation lead.
+
 ## v0.43.2 — 2026-06-12 — PM Agent grant + --include-triaged flag
 
 ### PM agent gains `Agent` tool to enable /loop:retriage gate (FEAT-195 / SLICE-111)

@@ -66,3 +66,20 @@ test("agents/pm.md still references the retriage gate that motivates the Agent g
     "body must cite the /loop:retriage gate so future readers understand the Agent grant"
   );
 });
+
+// FEAT-196 / SLICE-112 — ToolSearch precondition for deferred Agent tool.
+
+test("agents/pm.md tells PM to ToolSearch for Agent before dispatching loop:spec-writer", async () => {
+  const { body } = await readPm();
+  assert.match(body, /ToolSearch/, "body must mention ToolSearch");
+  assert.match(
+    body,
+    /select:Agent/,
+    "body must specify the exact ToolSearch query (select:Agent) PM should use"
+  );
+  assert.match(
+    body,
+    /deferred/i,
+    "body must explain Agent is a deferred tool so future readers understand why ToolSearch is required"
+  );
+});
