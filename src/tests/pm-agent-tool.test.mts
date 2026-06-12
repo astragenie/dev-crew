@@ -96,19 +96,6 @@ test("agents/pm.md still references the retriage gate that motivates the Agent g
   );
 });
 
-// FEAT-196 / SLICE-112 — ToolSearch precondition for deferred Agent tool.
-
-test("agents/pm.md tells PM to ToolSearch for Agent before dispatching loop:spec-writer", async () => {
-  const { body } = await readPm();
-  assert.match(body, /ToolSearch/, "body must mention ToolSearch");
-  assert.match(
-    body,
-    /select:Agent/,
-    "body must specify the exact ToolSearch query (select:Agent) PM should use"
-  );
-  assert.match(
-    body,
-    /deferred/i,
-    "body must explain Agent is a deferred tool so future readers understand why ToolSearch is required"
-  );
-});
+// FEAT-196 / SLICE-112 test removed v0.43.7 — body prose collapsed; tool grants in
+// frontmatter remain authoritative (tests at lines 17 and 28). Operator decided the
+// tool/deferred-surface explanation in agent body was confusing PM more than helping.

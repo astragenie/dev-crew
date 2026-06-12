@@ -5,7 +5,15 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
-## v0.43.6 — 2026-06-12 — PM tools list — inline-array format + Edit/Write/Task* grants
+## v0.43.7 — 2026-06-12 — PM agent doc simplification — spec-writer fanout hard rule
+
+### Hoist spec-writer fanout to a short HARD RULE; collapse verbose dispatch-discipline + ToolSearch-precondition prose
+
+`agents/pm.md` gained a 2-line HARD RULE at the top of the agent body — "PM may fan out `loop:spec-writer` via `Agent` to improve AC quality under `/loop:retriage`. `Agent` and `ToolSearch` are available in your tool surface." This is the load-bearing capability statement; everything else was reducing it to noise.
+
+The two-paragraph "Dispatch discipline (FEAT-195 / SLICE-111)" + "ToolSearch precondition (FEAT-196 / SLICE-112)" block under `## Sub-agents you may dispatch` collapsed to a single line stating that PM's only allowed in-turn `Agent` call is `loop:spec-writer` under the retriage gate. The deferred-tool plumbing detail was confusing PM into entangling "available tool" with "deferred-tool surface" semantics — both v0.43.3 and v0.43.6 release notes flagged this as ongoing surface ambiguity.
+
+No frontmatter change; `tools:` list still grants `Agent` and `ToolSearch`. No CLI/runtime change. Doc-only release.
 
 ### Switch PM frontmatter to inline-array tool list; add Edit, Write, TaskCreate/Update/List/Get
 

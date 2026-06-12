@@ -5,11 +5,48 @@ priority: P2
 category: quality
 target_release: null
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-12
 depends_on: []
 slices: []
 derived_from: docs/superpowers/plans/2026-06-11-lead-dispatch-discipline-diagnostic.md
 tags: [discipline, lead-orchestration, slice-frontmatter]
+pm_customer_impact: 0.55
+pm_effort_estimate: 0.45
+pm_strategic_alignment: 0.8
+pm_technical_risk: 0.55
+pm_dependency_depth: 0.6
+composite_priority: needs-review
+autonomous_safe: false
+acClarity:
+  rewrite: true
+  rewriteDispatchOk: false
+scopeNotes: |
+  AC clarity gate FAILED. AC are presented as "Acceptance hints" with explicit
+  hedging ("final ordering to be confirmed in slice plan"). Edge cases not
+  covered: missing PM scores, conflicting tags (e.g. concern:security +
+  docs-only), invalid frontmatter shape, paired hero-crew PR not merged.
+  Not in Given-When-Then form. Per agents/pm.md gate step 4, dispatched
+  loop:spec-writer to rewrite — DISPATCH FAILED because the Agent tool
+  schema was not surfaced in this PM dispatch's tool environment (ToolSearch
+  query "select:Agent" returned no match; only Task* deferred tools were
+  loaded). Per gate step 6 this escalates to needs-review. Operator must
+  re-run /loop:retriage with PM granted the Agent tool, or manually dispatch
+  loop:spec-writer to rewrite the AC before this FEAT can be scored
+  authoritatively. ID COLLISION: done/FEAT-184.md (telemetry writer,
+  shipped via SLICE-92, GitHub issue 204) already uses this ID — this
+  pending FEAT-184 should likely be renumbered to FEAT-200+ before
+  triage. Cost analog: FEAT-025 SLICE-B (auto-walker risk gate +
+  preflight) ran $11.17 / 25 min — pure-logic gate work supports
+  effort_estimate ~0.4 if scope holds. Weak dimensions: observability
+  averages 0.82 over last 5 grades but this is expected-low for
+  plugin-dev stack per project memory; no weak-dim AC required.
+  All other dimensions ≥ 0.84.
+risks:
+  - AC rewrite blocked because Agent tool unavailable in this PM dispatch surface
+  - ID collision with done/FEAT-184 (telemetry writer SLICE-92 / GH-204) — backlog hygiene risk
+  - Cross-repo coordination — paired hero-crew agents/lead.md PR not tracked in depends_on
+  - Rule-table ordering TBD — conflict resolution between HIGH and LOW triggers undefined (e.g. concern:security + docs-only)
+  - Frontmatter parser limitation noted in SLICE-98 lessons (feature-lifecycle.mts:282-290) may affect reading PM score fields for the classifier
 ---
 # FEAT-184: Pre-compute slice risk at `slice from-feature` time — remove manual classification from lead
 
