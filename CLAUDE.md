@@ -142,6 +142,16 @@ filter on Phase 2. Replaces the two-step `/loop:triage` + `/loop:backlog-enrich`
 sequence. Both legacy commands still work for partial-intake scenarios
 (score-only or classify-only).
 
+**Higher-quality opt-in for vague-AC batches**: `/loop:retriage` runs
+the same PM scoring contract as `/loop:triage` but PREPENDS an
+AC-clarity-gate pre-flight to the PM dispatch. When PM finds vague AC
+on a FEAT, it dispatches `loop:spec-writer` to rewrite the AC in
+Given-When-Then form, waits, re-reads, and scores against the cleaned
+AC. Cost up to 2× per FEAT vs. `/loop:triage`; scoring accuracy
+(especially `effort_estimate` + `technical_risk`) up. Spec-writer
+dispatch failure forces `composite_priority: "needs-review"` so the
+walker won't auto-promote a half-scored FEAT.
+
 `/loop:backlog-enrich` writes three routing fields into FEAT
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives

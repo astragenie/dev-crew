@@ -5,6 +5,14 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Slash command: `/loop:retriage` — opt-in higher-quality PM triage (FEAT-193 / SLICE-109)
+
+New slash command that prepends an AC-clarity-gate pre-flight to the PM dispatch. When PM finds vague AC, it dispatches `loop:spec-writer` to rewrite them in Given-When-Then form, waits, re-reads, and scores against the cleaned AC. Cost up to 2× per FEAT vs. `/loop:triage`; scoring accuracy (especially `effort_estimate` + `technical_risk`) up. On spec-writer failure, PM emits `composite_priority: "needs-review"` and explains in `scopeNotes` — walker won't auto-promote half-scored FEATs.
+
+Base `loop:pm` agent contract is UNCHANGED — the gate is in the slash command's prompt prefix. Legacy `/loop:triage` stays as the cheap default. `/loop:intake` Phase 1 keeps calling `/loop:triage`; a future FEAT may swap once we measure the cost/quality trade-off.
+
+Return shape gains `acClarity: { rewrite: boolean, rewriteDispatchOk?: boolean }` per result.
+
 ## v0.43.0 — 2026-06-12 — slice-build orchestrator, decomposition gate, intake, slice close, lead removed
 
 ### Stale lead-orchestrator refs swept post-FEAT-191 (release cleanup)
