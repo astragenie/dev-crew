@@ -172,6 +172,124 @@ test("buildDispatchInstruction slice-build + no tags falls back to crew:fullstac
   assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
 });
 
+// FEAT-190 SLICE-106 — architect pre-flight when needs_contract: true.
+
+import fs from "node:fs/promises";
+import os from "node:os";
+import nodePath from "node:path";
+
+async function tmpRepoWithContracts(prefix: string, files: string[] = []): Promise<string> {
+  const repo = await fs.mkdtemp(nodePath.join(os.tmpdir(), prefix));
+  await fs.mkdir(nodePath.join(repo, ".claude/artifacts/crew/contracts"), { recursive: true });
+  for (const f of files) {
+    await fs.writeFile(
+      nodePath.join(repo, ".claude/artifacts/crew/contracts", f),
+      "---\nkind: contract\n---\n"
+    );
+  }
+  return repo;
+}
+
+test("slice-build + needs_contract:true + no contract artifact: prepends architect pre-flight", async () => {
+  const repo = await tmpRepoWithContracts("sb-preflight-");
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-PF-1",
+    title: "Pre-flight slice",
+    sliceFile: null,
+    repoPath: repo,
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\nneeds_contract: true\ntags: [be]\n---\n# Slice\n"
+  });
+  assert.match(out, /^ARCHITECT PRE-FLIGHT/);
+  assert.ok(out.includes("crew:architect"), "must dispatch crew:architect first");
+  // Builder dispatch still embedded below the pre-flight.
+  assert.ok(
+    out.includes("Dispatch crew:backend-dev"),
+    "must still include the builder dispatch below pre-flight"
+  );
+});
+
+test("slice-build + needs_contract:true + EXISTING contract artifact: no pre-flight", async () => {
+  const repo = await tmpRepoWithContracts("sb-existing-", ["SLICE-PF-2-design.md"]);
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-PF-2",
+    title: "Pre-flight slice",
+    sliceFile: null,
+    repoPath: repo,
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\nneeds_contract: true\ntags: [fe]\n---\n# Slice\n"
+  });
+  assert.ok(!out.startsWith("ARCHITECT PRE-FLIGHT"), "no pre-flight when contract exists");
+  assert.match(out, /^Dispatch crew:frontend-dev/);
+});
+
+test("slice-build + needs_contract:false: no pre-flight regardless of artifact presence", async () => {
+  const repo = await tmpRepoWithContracts("sb-no-need-");
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-PF-3",
+    title: "Pre-flight slice",
+    sliceFile: null,
+    repoPath: repo,
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\nneeds_contract: false\ntags: [be]\n---\n# Slice\n"
+  });
+  assert.ok(!out.startsWith("ARCHITECT PRE-FLIGHT"), "no pre-flight when needs_contract is false");
+  assert.match(out, /^Dispatch crew:backend-dev/);
+});
+
+test("slice-build + needs_contract missing (default false): no pre-flight", async () => {
+  const repo = await tmpRepoWithContracts("sb-missing-");
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-PF-4",
+    title: "Pre-flight slice",
+    sliceFile: null,
+    repoPath: repo,
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\ntags: [fe]\n---\n# Slice\n"
+  });
+  assert.ok(!out.startsWith("ARCHITECT PRE-FLIGHT"));
+});
+
+test("legacy modes (lead, direct-builder) ignore needs_contract — no pre-flight", async () => {
+  const repo = await tmpRepoWithContracts("sb-legacy-");
+  for (const mode of ["lead", "direct-builder"] as const) {
+    const out = buildDispatchInstruction({
+      sliceId: "SLICE-PF-5",
+      title: "Legacy",
+      sliceFile: null,
+      repoPath: repo,
+      resolvedGoal: null,
+      orchestratorMode: mode,
+      sliceContent: "---\nneeds_contract: true\ntags: [be]\n---\n# Slice\n"
+    });
+    assert.ok(
+      !out.startsWith("ARCHITECT PRE-FLIGHT"),
+      `mode ${mode} must not add pre-flight (legacy behavior)`
+    );
+  }
+});
+
+test("slice-build + needs_contract:true + parallel-fe-be: pre-flight precedes PARALLEL DISPATCH header", async () => {
+  const repo = await tmpRepoWithContracts("sb-preflight-parallel-");
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-PF-6",
+    title: "Full-stack",
+    sliceFile: null,
+    repoPath: repo,
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\nneeds_contract: true\ntags: [fe, be]\n---\n# Slice\n"
+  });
+  assert.match(out, /^ARCHITECT PRE-FLIGHT/);
+  assert.ok(out.includes("PARALLEL DISPATCH"), "builder portion must still be parallel");
+  assert.ok(out.includes("crew:frontend-dev"));
+  assert.ok(out.includes("crew:backend-dev"));
+});
+
 test("buildDispatchInstruction direct-builder (back-compat) still emits crew:fullstack-dev", () => {
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",

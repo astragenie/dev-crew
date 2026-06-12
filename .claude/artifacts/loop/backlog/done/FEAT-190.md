@@ -1,13 +1,15 @@
 ---
 id: FEAT-190
-status: in-progress
+status: done
+slices_complete: [SLICE-104, SLICE-105, SLICE-106]
+completed_at: 2026-06-12
 priority: P1
 category: workflow
 target_release: null
 created: 2026-06-12
 updated: 2026-06-12
 depends_on: []
-slices: [SLICE-104, SLICE-105]
+slices: [SLICE-104, SLICE-105, SLICE-106]
 derived_from: null
 autonomous_safe: false
 tags: [workflow, orchestrator, dispatch]

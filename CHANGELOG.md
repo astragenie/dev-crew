@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Orchestrator mode: `slice-build` — architect pre-flight (FEAT-190 / SLICE-106) — **closes FEAT-190**
+
+When `orchestratorMode: "slice-build"` AND the slice's frontmatter declares `needs_contract: true` AND no contract artifact exists yet at `.claude/artifacts/crew/contracts/<sliceId>-*.md`, `buildDispatchInstruction` now prepends an `ARCHITECT PRE-FLIGHT —` block instructing the orchestrating agent to dispatch `crew:architect` first and await a contract artifact before dispatching the builder(s). When the contract artifact already exists OR `needs_contract` is false, no pre-flight is added — straight builder dispatch (single-variant or parallel fe+be). Legacy modes (`lead`, `orchestrate-slice`, `direct-builder`) ignore `needs_contract` per their existing behavior.
+
+This closes the three-slice FEAT-190 effort (SLICE-104 single-variant routing, SLICE-105 parallel fanout, SLICE-106 architect pre-flight).
+
 ### Orchestrator mode: `slice-build` — parallel fe+be fanout (FEAT-190 / SLICE-105)
 
 `pickBuilderVariant(["fe", "be"])` now returns `"parallel-fe-be"` (retires the SLICE-104 interim `"fullstack"` mapping). `buildDispatchInstruction` for a `slice-build` fullstack slice emits a single string starting with `PARALLEL DISPATCH —` and inlines BOTH prompts (frontend + backend). Orchestrating agent reads it as one Agent message with two parallel tool calls (`crew:frontend-dev` + `crew:backend-dev`). Single-variant routing from SLICE-104 unchanged.

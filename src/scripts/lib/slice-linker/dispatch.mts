@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { locateSliceFile, backlogRoot as resolveBacklogRoot } from "../paths.mjs";
@@ -179,6 +180,11 @@ export function buildDispatchInstruction({
   const variant: BuilderVariant =
     mode === "slice-build" ? pickBuilderVariant(extractTags(sliceContent)) : "fullstack";
 
+  const preflight =
+    mode === "slice-build" && needsContractPreflight(sliceContent, repoPath, sliceId)
+      ? buildArchitectPreflight(sliceId, title, rel) + "\n---\n\n"
+      : "";
+
   let header: string;
   if (variant === "parallel-fe-be") {
     header = buildParallelFeBeInstruction(sliceId, title, rel, resolvedGoal, dispatchLimits);
@@ -193,7 +199,7 @@ export function buildDispatchInstruction({
       `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
     ].join("\n");
   }
-  const lines = [header];
+  const lines = [preflight + header];
   appendProgressSignals(lines);
   appendWorktreeSection(lines, worktreePath);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
@@ -204,6 +210,52 @@ function extractTags(sliceContent: string | null): unknown {
   if (!sliceContent) return undefined;
   const { frontmatter } = parseFrontmatter(sliceContent);
   return frontmatter?.tags;
+}
+
+function extractNeedsContract(sliceContent: string | null): boolean {
+  if (!sliceContent) return false;
+  const { frontmatter } = parseFrontmatter(sliceContent);
+  return frontmatter?.needs_contract === true;
+}
+
+/**
+ * Decide whether a `slice-build` dispatch should prepend an architect pre-flight.
+ * Returns true when the slice declares `needs_contract: true` AND no contract
+ * artifact already exists at `.claude/artifacts/crew/contracts/<sliceId>-*.md`.
+ * Synchronous — uses readdirSync to keep buildDispatchInstruction sync.
+ * FEAT-190 / SLICE-106.
+ */
+function needsContractPreflight(
+  sliceContent: string | null,
+  repoPath: string,
+  sliceId: string
+): boolean {
+  if (!extractNeedsContract(sliceContent)) return false;
+  const dir = path.join(repoPath, ".claude/artifacts/crew/contracts");
+  if (!existsSync(dir)) return true;
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return true;
+  }
+  const prefix = `${sliceId}-`;
+  const has = entries.some((name) => name.startsWith(prefix) && name.endsWith(".md"));
+  return !has;
+}
+
+function buildArchitectPreflight(sliceId: string, title: string, rel: string | null): string {
+  const sliceRef = rel ? ` See \`${rel}\` for slice scope.` : "";
+  return [
+    `ARCHITECT PRE-FLIGHT — slice declares \`needs_contract: true\` and no contract artifact exists yet.`,
+    "",
+    `Dispatch crew:architect FIRST with this prompt:`,
+    "",
+    `> Produce a contract artifact for ${sliceId} (${title}).${sliceRef} Write the contract under \`.claude/artifacts/crew/contracts/${sliceId}-<short-name>.md\` with frontmatter \`kind: contract\` + \`slice: ${sliceId}\`. The contract must capture: data shapes, public function signatures, integration surfaces, and edge cases the builder(s) will consume. Return the artifact path so the parent loop can verify and proceed.`,
+    "",
+    `AWAIT the contract artifact. Then proceed with the builder dispatch below:`,
+    ""
+  ].join("\n");
 }
 
 function buildLeadOrchestratorInstruction(
