@@ -1,13 +1,13 @@
 ---
 id: FEAT-173
-status: triaged
+status: in-progress
 priority: P3
 category: competitor-gap
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-127]
 derived_from: null
 github_issue: 90
 github_milestone: null
@@ -20,6 +20,7 @@ pm_dependency_depth: 0.2
 composite_score: 0.56
 autonomous_safe: false
 triage_notes: "via=pm | Moderate impact, vague AC (no title/body inference rules, no error cases), crew:parallel impact needs architect review. P3 pending AC."
+started_at: 2026-06-13
 ---
 # FEAT-173: Auto-PR mode for parallel worktree dispatch - inferred title/description via gh instead of direct merge to main
 

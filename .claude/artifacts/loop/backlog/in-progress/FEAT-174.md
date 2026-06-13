@@ -1,13 +1,13 @@
 ---
 id: FEAT-174
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-124]
 derived_from: null
 github_issue: 91
 github_milestone: null
@@ -20,6 +20,7 @@ pm_dependency_depth: 0.25
 composite_score: 0.555
 autonomous_safe: false
 triage_notes: via=pm | Workaround not root fix (FEAT-176 is). High false-positive risk on pattern detector; implicit-only AC. May be obsoleted if upstream ships. P2 pending AC + FEAT-176 status.
+started_at: 2026-06-13
 ---
 # FEAT-174: Error-pattern registry with automatic recovery for specialist dispatch failures
 

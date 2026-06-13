@@ -1,13 +1,13 @@
 ---
 id: FEAT-182
-status: triaged
+status: in-progress
 priority: P3
 category: feature
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-126]
 derived_from: null
 autonomous_safe: false
 pm_customer_impact: 0.5
@@ -17,6 +17,10 @@ pm_technical_risk: 0.6
 pm_dependency_depth: 0.3
 composite_score: 0.54
 triage_notes: "Backlog audit needs AC parser + codebase scanner + PM-in-the-loop verification before any state change; false-positive risk, parser brittleness. Recommend spec-writer + architect review before slicing -> not autonomous."
+started_at: 2026-06-13
+github_issue: 265
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/265"
 ---
 # FEAT-182: loop backlog audit — auto-flag likely-already-satisfied FEATs with evidence
 

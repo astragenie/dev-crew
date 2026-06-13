@@ -1,13 +1,13 @@
 ---
 id: FEAT-175
-status: triaged
+status: in-progress
 priority: P3
 category: competitor-gap
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-125]
 derived_from: null
 github_issue: 92
 github_milestone: null
@@ -20,6 +20,7 @@ pm_dependency_depth: 0.3
 composite_score: 0.5375
 autonomous_safe: false
 triage_notes: "via=pm | Debt not feature; no weak-dim address. Generic AC, needs test fixtures + gate-severity thresholding. P3; consider manual subcommand vs blocking CI gate."
+started_at: 2026-06-13
 ---
 # FEAT-175: Artifact link-integrity checker and graph emitter for FEAT/SPEC/DEC/slice cross-links
 
