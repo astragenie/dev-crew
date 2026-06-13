@@ -113,9 +113,9 @@ function extractKeywords(content: string): string[] {
 /** Recursively collect all .mts / .ts / .js / .mjs files under srcDir. */
 async function collectSourceFiles(srcDir: string): Promise<string[]> {
   const results: string[] = [];
-  let entries: Awaited<ReturnType<typeof fs.readdir>>;
+  let entries: import("node:fs").Dirent<string>[];
   try {
-    entries = await fs.readdir(srcDir, { withFileTypes: true });
+    entries = (await fs.readdir(srcDir, { withFileTypes: true })) as import("node:fs").Dirent<string>[];
   } catch {
     return results;
   }
@@ -156,6 +156,49 @@ async function searchFileForKeyword(
   return hits;
 }
 
+async function searchKeywords(
+  keywords: string[],
+  sourceFiles: string[],
+  repoPath: string
+): Promise<{ foundCount: number; evidence: string[] }> {
+  let foundCount = 0;
+  const evidence: string[] = [];
+  for (const keyword of keywords) {
+    let keywordHit = false;
+    for (const srcFile of sourceFiles) {
+      if (evidence.length >= MAX_EVIDENCE_PER_FEAT) break;
+      const hits = await searchFileForKeyword(srcFile, repoPath, keyword, MAX_EVIDENCE_PER_FEAT - evidence.length);
+      if (hits.length > 0) {
+        evidence.push(...hits);
+        keywordHit = true;
+      }
+    }
+    if (keywordHit) foundCount++;
+    if (evidence.length >= MAX_EVIDENCE_PER_FEAT) break;
+  }
+  return { foundCount, evidence };
+}
+
+async function auditFeatFile(
+  filePath: string,
+  filename: string,
+  repoPath: string,
+  sourceFiles: string[]
+): Promise<AuditResult | null> {
+  let content: string;
+  try {
+    content = await fs.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+  const { id, title } = extractIdAndTitle(content, filename);
+  const keywords = extractKeywords(content);
+  if (keywords.length === 0) return { id, title, verdict: "open", evidence: [] };
+  const { foundCount, evidence } = await searchKeywords(keywords, sourceFiles, repoPath);
+  const verdict: AuditVerdict = foundCount >= LIKELY_THRESHOLD ? "likely_satisfied" : foundCount === 1 ? "partially" : "open";
+  return { id, title, verdict, evidence };
+}
+
 /**
  * Audit the backlog for FEATs whose AC keywords already appear in the
  * source tree, suggesting they may already be implemented.
@@ -163,74 +206,20 @@ async function searchFileForKeyword(
 export async function auditBacklog(repoPath: string, opts?: AuditOptions): Promise<AuditResult[]> {
   const states = opts?.states ?? ["pending", "triaged"];
   const srcDir = path.resolve(repoPath, opts?.srcDir ?? "src");
-
-  // Collect source files once — shared across all FEATs
   const sourceFiles = await collectSourceFiles(srcDir);
-
   const results: AuditResult[] = [];
 
   for (const state of states) {
     const stateDir = path.join(repoPath, ".claude", "artifacts", "loop", "backlog", state);
-    let entries: Awaited<ReturnType<typeof fs.readdir>>;
+    let entries: string[];
     try {
-      entries = await fs.readdir(stateDir);
+      entries = (await fs.readdir(stateDir)) as string[];
     } catch {
-      // Directory missing — treat as empty
       continue;
     }
-
-    const featFiles = entries.filter((f) => FEAT_FILE_RE.test(f)).sort();
-
-    for (const filename of featFiles) {
-      const filePath = path.join(stateDir, filename);
-      let content: string;
-      try {
-        content = await fs.readFile(filePath, "utf8");
-      } catch {
-        continue;
-      }
-
-      const { id, title } = extractIdAndTitle(content, filename);
-      const keywords = extractKeywords(content);
-
-      if (keywords.length === 0) {
-        results.push({ id, title, verdict: "open", evidence: [] });
-        continue;
-      }
-
-      // Search for each keyword across all source files
-      let foundCount = 0;
-      const evidence: string[] = [];
-
-      for (const keyword of keywords) {
-        let keywordHit = false;
-        for (const srcFile of sourceFiles) {
-          if (evidence.length >= MAX_EVIDENCE_PER_FEAT) break;
-          const hits = await searchFileForKeyword(
-            srcFile,
-            repoPath,
-            keyword,
-            MAX_EVIDENCE_PER_FEAT - evidence.length
-          );
-          if (hits.length > 0) {
-            evidence.push(...hits);
-            keywordHit = true;
-          }
-        }
-        if (keywordHit) foundCount++;
-        if (evidence.length >= MAX_EVIDENCE_PER_FEAT) break;
-      }
-
-      let verdict: AuditVerdict;
-      if (foundCount >= LIKELY_THRESHOLD) {
-        verdict = "likely_satisfied";
-      } else if (foundCount === 1) {
-        verdict = "partially";
-      } else {
-        verdict = "open";
-      }
-
-      results.push({ id, title, verdict, evidence });
+    for (const filename of (entries as string[]).filter((f: string) => FEAT_FILE_RE.test(f)).sort()) {
+      const result = await auditFeatFile(path.join(stateDir, filename), filename, repoPath, sourceFiles);
+      if (result) results.push(result);
     }
   }
 
