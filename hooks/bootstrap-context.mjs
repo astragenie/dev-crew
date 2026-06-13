@@ -32,9 +32,9 @@ HARD RULES — read .claude/loop/rules.md for the full set.
    Never implement inline except trivial single-line fixups.
    Parent loop dispatches crew:inspector then crew:verifier after builder.
 
-5. Stop signals (auto mode): escalated_to_human | cost cap exceeded |
-   warn-severity pattern alerts | external blocker. Backlog exhaustion ends
-   the walk gracefully. Everything else: continue.
+5. Auto-continue: after slice ceremony, promote next backlog item without
+   asking. Stop only on: escalated_to_human | cost cap exceeded |
+   warn-severity pattern alerts | external blocker | backlog exhaustion.
 
 6. First action when starting the loop:
      read .claude/loop/rules.md
