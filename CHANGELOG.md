@@ -5,6 +5,21 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.44.0 — 2026-06-13 — Pause / resume lifecycle for async waits (FEAT-128 / SLICE-118)
+
+### Pause / resume conversation lifecycle for external-event waits
+
+The autonomous loop can now be suspended and resumed by the operator without stopping the Claude Code session. Two new CLI subcommands manage the lifecycle:
+
+- `bun src/scripts/loop.mts pause --reason "<description>" [--repo <path>]` — writes `.claude/state/loop/paused.json` with `triggered: true`, the operator-supplied reason, a default `resumeHint`, and a `pausedAt` ISO-8601 timestamp.
+- `bun src/scripts/loop.mts resume [--repo <path>]` — deletes `.claude/state/loop/paused.json`; the walker resumes from the current backlog state on the next iteration. Idempotent (no-op when the file is already absent).
+
+A new `pausedForExternalEvent` halt-badge is wired into the stop-check gate as a hard halt. The check is fail-open: a missing file, malformed JSON, or absent `triggered: true` field are all treated as "not paused" so a partial or corrupt state file never permanently blocks the walker. The badge populates `snapshot.pausedForExternalEvent` with `{ triggered, reason, resumeHint, pausedAt }` when active.
+
+Implementation spans four modules: `src/scripts/lib/paused-for-external-event.mts` (new — reader + interface), `src/scripts/lib/stop-conditions.mts` (13th parallel `gatherStopInputs` call + `assembleStopResult` wiring), `src/scripts/lib/halt-badges.mts` (8th `HALT_BADGES` entry + `renderPausedForExternalEvent`), and `src/scripts/loop.mts` (`pause` / `resume` subcommand handlers). `.gitignore` excludes `.claude/state/loop/paused.json` so the runtime state file never enters version control. Registry entry added to `docs/halt-badges.md` per the doc-contract requirement.
+
+8 unit tests in `src/tests/paused-for-external-event.test.mts` (fail-open paths: absent file, malformed JSON, missing triggered flag, triggered=false; happy-path: full valid payload; partial payloads with fallback defaults). `src/tests/explain-halts.test.mts` updated for the 8th badge and multi-halt fixture.
+
 ## v0.43.7 — 2026-06-12 — PM agent doc simplification — spec-writer fanout hard rule
 
 ### Hoist spec-writer fanout to a short HARD RULE; collapse verbose dispatch-discipline + ToolSearch-precondition prose
