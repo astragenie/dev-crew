@@ -1595,14 +1595,15 @@ async function runLessonsRankSubcommand(
 
   const limitRaw =
     flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : undefined;
-  const capped = limitRaw !== undefined && !Number.isNaN(limitRaw)
-    ? allEntries.slice(0, limitRaw)
-    : allEntries;
+  const limit = limitRaw !== undefined && !Number.isNaN(limitRaw) ? limitRaw : undefined;
 
   const query: string | undefined =
     flags.query !== null && flags.query !== undefined ? String(flags.query) : undefined;
 
-  const ranked = rankLearnings(capped, { ...(query !== undefined ? { query } : {}), nowMs: Date.now() });
+  // Rank ALL entries first, then cap to --limit (not before — pre-slicing by insertion order
+  // would return the first N entries rather than the top N by decay+utility score).
+  const rankedAll = rankLearnings(allEntries, { ...(query !== undefined ? { query } : {}), nowMs: Date.now() });
+  const ranked = limit !== undefined ? rankedAll.slice(0, limit) : rankedAll;
 
   process.stdout.write(JSON.stringify(ranked, null, 2) + "\n");
   return { _suppressDefaultOutput: true };

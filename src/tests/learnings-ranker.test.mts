@@ -98,3 +98,20 @@ test("rankLearnings: undefined utility_score treated as 1", () => {
   assert.equal(result[0]!.id, "two");
   assert.equal(result[1]!.id, "undef");
 });
+
+// Test 7 — --limit post-rank: slice after ranking returns top-N by score, not first-N by insertion
+test("rankLearnings + limit: post-rank slice returns top-N by score", () => {
+  const nowMs = 0;
+  // Insert in ascending utility order; only the top 2 by score should appear with limit=2
+  const entries: LearningEntry[] = [
+    makeEntry({ id: "score1", text: "lowest score", utility_score: 1, confidence: 1.0, createdAt: 0 }),
+    makeEntry({ id: "score3", text: "mid score", utility_score: 3, confidence: 1.0, createdAt: 0 }),
+    makeEntry({ id: "score9", text: "highest score", utility_score: 9, confidence: 1.0, createdAt: 0 }),
+    makeEntry({ id: "score5", text: "fourth score", utility_score: 5, confidence: 1.0, createdAt: 0 })
+  ];
+  // Rank all, then slice to 2 (mimics the CLI --limit behaviour)
+  const ranked = rankLearnings(entries, { nowMs }).slice(0, 2);
+  assert.equal(ranked.length, 2);
+  assert.equal(ranked[0]!.id, "score9", "highest utility should rank first");
+  assert.equal(ranked[1]!.id, "score5", "second highest should be second");
+});
