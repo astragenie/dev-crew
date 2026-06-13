@@ -86,6 +86,16 @@ function renderMarathonCheckpoint(e: any): string[] {
   ];
 }
 
+function renderPausedForExternalEvent(e: any): string[] {
+  if (!e) return [];
+  return [
+    `- Reason: ${e.reason}`,
+    `- Paused at: ${e.pausedAt}`,
+    `- Resume hint: ${e.resumeHint}`,
+    `- Suggested action: run \`bun src/scripts/loop.mts resume --repo .\` once the external event has resolved. The walker resumes from the current backlog state — no checkpoint replay needed.`
+  ];
+}
+
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES: HaltBadgeRenderer[] = [
   { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
@@ -102,6 +112,11 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
     field: "marathonCheckpoint",
     gateName: "Marathon checkpoint",
     render: renderMarathonCheckpoint
+  },
+  {
+    field: "pausedForExternalEvent",
+    gateName: "Paused for external event",
+    render: renderPausedForExternalEvent
   }
 ];
 

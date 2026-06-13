@@ -10,6 +10,10 @@ import { checkCostRegression, type CostRegressionSignal } from "./cost-regressio
 import { checkSessionDrift, type SessionDriftSignal } from "./session-drift.mjs";
 import { checkRedundantReadStop, type RedundantReadSignal } from "./redundant-read-detector.mjs";
 import { checkMarathonCheckpoint, type MarathonCheckpointSignal } from "./marathon-checkpoint.mjs";
+import {
+  checkPausedForExternalEvent,
+  type PausedForExternalEventSignal
+} from "./paused-for-external-event.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -212,6 +216,29 @@ function buildMarathonCheckpointSnapshotEntry(sig: MarathonCheckpointSignal | nu
   };
 }
 
+export function buildPausedForExternalEventSnapshotEntry(
+  sig: PausedForExternalEventSignal | null
+): PausedForExternalEventSignal | null {
+  if (!sig) return null;
+  return sig;
+}
+
+function applyPausedForExternalEventSignal(
+  sig: PausedForExternalEventSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!sig) return;
+  reasons.push(`paused_for_external_event: ${sig.reason} (paused at ${sig.pausedAt})`);
+  blockers.push({
+    category: "paused-for-external-event",
+    message: `loop paused by operator: ${sig.reason} (since ${sig.pausedAt})`,
+    suggestion: "Run: bun src/scripts/loop.mts resume --repo ."
+  });
+  suggestions.push(sig.resumeHint);
+}
+
 function applyMarathonCheckpointSignal(
   sig: MarathonCheckpointSignal | null,
   reasons: any[],
@@ -366,7 +393,8 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     sessionDriftSignal,
     redundantReadSignal,
     marathonCheckpointSignal,
-    workflowState
+    workflowState,
+    pausedForExternalEventSignal
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
@@ -379,7 +407,8 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     checkSessionDrift(repoPath),
     checkRedundantReadStop(repoPath, config),
     checkMarathonCheckpoint(repoPath, config),
-    readCrewWorkflowState(repoPath)
+    readCrewWorkflowState(repoPath),
+    checkPausedForExternalEvent(repoPath)
   ]);
   return {
     backlog,
@@ -393,7 +422,8 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     sessionDriftSignal,
     redundantReadSignal,
     marathonCheckpointSignal,
-    workflowState
+    workflowState,
+    pausedForExternalEventSignal
   };
 }
 
@@ -414,7 +444,8 @@ export async function checkStopConditions(
     sessionDriftSignal,
     redundantReadSignal,
     marathonCheckpointSignal,
-    workflowState
+    workflowState,
+    pausedForExternalEventSignal
   } = await gatherStopInputs(repoPath, config);
 
   // autoMode defaults to true so freshly hand-rolled .claude/loop.json
@@ -453,6 +484,7 @@ export async function checkStopConditions(
   applySessionDriftSignal(sessionDriftSignal, reasons, suggestions, blockers);
   applyRedundantReadStopSignal(redundantReadSignal, reasons, suggestions, blockers);
   applyMarathonCheckpointSignal(marathonCheckpointSignal, reasons, suggestions, blockers);
+  applyPausedForExternalEventSignal(pausedForExternalEventSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
   return assembleStopResult({
@@ -474,7 +506,8 @@ export async function checkStopConditions(
     sessionDriftSignal,
     redundantReadSignal,
     marathonCheckpointSignal,
-    workflowState
+    workflowState,
+    pausedForExternalEventSignal
   });
 }
 
@@ -518,7 +551,10 @@ function assembleStopResult(p: any) {
       sessionDrift: buildSessionDriftSnapshotEntry(p.sessionDriftSignal),
       mergeFailed: buildMergeFailedSnapshotEntry(p.workflowState),
       redundantReadStop: buildRedundantReadSnapshotEntry(p.redundantReadSignal),
-      marathonCheckpoint: buildMarathonCheckpointSnapshotEntry(p.marathonCheckpointSignal)
+      marathonCheckpoint: buildMarathonCheckpointSnapshotEntry(p.marathonCheckpointSignal),
+      pausedForExternalEvent: buildPausedForExternalEventSnapshotEntry(
+        p.pausedForExternalEventSignal
+      )
     }
   };
 }

@@ -90,7 +90,9 @@ const FLAG_SPEC = {
   // backlog-add: pre-fill from GitHub issue
   "--from-issue": { key: "fromIssue" },
   // cost-by-skill report
-  "--cost-by-skill": { key: "costBySkill", boolean: true }
+  "--cost-by-skill": { key: "costBySkill", boolean: true },
+  // pause / resume subcommands
+  "--reason": { key: "reason" }
 };
 
 function parseArgs(argv: string[]) {
@@ -154,7 +156,8 @@ function parseArgs(argv: string[]) {
     only: null,
     includeTriaged: false,
     fromIssue: null,
-    costBySkill: false
+    costBySkill: false,
+    reason: null
   };
   const positionals: any[] = [];
 
@@ -373,6 +376,36 @@ const COMMANDS = {
       return { _suppressDefaultOutput: true };
     }
     return result;
+  },
+  pause: async ({ repoPath, flags }: CmdCtx) => {
+    const reason = flags.reason;
+    if (!reason || typeof reason !== "string" || !reason.trim()) {
+      throw new Error("pause requires --reason <text>");
+    }
+    const stateDir = path.join(repoPath, ".claude", "state", "loop");
+    const pausedFile = path.join(stateDir, "paused.json");
+    const { default: nodeFs } = await import("node:fs/promises");
+    await nodeFs.mkdir(stateDir, { recursive: true });
+    const payload = {
+      triggered: true,
+      reason: reason.trim(),
+      resumeHint: "Run: bun src/scripts/loop.mts resume --repo .",
+      pausedAt: new Date().toISOString()
+    };
+    await nodeFs.writeFile(pausedFile, JSON.stringify(payload, null, 2), "utf8");
+    process.exitCode = 0;
+    return { paused: true, reason: payload.reason, pausedAt: payload.pausedAt, path: pausedFile };
+  },
+  resume: async ({ repoPath }: CmdCtx) => {
+    const pausedFile = path.join(repoPath, ".claude", "state", "loop", "paused.json");
+    const { default: nodeFs } = await import("node:fs/promises");
+    try {
+      await nodeFs.unlink(pausedFile);
+    } catch {
+      // File absent — idempotent, treat as success.
+    }
+    process.exitCode = 0;
+    return { resumed: true };
   }
 };
 
@@ -1351,7 +1384,8 @@ async function runLearningsSubcommand(
   flags: Record<string, any>
 ) {
   const [sub] = positionals;
-  if (!sub) throw new Error("learnings requires a subcommand: log | recent | list | search | prune");
+  if (!sub)
+    throw new Error("learnings requires a subcommand: log | recent | list | search | prune");
   const { logLearning, recentLearnings, searchLearnings, deleteLearning } =
     await import("./lib/learnings.mjs");
   if (sub === "log") return runLearningsLog(repoPath, flags, logLearning);
