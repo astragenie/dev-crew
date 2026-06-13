@@ -86,7 +86,9 @@ const FLAG_SPEC = {
   "--fix": { key: "fix", boolean: true },
   // phase-gate flags
   "--serial": { key: "serial", boolean: true },
-  "--only": { key: "only" }
+  "--only": { key: "only" },
+  // backlog-add: pre-fill from GitHub issue
+  "--from-issue": { key: "fromIssue" }
 };
 
 function parseArgs(argv: string[]) {
@@ -148,7 +150,8 @@ function parseArgs(argv: string[]) {
     fix: false,
     serial: false,
     only: null,
-    includeTriaged: false
+    includeTriaged: false,
+    fromIssue: null
   };
   const positionals: any[] = [];
 
@@ -556,6 +559,26 @@ async function runBacklogAdd(
   rest: string[],
   config: Record<string, any> | null
 ) {
+  // --from-issue pre-fill: fetch title, body, and GitHub metadata from a GH issue URL.
+  let githubIssue: number | null = null;
+  let githubUrl: string | null = null;
+  let issueBody: string | undefined;
+
+  if (flags.fromIssue) {
+    const { fetchIssue } = await import("./lib/from-issue.mjs");
+    const issue = await fetchIssue(flags.fromIssue);
+    // Only pre-fill title if not explicitly passed
+    if (!flags.title) {
+      flags = { ...flags, title: issue.title };
+    }
+    // Only pre-fill body if not explicitly passed
+    if (!flags.body) {
+      issueBody = issue.body || undefined;
+    }
+    githubIssue = issue.number;
+    githubUrl = issue.url;
+  }
+
   const title = flags.title || rest.join(" ");
   if (!title) throw new Error("backlog add requires a title (positional or --title).");
   if (flags.noResearch) {
@@ -564,7 +587,7 @@ async function runBacklogAdd(
         "Researcher auto-dispatch is already removed."
     );
   }
-  const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body);
+  const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body ?? issueBody);
   const { addFeature } = await import("./lib/backlog-writer.mjs");
   const result = await addFeature(repoPath, {
     title,
@@ -572,7 +595,9 @@ async function runBacklogAdd(
     category: flags.category,
     target_release: flags.targetRelease,
     body: resolvedBody,
-    config
+    config,
+    ...(githubIssue !== null ? { github_issue: githubIssue } : {}),
+    ...(githubUrl !== null ? { github_url: githubUrl } : {})
   });
   const { publishFeat } = await importGithubSync("github-sync.mjs");
   try {

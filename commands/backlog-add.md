@@ -25,6 +25,26 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog add \
   --repo "$PWD" -- Bulk delete memories from dashboard
 ```
 
+Pre-fill from a GitHub Issue (requires `gh` CLI authenticated):
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog add \
+  --repo "$PWD" \
+  --from-issue https://github.com/owner/repo/issues/42
+```
+
+When `--from-issue` is used the command calls `gh issue view <url> --json
+title,body,number,url` and pre-fills:
+
+- `title` — from the issue title (overridden by `--title` if also passed)
+- `body` — from the issue body (overridden by `--body` if also passed)
+- `github_issue` — the issue number, stored in FEAT frontmatter
+- `github_url` — the canonical issue URL, stored in FEAT frontmatter
+
+If `gh` is not installed, not authenticated, or the issue is private/
+inaccessible, the command exits with a clear error and does **not** create
+a partial FEAT file.
+
 Returned JSON includes the new id, file path, and resolved frontmatter.
 
 When --priority / --category / --target-release are omitted, the entry lands
