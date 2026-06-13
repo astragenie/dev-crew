@@ -1474,7 +1474,7 @@ async function runLessonsPromote(
 
   if (flags.json) {
     process.exitCode = 0;
-    return result;
+    return result as unknown as Record<string, unknown>;
   }
 
   const lines: string[] = [];
