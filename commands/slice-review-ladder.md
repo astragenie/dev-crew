@@ -28,13 +28,13 @@ Returns:
       "reviewer": "A",
       "subagent_type": "crew:inspector",
       "description": "Reviewer A review of SLICE-52",
-      "prompt": "You are Reviewer A on the Wiggin Loop ladder ..."
+      "prompt": "You are Reviewer A on the Wiggin Loop ladder ...\n\n## Not checked\n- Performance characteristics of the implementation\n- Cross-platform compatibility beyond the CI test environment\n- Interaction with concurrent slice changes on other branches"
     },
     {
       "reviewer": "B",
       "subagent_type": "crew:inspector",
       "description": "Reviewer B review of SLICE-52",
-      "prompt": "You are Reviewer B on the Wiggin Loop ladder ..."
+      "prompt": "You are Reviewer B on the Wiggin Loop ladder ...\n\n## Not checked\n- Correctness of business logic and AC coverage (owned by Reviewer A)\n- Test case adequacy and branch coverage (multidim test-coverage reviewer)\n- Third-party dependency version compatibility outside the pinned lock file"
     }
   ],
   "instructions": "PARALLEL_DISPATCH_CONTRACT v1\nrequired: emit exactly ONE message containing N=2 Agent tool calls\nforbidden: send any message between dispatches\nforbidden: wait for one reviewer return before next dispatch\nviolation: serial-reviewer-warning badge logged to grade\n\nAggregate verdicts — slice passes when all reviewers return PASS or PASS with minor."
@@ -47,6 +47,34 @@ Returns:
 |---|---|
 | A | Correctness, regressions, acceptance criteria coverage. Flag missing test cases. |
 | B | Production-readiness, observability (OTel/logs), security posture, edge cases. |
+
+## Not checked — required section in every reviewer prompt
+
+Every Reviewer A and Reviewer B prompt template includes a `## Not checked` section.
+Reviewers must populate this section with items they explicitly did NOT examine, so
+the lead can assess residual blind spots before grading.
+
+**Reviewer A prompt — `## Not checked` example:**
+
+```
+## Not checked
+- Performance characteristics of the implementation (benchmarks, memory allocation patterns)
+- Cross-platform compatibility beyond the CI test environment
+- Interaction with concurrent slice changes on other branches
+```
+
+**Reviewer B prompt — `## Not checked` example:**
+
+```
+## Not checked
+- Correctness of business logic and acceptance-criterion coverage (owned by Reviewer A)
+- Test case adequacy and branch coverage (owned by test-coverage reviewer when multidim)
+- Third-party dependency version compatibility outside the pinned lock file
+```
+
+Reviewers MUST include at least 2 items. Leaving the section empty causes the inspector
+to surface a `not_checked_missing` warning in the review artifact, which the lead reads
+during grade aggregation.
 
 Override per repo in `.claude/loop.json`:
 
