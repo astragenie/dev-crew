@@ -52,12 +52,26 @@ export async function readNotifyConfig(repoPath: string): Promise<NotifyConfig> 
   }
 }
 
-function interpolateCommand(template: string, event: LoopEvent): string {
+/** Shell-quote a string for POSIX sh (single-quote wrapping with embedded-quote escape). */
+function shellQuotePosix(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+/** Shell-quote a string for PowerShell (single-quote wrapping with '' escape). */
+function shellQuotePs(s: string): string {
+  return "'" + s.replace(/'/g, "''") + "'";
+}
+
+function interpolateCommand(
+  template: string,
+  event: LoopEvent,
+  quote: (s: string) => string
+): string {
   return template
-    .replace(/\{type\}/g, event.type)
-    .replace(/\{sliceId\}/g, event.sliceId ?? "")
-    .replace(/\{featureId\}/g, event.featureId ?? "")
-    .replace(/\{details\}/g, event.details ?? "");
+    .replace(/\{type\}/g, quote(event.type))
+    .replace(/\{sliceId\}/g, quote(event.sliceId ?? ""))
+    .replace(/\{featureId\}/g, quote(event.featureId ?? ""))
+    .replace(/\{details\}/g, quote(event.details ?? ""));
 }
 
 function fireOsNotification(event: LoopEvent): void {
@@ -65,17 +79,23 @@ function fireOsNotification(event: LoopEvent): void {
   const body = event.details ?? event.type;
   try {
     if (process.platform === "win32") {
+      // Escape single quotes (PS string delimiter) to prevent injection
+      const safeBody = body.replace(/'/g, "''");
+      const safeTitle = title.replace(/'/g, "''");
       _internals.spawnSync("powershell.exe", [
         "-Command",
-        `[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('${body}', '${title}')`
+        `[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('${safeBody}', '${safeTitle}')`
       ]);
     } else if (process.platform === "linux") {
+      // notify-send receives title and body as separate argv elements — no shell injection risk
       _internals.spawnSync("notify-send", [title, body]);
     } else {
-      // darwin
+      // darwin — escape backslashes then double-quotes in the AppleScript string
+      const safeBody = body.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const safeTitle = title.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       _internals.spawnSync("osascript", [
         "-e",
-        `display notification "${body}" with title "${title}"`
+        `display notification "${safeBody}" with title "${safeTitle}"`
       ]);
     }
   } catch {
@@ -100,11 +120,12 @@ async function fireWebhook(event: LoopEvent, config: NotifyConfig): Promise<void
 
 function fireCustomCommand(event: LoopEvent, config: NotifyConfig): void {
   if (!config.command) return;
-  const interpolated = interpolateCommand(config.command, event);
   try {
     if (process.platform === "win32") {
+      const interpolated = interpolateCommand(config.command, event, shellQuotePs);
       _internals.spawnSync("powershell.exe", ["-Command", interpolated]);
     } else {
+      const interpolated = interpolateCommand(config.command, event, shellQuotePosix);
       _internals.spawnSync("sh", ["-c", interpolated]);
     }
   } catch {
