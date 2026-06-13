@@ -1,11 +1,12 @@
 ---
 id: FEAT-172
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
+completed_at: 2026-06-13
 depends_on: []
 slices: []
 derived_from: null
