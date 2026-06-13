@@ -1465,9 +1465,11 @@ async function runLessonsPromote(
 ): Promise<Record<string, unknown>> {
   const { scanGradeLessonsFromRepo } = await import("./lib/lessons-ratchet.mjs");
   const rawMaxGrades = Number(flags["max-grades"]);
-  const maxGrades = flags["max-grades"] != null && !isNaN(rawMaxGrades) && rawMaxGrades > 0 ? rawMaxGrades : 20;
+  const maxGrades =
+    flags["max-grades"] != null && !isNaN(rawMaxGrades) && rawMaxGrades > 0 ? rawMaxGrades : 20;
   const rawMinRepeats = Number(flags["min-repeats"]);
-  const minRepeats = flags["min-repeats"] != null && !isNaN(rawMinRepeats) && rawMinRepeats > 0 ? rawMinRepeats : 2;
+  const minRepeats =
+    flags["min-repeats"] != null && !isNaN(rawMinRepeats) && rawMinRepeats > 0 ? rawMinRepeats : 2;
   const result = await scanGradeLessonsFromRepo(repoPath, { maxGrades, minRepeats });
 
   if (flags.json) {
