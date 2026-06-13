@@ -94,7 +94,9 @@ const FLAG_SPEC = {
   // pause / resume subcommands
   "--reason": { key: "reason" },
   // backlog-audit output format / lint-artifacts
-  "--json": { key: "json", boolean: true }
+  "--json": { key: "json", boolean: true },
+  // learnings rank
+  "--query": { key: "query" }
 };
 
 function parseArgs(argv: string[]) {
@@ -160,7 +162,8 @@ function parseArgs(argv: string[]) {
     fromIssue: null,
     costBySkill: false,
     reason: null,
-    json: false
+    json: false,
+    query: null
   };
   const positionals: any[] = [];
 
@@ -323,12 +326,17 @@ const COMMANDS = {
     await logEvent(cwd, { command: "snapshot-memory", grades: result.counts.grades });
     return result;
   },
-  lessons: async ({ repoPath, positionals }: CmdCtx) => {
+  lessons: async ({ repoPath, positionals, flags }: CmdCtx) => {
     const [sub] = positionals;
-    if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
-    const { recentLessons } = await import("./lib/lessons-feed.mjs");
-    const limit = positionals[1] ? Number(positionals[1]) : 5;
-    return recentLessons(repoPath, { limit });
+    if (sub === "recent") {
+      const { recentLessons } = await import("./lib/lessons-feed.mjs");
+      const limit = positionals[1] ? Number(positionals[1]) : 5;
+      return recentLessons(repoPath, { limit });
+    }
+    if (sub === "rank") {
+      return runLessonsRankSubcommand(repoPath, flags);
+    }
+    throw new Error("lessons requires subcommand: recent | rank");
   },
   "sync-claims": async ({ repoPath }: CmdCtx) => {
     const { syncClaims } = await import("./lib/claims-sync.mjs");
@@ -1537,6 +1545,67 @@ async function runLearningsSubcommand(
   }
   if (sub === "prune") return runLearningsPrune(repoPath, flags, deleteLearning);
   throw new Error(`Unknown learnings subcommand: ${sub}`);
+}
+
+/**
+ * `loop lessons rank [--query <text>] [--limit N] [--json]`
+ * Reads learnings.jsonl, ranks entries by decay+utility, prints JSON array.
+ * Exits 0 and prints [] when the store is absent or empty.
+ */
+async function runLessonsRankSubcommand(
+  repoPath: string,
+  flags: Record<string, any>
+): Promise<{ _suppressDefaultOutput: true }> {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const { rankLearnings } = await import("./lib/learnings-ranker.mjs");
+
+  const storeFile = path.join(
+    repoPath,
+    ".claude",
+    "artifacts",
+    "loop",
+    "learnings.jsonl"
+  );
+
+  let raw: string;
+  try {
+    raw = await fs.readFile(storeFile, "utf8");
+  } catch {
+    process.stdout.write("[]\n");
+    return { _suppressDefaultOutput: true };
+  }
+
+  const allEntries: any[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") allEntries.push(parsed);
+    } catch {
+      // skip malformed lines
+    }
+  }
+
+  if (allEntries.length === 0) {
+    process.stdout.write("[]\n");
+    return { _suppressDefaultOutput: true };
+  }
+
+  const limitRaw =
+    flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : undefined;
+  const capped = limitRaw !== undefined && !Number.isNaN(limitRaw)
+    ? allEntries.slice(0, limitRaw)
+    : allEntries;
+
+  const query: string | undefined =
+    flags.query !== null && flags.query !== undefined ? String(flags.query) : undefined;
+
+  const ranked = rankLearnings(capped, { ...(query !== undefined ? { query } : {}), nowMs: Date.now() });
+
+  process.stdout.write(JSON.stringify(ranked, null, 2) + "\n");
+  return { _suppressDefaultOutput: true };
 }
 
 async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {
