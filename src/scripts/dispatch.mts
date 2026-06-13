@@ -104,7 +104,8 @@ function cmdPrepare(args: ParsedArgs): number {
         depth,
         childCwd,
         childBranch,
-        childId: plan.id
+        childId: plan.id,
+        repoRoot: repo
       });
       process.stdout.write(`=== dispatch ${plan.id} (${plan.agentType}) ===\n`);
       process.stdout.write(augmented);

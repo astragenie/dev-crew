@@ -1,15 +1,25 @@
-type AugmentArgs = {
+import path from "node:path";
+
+export type AugmentArgs = {
   runId: string;
   depth: number;
   childCwd: string;
   childBranch: string;
   childId: string;
+  repoRoot: string;
 };
 
 export function augmentPrompt(prompt: string, args: AugmentArgs): string {
-  const { runId, depth, childCwd, childBranch, childId } = args;
+  const { runId, depth, childCwd, childBranch, childId, repoRoot } = args;
   const nextDepth = depth + 1;
-  const markerPath = `.claude/artifacts/loop/dispatch/${runId}/${childId}.result.json`;
+  // Use absolute path so child agents running inside a worktree write the
+  // marker to the main repo, not to the worktree copy of the directory tree.
+  const markerPath = path.join(
+    repoRoot,
+    ".claude/artifacts/loop/dispatch",
+    runId,
+    `${childId}.result.json`
+  );
   const header = [
     "## Hierarchical dispatch context (injected by loop:hierarchical-dispatcher)",
     "",
@@ -20,7 +30,9 @@ export function augmentPrompt(prompt: string, args: AugmentArgs): string {
     "",
     "### Result-write contract (REQUIRED before you return)",
     "",
-    `Write a JSON file to \`${markerPath}\` matching the \`DispatchResult\` schema:`,
+    `Write a JSON file to the following ABSOLUTE path: \`${markerPath}\``,
+    "",
+    "The file must match the `DispatchResult` schema:",
     "",
     "```json",
     "{",
