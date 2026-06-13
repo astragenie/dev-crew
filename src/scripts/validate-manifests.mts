@@ -48,7 +48,7 @@ export function validateCommandFrontmatter(repoRoot: string): string[] {
     const content = readFileSync(full, "utf8");
     const { frontmatter } = parseFrontmatter(content);
     // Validate name
-    if (!(Object.prototype.hasOwnProperty.call(frontmatter, "name"))) {
+    if (!Object.prototype.hasOwnProperty.call(frontmatter, "name")) {
       errors.push(`commands/${entry}: missing required field "name"`);
     } else if (typeof frontmatter["name"] !== "string" || frontmatter["name"] === "") {
       errors.push(`commands/${entry}: "name" must be a non-empty string`);
@@ -58,13 +58,16 @@ export function validateCommandFrontmatter(repoRoot: string): string[] {
       );
     }
     // Validate description
-    if (!(Object.prototype.hasOwnProperty.call(frontmatter, "description"))) {
+    if (!Object.prototype.hasOwnProperty.call(frontmatter, "description")) {
       errors.push(`commands/${entry}: missing required field "description"`);
-    } else if (typeof frontmatter["description"] !== "string" || frontmatter["description"] === "") {
+    } else if (
+      typeof frontmatter["description"] !== "string" ||
+      frontmatter["description"] === ""
+    ) {
       errors.push(`commands/${entry}: "description" must be a non-empty string`);
     }
     // Validate auto_execute_steps
-    if (!(Object.prototype.hasOwnProperty.call(frontmatter, "auto_execute_steps"))) {
+    if (!Object.prototype.hasOwnProperty.call(frontmatter, "auto_execute_steps")) {
       errors.push(`commands/${entry}: missing required field "auto_execute_steps"`);
     } else if (typeof frontmatter["auto_execute_steps"] !== "boolean") {
       errors.push(

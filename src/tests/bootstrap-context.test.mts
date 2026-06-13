@@ -25,10 +25,7 @@ test("bootstrap-context hook output stays within line budget", () => {
   const result = spawnSync("node", [HOOK_SCRIPT], { encoding: "utf8" });
   assert.equal(result.status, 0);
   const lines = result.stdout.split("\n");
-  assert.ok(
-    lines.length <= 65,
-    `line count ${lines.length} exceeds budget of 65`
-  );
+  assert.ok(lines.length <= 65, `line count ${lines.length} exceeds budget of 65`);
 });
 
 // Test 3 — Output contains all six key HARD RULE reminder topics
@@ -39,7 +36,9 @@ test("bootstrap-context hook output covers all six required topics", () => {
 
   assert.ok(stdout.includes("Run until PASS"), 'must include "Run until PASS"');
   assert.ok(
-    stdout.toLowerCase().includes("automode") || stdout.includes("auto mode") || stdout.includes("autoMode"),
+    stdout.toLowerCase().includes("automode") ||
+      stdout.includes("auto mode") ||
+      stdout.includes("autoMode"),
     'must include "autoMode" or "auto mode"'
   );
   assert.ok(
@@ -68,11 +67,19 @@ test("bootstrap-context hook exits 0 when stdout is ignored", () => {
 test("hooks.json has two SessionStart entries with correct bootstrap-context config", () => {
   const raw = readFileSync(HOOKS_JSON, "utf8");
   const config = JSON.parse(raw) as {
-    hooks: { SessionStart: Array<{ hooks: Array<{ type: string; command: string; description: string; timeout: number }> }> };
+    hooks: {
+      SessionStart: Array<{
+        hooks: Array<{ type: string; command: string; description: string; timeout: number }>;
+      }>;
+    };
   };
 
   const sessionStart = config.hooks.SessionStart;
-  assert.equal(sessionStart.length, 2, `expected 2 SessionStart entries, got ${sessionStart.length}`);
+  assert.equal(
+    sessionStart.length,
+    2,
+    `expected 2 SessionStart entries, got ${sessionStart.length}`
+  );
 
   const second = sessionStart[1];
   assert.ok(

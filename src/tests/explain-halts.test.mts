@@ -148,6 +148,12 @@ test("explainHalts: multiple halts → renders ALL fired in registry order", () 
         reason: "waiting for CI",
         resumeHint: "Run: bun src/scripts/loop.mts resume --repo .",
         pausedAt: "2026-06-13T12:00:00.000Z"
+      },
+      stuckDetected: {
+        sliceId: "SLICE-119",
+        attempts: 3,
+        threshold: 3,
+        lastAttemptAt: "2026-06-13T12:00:00.000Z"
       }
     }
   };
@@ -217,7 +223,7 @@ test("explainHalts: unknown registry field on snapshot is ignored (graceful degr
   assert.equal(out.includes("futureHalt"), false);
 });
 
-test("HALT_BADGES registry has the 8 known fields in expected order", () => {
+test("HALT_BADGES registry has the 9 known fields in expected order", () => {
   const fields = HALT_BADGES.map((b) => b.field);
   assert.deepEqual(fields, [
     "costRegression",
@@ -227,6 +233,7 @@ test("HALT_BADGES registry has the 8 known fields in expected order", () => {
     "mergeFailed",
     "redundantReadStop",
     "marathonCheckpoint",
-    "pausedForExternalEvent"
+    "pausedForExternalEvent",
+    "stuckDetected"
   ]);
 });

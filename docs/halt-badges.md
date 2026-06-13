@@ -240,6 +240,35 @@ This deletes `.claude/state/loop/paused.json`; the next `stop-check` returns `sh
 
 ---
 
+### `snapshot.stuckDetected`
+
+**Shape:**
+
+```typescript
+interface StuckDetectedSignal {
+  sliceId: string;       // slice that has exceeded retry threshold
+  attempts: number;      // number of builder attempts without a PASS gate
+  threshold: number;     // configured threshold (loop.stuckDetectorThreshold, default 3)
+  lastAttemptAt: string; // ISO 8601 timestamp of most recent stuck-tick call
+}
+```
+
+**Meaning** — The builder has been re-dispatched `attempts` times for `sliceId` without producing a PASS on the review or validation gate. The loop halts to prevent silent cost accumulation.
+
+**Fires when** — `.claude/state/loop/stuck-detector.json` exists AND `attempts >= loop.stuckDetectorThreshold` (default 3). Fail-open: absent file, malformed JSON, or missing required fields return `null`.
+
+**Suggested operator action** — Investigate builder failures. Once root cause is fixed (or slice is narrowed/deferred), run:
+
+```
+bun src/scripts/loop.mts stuck-reset --repo <path>
+```
+
+This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` returns `shouldStop: false` (assuming no other conditions are active) and the walker resumes.
+
+**Origin** — FEAT-130 / SLICE-119. Source: `src/scripts/lib/stuck-detector.mts::checkStuckDetector`. Snapshot builder: `src/scripts/lib/stop-conditions.mts::buildStuckDetectedSnapshotEntry`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.

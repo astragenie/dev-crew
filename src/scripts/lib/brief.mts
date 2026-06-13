@@ -44,14 +44,23 @@ function computeGradeSignal(grades: Record<string, any>[]) {
 function computeSliceStartConfidence(
   topTriagedRaw: Record<string, any>[],
   gradeSignal: ReturnType<typeof computeGradeSignal>
-): { featureId: string | null; confidence: "green" | "yellow" | "red" | null; reason: string | null } | null {
+): {
+  featureId: string | null;
+  confidence: "green" | "yellow" | "red" | null;
+  reason: string | null;
+} | null {
   if (topTriagedRaw.length === 0) return null;
   const top = topTriagedRaw[0] as Record<string, any>;
   const autonomousSafe: boolean | null = top.frontmatter.autonomous_safe ?? null;
   const dependsOnCount: number = Array.isArray(top.frontmatter.depends_on)
     ? top.frontmatter.depends_on.length
     : 0;
-  const result = computeConfidence({ autonomousSafe, acCount: 2, recentGradeAvg: gradeSignal.avgRecent, dependsOnCount });
+  const result = computeConfidence({
+    autonomousSafe,
+    acCount: 2,
+    recentGradeAvg: gradeSignal.avgRecent,
+    dependsOnCount
+  });
   return { featureId: top.id as string, confidence: result.confidence, reason: result.reason };
 }
 

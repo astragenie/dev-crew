@@ -14,6 +14,7 @@ import {
   checkPausedForExternalEvent,
   type PausedForExternalEventSignal
 } from "./paused-for-external-event.mjs";
+import { checkStuckDetector, type StuckDetectedSignal } from "./stuck-detector.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -239,6 +240,34 @@ function applyPausedForExternalEventSignal(
   suggestions.push(sig.resumeHint);
 }
 
+function buildStuckDetectedSnapshotEntry(
+  sig: StuckDetectedSignal | null
+): StuckDetectedSignal | null {
+  if (!sig) return null;
+  return sig;
+}
+
+function applyStuckDetectedSignal(
+  sig: StuckDetectedSignal | null,
+  reasons: any[],
+  suggestions: any[],
+  blockers: any[]
+) {
+  if (!sig) return;
+  reasons.push(
+    `stuck_detected: ${sig.sliceId} builder attempted ${sig.attempts} times without PASS (threshold ${sig.threshold})`
+  );
+  blockers.push({
+    category: "stuck-detected",
+    message: `Builder retried ${sig.attempts} times without PASS for slice ${sig.sliceId}`,
+    suggestion: "Run: bun src/scripts/loop.mts stuck-reset"
+  });
+  suggestions.push(
+    `Builder has retried ${sig.attempts} times without PASS for slice ${sig.sliceId} (threshold ${sig.threshold}). ` +
+      "Investigate root cause before re-dispatching. Run: bun src/scripts/loop.mts stuck-reset --repo . to clear the counter."
+  );
+}
+
 function applyMarathonCheckpointSignal(
   sig: MarathonCheckpointSignal | null,
   reasons: any[],
@@ -394,7 +423,8 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     redundantReadSignal,
     marathonCheckpointSignal,
     workflowState,
-    pausedForExternalEventSignal
+    pausedForExternalEventSignal,
+    stuckDetectedSignal
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
@@ -408,7 +438,8 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     checkRedundantReadStop(repoPath, config),
     checkMarathonCheckpoint(repoPath, config),
     readCrewWorkflowState(repoPath),
-    checkPausedForExternalEvent(repoPath)
+    checkPausedForExternalEvent(repoPath),
+    checkStuckDetector(repoPath)
   ]);
   return {
     backlog,
@@ -423,7 +454,8 @@ async function gatherStopInputs(repoPath: string, config: Record<string, any> | 
     redundantReadSignal,
     marathonCheckpointSignal,
     workflowState,
-    pausedForExternalEventSignal
+    pausedForExternalEventSignal,
+    stuckDetectedSignal
   };
 }
 
@@ -445,7 +477,8 @@ export async function checkStopConditions(
     redundantReadSignal,
     marathonCheckpointSignal,
     workflowState,
-    pausedForExternalEventSignal
+    pausedForExternalEventSignal,
+    stuckDetectedSignal
   } = await gatherStopInputs(repoPath, config);
 
   // autoMode defaults to true so freshly hand-rolled .claude/loop.json
@@ -485,6 +518,7 @@ export async function checkStopConditions(
   applyRedundantReadStopSignal(redundantReadSignal, reasons, suggestions, blockers);
   applyMarathonCheckpointSignal(marathonCheckpointSignal, reasons, suggestions, blockers);
   applyPausedForExternalEventSignal(pausedForExternalEventSignal, reasons, suggestions, blockers);
+  applyStuckDetectedSignal(stuckDetectedSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
   return assembleStopResult({
@@ -507,7 +541,8 @@ export async function checkStopConditions(
     redundantReadSignal,
     marathonCheckpointSignal,
     workflowState,
-    pausedForExternalEventSignal
+    pausedForExternalEventSignal,
+    stuckDetectedSignal
   });
 }
 
@@ -554,7 +589,8 @@ function assembleStopResult(p: any) {
       marathonCheckpoint: buildMarathonCheckpointSnapshotEntry(p.marathonCheckpointSignal),
       pausedForExternalEvent: buildPausedForExternalEventSnapshotEntry(
         p.pausedForExternalEventSignal
-      )
+      ),
+      stuckDetected: buildStuckDetectedSnapshotEntry(p.stuckDetectedSignal)
     }
   };
 }

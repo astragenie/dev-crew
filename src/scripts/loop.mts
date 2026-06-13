@@ -406,6 +406,43 @@ const COMMANDS = {
     }
     process.exitCode = 0;
     return { resumed: true };
+  },
+  "stuck-tick": async ({ repoPath, flags, positionals }: CmdCtx) => {
+    const sliceArg = (flags.slice as string | undefined) ?? (positionals[0] as string | undefined);
+    if (!sliceArg) {
+      console.error("--slice <SLICE-ID> required");
+      process.exitCode = 1;
+      return { _suppressDefaultOutput: true };
+    }
+    const { default: nodeFs } = await import("node:fs/promises");
+    const dir = path.join(repoPath, ".claude", "state", "loop");
+    await nodeFs.mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, "stuck-detector.json");
+    let existing: any = null;
+    try {
+      existing = JSON.parse(await nodeFs.readFile(filePath, "utf8"));
+    } catch {
+      /* absent — start fresh */
+    }
+    const attempts =
+      existing?.sliceId === sliceArg && typeof existing?.attempts === "number"
+        ? existing.attempts + 1
+        : 1;
+    const payload = { sliceId: sliceArg, attempts, lastAttemptAt: new Date().toISOString() };
+    await nodeFs.writeFile(filePath, JSON.stringify(payload, null, 2), "utf8");
+    process.exitCode = 0;
+    return { sliceId: sliceArg, attempts };
+  },
+  "stuck-reset": async ({ repoPath }: CmdCtx) => {
+    const { default: nodeFs } = await import("node:fs/promises");
+    const filePath = path.join(repoPath, ".claude", "state", "loop", "stuck-detector.json");
+    try {
+      await nodeFs.unlink(filePath);
+    } catch {
+      /* idempotent */
+    }
+    process.exitCode = 0;
+    return { reset: true };
   }
 };
 

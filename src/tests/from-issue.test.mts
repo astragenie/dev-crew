@@ -104,7 +104,12 @@ test("fetchIssue passes correct gh args to executor", async () => {
   const seenArgs: string[][] = [];
   const exec = async (args: string[]) => {
     seenArgs.push(args);
-    return JSON.stringify({ title: "T", body: "B", number: 1, url: "https://github.com/a/b/issues/1" });
+    return JSON.stringify({
+      title: "T",
+      body: "B",
+      number: 1,
+      url: "https://github.com/a/b/issues/1"
+    });
   };
 
   await fetchIssue("https://github.com/a/b/issues/1", { exec });
@@ -154,7 +159,9 @@ test("fetchIssue throws clear error when gh exits non-zero (private/inaccessible
         `expected message about non-zero exit, got: ${err.message}`
       );
       assert.ok(
-        err.message.includes("Could not resolve") || err.message.includes("access") || err.message.includes("correct"),
+        err.message.includes("Could not resolve") ||
+          err.message.includes("access") ||
+          err.message.includes("correct"),
         `expected detail about the failure, got: ${err.message}`
       );
       return true;

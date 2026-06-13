@@ -1,13 +1,15 @@
 ---
 id: FEAT-130
-status: triaged
+status: done
+slices: [SLICE-119]
+slices_complete: [SLICE-119]
+completed_at: 2026-06-13
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
-slices: []
 derived_from: null
 composite_score: 6
 source_competitors: [OpenHands]
@@ -73,7 +75,13 @@ OpenHands ships a Stuck Detector that auto-handles timeout/loop scenarios, plus 
 
 - https://docs.openhands.dev/llms.txt (Stuck Detector + Iterative Refinement)
 - docs/halt-badges.md — existing halt-badge pattern to follow
+- src/scripts/lib/stop-conditions.mts — wire point
 
 ## Consider rejecting because
 
 Defining a stuck detector heuristic is harder than it looks — a builder making multiple attempts at a hard problem looks identical to a builder cycling in an infinite loop. False positives would halt valid work. The costRegression halt-badge already provides a post-hoc signal. If the primary concern is silent runaway, tightening costRegressionMultiplier in loop.json may be sufficient without a new badge.
+
+## Delivery
+
+Delivered in SLICE-119 (2026-06-13). All gates PASS: Reviewer A, Reviewer B, Validator.
+Implementation: `src/scripts/lib/stuck-detector.mts` (new), stop-conditions wiring (14th parallel check), halt-badges 9th entry, `stuck-tick`/`stuck-reset` CLI subcommands, docs/halt-badges.md registry section, .gitignore exclusion, 7 unit tests. Counter file at `.claude/state/loop/stuck-detector.json` tracks `{ attempts, threshold, sliceId, updatedAt }` with fail-open contract on all error paths.
