@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.48.0] — 2026-06-13
+
+### Added
+- FEAT-173: Auto-PR mode for dispatch finalize (`src/scripts/lib/dispatch-pr-mode.mts`) — `dispatchFinalizePr()` pushes each DONE child branch and creates a GitHub PR via `gh pr create` with title/body inferred from git log; `loop dispatch finalize --pr` flag enables the mode
+
 ## v0.45.3 — 2026-06-13
 
 ### Added
