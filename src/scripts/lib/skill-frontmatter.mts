@@ -5,7 +5,7 @@ export interface SkillMeta {
   description: string;
   trigger: "always_on" | "glob" | "manual" | "model_decision";
   globs: string[];
-  keywords: string[];
+  keywords?: string[];
 }
 
 /**
