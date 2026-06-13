@@ -349,7 +349,8 @@ const COMMANDS = {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    return checkStopConditions(cwd, { config });
+    const result = await checkStopConditions(cwd, { config });
+    return result;
   },
   auto: async ({ repoPath, flags, config }: CmdCtx) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
@@ -1463,8 +1464,10 @@ async function runLessonsPromote(
   flags: Record<string, any>
 ): Promise<Record<string, unknown>> {
   const { scanGradeLessonsFromRepo } = await import("./lib/lessons-ratchet.mjs");
-  const maxGrades = flags["max-grades"] != null ? Number(flags["max-grades"]) : 20;
-  const minRepeats = flags["min-repeats"] != null ? Number(flags["min-repeats"]) : 2;
+  const rawMaxGrades = Number(flags["max-grades"]);
+  const maxGrades = flags["max-grades"] != null && !isNaN(rawMaxGrades) && rawMaxGrades > 0 ? rawMaxGrades : 20;
+  const rawMinRepeats = Number(flags["min-repeats"]);
+  const minRepeats = flags["min-repeats"] != null && !isNaN(rawMinRepeats) && rawMinRepeats > 0 ? rawMinRepeats : 2;
   const result = await scanGradeLessonsFromRepo(repoPath, { maxGrades, minRepeats });
 
   if (flags.json) {

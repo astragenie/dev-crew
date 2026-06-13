@@ -23,6 +23,8 @@ export interface RatchetResult {
 /**
  * Slugify the first 6 words of a lesson text.
  * Lowercase, replace non-alphanumeric runs with a dash, trim leading/trailing dashes.
+ * Note: two distinct lessons sharing the same first 6 words map to the same slug — counts
+ * are merged intentionally (treat as the same lesson). This is a known design tradeoff.
  */
 export function slugifyLesson(text: string): string {
   const words = text.trim().split(/\s+/).slice(0, 6).join(" ");
