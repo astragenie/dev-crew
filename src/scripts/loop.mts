@@ -337,7 +337,24 @@ const COMMANDS = {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    return checkStopConditions(cwd, { config });
+    const result = await checkStopConditions(cwd, { config });
+    if (result.shouldStop && result.blockers.length > 0) {
+      try {
+        const { readNotifyConfig, notifyEvent } = await import("./lib/event-notifier.mjs");
+        const notifyCfg = await readNotifyConfig(cwd);
+        await notifyEvent(
+          {
+            type: "halt-badge",
+            details: result.blockers[0].category,
+            timestamp: new Date().toISOString()
+          },
+          notifyCfg
+        );
+      } catch {
+        // Notification must never crash the main loop
+      }
+    }
+    return result;
   },
   auto: async ({ repoPath, flags, config }: CmdCtx) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
@@ -1200,6 +1217,23 @@ const SLICE_HANDLERS = {
     });
     const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
     await flushTrajectory(cwd, sliceId);
+    // Fire notification for slice-complete (FEAT-171 / SLICE-120)
+    try {
+      const { readNotifyConfig, notifyEvent } = await import("./lib/event-notifier.mjs");
+      const notifyCfg = await readNotifyConfig(cwd);
+      await notifyEvent(
+        {
+          type: "slice-complete",
+          sliceId,
+          featureId: (out as any).feature?.id || undefined,
+          details: `${sliceId} completed`,
+          timestamp: new Date().toISOString()
+        },
+        notifyCfg
+      );
+    } catch {
+      // Notification must never crash the main loop
+    }
     return out;
   },
   start: async (
