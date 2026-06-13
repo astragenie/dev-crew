@@ -1,13 +1,13 @@
 ---
 id: FEAT-100
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-117]
 derived_from: null
 composite_score: 6
 source_competitors: [superpowers]
@@ -24,6 +24,7 @@ triage_notes: "Composite 6. SessionStart hook that injects bootstrap context bef
 github_issue: 176
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/176"
+started_at: 2026-06-13
 ---
 # FEAT-100: SessionStart hook that injects bootstrap context before any user turn
 
