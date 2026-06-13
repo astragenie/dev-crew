@@ -5,6 +5,30 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.45.0 — 2026-06-13 — Linear teammate integration Phase 1 (FEAT-102 / SLICE-123)
+
+### Linear webhook handler + mention parser foundation
+
+Phase 1 of the Linear teammate flow (FEAT-102) ships webhook payload types, `@crew` mention parser, and webhook handler routing. The async phase provides the foundation layer needed before HTTP server + HMAC verification in Phase 2.
+
+**New modules** under `scripts/linear-sync/`:
+
+- `linear-types.mts` — `LinearWebhookPayload`, `LinearIssueData`, `LinearCommentData`, `CrewMention`, `CrewCommand` TypeScript interfaces.
+- `mention-parser.mts` — `parseMention()` function with `/@crew\s+(triage|build|status)/i` regex to extract crew commands from Linear comment bodies.
+- `webhook-handler.mts` — `handleLinearWebhook()` router that dispatches on `webhook.type` ('Comment' and 'Issue.create' events supported in Phase 1).
+
+**Tests**: 8 fixture-based unit tests in `src/tests/linear-webhook.test.mts` covering payload parsing, mention extraction, and routing logic with zero network calls.
+
+**Documentation**: Setup guide stub at `docs/integrations/linear-teammate.md` (will expand with webhook URL registration in Phase 2).
+
+**Deferred to Phase 2** (SLICE-124 — HTTP server + HMAC verification):
+- `POST /webhook/linear` HTTP server (via `bun serve`)
+- `x-linear-signature` HMAC-SHA256 verification
+- Dispatch `crew:builder` on `@crew build` mention
+- Linear API reply client (comment + issue update)
+
+**Scope note**: `scripts/linear-sync/` modules sit outside `tsc rootDir` by design (marked `@ts-nocheck` to avoid type assertions at the integration boundary). This is intentional — similar to other runtime-only script modules. TS2688 @types/node errors are pre-existing and not touched by this slice.
+
 ## v0.44.1 — 2026-06-13 — Runtime stuck-detector halt-badge (FEAT-130 / SLICE-119)
 
 ### Stuck-detector halt-badge + stuck-tick / stuck-reset CLI
