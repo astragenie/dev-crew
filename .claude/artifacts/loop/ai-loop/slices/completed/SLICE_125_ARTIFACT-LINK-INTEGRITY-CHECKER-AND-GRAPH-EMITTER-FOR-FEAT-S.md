@@ -1,7 +1,7 @@
 ---
 id: SLICE-125
 title: Artifact link-integrity checker and graph emitter for FEAT/SPEC/DEC/slice cross-links
-status: pending
+status: completed
 feature: FEAT-175
 phase: null
 priority: P3
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 264
 github_url: "https://github.com/sergeymilashico/loop/issues/264"
+completed_at: 2026-06-13
 ---
 # SLICE-125: Artifact link-integrity checker and graph emitter for FEAT/SPEC/DEC/slice cross-links
 

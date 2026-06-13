@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.47.1] — 2026-06-13
+
+### Added
+- FEAT-175: Artifact link-integrity checker (`src/scripts/lib/artifact-linker.mts`) — `checkArtifactLinks()` validates `depends_on`, `derived_from`, `supersedes`, and `feature` cross-references across FEAT/slice/decision/grade artifacts; detects orphaned grades; emits Mermaid dependency graph; new `loop lint-artifacts` CLI subcommand
+
 ## [0.47.0] — 2026-06-13
 
 ### Added
