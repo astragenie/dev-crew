@@ -4,7 +4,7 @@ import path from "node:path";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { writeMemorySnapshot } from "../scripts/lib/memory-snapshot.mjs";
+import { writeMemorySnapshot, generateSnapshotContent } from "../scripts/lib/memory-snapshot.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { initializeIterationCounter, incrementIteration } from "../scripts/lib/loop-iteration.mjs";
 
@@ -215,4 +215,47 @@ test("writeMemorySnapshot parses cost report USD values correctly", async () => 
     content.includes("$8.000 per iteration (2 reports)"),
     "should correctly parse and average USD values"
   );
+});
+
+const AUTO_HEADER =
+  "<!-- AUTO-GENERATED — do not edit by hand. Regenerate: bun src/scripts/loop.mts snapshot-memory --repo <path> -->";
+
+test("writeMemorySnapshot prepends AUTO-GENERATED header as first line", async () => {
+  const repo = await tmpRepo("al-snapshot-header-");
+  await addFeature(repo, { title: "Test" });
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+  assert.ok(content.startsWith(AUTO_HEADER), "first line must be the AUTO-GENERATED header");
+});
+
+test("writeMemorySnapshot header is idempotent — only one copy after two runs", async () => {
+  const repo = await tmpRepo("al-snapshot-idempotent-");
+  await addFeature(repo, { title: "Test" });
+  await writeMemorySnapshot(repo);
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+  const count = (content.match(/AUTO-GENERATED/g) ?? []).length;
+  assert.equal(count, 1, "header must appear exactly once after two regenerations");
+});
+
+test("generateSnapshotContent returns string starting with AUTO-GENERATED header", async () => {
+  const repo = await tmpRepo("al-snapshot-generate-");
+  await addFeature(repo, { title: "Test" });
+  const content = await generateSnapshotContent(repo, { today: "2026-01-01" });
+  assert.ok(
+    content.startsWith(AUTO_HEADER),
+    "generateSnapshotContent must start with the AUTO-GENERATED header"
+  );
+});
+
+test("generateSnapshotContent matches writeMemorySnapshot output", async () => {
+  const repo = await tmpRepo("al-snapshot-match-");
+  await addFeature(repo, { title: "Feature A" });
+  const today = new Date().toISOString().slice(0, 10);
+  const [snapshot, generated] = await Promise.all([
+    writeMemorySnapshot(repo),
+    generateSnapshotContent(repo, { today })
+  ]);
+  const onDisk = await fs.readFile(snapshot.artifactPath, "utf8");
+  assert.equal(generated, onDisk, "generateSnapshotContent must match written file");
 });
