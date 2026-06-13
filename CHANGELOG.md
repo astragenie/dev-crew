@@ -5,6 +5,12 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.45.3 — 2026-06-13
+
+### Added
+
+- **Loop event notifications** (FEAT-171/SLICE-120): `notifyEvent()` module fires on `slice-complete` and `halt-badge` events. Supports three modes: `osNotification` (platform-native: PowerShell MessageBox, notify-send, osascript), `webhook` (POST JSON to configurable URL), `customCommand` (shell-quoted token interpolation). Configure via `loop.notifications` in `.claude/loop.json`. New module: `src/scripts/lib/event-notifier.mts`.
+
 ## v0.45.2 — 2026-06-13 — Grade lessons promotion ratchet (FEAT-178 / SLICE-122)
 
 ### Added
