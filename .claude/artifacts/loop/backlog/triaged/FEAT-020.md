@@ -1,30 +1,30 @@
 ---
 id: FEAT-020
 status: triaged
-priority: P3
+priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-06-13
 depends_on: []
 slices: []
 derived_from: null
-composite_score: 0.646
-composite_priority: P3
+composite_score: 0.72
+composite_priority: P2
 source_competitors: [Cursor agents]
 autonomous_safe: false
-deferred: true
-defer_reason: "Hard dep on FEAT-128 (pause/resume halt-badge) still in triaged. AC now bounded but cross-plugin halt-badge cascade contract still extends SPEC-003. Awaits FEAT-128 done."
+deferred: false
+defer_reason: "no longer blocked — FEAT-128 (pause/resume halt-badge) and FEAT-173 (auto-PR parallel worktree) are done as of 2026-06-13"
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.78
 pm_strategic_alignment: 0.55
-pm_technical_risk: 0.75
-pm_dependency_depth: 0.7
+pm_technical_risk: 0.68
+pm_dependency_depth: 0.15
 pm_strategic_fit: 0.55
-pm_risk_level: 0.75
-pm_implementation_confidence: 0.35
+pm_risk_level: 0.68
+pm_implementation_confidence: 0.45
 pm_demand_signal: 0.45
-pm_reasoning: "Phase-C rescore 2026-06-12: 7 GWT AC bounded scope (effort 0.85→0.78, risk 0.85→0.75). Customer impact dropped 0.55→0.45 — FEAT body's own reject section cites zero internal pain. Dependency_depth 0.70 stays — FEAT-128 still triaged. autonomous_safe false: risk/effort/dep all >0.6 + halt-badge cascade extends cross-plugin SPEC-003 contract. P3 per formula."
+pm_reasoning: "Phase-C rescore 2026-06-13 (dependency-resolution rescore): FEAT-128 done (halt-badge contract now stable, docs/halt-badges.md registry has 8th entry for snapshot.pausedForExternalEvent) and FEAT-173 done (parallel-worktree namespacing reference exists). dep_depth 0.70→0.15 (only internal architect-spec sequencing remains, no cross-FEAT block). technical_risk 0.75→0.68 (still banded 0.6-0.8: multi-module + new schema, but cross-plugin halt-badge surface stabilized vs. fluid). Customer impact, strategic alignment, effort unchanged — FEAT body's own reject section still cites zero documented serial-dispatch bottleneck; 6-slice/~21-point decomposition still epic-sized. autonomous_safe stays false: effort 0.78 > 0.70 gate. Priority P3→P2 (composite 0.646→0.72) — no longer deferred, ready to slice when capacity opens. SLICE-A architect SPEC remains mandatory pre-flight per needs_contract:true."
 ac_clarity_status: passed
 needs_ac_rewrite: false
 proposed_slices:
@@ -34,7 +34,7 @@ proposed_slices:
   - { id: SLICE-D, title: "halt-cascade + AC-004 (blocked on FEAT-128)", points: 3 }
   - { id: SLICE-E, title: "rehydrate + retry + AC-005/006", points: 5 }
   - { id: SLICE-F, title: "audit schema + AC-007", points: 2 }
-triage_notes: "PM re-scored 2026-06-05 for scale normalization: prior composite_score=6 was a raw 0-9 legacy value that broke walker numeric-sort against current 0.0-1.0 composites. Re-scored under the canonical five dimensions; composite 0.71; formula yields composite_priority=P2 (impact<0.7, alignment<0.8). User-facing priority=P3 kept. deferred=true and defer_reason preserved verbatim. autonomous_safe=true preserved; note formula would compute false (technical_risk, effort, dependency_depth all >0.6) — deferred flag is the active walker gate per FEAT-040 risk-gate fix. // 2026-06-12 retriage test pass 1: AC-clarity pre-flight FAILED — body had Description + numeric Scoring stub, zero Given-When-Then AC. Test surfaced PM-subagent runtime bug: Agent tool not loadable via ToolSearch from inside PM subagent → original inline-dispatch retriage design fails 100%. commands/retriage.md rewritten as three-phase orchestrator (PM clarity check → orchestrator fans out spec-writer → PM re-score) to work around the bug. // 2026-06-12 retriage three-phase test: Phase A PM flagged needs-rewrite without dispatch surface. Phase B orchestrator dispatched loop:spec-writer; 7 GWT AC + Edge Cases + Error Handling + Dependencies written. Phase C PM rescored: impact 0.55→0.45 (own-body counter-evidence), effort 0.85→0.78 (bounded), risk 0.85→0.75 (banded 0.6-0.8: cross-module + schema + cross-plugin halt-badge), align 0.6→0.55, dep_depth 0.70 unchanged (FEAT-128 still triaged). Composite 0.71→0.646. autonomous_safe formula-confirmed false; deferred flag preserved with updated reason (FEAT-128 dep). effort_points≈13 → decomposed into 6 proposed_slices. PM contract gap surfaced: agents/pm.md § Boundaries says read-only but commands/retriage.md Phase C step 3 says PM persists; orchestrator applied delta this run. Open FEAT to reconcile contract."
+triage_notes: "PM re-scored 2026-06-05 for scale normalization: prior composite_score=6 was a raw 0-9 legacy value that broke walker numeric-sort against current 0.0-1.0 composites. Re-scored under the canonical five dimensions; composite 0.71; formula yields composite_priority=P2 (impact<0.7, alignment<0.8). User-facing priority=P3 kept. deferred=true and defer_reason preserved verbatim. autonomous_safe=true preserved; note formula would compute false (technical_risk, effort, dependency_depth all >0.6) — deferred flag is the active walker gate per FEAT-040 risk-gate fix. // 2026-06-12 retriage test pass 1: AC-clarity pre-flight FAILED — body had Description + numeric Scoring stub, zero Given-When-Then AC. Test surfaced PM-subagent runtime bug: Agent tool not loadable via ToolSearch from inside PM subagent → original inline-dispatch retriage design fails 100%. commands/retriage.md rewritten as three-phase orchestrator (PM clarity check → orchestrator fans out spec-writer → PM re-score) to work around the bug. // 2026-06-12 retriage three-phase test: Phase A PM flagged needs-rewrite without dispatch surface. Phase B orchestrator dispatched loop:spec-writer; 7 GWT AC + Edge Cases + Error Handling + Dependencies written. Phase C PM rescored: impact 0.55→0.45 (own-body counter-evidence), effort 0.85→0.78 (bounded), risk 0.85→0.75 (banded 0.6-0.8: cross-module + schema + cross-plugin halt-badge), align 0.6→0.55, dep_depth 0.70 unchanged (FEAT-128 still triaged). Composite 0.71→0.646. autonomous_safe formula-confirmed false; deferred flag preserved with updated reason (FEAT-128 dep). effort_points≈13 → decomposed into 6 proposed_slices. PM contract gap surfaced: agents/pm.md § Boundaries says read-only but commands/retriage.md Phase C step 3 says PM persists; orchestrator applied delta this run. Open FEAT to reconcile contract. // 2026-06-13 dependency-resolution rescore: FEAT-128 done (SLICE-118, halt-badge contract stabilized) + FEAT-173 done (parallel-worktree namespacing). dep_depth 0.70→0.15 (no remaining cross-FEAT block; only internal architect-SPEC sequencing). technical_risk 0.75→0.68 (cross-plugin halt-badge surface stabilized from fluid → contracted). composite 0.646→0.72, priority P3→P2, deferred true→false. autonomous_safe stays false: effort 0.78 still > 0.70 gate (6-slice/~21-point epic). Ready to slice when capacity opens — SLICE-A architect SPEC still mandatory pre-flight per needs_contract:true."
 github_issue: 22
 github_milestone: 2
 phase: 2
