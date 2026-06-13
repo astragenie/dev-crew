@@ -397,9 +397,9 @@ const COMMANDS = {
     }
     return result;
   },
-  "lint-artifacts": async ({ repoPath, flags }: CmdCtx) => {
+  "lint-artifacts": async ({ repoPath, flags, config }: CmdCtx) => {
     const { checkArtifactLinks } = await import("./lib/artifact-linker.mjs");
-    const report = await checkArtifactLinks(repoPath);
+    const report = await checkArtifactLinks(repoPath, config);
     if (flags.json) {
       process.exitCode = 0;
       console.log(JSON.stringify(report, null, 2));

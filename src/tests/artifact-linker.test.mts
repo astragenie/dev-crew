@@ -14,7 +14,6 @@ async function writeFeat(
 ): Promise<string> {
   const dir = path.join(root, ".claude", "artifacts", "loop", "backlog", state);
   await fs.mkdir(dir, { recursive: true });
-  const num = id.replace("FEAT-", "");
   const fm = { id, status: state, depends_on: [], derived_from: null, ...extra };
   const content = `---\n${Object.entries(fm)
     .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)

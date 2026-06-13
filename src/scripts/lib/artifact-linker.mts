@@ -83,7 +83,7 @@ async function collectBacklogIds(root: string): Promise<{
 
 function deriveIdFromFilename(filename: string): string {
   const match = filename.match(/^(FEAT-\d+[a-z]?)/i);
-  return match ? match[1].toUpperCase() : filename.replace(/\.md$/, "");
+  return match ? match[1]!.toUpperCase() : filename.replace(/\.md$/, "");
 }
 
 /**
@@ -129,7 +129,7 @@ async function collectSliceIds(slicesRootDir: string): Promise<{
 
 function deriveSliceId(filename: string): string {
   const m = filename.match(/^(SLICE[-_]\d+)/i);
-  if (m) return m[1].replace("_", "-").toUpperCase();
+  if (m) return m[1]!.replace("_", "-").toUpperCase();
   return filename.replace(/\.md$/, "");
 }
 
@@ -204,10 +204,10 @@ async function collectGradeFiles(gradesDir: string): Promise<
 
     const sliceId =
       sliceFromFm ||
-      (sliceMatch ? `SLICE-${String(parseInt(sliceMatch[1], 10)).padStart(2, "0")}` : null);
+      (sliceMatch ? `SLICE-${String(parseInt(sliceMatch[1]!, 10)).padStart(2, "0")}` : null);
     const featId =
       featFromFm ||
-      (featMatch ? `FEAT-${String(parseInt(featMatch[1], 10)).padStart(3, "0")}` : null);
+      (featMatch ? `FEAT-${String(parseInt(featMatch[1]!, 10)).padStart(3, "0")}` : null);
 
     results.push({ file: filePath, featId, sliceId, frontmatter });
   }
@@ -218,6 +218,75 @@ function toArray(value: unknown): string[] {
   if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
   if (typeof value === "string" && value.trim()) return [value.trim()];
   return [];
+}
+
+function validateFeatLinks(
+  featFiles: Array<{ file: string; frontmatter: Record<string, unknown> }>,
+  featIds: Set<string>,
+  repoPath: string,
+  broken: BrokenLink[]
+): void {
+  for (const { file, frontmatter } of featFiles) {
+    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
+    for (const ref of toArray(frontmatter.depends_on)) {
+      if (ref && !featIds.has(ref))
+        broken.push({ sourceFile: rel, field: "depends_on", referencedId: ref, reason: `Referenced FEAT "${ref}" not found in any backlog state` });
+    }
+    for (const ref of toArray(frontmatter.derived_from)) {
+      if (ref && !featIds.has(ref))
+        broken.push({ sourceFile: rel, field: "derived_from", referencedId: ref, reason: `Referenced FEAT "${ref}" not found in any backlog state` });
+    }
+    // declined_per references CLAUDE.md clause ids — validated by validate-decline-citations.mts, not here.
+  }
+}
+
+function validateSliceLinks(
+  sliceFiles: Array<{ file: string; frontmatter: Record<string, unknown> }>,
+  featIds: Set<string>,
+  repoPath: string,
+  broken: BrokenLink[]
+): void {
+  for (const { file, frontmatter } of sliceFiles) {
+    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
+    const featureRef = frontmatter.feature as string | null | undefined;
+    if (featureRef && typeof featureRef === "string" && featureRef.trim()) {
+      const ref = featureRef.trim();
+      if (!featIds.has(ref))
+        broken.push({ sourceFile: rel, field: "feature", referencedId: ref, reason: `Referenced FEAT "${ref}" not found in any backlog state` });
+    }
+  }
+}
+
+function validateDecisionLinks(
+  decFiles: Array<{ file: string; frontmatter: Record<string, unknown> }>,
+  decIds: Set<string>,
+  repoPath: string,
+  broken: BrokenLink[]
+): void {
+  for (const { file, frontmatter } of decFiles) {
+    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
+    for (const ref of toArray(frontmatter.supersedes)) {
+      if (ref && !decIds.has(ref))
+        broken.push({ sourceFile: rel, field: "supersedes", referencedId: ref, reason: `Referenced decision "${ref}" not found in decisions directory` });
+    }
+  }
+}
+
+function detectOrphanedGrades(
+  grades: GradeEntry[],
+  completedIds: Set<string>,
+  repoPath: string,
+  orphaned: OrphanedArtifact[]
+): void {
+  for (const grade of grades) {
+    const rel = path.relative(repoPath, grade.file).replace(/\\/g, "/");
+    if (!grade.sliceId) {
+      orphaned.push({ file: rel, type: "grade", reason: "Could not determine slice reference from filename or frontmatter" });
+      continue;
+    }
+    if (!completedIds.has(grade.sliceId))
+      orphaned.push({ file: rel, type: "grade", reason: `Grade references slice "${grade.sliceId}" but no completed slice file found` });
+  }
 }
 
 /**
@@ -235,7 +304,6 @@ export async function checkArtifactLinks(
   const gradesDir = gradesRoot(repoPath, config);
   const decRoot = decisionsRoot(repoPath, config);
 
-  // Collect all known ids
   const [backlog, slices, decisions, grades] = await Promise.all([
     collectBacklogIds(backlogRootDir),
     collectSliceIds(slicesRootDir),
@@ -243,108 +311,12 @@ export async function checkArtifactLinks(
     collectGradeFiles(gradesDir)
   ]);
 
-  const featIds = backlog.ids;
-  const decIds = decisions.ids;
+  validateFeatLinks(backlog.files, backlog.ids, repoPath, broken);
+  validateSliceLinks(slices.files, backlog.ids, repoPath, broken);
+  validateDecisionLinks(decisions.files, decisions.ids, repoPath, broken);
+  detectOrphanedGrades(grades, slices.completedIds, repoPath, orphaned);
 
-  // --- Validate FEAT files ---
-  for (const { id: featId, file, frontmatter } of backlog.files) {
-    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
-
-    // depends_on: [FEAT-NNN]
-    for (const ref of toArray(frontmatter.depends_on)) {
-      if (ref && !featIds.has(ref)) {
-        broken.push({
-          sourceFile: rel,
-          field: "depends_on",
-          referencedId: ref,
-          reason: `Referenced FEAT "${ref}" not found in any backlog state`
-        });
-      }
-    }
-
-    // derived_from: FEAT-NNN (or array)
-    for (const ref of toArray(frontmatter.derived_from)) {
-      if (ref && !featIds.has(ref)) {
-        broken.push({
-          sourceFile: rel,
-          field: "derived_from",
-          referencedId: ref,
-          reason: `Referenced FEAT "${ref}" not found in any backlog state`
-        });
-      }
-    }
-
-    // declined_per: [clause-id, ...] — these reference CLAUDE.md clause ids (not artifact ids)
-    // We skip validating these since clause ids are embedded in CLAUDE.md, not separate files.
-    // The existing validate-decline-citations.mts script handles that check.
-  }
-
-  // --- Validate slice files ---
-  for (const { id: sliceId, file, frontmatter } of slices.files) {
-    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
-
-    // feature: FEAT-NNN must exist in backlog
-    const featureRef = frontmatter.feature as string | null | undefined;
-    if (featureRef && typeof featureRef === "string" && featureRef.trim()) {
-      const ref = featureRef.trim();
-      if (!featIds.has(ref)) {
-        broken.push({
-          sourceFile: rel,
-          field: "feature",
-          referencedId: ref,
-          reason: `Referenced FEAT "${ref}" not found in any backlog state`
-        });
-      }
-    }
-
-    // Slice ids that are not in backlog but are in slice dirs: not a broken link issue,
-    // orphaned detection is for grades only per the spec.
-    void sliceId;
-  }
-
-  // --- Validate decision files ---
-  for (const { id: decId, file, frontmatter } of decisions.files) {
-    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
-
-    // supersedes: [DEC-NNN] — referenced decision must exist
-    for (const ref of toArray(frontmatter.supersedes)) {
-      if (ref && !decIds.has(ref)) {
-        broken.push({
-          sourceFile: rel,
-          field: "supersedes",
-          referencedId: ref,
-          reason: `Referenced decision "${ref}" not found in decisions directory`
-        });
-      }
-    }
-
-    void decId;
-  }
-
-  // --- Detect orphaned grade files ---
-  // A grade is orphaned if its slice reference has no corresponding file in slices/completed/
-  for (const grade of grades) {
-    const rel = path.relative(repoPath, grade.file).replace(/\\/g, "/");
-    if (!grade.sliceId) {
-      orphaned.push({
-        file: rel,
-        type: "grade",
-        reason: "Could not determine slice reference from filename or frontmatter"
-      });
-      continue;
-    }
-    if (!slices.completedIds.has(grade.sliceId)) {
-      orphaned.push({
-        file: rel,
-        type: "grade",
-        reason: `Grade references slice "${grade.sliceId}" but no completed slice file found`
-      });
-    }
-  }
-
-  // --- Build Mermaid graph ---
   const mermaid = buildMermaidGraph(backlog.files, slices.files, grades);
-
   return { broken, orphaned, mermaid };
 }
 
@@ -383,13 +355,11 @@ function buildMermaidGraph(
   }
 
   function addEdge(from: string, to: string) {
-    if (nodesSeen.size < MAX_NODES || (nodesSeen.has(from) && nodesSeen.has(to))) {
-      nodesSeen.add(from);
-      nodesSeen.add(to);
-      if (nodesSeen.size <= MAX_NODES) {
-        edges.push(`  ${safeId(from)} --> ${safeId(to)}`);
-      }
-    }
+    const willAdd = (nodesSeen.has(from) ? 0 : 1) + (nodesSeen.has(to) ? 0 : 1);
+    if (nodesSeen.size + willAdd > MAX_NODES) return;
+    nodesSeen.add(from);
+    nodesSeen.add(to);
+    edges.push(`  ${safeId(from)} --> ${safeId(to)}`);
   }
 
   // FEAT → slice edges
