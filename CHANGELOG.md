@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.49.0] — 2026-06-13
+
+### Added
+- FEAT-101: GitHub `@crew` PR-comment teammate — `.github/workflows/crew-pr-comment.yml` GH Action triggers on PR comments; `src/scripts/lib/gh-mention-parser.mts` parses `@crew review`/`fix <text>`/`explain` (stdin-safe, sanitized); `src/scripts/lib/gh-reply-formatter.mts` formats structured reply ≤1000 chars; `src/scripts/lib/gh-rate-limiter.mts` enforces max-1-active-dispatch-per-PR guard; setup guide at `docs/integrations/github-pr-comment-teammate.md`
+
 ## [0.48.0] — 2026-06-13
 
 ### Added
