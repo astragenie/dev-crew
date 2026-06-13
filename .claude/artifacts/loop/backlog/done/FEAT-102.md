@@ -1,11 +1,11 @@
 ---
 id: FEAT-102
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
 slices: []
 derived_from: null
@@ -17,6 +17,7 @@ needs_ux: true
 github_issue: 178
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/178"
+completed_at: 2026-06-13
 ---
 # FEAT-102: Linear teammate flow (assign-to-Crew)
 

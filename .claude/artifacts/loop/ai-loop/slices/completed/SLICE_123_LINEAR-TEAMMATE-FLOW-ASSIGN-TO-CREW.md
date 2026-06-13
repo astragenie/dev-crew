@@ -1,7 +1,7 @@
 ---
 id: SLICE-123
 title: Linear teammate flow (assign-to-Crew)
-status: pending
+status: completed
 feature: FEAT-102
 phase: null
 priority: P2
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 262
 github_url: "https://github.com/sergeymilashico/loop/issues/262"
+completed_at: 2026-06-13
 ---
 # SLICE-123: Linear teammate flow (assign-to-Crew)
 
