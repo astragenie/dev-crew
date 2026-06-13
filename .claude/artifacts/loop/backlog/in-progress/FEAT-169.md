@@ -1,13 +1,13 @@
 ---
 id: FEAT-169
-status: triaged
+status: in-progress
 priority: P2
 category: tech-debt
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-116]
 derived_from: null
 pm_customer_impact: 0.25
 pm_effort_estimate: 0.5
@@ -20,6 +20,7 @@ triage_notes: "via=pm (re-score vs specs) | Blockers cleared: outline AC -> 20+ 
 github_issue: 192
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/192"
+started_at: 2026-06-13
 ---
 # FEAT-169: Code-quality pivot leftovers — Result<T,E>, branded IDs, discriminated-union state + snapshot/memoization perf wins
 
