@@ -1,0 +1,8 @@
+{"ts":"2026-06-13T09:30:08.049Z","depth":0,"childId":"FEAT-111","status":"FAILED","durationMs":0,"costUsd":null}
+{"ts":"2026-06-13T09:30:08.050Z","depth":0,"childId":"FEAT-112","status":"FAILED","durationMs":2,"costUsd":null}
+{"ts":"2026-06-13T09:30:08.050Z","depth":0,"childId":"FEAT-165","status":"FAILED","durationMs":2,"costUsd":null}
+{"ts":"2026-06-13T09:30:08.051Z","depth":0,"childId":"FEAT-180","status":"FAILED","durationMs":3,"costUsd":null}
+{"ts":"2026-06-13T09:30:50.867Z","depth":0,"childId":"FEAT-111","status":"DONE","durationMs":0,"costUsd":null}
+{"ts":"2026-06-13T09:30:50.868Z","depth":0,"childId":"FEAT-112","status":"DONE","durationMs":1,"costUsd":null}
+{"ts":"2026-06-13T09:30:50.869Z","depth":0,"childId":"FEAT-165","status":"DONE","durationMs":2,"costUsd":null}
+{"ts":"2026-06-13T09:30:50.869Z","depth":0,"childId":"FEAT-180","status":"DONE","durationMs":2,"costUsd":null}
