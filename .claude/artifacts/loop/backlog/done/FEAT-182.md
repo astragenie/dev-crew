@@ -1,6 +1,6 @@
 ---
 id: FEAT-182
-status: in-progress
+status: done
 priority: P3
 category: feature
 target_release: null
@@ -21,6 +21,8 @@ started_at: 2026-06-13
 github_issue: 265
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/265"
+slices_complete: [SLICE-126]
+completed_at: 2026-06-13
 ---
 # FEAT-182: loop backlog audit — auto-flag likely-already-satisfied FEATs with evidence
 
