@@ -5,6 +5,21 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.44.1 — 2026-06-13 — Runtime stuck-detector halt-badge (FEAT-130 / SLICE-119)
+
+### Stuck-detector halt-badge + stuck-tick / stuck-reset CLI
+
+The autonomous loop now detects when a slice is cycling without progress and emits a hard `stuckDetected` halt-badge rather than letting the builder accumulate cost silently. A loop-owned counter file at `.claude/state/loop/stuck-detector.json` tracks `{ attempts, threshold, sliceId, updatedAt }`. When `attempts >= threshold` (default 3), `checkStuckDetector` returns a signal and the stop-check gate fires `snapshot.stuckDetected` with the full counter payload.
+
+Two new CLI subcommands manage the counter:
+
+- `bun src/scripts/loop.mts stuck-tick --slice <id> [--repo <path>]` — increments the attempt counter for the given slice (initialises at 1 on first call). Records `updatedAt` ISO-8601 timestamp.
+- `bun src/scripts/loop.mts stuck-reset [--repo <path>]` — deletes `.claude/state/loop/stuck-detector.json`. Idempotent (no-op when the file is already absent). Call after each successful slice close to clear stale state.
+
+The check is fail-open: a missing file, malformed JSON, or invalid shape (not an object, non-numeric `attempts` or `threshold`) all return `null` (not stuck). Only a fully valid payload with `attempts >= threshold` fires the halt. This prevents a partial write or state corruption from permanently blocking the walker.
+
+Implementation spans five modules: `src/scripts/lib/stuck-detector.mts` (new — reader + `StuckDetectorSignal` interface), `src/scripts/lib/stop-conditions.mts` (14th parallel call in `gatherStopInputs` + `assembleStopResult` wiring), `src/scripts/lib/halt-badges.mts` (9th `HALT_BADGES` entry + `renderStuckDetected`), `src/scripts/loop.mts` (`stuck-tick` / `stuck-reset` subcommands). `.gitignore` excludes `.claude/state/loop/stuck-detector.json`. Registry section added to `docs/halt-badges.md` per doc-contract. 7 unit tests in `src/tests/stuck-detector.test.mts`; `src/tests/explain-halts.test.mts` updated for the 9th badge and multi-halt fixture (registry count 8→9).
+
 ## v0.44.0 — 2026-06-13 — Pause / resume lifecycle for async waits (FEAT-128 / SLICE-118)
 
 ### Pause / resume conversation lifecycle for external-event waits
