@@ -3,6 +3,7 @@ dist/
 .claude/logs/
 .claude/state/
 .claude/state/loop/paused.json
+.claude/state/loop/stuck-detector.json
 .claude.backup.*
 *.tmp
 .playwright-mcp/

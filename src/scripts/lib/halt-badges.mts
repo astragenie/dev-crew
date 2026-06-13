@@ -96,6 +96,16 @@ function renderPausedForExternalEvent(e: any): string[] {
   ];
 }
 
+function renderStuckDetected(e: any): string[] {
+  if (!e) return [];
+  return [
+    `- Slice: ${e.sliceId}`,
+    `- Builder attempts without PASS: ${e.attempts} (threshold ${e.threshold})`,
+    `- Last attempt at: ${e.lastAttemptAt}`,
+    `- Suggested action: run \`bun src/scripts/loop.mts stuck-reset\` to clear the counter, then investigate builder failures. Consider narrowing scope or fixing the root cause before re-dispatching.`
+  ];
+}
+
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES: HaltBadgeRenderer[] = [
   { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
@@ -117,7 +127,8 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
     field: "pausedForExternalEvent",
     gateName: "Paused for external event",
     render: renderPausedForExternalEvent
-  }
+  },
+  { field: "stuckDetected", gateName: "Stuck detector", render: renderStuckDetected }
 ];
 
 /**
