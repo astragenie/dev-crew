@@ -1,9 +1,9 @@
 ---
 id: FEAT-179
-status: in-progress
+status: done
 priority: P3
 category: feature
-target_release: null
+target_release: 0.49.1
 created: 2026-06-10
 updated: 2026-06-13
 depends_on: [FEAT-178]
@@ -18,6 +18,8 @@ pm_dependency_depth: 0.6
 composite_score: 0.52
 triage_notes: "Decay-ranked retrieval extends FEAT-178: ranking algorithm + citations ledger + grade-outcome feedback loop (+1 pass / -2 fail). Depends on FEAT-178 and a cross-stage utility-update contract -> not autonomous. Defer until FEAT-178 lands."
 started_at: 2026-06-13
+slices_complete: [SLICE-130]
+completed_at: 2026-06-13
 github_issue: 270
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/270"

@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.49.1] — 2026-06-13
+
+### Added
+- FEAT-179: Decay-ranked, citation-tracked learnings retrieval (`src/scripts/lib/learnings-decay.mts`, `learnings-citations.mts`, `learnings-ranker.mts`) — learning confidence decays ~10%/week at read time (timestamp multiplier, no daemon); every retrieval is appended to a citations ledger (`citations.jsonl`); utility scores update from grade outcomes (+1 pass / -2 fail); `loop lessons rank [--query <title>] [--limit N]` CLI subcommand returns decay×utility-ranked top-N trimmed to ~1000 tokens for builder dispatch injection. Tests: `learnings-decay.test.mts`, `learnings-citations.test.mts`, `learnings-ranker.test.mts` (7 ranker + 7 citation + decay tests).
+
 ## [0.49.0] — 2026-06-13
 
 ### Added
