@@ -1,7 +1,7 @@
 ---
 id: SLICE-121
 title: Keyword-triggered skills (auto-inject prompt fragments by conversation content)
-status: pending
+status: completed
 feature: FEAT-129
 phase: null
 priority: P2
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 259
 github_url: "https://github.com/sergeymilashico/loop/issues/259"
+completed_at: 2026-06-13
 ---
 # SLICE-121: Keyword-triggered skills (auto-inject prompt fragments by conversation content)
 

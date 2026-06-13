@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## v0.45.1 — 2026-06-13
+
+### Added
+- **keywords field in SKILL.md frontmatter** (FEAT-129/SLICE-121): `keywords?: string[]` in `SkillMeta` interface; `validateManifests` now validates keywords is an array-of-strings when present. Enables future keyword-triggered skill injection. Documented in `docs/code-conventions.md`.
+
 ## v0.44.1 — 2026-06-13 — Runtime stuck-detector halt-badge (FEAT-130 / SLICE-119)
 
 ### Stuck-detector halt-badge + stuck-tick / stuck-reset CLI

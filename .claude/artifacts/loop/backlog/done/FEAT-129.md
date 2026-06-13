@@ -1,11 +1,11 @@
 ---
 id: FEAT-129
-status: triaged
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
 slices: []
 derived_from: null
@@ -24,6 +24,7 @@ triage_notes: "Composite 6. Keyword-triggered skills (auto-inject prompt fragmen
 github_issue: 184
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/184"
+completed_at: 2026-06-13
 ---
 # FEAT-129: Keyword-triggered skills (auto-inject prompt fragments by conversation content)
 
