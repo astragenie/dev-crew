@@ -92,7 +92,11 @@ const FLAG_SPEC = {
   // cost-by-skill report
   "--cost-by-skill": { key: "costBySkill", boolean: true },
   // pause / resume subcommands
-  "--reason": { key: "reason" }
+  "--reason": { key: "reason" },
+  // lessons promote subcommand
+  "--max-grades": { key: "max-grades" },
+  "--min-repeats": { key: "min-repeats" },
+  "--json": { key: "json", boolean: true }
 };
 
 function parseArgs(argv: string[]) {
@@ -157,7 +161,10 @@ function parseArgs(argv: string[]) {
     includeTriaged: false,
     fromIssue: null,
     costBySkill: false,
-    reason: null
+    reason: null,
+    "max-grades": null,
+    "min-repeats": null,
+    json: false
   };
   const positionals: any[] = [];
 
@@ -319,12 +326,17 @@ const COMMANDS = {
     await logEvent(cwd, { command: "snapshot-memory", grades: result.counts.grades });
     return result;
   },
-  lessons: async ({ repoPath, positionals }: CmdCtx) => {
+  lessons: async ({ repoPath, positionals, flags }: CmdCtx) => {
     const [sub] = positionals;
-    if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
-    const { recentLessons } = await import("./lib/lessons-feed.mjs");
-    const limit = positionals[1] ? Number(positionals[1]) : 5;
-    return recentLessons(repoPath, { limit });
+    if (sub === "recent") {
+      const { recentLessons } = await import("./lib/lessons-feed.mjs");
+      const limit = positionals[1] ? Number(positionals[1]) : 5;
+      return recentLessons(repoPath, { limit });
+    }
+    if (sub === "promote") {
+      return runLessonsPromote(repoPath, flags);
+    }
+    throw new Error("lessons requires subcommand: recent | promote");
   },
   "sync-claims": async ({ repoPath }: CmdCtx) => {
     const { syncClaims } = await import("./lib/claims-sync.mjs");
@@ -337,7 +349,8 @@ const COMMANDS = {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    return checkStopConditions(cwd, { config });
+    const result = await checkStopConditions(cwd, { config });
+    return result;
   },
   auto: async ({ repoPath, flags, config }: CmdCtx) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
@@ -1444,6 +1457,61 @@ async function runLearningsSubcommand(
   }
   if (sub === "prune") return runLearningsPrune(repoPath, flags, deleteLearning);
   throw new Error(`Unknown learnings subcommand: ${sub}`);
+}
+
+async function runLessonsPromote(
+  repoPath: string,
+  flags: Record<string, any>
+): Promise<Record<string, unknown>> {
+  const { scanGradeLessonsFromRepo } = await import("./lib/lessons-ratchet.mjs");
+  const rawMaxGrades = Number(flags["max-grades"]);
+  const maxGrades =
+    flags["max-grades"] != null && !isNaN(rawMaxGrades) && rawMaxGrades > 0 ? rawMaxGrades : 20;
+  const rawMinRepeats = Number(flags["min-repeats"]);
+  const minRepeats =
+    flags["min-repeats"] != null && !isNaN(rawMinRepeats) && rawMinRepeats > 0 ? rawMinRepeats : 2;
+  const result = await scanGradeLessonsFromRepo(repoPath, { maxGrades, minRepeats });
+
+  if (flags.json) {
+    process.exitCode = 0;
+    return result as unknown as Record<string, unknown>;
+  }
+
+  const lines: string[] = [];
+  lines.push(
+    `## Repeated lessons (${result.repeated.length}) — scanned ${result.scannedCount} grade files`
+  );
+  lines.push("");
+  if (result.repeated.length === 0) {
+    lines.push("_No repeated lessons found. Run again after more slices are graded._");
+  } else {
+    for (const entry of result.repeated) {
+      lines.push(`### ${entry.slug} (×${entry.count})`);
+      lines.push("");
+      lines.push(`> ${entry.text}`);
+      lines.push("");
+      lines.push(`_Seen in: ${entry.gradeFiles.join(", ")}_`);
+      lines.push("");
+    }
+  }
+
+  lines.push(`## Singleton lessons (${result.singleton.length})`);
+  lines.push("");
+  if (result.singleton.length === 0) {
+    lines.push("_None._");
+  } else {
+    for (const entry of result.singleton) {
+      lines.push(`- **${entry.slug}**: ${entry.text}`);
+    }
+  }
+
+  lines.push("");
+  lines.push(
+    "_Review repeated lessons above. Run `loop.mts lessons promote --json` to get structured output for automation._"
+  );
+
+  process.exitCode = 0;
+  return { ...result, report: lines.join("\n") };
 }
 
 async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {

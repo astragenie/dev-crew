@@ -5,10 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
-## v0.45.1 — 2026-06-13
+## v0.45.2 — 2026-06-13 — Grade lessons promotion ratchet (FEAT-178 / SLICE-122)
 
 ### Added
-- **keywords field in SKILL.md frontmatter** (FEAT-129/SLICE-121): `keywords?: string[]` in `SkillMeta` interface; `validateManifests` now validates keywords is an array-of-strings when present. Enables future keyword-triggered skill injection. Documented in `docs/code-conventions.md`.
+
+- **Grade lessons promotion ratchet**: `lessons promote` CLI subcommand scans grade files, identifies repeated lessons (≥2 occurrences by default), and promotes them to `.claude/artifacts/loop/planning-rules/`. Configurable via `--max-grades`, `--min-repeats`, `--json` flags. New modules: `src/scripts/lib/lessons-ratchet.mts`, `src/scripts/lib/planning-rules.mts`. Tests: `src/tests/lessons-ratchet.test.mts` (8 tests). Addresses the backlog pattern where high-confidence lessons recur across grades but remain buried in per-slice docs; the ratchet surfaces them for re-planning.
 
 ## v0.44.1 — 2026-06-13 — Runtime stuck-detector halt-badge (FEAT-130 / SLICE-119)
 
