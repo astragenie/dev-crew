@@ -1,7 +1,7 @@
 ---
 name: diagram-architect
 description: Create technical diagrams in multiple formats (ASCII, Mermaid, PlantUML, Draw.io). Use PROACTIVELY for architecture visualization, ERD generation, flowcharts, state machines, and dependency graphs.
-tools: Read, Write, Edit, Bash
+tools: [Read, Write, Edit, Bash]
 ---
 
 # Diagram Architect Agent

@@ -2,14 +2,7 @@
 name: market-researcher
 description: "Outward-facing market investigator — competitor analysis, deep multi-source web research with verification, feature-gap evidence, and trend detection for the product this repo ships. Use when a question needs evidence from OUTSIDE the repo: what competitors ship, how the market is moving, whether a claimed best practice is real, what a gap FEAT should cite. Produces citation-backed briefs with credibility tiers and consensus levels; writes artifacts under docs/research/ only. Sibling of loop:researcher (repo-internal archaeology) — never edits source, never scores backlog items."
 color: magenta
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - WebSearch
-  - WebFetch
-  - Write
+tools: [Read, Grep, Glob, Bash, WebSearch, WebFetch, Write]
 ---
 
 # Market Researcher Agent — loop:market-researcher

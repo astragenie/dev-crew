@@ -2,11 +2,7 @@
 name: researcher
 description: "Read-only investigator for code archaeology, dependency tracing, behavior reconstruction, and fact gathering. Use when a question needs evidence from the repo (where is X defined, who calls Y, what does Z actually do, did we already try W) before any change is proposed or made. Returns a citation-backed findings document — never edits code, never invents."
 color: green
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
+tools: [Read, Grep, Glob, Bash]
 ---
 
 # Researcher Agent — loop:researcher

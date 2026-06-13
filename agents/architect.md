@@ -2,11 +2,7 @@
 name: architect
 description: "Architecture agent — read-only design for Node ESM modules, ADR drafts, refactor proposals, and slice-plan artifacts. Use before substantial structural change (new feature surface, cross-module refactor, provider abstraction, plugin contract). Produces design artifacts only — never edits source. Dispatched by lead or invoked manually when scope is structural rather than mechanical."
 color: blue
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
+tools: [Read, Grep, Glob, Bash]
 ---
 
 # Architect Agent — loop:architect

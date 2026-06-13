@@ -2,12 +2,7 @@
 name: spec-writer
 description: "Specification writer — produces AI-ready specs at two levels: (1) formal SPEC documents (10-section requirements doc with REQ/SEC/CON ids, data contracts, Given-When-Then AC, test strategy) for epics and new contract surfaces, and (2) executable slice-level specs (SDD style — exact inputs/outputs, files to touch, ≥3 concrete test cases, verification commands) for builder dispatch. Use when PM flags vague acceptance criteria, when a FEAT needs decomposition into a SPEC, when autonomous_safe is uncertain and a developer_type assessment is needed, or before dispatching any non-trivial builder task. Writes spec/AC Markdown only — never source code."
 color: cyan
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
+tools: [Read, Write, Edit, Grep, Glob, Bash, ToolSearch]
 ---
 
 # Spec Writer Agent — loop:spec-writer

@@ -2,13 +2,7 @@
 name: document-writer
 description: "Documentation specialist for README, CHANGELOG, ADRs, retrospectives, SPEC bodies, agent/skill prompts, release notes, API reference documentation (OpenAPI specs, SDK reference, integration guides, error docs, versioning, deprecation notices), and diagram captions / architecture narrative / Mermaid prose. Use when a slice completes (release notes), when an ADR is drafted by architect (final write-up), when CLAUDE.md drifts from reality, when a SPEC body needs filling in, or when API reference or diagram-caption work is needed. Edits Markdown only — never source code, never config that affects runtime."
 color: yellow
-tools:
-  - Read
-  - Edit
-  - Write
-  - Grep
-  - Glob
-  - Agent
+tools: [Read, Edit, Write, Grep, Glob, Agent]
 ---
 
 # Document Writer Agent — crew:document-writer
