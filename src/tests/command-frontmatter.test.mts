@@ -4,10 +4,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import {
-  validateCommandFrontmatter,
-  validateManifests
-} from "../scripts/validate-manifests.mjs";
+import { validateCommandFrontmatter, validateManifests } from "../scripts/validate-manifests.mjs";
 
 function tmpRepo(prefix: string): { root: string; commandsDir: string } {
   const root = mkdtempSync(path.join(tmpdir(), prefix));
@@ -105,11 +102,7 @@ test("validateManifests propagates command frontmatter errors into result.failur
     "utf8"
   );
   // Write a command file missing the name field
-  writeCmd(
-    commandsDir,
-    "cmd",
-    "---\ndescription: Some command\nauto_execute_steps: false\n---\n"
-  );
+  writeCmd(commandsDir, "cmd", "---\ndescription: Some command\nauto_execute_steps: false\n---\n");
   const result = await validateManifests(root);
   assert.equal(result.ok, false);
   const joined = result.failures.join("\n");
