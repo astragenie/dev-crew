@@ -1,5 +1,7 @@
 ---
+name: slice-plan
 description: Run the codebase research pre-flight for a slice and write an editable plan artifact under .claude/artifacts/loop/plans/.
+auto_execute_steps: false
 ---
 
 # Slice Plan

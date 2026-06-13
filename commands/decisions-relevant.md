@@ -1,5 +1,7 @@
 ---
+name: decisions-relevant
 description: List retrospective decisions whose affects_files frontmatter matches any of the supplied changed files — surface prior architectural choices to reviewers.
+auto_execute_steps: false
 ---
 
 # Decisions Relevant

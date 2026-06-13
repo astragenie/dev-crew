@@ -1,5 +1,7 @@
 ---
+name: spec-add
 description: Create a new SPEC-NNN.md (PRD / user journey / SRE / research / ADR) under docs/specs/.
+auto_execute_steps: false
 ---
 
 # Spec Add

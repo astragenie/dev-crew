@@ -1,5 +1,7 @@
 ---
+name: decisions-supersede
 description: Mark an existing decision as superseded by a newer one — updates both files atomically.
+auto_execute_steps: false
 ---
 
 # Decisions Supersede

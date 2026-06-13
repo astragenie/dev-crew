@@ -1,5 +1,7 @@
 ---
+name: competitor-audit
 description: Run a fresh competitor gap audit across all registered competitors, dispatch researchers to collect latest data, aggregate into ranked FEATs.
+auto_execute_steps: false
 ---
 
 # Competitor Audit

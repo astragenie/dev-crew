@@ -1,5 +1,7 @@
 ---
+name: start
 description: First action for a fresh loop session — read mandatory docs, pick highest-priority PENDING slice, run the first-response checklist.
+auto_execute_steps: false
 ---
 
 # Start Autonomous Loop Session

@@ -1,5 +1,7 @@
 ---
+name: classify-slice-shape
 description: Classify a slice's changed-file set into an inline-friendly shape.
+auto_execute_steps: false
 ---
 
 # Classify Slice Shape

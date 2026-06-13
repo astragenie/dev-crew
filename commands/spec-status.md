@@ -1,5 +1,7 @@
 ---
+name: spec-status
 description: Report satisfaction state across all specs (% of derived features done) and auto-roll status to satisfied where appropriate.
+auto_execute_steps: false
 ---
 
 # Spec Status

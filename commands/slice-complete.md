@@ -1,5 +1,7 @@
 ---
+name: slice-complete
 description: Close a slice — move slice file to completed/, feature to done/, auto-roll satisfied specs, suggest grade as next action.
+auto_execute_steps: false
 ---
 
 # Slice Complete

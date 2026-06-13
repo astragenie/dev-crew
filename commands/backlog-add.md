@@ -1,5 +1,7 @@
 ---
+name: backlog-add
 description: Append a new feature to docs/backlog/pending/ with auto-assigned FEAT-NNN id.
+auto_execute_steps: false
 ---
 
 # Backlog Add

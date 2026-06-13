@@ -1,0 +1,60 @@
+# Task Handoff: FEAT-117: Markdown Workflow recipes frontmatter
+
+- Created: 2026-06-13T11:11:29.747Z
+- From: fullstack-dev
+- To: lead
+- Objective: Added name + auto_execute_steps: false frontmatter to all 44 commands/*.md files; exported validateCommandFrontmatter from validate-manifests.mts; created 6-test suite; fixed pre-existing complexity violation.
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - src/scripts/validate-manifests.mts
+  - src/tests/command-frontmatter.test.mts
+  - commands/architect.md
+  - commands/auto.md
+  - commands/backlog-add.md
+  - commands/backlog-enrich.md
+  - commands/backlog-list.md
+  - commands/backlog-promote.md
+  - commands/brief.md
+  - commands/classify-slice-shape.md
+  - commands/competitor-audit.md
+  - commands/decisions-list.md
+  - commands/decisions-relevant.md
+  - commands/decisions-show.md
+  - commands/decisions-supersede.md
+  - commands/derive-slice.md
+  - commands/install.md
+  - commands/intake.md
+  - commands/learn.md
+  - commands/lessons-recent.md
+  - commands/list-presets.md
+  - commands/next-slice.md
+  - commands/phase-gate.md
+  - commands/pr-fix.md
+  - commands/release-plan.md
+  - commands/retriage.md
+  - commands/retrospective.md
+  - commands/slice-complete.md
+  - commands/slice-from-feature.md
+  - commands/slice-grade-write.md
+  - commands/slice-grade.md
+  - commands/slice-link.md
+  - commands/slice-plan.md
+  - commands/slice-post-builder-fanout.md
+  - commands/slice-review-ladder.md
+  - commands/slice-start.md
+  - commands/snapshot-memory.md
+  - commands/spec-add.md
+  - commands/spec-decompose.md
+  - commands/spec-list.md
+  - commands/spec-status.md
+  - commands/start.md
+  - commands/status.md
+  - commands/stop-check.md
+  - commands/sync-claims.md
+  - commands/triage.md
+- Confidence: high
+- Risks: Pre-existing test failure: retriage-command.test.mts 'retriage.md documents the failure-escalation rule' checks for scopeNotes in the body — this test was already failing before this slice (confirmed by git stash test). Not caused by FEAT-117 changes.
+- Suggested Next Handoff: crew:inspector review then crew:verifier; then /loop:slice complete --id SLICE-117
+

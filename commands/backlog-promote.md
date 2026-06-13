@@ -1,5 +1,7 @@
 ---
+name: backlog-promote
 description: Move a triaged feature into in-progress and create a linked slice.
+auto_execute_steps: false
 ---
 
 # Backlog Promote

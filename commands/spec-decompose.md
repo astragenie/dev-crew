@@ -1,5 +1,7 @@
 ---
+name: spec-decompose
 description: Derive FEAT-NNN files from a spec and wire the SPEC↔FEAT linkage.
+auto_execute_steps: false
 ---
 
 # Spec Decompose

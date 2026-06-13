@@ -1,5 +1,7 @@
 ---
+name: slice-post-builder-fanout
 description: Emit a single parallel-dispatch payload with reviewers A+B and the validator after builder PASS.
+auto_execute_steps: false
 ---
 
 # Slice — Post-Builder Fanout

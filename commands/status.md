@@ -1,5 +1,7 @@
 ---
+name: status
 description: Report current loop install state for this repo — preset, paths, marker presence, crew dep.
+auto_execute_steps: false
 ---
 
 # Autonomous Loop Status

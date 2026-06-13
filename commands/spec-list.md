@@ -1,5 +1,7 @@
 ---
+name: spec-list
 description: List specs with optional filters by status / type / priority / target_release.
+auto_execute_steps: false
 ---
 
 # Spec List

@@ -1,5 +1,7 @@
 ---
+name: derive-slice
 description: Derive a new slice from the highest-priority unmet requirement in product-backlog.md when approved-slices.md is empty.
+auto_execute_steps: false
 ---
 
 # Derive Next Slice

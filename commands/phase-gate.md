@@ -1,5 +1,7 @@
 ---
+name: phase-gate
 description: Run the configured phase-gate test suite, capture all output, write the validation artifact via crew.
+auto_execute_steps: false
 ---
 
 # Run Phase Gate

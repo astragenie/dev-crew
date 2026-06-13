@@ -1,5 +1,7 @@
 ---
+name: release-plan
 description: Plan a release — collect all FEAT entries targeting a version, group by parent spec, write release notes to docs/releases/v<X.Y.Z>.md.
+auto_execute_steps: false
 ---
 
 # Release Plan
