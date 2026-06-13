@@ -1,6 +1,6 @@
 ---
 id: FEAT-117
-status: in-progress
+status: done
 priority: P2
 category: competitor-gap
 target_release: null
