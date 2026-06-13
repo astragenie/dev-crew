@@ -1,7 +1,7 @@
 ---
 id: SLICE-124
 title: Error-pattern registry with automatic recovery for specialist dispatch failures
-status: pending
+status: completed
 feature: FEAT-174
 phase: null
 priority: P2
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 263
 github_url: "https://github.com/sergeymilashico/loop/issues/263"
+completed_at: 2026-06-13
 ---
 # SLICE-124: Error-pattern registry with automatic recovery for specialist dispatch failures
 

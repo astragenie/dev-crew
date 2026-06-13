@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.46.0] — 2026-06-13
+
+### Added
+- FEAT-174: Error-pattern registry (`src/scripts/lib/error-pattern-registry.mts`) — `matchPatterns` detects 4 failure signatures (pause-without-artifact, empty-artifact, truncated-output, budget-exceeded); `checkDispatchResult` returns recovery hints; `logPatternMatch` appends to `learnings.jsonl`
+
 ## v0.45.3 — 2026-06-13
 
 ### Added

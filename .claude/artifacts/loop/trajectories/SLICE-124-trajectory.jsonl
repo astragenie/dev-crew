@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-124","timestamp":"2026-06-13T14:49:54.832Z","featureId":"FEAT-174","title":"SLICE-124: Error-pattern registry with automatic recovery for specialist dispatch failures","planPath":"C:\\work\\mega\\.-FEAT-174-0\\.claude\\artifacts\\loop\\plans\\20260613T144954Z-plan-SLICE-124.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-124","timestamp":"2026-06-13T15:00:10.584Z","featureId":"FEAT-174","featureMovedTo":null,"validationSatisfied":false}
