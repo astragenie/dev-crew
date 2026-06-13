@@ -1,2 +1,2 @@
-{"type":"slice_start","sliceId":"SLICE-115","timestamp":"2026-06-13T08:52:48.362Z","featureId":"FEAT-112","title":"SLICE-115: Named sub-agents with stable user-facing identity (brainstorm / plan / repair)","planPath":"C:\\work\\mega\\loop-FEAT-112-0\\.claude\\artifacts\\loop\\plans\\20260613T085248Z-plan-SLICE-115.md","requiresApprovalGate":false}
-{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:22:48.445Z","featureId":"FEAT-112","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_start","sliceId":"SLICE-115","timestamp":"2026-06-13T08:52:48.632Z","featureId":"FEAT-165","title":"SLICE-115: Per-skill cost attribution","planPath":"C:\\work\\mega\\loop-FEAT-165-0\\.claude\\artifacts\\loop\\plans\\20260613T085248Z-plan-SLICE-115.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:22:50.151Z","featureId":"FEAT-165","featureMovedTo":null,"validationSatisfied":false}

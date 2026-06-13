@@ -88,7 +88,9 @@ const FLAG_SPEC = {
   "--serial": { key: "serial", boolean: true },
   "--only": { key: "only" },
   // backlog-add: pre-fill from GitHub issue
-  "--from-issue": { key: "fromIssue" }
+  "--from-issue": { key: "fromIssue" },
+  // cost-by-skill report
+  "--cost-by-skill": { key: "costBySkill", boolean: true }
 };
 
 function parseArgs(argv: string[]) {
@@ -151,7 +153,8 @@ function parseArgs(argv: string[]) {
     serial: false,
     only: null,
     includeTriaged: false,
-    fromIssue: null
+    fromIssue: null,
+    costBySkill: false
   };
   const positionals: any[] = [];
 
@@ -269,6 +272,14 @@ const COMMANDS = {
   brief: async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+
+    if (flags?.costBySkill) {
+      const { buildCostBySkillReport } = await import("./lib/cost-by-skill.mjs");
+      const report = await buildCostBySkillReport(cwd);
+      console.log(report);
+      return { _suppressDefaultOutput: true };
+    }
+
     const { buildBrief } = await import("./lib/brief.mjs");
     const result = await buildBrief(cwd);
     if (flags?.explainHalts) {
