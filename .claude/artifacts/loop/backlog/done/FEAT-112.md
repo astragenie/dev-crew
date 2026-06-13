@@ -1,11 +1,12 @@
 ---
 id: FEAT-112
-status: in-progress
+status: done
 priority: P3
 category: competitor-gap
 target_release: null
 created: 2026-06-08
 updated: 2026-06-13
+completed_at: 2026-06-13
 depends_on: []
 slices: [SLICE-115]
 derived_from: null
