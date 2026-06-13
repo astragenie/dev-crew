@@ -211,6 +211,35 @@ When disabled, `checkRedundantReadStop` short-circuits to `null` regardless of `
 
 ---
 
+### `snapshot.pausedForExternalEvent`
+
+**Shape:**
+
+```ts
+{
+  triggered: true;
+  reason: string;      // operator-supplied description of the external wait
+  resumeHint: string;  // human-readable resume instruction
+  pausedAt: string;    // ISO-8601 timestamp written by the pause subcommand
+}
+```
+
+**Meaning:** an operator has explicitly suspended the autonomous loop to wait for an external event (CI run, PR review, deploy gate, manual approval, etc.). The walker stops immediately; no slice is promoted until the operator removes the pause.
+
+**Fires when:** `.claude/state/loop/paused.json` exists, is valid JSON, and contains `triggered: true`. Fail-open on file-absent, malformed JSON, or missing `triggered` field — none of those cases halt the walker.
+
+**Suggested operator action:** once the external event has resolved, run:
+
+```
+bun src/scripts/loop.mts resume --repo <path>
+```
+
+This deletes `.claude/state/loop/paused.json`; the next `stop-check` returns `shouldStop: false` (assuming no other conditions are active) and the walker resumes from the current backlog state. No checkpoint replay is needed — slice artifacts ARE the state.
+
+**Origin:** FEAT-128 / SLICE-118. Source: `src/scripts/lib/paused-for-external-event.mts::checkPausedForExternalEvent`. Snapshot builder: `src/scripts/lib/stop-conditions.mts::buildPausedForExternalEventSnapshotEntry`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.

@@ -1,13 +1,15 @@
 ---
 id: FEAT-128
-status: triaged
+status: done
+slices: [SLICE-118]
+slices_complete: [SLICE-118]
+completed_at: 2026-06-13
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
-slices: []
 derived_from: null
 composite_score: 6
 source_competitors: [OpenHands]
@@ -78,3 +80,8 @@ OpenHands has first-class pause/resume so a conversation can suspend on CI/revie
 ## Consider rejecting because
 
 The current session-end-and-restart pattern, combined with slice artifacts and workflow-state.json, already provides a tolerable workaround for CI waits. Adding a first-class pause/resume primitive requires defining resume semantics precisely — what does "resume exactly" mean in a stateless Claude Code session? The gap between artifact-based state and true session resume may be unbridgeable at the plugin level.
+
+## Delivery
+
+Delivered in SLICE-118 (2026-06-13). All gates PASS: Reviewer A, Reviewer B, Validator.
+Implementation: `src/scripts/lib/paused-for-external-event.mts` (new), stop-conditions wiring, halt-badges 8th entry, `pause`/`resume` CLI subcommands, docs/halt-badges.md registry section, .gitignore exclusion, 8 unit tests.
