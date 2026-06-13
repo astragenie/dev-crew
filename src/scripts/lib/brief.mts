@@ -7,8 +7,8 @@ import { readEvents } from "./telemetry.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import { checkCostRegression } from "./cost-regression.mjs";
 import { checkSessionDrift } from "./session-drift.mjs";
-import { recentLearnings } from "./learnings.mjs";
 import { computeConfidence } from "./confidence-signal.mjs";
+import { recentLearnings } from "./learnings.mjs";
 
 // Standalone loop situational report. Complements crew's brief-me;
 // surfaces backlog/specs/grades/decisions/alerts without modifying the
@@ -39,31 +39,30 @@ function computeGradeSignal(grades: Record<string, any>[]) {
   };
 }
 
-// Derive the sliceStartConfidence block for the top triaged feature.
-// acCount is sentinel 2 — slice body not parsed at brief time (see AC-003 of FEAT-085).
-// Using 2 avoids triggering the acCount===0 and acCount<2 red branches, preserving
-// meaningful green/yellow/red signal driven by autonomousSafe and dependsOnCount only.
-function deriveSliceStartConfidence(
+// Compute confidence signal for the top triaged item; null when backlog is empty.
+// acCount sentinel 2: avoids the acCount===0 red branch at brief time (slice not parsed).
+function computeSliceStartConfidence(
   topTriagedRaw: Record<string, any>[],
-  gradeAvgRecent: number | null
-): {
-  featureId: string | null;
-  confidence: "green" | "yellow" | "red" | null;
-  reason: string | null;
-} | null {
-  const top = topTriagedRaw[0];
-  if (!top) return null;
+  gradeSignal: ReturnType<typeof computeGradeSignal>
+): { featureId: string | null; confidence: "green" | "yellow" | "red" | null; reason: string | null } | null {
+  if (topTriagedRaw.length === 0) return null;
+  const top = topTriagedRaw[0] as Record<string, any>;
   const autonomousSafe: boolean | null = top.frontmatter.autonomous_safe ?? null;
   const dependsOnCount: number = Array.isArray(top.frontmatter.depends_on)
     ? top.frontmatter.depends_on.length
     : 0;
-  const result = computeConfidence({
-    autonomousSafe,
-    acCount: 2,
-    recentGradeAvg: gradeAvgRecent,
-    dependsOnCount
-  });
+  const result = computeConfidence({ autonomousSafe, acCount: 2, recentGradeAvg: gradeSignal.avgRecent, dependsOnCount });
   return { featureId: top.id as string, confidence: result.confidence, reason: result.reason };
+}
+
+// Fetch top-3 learnings digest; returns null when store is absent or corrupt.
+async function fetchLearningsDigest(repoPath: string): Promise<string | null> {
+  try {
+    const lr = await recentLearnings(repoPath, 3);
+    return lr.digest;
+  } catch {
+    return null;
+  }
 }
 
 // Count how many warn alerts would be demoted under current autoMode + ignoredCategories config.
@@ -103,14 +102,6 @@ export async function buildBrief(
     checkSessionDrift(repoPath)
   ]);
 
-  let learningsDigest: string | null = null;
-  try {
-    const lr = await recentLearnings(repoPath, 3);
-    learningsDigest = lr.digest;
-  } catch {
-    // store absent or corrupt; digest stays null
-  }
-
   const backlogCounts = {
     pending: filterBacklog(backlog, { status: "pending" }).length,
     triaged: filterBacklog(backlog, { status: "triaged" }).length,
@@ -143,7 +134,9 @@ export async function buildBrief(
   // Compute grade signal first so avgRecent is available for confidence
   const gradeSignal = computeGradeSignal(grades);
 
-  const sliceStartConfidence = deriveSliceStartConfidence(topTriagedRaw, gradeSignal.avgRecent);
+  const sliceStartConfidence = computeSliceStartConfidence(topTriagedRaw, gradeSignal);
+
+  const learningsDigest = await fetchLearningsDigest(repoPath);
 
   // Spec flow: approved + undecomposed
   const specsToDecompose = specs
