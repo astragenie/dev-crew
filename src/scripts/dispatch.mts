@@ -10,9 +10,10 @@ import {
   type DispatchPlan,
   type PreparedDispatch
 } from "./lib/hierarchical-dispatch.mjs";
+import { writeDispatchMetrics, readDispatchMetrics } from "./lib/dispatch-metrics.mjs";
 
 type ParsedArgs = {
-  subcommand: "prepare" | "finalize" | "help";
+  subcommand: "prepare" | "finalize" | "metrics" | "help";
   planPath?: string;
   parentBranch?: string;
   repo?: string;
@@ -75,6 +76,7 @@ function printHelp(): void {
   process.stdout.write(`Usage:
   bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json]
   bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N] [--pr]
+  bun src/scripts/dispatch.mts metrics --run-id <id> [--repo <path>]
 
 Subcommands:
   prepare   Run pre-flight gates, spawn worktrees, build Agent batch.
@@ -82,6 +84,7 @@ Subcommands:
   finalize  After the caller has invoked the Agent batch, aggregate results,
             merge children to parent branch, write summary.md.
             --pr  Also push each DONE child branch and open a GitHub PR via gh CLI.
+  metrics   Read and print the dispatch-metrics.json for a completed run.
 
 `);
 }
@@ -169,6 +172,25 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
   const summary = path.join(repo, ".claude/artifacts/loop/dispatch", args.runId, "summary.md");
   process.stdout.write(`Summary: ${summary}\n`);
 
+  const completedAt = new Date().toISOString();
+  const allFailedOrBlocked = results.every((r) => r.status === "FAILED" || r.status === "BLOCKED");
+  const startTimestamps = Object.values(prepared.startTimes);
+  const startedAt = new Date(
+    startTimestamps.length > 0 ? Math.min(...startTimestamps) : Date.now()
+  ).toISOString();
+  writeDispatchMetrics(repo, args.runId, {
+    runId: args.runId,
+    startedAt,
+    completedAt,
+    status: allFailedOrBlocked ? "partial" : "complete",
+    totalTokens: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    estimatedCostUsd: 0,
+    model: process.env["CLAUDE_MODEL"] ?? "unknown",
+    childCount: plans.length
+  });
+
   if (args.pr) {
     const { dispatchFinalizePr } = await import("./lib/dispatch-pr-mode.mjs");
     const children = results.map((r) => ({
@@ -194,6 +216,21 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
   return 0;
 }
 
+function cmdMetrics(args: ParsedArgs): number {
+  if (!args.runId) {
+    process.stderr.write("--run-id is required\n");
+    return 1;
+  }
+  const repo = args.repo ?? process.cwd();
+  const metrics = readDispatchMetrics(repo, args.runId);
+  if (!metrics) {
+    process.stderr.write(`[dispatch-metrics] not found: ${args.runId}\n`);
+    return 1;
+  }
+  process.stdout.write(JSON.stringify(metrics, null, 2) + "\n");
+  return 0;
+}
+
 const parsedArgs = parseArgs(process.argv.slice(2));
 (async () => {
   try {
@@ -203,6 +240,9 @@ const parsedArgs = parseArgs(process.argv.slice(2));
         break;
       case "finalize":
         process.exitCode = await cmdFinalize(parsedArgs);
+        break;
+      case "metrics":
+        process.exitCode = cmdMetrics(parsedArgs);
         break;
       case "help":
       default:
