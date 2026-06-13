@@ -113,6 +113,25 @@ export async function searchLearnings(
   return { count: items.length, items };
 }
 
+// Delete a learning entry by its numeric id.
+// Returns the deleted record when found, or null when no entry with that id exists.
+// Rewrites the entire JSONL file atomically (read → filter → write).
+// Throws when the file cannot be read for reasons other than absence.
+export async function deleteLearning(
+  repoPath: string,
+  id: number
+): Promise<Record<string, unknown> | null> {
+  const filePath = learningsPath(repoPath);
+  const all = await readAllEntries(filePath);
+  const target = all.find((e) => e.id === id);
+  if (!target) return null;
+  const remaining = all.filter((e) => e.id !== id);
+  const content =
+    remaining.map((e) => JSON.stringify(e)).join("\n") + (remaining.length > 0 ? "\n" : "");
+  await fs.writeFile(filePath, content, "utf8");
+  return target as Record<string, unknown>;
+}
+
 function renderLearningsDigest(items: any[]): string {
   const lines: string[] = [];
   lines.push(`## Operational learnings (last ${items.length})`);

@@ -108,3 +108,72 @@ test("buildBrief: warnAlertsDemoted counts demoted alerts when autoMode + ignore
   const out = await buildBrief(repo, { config });
   assert.equal(out.warnAlertsDemoted, 1, "one alert demoted");
 });
+
+// TC-001 — No triaged items: sliceStartConfidence is null
+test("buildBrief: sliceStartConfidence is null when no triaged items exist", async () => {
+  const repo = await tmpRepo("al-brief-conf-empty-");
+  const out = await buildBrief(repo);
+  assert.equal(out.sliceStartConfidence, null);
+});
+
+// TC-002 — Autonomous-safe feature with no depends_on: confidence is green
+test("buildBrief: sliceStartConfidence green for autonomous-safe feature with no deps", async () => {
+  const repo = await tmpRepo("al-brief-conf-green-");
+  const f = await addFeature(repo, { title: "safe feat" });
+  await moveFeature(f.filePath, "triaged", {
+    priority: "P1",
+    category: "feature",
+    autonomous_safe: true,
+    depends_on: []
+  });
+  const out = await buildBrief(repo);
+  assert.ok(out.sliceStartConfidence !== null, "sliceStartConfidence must be present");
+  assert.equal(out.sliceStartConfidence.featureId, f.id);
+  assert.equal(out.sliceStartConfidence.confidence, "green");
+  assert.ok(typeof out.sliceStartConfidence.reason === "string");
+});
+
+// TC-003 — autonomous_safe: false feature with depends_on: confidence is red (compound)
+test("buildBrief: sliceStartConfidence red for not-autonomous-safe + depends_on present", async () => {
+  const repo = await tmpRepo("al-brief-conf-red-");
+  const f = await addFeature(repo, { title: "risky feat" });
+  await moveFeature(f.filePath, "triaged", {
+    priority: "P1",
+    category: "feature",
+    autonomous_safe: false,
+    depends_on: ["FEAT-001"]
+  });
+  const out = await buildBrief(repo);
+  assert.ok(out.sliceStartConfidence !== null);
+  assert.equal(out.sliceStartConfidence.confidence, "red");
+  assert.match(out.sliceStartConfidence.reason, /unresolved depends_on/);
+});
+
+// TC-004 — autonomous_safe: false, no compound triggers: confidence is yellow
+test("buildBrief: sliceStartConfidence yellow for autonomous_safe false with no compound trigger", async () => {
+  const repo = await tmpRepo("al-brief-conf-yellow-");
+  const f = await addFeature(repo, { title: "manual feat" });
+  await moveFeature(f.filePath, "triaged", {
+    priority: "P1",
+    category: "feature",
+    autonomous_safe: false,
+    depends_on: []
+  });
+  const out = await buildBrief(repo);
+  assert.ok(out.sliceStartConfidence !== null);
+  assert.equal(out.sliceStartConfidence.confidence, "yellow");
+  assert.match(out.sliceStartConfidence.reason, /autonomous_safe: false/);
+});
+
+// TC-005 — sliceStartConfidence shape: all three fields always present when non-null
+test("buildBrief: sliceStartConfidence has featureId, confidence, reason when non-null", async () => {
+  const repo = await tmpRepo("al-brief-conf-shape-");
+  const f = await addFeature(repo, { title: "shape check" });
+  await moveFeature(f.filePath, "triaged", { priority: "P2", category: "feature" });
+  const out = await buildBrief(repo);
+  assert.ok(out.sliceStartConfidence !== null);
+  assert.ok("featureId" in out.sliceStartConfidence);
+  assert.ok("confidence" in out.sliceStartConfidence);
+  assert.ok("reason" in out.sliceStartConfidence);
+  assert.ok(["green", "yellow", "red"].includes(out.sliceStartConfidence.confidence));
+});

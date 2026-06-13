@@ -1313,29 +1313,65 @@ async function runFeatureSubcommand(
   return featureSimplify(repoPath, id, opts);
 }
 
+async function runLearningsLog(
+  repoPath: string,
+  flags: Record<string, any>,
+  logLearning: (r: string, e: any) => Promise<any>
+) {
+  if (!flags.key) throw new Error("learnings log requires --key <key>");
+  if (!flags.insight) throw new Error("learnings log requires --insight <insight>");
+  const entry: any = { key: flags.key, insight: flags.insight, source: "agent" };
+  if (flags.confidence !== null && flags.confidence !== undefined) {
+    const conf = Number(flags.confidence);
+    if (!Number.isNaN(conf)) entry.confidence = conf;
+  }
+  if (flags.slice) entry.sliceId = flags.slice;
+  return logLearning(repoPath, entry);
+}
+
+async function runLearningsPrune(
+  repoPath: string,
+  flags: Record<string, any>,
+  deleteLearning: (r: string, id: number) => Promise<Record<string, unknown> | null>
+) {
+  if (flags.id === null || flags.id === undefined) {
+    throw new Error("learnings prune requires --id <numeric-id>");
+  }
+  const parsed = Number(flags.id);
+  if (Number.isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    throw new Error("learnings prune --id must be a positive integer");
+  }
+  const deleted = await deleteLearning(repoPath, parsed);
+  return { deleted };
+}
+
 async function runLearningsSubcommand(
   repoPath: string,
   positionals: string[],
   flags: Record<string, any>
 ) {
   const [sub] = positionals;
-  if (!sub) throw new Error("learnings requires a subcommand: log | recent");
-  const { logLearning, recentLearnings } = await import("./lib/learnings.mjs");
-  if (sub === "log") {
-    if (!flags.key) throw new Error("learnings log requires --key <key>");
-    if (!flags.insight) throw new Error("learnings log requires --insight <insight>");
-    const entry: any = { key: flags.key, insight: flags.insight, source: "agent" };
-    if (flags.confidence !== null && flags.confidence !== undefined) {
-      const conf = Number(flags.confidence);
-      if (!Number.isNaN(conf)) entry.confidence = conf;
-    }
-    if (flags.slice) entry.sliceId = flags.slice;
-    return logLearning(repoPath, entry);
-  }
+  if (!sub) throw new Error("learnings requires a subcommand: log | recent | list | search | prune");
+  const { logLearning, recentLearnings, searchLearnings, deleteLearning } =
+    await import("./lib/learnings.mjs");
+  if (sub === "log") return runLearningsLog(repoPath, flags, logLearning);
   if (sub === "recent") {
     const limit = flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : 3;
     return recentLearnings(repoPath, limit);
   }
+  if (sub === "list") {
+    const limit =
+      flags.limit !== null && flags.limit !== undefined
+        ? Number(flags.limit)
+        : Number.MAX_SAFE_INTEGER;
+    return recentLearnings(repoPath, limit);
+  }
+  if (sub === "search") {
+    const query = positionals[1];
+    if (!query || !query.trim()) throw new Error("learnings search requires a query string");
+    return searchLearnings(repoPath, query);
+  }
+  if (sub === "prune") return runLearningsPrune(repoPath, flags, deleteLearning);
   throw new Error(`Unknown learnings subcommand: ${sub}`);
 }
 

@@ -8,6 +8,7 @@ import {
   logLearning,
   recentLearnings,
   searchLearnings,
+  deleteLearning,
   learningsPath
 } from "../scripts/lib/learnings.mjs";
 
@@ -180,4 +181,64 @@ test("recentLearnings with n=0 returns empty result not full store", async () =>
   assert.equal(result.count, 0);
   assert.deepEqual(result.items, []);
   assert.equal(result.digest, null);
+});
+
+// --- deleteLearning tests ---
+
+test("deleteLearning removes entry by id and returns deleted record", async () => {
+  const repo = await tmpRepo("learnings-delete-");
+  const r1 = await logLearning(repo, { key: "k1", insight: "first" });
+  await logLearning(repo, { key: "k2", insight: "second" });
+
+  const deleted = await deleteLearning(repo, r1.id);
+
+  assert.ok(deleted !== null);
+  assert.equal(deleted.id, r1.id);
+  assert.equal(deleted.key, "k1");
+
+  const remaining = await recentLearnings(repo, 10);
+  assert.equal(remaining.count, 1);
+  assert.equal(remaining.items[0].key, "k2");
+});
+
+test("deleteLearning returns null when id not found", async () => {
+  const repo = await tmpRepo("learnings-delete-miss-");
+  await logLearning(repo, { key: "only", insight: "sole entry" });
+
+  const result = await deleteLearning(repo, 999);
+
+  assert.equal(result, null);
+  const all = await recentLearnings(repo, 10);
+  assert.equal(all.count, 1);
+});
+
+test("deleteLearning returns null when store is absent", async () => {
+  const repo = await tmpRepo("learnings-delete-absent-");
+  // Do not call logLearning — store does not exist
+  const result = await deleteLearning(repo, 1);
+  assert.equal(result, null);
+});
+
+test("deleteLearning with NaN id returns null since no entry matches NaN", async () => {
+  const repo = await tmpRepo("learnings-delete-nan-");
+  await logLearning(repo, { key: "entry", insight: "some insight" });
+  // NaN !== any numeric id so no match found — returns null without crash
+  const result = await deleteLearning(repo, NaN);
+  assert.equal(result, null);
+  const all = await recentLearnings(repo, 10);
+  assert.equal(all.count, 1);
+});
+
+test("deleteLearning preserves order of remaining entries after deletion", async () => {
+  const repo = await tmpRepo("learnings-delete-order-");
+  const r1 = await logLearning(repo, { key: "first", insight: "a" });
+  const _r2 = await logLearning(repo, { key: "second", insight: "b" });
+  const r3 = await logLearning(repo, { key: "third", insight: "c" });
+
+  await deleteLearning(repo, _r2.id);
+
+  const all = await recentLearnings(repo, 10);
+  assert.equal(all.count, 2);
+  assert.equal(all.items[0].id, r1.id);
+  assert.equal(all.items[1].id, r3.id);
 });
