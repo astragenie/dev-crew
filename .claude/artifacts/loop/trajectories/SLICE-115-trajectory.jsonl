@@ -1,2 +1,6 @@
 {"type":"slice_start","sliceId":"SLICE-115","timestamp":"2026-06-13T08:52:48.937Z","featureId":"FEAT-180","title":"SLICE-115: Review verdict schema: not_checked[] field + author/judge separation","planPath":"C:\\work\\mega\\loop-FEAT-180-0\\.claude\\artifacts\\loop\\plans\\20260613T085248Z-plan-SLICE-115.md","requiresApprovalGate":false}
 {"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:22:51.826Z","featureId":"FEAT-180","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:43:31.015Z","featureId":"FEAT-112","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:43:31.909Z","featureId":"FEAT-112","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:43:32.813Z","featureId":"FEAT-112","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:43:33.746Z","featureId":"FEAT-112","featureMovedTo":null,"validationSatisfied":false}
