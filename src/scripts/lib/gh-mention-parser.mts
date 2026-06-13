@@ -68,14 +68,37 @@ function isValidIntent(value: string): value is MentionIntent {
 
 // ---------------------------------------------------------------------------
 // CLI entry point — called from GitHub Actions `run` step.
-// bun src/scripts/lib/gh-mention-parser.mts "<comment body>"
+//
+// Stdin mode (preferred — avoids shell injection via argv):
+//   printf '%s' "$COMMENT_BODY" | bun src/scripts/lib/gh-mention-parser.mts --stdin
+//
+// Argv mode (legacy, unsafe for untrusted input):
+//   bun src/scripts/lib/gh-mention-parser.mts "<comment body>"
+//
+// Exits 0 with JSON on stdout when a mention is found.
+// Sets process.exitCode = 1 when no mention is detected.
 // ---------------------------------------------------------------------------
 if (process.argv[1]?.endsWith("gh-mention-parser.mts")) {
-  const commentBody = process.argv[2] ?? "";
-  const result = parseMention(commentBody);
-  if (result === null) {
-    process.exitCode = 1;
+  const useStdin = process.argv.includes("--stdin");
+  if (useStdin) {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const commentBody = Buffer.concat(chunks).toString("utf8");
+      const result = parseMention(commentBody);
+      if (result === null) {
+        process.exitCode = 1;
+      } else {
+        process.stdout.write(JSON.stringify(result) + "\n");
+      }
+    });
   } else {
-    console.log(JSON.stringify(result));
+    const commentBody = process.argv[2] ?? "";
+    const result = parseMention(commentBody);
+    if (result === null) {
+      process.exitCode = 1;
+    } else {
+      process.stdout.write(JSON.stringify(result) + "\n");
+    }
   }
 }

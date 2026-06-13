@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -36,11 +36,16 @@ jobs:
 
       - name: Parse @crew mention
         id: parse
-        env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
+          # Read comment body from the event JSON file (never interpolate untrusted
+          # input via ${{ }} expressions — GitHub Actions injection vector).
+          COMMENT_BODY=$(jq -r '.comment.body // .review.body // empty' "$GITHUB_EVENT_PATH")
+          if [ -z "$COMMENT_BODY" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           set +e
-          result=$(bun src/scripts/lib/gh-mention-parser.mts "$COMMENT_BODY" 2>/dev/null)
+          result=$(printf '%s' "$COMMENT_BODY" | bun src/scripts/lib/gh-mention-parser.mts --stdin 2>/dev/null)
           exit_code=$?
           set -e
           if [ $exit_code -ne 0 ]; then
@@ -49,10 +54,15 @@ jobs:
             exit 0
           fi
           echo "found=true" >> "$GITHUB_OUTPUT"
-          intent=$(echo "$result" | bun -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));process.stdout.write(d.intent)")
-          body=$(echo "$result" | bun -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));process.stdout.write(d.body)")
+          intent=$(printf '%s' "$result" | bun -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));process.stdout.write(d.intent)")
+          body=$(printf '%s' "$result" | bun -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));process.stdout.write(d.body)")
           echo "intent=$intent" >> "$GITHUB_OUTPUT"
-          echo "body=$body" >> "$GITHUB_OUTPUT"
+          # Use heredoc delimiter to prevent newline injection in $body
+          {
+            echo "body<<EOF_CREW_BODY"
+            printf '%s\n' "$body"
+            echo "EOF_CREW_BODY"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Dispatch crew action
         if: steps.parse.outputs.found == 'true'

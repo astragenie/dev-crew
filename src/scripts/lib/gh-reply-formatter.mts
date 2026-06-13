@@ -37,9 +37,10 @@ export function formatReply(verdict: Verdict, summary: string, artifactPath: str
   const truncatedSummary = typeof summary === "string" ? summary.slice(0, SUMMARY_MAX) : "";
   const summaryLine = truncatedSummary.length > 0 ? truncatedSummary : "(no summary provided)";
 
-  // Relative GitHub link: blob/HEAD/<artifactPath>
+  // Show artifact path as inline code — full blob URL requires a repo slug
+  // that formatReply doesn't receive. Callers may append a full URL separately.
   const linkPath = sanitizeArtifactPath(artifactPath);
-  const link = `[View artifact](.../${linkPath})`;
+  const link = `📎 \`${linkPath}\``;
 
   const body = [verdictLine, "", summaryLine, "", link].join("\n");
 
