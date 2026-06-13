@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.50.1] — 2026-06-13
+
+### Added
+- FEAT-200: Pre-computed slice risk tier — `loop slice from-feature` now writes a deterministic `risk: low | medium | high` field into every generated slice's frontmatter, computed by `src/scripts/lib/risk-classifier.mts`. Eliminates the manual "Classify risk" judgment step from `crew:lead`'s Golden Path. Rule table: HIGH if any `concern:security`/`concern:governance`/`surface:schema`/`surface:api` tag, `pm_technical_risk ≥ 0.7`, `category=security`, `priority=P0`, or `pm_customer_impact ≥ 0.85`; LOW if `category=docs`, `docs-only` tag, or both risk scores < threshold; MEDIUM otherwise. HIGH wins over LOW when both conditions hold. 19 tests in `src/tests/risk-classifier.test.mts`.
+
 ## [0.50.0] — 2026-06-13
 
 ### Fixed
