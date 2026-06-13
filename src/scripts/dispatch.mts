@@ -21,6 +21,7 @@ type ParsedArgs = {
   json?: boolean;
   runId?: string;
   configPath?: string;
+  pr?: boolean;
 };
 
 const VALUE_FLAGS: Record<string, keyof ParsedArgs> = {
@@ -53,6 +54,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
     if (flag === "--dry-run") args.dryRun = true;
     else if (flag === "--json") args.json = true;
+    else if (flag === "--pr") args.pr = true;
     else if (flag === "--help" || flag === "-h") args.subcommand = "help";
   }
   return args;
@@ -72,13 +74,14 @@ function readPlanFile(planPath: string): DispatchPlan[] {
 function printHelp(): void {
   process.stdout.write(`Usage:
   bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json]
-  bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N]
+  bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N] [--pr]
 
 Subcommands:
   prepare   Run pre-flight gates, spawn worktrees, build Agent batch.
             Outputs: human-readable preview (default), or batch JSON (--json).
   finalize  After the caller has invoked the Agent batch, aggregate results,
             merge children to parent branch, write summary.md.
+            --pr  Also push each DONE child branch and open a GitHub PR via gh CLI.
 
 `);
 }
@@ -139,7 +142,7 @@ function cmdPrepare(args: ParsedArgs): number {
   return 0;
 }
 
-function cmdFinalize(args: ParsedArgs): number {
+async function cmdFinalize(args: ParsedArgs): Promise<number> {
   if (!args.runId || !args.parentBranch || !args.planPath) {
     process.stderr.write("--run-id, --parent-branch, --plan are required\n");
     return 1;
@@ -164,26 +167,49 @@ function cmdFinalize(args: ParsedArgs): number {
   const results = finalizeDispatch(repo, args.parentBranch, prepared, plans, args.depth ?? 0);
   const summary = path.join(repo, ".claude/artifacts/loop/dispatch", args.runId, "summary.md");
   process.stdout.write(`Summary: ${summary}\n`);
+
+  if (args.pr) {
+    const { dispatchFinalizePr } = await import("./lib/dispatch-pr-mode.mjs");
+    const children = results.map((r) => ({
+      branch: r.branch,
+      worktreePath: r.worktreePath,
+      status: (r.status === "DONE" ? "DONE" : r.status === "FAILED" ? "FAILED" : "SKIPPED") as
+        | "DONE"
+        | "FAILED"
+        | "SKIPPED"
+    }));
+    const prResults = await dispatchFinalizePr(children, repo);
+    for (const pr of prResults) {
+      if (pr.prUrl) {
+        process.stdout.write(`PR created: ${pr.branch} → ${pr.prUrl}\n`);
+      } else {
+        process.stderr.write(`PR failed for ${pr.branch}: ${pr.error ?? "unknown error"}\n`);
+      }
+    }
+  }
+
   const allFailed = results.every((r) => r.status === "FAILED" || r.status === "BLOCKED");
   if (allFailed) return 2;
   return 0;
 }
 
 const parsedArgs = parseArgs(process.argv.slice(2));
-try {
-  switch (parsedArgs.subcommand) {
-    case "prepare":
-      process.exitCode = cmdPrepare(parsedArgs);
-      break;
-    case "finalize":
-      process.exitCode = cmdFinalize(parsedArgs);
-      break;
-    case "help":
-    default:
-      printHelp();
-      process.exitCode = 0;
+(async () => {
+  try {
+    switch (parsedArgs.subcommand) {
+      case "prepare":
+        process.exitCode = cmdPrepare(parsedArgs);
+        break;
+      case "finalize":
+        process.exitCode = await cmdFinalize(parsedArgs);
+        break;
+      case "help":
+      default:
+        printHelp();
+        process.exitCode = 0;
+    }
+  } catch (err) {
+    process.stderr.write(`[dispatch] ${(err as Error).name}: ${(err as Error).message}\n`);
+    process.exitCode = 1;
   }
-} catch (err) {
-  process.stderr.write(`[dispatch] ${(err as Error).name}: ${(err as Error).message}\n`);
-  process.exitCode = 1;
-}
+})();
