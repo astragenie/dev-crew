@@ -55,10 +55,7 @@ test("AC-2: augmentPrompt embeds absolute repoRoot in markerPath", () => {
   });
 
   // The prompt must contain the repoRoot somewhere in the marker path line.
-  assert.ok(
-    result.includes(repoRoot),
-    `Expected output to contain repoRoot "${repoRoot}"`
-  );
+  assert.ok(result.includes(repoRoot), `Expected output to contain repoRoot "${repoRoot}"`);
   // Must not contain a bare relative path starting with ".claude/" as the marker path.
   // The instruction line should say "ABSOLUTE path:" followed by an absolute path.
   const relativePattern = /ABSOLUTE path:.*?`\.claude\//;
