@@ -73,3 +73,20 @@ The returned `nextAction` is a literal prompt to follow:
 3. If behavior changed, dispatch `crew:verifier` subagent for the
    validation gate.
 4. Run `/loop:slice complete --id SLICE-NN` to close.
+
+## Role glossary
+
+Each slice passes through a fixed set of named roles. This table is the
+canonical reference — descriptions match `constitution.md` (Team Roles)
+and `CLAUDE.md` (Owned agents).
+
+| Role | Agent ID | Responsibility |
+|---|---|---|
+| **builder** | `crew:fullstack-dev` / `crew:backend-dev` / `crew:frontend-dev` | Implements acceptance criteria in bounded scope; owns tests for changed behavior |
+| **reviewer A** | `crew:inspector` | Correctness, logic, edge cases, AC coverage |
+| **reviewer B** | `crew:inspector` | Production-readiness, observability, security |
+| **validator** | `crew:verifier` | Behavior validation — runs or inspects the changed behavior against ACs |
+| **deployer** | `crew:release-engineer` | Deployment and environment evidence; promotion to dev/prod |
+| **researcher** | `loop:researcher` | Read-only code archaeology and fact gathering before a change is proposed |
+| **pm** | `loop:pm` | Backlog scoring across 5 dimensions; AC clarity gate; `autonomous_safe` determination |
+| **architect** | `loop:architect` | Read-only design and ADR authoring for structural changes; prepend before SLICE-A of new contracts |
