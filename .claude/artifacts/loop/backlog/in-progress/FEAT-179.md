@@ -1,13 +1,13 @@
 ---
 id: FEAT-179
-status: triaged
+status: in-progress
 priority: P3
 category: feature
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: [FEAT-178]
-slices: []
+slices: [SLICE-130]
 derived_from: null
 autonomous_safe: false
 pm_customer_impact: 0.55
@@ -17,6 +17,10 @@ pm_technical_risk: 0.65
 pm_dependency_depth: 0.6
 composite_score: 0.52
 triage_notes: "Decay-ranked retrieval extends FEAT-178: ranking algorithm + citations ledger + grade-outcome feedback loop (+1 pass / -2 fail). Depends on FEAT-178 and a cross-stage utility-update contract -> not autonomous. Defer until FEAT-178 lands."
+started_at: 2026-06-13
+github_issue: 270
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/270"
 ---
 # FEAT-179: Decay-ranked, citation-tracked learnings retrieval injected at builder dispatch
 

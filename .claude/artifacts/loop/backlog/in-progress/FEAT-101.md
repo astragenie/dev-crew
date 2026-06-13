@@ -1,13 +1,13 @@
 ---
 id: FEAT-101
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-128]
 derived_from: null
 source_competitors: [OpenAI Codex, Claude Code, Cline, OpenHands]
 autonomous_safe: false
@@ -17,6 +17,7 @@ needs_ux: false
 github_issue: 177
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/177"
+started_at: 2026-06-13
 ---
 # FEAT-101: GitHub `@crew` PR-comment teammate
 
