@@ -1,5 +1,5 @@
 ---
-id: FEAT-184
+id: FEAT-200
 status: pending
 priority: P2
 category: quality
@@ -32,10 +32,10 @@ scopeNotes: |
   loaded). Per gate step 6 this escalates to needs-review. Operator must
   re-run /loop:retriage with PM granted the Agent tool, or manually dispatch
   loop:spec-writer to rewrite the AC before this FEAT can be scored
-  authoritatively. ID COLLISION: done/FEAT-184.md (telemetry writer,
-  shipped via SLICE-92, GitHub issue 204) already uses this ID — this
-  pending FEAT-184 should likely be renumbered to FEAT-200+ before
-  triage. Cost analog: FEAT-025 SLICE-B (auto-walker risk gate +
+  authoritatively. ID COLLISION RESOLVED 2026-06-13: renumbered from
+  FEAT-184 to FEAT-200 (done/FEAT-184.md is the shipped telemetry
+  writer, SLICE-92 / GitHub issue 204). Cost analog: FEAT-025 SLICE-B
+  (auto-walker risk gate +
   preflight) ran $11.17 / 25 min — pure-logic gate work supports
   effort_estimate ~0.4 if scope holds. Weak dimensions: observability
   averages 0.82 over last 5 grades but this is expected-low for
@@ -43,12 +43,11 @@ scopeNotes: |
   All other dimensions ≥ 0.84.
 risks:
   - AC rewrite blocked because Agent tool unavailable in this PM dispatch surface
-  - ID collision with done/FEAT-184 (telemetry writer SLICE-92 / GH-204) — backlog hygiene risk
   - Cross-repo coordination — paired hero-crew agents/lead.md PR not tracked in depends_on
   - Rule-table ordering TBD — conflict resolution between HIGH and LOW triggers undefined (e.g. concern:security + docs-only)
   - Frontmatter parser limitation noted in SLICE-98 lessons (feature-lifecycle.mts:282-290) may affect reading PM score fields for the classifier
 ---
-# FEAT-184: Pre-compute slice risk at `slice from-feature` time — remove manual classification from lead
+# FEAT-200: Pre-compute slice risk at `slice from-feature` time — remove manual classification from lead
 
 ## Description
 

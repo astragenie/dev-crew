@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.50.0] — 2026-06-13
+
+### Fixed
+- FEAT-197: dispatch `result.json` path is now absolute — child agents in git worktrees previously wrote the marker to their own worktree CWD; `finalize` only scanned the main repo and marked all as `no marker`. Fix: `dispatch-prompt.mts` now emits an absolute path via `path.join(repoRoot, ...)` (AC-2); `dispatch-aggregate.mts` adds a fallback worktree scan when the main repo has no marker (AC-3); main repo marker always wins when both present (AC-4). 5 new tests in `src/tests/dispatch-result-path.test.mts`.
+
 ## [0.49.1] — 2026-06-13
 
 ### Added
