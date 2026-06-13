@@ -92,7 +92,9 @@ const FLAG_SPEC = {
   // cost-by-skill report
   "--cost-by-skill": { key: "costBySkill", boolean: true },
   // pause / resume subcommands
-  "--reason": { key: "reason" }
+  "--reason": { key: "reason" },
+  // lint-artifacts
+  "--json": { key: "json", boolean: true }
 };
 
 function parseArgs(argv: string[]) {
@@ -157,7 +159,8 @@ function parseArgs(argv: string[]) {
     includeTriaged: false,
     fromIssue: null,
     costBySkill: false,
-    reason: null
+    reason: null,
+    json: false
   };
   const positionals: any[] = [];
 
@@ -393,6 +396,42 @@ const COMMANDS = {
       return { _suppressDefaultOutput: true };
     }
     return result;
+  },
+  "lint-artifacts": async ({ repoPath, flags }: CmdCtx) => {
+    const { checkArtifactLinks } = await import("./lib/artifact-linker.mjs");
+    const report = await checkArtifactLinks(repoPath);
+    if (flags.json) {
+      process.exitCode = 0;
+      console.log(JSON.stringify(report, null, 2));
+      return { _suppressDefaultOutput: true };
+    }
+    const lines: string[] = [];
+    lines.push("## Artifact link report");
+    lines.push(`Broken: ${report.broken.length}, Orphaned: ${report.orphaned.length}`);
+    if (report.broken.length > 0) {
+      lines.push("");
+      lines.push("### Broken links");
+      for (const b of report.broken) {
+        lines.push(`- ${b.sourceFile} [${b.field}] → ${b.referencedId}: ${b.reason}`);
+      }
+    }
+    if (report.orphaned.length > 0) {
+      lines.push("");
+      lines.push("### Orphaned artifacts");
+      for (const o of report.orphaned) {
+        lines.push(`- ${o.file} (${o.type}): ${o.reason}`);
+      }
+    }
+    if (report.mermaid) {
+      lines.push("");
+      lines.push("### Artifact graph");
+      lines.push("```mermaid");
+      lines.push(report.mermaid);
+      lines.push("```");
+    }
+    process.stdout.write(lines.join("\n") + "\n");
+    process.exitCode = report.broken.length > 0 ? 1 : 0;
+    return { _suppressDefaultOutput: true };
   },
   pause: async ({ repoPath, flags }: CmdCtx) => {
     const reason = flags.reason;
