@@ -13,6 +13,42 @@ function nowIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function buildFeatFrontmatter({
+  id,
+  today,
+  priority,
+  category,
+  target_release,
+  derived_from,
+  github_issue,
+  github_url
+}: {
+  id: string;
+  today: string;
+  priority: unknown;
+  category: unknown;
+  target_release: unknown;
+  derived_from: unknown;
+  github_issue: unknown;
+  github_url: unknown;
+}): Record<string, unknown> {
+  const fm: Record<string, unknown> = {
+    id,
+    status: "pending",
+    priority,
+    category,
+    target_release,
+    created: today,
+    updated: today,
+    depends_on: [] as string[],
+    slices: [] as string[],
+    derived_from: derived_from || null
+  };
+  if (github_issue != null) fm.github_issue = github_issue;
+  if (github_url != null) fm.github_url = github_url;
+  return fm;
+}
+
 export async function ensureBacklogScaffold(
   repoPath: string,
   config: Record<string, unknown> | null
@@ -39,6 +75,8 @@ export async function ensureBacklogScaffold(
  *   category?: string | null,
  *   target_release?: string | null,
  *   derived_from?: string | string[] | null,
+ *   github_issue?: number | null,
+ *   github_url?: string | null,
  *   config?: any
  * }} [options]
  */
@@ -51,6 +89,8 @@ export async function addFeature(
     category = null,
     target_release = null,
     derived_from = null,
+    github_issue = null,
+    github_url = null,
     config = null
   }: Record<string, any> = {}
 ) {
@@ -60,18 +100,16 @@ export async function addFeature(
   const root = await ensureBacklogScaffold(repoPath, config);
   const id = await nextFeatureId(repoPath, { config });
   const today = nowIsoDate();
-  const frontmatter = {
+  const frontmatter = buildFeatFrontmatter({
     id,
-    status: "pending",
+    today,
     priority,
     category,
     target_release,
-    created: today,
-    updated: today,
-    depends_on: [] as string[],
-    slices: [] as string[],
-    derived_from: derived_from || null
-  };
+    derived_from,
+    github_issue,
+    github_url
+  });
   const docBody =
     body ||
     [

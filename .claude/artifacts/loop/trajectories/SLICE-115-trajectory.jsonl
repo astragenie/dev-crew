@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-115","timestamp":"2026-06-13T08:52:48.097Z","featureId":"FEAT-111","title":"SLICE-115: One-click platform-native task ingress from Issue / PR","planPath":"C:\\work\\mega\\loop-FEAT-111-0\\.claude\\artifacts\\loop\\plans\\20260613T085247Z-plan-SLICE-115.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-115","timestamp":"2026-06-13T09:22:46.544Z","featureId":"FEAT-111","featureMovedTo":null,"validationSatisfied":false}
