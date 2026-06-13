@@ -1,7 +1,7 @@
 ---
 id: SLICE-130
 title: "Decay-ranked, citation-tracked learnings retrieval injected at builder dispatch"
-status: pending
+status: done
 feature: FEAT-179
 phase: null
 priority: P3
