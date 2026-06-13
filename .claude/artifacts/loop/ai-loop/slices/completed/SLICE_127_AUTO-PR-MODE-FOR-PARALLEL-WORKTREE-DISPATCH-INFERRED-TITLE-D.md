@@ -1,7 +1,7 @@
 ---
 id: SLICE-127
 title: Auto-PR mode for parallel worktree dispatch - inferred title/description via gh instead of direct merge to main
-status: pending
+status: completed
 feature: FEAT-173
 phase: null
 priority: P3
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 267
 github_url: "https://github.com/sergeymilashico/loop/issues/267"
+completed_at: 2026-06-13
 ---
 # SLICE-127: Auto-PR mode for parallel worktree dispatch - inferred title/description via gh instead of direct merge to main
 
