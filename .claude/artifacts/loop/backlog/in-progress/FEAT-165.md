@@ -1,14 +1,14 @@
 ---
 id: FEAT-165
 title: Per-skill cost attribution
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-115]
 derived_from: null
 source_competitors: [Trigger.dev, OpenAI Codex]
 autonomous_safe: true
@@ -24,6 +24,7 @@ triage_notes: "NOTE — there is a naming collision: a different FEAT-103 (archi
 github_issue: 188
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/188"
+started_at: 2026-06-13
 ---
 # FEAT-165: Per-skill cost attribution
 
