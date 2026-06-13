@@ -60,5 +60,7 @@ function trimToMax(verdictLine: string, summary: string, link: string): string {
   const overhead = verdictLine.length + "\n\n".length + "\n\n".length + link.length;
   const budget = Math.max(0, REPLY_MAX - overhead);
   const trimmed = summary.slice(0, budget);
-  return [verdictLine, "", trimmed, "", link].join("\n");
+  const output = [verdictLine, "", trimmed, "", link].join("\n");
+  // Hard clamp: ensures the 1000-char contract holds even when overhead alone exceeds REPLY_MAX.
+  return output.length <= REPLY_MAX ? output : output.slice(0, REPLY_MAX);
 }
