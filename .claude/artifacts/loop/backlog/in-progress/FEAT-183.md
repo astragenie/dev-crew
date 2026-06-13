@@ -1,13 +1,13 @@
 ---
 id: FEAT-183
-status: triaged
+status: in-progress
 priority: P2
 category: tech-debt
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-116]
 derived_from: null
 autonomous_safe: true
 pm_customer_impact: 0.55
@@ -17,6 +17,10 @@ pm_technical_risk: 0.2
 pm_dependency_depth: 0.05
 composite_score: 0.67
 triage_notes: "Derive-only headers + regen --check drift gate. Mechanical: stamp generators with do-not-edit header, --check mode in CI/pre-push, warn-first then block. Low risk, clean rollback -> autonomous."
+started_at: 2026-06-13
+github_issue: 250
+github_milestone: null
+github_url: "https://github.com/sergeymilashico/loop/issues/250"
 ---
 # FEAT-183: Derive-only discipline: generated artifacts get do-not-edit headers + regen --check drift gate
 
