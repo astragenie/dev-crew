@@ -22,17 +22,21 @@ Competitor gap (Maestro v0.15.3). Maestro ships a Document Graph: interactive vi
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- New `src/scripts/lib/artifact-linker.mts`: `checkArtifactLinks(repoPath): Promise<LinkReport>` — validates `depends_on` FEAT ids, `derived_from` SPEC ids, `supersedes` DEC ids, `declined_per` clause ids; reports broken (id not found in any state dir) and orphaned (grade with no referenced slice) items
+- Emits Mermaid graph of FEAT → slice → grade topology as a string in `LinkReport.mermaid`
+- New `loop lint-artifacts [--repo] [--json]` CLI subcommand
+- `src/tests/artifact-linker.test.mts` ≥5 tests using synthetic temp artifact directories
 
 ## Out of scope
 
-- bullet 1
+- Wiki-link (`[[...]]`) body text scanning
+- CI gate wiring (follow-up FEAT)
+- Interactive graph visualization
 
 ## Acceptance criteria
 
-- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)
-- [ ] AC-2: <replace with a concrete, testable acceptance criterion>
+- [ ] AC-1: All tests pass (`bun test`) and linter is clean (`bun run lint`)
+- [ ] AC-2: `checkArtifactLinks(repoPath)` identifies a broken `depends_on` reference (FEAT that references a non-existent id) and an orphaned grade file (no matching slice in `completed/`) in a synthetic temp directory. `LinkReport.mermaid` contains at least one valid Mermaid edge. Verified by ≥5 tests.
 
 ## Done When
 

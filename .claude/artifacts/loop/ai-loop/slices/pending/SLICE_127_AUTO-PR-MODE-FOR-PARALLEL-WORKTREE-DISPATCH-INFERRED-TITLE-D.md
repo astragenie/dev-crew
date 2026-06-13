@@ -22,17 +22,22 @@ Competitor gap (Maestro v0.15.3). Maestro offers one-click PR creation from any 
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- `loop dispatch finalize --pr [--repo]`: pushes each DONE child branch to origin then runs `gh pr create --title <inferred> --body <inferred>` instead of merging to main
+- Title inferred from last commit message (`git log -1 --format=%s` on child branch)
+- Body inferred from `git log main..HEAD --oneline` formatted as bullet list
+- Returns array of `{branch, prUrl}` in JSON output; existing `--no-merge` flag behavior preserved
+- `src/tests/dispatch-pr-mode.test.mts` ≥4 tests using `_internals` mock for git + gh CLI calls
 
 ## Out of scope
 
-- bullet 1
+- PR auto-merge or auto-approve
+- PR label/reviewer/milestone assignment
+- Integration with FEAT-110 post-PR repair loop
 
 ## Acceptance criteria
 
-- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)
-- [ ] AC-2: <replace with a concrete, testable acceptance criterion>
+- [ ] AC-1: All tests pass (`bun test`) and linter is clean (`bun run lint`)
+- [ ] AC-2: When `--pr` flag is set, `dispatchFinalizePr(children, repoPath)` calls `gh pr create` once per DONE child with `--title` derived from that child's last git commit message and `--body` containing the commit log summary. Returns array of PR URLs. Verified by ≥4 tests using `_internals` mock.
 
 ## Done When
 

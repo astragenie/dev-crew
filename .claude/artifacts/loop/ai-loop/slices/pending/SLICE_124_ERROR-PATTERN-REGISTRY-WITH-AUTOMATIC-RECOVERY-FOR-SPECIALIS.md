@@ -22,17 +22,21 @@ Competitor gap (Maestro v0.15.3). Maestro maintains a per-agent error-pattern re
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- New `src/scripts/lib/error-pattern-registry.mts`: `ErrorPattern` interface + 4 built-in patterns (pause-without-artifact, empty-artifact, truncated-output, budget-exceeded); `matchPatterns(output: string): ErrorPattern | null`
+- `checkDispatchResult(builderOutput: string, artifactPath: string): RecoveryAction | null` consulted after builder completes; returns recovery hint (retry-with-inline, re-dispatch, escalate)
+- On match: append one JSON line to `.claude/artifacts/loop/learnings.jsonl` with pattern id + sliceId + timestamp
+- `src/tests/error-pattern-registry.test.mts` ≥6 tests
 
 ## Out of scope
 
-- bullet 1
+- Auto-retry execution (return recovery hint only; operator executes retry)
+- UI or dashboard for pattern frequency
+- Changes to builder/reviewer dispatch flow (this is a post-result check only)
 
 ## Acceptance criteria
 
-- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)
-- [ ] AC-2: <replace with a concrete, testable acceptance criterion>
+- [ ] AC-1: All tests pass (`bun test`) and linter is clean (`bun run lint`)
+- [ ] AC-2: `matchPatterns(output)` returns the correct `ErrorPattern` for each of the 4 known failure signatures when given synthetic matching strings, and returns `null` for non-matching output. `checkDispatchResult` returns the correct `RecoveryAction` or `null` depending on artifact presence. Verified by ≥6 tests.
 
 ## Done When
 

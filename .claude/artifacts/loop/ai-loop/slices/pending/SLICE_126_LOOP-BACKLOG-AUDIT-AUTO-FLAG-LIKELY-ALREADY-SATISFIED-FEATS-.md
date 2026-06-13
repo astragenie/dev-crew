@@ -22,17 +22,20 @@ Adopt ao beads audit (C:/work/mega/agentops cli beads audit): scan triaged/pendi
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- New `src/scripts/lib/backlog-auditor.mts`: `auditBacklog(repoPath, opts?): Promise<AuditResult[]>` — for each triaged/pending FEAT, extracts AC bullet keywords and searches `src/` and `done/` siblings; returns `{id, verdict: 'likely_satisfied'|'partially'|'open', evidence: string[]}` per FEAT
+- New `loop backlog audit [--repo] [--json]` CLI subcommand
+- `src/tests/backlog-auditor.test.mts` ≥5 tests using synthetic FEAT + source file temp directories
 
 ## Out of scope
 
-- bullet 1
+- Auto-close or auto-move FEATs to `done/`
+- `--apply` flag (requires per-FEAT confirmation)
+- Fuzzy/semantic matching (simple keyword search only)
 
 ## Acceptance criteria
 
-- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)
-- [ ] AC-2: <replace with a concrete, testable acceptance criterion>
+- [ ] AC-1: All tests pass (`bun test`) and linter is clean (`bun run lint`)
+- [ ] AC-2: `auditBacklog(repoPath)` returns `verdict: 'likely_satisfied'` with non-empty `evidence` array (file:line pairs) when a synthetic FEAT's AC keyword appears verbatim in a source file under `src/`; returns `verdict: 'open'` when no match found. Verified by ≥5 tests.
 
 ## Done When
 
