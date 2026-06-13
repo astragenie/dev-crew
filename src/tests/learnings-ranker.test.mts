@@ -24,7 +24,13 @@ test("rankLearnings: entries ordered by composite score descending", () => {
   const nowMs = 0; // createdAt=0, nowMs=0 → 0 weeks decay
   const entries: LearningEntry[] = [
     makeEntry({ id: "low", text: "low utility", utility_score: 1, confidence: 1.0, createdAt: 0 }),
-    makeEntry({ id: "high", text: "high utility", utility_score: 5, confidence: 1.0, createdAt: 0 }),
+    makeEntry({
+      id: "high",
+      text: "high utility",
+      utility_score: 5,
+      confidence: 1.0,
+      createdAt: 0
+    }),
     makeEntry({ id: "mid", text: "mid utility", utility_score: 3, confidence: 1.0, createdAt: 0 })
   ];
   const result = rankLearnings(entries, { nowMs });
@@ -38,8 +44,20 @@ test("rankLearnings: query boost promotes matching entry", () => {
   const nowMs = 0;
   // Equal utility_score; query "decay" boosts the matching entry → it ranks first
   const candidates: LearningEntry[] = [
-    makeEntry({ id: "no-match", text: "something else entirely", utility_score: 2, confidence: 1.0, createdAt: 0 }),
-    makeEntry({ id: "match", text: "decay confidence ranking boost", utility_score: 2, confidence: 1.0, createdAt: 0 })
+    makeEntry({
+      id: "no-match",
+      text: "something else entirely",
+      utility_score: 2,
+      confidence: 1.0,
+      createdAt: 0
+    }),
+    makeEntry({
+      id: "match",
+      text: "decay confidence ranking boost",
+      utility_score: 2,
+      confidence: 1.0,
+      createdAt: 0
+    })
   ];
   const result = rankLearnings(candidates, { nowMs, query: "decay" });
   assert.equal(result[0]!.id, "match", "query-matching entry should rank first");
@@ -78,8 +96,20 @@ test("rankLearnings: small entries accumulate within token budget", () => {
 test("rankLearnings: utility_score=0 entries rank below positive-utility entries", () => {
   const nowMs = 0;
   const entries: LearningEntry[] = [
-    makeEntry({ id: "zero", text: "zero utility", utility_score: 0, confidence: 1.0, createdAt: 0 }),
-    makeEntry({ id: "pos", text: "positive utility", utility_score: 1, confidence: 1.0, createdAt: 0 })
+    makeEntry({
+      id: "zero",
+      text: "zero utility",
+      utility_score: 0,
+      confidence: 1.0,
+      createdAt: 0
+    }),
+    makeEntry({
+      id: "pos",
+      text: "positive utility",
+      utility_score: 1,
+      confidence: 1.0,
+      createdAt: 0
+    })
   ];
   const result = rankLearnings(entries, { nowMs });
   assert.equal(result[0]!.id, "pos");
@@ -104,10 +134,28 @@ test("rankLearnings + limit: post-rank slice returns top-N by score", () => {
   const nowMs = 0;
   // Insert in ascending utility order; only the top 2 by score should appear with limit=2
   const entries: LearningEntry[] = [
-    makeEntry({ id: "score1", text: "lowest score", utility_score: 1, confidence: 1.0, createdAt: 0 }),
+    makeEntry({
+      id: "score1",
+      text: "lowest score",
+      utility_score: 1,
+      confidence: 1.0,
+      createdAt: 0
+    }),
     makeEntry({ id: "score3", text: "mid score", utility_score: 3, confidence: 1.0, createdAt: 0 }),
-    makeEntry({ id: "score9", text: "highest score", utility_score: 9, confidence: 1.0, createdAt: 0 }),
-    makeEntry({ id: "score5", text: "fourth score", utility_score: 5, confidence: 1.0, createdAt: 0 })
+    makeEntry({
+      id: "score9",
+      text: "highest score",
+      utility_score: 9,
+      confidence: 1.0,
+      createdAt: 0
+    }),
+    makeEntry({
+      id: "score5",
+      text: "fourth score",
+      utility_score: 5,
+      confidence: 1.0,
+      createdAt: 0
+    })
   ];
   // Rank all, then slice to 2 (mimics the CLI --limit behaviour)
   const ranked = rankLearnings(entries, { nowMs }).slice(0, 2);

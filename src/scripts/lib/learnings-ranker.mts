@@ -29,11 +29,7 @@ function tokenCost(entry: LearningEntry): number {
  * A query boost of +0.1 is added when any whitespace-split query word
  * appears in the entry text (case-insensitive match).
  */
-function compositeScore(
-  entry: LearningEntry,
-  nowMs: number,
-  queryWords: string[]
-): number {
+function compositeScore(entry: LearningEntry, nowMs: number, queryWords: string[]): number {
   const decayed = decayConfidence(entry, nowMs);
   const utility = entry.utility_score ?? 1;
   let score = decayed * utility;

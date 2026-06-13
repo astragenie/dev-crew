@@ -5,10 +5,17 @@ import { formatReply } from "../scripts/lib/gh-reply-formatter.mjs";
 
 // Test 1 — normal reply within budget
 test("formatReply: normal reply contains verdict, summary, and path", () => {
-  const result = formatReply("PASS", "Everything looks good", ".claude/artifacts/crew/reviews/abc.md");
+  const result = formatReply(
+    "PASS",
+    "Everything looks good",
+    ".claude/artifacts/crew/reviews/abc.md"
+  );
   assert.ok(result.includes("PASS"), "should include verdict");
   assert.ok(result.includes("Everything looks good"), "should include summary");
-  assert.ok(result.includes(".claude/artifacts/crew/reviews/abc.md"), "should include artifact path");
+  assert.ok(
+    result.includes(".claude/artifacts/crew/reviews/abc.md"),
+    "should include artifact path"
+  );
   assert.ok(result.length <= 1000, `reply must be ≤1000 chars, got ${result.length}`);
 });
 
@@ -16,7 +23,10 @@ test("formatReply: normal reply contains verdict, summary, and path", () => {
 test("formatReply: long summary is truncated to 200 chars", () => {
   const longSummary = "x".repeat(500);
   const result = formatReply("FAIL", longSummary, ".claude/artifacts/a.md");
-  assert.ok(!result.includes("x".repeat(201)), "summary should not contain more than 200 consecutive x chars");
+  assert.ok(
+    !result.includes("x".repeat(201)),
+    "summary should not contain more than 200 consecutive x chars"
+  );
   assert.ok(result.length <= 1000, `reply must be ≤1000 chars, got ${result.length}`);
 });
 

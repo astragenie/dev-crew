@@ -1560,13 +1560,7 @@ async function runLessonsRankSubcommand(
   const path = await import("node:path");
   const { rankLearnings } = await import("./lib/learnings-ranker.mjs");
 
-  const storeFile = path.join(
-    repoPath,
-    ".claude",
-    "artifacts",
-    "loop",
-    "learnings.jsonl"
-  );
+  const storeFile = path.join(repoPath, ".claude", "artifacts", "loop", "learnings.jsonl");
 
   let raw: string;
   try {
@@ -1602,7 +1596,10 @@ async function runLessonsRankSubcommand(
 
   // Rank ALL entries first, then cap to --limit (not before — pre-slicing by insertion order
   // would return the first N entries rather than the top N by decay+utility score).
-  const rankedAll = rankLearnings(allEntries, { ...(query !== undefined ? { query } : {}), nowMs: Date.now() });
+  const rankedAll = rankLearnings(allEntries, {
+    ...(query !== undefined ? { query } : {}),
+    nowMs: Date.now()
+  });
   const ranked = limit !== undefined ? rankedAll.slice(0, limit) : rankedAll;
 
   process.stdout.write(JSON.stringify(ranked, null, 2) + "\n");
