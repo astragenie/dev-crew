@@ -1,7 +1,7 @@
 ---
 id: SLICE-115
 title: One-click platform-native task ingress from Issue / PR
-status: pending
+status: completed
 feature: FEAT-111
 phase: null
 priority: P2
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 244
 github_url: "https://github.com/sergeymilashico/loop/issues/244"
+completed_at: 2026-06-13
 ---
 # SLICE-115: One-click platform-native task ingress from Issue / PR
 
