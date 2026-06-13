@@ -1,7 +1,7 @@
 ---
 id: SLICE-126
 title: loop backlog audit — auto-flag likely-already-satisfied FEATs with evidence
-status: pending
+status: completed
 feature: FEAT-182
 phase: null
 priority: P3
@@ -11,6 +11,7 @@ created: 2026-06-13
 updated: 2026-06-13
 github_issue: 266
 github_url: "https://github.com/sergeymilashico/loop/issues/266"
+completed_at: 2026-06-13
 ---
 # SLICE-126: loop backlog audit — auto-flag likely-already-satisfied FEATs with evidence
 

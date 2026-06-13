@@ -92,7 +92,9 @@ const FLAG_SPEC = {
   // cost-by-skill report
   "--cost-by-skill": { key: "costBySkill", boolean: true },
   // pause / resume subcommands
-  "--reason": { key: "reason" }
+  "--reason": { key: "reason" },
+  // backlog-audit output format
+  "--json": { key: "json", boolean: true }
 };
 
 function parseArgs(argv: string[]) {
@@ -157,7 +159,8 @@ function parseArgs(argv: string[]) {
     includeTriaged: false,
     fromIssue: null,
     costBySkill: false,
-    reason: null
+    reason: null,
+    json: false
   };
   const positionals: any[] = [];
 
@@ -247,6 +250,7 @@ const COMMANDS = {
     runGithubSubcommand(repoPath, positionals, flags),
   backlog: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runBacklogSubcommand(repoPath, positionals, flags, config),
+  "backlog-audit": async ({ repoPath, flags }: CmdCtx) => runBacklogAudit(repoPath, flags),
   spec: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runSpecSubcommand(repoPath, positionals, flags, config),
   release: ({ repoPath, flags, positionals, config }: CmdCtx) =>
@@ -738,6 +742,22 @@ function isUnclassifiedEntry(entry: Record<string, any>): boolean {
   return noTags && fm.needs_contract == null && fm.needs_ux == null;
 }
 
+export async function runBacklogAudit(repoPath: string, flags: Record<string, any>) {
+  const { auditBacklog } = await import("./lib/backlog-auditor.mjs");
+  const results = await auditBacklog(repoPath);
+  if (flags.json) {
+    process.exitCode = 0;
+    return { results } as unknown as Record<string, unknown>;
+  }
+  // human-readable: one line per FEAT
+  for (const r of results) {
+    const ev = r.evidence.slice(0, 2).join(", ") || "no evidence";
+    process.stdout.write(`${r.id} [${r.verdict}]: ${ev}\n`);
+  }
+  process.exitCode = 0;
+  return {};
+}
+
 export async function runBacklogEnrich(repoPath: string, _flags: Record<string, any>) {
   const { listBacklog } = await import("./lib/backlog-parser.mjs");
   const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
@@ -836,6 +856,9 @@ async function runBacklogSubcommand(
   }
   if (sub === "enrich") {
     return runBacklogEnrich(repoPath, flags);
+  }
+  if (sub === "audit") {
+    return runBacklogAudit(repoPath, flags);
   }
   throw new Error(`Unknown backlog subcommand: ${sub}`);
 }

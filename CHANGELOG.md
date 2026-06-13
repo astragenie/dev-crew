@@ -5,6 +5,11 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+## [0.47.0] — 2026-06-13
+
+### Added
+- FEAT-182: Backlog auditor (`src/scripts/lib/backlog-auditor.mts`) — `auditBacklog()` scans pending/triaged FEATs for AC keywords that already appear in the codebase, returning `likely_satisfied`/`partially`/`open` verdicts with `file:line` evidence; new `loop backlog audit` CLI subcommand
+
 ## [0.46.0] — 2026-06-13
 
 ### Added
