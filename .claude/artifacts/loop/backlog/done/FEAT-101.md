@@ -1,9 +1,9 @@
 ---
 id: FEAT-101
-status: in-progress
+status: done
 priority: P2
 category: competitor-gap
-target_release: null
+target_release: "0.49.0"
 created: 2026-06-08
 updated: 2026-06-13
 depends_on: []
@@ -18,6 +18,8 @@ github_issue: 177
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/177"
 started_at: 2026-06-13
+slices_complete: [SLICE-128]
+completed_at: 2026-06-13
 ---
 # FEAT-101: GitHub `@crew` PR-comment teammate
 

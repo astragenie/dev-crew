@@ -1,7 +1,7 @@
 ---
 id: SLICE-128
 title: GitHub `@crew` PR-comment teammate
-status: pending
+status: done
 feature: FEAT-101
 phase: null
 priority: P2
