@@ -90,6 +90,33 @@ an autonomous agent MUST obey unconditionally belongs inside `<HARD-GATE>`
 tags; strong-but-soft guidance that an agent should almost always follow
 but that admits rare exceptions belongs inside `<EXTREMELY-IMPORTANT>` tags.
 
+## Skill files
+
+Skills live under `skills/**/SKILL.md`. Each file carries a YAML frontmatter
+block with the following fields.
+
+### Required fields
+
+- `name` — unique skill identifier (string)
+- `description` — one-line human-readable description (string)
+
+### Optional fields
+
+- `trigger` — one of `always_on` (default), `glob`, `manual`, `model_decision`
+- `globs` — array of glob patterns (required when `trigger: glob`)
+- `keywords` — array of keyword strings
+
+### `keywords` field
+
+Skills may declare `keywords: [word1, word2]` in their SKILL.md frontmatter.
+When present (and when the keyword-triggered dispatch scanner ships in a later
+release), these keywords will auto-activate the skill when any keyword appears
+in the dispatch prompt. For now, the field is schema-validated but inert.
+
+`validate-manifests.mts` enforces that when `keywords` is present it must be
+an array of strings. A plain string value (e.g. `keywords: kubernetes`) is
+rejected with a clear error message.
+
 ## GitHub sync frontmatter fields
 
 Added by `/loop:publish`; null/absent means unpublished. Do not set manually.

@@ -10,6 +10,21 @@ import { fileURLToPath } from "node:url";
 import { validatePreset, SchemaError } from "./lib/preset-schema.mjs";
 import { parseFrontmatter } from "./lib/frontmatter.mjs";
 
+// Recursively find all SKILL.md files under a root directory.
+function findSkillFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const results: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...findSkillFiles(full));
+    } else if (entry.name === "SKILL.md") {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
 async function readJson(p: string) {
@@ -124,6 +139,30 @@ function validateMarketplaceJson(
   validateMarketplaceEntries(marketplace, fail);
 }
 
+export function validateSkillFrontmatter(repoRoot: string): string[] {
+  const skillsDir = path.join(repoRoot, "skills");
+  const errors: string[] = [];
+  const files = findSkillFiles(skillsDir);
+  for (const file of files) {
+    const content = readFileSync(file, "utf8");
+    const { frontmatter } = parseFrontmatter(content);
+    if (!Object.prototype.hasOwnProperty.call(frontmatter, "keywords")) continue;
+    const kw = frontmatter["keywords"];
+    if (!Array.isArray(kw)) {
+      const rel = path.relative(repoRoot, file).replace(/\\/g, "/");
+      errors.push(`${rel}: "keywords" must be an array of strings, got ${typeof kw}`);
+      continue;
+    }
+    for (let i = 0; i < kw.length; i += 1) {
+      if (typeof kw[i] !== "string") {
+        const rel = path.relative(repoRoot, file).replace(/\\/g, "/");
+        errors.push(`${rel}: "keywords[${i}]" must be a string, got ${typeof kw[i]}`);
+      }
+    }
+  }
+  return errors;
+}
+
 export async function validateManifests(repoRoot: string) {
   const failures: string[] = [];
   const fail = (msg: string) => failures.push(msg);
@@ -159,6 +198,10 @@ export async function validateManifests(repoRoot: string) {
 
   for (const cmdErr of validateCommandFrontmatter(repoRoot)) {
     fail(cmdErr);
+  }
+
+  for (const skillErr of validateSkillFrontmatter(repoRoot)) {
+    fail(skillErr);
   }
 
   return { ok: failures.length === 0, failures, plugin, marketplace, pkg };
