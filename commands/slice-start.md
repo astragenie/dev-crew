@@ -1,5 +1,7 @@
 ---
+name: slice-start
 description: Open a slice — rotate workflow-state.currentRun via write-run-brief, refresh slice-progress dashboard.
+auto_execute_steps: false
 ---
 
 # Slice Start

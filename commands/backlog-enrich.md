@@ -1,5 +1,7 @@
 ---
+name: backlog-enrich
 description: Classify every triaged feature — dispatch loop:architect inline for each, write tags / needs_contract / needs_ux into FEAT frontmatter so /crew:orchestrate-slice routes the full ladder.
+auto_execute_steps: false
 ---
 
 # Backlog Enrich

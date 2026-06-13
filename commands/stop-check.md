@@ -1,5 +1,7 @@
 ---
+name: stop-check
 description: Unified stop-condition resolver — should the autonomous loop halt now? Returns reasons + blockers + suggestions.
+auto_execute_steps: false
 ---
 
 # Stop Check

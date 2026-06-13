@@ -1,5 +1,7 @@
 ---
+name: retrospective
 description: Aggregate grades + decisions + backlog over a time window into docs/retrospectives/YYYY-MM-DD.md.
+auto_execute_steps: false
 ---
 
 # Retrospective

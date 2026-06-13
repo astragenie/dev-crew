@@ -1,5 +1,7 @@
 ---
+name: install
 description: Install or refresh the loop methodology layer in this repo (HARD RULE blocks, loop-control docs, backlog scaffold, .claude/loop.json).
+auto_execute_steps: false
 ---
 
 # Install Autonomous Loop

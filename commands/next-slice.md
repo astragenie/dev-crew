@@ -1,5 +1,7 @@
 ---
+name: next-slice
 description: Pick the next PENDING slice from approved-slices.md and surface it for implementation.
+auto_execute_steps: false
 ---
 
 # Pick Next Slice

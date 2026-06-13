@@ -1,5 +1,7 @@
 ---
+name: brief
 description: Standalone loop situational report — backlog counts, top priorities, scores, decisions, pattern alerts. Complements crew brief-me.
+auto_execute_steps: false
 ---
 
 # Autonomous Loop Brief

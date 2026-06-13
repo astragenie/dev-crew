@@ -1,5 +1,7 @@
 ---
+name: auto
 description: "Walk the triaged backlog and emit dispatch plans for all viable FEATs. Ranks by composite score, processes both autonomous_safe=true and autonomous_safe=false items with risk gate. Use --auto-mode to flip default to live dispatch (SLICE-C)."
+auto_execute_steps: false
 ---
 
 # Autonomous Backlog Walker

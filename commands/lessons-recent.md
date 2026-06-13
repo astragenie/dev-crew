@@ -1,5 +1,7 @@
 ---
+name: lessons-recent
 description: Return the last N slice grades' lessons / surprises / followups as a feed-forward digest for the next-slice planner.
+auto_execute_steps: false
 ---
 
 # Lessons Recent

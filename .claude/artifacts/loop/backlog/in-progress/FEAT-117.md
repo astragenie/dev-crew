@@ -1,16 +1,16 @@
 ---
 id: FEAT-117
-status: triaged
+status: in-progress
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-13
 depends_on: []
-slices: []
+slices: [SLICE-117]
 derived_from: null
 composite_score: 7
-source_competitors: ["\"Windsurf (Codeium", "now Cognition)\""]
+source_competitors: ["\\\"Windsurf (Codeium", "now Cognition)\\\""]
 autonomous_safe: false
 tags: [workflow, slash-commands, documentation]
 needs_contract: false
@@ -24,6 +24,7 @@ triage_notes: "Composite 7. Markdown Workflow recipes with frontmatter + slash i
 github_issue: 182
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/182"
+started_at: 2026-06-13
 ---
 # FEAT-117: Markdown Workflow recipes with frontmatter + slash invocation
 

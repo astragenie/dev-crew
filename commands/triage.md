@@ -1,5 +1,7 @@
 ---
+name: triage
 description: Triage every pending backlog FEAT using the PM agent (5-dimension scoring). PM-only — on PM error, validation failure, or budget exceedance, halt and surface to the operator.
+auto_execute_steps: false
 ---
 
 # Triage

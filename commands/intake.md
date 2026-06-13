@@ -1,5 +1,7 @@
 ---
+name: intake
 description: Two-phase backlog intake. Phase 1 dispatches the PM agent to score every pending FEAT (5-dimension triage). Phase 2 dispatches loop:architect on each newly-triaged FEAT to classify tags / needs_contract / needs_ux. Replaces the manual /loop:triage + /loop:backlog-enrich split with one invocation.
+auto_execute_steps: false
 ---
 
 # Intake (FEAT-189 / SLICE-103)

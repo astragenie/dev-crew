@@ -1,5 +1,7 @@
 ---
+name: list-presets
 description: Show built-in loop presets with their stack defaults.
+auto_execute_steps: false
 ---
 
 # List Autonomous Loop Presets

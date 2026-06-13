@@ -1,5 +1,7 @@
 ---
+name: slice-review-ladder
 description: Emit structured Reviewer A + B (configurable) task prompts for parallel crew:inspector subagent dispatch.
+auto_execute_steps: false
 ---
 
 # Slice Review Ladder

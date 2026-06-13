@@ -1,5 +1,7 @@
 ---
+name: retriage
 description: Opt-in higher-quality triage. Three-phase orchestrator — PM clarity check + score-or-flag, orchestrator fans out loop:spec-writer for flagged FEATs, PM re-scores against rewritten AC. Original /loop:triage stays unchanged (cheaper, faster, suitable when AC are already concrete).
+auto_execute_steps: false
 ---
 
 # Retriage (FEAT-193 / SLICE-109)

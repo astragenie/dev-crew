@@ -1,5 +1,7 @@
 ---
+name: backlog-list
 description: List backlog entries across all states with optional filters.
+auto_execute_steps: false
 ---
 
 # Backlog List

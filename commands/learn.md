@@ -1,5 +1,7 @@
 ---
+name: learn
 description: Log an operational learning to the persistent learnings store (.claude/artifacts/loop/learnings.jsonl). Use mid-session when you observe something worth preserving for future sessions.
+auto_execute_steps: false
 ---
 
 # Loop Learn

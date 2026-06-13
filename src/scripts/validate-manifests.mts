@@ -8,6 +8,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validatePreset, SchemaError } from "./lib/preset-schema.mjs";
+import { parseFrontmatter } from "./lib/frontmatter.mjs";
 
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
@@ -36,6 +37,44 @@ export function validateAllPresets(repoRoot: string): string[] {
   return errors;
 }
 
+export function validateCommandFrontmatter(repoRoot: string): string[] {
+  const dir = path.join(repoRoot, "commands");
+  const errors: string[] = [];
+  if (!existsSync(dir)) return errors;
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith(".md")) continue;
+    const stem = entry.slice(0, -".md".length);
+    const full = path.join(dir, entry);
+    const content = readFileSync(full, "utf8");
+    const { frontmatter } = parseFrontmatter(content);
+    // Validate name
+    if (!(Object.prototype.hasOwnProperty.call(frontmatter, "name"))) {
+      errors.push(`commands/${entry}: missing required field "name"`);
+    } else if (typeof frontmatter["name"] !== "string" || frontmatter["name"] === "") {
+      errors.push(`commands/${entry}: "name" must be a non-empty string`);
+    } else if (frontmatter["name"] !== stem) {
+      errors.push(
+        `commands/${entry}: "name" must equal filename stem "${stem}", got "${frontmatter["name"]}"`
+      );
+    }
+    // Validate description
+    if (!(Object.prototype.hasOwnProperty.call(frontmatter, "description"))) {
+      errors.push(`commands/${entry}: missing required field "description"`);
+    } else if (typeof frontmatter["description"] !== "string" || frontmatter["description"] === "") {
+      errors.push(`commands/${entry}: "description" must be a non-empty string`);
+    }
+    // Validate auto_execute_steps
+    if (!(Object.prototype.hasOwnProperty.call(frontmatter, "auto_execute_steps"))) {
+      errors.push(`commands/${entry}: missing required field "auto_execute_steps"`);
+    } else if (typeof frontmatter["auto_execute_steps"] !== "boolean") {
+      errors.push(
+        `commands/${entry}: "auto_execute_steps" must be a boolean, got ${typeof frontmatter["auto_execute_steps"]}`
+      );
+    }
+  }
+  return errors;
+}
+
 function validateMarketplaceEntries(
   marketplace: Record<string, any>,
   fail: (msg: string) => void
@@ -49,6 +88,37 @@ function validateMarketplaceEntries(
     }
     if (!entry.source) fail(`marketplace.json: entry "${entry.name}" missing "source"`);
   }
+}
+
+// marketplace.json moved to sergeymilashico/astra-marketplace (4a46687). When
+// a local copy exists (mirror or transitional setup), enforce lockstep with
+// plugin.json. When absent, treat as authoritative-elsewhere and skip.
+function validateMarketplaceJson(
+  marketplace: Record<string, any>,
+  plugin: Record<string, any>,
+  fail: (msg: string) => void
+): void {
+  for (const field of ["name", "owner", "plugins"]) {
+    if (
+      marketplace[field] === undefined ||
+      marketplace[field] === null ||
+      marketplace[field] === ""
+    ) {
+      fail(`marketplace.json: missing required field "${field}"`);
+    }
+  }
+  const ownEntry = marketplace.plugins.find(
+    (entry: { name: string; version: string; source?: string }) => entry.name === plugin.name
+  );
+  if (!ownEntry) {
+    fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
+  } else if (ownEntry.version !== plugin.version) {
+    fail(
+      `version drift: plugin.json="${plugin.version}" vs marketplace.json entry "${plugin.name}"="${ownEntry.version}". ` +
+        `Run "npm run bump-version <new-version>" to sync.`
+    );
+  }
+  validateMarketplaceEntries(marketplace, fail);
 }
 
 export async function validateManifests(repoRoot: string) {
@@ -69,31 +139,8 @@ export async function validateManifests(repoRoot: string) {
   if (!SEMVER_RE.test(plugin.version))
     fail(`plugin.json: version "${plugin.version}" is not parseable semver`);
 
-  // marketplace.json moved to sergeymilashico/astra-marketplace (4a46687). When
-  // a local copy exists (mirror or transitional setup), enforce lockstep with
-  // plugin.json. When absent, treat as authoritative-elsewhere and skip.
   if (marketplace) {
-    for (const field of ["name", "owner", "plugins"]) {
-      if (
-        marketplace[field] === undefined ||
-        marketplace[field] === null ||
-        marketplace[field] === ""
-      ) {
-        fail(`marketplace.json: missing required field "${field}"`);
-      }
-    }
-    const ownEntry = marketplace.plugins.find(
-      (entry: { name: string; version: string; source?: string }) => entry.name === plugin.name
-    );
-    if (!ownEntry) {
-      fail(`marketplace.json: no entry for own plugin name "${plugin.name}"`);
-    } else if (ownEntry.version !== plugin.version) {
-      fail(
-        `version drift: plugin.json="${plugin.version}" vs marketplace.json entry "${plugin.name}"="${ownEntry.version}". ` +
-          `Run "npm run bump-version <new-version>" to sync.`
-      );
-    }
-    validateMarketplaceEntries(marketplace, fail);
+    validateMarketplaceJson(marketplace, plugin, fail);
   }
 
   if (pkg.version !== plugin.version) {
@@ -105,6 +152,10 @@ export async function validateManifests(repoRoot: string) {
 
   for (const presetErr of validateAllPresets(repoRoot)) {
     fail(presetErr);
+  }
+
+  for (const cmdErr of validateCommandFrontmatter(repoRoot)) {
+    fail(cmdErr);
   }
 
   return { ok: failures.length === 0, failures, plugin, marketplace, pkg };

@@ -1,5 +1,7 @@
 ---
+name: decisions-show
 description: Print the full body + frontmatter of a single decision by id.
+auto_execute_steps: false
 ---
 
 # Decisions Show

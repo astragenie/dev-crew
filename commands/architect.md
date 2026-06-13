@@ -1,5 +1,7 @@
 ---
+name: architect
 description: Run the codebase research pre-flight using the architect model (Opus) and return a two-model dispatch instruction.
+auto_execute_steps: false
 ---
 
 # Architect

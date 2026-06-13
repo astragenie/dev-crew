@@ -1,5 +1,7 @@
 ---
+name: slice-from-feature
 description: Promote a backlog feature into an engineering slice — moves the feature to in-progress/, creates the slice file under slicesRoot/pending/, and cross-links them.
+auto_execute_steps: false
 ---
 
 # Slice From Feature

@@ -1,5 +1,7 @@
 ---
+name: sync-claims
 description: Reconcile crew claims with loop backlog state — promote claimed FEAT files to in-progress, warn on orphan in-progress without claim.
+auto_execute_steps: false
 ---
 
 # Sync Claims

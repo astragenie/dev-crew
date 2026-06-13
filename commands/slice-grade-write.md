@@ -1,5 +1,7 @@
 ---
+name: slice-grade-write
 description: Validate grade scores, extract DEC-TBD decisions into docs/decisions/, persist frontmatter linkage. Idempotent.
+auto_execute_steps: false
 ---
 
 # Slice Grade Write

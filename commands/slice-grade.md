@@ -1,5 +1,7 @@
 ---
+name: slice-grade
 description: Generate a pre-filled grade template at slice close — agent then edits scores, lessons, decisions, narrative.
+auto_execute_steps: false
 ---
 
 # Slice Grade

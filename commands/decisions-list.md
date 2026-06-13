@@ -1,5 +1,7 @@
 ---
+name: decisions-list
 description: List retrospective decisions captured from grade files — DEC-NNN entries with status, originating slice, supersession links.
+auto_execute_steps: false
 ---
 
 # Decisions List

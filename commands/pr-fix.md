@@ -1,5 +1,7 @@
 ---
+name: pr-fix
 description: "Poll a PR's status, categorize unfixed issues (lint, test, review, CI, security), and emit fix plans with circuit breaker. Supports retried dispatches via priorAttempts tracking."
+auto_execute_steps: false
 ---
 
 # PR Issue Fixer

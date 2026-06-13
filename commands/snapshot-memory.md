@@ -1,5 +1,7 @@
 ---
+name: snapshot-memory
 description: Write docs/loop-snapshot.md — durable cross-session memory of backlog/specs/grades/decisions state. Reference from CLAUDE.md via `@`.
+auto_execute_steps: false
 ---
 
 # Snapshot Memory

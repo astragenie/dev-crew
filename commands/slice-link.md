@@ -1,5 +1,7 @@
 ---
+name: slice-link
 description: Append a crew artifact path (review/validation/deployment) to a slice's frontmatter linkage array — replaces regex auto-prefill with deterministic walk.
+auto_execute_steps: false
 ---
 
 # Slice Link
