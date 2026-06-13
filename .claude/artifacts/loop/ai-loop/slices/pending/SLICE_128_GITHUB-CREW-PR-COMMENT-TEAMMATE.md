@@ -22,17 +22,27 @@ Implements FEAT-101. See [feature file](../../../backlog/in-progress/FEAT-101.md
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- `.github/workflows/crew-pr-comment.yml` — GitHub Action triggered on `issue_comment` and `pull_request_review_comment` events
+- `src/scripts/lib/gh-mention-parser.mts` — mention parser for `@crew review`, `@crew fix <description>`, `@crew explain`
+- `src/scripts/lib/gh-reply-formatter.mts` — reply formatter: verdict + 200-char summary + artifact GH link
+- `src/scripts/lib/gh-rate-limiter.mts` — per-PR rate limit (max 1 active dispatch); state stored in `.github/crew-dispatch-state.json`
+- Tests: `src/tests/gh-mention-parser.test.mts`, `src/tests/gh-reply-formatter.test.mts`, `src/tests/gh-rate-limiter.test.mts`
+- `docs/integrations/github-pr-comment-teammate.md` — setup guide
 
 ## Out of scope
 
-- bullet 1
+- Cross-org webhook (single-repo-install only in v1)
+- Linear sync (FEAT-102)
+- Building or running actual Claude Code sessions inside the Action (scaffold only — Action YAML invokes `npx claude` / `bunx claude` as documented shell step)
 
 ## Acceptance criteria
 
-- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)
-- [ ] AC-2: <replace with a concrete, testable acceptance criterion>
+- [ ] AC-1: `actions/crew-pr-comment.yml` triggers on `issue_comment.created` and `pull_request_review_comment.created` events; workflow file valid per `act --list` or schema check.
+- [ ] AC-2: Mention parser correctly extracts intent from `@crew review`, `@crew fix <text>`, `@crew explain` in both PR body and comment body; unknown mentions return `null`. Test: ≥8 cases covering valid + invalid + edge inputs.
+- [ ] AC-3: Reply formatter produces a comment body ≤ 1000 chars containing verdict tag (`PASS`/`FAIL`/`needs-info`), first 200 chars of artifact summary, and a relative GitHub link to the artifact path under `.claude/artifacts/crew/`.
+- [ ] AC-4: Rate limiter prevents a second dispatch while one is active on the same PR number; returns `{ blocked: true, activeDispatchId }`. State file is updated atomically (read-modify-write with a lockfile or `.tmp` swap).
+- [ ] AC-5: `bun test src/tests/` passes (all new tests green); `bun run lint` clean (zero warnings, cyclomatic complexity ≤ 15 per module).
+- [ ] AC-6: `docs/integrations/github-pr-comment-teammate.md` documents prerequisites (GH Actions secret `ANTHROPIC_API_KEY`), required repo permissions, and a "First run" example.
 
 ## Done When
 
@@ -40,10 +50,8 @@ Implements FEAT-101. See [feature file](../../../backlog/in-progress/FEAT-101.md
 - build / test commands per `.claude/loop.json` pass
 - feature FEAT-101 moved from `in-progress/` to `done/`
 - Crew `final-synthesis` artifact written
-- (pure refactors / mechanical changes: set `requires_validation: false` in frontmatter
-   above to waive the validation gate — no badge needed at close time)
 
 ## Reviewer ladder
 
-- Reviewer A: ...
-- Reviewer B: ...
+- Reviewer A: correctness + AC coverage (mention parser edge cases, reply formatter truncation, rate limiter atomicity)
+- Reviewer B: security (prompt-injection in mention text, secret handling in Action YAML, lockfile race) + production-readiness
