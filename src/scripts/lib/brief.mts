@@ -7,6 +7,8 @@ import { readEvents } from "./telemetry.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
 import { checkCostRegression } from "./cost-regression.mjs";
 import { checkSessionDrift } from "./session-drift.mjs";
+import { recentLearnings } from "./learnings.mjs";
+import { computeConfidence } from "./confidence-signal.mjs";
 
 // Standalone loop situational report. Complements crew's brief-me;
 // surfaces backlog/specs/grades/decisions/alerts without modifying the
@@ -35,6 +37,33 @@ function computeGradeSignal(grades: Record<string, any>[]) {
     ),
     perDimensionRecent: scoreSnapshot
   };
+}
+
+// Derive the sliceStartConfidence block for the top triaged feature.
+// acCount is sentinel 2 — slice body not parsed at brief time (see AC-003 of FEAT-085).
+// Using 2 avoids triggering the acCount===0 and acCount<2 red branches, preserving
+// meaningful green/yellow/red signal driven by autonomousSafe and dependsOnCount only.
+function deriveSliceStartConfidence(
+  topTriagedRaw: Record<string, any>[],
+  gradeAvgRecent: number | null
+): {
+  featureId: string | null;
+  confidence: "green" | "yellow" | "red" | null;
+  reason: string | null;
+} | null {
+  const top = topTriagedRaw[0];
+  if (!top) return null;
+  const autonomousSafe: boolean | null = top.frontmatter.autonomous_safe ?? null;
+  const dependsOnCount: number = Array.isArray(top.frontmatter.depends_on)
+    ? top.frontmatter.depends_on.length
+    : 0;
+  const result = computeConfidence({
+    autonomousSafe,
+    acCount: 2,
+    recentGradeAvg: gradeAvgRecent,
+    dependsOnCount
+  });
+  return { featureId: top.id as string, confidence: result.confidence, reason: result.reason };
 }
 
 // Count how many warn alerts would be demoted under current autoMode + ignoredCategories config.
@@ -74,6 +103,14 @@ export async function buildBrief(
     checkSessionDrift(repoPath)
   ]);
 
+  let learningsDigest: string | null = null;
+  try {
+    const lr = await recentLearnings(repoPath, 3);
+    learningsDigest = lr.digest;
+  } catch {
+    // store absent or corrupt; digest stays null
+  }
+
   const backlogCounts = {
     pending: filterBacklog(backlog, { status: "pending" }).length,
     triaged: filterBacklog(backlog, { status: "triaged" }).length,
@@ -82,16 +119,17 @@ export async function buildBrief(
   };
 
   // Top 3 highest-priority triaged features — priority asc, then FEAT-NNN asc.
-  const topTriaged = filterBacklog(backlog, { status: "triaged" })
+  const topTriagedRaw = filterBacklog(backlog, { status: "triaged" })
     .sort(comparePickOrder)
-    .slice(0, 3)
-    .map((f: Record<string, any>) => ({
-      id: f.id,
-      priority: f.frontmatter.priority,
-      category: f.frontmatter.category,
-      target_release: f.frontmatter.target_release,
-      derived_from: f.frontmatter.derived_from || null
-    }));
+    .slice(0, 3);
+
+  const topTriaged = topTriagedRaw.map((f: Record<string, any>) => ({
+    id: f.id,
+    priority: f.frontmatter.priority,
+    category: f.frontmatter.category,
+    target_release: f.frontmatter.target_release,
+    derived_from: f.frontmatter.derived_from || null
+  }));
 
   // In-flight features (in-progress) — caller acts on these next
   const inFlight = filterBacklog(backlog, { status: "in-progress" }).map(
@@ -101,6 +139,11 @@ export async function buildBrief(
       priority: f.frontmatter.priority
     })
   );
+
+  // Compute grade signal first so avgRecent is available for confidence
+  const gradeSignal = computeGradeSignal(grades);
+
+  const sliceStartConfidence = deriveSliceStartConfidence(topTriagedRaw, gradeSignal.avgRecent);
 
   // Spec flow: approved + undecomposed
   const specsToDecompose = specs
@@ -121,7 +164,8 @@ export async function buildBrief(
     topTriaged,
     inFlight,
     specsToDecompose,
-    grades: computeGradeSignal(grades),
+    sliceStartConfidence,
+    grades: gradeSignal,
     decisions: {
       total: decisions.length,
       accepted: decisions.filter((d) => d.status === "accepted").length,
@@ -159,6 +203,7 @@ export async function buildBrief(
           sessionIdAtStart: sessionDrift.sessionIdAtStart,
           sessionIdNow: sessionDrift.sessionIdNow
         }
-      : null
+      : null,
+    learningsDigest
   };
 }
