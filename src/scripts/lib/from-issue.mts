@@ -29,7 +29,7 @@ export interface FetchIssueOptions {
 export function parseIssueUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) throw new Error("--from-issue: issue URL must not be empty.");
-  return trimmed;
+  return trimmed.replace(/#.*$/, "");
 }
 
 /**
