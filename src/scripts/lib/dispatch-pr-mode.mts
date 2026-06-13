@@ -51,7 +51,7 @@ export const _internals = {
  */
 export async function dispatchFinalizePr(
   children: PrChild[],
-  repoPath: string
+  _repoPath: string
 ): Promise<PrResult[]> {
   const results: PrResult[] = [];
 
