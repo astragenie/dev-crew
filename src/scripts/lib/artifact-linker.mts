@@ -230,11 +230,21 @@ function validateFeatLinks(
     const rel = path.relative(repoPath, file).replace(/\\/g, "/");
     for (const ref of toArray(frontmatter.depends_on)) {
       if (ref && !featIds.has(ref))
-        broken.push({ sourceFile: rel, field: "depends_on", referencedId: ref, reason: `Referenced FEAT "${ref}" not found in any backlog state` });
+        broken.push({
+          sourceFile: rel,
+          field: "depends_on",
+          referencedId: ref,
+          reason: `Referenced FEAT "${ref}" not found in any backlog state`
+        });
     }
     for (const ref of toArray(frontmatter.derived_from)) {
       if (ref && !featIds.has(ref))
-        broken.push({ sourceFile: rel, field: "derived_from", referencedId: ref, reason: `Referenced FEAT "${ref}" not found in any backlog state` });
+        broken.push({
+          sourceFile: rel,
+          field: "derived_from",
+          referencedId: ref,
+          reason: `Referenced FEAT "${ref}" not found in any backlog state`
+        });
     }
     // declined_per references CLAUDE.md clause ids — validated by validate-decline-citations.mts, not here.
   }
@@ -252,7 +262,12 @@ function validateSliceLinks(
     if (featureRef && typeof featureRef === "string" && featureRef.trim()) {
       const ref = featureRef.trim();
       if (!featIds.has(ref))
-        broken.push({ sourceFile: rel, field: "feature", referencedId: ref, reason: `Referenced FEAT "${ref}" not found in any backlog state` });
+        broken.push({
+          sourceFile: rel,
+          field: "feature",
+          referencedId: ref,
+          reason: `Referenced FEAT "${ref}" not found in any backlog state`
+        });
     }
   }
 }
@@ -267,7 +282,12 @@ function validateDecisionLinks(
     const rel = path.relative(repoPath, file).replace(/\\/g, "/");
     for (const ref of toArray(frontmatter.supersedes)) {
       if (ref && !decIds.has(ref))
-        broken.push({ sourceFile: rel, field: "supersedes", referencedId: ref, reason: `Referenced decision "${ref}" not found in decisions directory` });
+        broken.push({
+          sourceFile: rel,
+          field: "supersedes",
+          referencedId: ref,
+          reason: `Referenced decision "${ref}" not found in decisions directory`
+        });
     }
   }
 }
@@ -281,11 +301,19 @@ function detectOrphanedGrades(
   for (const grade of grades) {
     const rel = path.relative(repoPath, grade.file).replace(/\\/g, "/");
     if (!grade.sliceId) {
-      orphaned.push({ file: rel, type: "grade", reason: "Could not determine slice reference from filename or frontmatter" });
+      orphaned.push({
+        file: rel,
+        type: "grade",
+        reason: "Could not determine slice reference from filename or frontmatter"
+      });
       continue;
     }
     if (!completedIds.has(grade.sliceId))
-      orphaned.push({ file: rel, type: "grade", reason: `Grade references slice "${grade.sliceId}" but no completed slice file found` });
+      orphaned.push({
+        file: rel,
+        type: "grade",
+        reason: `Grade references slice "${grade.sliceId}" but no completed slice file found`
+      });
   }
 }
 
