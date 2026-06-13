@@ -61,7 +61,8 @@ export function prepareDispatch(plans: DispatchPlan[], opts: DispatchOptions): P
     runId,
     depth,
     childCwdById: cwdById,
-    childBranchById: branchById
+    childBranchById: branchById,
+    repoRoot: opts.repoRoot
   });
   const startTimes: Record<string, number> = {};
   for (const plan of plans) startTimes[plan.id] = Date.now();

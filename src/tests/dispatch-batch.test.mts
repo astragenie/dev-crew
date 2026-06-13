@@ -22,7 +22,8 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
     runId: "r1",
     depth: 0,
     childCwdById: { FE: "/p/fe", BE: "/p/be" },
-    childBranchById: { FE: "slice/X-FE", BE: "slice/X-BE" }
+    childBranchById: { FE: "slice/X-FE", BE: "slice/X-BE" },
+    repoRoot: "/main/repo"
   });
   assert.equal(calls.length, 2);
   assert.equal(calls[0].subagent_type, "crew:frontend-dev");
