@@ -115,7 +115,9 @@ async function collectSourceFiles(srcDir: string): Promise<string[]> {
   const results: string[] = [];
   let entries: import("node:fs").Dirent<string>[];
   try {
-    entries = (await fs.readdir(srcDir, { withFileTypes: true })) as import("node:fs").Dirent<string>[];
+    entries = (await fs.readdir(srcDir, {
+      withFileTypes: true
+    })) as import("node:fs").Dirent<string>[];
   } catch {
     return results;
   }
@@ -167,7 +169,12 @@ async function searchKeywords(
     let keywordHit = false;
     for (const srcFile of sourceFiles) {
       if (evidence.length >= MAX_EVIDENCE_PER_FEAT) break;
-      const hits = await searchFileForKeyword(srcFile, repoPath, keyword, MAX_EVIDENCE_PER_FEAT - evidence.length);
+      const hits = await searchFileForKeyword(
+        srcFile,
+        repoPath,
+        keyword,
+        MAX_EVIDENCE_PER_FEAT - evidence.length
+      );
       if (hits.length > 0) {
         evidence.push(...hits);
         keywordHit = true;
@@ -195,7 +202,8 @@ async function auditFeatFile(
   const keywords = extractKeywords(content);
   if (keywords.length === 0) return { id, title, verdict: "open", evidence: [] };
   const { foundCount, evidence } = await searchKeywords(keywords, sourceFiles, repoPath);
-  const verdict: AuditVerdict = foundCount >= LIKELY_THRESHOLD ? "likely_satisfied" : foundCount === 1 ? "partially" : "open";
+  const verdict: AuditVerdict =
+    foundCount >= LIKELY_THRESHOLD ? "likely_satisfied" : foundCount === 1 ? "partially" : "open";
   return { id, title, verdict, evidence };
 }
 
@@ -217,8 +225,15 @@ export async function auditBacklog(repoPath: string, opts?: AuditOptions): Promi
     } catch {
       continue;
     }
-    for (const filename of (entries as string[]).filter((f: string) => FEAT_FILE_RE.test(f)).sort()) {
-      const result = await auditFeatFile(path.join(stateDir, filename), filename, repoPath, sourceFiles);
+    for (const filename of (entries as string[])
+      .filter((f: string) => FEAT_FILE_RE.test(f))
+      .sort()) {
+      const result = await auditFeatFile(
+        path.join(stateDir, filename),
+        filename,
+        repoPath,
+        sourceFiles
+      );
       if (result) results.push(result);
     }
   }
