@@ -77,6 +77,8 @@ Per-FEAT outcomes:
 - `rewriteOk: true` — proceeds to phase C.
 - `rewriteOk: false` (or dispatch error / timeout / no edits) — orchestrator writes `composite_priority: needs-review` + `acClarity: { rewrite: true, rewriteDispatchOk: false }` to the FEAT frontmatter directly (no PM round-trip). FEAT excluded from phase C.
 
+A spec-writer dispatch failure counts as any of: the agent returns `rewriteOk: false`; the dispatch errors out (Agent tool fail, harness error); the dispatch times out; the agent returns but the FEAT body was not actually edited (zero `criteriaWritten`). All four are treated identically — orchestrator escalates to `needs-review` and records `rewriteDispatchOk: false`.
+
 ### Phase C — PM re-score against rewritten AC
 
 For each phase-B success, dispatch `loop:pm` with the prompt block below PREPENDED to the standard scoring prompt. PM re-reads the FEAT (now with Given-When-Then AC) and scores.
@@ -138,6 +140,8 @@ Invariant: `triaged == sum(results)` and `phaseB.fannedOut == phaseB.rewriteOk +
 - Phase A failure (PM error, validation failure) for a FEAT → halt batch; surface PM halt JSON.
 - Phase B failure for a single FEAT → orchestrator writes `composite_priority: needs-review` to that FEAT and CONTINUES processing the rest. Reported in `phaseB.rewriteFail`.
 - Phase C failure for a single FEAT → orchestrator writes `composite_priority: needs-review`, `acClarity: { rewrite: true, rewriteDispatchOk: true, scoreOk: false }` and CONTINUES. Reported in results with `priority: needs-review`.
+
+Every `composite_priority: needs-review` verdict — whether emitted by PM in Phase A or by the orchestrator in Phase B / Phase C — MUST include a populated `scopeNotes` field on the PM artifact explaining the verdict. Per `agents/pm.md`, `scopeNotes` is the operator-facing rationale for the escalation (which AC dimension failed, which weak dimension blocked autonomous safety, etc.). Operators triage the `needs-review` queue by reading `scopeNotes` first; an empty `scopeNotes` is an audit gap.
 
 Walker does not auto-promote any FEAT with `composite_priority: needs-review` until an operator resolves manually or re-runs `/loop:retriage` after a fix.
 
