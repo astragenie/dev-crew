@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { listBacklog, filterBacklog, comparePickOrder } from "./backlog-parser.mjs";
@@ -321,4 +322,35 @@ export async function writeMemorySnapshot(
       costReports: data.costReportUSDValues.length
     }
   };
+}
+
+type WaveIndexEntry = {
+  waveId: string;
+  size: number;
+  passCount: number;
+  failCount: number;
+  postMergeTest: "PASS" | "FAIL" | "skipped";
+  durationMs: number;
+};
+
+export function renderWaveTelemetry(repoRoot: string): string {
+  const indexPath = path.join(repoRoot, ".claude/artifacts/loop/waves/index.json");
+  if (!existsSync(indexPath)) return "";
+  const idx = JSON.parse(readFileSync(indexPath, "utf8")) as { entries: WaveIndexEntry[] };
+  if (idx.entries.length === 0) return "";
+
+  const last = idx.entries[idx.entries.length - 1]!;
+  const last10 = idx.entries.slice(-10);
+  const sumPass = last10.reduce((s, e) => s + e.passCount, 0);
+  const sumSize = last10.reduce((s, e) => s + e.size, 0);
+  const passRate = sumPass / Math.max(1, sumSize);
+
+  return [
+    "",
+    "## Wave telemetry",
+    "",
+    `- Last wave: ${last.waveId} (size=${last.size}, PASS=${last.passCount}, FAIL=${last.failCount})`,
+    `- Recent ${last10.length} waves: avg PASS rate ${passRate.toFixed(2)}`,
+    ""
+  ].join("\n");
 }

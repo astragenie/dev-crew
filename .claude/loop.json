@@ -61,6 +61,19 @@
     "costRegressionMultiplier": 6.0,
     "costSliceCeiling": 200,
     "gradeTrendPerDimension": { "observability": 0.7 },
+    "marathonRunner": "wave",
+    "wave": {
+      "size": 3,
+      "sliceCommand": "/crew:orchestrate-slice",
+      "sliceCommandFallback": "/crew:build",
+      "fixCommand": "/crew:fix",
+      "maxParallel": 3,
+      "dispatchTimeoutMs": 1800000,
+      "postMergeTestCmd": "bun test src/tests/ --parallel --timeout 60000",
+      "maxWaveAttempts": 2,
+      "subagentType": "general-purpose",
+      "artifactsRoot": ".claude/artifacts/loop/waves"
+    },
     "marathonCheckpointEvery": 4,
     "perfBaseline": {
       "medianWallClockSeconds": 1200,

@@ -676,6 +676,29 @@ function runResolveSkillsCommand(flags: Record<string, any>): void {
   }
 }
 
+async function runConfigGetSubcommand(argv: string[]): Promise<void> {
+  const [sub, dotted, ...rest] = argv;
+  if (sub !== "get" || !dotted) {
+    console.error("usage: loop.mts config get <dotted.path> [--repo PATH]");
+    process.exitCode = 1;
+    return;
+  }
+  const repoIdx = rest.indexOf("--repo");
+  const repoRoot = repoIdx >= 0 && rest[repoIdx + 1] ? rest[repoIdx + 1]! : process.cwd();
+  const fs = await import("node:fs");
+  const nodePath = await import("node:path");
+  const p = nodePath.join(repoRoot, ".claude", "loop.json");
+  if (!fs.existsSync(p)) return;
+  const json = JSON.parse(fs.readFileSync(p, "utf8")) as Record<string, unknown>;
+  const value = dotted.split(".").reduce<unknown>((acc, k) => {
+    if (acc && typeof acc === "object" && k in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[k];
+    }
+    return undefined;
+  }, json);
+  if (value !== undefined) console.log(String(value));
+}
+
 async function main() {
   // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
   // --depth, --dry-run, --json, --run-id, --config) are not registered in
@@ -692,6 +715,23 @@ async function main() {
       shell: process.platform === "win32"
     });
     process.exitCode = result.status ?? 1;
+    return;
+  }
+
+  if (rawArgv[0] === "wave") {
+    const sub = rawArgv[1];
+    if (!sub) {
+      console.error("usage: loop.mts wave <plan|run|loop> [--repo PATH] [--size N] [--json]");
+      process.exitCode = 1;
+      return;
+    }
+    const { default: waveCli } = await import("./lib/wave/cli.mjs");
+    await waveCli(sub, rawArgv.slice(2));
+    return;
+  }
+
+  if (rawArgv[0] === "config") {
+    await runConfigGetSubcommand(rawArgv.slice(1));
     return;
   }
 

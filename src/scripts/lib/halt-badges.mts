@@ -12,6 +12,13 @@ export interface HaltBadgeRenderer {
   render: (entry: any) => string[];
 }
 
+export interface HaltBadgeInfo {
+  /** Severity level: "info" | "warn" | "error" */
+  severity: "info" | "warn" | "error";
+  /** Human-readable description of the badge */
+  description: string;
+}
+
 function renderCostRegression(e: any): string[] {
   if (!e) return [];
   return [
@@ -150,6 +157,59 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
   { field: "stuckDetected", gateName: "Stuck detector", render: renderStuckDetected },
   { field: "prWatch", gateName: "PR watch halt", render: renderPrWatch }
 ];
+
+/** Wave-mode halt-badge registry: badge ID → severity + description. */
+const WAVE_HALT_BADGES: Record<string, HaltBadgeInfo> = {
+  wave_post_merge_red: {
+    severity: "error",
+    description:
+      "Post-merge test suite returned non-zero after wave merge to main."
+  },
+  wave_dirty_main: {
+    severity: "error",
+    description: "Wave runner detected a dirty main branch before dispatching; refusing to proceed."
+  },
+  wave_pending_fix_count: {
+    severity: "info",
+    description:
+      "Count of slices with pending_fix=true; planner will pick them first next wave."
+  },
+  wave_escalation_count: {
+    severity: "warn",
+    description:
+      "Slices moved to needs-review/ since the last retrospective due to repeated wave failures."
+  }
+};
+
+/**
+ * Look up a halt-badge by ID and return its severity and description.
+ * Includes both wave-mode badges and legacy snapshot badges.
+ * Throws if the badge ID is not registered.
+ */
+export function explainHaltBadge(id: string): HaltBadgeInfo {
+  // Check wave-mode registry first
+  if (id in WAVE_HALT_BADGES) {
+    return WAVE_HALT_BADGES[id]!;
+  }
+
+  // Check legacy HALT_BADGES registry
+  for (const badge of HALT_BADGES) {
+    if (badge.field === id) {
+      // For legacy badges, infer severity from context
+      const severity: "info" | "warn" | "error" = badge.field.includes("regression")
+        ? "error"
+        : badge.field.includes("checkpoint")
+          ? "warn"
+          : "error";
+      return {
+        severity,
+        description: badge.gateName
+      };
+    }
+  }
+
+  throw new Error(`Unknown halt-badge ID: ${id}`);
+}
 
 /**
  * Build the `## Halt summary` markdown block from a brief object's snapshot.

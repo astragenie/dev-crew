@@ -3,10 +3,10 @@
 // malformed snapshot (graceful degrade), brief-vs-snapshot lookup, unknown
 // fields (registry iteration ignores them).
 
-import { test } from "bun:test";
+import { test, describe } from "bun:test";
 import assert from "node:assert/strict";
 
-import { explainHalts, HALT_BADGES } from "../scripts/lib/halt-badges.mjs";
+import { explainHalts, explainHaltBadge, HALT_BADGES } from "../scripts/lib/halt-badges.mjs";
 
 test("explainHalts: all halt-badges null → 'No halts active.'", () => {
   const brief: Record<string, any> = {
@@ -242,4 +242,27 @@ test("HALT_BADGES registry has the 10 known fields in expected order", () => {
     "stuckDetected",
     "prWatch"
   ]);
+});
+
+describe("wave halt badges", () => {
+  test("wave_post_merge_red explains as error", () => {
+    const r = explainHaltBadge("wave_post_merge_red");
+    assert.equal(r.severity, "error");
+    assert.ok(r.description.toLowerCase().includes("post-merge"));
+  });
+
+  test("wave_dirty_main explains as error", () => {
+    const r = explainHaltBadge("wave_dirty_main");
+    assert.equal(r.severity, "error");
+  });
+
+  test("wave_pending_fix_count is info", () => {
+    const r = explainHaltBadge("wave_pending_fix_count");
+    assert.equal(r.severity, "info");
+  });
+
+  test("wave_escalation_count is warn", () => {
+    const r = explainHaltBadge("wave_escalation_count");
+    assert.equal(r.severity, "warn");
+  });
 });
