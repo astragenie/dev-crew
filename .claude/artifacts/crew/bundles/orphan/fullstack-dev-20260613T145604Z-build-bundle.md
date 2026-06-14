@@ -1,0 +1,2217 @@
+---
+slice: unknown
+builder: fullstack-dev
+run_id: 20260613T145604Z
+feat: FEAT-175
+files_touched: ["src/scripts/lib/artifact-linker.mts", "src/scripts/loop.mts", "src/tests/artifact-linker.test.mts"]
+files_read: []
+diff_stat: { files: 0, additions: 0, deletions: 0 }
+truncated: false
+truncation_reason: null
+schema_version: 1
+---
+
+## Handoff
+
+# Task Handoff: SLICE-125: artifact link-integrity checker + lint-artifacts CLI
+
+- Created: 2026-06-13T14:56:04.968Z
+- From: fullstack-dev
+- To: lead
+- Objective: Implemented checkArtifactLinks() library and lint-artifacts CLI subcommand; 5 tests pass, Prettier clean, committed as 241ec50
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - src/scripts/lib/artifact-linker.mts
+  - src/tests/artifact-linker.test.mts
+  - src/scripts/loop.mts
+- Confidence: high
+- Risks: ESLint not installed in worktree (pre-existing env issue — bunx eslint missing @eslint/js package); TS typecheck has pre-existing node-types error unrelated to our files; declined_per clause-id validation is intentionally delegated to validate-decline-citations.mts (pre-existing gate)
+- Suggested Next Handoff: -
+
+
+## Diff
+
+```diff
+
+```
+
+## Files touched
+
+### src/scripts/lib/artifact-linker.mts
+
+```
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import { parseFrontmatter } from "./frontmatter.mjs";
+import {
+  backlogRoot,
+  slicesRoot as resolveSlicesRoot,
+  gradesRoot,
+  decisionsRoot,
+  pathExists
+} from "./paths.mjs";
+
+export interface BrokenLink {
+  sourceFile: string;
+  field: string; // e.g. "depends_on", "derived_from", "supersedes", "declined_per", "feature"
+  referencedId: string;
+  reason: string;
+}
+
+export interface OrphanedArtifact {
+  file: string;
+  type: "grade" | "slice";
+  reason: string;
+}
+
+export interface LinkReport {
+  broken: BrokenLink[];
+  orphaned: OrphanedArtifact[];
+  mermaid: string;
+}
+
+const BACKLOG_STATES = ["pending", "triaged", "in-progress", "done"];
+const SLICE_STATES = ["pending", "in-progress", "completed"];
+const FEAT_FILE_RE = /^FEAT-(\d+)([a-z])?(?:-.*)?\.md$/;
+const SLICE_FILE_RE = /^SLICE[-_](\d+)/i;
+const GRADE_FILE_RE = /grade\.md$/i;
+
+// Extract FEAT id from a grade filename: "20260528T191825Z-feat023-slice06-grade.md"
+// → "FEAT-023", and slice id: "SLICE-06"
+const GRADE_FEAT_RE = /feat(\d+)/i;
+const GRADE_SLICE_RE = /slice(\d+)/i;
+
+async function readDirSafe(dir: string): Promise<string[]> {
+  if (!(await pathExists(dir))) return [];
+  try {
+    return await fs.readdir(dir);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Collect all FEAT ids that exist in any backlog state directory.
+ * Returns a Set of ids like "FEAT-020", "FEAT-175".
+ */
+async function collectBacklogIds(root: string): Promise<{
+  ids: Set<string>;
+  files: Array<{ id: string; file: string; frontmatter: Record<string, unknown> }>;
+}> {
+  const ids = new Set<string>();
+  const files: Array<{ id: string; file: string; frontmatter: Record<string, unknown> }> = [];
+
+  for (const state of BACKLOG_STATES) {
+    const dir = path.join(root, state);
+    const entries = await readDirSafe(dir);
+    for (const entry of entries) {
+      if (!entry.endsWith(".md") || !FEAT_FILE_RE.test(entry)) continue;
+      const filePath = path.join(dir, entry);
+      let frontmatter: Record<string, unknown> = {};
+      try {
+        const content = await fs.readFile(filePath, "utf8");
+        ({ frontmatter } = parseFrontmatter(content));
+      } catch {
+        continue;
+      }
+      const id = (frontmatter.id as string) || deriveIdFromFilename(entry);
+      ids.add(id);
+      files.push({ id, file: filePath, frontmatter });
+    }
+  }
+  return { ids, files };
+}
+
+function deriveIdFromFilename(filename: string): string {
+  const match = filename.match(/^(FEAT-\d+[a-z]?)/i);
+  return match ? match[1].toUpperCase() : filename.replace(/\.md$/, "");
+}
+
+/**
+ * Collect all slice ids that exist in any slice state directory (completed only
+ * matters for orphan checking, but we collect all states for broken-link checks).
+ */
+async function collectSliceIds(slicesRootDir: string): Promise<{
+  allIds: Set<string>;
+  completedIds: Set<string>;
+  files: Array<{ id: string; file: string; frontmatter: Record<string, unknown>; state: string }>;
+}> {
+  const allIds = new Set<string>();
+  const completedIds = new Set<string>();
+  const files: Array<{
+    id: string;
+    file: string;
+    frontmatter: Record<string, unknown>;
+    state: string;
+  }> = [];
+
+  for (const state of SLICE_STATES) {
+    const dir = path.join(slicesRootDir, state);
+    const entries = await readDirSafe(dir);
+    for (const entry of entries) {
+      if (!entry.endsWith(".md") || !SLICE_FILE_RE.test(entry)) continue;
+      const filePath = path.join(dir, entry);
+      let frontmatter: Record<string, unknown> = {};
+      try {
+        const content = await fs.readFile(filePath, "utf8");
+        ({ frontmatter } = parseFrontmatter(content));
+      } catch {
+        continue;
+      }
+      const rawId = (frontmatter.id as string | undefined) ?? "";
+      const id = rawId || deriveSliceId(entry);
+      allIds.add(id);
+      if (state === "completed") completedIds.add(id);
+      files.push({ id, file: filePath, frontmatter, state });
+    }
+  }
+  return { allIds, completedIds, files };
+}
+
+function deriveSliceId(filename: string): string {
+  const m = filename.match(/^(SLICE[-_]\d+)/i);
+  if (m) return m[1].replace("_", "-").toUpperCase();
+  return filename.replace(/\.md$/, "");
+}
+
+/**
+ * Collect all decision ids from the decisions directory.
+ */
+async function collectDecisionIds(decRoot: string): Promise<{
+  ids: Set<string>;
+  files: Array<{ id: string; file: string; frontmatter: Record<string, unknown> }>;
+}> {
+  const ids = new Set<string>();
+  const files: Array<{ id: string; file: string; frontmatter: Record<string, unknown> }> = [];
+
+  const entries = await readDirSafe(decRoot);
+  for (const entry of entries) {
+    if (!entry.endsWith(".md")) continue;
+    const filePath = path.join(decRoot, entry);
+    let frontmatter: Record<string, unknown> = {};
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      ({ frontmatter } = parseFrontmatter(content));
+    } catch {
+      continue;
+    }
+    const id = frontmatter.id as string | undefined;
+    if (id) {
+      ids.add(id);
+      files.push({ id, file: filePath, frontmatter });
+    }
+  }
+  return { ids, files };
+}
+
+/**
+ * Collect all grade files from the grades directory.
+ * Returns file paths and extracted feat/slice references.
+ */
+async function collectGradeFiles(gradesDir: string): Promise<
+  Array<{
+    file: string;
+    featId: string | null;
+    sliceId: string | null;
+    frontmatter: Record<string, unknown>;
+  }>
+> {
+  const entries = await readDirSafe(gradesDir);
+  const results: Array<{
+    file: string;
+    featId: string | null;
+    sliceId: string | null;
+    frontmatter: Record<string, unknown>;
+  }> = [];
+
+  for (const entry of entries) {
+    if (!entry.endsWith(".md") || !GRADE_FILE_RE.test(entry)) continue;
+    const filePath = path.join(gradesDir, entry);
+    let frontmatter: Record<string, unknown> = {};
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      ({ frontmatter } = parseFrontmatter(content));
+    } catch {
+      continue;
+    }
+
+    // Try frontmatter first for slice reference
+    const sliceFromFm = frontmatter.slice as string | null | undefined;
+    const featFromFm = frontmatter.feature as string | null | undefined;
+
+    // Fall back to filename parsing
+    const featMatch = entry.match(GRADE_FEAT_RE);
+    const sliceMatch = entry.match(GRADE_SLICE_RE);
+
+    const sliceId =
+      sliceFromFm ||
+      (sliceMatch ? `SLICE-${String(parseInt(sliceMatch[1], 10)).padStart(2, "0")}` : null);
+    const featId =
+      featFromFm ||
+      (featMatch ? `FEAT-${String(parseInt(featMatch[1], 10)).padStart(3, "0")}` : null);
+
+    results.push({ file: filePath, featId, sliceId, frontmatter });
+  }
+  return results;
+}
+
+function toArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+/**
+ * Main entry point: walk all artifact directories and validate cross-references.
+ */
+export async function checkArtifactLinks(
+  repoPath: string,
+  config: Record<string, unknown> | null = null
+): Promise<LinkReport> {
+  const broken: BrokenLink[] = [];
+  const orphaned: OrphanedArtifact[] = [];
+
+  const backlogRootDir = backlogRoot(repoPath, config);
+  const slicesRootDir = resolveSlicesRoot(repoPath, config);
+  const gradesDir = gradesRoot(repoPath, config);
+  const decRoot = decisionsRoot(repoPath, config);
+
+  // Collect all known ids
+  const [backlog, slices, decisions, grades] = await Promise.all([
+    collectBacklogIds(backlogRootDir),
+    collectSliceIds(slicesRootDir),
+    collectDecisionIds(decRoot),
+    collectGradeFiles(gradesDir)
+  ]);
+
+  const featIds = backlog.ids;
+  const decIds = decisions.ids;
+
+  // --- Validate FEAT files ---
+  for (const { id: featId, file, frontmatter } of backlog.files) {
+    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
+
+    // depends_on: [FEAT-NNN]
+    for (const ref of toArray(frontmatter.depends_on)) {
+      if (ref && !featIds.has(ref)) {
+        broken.push({
+          sourceFile: rel,
+          field: "depends_on",
+          referencedId: ref,
+          reason: `Referenced FEAT "${ref}" not found in any backlog state`
+        });
+      }
+    }
+
+    // derived_from: FEAT-NNN (or array)
+    for (const ref of toArray(frontmatter.derived_from)) {
+      if (ref && !featIds.has(ref)) {
+        broken.push({
+          sourceFile: rel,
+          field: "derived_from",
+          referencedId: ref,
+          reason: `Referenced FEAT "${ref}" not found in any backlog state`
+        });
+      }
+    }
+
+    // declined_per: [clause-id, ...] — these reference CLAUDE.md clause ids (not artifact ids)
+    // We skip validating these since clause ids are embedded in CLAUDE.md, not separate files.
+    // The existing validate-decline-citations.mts script handles that check.
+  }
+
+  // --- Validate slice files ---
+  for (const { id: sliceId, file, frontmatter } of slices.files) {
+    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
+
+    // feature: FEAT-NNN must exist in backlog
+    const featureRef = frontmatter.feature as string | null | undefined;
+    if (featureRef && typeof featureRef === "string" && featureRef.trim()) {
+      const ref = featureRef.trim();
+      if (!featIds.has(ref)) {
+        broken.push({
+          sourceFile: rel,
+          field: "feature",
+          referencedId: ref,
+          reason: `Referenced FEAT "${ref}" not found in any backlog state`
+        });
+      }
+    }
+
+    // Slice ids that are not in backlog but are in slice dirs: not a broken link issue,
+    // orphaned detection is for grades only per the spec.
+    void sliceId;
+  }
+
+  // --- Validate decision files ---
+  for (const { id: decId, file, frontmatter } of decisions.files) {
+    const rel = path.relative(repoPath, file).replace(/\\/g, "/");
+
+    // supersedes: [DEC-NNN] — referenced decision must exist
+    for (const ref of toArray(frontmatter.supersedes)) {
+      if (ref && !decIds.has(ref)) {
+        broken.push({
+          sourceFile: rel,
+          field: "supersedes",
+          referencedId: ref,
+          reason: `Referenced decision "${ref}" not found in decisions directory`
+        });
+      }
+    }
+
+    void decId;
+  }
+
+  // --- Detect orphaned grade files ---
+  // A grade is orphaned if its slice reference has no corresponding file in slices/completed/
+  for (const grade of grades) {
+    const rel = path.relative(repoPath, grade.file).replace(/\\/g, "/");
+    if (!grade.sliceId) {
+      orphaned.push({
+        file: rel,
+        type: "grade",
+        reason: "Could not determine slice reference from filename or frontmatter"
+      });
+      continue;
+    }
+    if (!slices.completedIds.has(grade.sliceId)) {
+      orphaned.push({
+        file: rel,
+        type: "grade",
+        reason: `Grade references slice "${grade.sliceId}" but no completed slice file found`
+      });
+    }
+  }
+
+  // --- Build Mermaid graph ---
+  const mermaid = buildMermaidGraph(backlog.files, slices.files, grades);
+
+  return { broken, orphaned, mermaid };
+}
+
+interface BacklogEntry {
+  id: string;
+  file: string;
+  frontmatter: Record<string, unknown>;
+}
+
+interface SliceEntry {
+  id: string;
+  file: string;
+  frontmatter: Record<string, unknown>;
+  state: string;
+}
+
+interface GradeEntry {
+  file: string;
+  featId: string | null;
+  sliceId: string | null;
+  frontmatter: Record<string, unknown>;
+}
+
+function buildMermaidGraph(
+  featFiles: BacklogEntry[],
+  sliceFiles: SliceEntry[],
+  gradeFiles: GradeEntry[]
+): string {
+  const MAX_NODES = 20;
+  const edges: string[] = [];
+  const nodesSeen = new Set<string>();
+
+  function safeId(id: string): string {
+    // Mermaid node ids can't contain hyphens in some renderers — use underscores
+    return id.replace(/-/g, "_");
+  }
+
+  function addEdge(from: string, to: string) {
+    if (nodesSeen.size < MAX_NODES || (nodesSeen.has(from) && nodesSeen.has(to))) {
+      nodesSeen.add(from);
+      nodesSeen.add(to);
+      if (nodesSeen.size <= MAX_NODES) {
+        edges.push(`  ${safeId(from)} --> ${safeId(to)}`);
+      }
+    }
+  }
+
+  // FEAT → slice edges
+  for (const slice of sliceFiles) {
+    const featRef = slice.frontmatter.feature as string | null | undefined;
+    if (featRef && typeof featRef === "string" && featRef.trim()) {
+      addEdge(featRef.trim(), slice.id);
+    }
+  }
+
+  // slice → grade edges
+  for (const grade of gradeFiles) {
+    if (grade.sliceId && grade.featId) {
+      // Use grade filename without the full path
+      const gradeLabel = path.basename(grade.file).replace(/\.md$/, "");
+      addEdge(grade.sliceId, gradeLabel);
+    }
+  }
+
+  // FEAT depends_on edges
+  for (const feat of featFiles) {
+    for (const dep of toArray(feat.frontmatter.depends_on)) {
+      if (dep) addEdge(dep, feat.id);
+    }
+  }
+
+  const lines = ["graph TD", ...edges];
+  if (edges.length === 0) {
+    lines.push("  %% no edges found");
+  }
+  return lines.join("\n");
+}
+
+```
+
+### src/scripts/loop.mts
+
+```
+#!/usr/bin/env node
+
+import path from "node:path";
+import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
+import { resolveSkills } from "./lib/skill-resolver.mjs";
+import { importGithubSync } from "./lib/github-sync-loader.mjs";
+
+// CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
+// conventions (--repo, --, MSYS path normalization) so the two plugins behave
+// the same way at the command line.
+
+function normalizeMsysPath(value: string): string {
+  if (!value || process.platform !== "win32") {
+    return value;
+  }
+  const match = value.match(/^\/([a-zA-Z])\/(.*)$/);
+  if (!match) {
+    return value;
+  }
+  return `${(match[1] ?? "").toUpperCase()}:/${match[2] ?? ""}`;
+}
+
+// Flag schema. See hero-crew/scripts/crew.mjs for the same pattern.
+const FLAG_SPEC = {
+  "--help": { key: "help", boolean: true },
+  "-h": { key: "help", boolean: true },
+  "--repo": { key: "repo" },
+  "--preset": { key: "preset" },
+  "--variant": { key: "variant" },
+  "--override": { key: "override" },
+  "--strict": { key: "strict", boolean: true },
+  "--phase": { key: "phase" },
+  "--note": { key: "note" },
+  "--status": { key: "status" },
+  "--priority": { key: "priority" },
+  "--category": { key: "category" },
+  "--target-release": { key: "targetRelease" },
+  "--type": { key: "type" },
+  "--title": { key: "title" },
+  "--id": { key: "id" },
+  "--body": { key: "body" },
+  "--features": { key: "features" },
+  "--goal": { key: "goal" },
+  "--no-dispatch": { key: "noDispatch", boolean: true },
+  "--no-research": { key: "noResearch", boolean: true },
+  "--no-architect": { key: "noArchitect", boolean: true },
+  "--no-doc-writer": { key: "noDocWriter", boolean: true },
+  "--no-classify": { key: "noClassify", boolean: true },
+  "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
+  "--force-close": { key: "forceClose", boolean: true },
+  "--skip-validation-check": { key: "skipValidationCheck" },
+  "--version": { key: "version" },
+  "--since": { key: "since" },
+  "--span-days": { key: "spanDays" },
+  "--until": { key: "until" },
+  "--by": { key: "by" },
+  "--artifact": { key: "artifact" },
+  "--kind": { key: "kind" },
+  "--files": { key: "files" },
+  "--features-json": { key: "featuresJson" },
+  "--key": { key: "key" },
+  "--insight": { key: "insight" },
+  "--confidence": { key: "confidence" },
+  "--slice": { key: "slice" },
+  "--limit": { key: "limit" },
+  "--window": { key: "window" },
+  "--max-features": { key: "maxFeatures" },
+  "--dry-run": { key: "dryRun", boolean: true },
+  "--auto-mode": { key: "autoMode", boolean: true },
+  "--provider": { key: "provider" },
+  "--pr": { key: "pr" },
+  "--scores": { key: "scores" },
+  "--autonomous-safe": { key: "autonomousSafe" },
+  "--evidence": { key: "evidence" },
+  "--reasoning": { key: "reasoning" },
+  "--allow-cross-session": { key: "allowCrossSession", boolean: true },
+  "--explain-halts": { key: "explainHalts", boolean: true },
+  "--worktree": { key: "worktree" },
+  // SLICE-64: auto-merge flags
+  "--no-merge": { key: "noMerge", boolean: true },
+  "--skip-simplify": { key: "skipSimplify", boolean: true },
+  "--grade-yaml": { key: "gradeYaml" },
+  "--include-triaged": { key: "includeTriaged", boolean: true },
+  // doctor flags
+  "--check": { key: "check", boolean: true },
+  "--fix": { key: "fix", boolean: true },
+  // phase-gate flags
+  "--serial": { key: "serial", boolean: true },
+  "--only": { key: "only" },
+  // backlog-add: pre-fill from GitHub issue
+  "--from-issue": { key: "fromIssue" },
+  // cost-by-skill report
+  "--cost-by-skill": { key: "costBySkill", boolean: true },
+  // pause / resume subcommands
+  "--reason": { key: "reason" },
+  // lint-artifacts
+  "--json": { key: "json", boolean: true }
+};
+
+function parseArgs(argv: string[]) {
+  const [command, ...rest] = argv;
+  const flags: Record<string, any> = {
+    repo: process.cwd(),
+    preset: null,
+    variant: null,
+    override: null,
+    strict: false,
+    phase: null,
+    note: null,
+    help: false,
+    status: null,
+    priority: null,
+    category: null,
+    targetRelease: null,
+    type: null,
+    title: null,
+    id: null,
+    body: null,
+    features: null,
+    version: null,
+    since: null,
+    spanDays: null,
+    until: null,
+    by: null,
+    artifact: null,
+    kind: null,
+    files: null,
+    featuresJson: null,
+    keepFeatureOpen: false,
+    skipValidationCheck: null,
+    key: null,
+    insight: null,
+    confidence: null,
+    slice: null,
+    limit: null,
+    window: null,
+    maxFeatures: null,
+    dryRun: false,
+    autoMode: false,
+    provider: null,
+    pr: null,
+    noResearch: false,
+    noArchitect: false,
+    noDocWriter: false,
+    noClassify: false,
+    scores: null,
+    autonomousSafe: null,
+    evidence: null,
+    reasoning: null,
+    allowCrossSession: false,
+    worktree: null,
+    explainHalts: false,
+    noMerge: false,
+    skipSimplify: false,
+    check: false,
+    fix: false,
+    serial: false,
+    only: null,
+    includeTriaged: false,
+    fromIssue: null,
+    costBySkill: false,
+    reason: null,
+    json: false
+  };
+  const positionals: any[] = [];
+
+  for (let index = 0; index < rest.length; index += 1) {
+    const value = rest[index]!;
+    if (value === "--") {
+      for (let tail = index + 1; tail < rest.length; tail += 1) {
+        positionals.push(rest[tail]);
+      }
+      break;
+    }
+    const spec = FLAG_SPEC[value as keyof typeof FLAG_SPEC];
+    if (spec) {
+      if ("boolean" in spec && spec.boolean) {
+        (flags as Record<string, any>)[spec.key] = true;
+      } else {
+        (flags as Record<string, any>)[spec.key] = rest[index + 1];
+        index += 1;
+      }
+      continue;
+    }
+    if (value.startsWith("--")) {
+      throw new Error(`Unknown argument: ${value}`);
+    }
+    positionals.push(value);
+  }
+
+  if (!command || command === "--help" || command === "-h") {
+    return { command: "help", flags, positionals };
+  }
+  return { command, flags, positionals };
+}
+
+type CmdCtx = {
+  repoPath: string;
+  flags: Record<string, any>;
+  positionals: string[];
+  config: Record<string, any> | null;
+};
+
+function usage() {
+  return [
+    "loop CLI",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts install --repo <path> [--preset <name>]",
+    "  bun src/scripts/loop.mts phase-gate --repo <path> [--phase <N>] [--note <text>]",
+    "  bun src/scripts/loop.mts status --repo <path>",
+    "  bun src/scripts/loop.mts list-presets",
+    "  bun src/scripts/loop.mts doctor --repo <path> [--check|--fix]",
+    "  bun src/scripts/loop.mts dispatch <subcommand> [args...]   (see: dispatch --help)",
+    "",
+    "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
+    "artifact through `crew write-validation-result`."
+  ].join("\n");
+}
+
+// Command registry. Each handler returns the result that gets JSON-stringified
+// to stdout. Lazy imports stay per-handler to keep start-up cheap when a user
+// only invokes one command.
+const COMMANDS = {
+  install: async ({ repoPath, flags }: CmdCtx) => {
+    const { installLoop } = await import("./lib/loop-installer.mjs");
+    return installLoop(repoPath, { preset: flags.preset });
+  },
+  "phase-gate": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { runPhaseGate } = await import("./lib/phase-gate.mjs");
+    return runPhaseGate(repoPath, {
+      phase: flags.phase,
+      note: flags.note,
+      serial: Boolean(flags.serial),
+      only: flags.only || undefined,
+      config
+    });
+  },
+  status: async ({ repoPath }: CmdCtx) => {
+    const { reportStatus } = await import("./lib/loop-installer.mjs");
+    return reportStatus(repoPath);
+  },
+  "list-presets": async () => {
+    const { listPresets } = await import("./lib/config-resolver.mjs");
+    return { presets: await listPresets() };
+  },
+  github: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runGithubSubcommand(repoPath, positionals, flags),
+  "task-store": ({ repoPath, flags, positionals }: CmdCtx) =>
+    runGithubSubcommand(repoPath, positionals, flags),
+  backlog: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runBacklogSubcommand(repoPath, positionals, flags, config),
+  spec: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runSpecSubcommand(repoPath, positionals, flags, config),
+  release: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runReleaseSubcommand(repoPath, positionals, flags, config),
+  slice: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runSliceSubcommand(repoPath, positionals, flags, { config }),
+  feature: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runFeatureSubcommand(repoPath, positionals, flags, config),
+  decisions: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runDecisionsSubcommand(repoPath, positionals, flags, config),
+  retrospective: async ({ repoPath, flags }: CmdCtx) => {
+    const { writeRetrospective } = await import("./lib/retrospective.mjs");
+    const result = await writeRetrospective(repoPath, {
+      since: flags.since,
+      spanDays: flags.spanDays,
+      until: flags.until
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "retrospective",
+      since: flags.since,
+      span_days: flags.spanDays
+    });
+    return result;
+  },
+  brief: async ({ repoPath, flags }: CmdCtx) => {
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+
+    if (flags?.costBySkill) {
+      const { buildCostBySkillReport } = await import("./lib/cost-by-skill.mjs");
+      const report = await buildCostBySkillReport(cwd);
+      console.log(report);
+      return { _suppressDefaultOutput: true };
+    }
+
+    const { buildBrief } = await import("./lib/brief.mjs");
+    const result = await buildBrief(cwd);
+    if (flags?.explainHalts) {
+      const { explainHalts } = await import("./lib/halt-badges.mjs");
+      console.log(JSON.stringify(result, null, 2));
+      console.log("");
+      console.log(explainHalts(result));
+      return { _suppressDefaultOutput: true };
+    }
+    return result;
+  },
+  "perf-report": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { buildPerfReport } = await import("./lib/perf-report.mjs");
+    const windowSize =
+      flags.window != null && flags.window !== "" ? Number.parseInt(String(flags.window), 10) : 10;
+    return buildPerfReport(repoPath, { window: windowSize, config });
+  },
+  "classify-slice-shape": async ({ flags }: CmdCtx) => {
+    const { classifySliceShape } = await import("./lib/classify-slice-shape.mjs");
+    const filesArg = typeof flags.files === "string" ? flags.files : "";
+    const files = filesArg
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }));
+    return classifySliceShape({ files });
+  },
+  "snapshot-memory": async ({ repoPath, flags }: CmdCtx) => {
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { writeMemorySnapshot } = await import("./lib/memory-snapshot.mjs");
+    const result = await writeMemorySnapshot(cwd);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, { command: "snapshot-memory", grades: result.counts.grades });
+    return result;
+  },
+  lessons: async ({ repoPath, positionals }: CmdCtx) => {
+    const [sub] = positionals;
+    if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
+    const { recentLessons } = await import("./lib/lessons-feed.mjs");
+    const limit = positionals[1] ? Number(positionals[1]) : 5;
+    return recentLessons(repoPath, { limit });
+  },
+  "sync-claims": async ({ repoPath }: CmdCtx) => {
+    const { syncClaims } = await import("./lib/claims-sync.mjs");
+    const result = await syncClaims(repoPath);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "sync-claims", actions: result.actions.length });
+    return result;
+  },
+  "stop-check": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
+    const result = await checkStopConditions(cwd, { config });
+    if (result.shouldStop && result.blockers.length > 0) {
+      try {
+        const { readNotifyConfig, notifyEvent } = await import("./lib/event-notifier.mjs");
+        const notifyCfg = await readNotifyConfig(cwd);
+        await notifyEvent(
+          {
+            type: "halt-badge",
+            details: result.blockers[0].category,
+            timestamp: new Date().toISOString()
+          },
+          notifyCfg
+        );
+      } catch {
+        // Notification must never crash the main loop
+      }
+    }
+    return result;
+  },
+  auto: async ({ repoPath, flags, config }: CmdCtx) => {
+    const { runAutoWalker } = await import("./lib/auto-walker.mjs");
+    return runAutoWalker(repoPath, {
+      ...(flags.maxFeatures ? { maxFeatures: Number(flags.maxFeatures) } : {}),
+      dryRun: Boolean(flags.dryRun),
+      autoMode: Boolean(flags.autoMode),
+      allowCrossSession: Boolean(flags.allowCrossSession),
+      config
+    });
+  },
+  learnings: ({ repoPath, flags, positionals }: CmdCtx) =>
+    runLearningsSubcommand(repoPath, positionals, flags),
+  architect: async ({ repoPath, flags, config }: CmdCtx) =>
+    runArchitectSubcommand(repoPath, flags, config),
+  trajectory: async ({ repoPath, flags }: CmdCtx) => {
+    const { readTrajectory, trajectoryPath } = await import("./lib/trajectory-writer.mjs");
+    const sliceId = flags.id;
+    if (!sliceId) throw new Error("trajectory requires --id SLICE-NN");
+    const steps = await readTrajectory(repoPath, sliceId);
+    return { sliceId, steps, count: steps.length, path: trajectoryPath(repoPath, sliceId) };
+  },
+  "pr-fix": async ({ repoPath, flags }: CmdCtx) => {
+    const { runPrFix } = await import("./lib/pr-fixer.mjs");
+    const prNumber = flags.pr;
+    if (!prNumber) throw new Error("pr-fix requires --pr <number>");
+    const priorAttempts = flags.body ? JSON.parse(flags.body) : {};
+    return runPrFix(repoPath, prNumber, { priorAttempts });
+  },
+  doctor: async ({ repoPath, flags, config }: CmdCtx) => {
+    const { runDoctor } = await import("./lib/doctor.mjs");
+    const result = await runDoctor(repoPath, { fix: Boolean(flags.fix), config });
+    if (flags.check && result.findings.length > 0) {
+      console.error(JSON.stringify(result, null, 2));
+      process.exitCode = 1;
+      return { _suppressDefaultOutput: true };
+    }
+    return result;
+  },
+  "lint-artifacts": async ({ repoPath, flags }: CmdCtx) => {
+    const { checkArtifactLinks } = await import("./lib/artifact-linker.mjs");
+    const report = await checkArtifactLinks(repoPath);
+    if (flags.json) {
+      process.exitCode = 0;
+      console.log(JSON.stringify(report, null, 2));
+      return { _suppressDefaultOutput: true };
+    }
+    const lines: string[] = [];
+    lines.push("## Artifact link report");
+    lines.push(`Broken: ${report.broken.length}, Orphaned: ${report.orphaned.length}`);
+    if (report.broken.length > 0) {
+      lines.push("");
+      lines.push("### Broken links");
+      for (const b of report.broken) {
+        lines.push(`- ${b.sourceFile} [${b.field}] → ${b.referencedId}: ${b.reason}`);
+      }
+    }
+    if (report.orphaned.length > 0) {
+      lines.push("");
+      lines.push("### Orphaned artifacts");
+      for (const o of report.orphaned) {
+        lines.push(`- ${o.file} (${o.type}): ${o.reason}`);
+      }
+    }
+    if (report.mermaid) {
+      lines.push("");
+      lines.push("### Artifact graph");
+      lines.push("```mermaid");
+      lines.push(report.mermaid);
+      lines.push("```");
+    }
+    process.stdout.write(lines.join("\n") + "\n");
+    process.exitCode = report.broken.length > 0 ? 1 : 0;
+    return { _suppressDefaultOutput: true };
+  },
+  pause: async ({ repoPath, flags }: CmdCtx) => {
+    const reason = flags.reason;
+    if (!reason || typeof reason !== "string" || !reason.trim()) {
+      throw new Error("pause requires --reason <text>");
+    }
+    const stateDir = path.join(repoPath, ".claude", "state", "loop");
+    const pausedFile = path.join(stateDir, "paused.json");
+    const { default: nodeFs } = await import("node:fs/promises");
+    await nodeFs.mkdir(stateDir, { recursive: true });
+    const payload = {
+      triggered: true,
+      reason: reason.trim(),
+      resumeHint: "Run: bun src/scripts/loop.mts resume --repo .",
+      pausedAt: new Date().toISOString()
+    };
+    await nodeFs.writeFile(pausedFile, JSON.stringify(payload, null, 2), "utf8");
+    process.exitCode = 0;
+    return { paused: true, reason: payload.reason, pausedAt: payload.pausedAt, path: pausedFile };
+  },
+  resume: async ({ repoPath }: CmdCtx) => {
+    const pausedFile = path.join(repoPath, ".claude", "state", "loop", "paused.json");
+    const { default: nodeFs } = await import("node:fs/promises");
+    try {
+      await nodeFs.unlink(pausedFile);
+    } catch {
+      // File absent — idempotent, treat as success.
+    }
+    process.exitCode = 0;
+    return { resumed: true };
+  },
+  "stuck-tick": async ({ repoPath, flags, positionals }: CmdCtx) => {
+    const sliceArg = (flags.slice as string | undefined) ?? (positionals[0] as string | undefined);
+    if (!sliceArg) {
+      console.error("--slice <SLICE-ID> required");
+      process.exitCode = 1;
+      return { _suppressDefaultOutput: true };
+    }
+    const { default: nodeFs } = await import("node:fs/promises");
+    const dir = path.join(repoPath, ".claude", "state", "loop");
+    await nodeFs.mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, "stuck-detector.json");
+    let existing: any = null;
+    try {
+      existing = JSON.parse(await nodeFs.readFile(filePath, "utf8"));
+    } catch {
+      /* absent — start fresh */
+    }
+    const attempts =
+      existing?.sliceId === sliceArg && typeof existing?.attempts === "number"
+        ? existing.attempts + 1
+        : 1;
+    const payload = { sliceId: sliceArg, attempts, lastAttemptAt: new Date().toISOString() };
+    await nodeFs.writeFile(filePath, JSON.stringify(payload, null, 2), "utf8");
+    process.exitCode = 0;
+    return { sliceId: sliceArg, attempts };
+  },
+  "stuck-reset": async ({ repoPath }: CmdCtx) => {
+    const { default: nodeFs } = await import("node:fs/promises");
+    const filePath = path.join(repoPath, ".claude", "state", "loop", "stuck-detector.json");
+    try {
+      await nodeFs.unlink(filePath);
+    } catch {
+      /* idempotent */
+    }
+    process.exitCode = 0;
+    return { reset: true };
+  }
+};
+
+async function runArchitectSubcommand(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  const sliceId = flags.id;
+  if (!sliceId) throw new Error("architect requires --id SLICE-NN");
+
+  const { resolveArchitectModels } = await import("./lib/model-router.mjs");
+  const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
+
+  const { architectModel, editorModel } = resolveArchitectModels(config);
+  const planResult = await runPlanPreflight(repoPath, sliceId, { config });
+
+  const dispatchInstruction = [
+    `## Two-Model Split Dispatch`,
+    ``,
+    `**Architect Model (Research/Plan):** ${architectModel}`,
+    `**Editor Model (Implementation):** ${editorModel}`,
+    ``,
+    `The architect model has completed the codebase research pre-flight.`,
+    `Plan artifact written to: ${planResult.planPath}`,
+    ``,
+    `Dispatch \`crew:fullstack-dev\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`crew:inspector\` (and \`crew:verifier\` if behavior changed) before closing the slice.`,
+    `The editor phase should reference the plan artifact to guide the implementation approach.`
+  ].join("\n");
+
+  const { logEvent } = await import("./lib/telemetry.mjs");
+  await logEvent(repoPath, {
+    command: "architect",
+    slice: sliceId,
+    architect_model: architectModel,
+    editor_model: editorModel,
+    plan_path: planResult.planPath,
+    files_researched: planResult.filesResearched.length
+  });
+
+  return {
+    sliceId,
+    architectModel,
+    editorModel,
+    planPath: planResult.planPath,
+    filesResearched: planResult.filesResearched,
+    dispatchInstruction
+  };
+}
+
+function runResolveSkillsCommand(flags: Record<string, any>): void {
+  const VALID_VARIANTS = ["fe", "be", "single", "pm", "researcher", "architect", "document-writer"];
+  if (!flags.variant) {
+    process.stderr.write(`error: --variant <${VALID_VARIANTS.join("|")}> required\n`);
+    process.exitCode = 1;
+    return;
+  }
+  if (!VALID_VARIANTS.includes(flags.variant)) {
+    process.stderr.write(
+      `error: --variant must be one of ${VALID_VARIANTS.join(", ")} (got ${flags.variant})\n`
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const preset = flags.preset;
+  if (!preset) {
+    process.stderr.write("error: --preset <path> required\n");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (flags.strict) {
+    process.stderr.write(
+      "warn: --strict is reserved for a future skill-ID-lint registry and is a no-op today\n"
+    );
+  }
+
+  try {
+    const resolved = resolveSkills({
+      presetPath: preset,
+      ...(flags.override ? { overridePath: flags.override } : {}),
+      variant: flags.variant
+    });
+    if (resolved === null) {
+      process.stderr.write(
+        "warn: no skills resolved for this variant (split mismatch or empty array)\n"
+      );
+      process.exitCode = 2;
+      return;
+    }
+    process.stdout.write(JSON.stringify(resolved, null, 2) + "\n");
+    process.exitCode = 0;
+  } catch (err: unknown) {
+    const msg = (err as { message?: string } | undefined)?.message ?? String(err);
+    process.stderr.write(`error: ${msg}\n`);
+    process.exitCode = 1;
+  }
+}
+
+async function main() {
+  // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
+  // --depth, --dry-run, --json, --run-id, --config) are not registered in
+  // FLAG_SPEC, and the parser would throw on them. Forward all remaining argv
+  // verbatim to dispatch.mts as a child process (run under bun).
+  const rawArgv = process.argv.slice(2);
+  if (rawArgv[0] === "dispatch") {
+    const { spawnSync } = await import("node:child_process");
+    const { fileURLToPath } = await import("node:url");
+    const thisFile = fileURLToPath(import.meta.url);
+    const dispatchCli = path.join(path.dirname(thisFile), "dispatch.mts");
+    const result = spawnSync("bun", [dispatchCli, ...rawArgv.slice(1)], {
+      stdio: "inherit",
+      shell: process.platform === "win32"
+    });
+    process.exitCode = result.status ?? 1;
+    return;
+  }
+
+  const { command, flags, positionals } = parseArgs(rawArgv);
+  const repoPath = path.resolve(normalizeMsysPath(flags.repo));
+
+  if (command === "help") {
+    console.log(usage());
+    return;
+  }
+
+  if (command === "resolve-skills") {
+    runResolveSkillsCommand(flags);
+    clearFrontmatterCache();
+    return;
+  }
+
+  clearFrontmatterCache(); // ensure cold start for each invocation
+
+  // Resolve config once at dispatcher level and pass to all handlers
+  const { resolveConfig } = await import("./lib/config-resolver.mjs");
+  const config = await resolveConfig(repoPath);
+
+  const handler = (COMMANDS as Record<string, (ctx: CmdCtx) => Promise<unknown>>)[command];
+  if (!handler) {
+    throw new Error(`Unknown command: ${command}`);
+  }
+
+  try {
+    const result = await handler({ repoPath, flags, positionals, config });
+    if (result && (result as any)._suppressDefaultOutput) return;
+    console.log(JSON.stringify(result, null, 2));
+  } finally {
+    // Win 10: flush buffered audit log lines in a single write per invocation.
+    const { flushAuditLog } = await import("./lib/auto-dispatch.mjs");
+    await flushAuditLog(repoPath).catch(() => {
+      /* non-fatal: best-effort audit log flush */
+    });
+  }
+}
+
+type DispatchFn = typeof import("./lib/auto-dispatch.mjs").dispatchAgent;
+
+async function resolveBacklogAddBody(
+  repoPath: string,
+  _title: string,
+  suppliedBody: string | null | undefined
+): Promise<string> {
+  if (suppliedBody) return suppliedBody;
+  const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+  await appendAuditLog(repoPath, {
+    timestamp: new Date().toISOString(),
+    agent: "loop:researcher",
+    parentCommand: "backlog-add",
+    ok: false,
+    skipped: true,
+    skipReason: "cli-refusal-researcher-disabled",
+    durationMs: 0
+  });
+  console.error(
+    "[backlog add] researcher auto-dispatch removed (see DEC-011). " +
+      "Creating FEAT with empty body — run /loop:backlog-add for researcher enrichment, " +
+      "or pass --body explicitly."
+  );
+  return "";
+}
+
+async function runBacklogListPendingIds(repoPath: string, flags: Record<string, any> = {}) {
+  const { listPendingFeatureIds } = await import("./lib/backlog-list-ids.mjs");
+  const ids = await listPendingFeatureIds(repoPath, {
+    includeTriaged: Boolean(flags.includeTriaged)
+  });
+  return { ids };
+}
+
+async function runBacklogAdd(
+  repoPath: string,
+  flags: Record<string, any>,
+  rest: string[],
+  config: Record<string, any> | null
+) {
+  // --from-issue pre-fill: fetch title, body, and GitHub metadata from a GH issue URL.
+  let githubIssue: number | null = null;
+  let githubUrl: string | null = null;
+  let issueBody: string | undefined;
+
+  if (flags.fromIssue) {
+    const { fetchIssue } = await import("./lib/from-issue.mjs");
+    const issue = await fetchIssue(flags.fromIssue);
+    // Only pre-fill title if not explicitly passed
+    if (!flags.title) {
+      flags = { ...flags, title: issue.title };
+    }
+    // Only pre-fill body if not explicitly passed
+    if (!flags.body) {
+      issueBody = issue.body || undefined;
+    }
+    githubIssue = issue.number;
+    githubUrl = issue.url;
+  }
+
+  const title = flags.title || rest.join(" ");
+  if (!title) throw new Error("backlog add requires a title (positional or --title).");
+  if (flags.noResearch) {
+    console.error(
+      "[backlog add] --no-research is deprecated and now a no-op (see DEC-011). " +
+        "Researcher auto-dispatch is already removed."
+    );
+  }
+  const resolvedBody = await resolveBacklogAddBody(repoPath, title, flags.body ?? issueBody);
+  const { addFeature } = await import("./lib/backlog-writer.mjs");
+  const result = await addFeature(repoPath, {
+    title,
+    priority: flags.priority,
+    category: flags.category,
+    target_release: flags.targetRelease,
+    body: resolvedBody,
+    config,
+    ...(githubIssue !== null ? { github_issue: githubIssue } : {}),
+    ...(githubUrl !== null ? { github_url: githubUrl } : {})
+  });
+  const { publishFeat } = await importGithubSync("github-sync.mjs");
+  try {
+    await (publishFeat as any)(repoPath, result.id);
+  } catch (e) {
+    console.error(`[github] publish warning (backlog add): ${(e as Error).message}`);
+  }
+  return result;
+}
+
+async function runBacklogPmWrite(repoPath: string, flags: Record<string, any>, rest: string[]) {
+  const featureId = flags.id || rest[0];
+  if (!featureId) throw new Error("backlog pm-write requires --id FEAT-NNN.");
+  if (!flags.scores) throw new Error("backlog pm-write requires --scores '{...}'.");
+  const { parseJsonFlag } = await import("./lib/json-flag.mjs");
+  const parsedScores: Record<string, number> = parseJsonFlag(flags.scores, "scores");
+  const priority = flags.priority ?? null;
+  const autonomousSafe =
+    flags.autonomousSafe === "true"
+      ? true
+      : flags.autonomousSafe === "false"
+        ? false
+        : Boolean(flags.autonomousSafe);
+  const triageNotes: string | undefined = flags.reasoning ?? flags.evidence ?? undefined;
+  const { writePmScores } = await import("./lib/backlog-pm-write.mjs");
+  return writePmScores(repoPath, {
+    id: featureId,
+    scores: parsedScores as any,
+    priority,
+    autonomousSafe,
+    ...(triageNotes !== undefined ? { triageNotes } : {})
+  });
+}
+
+function isUnclassifiedEntry(entry: Record<string, any>): boolean {
+  const fm = entry.frontmatter;
+  const tagsEmpty = !Array.isArray(fm.tags) || fm.tags.length === 0;
+  const tagsNull = fm.tags == null || fm.tags === "";
+  const noTags = tagsEmpty && tagsNull;
+  return noTags && fm.needs_contract == null && fm.needs_ux == null;
+}
+
+export async function runBacklogEnrich(repoPath: string, _flags: Record<string, any>) {
+  const { listBacklog } = await import("./lib/backlog-parser.mjs");
+  const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+
+  const allEntries = await listBacklog(repoPath);
+  const triaged = allEntries.filter((e: Record<string, any>) => e.state === "triaged");
+
+  const needsClassify = triaged.filter(isUnclassifiedEntry);
+  const alreadyTagged = triaged.length - needsClassify.length;
+
+  if (needsClassify.length === 0) {
+    console.log(`Enriched: 0 / Already tagged: ${alreadyTagged}`);
+    return { enriched: 0, alreadyTagged, failed: 0 };
+  }
+
+  await appendAuditLog(repoPath, {
+    timestamp: new Date().toISOString(),
+    agent: "loop:architect",
+    parentCommand: "backlog enrich",
+    ok: false,
+    skipped: true,
+    skipReason: "cli-refusal",
+    durationMs: 0
+  });
+  console.error(
+    `[backlog enrich] CLI auto-dispatch removed (see DEC-011). ` +
+      `Use the slash flow: /loop:backlog-enrich. ` +
+      `${needsClassify.length} feature(s) need classification.`
+  );
+  process.exitCode = 1;
+  return { enriched: 0, alreadyTagged, failed: 0, refused: true };
+}
+
+async function runBacklogSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  const [sub, ...rest] = positionals;
+  if (!sub)
+    throw new Error(
+      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote"
+    );
+  if (sub === "add") {
+    return runBacklogAdd(repoPath, flags, rest, config);
+  }
+  if (sub === "list") {
+    const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");
+    const entries = await listBacklog(repoPath);
+    const filtered = filterBacklog(entries, {
+      status: flags.status,
+      priority: flags.priority,
+      category: flags.category,
+      target_release: flags.targetRelease
+    });
+    return {
+      count: filtered.length,
+      entries: filtered.map((e) => ({
+        id: e.id,
+        state: e.state,
+        priority: e.frontmatter.priority,
+        category: e.frontmatter.category,
+        target_release: e.frontmatter.target_release,
+        created: e.frontmatter.created,
+        updated: e.frontmatter.updated,
+        derived_from: e.frontmatter.derived_from || null,
+        slices: e.frontmatter.slices || [],
+        filePath: e.filePath
+      }))
+    };
+  }
+  if (sub === "triage") {
+    // TODO(2026-09-11): remove this stub. Kept one release cycle so
+    // operators upgrading from <= v0.40 get a directive instead of a
+    // bare "unknown subcommand" error. Triage is PM-only since
+    // commit 505a8a5 (2026-06-11).
+    throw new Error(
+      "`backlog triage` (regex fallback) was removed on 2026-06-11. Triage is PM-only — invoke `/loop:triage` (skill) instead. On PM error, halt and surface to the operator."
+    );
+  }
+  if (sub === "list-pending-ids") {
+    return runBacklogListPendingIds(repoPath, flags);
+  }
+  if (sub === "promote") {
+    const featureId = flags.id || rest[0];
+    if (!featureId) throw new Error("backlog promote requires --id FEAT-NNN.");
+    const { findFeatureById, moveFeature } = await import("./lib/backlog-writer.mjs");
+    const entry = await findFeatureById(repoPath, featureId);
+    if (!entry) throw new Error(`Feature not found: ${featureId}`);
+    const moved = await moveFeature(entry.filePath, "in-progress");
+    return { id: featureId, moved };
+  }
+  if (sub === "pm-write") {
+    return runBacklogPmWrite(repoPath, flags, rest);
+  }
+  if (sub === "enrich") {
+    return runBacklogEnrich(repoPath, flags);
+  }
+  throw new Error(`Unknown backlog subcommand: ${sub}`);
+}
+
+function parseFeatureEntries(flags: Record<string, any>): string[] {
+  if (flags.featuresJson) {
+    let entries;
+    try {
+      entries = JSON.parse(flags.featuresJson as string);
+    } catch (err: unknown) {
+      throw new Error(`--features-json must be valid JSON: ${(err as Error).message}`);
+    }
+    if (!Array.isArray(entries)) throw new Error("--features-json must be a JSON array");
+    return entries;
+  }
+  return (flags.features as string)
+    .split(";")
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// Architect output parser — accepts semicolon-separated, newline-separated,
+// or markdown-numbered-list titles from the agent. Each entry is trimmed,
+// list markers and surrounding emphasis are stripped, empty entries
+// discarded. Prefers semicolon split when present (back-compat with the
+// original prompt format); falls back to newline split otherwise.
+// ---------------------------------------------------------------------------
+
+function stripListMarker(line: string): string {
+  // Strip leading markdown list markers: "1.", "1)", "-", "*"
+  let s = line.replace(/^\s*(?:[-*]|\d+[.)])\s+/, "");
+  // Strip surrounding bold/italic markers and backticks
+  s = s.replace(/^[*_`]+|[*_`]+$/g, "");
+  return s.trim();
+}
+
+export { parseClassifyOutput } from "./lib/classify-parser.mjs";
+
+export function parseArchitectOutput(raw: string): string[] {
+  if (!raw || !raw.trim()) return [];
+  const hasSemicolon = raw.includes(";");
+  const parts = hasSemicolon ? raw.split(";") : raw.split("\n");
+  return parts.map(stripListMarker).filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// Incomplete-SPEC detection — checks frontmatter and body for objective/scope.
+// Returns array of missing field names (empty when SPEC is complete).
+// ---------------------------------------------------------------------------
+
+export function detectMissingSpecFields(spec: {
+  frontmatter: Record<string, any>;
+  body: string;
+}): string[] {
+  const missing: string[] = [];
+  const fm = spec.frontmatter;
+  const body = spec.body ?? "";
+
+  const hasObjective =
+    (fm["objective"] != null && String(fm["objective"]).trim().length > 0) ||
+    /##\s+objective/i.test(body) ||
+    /##\s+goals/i.test(body) ||
+    /##\s+problem/i.test(body);
+
+  const hasScope =
+    (fm["scope"] != null && String(fm["scope"]).trim().length > 0) ||
+    /##\s+scope/i.test(body) ||
+    /##\s+in[- ]scope/i.test(body) ||
+    /##\s+non-goals/i.test(body);
+
+  if (!hasObjective) missing.push("objective");
+  if (!hasScope) missing.push("scope");
+  return missing;
+}
+
+const SPEC_HANDLERS = {
+  add: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    rest: string[],
+    config: Record<string, any> | null
+  ) => {
+    const title = flags.title || rest.join(" ");
+    if (!title) throw new Error("spec add requires a title (positional or --title).");
+    if (!flags.type) {
+      throw new Error("spec add requires --type prd|user-journey|sre|research|adr|other.");
+    }
+    const { addSpec } = await import("./lib/spec-parser.mjs");
+    return addSpec(repoPath, {
+      type: flags.type,
+      title,
+      priority: flags.priority,
+      target_release: flags.targetRelease,
+      body: flags.body || "",
+      config
+    });
+  },
+  list: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    config: Record<string, any> | null
+  ) => {
+    const { listSpecs, filterSpecs } = await import("./lib/spec-parser.mjs");
+    const specs = await listSpecs(repoPath, { config });
+    const filtered = filterSpecs(specs, {
+      status: flags.status,
+      type: flags.type,
+      priority: flags.priority,
+      target_release: flags.targetRelease
+    });
+    return {
+      count: filtered.length,
+      specs: filtered.map((s) => ({
+        id: s.id,
+        type: s.frontmatter.type,
+        status: s.frontmatter.status,
+        priority: s.frontmatter.priority,
+        target_release: s.frontmatter.target_release,
+        title: s.frontmatter.title,
+        derived_features: s.frontmatter.derived_features || [],
+        filePath: s.filePath
+      }))
+    };
+  },
+  decompose: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    rest: string[],
+    config: Record<string, any> | null
+  ) => {
+    const specId = flags.id || rest[0];
+    if (!specId) throw new Error("spec decompose requires --id SPEC-NNN.");
+
+    // Fast path: caller supplied explicit feature list — skip architect entirely.
+    if (flags.features || flags.featuresJson) {
+      const entries = parseFeatureEntries(flags);
+      const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
+      const out = await decomposeSpec(repoPath, specId, entries, { config });
+      const { publishFeat } = await importGithubSync("github-sync.mjs");
+      for (const feat of out.created) {
+        try {
+          await (publishFeat as any)(repoPath, feat.id);
+        } catch (e) {
+          console.error(
+            `[github] publish warning (spec decompose ${feat.id}): ${(e as Error).message}`
+          );
+        }
+      }
+      return out;
+    }
+
+    if (flags.noArchitect) {
+      console.error(
+        "[spec decompose] --no-architect is deprecated and now a no-op (see DEC-011). " +
+          "Architect auto-dispatch is already removed."
+      );
+    }
+
+    // No --features / --features-json supplied: refuse with clear message.
+    const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+    await appendAuditLog(repoPath, {
+      timestamp: new Date().toISOString(),
+      agent: "loop:architect",
+      parentCommand: "spec-decompose",
+      ok: false,
+      skipped: true,
+      skipReason: "cli-refusal-architect-disabled",
+      durationMs: 0
+    });
+    const msg =
+      `[spec decompose] architect auto-dispatch removed (see DEC-011). ` +
+      `Use the slash flow: /loop:spec-decompose --id ${specId}, ` +
+      `or pass --features 'Title 1; Title 2; ...'`;
+    console.error(msg);
+    process.exitCode = 1;
+    return { error: "architect auto-dispatch removed; pass --features or use slash flow" };
+  },
+  status: async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    config: Record<string, any> | null
+  ) => {
+    const { specSatisfaction, reconcileSpecStatus } = await import("./lib/linkage.mjs");
+    const before = await specSatisfaction(repoPath, { config });
+    const reconciled = await reconcileSpecStatus(repoPath, { config });
+    return { satisfaction: before, statusChanges: reconciled };
+  }
+};
+
+async function runSpecSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  const [sub, ...rest] = positionals;
+  if (!sub) throw new Error("spec requires a subcommand: add | list | decompose | status");
+  const handler = (SPEC_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
+  if (!handler) throw new Error(`Unknown spec subcommand: ${sub}`);
+  return handler(repoPath, flags, rest, config);
+}
+
+async function runReleaseSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  const [sub] = positionals;
+  if (!sub) throw new Error("release requires a subcommand: plan | status");
+  const { planRelease, releaseStatus } = await import("./lib/release-planner.mjs");
+  if (sub === "plan") {
+    if (!flags.version) throw new Error("release plan requires --version vX.Y.Z");
+    return await planRelease(repoPath, { version: flags.version, config });
+  }
+  if (sub === "status") {
+    if (!flags.version) throw new Error("release status requires --version vX.Y.Z");
+    return await releaseStatus(repoPath, { version: flags.version, config });
+  }
+  throw new Error(`Unknown release subcommand: ${sub}`);
+}
+
+// Resolves a required ID flag/positional or throws. Centralizes the
+// "missing --id" error shape across slice subcommands.
+function requireId(value: string | null | undefined, errMsg: string): string {
+  if (!value) throw new Error(errMsg);
+  return value;
+}
+
+const SLICE_HANDLERS = {
+  "from-feature": async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    featureId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
+    const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
+    const { dispatchAgent, appendAuditLog } = await import("./lib/auto-dispatch.mjs");
+    const { DecompositionRequiredError, InvalidProposedSlicesError } =
+      await import("./lib/proposed-slices.mjs");
+    const dispatchFn = opts.dispatchFn ?? dispatchAgent;
+    let out;
+    try {
+      out = await sliceFromFeature(repoPath, featureId, {
+        noClassify: Boolean(flags.noClassify),
+        dispatchFn,
+        config: opts.config
+      });
+    } catch (err) {
+      if (err instanceof DecompositionRequiredError || err instanceof InvalidProposedSlicesError) {
+        await appendAuditLog(repoPath, {
+          timestamp: new Date().toISOString(),
+          parentCommand: "slice from-feature",
+          featureId,
+          error: (err as Error).message,
+          ok: false,
+          skipped: false
+        });
+      }
+      throw err;
+    }
+    const { publishSlice } = await importGithubSync("github-sync.mjs");
+    const slicesList = Array.isArray((out as any).slices) ? (out as any).slices : [out.slice];
+    for (const sl of slicesList) {
+      try {
+        await (publishSlice as any)(repoPath, sl.id, featureId);
+      } catch (e) {
+        console.error(`[github] publish warning (slice from-feature): ${(e as Error).message}`);
+      }
+    }
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    for (const sl of slicesList) {
+      await logEvent(repoPath, {
+        command: "slice from-feature",
+        feature: featureId,
+        slice: sl.id
+      });
+    }
+    return out;
+  },
+  grade: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string) => {
+    requireId(sliceId, "slice grade requires --id SLICE-NN.");
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { createGradeFile } = await import("./lib/grade-writer.mjs");
+    const out = await createGradeFile(cwd, sliceId);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, { command: "slice grade", slice: sliceId, created: out.created });
+    return out;
+  },
+  "grade-write": async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string
+  ) => {
+    requireId(sliceId, "slice grade-write requires --id SLICE-NN.");
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { writeGrade } = await import("./lib/grade-writer.mjs");
+    return writeGrade(cwd, sliceId);
+  },
+  close: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice close requires --id SLICE-NN.");
+    if (flags.noMerge && flags.dryRun) {
+      throw new Error("slice close: --no-merge and --dry-run are mutually exclusive.");
+    }
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { closeSlice } = await import("./lib/slice-linker.mjs");
+    const out = await closeSlice(cwd, sliceId, {
+      gradeYamlPath: flags.gradeYaml || null,
+      keepFeatureOpen: Boolean(flags.keepFeatureOpen),
+      forceClose: Boolean(flags.forceClose),
+      skipValidationCheck: flags.skipValidationCheck || null,
+      noDocWriter: Boolean(flags.noDocWriter),
+      noMerge: Boolean(flags.noMerge),
+      dryRun: Boolean(flags.dryRun),
+      skipSimplify: Boolean(flags.skipSimplify),
+      config: opts.config
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, {
+      command: "slice close",
+      slice: sliceId,
+      scaffoldOnly: out.scaffoldOnly,
+      gradeYamlProvided: Boolean(flags.gradeYaml)
+    });
+    const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
+    await flushTrajectory(cwd, sliceId);
+    return out;
+  },
+  complete: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice complete requires --id SLICE-NN.");
+    // SLICE-64: --no-merge and --dry-run are mutually exclusive
+    if (flags.noMerge && flags.dryRun) {
+      throw new Error("slice complete: --no-merge and --dry-run are mutually exclusive.");
+    }
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { completeSlice } = await import("./lib/slice-linker.mjs");
+    const out = await completeSlice(cwd, sliceId, {
+      keepFeatureOpen: Boolean(flags.keepFeatureOpen),
+      forceClose: Boolean(flags.forceClose),
+      skipValidationCheck: flags.skipValidationCheck || null,
+      noDocWriter: Boolean(flags.noDocWriter),
+      // SLICE-64 additions:
+      noMerge: Boolean(flags.noMerge),
+      dryRun: Boolean(flags.dryRun),
+      skipSimplify: Boolean(flags.skipSimplify),
+      config: opts.config
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, {
+      command: "slice complete",
+      slice: sliceId,
+      feature: (out as any).feature?.id || null,
+      spec_status_changes: out.specStatusChanges?.length || 0,
+      handoff_written: Boolean(out.handoff?.handoffPath),
+      validation_gate_satisfied: Boolean(out.validationGate?.satisfied),
+      validation_skipped_via_flag: Boolean(flags.skipValidationCheck)
+    });
+    const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
+    await flushTrajectory(cwd, sliceId);
+    // Fire notification for slice-complete (FEAT-171 / SLICE-120)
+    try {
+      const { readNotifyConfig, notifyEvent } = await import("./lib/event-notifier.mjs");
+      const notifyCfg = await readNotifyConfig(cwd);
+      await notifyEvent(
+        {
+          type: "slice-complete",
+          sliceId,
+          featureId: (out as any).feature?.id || undefined,
+          details: `${sliceId} completed`,
+          timestamp: new Date().toISOString()
+        },
+        notifyCfg
+      );
+    } catch {
+      // Notification must never crash the main loop
+    }
+    return out;
+  },
+  start: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice start requires --id SLICE-NN.");
+    const { startSlice } = await import("./lib/slice-linker.mjs");
+    const out = await startSlice(repoPath, sliceId, {
+      goal: flags.goal || null,
+      dispatch: flags.noDispatch !== true,
+      config: opts.config ?? null
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "slice start",
+      slice: sliceId,
+      run_brief_written: Boolean(out.runBrief?.runBriefPath || out.runBrief?.artifactPath),
+      slice_progress_written: Boolean(out.sliceProgress?.path),
+      dispatch: out.dispatchInstruction ? "crew-build" : "inline"
+    });
+    const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
+    await flushTrajectory(repoPath, sliceId);
+    return out;
+  },
+  link: async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    const id = requireId(flags.id || sliceId, "slice link requires --id SLICE-NN.");
+    if (!flags.artifact) throw new Error("slice link requires --artifact <path>.");
+    if (!flags.kind) throw new Error("slice link requires --kind reviews|validations|deployments.");
+    const { linkArtifactToSlice } = await import("./lib/artifact-linkage.mjs");
+    return linkArtifactToSlice(repoPath, {
+      sliceId: id,
+      artifactPath: flags.artifact,
+      kind: flags.kind,
+      config: opts.config
+    });
+  },
+  "review-ladder": async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice review-ladder requires --id SLICE-NN.");
+    const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
+    return buildReviewLadder(repoPath, sliceId, { config: opts.config ?? null });
+  },
+  "post-builder-fanout": async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice post-builder-fanout requires --id SLICE-NN.");
+    const { buildPostBuilderFanout } = await import("./lib/post-builder-fanout.mjs");
+    const result = await buildPostBuilderFanout(repoPath, sliceId, { config: opts.config ?? null });
+    const { writeFanoutMarker } = await import("./lib/fanout-marker.mjs");
+    await writeFanoutMarker(repoPath, sliceId, result.tasks.length); // best-effort
+    return result;
+  },
+  plan: async (
+    repoPath: string,
+    _flags: Record<string, any>,
+    _rest: string[],
+    sliceId: string,
+    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(sliceId, "slice plan requires --id SLICE-NN.");
+    const { runPlanPreflight } = await import("./lib/slice-plan.mjs");
+    const out = await runPlanPreflight(repoPath, sliceId, { config: opts.config ?? null });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "slice plan",
+      slice: sliceId,
+      plan_path: out.planPath,
+      files_researched: out.filesResearched.length
+    });
+    return out;
+  }
+};
+
+async function runSliceSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
+  opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
+) {
+  const [sub, ...rest] = positionals;
+  if (!sub)
+    throw new Error(
+      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | post-builder-fanout | plan"
+    );
+  const handler = (SLICE_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
+  if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);
+  const id = flags.id || rest[0];
+  return handler(repoPath, flags, rest, id, opts);
+}
+
+async function runDecisionsSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  const [sub, ...rest] = positionals;
+  if (!sub) throw new Error("decisions requires a subcommand: list | show");
+  const { listDecisions, showDecision } = await import("./lib/decisions-store.mjs");
+  if (sub === "list") {
+    const decisions = await listDecisions(repoPath, { status: flags.status, config });
+    return {
+      count: decisions.length,
+      decisions: decisions.map((d) => ({
+        id: d.id,
+        title: d.title,
+        status: d.status,
+        introduced_by_slice: d.introduced_by_slice,
+        introduced_at: d.introduced_at,
+        superseded_by: d.superseded_by,
+        filePath: d.filePath
+      }))
+    };
+  }
+  if (sub === "show") {
+    const decId = flags.id || rest[0];
+    if (!decId) throw new Error("decisions show requires --id DEC-NNN.");
+    const dec = await showDecision(repoPath, decId, { config });
+    if (!dec) throw new Error(`Decision not found: ${decId}`);
+    return dec;
+  }
+  if (sub === "supersede") {
+    const { supersedeDecision } = await import("./lib/decisions-store.mjs");
+    if (!flags.id || !flags.by)
+      throw new Error("decisions supersede requires --id DEC-OLD --by DEC-NEW");
+    const out = await supersedeDecision(repoPath, { oldId: flags.id, newId: flags.by, config });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, { command: "decisions supersede", old: flags.id, new: flags.by });
+    return out;
+  }
+  if (sub === "relevant") {
+    const { findRelevantDecisions } = await import("./lib/decisions-store.mjs");
+    if (!flags.files) throw new Error('decisions relevant requires --files "a.cs,b.cs,..."');
+    const files = flags.files
+      .split(",")
+      .map((f: string) => f.trim())
+      .filter(Boolean);
+    const matches = await findRelevantDecisions(repoPath, files, { config });
+    return { count: matches.length, decisions: matches };
+  }
+  throw new Error(`Unknown decisions subcommand: ${sub}`);
+}
+
+async function runFeatureSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  const [sub, featId] = positionals;
+  if (!sub) throw new Error("feature requires a subcommand: simplify");
+  if (sub !== "simplify") throw new Error(`Unknown feature subcommand: ${sub}`);
+  if (!featId) throw new Error("feature simplify requires a feature ID: feature simplify FEAT-NNN");
+  const id = (flags.id as string | null) || featId;
+  const { featureSimplify } = await import("./lib/slice-linker/feature-lifecycle.mjs");
+  const opts: Record<string, any> = {
+    skipSimplify: flags.skipSimplify as boolean,
+    config
+  };
+  if (flags.slice) opts.sliceId = flags.slice as string;
+  if (flags.since) opts.startedAt = flags.since as string;
+  return featureSimplify(repoPath, id, opts);
+}
+
+async function runLearningsLog(
+  repoPath: string,
+  flags: Record<string, any>,
+  logLearning: (r: string, e: any) => Promise<any>
+) {
+  if (!flags.key) throw new Error("learnings log requires --key <key>");
+  if (!flags.insight) throw new Error("learnings log requires --insight <insight>");
+  const entry: any = { key: flags.key, insight: flags.insight, source: "agent" };
+  if (flags.confidence !== null && flags.confidence !== undefined) {
+    const conf = Number(flags.confidence);
+    if (!Number.isNaN(conf)) entry.confidence = conf;
+  }
+  if (flags.slice) entry.sliceId = flags.slice;
+  return logLearning(repoPath, entry);
+}
+
+async function runLearningsPrune(
+  repoPath: string,
+  flags: Record<string, any>,
+  deleteLearning: (r: string, id: number) => Promise<Record<string, unknown> | null>
+) {
+  if (flags.id === null || flags.id === undefined) {
+    throw new Error("learnings prune requires --id <numeric-id>");
+  }
+  const parsed = Number(flags.id);
+  if (Number.isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    throw new Error("learnings prune --id must be a positive integer");
+  }
+  const deleted = await deleteLearning(repoPath, parsed);
+  return { deleted };
+}
+
+async function runLearningsSubcommand(
+  repoPath: string,
+  positionals: string[],
+  flags: Record<string, any>
+) {
+  const [sub] = positionals;
+  if (!sub)
+    throw new Error("learnings requires a subcommand: log | recent | list | search | prune");
+  const { logLearning, recentLearnings, searchLearnings, deleteLearning } =
+    await import("./lib/learnings.mjs");
+  if (sub === "log") return runLearningsLog(repoPath, flags, logLearning);
+  if (sub === "recent") {
+    const limit = flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : 3;
+    return recentLearnings(repoPath, limit);
+  }
+  if (sub === "list") {
+    const limit =
+      flags.limit !== null && flags.limit !== undefined
+        ? Number(flags.limit)
+        : Number.MAX_SAFE_INTEGER;
+    return recentLearnings(repoPath, limit);
+  }
+  if (sub === "search") {
+    const query = positionals[1];
+    if (!query || !query.trim()) throw new Error("learnings search requires a query string");
+    return searchLearnings(repoPath, query);
+  }
+  if (sub === "prune") return runLearningsPrune(repoPath, flags, deleteLearning);
+  throw new Error(`Unknown learnings subcommand: ${sub}`);
+}
+
+async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {
+  const [sub] = positionals;
+  const { publishAll, publishFeat, syncMilestones, setupGithubSync } =
+    await importGithubSync("github-sync.mjs");
+  if (sub === "setup") {
+    const result = await (setupGithubSync as any)(repoPath);
+    console.log("[github-sync] Setup complete. Run 'github publish' next.");
+    return result;
+  }
+  if (sub === "publish") return (publishAll as any)(repoPath);
+  if (sub === "feat-publish") {
+    const featId = flags?.id || positionals[1];
+    if (!featId) throw new Error("github feat-publish requires --id FEAT-NNN.");
+    const result = await (publishFeat as any)(repoPath, featId);
+    if (!result) {
+      console.log("[github-sync] GitHub sync disabled — skipped.");
+      return { skipped: true };
+    }
+    console.log(
+      result.created
+        ? `Published: #${result.issueNum} ${result.url}`
+        : `Already published: #${result.issueNum}`
+    );
+    return result;
+  }
+  if (sub === "status") return (syncMilestones as any)(repoPath);
+  if (sub === "sync" || sub === "bootstrap") {
+    const { resolveConfig } = await import("./lib/config-resolver.mjs");
+    const { getProvider } = await import("./lib/task-store/index.mjs");
+    const config = await resolveConfig(repoPath);
+    const provider = getProvider(config, repoPath);
+    console.log(`[task-store] provider: ${provider.constructor.name}`);
+    return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
+  }
+  throw new Error(
+    "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap"
+  );
+}
+
+main().catch((error) => {
+  console.error(error.message);
+  process.exitCode = 1;
+});
+
+```
+
+### src/tests/artifact-linker.test.mts
+
+```
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { checkArtifactLinks } from "../scripts/lib/artifact-linker.mjs";
+
+// Helper: write a FEAT file with given frontmatter fields
+async function writeFeat(
+  root: string,
+  state: string,
+  id: string,
+  extra: Record<string, unknown> = {}
+): Promise<string> {
+  const dir = path.join(root, ".claude", "artifacts", "loop", "backlog", state);
+  await fs.mkdir(dir, { recursive: true });
+  const num = id.replace("FEAT-", "");
+  const fm = { id, status: state, depends_on: [], derived_from: null, ...extra };
+  const content = `---\n${Object.entries(fm)
+    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+    .join("\n")}\n---\n# ${id}\n`;
+  const filePath = path.join(dir, `${id}.md`);
+  await fs.writeFile(filePath, content, "utf8");
+  return filePath;
+}
+
+// Helper: write a slice file
+async function writeSlice(
+  root: string,
+  state: string,
+  id: string,
+  featId: string | null = null,
+  extra: Record<string, unknown> = {}
+): Promise<string> {
+  const dir = path.join(root, ".claude", "artifacts", "loop", "ai-loop", "slices", state);
+  await fs.mkdir(dir, { recursive: true });
+  const fm: Record<string, unknown> = { id, status: state, ...extra };
+  if (featId) fm.feature = featId;
+  const content = `---\n${Object.entries(fm)
+    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+    .join("\n")}\n---\n# ${id}\n`;
+  const filePath = path.join(dir, `${id}.md`);
+  await fs.writeFile(filePath, content, "utf8");
+  return filePath;
+}
+
+// Helper: write a grade file
+async function writeGrade(
+  root: string,
+  filename: string,
+  sliceId: string | null = null,
+  featId: string | null = null
+): Promise<string> {
+  const dir = path.join(root, ".claude", "artifacts", "loop", "grades");
+  await fs.mkdir(dir, { recursive: true });
+  const fm: Record<string, unknown> = {};
+  if (sliceId) fm.slice = sliceId;
+  if (featId) fm.feature = featId;
+  const content = fm.slice
+    ? `---\n${Object.entries(fm)
+        .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+        .join("\n")}\n---\n# grade\n`
+    : `---\n---\n# grade\n`;
+  const filePath = path.join(dir, filename);
+  await fs.writeFile(filePath, content, "utf8");
+  return filePath;
+}
+
+// Helper: write a decision file
+async function writeDecision(
+  root: string,
+  id: string,
+  extra: Record<string, unknown> = {}
+): Promise<string> {
+  const dir = path.join(root, ".claude", "artifacts", "loop", "decisions");
+  await fs.mkdir(dir, { recursive: true });
+  const fm = { id, title: `${id} title`, status: "accepted", ...extra };
+  const content = `---\n${Object.entries(fm)
+    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+    .join("\n")}\n---\n# ${id}\n`;
+  const filePath = path.join(dir, `${id}.md`);
+  await fs.writeFile(filePath, content, "utf8");
+  return filePath;
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe("checkArtifactLinks", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "artifact-linker-test-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns empty report for a well-formed synthetic artifact set", async () => {
+    // FEAT-001 in triaged
+    await writeFeat(tmpDir, "triaged", "FEAT-001");
+    // FEAT-002 in done, depends on FEAT-001
+    await writeFeat(tmpDir, "done", "FEAT-002", { depends_on: ["FEAT-001"] });
+    // SLICE-01 in completed referencing FEAT-001
+    await writeSlice(tmpDir, "completed", "SLICE-01", "FEAT-001");
+    // Grade file whose slice is in completed
+    await writeGrade(tmpDir, "20260601T000000Z-feat001-slice01-grade.md", "SLICE-01", "FEAT-001");
+    // Decision with no supersedes
+    await writeDecision(tmpDir, "DEC-001");
+
+    const report = await checkArtifactLinks(tmpDir);
+    expect(report.broken).toHaveLength(0);
+    expect(report.orphaned).toHaveLength(0);
+  });
+
+  it("detects broken depends_on when FEAT references a non-existent id", async () => {
+    // FEAT-010 depends on FEAT-999 which doesn't exist
+    await writeFeat(tmpDir, "triaged", "FEAT-010", { depends_on: ["FEAT-999"] });
+
+    const report = await checkArtifactLinks(tmpDir);
+    expect(report.broken.length).toBeGreaterThanOrEqual(1);
+
+    const broken = report.broken.find(
+      (b) => b.field === "depends_on" && b.referencedId === "FEAT-999"
+    );
+    expect(broken).toBeDefined();
+    expect(broken?.reason).toContain("FEAT-999");
+  });
+
+  it("detects orphaned grade file when no matching slice in completed/", async () => {
+    // A slice exists but only in pending, not completed
+    await writeFeat(tmpDir, "triaged", "FEAT-020");
+    await writeSlice(tmpDir, "pending", "SLICE-05", "FEAT-020");
+    // Grade points to SLICE-05 which is not completed
+    await writeGrade(tmpDir, "20260601T000000Z-feat020-slice05-grade.md", "SLICE-05", "FEAT-020");
+
+    const report = await checkArtifactLinks(tmpDir);
+    expect(report.orphaned.length).toBeGreaterThanOrEqual(1);
+
+    const orphan = report.orphaned.find((o) => o.type === "grade" && o.reason.includes("SLICE-05"));
+    expect(orphan).toBeDefined();
+  });
+
+  it("detects broken feature reference in slice file when FEAT does not exist", async () => {
+    // Slice references FEAT-888 which doesn't exist in any backlog directory
+    await writeSlice(tmpDir, "in-progress", "SLICE-10", "FEAT-888");
+
+    const report = await checkArtifactLinks(tmpDir);
+    expect(report.broken.length).toBeGreaterThanOrEqual(1);
+
+    const broken = report.broken.find(
+      (b) => b.field === "feature" && b.referencedId === "FEAT-888"
+    );
+    expect(broken).toBeDefined();
+    expect(broken?.reason).toContain("FEAT-888");
+  });
+
+  it("mermaid output contains valid graph TD header and at least one edge when edges exist", async () => {
+    // Create a simple chain: FEAT-030 → SLICE-20 → grade
+    await writeFeat(tmpDir, "triaged", "FEAT-030");
+    await writeSlice(tmpDir, "completed", "SLICE-20", "FEAT-030");
+    await writeGrade(tmpDir, "20260601T000000Z-feat030-slice20-grade.md", "SLICE-20", "FEAT-030");
+
+    const report = await checkArtifactLinks(tmpDir);
+    expect(report.mermaid).toContain("graph TD");
+    expect(report.mermaid).toContain("-->");
+  });
+});
+
+```
+
+## Files read
+

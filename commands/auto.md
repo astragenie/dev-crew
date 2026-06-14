@@ -4,6 +4,23 @@ description: "Walk the triaged backlog and emit dispatch plans for all viable FE
 auto_execute_steps: false
 ---
 
+## Marathon runner routing
+
+Before executing the sequential walker, check `.claude/loop.json` for
+`loop.marathonRunner`:
+
+```bash
+RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
+```
+
+If `RUNNER === "wave"`, delegate to `/loop:wave loop` and exit. Do not run
+the sequential walker. The wave loop respects the same `loop.maxIterations`,
+`loop.autoMode`, and `/loop:stop-check` conditions, plus the wave-specific
+halt reasons documented in `commands/wave.md`.
+
+If `RUNNER === "sequential"` (default), proceed with the existing workflow
+below.
+
 # Autonomous Backlog Walker
 
 Reads the triaged backlog, ranks by composite score and priority, and emits
@@ -21,20 +38,20 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
 
 ## Flags
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--dry-run` | boolean | false | Emit plans only; do not dispatch builder. When false with --auto-mode, triggers live dispatch. |
-| `--auto-mode` | boolean | false | Include `autoMode: true` in all plans and `orchConfig.autoMode: true` to suppress per-plan approval gates (SLICE-C). |
-| `--max-features N` | number | unlimited | Cap the number of plans returned. Walker stops after N plans regardless of remaining candidates. |
+| Flag               | Type    | Default   | Description                                                                                                          |
+| ------------------ | ------- | --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`        | boolean | false     | Emit plans only; do not dispatch builder. When false with --auto-mode, triggers live dispatch.                       |
+| `--auto-mode`      | boolean | false     | Include `autoMode: true` in all plans and `orchConfig.autoMode: true` to suppress per-plan approval gates (SLICE-C). |
+| `--max-features N` | number  | unlimited | Cap the number of plans returned. Walker stops after N plans regardless of remaining candidates.                     |
 
 ## Output shape
 
 ```json
 {
-  "walked":    3,
-  "skipped":   [{ "id": "FEAT-002", "reason": "not_autonomous_safe" }],
-  "planned":   2,
-  "halted":    false,
+  "walked": 3,
+  "skipped": [{ "id": "FEAT-002", "reason": "not_autonomous_safe" }],
+  "planned": 2,
+  "halted": false,
   "stopReason": null,
   "summaryPath": ".claude/artifacts/loop/auto-runs/2026-06-03T12-34-56-789Z-auto-run.md",
   "orchConfig": {
@@ -44,14 +61,14 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
   },
   "plans": [
     {
-      "featureId":          "FEAT-001",
+      "featureId": "FEAT-001",
       "suggestedSliceTitle": "Implement FEAT-001: My safe feature",
-      "fromFeatureCmd":      "bun src/scripts/loop.mts slice from-feature --id FEAT-001",
-      "startCmd":            "bun src/scripts/loop.mts slice start --id SLICE-<TBD>",
-      "orchestratorMode":    "slice-build",
-      "dispatchPrompt":      "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
-      "builderPrompt":       "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
-      "autoMode":            false
+      "fromFeatureCmd": "bun src/scripts/loop.mts slice from-feature --id FEAT-001",
+      "startCmd": "bun src/scripts/loop.mts slice start --id SLICE-<TBD>",
+      "orchestratorMode": "slice-build",
+      "dispatchPrompt": "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
+      "builderPrompt": "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
+      "autoMode": false
     }
   ]
 }
@@ -87,6 +104,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
 ## Ranking order
 
 Candidates are sorted before planning:
+
 1. `composite_score` DESC (missing treated as `0`)
 2. Priority ascending: P0 > P1 > P2 > P3 (missing treated as P3)
 3. `pm_strategic_fit` DESC (missing treated as `0`)
@@ -115,12 +133,12 @@ See `commands/stop-check.md` for the full list of stop conditions.
 
 When `autonomous_safe: false` is encountered, the walker evaluates:
 
-| Condition | Action |
-|---|---|
-| `deferred: true` | Skip with reason `"deferred"` |
-| `depends_on` non-empty (unfinished) | Skip, listing deps in reason |
-| `pm_risk_level >= 0.7` | Include in plans with `riskGate.warn` (SPEC recommended) |
-| Otherwise | Include in plans with `requiresPlanPreflight: true` |
+| Condition                           | Action                                                   |
+| ----------------------------------- | -------------------------------------------------------- |
+| `deferred: true`                    | Skip with reason `"deferred"`                            |
+| `depends_on` non-empty (unfinished) | Skip, listing deps in reason                             |
+| `pm_risk_level >= 0.7`              | Include in plans with `riskGate.warn` (SPEC recommended) |
+| Otherwise                           | Include in plans with `requiresPlanPreflight: true`      |
 
 ## Roadmap
 

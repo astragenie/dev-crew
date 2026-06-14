@@ -24,6 +24,7 @@ Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
 [ADOPTION.md](ADOPTION.md) for new-repo onboarding.
 
 > **Marketplace history:**
+>
 > - Pre-v0.8.7: shipped via the `hero-crew` repo (paired releases).
 > - v0.8.7–v0.41.x: shipped from its own `loop` marketplace, decoupled.
 > - v0.41.0+: shipped from the central `sergeymilashico/astra-marketplace`
@@ -88,9 +89,7 @@ Once configured:
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
   },
   "stack": {
-    "build": [
-      { "cmd": "dotnet", "args": ["build", "src/MySolution.slnx", "-c", "Release"] }
-    ],
+    "build": [{ "cmd": "dotnet", "args": ["build", "src/MySolution.slnx", "-c", "Release"] }],
     "test": [
       { "cmd": "dotnet", "args": ["test", "src/MySolution.slnx", "-c", "Release"] },
       { "cmd": "pytest", "args": [], "cwd": "src/python-agent" }
@@ -114,8 +113,8 @@ is auto-skipped if `healthchecks` is empty (otherwise it would hang).
 
 ## Built-in presets
 
-| Preset | Stack |
-|---|---|
+| Preset                 | Stack                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------- |
 | `dotnet-aspire-python` | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra |
 
 More presets ship as new repo types surface. See `scripts/presets/` to author your own.
@@ -155,12 +154,12 @@ branch).
 }
 ```
 
-| Key | Default | Meaning |
-|---|---|---|
-| `maxDepth` | 3 | Recursion cap. `0` = top level. Child at `maxDepth` cannot spawn grandchildren. |
-| `maxChildrenPerBatch` | 8 | Per-call fanout cap. Refuse to spawn if `plans.length > cap`. |
-| `worktreeRoot` | `null` | Override worktree parent dir; `null` = sibling of repo (same as `parallel-runner`). |
-| `pruneStaleAfterDays` | 7 | Orphan `dispatch/<runId>/` directory warning threshold. |
+| Key                   | Default | Meaning                                                                             |
+| --------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `maxDepth`            | 3       | Recursion cap. `0` = top level. Child at `maxDepth` cannot spawn grandchildren.     |
+| `maxChildrenPerBatch` | 8       | Per-call fanout cap. Refuse to spawn if `plans.length > cap`.                       |
+| `worktreeRoot`        | `null`  | Override worktree parent dir; `null` = sibling of repo (same as `parallel-runner`). |
+| `pruneStaleAfterDays` | 7       | Orphan `dispatch/<runId>/` directory warning threshold.                             |
 
 ### CLI surface
 
@@ -186,6 +185,36 @@ the Agent tool with the returned batch in **one message**, then runs `finalize`.
 
 `crew:parallel-runner` refactor (SLICE-2), truly-async non-blocking parent, cancellation,
 `--resume`, cost rollup, budget cap (FEAT-133), per-skill cost (FEAT-165).
+
+## Wave mode
+
+Opt-in marathon runner that dispatches N independent slices per "wave" into
+parallel git worktrees, merges PASS branches, pivots FAIL slices into
+`/crew:fix` next wave, and loops until standard stop-check fires.
+
+Enable in `.claude/loop.json`:
+
+```json
+{
+  "loop": {
+    "marathonRunner": "wave",
+    "wave": { "size": 3, "sliceCommand": "/crew:orchestrate-slice" }
+  }
+}
+```
+
+Run via `/loop:wave loop` (or `/loop:auto` once `marathonRunner: "wave"` is
+set — auto routes to wave automatically).
+
+Slice prerequisite: `touches_files` in slice frontmatter. Spec-writer
+populates this automatically; CI gate
+(`bun ./src/scripts/validate-slice-touches-files.mts`) warns when missing.
+Slices without `touches_files` dispatch solo (wave size collapses to 1 for
+that slot) rather than blocking the planner.
+
+See `commands/wave.md` for full subcommand reference and
+`docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md` for design
+rationale.
 
 ## Tests
 

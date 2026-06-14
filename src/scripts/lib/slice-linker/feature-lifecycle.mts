@@ -10,6 +10,8 @@ import { pathExists, ensureDir, slicesRoot as resolveSlicesRoot } from "../paths
 import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
 import { clampSliceTitle } from "../slice-title.mjs";
+import { classifyRisk } from "../risk-classifier.mjs";
+import type { FeatFrontmatterForRisk } from "../risk-classifier.mjs";
 import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
 import { assertSized } from "../proposed-slices.mjs";
 
@@ -124,6 +126,7 @@ function buildSliceContent({
     priority: featureFrontmatter.priority || null,
     target_release: featureFrontmatter.target_release || null,
     requires_validation: true,
+    risk: classifyRisk(featureFrontmatter as FeatFrontmatterForRisk),
     created: today,
     updated: today
   };

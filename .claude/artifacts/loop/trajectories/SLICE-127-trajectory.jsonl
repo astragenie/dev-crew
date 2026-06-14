@@ -1,0 +1,3 @@
+{"type":"slice_start","sliceId":"SLICE-127","timestamp":"2026-06-13T14:49:54.853Z","featureId":"FEAT-173","title":"SLICE-127: Auto-PR mode for parallel worktree dispatch - inferred title/description via gh instead of direct merge to main","planPath":"C:\\work\\mega\\.-FEAT-173-0\\.claude\\artifacts\\loop\\plans\\20260613T144954Z-plan-SLICE-127.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-127","timestamp":"2026-06-13T15:15:05.783Z","featureId":"FEAT-173","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-127","timestamp":"2026-06-13T15:15:53.636Z","featureId":"FEAT-173","featureMovedTo":"C:\\work\\mega\\.-FEAT-173-0\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-173.md","validationSatisfied":true}

@@ -4,6 +4,23 @@ description: First action for a fresh loop session — read mandatory docs, pick
 auto_execute_steps: false
 ---
 
+## Marathon runner routing
+
+Before executing the sequential walker, check `.claude/loop.json` for
+`loop.marathonRunner`:
+
+```bash
+RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
+```
+
+If `RUNNER === "wave"`, delegate to `/loop:wave loop` and exit. Do not run
+the sequential walker. The wave loop respects the same `loop.maxIterations`,
+`loop.autoMode`, and `/loop:stop-check` conditions, plus the wave-specific
+halt reasons documented in `commands/wave.md`.
+
+If `RUNNER === "sequential"` (default), proceed with the existing workflow
+below.
+
 # Start Autonomous Loop Session
 
 Use this once per session, before invoking `/crew:build` or `/crew:fix`. It

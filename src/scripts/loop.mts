@@ -74,6 +74,7 @@ const FLAG_SPEC = {
   "--evidence": { key: "evidence" },
   "--reasoning": { key: "reasoning" },
   "--allow-cross-session": { key: "allowCrossSession", boolean: true },
+  "--allow-human-comments": { key: "allowHumanComments", boolean: true },
   "--explain-halts": { key: "explainHalts", boolean: true },
   "--worktree": { key: "worktree" },
   // SLICE-64: auto-merge flags
@@ -92,7 +93,11 @@ const FLAG_SPEC = {
   // cost-by-skill report
   "--cost-by-skill": { key: "costBySkill", boolean: true },
   // pause / resume subcommands
-  "--reason": { key: "reason" }
+  "--reason": { key: "reason" },
+  // backlog-audit output format / lint-artifacts
+  "--json": { key: "json", boolean: true },
+  // learnings rank
+  "--query": { key: "query" }
 };
 
 function parseArgs(argv: string[]) {
@@ -146,6 +151,7 @@ function parseArgs(argv: string[]) {
     evidence: null,
     reasoning: null,
     allowCrossSession: false,
+    allowHumanComments: false,
     worktree: null,
     explainHalts: false,
     noMerge: false,
@@ -157,7 +163,9 @@ function parseArgs(argv: string[]) {
     includeTriaged: false,
     fromIssue: null,
     costBySkill: false,
-    reason: null
+    reason: null,
+    json: false,
+    query: null
   };
   const positionals: any[] = [];
 
@@ -247,6 +255,7 @@ const COMMANDS = {
     runGithubSubcommand(repoPath, positionals, flags),
   backlog: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runBacklogSubcommand(repoPath, positionals, flags, config),
+  "backlog-audit": async ({ repoPath, flags }: CmdCtx) => runBacklogAudit(repoPath, flags),
   spec: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runSpecSubcommand(repoPath, positionals, flags, config),
   release: ({ repoPath, flags, positionals, config }: CmdCtx) =>
@@ -319,12 +328,17 @@ const COMMANDS = {
     await logEvent(cwd, { command: "snapshot-memory", grades: result.counts.grades });
     return result;
   },
-  lessons: async ({ repoPath, positionals }: CmdCtx) => {
+  lessons: async ({ repoPath, positionals, flags }: CmdCtx) => {
     const [sub] = positionals;
-    if (sub !== "recent") throw new Error("lessons requires subcommand: recent");
-    const { recentLessons } = await import("./lib/lessons-feed.mjs");
-    const limit = positionals[1] ? Number(positionals[1]) : 5;
-    return recentLessons(repoPath, { limit });
+    if (sub === "recent") {
+      const { recentLessons } = await import("./lib/lessons-feed.mjs");
+      const limit = positionals[1] ? Number(positionals[1]) : 5;
+      return recentLessons(repoPath, { limit });
+    }
+    if (sub === "rank") {
+      return runLessonsRankSubcommand(repoPath, flags);
+    }
+    throw new Error("lessons requires subcommand: recent | rank");
   },
   "sync-claims": async ({ repoPath }: CmdCtx) => {
     const { syncClaims } = await import("./lib/claims-sync.mjs");
@@ -337,7 +351,24 @@ const COMMANDS = {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
     const { checkStopConditions } = await import("./lib/stop-conditions.mjs");
-    return checkStopConditions(cwd, { config });
+    const result = await checkStopConditions(cwd, { config });
+    if (result.shouldStop && result.blockers.length > 0) {
+      try {
+        const { readNotifyConfig, notifyEvent } = await import("./lib/event-notifier.mjs");
+        const notifyCfg = await readNotifyConfig(cwd);
+        await notifyEvent(
+          {
+            type: "halt-badge",
+            details: result.blockers[0].category,
+            timestamp: new Date().toISOString()
+          },
+          notifyCfg
+        );
+      } catch {
+        // Notification must never crash the main loop
+      }
+    }
+    return result;
   },
   auto: async ({ repoPath, flags, config }: CmdCtx) => {
     const { runAutoWalker } = await import("./lib/auto-walker.mjs");
@@ -377,6 +408,42 @@ const COMMANDS = {
     }
     return result;
   },
+  "lint-artifacts": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { checkArtifactLinks } = await import("./lib/artifact-linker.mjs");
+    const report = await checkArtifactLinks(repoPath, config);
+    if (flags.json) {
+      process.exitCode = 0;
+      console.log(JSON.stringify(report, null, 2));
+      return { _suppressDefaultOutput: true };
+    }
+    const lines: string[] = [];
+    lines.push("## Artifact link report");
+    lines.push(`Broken: ${report.broken.length}, Orphaned: ${report.orphaned.length}`);
+    if (report.broken.length > 0) {
+      lines.push("");
+      lines.push("### Broken links");
+      for (const b of report.broken) {
+        lines.push(`- ${b.sourceFile} [${b.field}] → ${b.referencedId}: ${b.reason}`);
+      }
+    }
+    if (report.orphaned.length > 0) {
+      lines.push("");
+      lines.push("### Orphaned artifacts");
+      for (const o of report.orphaned) {
+        lines.push(`- ${o.file} (${o.type}): ${o.reason}`);
+      }
+    }
+    if (report.mermaid) {
+      lines.push("");
+      lines.push("### Artifact graph");
+      lines.push("```mermaid");
+      lines.push(report.mermaid);
+      lines.push("```");
+    }
+    process.stdout.write(lines.join("\n") + "\n");
+    process.exitCode = report.broken.length > 0 ? 1 : 0;
+    return { _suppressDefaultOutput: true };
+  },
   pause: async ({ repoPath, flags }: CmdCtx) => {
     const reason = flags.reason;
     if (!reason || typeof reason !== "string" || !reason.trim()) {
@@ -406,6 +473,72 @@ const COMMANDS = {
     }
     process.exitCode = 0;
     return { resumed: true };
+  },
+  "pr-watch": async ({ repoPath: _repoPath, flags, positionals, config }: CmdCtx) => {
+    const prUrl = positionals[0] as string | undefined;
+    if (!prUrl) {
+      console.error("pr-watch requires a PR URL as the first positional argument");
+      process.exitCode = 1;
+      return { _suppressDefaultOutput: true };
+    }
+    const { runPrWatch, readPrWatchConfig, buildDefaultExec } = await import("./lib/pr-watch.mjs");
+    const watchConfig = readPrWatchConfig(config);
+    const allowHumanComments = Boolean(flags.allowHumanComments);
+
+    if (allowHumanComments) {
+      console.warn(
+        "WARNING: human review comment text will be forwarded to crew:builder. " +
+          "Ensure the PR is from a trusted source to avoid prompt injection."
+      );
+    }
+
+    const exec = buildDefaultExec();
+    const result = await runPrWatch(prUrl, watchConfig, allowHumanComments, exec);
+
+    if (result.outcome === "all-green") {
+      console.log("PR checks all green — watch complete");
+      process.exitCode = 0;
+      return { outcome: "all-green" };
+    }
+    if (result.outcome === "pr-merged") {
+      console.log("PR already merged — nothing to watch");
+      process.exitCode = 0;
+      return { outcome: "pr-merged" };
+    }
+    if (result.outcome === "no-checks") {
+      console.log("no checks found on PR — watch exiting (nothing to fix)");
+      process.exitCode = 0;
+      return { outcome: "no-checks" };
+    }
+    if (result.outcome === "max-retries") {
+      console.error(`pr-watch stopped: max retries (${watchConfig.maxRetries}) reached`);
+      process.exitCode = 1;
+      return {
+        outcome: "max-retries",
+        prWatch: { triggered: true, haltReason: "max-retries", retriesUsed: result.retriesUsed }
+      };
+    }
+    if (result.outcome === "cost-exceeded") {
+      console.error(
+        `pr-watch stopped: cumulative cost $${result.cumulativeCostUsd.toFixed(2)} exceeds limit $${watchConfig.maxCostUsd.toFixed(2)}`
+      );
+      process.exitCode = 1;
+      return {
+        outcome: "cost-exceeded",
+        prWatch: {
+          triggered: true,
+          haltReason: "cost-exceeded",
+          cumulativeCostUsd: result.cumulativeCostUsd
+        }
+      };
+    }
+    // pr-closed
+    console.error("PR is closed — watch aborted");
+    process.exitCode = 1;
+    return {
+      outcome: "pr-closed",
+      prWatch: { triggered: true, haltReason: "pr-closed" }
+    };
   },
   "stuck-tick": async ({ repoPath, flags, positionals }: CmdCtx) => {
     const sliceArg = (flags.slice as string | undefined) ?? (positionals[0] as string | undefined);
@@ -543,6 +676,29 @@ function runResolveSkillsCommand(flags: Record<string, any>): void {
   }
 }
 
+async function runConfigGetSubcommand(argv: string[]): Promise<void> {
+  const [sub, dotted, ...rest] = argv;
+  if (sub !== "get" || !dotted) {
+    console.error("usage: loop.mts config get <dotted.path> [--repo PATH]");
+    process.exitCode = 1;
+    return;
+  }
+  const repoIdx = rest.indexOf("--repo");
+  const repoRoot = repoIdx >= 0 && rest[repoIdx + 1] ? rest[repoIdx + 1]! : process.cwd();
+  const fs = await import("node:fs");
+  const nodePath = await import("node:path");
+  const p = nodePath.join(repoRoot, ".claude", "loop.json");
+  if (!fs.existsSync(p)) return;
+  const json = JSON.parse(fs.readFileSync(p, "utf8")) as Record<string, unknown>;
+  const value = dotted.split(".").reduce<unknown>((acc, k) => {
+    if (acc && typeof acc === "object" && k in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[k];
+    }
+    return undefined;
+  }, json);
+  if (value !== undefined) console.log(String(value));
+}
+
 async function main() {
   // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
   // --depth, --dry-run, --json, --run-id, --config) are not registered in
@@ -559,6 +715,23 @@ async function main() {
       shell: process.platform === "win32"
     });
     process.exitCode = result.status ?? 1;
+    return;
+  }
+
+  if (rawArgv[0] === "wave") {
+    const sub = rawArgv[1];
+    if (!sub) {
+      console.error("usage: loop.mts wave <plan|run|loop> [--repo PATH] [--size N] [--json]");
+      process.exitCode = 1;
+      return;
+    }
+    const { default: waveCli } = await import("./lib/wave/cli.mjs");
+    await waveCli(sub, rawArgv.slice(2));
+    return;
+  }
+
+  if (rawArgv[0] === "config") {
+    await runConfigGetSubcommand(rawArgv.slice(1));
     return;
   }
 
@@ -721,6 +894,22 @@ function isUnclassifiedEntry(entry: Record<string, any>): boolean {
   return noTags && fm.needs_contract == null && fm.needs_ux == null;
 }
 
+export async function runBacklogAudit(repoPath: string, flags: Record<string, any>) {
+  const { auditBacklog } = await import("./lib/backlog-auditor.mjs");
+  const results = await auditBacklog(repoPath);
+  if (flags.json) {
+    process.exitCode = 0;
+    return { results } as unknown as Record<string, unknown>;
+  }
+  // human-readable: one line per FEAT
+  for (const r of results) {
+    const ev = r.evidence.slice(0, 2).join(", ") || "no evidence";
+    process.stdout.write(`${r.id} [${r.verdict}]: ${ev}\n`);
+  }
+  process.exitCode = 0;
+  return {};
+}
+
 export async function runBacklogEnrich(repoPath: string, _flags: Record<string, any>) {
   const { listBacklog } = await import("./lib/backlog-parser.mjs");
   const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
@@ -819,6 +1008,9 @@ async function runBacklogSubcommand(
   }
   if (sub === "enrich") {
     return runBacklogEnrich(repoPath, flags);
+  }
+  if (sub === "audit") {
+    return runBacklogAudit(repoPath, flags);
   }
   throw new Error(`Unknown backlog subcommand: ${sub}`);
 }
@@ -1200,6 +1392,23 @@ const SLICE_HANDLERS = {
     });
     const { flushTrajectory } = await import("./lib/trajectory-writer.mjs");
     await flushTrajectory(cwd, sliceId);
+    // Fire notification for slice-complete (FEAT-171 / SLICE-120)
+    try {
+      const { readNotifyConfig, notifyEvent } = await import("./lib/event-notifier.mjs");
+      const notifyCfg = await readNotifyConfig(cwd);
+      await notifyEvent(
+        {
+          type: "slice-complete",
+          sliceId,
+          featureId: (out as any).feature?.id || undefined,
+          details: `${sliceId} completed`,
+          timestamp: new Date().toISOString()
+        },
+        notifyCfg
+      );
+    } catch {
+      // Notification must never crash the main loop
+    }
     return out;
   },
   start: async (
@@ -1444,6 +1653,65 @@ async function runLearningsSubcommand(
   }
   if (sub === "prune") return runLearningsPrune(repoPath, flags, deleteLearning);
   throw new Error(`Unknown learnings subcommand: ${sub}`);
+}
+
+/**
+ * `loop lessons rank [--query <text>] [--limit N] [--json]`
+ * Reads learnings.jsonl, ranks entries by decay+utility, prints JSON array.
+ * Exits 0 and prints [] when the store is absent or empty.
+ */
+async function runLessonsRankSubcommand(
+  repoPath: string,
+  flags: Record<string, any>
+): Promise<{ _suppressDefaultOutput: true }> {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const { rankLearnings } = await import("./lib/learnings-ranker.mjs");
+
+  const storeFile = path.join(repoPath, ".claude", "artifacts", "loop", "learnings.jsonl");
+
+  let raw: string;
+  try {
+    raw = await fs.readFile(storeFile, "utf8");
+  } catch {
+    process.stdout.write("[]\n");
+    return { _suppressDefaultOutput: true };
+  }
+
+  const allEntries: any[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") allEntries.push(parsed);
+    } catch {
+      // skip malformed lines
+    }
+  }
+
+  if (allEntries.length === 0) {
+    process.stdout.write("[]\n");
+    return { _suppressDefaultOutput: true };
+  }
+
+  const limitRaw =
+    flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : undefined;
+  const limit = limitRaw !== undefined && !Number.isNaN(limitRaw) ? limitRaw : undefined;
+
+  const query: string | undefined =
+    flags.query !== null && flags.query !== undefined ? String(flags.query) : undefined;
+
+  // Rank ALL entries first, then cap to --limit (not before — pre-slicing by insertion order
+  // would return the first N entries rather than the top N by decay+utility score).
+  const rankedAll = rankLearnings(allEntries, {
+    ...(query !== undefined ? { query } : {}),
+    nowMs: Date.now()
+  });
+  const ranked = limit !== undefined ? rankedAll.slice(0, limit) : rankedAll;
+
+  process.stdout.write(JSON.stringify(ranked, null, 2) + "\n");
+  return { _suppressDefaultOutput: true };
 }
 
 async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {

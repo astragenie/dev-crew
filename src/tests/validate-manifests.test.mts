@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { validateAllPresets } from "../scripts/validate-manifests.mjs";
+import { validateAllPresets, validateSkillFrontmatter } from "../scripts/validate-manifests.mjs";
 
 function tmpRepo(prefix: string): { root: string; presetsDir: string } {
   const root = mkdtempSync(path.join(tmpdir(), prefix));
@@ -79,4 +79,55 @@ test("validateAllPresets accumulates multiple errors and ignores non-JSON files"
   writePreset(presetsDir, "ok", VALID_SPLIT_FALSE);
   const errors = validateAllPresets(root);
   assert.equal(errors.length, 2);
+});
+
+// --- validateSkillFrontmatter / keywords field ---
+
+function tmpSkillRepo(prefix: string): { root: string; skillsDir: string } {
+  const root = mkdtempSync(path.join(tmpdir(), prefix));
+  const skillsDir = path.join(root, "skills", "my-skill");
+  mkdirSync(skillsDir, { recursive: true });
+  return { root, skillsDir };
+}
+
+function writeSkillMd(skillsDir: string, content: string): void {
+  writeFileSync(path.join(skillsDir, "SKILL.md"), content, "utf8");
+}
+
+test("validateSkillFrontmatter returns [] when skills dir is absent", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "vm-skill-no-dir-"));
+  const errors = validateSkillFrontmatter(root);
+  assert.deepEqual(errors, []);
+});
+
+test("validateSkillFrontmatter returns [] for valid SKILL.md with no keywords field", () => {
+  const { root, skillsDir } = tmpSkillRepo("vm-skill-no-kw-");
+  writeSkillMd(
+    skillsDir,
+    "---\nname: my-skill\ndescription: A skill\ntrigger: always_on\n---\n# My Skill\n"
+  );
+  const errors = validateSkillFrontmatter(root);
+  assert.deepEqual(errors, []);
+});
+
+test("validateSkillFrontmatter returns [] when keywords is a valid string array", () => {
+  const { root, skillsDir } = tmpSkillRepo("vm-skill-kw-valid-");
+  writeSkillMd(
+    skillsDir,
+    "---\nname: my-skill\ndescription: A skill\nkeywords: [kubernetes, azure]\n---\n# My Skill\n"
+  );
+  const errors = validateSkillFrontmatter(root);
+  assert.deepEqual(errors, []);
+});
+
+test("validateSkillFrontmatter reports error when keywords is a plain string (not an array)", () => {
+  const { root, skillsDir } = tmpSkillRepo("vm-skill-kw-string-");
+  writeSkillMd(
+    skillsDir,
+    "---\nname: my-skill\ndescription: A skill\nkeywords: not-an-array\n---\n# My Skill\n"
+  );
+  const errors = validateSkillFrontmatter(root);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0] ?? "", /keywords/);
+  assert.match(errors[0] ?? "", /array of strings/);
 });

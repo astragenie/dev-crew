@@ -89,6 +89,29 @@ For builder-dispatch contracts. Name with `.spec.md` extension
 file `src/Application/Orders/CreateOrderHandler.cs`.
 **Bad:** "an order object with customer info"; "somewhere in the orders module".
 
+### touches_files frontmatter (REQUIRED for wave-mode dispatch)
+
+Every slice spec MUST populate `touches_files` in its frontmatter:
+
+```yaml
+---
+id: SLICE-NNN
+touches_files:
+  - src/scripts/lib/foo.mts
+  - src/tests/foo.test.mts
+touches_files_confidence: declared
+---
+```
+
+Rules:
+- Repo-relative paths only. No absolute paths, no `..` parent traversal.
+- Exact paths preferred; globs (e.g., `src/tests/wave/*.test.mts`) only when the change touches a generated set.
+- Include every file the slice will create, edit, or delete — tests counted.
+- Set `touches_files_confidence: declared` to signal the planner that the list is authoritative.
+- When omitted or empty, the wave planner falls back to body inference (regex over the In scope section); the slice will dispatch alone (wave size collapses to 1) rather than block other slices.
+
+This contract is enforced by `bun ./src/scripts/validate-slice-touches-files.mts` in CI.
+
 ## Agent vs human decision
 
 Emit `developer_type` to inform the PM's `autonomous_safe` flag:

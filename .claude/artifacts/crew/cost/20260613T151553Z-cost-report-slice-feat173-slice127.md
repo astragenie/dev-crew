@@ -1,0 +1,98 @@
+---
+kind: cost-report
+feature: FEAT-173
+run_title: "FEAT173 SLICE127"
+usd: 10.7619
+duration_ms: 1558399
+total_tokens: 20490905
+cache_hit_pct: 98.1
+source_project: C--work-mega-loop
+aggregate_all: false
+source_count: 1
+created_at: 2026-06-13T15:15:53.399Z
+---
+
+# Cost Report: FEAT173 SLICE127
+
+- Created: 2026-06-13T15:15:53.399Z
+- Run Title: FEAT173 SLICE127
+- Window Start: 2026-06-13T14:49:54.433Z
+- Window End: 2026-06-13T15:15:52.832Z
+- Duration: 26.0 min (1558399 ms)
+- Sessions Scanned: 1
+- Assistant Messages Counted: 179
+- Total Tokens: 20,490,905
+- Cache Hit %: 98.1%
+- Total USD: $10.7619
+- Source Project: C--work-mega-loop
+- Auto-detected: no
+- Aggregate All: no
+
+## Tokens (totals)
+
+- input: 739
+- cache_create_5m: 0
+- cache_create_1h: 389,058
+- cache_read: 19,938,183
+- output: 162,925
+
+## Model Mix
+
+- claude-sonnet-4-6 (priced as claude-sonnet-4): 179 msgs (100%), $10.7619 (100%)
+
+## Conversation Shape
+
+- user_msg_count: 13
+- user_msg_avg_len: 4660
+- turns_before_first_tool: 1
+- compaction_count: 0
+- skill_invocations: 0
+- subagent_dispatches: 24
+
+## Tool Usage
+
+- Bash: 31
+- Agent: 24
+- Read: 21
+- Edit: 12
+- ToolSearch: 1
+
+## Tool Result Sizes (bytes)
+
+- count: 90
+- sum: 84,526
+- p50: 874
+- p90: 2,193
+- max: 9,599
+
+## File Re-reads
+
+- redundant_read_count: 13
+- top paths:
+  - 8× C:\work\mega\.-FEAT-175-0\src\scripts\lib\artifact-linker.mts
+  - 4× C:\work\mega\.-FEAT-173-0\src\scripts\dispatch.mts
+  - 3× C:\work\mega\.-FEAT-182-0\src\scripts\lib\backlog-auditor.mts
+  - 2× C:\work\mega\.-FEAT-175-0\src\scripts\loop.mts
+
+## Cache Priming (per tool, approximate)
+
+Attribution: each tool's tool_result size weighted against the NEXT assistant turn's cache_create tokens. Numbers are directional, not precise — system-prompt drift and prior-turn re-injection inflate ratios.
+
+- Agent: 24 calls, 20,976B results, ~224,949 cache_create tok (10.72×)
+- Read: 21 calls, 43,643B results, ~78,404 cache_create tok (1.8×)
+- Bash: 31 calls, 15,673B results, ~49,349 cache_create tok (3.15×)
+- Edit: 12 calls, 1,978B results, ~25,879 cache_create tok (13.08×)
+- ToolSearch: 1 calls, 52B results, ~7,779 cache_create tok (149.6×)
+
+
+## By Model (token detail)
+
+### claude-sonnet-4-6 (priced as claude-sonnet-4)
+- messages: 179
+- usd: $10.7619
+- input: 739
+- cache_create_5m: 0
+- cache_create_1h: 389,058
+- cache_read: 19,938,183
+- output: 162,925
+

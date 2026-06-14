@@ -269,6 +269,51 @@ This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` ret
 
 ---
 
+### `snapshot.prWatch`
+
+**Shape:**
+
+```ts
+// max-retries variant
+{ triggered: true; haltReason: "max-retries"; retriesUsed: number }
+
+// cost-exceeded variant
+{ triggered: true; haltReason: "cost-exceeded"; cumulativeCostUsd: number }
+
+// pr-closed variant
+{ triggered: true; haltReason: "pr-closed" }
+```
+
+**Meaning:** `/loop:pr-watch` terminated abnormally. The `haltReason` field identifies the stop cause. Emitted in the JSON return value of the `pr-watch` CLI command.
+
+**Fires when:**
+- `"max-retries"` — completed builder dispatches reached `loop.prWatch.maxRetries` and checks remain failing.
+- `"cost-exceeded"` — cumulative estimated cost of builder dispatches in this session reached `loop.prWatch.maxCostUsd`.
+- `"pr-closed"` — PR state is `CLOSED` (not merged) at startup or on any poll iteration.
+
+**Suggested operator action:**
+- `"max-retries"`: inspect the failing checks manually and push a fix. Re-run `bun src/scripts/loop.mts pr-watch <PR-URL>` after the fix.
+- `"cost-exceeded"`: review the failing checks for scope creep. Either raise `loop.prWatch.maxCostUsd` in `.claude/loop.json` or fix the checks manually.
+- `"pr-closed"`: the PR was closed without merging. No action from loop is possible.
+
+**Origin:** FEAT-110 / SLICE-134. Source: `src/scripts/lib/pr-watch.mts::runPrWatch`. Emitted via command JSON output, not via `stop-conditions.mts`.
+
+---
+
+## Wave-mode badges
+
+| Badge | Severity | Description |
+|---|---|---|
+| `wave_post_merge_red` | error | Post-merge test suite returned non-zero after wave merge to main. Operator must decide whether to revert. |
+| `wave_dirty_main` | error | Wave runner detected modifications on main before dispatching. Commit, stash, or reset before re-running. |
+| `wave_pending_fix_count` | info | Number of slices with `pending_fix: true`. Planner picks them first next wave. Informational; no halt. |
+| `wave_escalation_count` | warn | Slices moved to `needs-review/` since the last retrospective due to repeated wave failures. Investigate at next retro. |
+
+Emitted by: `src/scripts/lib/wave/runner.mts` (via snapshot writer).
+Consumed by: `loop-snapshot.md` Wave telemetry block; dashboards reading `snapshot.haltBadges`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.

@@ -12,6 +12,7 @@ type BatchArgs = {
   depth: number;
   childCwdById: Record<string, string>;
   childBranchById: Record<string, string>;
+  repoRoot: string;
 };
 
 export function buildAgentBatch(plans: DispatchPlan[], args: BatchArgs): AgentBatchCall[] {
@@ -23,7 +24,8 @@ export function buildAgentBatch(plans: DispatchPlan[], args: BatchArgs): AgentBa
       depth: args.depth,
       childCwd: args.childCwdById[plan.id] ?? "",
       childBranch: args.childBranchById[plan.id] ?? "",
-      childId: plan.id
+      childId: plan.id,
+      repoRoot: args.repoRoot
     })
   }));
 }

@@ -5,6 +5,91 @@ prior to v0.3.0 shipped under the name `autonomous-loop`.
 
 ## [Unreleased]
 
+### Added
+
+- Wave-mode autonomous loop (`/loop:wave plan|run|loop`): dispatches up to
+  N independent slices per wave into parallel git worktrees, merges PASS,
+  pivots FAIL into `/crew:fix` next wave, runs post-merge tests, loops
+  until standard stop-check fires. Opt-in via
+  `loop.json:marathonRunner: "wave"`; default remains `"sequential"`.
+- `touches_files` slice frontmatter contract + parser
+  (`src/scripts/lib/wave/touches-files.mts`) + CI validator
+  (`src/scripts/validate-slice-touches-files.mts`).
+- 4 new wave halt-badges: `wave_post_merge_red`, `wave_dirty_main`,
+  `wave_pending_fix_count`, `wave_escalation_count`.
+- `loop.mts wave plan|run|loop` CLI subcommands + `loop.mts config get`
+  helper for shell scripts.
+- `renderWaveTelemetry` helper for the loop snapshot.
+
+### Changed
+
+- spec-writer agent contract requires `touches_files` in slice frontmatter
+  for wave-mode dispatch.
+- `commands/auto.md` and `commands/start.md` route to `/loop:wave loop`
+  when `loop.marathonRunner === "wave"`.
+- bun:test type shim now exports `expect` (silences TS2305 across the
+  repo).
+
+## [0.50.1] — 2026-06-13
+
+### Added
+
+- FEAT-200: Pre-computed slice risk tier — `loop slice from-feature` now writes a deterministic `risk: low | medium | high` field into every generated slice's frontmatter, computed by `src/scripts/lib/risk-classifier.mts`. Eliminates the manual "Classify risk" judgment step from `crew:lead`'s Golden Path. Rule table: HIGH if any `concern:security`/`concern:governance`/`surface:schema`/`surface:api` tag, `pm_technical_risk ≥ 0.7`, `category=security`, `priority=P0`, or `pm_customer_impact ≥ 0.85`; LOW if `category=docs`, `docs-only` tag, or both risk scores < threshold; MEDIUM otherwise. HIGH wins over LOW when both conditions hold. 19 tests in `src/tests/risk-classifier.test.mts`.
+
+## [0.50.0] — 2026-06-13
+
+### Fixed
+
+- FEAT-197: dispatch `result.json` path is now absolute — child agents in git worktrees previously wrote the marker to their own worktree CWD; `finalize` only scanned the main repo and marked all as `no marker`. Fix: `dispatch-prompt.mts` now emits an absolute path via `path.join(repoRoot, ...)` (AC-2); `dispatch-aggregate.mts` adds a fallback worktree scan when the main repo has no marker (AC-3); main repo marker always wins when both present (AC-4). 5 new tests in `src/tests/dispatch-result-path.test.mts`.
+
+## [0.49.1] — 2026-06-13
+
+### Added
+
+- FEAT-179: Decay-ranked, citation-tracked learnings retrieval (`src/scripts/lib/learnings-decay.mts`, `learnings-citations.mts`, `learnings-ranker.mts`) — learning confidence decays ~10%/week at read time (timestamp multiplier, no daemon); every retrieval is appended to a citations ledger (`citations.jsonl`); utility scores update from grade outcomes (+1 pass / -2 fail); `loop lessons rank [--query <title>] [--limit N]` CLI subcommand returns decay×utility-ranked top-N trimmed to ~1000 tokens for builder dispatch injection. Tests: `learnings-decay.test.mts`, `learnings-citations.test.mts`, `learnings-ranker.test.mts` (7 ranker + 7 citation + decay tests).
+
+## [0.49.0] — 2026-06-13
+
+### Added
+
+- FEAT-101: GitHub `@crew` PR-comment teammate — `.github/workflows/crew-pr-comment.yml` GH Action triggers on PR comments; `src/scripts/lib/gh-mention-parser.mts` parses `@crew review`/`fix <text>`/`explain` (stdin-safe, sanitized); `src/scripts/lib/gh-reply-formatter.mts` formats structured reply ≤1000 chars; `src/scripts/lib/gh-rate-limiter.mts` enforces max-1-active-dispatch-per-PR guard; setup guide at `docs/integrations/github-pr-comment-teammate.md`
+
+## [0.48.0] — 2026-06-13
+
+### Added
+
+- FEAT-173: Auto-PR mode for dispatch finalize (`src/scripts/lib/dispatch-pr-mode.mts`) — `dispatchFinalizePr()` pushes each DONE child branch and creates a GitHub PR via `gh pr create` with title/body inferred from git log; `loop dispatch finalize --pr` flag enables the mode
+
+## [0.47.1] — 2026-06-13
+
+### Added
+
+- FEAT-175: Artifact link-integrity checker (`src/scripts/lib/artifact-linker.mts`) — `checkArtifactLinks()` validates `depends_on`, `derived_from`, `supersedes`, and `feature` cross-references across FEAT/slice/decision/grade artifacts; detects orphaned grades; emits Mermaid dependency graph; new `loop lint-artifacts` CLI subcommand
+
+## [0.47.0] — 2026-06-13
+
+### Added
+
+- FEAT-182: Backlog auditor (`src/scripts/lib/backlog-auditor.mts`) — `auditBacklog()` scans pending/triaged FEATs for AC keywords that already appear in the codebase, returning `likely_satisfied`/`partially`/`open` verdicts with `file:line` evidence; new `loop backlog audit` CLI subcommand
+
+## [0.46.0] — 2026-06-13
+
+### Added
+
+- FEAT-174: Error-pattern registry (`src/scripts/lib/error-pattern-registry.mts`) — `matchPatterns` detects 4 failure signatures (pause-without-artifact, empty-artifact, truncated-output, budget-exceeded); `checkDispatchResult` returns recovery hints; `logPatternMatch` appends to `learnings.jsonl`
+
+## v0.45.3 — 2026-06-13
+
+### Added
+
+- **Loop event notifications** (FEAT-171/SLICE-120): `notifyEvent()` module fires on `slice-complete` and `halt-badge` events. Supports three modes: `osNotification` (platform-native: PowerShell MessageBox, notify-send, osascript), `webhook` (POST JSON to configurable URL), `customCommand` (shell-quoted token interpolation). Configure via `loop.notifications` in `.claude/loop.json`. New module: `src/scripts/lib/event-notifier.mts`.
+
+## v0.45.2 — 2026-06-13 — Grade lessons promotion ratchet (FEAT-178 / SLICE-122)
+
+### Added
+
+- **Grade lessons promotion ratchet**: `lessons promote` CLI subcommand scans grade files, identifies repeated lessons (≥2 occurrences by default), and promotes them to `.claude/artifacts/loop/planning-rules/`. Configurable via `--max-grades`, `--min-repeats`, `--json` flags. New modules: `src/scripts/lib/lessons-ratchet.mts`, `src/scripts/lib/planning-rules.mts`. Tests: `src/tests/lessons-ratchet.test.mts` (8 tests). Addresses the backlog pattern where high-confidence lessons recur across grades but remain buried in per-slice docs; the ratchet surfaces them for re-planning.
+
 ## v0.44.1 — 2026-06-13 — Runtime stuck-detector halt-badge (FEAT-130 / SLICE-119)
 
 ### Stuck-detector halt-badge + stuck-tick / stuck-reset CLI
@@ -227,11 +312,12 @@ registry decouples them and gives users one entry point.
 ## v0.41.0 — 2026-06-11 — FEAT-167 follow-up + FEAT-168 decomposition refuse-gate
 
 ### Added
+
 - **FEAT-167 AC-3** — `cost-regression` observability log. Every
   `checkCostRegression` evaluation emits a structured JSON line to
   stderr: `{ event: "cost-regression-check", timestamp, mode,
-  actual_usd, expected_usd, median_usd_per_point, effort_points,
-  threshold_usd, triggered, multiplier, window, sample_count }`. Stays
+actual_usd, expected_usd, median_usd_per_point, effort_points,
+threshold_usd, triggered, multiplier, window, sample_count }`. Stays
   in `"median"` mode (expected_usd / median_usd_per_point /
   effort_points = null) until AC-4 lands the dual-mode switch. Silence
   via `LOOP_DISABLE_COST_REGRESSION_LOG=1` (used by
@@ -247,7 +333,7 @@ registry decouples them and gives users one entry point.
   now throws `DecompositionRequiredError` BEFORE moving any backlog
   state when a FEAT has `effort_points >= 8` and no `proposed_slices`
   field. Verbatim message: `<FEAT-NNN> is sized N points — emit
-  proposed_slices first via /loop:pm-review <FEAT-NNN>`. The strict
+proposed_slices first via /loop:pm-review <FEAT-NNN>`. The strict
   `parseProposedSlices` validator (AC-1 / AC-7) ships under
   `src/scripts/lib/proposed-slices.mts` for future callers but is NOT
   wired through `sliceFromFeature` yet — the in-tree frontmatter
@@ -255,6 +341,7 @@ registry decouples them and gives users one entry point.
   full proposed_slices integration waits on a parser extension slice.
 
 ### Deferred to follow-up slices
+
 - FEAT-167 AC-2 (interactive backfill script for done/ FEATs).
 - FEAT-167 AC-4 (dual-mode regression formula with auto-flip at
   sampleCount >= 3).
@@ -268,9 +355,10 @@ registry decouples them and gives users one entry point.
 ## v0.40.0 — 2026-06-11 — per-project cost attribution + marathon checkpoint + effort sizing seed
 
 ### Added
+
 - **FEAT-166 / SLICE-91** — per-project USD filter on the cost-regression
   gate. `AggregateCostReport` gains `perProjectUsd: Record<string,
-  number> | null`. `parseAggregateReportFile` parses a nested YAML map
+number> | null`. `parseAggregateReportFile` parses a nested YAML map
   under `per_project_usd` in aggregate report frontmatter; non-numeric
   entries are skipped, malformed YAML doesn't crash.
   `checkCostRegression` now resolves `config.loop.costProject` +
@@ -285,7 +373,7 @@ registry decouples them and gives users one entry point.
   Escalates from advisory (`warn` at `>= marathonCheckpointEvery`,
   default 4) to hard stop (`>= 2 × every`). New snapshot entry
   `marathonCheckpoint: { level, closesSinceCheckpoint, every,
-  hardThreshold, lastRetroPath }`. Halt-badge registered in
+hardThreshold, lastRetroPath }`. Halt-badge registered in
   `HALT_BADGES` so `loop brief --explain-halts` renders it alongside
   the other six. Documented in `docs/halt-badges.md` and `CLAUDE.md`.
 - **FEAT-167 AC-1 (partial — SLICE follow-up tracked)** —
@@ -298,6 +386,7 @@ registry decouples them and gives users one entry point.
   follow-up slices once the field has coverage.
 
 ### Changed
+
 - **CLAUDE.md** — § "Orchestrator mode" reworded to drop the trigger
   word "decommission" (the `crew:lead` agent kept over-weighting it
   and refusing to dispatch after the v0.39.0 lead-restore). Added an
@@ -307,12 +396,14 @@ registry decouples them and gives users one entry point.
   bypasses the ceremony rather than serving it.
 
 ### Docs
+
 - `docs/halt-badges.md` — new `### snapshot.marathonCheckpoint`
   registry entry (shape, fire conditions, suggested action, origin).
 
 ## v0.39.0 — 2026-06-11 — crew:lead restored + reviewer-validator allowlist + walker lead-routing
 
 ### Changed
+
 - `MIN_CREW_VERSION` bumped from `0.3.6` → `0.31.1` to reflect the current
   stable hero-crew release. `findCrewCli` now resolves both
   `scripts/crew.ts` (Bun-migrated crew ≥0.31.0) and `scripts/crew.mjs`
@@ -323,10 +414,11 @@ registry decouples them and gives users one entry point.
   routing instruction when `config.loop.orchestratorMode === "lead"`
   (default) — matches the slice-start ceremony so autonomous-loop
   iterations route through lead consistently with manual `/loop:slice
-  start`. `walker-gates.mts` carries the routing branch; covered by
+start`. `walker-gates.mts` carries the routing branch; covered by
   `src/tests/auto-walker.test.mts`.
 
 ### Added
+
 - `auto-dispatch.jsonl` schema extended with three optional fields
   (`stepType`, `inputTokens`, `outputTokens`). Strictly additive —
   existing readers unaffected. `stepType: "session-drift-override"`
@@ -335,7 +427,7 @@ registry decouples them and gives users one entry point.
   discriminate event kinds without parsing `event`. Schema rationale
   recorded in DEC-046. (SLICE-90 / FEAT-083)
 - `crew:lead` restored as the default slice orchestrator. `/loop:slice
-  start` now emits a `Dispatch crew:lead subagent` instruction by
+start` now emits a `Dispatch crew:lead subagent` instruction by
   default. Configurable via `config.loop.orchestratorMode` in
   `.claude/loop.json`: `"lead"` (default), `"orchestrate-slice"`,
   `"direct-builder"`. `hooks/guard-feat-dispatch.mjs` allowlists
@@ -355,6 +447,7 @@ registry decouples them and gives users one entry point.
 ## v0.38.1 — 2026-06-10 — backlog: AgentOps-adoption FEATs triaged
 
 ### Added
+
 - Six pending FEATs adapting patterns from the AgentOps sibling project into
   loop's methodology, PM-triaged (5-dimension scoring) into `triaged/`:
   - **FEAT-181** (P1, autonomous-safe) — marathon session checkpoint: mandatory
@@ -375,6 +468,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.38.0 — 2026-06-10 — Bun migration complete
 
 ### Changed
+
 - **Runtime is now Bun** — `.mts` sources run directly; the emitted
   `scripts/*.mjs` / `tests/*.mjs` trees are gone (no build step). CI,
   `package.json`, hooks, and presets invoke `bun ./src/scripts/*.mts`.
@@ -382,6 +476,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   now requires Bun ≥ `MIN_BUN_VERSION`.
 
 ### Fixed
+
 - **Migration fallout that left the CLI broken** — completed the cutover after
   the emitted tree was dropped:
   - `loop dispatch` spawned the deleted `node …/dispatch.mjs` → now `bun …/dispatch.mts`.
@@ -397,6 +492,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   is now passed explicitly in `package.json` and CI.
 
 ### Added
+
 - **`src/tests/_fixtures.mts`** — shared test constants + helpers (`makeTmpRepo`,
   `writeLoopJson`, `initGitRepo`); `eslint-plugin-sonarjs` `no-duplicate-string`
   (warn) guards against new hardcoded-literal duplication.
@@ -404,6 +500,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.37.1 — 2026-06-10 — commit-time version-drift guard
 
 ### Fixed
+
 - **Version drift caught at `git commit`, not just `git push`** — the
   `pre-push-validate` PreToolUse hook now also runs manifest validation
   (including the plugin.json / marketplace.json / package.json version
@@ -414,13 +511,15 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   fuller gate (manifests + content-length + format:check).
 
 ### Process
+
 - Reminder enforced by the new guard: **always bump via `npm run bump-version
-  <version>`** — it updates all three manifests atomically. Never hand-edit a
+<version>`** — it updates all three manifests atomically. Never hand-edit a
   single version field.
 
 ## v0.37.0 — 2026-06-10 — feature toggles + slice-title canonicalization
 
 ### Added
+
 - **`featuresService`** (`src/scripts/lib/features-service.mts`, FEAT-170) — a
   simple named feature-toggle set: `isEnabled(feature, config)` reads a
   top-level `features` block in `.claude/loop.json`
@@ -436,6 +535,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   github-sync all resolve titles identically.
 
 ### Fixed
+
 - **Snapshot ↔ walker consistency** (FEAT-177) — `/loop:snapshot-memory` now
   excludes `deferred: true` FEATs from "Top triaged (next to slice)", mirroring
   the `/loop:auto` walker's pre-branch filter. Deferred items are still counted
@@ -446,6 +546,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   `resolveSliceTitle`.
 
 ### Ops
+
 - Filed upstream-request against hero-crew for specialist-dispatch completion
   enforcement (recurring pause-without-artifact pattern); tracked locally by
   FEAT-176 (deferred until upstream lands).
@@ -453,6 +554,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.36.0 — 2026-06-10 — state contract + doctor
 
 ### Added
+
 - **Loop State Contract (Schema v1)** — New `docs/state-contract.md` documents
   the authoritative state model for backlog, slices, grades, decisions, releases,
   and retrospectives. Covers purpose, authoritative roots, field constraints for
@@ -483,23 +585,26 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   (authoritative root empty but stray populated).
 
 ### Fixed
+
 - **Dual Backlog Tree Divergence** — `backlog add` and all path-bearing commands
   now honor `.claude/loop.json` path overrides. Resolves hero-crew FEAT-144:
   diverged backlog trees in dual-root setups are now merged and deduplicated
   by the doctor tool.
 
 ### Changed
+
 - `loop doctor` command added to usage banner and help output.
 
 ## v0.35.0 — 2026-06-10 — PM enrichment: spec-writer agent, risk rubric, grade feedback
 
 ### Added
+
 - **`loop:spec-writer` agent** — merges the vendored `3rdparty/sdd-spec-writer`
   and `3rdparty/specification` agents into one owned agent with two output
   modes: formal 10-section SPEC documents (REQ/SEC/CON ids, Given-When-Then
   AC, test strategy) and executable SDD slice specs (exact contracts, ≥3
   concrete test cases, verification commands). Emits `developer_type:
-  agent | human` to inform `autonomous_safe`. Dispatched by `loop:pm` when
+agent | human` to inform `autonomous_safe`. Dispatched by `loop:pm` when
   AC clarity fails. The two 3rdparty source agents are removed.
 - **PM Framework 4: Grade Feedback** — weak-dimension rule (any grade
   dimension averaging < 0.80 over the last 5 grades must be named in
@@ -511,7 +616,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 - **Banded `technical_risk` rubric + pre-mortem** — 4-band scoring table
   (pattern novelty, blast radius, rollback cost, contract reach) replaces
   gut-feel floats; 3-question pre-mortem mandatory at `technical_risk >=
-  0.6` or P0/P1; `crew:3rdparty:critical-thinking` dispatched before
+0.6` or P0/P1; `crew:3rdparty:critical-thinking` dispatched before
   finalizing P0/P1 or `needs-review` scores; failure-mode probe added to
   Risk Radar.
 - **AC quality checklist + INVEST check** in `loop:authoring-slices` —
@@ -523,10 +628,11 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   disposition (`/loop:learn`, `/loop:backlog-add`, or covered-by-DEC);
   dimensions weak across two consecutive retros escalate to a dedicated FEAT.
 - **`parseJsonFlag` helper** (`scripts/lib/json-flag.mjs`) — `backlog
-  pm-write --scores` now tolerates PowerShell backslash-escaped JSON;
+pm-write --scores` now tolerates PowerShell backslash-escaped JSON;
   5 new tests in `tests/json-flag.test.mjs`.
 
 ### Changed
+
 - FEAT-166/167/168 triaged via the enriched PM (all P1,
   `autonomous_safe: false`); FEAT-167/168 acceptance criteria rewritten to
   the new AC standard via spec-writer dispatch.
@@ -534,6 +640,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.34.0 — 2026-06-09 — glob-scoped rule auto-attach (FEAT-082)
 
 ### Added
+
 - **FEAT-082 SLICE-86** — Glob-scoped rule auto-attachment library. New
   `loadRules(rulesDir)` in `src/scripts/lib/rule-loader.mts` reads `*.md`
   files from a rules directory, parses YAML frontmatter (`id`, `globs`,
@@ -548,13 +655,14 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   Files: `src/scripts/lib/rule-loader.mts`,
   `src/scripts/lib/loop-installer-tokens.mts`, `templates/master-prompt.md`.
 - **DEC-042** — Empty-string glob guard in `patternSubsumed`: `if (!p1 || !p2)
-  return false` prevents `String.includes("")` from matching everything.
+return false` prevents `String.includes("")` from matching everything.
 - **DEC-043** — `buildTokens` extras interface extended with `rulesBlock?:
-  string`; all template tokens must be threaded through `buildTokens`.
+string`; all template tokens must be threaded through `buildTokens`.
 
 ## v0.33.0 — 2026-06-09 — skill activation triggers + verification skill hardening
 
 ### Added
+
 - **FEAT-134 SLICE-84** — Skill activation triggers. New `parseSkillFrontmatter`
   parser reads `trigger` (`always_on` | `glob` | `manual` | `model_decision`) and
   `globs` from SKILL.md YAML frontmatter. New async `buildSkillActivationBlock`
@@ -571,6 +679,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   `always_on` and `model_decision` are silently filtered.
 
 ### Changed
+
 - **FEAT-089 SLICE-85** — Verification skill evidence table hardening.
   `skills/verification-before-completion/SKILL.md` gains explicit
   `trigger: "always_on"` frontmatter field and two new evidence rows:
@@ -581,6 +690,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.32.0 — 2026-06-09 — FEAT-020: hierarchical parallel dispatch primitive
 
 ### Added
+
 - **FEAT-020 SLICE-1** — Hierarchical parallel subagent dispatch primitive.
   New library `src/scripts/lib/hierarchical-dispatch.mts` (split into nine
   `dispatch-*.mts` modules with a barrel re-export), CLI subcommand
@@ -604,6 +714,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.31.0 — 2026-06-08 — competitor gap audit: 4 new briefs + 22 triaged FEATs
 
 ### Added
+
 - Competitor gap audit expanded to 11 briefs: add OpenHands, GitHub Copilot
   Workspace, Qodo, and Windsurf briefs; matrix grows from 47 to 68 ranked gaps.
 - 22 new triaged FEATs from audit (FEAT-082–FEAT-165, duplicates removed):
@@ -619,6 +730,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## Unreleased
 
 ### Added
+
 - Add `multidim` reviewer-ladder preset (FEAT-079, SLICE-82): 3 narrow
   dimensions (correctness / test-coverage / conventions) with
   scope-fence + hard tool budget per prompt. Default ladder unchanged.
@@ -637,6 +749,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.30.0 — 2026-06-08 — auto-publish GitHub issues at point of FEAT/SLICE creation
 
 ### Added
+
 - `publishFeat(repoPath, featId)` — targeted single-FEAT GitHub issue create; writes
   `github_issue`, `github_milestone`, `github_url` back to frontmatter.
 - `publishSlice(repoPath, sliceId, featId)` — targeted single-SLICE sub-issue create;
@@ -652,6 +765,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 - 9 new unit tests covering create, idempotency, disabled, and error paths.
 
 ### Fixed
+
 - `publishAll` and `syncMilestones` now persist `github_url` (full URL) alongside
   `github_issue` (number) so callers can link directly without re-deriving the repo slug.
 - Backfill path: re-running `/loop:publish` on FEATs/SLICEs that have `github_issue`
@@ -660,6 +774,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.29.0 — 2026-06-07 — extend document-writer scope to API docs + diagram captions (FEAT-124)
 
 ### Added
+
 - Extended `loop:document-writer` scope to cover API reference documentation
   (OpenAPI specs, SDK guides, integration guides, error docs, versioning,
   deprecation notices) and diagram captions / Mermaid prose / architecture
@@ -671,6 +786,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   `skills/domain/backend-advisory/`, `skills/domain/architecture-advisory/`.
 
 ### Deprecation
+
 - `crew:copywriter` (hero-crew) will be removed in hero-crew v0.21.0 as part
   of FEAT-124 consolidation. Migrate `subagent_type: crew:copywriter` to
   `subagent_type: loop:document-writer`. The deprecation banner in
@@ -681,6 +797,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.28.2 — 2026-06-07 — triage tighten + post-release backfill
 
 ### Changed
+
 - **`backlog pm-write` auto-promotes pending → triaged.** When the FEAT being
   scored is currently under `pending/`, `writePmScores` now moves it to
   `triaged/` and sets `status: triaged` in the same call. Closes the gap
@@ -698,6 +815,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   review (I1 follow-up).
 
 ### Added
+
 - **Negative-path test for `validateAllPresets`.** New
   `src/tests/validate-manifests.test.mts` (5 tests) covers happy path,
   missing presets dir, single SchemaError, single SyntaxError, and
@@ -728,6 +846,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.28.0 — 2026-06-07 — role-agent skill activation (FEAT-075)
 
 ### Added
+
 - Preset schema gains optional `roles.{pm,researcher,architect,document-writer}.skills`
   block. Mirrors Phase 1's `fe.skills` / `be.skills` / `skills` pattern for
   loop-owned role agents.
@@ -742,12 +861,14 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 - `validateAllPresets` (manifest validator) checks the new block.
 
 ### Changed
+
 - `/loop:backlog-enrich` now resolves the architect skill loadout from the
   preset and prepends the resolved block to the architect dispatch prompt.
   Falls back to the agent's baked-in routing table when the resolver returns
   exit 2.
 
 ### Roadmap (not in this slice)
+
 - Wire `loop:pm`, `loop:researcher`, `loop:document-writer` dispatchers in
   their respective slash flows (mirror the architect change above).
 - Remove static "Required skills" tables from `agents/{pm,researcher,architect,document-writer}.md`
@@ -758,6 +879,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
 ## v0.27.0 — 2026-06-07 — preset-driven skill activation (Phase 1)
 
 ### Added
+
 - Preset schema v1: `schemaVersion`, `projectType`, `split`, `frontend`,
   `backend`, `contract`, `deployment`, plus `skills` (when `split: false`)
   or `fe.skills` + `be.skills` (when `split: true`).
@@ -772,6 +894,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   `## Required skills (resolved)` Markdown block.
 
 ### Changed
+
 - All six shipped presets updated to schema v1 with explicit skill arrays.
 - `.claude/loop.json` for this repo carries new axis fields (matches
   `typescript-plugin-dev` preset).
@@ -781,6 +904,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   (`tags`, `needs_contract`, `needs_ux`), not five.
 
 ### Removed
+
 - `buildClassifyUpdates` no longer writes `stack:*` or `surface` into
   FEAT / slice frontmatter. `classify-parser.mts` no longer ships
   `SurfaceValue`, `VALID_SURFACES`, `VALID_STACKS`, `parseSurface`.
@@ -788,6 +912,7 @@ No code/runtime changes — plugin behavior is identical to v0.38.0.
   the fields.
 
 ### Roadmap (not in this slice)
+
 - Phase 2: `/crew:orchestrate-slice` automatic invocation of the resolver
   CLI. Blocked on upstream `hero-crew` change documented in
   `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`.
@@ -802,30 +927,36 @@ Enable `noUncheckedIndexedAccess: true` in `tsconfig.json` (SLICE-77). Fixes 130
 Aggregate release bundling eight commits since v0.25.1: the SPEC-004 code-quality pivot work (Phases A–C), the FE/BE routing schema additions, and crew:lead removal from this repo's dispatch surface.
 
 **SPEC-004 Phase A — dead-code sweep (FEAT-069)**
+
 - Removed marker-drain consumer code, one-shot migrators, and the marker-write fallback path. Marker queue at `.claude/artifacts/loop/pending-dispatch/` is deprecated (DEC-011); no consumer remained.
 - Test file renamed: `slice-complete-marker-drain.test` → `slice-complete-ceremony.test`.
 
 **SPEC-004 Phase B — tsconfig tighten (FEAT-070 / FEAT-072 / FEAT-073)**
+
 - B1 (SLICE-72): `noImplicitAny: true` + `useUnknownInCatchVariables: true`.
 - B2 + B3 (SLICE-73): `noUnusedLocals` + `noUnusedParameters` + `noImplicitOverride` + `noFallthroughCasesInSwitch`.
 - B4 (SLICE-74): `exactOptionalPropertyTypes` on prod `tsconfig.json`; disabled on `tsconfig.test.json` per DEC-027 (test mocks legitimately pass `undefined` explicitly).
 - Knock-on refactors: helper extraction over `eslint-disable` for `startSlice` complexity (DEC-026); `Record<string, any>` over `Record<string, unknown>` for opaque property bags (DEC-025).
 
 **SPEC-004 Phase C — perf top-10 (FEAT-071)**
+
 - SLICE-75 + SLICE-76 land bench harness + ten perf wins: memo snapshot, lazy module loading, batched git invocations, regex hoisting to module scope (classify-parser, frontmatter, others), frontmatter-cache module, and other hot-path reductions.
 
 **FE/BE routing schema additions**
+
 - `/loop:backlog-enrich` architect prompt now emits `surface` (`frontend` / `backend` / `mixed` / `none`) and `stack` (vocab list) alongside the existing `tags` / `needs_contract` / `needs_ux` fields.
 - `classify-parser.mts` ships `SurfaceValue` type, `VALID_SURFACES`, `VALID_STACKS`, and parser branches for both fields.
 - `slice-linker/feature-lifecycle.mts::buildClassifyUpdates` writes the new fields into FEAT / slice frontmatter.
 - Upstream request filed at `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`: asks `/crew:orchestrate-slice` to read these fields and route to `crew:builder-fe` / `crew:builder-be` accordingly. Until crew ships the reader, all dispatches still fall through to the generic `crew:builder`.
 
 **crew:lead decommissioned in this repo**
+
 - Removed from `hooks/guard-feat-dispatch.mjs` allowlist; updated error message.
 - `CLAUDE.md` gained a "Decommissioned roles" section documenting the change and the path to re-enable.
 - `agents/architect.md` + `agents/pm.md` boundaries text updated to drop the lead-routing line.
 
 **Agent skill mappings**
+
 - `agents/{architect,pm,researcher,document-writer}.md` gained a "Required skills (invoke via `Skill` tool at start of every dispatch)" section using real installable skill names (`superpowers:brainstorming`, `superpowers:verification-before-completion`, `loop:loop-discipline`, `claude-md-management:claude-md-improver`, etc.). Aspirational skill paths kept in a separate "consult when context matches" section.
 
 ## v0.25.1 — 2026-06-07 — docs: upstream-request for hero-crew preflight chained-cd MSYS paths (FEAT-068 / SLICE-68)
@@ -981,7 +1112,7 @@ Third derived FEAT from SPEC-003. Closes the SPEC loop-side by enforcing the thr
 
 1. Every `HALT_BADGES[i].field` has a `### snapshot.<field>` heading in the docs
 2. Every `### snapshot.<x>` heading in the docs has a `HALT_BADGES` entry
-3. Every snapshot.* key emitted by `assembleStopResult` is either in `HALT_BADGES` or in `SNAPSHOT_BOOKKEEPING_ALLOWLIST`
+3. Every snapshot.\* key emitted by `assembleStopResult` is either in `HALT_BADGES` or in `SNAPSHOT_BOOKKEEPING_ALLOWLIST`
 4. `stop-check` output has all required top-level keys
 5. `HALT_BADGES` is non-empty
 
@@ -1017,6 +1148,7 @@ When no halt-badges are populated, prints `No halts active.` Without the flag, b
 ### New module
 
 `src/scripts/lib/halt-badges.mts`:
+
 - `HALT_BADGES` registry — typed list mirroring `docs/halt-badges.md` (FEAT-063)
 - Per-field renderers for `costRegression`, `sessionDrift`, `sliceCostCeiling`, `gradeTrend`
 - `explainHalts(brief): string` — iterator that skips fields the registry doesn't know about (graceful degrade for future halt-badges)
@@ -1056,6 +1188,7 @@ Each entry: TypeScript-style shape, meaning, fire condition, suggested operator 
 CLAUDE.md updated to load registry at session start. FEAT-063 frontmatter cross-links to `docs/halt-badges.md` via new `registry_doc:` field.
 
 Unblocks the rest of SPEC-003:
+
 - **FEAT-065** loop `brief --explain-halts` flag — iterates this registry
 - **FEAT-066** schema regression test — diffs actual snapshot against documented shapes
 - **FEAT-064** crew brief-me upstream-request — iterates this registry for Blocked/Missing rendering
@@ -1071,6 +1204,7 @@ Two new presets shipped under `scripts/presets/`:
 For TypeScript Claude Code plugin repos (loop, hero-crew, etc.). Source in `src/scripts/**/*.mts` → compiled to `scripts/**/*.mjs` (committed; CI checks drift). Pure Node ESM runtime.
 
 Stack:
+
 - `build`: `npm run lint`
 - `test`: `npm test`, `node ./scripts/validate-manifests.mjs`, `node ./scripts/validate-content-length.mjs`
 - `frontendBuild`, `infraPlan`, `aspireBoot`: null
@@ -1082,6 +1216,7 @@ Mandatory docs: `README.md`, `CHANGELOG.md`, `docs/code-conventions.md`.
 For standalone C# .NET service / library repos with no frontend, no Aspire, no Python sidecars. Fills the gap between `dotnet-aspire-python` (full monorepo) and `dotnet-react` (.NET + UI).
 
 Stack:
+
 - `build`: `dotnet build -c Release --nologo`
 - `test`: `dotnet test -c Release --nologo`
 - `frontendBuild`, `infraPlan`, `aspireBoot`: null
@@ -1215,14 +1350,14 @@ the foundation: each slice can now receive its own git worktree when
 
 **Error codes:**
 
-| Code | Cause |
-|---|---|
-| `DIRTY_TREE` | Tracked-file modifications block worktree creation; untracked files under `.claude/state/` are ignored via `-uno` |
-| `WORKTREE_ADD_FAILED` | `git worktree add` exited non-zero |
-| `BRANCH_EXISTS` | Target branch already exists on a different worktree |
-| `PATH_COLLISION` | Destination directory already exists and is not a managed worktree |
-| `ROOT_NOT_WRITABLE` | `worktreeRoot` directory cannot be created or written |
-| `GIT_NOT_AVAILABLE` | `git` binary not found on PATH |
+| Code                  | Cause                                                                                                             |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `DIRTY_TREE`          | Tracked-file modifications block worktree creation; untracked files under `.claude/state/` are ignored via `-uno` |
+| `WORKTREE_ADD_FAILED` | `git worktree add` exited non-zero                                                                                |
+| `BRANCH_EXISTS`       | Target branch already exists on a different worktree                                                              |
+| `PATH_COLLISION`      | Destination directory already exists and is not a managed worktree                                                |
+| `ROOT_NOT_WRITABLE`   | `worktreeRoot` directory cannot be created or written                                                             |
+| `GIT_NOT_AVAILABLE`   | `git` binary not found on PATH                                                                                    |
 
 **Slice-start ceremony changes:**
 
@@ -1401,10 +1536,10 @@ individual session. The new gate would have halted the loop at the
 
 #### Configuration knobs (`.claude/loop.json`)
 
-| Key | Default | Description |
-|---|---|---|
-| `loop.costRegressionWindow` | `5` | Number of recent aggregate cost reports used to compute the rolling median. |
-| `loop.costRegressionMultiplier` | `3.0` | Stop threshold expressed as a multiple of that median. |
+| Key                             | Default | Description                                                                 |
+| ------------------------------- | ------- | --------------------------------------------------------------------------- |
+| `loop.costRegressionWindow`     | `5`     | Number of recent aggregate cost reports used to compute the rolling median. |
+| `loop.costRegressionMultiplier` | `3.0`   | Stop threshold expressed as a multiple of that median.                      |
 
 Both knobs are optional; defaults apply when absent.
 
@@ -1619,12 +1754,12 @@ DEC-011 makes that contract permanent and supersedes DEC-004.
 Operators and CI: switch direct invocations of the four CLI subcommands
 to the matching slash flow:
 
-| Old CLI                                      | New contract                  |
-|----------------------------------------------|-------------------------------|
-| `node scripts/loop.mjs backlog enrich`       | `/loop:backlog-enrich`        |
-| `node scripts/loop.mjs backlog add` (no body)| `/loop:backlog-add`           |
-| `node scripts/loop.mjs spec decompose`       | `/loop:spec-decompose`        |
-| `node scripts/loop.mjs slice complete`       | `/loop:slice-complete`        |
+| Old CLI                                       | New contract           |
+| --------------------------------------------- | ---------------------- |
+| `node scripts/loop.mjs backlog enrich`        | `/loop:backlog-enrich` |
+| `node scripts/loop.mjs backlog add` (no body) | `/loop:backlog-add`    |
+| `node scripts/loop.mjs spec decompose`        | `/loop:spec-decompose` |
+| `node scripts/loop.mjs slice complete`        | `/loop:slice-complete` |
 
 The CLI subcommands themselves remain available for audit-only use
 (refusal + audit-log line). `dispatchAgent` and `appendAuditLog` are
@@ -1637,7 +1772,7 @@ use and no consumer is planned.
 ### Evidence
 
 - Builder commit: `7e8790a` on `main` (`feat(SLICE-50): remove CLI
-  auto-dispatch ...`)
+auto-dispatch ...`)
 - Review: PASS — `.claude/artifacts/crew/reviews/20260605T142553Z-review-result-slice-50-remove-cli-auto-dispatch-slash-flows-are-the-contra.md`
 - Validation: PASS — `.claude/artifacts/crew/validations/20260605T142928Z-validation-result-slice-50-cli-auto-dispatch-removal-runtime-validation.md`
 - Decision: `.claude/artifacts/loop/decisions/DEC-011.md` (supersedes
@@ -1707,6 +1842,7 @@ loop plugin makes the protection universal for every loop consumer.
 ### Tests
 
 Behavioral matrix run via subprocess against `hooks/guard-feat-dispatch.mjs`:
+
 - Allows `crew:architect` on FEAT
 - Allows `crew:uxdesigner` on FEAT
 - Allows `loop:architect` on FEAT (`/loop:backlog-enrich` path)
@@ -1881,6 +2017,7 @@ New module `src/scripts/lib/classify-parser.mts` exports `parseClassifyOutput(ra
 **`loop-installer.mts` split into 3 modules (FEAT-044 / SLICE-47)**
 
 `loop-installer.mts` was 533 lines (33% over the 400-line convention). Split into:
+
 - `loop-installer-tokens.mts` (82 lines) — `readTemplate`, `renderTemplate`, `resolveLoopPath`, `buildMandatoryDocsList`, `buildContextRulesList`, `buildTokens`
 - `loop-installer-scaffold.mts` (346 lines) — 7 scaffold write functions
 - `loop-installer.mts` trimmed to 168 lines; re-exports `buildContextRulesList` for test compat
@@ -2298,7 +2435,7 @@ spawn a role agent without the user remembering to ask for one.
 - Owned agents capped at 300 lines, SKILL.md at 200. `agents/3rdparty/`
   exempt (vendored — avoiding fork-and-trim chore on every refresh).
 - Wired into CI (`.github/workflows/ci.yml`), `npm run
-  validate:lengths`, and the pre-push hook.
+validate:lengths`, and the pre-push hook.
 - `parseSkipFlag` / `agentSkipPaths` opt overrides for callers.
 - 14 tests cover the contract.
 
@@ -2372,6 +2509,7 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Features
 
 **Pluggable task-store backend (FEAT-024)**
+
 - New `scripts/lib/task-store/` provider layer: `TaskStoreProvider` interface, `GithubProvider`, `NoopProvider`, `LinearProvider` stub.
 - `getProvider(config, repoPath)` resolver reads `taskStore.provider` from `loop.json`; back-compat with `github.enabled: true`.
 - `setup-task-store.mjs --provider <github|noop|linear>` adopter script.
@@ -2379,31 +2517,37 @@ this instead of fabricating confidence when scope exceeds PM ability.
 - `loop task-store` alias added.
 
 **Observability: warn on unknown provider (FEAT-027)**
+
 - `getProvider` emits `console.warn` when falling through to NoopProvider due to an unrecognised provider name.
 - `loop github sync`/`bootstrap` log resolved provider name at INFO level.
 
 **Architect / editor two-model split — `loop architect` (FEAT-005)**
+
 - New `loop architect --id SLICE-NN` command: runs `runPlanPreflight` as the architect model (Opus), returns plan artifact + two-model dispatch instruction naming both architect and editor models.
 - `resolveArchitectModels(config)` added to model-router; `"architect"` added to `MODEL_PHASES`.
 - `commands/architect.md` skill doc.
 
 **Plan Mode conditional gate in `startSlice` (FEAT-006 SLICE-B)**
+
 - `runPlanPreflight` now runs as a best-effort parallel resource in `startSlice`.
 - `computeApprovalGate(autonomousSafe, autoMode, dispatch)` — exported pure helper.
 - `requiresApprovalGate` and `planPreflight` included in `startSlice` return.
 - Gate fires when `autonomous_safe: false` and loop not in auto mode; suppressed when `loop.autoMode: true`.
 
 **Autonomous backlog walker updates (FEAT-025)**
+
 - SLICE-B: `evaluateRiskGate` (deferred/depends_on → skip; pm_risk_level ≥ 0.7 → warn). `processUnsafeEntry` produces plans with `requiresPlanPreflight: true`. `writeAutoRunSummary` writes `.claude/artifacts/loop/auto-runs/` artifact.
 - SLICE-C: `costStopThreshold` enforcement (plan-count proxy; reads `loop.json`). `orchConfig: { costStopThreshold, escalationThreshold: 3, autoMode }` in return. `--auto-mode` CLI flag wired.
 - `loop auto` now processes `autonomous_safe: false` items (with risk gate).
 
 **Trajectory JSONL step log (FEAT-008)**
+
 - New `scripts/lib/trajectory-writer.mjs`: `recordStep`, `readTrajectory`, `trajectoryPath`.
 - `startSlice` and `completeSlice` emit `slice_start`/`slice_complete` events to `.claude/artifacts/loop/trajectories/<sliceId>-trajectory.jsonl`.
 - `loop trajectory --id SLICE-NN` CLI query.
 
 **Autonomous PR autofix loop (FEAT-009)**
+
 - New `scripts/lib/pr-fixer.mjs`: `fetchPrStatus` (gh CLI), `categorizePrIssues` (5 categories), `runPrFix` (circuit breaker via `priorAttempts`).
 - Categories: `ci_failure`, `lint`, `test_failure`, `review_comment`, `security`.
 - `loop pr-fix --pr N` CLI command.
@@ -2418,6 +2562,7 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Fixes
 
 **Plugin cache `ENOENT: presets/` regression**
+
 - Claude Code's plugin fetcher populates `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` by selectively copying recognized plugin-component directories (`commands/`, `scripts/`, `skills/`, `tests/`). Top-level `presets/` was dropped on install, causing `node ./scripts/loop.mjs <any-cmd>` to crash with `ENOENT: no such file or directory, scandir '<cache>/0.5.5/presets'` because `scripts/lib/config-resolver.mjs` reads the preset directory at startup.
 - Moved `presets/` → `scripts/presets/` so the directory rides along with `scripts/` in the cache copy.
 - Updated `scripts/lib/config-resolver.mjs` and `src/scripts/lib/config-resolver.mts`: `path.resolve(scriptDir, "..", "presets")` (one `..` instead of two).
@@ -2428,11 +2573,13 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Features
 
 **Cross-session learnings (FEAT-011)**
+
 - Persistent JSONL store at `.claude/artifacts/loop/learnings.jsonl`.
 - `recentLearnings(repo, n)` returns the top `n` most-recent entries; `/loop:start` surfaces the top 3 automatically so the agent inherits session-to-session observations without manual recall.
 - Guard added: `recentLearnings(repo, 0)` returns an empty array instead of the full store.
 
 **GitHub Issues integration (Phase 21)**
+
 - Bidirectional sync layer in `scripts/lib/github-sync.mjs` + `scripts/lib/github-sync/*`: milestones, issues, sub-issues, comments, body-diff.
 - Public API: `publishAll`, `syncPull`, `syncMilestones`, `postSliceComment`, `updateIssueStatus`, `bootstrapFromGithub`.
 - `loop.json` `github: { enabled, repo }` opt-in block.
@@ -2445,15 +2592,18 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Features
 
 **Integration test coverage (FEAT-023)**
+
 - New `src/tests/integration.test.mts`: 3 full-cycle `startSlice` → `completeSlice` scenarios in tmp repos (happy path, validation-blocked, `--skip-validation-check` bypass).
 - New `src/tests/gates.test.mts`: blocking + passing cases for `deriveValidationGate`, `deriveTestAdequacyGate`, `computeFeatureResult`.
 - Test count: 403 → 427 (+24 net new integration and gate tests).
 
 **ESLint sub-module boundary rule**
+
 - `eslint.config.mjs` now enforces `import/no-restricted-paths`: code outside `slice-linker.mts` barrel cannot import `slice-linker/*` sub-modules directly.
 - Fixed pre-existing violation in `grade-writer.mts` (was importing `renderIdentification` directly; now goes through barrel).
 
 **CI hardening**
+
 - `.github/workflows/test.yml` renamed to `ci.yml`; `pull_request` trigger added.
 - `npm run typecheck` step added — runs on every PR, not only on push to main.
 
@@ -2462,20 +2612,24 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Features
 
 **TypeScript Phase 1 migration (FEAT-021)**
+
 - All library source files ported to `.mts` under `src/scripts/lib/`.
 - Permissive Phase 1 settings: `noImplicitAny: false`, `strictNullChecks: false`, liberal `any` casts.
 - Compiled output stays in `scripts/` (committed); drift guard (`git diff --exit-code scripts/`) blocks uncompiled changes.
 - Tests compile to `tests/` via `tsconfig.test.json` (`outDir: "."`); `npm test` runs the compiled `.mjs` test files.
 
 **`requires_validation: true` in slice scaffold (SLICE-05)**
+
 - `sliceFromFeature` now writes `requires_validation: true` to the slice frontmatter template.
 - Operators can override to `false` for pure-refactor or doc-only slices to waive the validation gate upfront.
 
 **`slice-linker` decomposition into 4 sub-modules (FEAT-022)**
+
 - `slice-linker.mts` (741 lines) split into focused modules: `feature-lifecycle.mts`, `complete-slice.mts`, `start-slice.mts`, `dispatch.mts`.
 - Public API preserved via barrel re-export. All 401 tests unchanged.
 
 **Dispatch budget enforcement**
+
 - `buildDispatchInstruction` now accepts `dispatchLimits` (from `loop.json`) and injects a hard-limit budget block into every builder subagent prompt.
 - Builder sees: max subagents per slice, inline-preferred task types, bundle hint.
 - `startSlice` propagates `resolved.loop.dispatchLimits` automatically.
@@ -2483,6 +2637,7 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Fixes
 
 **Cost report `costProject` slug mismatch**
+
 - `loop.json` `costProject` corrected to `"C--work-mega-hero-crew-autonomous-loop"` — matches the slug the crew cost-slice CLI derives from the Windows repo path.
 - Previously caused `sessions_scanned: 0` in all cost reports and false F grades.
 
@@ -2491,22 +2646,26 @@ this instead of fabricating confidence when scope exceeds PM ability.
 ### Features
 
 **AC linter gate (`startSlice`)**
+
 - New `ac-linter.mjs` module: rejects slice start when any `AC-N:` bullet is a
   placeholder (`...`, `<...>`, `TBD`, or empty).
 - Slice template updated: `AC-1` is now a concrete criterion; `AC-2` is an explicit
   placeholder that agents must replace before calling `startSlice`.
 
 **Ladder gate (`startSlice`)**
+
 - Blocks start when `checkGradeTrend` signals ≥ 2 consecutive below-threshold scores.
 - Threshold and window size configurable via `loop.gradeTrendThreshold` /
   `loop.gradeTrendConsecutiveLimit` in `loop.json`.
 
 **Marathon milestone (`startSlice`)**
+
 - Returns `marathonMilestone` in `startSlice` result when all window scores are at
   or above threshold, signalling a sustained quality run.
 - Window size configurable via `loop.marathonMilestoneLength`.
 
 **Test-adequacy gate (`completeSlice`)**
+
 - New `test-adequacy-gate.mjs`: reads linked review artifacts and checks each for a
   populated `Test Adequacy:` field (crew CLI writes `-` by default).
 - `completeSlice` refuses to advance feature → done when any linked review artifact
@@ -2526,11 +2685,13 @@ Lead agent now embeds context inline before dispatching subagents, eliminating
 cold-start re-reads that caused 10–15 wasted tool uses per slice.
 
 **Builder dispatch (`buildDispatchInstruction`)**
+
 - Full slice `.md` content appended as `## Slice context (pre-read)` block.
 - First 400 chars of linked feature's `## Description` appended as feature excerpt.
 - Builder skips ~3 file re-reads and starts framing immediately.
 
 **Reviewer prompts (`buildReviewLadder`)**
+
 - New `extractFilesSection()` helper extracts `**Files:**` / `## Files` block
   from slice content and injects it before "What to do" in every reviewer prompt.
 - New `runGitDiffStat()` helper captures `git diff HEAD~1 --stat` and injects it
@@ -2574,7 +2735,7 @@ auditable bypass.
 ### New surface
 
 - `scripts/lib/validation-gate.mjs` — `deriveValidationGate(repoPath,
-  sliceId, { sliceFm })`.
+sliceId, { sliceFm })`.
 - `scripts/lib/slice-linker.mjs::completeSlice` — accepts
   `skipValidationCheck` option; result includes `validationGate` +
   `validationSkippedBadge`.
@@ -2591,7 +2752,7 @@ auditable bypass.
 Repos that were silently skipping validation must do one of:
 
 - Backfill validation artifacts for in-flight slices (`crew
-  write-validation-result --repo <path>`).
+write-validation-result --repo <path>`).
 - Set `validation_skipped` badges with reasons via `crew mark-badge`.
 - Add `requires_validation: false` to doc-only slice frontmatter.
 - Pass `--skip-validation-check "<reason>"` to `slice complete`
@@ -2600,6 +2761,7 @@ Repos that were silently skipping validation must do one of:
 ## v0.4.1 — 2026-05-28 — fix: ship missing cache.mjs
 
 ### Fix
+
 - `scripts/lib/cache.mjs` was referenced by `backlog-writer.mjs` but
   never committed in the v0.4.0 release, breaking every plugin install
   that pinned 0.4.0 (e.g. `backlog-writer.mjs:7` import of
@@ -2612,6 +2774,7 @@ Repos that were silently skipping validation must do one of:
 ## v0.4.0 — 2026-05-27 — PM agent, performance optimization, grade naming, hooks
 
 ### PM agent (new)
+
 - `pm-scorer.mjs` — 5-dimension scoring (customer_impact, effort_estimate,
   strategic_alignment, technical_risk, dependency_depth), composite priority
   derivation (P0–P3), autonomous_safe classification.
@@ -2622,6 +2785,7 @@ Repos that were silently skipping validation must do one of:
 - Backlog parser/writer enhanced with PM review frontmatter support.
 
 ### Performance optimization
+
 - **Model routing** — `model-router.mjs` resolves model per phase (sonnet
   default for build/validate, opus for review/design). Config in
   `loop.json` under `modelRouting`. Dispatch instruction includes
@@ -2636,11 +2800,13 @@ Repos that were silently skipping validation must do one of:
 - **Tool discipline** — tool failure prevention guidance (<2% target).
 
 ### Grade naming
+
 - Grade files now follow artifact naming convention:
   `YYYYMMDDTHHMMSSZ-[phaseN-][featNNN-]sliceNN-grade.md`. Backward
   compatible — grade-parser discovers both old and new format.
 
 ### Plugin hooks
+
 - Pre-push validation hook (`PreToolUse` on Bash) runs
   `validate-manifests.mjs` before `git push`.
 - Repo-local reviewer guidance (`.claude/crew/reviewer.md`) invokes
@@ -2648,6 +2814,7 @@ Repos that were silently skipping validation must do one of:
   crew reviews.
 
 ### Tech debt
+
 - Consolidated `pathExists` (4 modules) and `ensureDir` (5 modules) into
   `paths.mjs`.
 - Refactored `buildTokens` in loop-installer.mjs — cyclomatic complexity
@@ -2657,6 +2824,7 @@ Repos that were silently skipping validation must do one of:
 - `frontmatter.mjs` parseScalar now handles floats (was integers only).
 
 ### Other
+
 - Phase prefix in artifact naming simplified (`phase3` not `phase-3`).
 - 334 tests (up from 288). 0 lint warnings.
 

@@ -12,6 +12,7 @@ This repo's cortex `project_id` is **`loop`**. When calling any cortex MCP tool 
 - `scope` = `["private", "project", "shared"]` unless explicitly different
 
 ## Read first
+
 <!-- clause: read-first -->
 
 1. `README.md` — what this plugin is, install instructions, pinned release.
@@ -20,10 +21,11 @@ This repo's cortex `project_id` is **`loop`**. When calling any cortex MCP tool 
 4. `docs/sop/specialist-pause-handling.md` — SOP when builder/reviewer/validator subagents pause without writing artifact (recurring 2026-06-06 pattern).
 5. `docs/upstream-requests/` — open requests against hero-crew or other upstream plugins; check status before reopening dependent FEATs.
 6. `docs/halt-badges.md` — registry of every halt-badge field loop emits in `snapshot.*` (cross-plugin contract per SPEC-003). MUST update when adding a new halt-badge in a future FEAT.
-5. `.claude/artifacts/loop/backlog/product-backlog.md` — current roadmap (Phase 3 loop safety + telemetry).
-6. `CHANGELOG.md` — recent releases.
+7. `.claude/artifacts/loop/backlog/product-backlog.md` — current roadmap (Phase 3 loop safety + telemetry).
+8. `CHANGELOG.md` — recent releases.
 
 ## Engineering standards
+
 <!-- clause: engineering-standards -->
 
 For language-agnostic patterns and design guidance, consult
@@ -34,6 +36,7 @@ local `docs/code-conventions.md` is self-contained and authoritative
 for this repo.
 
 ## Hard dependency
+
 <!-- clause: hard-dependency -->
 
 This plugin requires the [`crew`](https://github.com/sergeymilashico/hero-crew)
@@ -41,6 +44,7 @@ plugin at the version pinned in `src/scripts/lib/plugin-identity.mts::MIN_CREW_V
 `/loop:install` refuses to run against an older crew.
 
 ## Local commands
+
 <!-- clause: local-commands -->
 
 Runtime is **Bun** — source `.mts` files run directly, no build/emit step.
@@ -54,6 +58,7 @@ Runtime is **Bun** — source `.mts` files run directly, no build/emit step.
   (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
 
 ## CI gates
+
 <!-- clause: ci-gates -->
 
 GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
@@ -71,6 +76,7 @@ Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
 
 ## Repo conventions
+
 <!-- clause: repo-conventions -->
 
 - ESM only. No CommonJS. Source is `src/scripts/*.mts`, run directly
@@ -104,6 +110,7 @@ manifest + content-length + format-check locally before any `git push`.
   counterpart is drift and should be ported.
 
 ## Marathon session checkpoint
+
 <!-- clause: marathon-checkpoint -->
 
 Long autonomous backlog walks accumulate drift if the loop never pauses
@@ -127,6 +134,7 @@ opt-out requires removing the snapshot consumer or running
 `/loop:retrospective` continuously.
 
 ## Backlog discipline
+
 <!-- clause: backlog-discipline -->
 
 Active backlog under `.claude/artifacts/loop/backlog/{pending,triaged,in-progress,done}/`.
@@ -173,6 +181,7 @@ full contract, and `scripts/validate-decline-citations.mjs` for the CI
 gate that enforces it.
 
 ## Orchestrator mode
+
 <!-- clause: orchestrator-mode -->
 
 `/loop:slice start` emits a slice-build tag-routed dispatch by default.
@@ -191,13 +200,31 @@ Legacy modes `"lead"` and `"direct-builder"` were removed in v0.43 /
 FEAT-191. Operators with stale config silently fall back to `slice-build`.
 
 Reasons for the removal:
+
 - `lead` mode suffered persistent specialist-pause across SLICE-97/98/99/101/102/103/104.
 - `direct-builder` was a strict subset of `slice-build` with `tags: []`.
 
 If the upstream lead-pause issue gets fixed in hero-crew, `lead` can be
 revived as a separate FEAT.
 
+### Wave mode (opt-in)
+
+Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/loop:auto`
+and `/loop:start` into wave mode: per-wave parallel worktree dispatch
+instead of single-slice sequential. See `commands/wave.md` and
+`docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md`.
+
+Wave mode counts each wave as one `loop.maxIterations` increment (a
+wave-size-3 config with `maxIterations: 25` allows up to 75 slice closes
+per run). Tighten `maxIterations` or pass `--max-waves` to cap cost
+proportionally.
+
+Slices must declare `touches_files` in frontmatter; spec-writer populates
+this automatically and `bun ./src/scripts/validate-slice-touches-files.mts`
+gates CI.
+
 ## Reviewer ladder presets
+
 <!-- clause: reviewer-ladder-presets -->
 
 Configurable in `.claude/loop.json` under `reviewers.ladder`. Default is
@@ -214,11 +241,11 @@ materializes the ladder lives in `commands/slice-review-ladder.md`.
   - **correctness** — logic, edge cases, regressions, AC coverage.
   - **test-coverage** — test adequacy, gaps, mutation surface.
   - **conventions** — repo conventions, lint posture, doc impact.
-  Each prompt declares one dimension only, carries an explicit
-  scope-fence ("NOT in scope" wording) so reviewers don't bleed into
-  adjacent concerns, and ships a hard tool budget (≤15 tool calls,
-  ≤8 min) plus an inline-output fallback per
-  `docs/sop/specialist-pause-handling.md`.
+    Each prompt declares one dimension only, carries an explicit
+    scope-fence ("NOT in scope" wording) so reviewers don't bleed into
+    adjacent concerns, and ships a hard tool budget (≤15 tool calls,
+    ≤8 min) plus an inline-output fallback per
+    `docs/sop/specialist-pause-handling.md`.
 
 **When to pick `multidim`.** Large or risky diffs spanning ≥5 files,
 or any slice touching public schemas / cross-module contracts.
@@ -231,6 +258,7 @@ Full preset documentation (focus copy, budget instruction, override
 recipes) lives in `commands/slice-review-ladder.md`.
 
 ## Owned agents
+
 <!-- clause: owned-agents -->
 
 Dispatch via `Agent(subagent_type: ...)`. The plugin runtime namespaces
@@ -238,7 +266,7 @@ owned agents with the `loop:` prefix — use the namespaced ID, not the
 bare frontmatter `name:` field:
 
 - `loop:pm` — backlog scoring across 5 dimensions; `compositePriority:
-  "needs-review"` escape valve when scope exceeds PM ability.
+"needs-review"` escape valve when scope exceeds PM ability.
 - `loop:architect` — read-only Node ESM design + ADR drafter for
   structural change. Use before SLICE-A of any new contract / provider
   / cross-module refactor.
@@ -261,6 +289,7 @@ bare frontmatter `name:` field:
   `3rdparty/specification` agents (merged + removed 2026-06-10).
 
 ## Auto-dispatch primitives
+
 <!-- clause: auto-dispatch-primitives -->
 
 `src/scripts/lib/auto-dispatch.mts` exposes `dispatchAgent`,
@@ -298,6 +327,7 @@ line to `.claude/artifacts/loop/auto-dispatch.jsonl` — audit trail
 for cost attribution.
 
 ## Safety
+
 <!-- clause: safety -->
 
 Never commit secrets. Never disable hooks (`--no-verify`) without
@@ -307,6 +337,7 @@ explicit user request. Never force-push to `main`.
 <!-- Installed by /loop:install. Edit .claude/loop.json to change stack-specific commands; re-run /loop:install to regenerate this block. The full HARD RULES live at .claude/loop/rules.md so this block stays small in per-session context. -->
 
 ## Autonomous Loop — HARD RULES (summary)
+
 <!-- clause: autonomous-loop-hard-rules -->
 
 This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`.
