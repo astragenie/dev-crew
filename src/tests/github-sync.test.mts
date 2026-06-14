@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { test as _test } from "bun:test";
-const test = _test.skip; // @integration: disabled until CI has gh auth configured
+import { test } from "bun:test";
+// Re-enabled 2026-06-14: @integration tests run wherever GITHUB_TOKEN or
+// `gh auth` is available. CI provides GITHUB_TOKEN automatically.
 import assert from "node:assert/strict";
 import { detectRepo } from "../../scripts/lib/github-sync/repo-detect.mjs";
 
