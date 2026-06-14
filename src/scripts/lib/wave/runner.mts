@@ -5,6 +5,7 @@
 // the runner is unit-testable.
 
 import { buildFailurePivot } from "./failure-pivot.mjs";
+import { appendWaveEvent, type WaveEvent } from "./events.mjs";
 import type {
   FailurePivot,
   SliceCandidate,
@@ -55,14 +56,27 @@ export type RunWaveDeps = {
   }>;
   cfg: WaveConfig;
   candidateLookupFn?: (sliceId: string) => SliceCandidate | undefined;
+  /**
+   * Optional event sink for wave-level trajectory events. Defaults to
+   * appending to `.claude/artifacts/loop/waves/<waveId>/events.jsonl`.
+   * Tests can inject a noop to avoid disk side effects.
+   */
+  recordEventFn?: (event: WaveEvent) => void;
 };
 
 export type RunWaveOutcome = WaveResult & {
   haltReason: string | null;
 };
 
+function defaultRecordEvent(repoRoot: string, artifactsRoot: string): (event: WaveEvent) => void {
+  return (event) => {
+    appendWaveEvent(repoRoot, artifactsRoot, event);
+  };
+}
+
 export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunWaveOutcome> {
   const t0 = Date.now();
+  const record = deps.recordEventFn ?? defaultRecordEvent(repoRoot, deps.cfg.artifactsRoot);
 
   const status = await deps.gitStatusFn(repoRoot);
   if (!status.clean) {
@@ -79,14 +93,65 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
     return makeOutcome(t0, "backlog_exhausted", plan);
   }
 
+  // From here we have a real waveId → emit lifecycle events.
+  record({ type: "wave_started", waveId: plan.waveId, timestamp: new Date().toISOString() });
+  record({
+    type: "plan_built",
+    waveId: plan.waveId,
+    timestamp: new Date().toISOString(),
+    size: plan.size,
+    rejectedCount: plan.rejected.length
+  });
+
   const prepared = await deps.prepareFn(repoRoot, plan);
+  record({
+    type: "wave_dispatched",
+    waveId: plan.waveId,
+    timestamp: new Date().toISOString(),
+    runId: prepared.runId,
+    sliceIds: plan.items.map((i) => i.sliceId)
+  });
+
   const worktreeResults = await dispatchWithTimeout(deps.dispatchFn, prepared.agentBatch, deps.cfg);
   const finalize = await deps.finalizeFn(repoRoot, prepared.runId, plan);
+  record({
+    type: "wave_finalized",
+    waveId: plan.waveId,
+    timestamp: new Date().toISOString(),
+    merged: finalize.merged,
+    conflicts: finalize.conflicts,
+    failed: finalize.failed
+  });
+
   const postMergeTest = await deps.postMergeTestFn(repoRoot, deps.cfg.postMergeTestCmd);
+  record({
+    type: "post_merge_test",
+    waveId: plan.waveId,
+    timestamp: new Date().toISOString(),
+    status: postMergeTest.status
+  });
 
   const haltReason = postMergeTest.status === "FAIL" ? "post_merge_red" : null;
-
   const failurePivots = buildPivotsForWave(plan, worktreeResults, finalize, deps);
+  if (failurePivots.length > 0) {
+    record({
+      type: "wave_pivoted",
+      waveId: plan.waveId,
+      timestamp: new Date().toISOString(),
+      pivots: failurePivots.map((p) => ({ sliceId: p.sliceId, kind: p.failureKind }))
+    });
+  }
+
+  const durationMs = Date.now() - t0;
+  record({
+    type: "wave_completed",
+    waveId: plan.waveId,
+    timestamp: new Date().toISOString(),
+    haltReason,
+    durationMs,
+    passCount: finalize.merged.length,
+    failCount: finalize.failed.length + finalize.conflicts.length
+  });
 
   const result: RunWaveOutcome = {
     waveId: plan.waveId,
@@ -96,7 +161,7 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
     failedBranches: [...finalize.failed, ...finalize.conflicts],
     postMergeTest,
     failurePivots,
-    durationMs: Date.now() - t0,
+    durationMs,
     haltReason
   };
   return result;

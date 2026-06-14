@@ -105,6 +105,17 @@ describe("wave e2e (fully mocked dispatch)", () => {
 
     writeWaveArtifacts(tmp, outcome, cfg.artifactsRoot);
     expect(existsSync(join(tmp, ".claude/artifacts/loop/waves/e2e-wave-1/plan.json"))).toBe(true);
+    expect(existsSync(join(tmp, ".claude/artifacts/loop/waves/e2e-wave-1/events.jsonl"))).toBe(
+      true
+    );
+    const { readWaveEvents } = await import("../../scripts/lib/wave/events.mjs");
+    const events = readWaveEvents(tmp, cfg.artifactsRoot, "e2e-wave-1");
+    const types = events.map((e) => e.type);
+    expect(types).toContain("wave_started");
+    expect(types).toContain("plan_built");
+    expect(types).toContain("wave_dispatched");
+    expect(types).toContain("wave_finalized");
+    expect(types).toContain("wave_completed");
     expect(existsSync(join(tmp, ".claude/artifacts/loop/waves/e2e-wave-1/wave-result.json"))).toBe(
       true
     );
