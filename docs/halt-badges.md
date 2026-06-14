@@ -269,6 +269,37 @@ This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` ret
 
 ---
 
+### `snapshot.prWatch`
+
+**Shape:**
+
+```ts
+// max-retries variant
+{ triggered: true; haltReason: "max-retries"; retriesUsed: number }
+
+// cost-exceeded variant
+{ triggered: true; haltReason: "cost-exceeded"; cumulativeCostUsd: number }
+
+// pr-closed variant
+{ triggered: true; haltReason: "pr-closed" }
+```
+
+**Meaning:** `/loop:pr-watch` terminated abnormally. The `haltReason` field identifies the stop cause. Emitted in the JSON return value of the `pr-watch` CLI command.
+
+**Fires when:**
+- `"max-retries"` — completed builder dispatches reached `loop.prWatch.maxRetries` and checks remain failing.
+- `"cost-exceeded"` — cumulative estimated cost of builder dispatches in this session reached `loop.prWatch.maxCostUsd`.
+- `"pr-closed"` — PR state is `CLOSED` (not merged) at startup or on any poll iteration.
+
+**Suggested operator action:**
+- `"max-retries"`: inspect the failing checks manually and push a fix. Re-run `bun src/scripts/loop.mts pr-watch <PR-URL>` after the fix.
+- `"cost-exceeded"`: review the failing checks for scope creep. Either raise `loop.prWatch.maxCostUsd` in `.claude/loop.json` or fix the checks manually.
+- `"pr-closed"`: the PR was closed without merging. No action from loop is possible.
+
+**Origin:** FEAT-110 / SLICE-134. Source: `src/scripts/lib/pr-watch.mts::runPrWatch`. Emitted via command JSON output, not via `stop-conditions.mts`.
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.

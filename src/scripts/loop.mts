@@ -74,6 +74,7 @@ const FLAG_SPEC = {
   "--evidence": { key: "evidence" },
   "--reasoning": { key: "reasoning" },
   "--allow-cross-session": { key: "allowCrossSession", boolean: true },
+  "--allow-human-comments": { key: "allowHumanComments", boolean: true },
   "--explain-halts": { key: "explainHalts", boolean: true },
   "--worktree": { key: "worktree" },
   // SLICE-64: auto-merge flags
@@ -150,6 +151,7 @@ function parseArgs(argv: string[]) {
     evidence: null,
     reasoning: null,
     allowCrossSession: false,
+    allowHumanComments: false,
     worktree: null,
     explainHalts: false,
     noMerge: false,
@@ -471,6 +473,72 @@ const COMMANDS = {
     }
     process.exitCode = 0;
     return { resumed: true };
+  },
+  "pr-watch": async ({ repoPath: _repoPath, flags, positionals, config }: CmdCtx) => {
+    const prUrl = positionals[0] as string | undefined;
+    if (!prUrl) {
+      console.error("pr-watch requires a PR URL as the first positional argument");
+      process.exitCode = 1;
+      return { _suppressDefaultOutput: true };
+    }
+    const { runPrWatch, readPrWatchConfig, buildDefaultExec } = await import("./lib/pr-watch.mjs");
+    const watchConfig = readPrWatchConfig(config);
+    const allowHumanComments = Boolean(flags.allowHumanComments);
+
+    if (allowHumanComments) {
+      console.warn(
+        "WARNING: human review comment text will be forwarded to crew:builder. " +
+          "Ensure the PR is from a trusted source to avoid prompt injection."
+      );
+    }
+
+    const exec = buildDefaultExec();
+    const result = await runPrWatch(prUrl, watchConfig, allowHumanComments, exec);
+
+    if (result.outcome === "all-green") {
+      console.log("PR checks all green — watch complete");
+      process.exitCode = 0;
+      return { outcome: "all-green" };
+    }
+    if (result.outcome === "pr-merged") {
+      console.log("PR already merged — nothing to watch");
+      process.exitCode = 0;
+      return { outcome: "pr-merged" };
+    }
+    if (result.outcome === "no-checks") {
+      console.log("no checks found on PR — watch exiting (nothing to fix)");
+      process.exitCode = 0;
+      return { outcome: "no-checks" };
+    }
+    if (result.outcome === "max-retries") {
+      console.error(`pr-watch stopped: max retries (${watchConfig.maxRetries}) reached`);
+      process.exitCode = 1;
+      return {
+        outcome: "max-retries",
+        prWatch: { triggered: true, haltReason: "max-retries", retriesUsed: result.retriesUsed }
+      };
+    }
+    if (result.outcome === "cost-exceeded") {
+      console.error(
+        `pr-watch stopped: cumulative cost $${result.cumulativeCostUsd.toFixed(2)} exceeds limit $${watchConfig.maxCostUsd.toFixed(2)}`
+      );
+      process.exitCode = 1;
+      return {
+        outcome: "cost-exceeded",
+        prWatch: {
+          triggered: true,
+          haltReason: "cost-exceeded",
+          cumulativeCostUsd: result.cumulativeCostUsd
+        }
+      };
+    }
+    // pr-closed
+    console.error("PR is closed — watch aborted");
+    process.exitCode = 1;
+    return {
+      outcome: "pr-closed",
+      prWatch: { triggered: true, haltReason: "pr-closed" }
+    };
   },
   "stuck-tick": async ({ repoPath, flags, positionals }: CmdCtx) => {
     const sliceArg = (flags.slice as string | undefined) ?? (positionals[0] as string | undefined);

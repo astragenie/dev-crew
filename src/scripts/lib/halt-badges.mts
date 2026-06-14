@@ -106,6 +106,25 @@ function renderStuckDetected(e: any): string[] {
   ];
 }
 
+function renderPrWatch(e: any): string[] {
+  if (!e) return [];
+  const lines = [`- Halt reason: ${e.haltReason}`];
+  if (e.haltReason === "max-retries") {
+    lines.push(`- Retries used: ${e.retriesUsed}`);
+    lines.push(
+      "- Suggested action: inspect the failing checks manually and push a fix. Re-run `bun src/scripts/loop.mts pr-watch <PR-URL>` after the fix."
+    );
+  } else if (e.haltReason === "cost-exceeded") {
+    lines.push(`- Cumulative cost: $${e.cumulativeCostUsd?.toFixed?.(2) ?? e.cumulativeCostUsd}`);
+    lines.push(
+      "- Suggested action: review failing checks for scope creep. Raise `loop.prWatch.maxCostUsd` in `.claude/loop.json` or fix the checks manually."
+    );
+  } else if (e.haltReason === "pr-closed") {
+    lines.push("- Suggested action: the PR was closed without merging. No loop action possible.");
+  }
+  return lines;
+}
+
 /** Registry — order determines render order in the explain output. */
 export const HALT_BADGES: HaltBadgeRenderer[] = [
   { field: "costRegression", gateName: "Cost regression", render: renderCostRegression },
@@ -128,7 +147,8 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
     gateName: "Paused for external event",
     render: renderPausedForExternalEvent
   },
-  { field: "stuckDetected", gateName: "Stuck detector", render: renderStuckDetected }
+  { field: "stuckDetected", gateName: "Stuck detector", render: renderStuckDetected },
+  { field: "prWatch", gateName: "PR watch halt", render: renderPrWatch }
 ];
 
 /**

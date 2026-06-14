@@ -154,6 +154,11 @@ test("explainHalts: multiple halts → renders ALL fired in registry order", () 
         attempts: 3,
         threshold: 3,
         lastAttemptAt: "2026-06-13T12:00:00.000Z"
+      },
+      prWatch: {
+        triggered: true,
+        haltReason: "max-retries",
+        retriesUsed: 3
       }
     }
   };
@@ -223,7 +228,7 @@ test("explainHalts: unknown registry field on snapshot is ignored (graceful degr
   assert.equal(out.includes("futureHalt"), false);
 });
 
-test("HALT_BADGES registry has the 9 known fields in expected order", () => {
+test("HALT_BADGES registry has the 10 known fields in expected order", () => {
   const fields = HALT_BADGES.map((b) => b.field);
   assert.deepEqual(fields, [
     "costRegression",
@@ -234,6 +239,7 @@ test("HALT_BADGES registry has the 9 known fields in expected order", () => {
     "redundantReadStop",
     "marathonCheckpoint",
     "pausedForExternalEvent",
-    "stuckDetected"
+    "stuckDetected",
+    "prWatch"
   ]);
 });
