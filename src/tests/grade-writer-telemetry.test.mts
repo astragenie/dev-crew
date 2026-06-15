@@ -6,7 +6,7 @@ import os from "node:os";
 
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
-// @ts-ignore — grade-parser import for SCORE_DIMENSIONS
+// @ts-expect-error — grade-parser import for SCORE_DIMENSIONS
 import { SCORE_DIMENSIONS } from "../scripts/lib/grade-parser.mjs";
 
 // ---------------------------------------------------------------------------

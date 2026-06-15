@@ -1254,8 +1254,9 @@ const SLICE_HANDLERS = {
     requireId(featureId, "slice from-feature requires --id FEAT-NNN.");
     const { sliceFromFeature } = await import("./lib/slice-linker.mjs");
     const { dispatchAgent, appendAuditLog } = await import("./lib/auto-dispatch.mjs");
-    const { DecompositionRequiredError, InvalidProposedSlicesError } =
-      await import("./lib/proposed-slices.mjs");
+    const { DecompositionRequiredError, InvalidProposedSlicesError } = await import(
+      "./lib/proposed-slices.mjs"
+    );
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
     let out;
     try {
@@ -1582,7 +1583,7 @@ async function runFeatureSubcommand(
   if (sub !== "simplify") throw new Error(`Unknown feature subcommand: ${sub}`);
   if (!featId) throw new Error("feature simplify requires a feature ID: feature simplify FEAT-NNN");
   const id = (flags.id as string | null) || featId;
-  const { featureSimplify } = await import("./lib/slice-linker/feature-lifecycle.mjs");
+  const { featureSimplify } = await import("./lib/slice-linker.mjs");
   const opts: Record<string, any> = {
     skipSimplify: flags.skipSimplify as boolean,
     config
@@ -1632,8 +1633,9 @@ async function runLearningsSubcommand(
   const [sub] = positionals;
   if (!sub)
     throw new Error("learnings requires a subcommand: log | recent | list | search | prune");
-  const { logLearning, recentLearnings, searchLearnings, deleteLearning } =
-    await import("./lib/learnings.mjs");
+  const { logLearning, recentLearnings, searchLearnings, deleteLearning } = await import(
+    "./lib/learnings.mjs"
+  );
   if (sub === "log") return runLearningsLog(repoPath, flags, logLearning);
   if (sub === "recent") {
     const limit = flags.limit !== null && flags.limit !== undefined ? Number(flags.limit) : 3;

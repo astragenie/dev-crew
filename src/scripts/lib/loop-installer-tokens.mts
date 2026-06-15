@@ -25,7 +25,7 @@ export async function readTemplate(relativePath: string): Promise<string> {
 // than silently rendered as empty.
 export function renderTemplate(template: string, tokens: Record<string, unknown>): string {
   return template.replace(/\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g, (match, key) => {
-    if (Object.prototype.hasOwnProperty.call(tokens, key)) {
+    if (Object.hasOwn(tokens, key)) {
       const value = tokens[key];
       if (value === null || value === undefined) {
         return "";

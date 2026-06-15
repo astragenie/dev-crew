@@ -35,7 +35,7 @@ export function checkUniqueIds(plans: DispatchPlan[]): void {
 }
 
 // git refs reject control chars + a specific set of shell-special chars.
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — validates git ref names against control characters
 const INVALID_REF_CHARS = /[\s~^:?*[\\\x00-\x1f]/;
 
 export function validateBranchName(name: string): void {

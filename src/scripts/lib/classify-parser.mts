@@ -97,7 +97,6 @@ export function parseClassifyOutput(raw: string): ClassifyResult {
     const uxMatch = trimmed.match(UX_LINE_RE);
     if (uxMatch) {
       result.needs_ux = parseBool(uxMatch[1]!);
-      continue;
     }
 
     // surface / stack lines are intentionally not parsed — preset-driven

@@ -653,10 +653,9 @@ test.skip("legacy structural rollback check (skipped — superseded by direct ap
 
   try {
     // Use applyWorktreeResult directly to bypass slice-start ceremony
-    const { applyWorktreeResult: _apply } =
-      await import("../scripts/lib/slice-linker/start-slice.mjs").catch(
-        () => ({ applyWorktreeResult: null }) as any
-      );
+    const { applyWorktreeResult: _apply } = await import(
+      "../scripts/lib/slice-linker/start-slice.mjs"
+    ).catch(() => ({ applyWorktreeResult: null }) as any);
     // applyWorktreeResult is not exported — exercise the rollback by calling
     // ensureSliceWorktree directly + verifying state stays empty when the
     // wrapper would have failed. This is a structural check on the rollback

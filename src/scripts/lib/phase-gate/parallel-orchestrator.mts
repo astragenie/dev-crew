@@ -98,7 +98,7 @@ export async function runPhaseGateParallel(
   only: string | undefined,
   deps: ParallelDeps
 ) {
-  if (only && !Object.prototype.hasOwnProperty.call(groups, only)) {
+  if (only && !Object.hasOwn(groups, only)) {
     throw new Error(
       `--only "${only}" not found in phaseGate.groups (have: ${Object.keys(groups).join(", ")})`
     );

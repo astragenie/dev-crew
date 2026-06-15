@@ -34,8 +34,9 @@ test("createGradeFile includes identification line when feature and phase are se
   // Patch slice frontmatter to include phase after creation
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Patch slice file to add phase
-  const { parseFrontmatter: pf, serializeFrontmatter: sf } =
-    await import("../scripts/lib/frontmatter.mjs");
+  const { parseFrontmatter: pf, serializeFrontmatter: sf } = await import(
+    "../scripts/lib/frontmatter.mjs"
+  );
   const sliceContent = await fs.readFile(slice.path, "utf8");
   const { frontmatter, body } = pf(sliceContent);
   await fs.writeFile(slice.path, sf({ ...frontmatter, phase: "3" }, body));

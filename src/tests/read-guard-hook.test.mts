@@ -74,152 +74,134 @@ function runHook(
   };
 }
 
-test(
-  "read-guard.sh exists and is executable",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const stat = await fs.stat(hookPath);
-    assert.ok(stat.isFile(), "hook script should exist as a file");
-  }
-);
+test("read-guard.sh exists and is executable", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const stat = await fs.stat(hookPath);
+  assert.ok(stat.isFile(), "hook script should exist as a file");
+});
 
-test(
-  "read-guard exits 0 with no CLAUDE_TOOL_INPUT (fail-open)",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  () => {
-    const result = spawnSync(bashBin!, [hookPath], { encoding: "utf8" });
-    assert.equal(result.status, 0, "must fail-open when env is missing");
-  }
-);
+test("read-guard exits 0 with no CLAUDE_TOOL_INPUT (fail-open)", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, () => {
+  const result = spawnSync(bashBin!, [hookPath], { encoding: "utf8" });
+  assert.equal(result.status, 0, "must fail-open when env is missing");
+});
 
-test(
-  "read-guard exits 0 on first Read of a file (no prior history)",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-first-");
-    const result = runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/a.mts" }
-    });
-    assert.equal(result.status, 0, "first read should pass");
-  }
-);
+test("read-guard exits 0 on first Read of a file (no prior history)", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-first-");
+  const result = runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/a.mts" }
+  });
+  assert.equal(result.status, 0, "first read should pass");
+});
 
-test(
-  "read-guard exits 1 on Read immediately after Edit of the same path",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-postedit-");
-    // Pre-seed: agent edited a.mts in this session
-    const edit = runHook(repo, "sess-1", {
-      tool_name: "Edit",
-      tool_input: { file_path: "/path/to/a.mts" }
-    });
-    assert.equal(edit.status, 0, "Edit call itself never blocks");
+test("read-guard exits 1 on Read immediately after Edit of the same path", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-postedit-");
+  // Pre-seed: agent edited a.mts in this session
+  const edit = runHook(repo, "sess-1", {
+    tool_name: "Edit",
+    tool_input: { file_path: "/path/to/a.mts" }
+  });
+  assert.equal(edit.status, 0, "Edit call itself never blocks");
 
-    const reread = runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/a.mts" }
-    });
-    assert.equal(reread.status, 1, "post-Edit re-read must be blocked");
-    assert.match(reread.stderr, /BLOCKED/);
-    assert.match(reread.stderr, /a\.mts/);
-  }
-);
+  const reread = runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/a.mts" }
+  });
+  assert.equal(reread.status, 1, "post-Edit re-read must be blocked");
+  assert.match(reread.stderr, /BLOCKED/);
+  assert.match(reread.stderr, /a\.mts/);
+});
 
-test(
-  "read-guard exits 1 on Read immediately after Write of the same path",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-postwrite-");
-    runHook(repo, "sess-1", {
-      tool_name: "Write",
-      tool_input: { file_path: "/path/to/b.mts" }
-    });
+test("read-guard exits 1 on Read immediately after Write of the same path", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-postwrite-");
+  runHook(repo, "sess-1", {
+    tool_name: "Write",
+    tool_input: { file_path: "/path/to/b.mts" }
+  });
 
-    const reread = runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/b.mts" }
-    });
-    assert.equal(reread.status, 1, "post-Write re-read must be blocked");
-    assert.match(reread.stderr, /BLOCKED/);
-  }
-);
+  const reread = runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/b.mts" }
+  });
+  assert.equal(reread.status, 1, "post-Write re-read must be blocked");
+  assert.match(reread.stderr, /BLOCKED/);
+});
 
-test(
-  "read-guard allows Read after Edit of a DIFFERENT path",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-diff-path-");
-    runHook(repo, "sess-1", {
-      tool_name: "Edit",
-      tool_input: { file_path: "/path/to/a.mts" }
-    });
+test("read-guard allows Read after Edit of a DIFFERENT path", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-diff-path-");
+  runHook(repo, "sess-1", {
+    tool_name: "Edit",
+    tool_input: { file_path: "/path/to/a.mts" }
+  });
 
-    const result = runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/b.mts" }
-    });
-    assert.equal(result.status, 0, "different path must pass");
-  }
-);
+  const result = runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/b.mts" }
+  });
+  assert.equal(result.status, 0, "different path must pass");
+});
 
-test(
-  "read-guard allows paging Read (different offset than prior Read)",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-paging-");
-    runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/big.mts", offset: 0, limit: 200 }
-    });
-    const result = runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/big.mts", offset: 200, limit: 200 }
-    });
-    assert.equal(result.status, 0, "paging read with different offset must pass");
-  }
-);
+test("read-guard allows paging Read (different offset than prior Read)", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-paging-");
+  runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/big.mts", offset: 0, limit: 200 }
+  });
+  const result = runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/big.mts", offset: 200, limit: 200 }
+  });
+  assert.equal(result.status, 0, "paging read with different offset must pass");
+});
 
-test(
-  "read-guard blocks same-range re-Read (same path, same offset)",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-samerange-");
-    runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/c.mts", offset: 0 }
-    });
-    const result = runHook(repo, "sess-1", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/c.mts", offset: 0 }
-    });
-    assert.equal(result.status, 1, "same-range re-read must block");
-    assert.match(result.stderr, /BLOCKED/);
-  }
-);
+test("read-guard blocks same-range re-Read (same path, same offset)", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-samerange-");
+  runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/c.mts", offset: 0 }
+  });
+  const result = runHook(repo, "sess-1", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/c.mts", offset: 0 }
+  });
+  assert.equal(result.status, 1, "same-range re-read must block");
+  assert.match(result.stderr, /BLOCKED/);
+});
 
-test(
-  "read-guard resets log when session id changes",
-  { skip: !bashBin ? "bash not available on this runner" : false },
-  async () => {
-    const repo = await tmpRepo("al-guard-sessionreset-");
-    // Session A: edit + (would-be-blocked) read in same session
-    runHook(repo, "sess-A", {
-      tool_name: "Edit",
-      tool_input: { file_path: "/path/to/d.mts" }
-    });
-    const blocked = runHook(repo, "sess-A", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/d.mts" }
-    });
-    assert.equal(blocked.status, 1, "session A: post-edit read blocked");
+test("read-guard resets log when session id changes", {
+  skip: !bashBin ? "bash not available on this runner" : false
+}, async () => {
+  const repo = await tmpRepo("al-guard-sessionreset-");
+  // Session A: edit + (would-be-blocked) read in same session
+  runHook(repo, "sess-A", {
+    tool_name: "Edit",
+    tool_input: { file_path: "/path/to/d.mts" }
+  });
+  const blocked = runHook(repo, "sess-A", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/d.mts" }
+  });
+  assert.equal(blocked.status, 1, "session A: post-edit read blocked");
 
-    // Session B: new session — log should reset, first read passes
-    const newSession = runHook(repo, "sess-B", {
-      tool_name: "Read",
-      tool_input: { file_path: "/path/to/d.mts" }
-    });
-    assert.equal(newSession.status, 0, "session B: fresh log, read should pass");
-  }
-);
+  // Session B: new session — log should reset, first read passes
+  const newSession = runHook(repo, "sess-B", {
+    tool_name: "Read",
+    tool_input: { file_path: "/path/to/d.mts" }
+  });
+  assert.equal(newSession.status, 0, "session B: fresh log, read should pass");
+});

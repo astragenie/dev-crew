@@ -31,7 +31,6 @@ function parseArgs(argv: string[]) {
     }
     if (argv[i] === "--dry-run") {
       flags.dryRun = true;
-      continue;
     }
   }
   return flags;
@@ -91,7 +90,6 @@ function parseBacklog(content: string) {
         slices: extractSlices(line),
         done
       });
-      continue;
     }
   }
   return entries;

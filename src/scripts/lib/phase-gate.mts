@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { resolveConfig } from "./config-resolver.mjs";
 import { findCrewCli } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
-import { type Groups } from "./phase-gate/parallel-runner.mjs";
+import type { Groups } from "./phase-gate/parallel-runner.mjs";
 import { runPhaseGateParallel } from "./phase-gate/parallel-orchestrator.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
 

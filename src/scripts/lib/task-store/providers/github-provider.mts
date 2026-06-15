@@ -23,10 +23,7 @@ async function importGithubSyncModule(relPath: string): Promise<any> {
     try {
       // Use file:// URL for import to bypass relative path issues
       return await import(modulePath);
-    } catch {
-      // Continue to next path if this one fails
-      continue;
-    }
+    } catch {}
   }
 
   // If all paths fail, throw the error from the first path

@@ -213,7 +213,7 @@ test("each audit entry contains required keys: timestamp, agent, parentCommand, 
     const entry = lines[0] as any;
 
     for (const key of ["timestamp", "agent", "parentCommand", "ok", "skipped", "durationMs"]) {
-      assert.ok(Object.prototype.hasOwnProperty.call(entry, key), `missing key: ${key}`);
+      assert.ok(Object.hasOwn(entry, key), `missing key: ${key}`);
     }
     assert.equal(entry.agent, "loop:researcher");
     assert.equal(entry.parentCommand, "spec-decompose");

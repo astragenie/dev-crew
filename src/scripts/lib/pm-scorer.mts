@@ -154,7 +154,7 @@ export function parsePmScoresFromFrontmatter(frontmatter: Record<string, unknown
   const scores: Record<string, unknown> = {};
   for (const dim of PM_DIMENSIONS) {
     const key = `pm_${dim}`;
-    if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {
+    if (Object.hasOwn(frontmatter, key)) {
       scores[dim] = frontmatter[key];
     }
   }
