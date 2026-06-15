@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/agent-progress.schema.json",
+  "title": "AgentProgressPayload",
+  "type": "object",
+  "required": ["sliceId", "agent", "stage", "description", "ts"],
+  "properties": {
+    "sliceId": { "type": "string" },
+    "agent": { "type": "string" },
+    "stage": { "type": "string" },
+    "description": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" }
+  }
+}

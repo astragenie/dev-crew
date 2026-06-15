@@ -312,6 +312,11 @@ export async function writeGrade(
     gradeEvent as unknown as Record<string, unknown>
   );
 
+  // L3-4: emit slice.agent_progress + agent.tool_call from each crew artifact
+  // bundle that belongs to this slice. Fail-silent: any IO or parse error is
+  // swallowed so the grade write contract is not affected.
+  await emitNarrativeForSlice(repoPath, sliceId);
+
   const scoresAvg = averageOf(scores);
   if (scoresAvg !== null) {
     const { recordGradeScore } = await import("./grade-trend.mjs");
@@ -372,6 +377,71 @@ function buildGradeEvent(
   if (featureId) event.featureId = featureId;
   if (specId) event.spec = specId;
   return event;
+}
+
+// L3-4: walk the crew bundle tree and emit narrative envelopes for each
+// bundle whose frontmatter `slice:` matches the slice id. Reads under
+// `.claude/artifacts/crew/bundles/**/*.md`. Fail-silent.
+async function emitNarrativeForSlice(repoPath: string, sliceId: string): Promise<void> {
+  try {
+    const { emitAgentNarrative } = await import("./agent-narrative-emitter.mjs");
+    const bundlesRoot = path.join(repoPath, ".claude", "artifacts", "crew", "bundles");
+    const candidates: string[] = [];
+    let subdirs: string[] = [];
+    try {
+      subdirs = await fs.readdir(bundlesRoot);
+    } catch {
+      return;
+    }
+    for (const sub of subdirs) {
+      const dir = path.join(bundlesRoot, sub);
+      let stat;
+      try {
+        stat = await fs.stat(dir);
+      } catch {
+        continue;
+      }
+      if (!stat.isDirectory()) continue;
+      let files: string[] = [];
+      try {
+        files = await fs.readdir(dir);
+      } catch {
+        continue;
+      }
+      for (const f of files) {
+        if (f.endsWith(".md")) candidates.push(path.join(dir, f));
+      }
+    }
+
+    for (const bundlePath of candidates) {
+      let head = "";
+      try {
+        // Read the first ~2KB to find the slice: frontmatter line; bundles
+        // can be MBs of diff/log content so don't load the whole file just
+        // to filter.
+        const fh = await fs.open(bundlePath, "r");
+        try {
+          const buf = Buffer.alloc(2048);
+          const { bytesRead } = await fh.read(buf, 0, 2048, 0);
+          head = buf.slice(0, bytesRead).toString("utf8");
+        } finally {
+          await fh.close();
+        }
+      } catch {
+        continue;
+      }
+      const sliceMatch = /^slice:\s*([^\n]+)/m.exec(head);
+      if (!sliceMatch || !sliceMatch[1]) continue;
+      if (sliceMatch[1].trim() !== sliceId) continue;
+      try {
+        await emitAgentNarrative(repoPath, sliceId, bundlePath);
+      } catch {
+        // best-effort per bundle
+      }
+    }
+  } catch {
+    // best-effort overall
+  }
 }
 
 async function extractDecisions(

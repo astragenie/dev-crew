@@ -58,7 +58,7 @@ export function parseCrewBundleContent(raw: string): CrewBundleParseResult {
 
   // Frontmatter
   const fmMatch = /^---\n([\s\S]*?)\n---\n/.exec(raw);
-  if (fmMatch) {
+  if (fmMatch && fmMatch[1]) {
     for (const line of fmMatch[1].split("\n")) {
       const [k, ...rest] = line.split(":");
       const v = rest.join(":").trim();
@@ -72,22 +72,27 @@ export function parseCrewBundleContent(raw: string): CrewBundleParseResult {
   const stageRe = /## Stage: ([^\n]+)\n\n([^\n#]+)/g;
   let m: RegExpExecArray | null;
   while ((m = stageRe.exec(raw)) !== null) {
-    result.progressMarkers.push({ stage: m[1].trim(), description: m[2].trim() });
+    const stage = m[1]?.trim();
+    const description = m[2]?.trim();
+    if (!stage || !description) continue;
+    result.progressMarkers.push({ stage, description });
   }
 
   // Tool calls
   const toolRe = /### Tool: ([^\n]+)\n((?:- [^\n]+\n?)+)/g;
   while ((m = toolRe.exec(raw)) !== null) {
+    const toolName = m[1]?.trim();
     const block = m[2];
+    if (!toolName || !block) continue;
     const durMatch = /- duration_ms:\s*(\d+)/.exec(block);
     const argsBlock = block
       .split("\n")
       .filter((l) => l.startsWith("- ") && !l.startsWith("- duration_ms"))
       .map((l) => l.slice(2))
       .join("\n");
-    const record: ToolCallRecord = { toolName: m[1].trim() };
+    const record: ToolCallRecord = { toolName };
     if (argsBlock) record.argsJson = JSON.stringify({ raw: argsBlock });
-    if (durMatch) record.durationMs = parseInt(durMatch[1], 10);
+    if (durMatch && durMatch[1]) record.durationMs = parseInt(durMatch[1], 10);
     result.toolCalls.push(record);
   }
 
