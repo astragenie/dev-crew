@@ -105,6 +105,18 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
     rejectedCount: plan.rejected.length
   });
 
+  // M2 (L2-1): emit one wave_member_slice per packed slice so downstream
+  // dashboards can render wave-membership before dispatch runs.
+  plan.items.forEach((item, idx) => {
+    record({
+      type: "wave_member_slice",
+      waveId: plan.waveId,
+      sliceId: item.sliceId,
+      position: idx,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   const prepared = await deps.prepareFn(repoRoot, plan);
   record({
     type: "wave_dispatched",
