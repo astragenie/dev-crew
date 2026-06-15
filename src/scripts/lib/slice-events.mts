@@ -18,7 +18,9 @@ export type SliceEventType =
   | "agent_dispatched"
   | "agent_completed"
   | "agent_error"
-  | "specialist_pause";
+  | "specialist_pause"
+  | "shape_classified"
+  | "phase_gate_mode_detected";
 
 export interface SliceEventBase {
   type: SliceEventType;
@@ -82,13 +84,40 @@ export interface SpecialistPauseEvent extends SliceEventBase {
   expectedArtifactPath?: string;
 }
 
+/**
+ * Shape classification emitted at slice start after `shape-markers/<sliceId>.json`
+ * is written. Surfaces the classify-slice-shape verdict (shape + rationale +
+ * inline-path decision) on the slice-event stream so the runner can show shape
+ * chips alongside lifecycle events. Emitted by
+ * `lib/shape-event-emitter.mts::emitShapeClassified`.
+ */
+export interface ShapeClassifiedEvent extends SliceEventBase {
+  type: "shape_classified";
+  shape: string;
+  rationale: string;
+  inlinePathUsed: boolean;
+}
+
+/**
+ * Phase-gate mode emitted at validator completion (i.e. after `runPhaseGate`
+ * returns). Records whether the parallel or serial execution path ran so the
+ * runner can surface mode utilization without parsing artifact filenames.
+ * Emitted by `lib/phase-gate-mode-emitter.mts::emitPhaseGateModeDetected`.
+ */
+export interface PhaseGateModeDetectedEvent extends SliceEventBase {
+  type: "phase_gate_mode_detected";
+  mode: "parallel" | "serial";
+}
+
 export type SliceEvent =
   | WorkflowStateChangedEvent
   | GateTransitionEvent
   | AgentDispatchedEvent
   | AgentCompletedEvent
   | AgentErrorEvent
-  | SpecialistPauseEvent;
+  | SpecialistPauseEvent
+  | ShapeClassifiedEvent
+  | PhaseGateModeDetectedEvent;
 
 /** Absolute path to the events file for a slice. */
 export function eventsPath(repoRoot: string, sliceId: string): string {

@@ -22,6 +22,7 @@ import { displaySliceTitle } from "../slice-title.mjs";
 import { classifySliceShape } from "../classify-slice-shape.mjs";
 import type { FileChange } from "../classify-slice-shape.mjs";
 import { writeShapeMarker } from "../shape-marker.mjs";
+import { emitShapeClassified } from "../shape-event-emitter.mjs";
 
 // ---------------------------------------------------------------------------
 // SLICE-94 / FEAT-186: shape classification helpers
@@ -58,6 +59,7 @@ function resolveInlinePath(
 async function applyShapeClassification(
   repoPath: string,
   sliceId: string,
+  featureId: string | null,
   sliceContent: string | null,
   dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null
 ): Promise<string | null> {
@@ -65,6 +67,15 @@ async function applyShapeClassification(
   const { shape, rationale } = classifySliceShape({ files });
   const inlinePath = resolveInlinePath(shape, dispatchLimits);
   void writeShapeMarker(repoPath, sliceId, shape, rationale, inlinePath);
+  // M5 / L5-1: emit `shape_classified` slice-event so the runner sees the
+  // shape verdict alongside lifecycle events. Best-effort — appendSliceEvent
+  // swallows fs errors and webhook fanout fails silent.
+  void emitShapeClassified(repoPath, sliceId, {
+    featureId,
+    shape,
+    rationale,
+    inlinePathUsed: inlinePath
+  });
   if (!inlinePath) return null;
   return `inline-path recommended (shape: ${shape}, rationale: ${rationale}) — orchestrator may skip dispatched specialists for tightly-scoped slices when other gates can be lead-attested per docs/sop/inline-criteria.md.`;
 }
@@ -382,6 +393,7 @@ export async function startSlice(
   const inlinePathHint = await applyShapeClassification(
     repoPath,
     sliceId,
+    featureId,
     ctx.content ?? null,
     resolved.loop?.dispatchLimits ?? null
   );
