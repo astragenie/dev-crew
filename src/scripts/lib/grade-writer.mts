@@ -18,6 +18,8 @@ import {
 } from "./grade-parser.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "./paths.mjs";
 import { buildArtifactSlug } from "./artifact-naming.mjs";
+import { appendGradeEvent } from "./grade-jsonl-writer.mjs";
+import { fanoutEnvelope } from "./webhook-fanout.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 // Support two execution layouts:
@@ -300,6 +302,40 @@ export async function writeGrade(
     decisions_total: allIds.length,
     scores_average: averageOf(scores)
   });
+
+  // M1: mirror grade to grades.jsonl + fan out to runner via webhook.
+  const featureId =
+    typeof frontmatter.feature === "string" ? (frontmatter.feature as string) : undefined;
+  const specId = typeof frontmatter.spec === "string" ? (frontmatter.spec as string) : undefined;
+  const recordedAt =
+    typeof frontmatter.graded_at === "string"
+      ? (frontmatter.graded_at as string)
+      : new Date().toISOString();
+  const gradeEvent: {
+    sliceId: string;
+    featureId?: string;
+    spec?: string;
+    recordedAt: string;
+    scores: Record<string, number>;
+    decisions: Array<{ id: string; status: "accepted"; body: string }>;
+    timing: Record<string, unknown>;
+    shape: Record<string, unknown>;
+  } = {
+    sliceId,
+    recordedAt,
+    scores: scores as Record<string, number>,
+    decisions: allocated.map((d) => ({
+      id: d.id as string,
+      status: "accepted" as const,
+      body: (d.body as string | undefined) ?? ""
+    })),
+    timing: (frontmatter.timing as Record<string, unknown>) ?? {},
+    shape: (frontmatter.shape as Record<string, unknown>) ?? {}
+  };
+  if (featureId) gradeEvent.featureId = featureId;
+  if (specId) gradeEvent.spec = specId;
+  await appendGradeEvent(repoPath, gradeEvent);
+  await fanoutEnvelope(repoPath, "grade.recorded", gradeEvent as Record<string, unknown>);
 
   const scoresAvg = averageOf(scores);
   if (scoresAvg !== null) {
