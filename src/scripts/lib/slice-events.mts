@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { TRAJECTORY_DIR } from "./trajectory-writer.mjs";
+import { fanoutEnvelope } from "./webhook-fanout.mjs";
 
 export type WorkflowState = "building" | "reviewing" | "validating" | "done" | "blocked";
 export type GateName =
@@ -90,4 +91,9 @@ export async function appendSliceEvent(
       `[slice-events] write failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
     );
   }
+
+  // M1: also fan out to runner via webhook if configured. Fail-silent.
+  const kind = `slice.${event.type}`;
+  const { type: _t, ...payload } = event;
+  await fanoutEnvelope(repoRoot, kind, payload as Record<string, unknown>);
 }
