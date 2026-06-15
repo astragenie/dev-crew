@@ -15,6 +15,7 @@ import {
   type PausedForExternalEventSignal
 } from "./paused-for-external-event.mjs";
 import { checkStuckDetector, type StuckDetectedSignal } from "./stuck-detector.mjs";
+import { fanoutEnvelope } from "./webhook-fanout.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -521,7 +522,7 @@ export async function checkStopConditions(
   applyStuckDetectedSignal(stuckDetectedSignal, reasons, suggestions, blockers);
   applyGradeTrendSignal(gradeTrendSignal, reasons, suggestions);
 
-  return assembleStopResult({
+  const result = assembleStopResult({
     reasons,
     blockers,
     suggestions,
@@ -544,6 +545,12 @@ export async function checkStopConditions(
     pausedForExternalEventSignal,
     stuckDetectedSignal
   });
+
+  // M4 / L4-2: fan out one `halt_badge` envelope per populated halt-badge
+  // snapshot field. Fail-silent — JSONL / snapshot remain authoritative.
+  await fanoutHaltBadgesFromSnapshot(repoPath, result.snapshot, {});
+
+  return result;
 }
 
 // Assemble the stop-check return shape. Extracted so checkStopConditions stays
@@ -593,4 +600,64 @@ function assembleStopResult(p: any) {
       stuckDetected: buildStuckDetectedSnapshotEntry(p.stuckDetectedSignal)
     }
   };
+}
+
+/**
+ * Closed-set list of halt-badge field names that live under `snapshot.*`.
+ * Source of truth is `docs/halt-badges.md`; new entries MUST land here and
+ * in the registry simultaneously (see "How to add a new halt-badge" §).
+ *
+ * Non-halt-badge snapshot fields (numeric / boolean dashboards like
+ * `pendingOrTriaged`, `iterationCount`, `autoMode`) are intentionally
+ * excluded so they don't pollute the runner's halt-badge stream.
+ */
+export const HALT_BADGE_FIELDS = [
+  "costRegression",
+  "sessionDrift",
+  "sliceCostCeiling",
+  "gradeTrend",
+  "mergeFailed",
+  "redundantReadStop",
+  "marathonCheckpoint",
+  "pausedForExternalEvent",
+  "stuckDetected"
+] as const;
+
+export type HaltBadgeField = (typeof HALT_BADGE_FIELDS)[number];
+
+/**
+ * Iterate every populated halt-badge field in `snapshot` and fan one envelope
+ * per non-null field via `webhook-fanout::fanoutEnvelope` as kind `halt_badge`.
+ *
+ * Payload shape matches `schemas/loop-events/halt-badge.schema.json`:
+ *   { badgeKind, ts, details, sliceId?, waveId? }
+ *
+ * Fail-silent on individual fanout errors — JSONL / snapshot data already
+ * landed in the stop-check result and remain authoritative.
+ */
+export async function fanoutHaltBadgesFromSnapshot(
+  repoPath: string,
+  snapshot: Record<string, unknown>,
+  context: { sliceId?: string; waveId?: string } = {}
+): Promise<void> {
+  const ts = new Date().toISOString();
+  for (const field of HALT_BADGE_FIELDS) {
+    const value = snapshot[field];
+    if (value === null || value === undefined) continue;
+    // Only object-shaped badges get fanned out — primitives are dashboard
+    // fields, not halt-badges (defense-in-depth against future drift).
+    if (typeof value !== "object") continue;
+    const payload: Record<string, unknown> = {
+      badgeKind: field,
+      ts,
+      details: value
+    };
+    if (context.sliceId) payload.sliceId = context.sliceId;
+    if (context.waveId) payload.waveId = context.waveId;
+    try {
+      await fanoutEnvelope(repoPath, "halt_badge", payload);
+    } catch {
+      // Fail-silent — snapshot remains authoritative.
+    }
+  }
 }
