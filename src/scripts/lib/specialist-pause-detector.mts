@@ -78,10 +78,11 @@ export async function detectAndEmitSpecialistPause(
   if (result === null) return false;
   if (result.pattern.id !== "pause-without-artifact") return false;
 
-  await emitSpecialistPause(input.repoPath, input.sliceId, input.agent, result.evidence, {
+  const opts: { featureId?: string | null; expectedArtifactPath?: string; timestamp?: string } = {
     featureId: input.featureId ?? null,
-    expectedArtifactPath: input.expectedArtifactPath,
-    timestamp: input.timestamp
-  });
+    expectedArtifactPath: input.expectedArtifactPath
+  };
+  if (input.timestamp) opts.timestamp = input.timestamp;
+  await emitSpecialistPause(input.repoPath, input.sliceId, input.agent, result.evidence, opts);
   return true;
 }

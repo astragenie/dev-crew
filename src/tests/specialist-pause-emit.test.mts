@@ -41,11 +41,17 @@ describe("specialist-pause-detector", () => {
       return new Response(null, { status: 202 });
     }) as typeof fanoutInternals.fetch;
     try {
-      await emitSpecialistPause(repo, "SLICE-42", "crew:fullstack-dev", "Output ended mid-sentence", {
-        featureId: "FEAT-99",
-        expectedArtifactPath: ".claude/artifacts/crew/handoffs/SLICE-42.md",
-        timestamp: "2026-06-15T12:00:00.000Z"
-      });
+      await emitSpecialistPause(
+        repo,
+        "SLICE-42",
+        "crew:fullstack-dev",
+        "Output ended mid-sentence",
+        {
+          featureId: "FEAT-99",
+          expectedArtifactPath: ".claude/artifacts/crew/handoffs/SLICE-42.md",
+          timestamp: "2026-06-15T12:00:00.000Z"
+        }
+      );
     } finally {
       fanoutInternals.fetch = originalFetch;
     }
@@ -58,9 +64,7 @@ describe("specialist-pause-detector", () => {
     expect(body.payload.featureId).toBe("FEAT-99");
     expect(body.payload.agent).toBe("crew:fullstack-dev");
     expect(body.payload.reason).toBe("Output ended mid-sentence");
-    expect(body.payload.expectedArtifactPath).toBe(
-      ".claude/artifacts/crew/handoffs/SLICE-42.md"
-    );
+    expect(body.payload.expectedArtifactPath).toBe(".claude/artifacts/crew/handoffs/SLICE-42.md");
 
     // JSONL row mirrors what was emitted
     const raw = await fs.readFile(eventsPath(repo, "SLICE-42"), "utf8");
