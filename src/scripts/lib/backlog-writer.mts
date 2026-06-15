@@ -8,6 +8,7 @@ import { bust, clearAll } from "./cache.mjs";
 import { clearFrontmatterCache } from "./frontmatter-cache.mjs";
 import { assertStatePath } from "./state-paths.mjs";
 import { validateFeat } from "./state-schemas.mjs";
+import { emitBacklogStateChanged } from "./backlog-state-emitter.mjs";
 
 function nowIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -172,7 +173,9 @@ export async function moveFeature(
     throw new Error(`Unknown backlog state: ${toState}`);
   }
   const filename = path.basename(filePath);
-  const targetDir = path.join(path.dirname(path.dirname(filePath)), toState);
+  const fromDir = path.dirname(filePath);
+  const fromState = path.basename(fromDir);
+  const targetDir = path.join(path.dirname(fromDir), toState);
   await ensureDir(targetDir);
   const targetPath = path.join(targetDir, filename);
   if (repoPath) {
@@ -202,7 +205,45 @@ export async function moveFeature(
     await fs.unlink(filePath);
   }
   clearAll();
+  // M5 / L5-3: emit loop.backlog_state_changed envelope. Fire only when
+  // we actually moved between distinct state directories (no-op when
+  // toState === fromState). featId from frontmatter, falling back to
+  // filename stem (FEAT-NNN.md). repoPath derived from path structure
+  // when not supplied — backlog files always live under
+  // <repo>/.claude/artifacts/loop/backlog/<state>/<file>.md.
+  if (fromState !== toState) {
+    const featId =
+      (typeof existingFm.id === "string" && existingFm.id) || filename.replace(/\.md$/i, "");
+    const repoRoot = repoPath ?? deriveRepoRootFromBacklogPath(filePath);
+    if (repoRoot) {
+      await emitBacklogStateChanged(repoRoot, {
+        featId,
+        fromState,
+        toState
+      });
+    }
+  }
   return { from: filePath, to: targetPath };
+}
+
+/**
+ * Derive the repo root from a backlog file path. Backlog files always live at
+ * `<repoRoot>/<backlogRoot>/<state>/<feat>.md`. We walk up four levels from
+ * the file to land on the repo root assuming the canonical default backlog
+ * root (`.claude/artifacts/loop/backlog`). Returns null when the path shape
+ * doesn't match — callers must treat that as "no signal".
+ */
+function deriveRepoRootFromBacklogPath(filePath: string): string | null {
+  // .../backlog/<state>/<file>.md → walk up 5 levels to skip
+  //   <file>.md → <state>/ → backlog/ → loop/ → artifacts/ → .claude/
+  // and land on the repo root.
+  const parts = filePath.split(/[/\\]/);
+  const backlogIdx = parts.lastIndexOf("backlog");
+  if (backlogIdx < 0) return null;
+  // Expected: parts[backlogIdx-3] === ".claude"
+  if (parts[backlogIdx - 3] !== ".claude") return null;
+  const root = parts.slice(0, backlogIdx - 3).join(path.sep);
+  return root.length > 0 ? root : null;
 }
 
 export async function findFeatureById(
