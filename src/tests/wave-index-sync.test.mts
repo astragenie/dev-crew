@@ -5,6 +5,8 @@ import path from "node:path";
 import { appendWaveIndexEntry } from "../scripts/lib/wave/index-sync.mjs";
 import { _internals as fanoutInternals } from "../scripts/lib/webhook-fanout.mjs";
 
+const WAVES_ROOT = ".claude/artifacts/loop/waves";
+
 async function withTempRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "loop-wave-index-"));
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
@@ -40,13 +42,14 @@ describe("appendWaveIndexEntry", () => {
   test("creates index.json with the new entry on first call", async () => {
     const repo = await withTempRepo();
     const originalFetch = fanoutInternals.fetch;
-    fanoutInternals.fetch = (async () => new Response(null, { status: 202 })) as typeof fanoutInternals.fetch;
+    fanoutInternals.fetch = (async () =>
+      new Response(null, { status: 202 })) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveIndexEntry(repo, ".claude/artifacts/loop/waves", sample("WAVE-1"));
+      await appendWaveIndexEntry(repo, WAVES_ROOT, sample("WAVE-1"));
     } finally {
       fanoutInternals.fetch = originalFetch;
     }
-    const indexPath = path.join(repo, ".claude/artifacts/loop/waves/index.json");
+    const indexPath = path.join(repo, WAVES_ROOT, "index.json");
     const raw = await fs.readFile(indexPath, "utf8");
     const parsed = JSON.parse(raw) as { entries: Array<{ waveId: string }> };
     expect(parsed.entries).toHaveLength(1);
@@ -55,18 +58,15 @@ describe("appendWaveIndexEntry", () => {
 
   test("appends to existing index.json and caps at 50 entries", async () => {
     const repo = await withTempRepo();
-    const indexDir = path.join(repo, ".claude/artifacts/loop/waves");
+    const indexDir = path.join(repo, WAVES_ROOT);
     await fs.mkdir(indexDir, { recursive: true });
     const seed = Array.from({ length: 50 }, (_, i) => sample(`OLD-${i}`));
     await fs.writeFile(path.join(indexDir, "index.json"), JSON.stringify({ entries: seed }));
     const originalFetch = fanoutInternals.fetch;
-    fanoutInternals.fetch = (async () => new Response(null, { status: 202 })) as typeof fanoutInternals.fetch;
+    fanoutInternals.fetch = (async () =>
+      new Response(null, { status: 202 })) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveIndexEntry(
-        repo,
-        ".claude/artifacts/loop/waves",
-        sample("WAVE-NEW")
-      );
+      await appendWaveIndexEntry(repo, WAVES_ROOT, sample("WAVE-NEW"));
     } finally {
       fanoutInternals.fetch = originalFetch;
     }
@@ -87,8 +87,8 @@ describe("appendWaveIndexEntry", () => {
       return new Response(null, { status: 202 });
     }) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveIndexEntry(repo, ".claude/artifacts/loop/waves", sample("WAVE-A"));
-      await appendWaveIndexEntry(repo, ".claude/artifacts/loop/waves", sample("WAVE-B"));
+      await appendWaveIndexEntry(repo, WAVES_ROOT, sample("WAVE-A"));
+      await appendWaveIndexEntry(repo, WAVES_ROOT, sample("WAVE-B"));
     } finally {
       fanoutInternals.fetch = originalFetch;
     }
@@ -133,17 +133,14 @@ describe("updateIndex wrapper", () => {
           failurePivots: [],
           durationMs: 500
         },
-        ".claude/artifacts/loop/waves"
+        WAVES_ROOT
       );
       // updateIndex is sync but the fanout is fire-and-forget; give it a tick.
       await new Promise<void>((r) => setTimeout(r, 50));
     } finally {
       fanoutInternals.fetch = originalFetch;
     }
-    const raw = await fs.readFile(
-      path.join(repo, ".claude/artifacts/loop/waves/index.json"),
-      "utf8"
-    );
+    const raw = await fs.readFile(path.join(repo, WAVES_ROOT, "index.json"), "utf8");
     const parsed = JSON.parse(raw) as { entries: Array<{ waveId: string }> };
     expect(parsed.entries).toHaveLength(1);
     expect(parsed.entries[0]!.waveId).toBe("WAVE-Z");

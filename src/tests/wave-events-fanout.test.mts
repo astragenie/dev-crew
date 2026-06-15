@@ -5,6 +5,8 @@ import path from "node:path";
 import { appendWaveEvent } from "../scripts/lib/wave/events.mjs";
 import { _internals as fanoutInternals } from "../scripts/lib/webhook-fanout.mjs";
 
+const WAVES_ROOT = ".claude/artifacts/loop/waves";
+
 async function withTempRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "loop-wave-fanout-"));
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
@@ -37,7 +39,7 @@ describe("appendWaveEvent — webhook fanout", () => {
       return new Response(null, { status: 202 });
     }) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveEvent(repo, ".claude/artifacts/loop/waves", {
+      await appendWaveEvent(repo, WAVES_ROOT, {
         type: "wave_member_slice",
         waveId: "WAVE-1",
         sliceId: "SLICE-1",
@@ -66,7 +68,7 @@ describe("appendWaveEvent — webhook fanout", () => {
       return new Response(null, { status: 202 });
     }) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveEvent(repo, ".claude/artifacts/loop/waves", {
+      await appendWaveEvent(repo, WAVES_ROOT, {
         type: "worktree_cleaned",
         waveId: "WAVE-1",
         sliceId: "SLICE-2",
@@ -95,7 +97,7 @@ describe("appendWaveEvent — webhook fanout", () => {
       return new Response(null, { status: 202 });
     }) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveEvent(repo, ".claude/artifacts/loop/waves", {
+      await appendWaveEvent(repo, WAVES_ROOT, {
         type: "merge_conflict_detail",
         waveId: "WAVE-1",
         sliceId: "SLICE-3",
@@ -120,12 +122,12 @@ describe("appendWaveEvent — webhook fanout", () => {
       return new Response(null, { status: 202 });
     }) as typeof fanoutInternals.fetch;
     try {
-      await appendWaveEvent(repo, ".claude/artifacts/loop/waves", {
+      await appendWaveEvent(repo, WAVES_ROOT, {
         type: "wave_started",
         waveId: "WAVE-1",
         timestamp: "2026-06-15T12:00:00.000Z"
       });
-      await appendWaveEvent(repo, ".claude/artifacts/loop/waves", {
+      await appendWaveEvent(repo, WAVES_ROOT, {
         type: "plan_built",
         waveId: "WAVE-1",
         timestamp: "2026-06-15T12:00:01.000Z",
@@ -143,9 +145,10 @@ describe("appendWaveEvent — webhook fanout", () => {
   test("JSONL row is still written on disk even when fanout fires", async () => {
     const repo = await withTempRepo();
     const originalFetch = fanoutInternals.fetch;
-    fanoutInternals.fetch = (async () => new Response(null, { status: 202 })) as typeof fanoutInternals.fetch;
+    fanoutInternals.fetch = (async () =>
+      new Response(null, { status: 202 })) as typeof fanoutInternals.fetch;
     try {
-      const ok = await appendWaveEvent(repo, ".claude/artifacts/loop/waves", {
+      const ok = await appendWaveEvent(repo, WAVES_ROOT, {
         type: "wave_started",
         waveId: "WAVE-X",
         timestamp: "2026-06-15T12:00:00.000Z"
@@ -154,10 +157,7 @@ describe("appendWaveEvent — webhook fanout", () => {
     } finally {
       fanoutInternals.fetch = originalFetch;
     }
-    const eventsFile = path.join(
-      repo,
-      ".claude/artifacts/loop/waves/WAVE-X/events.jsonl"
-    );
+    const eventsFile = path.join(repo, WAVES_ROOT, "WAVE-X", "events.jsonl");
     const raw = await fs.readFile(eventsFile, "utf8");
     const lines = raw.trim().split("\n");
     expect(lines.length).toBe(1);
