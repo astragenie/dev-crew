@@ -13,11 +13,20 @@ import path from "node:path";
 export type NotificationMode = "osNotification" | "webhook" | "customCommand";
 export type LoopEventType = "slice-complete" | "halt-badge" | "cost-alert" | "slice-start";
 
+export interface NotifyWebhookConfig {
+  url: string;
+  tenantId: string;
+  appId: string;
+  bearer: string;
+  disabled?: boolean;
+}
+
 export interface NotifyConfig {
   enabled?: boolean;
   mode?: NotificationMode;
   events?: LoopEventType[];
-  webhookUrl?: string;
+  webhookUrl?: string; // legacy
+  webhook?: NotifyWebhookConfig;
   command?: string;
 }
 
