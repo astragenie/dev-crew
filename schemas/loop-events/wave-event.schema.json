@@ -14,7 +14,10 @@
     "merged": { "type": "array", "items": { "type": "string" } },
     "conflicts": { "type": "array", "items": { "type": "string" } },
     "failed": { "type": "array", "items": { "type": "string" } },
-    "status": { "type": "string", "enum": ["PASS", "FAIL", "skipped"] },
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "skipped", "ok", "force_removed"]
+    },
     "pivots": {
       "type": "array",
       "items": {
@@ -29,6 +32,27 @@
     "haltReason": { "type": ["string", "null"] },
     "durationMs": { "type": "integer", "minimum": 0 },
     "passCount": { "type": "integer", "minimum": 0 },
-    "failCount": { "type": "integer", "minimum": 0 }
+    "failCount": { "type": "integer", "minimum": 0 },
+    "sliceId": { "type": "string" },
+    "position": { "type": "integer", "minimum": 0 },
+    "branch": { "type": "string" },
+    "path": { "type": "string" },
+    "conflictedPaths": { "type": "array", "items": { "type": "string" } },
+    "baseSha": { "type": "string" },
+    "headSha": { "type": "string" },
+    "index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "waveId": { "type": "string" },
+          "size": { "type": "integer" },
+          "passCount": { "type": "integer" },
+          "failCount": { "type": "integer" },
+          "postMergeTest": { "type": "string" },
+          "durationMs": { "type": "integer" }
+        }
+      }
+    }
   }
 }

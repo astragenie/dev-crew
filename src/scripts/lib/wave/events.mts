@@ -7,6 +7,7 @@
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fanoutEnvelope } from "../webhook-fanout.mjs";
 
 export type WaveEventType =
   | "wave_started"
@@ -15,7 +16,10 @@ export type WaveEventType =
   | "wave_finalized"
   | "post_merge_test"
   | "wave_pivoted"
-  | "wave_completed";
+  | "wave_completed"
+  | "wave_member_slice"
+  | "worktree_cleaned"
+  | "merge_conflict_detail";
 
 export interface WaveEventBase {
   type: WaveEventType;
@@ -64,6 +68,28 @@ export interface WaveCompletedEvent extends WaveEventBase {
   failCount: number;
 }
 
+export interface WaveMemberSliceEvent extends WaveEventBase {
+  type: "wave_member_slice";
+  sliceId: string;
+  position: number; // 0-based position within the wave
+}
+
+export interface WorktreeCleanedEvent extends WaveEventBase {
+  type: "worktree_cleaned";
+  sliceId: string;
+  branch: string;
+  path: string;
+  status: "ok" | "force_removed" | "skipped";
+}
+
+export interface MergeConflictDetailEvent extends WaveEventBase {
+  type: "merge_conflict_detail";
+  sliceId: string;
+  conflictedPaths: string[];
+  baseSha?: string;
+  headSha?: string;
+}
+
 export type WaveEvent =
   | WaveStartedEvent
   | PlanBuiltEvent
@@ -71,7 +97,10 @@ export type WaveEvent =
   | WaveFinalizedEvent
   | PostMergeTestEvent
   | WavePivotedEvent
-  | WaveCompletedEvent;
+  | WaveCompletedEvent
+  | WaveMemberSliceEvent
+  | WorktreeCleanedEvent
+  | MergeConflictDetailEvent;
 
 export function waveEventsPath(repoRoot: string, artifactsRoot: string, waveId: string): string {
   return join(repoRoot, artifactsRoot, waveId, "events.jsonl");
@@ -79,22 +108,31 @@ export function waveEventsPath(repoRoot: string, artifactsRoot: string, waveId: 
 
 /**
  * Append one wave event to the run's events.jsonl. Never throws — telemetry
- * must not crash the wave runner.
+ * must not crash the wave runner. After the JSONL write, also fans the
+ * event out to the runner webhook (M2). Returns true when the JSONL write
+ * succeeded; webhook fanout is fire-and-forget and never affects the return.
  */
-export function appendWaveEvent(
+export async function appendWaveEvent(
   repoRoot: string,
   artifactsRoot: string,
   event: WaveEvent
-): boolean {
+): Promise<boolean> {
+  let ok = true;
   try {
     const path = waveEventsPath(repoRoot, artifactsRoot, event.waveId);
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     appendFileSync(path, JSON.stringify(event) + "\n", "utf8");
-    return true;
   } catch {
-    return false;
+    ok = false;
   }
+
+  // M2: also fan out to runner via webhook if configured. Fail-silent.
+  const kind = `wave.${event.type}`;
+  const { type: _t, ...payload } = event;
+  await fanoutEnvelope(repoRoot, kind, payload as Record<string, unknown>);
+
+  return ok;
 }
 
 export function readWaveEvents(

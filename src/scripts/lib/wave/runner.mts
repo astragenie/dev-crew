@@ -70,7 +70,9 @@ export type RunWaveOutcome = WaveResult & {
 
 function defaultRecordEvent(repoRoot: string, artifactsRoot: string): (event: WaveEvent) => void {
   return (event) => {
-    appendWaveEvent(repoRoot, artifactsRoot, event);
+    // Fire-and-forget — telemetry write must not block the wave runner.
+    // appendWaveEvent is fail-silent on both JSONL write + webhook fanout.
+    void appendWaveEvent(repoRoot, artifactsRoot, event);
   };
 }
 
