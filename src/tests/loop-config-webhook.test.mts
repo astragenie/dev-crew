@@ -23,10 +23,10 @@ describe("readNotifyConfig — webhook fields", () => {
             tenantId: "tenant-x",
             appId: "app-y",
             bearer: "tok-123",
-            disabled: false,
-          },
-        },
-      },
+            disabled: false
+          }
+        }
+      }
     });
     const cfg = await readNotifyConfig(repo);
     expect(cfg.mode).toBe("webhook");
@@ -35,13 +35,13 @@ describe("readNotifyConfig — webhook fields", () => {
       tenantId: "tenant-x",
       appId: "app-y",
       bearer: "tok-123",
-      disabled: false,
+      disabled: false
     });
   });
 
   test("falls back to legacy webhookUrl when no webhook block present", async () => {
     const repo = await withTempRepo({
-      loop: { notifications: { mode: "webhook", webhookUrl: "https://legacy.local/hook" } },
+      loop: { notifications: { mode: "webhook", webhookUrl: "https://legacy.local/hook" } }
     });
     const cfg = await readNotifyConfig(repo);
     expect(cfg.webhookUrl).toBe("https://legacy.local/hook");

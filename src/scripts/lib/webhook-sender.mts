@@ -95,7 +95,7 @@ export function createWebhookSender(
         if (attempts >= MAX_ATTEMPTS_429) {
           return { ok: false, status: response.status, attempts };
         }
-        await sleep(retryDelayMs > 0 ? retryDelayMs : BACKOFF_MS_429[attempts - 1] ?? 0);
+        await sleep(retryDelayMs > 0 ? retryDelayMs : (BACKOFF_MS_429[attempts - 1] ?? 0));
         continue;
       }
       if (response.status >= 500) {
