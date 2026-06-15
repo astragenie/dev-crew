@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/wave-event.schema.json",
+  "title": "WaveEventPayload",
+  "type": "object",
+  "required": ["waveId", "ts"],
+  "properties": {
+    "waveId": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "size": { "type": "integer", "minimum": 0 },
+    "rejectedCount": { "type": "integer", "minimum": 0 },
+    "runId": { "type": "string" },
+    "sliceIds": { "type": "array", "items": { "type": "string" } },
+    "merged": { "type": "array", "items": { "type": "string" } },
+    "conflicts": { "type": "array", "items": { "type": "string" } },
+    "failed": { "type": "array", "items": { "type": "string" } },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "skipped"] },
+    "pivots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sliceId", "kind"],
+        "properties": {
+          "sliceId": { "type": "string" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    "haltReason": { "type": ["string", "null"] },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "passCount": { "type": "integer", "minimum": 0 },
+    "failCount": { "type": "integer", "minimum": 0 }
+  }
+}

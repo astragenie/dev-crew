@@ -162,8 +162,7 @@ export const HALT_BADGES: HaltBadgeRenderer[] = [
 const WAVE_HALT_BADGES: Record<string, HaltBadgeInfo> = {
   wave_post_merge_red: {
     severity: "error",
-    description:
-      "Post-merge test suite returned non-zero after wave merge to main."
+    description: "Post-merge test suite returned non-zero after wave merge to main."
   },
   wave_dirty_main: {
     severity: "error",
@@ -171,8 +170,7 @@ const WAVE_HALT_BADGES: Record<string, HaltBadgeInfo> = {
   },
   wave_pending_fix_count: {
     severity: "info",
-    description:
-      "Count of slices with pending_fix=true; planner will pick them first next wave."
+    description: "Count of slices with pending_fix=true; planner will pick them first next wave."
   },
   wave_escalation_count: {
     severity: "warn",

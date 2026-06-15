@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/halt-badge.schema.json",
+  "title": "HaltBadgePayload",
+  "type": "object",
+  "required": ["badgeKind", "ts"],
+  "properties": {
+    "badgeKind": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "sliceId": { "type": "string" },
+    "waveId": { "type": "string" },
+    "details": { "type": "object" }
+  }
+}

@@ -2,6 +2,8 @@ import { spawnSync as nodeSpawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { createWebhookSender } from "./webhook-sender.mjs";
+
 // Hook-driven notification surface for loop lifecycle events.
 // Fires on slice-complete, halt-badge, cost-alert, and slice-start events.
 // Configured via .claude/loop.json under loop.notifications.
@@ -13,11 +15,20 @@ import path from "node:path";
 export type NotificationMode = "osNotification" | "webhook" | "customCommand";
 export type LoopEventType = "slice-complete" | "halt-badge" | "cost-alert" | "slice-start";
 
+export interface NotifyWebhookConfig {
+  url: string;
+  tenantId: string;
+  appId: string;
+  bearer: string;
+  disabled?: boolean;
+}
+
 export interface NotifyConfig {
   enabled?: boolean;
   mode?: NotificationMode;
   events?: LoopEventType[];
-  webhookUrl?: string;
+  webhookUrl?: string; // legacy
+  webhook?: NotifyWebhookConfig;
   command?: string;
 }
 
@@ -104,6 +115,46 @@ function fireOsNotification(event: LoopEvent): void {
 }
 
 async function fireWebhook(event: LoopEvent, config: NotifyConfig): Promise<void> {
+  if (config.webhook?.url) {
+    const fetchFn = _internals.fetch as unknown as (
+      url: string | URL | Request,
+      init?: RequestInit
+    ) => Promise<Response>;
+    const senderConfig: {
+      url: string;
+      tenantId: string;
+      appId: string;
+      bearer: string;
+      disabled?: boolean;
+    } = {
+      url: config.webhook.url,
+      tenantId: config.webhook.tenantId,
+      appId: config.webhook.appId,
+      bearer: config.webhook.bearer
+    };
+    if (config.webhook.disabled !== undefined) {
+      senderConfig.disabled = config.webhook.disabled;
+    }
+    const sender = createWebhookSender(senderConfig, { fetchFn });
+    const { type, timestamp, ...rest } = event;
+    const envelope = {
+      tenantId: config.webhook.tenantId,
+      appId: config.webhook.appId,
+      kind: type,
+      payload: rest as Record<string, unknown>,
+      emittedAt: timestamp
+    };
+    try {
+      await sender.send(envelope);
+    } catch {
+      // Fail-silent — JSONL on disk is authoritative; the webhook is best-effort.
+      // webhook-sender already returns a SendResult instead of throwing, but we
+      // guard here in case of unexpected runtime errors.
+    }
+    return;
+  }
+
+  // Legacy path: webhookUrl + no auth, raw event body
   if (!config.webhookUrl) return;
   try {
     await _internals.fetch(config.webhookUrl, {
