@@ -34,7 +34,9 @@ interface Captured {
   payload: Record<string, unknown>;
 }
 
-async function captureFanouts<T>(fn: () => Promise<T>): Promise<{ result: T; captured: Captured[] }> {
+async function captureFanouts<T>(
+  fn: () => Promise<T>
+): Promise<{ result: T; captured: Captured[] }> {
   const captured: Captured[] = [];
   const originalFetch = fanoutInternals.fetch;
   fanoutInternals.fetch = (async (_url, init) => {

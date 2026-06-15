@@ -53,48 +53,73 @@ export async function parseCrewBundle(filePath: string): Promise<CrewBundleParse
   return parseCrewBundleContent(raw);
 }
 
-export function parseCrewBundleContent(raw: string): CrewBundleParseResult {
-  const result: CrewBundleParseResult = { progressMarkers: [], toolCalls: [] };
+interface Frontmatter {
+  agent?: string;
+  sliceId?: string;
+  startedAt?: string;
+}
 
-  // Frontmatter
+function parseFrontmatter(raw: string): Frontmatter {
+  const fm: Frontmatter = {};
   const fmMatch = /^---\n([\s\S]*?)\n---\n/.exec(raw);
-  if (fmMatch && fmMatch[1]) {
-    for (const line of fmMatch[1].split("\n")) {
-      const [k, ...rest] = line.split(":");
-      const v = rest.join(":").trim();
-      if (k === "agent") result.agent = v;
-      else if (k === "slice") result.sliceId = v;
-      else if (k === "started") result.startedAt = v;
-    }
+  if (!fmMatch || !fmMatch[1]) return fm;
+  for (const line of fmMatch[1].split("\n")) {
+    const [k, ...rest] = line.split(":");
+    const v = rest.join(":").trim();
+    if (k === "agent") fm.agent = v;
+    else if (k === "slice") fm.sliceId = v;
+    else if (k === "started") fm.startedAt = v;
   }
+  return fm;
+}
 
-  // Stage markers
+function parseStageMarkers(raw: string): ProgressMarker[] {
+  const out: ProgressMarker[] = [];
   const stageRe = /## Stage: ([^\n]+)\n\n([^\n#]+)/g;
   let m: RegExpExecArray | null;
   while ((m = stageRe.exec(raw)) !== null) {
     const stage = m[1]?.trim();
     const description = m[2]?.trim();
     if (!stage || !description) continue;
-    result.progressMarkers.push({ stage, description });
+    out.push({ stage, description });
   }
+  return out;
+}
 
-  // Tool calls
+function parseToolCallBlock(toolName: string, block: string): ToolCallRecord {
+  const durMatch = /- duration_ms:\s*(\d+)/.exec(block);
+  const argsBlock = block
+    .split("\n")
+    .filter((l) => l.startsWith("- ") && !l.startsWith("- duration_ms"))
+    .map((l) => l.slice(2))
+    .join("\n");
+  const record: ToolCallRecord = { toolName };
+  if (argsBlock) record.argsJson = JSON.stringify({ raw: argsBlock });
+  if (durMatch && durMatch[1]) record.durationMs = parseInt(durMatch[1], 10);
+  return record;
+}
+
+function parseToolCalls(raw: string): ToolCallRecord[] {
+  const out: ToolCallRecord[] = [];
   const toolRe = /### Tool: ([^\n]+)\n((?:- [^\n]+\n?)+)/g;
+  let m: RegExpExecArray | null;
   while ((m = toolRe.exec(raw)) !== null) {
     const toolName = m[1]?.trim();
     const block = m[2];
     if (!toolName || !block) continue;
-    const durMatch = /- duration_ms:\s*(\d+)/.exec(block);
-    const argsBlock = block
-      .split("\n")
-      .filter((l) => l.startsWith("- ") && !l.startsWith("- duration_ms"))
-      .map((l) => l.slice(2))
-      .join("\n");
-    const record: ToolCallRecord = { toolName };
-    if (argsBlock) record.argsJson = JSON.stringify({ raw: argsBlock });
-    if (durMatch && durMatch[1]) record.durationMs = parseInt(durMatch[1], 10);
-    result.toolCalls.push(record);
+    out.push(parseToolCallBlock(toolName, block));
   }
+  return out;
+}
 
+export function parseCrewBundleContent(raw: string): CrewBundleParseResult {
+  const fm = parseFrontmatter(raw);
+  const result: CrewBundleParseResult = {
+    progressMarkers: parseStageMarkers(raw),
+    toolCalls: parseToolCalls(raw)
+  };
+  if (fm.agent !== undefined) result.agent = fm.agent;
+  if (fm.sliceId !== undefined) result.sliceId = fm.sliceId;
+  if (fm.startedAt !== undefined) result.startedAt = fm.startedAt;
   return result;
 }
