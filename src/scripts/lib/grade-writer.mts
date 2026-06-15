@@ -304,38 +304,13 @@ export async function writeGrade(
   });
 
   // M1: mirror grade to grades.jsonl + fan out to runner via webhook.
-  const featureId =
-    typeof frontmatter.feature === "string" ? (frontmatter.feature as string) : undefined;
-  const specId = typeof frontmatter.spec === "string" ? (frontmatter.spec as string) : undefined;
-  const recordedAt =
-    typeof frontmatter.graded_at === "string"
-      ? (frontmatter.graded_at as string)
-      : new Date().toISOString();
-  const gradeEvent: {
-    sliceId: string;
-    featureId?: string;
-    spec?: string;
-    recordedAt: string;
-    scores: Record<string, number>;
-    decisions: Array<{ id: string; status: "accepted"; body: string }>;
-    timing: Record<string, unknown>;
-    shape: Record<string, unknown>;
-  } = {
-    sliceId,
-    recordedAt,
-    scores: scores as Record<string, number>,
-    decisions: allocated.map((d) => ({
-      id: d.id as string,
-      status: "accepted" as const,
-      body: (d.body as string | undefined) ?? ""
-    })),
-    timing: (frontmatter.timing as Record<string, unknown>) ?? {},
-    shape: (frontmatter.shape as Record<string, unknown>) ?? {}
-  };
-  if (featureId) gradeEvent.featureId = featureId;
-  if (specId) gradeEvent.spec = specId;
+  const gradeEvent = buildGradeEvent(sliceId, frontmatter, scores, allocated);
   await appendGradeEvent(repoPath, gradeEvent);
-  await fanoutEnvelope(repoPath, "grade.recorded", gradeEvent as Record<string, unknown>);
+  await fanoutEnvelope(
+    repoPath,
+    "grade.recorded",
+    gradeEvent as unknown as Record<string, unknown>
+  );
 
   const scoresAvg = averageOf(scores);
   if (scoresAvg !== null) {
@@ -356,6 +331,47 @@ function averageOf(scores: Record<string, unknown>) {
   const vals = Object.values(scores).filter((v) => typeof v === "number") as number[];
   if (vals.length === 0) return null;
   return Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(3));
+}
+
+interface GradeEventOut {
+  sliceId: string;
+  featureId?: string;
+  spec?: string;
+  recordedAt: string;
+  scores: Record<string, number>;
+  decisions: Array<{ id: string; status: "accepted"; body: string }>;
+  timing: Record<string, unknown>;
+  shape: Record<string, unknown>;
+}
+
+function buildGradeEvent(
+  sliceId: string,
+  frontmatter: Record<string, any>,
+  scores: Record<string, unknown>,
+  allocated: Array<Record<string, any>>
+): GradeEventOut {
+  const featureId =
+    typeof frontmatter.feature === "string" ? (frontmatter.feature as string) : undefined;
+  const specId = typeof frontmatter.spec === "string" ? (frontmatter.spec as string) : undefined;
+  const recordedAt =
+    typeof frontmatter.graded_at === "string"
+      ? (frontmatter.graded_at as string)
+      : new Date().toISOString();
+  const event: GradeEventOut = {
+    sliceId,
+    recordedAt,
+    scores: scores as Record<string, number>,
+    decisions: allocated.map((d) => ({
+      id: d.id as string,
+      status: "accepted" as const,
+      body: (d.body as string | undefined) ?? ""
+    })),
+    timing: (frontmatter.timing as Record<string, unknown>) ?? {},
+    shape: (frontmatter.shape as Record<string, unknown>) ?? {}
+  };
+  if (featureId) event.featureId = featureId;
+  if (specId) event.spec = specId;
+  return event;
 }
 
 async function extractDecisions(

@@ -14,10 +14,7 @@ export interface GradeEventPayload {
   shape?: Record<string, unknown>;
 }
 
-export async function appendGradeEvent(
-  repoPath: string,
-  event: GradeEventPayload
-): Promise<void> {
+export async function appendGradeEvent(repoPath: string, event: GradeEventPayload): Promise<void> {
   const file = path.join(repoPath, GRADE_JSONL_RELATIVE);
   await fs.mkdir(path.dirname(file), { recursive: true });
   const line = JSON.stringify(event) + "\n";
