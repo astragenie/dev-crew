@@ -308,19 +308,23 @@ starts when M(N) loop emits the schema and runner ingests it green.
 - R2-4: WaveDetail page (halt-reason donut, pivot list).
 - R2-5: Wave gantt component.
 
-### M3 — Cost + agent perf
+### M3 — Cost + agent perf + live agent narrative
 
-**Loop FEATs (2):**
+**Loop FEATs (4):**
 
 - L3-1: tool_calls + dispatched_at + first_output_at on agent_completed.
 - L3-2: Wire auto-dispatch.jsonl through webhook.
+- L3-3: `slice.agent_progress` event — `{sliceId, agent, stage, description, ts}` emitted periodically during long-running agent dispatches. Hooks into crew subagent stream / status callbacks; falls back to parsing crew artifact bundles in batch mode if streaming hook unavailable.
+- L3-4: `agent.tool_call` event — `{sliceId, agent, toolName, args?, durationMs, ts}` emitted per crew subagent tool invocation. Source: crew artifact bundle parse (every tool use is captured in the bundle markdown today); upstream goal is a streamed emission from crew itself.
 
-**Runner FEATs (4):**
+**Runner FEATs (6):**
 
 - R3-1: AgentRun timing columns + AutoDispatchHandler.
 - R3-2: AgentPerformance page (boxplot, reviewer ladder span, tool-call distribution).
 - R3-3: RoleAgentCost page (PM/architect/spec-writer isolated cost).
 - R3-4: Reviewer ladder Sankey chart.
+- R3-5: AgentProgress entity (`{Id, AppId, SliceId, Agent, Stage, Description, Ts}`) + handler for `slice.agent_progress` + live-tail panel inside SliceLiveDetail showing current agent description + stage. SignalR push to existing slice group.
+- R3-6: ToolCall entity (`{Id, AppId, SliceId, Agent, ToolName, ArgsJson?, DurationMs?, Ts}`) + handler for `agent.tool_call` + per-agent tool-name distribution chart (which tools each agent uses most) + per-slice tool-call timeline strip overlay on SliceLiveDetail.
 
 ### M4 — Ops hazard
 
