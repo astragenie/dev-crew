@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/grade-event.schema.json",
+  "title": "GradeEventPayload",
+  "type": "object",
+  "required": ["sliceId", "recordedAt", "scores"],
+  "properties": {
+    "sliceId": { "type": "string" },
+    "featureId": { "type": "string" },
+    "spec": { "type": "string" },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "scores": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string" },
+          "body": { "type": "string" }
+        }
+      }
+    },
+    "timing": { "type": "object" },
+    "shape": { "type": "object" }
+  }
+}

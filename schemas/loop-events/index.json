@@ -1,5 +1,21 @@
 {
   "schemaVersion": "1.0.0",
   "envelope": "envelope.schema.json",
-  "kinds": {}
+  "kinds": {
+    "slice.workflow_state_changed": "slice-event.schema.json",
+    "slice.gate_transition": "slice-event.schema.json",
+    "slice.agent_dispatched": "slice-event.schema.json",
+    "slice.agent_completed": "slice-event.schema.json",
+    "slice.agent_error": "slice-event.schema.json",
+    "wave.started": "wave-event.schema.json",
+    "wave.plan_built": "wave-event.schema.json",
+    "wave.dispatched": "wave-event.schema.json",
+    "wave.finalized": "wave-event.schema.json",
+    "wave.post_merge_test": "wave-event.schema.json",
+    "wave.pivoted": "wave-event.schema.json",
+    "wave.completed": "wave-event.schema.json",
+    "grade.recorded": "grade-event.schema.json",
+    "agent.dispatch": "agent-dispatch.schema.json",
+    "halt_badge": "halt-badge.schema.json"
+  }
 }

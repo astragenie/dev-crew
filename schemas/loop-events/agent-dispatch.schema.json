@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/agent-dispatch.schema.json",
+  "title": "AgentDispatchPayload",
+  "type": "object",
+  "required": ["timestamp", "agent", "ok"],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "agent": { "type": "string" },
+    "parentCommand": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "skipped": { "type": "boolean" },
+    "skipReason": { "type": "string" },
+    "costUsd": { "type": "number", "minimum": 0 },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "inputTokens": { "type": "integer", "minimum": 0 },
+    "outputTokens": { "type": "integer", "minimum": 0 },
+    "stepType": { "type": "string" }
+  }
+}

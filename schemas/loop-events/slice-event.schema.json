@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/slice-event.schema.json",
+  "title": "SliceEventPayload",
+  "type": "object",
+  "required": ["sliceId", "ts"],
+  "properties": {
+    "sliceId": { "type": "string" },
+    "featureId": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "gate": { "type": "string" },
+    "agent": { "type": "string" },
+    "status": { "type": "string" },
+    "reason": { "type": "string" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "dispatchedAt": { "type": "string", "format": "date-time" },
+    "firstOutputAt": { "type": "string", "format": "date-time" },
+    "toolCalls": { "type": "integer", "minimum": 0 }
+  }
+}
