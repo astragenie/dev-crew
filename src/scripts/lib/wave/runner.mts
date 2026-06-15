@@ -155,6 +155,28 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
     });
   }
 
+  // M2 (L2-2): emit merge_conflict_detail per conflicted branch. The
+  // existing dispatch finalize → mergeChildren path doesn't yet surface
+  // the conflicted file list or sha pair, so the payload is minimal.
+  // TODO(M3+): wire structured conflict info through dispatch-merge.mts
+  // so `conflictedPaths`, `baseSha`, `headSha` populate.
+  if (finalize.conflicts.length > 0) {
+    const sliceIdByBranch = new Map(worktreeResults.map((wr) => [wr.branch, wr.sliceId]));
+    for (const branch of finalize.conflicts) {
+      const sliceId =
+        sliceIdByBranch.get(branch) ??
+        plan.items.find((i) => i.worktreeBranch === branch)?.sliceId ??
+        branch;
+      record({
+        type: "merge_conflict_detail",
+        waveId: plan.waveId,
+        sliceId,
+        conflictedPaths: [],
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
   const postMergeTest = await deps.postMergeTestFn(repoRoot, deps.cfg.postMergeTestCmd);
   record({
     type: "post_merge_test",
