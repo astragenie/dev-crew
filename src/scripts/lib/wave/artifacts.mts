@@ -1,8 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { WaveResult } from "./types.mjs";
-
-const INDEX_CAP = 50;
+import { appendWaveIndexEntry, type WaveIndexEntry } from "./index-sync.mjs";
 
 function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
@@ -22,23 +21,15 @@ export function writeWaveArtifacts(
   }
 }
 
-export type IndexEntry = {
-  waveId: string;
-  size: number;
-  passCount: number;
-  failCount: number;
-  postMergeTest: WaveResult["postMergeTest"]["status"];
-  durationMs: number;
-};
+export type IndexEntry = WaveIndexEntry;
 
+/**
+ * Append a rolling index entry for the completed wave and trigger
+ * `wave.index_updated` fanout. Fire-and-forget on the fanout — the JSONL
+ * + index.json on disk are authoritative.
+ */
 export function updateIndex(repoRoot: string, result: WaveResult, artifactsRoot: string): void {
-  const dir = join(repoRoot, artifactsRoot);
-  ensureDir(dir);
-  const path = join(dir, "index.json");
-  const existing: { entries: IndexEntry[] } = existsSync(path)
-    ? JSON.parse(readFileSync(path, "utf8"))
-    : { entries: [] };
-  existing.entries.push({
+  void appendWaveIndexEntry(repoRoot, artifactsRoot, {
     waveId: result.waveId,
     size: result.plan.size,
     passCount: result.mergedBranches.length,
@@ -46,8 +37,4 @@ export function updateIndex(repoRoot: string, result: WaveResult, artifactsRoot:
     postMergeTest: result.postMergeTest.status,
     durationMs: result.durationMs
   });
-  if (existing.entries.length > INDEX_CAP) {
-    existing.entries = existing.entries.slice(-INDEX_CAP);
-  }
-  writeFileSync(path, JSON.stringify(existing, null, 2), "utf8");
 }
