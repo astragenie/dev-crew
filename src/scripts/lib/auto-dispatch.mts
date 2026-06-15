@@ -7,6 +7,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { fanoutEnvelope } from "./webhook-fanout.mjs";
+
 export interface DispatchOpts {
   agent: string;
   prompt: string;
@@ -77,6 +79,11 @@ export async function appendAuditLog(
  * Flush all buffered audit log lines to disk in a single appendFile call.
  * Call once per command invocation at completion. Safe to call when no lines
  * are buffered (no-op). Clears the buffer after writing.
+ *
+ * L3-2: After the JSONL append succeeds, fan out one webhook envelope per
+ * entry as kind `agent.dispatch`. If the JSONL write fails, no fanout happens
+ * (entries stay in the buffer until next flush per the existing contract).
+ * Each fanout is best-effort and fail-silent — handled by fanoutEnvelope.
  */
 export async function flushAuditLog(repoRoot: string, opts: AuditLogOpts = {}): Promise<void> {
   const logPath = resolveAuditLogPath(repoRoot, opts);
@@ -84,7 +91,18 @@ export async function flushAuditLog(repoRoot: string, opts: AuditLogOpts = {}): 
   if (!batch || batch.lines.length === 0) return;
   await fs.mkdir(path.dirname(logPath), { recursive: true });
   await fs.appendFile(logPath, batch.lines.join("\n") + "\n", "utf8");
+  const flushedLines = batch.lines.slice();
   pendingBatches.delete(logPath);
+
+  for (const line of flushedLines) {
+    let entry: Record<string, unknown>;
+    try {
+      entry = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    await fanoutEnvelope(repoRoot, "agent.dispatch", entry);
+  }
 }
 
 export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult> {
