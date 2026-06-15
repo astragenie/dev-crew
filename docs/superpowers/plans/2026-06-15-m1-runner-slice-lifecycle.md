@@ -1,0 +1,957 @@
+# M1 — Slice Lifecycle Live (Runner Side) Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Stand up the runner-side consumer for M1's three event streams from the loop plugin: slice-events.jsonl (`slice.*` kinds), loop.jsonl lifecycle markers (`loop.*` kinds), and grades.jsonl (`grade.recorded`). Persist envelope rows in raw form (M0 already does this) AND project them into typed `SliceWorkflowEvent`, `AgentRun`, and `GradeRecord` rows. Push live updates to dashboard clients via SignalR. Land two v2 pages that render the data.
+
+**Architecture:** A hosted `IngestDispatcherWorker` drains the M0 `IIngestQueue` and hands each envelope to `LoopEventDispatcher`. The dispatcher routes by `kind` to per-stream handlers: `SliceEventHandler` (covers all `slice.*` kinds), `GradeJsonlHandler` (covers `grade.recorded`), and a default `RawEnvelopeHandler` (covers everything else including `loop.*` kinds — store envelope, no projection). After persist, each handler calls `ILoopEventsNotifier` to push the event JSON to the appropriate SignalR group. Strict v1 isolation: no existing controller, page, or DbContext mapping is modified beyond adding the three new entities.
+
+**Tech Stack:** .NET 10, ASP.NET Core, EF Core 10, PostgreSQL 17, SignalR, xUnit + FluentAssertions + NSubstitute + Testcontainers.PostgreSql, React 19 + Vite + TypeScript, `@microsoft/signalr` client.
+
+**Parent Spec:** `docs/superpowers/specs/2026-06-15-loop-runner-jsonl-adoption-design.md` (Milestone M1, Runner FEATs R1-1, R1-2, R1-3, R1-4, R1-5).
+
+**Wave-run target:** This plan = one wave-run in `C:\work\mega\runner`.
+
+---
+
+## File Structure
+
+### New domain entities + repository contracts
+
+| Path | Status | Responsibility |
+|---|---|---|
+| `src/AstraRunner.Domain/Loop/SliceWorkflowEvent.cs` | new | One row per loop slice-event: `{Id, TenantId, AppId, SliceId, FeatureId?, Kind (workflow_state_changed/gate_transition/agent_dispatched/agent_completed/agent_error), Ts, From?, To?, Gate?, Agent?, Status?, Reason?, DurationMs?, RawJson, ReceivedAt}`. Private setters + static `Create` factory matching house style. |
+| `src/AstraRunner.Domain/Loop/AgentRun.cs` | new | Aggregated per-agent dispatch: `{Id, TenantId, AppId, SliceId, Agent, DispatchedAt, CompletedAt?, FirstOutputAt?, Status (running/ok/error/skipped), DurationMs?, ToolCalls?, Reason?, ReceivedAt}`. Upsert key: `(AppId, SliceId, Agent, DispatchedAt)`. |
+| `src/AstraRunner.Domain/Loop/GradeRecord.cs` | new | One row per grade event: `{Id, TenantId, AppId, SliceId, FeatureId?, Spec?, RecordedAt, ScoresJson, DecisionsJson, TimingJson, ShapeJson, ReceivedAt}`. Upsert key: `(AppId, SliceId, RecordedAt)`. |
+| `src/AstraRunner.Domain/Loop/Interfaces/ISliceWorkflowEventRepository.cs` | new | `UpsertAsync`, `ListBySliceAsync`, `ListByAppSinceAsync`. |
+| `src/AstraRunner.Domain/Loop/Interfaces/IAgentRunRepository.cs` | new | `UpsertAsync` (idempotent on key), `UpdateOnCompleted(...)`, `ListBySliceAsync`. |
+| `src/AstraRunner.Domain/Loop/Interfaces/IGradeRecordRepository.cs` | new | `UpsertAsync`, `ListByAppSinceAsync`, `GetLatestBySliceAsync`. |
+
+### Infrastructure (EF impls + migration)
+
+| Path | Status | Responsibility |
+|---|---|---|
+| `src/AstraRunner.Infrastructure/Persistence/Configuration/Loop/SliceWorkflowEventConfiguration.cs` | new | Table `slice_workflow_events`. PK Id. Indexes on `(AppId, SliceId, Ts)`, `(AppId, Ts)`, `(AppId, Kind, Ts)`. |
+| `src/AstraRunner.Infrastructure/Persistence/Configuration/Loop/AgentRunConfiguration.cs` | new | Table `agent_runs`. PK Id. Unique index on `(AppId, SliceId, Agent, DispatchedAt)`. Indexes on `(AppId, SliceId)`, `(AppId, Agent, DispatchedAt)`. |
+| `src/AstraRunner.Infrastructure/Persistence/Configuration/Loop/GradeRecordConfiguration.cs` | new | Table `grade_records`. PK Id. Unique index on `(AppId, SliceId, RecordedAt)`. Indexes on `(AppId, RecordedAt)`, `(AppId, SliceId)`. |
+| `src/AstraRunner.Infrastructure/Loop/SliceWorkflowEventRepository.cs` | new | EF impl. Idempotent upsert by composite key `(AppId, SliceId, Kind, Ts)`. |
+| `src/AstraRunner.Infrastructure/Loop/AgentRunRepository.cs` | new | EF impl. Upsert keyed on `(AppId, SliceId, Agent, DispatchedAt)`. `UpdateOnCompleted` patches in completion fields. |
+| `src/AstraRunner.Infrastructure/Loop/GradeRecordRepository.cs` | new | EF impl. Upsert by `(AppId, SliceId, RecordedAt)`. |
+| `src/AstraRunner.Infrastructure/Persistence/AstraRunnerDbContext.cs` | modify | Add 3 `DbSet<>` + apply 3 configurations (auto-discovery already in place per M0). |
+| `src/AstraRunner.Infrastructure/DependencyInjection.cs` | modify | Register 3 repositories as Scoped. |
+| `src/AstraRunner.Infrastructure/Migrations/<ts>_AddSliceWorkflowAndGrade.cs` | new | EF migration for the 3 new tables. Generated by `dotnet ef migrations add`. |
+
+### Application (handlers + dispatcher + worker)
+
+| Path | Status | Responsibility |
+|---|---|---|
+| `src/AstraRunner.Application/Loop/Ingest/ILoopEventHandler.cs` | new | Per-stream handler contract: `Task HandleAsync(IngestEnvelopeDto envelope, CancellationToken ct)`. |
+| `src/AstraRunner.Application/Loop/Ingest/SliceEventHandler.cs` | new | Routes `slice.*` envelopes. Persists `SliceWorkflowEvent` (always) + `AgentRun` (for `agent_dispatched`/`agent_completed`/`agent_error`). Calls `ILoopEventsNotifier.NotifySliceAsync(...)`. |
+| `src/AstraRunner.Application/Loop/Ingest/GradeJsonlHandler.cs` | new | Routes `grade.recorded`. Persists `GradeRecord`. Notifies app-level group (`NotifyAppAsync`). |
+| `src/AstraRunner.Application/Loop/Ingest/RawEnvelopeHandler.cs` | new | Fallback: persists envelope to `LoopEvent` (already happens via dispatcher's pre-route step — see below) but emits no projection. Useful for `loop.*`, `wave.*`, etc. that M1 doesn't yet project. |
+| `src/AstraRunner.Application/Loop/Ingest/LoopEventDispatcher.cs` | new | Coordinator: receives envelope from worker. Step 1: always persist to `LoopEvent` raw table (envelope mirror). Step 2: look up handler for `kind` (prefix match: `slice.*` → SliceEventHandler, `grade.recorded` → GradeJsonlHandler, else RawEnvelopeHandler). Step 3: invoke handler. Step 4: on success, return. On error, log + persist `LoopEvent` regardless (envelope mirror is safety net). |
+| `src/AstraRunner.Worker/Consumers/IngestDispatcherWorker.cs` | new | `BackgroundService` that loops: `await queue.DequeueAsync(ct)` → resolves a scoped `LoopEventDispatcher` → calls `Dispatch(envelope, ct)`. Concurrency limit configurable (default 4 concurrent dispatches). Surfaces structured logs. |
+| `src/AstraRunner.Worker/Program.cs` | modify | Register `IngestDispatcherWorker` as a hosted service. Wire `IIngestQueue` (singleton — shared with API process via shared DI in single-process mode; M2 may break this out). |
+
+### API + frontend
+
+| Path | Status | Responsibility |
+|---|---|---|
+| `src/AstraRunner.Api/Controllers/V2/SlicesController.cs` | new | `GET /api/v2/apps/{appId}/slices` paginated + `GET /api/v2/apps/{appId}/slices/{sliceId}` detail. Reads from `SliceWorkflowEventRepository` + `AgentRunRepository` + `GradeRecordRepository`. Auth via existing Clerk JWT (not AppToken). |
+| `src/frontend/dashboard/src/v2/pages/SliceLiveDetail.tsx` | modify | Replace M0 shell. Subscribe to SignalR group `app:{appId}:slice:{sliceId}` on mount. Initial fetch from `GET /api/v2/apps/{appId}/slices/{sliceId}`. Render workflow-state timeline + agent runs + grade scores. Append incoming events live. |
+| `src/frontend/dashboard/src/v2/pages/SliceList.tsx` | new | Replace M0 placeholder. List slices for an app from `GET /api/v2/apps/{appId}/slices?limit=50`. Filter by state. Click → `/v2/slices/:sliceId`. |
+| `src/frontend/dashboard/src/v2/router.tsx` | modify | Update SliceList route (was missing from M0 — add `apps/:appId/slices` route now). |
+| `src/frontend/dashboard/src/v2/lib/api-client.ts` | new | Typed client for the new `/api/v2/apps/{appId}/slices*` endpoints. |
+| `src/frontend/dashboard/src/v2/lib/signalr-client.ts` | modify | Add helper `subscribeSlice(connection, appId, sliceId, onEvent)` wrapping the join/leave/on event pattern. |
+
+### Tests
+
+| Path | Status | Responsibility |
+|---|---|---|
+| `tests/AstraRunner.Tests/Unit/Loop/SliceEventHandlerTests.cs` | new | Each `slice.*` kind persists correct row(s). Agent-completed updates the matching `agent_dispatched` row. Notifier called with slice group + payload JSON. |
+| `tests/AstraRunner.Tests/Unit/Loop/GradeJsonlHandlerTests.cs` | new | Persists GradeRecord; idempotent on `(AppId, SliceId, RecordedAt)`; notifies app group. |
+| `tests/AstraRunner.Tests/Unit/Loop/LoopEventDispatcherTests.cs` | new | Kind-routing: `slice.workflow_state_changed` → SliceEventHandler, `grade.recorded` → GradeJsonlHandler, `wave.started` → RawEnvelopeHandler. LoopEvent envelope persisted regardless of handler outcome. |
+| `tests/AstraRunner.Tests/Integration/Loop/SliceWorkflowEventRepositoryTests.cs` | new | Real PG. Idempotent upsert. ListBySlice ordered by Ts. |
+| `tests/AstraRunner.Tests/Integration/Loop/AgentRunRepositoryTests.cs` | new | Real PG. Upsert + UpdateOnCompleted flow. Unique constraint enforces idempotency. |
+| `tests/AstraRunner.Tests/Integration/Loop/GradeRecordRepositoryTests.cs` | new | Real PG. Upsert idempotency on `(AppId, SliceId, RecordedAt)`. GetLatestBySliceAsync. |
+| `tests/AstraRunner.Tests/Integration/Api/V2/SlicesControllerTests.cs` | new | `GET /api/v2/apps/{appId}/slices` returns paginated rows. `GET /api/v2/apps/{appId}/slices/{sliceId}` returns workflow + agent-runs + grade. Direct controller invocation per T5/T6 precedent. |
+| `tests/AstraRunner.Tests/Integration/Worker/IngestDispatcherWorkerTests.cs` | new | Enqueue an envelope into a real `InMemoryIngestQueue`; let the worker tick once; assert handler invoked + row persisted. Uses Testcontainers PG. |
+| `src/frontend/dashboard/src/v2/pages/__tests__/SliceLiveDetail.test.tsx` | new | Renders initial fetch state. Mock SignalR connection; assert subscribes on mount, unsubscribes on unmount, renders incoming event. |
+| `src/frontend/dashboard/src/v2/pages/__tests__/SliceList.test.tsx` | new | Renders fixture rows. Click navigates. Empty-state copy. |
+
+---
+
+### Task 1: SliceWorkflowEvent + AgentRun + GradeRecord domain entities
+
+**Files:**
+- Create: `src/AstraRunner.Domain/Loop/SliceWorkflowEvent.cs`
+- Create: `src/AstraRunner.Domain/Loop/AgentRun.cs`
+- Create: `src/AstraRunner.Domain/Loop/GradeRecord.cs`
+- Create: `src/AstraRunner.Domain/Loop/Interfaces/ISliceWorkflowEventRepository.cs`
+- Create: `src/AstraRunner.Domain/Loop/Interfaces/IAgentRunRepository.cs`
+- Create: `src/AstraRunner.Domain/Loop/Interfaces/IGradeRecordRepository.cs`
+
+Follow the house-style template from `src/AstraRunner.Domain/Loop/AppToken.cs` (M0): private setters, private parameterless ctor, public static `Create(...)` factory, `default!` on required strings, `Revoke`/state-change methods returned as void mutators.
+
+- [ ] **Step 1: SliceWorkflowEvent**
+
+```csharp
+namespace AstraRunner.Domain.Loop;
+
+public class SliceWorkflowEvent
+{
+    public Guid Id { get; private set; }
+    public Guid TenantId { get; private set; }
+    public Guid AppId { get; private set; }
+    public string SliceId { get; private set; } = default!;
+    public string? FeatureId { get; private set; }
+    public string Kind { get; private set; } = default!;
+    public DateTimeOffset Ts { get; private set; }
+    public string? From { get; private set; }
+    public string? To { get; private set; }
+    public string? Gate { get; private set; }
+    public string? Agent { get; private set; }
+    public string? Status { get; private set; }
+    public string? Reason { get; private set; }
+    public long? DurationMs { get; private set; }
+    public string RawJson { get; private set; } = default!;
+    public DateTimeOffset ReceivedAt { get; private set; }
+
+    private SliceWorkflowEvent() { }
+
+    public static SliceWorkflowEvent Create(
+        Guid tenantId,
+        Guid appId,
+        string sliceId,
+        string kind,
+        DateTimeOffset ts,
+        string rawJson,
+        DateTimeOffset receivedAt,
+        string? featureId = null,
+        string? from = null,
+        string? to = null,
+        string? gate = null,
+        string? agent = null,
+        string? status = null,
+        string? reason = null,
+        long? durationMs = null)
+    {
+        return new SliceWorkflowEvent
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            AppId = appId,
+            SliceId = sliceId,
+            FeatureId = featureId,
+            Kind = kind,
+            Ts = ts,
+            From = from,
+            To = to,
+            Gate = gate,
+            Agent = agent,
+            Status = status,
+            Reason = reason,
+            DurationMs = durationMs,
+            RawJson = rawJson,
+            ReceivedAt = receivedAt
+        };
+    }
+}
+```
+
+- [ ] **Step 2: AgentRun**
+
+```csharp
+namespace AstraRunner.Domain.Loop;
+
+public class AgentRun
+{
+    public Guid Id { get; private set; }
+    public Guid TenantId { get; private set; }
+    public Guid AppId { get; private set; }
+    public string SliceId { get; private set; } = default!;
+    public string Agent { get; private set; } = default!;
+    public DateTimeOffset DispatchedAt { get; private set; }
+    public DateTimeOffset? CompletedAt { get; private set; }
+    public DateTimeOffset? FirstOutputAt { get; private set; }
+    public string Status { get; private set; } = "running";
+    public long? DurationMs { get; private set; }
+    public int? ToolCalls { get; private set; }
+    public string? Reason { get; private set; }
+    public DateTimeOffset ReceivedAt { get; private set; }
+
+    private AgentRun() { }
+
+    public static AgentRun Create(
+        Guid tenantId,
+        Guid appId,
+        string sliceId,
+        string agent,
+        DateTimeOffset dispatchedAt,
+        DateTimeOffset receivedAt)
+    {
+        return new AgentRun
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            AppId = appId,
+            SliceId = sliceId,
+            Agent = agent,
+            DispatchedAt = dispatchedAt,
+            Status = "running",
+            ReceivedAt = receivedAt
+        };
+    }
+
+    public void MarkCompleted(
+        DateTimeOffset completedAt,
+        string status,
+        long? durationMs,
+        int? toolCalls,
+        string? reason)
+    {
+        CompletedAt = completedAt;
+        Status = status;
+        DurationMs = durationMs;
+        ToolCalls = toolCalls;
+        Reason = reason;
+    }
+}
+```
+
+- [ ] **Step 3: GradeRecord**
+
+```csharp
+namespace AstraRunner.Domain.Loop;
+
+public class GradeRecord
+{
+    public Guid Id { get; private set; }
+    public Guid TenantId { get; private set; }
+    public Guid AppId { get; private set; }
+    public string SliceId { get; private set; } = default!;
+    public string? FeatureId { get; private set; }
+    public string? Spec { get; private set; }
+    public DateTimeOffset RecordedAt { get; private set; }
+    public string ScoresJson { get; private set; } = "{}";
+    public string DecisionsJson { get; private set; } = "[]";
+    public string TimingJson { get; private set; } = "{}";
+    public string ShapeJson { get; private set; } = "{}";
+    public DateTimeOffset ReceivedAt { get; private set; }
+
+    private GradeRecord() { }
+
+    public static GradeRecord Create(
+        Guid tenantId,
+        Guid appId,
+        string sliceId,
+        DateTimeOffset recordedAt,
+        string scoresJson,
+        DateTimeOffset receivedAt,
+        string? featureId = null,
+        string? spec = null,
+        string decisionsJson = "[]",
+        string timingJson = "{}",
+        string shapeJson = "{}")
+    {
+        return new GradeRecord
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            AppId = appId,
+            SliceId = sliceId,
+            FeatureId = featureId,
+            Spec = spec,
+            RecordedAt = recordedAt,
+            ScoresJson = scoresJson,
+            DecisionsJson = decisionsJson,
+            TimingJson = timingJson,
+            ShapeJson = shapeJson,
+            ReceivedAt = receivedAt
+        };
+    }
+}
+```
+
+- [ ] **Step 4: Repository contracts**
+
+`ISliceWorkflowEventRepository.cs`:
+
+```csharp
+namespace AstraRunner.Domain.Loop.Interfaces;
+
+public interface ISliceWorkflowEventRepository
+{
+    Task UpsertAsync(SliceWorkflowEvent evt, CancellationToken ct);
+    Task<IReadOnlyList<SliceWorkflowEvent>> ListBySliceAsync(Guid appId, string sliceId, CancellationToken ct);
+    Task<IReadOnlyList<SliceWorkflowEvent>> ListByAppSinceAsync(Guid appId, DateTimeOffset since, int limit, CancellationToken ct);
+}
+```
+
+`IAgentRunRepository.cs`:
+
+```csharp
+namespace AstraRunner.Domain.Loop.Interfaces;
+
+public interface IAgentRunRepository
+{
+    Task UpsertAsync(AgentRun run, CancellationToken ct);
+    Task<AgentRun?> FindByKeyAsync(Guid appId, string sliceId, string agent, DateTimeOffset dispatchedAt, CancellationToken ct);
+    Task UpdateOnCompletedAsync(Guid agentRunId, DateTimeOffset completedAt, string status, long? durationMs, int? toolCalls, string? reason, CancellationToken ct);
+    Task<IReadOnlyList<AgentRun>> ListBySliceAsync(Guid appId, string sliceId, CancellationToken ct);
+}
+```
+
+`IGradeRecordRepository.cs`:
+
+```csharp
+namespace AstraRunner.Domain.Loop.Interfaces;
+
+public interface IGradeRecordRepository
+{
+    Task UpsertAsync(GradeRecord record, CancellationToken ct);
+    Task<GradeRecord?> GetLatestBySliceAsync(Guid appId, string sliceId, CancellationToken ct);
+    Task<IReadOnlyList<GradeRecord>> ListByAppSinceAsync(Guid appId, DateTimeOffset since, int limit, CancellationToken ct);
+}
+```
+
+- [ ] **Step 5: Build Domain**
+
+```pwsh
+dotnet build src/AstraRunner.Domain/AstraRunner.Domain.csproj
+```
+
+Expected: 0 errors.
+
+- [ ] **Step 6: Commit**
+
+```pwsh
+git add src/AstraRunner.Domain/Loop/SliceWorkflowEvent.cs src/AstraRunner.Domain/Loop/AgentRun.cs src/AstraRunner.Domain/Loop/GradeRecord.cs src/AstraRunner.Domain/Loop/Interfaces/ISliceWorkflowEventRepository.cs src/AstraRunner.Domain/Loop/Interfaces/IAgentRunRepository.cs src/AstraRunner.Domain/Loop/Interfaces/IGradeRecordRepository.cs
+git commit -m "feat(loop): M1 domain entities (SliceWorkflowEvent, AgentRun, GradeRecord)"
+```
+
+---
+
+### Task 2: EF configurations + repository impls + migration
+
+**Files:**
+- Create: 3 configurations under `src/AstraRunner.Infrastructure/Persistence/Configuration/Loop/`.
+- Create: 3 repositories under `src/AstraRunner.Infrastructure/Loop/`.
+- Modify: `src/AstraRunner.Infrastructure/Persistence/AstraRunnerDbContext.cs` (add 3 DbSets).
+- Modify: `src/AstraRunner.Infrastructure/DependencyInjection.cs` (register 3 Scoped repos).
+- Generate: migration `<ts>_AddSliceWorkflowAndGrade.cs`.
+
+Mirror the M0 Task 3 pattern (`feat(loop): EF migration for app_tokens + loop_events tables`).
+
+- [ ] **Step 1: SliceWorkflowEventConfiguration**
+
+```csharp
+using AstraRunner.Domain.Loop;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AstraRunner.Infrastructure.Persistence.Configuration.Loop;
+
+internal sealed class SliceWorkflowEventConfiguration : IEntityTypeConfiguration<SliceWorkflowEvent>
+{
+    public void Configure(EntityTypeBuilder<SliceWorkflowEvent> b)
+    {
+        b.ToTable("slice_workflow_events");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.TenantId).IsRequired();
+        b.Property(e => e.AppId).IsRequired();
+        b.Property(e => e.SliceId).IsRequired().HasMaxLength(64);
+        b.Property(e => e.FeatureId).HasMaxLength(64);
+        b.Property(e => e.Kind).IsRequired().HasMaxLength(64);
+        b.Property(e => e.Ts).IsRequired();
+        b.Property(e => e.From).HasMaxLength(64);
+        b.Property(e => e.To).HasMaxLength(64);
+        b.Property(e => e.Gate).HasMaxLength(64);
+        b.Property(e => e.Agent).HasMaxLength(128);
+        b.Property(e => e.Status).HasMaxLength(32);
+        b.Property(e => e.Reason).HasMaxLength(512);
+        b.Property(e => e.DurationMs);
+        b.Property(e => e.RawJson).HasColumnType("jsonb").IsRequired();
+        b.Property(e => e.ReceivedAt).IsRequired();
+        b.HasIndex(e => new { e.AppId, e.SliceId, e.Ts });
+        b.HasIndex(e => new { e.AppId, e.Ts });
+        b.HasIndex(e => new { e.AppId, e.Kind, e.Ts });
+    }
+}
+```
+
+- [ ] **Step 2: AgentRunConfiguration**
+
+```csharp
+using AstraRunner.Domain.Loop;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AstraRunner.Infrastructure.Persistence.Configuration.Loop;
+
+internal sealed class AgentRunConfiguration : IEntityTypeConfiguration<AgentRun>
+{
+    public void Configure(EntityTypeBuilder<AgentRun> b)
+    {
+        b.ToTable("agent_runs");
+        b.HasKey(r => r.Id);
+        b.Property(r => r.TenantId).IsRequired();
+        b.Property(r => r.AppId).IsRequired();
+        b.Property(r => r.SliceId).IsRequired().HasMaxLength(64);
+        b.Property(r => r.Agent).IsRequired().HasMaxLength(128);
+        b.Property(r => r.DispatchedAt).IsRequired();
+        b.Property(r => r.CompletedAt);
+        b.Property(r => r.FirstOutputAt);
+        b.Property(r => r.Status).IsRequired().HasMaxLength(32);
+        b.Property(r => r.DurationMs);
+        b.Property(r => r.ToolCalls);
+        b.Property(r => r.Reason).HasMaxLength(512);
+        b.Property(r => r.ReceivedAt).IsRequired();
+        b.HasIndex(r => new { r.AppId, r.SliceId, r.Agent, r.DispatchedAt }).IsUnique();
+        b.HasIndex(r => new { r.AppId, r.SliceId });
+        b.HasIndex(r => new { r.AppId, r.Agent, r.DispatchedAt });
+    }
+}
+```
+
+- [ ] **Step 3: GradeRecordConfiguration**
+
+```csharp
+using AstraRunner.Domain.Loop;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AstraRunner.Infrastructure.Persistence.Configuration.Loop;
+
+internal sealed class GradeRecordConfiguration : IEntityTypeConfiguration<GradeRecord>
+{
+    public void Configure(EntityTypeBuilder<GradeRecord> b)
+    {
+        b.ToTable("grade_records");
+        b.HasKey(g => g.Id);
+        b.Property(g => g.TenantId).IsRequired();
+        b.Property(g => g.AppId).IsRequired();
+        b.Property(g => g.SliceId).IsRequired().HasMaxLength(64);
+        b.Property(g => g.FeatureId).HasMaxLength(64);
+        b.Property(g => g.Spec).HasMaxLength(64);
+        b.Property(g => g.RecordedAt).IsRequired();
+        b.Property(g => g.ScoresJson).HasColumnType("jsonb").IsRequired();
+        b.Property(g => g.DecisionsJson).HasColumnType("jsonb").IsRequired();
+        b.Property(g => g.TimingJson).HasColumnType("jsonb").IsRequired();
+        b.Property(g => g.ShapeJson).HasColumnType("jsonb").IsRequired();
+        b.Property(g => g.ReceivedAt).IsRequired();
+        b.HasIndex(g => new { g.AppId, g.SliceId, g.RecordedAt }).IsUnique();
+        b.HasIndex(g => new { g.AppId, g.RecordedAt });
+        b.HasIndex(g => new { g.AppId, g.SliceId });
+    }
+}
+```
+
+- [ ] **Step 4: Repository impls**
+
+`SliceWorkflowEventRepository.cs`:
+
+```csharp
+using AstraRunner.Domain.Loop;
+using AstraRunner.Domain.Loop.Interfaces;
+using AstraRunner.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace AstraRunner.Infrastructure.Loop;
+
+public sealed class SliceWorkflowEventRepository : ISliceWorkflowEventRepository
+{
+    private readonly AstraRunnerDbContext _db;
+    public SliceWorkflowEventRepository(AstraRunnerDbContext db) => _db = db;
+
+    public async Task UpsertAsync(SliceWorkflowEvent evt, CancellationToken ct)
+    {
+        // Idempotency key: (AppId, SliceId, Kind, Ts) — no unique index (workflow events
+        // can repeat the same kind at different Ts), so we check-then-insert by composite.
+        var existing = await _db.SliceWorkflowEvents.AsNoTracking().SingleOrDefaultAsync(
+            e => e.AppId == evt.AppId && e.SliceId == evt.SliceId && e.Kind == evt.Kind && e.Ts == evt.Ts, ct);
+        if (existing is not null) return;
+        _db.SliceWorkflowEvents.Add(evt);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<SliceWorkflowEvent>> ListBySliceAsync(Guid appId, string sliceId, CancellationToken ct) =>
+        await _db.SliceWorkflowEvents.AsNoTracking()
+            .Where(e => e.AppId == appId && e.SliceId == sliceId)
+            .OrderBy(e => e.Ts)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<SliceWorkflowEvent>> ListByAppSinceAsync(Guid appId, DateTimeOffset since, int limit, CancellationToken ct) =>
+        await _db.SliceWorkflowEvents.AsNoTracking()
+            .Where(e => e.AppId == appId && e.Ts >= since)
+            .OrderBy(e => e.Ts)
+            .Take(limit)
+            .ToListAsync(ct);
+}
+```
+
+`AgentRunRepository.cs`:
+
+```csharp
+using AstraRunner.Domain.Loop;
+using AstraRunner.Domain.Loop.Interfaces;
+using AstraRunner.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace AstraRunner.Infrastructure.Loop;
+
+public sealed class AgentRunRepository : IAgentRunRepository
+{
+    private readonly AstraRunnerDbContext _db;
+    public AgentRunRepository(AstraRunnerDbContext db) => _db = db;
+
+    public Task<AgentRun?> FindByKeyAsync(Guid appId, string sliceId, string agent, DateTimeOffset dispatchedAt, CancellationToken ct) =>
+        _db.AgentRuns.AsNoTracking().SingleOrDefaultAsync(
+            r => r.AppId == appId && r.SliceId == sliceId && r.Agent == agent && r.DispatchedAt == dispatchedAt, ct);
+
+    public async Task UpsertAsync(AgentRun run, CancellationToken ct)
+    {
+        var existing = await FindByKeyAsync(run.AppId, run.SliceId, run.Agent, run.DispatchedAt, ct);
+        if (existing is not null) return;
+        _db.AgentRuns.Add(run);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateOnCompletedAsync(
+        Guid agentRunId,
+        DateTimeOffset completedAt,
+        string status,
+        long? durationMs,
+        int? toolCalls,
+        string? reason,
+        CancellationToken ct)
+    {
+        var entity = await _db.AgentRuns.SingleAsync(r => r.Id == agentRunId, ct);
+        entity.MarkCompleted(completedAt, status, durationMs, toolCalls, reason);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AgentRun>> ListBySliceAsync(Guid appId, string sliceId, CancellationToken ct) =>
+        await _db.AgentRuns.AsNoTracking()
+            .Where(r => r.AppId == appId && r.SliceId == sliceId)
+            .OrderBy(r => r.DispatchedAt)
+            .ToListAsync(ct);
+}
+```
+
+`GradeRecordRepository.cs`:
+
+```csharp
+using AstraRunner.Domain.Loop;
+using AstraRunner.Domain.Loop.Interfaces;
+using AstraRunner.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace AstraRunner.Infrastructure.Loop;
+
+public sealed class GradeRecordRepository : IGradeRecordRepository
+{
+    private readonly AstraRunnerDbContext _db;
+    public GradeRecordRepository(AstraRunnerDbContext db) => _db = db;
+
+    public async Task UpsertAsync(GradeRecord record, CancellationToken ct)
+    {
+        var existing = await _db.GradeRecords.AsNoTracking().SingleOrDefaultAsync(
+            r => r.AppId == record.AppId && r.SliceId == record.SliceId && r.RecordedAt == record.RecordedAt, ct);
+        if (existing is not null) return;
+        _db.GradeRecords.Add(record);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public Task<GradeRecord?> GetLatestBySliceAsync(Guid appId, string sliceId, CancellationToken ct) =>
+        _db.GradeRecords.AsNoTracking()
+            .Where(r => r.AppId == appId && r.SliceId == sliceId)
+            .OrderByDescending(r => r.RecordedAt)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<GradeRecord>> ListByAppSinceAsync(Guid appId, DateTimeOffset since, int limit, CancellationToken ct) =>
+        await _db.GradeRecords.AsNoTracking()
+            .Where(r => r.AppId == appId && r.RecordedAt >= since)
+            .OrderBy(r => r.RecordedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+}
+```
+
+- [ ] **Step 5: DbContext**
+
+Edit `src/AstraRunner.Infrastructure/Persistence/AstraRunnerDbContext.cs`. Add:
+
+```csharp
+    public DbSet<SliceWorkflowEvent> SliceWorkflowEvents => Set<SliceWorkflowEvent>();
+    public DbSet<AgentRun> AgentRuns => Set<AgentRun>();
+    public DbSet<GradeRecord> GradeRecords => Set<GradeRecord>();
+```
+
+`ApplyConfigurationsFromAssembly` auto-discovery already picks up the new configurations (per M0 Task 3 pattern).
+
+- [ ] **Step 6: DI**
+
+Edit `src/AstraRunner.Infrastructure/DependencyInjection.cs`. Add:
+
+```csharp
+        services.AddScoped<ISliceWorkflowEventRepository, SliceWorkflowEventRepository>();
+        services.AddScoped<IAgentRunRepository, AgentRunRepository>();
+        services.AddScoped<IGradeRecordRepository, GradeRecordRepository>();
+```
+
+Plus usings.
+
+- [ ] **Step 7: Generate migration**
+
+```pwsh
+dotnet ef migrations add AddSliceWorkflowAndGrade --project src/AstraRunner.Infrastructure --startup-project src/AstraRunner.AppHost --output-dir Migrations
+```
+
+Inspect the generated file. Confirm:
+- 3 tables under `astrarunner` schema.
+- All indexes from the configurations.
+- `raw_json` / `scores_json` etc. columns are `jsonb`.
+
+If anything's off, fix the configuration files + `dotnet ef migrations remove` + regenerate.
+
+- [ ] **Step 8: Apply migration**
+
+```pwsh
+dotnet ef database update --project src/AstraRunner.Infrastructure --startup-project src/AstraRunner.AppHost
+```
+
+Verify tables:
+
+```pwsh
+psql -h localhost -U astra -d astra_humanizer -c "\dt astrarunner.slice_workflow_events" -c "\dt astrarunner.agent_runs" -c "\dt astrarunner.grade_records"
+```
+
+- [ ] **Step 9: Build**
+
+```pwsh
+dotnet build src/AstraRunner.Infrastructure/AstraRunner.Infrastructure.csproj
+```
+
+Expected: 0 errors.
+
+- [ ] **Step 10: Commit**
+
+```pwsh
+git add src/AstraRunner.Infrastructure/Persistence/Configuration/Loop/ src/AstraRunner.Infrastructure/Loop/ src/AstraRunner.Infrastructure/Persistence/AstraRunnerDbContext.cs src/AstraRunner.Infrastructure/DependencyInjection.cs src/AstraRunner.Infrastructure/Migrations/
+git commit -m "feat(loop): EF migration + repos for slice_workflow_events, agent_runs, grade_records"
+```
+
+---
+
+### Task 3: ILoopEventHandler contract + LoopEventDispatcher routing
+
+**Files:**
+- Create: `src/AstraRunner.Application/Loop/Ingest/ILoopEventHandler.cs`
+- Create: `src/AstraRunner.Application/Loop/Ingest/RawEnvelopeHandler.cs`
+- Create: `src/AstraRunner.Application/Loop/Ingest/LoopEventDispatcher.cs`
+- Create: `tests/AstraRunner.Tests/Unit/Loop/LoopEventDispatcherTests.cs`
+
+- [ ] **Step 1: `ILoopEventHandler`**
+
+```csharp
+namespace AstraRunner.Application.Loop.Ingest;
+
+public interface ILoopEventHandler
+{
+    /// <summary>Returns true if this handler handles the given envelope kind.</summary>
+    bool CanHandle(string kind);
+
+    /// <summary>Process the envelope. Implementations must be idempotent on replay.</summary>
+    Task HandleAsync(IngestEnvelopeDto envelope, CancellationToken ct);
+}
+```
+
+- [ ] **Step 2: `RawEnvelopeHandler`** (fallback — persists LoopEvent envelope without typed projection)
+
+```csharp
+using System.Text.Json;
+using AstraRunner.Domain.Loop;
+using AstraRunner.Domain.Loop.Interfaces;
+
+namespace AstraRunner.Application.Loop.Ingest;
+
+public sealed class RawEnvelopeHandler : ILoopEventHandler
+{
+    private readonly ILoopEventRepository _repo;
+    private readonly Func<DateTimeOffset> _now;
+    public RawEnvelopeHandler(ILoopEventRepository repo, Func<DateTimeOffset> now)
+    {
+        _repo = repo;
+        _now = now;
+    }
+
+    public bool CanHandle(string kind) => true; // catch-all fallback
+
+    public Task HandleAsync(IngestEnvelopeDto envelope, CancellationToken ct)
+    {
+        var loopEvent = LoopEvent.Create(
+            tenantId: Guid.Parse(envelope.TenantId),
+            appId: Guid.Parse(envelope.AppId),
+            kind: envelope.Kind,
+            rawPayloadJson: envelope.PayloadJson,
+            emittedAt: envelope.EmittedAt,
+            receivedAt: _now(),
+            sourcePath: envelope.SourcePath,
+            lineOffset: envelope.LineOffset,
+            schemaVersion: envelope.SchemaVersion);
+        return _repo.UpsertAsync(loopEvent, ct);
+    }
+}
+```
+
+- [ ] **Step 3: `LoopEventDispatcher`**
+
+```csharp
+namespace AstraRunner.Application.Loop.Ingest;
+
+public sealed class LoopEventDispatcher
+{
+    private readonly IEnumerable<ILoopEventHandler> _handlers;
+    private readonly RawEnvelopeHandler _fallback;
+
+    public LoopEventDispatcher(IEnumerable<ILoopEventHandler> handlers, RawEnvelopeHandler fallback)
+    {
+        _handlers = handlers;
+        _fallback = fallback;
+    }
+
+    public async Task DispatchAsync(IngestEnvelopeDto envelope, CancellationToken ct)
+    {
+        // Always mirror to LoopEvent raw table first (envelope safety net).
+        await _fallback.HandleAsync(envelope, ct);
+        // Then invoke the first specific handler that claims the kind (skipping the fallback).
+        foreach (var h in _handlers)
+        {
+            if (ReferenceEquals(h, _fallback)) continue;
+            if (h.CanHandle(envelope.Kind))
+            {
+                await h.HandleAsync(envelope, ct);
+                return;
+            }
+        }
+    }
+}
+```
+
+- [ ] **Step 4: Unit tests**
+
+`LoopEventDispatcherTests.cs`:
+
+```csharp
+using AstraRunner.Application.Loop.Ingest;
+using AstraRunner.Domain.Loop;
+using AstraRunner.Domain.Loop.Interfaces;
+using FluentAssertions;
+using NSubstitute;
+
+namespace AstraRunner.Tests.Unit.Loop;
+
+public class LoopEventDispatcherTests
+{
+    private static IngestEnvelopeDto Env(string kind) => new()
+    {
+        TenantId = Guid.NewGuid().ToString(),
+        AppId = Guid.NewGuid().ToString(),
+        Kind = kind,
+        PayloadJson = "{}",
+        EmittedAt = DateTimeOffset.UtcNow
+    };
+
+    [Fact]
+    public async Task DispatchAsync_invokes_first_matching_handler()
+    {
+        var slice = Substitute.For<ILoopEventHandler>();
+        slice.CanHandle("slice.workflow_state_changed").Returns(true);
+        var grade = Substitute.For<ILoopEventHandler>();
+        grade.CanHandle(Arg.Any<string>()).Returns(false);
+
+        var repo = Substitute.For<ILoopEventRepository>();
+        var fallback = new RawEnvelopeHandler(repo, () => DateTimeOffset.UtcNow);
+        var dispatcher = new LoopEventDispatcher(new[] { slice, grade }, fallback);
+
+        await dispatcher.DispatchAsync(Env("slice.workflow_state_changed"), CancellationToken.None);
+
+        await slice.Received(1).HandleAsync(Arg.Any<IngestEnvelopeDto>(), Arg.Any<CancellationToken>());
+        await grade.DidNotReceive().HandleAsync(Arg.Any<IngestEnvelopeDto>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DispatchAsync_persists_envelope_via_fallback_regardless_of_kind()
+    {
+        var repo = Substitute.For<ILoopEventRepository>();
+        var fallback = new RawEnvelopeHandler(repo, () => DateTimeOffset.UtcNow);
+        var dispatcher = new LoopEventDispatcher(Array.Empty<ILoopEventHandler>(), fallback);
+
+        await dispatcher.DispatchAsync(Env("wave.started"), CancellationToken.None);
+
+        await repo.Received(1).UpsertAsync(Arg.Any<LoopEvent>(), Arg.Any<CancellationToken>());
+    }
+}
+```
+
+- [ ] **Step 5: Build + test**
+
+```pwsh
+dotnet build src/AstraRunner.Application/AstraRunner.Application.csproj
+dotnet test tests/AstraRunner.Tests/AstraRunner.Tests.csproj --filter "FullyQualifiedName~LoopEventDispatcherTests"
+```
+
+Expected: build clean. 2/2 PASS.
+
+- [ ] **Step 6: Commit**
+
+```pwsh
+git add src/AstraRunner.Application/Loop/Ingest/ILoopEventHandler.cs src/AstraRunner.Application/Loop/Ingest/RawEnvelopeHandler.cs src/AstraRunner.Application/Loop/Ingest/LoopEventDispatcher.cs tests/AstraRunner.Tests/Unit/Loop/LoopEventDispatcherTests.cs
+git commit -m "feat(ingest): LoopEventDispatcher routes by kind + envelope safety-net"
+```
+
+---
+
+### Task 4: SliceEventHandler
+
+**Files:**
+- Create: `src/AstraRunner.Application/Loop/Ingest/SliceEventHandler.cs`
+- Create: `tests/AstraRunner.Tests/Unit/Loop/SliceEventHandlerTests.cs`
+
+The handler parses `payload` JSON, extracts `sliceId`, `ts`, optional fields (`from`, `to`, `gate`, `agent`, `status`, `reason`, `durationMs`, `firstOutputAt`, `toolCalls`). Persists a `SliceWorkflowEvent`. For `slice.agent_dispatched` and `slice.agent_completed` / `slice.agent_error`, also upserts / updates an `AgentRun`. After persist, calls `ILoopEventsNotifier.NotifySliceAsync(...)`.
+
+Author the handler + 4 NSubstitute-backed tests (workflow_state, gate_transition, agent_dispatched → AgentRun created, agent_completed → AgentRun updated). Reuse the SliceEventHandlerTests skeleton from Task 5 + 6 in M0 for fixture patterns.
+
+Commit: `feat(ingest): SliceEventHandler persists workflow + agent-run rows`.
+
+(Detailed code omitted for brevity — follow the same shape as `RawEnvelopeHandler` but with `ISliceWorkflowEventRepository` + `IAgentRunRepository` + `ILoopEventsNotifier` dependencies, and a JSON-extraction helper using `System.Text.Json.JsonDocument` to pull payload fields.)
+
+---
+
+### Task 5: GradeJsonlHandler
+
+**Files:**
+- Create: `src/AstraRunner.Application/Loop/Ingest/GradeJsonlHandler.cs`
+- Create: `tests/AstraRunner.Tests/Unit/Loop/GradeJsonlHandlerTests.cs`
+
+Handles `grade.recorded` only. Parses payload, builds `GradeRecord.Create(...)`, upserts. Calls `ILoopEventsNotifier.NotifyAppAsync(appId, envelope.PayloadJson, ct)`.
+
+2 tests: persist; idempotent on `(AppId, SliceId, RecordedAt)`.
+
+Commit: `feat(ingest): GradeJsonlHandler persists grade records`.
+
+---
+
+### Task 6: IngestDispatcherWorker (BackgroundService)
+
+**Files:**
+- Create: `src/AstraRunner.Worker/Consumers/IngestDispatcherWorker.cs`
+- Modify: `src/AstraRunner.Worker/Program.cs` — register the worker as a hosted service + register handlers.
+- Create: `tests/AstraRunner.Tests/Integration/Worker/IngestDispatcherWorkerTests.cs`
+
+The worker:
+1. `ExecuteAsync(stoppingToken)`: loops, awaits `_queue.DequeueAsync(stoppingToken)`, resolves a scoped `IServiceScope` per envelope, gets `LoopEventDispatcher`, calls `DispatchAsync`. Logs structured errors. Concurrency limit via `SemaphoreSlim(4)`.
+
+Tests use Testcontainers PG + an `InMemoryIngestQueue` + a real dispatcher. Enqueue an envelope; let the worker process one tick; assert the row landed.
+
+Commit: `feat(worker): IngestDispatcherWorker drains IIngestQueue → LoopEventDispatcher`.
+
+---
+
+### Task 7: Integration tests for repositories (5 tests)
+
+**Files:**
+- Create: `tests/AstraRunner.Tests/Integration/Loop/SliceWorkflowEventRepositoryTests.cs`
+- Create: `tests/AstraRunner.Tests/Integration/Loop/AgentRunRepositoryTests.cs`
+- Create: `tests/AstraRunner.Tests/Integration/Loop/GradeRecordRepositoryTests.cs`
+
+Follow the M0 Task 7 pattern (`LoopEventRepositoryTests.cs`). Cover: idempotent upsert, time-range query, unique-key constraint (AgentRun).
+
+Commit: `test(loop): integration tests for SliceWorkflowEvent + AgentRun + GradeRecord repos`.
+
+---
+
+### Task 8: SlicesController (v2 API)
+
+**Files:**
+- Create: `src/AstraRunner.Api/Controllers/V2/SlicesController.cs`
+- Create: `tests/AstraRunner.Tests/Integration/Api/V2/SlicesControllerTests.cs`
+
+Two endpoints:
+- `GET /api/v2/apps/{appId}/slices?limit=50&since=<iso>` — returns slice ids + latest workflow state + last-known grade scores.
+- `GET /api/v2/apps/{appId}/slices/{sliceId}` — returns full workflow event list + agent runs + grade.
+
+Tenant-scoped via `ITenantContext` (Clerk JWT auth, NOT AppToken — humans call this).
+
+Direct-controller-invocation tests per M0 T5/T6 precedent. 4 tests (list, detail, empty, cross-tenant).
+
+Commit: `feat(api): v2 SlicesController (list + detail)`.
+
+---
+
+### Task 9: SliceList page
+
+**Files:**
+- Create: `src/frontend/dashboard/src/v2/lib/api-client.ts`
+- Create: `src/frontend/dashboard/src/v2/pages/SliceList.tsx` (replace M0 placeholder)
+- Modify: `src/frontend/dashboard/src/v2/router.tsx` (add `apps/:appId/slices` route)
+- Create: `src/frontend/dashboard/src/v2/pages/__tests__/SliceList.test.tsx`
+
+Page reads `useParams<{ appId: string }>()`. Calls `apiClient.getSlices(appId)` via TanStack Query. Renders table with sliceId, state, grade avg, last updated. Click row → `navigate(\`/v2/slices/${sliceId}\`)`.
+
+Vitest test: fixture rows, empty state, navigation.
+
+Commit: `feat(dashboard): SliceList page with TanStack Query`.
+
+---
+
+### Task 10: SliceLiveDetail page
+
+**Files:**
+- Modify: `src/frontend/dashboard/src/v2/pages/SliceLiveDetail.tsx` (replace M0 placeholder)
+- Modify: `src/frontend/dashboard/src/v2/lib/signalr-client.ts` (add `subscribeSlice` helper)
+- Create: `src/frontend/dashboard/src/v2/pages/__tests__/SliceLiveDetail.test.tsx`
+
+Page reads `useParams<{ sliceId: string }>()`. On mount: initial fetch `apiClient.getSliceDetail(appId, sliceId)`. Subscribes to SignalR group `app:{appId}:slice:{sliceId}`. Appends incoming events to local store. Renders workflow-state timeline + agent runs table + grade scores card.
+
+Vitest test: mock SignalR connection, assert subscribe on mount, unsubscribe on unmount, incoming event renders.
+
+Commit: `feat(dashboard): SliceLiveDetail page with SignalR subscription`.
+
+---
+
+### Task 11: Final green sweep
+
+**Files:** none
+
+- [ ] `dotnet test` — full backend suite green.
+- [ ] `cd src/frontend/dashboard && npx tsc --noEmit && npm run build` — frontend green.
+- [ ] `git diff main..HEAD -- src/AstraRunner.Api/Controllers/[!V2]/*` empty (no v1 modifications).
+- [ ] Migration applies cleanly on fresh DB.
+- [ ] Smoke: boot AppHost, manually POST to `/api/v2/ingest/loop-events` with a sample slice envelope (using a real token from T5 management endpoint), confirm a `SliceWorkflowEvent` row lands + SignalR group receives the event.
+
+---
+
+## Self-Review Notes
+
+- R1-1 → Tasks 1 (entities) + 2 (EF) for SliceWorkflowEvent + AgentRun.
+- R1-2 → Tasks 1 + 2 for GradeRecord.
+- R1-3 → Tasks 3 (dispatcher) + 4 (SliceEventHandler) + 5 (GradeJsonlHandler) + 6 (worker).
+- R1-4 → Task 10 (SliceLiveDetail).
+- R1-5 → Tasks 8 (SlicesController API) + 9 (SliceList page).
+
+## Out of scope
+
+- Wave-event handlers (M2).
+- Cost/agent-perf telemetry handlers (M3).
+- Halt-badge handlers (M4).
+- Shape/phase-gate event handlers (M5).
+- Shadow validation worker (M6).
+- v1 endpoint decommission (M7).
+
+## Pre-existing main-branch defects (carry over from M0 sweep)
+
+1. Frontend `npm run build` fails on Windows due to vite 8 / rolldown 1 symlink resolution bug.
+2. Worker project doesn't build on `main` due to an in-progress SB-swap commit that left `.UsingRabbitMq()` calls. Worker tests in this plan require the worker to build — implementer should either complete the SB swap as a precondition OR roll back to a Worker-buildable revision before starting Task 6.
+3. pnpm `minimumReleaseAge` exclusion list ignored — workaround `pnpm install --config.minimumReleaseAge=0`.
