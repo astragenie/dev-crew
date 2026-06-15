@@ -44,6 +44,8 @@ export interface AgentDispatchedEvent extends SliceEventBase {
   type: "agent_dispatched";
   agent: string;
   parentCommand: string;
+  /** ISO timestamp at moment of dispatch — populated by emit sites (M3 / L3-1). */
+  dispatchedAt?: string;
 }
 
 export interface AgentCompletedEvent extends SliceEventBase {
@@ -52,6 +54,10 @@ export interface AgentCompletedEvent extends SliceEventBase {
   status: "ok" | "skipped" | "error";
   reason?: string;
   durationMs: number;
+  /** ISO timestamp of first observable output (if available) — M3 / L3-1. */
+  firstOutputAt?: string;
+  /** Number of tool calls the agent made during the dispatch — M3 / L3-1. */
+  toolCalls?: number;
 }
 
 export interface AgentErrorEvent extends SliceEventBase {

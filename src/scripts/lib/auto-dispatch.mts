@@ -158,7 +158,10 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
     type: "agent_dispatched",
     ...eventBase,
     agent,
-    parentCommand
+    parentCommand,
+    // L3-1: populate dispatchedAt so downstream consumers can compute
+    // wait→start latency without re-deriving from the JSONL row timestamp.
+    dispatchedAt: eventBase.timestamp
   });
 
   try {
