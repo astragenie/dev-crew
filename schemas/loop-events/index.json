@@ -7,6 +7,7 @@
     "slice.agent_dispatched": "slice-event.schema.json",
     "slice.agent_completed": "slice-event.schema.json",
     "slice.agent_error": "slice-event.schema.json",
+    "slice.specialist_pause": "slice-event.schema.json",
     "wave.wave_started": "wave-event.schema.json",
     "wave.plan_built": "wave-event.schema.json",
     "wave.wave_dispatched": "wave-event.schema.json",

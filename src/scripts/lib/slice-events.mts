@@ -17,7 +17,8 @@ export type SliceEventType =
   | "gate_transition"
   | "agent_dispatched"
   | "agent_completed"
-  | "agent_error";
+  | "agent_error"
+  | "specialist_pause";
 
 export interface SliceEventBase {
   type: SliceEventType;
@@ -67,12 +68,27 @@ export interface AgentErrorEvent extends SliceEventBase {
   reason?: string;
 }
 
+/**
+ * Specialist subagent (builder / reviewer / validator) paused without writing
+ * its mandated artifact. Surfaces the SOP pattern in `docs/sop/specialist-pause-handling.md`
+ * so the runner can observe pause incidents in real time. Emitted by
+ * `lib/specialist-pause-detector.mts::emitSpecialistPause`.
+ */
+export interface SpecialistPauseEvent extends SliceEventBase {
+  type: "specialist_pause";
+  agent: string;
+  reason: string;
+  /** Optional artifact path that was expected but missing. */
+  expectedArtifactPath?: string;
+}
+
 export type SliceEvent =
   | WorkflowStateChangedEvent
   | GateTransitionEvent
   | AgentDispatchedEvent
   | AgentCompletedEvent
-  | AgentErrorEvent;
+  | AgentErrorEvent
+  | SpecialistPauseEvent;
 
 /** Absolute path to the events file for a slice. */
 export function eventsPath(repoRoot: string, sliceId: string): string {
