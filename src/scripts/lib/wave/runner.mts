@@ -137,6 +137,24 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
     failed: finalize.failed
   });
 
+  // M2 (L2-2): emit worktree_cleaned per slice. Merged branches had their
+  // worktree removed by `dispatch finalize → mergeChildren → removeChildWorktree`
+  // (status=ok). Failed / conflicted branches retain their worktrees for
+  // operator inspection (status=skipped).
+  const mergedSet = new Set(finalize.merged);
+  for (const wr of worktreeResults) {
+    const status: "ok" | "skipped" = mergedSet.has(wr.branch) ? "ok" : "skipped";
+    record({
+      type: "worktree_cleaned",
+      waveId: plan.waveId,
+      sliceId: wr.sliceId,
+      branch: wr.branch,
+      path: wr.worktreePath,
+      status,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   const postMergeTest = await deps.postMergeTestFn(repoRoot, deps.cfg.postMergeTestCmd);
   record({
     type: "post_merge_test",
