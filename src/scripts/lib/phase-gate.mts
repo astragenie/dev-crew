@@ -9,6 +9,10 @@ import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-ga
 import type { Groups } from "./phase-gate/parallel-runner.mjs";
 import { runPhaseGateParallel } from "./phase-gate/parallel-orchestrator.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
+import {
+  emitPhaseGateModeDetected,
+  resolveCurrentSliceId
+} from "./phase-gate-mode-emitter.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -220,7 +224,7 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
 
   const parallelGroups = resolveParallelGroups(config, options);
   if (parallelGroups) {
-    return runPhaseGateParallel(
+    const result = await runPhaseGateParallel(
       repoPath,
       config,
       phase,
@@ -231,6 +235,12 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
       options.only,
       { writeReport, recordWithCrew, safeIncrementIteration, runPassPostHooks }
     );
+    // M5 / L5-2: emit phase_gate_mode_detected so the runner sees the
+    // execution path that ran. Best-effort — skips silently when no slice
+    // is currently open. SliceId resolved from crew workflow-state.
+    const sliceId = await resolveCurrentSliceId(repoPath);
+    await emitPhaseGateModeDetected(repoPath, { sliceId, mode: "parallel" });
+    return result;
   }
 
   const stageResults: Record<string, any>[] = [];
@@ -271,6 +281,11 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
   const post = await runPassPostHooks(repoPath, phase, overallStatus);
   const retrospective: Record<string, any> | null = post.retrospective;
   const deployHandoffs: Record<string, any>[] = post.deployHandoffs;
+
+  // M5 / L5-2: emit phase_gate_mode_detected on the serial path. Best-effort —
+  // skips silently when no slice context is open.
+  const sliceId = await resolveCurrentSliceId(repoPath);
+  await emitPhaseGateModeDetected(repoPath, { sliceId, mode: "serial" });
 
   return {
     mode: "phase-gate",
