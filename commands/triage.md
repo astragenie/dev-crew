@@ -12,10 +12,13 @@ Run the `loop:triage` skill: PM-only scoring. Single public triage command.
 
 ```bash
 /loop:triage
-/loop:triage --include-triaged    # also re-score FEATs already in triaged/
+/loop:triage --include-triaged                          # also re-score FEATs already in triaged/
+/loop:triage --ids FEAT-166,FEAT-182,FEAT-186           # rescore only these triaged FEATs
 ```
 
 Default: skill reads `pending/` directory, dispatches PM, halts on error. With `--include-triaged`, the skill also enumerates ids from `triaged/` and re-scores them in place — PM overwrites the existing `pm_*` fields + `composite_score` + `autonomous_safe` + `composite_priority`. FEATs in `triaged/` STAY in `triaged/` (no state move). Use after FEAT body edits, after upstream blockers clear, or to validate scoring quality. FEAT-194 / SLICE-110.
+
+With `--ids`, only the specified FEATs are rescored (targeted rescore). Each id must already exist in `triaged/` — missing ids halt with `halt_reason: invalid_ids`. `--ids` is mutually exclusive with `--include-triaged`; using both exits with code 2 and a clear error. FEAT-201.
 
 ## Returns
 

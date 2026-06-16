@@ -82,6 +82,8 @@ const FLAG_SPEC = {
   "--skip-simplify": { key: "skipSimplify", boolean: true },
   "--grade-yaml": { key: "gradeYaml" },
   "--include-triaged": { key: "includeTriaged", boolean: true },
+  // FEAT-201: targeted PM rescore — comma-separated FEAT ids
+  "--ids": { key: "ids" },
   // doctor flags
   "--check": { key: "check", boolean: true },
   "--fix": { key: "fix", boolean: true },
@@ -161,6 +163,7 @@ function parseArgs(argv: string[]) {
     serial: false,
     only: null,
     includeTriaged: false,
+    ids: null,
     fromIssue: null,
     costBySkill: false,
     reason: null,
@@ -800,9 +803,17 @@ async function resolveBacklogAddBody(
 }
 
 async function runBacklogListPendingIds(repoPath: string, flags: Record<string, any> = {}) {
+  // FEAT-201: mutual-exclusion guard — --ids and --include-triaged cannot be combined.
+  if (flags.ids && flags.includeTriaged) {
+    process.stderr.write(
+      "error: use either --ids or --include-triaged, not both\n"
+    );
+    process.exit(2);
+  }
   const { listPendingFeatureIds } = await import("./lib/backlog-list-ids.mjs");
   const ids = await listPendingFeatureIds(repoPath, {
-    includeTriaged: Boolean(flags.includeTriaged)
+    includeTriaged: Boolean(flags.includeTriaged),
+    ...(flags.ids ? { ids: String(flags.ids) } : {})
   });
   return { ids };
 }

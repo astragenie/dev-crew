@@ -3,8 +3,11 @@
 All notable changes to the `loop` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`.
 
+## Unreleased
+
 ### Added
 
+- `--ids FEAT-NNN,...` flag on `/loop:triage` for targeted PM rescore of specific triaged FEATs without re-scoring the full backlog (FEAT-201). Mutually exclusive with `--include-triaged`.
 - Wave-mode autonomous loop (`/loop:wave plan|run|loop`): dispatches up to
   N independent slices per wave into parallel git worktrees, merges PASS,
   pivots FAIL into `/crew:fix` next wave, runs post-merge tests, loops

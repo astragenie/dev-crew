@@ -16,7 +16,9 @@ PM-only triage. Single public command for the loop.
 
 ## Steps
 
-1. **Enumerate pending ids deterministically.**
+1. **Enumerate ids deterministically.**
+
+   Default (no flags): glob `pending/` only.
    ```bash
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --repo "$PWD"
    ```
@@ -30,6 +32,20 @@ PM-only triage. Single public command for the loop.
 
    This adds FEATs from `triaged/` to the id list. PM overwrites the existing
    `pm_*` fields on those FEATs in place (no state move). FEAT-194 / SLICE-110.
+
+   When the operator invokes `/loop:triage --ids FEAT-166,FEAT-182,FEAT-186`
+   (FEAT-201), pass the ids flag instead:
+
+   ```bash
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --ids FEAT-166,FEAT-182,FEAT-186 --repo "$PWD"
+   ```
+
+   This returns ONLY those ids (all must exist in `triaged/`). On missing or
+   malformed ids the CLI exits non-zero (code 1) and surfaces the missing-id
+   list in the stderr error message — halt immediately and surface the error to
+   the operator. (The `halt_reason` field is available to library callers of
+   `listPendingFeatureIds`, not in CLI output.) `--ids` and `--include-triaged`
+   are mutually exclusive; combining them exits code 2.
 
    Parse `{ "ids": ["FEAT-NNN", ...] }`. If `ids.length === 0`, return `{ triaged: 0, path: "noop" }` and stop.
 
