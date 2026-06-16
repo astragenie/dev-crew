@@ -1,7 +1,7 @@
 ---
 filed: 2026-06-06
 target_plugin: hero-crew
-target_repo: sergeymilashico/hero-crew
+target_repo: astragenie/dev-team
 status: pending-upstream-fix
 loop_tracking_feat: FEAT-058
 loop_related_slice: SLICE-54 (scope conflict resolution), SLICE-59 (this doc)
@@ -74,7 +74,7 @@ If upstream does not adopt this within a reasonable window, a loop-side surrogat
 | Date | Event |
 |---|---|
 | 2026-06-06 | Filed (this doc) — scope conflict resolved on SLICE-54; doc-only artifact landed on SLICE-59 |
-| TBD | Upstream issue / PR opened against `sergeymilashico/hero-crew` |
+| TBD | Upstream issue / PR opened against `astragenie/dev-team` |
 | TBD | Upstream merged / rejected — update `status:` frontmatter |
 | TBD | Cache version bumped → loop session sees the fix → close FEAT-058 + update SOP |
 

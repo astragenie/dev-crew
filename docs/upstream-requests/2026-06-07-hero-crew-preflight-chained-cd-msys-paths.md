@@ -1,7 +1,7 @@
 ---
 filed: 2026-06-07
 target_plugin: hero-crew
-target_repo: sergeymilashico/hero-crew
+target_repo: astragenie/dev-team
 status: pending-upstream-fix
 loop_tracking_feat: FEAT-068
 loop_related_slice: SLICE-68 (this doc)

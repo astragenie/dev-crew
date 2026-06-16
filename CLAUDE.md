@@ -39,7 +39,7 @@ for this repo.
 
 <!-- clause: hard-dependency -->
 
-This plugin requires the [`crew`](https://github.com/sergeymilashico/hero-crew)
+This plugin requires the [`crew`](https://github.com/astragenie/dev-team)
 plugin at the version pinned in `src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`.
 `/loop:install` refuses to run against an older crew.
 

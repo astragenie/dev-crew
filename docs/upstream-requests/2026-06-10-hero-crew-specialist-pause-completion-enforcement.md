@@ -1,7 +1,7 @@
 ---
 filed: 2026-06-10
 target_plugin: hero-crew
-target_repo: sergeymilashico/hero-crew
+target_repo: astragenie/dev-team
 status: in-progress-upstream (SLICE-A + SLICE-B landed 2026-06-11)
 upstream_feat: FEAT-161 (hero-crew)
 upstream_commit_slice_a: b31ca77 (2026-06-11) — HARD OUTPUT CONTRACT block in lead/builder/reviewer/validator prompts

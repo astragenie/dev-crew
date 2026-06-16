@@ -2,7 +2,7 @@
 
 This plugin follows the same conventions as the companion `crew`
 plugin. The canonical reference is
-[`hero-crew/docs/standards/code-conventions.md`](https://github.com/sergeymilashico/hero-crew/blob/main/docs/standards/code-conventions.md).
+[`hero-crew/docs/standards/code-conventions.md`](https://github.com/astragenie/dev-team/blob/main/docs/standards/code-conventions.md).
 
 Mirrors
 [`Astragenie.Standards/docs/javascript/coding-conventions.md`](https://github.com/sergeymilashico/Astragenie.Standards/blob/main/docs/javascript/coding-conventions.md)

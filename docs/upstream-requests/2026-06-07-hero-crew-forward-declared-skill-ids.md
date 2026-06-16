@@ -1,7 +1,7 @@
 ---
 filed: 2026-06-07
 target_plugin: hero-crew
-target_repo: sergeymilashico/hero-crew
+target_repo: astragenie/dev-team
 status: pending-upstream-author
 loop_tracking_feat: FEAT-074
 loop_related_spec: docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md

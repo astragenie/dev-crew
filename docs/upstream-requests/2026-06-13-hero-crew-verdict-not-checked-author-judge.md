@@ -1,7 +1,7 @@
 ---
 filed: 2026-06-13
 target_plugin: hero-crew
-target_repo: sergeymilashico/hero-crew
+target_repo: astragenie/dev-team
 status: open
 priority: P2
 loop_tracking_feat: FEAT-180
