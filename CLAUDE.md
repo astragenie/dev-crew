@@ -29,7 +29,7 @@ This repo's cortex `project_id` is **`loop`**. When calling any cortex MCP tool 
 <!-- clause: engineering-standards -->
 
 For language-agnostic patterns and design guidance, consult
-[`Astragenie.Standards`](https://github.com/sergeymilashico/Astragenie.Standards)
+[`Astragenie.Standards`](https://github.com/astragenie/standards)
 if it is installed at a sibling path. The ESM conventions are mirrored
 at `Astragenie.Standards/docs/javascript/coding-conventions.md`. The
 local `docs/code-conventions.md` is self-contained and authoritative

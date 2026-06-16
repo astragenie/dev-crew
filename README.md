@@ -1,14 +1,14 @@
 # loop
 
-[![test](https://github.com/sergeymilashico/loop/actions/workflows/test.yml/badge.svg)](https://github.com/sergeymilashico/loop/actions/workflows/test.yml)
-[![release](https://img.shields.io/github/v/tag/sergeymilashico/loop?label=release&sort=semver)](https://github.com/sergeymilashico/loop/releases)
-[![license](https://img.shields.io/github/license/sergeymilashico/loop)](LICENSE)
+[![test](https://github.com/astragenie/runner-plugin/actions/workflows/test.yml/badge.svg)](https://github.com/astragenie/runner-plugin/actions/workflows/test.yml)
+[![release](https://img.shields.io/github/v/tag/astragenie/runner-plugin?label=release&sort=semver)](https://github.com/astragenie/runner-plugin/releases)
+[![license](https://img.shields.io/github/license/astragenie/runner-plugin)](LICENSE)
 
 A Claude Code plugin that ships the Wiggin Loop methodology as a reusable
 layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
 safe phase-gate runner.
 
-Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
+Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 (>= v0.3.3) for artifact writers — loop emits Crew
 `validation-result` artifacts through `crew write-validation-result`.
 
@@ -29,7 +29,7 @@ Depends on the [`crew`](https://github.com/sergeymilashico/hero-crew) plugin
 > - v0.8.7–v0.41.x: shipped from its own `loop` marketplace, decoupled.
 > - v0.41.0+: shipped from the central `sergeymilashico/astra-marketplace`
 >   alongside `crew` and `cortex`. Plugin code stays in
->   [`sergeymilashico/loop`](https://github.com/sergeymilashico/loop); the
+>   [`astragenie/runner-plugin`](https://github.com/astragenie/runner-plugin); the
 >   marketplace registry is its own repo.
 
 ## What it does
