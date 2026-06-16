@@ -1,6 +1,6 @@
 ---
-name: loop:pm-decompose
-description: Enhanced spec decomposition with PM pre-scoring. Reads a SPEC, identifies natural feature boundaries using scope challenge, pre-scores each proposed feature, and creates FEAT files with priority and autonomous_safe already set. Use instead of /loop:spec-decompose when you want PM-quality features from the start.
+name: runner:pm-decompose
+description: Enhanced spec decomposition with PM pre-scoring. Reads a SPEC, identifies natural feature boundaries using scope challenge, pre-scores each proposed feature, and creates FEAT files with priority and autonomous_safe already set. Use instead of /runner:spec-decompose when you want PM-quality features from the start.
 ---
 
 # PM Decompose — Spec to Scored Features
@@ -9,7 +9,7 @@ Split a SPEC into FEAT files with PM scores pre-filled.
 
 ## Usage
 
-`/loop:pm-decompose --id SPEC-NNN`
+`/runner:pm-decompose --id SPEC-NNN`
 
 ## Steps
 
@@ -20,13 +20,13 @@ Split a SPEC into FEAT files with PM scores pre-filled.
    - Which features can be autonomous vs. need human review?
 3. For each proposed feature:
    a. Draft the FEAT title and description.
-   b. Run the INVEST check from `loop:authoring-slices` — a proposed
+   b. Run the INVEST check from `runner:authoring-slices` — a proposed
       feature failing Independent / Small / Testable gets re-cut before
       scoring, not patched with caveats.
    c. Draft acceptance criteria per the AC quality checklist in
-      `loop:authoring-slices` (Given-When-Then, concrete values, edge +
+      `runner:authoring-slices` (Given-When-Then, concrete values, edge +
       error coverage). If the spec context is too thin to write AC to
-      that standard, dispatch `loop:spec-writer` to draft them.
+      that standard, dispatch `runner:spec-writer` to draft them.
    d. Pre-score all 5 PM dimensions based on the spec context.
    e. Compute composite priority and autonomous_safe.
    f. Identify dependencies between the proposed features.
@@ -34,13 +34,13 @@ Split a SPEC into FEAT files with PM scores pre-filled.
    - Feature list with scores and priorities
    - Dependency graph
    - Which features are autonomous_safe
-5. Create FEAT files via `/loop:backlog-add` with PM scores pre-filled.
+5. Create FEAT files via `/runner:backlog-add` with PM scores pre-filled.
 6. Update the SPEC's `derived_features` list.
 7. Write PM review artifacts for each new FEAT.
 
-## Difference from /loop:spec-decompose
+## Difference from /runner:spec-decompose
 
-`/loop:spec-decompose` creates bare FEAT stubs with no scoring. This skill adds:
+`/runner:spec-decompose` creates bare FEAT stubs with no scoring. This skill adds:
 - PM scoring on creation (no separate triage step needed)
 - Dependency analysis between proposed features
 - autonomous_safe pre-computation

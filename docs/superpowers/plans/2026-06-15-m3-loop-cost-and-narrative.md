@@ -154,7 +154,7 @@ async function tempRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "loop-autodispatch-"));
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
   await fs.writeFile(path.join(dir, ".claude", "loop.json"), JSON.stringify({
-    loop: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
+    runner: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
   }));
   return dir;
 }
@@ -168,8 +168,8 @@ describe("auto-dispatch fanout", () => {
     try {
       appendAuditLog(repo, {
         timestamp: "2026-06-15T12:00:00.000Z",
-        agent: "loop:architect",
-        parentCommand: "/loop:backlog-enrich",
+        agent: "runner:architect",
+        parentCommand: "/runner:backlog-enrich",
         ok: true,
         costUsd: 0.42,
         durationMs: 1234,
@@ -183,7 +183,7 @@ describe("auto-dispatch fanout", () => {
     expect(calls.length).toBeGreaterThanOrEqual(1);
     const body = JSON.parse(String(calls[0].init?.body));
     expect(body.kind).toBe("agent.dispatch");
-    expect(body.payload.agent).toBe("loop:architect");
+    expect(body.payload.agent).toBe("runner:architect");
     expect(body.payload.costUsd).toBe(0.42);
   });
 });

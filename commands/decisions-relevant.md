@@ -65,7 +65,7 @@ via `decisions relevant`.
 
 ## Reviewer workflow integration
 
-The `/loop:slice review-ladder` prompts include a step:
+The `/runner:slice review-ladder` prompts include a step:
 "surface prior decisions relevant to changed files via `decisions relevant`".
 Reviewers cite matching decisions in their verdict to prevent re-litigating
 solved problems.

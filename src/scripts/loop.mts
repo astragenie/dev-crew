@@ -787,7 +787,7 @@ async function resolveBacklogAddBody(
   const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
   await appendAuditLog(repoPath, {
     timestamp: new Date().toISOString(),
-    agent: "loop:researcher",
+    agent: "runner:researcher",
     parentCommand: "backlog-add",
     ok: false,
     skipped: true,
@@ -938,7 +938,7 @@ export async function runBacklogEnrich(repoPath: string, _flags: Record<string, 
 
   await appendAuditLog(repoPath, {
     timestamp: new Date().toISOString(),
-    agent: "loop:architect",
+    agent: "runner:architect",
     parentCommand: "backlog enrich",
     ok: false,
     skipped: true,
@@ -1186,7 +1186,7 @@ const SPEC_HANDLERS = {
     const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
     await appendAuditLog(repoPath, {
       timestamp: new Date().toISOString(),
-      agent: "loop:architect",
+      agent: "runner:architect",
       parentCommand: "spec-decompose",
       ok: false,
       skipped: true,

@@ -9,7 +9,7 @@ auto_execute_steps: false
 Persists an edited grade file and extracts retrospective decisions into
 `docs/decisions/`.
 
-Pre-requisites: agent has run `/loop:slice grade --id SLICE-NN`
+Pre-requisites: agent has run `/runner:slice grade --id SLICE-NN`
 to generate the template and then edited the file to fill in real scores,
 lessons, decisions, surprises, and narrative.
 
@@ -61,5 +61,5 @@ the grade file and re-run.
 
 ## After grade-write
 
-- Inspect extracted decisions: `/loop:decisions list`
+- Inspect extracted decisions: `/runner:decisions list`
 - Move on to the next slice via the Cross-Slice Continuation rule

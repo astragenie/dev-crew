@@ -955,7 +955,7 @@ async function withTempRepo(loopJson: object): Promise<string> {
 describe("readNotifyConfig — webhook fields", () => {
   test("reads tenantId / appId / bearer / url / disabled when present", async () => {
     const repo = await withTempRepo({
-      loop: {
+      runner: {
         notifications: {
           enabled: true,
           mode: "webhook",
@@ -982,7 +982,7 @@ describe("readNotifyConfig — webhook fields", () => {
 
   test("falls back to legacy webhookUrl when no webhook block present", async () => {
     const repo = await withTempRepo({
-      loop: { notifications: { mode: "webhook", webhookUrl: "https://legacy.local/hook" } }
+      runner: { notifications: { mode: "webhook", webhookUrl: "https://legacy.local/hook" } }
     });
     const cfg = await readNotifyConfig(repo);
     expect(cfg.webhookUrl).toBe("https://legacy.local/hook");
@@ -1068,7 +1068,7 @@ async function withTempRepo(loopJson: object): Promise<string> {
 describe("notifyEvent — webhook delegation", () => {
   test("posts envelope to configured webhook with Bearer + tenant/app", async () => {
     const repo = await withTempRepo({
-      loop: {
+      runner: {
         notifications: {
           enabled: true,
           mode: "webhook",

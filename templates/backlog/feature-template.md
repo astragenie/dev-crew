@@ -9,7 +9,7 @@ updated: YYYY-MM-DD
 depends_on: []
 slices: []
 derived_from: null
-# GitHub linkage (populated by /loop:publish; leave null until publish runs)
+# GitHub linkage (populated by /runner:publish; leave null until publish runs)
 github_issue: null      # issue number, e.g. 42
 github_milestone: null  # milestone number for the feature's phase
 github_url: null        # full URL, e.g. https://github.com/owner/repo/issues/42

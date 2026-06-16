@@ -51,5 +51,5 @@ Returned JSON includes the new id, file path, and resolved frontmatter.
 
 When --priority / --category / --target-release are omitted, the entry lands
 in `pending/` with those fields null. The PM agent will fill them on the
-next `/loop:triage` run (also invoked automatically by the Cross-Slice
+next `/runner:triage` run (also invoked automatically by the Cross-Slice
 Continuation HARD RULE when `pending/` is non-empty).

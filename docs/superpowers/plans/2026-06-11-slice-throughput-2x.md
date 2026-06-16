@@ -184,7 +184,7 @@ test("perf-report computes speedup vs pinned baseline", async () => {
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
-    JSON.stringify({ loop: { perfBaseline: { medianWallClockSeconds: 1200, avgGrade: 0.835 } } })
+    JSON.stringify({ runner: { perfBaseline: { medianWallClockSeconds: 1200, avgGrade: 0.835 } } })
   );
   await writeGrade(repo, "01", 600, 0.85);
   const report = await buildPerfReport(repo, { window: 1 });

@@ -11,8 +11,8 @@ import {
   decisionsRoot as resolveDecisionsRoot
 } from "./paths.mjs";
 
-export const MARKER_START = "<!-- loop:start -->";
-export const MARKER_END = "<!-- loop:end -->";
+export const MARKER_START = "<!-- runner:start -->";
+export const MARKER_END = "<!-- runner:end -->";
 
 // Replace the existing loop marker block in CLAUDE.md, or append
 // a new one if none is present. Preserves all content outside the marker block.
@@ -90,7 +90,7 @@ export async function registerReadGuardHook(repoPath: string, writes: string[]):
       // Don't clobber malformed user settings — bail loudly instead.
       throw new Error(
         `loop installer: ${settingsPath} exists but is not valid JSON. ` +
-          "Fix or remove it before re-running /loop:install."
+          "Fix or remove it before re-running /runner:install."
       );
     }
   }

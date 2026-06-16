@@ -41,13 +41,13 @@ After writing, print a summary block:
 
 ## Required skills (invoke via `Skill` tool at start of every dispatch)
 
-- `loop:loop-discipline` — repo HARD RULES, autonomous loop rules, what docs MUST capture
+- `runner:loop-discipline` — repo HARD RULES, autonomous loop rules, what docs MUST capture
 
 ## Skills you should consult (invoke when context matches)
 
 - `claude-md-management:claude-md-improver` — when editing any CLAUDE.md (audit + targeted update)
 - `superpowers:writing-skills` — when authoring or editing skill prompts (canonical template + verification)
-- `loop:authoring-slices` — when writing slice files or slice-derived docs
+- `runner:authoring-slices` — when writing slice files or slice-derived docs
 - `skills/workflow/api-documentation/` — when authoring or editing API reference docs (OpenAPI specs, SDK guides, integration guides)
 - `skills/domain/diagram-methodology/` — when authoring or editing diagram captions, Mermaid prose, PlantUML, ERDs
 - `skills/domain/backend-advisory/` — when API design concerns arise during API reference authoring

@@ -180,7 +180,7 @@ slice workflow, agent runs, wave outcomes, backlog flow AND
 | Webhook 401/403 | Disable webhook for session. Surface `webhook_auth_failed` halt-badge on next snapshot. |
 | Webhook 429 | In-process backoff (1s/2s/4s, cap 3). Give up to filesystem-resync. |
 | Loop cannot reach runner | No-op. Dual-write to disk continues. |
-| Malformed JSONL line | Skip line, log `jsonl_parse_error`. Operator runs `/loop:validate-jsonl`. |
+| Malformed JSONL line | Skip line, log `jsonl_parse_error`. Operator runs `/runner:validate-jsonl`. |
 
 ### Runner
 
@@ -244,7 +244,7 @@ Frontend (Vitest + RTL):
 `schemas/loop-events/*.schema.json` versioned and pinned in both repos
 (vendored copy or submodule). CI in both repos validates:
 
-- Loop: every appended JSONL line validates against pinned schema.
+- runner: every appended JSONL line validates against pinned schema.
 - Runner: ingest endpoint rejects payloads that fail schema.
 
 Drift detected at PR time, not in production.
@@ -356,7 +356,7 @@ starts when M(N) loop emits the schema and runner ingests it green.
 
 ### M6 — Shadow validation
 
-**Loop:** no new FEATs.
+**runner:** no new FEATs.
 
 **Runner FEATs (3):**
 
@@ -366,7 +366,7 @@ starts when M(N) loop emits the schema and runner ingests it green.
 
 ### M7 — MD decommission gate
 
-**Loop:** no FEATs.
+**runner:** no FEATs.
 
 **Runner FEATs (3):**
 

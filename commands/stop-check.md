@@ -26,7 +26,7 @@ Returns:
     { "category": "score-trend", "message": "observability below 0.80 across last 3 slices", "suggestion": "Author a SPEC (type=sre or type=adr)..." }
   ],
   "suggestions": [
-    "Author a new SPEC or FEAT to continue. Run /loop:spec add or /loop:backlog add."
+    "Author a new SPEC or FEAT to continue. Run /runner:spec add or /runner:backlog add."
   ],
   "snapshot": { "pendingOrTriaged": 0, "inProgress": 0, "approvedUndecomposed": 0, "totalAlerts": 2, "warnAlerts": 2 }
 }

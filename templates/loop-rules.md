@@ -1,6 +1,6 @@
 # Autonomous Loop — HARD RULES
 
-Plugin-managed by `/loop:install`. Do not edit by hand.
+Plugin-managed by `/runner:install`. Do not edit by hand.
 
 ## Autonomous Loop Instruction — HARD RULE
 
@@ -10,19 +10,19 @@ Plugin-managed by `/loop:install`. Do not edit by hand.
 
 After all acceptance criteria for the current slice are PASS with evidence and all artifacts written, automatically pick the next unit of work — without user confirmation:
 
-1. **Scan `{{specsRoot}}/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/loop:spec decompose --id SPEC-NNN --features "title 1; title 2; ..."`. New FEAT files land in `{{backlogRoot}}/pending/`.
-2. **Scan `{{backlogRoot}}/pending/`** — if any pending entries exist, run `/loop:backlog triage` to fill `priority`, `category`, `target_release` heuristically and move each to `{{backlogRoot}}/triaged/`.
-3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by lowest FEAT-NNN id ascending (oldest wins). Promote it: `/loop:slice from-feature --id FEAT-NNN`.
+1. **Scan `{{specsRoot}}/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/runner:spec decompose --id SPEC-NNN --features "title 1; title 2; ..."`. New FEAT files land in `{{backlogRoot}}/pending/`.
+2. **Scan `{{backlogRoot}}/pending/`** — if any pending entries exist, run `/runner:backlog triage` to fill `priority`, `category`, `target_release` heuristically and move each to `{{backlogRoot}}/triaged/`.
+3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by lowest FEAT-NNN id ascending (oldest wins). Promote it: `/runner:slice from-feature --id FEAT-NNN`.
 4. **Begin the Wiggin Loop on the new slice.** Acceptance criteria, evidence, review per `{{aiLoopRoot}}/01-loop-control/`.
 5. **On slice close** — run the Slice Close Ceremony (next section). Do NOT skip — every artifact is part of the slice's evidence record.
 
-If `{{backlogRoot}}/pending/`, `{{backlogRoot}}/triaged/`, and `{{specsRoot}}/` are all empty/satisfied, confirm via `/loop:spec status` and stop. Never stop because the backlog "feels empty."
+If `{{backlogRoot}}/pending/`, `{{backlogRoot}}/triaged/`, and `{{specsRoot}}/` are all empty/satisfied, confirm via `/runner:spec status` and stop. Never stop because the backlog "feels empty."
 
 ### Slice frontmatter — optional `phase` field
 
 Slices carry two optional linkage fields:
 
-- `feature: FEAT-NNN` — set automatically by `/loop:slice-from-feature` and `/loop:derive-slice`.
+- `feature: FEAT-NNN` — set automatically by `/runner:slice-from-feature` and `/runner:derive-slice`.
 - `phase: <string|null>` — free-form phase identifier (`"1"`, `"2"`, `"beta"`). Defaults to `null`.
 
 Both propagate to artifact filenames (`runs/phaseN-featNNN-sliceNN-*.md`) and frontmatter. Segments are tight (no dash inside `feat021`); null fields drop out. Artifact consumers should treat segments as optional and ordered.
@@ -49,7 +49,7 @@ Auto mode disables only the _gating_, not the _telemetry_. Iteration counter sti
 Open every slice through the canonical start command **before** beginning acceptance-criteria work:
 
 1. **Identify the next slice.** Check `docs/superpowers/plans/*.md` for unchecked `## Task N: SLICE_NN` headings first; else fall back to Cross-Slice Continuation.
-2. **`/loop:slice start --id SLICE-NN`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
+2. **`/runner:slice start --id SLICE-NN`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. Surface errors and stop — do not proceed with a stale run.
 4. **Dispatch `crew:builder` subagent.** The `slice start` return includes a `dispatchInstruction` — hand it to a `crew:builder` subagent. Builder owns implementation only; when it returns, dispatch `crew:reviewer`, then `crew:validator` if behavior changed. **Do not implement inline.**
 5. **Wait for builder, reviewer, and validator reports**, then run the Slice Close Ceremony.
@@ -96,11 +96,11 @@ For one-glance visibility: `cat .claude/state/crew/slice-progress.md`.
 
 When every acceptance criterion is PASS with evidence, close the slice **before** picking up the next one. Manual file moves are NOT a substitute — they bypass artifact fan-out:
 
-1. **`/loop:slice complete --id SLICE-NN`** — atomically moves the slice to `completed/`, moves the linked feature to `done/`, reconciles parent SPEC status, and fans out:
+1. **`/runner:slice complete --id SLICE-NN`** — atomically moves the slice to `completed/`, moves the linked feature to `done/`, reconciles parent SPEC status, and fans out:
    - `.claude/artifacts/crew/handoffs/<timestamp>-slice-nn-complete.md`
    - `.claude/artifacts/crew/runs/<timestamp>-slice-nn-final-synthesis.md` (auto-emits cost-report + cost-advise)
    - `cost-report` via `hero-crew cost-slice` CLI as a redundant safety net
-2. **`/loop:slice grade --id SLICE-NN`** + **`/loop:slice grade-write --id SLICE-NN`** — capture scores and lessons. Skipping grading loses the self-improvement signal.
+2. **`/runner:slice grade --id SLICE-NN`** + **`/runner:slice grade-write --id SLICE-NN`** — capture scores and lessons. Skipping grading loses the self-improvement signal.
 3. **Inspect the ceremony return** — verify `handoff.handoffPath`, `synthesis.synthesisPath`, and `costReport.usd` are all populated. Fix any `{ error: ... }` before continuing.
 4. **Apply Cross-Slice Continuation** to pick the next unit of work.
 
@@ -117,7 +117,7 @@ If any is missing for a closed slice, re-run the ceremony or invoke the missing 
 
 ## Phase Completion Gate — HARD RULE
 
-When the last slice in a phase completes, run `/loop:phase-gate`. The plugin executes every stage in `.claude/loop.json` via `execFile` (no shell interpretation), captures output, and writes a single validation artifact under `{{phaseGateArtifactDir}}/phase-<N>-gate-<date>.md`. Do NOT proceed to the next phase on FAIL. Do NOT hand-author the gate artifact.
+When the last slice in a phase completes, run `/runner:phase-gate`. The plugin executes every stage in `.claude/loop.json` via `execFile` (no shell interpretation), captures output, and writes a single validation artifact under `{{phaseGateArtifactDir}}/phase-<N>-gate-<date>.md`. Do NOT proceed to the next phase on FAIL. Do NOT hand-author the gate artifact.
 
 ## Worktree Parallelism — HARD RULE
 

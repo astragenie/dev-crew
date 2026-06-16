@@ -8,7 +8,7 @@ target_release: null
 requires_validation: false
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-# GitHub linkage (populated by /loop:publish; leave null until publish runs)
+# GitHub linkage (populated by /runner:publish; leave null until publish runs)
 github_issue: null          # sub-issue number attached to the parent FEAT issue
 github_url: null            # full URL, e.g. https://github.com/owner/repo/issues/43
 github_pr: null             # PR number once the slice lands a code change

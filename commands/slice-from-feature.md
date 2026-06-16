@@ -95,7 +95,7 @@ dispatching any downstream specialist (`crew:fullstack-dev`, `crew:inspector`, e
 
    ```
    WARNING: contracts artifact for <FEAT-ID> not written — architect response
-   empty/malformed. Re-run /loop:backlog-enrich or rely on
+   empty/malformed. Re-run /runner:backlog-enrich or rely on
    /crew:orchestrate-slice Step 1 retry.
    ```
 
@@ -125,7 +125,7 @@ When acceptance criteria PASS:
    `<slicesRoot>/completed/` (or wherever your slice layout puts done work).
 3. Move the feature file from `docs/backlog/in-progress/` to
    `docs/backlog/done/` (manually via `git mv` or via a future
-   `/loop:slice complete` command).
-4. Run `/loop:spec status` to auto-roll parent SPEC to `satisfied`
+   `/runner:slice complete` command).
+4. Run `/runner:spec status` to auto-roll parent SPEC to `satisfied`
    if all its features are done.
 5. Write the Crew `final-synthesis` artifact.

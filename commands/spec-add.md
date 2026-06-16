@@ -30,6 +30,6 @@ Returns `{ id, filePath, frontmatter }`.
 Once the spec body is fleshed out and reviewed:
 
 1. Edit `status: draft` → `status: approved` in frontmatter (or via a future
-   `/loop:spec approve` command).
-2. Run `/loop:spec decompose --id SPEC-NNN --features "title1; title2"`
+   `/runner:spec approve` command).
+2. Run `/runner:spec decompose --id SPEC-NNN --features "title1; title2"`
    to derive FEAT-NNN files in `docs/backlog/pending/` linked back to the spec.

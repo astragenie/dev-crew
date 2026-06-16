@@ -10,6 +10,6 @@ Cross-Slice Continuation HARD RULE in `CLAUDE.md` scans `.claude/artifacts/loop/
 the next unit of work; this file is no longer read by the loop.
 
 Migrate any unfinished entries from this file into per-feature files via
-`/loop:backlog add` or the one-off
+`/runner:backlog add` or the one-off
 `scripts/migrate-product-backlog.mjs` migration script shipped with the
 plugin.

@@ -1,6 +1,6 @@
 ---
-name: loop:loop-discipline
-description: Use at the start of substantive engineering work in any repo that has the loop plugin installed. Loads the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) and reminds the agent not to pause for user confirmation mid-slice. Trigger automatically when starting a session in a repo whose CLAUDE.md contains `<!-- loop:start -->`.
+name: runner:loop-discipline
+description: Use at the start of substantive engineering work in any repo that has the loop plugin installed. Loads the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) and reminds the agent not to pause for user confirmation mid-slice. Trigger automatically when starting a session in a repo whose CLAUDE.md contains `<!-- runner:start -->`.
 ---
 
 # Autonomous Loop Discipline
@@ -10,7 +10,7 @@ repo's CLAUDE.md.
 
 ## Read the rules
 
-The repo's CLAUDE.md contains a `<!-- loop:start -->...<!-- loop:end -->`
+The repo's CLAUDE.md contains a `<!-- runner:start -->...<!-- runner:end -->`
 block. Read it now. The three HARD RULE statements there govern this session.
 
 ## The three rules summarized
@@ -23,9 +23,9 @@ block. Read it now. The three HARD RULE statements there govern this session.
 2. **Cross-Slice Continuation** — When a slice closes, auto-pick the next
    PENDING slice from `approved-slices.md`. If the list is empty but
    `product-backlog.md` has unmet requirements, derive a new slice
-   (`/loop:derive-slice`) and proceed.
+   (`/runner:derive-slice`) and proceed.
 3. **Phase Completion Gate** — At phase boundaries, invoke
-   `/loop:phase-gate`. Do NOT hand-author the validation
+   `/runner:phase-gate`. Do NOT hand-author the validation
    artifact — let the plugin own it.
 </HARD-GATE>
 
@@ -71,7 +71,7 @@ Skipping this step risks repeating known mistakes from prior sessions.
 <HARD-GATE>
 Before marking any acceptance criterion PASS or writing a completion
 report, load and apply
-[loop:verification-before-completion](../verification-before-completion/SKILL.md).
+[runner:verification-before-completion](../verification-before-completion/SKILL.md).
 No completion claim ("tests pass", "lint clean", "bug fixed", etc.) may
 be made without fresh command output from the current turn. See the
 claim→evidence table in that skill for the required evidence form per
@@ -84,5 +84,5 @@ Every meaningful action emits a Crew artifact:
 
 - run brief at the start of a substantial slice → `crew write-run-brief`
 - review pass → `crew write-review-result`
-- validation → `crew write-validation-result` (or `/loop:phase-gate`)
+- validation → `crew write-validation-result` (or `/runner:phase-gate`)
 - final synthesis when the slice closes → `crew write-final-synthesis`

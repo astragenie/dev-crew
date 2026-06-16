@@ -44,7 +44,7 @@ PM (or reviewer) flips status to approved
    ↓
 Agent reads SPEC-001 body, identifies 3-5 features
    ↓
-/loop:spec decompose --id SPEC-001 --features "..."
+/runner:spec decompose --id SPEC-001 --features "..."
    ↓
 3-5 FEAT-NNN files appear in docs/backlog/pending/
    ↓

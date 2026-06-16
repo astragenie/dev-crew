@@ -9,7 +9,7 @@ are decisions that emerged DURING implementation.
 
 Decisions originate in grade files (`.claude/artifacts/loop/grades/SLICE-NN-grade.md`) under
 the `## Decisions` section as `### DEC-TBD: <title>` blocks. When the agent
-runs `/loop:slice grade-write`, the plugin:
+runs `/runner:slice grade-write`, the plugin:
 
 1. Allocates the next `DEC-NNN` id
 2. Writes a full ADR file at `.claude/artifacts/loop/decisions/DEC-NNN.md` from `decision-template.md`
@@ -27,5 +27,5 @@ Idempotent — only blocks still marked `DEC-TBD` are extracted on re-run.
 
 ## Inspecting
 
-- `/loop:decisions list [--status accepted|superseded|reverted]`
-- `/loop:decisions show --id DEC-NNN`
+- `/runner:decisions list [--status accepted|superseded|reverted]`
+- `/runner:decisions show --id DEC-NNN`

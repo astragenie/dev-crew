@@ -148,7 +148,7 @@ Each halt-badge is `null` when not triggered; populated with a structured object
 **Suggested operator action:**
 - `code: "REBASE_CONFLICT" | "MERGE_FAILED"`: run `/crew:fix` against the preserved worktree.
 - `code: "PUSH_FAILED"`: run `git push origin main` manually — the commit is already on local main.
-- `code: "VALIDATION_FAILED" | "VALIDATION_REQUIRED"`: open the validation artifact to see what failed, then re-run `/loop:slice complete`.
+- `code: "VALIDATION_FAILED" | "VALIDATION_REQUIRED"`: open the validation artifact to see what failed, then re-run `/runner:slice complete`.
 
 **Origin:** FEAT-062 / SLICE-64 / v0.23.0. Source: `src/scripts/lib/auto-merge.mts::runAutoMerge`. Also surfaced as `currentRun.gates.mergeFailed` in `workflow-state.json`.
 
@@ -205,7 +205,7 @@ When disabled, `checkRedundantReadStop` short-circuits to `null` regardless of `
 
 **Fires when:** the number of grade files (`*-grade.md` under `gradesRoot`, default `.claude/artifacts/loop/grades/`) with `mtime` newer than the newest retrospective file (under `retroRoot`, default `.claude/artifacts/loop/retrospectives/`) reaches `every` (warn) or `2 × every` (hard). When no retrospective exists, the anchor is the unix epoch, so every grade counts.
 
-**Suggested operator action:** run `/loop:retrospective` to capture lessons + decisions. The walker resumes once a fresh retrospective file lands under `retroRoot`. Tune `loop.marathonCheckpointEvery` in `.claude/loop.json` to widen the window for marathon-style sessions; values <= 0 or non-integer fall back to the default rather than disabling.
+**Suggested operator action:** run `/runner:retrospective` to capture lessons + decisions. The walker resumes once a fresh retrospective file lands under `retroRoot`. Tune `loop.marathonCheckpointEvery` in `.claude/loop.json` to widen the window for marathon-style sessions; values <= 0 or non-integer fall back to the default rather than disabling.
 
 **Origin:** FEAT-181 / SLICE-92 / v0.40.0. Source: `src/scripts/lib/marathon-checkpoint.mts::checkMarathonCheckpoint`. Snapshot builder: `src/scripts/lib/stop-conditions.mts::buildMarathonCheckpointSnapshotEntry`.
 
@@ -284,7 +284,7 @@ This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` ret
 { triggered: true; haltReason: "pr-closed" }
 ```
 
-**Meaning:** `/loop:pr-watch` terminated abnormally. The `haltReason` field identifies the stop cause. Emitted in the JSON return value of the `pr-watch` CLI command.
+**Meaning:** `/runner:pr-watch` terminated abnormally. The `haltReason` field identifies the stop cause. Emitted in the JSON return value of the `pr-watch` CLI command.
 
 **Fires when:**
 - `"max-retries"` — completed builder dispatches reached `loop.prWatch.maxRetries` and checks remain failing.

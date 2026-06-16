@@ -1,5 +1,5 @@
 ---
-name: loop:triage
+name: runner:triage
 description: Triage every pending backlog FEAT via the PM agent (5-dimension LLM scoring). PM-only — on agent error, validation failure, or budget exceedance, halt and surface to the operator. The regex fallback path was removed 2026-06-11.
 ---
 
@@ -23,8 +23,8 @@ PM-only triage. Single public command for the loop.
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --repo "$PWD"
    ```
 
-   When the operator invokes `/loop:triage --include-triaged` or
-   `/loop:retriage --include-triaged`, append the flag to the CLI call:
+   When the operator invokes `/runner:triage --include-triaged` or
+   `/runner:retriage --include-triaged`, append the flag to the CLI call:
 
    ```bash
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --include-triaged --repo "$PWD"
@@ -33,7 +33,7 @@ PM-only triage. Single public command for the loop.
    This adds FEATs from `triaged/` to the id list. PM overwrites the existing
    `pm_*` fields on those FEATs in place (no state move). FEAT-194 / SLICE-110.
 
-   When the operator invokes `/loop:triage --ids FEAT-166,FEAT-182,FEAT-186`
+   When the operator invokes `/runner:triage --ids FEAT-166,FEAT-182,FEAT-186`
    (FEAT-201), pass the ids flag instead:
 
    ```bash
@@ -65,7 +65,7 @@ PM-only triage. Single public command for the loop.
    "Required skills" list in `agents/pm.md`). On exit 1, halt and
    surface the stderr.
 
-4. **Dispatch `loop:pm` agent.** Prepend the resolved-skills block (when
+4. **Dispatch `runner:pm` agent.** Prepend the resolved-skills block (when
    present) to the prompt so PM invokes the right `Skill` tools before
    scoring. Prompt MUST include the explicit id list:
 
@@ -116,7 +116,7 @@ PM-only triage. Single public command for the loop.
    ```
 
    Operator decides next step: re-run with adjusted budget, switch PM
-   model, hand-score the failing FEAT via `/loop:backlog pm-write`, or
+   model, hand-score the failing FEAT via `/runner:backlog pm-write`, or
    skip the failing id and re-trigger with the remainder.
 
 9. **Tag `triage_notes`** on every entry — `via=pm` (the only path now).
@@ -147,7 +147,7 @@ On halt:
 ## When this runs
 
 - **Automatically:** Cross-Slice Continuation HARD RULE dispatches when `pending/` is non-empty.
-- **Manually:** `/loop:triage`.
+- **Manually:** `/runner:triage`.
 
 ## Why no fallback
 

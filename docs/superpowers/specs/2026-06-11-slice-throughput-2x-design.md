@@ -17,7 +17,7 @@ User-locked tactical choice during brainstorming:
 - Stay within the loop repo. File upstream-request for `hero-crew` but don't block on it.
 - Target 2x wall-clock per slice. Quality floor: average grade ≥ 0.83.
 
-Ceremony surfaces (`/loop:slice start`, `/loop:slice complete`, `/loop:slice grade`) confirmed in scope for edit.
+Ceremony surfaces (`/runner:slice start`, `/runner:slice complete`, `/runner:slice grade`) confirmed in scope for edit.
 
 ## Levers (all config-gated, default ON)
 
@@ -202,7 +202,7 @@ New CLI `bun src/scripts/loop.mts perf-report --window 10` aggregates speedup vs
 
 ## Acceptance criteria
 
-**Wall-clock measure** for AC-1: `wall_clock_seconds` is the elapsed time from `/loop:slice start` event in the telemetry log to the corresponding `slice grade-write` event for the same slice id. Includes all dispatches and waits. Excludes time the loop spent on adjacent slices.
+**Wall-clock measure** for AC-1: `wall_clock_seconds` is the elapsed time from `/runner:slice start` event in the telemetry log to the corresponding `slice grade-write` event for the same slice id. Includes all dispatches and waits. Excludes time the loop spent on adjacent slices.
 
 | AC | Target | Measure |
 |---|---|---|

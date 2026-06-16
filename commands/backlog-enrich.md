@@ -1,6 +1,6 @@
 ---
 name: backlog-enrich
-description: Classify every triaged feature — dispatch loop:architect inline for each, write tags / needs_contract / needs_ux into FEAT frontmatter so /crew:orchestrate-slice routes the full ladder.
+description: Classify every triaged feature — dispatch runner:architect inline for each, write tags / needs_contract / needs_ux into FEAT frontmatter so /crew:orchestrate-slice routes the full ladder.
 auto_execute_steps: false
 ---
 
@@ -8,7 +8,7 @@ auto_execute_steps: false
 
 Sweeps `.claude/artifacts/loop/backlog/triaged/FEAT-*.md` (or the
 configured backlog root) and, for every entry missing classification
-fields, dispatches `loop:architect` from the current session, parses
+fields, dispatches `runner:architect` from the current session, parses
 the response, and writes `tags` + `needs_contract` + `needs_ux` into
 the FEAT frontmatter.
 
@@ -52,7 +52,7 @@ Steps:
    back to its baked-in routing table). On exit 1, halt and surface
    the stderr.
 
-4. **Dispatch `loop:architect` in parallel.** Send all classify
+4. **Dispatch `runner:architect` in parallel.** Send all classify
    requests in a single message containing one `Agent` tool call
    per unclassified FEAT. Prepend the resolved-skills block (when
    present) to each prompt so the agent invokes the right Skill
@@ -83,7 +83,7 @@ Steps:
 
 Re-running only hits FEATs that still lack tags. Already-classified
 FEATs are filtered in step 2. Safe to run after every
-`/loop:backlog-triage` sweep.
+`/runner:backlog-triage` sweep.
 
 ## Pass 2: contracts pre-population
 
@@ -119,7 +119,7 @@ Steps:
 
    ```
    WARNING: contracts artifact for <FEAT-ID> not written — architect response
-   empty/malformed. Re-run /loop:backlog-enrich or rely on
+   empty/malformed. Re-run /runner:backlog-enrich or rely on
    /crew:orchestrate-slice Step 1 retry.
    ```
 
@@ -160,7 +160,7 @@ markers are written. Prefer the slash flow above.
 
 ## Cost note
 
-One `loop:architect` dispatch per unclassified FEAT (pass 1). Run on small
+One `runner:architect` dispatch per unclassified FEAT (pass 1). Run on small
 batches (≤10) or check cost-cap first. Each dispatch reads the FEAT file and
 emits ~3 lines of structured output. Pass 2 adds one additional `crew:architect`
 dispatch per `needs_contract: true` FEAT whose contracts artifact is missing;

@@ -38,7 +38,7 @@ Each alert has `severity`, `category`, `message`, `suggested_action`.
 ## Relationship to crew brief-me
 
 - `/crew:brief-me` covers Crew artifacts (runs, reviews, validations, workflow state)
-- `/loop:brief` covers backlog, specs, grades, decisions, alerts
+- `/runner:brief` covers backlog, specs, grades, decisions, alerts
 
 Run both at session start when picking up an in-flight repo. Crew tells you
 "what's the active workflow run"; loop tells you "what's next in

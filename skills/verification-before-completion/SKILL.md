@@ -1,5 +1,5 @@
 ---
-name: loop:verification-before-completion
+name: runner:verification-before-completion
 description: Use before making any completion claim ("tests pass", "bug fixed", "feature works", etc.). Loads the Iron Law and the claim→evidence lookup table. Trigger automatically when the agent is about to assert that work is done, passing, or fixed without having run the verification command in the current turn.
 trigger: "always_on"
 ---
@@ -84,7 +84,7 @@ use them:
 
 ## Relationship to Loop Discipline
 
-This skill is invoked alongside [loop:loop-discipline](../loop-discipline/SKILL.md).
+This skill is invoked alongside [runner:loop-discipline](../loop-discipline/SKILL.md).
 The loop-discipline skill governs when to stop and how to run the loop;
 this skill governs the quality of evidence required before any stop or
 completion assertion. Both apply at every slice close.

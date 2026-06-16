@@ -4,7 +4,7 @@
 
 **Goal:** Add a wave-mode autonomous runner that dispatches N independent slices into parallel git worktrees per wave, merges PASS, pivots FAIL into `/crew:fix` next wave, and loops until standard stop-check fires.
 
-**Architecture:** New `src/scripts/lib/wave/` library (planner + runner + failure-pivot + artifacts), one new slash command `/loop:wave`, three new `loop.mts` subcommands (`wave plan|run|loop`), `loop.json` schema extension (`marathonRunner` + `wave` block), spec-writer contract addition (`touches_files` slice frontmatter), and a single config knob (`marathonRunner: "wave"`) that opts the marathon into wave mode. All crew dispatch goes through a configured slash command (`/crew:orchestrate-slice` default) — loop stays decoupled from crew internals.
+**Architecture:** New `src/scripts/lib/wave/` library (planner + runner + failure-pivot + artifacts), one new slash command `/runner:wave`, three new `loop.mts` subcommands (`wave plan|run|loop`), `loop.json` schema extension (`marathonRunner` + `wave` block), spec-writer contract addition (`touches_files` slice frontmatter), and a single config knob (`marathonRunner: "wave"`) that opts the marathon into wave mode. All crew dispatch goes through a configured slash command (`/crew:orchestrate-slice` default) — loop stays decoupled from crew internals.
 
 **Tech Stack:** TypeScript + Bun runtime, ESM, existing `lib/dispatch-*` primitives for worktree spawn/merge, `lib/stop-conditions.mts` for halt detection, `lib/memory-snapshot.mts` for telemetry. Spec is at `docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md`.
 
@@ -25,7 +25,7 @@
 | `src/scripts/lib/wave/runner.mts` | `runWave(repoRoot, opts)`, `loopWaves(repoRoot, opts)` — orchestrates plan→dispatch→finalize→retest |
 | `src/scripts/lib/wave/dispatch-prompt.mts` | Builds per-worktree agent prompt invoking configured slash command |
 | `src/scripts/validate-slice-touches-files.mts` | CI script: warn on missing, error on bad paths |
-| `commands/wave.md` | `/loop:wave` slash flow (plan / run / loop subcommands) |
+| `commands/wave.md` | `/runner:wave` slash flow (plan / run / loop subcommands) |
 | `src/tests/wave/conflict.test.mts` | Conflict graph + path-set unit tests |
 | `src/tests/wave/touches-files.test.mts` | Parser + inference + missing fallback |
 | `src/tests/wave/planner.test.mts` | Ranking + greedy packer edge cases |
@@ -48,7 +48,7 @@
 | `src/scripts/lib/halt-badges.mts` | Add `wave_post_merge_red`, `wave_dirty_main`, `wave_pending_fix_count`, `wave_escalation_count` |
 | `src/scripts/lib/memory-snapshot.mts` | Read `.claude/artifacts/loop/waves/index.json`; emit "Wave telemetry" block |
 | `agents/spec-writer.md` | Add `touches_files` contract paragraph to slice-level SDD section |
-| `commands/auto.md` | Route to `/loop:wave loop` when `marathonRunner === "wave"` |
+| `commands/auto.md` | Route to `/runner:wave loop` when `marathonRunner === "wave"` |
 | `commands/start.md` | Same routing |
 | `docs/halt-badges.md` | Document the 4 new wave badges |
 | `.claude/loop.json` | Add `marathonRunner: "wave"` + `wave` block scaffold (this repo's opt-in) |
@@ -2802,7 +2802,7 @@ export default async function waveCli(sub: string, argv: string[]): Promise<void
       return;
     }
     case "loop": {
-      console.error("wave loop: not yet implemented");
+      console.error("wave runner: not yet implemented");
       process.exitCode = 2;
       return;
     }
@@ -3017,10 +3017,10 @@ export async function realDispatch(
 ): Promise<WorktreeResult[]> {
   // The runtime path: emit a structured payload that the slash flow turns into N parallel
   // Agent calls. For headless CLI runs (no Claude harness), this throws — the wrapper
-  // command /loop:wave handles dispatch via the harness. Document this constraint in the
-  // /loop:wave slash command.
+  // command /runner:wave handles dispatch via the harness. Document this constraint in the
+  // /runner:wave slash command.
   throw new Error(
-    "realDispatch must be invoked from the /loop:wave slash flow (Agent dispatch is harness-only).",
+    "realDispatch must be invoked from the /runner:wave slash flow (Agent dispatch is harness-only).",
   );
 }
 
@@ -3083,7 +3083,7 @@ git commit -m "feat(wave): wire 'wave run' and 'wave loop' CLI to real dispatch 
 
 ---
 
-## Task 18: /loop:wave slash command
+## Task 18: /runner:wave slash command
 
 **Files:**
 - Create: `commands/wave.md`
@@ -3093,7 +3093,7 @@ git commit -m "feat(wave): wire 'wave run' and 'wave loop' CLI to real dispatch 
 ```markdown
 ---
 name: wave
-description: "Run wave-mode autonomous loop: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /crew:fix next wave. Subcommands: plan | run | loop."
+description: "Run wave-mode autonomous runner: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /crew:fix next wave. Subcommands: plan | run | loop."
 auto_execute_steps: false
 ---
 
@@ -3102,7 +3102,7 @@ auto_execute_steps: false
 Reads triaged slices with declared `touches_files`, packs up to `wave.size` non-conflicting
 into one wave, dispatches each slice into a parallel git worktree, merges PASS branches,
 runs post-merge tests, enqueues FAIL slices for `/crew:fix` next wave. Loops until
-`/loop:stop-check` fires.
+`/runner:stop-check` fires.
 
 ## Subcommands
 
@@ -3182,7 +3182,7 @@ with `loop.maxIterations: 25` allows up to 75 slice closes per run. Tighten
 }
 ```
 
-`marathonRunner: "wave"` opts the marathon (`/loop:auto`, `/loop:start`) into wave mode.
+`marathonRunner: "wave"` opts the marathon (`/runner:auto`, `/runner:start`) into wave mode.
 Default remains `"sequential"`.
 
 ## Failure pivots
@@ -3221,7 +3221,7 @@ Expected: PASS
 
 ```bash
 git add commands/wave.md
-git commit -m "feat(wave): add /loop:wave slash command with plan|run|loop subcommands"
+git commit -m "feat(wave): add /runner:wave slash command with plan|run|loop subcommands"
 ```
 
 ---
@@ -3483,9 +3483,9 @@ Before executing the sequential walker, check `.claude/loop.json` for `loop.mara
 RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
 ```
 
-If `RUNNER === "wave"`, delegate to `/loop:wave loop` and exit. Do not run the sequential
+If `RUNNER === "wave"`, delegate to `/runner:wave loop` and exit. Do not run the sequential
 walker. The wave loop respects the same `loop.maxIterations`, `loop.autoMode`, and
-`/loop:stop-check` conditions, plus the wave-specific halt reasons documented in
+`/runner:stop-check` conditions, plus the wave-specific halt reasons documented in
 `commands/wave.md`.
 
 If `RUNNER === "sequential"` (default), proceed with the existing workflow below.
@@ -3566,7 +3566,7 @@ Expected: PASS
 
 ```bash
 git add commands/auto.md commands/start.md src/scripts/loop.mts .claude/loop.json
-git commit -m "feat(wave): route marathon entry points to /loop:wave when marathonRunner=='wave'"
+git commit -m "feat(wave): route marathon entry points to /runner:wave when marathonRunner=='wave'"
 ```
 
 ---
@@ -3791,7 +3791,7 @@ Enable in `.claude/loop.json`:
 }
 ```
 
-Run via `/loop:wave loop` (or `/loop:auto` once `marathonRunner: "wave"` is set —
+Run via `/runner:wave loop` (or `/runner:auto` once `marathonRunner: "wave"` is set —
 auto routes to wave automatically).
 
 Slice prerequisite: `touches_files` in slice frontmatter. Spec-writer populates this
@@ -3809,7 +3809,7 @@ Prepend to `CHANGELOG.md` (under any existing "Unreleased" heading):
 
 ```markdown
 ### Added
-- Wave-mode autonomous loop (`/loop:wave plan|run|loop`): dispatches up to N independent
+- Wave-mode autonomous loop (`/runner:wave plan|run|loop`): dispatches up to N independent
   slices per wave into parallel git worktrees, merges PASS, pivots FAIL into `/crew:fix`
   next wave, runs post-merge tests, loops until standard stop-check fires. Opt-in via
   `loop.json:marathonRunner: "wave"`; default remains `"sequential"`.
@@ -3823,7 +3823,7 @@ Prepend to `CHANGELOG.md` (under any existing "Unreleased" heading):
 ### Changed
 - spec-writer agent contract requires `touches_files` in slice frontmatter for wave-mode
   dispatch.
-- `commands/auto.md` and `commands/start.md` route to `/loop:wave loop` when
+- `commands/auto.md` and `commands/start.md` route to `/runner:wave loop` when
   `loop.marathonRunner === "wave"`.
 ```
 
@@ -3834,8 +3834,8 @@ Append a paragraph after the "Orchestrator mode" section:
 ```markdown
 ### Wave mode (opt-in)
 
-Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/loop:auto` and
-`/loop:start` into wave mode: per-wave parallel worktree dispatch instead of single-slice
+Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/runner:auto` and
+`/runner:start` into wave mode: per-wave parallel worktree dispatch instead of single-slice
 sequential. See `commands/wave.md` and
 `docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md`.
 
@@ -4041,7 +4041,7 @@ Parallelism: 1 (solo — only T14 ready, runner.mts is held).
 | # | Task | touches_files | depends on |
 |---|---|---|---|
 | 1 | T15 — loopWaves multi-wave driver | `src/scripts/lib/wave/runner.mts`, `src/tests/wave/runner.test.mts` | T14 |
-| 2 | T18 — `/loop:wave` slash command | `commands/wave.md` | T16 |
+| 2 | T18 — `/runner:wave` slash command | `commands/wave.md` | T16 |
 
 Parallelism: 2. Disjoint files (T15 in runner.mts, T18 in commands/wave.md).
 

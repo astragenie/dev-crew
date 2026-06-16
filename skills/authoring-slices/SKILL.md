@@ -1,6 +1,6 @@
 ---
-name: loop:authoring-slices
-description: Use when deriving a new slice from a product-backlog entry or authoring a slice file from scratch. Loads the canonical slice template structure and Reviewer A / Reviewer B review questions. Trigger when the user asks to "write a slice", "derive a slice", "add to backlog", or after `/loop:derive-slice` is invoked.
+name: runner:authoring-slices
+description: Use when deriving a new slice from a product-backlog entry or authoring a slice file from scratch. Loads the canonical slice template structure and Reviewer A / Reviewer B review questions. Trigger when the user asks to "write a slice", "derive a slice", "add to backlog", or after `/runner:derive-slice` is invoked.
 ---
 
 # Authoring Slices
@@ -60,7 +60,7 @@ Every acceptance criterion in the slice MUST satisfy:
   the test that asserts it).
 
 When AC can't be written to this standard from the FEAT body alone,
-dispatch `loop:spec-writer` to draft them rather than shipping vague AC.
+dispatch `runner:spec-writer` to draft them rather than shipping vague AC.
 
 ## INVEST check (slice shape)
 

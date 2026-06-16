@@ -74,7 +74,7 @@ Returns:
   "slice": { "id": "SLICE-52", "from": "docs/ai-loop/slices/pending/SLICE_52_X.md", "to": "docs/ai-loop/slices/completed/SLICE_52_X.md" },
   "feature": { "id": "FEAT-001", "from": "docs/backlog/in-progress/FEAT-001.md", "to": "docs/backlog/done/FEAT-001.md" },
   "specStatusChanges": [{ "id": "SPEC-001", "from": "decomposed", "to": "satisfied" }],
-  "nextAction": "Run /loop:slice grade --id SLICE-52 to capture lessons + decisions."
+  "nextAction": "Run /runner:slice grade --id SLICE-52 to capture lessons + decisions."
 }
 ```
 
@@ -89,9 +89,9 @@ Wiggin Loop iteration to the next slice.
 The returned `nextAction` is a literal prompt:
 
 ```bash
-/loop:slice grade --id SLICE-52
+/runner:slice grade --id SLICE-52
 # ...agent fills the grade...
-/loop:slice grade-write --id SLICE-52
+/runner:slice grade-write --id SLICE-52
 ```
 
 Grading at slice close is what feeds the retrospective + pattern alerts.

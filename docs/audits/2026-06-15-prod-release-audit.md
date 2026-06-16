@@ -163,11 +163,11 @@ P21 `lib/dispatch-merge.mts:21-31`, P22 wave inline frontmatter parser dup, P23 
 | # | Path:line | Issue | Fix |
 |---|---|---|---|
 | BP1 | `agents/pm.md:191` | clause-id allowlist stale vs CLAUDE.md — lists removed `decommissioned-roles`, missing `marathon-checkpoint` (CLAUDE.md:114) and `orchestrator-mode` (CLAUDE.md:185). PM declines citing the missing pair will fail `validate-decline-citations` CI | sync to current set |
-| BP2 | `agents/pm.md:3` | description claims agent dispatched for `/loop:pm-triage`, `/loop:pm-review`, `/loop:pm-decompose` — **none exist**. Only `/loop:triage`, `/loop:retriage`, `/loop:intake` | rewrite |
+| BP2 | `agents/pm.md:3` | description claims agent dispatched for `/runner:pm-triage`, `/runner:pm-review`, `/runner:pm-decompose` — **none exist**. Only `/runner:triage`, `/runner:retriage`, `/runner:intake` | rewrite |
 | BP3 | `agents/pm.md:193` | references `scripts/validate-decline-citations.mjs`; real path `src/scripts/validate-decline-citations.mts` | update |
 | BP4 | `hooks/bootstrap-context.mjs:31-33` | injects HARD-RULES saying "Parent loop dispatches `crew:inspector` then `crew:verifier`" but CLAUDE.md:348 says `crew:reviewer` + `crew:validator`; wrong terminology injected every session | align with CLAUDE.md |
 | BP5 | `agents/hierarchical-dispatcher.md:37` | pre-flight tells caller to use `$LOOP_ROOT/scripts/loop.mjs` — emitted tree dropped per CLAUDE.md (Bun migration) | drop the clause; keep only `bun src/scripts/loop.mts` |
-| BP6 | `agents/document-writer.md:8` | H1 says `crew:document-writer` but owned by loop (`loop:document-writer`) | rename |
+| BP6 | `agents/document-writer.md:8` | H1 says `crew:document-writer` but owned by loop (`runner:document-writer`) | rename |
 
 ### MED (8)
 
@@ -202,7 +202,7 @@ P21 `lib/dispatch-merge.mts:21-31`, P22 wave inline frontmatter parser dup, P23 
 | PR6 | `typecheck-errors.txt` (root) | 99KB stale artifact from `loop-plugin@0.8.3` typecheck (~40 versions back) | `rm` + add to .gitignore |
 | PR7 | `CLAUDE.md:24` | references `.claude/artifacts/loop/backlog/product-backlog.md` — file does not exist | restore file or drop reference |
 | PR8 | `docs/halt-badges.md:8,77` | invocation says `node scripts/loop.mjs`; actual `bun src/scripts/loop.mts`; this is the cross-plugin contract surface | replace throughout |
-| PR9 | triaged FEAT files | zero of 5 triaged FEATs declare `touches_files` frontmatter — wave-mode validator will warn | `/loop:retriage` |
+| PR9 | triaged FEAT files | zero of 5 triaged FEATs declare `touches_files` frontmatter — wave-mode validator will warn | `/runner:retriage` |
 
 ### MED (8)
 
@@ -250,7 +250,7 @@ PR18 `package.json` missing `description`/`repository`/`author`/`license`/`homep
 
 ## How this audit was produced
 
-Four `loop:researcher` agents dispatched in parallel:
+Four `runner:researcher` agents dispatched in parallel:
 1. Performance (24 findings, citations verified)
 2. LOC reduction (28 findings, totals computed)
 3. Best practices (28 findings, plugin contract + repo conventions)

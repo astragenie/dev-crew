@@ -64,7 +64,7 @@ artifact. Instead, log:
 
 ```
 WARNING: contracts artifact for <FEAT-ID> not written — architect response
-empty/malformed. Re-run /loop:backlog-enrich or rely on
+empty/malformed. Re-run /runner:backlog-enrich or rely on
 /crew:orchestrate-slice Step 1 retry.
 ```
 

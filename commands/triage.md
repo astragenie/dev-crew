@@ -6,14 +6,14 @@ auto_execute_steps: false
 
 # Triage
 
-Run the `loop:triage` skill: PM-only scoring. Single public triage command.
+Run the `runner:triage` skill: PM-only scoring. Single public triage command.
 
 ## Usage
 
 ```bash
-/loop:triage
-/loop:triage --include-triaged                          # also re-score FEATs already in triaged/
-/loop:triage --ids FEAT-166,FEAT-182,FEAT-186           # rescore only these triaged FEATs
+/runner:triage
+/runner:triage --include-triaged                          # also re-score FEATs already in triaged/
+/runner:triage --ids FEAT-166,FEAT-182,FEAT-186           # rescore only these triaged FEATs
 ```
 
 Default: skill reads `pending/` directory, dispatches PM, halts on error. With `--include-triaged`, the skill also enumerates ids from `triaged/` and re-scores them in place — PM overwrites the existing `pm_*` fields + `composite_score` + `autonomous_safe` + `composite_priority`. FEATs in `triaged/` STAY in `triaged/` (no state move). Use after FEAT body edits, after upstream blockers clear, or to validate scoring quality. FEAT-194 / SLICE-110.
@@ -53,7 +53,7 @@ Per-batch budget (`.claude/loop.json`):
 - `loop.triageBudgetUsdPerBatch` (default 5.0)
 - `loop.triageBudgetTokensPerBatch` (default 500000)
 
-On exceedance the skill halts (no silent fallback). Operator decides: re-run with adjusted budget, switch PM model, or hand-score via `/loop:backlog pm-write`.
+On exceedance the skill halts (no silent fallback). Operator decides: re-run with adjusted budget, switch PM model, or hand-score via `/runner:backlog pm-write`.
 
 ## Why no fallback
 

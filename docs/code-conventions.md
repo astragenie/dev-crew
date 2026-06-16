@@ -119,7 +119,7 @@ rejected with a clear error message.
 
 ## GitHub sync frontmatter fields
 
-Added by `/loop:publish`; null/absent means unpublished. Do not set manually.
+Added by `/runner:publish`; null/absent means unpublished. Do not set manually.
 
 **FEAT files:**
 

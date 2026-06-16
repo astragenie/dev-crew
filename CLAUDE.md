@@ -41,7 +41,7 @@ for this repo.
 
 This plugin requires the [`crew`](https://github.com/astragenie/dev-team)
 plugin at the version pinned in `src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`.
-`/loop:install` refuses to run against an older crew.
+`/runner:install` refuses to run against an older crew.
 
 ## Local commands
 
@@ -119,7 +119,7 @@ the newest retrospective. Configured via `loop.marathonCheckpointEvery`
 in `.claude/loop.json` (default **4** per the AgentOps coherent-arc rule):
 
 - At `>= every` closes → **advisory** suggestion `marathon_checkpoint_due`.
-  Loop continues; operator should run `/loop:retrospective` soon.
+  Loop continues; operator should run `/runner:retrospective` soon.
 - At `>= 2 * every` closes → **hard** stop with reason
   `marathon_checkpoint_required` + `marathon-checkpoint` blocker. Loop
   refuses the next slice until a retrospective lands under
@@ -131,7 +131,7 @@ checkpoint pressure before it becomes a hard stop. Set
 `marathonCheckpointEvery: 0` or a negative value to opt out — the
 parser falls back to the default rather than disabling, so a true
 opt-out requires removing the snapshot consumer or running
-`/loop:retrospective` continuously.
+`/runner:retrospective` continuously.
 
 ## Backlog discipline
 
@@ -143,24 +143,24 @@ Each FEAT has frontmatter declaring priority, status, and an
 `autonomous_safe: true` items without per-slice human review; creative
 items still require a human in the loop on review.
 
-**Recommended default for fresh intake**: `/loop:intake` runs both
+**Recommended default for fresh intake**: `/runner:intake` runs both
 phases in one invocation — PM scoring (Phase 1) then architect
 classification (Phase 2), with a halt-on-PM-error gate and a P4-decline
-filter on Phase 2. Replaces the two-step `/loop:triage` + `/loop:backlog-enrich`
+filter on Phase 2. Replaces the two-step `/runner:triage` + `/runner:backlog-enrich`
 sequence. Both legacy commands still work for partial-intake scenarios
 (score-only or classify-only).
 
-**Higher-quality opt-in for vague-AC batches**: `/loop:retriage` runs
-the same PM scoring contract as `/loop:triage` but PREPENDS an
+**Higher-quality opt-in for vague-AC batches**: `/runner:retriage` runs
+the same PM scoring contract as `/runner:triage` but PREPENDS an
 AC-clarity-gate pre-flight to the PM dispatch. When PM finds vague AC
-on a FEAT, it dispatches `loop:spec-writer` to rewrite the AC in
+on a FEAT, it dispatches `runner:spec-writer` to rewrite the AC in
 Given-When-Then form, waits, re-reads, and scores against the cleaned
-AC. Cost up to 2× per FEAT vs. `/loop:triage`; scoring accuracy
+AC. Cost up to 2× per FEAT vs. `/runner:triage`; scoring accuracy
 (especially `effort_estimate` + `technical_risk`) up. Spec-writer
 dispatch failure forces `composite_priority: "needs-review"` so the
 walker won't auto-promote a half-scored FEAT.
 
-`/loop:backlog-enrich` writes three routing fields into FEAT
+`/runner:backlog-enrich` writes three routing fields into FEAT
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives
 in `scripts/presets/*.json` and is read at builder-dispatch time via
@@ -184,7 +184,7 @@ gate that enforces it.
 
 <!-- clause: orchestrator-mode -->
 
-`/loop:slice start` emits a slice-build tag-routed dispatch by default.
+`/runner:slice start` emits a slice-build tag-routed dispatch by default.
 Controlled by `config.loop.orchestratorMode` in `.claude/loop.json`:
 
 - `"slice-build"` (default) — emit `Dispatch crew:<variant>-dev subagent...`
@@ -209,8 +209,8 @@ revived as a separate FEAT.
 
 ### Wave mode (opt-in)
 
-Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/loop:auto`
-and `/loop:start` into wave mode: per-wave parallel worktree dispatch
+Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/runner:auto`
+and `/runner:start` into wave mode: per-wave parallel worktree dispatch
 instead of single-slice sequential. See `commands/wave.md` and
 `docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md`.
 
@@ -262,29 +262,29 @@ recipes) lives in `commands/slice-review-ladder.md`.
 <!-- clause: owned-agents -->
 
 Dispatch via `Agent(subagent_type: ...)`. The plugin runtime namespaces
-owned agents with the `loop:` prefix — use the namespaced ID, not the
+owned agents with the `runner:` prefix — use the namespaced ID, not the
 bare frontmatter `name:` field:
 
-- `loop:pm` — backlog scoring across 5 dimensions; `compositePriority:
+- `runner:pm` — backlog scoring across 5 dimensions; `compositePriority:
 "needs-review"` escape valve when scope exceeds PM ability.
-- `loop:architect` — read-only Node ESM design + ADR drafter for
+- `runner:architect` — read-only Node ESM design + ADR drafter for
   structural change. Use before SLICE-A of any new contract / provider
   / cross-module refactor.
-- `loop:researcher` — read-only citation-backed code archaeology + fact
+- `runner:researcher` — read-only citation-backed code archaeology + fact
   gathering. Use when a question needs evidence from the repo before a
   change is proposed.
-- `loop:market-researcher` — outward-facing market investigator:
+- `runner:market-researcher` — outward-facing market investigator:
   competitor analysis (conforms to the `scripts/competitor-audit/`
   brief schema), verified multi-source web research (credibility tiers
   T1–T4, consensus levels), feature-gap evidence, trend detection.
-  Writes only under `docs/research/**`. Sibling of `loop:researcher`;
+  Writes only under `docs/research/**`. Sibling of `runner:researcher`;
   repo questions go there, market questions come here.
-- `loop:document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
+- `runner:document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
   retros, release notes, agent / skill prompts). Will NOT edit source.
-- `loop:spec-writer` — AI-ready specs at two levels: formal SPEC documents
+- `runner:spec-writer` — AI-ready specs at two levels: formal SPEC documents
   (10-section, REQ/SEC/CON ids, Given-When-Then AC) and executable
   slice-level SDD specs (exact contracts, ≥3 test cases, verify commands).
-  Dispatched by `loop:pm` when AC clarity fails or `autonomous_safe` is
+  Dispatched by `runner:pm` when AC clarity fails or `autonomous_safe` is
   uncertain. Supersedes the vendored `3rdparty/sdd-spec-writer` and
   `3rdparty/specification` agents (merged + removed 2026-06-10).
 
@@ -299,23 +299,23 @@ the contract. See DEC-011 (supersedes DEC-004).
 
 Slash flows that orchestrate role agents:
 
-- `/loop:backlog-enrich` — architect classifies triaged FEATs (tags,
+- `/runner:backlog-enrich` — architect classifies triaged FEATs (tags,
   needs_contract, needs_ux). **Wired to resolver since v0.28.0**: skill
   block from `preset.roles.architect` is prepended to the dispatch prompt.
-- `/loop:triage` (via `skills/triage/SKILL.md`) — PM scores pending FEATs.
+- `/runner:triage` (via `skills/triage/SKILL.md`) — PM scores pending FEATs.
   **Wired to resolver since v0.28.1**: skill block from `preset.roles.pm`
   is prepended to the dispatch prompt.
-- `/loop:backlog-add` — researcher enriches new FEAT body. Auto-dispatch
+- `/runner:backlog-add` — researcher enriches new FEAT body. Auto-dispatch
   was removed in DEC-011; researcher work happens via separate user
   invocation, not inline.
-- `/loop:spec-decompose` — agent reads SPEC and identifies features. No
+- `/runner:spec-decompose` — agent reads SPEC and identifies features. No
   inline role-agent dispatch from the slash flow itself.
-- `/loop:slice-complete` — document-writer drafts CHANGELOG / ADR /
+- `/runner:slice-complete` — document-writer drafts CHANGELOG / ADR /
   release notes after slice close. Currently invoked by the orchestrating
   agent, not by the CLI subcommand. Will wire to the resolver when a
   CLI-driven dispatch is added.
-- `/loop:slice-from-feature` — dispatches `crew:architect` (not
-  `loop:architect`) for contracts. Cross-plugin; wire on hero-crew side.
+- `/runner:slice-from-feature` — dispatches `crew:architect` (not
+  `runner:architect`) for contracts. Cross-plugin; wire on hero-crew side.
 
 `dispatchAgent` remains exported for callers that want marker-write
 semantics. The marker queue at
@@ -333,8 +333,8 @@ for cost attribution.
 Never commit secrets. Never disable hooks (`--no-verify`) without
 explicit user request. Never force-push to `main`.
 
-<!-- loop:start -->
-<!-- Installed by /loop:install. Edit .claude/loop.json to change stack-specific commands; re-run /loop:install to regenerate this block. The full HARD RULES live at .claude/loop/rules.md so this block stays small in per-session context. -->
+<!-- runner:start -->
+<!-- Installed by /runner:install. Edit .claude/loop.json to change stack-specific commands; re-run /runner:install to regenerate this block. The full HARD RULES live at .claude/loop/rules.md so this block stays small in per-session context. -->
 
 ## Autonomous Loop — HARD RULES (summary)
 
@@ -344,13 +344,13 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`
 
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
 - **Auto mode (default — `loop.marathonMode: true`).** Loop walks entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts.
-- **Slice start/close ceremony.** Every slice MUST use `/loop:slice start` and `/loop:slice complete`.
+- **Slice start/close ceremony.** Every slice MUST use `/runner:slice start` and `/runner:slice complete`.
 - **Dispatch discipline.** Hand `dispatchInstruction` to `crew:builder` subagent (implementation only); parent loop dispatches `crew:reviewer` then `crew:validator` after; never implement inline except trivial single-line fixups.
 - **Auto-continue.** After ceremony, promote next item without asking.
 
-First action when starting the loop: read `.claude/loop/rules.md` → `docs/ai-loop/00-entry/MASTER_PROMPT.md` → `docs/ai-loop/backlog/approved-slices.md`.
+First action when starting the runner: read `.claude/loop/rules.md` → `docs/ai-loop/00-entry/MASTER_PROMPT.md` → `docs/ai-loop/backlog/approved-slices.md`.
 
-<!-- loop:end -->
+<!-- runner:end -->
 
 ## Project state (auto-generated)
 

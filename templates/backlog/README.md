@@ -17,7 +17,7 @@ shape.
 
 Three ways:
 
-1. `/loop:backlog add "title"` — plugin creates a well-formed file in
+1. `/runner:backlog add "title"` — plugin creates a well-formed file in
    `pending/` with the next available `FEAT-NNN`.
 2. Manually create `pending/FEAT-NNN.md` matching the template. Plugin picks it
    up on the next listing.
@@ -26,9 +26,9 @@ Three ways:
 
 ## State transitions (plugin commands)
 
-- `/loop:backlog triage` — moves all `pending/*` → `triaged/`,
+- `/runner:backlog triage` — moves all `pending/*` → `triaged/`,
   filling in priority / category / target_release via heuristic.
-- `/loop:backlog promote --id FEAT-NNN` — moves a triaged feature →
+- `/runner:backlog promote --id FEAT-NNN` — moves a triaged feature →
   `in-progress/` and creates a linked slice in `.claude/artifacts/loop/ai-loop/slices/pending/`.
 - When the slice closes, plugin moves the feature → `done/`.
 
@@ -38,7 +38,7 @@ Three ways:
   back to the parent spec.
 - Each `FEAT-NNN.md` has `slices: [SLICE-NN, ...]` listing the engineering
   slices implementing it.
-- Release planner (`/loop:release plan`) filters by
+- Release planner (`/runner:release plan`) filters by
   `target_release`.
 
 ## Don't hand-edit during triage

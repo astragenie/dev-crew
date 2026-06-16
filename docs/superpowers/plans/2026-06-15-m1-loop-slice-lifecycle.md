@@ -60,7 +60,7 @@ async function withTempRepo(loopJson: object | null): Promise<string> {
 describe("fanoutEnvelope", () => {
   test("posts envelope when loop.notifications.webhook is configured", async () => {
     const repo = await withTempRepo({
-      loop: {
+      runner: {
         notifications: {
           enabled: true,
           mode: "webhook",
@@ -106,7 +106,7 @@ describe("fanoutEnvelope", () => {
 
   test("swallows fetch errors fail-silent", async () => {
     const repo = await withTempRepo({
-      loop: { notifications: { mode: "webhook", webhook: { url: "https://x.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
+      runner: { notifications: { mode: "webhook", webhook: { url: "https://x.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
     });
     const originalFetch = fanoutInternals.fetch;
     fanoutInternals.fetch = (async () => { throw new Error("ECONNREFUSED"); }) as typeof fanoutInternals.fetch;
@@ -232,7 +232,7 @@ async function withTempRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "loop-slice-fanout-"));
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
   await fs.writeFile(path.join(dir, ".claude", "loop.json"), JSON.stringify({
-    loop: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
+    runner: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
   }));
   return dir;
 }
@@ -347,7 +347,7 @@ async function withTempRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "loop-tel-fanout-"));
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
   await fs.writeFile(path.join(dir, ".claude", "loop.json"), JSON.stringify({
-    loop: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
+    runner: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
   }));
   return dir;
 }
@@ -596,7 +596,7 @@ async function withGradeRepo(sliceId: string): Promise<string> {
   await fs.writeFile(gradeFile, gradeContent);
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
   await fs.writeFile(path.join(dir, ".claude", "loop.json"), JSON.stringify({
-    loop: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
+    runner: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
   }));
   return dir;
 }

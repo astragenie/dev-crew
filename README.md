@@ -36,7 +36,7 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 
 - Installs three HARD RULE blocks in your repo's CLAUDE.md (Autonomous Loop,
   Cross-Slice Continuation, Phase Completion Gate) inside a marker-bracketed
-  `<!-- loop:start -->` block. Re-installing replaces the block in
+  `<!-- runner:start -->` block. Re-installing replaces the block in
   place; user content outside it is preserved.
 - Writes plugin-owned loop-control docs under `docs/architecture/ai-loop/`:
   `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`,
@@ -57,7 +57,7 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 In a repo with `crew` already installed:
 
 ```bash
-/loop:install --preset dotnet-aspire-python
+/runner:install --preset dotnet-aspire-python
 ```
 
 Then edit `.claude/loop.json` to set `productName`,
@@ -67,12 +67,12 @@ regenerate `MASTER_PROMPT.md` from the updated config.
 Once configured:
 
 ```bash
-/loop:status              # health check
-/loop:start               # first action for a new session
-/loop:next-slice          # pick highest-priority PENDING slice
-/loop:derive-slice        # derive a slice from product-backlog
-/loop:phase-gate --phase 4 --note "ingestion phase close"
-/loop:list-presets        # see built-in presets
+/runner:status              # health check
+/runner:start               # first action for a new session
+/runner:next-slice          # pick highest-priority PENDING slice
+/runner:derive-slice        # derive a slice from product-backlog
+/runner:phase-gate --phase 4 --note "ingestion phase close"
+/runner:list-presets        # see built-in presets
 ```
 
 ## Configuration
@@ -134,7 +134,7 @@ More presets ship as new repo types surface. See `scripts/presets/` to author yo
   dispatch primitive (FEAT-020 SLICE-1); barrel re-export of nine
   `dispatch-*.mjs` modules
 
-## Hierarchical dispatch (`loop:hierarchical-dispatcher`, FEAT-020 SLICE-1)
+## Hierarchical dispatch (`runner:hierarchical-dispatcher`, FEAT-020 SLICE-1)
 
 A parent agent can spawn N parallel child subagents in isolated git worktrees,
 block on `awaitAll`, then merge DONE children to the parent branch in priority
@@ -171,7 +171,7 @@ bun src/scripts/loop.mts dispatch finalize \
   --run-id <id> --parent-branch slice/SLICE-90 --plan plan.json [--repo .] [--depth 0]
 ```
 
-In production, the `loop:hierarchical-dispatcher` agent runs `prepare`, invokes
+In production, the `runner:hierarchical-dispatcher` agent runs `prepare`, invokes
 the Agent tool with the returned batch in **one message**, then runs `finalize`.
 
 ### Telemetry artifacts
@@ -203,7 +203,7 @@ Enable in `.claude/loop.json`:
 }
 ```
 
-Run via `/loop:wave loop` (or `/loop:auto` once `marathonRunner: "wave"` is
+Run via `/runner:wave loop` (or `/runner:auto` once `marathonRunner: "wave"` is
 set — auto routes to wave automatically).
 
 Slice prerequisite: `touches_files` in slice frontmatter. Spec-writer

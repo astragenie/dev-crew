@@ -8,7 +8,7 @@ auto_execute_steps: false
 
 Two-step ceremony for capturing what happened during a slice:
 
-1. **Generate template** — `/loop:slice grade --id SLICE-NN`
+1. **Generate template** — `/runner:slice grade --id SLICE-NN`
    Plugin creates `docs/grades/SLICE-NN-grade.md` with frontmatter
    pre-filled from the linked feature + spec (target_release, phase,
    spec id). Body has section skeletons + score placeholders. Only-if-missing
@@ -24,7 +24,7 @@ Two-step ceremony for capturing what happened during a slice:
      block under `## Decisions` with **Rationale** + **Consequences**.
    - Fill narrative sections (What went well / wrong / differently).
 
-3. **Persist + extract** — `/loop:slice grade-write --id SLICE-NN`
+3. **Persist + extract** — `/runner:slice grade-write --id SLICE-NN`
    (separate command — see slice-grade-write.md).
 
 Usage:

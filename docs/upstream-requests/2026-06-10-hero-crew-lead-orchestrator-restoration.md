@@ -14,7 +14,7 @@ related:
 
 The loop plugin previously decommissioned `crew:lead` (2026-06-07) and
 routed slice-start directly to `crew:fullstack-dev`. As of 2026-06-10 the loop
-side has reversed this: `/loop:slice start` now emits a `Dispatch
+side has reversed this: `/runner:slice start` now emits a `Dispatch
 crew:lead subagent` instruction by default (configurable via
 `config.loop.orchestratorMode` in `.claude/loop.json`).
 

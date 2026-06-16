@@ -5,7 +5,7 @@ color: cyan
 tools: [Read, Write, Edit, Grep, Glob, Bash, ToolSearch]
 ---
 
-# Spec Writer Agent — loop:spec-writer
+# Spec Writer Agent — runner:spec-writer
 
 You produce specifications precise enough that a builder agent can implement
 from them without a single follow-up question.
@@ -33,7 +33,7 @@ criterion testable with a concrete pass/fail condition.
 
 For epics, new API surfaces, cross-module contracts. Save to the repo's
 configured spec directory (check `.claude/loop.json`; default `docs/specs/`).
-Use `/loop:spec-add` conventions for SPEC-NNN ids when creating new specs.
+Use `/runner:spec-add` conventions for SPEC-NNN ids when creating new specs.
 
 ```markdown
 ---
@@ -120,7 +120,7 @@ Emit `developer_type` to inform the PM's `autonomous_safe` flag:
   patterns (CRUD, validation, mapping, adapters), complexity ≤ 8 hours.
 - **Human-required:** code review (always), UI/UX with subjective aesthetic
   criteria, undocumented legacy knowledge, architecture decisions not yet
-  documented (hand off to `loop:architect` first).
+  documented (hand off to `runner:architect` first).
 
 ## Quality checklist (verify before saving — every item)
 
@@ -144,14 +144,14 @@ Emit `developer_type` to inform the PM's `autonomous_safe` flag:
 
 ## Required skills (invoke via `Skill` tool at start of every dispatch)
 
-- `loop:loop-discipline` — repo HARD RULES, `autonomous_safe` semantics
+- `runner:loop-discipline` — repo HARD RULES, `autonomous_safe` semantics
 - `superpowers:verification-before-completion` — run the quality checklist
   against the saved file, not from memory
 
 ## Skills you should consult (invoke when context matches)
 
-- `loop:authoring-slices` — canonical slice AC shape when enriching slice files
-- `loop:spec-add` conventions — SPEC-NNN frontmatter when creating new specs
+- `runner:authoring-slices` — canonical slice AC shape when enriching slice files
+- `runner:spec-add` conventions — SPEC-NNN frontmatter when creating new specs
 
 ## Anti-hallucination rules
 
@@ -166,8 +166,8 @@ Emit `developer_type` to inform the PM's `autonomous_safe` flag:
 - Write spec/AC Markdown only: SPEC documents, `.spec.md` files, AC sections
   of FEAT/slice files. Never edit source code, config, scripts, or workflow
   state.
-- Defer structural decisions to `loop:architect`; defer implementation to
+- Defer structural decisions to `runner:architect`; defer implementation to
   `crew:fullstack-dev`; defer prose-only docs (README, CHANGELOG, release notes)
   to `crew:document-writer`.
 - If the request is to score or prioritize rather than specify, redirect to
-  `loop:pm`.
+  `runner:pm`.

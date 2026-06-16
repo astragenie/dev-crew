@@ -1,6 +1,6 @@
 ---
-name: loop:pm-review
-description: Deep interactive review of a single backlog feature. Shows PM reasoning, asks user to confirm or override scores. Use when user wants to challenge a triage result or review a high-stakes feature. Trigger on "/loop:pm-review" or "review this feature" or "challenge this priority".
+name: runner:pm-review
+description: Deep interactive review of a single backlog feature. Shows PM reasoning, asks user to confirm or override scores. Use when user wants to challenge a triage result or review a high-stakes feature. Trigger on "/runner:pm-review" or "review this feature" or "challenge this priority".
 ---
 
 # PM Review — Single Feature
@@ -9,7 +9,7 @@ Deep review a single FEAT with interactive confirmation.
 
 ## Usage
 
-`/loop:pm-review --id FEAT-NNN`
+`/runner:pm-review --id FEAT-NNN`
 
 ## Steps
 

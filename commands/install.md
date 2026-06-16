@@ -8,7 +8,7 @@ auto_execute_steps: false
 
 Adds the Wiggin Loop methodology to the current repo:
 
-- Replaces or appends the `<!-- loop:start -->` marker block in `CLAUDE.md` with the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) plus the First Action section.
+- Replaces or appends the `<!-- runner:start -->` marker block in `CLAUDE.md` with the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) plus the First Action section.
 - Writes plugin-owned loop-control docs under `<aiLoopRoot>/01-loop-control/`: `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`. **Always overwritten** — user customization lives in `.claude/loop.json`, not in these files.
 - Writes `<aiLoopRoot>/00-entry/MASTER_PROMPT.md` and `SLICE_TEMPLATE.md` (always overwritten).
 - Creates backlog scaffolds at `<backlogPath>/{approved,completed,product-backlog}.md` and `<slicesRoot>/pending/.gitkeep` — **only if missing**, never clobbered.
@@ -33,10 +33,10 @@ Workflow:
    ```
    Omit `--preset` to use whatever preset is already recorded in `.claude/loop.json`, or the default if no config exists yet.
 4. Report which files were written and which preset is active.
-5. Suggest the user populate `.claude/loop.json` `productName`, `productDescription`, and `stack` overrides before running `/loop:phase-gate` for the first time.
+5. Suggest the user populate `.claude/loop.json` `productName`, `productDescription`, and `stack` overrides before running `/runner:phase-gate` for the first time.
 
 After install:
 
-- `/loop:status` — show resolved config + marker presence
-- `/loop:phase-gate --phase <N>` — run the configured suite
-- `/loop:list-presets` — see built-in presets
+- `/runner:status` — show resolved config + marker presence
+- `/runner:phase-gate --phase <N>` — run the configured suite
+- `/runner:list-presets` — see built-in presets

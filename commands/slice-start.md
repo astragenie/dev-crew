@@ -6,7 +6,7 @@ auto_execute_steps: false
 
 # Slice Start
 
-Symmetric counterpart to `/loop:slice complete`. Run this
+Symmetric counterpart to `/runner:slice complete`. Run this
 **before** beginning acceptance-criteria work on a new slice so cost
 auto-emit windows attribute the session to the right slice.
 
@@ -49,8 +49,8 @@ Returns:
   "activePlan": { "source": "superpowers", "path": "docs/superpowers/plans/2026-05-22-crew-monitor-phase-2.md" },
   "runBrief": { "artifactPath": ".claude/artifacts/crew/runs/<stamp>-run-brief-slice-18-...md" },
   "sliceProgress": { "path": ".claude/state/crew/slice-progress.md", "completedCount": 17, "totalCount": 19 },
-  "dispatchInstruction": "Dispatch crew:fullstack-dev subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id SLICE-18.",
-  "nextAction": "Dispatch crew:fullstack-dev subagent for SLICE-18; then dispatch crew:inspector (and crew:verifier if behavior changed); close with /loop:slice complete --id SLICE-18."
+  "dispatchInstruction": "Dispatch crew:fullstack-dev subagent with this prompt:\n\n> Implement SLICE-18: ICrewArtifactSource + ObservedApplication source fields. See `docs/ai-loop/04-implementation-slices/SLICE_18_SOURCE_ABSTRACTION.md` for acceptance criteria. Goal: Add abstraction for artifact sources... You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /runner:slice complete --id SLICE-18.",
+  "nextAction": "Dispatch crew:fullstack-dev subagent for SLICE-18; then dispatch crew:inspector (and crew:verifier if behavior changed); close with /runner:slice complete --id SLICE-18."
 }
 ```
 
@@ -74,7 +74,7 @@ The returned `nextAction` is a literal prompt to follow:
    builder's handoff artifact path and the slice file path.
 3. If behavior changed, dispatch `crew:verifier` subagent for the
    validation gate.
-4. Run `/loop:slice complete --id SLICE-NN` to close.
+4. Run `/runner:slice complete --id SLICE-NN` to close.
 
 ## Role glossary
 
@@ -89,6 +89,6 @@ and `CLAUDE.md` (Owned agents).
 | **reviewer B** | `crew:inspector` | Production-readiness, observability, security |
 | **validator** | `crew:verifier` | Behavior validation — runs or inspects the changed behavior against ACs |
 | **deployer** | `crew:release-engineer` | Deployment and environment evidence; promotion to dev/prod |
-| **researcher** | `loop:researcher` | Read-only code archaeology and fact gathering before a change is proposed |
-| **pm** | `loop:pm` | Backlog scoring across 5 dimensions; AC clarity gate; `autonomous_safe` determination |
-| **architect** | `loop:architect` | Read-only design and ADR authoring for structural changes; prepend before SLICE-A of new contracts |
+| **researcher** | `runner:researcher` | Read-only code archaeology and fact gathering before a change is proposed |
+| **pm** | `runner:pm` | Backlog scoring across 5 dimensions; AC clarity gate; `autonomous_safe` determination |
+| **architect** | `runner:architect` | Read-only design and ADR authoring for structural changes; prepend before SLICE-A of new contracts |

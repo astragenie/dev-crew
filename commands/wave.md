@@ -1,6 +1,6 @@
 ---
 name: wave
-description: "Run wave-mode autonomous loop: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /crew:fix next wave. Subcommands: plan | run | loop."
+description: "Run wave-mode autonomous runner: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /crew:fix next wave. Subcommands: plan | run | loop."
 auto_execute_steps: false
 ---
 
@@ -9,7 +9,7 @@ auto_execute_steps: false
 Reads triaged slices with declared `touches_files`, packs up to `wave.size`
 non-conflicting slices into one wave, dispatches each into a parallel git
 worktree, merges PASS branches, runs post-merge tests, and enqueues FAIL
-slices for `/crew:fix` next wave. Loops until `/loop:stop-check` fires.
+slices for `/crew:fix` next wave. Loops until `/runner:stop-check` fires.
 
 ## Subcommands
 
@@ -73,7 +73,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" wave loop \
 ```
 
 Calls `run` in a loop, decrementing `--max-waves` each iteration. Stops
-when `maxWaves` is reached, the backlog is exhausted, or `/loop:stop-check`
+when `maxWaves` is reached, the backlog is exhausted, or `/runner:stop-check`
 fires a halt condition.
 
 ## Behavioral note: iteration accounting
@@ -114,7 +114,7 @@ cost proportionally.
 }
 ```
 
-`marathonRunner: "wave"` opts `/loop:auto` and `/loop:start` into wave mode
+`marathonRunner: "wave"` opts `/runner:auto` and `/runner:start` into wave mode
 (wiring lands in T21). Default remains `"sequential"`.
 
 ## Failure pivots
@@ -149,14 +149,14 @@ A FAIL worktree from wave N:
 - `run` — shipped (T17).
 - `loop` — shipped (T17).
 - `marathonRunner` routing — shipped (T21). Set in `.claude/loop.json` to opt
-  `/loop:auto` and `/loop:start` into wave mode.
+  `/runner:auto` and `/runner:start` into wave mode.
 
 Known limitations:
 
 - `realDispatch` throws on headless invocation — the parallel-agent step
-  requires the Claude Code harness. The `/loop:wave` slash flow handles
+  requires the Claude Code harness. The `/runner:wave` slash flow handles
   dispatch via harness.
-- `realStopCheck` is a soft no-op until `/loop:stop-check` exposes a
+- `realStopCheck` is a soft no-op until `/runner:stop-check` exposes a
   programmatic CLI surface.
 - `realFinalize` cannot distinguish merge-conflict branches from cleanly-merged
   ones (always returns `conflicts: []`); merge-conflict failure pivots do not

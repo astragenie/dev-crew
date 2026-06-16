@@ -173,7 +173,7 @@ async function withTempRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "loop-wave-fanout-"));
   await fs.mkdir(path.join(dir, ".claude"), { recursive: true });
   await fs.writeFile(path.join(dir, ".claude", "loop.json"), JSON.stringify({
-    loop: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
+    runner: { notifications: { mode: "webhook", webhook: { url: "https://runner.local/h", tenantId: "T", appId: "A", bearer: "B" } } }
   }));
   return dir;
 }

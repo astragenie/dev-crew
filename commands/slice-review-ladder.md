@@ -145,8 +145,8 @@ single `FAIL` blocks slice complete. Orchestrator (lead) collects verdicts
 + summarizes before grading.
 
 Each reviewer's prompt includes a step to:
-1. Find prior decisions relevant to changed files (`/loop:decisions relevant --files`)
-2. Link their review artifact back to the slice (`/loop:slice link`)
+1. Find prior decisions relevant to changed files (`/runner:decisions relevant --files`)
+2. Link their review artifact back to the slice (`/runner:slice link`)
 
 So the linkage arrays + decision-awareness build automatically as reviews
 happen.

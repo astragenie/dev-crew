@@ -66,7 +66,7 @@ across all presets:
 |---|---|---|
 | `superpowers:verification-before-completion` | `roles.pm.skills`, `roles.researcher.skills` | Shipped in upstream superpowers plugin already |
 | `superpowers:brainstorming` | `roles.architect.skills` | Shipped in upstream superpowers plugin already |
-| `loop:loop-discipline` | `roles.pm/researcher/architect/document-writer.skills` | Shipped in loop plugin itself (this repo) |
+| `runner:loop-discipline` | `roles.pm/researcher/architect/document-writer.skills` | Shipped in loop plugin itself (this repo) |
 
 The role-skill row is fine — those resolve at runtime.
 
@@ -76,7 +76,7 @@ The resolver CLI ships dispatch instruction blocks naming these IDs as
 of loop v0.27.0. If a builder is dispatched today with `csharp-pro` in
 its `## Required skills (resolved)` block, the `Skill` tool either no-ops
 or surfaces a "skill not found" message. Loop tolerates this as a Skill-tool
-warning (see `loop:builder-be` fallback) but the design intent is that the
+warning (see `runner:builder-be` fallback) but the design intent is that the
 ID resolves to a real skill.
 
 ## Asks

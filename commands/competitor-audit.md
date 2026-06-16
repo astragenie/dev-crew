@@ -15,7 +15,7 @@ competitors, then aggregates all briefs into a ranked FEAT backlog.
   existing briefs).
 - `scripts/competitor-audit/aggregate.mjs` — aggregation script (parameterized
   for repeatable runs).
-- `loop:market-researcher` agent (requires loop plugin >= v0.36.0; shipped after
+- `runner:market-researcher` agent (requires loop plugin >= v0.36.0; shipped after
   release v0.35.0). Fallback: `crew:researcher` on older plugins.
 
 ## Workflow
@@ -30,7 +30,7 @@ Execute these steps in order:
 3. **Create dated briefs directory** — `docs/research/<YYYY-MM-DD>-competitor-gap-audit/briefs/`
    (use today's date).
 4. **Dispatch researchers in parallel** — for each stale competitor, dispatch
-   `loop:market-researcher` via the Agent tool. Fill in `scripts/competitor-audit/researcher-prompt.md`
+   `runner:market-researcher` via the Agent tool. Fill in `scripts/competitor-audit/researcher-prompt.md`
    placeholders: `{{COMPETITOR_NAME}}`, `{{COMPETITOR_HOST}}`, `{{COMPETITOR_LANGUAGE}}`,
    `{{COMPETITOR_SLUG}}`, `{{SUGGESTED_SOURCES}}`. Each researcher writes one brief
    to the new briefs directory (e.g., `cursor-agents.md`).
@@ -39,7 +39,7 @@ Execute these steps in order:
    `composite >= 6`.
 6. **Update registry** — edit `docs/research/competitors.json` to set
    `last_audited` (today) and `last_audit_dir` for each refreshed competitor.
-7. **Suggest next action** — propose `/loop:triage` to score the new pending FEATs.
+7. **Suggest next action** — propose `/runner:triage` to score the new pending FEATs.
 
 ## Steps 1–2: Read registry and identify stale competitors
 
@@ -73,11 +73,11 @@ Create the directory:
 mkdir -p docs/research/$(date +%Y-%m-%d)-competitor-gap-audit/briefs
 ```
 
-For each stale competitor, dispatch `loop:market-researcher` via the Agent tool
+For each stale competitor, dispatch `runner:market-researcher` via the Agent tool
 with this dispatch instruction (replace placeholders from the registry):
 
 ```
-Dispatch loop:market-researcher with the researcher-prompt.md template filled in:
+Dispatch runner:market-researcher with the researcher-prompt.md template filled in:
 - {{COMPETITOR_NAME}} = <name from registry>
 - {{COMPETITOR_HOST}} = <host from registry>
 - {{COMPETITOR_LANGUAGE}} = <language from registry>
@@ -124,7 +124,7 @@ audited competitor.
 ## Step 7: Suggest triage
 
 ```
-/loop:triage
+/runner:triage
 ```
 
 This routes the newly written FEAT files through PM scoring (5-axis composite

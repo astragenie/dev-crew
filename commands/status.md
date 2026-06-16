@@ -21,6 +21,6 @@ Workflow:
    - `hasApprovedSlices`, `hasMasterPrompt` — scaffold presence
    - `crewCli` — path to the discovered crew CLI, or `null` if missing
 3. If `hasMarkerBlock` is false or any path entry shows the scaffold missing,
-   run `/loop:install`.
+   run `/runner:install`.
 4. If `crewCli` is `null`, install the `crew` plugin first — phase-gate
    depends on it.

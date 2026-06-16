@@ -40,9 +40,9 @@ Pattern crew agents should follow:
 
 ```
 1. write artifact via crew CLI -> get path
-2. /loop:slice link --id SLICE-NN --kind <kind> --artifact <path>
+2. /runner:slice link --id SLICE-NN --kind <kind> --artifact <path>
 3. (optional) continue work
 ```
 
 Embedded in the Reviewer / Validator subagent prompts emitted by
-`/loop:slice review-ladder`.
+`/runner:slice review-ladder`.
