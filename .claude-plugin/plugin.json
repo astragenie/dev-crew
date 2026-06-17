@@ -1,7 +1,7 @@
 {
   "name": "runner",
   "version": "0.51.0",
-  "description": "Wiggin-Loop methodology layer for Claude Code: HARD RULE blocks, slice scaffold, phase-gate runner. Stack-agnostic; per-repo config selects what test commands run at phase boundaries. Depends on the `crew` plugin for artifact writers.",
+  "description": "Spec-driven agentic development engine for Claude Code: PM-triaged backlog, slice-scoped specs with Given-When-Then acceptance criteria, parallel-worktree wave dispatch, automated phase-gate quality + review + validation, and decision-grade retros. Stack-agnostic; per-repo config selects test commands at phase boundaries. Built for fast, audited, regression-resistant code delivery at scale. Depends on the `crew` plugin for artifact writers.",
   "author": {
     "name": "astra"
   },
@@ -9,9 +9,12 @@
   "keywords": [
     "claude-code",
     "plugin",
-    "wiggin-loop",
+    "spec-driven",
+    "agentic-development",
     "autonomous",
     "slice-methodology",
-    "phase-gate"
+    "phase-gate",
+    "quality-gates",
+    "parallel-waves"
   ]
 }
