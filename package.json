@@ -1,6 +1,6 @@
 {
-  "name": "loop-plugin",
-  "version": "0.43.7",
+  "name": "runner-plugin",
+  "version": "0.51.0",
   "private": true,
   "type": "module",
   "scripts": {

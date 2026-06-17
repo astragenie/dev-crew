@@ -1,9 +1,16 @@
 # Changelog
 
-All notable changes to the `loop` plugin are documented here. Versions
-prior to v0.3.0 shipped under the name `autonomous-loop`.
+All notable changes to the `runner` plugin are documented here. Versions
+prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
+shipped under the name `loop`.
 
 ## Unreleased
+
+## [0.51.0] — 2026-06-17
+
+### Changed
+
+- **Plugin renamed `loop` → `runner`** (npm package `loop-plugin` → `runner-plugin`; `.claude-plugin/plugin.json` name field already flipped in cd01a1f). Slash commands now under `/runner:*`; config keys (`loop.json`, `loop.marathonMode`, etc.) intentionally unchanged for backward compatibility.
 
 ### Added
 
