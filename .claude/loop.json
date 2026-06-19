@@ -14,6 +14,19 @@
     }
   },
   "loop": {
+    "notifications": {
+      "_comment": "Realtime webhook push to AstraRunner ingest. Filesystem-resync watcher is the durable fallback (always runs when env LOOP_INGEST_URL+TOKEN set, separate code path). Webhook sink is DISABLED until url/bearer populated AND `disabled: false` flipped. tenantId/appId placeholders must be replaced with the AstraRunner-side app identifiers before enabling.",
+      "enabled": false,
+      "mode": "webhook",
+      "events": ["slice-start", "slice-complete", "halt-badge", "cost-alert"],
+      "webhook": {
+        "url": "http://localhost:5137/api/v2/ingest/loop-events",
+        "tenantId": "11111111-1111-1111-1111-111111111111",
+        "appId": "REPLACE_WITH_APP_GUID",
+        "bearer": "REPLACE_WITH_APP_TOKEN_lrt_xxx",
+        "disabled": true
+      }
+    },
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
     "slicesRoot": ".claude/artifacts/loop/ai-loop/slices",
