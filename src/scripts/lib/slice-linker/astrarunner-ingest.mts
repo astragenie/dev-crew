@@ -13,6 +13,12 @@ interface AgentRow {
   turns?: number;
   duration_ms?: number;
   tools?: Map<string, number>;
+  // FEAT-228 follow-up: skills tracked by agent-report-writer post-run from
+  // tool_use blocks invoking the Skill tool. Set when transcript parsing finds
+  // any Skill invocations; empty array when none. Empty array (not undefined)
+  // signals "no skills used" semantically; undefined means "skills not tracked
+  // for this row" (legacy callers).
+  skills?: string[];
   inputTokens?: number;
   outputTokens?: number;
   firstOutputAt?: string | null;
@@ -54,7 +60,12 @@ function buildEnvelope(opts: PostOpts, row: AgentRow): Record<string, unknown> |
       model: row.model && row.model !== "n/a" ? row.model : null,
       turnCount: row.turns ?? null,
       inputTokens: row.inputTokens ?? null,
-      outputTokens: row.outputTokens ?? null
+      outputTokens: row.outputTokens ?? null,
+      // FEAT-228 / FEAT-230 — agent skills (Skill-tool invocations from transcript).
+      // Runner-side AgentsBreakdown handler reads this for DistinctSkills field.
+      // Always emit the array (even empty) so consumers can distinguish
+      // "no skills used" from "skills not emitted by this version".
+      skills: row.skills ?? []
     }
   };
 }

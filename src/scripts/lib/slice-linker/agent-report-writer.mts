@@ -5,6 +5,7 @@ import readline from "node:readline";
 
 import { buildArtifactSlug } from "../artifact-naming.mjs";
 import { serializeFrontmatter } from "../frontmatter.mjs";
+import { postAgentCompletions } from "./astrarunner-ingest.mjs";
 
 const EVENTS_JSONL = [".claude", "logs", "events.jsonl"];
 
@@ -526,5 +527,29 @@ export async function writeAgentReport(
       })
     )
   );
+
+  // FEAT-228 / FEAT-230: best-effort emission of slice.agent_completed envelopes
+  // to the AstraRunner ingest endpoint so the runner-side AgentRun table picks up
+  // skills + tools + token data. Sink no-ops when LOOP_INGEST_URL/LOOP_INGEST_TOKEN
+  // env vars are unset, so this is safe in environments without runner ingest.
+  // Failures are swallowed internally — must never block slice completion.
+  await postAgentCompletions({
+    sliceId,
+    featureId: featureId ?? null,
+    agents: agents.map((a) => ({
+      agentType: a.agentType,
+      model: a.model,
+      turns: a.turns,
+      duration_ms: a.duration_ms,
+      tools: a.tools,
+      skills: a.skills,
+      inputTokens: a.inputTokens,
+      outputTokens: a.outputTokens,
+      firstOutputAt: a.firstOutputAt ?? null,
+      startTs: a.startTs ?? null,
+      stopTs: a.stopTs ?? null
+    }))
+  });
+
   return { reportPath: target, agentCount, totalTurns, totalDurationMs };
 }
