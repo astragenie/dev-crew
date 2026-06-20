@@ -87,7 +87,7 @@ export function finalizeDispatch(
       costUsd: r.costUsd ?? null
     });
   }
-  results = mergeChildren(repoRoot, parentBranch, results, plans);
+  results = mergeChildren(repoRoot, parentBranch, results, plans, runId);
   writeSummary(repoRoot, runId, parentBranch, depth, results);
   return results;
 }
