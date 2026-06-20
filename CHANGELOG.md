@@ -6,6 +6,24 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.51.1] — 2026-06-19
+
+### Security / Added
+
+- **Pattern B token store**: webhook bearer for AstraRunner ingest is now resolved at runtime from `~/.astrarunner/tokens.json` keyed by `webhook.appId`, instead of being committed inline in `.claude/loop.json`. Repo config now carries identifiers only (`url`, `tenantId`, `appId`) and is safe to commit. Pre-existing configs that still include `bearer` continue to work unchanged (literal bearer wins; resolver only runs when the field is absent). Webhook sends are skipped when no bearer can be resolved, instead of POSTing with an undefined token and burning a 401 round-trip.
+- New `src/scripts/lib/token-store.mts` exporting `resolveBearer(appId)`. Fail-silent on missing file, malformed JSON, or unknown appId — consumers treat `null` as "no auth available; skip send".
+- 8 new token-store tests + 2 resolver-path event-notifier tests (`src/tests/token-store.test.mts`, `src/tests/event-notifier-webhook.test.mts`).
+
+### Operator setup
+
+1. Mint an AstraRunner `lrt_` AppToken per app via the AppTokens API.
+2. Write to `~/.astrarunner/tokens.json`:
+   ```json
+   { "version": 1, "tokens": { "<app-guid>": { "bearer": "lrt_...", "label": "..." } } }
+   ```
+3. Restrict ACL to current user (`icacls ... /inheritance:r /grant:r "$env:USERNAME:F"` on Windows; `chmod 600` on POSIX).
+4. Drop `bearer` and `disabled` fields from `.claude/loop.json` `loop.notifications.webhook`. Keep `appId`. Done.
+
 ## [0.51.0] — 2026-06-17
 
 ### Changed
