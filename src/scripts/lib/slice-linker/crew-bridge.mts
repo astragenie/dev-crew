@@ -13,6 +13,7 @@ import { promisify } from "node:util";
 
 import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
 import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
+import { fanoutEnvelope } from "../webhook-fanout.mjs";
 import { renderIdentification } from "./agent-report-writer.mjs";
 
 const execFile = promisify(_execFile);
@@ -262,7 +263,75 @@ export async function tryWriteCostReport(
     advise = { error: (err as Error).message };
   }
 
+  // FEAT-234 (cross-repo): emit `cost.advise_recorded` envelope so the
+  // runner-side handler can persist into jsonl_cost_advises + render via
+  // the v2 read path when the per-app UseJsonlCostAdvises flag flips.
+  // Fail-silent contract: webhook-fanout swallows transport errors; the
+  // md file on disk remains authoritative.
+  if (advise && !advise.error) {
+    await postCostAdviseEnvelope(repoPath, { sliceId, featureId, runTitle, advise });
+  }
+
   return { ...report, advise, costMode: mode };
+}
+
+/**
+ * Build a `cost.advise_recorded` envelope from the cost-advise CLI output
+ * and ship it via the Pattern-B webhook-fanout (loop.notifications.webhook
+ * in .claude/loop.json + ~/.astrarunner/tokens.json bearer lookup).
+ *
+ * Payload mirrors SPEC-FEAT-234 §4.1. Fields the CLI doesn't supply are
+ * omitted — the runner handler validates only `sliceId` as required and
+ * tolerates missing optional baselines.
+ */
+async function postCostAdviseEnvelope(
+  repoPath: string,
+  opts: {
+    sliceId: string;
+    featureId: string | null | undefined;
+    runTitle: string;
+    advise: Record<string, any>;
+  }
+): Promise<void> {
+  const a = opts.advise;
+  // The CLI's stdout JSON has historically nested findings under either
+  // `recommendations`, `findings`, or `flags`. Accept all three keys with
+  // `recommendations` taking precedence so future CLI renames are forward-
+  // compatible without a runner-side change.
+  const recommendations = pickArray(a.recommendations) ?? pickArray(a.findings) ?? [];
+  const aggregateFlags = pickArray(a.aggregateFlags)
+    ?? pickArray(a.aggregate_flags)
+    ?? pickArray(a.flags)
+    ?? [];
+  const baselineUsdMedian = pickNumber(a.baselineUsdMedian)
+    ?? pickNumber(a.baseline_usd_median);
+  const baselineUsdP75 = pickNumber(a.baselineUsdP75)
+    ?? pickNumber(a.baseline_usd_p75);
+  const baselineCacheHitMedian = pickNumber(a.baselineCacheHitMedian)
+    ?? pickNumber(a.baseline_cache_hit_median);
+
+  const payload: Record<string, unknown> = {
+    sliceId: opts.sliceId,
+    targetSliceId: opts.sliceId,
+    featureId: opts.featureId ?? null,
+    runTitle: opts.runTitle,
+    recommendations,
+    aggregateFlags,
+    baselineUsdMedian,
+    baselineUsdP75,
+    baselineCacheHitMedian,
+    ts: new Date().toISOString()
+  };
+
+  await fanoutEnvelope(repoPath, "cost.advise_recorded", payload);
+}
+
+function pickArray(v: unknown): unknown[] | null {
+  return Array.isArray(v) ? v : null;
+}
+
+function pickNumber(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 // Invokes `crew mark-badge --badge validation_skipped --note <reason>` so
