@@ -12,7 +12,10 @@ export async function fanoutEnvelope(
 ): Promise<void> {
   try {
     const cfg = await readNotifyConfig(repoPath);
-    if (!cfg.webhook?.url) return;
+    // Pattern B guard: skip fan-out when bearer could not be resolved from
+    // committed config OR user-level token store.
+    const wh = cfg.webhook;
+    if (!wh?.url || !wh.bearer) return;
 
     const fetchFn = _internals.fetch as unknown as FetchFn;
     const senderConfig: {
@@ -22,13 +25,13 @@ export async function fanoutEnvelope(
       bearer: string;
       disabled?: boolean;
     } = {
-      url: cfg.webhook.url,
-      tenantId: cfg.webhook.tenantId,
-      appId: cfg.webhook.appId,
-      bearer: cfg.webhook.bearer
+      url: wh.url,
+      tenantId: wh.tenantId,
+      appId: wh.appId,
+      bearer: wh.bearer
     };
-    if (cfg.webhook.disabled !== undefined) {
-      senderConfig.disabled = cfg.webhook.disabled;
+    if (wh.disabled !== undefined) {
+      senderConfig.disabled = wh.disabled;
     }
     const sender = createWebhookSender(senderConfig, { fetchFn });
     const emittedAt =
@@ -36,8 +39,8 @@ export async function fanoutEnvelope(
       (payload.timestamp as string | undefined) ??
       new Date().toISOString();
     await sender.send({
-      tenantId: cfg.webhook.tenantId,
-      appId: cfg.webhook.appId,
+      tenantId: wh.tenantId,
+      appId: wh.appId,
       kind,
       payload,
       emittedAt

@@ -2,6 +2,7 @@ import { spawnSync as nodeSpawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { resolveBearer } from "./token-store.mjs";
 import { createWebhookSender } from "./webhook-sender.mjs";
 
 // Hook-driven notification surface for loop lifecycle events.
@@ -19,7 +20,10 @@ export interface NotifyWebhookConfig {
   url: string;
   tenantId: string;
   appId: string;
-  bearer: string;
+  // Pattern B: bearer is OPTIONAL in committed config. When absent, the
+  // reader resolves it from the user-level token store via appId. Webhook
+  // sends are skipped if no bearer can be resolved.
+  bearer?: string;
   disabled?: boolean;
 }
 
@@ -49,6 +53,7 @@ export const _internals = {
 
 /** Read loop.json and extract loop.notifications. Returns {} on any error. */
 export async function readNotifyConfig(repoPath: string): Promise<NotifyConfig> {
+  let cfg: NotifyConfig;
   try {
     const configPath = path.join(repoPath, ".claude", "loop.json");
     const raw = await fs.readFile(configPath, "utf8");
@@ -57,10 +62,21 @@ export async function readNotifyConfig(repoPath: string): Promise<NotifyConfig> 
     if (!notifications || typeof notifications !== "object") {
       return {};
     }
-    return notifications as NotifyConfig;
+    cfg = notifications as NotifyConfig;
   } catch {
     return {};
   }
+
+  // Pattern B: when webhook.bearer absent but appId present, resolve from
+  // the user-level token store (~/.astrarunner/tokens.json). Failure to
+  // resolve leaves bearer undefined; downstream sends skip when no bearer.
+  if (cfg.webhook && cfg.webhook.appId && !cfg.webhook.bearer) {
+    const resolved = await resolveBearer(cfg.webhook.appId);
+    if (resolved) {
+      cfg.webhook.bearer = resolved;
+    }
+  }
+  return cfg;
 }
 
 /** Shell-quote a string for POSIX sh (single-quote wrapping with embedded-quote escape). */
@@ -115,7 +131,10 @@ function fireOsNotification(event: LoopEvent): void {
 }
 
 async function fireWebhook(event: LoopEvent, config: NotifyConfig): Promise<void> {
-  if (config.webhook?.url) {
+  // Pattern B guard: skip send when bearer could not be resolved.
+  // Prevents wasted POST + 401 round-trip when token store is missing.
+  const wh = config.webhook;
+  if (wh?.url && wh.bearer) {
     const fetchFn = _internals.fetch as unknown as (
       url: string | URL | Request,
       init?: RequestInit
@@ -127,19 +146,19 @@ async function fireWebhook(event: LoopEvent, config: NotifyConfig): Promise<void
       bearer: string;
       disabled?: boolean;
     } = {
-      url: config.webhook.url,
-      tenantId: config.webhook.tenantId,
-      appId: config.webhook.appId,
-      bearer: config.webhook.bearer
+      url: wh.url,
+      tenantId: wh.tenantId,
+      appId: wh.appId,
+      bearer: wh.bearer
     };
-    if (config.webhook.disabled !== undefined) {
-      senderConfig.disabled = config.webhook.disabled;
+    if (wh.disabled !== undefined) {
+      senderConfig.disabled = wh.disabled;
     }
     const sender = createWebhookSender(senderConfig, { fetchFn });
     const { type, timestamp, ...rest } = event;
     const envelope = {
-      tenantId: config.webhook.tenantId,
-      appId: config.webhook.appId,
+      tenantId: wh.tenantId,
+      appId: wh.appId,
       kind: type,
       payload: rest as Record<string, unknown>,
       emittedAt: timestamp
