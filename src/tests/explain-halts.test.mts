@@ -47,10 +47,11 @@ test("explainHalts: costRegression populated → renders gate name + values + ac
   };
   const out = explainHalts(brief);
   assert.match(out, /### Cost regression/);
+  assert.match(out, /advisory — does not halt the loop/);
   assert.match(out, /\$150\.50/);
   assert.match(out, /\$47\.13/);
   assert.match(out, /multiplier 3/);
-  assert.match(out, /costRegressionMultiplier/);
+  assert.match(out, /loop\.cost\.regression\.\{multiplier,window\}/);
 });
 
 test("explainHalts: sessionDrift populated → renders both sessionIds + override action", () => {
@@ -86,7 +87,7 @@ test("explainHalts: sliceCostCeiling populated → renders actual vs ceiling + a
   assert.match(out, /### Slice cost ceiling/);
   assert.match(out, /\$200\.25/);
   assert.match(out, /\$150\.00/);
-  assert.match(out, /costSliceCeiling/);
+  assert.match(out, /loop\.cost\.ceilingUsd/);
 });
 
 test("explainHalts: gradeTrend populated → renders consecutiveBelow + threshold + action", () => {

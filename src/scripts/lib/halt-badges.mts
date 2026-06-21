@@ -22,10 +22,11 @@ export interface HaltBadgeInfo {
 function renderCostRegression(e: any): string[] {
   if (!e) return [];
   return [
+    `- (advisory — does not halt the loop)`,
     `- Current spend: $${e.currentUsd?.toFixed?.(2) ?? e.currentUsd}`,
     `- Rolling median: $${e.medianUsd?.toFixed?.(2) ?? e.medianUsd} × multiplier ${e.multiplier} = threshold $${e.thresholdUsd?.toFixed?.(2) ?? e.thresholdUsd}`,
     `- Window: last ${e.window} reports (sampleCount ${e.sampleCount})`,
-    `- Suggested action: review the runaway slice; either accept the trajectory and bump \`loop.costRegressionMultiplier\` in \`.claude/loop.json\`, or halt and investigate.`
+    `- Suggested action: review the runaway slice; tune via \`loop.cost.regression.{multiplier,window}\` in \`.claude/loop.json\`.`
   ];
 }
 
@@ -43,7 +44,7 @@ function renderSliceCostCeiling(e: any): string[] {
   return [
     `- Actual spend: $${e.actualUsd?.toFixed?.(2) ?? e.actualUsd}`,
     `- Configured ceiling: $${e.ceilingUsd?.toFixed?.(2) ?? e.ceilingUsd}`,
-    `- Suggested action: investigate whether the slice scope is too broad. Either narrow the slice and re-open, or accept the cost and raise \`loop.costSliceCeiling\` in \`.claude/loop.json\`.`
+    `- Suggested action: investigate whether the slice scope is too broad. Either narrow the slice and re-open, or accept the cost and raise \`loop.cost.ceilingUsd\` in \`.claude/loop.json\`.`
   ];
 }
 

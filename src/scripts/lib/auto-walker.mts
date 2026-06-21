@@ -30,9 +30,8 @@ export interface AutoWalkerResult {
   plans: DispatchPlan[];
   /** SLICE-B: path to generated auto-run summary artifact (if write succeeded) */
   summaryPath?: string;
-  /** SLICE-C: orchestrator hints for cost/escalation/mode control */
+  /** SLICE-C: orchestrator hints for escalation/mode control. */
   orchConfig?: {
-    costStopThreshold: number | null;
     escalationThreshold: number;
     autoMode: boolean;
   };
@@ -44,8 +43,6 @@ export interface AutoWalkerOptions {
   dryRun?: boolean;
   /** SLICE-B/C: when true, include autoMode flag in plan objects to suppress approval gates. */
   autoMode?: boolean;
-  /** SLICE-C: halt after the number of plans reaches this threshold (plan-count proxy for cost). */
-  costStopThreshold?: number;
   /** SLICE-C: resolved config from loop.json (loaded automatically if not provided). */
   config?: any;
   /** SLICE-54 (FEAT-056): bypass session-drift halt + log override event. */
@@ -55,14 +52,13 @@ export interface AutoWalkerOptions {
 /**
  * Process the walk loop: iterate candidates, build plans, check stop conditions.
  *
- * @param candidates        The triaged candidates to walk.
- * @param maxFeatures       Cap on number of plans to build.
- * @param autoMode          If true, include autoMode flag in plans.
- * @param costStopThreshold SLICE-C: halt after this many plans (plan-count proxy for cost).
- * @param repoPath          For stop condition checks.
- * @param doneSet           SLICE-41: Set of IDs in the done/ folder for depends_on resolution.
- * @param allKnownIds       SLICE-41: Set of all known backlog IDs for missing-dep detection.
- * @returns                 { skipped, plans, halted, stopReason }
+ * @param candidates    The triaged candidates to walk.
+ * @param maxFeatures   Cap on number of plans to build.
+ * @param autoMode      If true, include autoMode flag in plans.
+ * @param repoPath      For stop condition checks.
+ * @param doneSet       SLICE-41: Set of IDs in the done/ folder for depends_on resolution.
+ * @param allKnownIds   SLICE-41: Set of all known backlog IDs for missing-dep detection.
+ * @returns             { skipped, plans, halted, stopReason }
  */
 // FEAT-056: collapse stop-condition + cross-session override into one helper so
 // walkCandidates stays under the complexity cap.
@@ -106,7 +102,6 @@ async function walkCandidates(
   candidates: any[],
   maxFeatures: number | undefined,
   autoMode: boolean,
-  costStopThreshold: number | undefined,
   repoPath: string,
   doneSet: Set<string>,
   allKnownIds: Set<string>,
@@ -142,13 +137,6 @@ async function walkCandidates(
     }
     plans.push(evalResult.plan);
 
-    // SLICE-C: enforce cost cap after each plan
-    if (costStopThreshold !== undefined && plans.length >= costStopThreshold) {
-      halted = true;
-      stopReason = `cost_cap: plan count ${plans.length} reached costStopThreshold ${costStopThreshold}`;
-      break;
-    }
-
     // Check stop conditions after each plan to allow early halt.
     const stopAction = await evaluateStopCondition(repoPath, config, allowCrossSession);
     if (stopAction.halt) {
@@ -167,8 +155,6 @@ async function walkCandidates(
  * SLICE-B: Now also processes autonomous_safe=false items (with risk gate).
  * Only skips items where autonomous_safe is null/undefined (not explicitly set).
  *
- * SLICE-C: Adds cost cap enforcement and orchConfig hints.
- *
  * Plans include:
  *   - requiresPlanPreflight: true for autonomous_safe=false items
  *   - riskGate: populated if pm_risk_level >= 0.7
@@ -177,7 +163,7 @@ async function walkCandidates(
  * After the walk, writes summary artifact to .claude/artifacts/loop/auto-runs/<TS>-auto-run.md
  *
  * @param repoPath  Absolute path to the repo root.
- * @param options   { maxFeatures?, dryRun? (default true), autoMode?, costStopThreshold?, config? }
+ * @param options   { maxFeatures?, dryRun? (default true), autoMode?, config? }
  */
 export async function runAutoWalker(
   repoPath: string,
@@ -191,7 +177,6 @@ export async function runAutoWalker(
     allowCrossSession = false
   } = options;
 
-  // SLICE-C: Load config if not provided and read costStopThreshold
   let resolvedConfig = providedConfig;
   if (!resolvedConfig) {
     try {
@@ -202,11 +187,6 @@ export async function runAutoWalker(
       resolvedConfig = null;
     }
   }
-
-  // SLICE-C: Determine effective costStopThreshold
-  // Priority: explicit option > config.loop.costStopThreshold > undefined
-  const costStopThreshold =
-    options.costStopThreshold ?? resolvedConfig?.loop?.costStopThreshold ?? undefined;
 
   // Load triaged entries and sort by walker priority ordering.
   const allEntries = await listBacklog(repoPath);
@@ -222,7 +202,6 @@ export async function runAutoWalker(
     triaged,
     maxFeatures,
     autoMode,
-    costStopThreshold,
     repoPath,
     doneSet,
     allKnownIds,
@@ -253,9 +232,7 @@ export async function runAutoWalker(
     stopReason,
     plans,
     ...(summaryPath !== undefined ? { summaryPath } : {}),
-    // SLICE-C: Include orchestrator hints
     orchConfig: {
-      costStopThreshold: costStopThreshold ?? null,
       escalationThreshold: 3,
       autoMode
     }

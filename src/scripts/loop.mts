@@ -234,6 +234,12 @@ const COMMANDS = {
     const { installLoop } = await import("./lib/loop-installer.mjs");
     return installLoop(repoPath, { preset: flags.preset });
   },
+  "cost-setup": async ({ repoPath, flags }: CmdCtx) => {
+    const { parseCostOverrides, runCostSetup } = await import("./lib/cost-setup.mjs");
+    const overridesRaw = typeof flags.features === "string" ? flags.features : null;
+    const overrides = parseCostOverrides(overridesRaw);
+    return runCostSetup(repoPath, overrides);
+  },
   "phase-gate": async ({ repoPath, flags, config }: CmdCtx) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
     return runPhaseGate(repoPath, {

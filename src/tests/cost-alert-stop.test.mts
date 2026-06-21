@@ -6,7 +6,6 @@ import assert from "node:assert/strict";
 
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 import { countHighSeverityCostAlerts } from "../scripts/lib/cost-alert-loader.mjs";
-import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 
 async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -37,6 +36,10 @@ async function writeCostAdvise(repo: string, sliceId: string, content: string) {
   await fs.writeFile(filepath, content);
   return filepath;
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// countHighSeverityCostAlerts — pure counter (still valid after demote)
+// ──────────────────────────────────────────────────────────────────────────
 
 test("countHighSeverityCostAlerts returns 0 when no cost reports exist", async () => {
   const repo = await tmpRepo("al-cost-no-reports-");
@@ -84,136 +87,6 @@ test("countHighSeverityCostAlerts ignores medium and low severity findings", asy
   assert.equal(count, 0, "should not count medium/low severity findings");
 });
 
-test("checkStopConditions does NOT stop when only low-severity cost findings exist", async () => {
-  const repo = await tmpRepo("al-cost-stop-low-");
-  const adviseContent = `# Cost Advisor
-
-## Per-slice findings
-### [LOW] cache-busted
-- Cache hit 75%.
-`;
-  await writeCostAdvise(repo, "SLICE-01", adviseContent);
-
-  // Add a pending feature to avoid "no work" stop condition
-  await addFeature(repo, { title: "Test feature" });
-
-  const config = {
-    loop: { costStopThreshold: 1 }
-  };
-  const result = await checkStopConditions(repo, { config });
-  assert.equal(result.shouldStop, false, "should not stop when only low-severity findings exist");
-  assert.equal(result.snapshot.costAlerts, 0, "cost alerts snapshot should be 0");
-});
-
-test("checkStopConditions stops when >= 1 high-severity cost finding fires (default threshold)", async () => {
-  const repo = await tmpRepo("al-cost-stop-high-");
-  const adviseContent = `# Cost Advisor
-
-## Per-slice findings
-### [HIGH] opus-overuse
-- Opus is 85% of spend.
-- **Suggested action:** Switch to Sonnet.
-`;
-  await writeCostAdvise(repo, "SLICE-01", adviseContent);
-
-  // Initialize backlog structure
-  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
-  await fs.mkdir(backlogDir, { recursive: true });
-  await fs.writeFile(
-    path.join(backlogDir, "FEAT-001.md"),
-    `---
-id: FEAT-001
-status: pending
----
-# Test Feature`
-  );
-
-  const config = {
-    loop: { costStopThreshold: 1 }
-  };
-  const result = await checkStopConditions(repo, { config });
-  assert.equal(result.shouldStop, true, "should stop when high-severity cost alert exists");
-  assert.ok(
-    result.reasons.some((r: string) => r.includes("cost_alert_high")),
-    "should include cost_alert_high in reasons"
-  );
-  assert.equal(result.snapshot.costAlerts, 1, "cost alerts snapshot should be 1");
-});
-
-test("checkStopConditions respects custom costStopThreshold", async () => {
-  const repo = await tmpRepo("al-cost-threshold-");
-
-  const advise1 = `# Cost Advisor
-
-## Per-slice findings
-### [HIGH] opus-overuse
-- Opus share too high.
-`;
-  const advise2 = `# Cost Advisor
-
-## Per-slice findings
-### [HIGH] cache-busted
-- Cache hit too low.
-`;
-  await writeCostAdvise(repo, "SLICE-01", advise1);
-  await writeCostAdvise(repo, "SLICE-02", advise2);
-
-  // Initialize backlog
-  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
-  await fs.mkdir(backlogDir, { recursive: true });
-  await fs.writeFile(
-    path.join(backlogDir, "FEAT-001.md"),
-    `---
-id: FEAT-001
-status: pending
----
-# Test Feature`
-  );
-
-  // Test with threshold=3 (should NOT stop with only 2 alerts)
-  const config3 = {
-    loop: { costStopThreshold: 3 }
-  };
-  const result3 = await checkStopConditions(repo, { config: config3 });
-  assert.equal(result3.shouldStop, false, "should not stop when alert count < threshold");
-
-  // Test with threshold=2 (should stop with 2 alerts)
-  const config2 = {
-    loop: { costStopThreshold: 2 }
-  };
-  const result2 = await checkStopConditions(repo, { config: config2 });
-  assert.equal(result2.shouldStop, true, "should stop when alert count >= threshold");
-  assert.equal(result2.snapshot.costAlerts, 2, "cost alerts snapshot should be 2");
-});
-
-test("checkStopConditions uses default threshold of 1 when not configured", async () => {
-  const repo = await tmpRepo("al-cost-default-threshold-");
-  const adviseContent = `# Cost Advisor
-
-## Per-slice findings
-### [HIGH] exploration-heavy
-- High exploration ratio.
-`;
-  await writeCostAdvise(repo, "SLICE-01", adviseContent);
-
-  // Initialize backlog
-  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
-  await fs.mkdir(backlogDir, { recursive: true });
-  await fs.writeFile(
-    path.join(backlogDir, "FEAT-001.md"),
-    `---
-id: FEAT-001
-status: pending
----
-# Test Feature`
-  );
-
-  // No costStopThreshold configured, should use default of 1
-  const config = { loop: {} };
-  const result = await checkStopConditions(repo, { config });
-  assert.equal(result.shouldStop, true, "should use default threshold of 1");
-});
-
 test("countHighSeverityCostAlerts scans across last 3 slices only", async () => {
   const repo = await tmpRepo("al-cost-window-");
 
@@ -227,43 +100,8 @@ test("countHighSeverityCostAlerts scans across last 3 slices only", async () => 
     await writeCostAdvise(repo, `SLICE-${String(i).padStart(2, "0")}`, adviseContent);
   }
 
-  // Should only count the last 3 (most recent by timestamp sort)
   const count = await countHighSeverityCostAlerts(repo, 3);
   assert.equal(count, 3, "should count only last 3 slices");
-});
-
-test("checkStopConditions includes cost alerts in snapshot", async () => {
-  const repo = await tmpRepo("al-cost-snapshot-");
-  const adviseContent = `# Cost Advisor
-
-## Per-slice findings
-### [HIGH] opus-overuse
-- Opus share too high.
-
-### [HIGH] cache-busted
-- Cache hit too low.
-`;
-  await writeCostAdvise(repo, "SLICE-01", adviseContent);
-
-  // Initialize backlog
-  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
-  await fs.mkdir(backlogDir, { recursive: true });
-  await fs.writeFile(
-    path.join(backlogDir, "FEAT-001.md"),
-    `---
-id: FEAT-001
-status: pending
----
-# Test Feature`
-  );
-
-  const config = { loop: { costStopThreshold: 1 } };
-  const result = await checkStopConditions(repo, { config });
-  assert.ok(
-    typeof result.snapshot.costAlerts === "number",
-    "snapshot should include costAlerts field"
-  );
-  assert.equal(result.snapshot.costAlerts, 2, "snapshot should reflect 2 high-severity alerts");
 });
 
 test("countHighSeverityCostAlerts handles missing or malformed files gracefully", async () => {
@@ -300,4 +138,72 @@ test("countHighSeverityCostAlerts detects findings regardless of casing in marke
   await writeCostAdvise(repo, "SLICE-01", adviseContent);
   const count = await countHighSeverityCostAlerts(repo);
   assert.equal(count, 2, "should detect high-severity findings regardless of casing");
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// Demoted behavior — HIGH cost alerts emit as suggestion, never halt
+// ──────────────────────────────────────────────────────────────────────────
+
+test("checkStopConditions: HIGH cost alerts emit as advisory suggestion, never halt", async () => {
+  const repo = await tmpRepo("al-cost-advisory-");
+  const adviseContent = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus is 85% of spend.
+- **Suggested action:** Switch to Sonnet.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
+
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
+  await fs.mkdir(backlogDir, { recursive: true });
+  await fs.writeFile(
+    path.join(backlogDir, "FEAT-001.md"),
+    `---
+id: FEAT-001
+status: pending
+---
+# Test Feature`
+  );
+
+  const result = await checkStopConditions(repo, { config: { loop: {} } });
+  assert.equal(result.shouldStop, false, "HIGH cost alerts must NOT halt the loop (advisory only)");
+  assert.ok(
+    result.suggestions.some((s: string) => s.includes("cost_alert_high")),
+    "cost_alert_high should appear in suggestions"
+  );
+  assert.equal(
+    result.reasons.some((r: string) => r.includes("cost_alert_high")),
+    false,
+    "cost_alert_high must NOT appear in halt reasons"
+  );
+  assert.equal(result.snapshot.costAlerts, 1, "cost alerts snapshot should be 1");
+});
+
+test("checkStopConditions: snapshot still carries costAlerts count for visibility", async () => {
+  const repo = await tmpRepo("al-cost-snapshot-");
+  const adviseContent = `# Cost Advisor
+
+## Per-slice findings
+### [HIGH] opus-overuse
+- Opus share too high.
+
+### [HIGH] cache-busted
+- Cache hit too low.
+`;
+  await writeCostAdvise(repo, "SLICE-01", adviseContent);
+
+  const backlogDir = path.join(repo, ".claude/artifacts/loop/backlog/pending");
+  await fs.mkdir(backlogDir, { recursive: true });
+  await fs.writeFile(
+    path.join(backlogDir, "FEAT-001.md"),
+    `---
+id: FEAT-001
+status: pending
+---
+# Test Feature`
+  );
+
+  const result = await checkStopConditions(repo, { config: { loop: {} } });
+  assert.equal(result.snapshot.costAlerts, 2, "snapshot should reflect 2 high-severity alerts");
 });

@@ -20,7 +20,7 @@ const COST_DIR_REL = ".claude/artifacts/crew/cost";
 // Silence the FEAT-167 AC-3 observability logger — these tests invoke
 // the regression check dozens of times; the JSON line per call would
 // flood stderr. AC-3 emit itself has its own dedicated test file.
-process.env.LOOP_DISABLE_COST_REGRESSION_LOG = "1";
+// (was: LOOP_DISABLE_COST_REGRESSION_LOG=1 — env var removed; tests that need silence spy on stderr.)
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -573,32 +573,38 @@ test("loadAggregateCostReport: respects limit option", async () => {
 // checkStopConditions integration: cost_regression_stop in reasons[]
 // ---------------------------------------------------------------------------
 
-test("checkStopConditions: stops with cost_regression_stop when regression triggered", async () => {
+test("checkStopConditions: cost-regression triggered → advisory suggestion (no halt)", async () => {
   const repo = await tmpRepo("cr-stop-check-");
-  // Historical: median = 30 (values: 10, 20, 30, 40, 50)
   await writeAggregateReport(repo, "20260601T100000Z", "SLICE-01", 10);
   await writeAggregateReport(repo, "20260601T110000Z", "SLICE-02", 20);
   await writeAggregateReport(repo, "20260601T120000Z", "SLICE-03", 30);
   await writeAggregateReport(repo, "20260601T130000Z", "SLICE-04", 40);
   await writeAggregateReport(repo, "20260601T140000Z", "SLICE-05", 50);
-  // current = 91 (> 3 × 30 = 90)
   await writeAggregateReport(repo, "20260601T150000Z", "SLICE-06", 91);
 
-  const config = { loop: { costRegressionWindow: 5, costRegressionMultiplier: 3.0 } };
+  const config = {
+    loop: { cost: { regression: { window: 5, multiplier: 3.0 } } }
+  };
   const result = await checkStopConditions(repo, { config });
 
-  assert.equal(result.shouldStop, true, "should stop on cost regression");
-  const regressionReason = result.reasons.find((r: string) => r.includes("cost_regression_stop"));
-  assert.ok(regressionReason, "should include cost_regression_stop in reasons");
-  assert.match(regressionReason as string, /\$91/);
-  assert.match(regressionReason as string, /\$30/); // median
-  assert.ok(
-    result.blockers.some((b: any) => b.category === "cost-regression"),
-    "should add cost-regression blocker"
+  // Demoted: cost-regression is advisory — never halts.
+  assert.equal(
+    result.reasons.some((r: string) => r.includes("cost_regression_stop")),
+    false,
+    "cost_regression_stop must NOT appear in halt reasons (demoted)"
   );
+  assert.equal(
+    result.blockers.some((b: any) => b.category === "cost-regression"),
+    false,
+    "cost-regression must NOT appear in blockers (demoted)"
+  );
+  const advisory = result.suggestions.find((s: string) => s.includes("cost-regression advisory"));
+  assert.ok(advisory, "should include cost-regression advisory in suggestions");
+  assert.match(advisory as string, /\$91/);
+  assert.match(advisory as string, /\$30/);
   assert.ok(
     result.snapshot.costRegression !== null && result.snapshot.costRegression !== undefined,
-    "snapshot.costRegression should be non-null"
+    "snapshot.costRegression should still surface the signal data"
   );
   assert.equal(result.snapshot.costRegression?.triggered, true);
   assert.equal(result.snapshot.costRegression?.currentUsd, 91);

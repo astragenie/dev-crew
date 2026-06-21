@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { checkStopConditions } from "../scripts/lib/stop-conditions.mjs";
 
-process.env.LOOP_DISABLE_COST_REGRESSION_LOG = "1";
+// (was: LOOP_DISABLE_COST_REGRESSION_LOG=1 — removed; emission silenced via spy in tests that care.)
 
 const COST_DIR_REL = ".claude/artifacts/crew/cost";
 
@@ -81,11 +81,17 @@ test("slice-close-regression-check: expected_usd mode trip drives checkStopCondi
   };
   const result: any = await checkStopConditions(repo, { config });
 
-  assert.ok(result.shouldStop === true || result.stop === true, "stop flag must be set");
-  const reasons: string[] = result.reasons || [];
+  // Demoted: cost-regression is advisory — emits a suggestion, never halts.
+  const suggestions: string[] = result.suggestions || [];
   assert.ok(
+    suggestions.some((s) => s.includes("cost-regression advisory")),
+    `suggestions must include cost-regression advisory; got: ${JSON.stringify(suggestions)}`
+  );
+  const reasons: string[] = result.reasons || [];
+  assert.equal(
     reasons.some((r) => r.startsWith("cost_regression_stop")),
-    `reasons must include cost_regression_stop; got: ${JSON.stringify(reasons)}`
+    false,
+    "cost_regression_stop must NOT appear in halt reasons (demoted)"
   );
 });
 

@@ -78,8 +78,10 @@ test("expected_usd mode populates effort_points + median_usd_per_point", () => {
   assert.equal(parsed.triggered, false);
 });
 
-test("LOOP_DISABLE_COST_REGRESSION_LOG=1 silences emission", () => {
-  process.env.LOOP_DISABLE_COST_REGRESSION_LOG = "1";
+// (removed) LOOP_DISABLE_COST_REGRESSION_LOG env-var silencer — env var dropped
+// in favor of unconditional stderr emission. Callers that need silence should
+// spy on process.stderr.write.
+test("emitObservabilityLog always writes (env-var silencer removed)", () => {
   const { lines } = captureStderr(() =>
     emitObservabilityLog({
       mode: "median",
@@ -94,43 +96,5 @@ test("LOOP_DISABLE_COST_REGRESSION_LOG=1 silences emission", () => {
       sampleCount: 5
     })
   );
-  assert.deepEqual(lines, []);
-  delete process.env.LOOP_DISABLE_COST_REGRESSION_LOG;
-});
-
-test("any other env value (or unset) emits", () => {
-  delete process.env.LOOP_DISABLE_COST_REGRESSION_LOG;
-  const { lines: l1 } = captureStderr(() =>
-    emitObservabilityLog({
-      mode: "median",
-      actualUsd: 1,
-      expectedUsd: null,
-      medianUsdPerPoint: null,
-      effortPoints: null,
-      thresholdUsd: 1,
-      triggered: false,
-      multiplier: 3,
-      window: 5,
-      sampleCount: 5
-    })
-  );
-  assert.equal(l1.length, 1);
-
-  process.env.LOOP_DISABLE_COST_REGRESSION_LOG = "0";
-  const { lines: l2 } = captureStderr(() =>
-    emitObservabilityLog({
-      mode: "median",
-      actualUsd: 1,
-      expectedUsd: null,
-      medianUsdPerPoint: null,
-      effortPoints: null,
-      thresholdUsd: 1,
-      triggered: false,
-      multiplier: 3,
-      window: 5,
-      sampleCount: 5
-    })
-  );
-  assert.equal(l2.length, 1, "only the exact string '1' silences");
-  delete process.env.LOOP_DISABLE_COST_REGRESSION_LOG;
+  assert.equal(lines.length, 1, "emission is unconditional now");
 });

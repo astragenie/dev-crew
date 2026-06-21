@@ -138,16 +138,23 @@ test("auto mode: warn pattern alert still halts the loop", async () => {
   assert.ok(out.blockers.some((b: Record<string, any>) => b.category === "in-progress-orphan"));
 });
 
-test("auto mode: high-severity cost alert still halts the loop", async () => {
+test("auto mode: high-severity cost alert emits as advisory suggestion (no halt)", async () => {
   const repo = await tmpRepo("auto-cost-");
   await addFeature(repo, { title: "queued" });
   await writeCostAdvise(repo, "SLICE-01", HIGH_COST_ADVISE);
 
-  const config = { loop: { costStopThreshold: 1 } };
-  const out = await checkStopConditions(repo, { config });
+  const out = await checkStopConditions(repo, { config: { loop: {} } });
 
-  assert.equal(out.shouldStop, true, "cost alerts still gate in auto mode");
-  assert.ok(out.reasons.some((r: string) => r.includes("cost_alert_high")));
+  assert.equal(out.shouldStop, false, "cost alerts demoted to advisory; never halt");
+  assert.ok(
+    out.suggestions.some((s: string) => s.includes("cost_alert_high")),
+    "cost_alert_high should appear in suggestions"
+  );
+  assert.equal(
+    out.reasons.some((r: string) => r.includes("cost_alert_high")),
+    false,
+    "cost_alert_high must NOT appear in halt reasons"
+  );
 });
 
 test("legacy mode (autoMode=false): iteration cap halts the loop", async () => {

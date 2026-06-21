@@ -4,9 +4,31 @@ import path from "node:path";
 // Default ceiling: $75 per slice. SLICE-36 burned $400 own-project and
 // triggered both `opus-overuse` and `cache-busted` high-severity alerts.
 // A $75 default catches the next runaway slice early without flagging
-// every healthy slice. Override via `loop.costSliceCeiling` in
-// `.claude/loop.json`.
+// every healthy slice. Override via `loop.cost.ceilingUsd` in
+// `.claude/loop.json` (legacy `loop.costSliceCeiling` still read, with warn).
 export const DEFAULT_SLICE_COST_CEILING_USD = 75;
+
+/**
+ * Read the slice cost ceiling honoring the new nested shape
+ * (`loop.cost.ceilingUsd`) first, then falling back to the legacy flat key
+ * (`loop.costSliceCeiling`) with a one-line stderr warn. Run /runner:cost-setup
+ * to migrate the file in-place.
+ */
+function resolveSliceCeilingUsd(config: Record<string, any> | null): number {
+  const nested = config?.loop?.cost?.ceilingUsd;
+  if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+    return nested;
+  }
+  const legacy = config?.loop?.costSliceCeiling;
+  if (typeof legacy === "number" && Number.isFinite(legacy) && legacy > 0) {
+    process.stderr.write(
+      "[loop] WARN: loop.costSliceCeiling is deprecated; rename to loop.cost.ceilingUsd " +
+        "in .claude/loop.json (run /runner:cost-setup to auto-migrate).\n"
+    );
+    return legacy;
+  }
+  return DEFAULT_SLICE_COST_CEILING_USD;
+}
 
 const COST_DIR_PARTS = [".claude", "artifacts", "crew", "cost"];
 
@@ -92,8 +114,8 @@ export interface SliceCostCeilingSignal {
   reportPath: string;
 }
 
-// Check whether the latest per-slice cost report exceeded the
-// configured `loop.costSliceCeiling` (USD). Returns null when:
+// Check whether the latest per-slice cost report exceeded the configured
+// ceiling (`loop.cost.ceilingUsd`, USD). Returns null when:
 //   - no cost reports exist (fresh repo / cost capture disabled),
 //   - the latest report has no parseable `usd` frontmatter field, or
 //   - actual spend is at or below the ceiling.
@@ -106,11 +128,7 @@ export async function checkSliceCostCeiling(
   repoPath: string,
   config: Record<string, any> | null
 ): Promise<SliceCostCeilingSignal | null> {
-  const rawCeiling = config?.loop?.costSliceCeiling;
-  const ceilingUsd =
-    typeof rawCeiling === "number" && Number.isFinite(rawCeiling) && rawCeiling > 0
-      ? rawCeiling
-      : DEFAULT_SLICE_COST_CEILING_USD;
+  const ceilingUsd = resolveSliceCeilingUsd(config);
 
   const latest = await readLatestPerSliceCostReport(repoPath);
   if (!latest) return null;

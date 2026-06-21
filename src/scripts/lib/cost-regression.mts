@@ -59,49 +59,98 @@ export interface CostRegressionSignal {
   expectedUsd: number | null;
 }
 
+// Per-resolver fallback: read the nested `loop.cost.regression.*` shape first,
+// fall back to the legacy flat `loop.costRegression*` shape with a single
+// stderr WARN line per process. Run /runner:cost-setup to migrate the file.
+const warnedLegacyKeys = new Set<string>();
+function warnLegacyKey(legacyPath: string, nestedPath: string): void {
+  if (warnedLegacyKeys.has(legacyPath)) return;
+  warnedLegacyKeys.add(legacyPath);
+  process.stderr.write(
+    `[loop] WARN: ${legacyPath} is deprecated; rename to ${nestedPath} in .claude/loop.json ` +
+      "(run /runner:cost-setup to auto-migrate).\n"
+  );
+}
+
 function resolveWindow(config: Record<string, any> | null): number {
-  const raw = config?.loop?.costRegressionWindow;
-  return typeof raw === "number" && Number.isInteger(raw) && raw > 0
-    ? raw
-    : DEFAULT_COST_REGRESSION_WINDOW;
+  const nested = config?.loop?.cost?.regression?.window;
+  if (typeof nested === "number" && Number.isInteger(nested) && nested > 0) return nested;
+  const legacy = config?.loop?.costRegressionWindow;
+  if (typeof legacy === "number" && Number.isInteger(legacy) && legacy > 0) {
+    warnLegacyKey("loop.costRegressionWindow", "loop.cost.regression.window");
+    return legacy;
+  }
+  return DEFAULT_COST_REGRESSION_WINDOW;
 }
 
 function resolveMultiplier(config: Record<string, any> | null): number {
-  const raw = config?.loop?.costRegressionMultiplier;
-  return typeof raw === "number" && Number.isFinite(raw) && raw > 0
-    ? raw
-    : DEFAULT_COST_REGRESSION_MULTIPLIER;
+  const nested = config?.loop?.cost?.regression?.multiplier;
+  if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) return nested;
+  const legacy = config?.loop?.costRegressionMultiplier;
+  if (typeof legacy === "number" && Number.isFinite(legacy) && legacy > 0) {
+    warnLegacyKey("loop.costRegressionMultiplier", "loop.cost.regression.multiplier");
+    return legacy;
+  }
+  return DEFAULT_COST_REGRESSION_MULTIPLIER;
 }
 
 function resolveMinSamples(config: Record<string, any> | null): number {
-  const raw = config?.loop?.costRegressionMinSamples;
-  return typeof raw === "number" && Number.isInteger(raw) && raw > 0
-    ? raw
-    : DEFAULT_COST_REGRESSION_MIN_SAMPLES;
+  const nested = config?.loop?.cost?.regression?.minSamples;
+  if (typeof nested === "number" && Number.isInteger(nested) && nested > 0) return nested;
+  const legacy = config?.loop?.costRegressionMinSamples;
+  if (typeof legacy === "number" && Number.isInteger(legacy) && legacy > 0) {
+    warnLegacyKey("loop.costRegressionMinSamples", "loop.cost.regression.minSamples");
+    return legacy;
+  }
+  return DEFAULT_COST_REGRESSION_MIN_SAMPLES;
 }
 
 function resolveCostProject(config: Record<string, any> | null): string | null {
-  const raw = config?.loop?.costProject;
-  return typeof raw === "string" && raw.length > 0 ? raw : null;
+  const nested = config?.loop?.cost?.regression?.project;
+  if (typeof nested === "string" && nested.length > 0) return nested;
+  const legacy = config?.loop?.costProject;
+  if (typeof legacy === "string" && legacy.length > 0) {
+    warnLegacyKey("loop.costProject", "loop.cost.regression.project");
+    return legacy;
+  }
+  return null;
 }
 
 function resolveCostProjectAliases(config: Record<string, any> | null): string[] {
-  const raw = config?.loop?.costProjectAliases;
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((s): s is string => typeof s === "string" && s.length > 0);
+  const nested = config?.loop?.cost?.regression?.projectAliases;
+  if (Array.isArray(nested)) {
+    return nested.filter((s): s is string => typeof s === "string" && s.length > 0);
+  }
+  const legacy = config?.loop?.costProjectAliases;
+  if (Array.isArray(legacy)) {
+    warnLegacyKey("loop.costProjectAliases", "loop.cost.regression.projectAliases");
+    return legacy.filter((s): s is string => typeof s === "string" && s.length > 0);
+  }
+  return [];
 }
 
 export function resolveCostRegressionMode(
   config: Record<string, any> | null
 ): CostRegressionMode | null {
-  const raw = config?.loop?.costRegressionMode;
-  if (raw === "median" || raw === "expected_usd") return raw;
+  const nested = config?.loop?.cost?.regression?.mode;
+  if (nested === "median" || nested === "expected_usd") return nested;
+  const legacy = config?.loop?.costRegressionMode;
+  if (legacy === "median" || legacy === "expected_usd") {
+    warnLegacyKey("loop.costRegressionMode", "loop.cost.regression.mode");
+    return legacy;
+  }
   return null;
 }
 
 export function resolveCostMedianUsdPerPoint(config: Record<string, any> | null): number | null {
-  const raw = config?.loop?.costMedianUsdPerPoint;
-  return typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : null;
+  const nested = config?.loop?.cost?.regression?.medianUsdPerPoint;
+  if (typeof nested === "number" && Number.isFinite(nested) && nested >= 0) return nested;
+  const legacy = config?.loop?.costMedianUsdPerPoint;
+  if (typeof legacy === "number" && Number.isFinite(legacy) && legacy >= 0) {
+    warnLegacyKey("loop.costMedianUsdPerPoint", "loop.cost.regression.medianUsdPerPoint");
+    return legacy;
+  }
+  return null;
 }
 
 /**
@@ -324,13 +373,11 @@ interface ObservabilityEvent {
  * Emit one structured `cost-regression-check` JSON line per evaluation.
  *
  * Goes to stderr (stdout stays machine-parseable for CLI consumers).
- * Set env `LOOP_DISABLE_COST_REGRESSION_LOG=1` to silence — tests that
- * spawn the regression check repeatedly use this to keep output clean.
+ * Tests that need a silent run should spy on `process.stderr.write`.
  *
  * FEAT-167 AC-3.
  */
 export function emitObservabilityLog(event: ObservabilityEvent): void {
-  if (process.env.LOOP_DISABLE_COST_REGRESSION_LOG === "1") return;
   process.stderr.write(
     JSON.stringify({
       event: "cost-regression-check",

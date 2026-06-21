@@ -124,17 +124,16 @@ function applyIterationCapSignals(
 
 function applyCostAlertSignal(
   costAlertCount: number,
-  config: Record<string, any> | null,
-  reasons: string[],
+  _config: Record<string, any> | null,
+  _reasons: string[],
   suggestions: string[]
 ) {
-  if (costAlertCount < (config?.loop?.costStopThreshold || 1)) return;
-  reasons.push(
-    `cost_alert_high: ${costAlertCount} high-severity cost recommendation(s) across last 3 slices`
-  );
+  // Demoted to advisory (no halt). High-severity cost alerts emit a suggestion
+  // but the loop continues. Use slice-cost-ceiling for a hard per-slice halt.
+  if (costAlertCount < 1) return;
   suggestions.push(
-    "The cost trajectory has triggered a high-severity alert. Review the cost-advisor output and optimize before continuing. " +
-      "Adjust loop.costStopThreshold in .claude/loop.json to change this behavior."
+    `cost_alert_high: ${costAlertCount} high-severity cost recommendation(s) across last 3 slices. ` +
+      "Review the cost-advisor output and optimize before continuing."
   );
 }
 
@@ -320,32 +319,22 @@ function applyRedundantReadStopSignal(
 
 function applyCostRegressionSignal(
   regressionSignal: CostRegressionSignal | null,
-  reasons: any[],
+  _reasons: any[],
   suggestions: any[],
-  blockers: any[]
+  _blockers: any[]
 ) {
+  // Demoted to advisory (no halt). cost-regression continues to be evaluated
+  // and reported (cost-reports + brief), but the loop no longer stops on it.
+  // Use slice-cost-ceiling for a hard per-slice halt.
   if (!regressionSignal) return;
   const current = regressionSignal.currentUsd.toFixed(2);
   const median = regressionSignal.medianUsd.toFixed(2);
   const threshold = regressionSignal.thresholdUsd.toFixed(2);
-  const { multiplier, window: w, sampleCount } = regressionSignal;
-  reasons.push(
-    `cost_regression_stop: current $${current} > median $${median} × ${multiplier}` +
-      ` (threshold $${threshold}, window ${w}, sample ${sampleCount})`
-  );
-  blockers.push({
-    category: "cost-regression",
-    message:
-      `aggregate spend $${current} exceeded rolling-median threshold $${threshold}` +
-      ` (median $${median} × ${multiplier}, sample ${sampleCount})`,
-    suggestion:
-      "Review the latest aggregate cost report and address inefficiencies before resuming. " +
-      "Adjust loop.costRegressionMultiplier or loop.costRegressionWindow in .claude/loop.json to change this behavior."
-  });
+  const { multiplier } = regressionSignal;
   suggestions.push(
-    `Current aggregate spend $${current} is more than ${multiplier}× the rolling median $${median}` +
+    `cost-regression advisory: current $${current} is more than ${multiplier}× the rolling median $${median}` +
       ` (threshold $${threshold}). Inspect .claude/artifacts/crew/cost/ for opus-overuse / cache-busted findings. ` +
-      "Adjust loop.costRegressionMultiplier or loop.costRegressionWindow in .claude/loop.json to change this behavior."
+      "Tune via loop.cost.regression.{multiplier,window} in .claude/loop.json."
   );
 }
 
