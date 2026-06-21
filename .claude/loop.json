@@ -3,11 +3,21 @@
   "schemaVersion": 1,
   "projectType": "claude-plugin",
   "split": false,
-  "frontend": { "framework": "none", "language": "typescript" },
-  "backend": { "framework": "node", "language": "typescript", "storage": "none" },
+  "frontend": {
+    "framework": "none",
+    "language": "typescript"
+  },
+  "backend": {
+    "framework": "node",
+    "language": "typescript",
+    "storage": "none"
+  },
   "contract": "none",
   "deployment": "none",
-  "skills": ["typescript-pro", "frontend-advisory"],
+  "skills": [
+    "typescript-pro",
+    "frontend-advisory"
+  ],
   "features": {
     "redundant-read-stop": {
       "enabled": false
@@ -18,7 +28,12 @@
       "_comment": "Pattern B: bearer resolved at runtime from ~/.astrarunner/tokens.json via appId lookup. Repo config carries identifiers only — never commit a bearer. Filesystem-resync watcher (separate code path) is the durable fallback when LOOP_INGEST_URL+TOKEN env set.",
       "enabled": true,
       "mode": "webhook",
-      "events": ["slice-start", "slice-complete", "halt-badge", "cost-alert"],
+      "events": [
+        "slice-start",
+        "slice-complete",
+        "halt-badge",
+        "cost-alert"
+      ],
       "webhook": {
         "url": "http://localhost:5137/api/v2/ingest/loop-events",
         "tenantId": "11111111-1111-1111-1111-111111111111",
@@ -36,10 +51,7 @@
     "maxIterations": 25,
     "marathonMode": true,
     "autoMode": true,
-    "costStopThreshold": 25,
     "redundantReadCap": 10,
-    "costProject": "C--work-mega-loop",
-    "costProjectAliases": ["C--work-mega-hero-crew-autonomous-loop"],
     "orchestratorModel": "sonnet",
     "dispatchLimits": {
       "maxSubagentsPerSlice": 4,
@@ -67,11 +79,11 @@
       "copywriter": "sonnet",
       "docwriter": "sonnet"
     },
-    "triageBudgetUsdPerBatch": 5.0,
+    "triageBudgetUsdPerBatch": 5,
     "triageBudgetTokensPerBatch": 500000,
-    "costRegressionMultiplier": 6.0,
-    "costSliceCeiling": 200,
-    "gradeTrendPerDimension": { "observability": 0.7 },
+    "gradeTrendPerDimension": {
+      "observability": 0.7
+    },
     "marathonRunner": "wave",
     "wave": {
       "size": 3,
@@ -90,6 +102,18 @@
       "medianWallClockSeconds": 1200,
       "avgGrade": 0.835,
       "pinnedAt": "2026-06-11"
+    },
+    "cost": {
+      "ceilingUsd": 200,
+      "regression": {
+        "multiplier": 6,
+        "window": 5,
+        "minSamples": 3,
+        "project": "C--work-mega-loop",
+        "projectAliases": [
+          "C--work-mega-hero-crew-autonomous-loop"
+        ]
+      }
     }
   },
   "stack": {
@@ -130,17 +154,64 @@
     "parallel": true,
     "groups": {
       "lint": [
-        { "cmd": "bun", "args": ["run", "lint"] },
-        { "cmd": "bun", "args": ["run", "format:check"] },
-        { "cmd": "bun", "args": ["./src/scripts/validate-manifests.mts"] },
-        { "cmd": "bun", "args": ["./src/scripts/validate-content-length.mts"] }
+        {
+          "cmd": "bun",
+          "args": [
+            "run",
+            "lint"
+          ]
+        },
+        {
+          "cmd": "bun",
+          "args": [
+            "run",
+            "format:check"
+          ]
+        },
+        {
+          "cmd": "bun",
+          "args": [
+            "./src/scripts/validate-manifests.mts"
+          ]
+        },
+        {
+          "cmd": "bun",
+          "args": [
+            "./src/scripts/validate-content-length.mts"
+          ]
+        }
       ],
       "typecheck": [
-        { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.json", "--noEmit"] },
-        { "cmd": "bunx", "args": ["tsc", "--project", "tsconfig.test.json", "--noEmit"] }
+        {
+          "cmd": "bunx",
+          "args": [
+            "tsc",
+            "--project",
+            "tsconfig.json",
+            "--noEmit"
+          ]
+        },
+        {
+          "cmd": "bunx",
+          "args": [
+            "tsc",
+            "--project",
+            "tsconfig.test.json",
+            "--noEmit"
+          ]
+        }
       ],
       "test": [
-        { "cmd": "bun", "args": ["test", "src/tests/", "--parallel", "--timeout", "60000"] }
+        {
+          "cmd": "bun",
+          "args": [
+            "test",
+            "src/tests/",
+            "--parallel",
+            "--timeout",
+            "60000"
+          ]
+        }
       ]
     }
   },
