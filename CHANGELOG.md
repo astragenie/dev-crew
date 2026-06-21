@@ -6,6 +6,88 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.52.0] — 2026-06-21 — cost-regression + alert-high demoted to advisory; nested loop.cost.*
+
+Demotes cost-regression and high-severity cost-alert halts to **advisory-only**
+(emit suggestions, never stop the loop). Slice-cost-ceiling remains the one
+hard per-slice spend halt. Adds `/runner:cost-setup` for idempotent
+flat→nested config migration in `.claude/loop.json`.
+
+### Removed env vars
+
+- `LOOP_DISABLE_COST_REGRESSION_LOG` — emission of the structured
+  `cost-regression-check` JSON line is now unconditional. Tests that need
+  silence should spy on `process.stderr.write`.
+
+### Behavior change — halts demoted to advisory
+
+These no longer stop the loop. They surface in `suggestions[]` and the
+snapshot field stays populated for visibility.
+
+- `cost_regression_stop` — was a halt reason + blocker. Now a single
+  `cost-regression advisory:` suggestion line. Snapshot `costRegression`
+  carries data unchanged for the brief / halt-badge renderer.
+- `cost_alert_high` — was gated by `loop.costStopThreshold` tolerance.
+  Now any single HIGH cost alert emits a suggestion; no tolerance gate; loop
+  continues.
+
+### Config consolidation (flat → nested)
+
+Legacy flat keys are read with a one-line stderr WARN per process. Run
+`/runner:cost-setup` to rewrite the file in place.
+
+| Legacy (flat) | New (nested) |
+|---|---|
+| `loop.costSliceCeiling` | `loop.cost.ceilingUsd` |
+| `loop.costRegressionMultiplier` | `loop.cost.regression.multiplier` |
+| `loop.costRegressionWindow` | `loop.cost.regression.window` |
+| `loop.costRegressionMinSamples` | `loop.cost.regression.minSamples` |
+| `loop.costRegressionMode` | `loop.cost.regression.mode` |
+| `loop.costMedianUsdPerPoint` | `loop.cost.regression.medianUsdPerPoint` |
+| `loop.costProject` | `loop.cost.regression.project` |
+| `loop.costProjectAliases` | `loop.cost.regression.projectAliases` |
+
+### Retired
+
+- `loop.costStopThreshold` — dropped entirely. The knob had confusingly dual
+  semantics: max plan-count in `auto-walker` vs HIGH-alert tolerance in
+  `stop-conditions`. The plan-count cap is now controlled solely by
+  `--max-features`; HIGH alerts are advisory per the demotion above.
+- `auto-walker.AutoWalkerOptions.costStopThreshold` field removed; the
+  `cost_cap` halt branch removed; `orchConfig.costStopThreshold` field
+  removed (downstream consumers should treat `--max-features` as the plan
+  budget).
+
+### New surface
+
+- `/runner:cost-setup` command + `src/scripts/lib/cost-setup.mts` — idempotent
+  migrator + override-flag editor.
+- CLI: `bun src/scripts/loop.mts cost-setup --repo <path> [--features KEY=VAL,...]`.
+- Returns `{ configPath, written, migratedLegacyKeys, effective }`.
+
+### Migration
+
+Consumer repos with flat `loop.cost*` keys should run:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" cost-setup --repo "$PWD"
+```
+
+Idempotent and safe to re-run. Defaults applied when nothing is set yet:
+`ceilingUsd: 75`, `regression.multiplier: 3.0`, `regression.window: 5`,
+`regression.minSamples: 3`.
+
+### Tests
+
+-4 deleted (env-var silencer + halt scenarios) + 11 new `cost-setup` tests
++ 6 rewritten advisory-mode assertions. Net: +5 passing (1790 → 1795). Zero
+regressions against 27 pre-existing Windows-timing failures.
+
+### LOC
+
+13 modified + 3 new = 16 files changed. Tracked diff: +241 / -392 = **-151
+net LOC**.
+
 ## [0.51.1] — 2026-06-19
 
 ### Security / Added
