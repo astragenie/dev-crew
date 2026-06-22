@@ -6,7 +6,23 @@ shipped under the name `loop`.
 
 ## Unreleased
 
-## [0.53.0] — 2026-06-22 — runner simplification + soft-block pre-push gate
+## [0.54.0] — 2026-06-22 — soft-block pre-push gate + v0.53.0 release-prep on main
+
+Converts `pre-push-validate.mts` from hard-block (`exit 2`) to soft-block:
+validation failures now emit a Claude Code `systemMessage` warning via JSON
+stdout and the git commit/push proceeds. CI remains the authoritative gate.
+This unblocks urgent ships when format / content-length drift is intentional
+or being fixed in a follow-up commit, without disabling the gate entirely.
+
+Also makes `v0.53.0` claimable on main: the prior `v0.53.0` lightweight tag
+was created on the unmerged `feat/277-runner-simplification` feature branch
+and never moved to the main-history squash-merge commit. The release-prep
+manifest bump for 0.53.0 landed on main in commit `b460a9b9` but lacks a tag
+pointing to it. Rather than force-moving `v0.53.0` (forbidden by repo policy
+— never delete tags), this release bundles the soft-block change with a
+fresh `v0.54.0` tag on main.
+
+## [0.53.0] — 2026-06-22 — runner simplification (untagged on main; tag points to feature branch)
 
 Collapses the runner plugin user-facing surface from 45 skills to 16
 (13 commands + 3 read-only helpers). Adds free-text intake with inline
