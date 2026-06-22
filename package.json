@@ -3,6 +3,9 @@
   "version": "0.54.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "astrarunner": "src/scripts/cli/connect.mts"
+  },
   "scripts": {
     "typecheck": "tsc --project tsconfig.json --noEmit && tsc --project tsconfig.test.json --noEmit",
     "test": "bun test src/tests/ --parallel --timeout 60000",
