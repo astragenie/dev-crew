@@ -110,12 +110,12 @@ test("default config includes intake budgets", async () => {
     JSON.stringify({
       preset: "dotnet-aspire-python",
       loop: {
-        intakeBudgetUsdPerCall: 1.50,
+        intakeBudgetUsdPerCall: 1.5,
         intakeBudgetTokensPerCall: 150000
       }
     })
   );
   const cfg = (await resolveConfig(repo)) as Record<string, any>;
-  assert.equal(cfg.loop.intakeBudgetUsdPerCall, 1.50);
+  assert.equal(cfg.loop.intakeBudgetUsdPerCall, 1.5);
   assert.equal(cfg.loop.intakeBudgetTokensPerCall, 150000);
 });

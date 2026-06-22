@@ -1,6 +1,7 @@
 ---
 name: cost-setup
 description: Seed or migrate the cost config block in .claude/loop.json. Idempotent. Auto-rewrites legacy flat keys (costSliceCeiling, costStopThreshold, costRegression*) into the nested loop.cost.* shape.
+auto_execute_steps: true
 ---
 
 # Loop Cost Setup

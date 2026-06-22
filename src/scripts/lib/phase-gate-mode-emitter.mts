@@ -29,9 +29,9 @@ export interface PhaseGateModeInput {
  * null when no slice is open or the file is missing / unparseable.
  */
 export async function resolveCurrentSliceId(repoPath: string): Promise<string | null> {
-  const state = (await readCrewWorkflowState(repoPath)) as
-    | { currentRun?: { sliceId?: string } }
-    | null;
+  const state = (await readCrewWorkflowState(repoPath)) as {
+    currentRun?: { sliceId?: string };
+  } | null;
   const sliceId = state?.currentRun?.sliceId;
   return typeof sliceId === "string" && sliceId.length > 0 ? sliceId : null;
 }

@@ -73,9 +73,7 @@ export function mergeChildren(
   // never reach the merge loop (filter at line 14 strips them). Without this,
   // FAIL workers orphan their worktrees silently with no operator trail.
   if (runId) {
-    const nonDoneIds = new Set(
-      results.filter((r) => r.status !== "DONE").map((r) => r.id)
-    );
+    const nonDoneIds = new Set(results.filter((r) => r.status !== "DONE").map((r) => r.id));
     for (const child of results) {
       if (!nonDoneIds.has(child.id)) continue;
       const inventory = inventoryWorkerBranch(

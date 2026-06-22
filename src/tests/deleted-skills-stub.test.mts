@@ -38,7 +38,10 @@ const DELETED_SKILLS: Array<[string, string]> = [
 describe("deleted skills hard-break stubs", () => {
   for (const [old, replacement] of DELETED_SKILLS) {
     test(`${old} exits non-zero with replacement pointer`, async () => {
-      const proc = Bun.spawn(["bun", "src/scripts/loop.mts", old], { stdout: "pipe", stderr: "pipe" });
+      const proc = Bun.spawn(["bun", "src/scripts/loop.mts", old], {
+        stdout: "pipe",
+        stderr: "pipe"
+      });
       const code = await proc.exited;
       expect(code).not.toBe(0);
       const stderr = await new Response(proc.stderr).text();

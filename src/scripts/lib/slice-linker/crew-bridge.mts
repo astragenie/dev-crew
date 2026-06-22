@@ -299,16 +299,12 @@ async function postCostAdviseEnvelope(
   // `recommendations` taking precedence so future CLI renames are forward-
   // compatible without a runner-side change.
   const recommendations = pickArray(a.recommendations) ?? pickArray(a.findings) ?? [];
-  const aggregateFlags = pickArray(a.aggregateFlags)
-    ?? pickArray(a.aggregate_flags)
-    ?? pickArray(a.flags)
-    ?? [];
-  const baselineUsdMedian = pickNumber(a.baselineUsdMedian)
-    ?? pickNumber(a.baseline_usd_median);
-  const baselineUsdP75 = pickNumber(a.baselineUsdP75)
-    ?? pickNumber(a.baseline_usd_p75);
-  const baselineCacheHitMedian = pickNumber(a.baselineCacheHitMedian)
-    ?? pickNumber(a.baseline_cache_hit_median);
+  const aggregateFlags =
+    pickArray(a.aggregateFlags) ?? pickArray(a.aggregate_flags) ?? pickArray(a.flags) ?? [];
+  const baselineUsdMedian = pickNumber(a.baselineUsdMedian) ?? pickNumber(a.baseline_usd_median);
+  const baselineUsdP75 = pickNumber(a.baselineUsdP75) ?? pickNumber(a.baseline_usd_p75);
+  const baselineCacheHitMedian =
+    pickNumber(a.baselineCacheHitMedian) ?? pickNumber(a.baseline_cache_hit_median);
 
   const payload: Record<string, unknown> = {
     sliceId: opts.sliceId,

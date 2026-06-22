@@ -169,9 +169,7 @@ export async function closeSlice(
   const handoffPath: string = completeAny?.handoff?.handoffPath ?? "";
   const synthesisPath: string = completeAny?.synthesis?.synthesisPath ?? "";
   const costUsd: number =
-    typeof completeAny?.costReport?.totalUsd === "number"
-      ? completeAny.costReport.totalUsd
-      : 0;
+    typeof completeAny?.costReport?.totalUsd === "number" ? completeAny.costReport.totalUsd : 0;
 
   if (!gradeYamlPath) {
     const grades: CloseSliceGrades = {

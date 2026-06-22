@@ -151,7 +151,12 @@ test("inventoryWorkerBranch: uncommitted WIP in worktree appears in uncommittedW
 test("inventoryWorkerBranch: missing worktree returns empty WIP (no throw)", () => {
   const repo = initRepo();
   // Reference a worktree path that doesn't exist; should not throw.
-  const inv = inventoryWorkerBranch(repo, path.join(repo, "ghost-worktree"), "ghost-branch", "main");
+  const inv = inventoryWorkerBranch(
+    repo,
+    path.join(repo, "ghost-worktree"),
+    "ghost-branch",
+    "main"
+  );
   assert.equal(inv.uncommittedWip.length, 0);
   assert.equal(inv.filesOnBranchNotOnMain.length, 0);
 });

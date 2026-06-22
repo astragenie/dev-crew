@@ -352,9 +352,7 @@ export async function startSlice(
     // sliceFromFeature returns { slice: { id, path, title } } for single-slice
     // and { slices: [...] } for multi-slice. Use first slice in both cases.
     const firstSlice =
-      "slice" in fromFeatResult
-        ? fromFeatResult.slice
-        : (fromFeatResult as any).slices?.[0];
+      "slice" in fromFeatResult ? fromFeatResult.slice : (fromFeatResult as any).slices?.[0];
     if (!firstSlice?.id) {
       throw new Error(`startSlice: sliceFromFeature(${sliceIdOrFeatId}) returned no slice id`);
     }

@@ -60,9 +60,7 @@ export async function listPendingFeatureIds(
     const missing = requestedIds.filter((id) => !triagedIds.has(id));
     if (missing.length > 0) {
       throw Object.assign(
-        new Error(
-          `invalid_ids: FEAT id(s) not found in triaged/: ${missing.join(", ")}`
-        ),
+        new Error(`invalid_ids: FEAT id(s) not found in triaged/: ${missing.join(", ")}`),
         { halt_reason: "invalid_ids", missing_ids: missing }
       );
     }

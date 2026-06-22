@@ -59,16 +59,7 @@ test("CLI backlog list-pending-ids --ids + --include-triaged exits with code 2",
 
   const r = spawnSync(
     "bun",
-    [
-      LOOP_CLI,
-      "backlog",
-      "list-pending-ids",
-      "--ids",
-      a.id,
-      "--include-triaged",
-      "--repo",
-      repo
-    ],
+    [LOOP_CLI, "backlog", "list-pending-ids", "--ids", a.id, "--include-triaged", "--repo", repo],
     { encoding: "utf8" }
   );
   assert.equal(r.status, 2, `expected exit 2; got ${r.status}; stderr=${r.stderr}`);

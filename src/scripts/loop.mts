@@ -799,7 +799,7 @@ async function main() {
     "backlog-promote": "runner:triage",
     "pm-review": "runner:intake --deep",
     "pm-decompose": "runner:intake --spec",
-    "retriage": "runner:triage --ids",
+    retriage: "runner:triage --ids",
     "spec-add": "runner:intake --spec",
     "spec-decompose": "runner:intake --spec",
     "spec-list": "runner:status",
@@ -882,9 +882,7 @@ async function resolveBacklogAddBody(
 async function runBacklogListPendingIds(repoPath: string, flags: Record<string, any> = {}) {
   // FEAT-201: mutual-exclusion guard — --ids and --include-triaged cannot be combined.
   if (flags.ids && flags.includeTriaged) {
-    process.stderr.write(
-      "error: use either --ids or --include-triaged, not both\n"
-    );
+    process.stderr.write("error: use either --ids or --include-triaged, not both\n");
     process.exit(2);
   }
   const { listPendingFeatureIds } = await import("./lib/backlog-list-ids.mjs");

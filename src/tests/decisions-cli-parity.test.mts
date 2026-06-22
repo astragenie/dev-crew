@@ -14,10 +14,10 @@ import { describe, expect, test } from "bun:test";
 describe("decisions CLI subcommands", () => {
   for (const sub of ["list", "show", "relevant", "supersede"]) {
     test(`decisions ${sub} is reachable via CLI`, async () => {
-      const proc = Bun.spawn(
-        ["bun", "src/scripts/loop.mts", "decisions", sub, "--help"],
-        { stdout: "pipe", stderr: "pipe" }
-      );
+      const proc = Bun.spawn(["bun", "src/scripts/loop.mts", "decisions", sub, "--help"], {
+        stdout: "pipe",
+        stderr: "pipe"
+      });
       await proc.exited;
       const out = await new Response(proc.stdout).text();
       const err = await new Response(proc.stderr).text();

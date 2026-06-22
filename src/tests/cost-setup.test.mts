@@ -119,20 +119,17 @@ test("runCostSetup: migrates all legacy flat keys → nested + drops them", asyn
 
     const result = await runCostSetup(repo);
     assert.equal(result.written, true);
-    assert.deepEqual(
-      result.migratedLegacyKeys.sort(),
-      [
-        "costMedianUsdPerPoint",
-        "costProject",
-        "costProjectAliases",
-        "costRegressionMinSamples",
-        "costRegressionMode",
-        "costRegressionMultiplier",
-        "costRegressionWindow",
-        "costSliceCeiling",
-        "costStopThreshold"
-      ]
-    );
+    assert.deepEqual(result.migratedLegacyKeys.sort(), [
+      "costMedianUsdPerPoint",
+      "costProject",
+      "costProjectAliases",
+      "costRegressionMinSamples",
+      "costRegressionMode",
+      "costRegressionMultiplier",
+      "costRegressionWindow",
+      "costSliceCeiling",
+      "costStopThreshold"
+    ]);
     assert.equal(result.effective.ceilingUsd, 300);
     assert.equal(result.effective.regression.multiplier, 15);
     assert.equal(result.effective.regression.window, 7);

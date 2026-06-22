@@ -5,7 +5,6 @@ import path from "node:path";
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
 import { GRADE_JSONL_RELATIVE } from "../scripts/lib/grade-jsonl-writer.mjs";
 import { _internals as fanoutInternals } from "../scripts/lib/webhook-fanout.mjs";
-// @ts-expect-error — grade-parser import for SCORE_DIMENSIONS
 import { SCORE_DIMENSIONS } from "../scripts/lib/grade-parser.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {

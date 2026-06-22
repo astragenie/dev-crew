@@ -82,7 +82,8 @@ test("no module outside loop.mts imports resolveConfig for direct use", async ()
 
 test("path-bearing commands receive config from dispatcher context", async () => {
   const src = await fs.readFile(path.resolve("src/scripts/loop.mts"), "utf8");
-  for (const name of ["backlog", "slice", "spec", "decisions", "release", "feature"]) {
+  // `release` command was retired in FEAT-277 (runner simplification, 45 → 16 skills).
+  for (const name of ["backlog", "slice", "spec", "decisions", "feature"]) {
     const re = new RegExp(String.raw`\b${name}:\s*(?:async\s*)?\(\{[^}]*\bconfig\b[^}]*\}`);
     assert.ok(re.test(src), `COMMANDS.${name} must destructure config`);
   }

@@ -70,7 +70,11 @@ function buildEnvelope(opts: PostOpts, row: AgentRow): Record<string, unknown> |
   };
 }
 
-async function postOne(url: string, token: string, envelope: Record<string, unknown>): Promise<boolean> {
+async function postOne(
+  url: string,
+  token: string,
+  envelope: Record<string, unknown>
+): Promise<boolean> {
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/api/v2/ingest/loop-events`, {
       method: "POST",
@@ -83,7 +87,9 @@ async function postOne(url: string, token: string, envelope: Record<string, unkn
   }
 }
 
-export async function postAgentCompletions(opts: PostOpts): Promise<{ posted: number; skipped: number; failed: number }> {
+export async function postAgentCompletions(
+  opts: PostOpts
+): Promise<{ posted: number; skipped: number; failed: number }> {
   const url = process.env.LOOP_INGEST_URL ?? "";
   const token = process.env.LOOP_INGEST_TOKEN ?? "";
   if (!url || !token) return { posted: 0, skipped: opts.agents.length, failed: 0 };

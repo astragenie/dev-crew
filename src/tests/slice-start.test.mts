@@ -290,7 +290,10 @@ test("startSlice result includes touchesFiles array from classify step (FEAT-277
 
   const result = await startSlice(repo, slice.id, { dispatch: false });
 
-  assert.ok("touchesFiles" in result, "result must include touchesFiles from classify-slice-shape step");
+  assert.ok(
+    "touchesFiles" in result,
+    "result must include touchesFiles from classify-slice-shape step"
+  );
   assert.ok(Array.isArray(result.touchesFiles), "touchesFiles must be an array");
   // New slice has no ## Files section → classify returns empty array (shape: none)
   assert.equal(result.touchesFiles.length, 0);
@@ -313,7 +316,11 @@ test("startSlice with FEAT id enters sliceFromFeature dispatch path (FEAT-277 AC
     caughtError = err as Error;
   }
   assert.ok(caughtError, "expected startSlice to throw (AC linter gate on freshly created slice)");
-  assert.match(caughtError!.message, /AC linter failed/, "error must be from AC linter, not a missing-slice error");
+  assert.match(
+    caughtError!.message,
+    /AC linter failed/,
+    "error must be from AC linter, not a missing-slice error"
+  );
   // Confirm the slice was actually created before the linter fired
   const { listBacklog } = await import("../scripts/lib/backlog-parser.mjs");
   const slicesRoot = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
@@ -324,5 +331,8 @@ test("startSlice with FEAT id enters sliceFromFeature dispatch path (FEAT-277 AC
   } catch {
     // dir may not exist if sliceFromFeature failed entirely
   }
-  assert.ok(sliceFiles.length > 0, "sliceFromFeature must have created a slice file before AC linter fired");
+  assert.ok(
+    sliceFiles.length > 0,
+    "sliceFromFeature must have created a slice file before AC linter fired"
+  );
 });

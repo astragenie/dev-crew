@@ -9,10 +9,7 @@ import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-ga
 import type { Groups } from "./phase-gate/parallel-runner.mjs";
 import { runPhaseGateParallel } from "./phase-gate/parallel-orchestrator.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
-import {
-  emitPhaseGateModeDetected,
-  resolveCurrentSliceId
-} from "./phase-gate-mode-emitter.mjs";
+import { emitPhaseGateModeDetected, resolveCurrentSliceId } from "./phase-gate-mode-emitter.mjs";
 
 const execFile = promisify(execFileCallback);
 

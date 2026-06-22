@@ -53,7 +53,10 @@ const OVERRIDE_KEYS = new Set<keyof CostOverrides>([
 export function parseCostOverrides(raw: string | null | undefined): CostOverrides {
   if (!raw) return {};
   const out: CostOverrides = {};
-  for (const part of raw.split(",").map((s) => s.trim()).filter(Boolean)) {
+  for (const part of raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
     const eq = part.indexOf("=");
     if (eq < 0) {
       throw new Error(`Invalid override "${part}". Expected KEY=VALUE.`);
@@ -61,9 +64,7 @@ export function parseCostOverrides(raw: string | null | undefined): CostOverride
     const key = part.slice(0, eq).trim();
     const value = part.slice(eq + 1).trim();
     if (!OVERRIDE_KEYS.has(key as keyof CostOverrides)) {
-      throw new Error(
-        `Unknown override "${key}". Known: ${[...OVERRIDE_KEYS].join(", ")}`
-      );
+      throw new Error(`Unknown override "${key}". Known: ${[...OVERRIDE_KEYS].join(", ")}`);
     }
     if (key === "regressionMode") {
       if (value !== "median" && value !== "expected_usd") {
@@ -77,7 +78,10 @@ export function parseCostOverrides(raw: string | null | undefined): CostOverride
       continue;
     }
     if (key === "projectAliases") {
-      out.projectAliases = value.split("|").map((s) => s.trim()).filter(Boolean);
+      out.projectAliases = value
+        .split("|")
+        .map((s) => s.trim())
+        .filter(Boolean);
       continue;
     }
     const n = Number(value);
@@ -164,7 +168,7 @@ export async function runCostSetup(
     loop.costSliceCeiling ??
     DEFAULT_CEILING_USD;
 
-  const regression = {
+  const regression: CostSetupResult["effective"]["regression"] = {
     multiplier:
       overrides.regressionMultiplier ??
       existingNestedRegression.multiplier ??
@@ -180,33 +184,24 @@ export async function runCostSetup(
       existingNestedRegression.minSamples ??
       loop.costRegressionMinSamples ??
       DEFAULT_REGRESSION_MIN_SAMPLES
-  } as NonNullable<NonNullable<LoopConfig["loop"]>["cost"]>["regression"];
+  };
 
-  const mode =
-    overrides.regressionMode ??
-    existingNestedRegression.mode ??
-    loop.costRegressionMode;
-  if (mode) regression!.mode = mode;
+  const mode = overrides.regressionMode ?? existingNestedRegression.mode ?? loop.costRegressionMode;
+  if (mode) regression.mode = mode;
 
   const medianUsdPerPoint =
     overrides.medianUsdPerPoint ??
     existingNestedRegression.medianUsdPerPoint ??
     loop.costMedianUsdPerPoint;
-  if (typeof medianUsdPerPoint === "number") regression!.medianUsdPerPoint = medianUsdPerPoint;
+  if (typeof medianUsdPerPoint === "number") regression.medianUsdPerPoint = medianUsdPerPoint;
 
-  const project =
-    overrides.project ??
-    existingNestedRegression.project ??
-    loop.costProject ??
-    null;
-  if (typeof project === "string" && project.length > 0) regression!.project = project;
+  const project = overrides.project ?? existingNestedRegression.project ?? loop.costProject ?? null;
+  if (typeof project === "string" && project.length > 0) regression.project = project;
 
   const projectAliases =
-    overrides.projectAliases ??
-    existingNestedRegression.projectAliases ??
-    loop.costProjectAliases;
+    overrides.projectAliases ?? existingNestedRegression.projectAliases ?? loop.costProjectAliases;
   if (Array.isArray(projectAliases) && projectAliases.length > 0) {
-    regression!.projectAliases = projectAliases;
+    regression.projectAliases = projectAliases;
   }
 
   // Build the new loop block, preserving non-cost fields, dropping legacy cost keys.
@@ -253,7 +248,7 @@ export async function runCostSetup(
     migratedLegacyKeys,
     effective: {
       ceilingUsd,
-      regression: regression!
+      regression
     }
   };
 }

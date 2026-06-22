@@ -114,6 +114,8 @@ export function buildFeatFrontmatter(opts: BuildFeatOpts): string {
     "---",
     `# ${opts.id}: ${opts.title}`,
     "",
-    opts.acs.length > 0 ? "## Acceptance criteria\n\n" + opts.acs.map((ac, i) => `- AC-${i + 1}: ${ac}`).join("\n") : ""
+    opts.acs.length > 0
+      ? "## Acceptance criteria\n\n" + opts.acs.map((ac, i) => `- AC-${i + 1}: ${ac}`).join("\n")
+      : ""
   ].join("\n");
 }
