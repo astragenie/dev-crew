@@ -6,6 +6,50 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+### Added — env-aware ingest routing (ASTRARUNNER_ENV)
+
+Introduce `ASTRARUNNER_ENV=local|staging|prod` as the canonical tier switch for
+AstraRunner ingest without editing per-repo `.claude/loop.json` or rotating tokens.
+
+**URL resolution precedence (both Path 1 + Path 2):**
+1. `LOOP_INGEST_URL` — explicit env-var override (escape hatch; always wins)
+2. `ASTRARUNNER_ENV` → `~/.astrarunner/profiles.json[env].ingestUrl`
+3. `.claude/loop.json[loop.notifications.webhook.url]` — per-repo committed default
+
+**Bearer resolution precedence (Path 1 / Pattern B):**
+1. Literal `bearer` in `loop.json` (rare — pre-Pattern-B configs)
+2. `ASTRARUNNER_ENV` set → `~/.astrarunner/tokens.<env>.json` lookup by `appId`
+   (NO implicit fallback to `tokens.json` — explicit tier = explicit tokens file)
+3. `~/.astrarunner/tokens.json` lookup by `appId` (default, unchanged behaviour)
+
+**Path 2 (astrarunner-ingest legacy direct-POST) token:** `LOOP_INGEST_TOKEN` only
+(Path 2 callers have no `appId`; Path 2 URL now also env-profile-aware).
+
+**Files changed:**
+- `src/scripts/lib/env-profiles.mts` (new) — `readProfile(env)` reader for `profiles.json`.
+- `src/scripts/lib/token-store.mts` — `resolveBearer(appId, env?)` env-aware overload; `_internals.profilesDir` test hook.
+- `src/scripts/lib/event-notifier.mts` — `readNotifyConfig` applies full precedence chain.
+- `src/scripts/lib/webhook-fanout.mts` — precedence comment added; delegates to `readNotifyConfig`.
+- `src/scripts/lib/slice-linker/astrarunner-ingest.mts` — `resolveIngestUrl()` helper applies URL precedence.
+
+**User-global file schema** (`~/.astrarunner/profiles.json` — DO NOT commit):
+```json
+{
+  "version": 1,
+  "envs": {
+    "local":   { "ingestUrl": "http://localhost:5137",       "tokensFile": "tokens.local.json",   "label": "Local-DEV" },
+    "staging": { "ingestUrl": "https://app-dev.example.com", "tokensFile": "tokens.staging.json", "label": "Stage"     },
+    "prod":    { "ingestUrl": "https://app.example.com",     "tokensFile": "tokens.prod.json",    "label": "PROD"      }
+  }
+}
+```
+`tokens.<env>.json` files share the same schema as `tokens.json`.
+
+**Operator quick-start:**
+1. Mint a per-tier `lrt_` AppToken and write it to `tokens.<env>.json`.
+2. Set `ASTRARUNNER_ENV=staging` (shell profile or `.env`). Done.
+3. Unset `ASTRARUNNER_ENV` to revert to the loop.json url + `tokens.json` defaults.
+
 ## [0.54.0] — 2026-06-22 — soft-block pre-push gate + v0.53.0 release-prep on main
 
 Converts `pre-push-validate.mts` from hard-block (`exit 2`) to soft-block:

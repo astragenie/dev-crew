@@ -3,9 +3,23 @@
 // written. Failures are swallowed — observability is non-critical and must
 // never block slice completion.
 //
-// Config (env, all optional; sink is a no-op when URL or token missing):
-//   LOOP_INGEST_URL    — e.g. "http://localhost:5137"
-//   LOOP_INGEST_TOKEN  — peppered AstraRunner app token (lrt_...)
+// This is Path 2 (legacy direct-POST). It has no repoPath context, so it
+// cannot use the Pattern-B webhook config from loop.json. It resolves config
+// from env vars only.
+//
+// URL resolution precedence (highest to lowest):
+//   1. LOOP_INGEST_URL  — explicit env override (legacy escape hatch, wins always)
+//   2. ASTRARUNNER_ENV  — reads ~/.astrarunner/profiles.json[env].ingestUrl
+//   3. (none)           — no repoPath available; sink is a no-op when URL absent
+//
+// Token resolution:
+//   LOOP_INGEST_TOKEN only (Path 2 callers have no appId for Pattern-B lookup).
+//   When LOOP_INGEST_TOKEN absent the sink is a no-op.
+//
+// Set ASTRARUNNER_ENV=local|staging|prod to route ingest to the correct tier
+// without changing LOOP_INGEST_URL or committing anything to the repo.
+
+import { readProfile } from "../env-profiles.mjs";
 
 interface AgentRow {
   agentType?: string;
@@ -87,11 +101,36 @@ async function postOne(
   }
 }
 
+/**
+ * Resolve the ingest URL for Path 2 using the env precedence chain.
+ * Returns empty string when no URL is available (caller treats as no-op).
+ * Fail-silent — never throws.
+ */
+async function resolveIngestUrl(): Promise<string> {
+  // 1. Explicit env override wins always.
+  const explicit = process.env["LOOP_INGEST_URL"];
+  if (explicit) return explicit;
+
+  // 2. ASTRARUNNER_ENV → profile lookup.
+  const activeEnv = process.env["ASTRARUNNER_ENV"];
+  if (activeEnv) {
+    try {
+      const profile = await readProfile(activeEnv);
+      if (profile?.ingestUrl) return profile.ingestUrl;
+    } catch {
+      // Fail-silent — no profile available.
+    }
+  }
+
+  // 3. No URL available in Path 2 (no repoPath context).
+  return "";
+}
+
 export async function postAgentCompletions(
   opts: PostOpts
 ): Promise<{ posted: number; skipped: number; failed: number }> {
-  const url = process.env.LOOP_INGEST_URL ?? "";
-  const token = process.env.LOOP_INGEST_TOKEN ?? "";
+  const url = await resolveIngestUrl();
+  const token = process.env["LOOP_INGEST_TOKEN"] ?? "";
   if (!url || !token) return { posted: 0, skipped: opts.agents.length, failed: 0 };
 
   let posted = 0;

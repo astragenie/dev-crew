@@ -2,6 +2,7 @@ import { spawnSync as nodeSpawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { readProfile } from "./env-profiles.mjs";
 import { resolveBearer } from "./token-store.mjs";
 import { createWebhookSender } from "./webhook-sender.mjs";
 
@@ -51,7 +52,48 @@ export const _internals = {
   fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args)
 };
 
-/** Read loop.json and extract loop.notifications. Returns {} on any error. */
+/**
+ * Apply env precedence in a single pass — fetches profile once and mutates
+ * webhook.url + webhook.bearer in place.
+ *
+ * URL precedence (highest to lowest):
+ *   1. process.env.LOOP_INGEST_URL  — explicit escape hatch
+ *   2. ASTRARUNNER_ENV → profiles.json[env].ingestUrl
+ *   3. loop.json webhook.url        — per-repo committed default
+ *
+ * Bearer precedence (only when not already committed in loop.json):
+ *   1. Literal bearer in loop.json (early-exit when present)
+ *   2. ASTRARUNNER_ENV → profile.tokensFile (no fallback on miss; cross-tier guard)
+ *   3. Default ~/.astrarunner/tokens.json
+ */
+async function applyEnvOverrides(webhook: NotifyWebhookConfig): Promise<void> {
+  const activeEnv = process.env["ASTRARUNNER_ENV"];
+  const envOverrideUrl = process.env["LOOP_INGEST_URL"];
+
+  let profileTokensFile: string | undefined;
+  if (envOverrideUrl) {
+    webhook.url = envOverrideUrl;
+  } else if (activeEnv) {
+    const profile = await readProfile(activeEnv);
+    if (profile) {
+      webhook.url = profile.ingestUrl;
+      profileTokensFile = profile.tokensFile;
+    }
+  }
+
+  if (webhook.appId && !webhook.bearer) {
+    const resolved = await resolveBearer(webhook.appId, activeEnv, profileTokensFile);
+    if (resolved) webhook.bearer = resolved;
+  }
+}
+
+/**
+ * Read loop.json and extract loop.notifications. Returns {} on any error.
+ * See applyEnvOverrides for URL + bearer precedence rules.
+ *
+ * Fail-silent contract: any error in profile/token resolution leaves the field
+ * unchanged; downstream sends are skipped when no bearer can be resolved.
+ */
 export async function readNotifyConfig(repoPath: string): Promise<NotifyConfig> {
   let cfg: NotifyConfig;
   try {
@@ -59,23 +101,13 @@ export async function readNotifyConfig(repoPath: string): Promise<NotifyConfig> 
     const raw = await fs.readFile(configPath, "utf8");
     const parsed = JSON.parse(raw);
     const notifications = parsed?.loop?.notifications;
-    if (!notifications || typeof notifications !== "object") {
-      return {};
-    }
+    if (!notifications || typeof notifications !== "object") return {};
     cfg = notifications as NotifyConfig;
   } catch {
     return {};
   }
 
-  // Pattern B: when webhook.bearer absent but appId present, resolve from
-  // the user-level token store (~/.astrarunner/tokens.json). Failure to
-  // resolve leaves bearer undefined; downstream sends skip when no bearer.
-  if (cfg.webhook && cfg.webhook.appId && !cfg.webhook.bearer) {
-    const resolved = await resolveBearer(cfg.webhook.appId);
-    if (resolved) {
-      cfg.webhook.bearer = resolved;
-    }
-  }
+  if (cfg.webhook) await applyEnvOverrides(cfg.webhook);
   return cfg;
 }
 

@@ -1,6 +1,15 @@
 import { readNotifyConfig } from "./event-notifier.mjs";
 import { createWebhookSender, type FetchFn } from "./webhook-sender.mjs";
 
+// Env-aware fanout — all URL + bearer resolution is delegated to readNotifyConfig.
+//
+// Precedence (applied inside readNotifyConfig before this function runs):
+//   URL:    LOOP_INGEST_URL > ASTRARUNNER_ENV profile > loop.json webhook.url
+//   Bearer: loop.json bearer (literal) > ASTRARUNNER_ENV tokens.<env>.json > tokens.json
+//
+// Set ASTRARUNNER_ENV=local|staging|prod to switch ingest tiers without editing
+// per-repo loop.json or rotating tokens manually.
+
 export const _internals = {
   fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args)
 };
@@ -13,7 +22,7 @@ export async function fanoutEnvelope(
   try {
     const cfg = await readNotifyConfig(repoPath);
     // Pattern B guard: skip fan-out when bearer could not be resolved from
-    // committed config OR user-level token store.
+    // committed config OR user-level token store (tier-specific or default).
     const wh = cfg.webhook;
     if (!wh?.url || !wh.bearer) return;
 
