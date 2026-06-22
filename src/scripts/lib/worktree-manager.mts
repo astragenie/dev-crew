@@ -162,6 +162,25 @@ function parseWorktreeList(raw: string): Array<{ worktreePath: string; branch: s
 }
 
 /**
+ * Resolve a path to its canonical form for cross-platform comparison.
+ * Falls back to path.normalize when realpath fails (e.g. path doesn't exist yet).
+ *
+ * Windows nuance: tmp dirs in CI surface as 8.3 short names
+ * (`C:\Users\RUNNER~1\AppData\Local\Temp\...`) while `git worktree list`
+ * emits the long form with forward slashes. realpath resolves both shapes
+ * to a single canonical comparable string. Without this, the second
+ * ensureSliceWorktree call on Windows fails to detect the registered
+ * worktree and throws PATH_COLLISION (FEAT-281).
+ */
+async function canonicalizePath(p: string): Promise<string> {
+  try {
+    return path.normalize(await fs.realpath(p));
+  } catch {
+    return path.normalize(p);
+  }
+}
+
+/**
  * Check if a worktree already exists at targetPath.
  * Returns the matching entry or null.
  */
@@ -171,9 +190,9 @@ async function findExistingWorktree(
 ): Promise<{ worktreePath: string; branch: string } | null> {
   const raw = await git(repoPath, ["worktree", "list", "--porcelain"]);
   const list = parseWorktreeList(raw);
-  const normalizedTarget = path.normalize(targetPath);
+  const canonicalTarget = await canonicalizePath(targetPath);
   for (const entry of list) {
-    if (path.normalize(entry.worktreePath) === normalizedTarget) {
+    if ((await canonicalizePath(entry.worktreePath)) === canonicalTarget) {
       return entry;
     }
   }
@@ -292,10 +311,17 @@ export async function ensureSliceWorktree(
 
   if (await isWorktreeDirty(repoPath)) throwDirtyTree(worktreePath, branchName, repoPath);
 
+  // findExistingWorktree canonicalizes internally so Windows 8.3 short-name
+  // paths (e.g. RUNNER~1) match the long form git emits (FEAT-281).
   const existing = await findExistingWorktree(repoPath, worktreePath);
   if (existing) {
     return {
-      worktreePath: path.normalize(existing.worktreePath),
+      // Return the caller-shaped path (path.normalize of the input) so a
+      // second call's return value matches the first call's exactly — even
+      // when realpath would resolve them to different string forms on
+      // Windows. The canonicalization only affects the comparison inside
+      // findExistingWorktree, not the WorktreeResult.worktreePath shape.
+      worktreePath: path.normalize(worktreePath),
       branchName: existing.branch.replace(/^refs\/heads\//, ""),
       created: false,
       reused: true
