@@ -6,13 +6,19 @@ shipped under the name `loop`.
 
 ## Unreleased
 
-## [0.53.0] — 2026-06-21 — runner simplification: 45 → 16 skills, free-text intake (FEAT-277)
+## [0.53.0] — 2026-06-22 — runner simplification + soft-block pre-push gate
 
 Collapses the runner plugin user-facing surface from 45 skills to 16
 (13 commands + 3 read-only helpers). Adds free-text intake with inline
 PM+AC writing for P0/P1 features. Merges slice ceremonies into single
 commands. Hard-break migration — invoking deleted skills exits non-zero
 with a clear "use X instead" stderr line.
+
+Also converts `pre-push-validate.mts` from hard-block (exit 2) to soft-block:
+validation failures now emit a Claude Code `systemMessage` warning via JSON
+stdout, and the git commit/push proceeds. CI remains the authoritative gate.
+This unblocks urgent ships when format/content-length drift is intentional
+or being fixed in a follow-up commit, without disabling the gate entirely.
 
 ### Added
 

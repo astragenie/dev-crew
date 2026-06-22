@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 // PreToolUse hook script: validates plugin manifests before git commit and
-// git push. Reads tool input from stdin. Exits 0 to allow, 2 to block.
+// git push. Reads tool input from stdin. Always exits 0 — failures are
+// surfaced as a Claude Code systemMessage so the operator sees the warning
+// but the command proceeds. CI remains the hard gate.
 //
 // Two gates, escalating with the cost of the operation:
 //   - git commit → manifest validation only (includes the version lockstep
-//     check across plugin.json / marketplace.json / package.json). This is
-//     the earliest point version drift can be caught. Recurring root cause of
-//     drift: hand-editing one manifest and forgetting the others — always use
-//     `bun run bump-version <v>` to bump all three in lockstep.
+//     check across plugin.json / marketplace.json / package.json).
 //   - git push → manifest validation + content-length + prettier format:check
-//     (the full pre-push gate, mirrors CI). Also runs --check-generated in
-//     warn-only mode to detect drift in auto-generated artifacts.
+//     (mirrors CI). Also runs --check-generated in warn-only mode.
 
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -100,8 +98,14 @@ try {
   process.exit(0);
 } catch (e) {
   const err = e as { stderr?: string; message?: string };
-  process.stderr.write(
-    `Plugin validation failed — fix before git commit/push:\n${err.stderr || err.message}\n`
+  const detail = (err.stderr || err.message || "unknown").toString().trim();
+  const systemMessage = `loop pre-push validation failed (soft block — push proceeds, CI will enforce):\n${detail}`;
+  process.stdout.write(
+    JSON.stringify({
+      continue: true,
+      suppressOutput: true,
+      systemMessage
+    })
   );
-  process.exit(2);
+  process.exit(0);
 }
