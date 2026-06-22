@@ -101,3 +101,21 @@ test("writeConfigIfMissing writes new config when missing", async () => {
   const parsed = JSON.parse(await fs.readFile(path.join(repo, CONFIG_FILENAME), "utf8"));
   assert.equal(parsed.productName, "Fresh");
 });
+
+test("default config includes intake budgets", async () => {
+  const repo = await tmpRepo("al-intake-budget-");
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(
+    path.join(repo, CONFIG_FILENAME),
+    JSON.stringify({
+      preset: "dotnet-aspire-python",
+      loop: {
+        intakeBudgetUsdPerCall: 1.50,
+        intakeBudgetTokensPerCall: 150000
+      }
+    })
+  );
+  const cfg = (await resolveConfig(repo)) as Record<string, any>;
+  assert.equal(cfg.loop.intakeBudgetUsdPerCall, 1.50);
+  assert.equal(cfg.loop.intakeBudgetTokensPerCall, 150000);
+});

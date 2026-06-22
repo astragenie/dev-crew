@@ -81,6 +81,8 @@
     },
     "triageBudgetUsdPerBatch": 5,
     "triageBudgetTokensPerBatch": 500000,
+    "intakeBudgetUsdPerCall": 1.50,
+    "intakeBudgetTokensPerCall": 150000,
     "gradeTrendPerDimension": {
       "observability": 0.7
     },

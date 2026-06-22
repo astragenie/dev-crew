@@ -278,3 +278,51 @@ test("startSlice returns orchestratorModel null when not configured", async () =
   const result = await startSlice(repo, slice.id, { dispatch: false, config });
   assert.equal(result.orchestratorModel, null);
 });
+
+// --- FEAT-277 Task 10: FEAT-id input + classify + touches_files ---
+
+// AC-7a: startSlice always returns touchesFiles (classify-slice-shape runs on every start)
+test("startSlice result includes touchesFiles array from classify step (FEAT-277 AC-7)", async () => {
+  const repo = await tmpRepo("al-start-touches-files-");
+  const feat = await addFeature(repo, { title: "Classify test feature" });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+
+  const result = await startSlice(repo, slice.id, { dispatch: false });
+
+  assert.ok("touchesFiles" in result, "result must include touchesFiles from classify-slice-shape step");
+  assert.ok(Array.isArray(result.touchesFiles), "touchesFiles must be an array");
+  // New slice has no ## Files section → classify returns empty array (shape: none)
+  assert.equal(result.touchesFiles.length, 0);
+});
+
+// AC-7b: startSlice detects a FEAT id and enters the sliceFromFeature dispatch path.
+// The AC linter gate fires after slice creation, confirming the FEAT branch was entered.
+test("startSlice with FEAT id enters sliceFromFeature dispatch path (FEAT-277 AC-7)", async () => {
+  const repo = await tmpRepo("al-start-feat-dispatch-");
+  const feat = await addFeature(repo, { title: "FEAT-id dispatch test" });
+
+  // startSlice with a FEAT id should detect it, call sliceFromFeature (creating SLICE-01),
+  // then hit the AC linter gate on the newly created slice — which has a placeholder AC.
+  // This confirms the FEAT-id dispatch path is entered (otherwise it would fail with
+  // "slice file not found" or silently treat the FEAT id as a missing slice id).
+  let caughtError: Error | null = null;
+  try {
+    await startSlice(repo, feat.id, { dispatch: false });
+  } catch (err) {
+    caughtError = err as Error;
+  }
+  assert.ok(caughtError, "expected startSlice to throw (AC linter gate on freshly created slice)");
+  assert.match(caughtError!.message, /AC linter failed/, "error must be from AC linter, not a missing-slice error");
+  // Confirm the slice was actually created before the linter fired
+  const { listBacklog } = await import("../scripts/lib/backlog-parser.mjs");
+  const slicesRoot = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
+  const slicePending = path.join(slicesRoot, "pending");
+  let sliceFiles: string[] = [];
+  try {
+    sliceFiles = await fs.readdir(slicePending);
+  } catch {
+    // dir may not exist if sliceFromFeature failed entirely
+  }
+  assert.ok(sliceFiles.length > 0, "sliceFromFeature must have created a slice file before AC linter fired");
+});

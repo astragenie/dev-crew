@@ -40,6 +40,12 @@ async function setupSlice(
   const feat = await addFeature(repo, { title: "Test feature" });
   await updateFeatureFrontmatter(feat.filePath, { autonomous_safe: opts.autonomousSafe });
   const result = await sliceFromFeature(repo, feat.id);
+  // Mark all ACs checked so the runner:close pre-flight (FEAT-277) passes.
+  // In test fixtures, ACs are proof-of-concept placeholders — we simulate
+  // the "builder checked them off" step by replacing [ ] with [x].
+  const slicePath = result.slice.path;
+  const content = await fs.readFile(slicePath, "utf8");
+  await fs.writeFile(slicePath, content.replace(/- \[ \]/g, "- [x]"), "utf8");
   return { sliceId: result.slice.id, featureId: feat.id };
 }
 

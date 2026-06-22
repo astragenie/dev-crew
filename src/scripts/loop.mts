@@ -99,7 +99,11 @@ const FLAG_SPEC = {
   // backlog-audit output format / lint-artifacts
   "--json": { key: "json", boolean: true },
   // learnings rank
-  "--query": { key: "query" }
+  "--query": { key: "query" },
+  // intake from-text (FEAT-277)
+  "--text": { key: "text" },
+  "--deep": { key: "deep", boolean: true },
+  "--spec": { key: "spec", boolean: true }
 };
 
 function parseArgs(argv: string[]) {
@@ -168,7 +172,10 @@ function parseArgs(argv: string[]) {
     costBySkill: false,
     reason: null,
     json: false,
-    query: null
+    query: null,
+    text: null,
+    deep: false,
+    spec: false
   };
   const positionals: any[] = [];
 
@@ -267,8 +274,6 @@ const COMMANDS = {
   "backlog-audit": async ({ repoPath, flags }: CmdCtx) => runBacklogAudit(repoPath, flags),
   spec: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runSpecSubcommand(repoPath, positionals, flags, config),
-  release: ({ repoPath, flags, positionals, config }: CmdCtx) =>
-    runReleaseSubcommand(repoPath, positionals, flags, config),
   slice: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runSliceSubcommand(repoPath, positionals, flags, { config }),
   feature: ({ repoPath, flags, positionals, config }: CmdCtx) =>
@@ -585,6 +590,30 @@ const COMMANDS = {
     }
     process.exitCode = 0;
     return { reset: true };
+  },
+  intake: async ({ repoPath, flags, positionals }: CmdCtx) => {
+    const [sub] = positionals;
+    if (sub === "from-text") {
+      const { intakeFromText } = await import("./lib/intake.mjs");
+      if (!flags.text) {
+        process.stderr.write("intake from-text: --text required\n");
+        process.exit(2);
+      }
+      const result = await intakeFromText({
+        repoPath,
+        text: flags.text,
+        flags: {
+          deep: !!flags.deep,
+          spec: !!flags.spec,
+          dryRun: !!flags.dryRun,
+          fromIssue: flags.fromIssue
+        }
+      });
+      process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+      process.exit(0);
+    }
+    process.stderr.write(`intake: unknown subcommand "${sub}"\n`);
+    process.exit(2);
   }
 };
 
@@ -760,6 +789,48 @@ async function main() {
 
   clearFrontmatterCache(); // ensure cold start for each invocation
 
+  // Hard-break stubs for skills deleted in v0.53 (FEAT-277). Exit non-zero
+  // with a clear replacement pointer before any config resolution or handler
+  // lookup so callers get actionable output even in a bare repo.
+  const DELETED_SKILLS_MAP: Record<string, string> = {
+    "backlog-add": "runner:intake",
+    "backlog-enrich": "runner:intake",
+    "backlog-list": "runner:status",
+    "backlog-promote": "runner:triage",
+    "pm-review": "runner:intake --deep",
+    "pm-decompose": "runner:intake --spec",
+    "retriage": "runner:triage --ids",
+    "spec-add": "runner:intake --spec",
+    "spec-decompose": "runner:intake --spec",
+    "spec-list": "runner:status",
+    "slice-from-feature": "runner:start FEAT-NNN",
+    "derive-slice": "runner:start FEAT-NNN",
+    "next-slice": "runner:start",
+    "slice-plan": "runner:start (auto-runs plan)",
+    "slice-link": "runner:close (auto-links)",
+    "slice-grade": "runner:close",
+    "slice-grade-write": "runner:close",
+    "slice-post-builder-fanout": "internal-only",
+    "slice-review-ladder": "internal-only",
+    "sync-claims": "internal-only (claims-sync still runs)",
+    "classify-slice-shape": "internal-only (runs during runner:start)",
+    "release-plan": "runner:phase-gate",
+    "competitor-audit": "crew:market-researcher",
+    architect: "crew:architect",
+    "stop-check": "internal-only (runner:auto)",
+    "snapshot-memory": "runner:status (includes snapshot)",
+    "decisions-list": "runner:decisions list",
+    "decisions-show": "runner:decisions show",
+    "decisions-relevant": "runner:decisions relevant",
+    "decisions-supersede": "runner:decisions supersede"
+  };
+  if (DELETED_SKILLS_MAP[command]) {
+    process.stderr.write(
+      `runner:${command} removed in v0.53. Use ${DELETED_SKILLS_MAP[command]} instead.\n`
+    );
+    process.exit(2);
+  }
+
   // Resolve config once at dispatcher level and pass to all handlers
   const { resolveConfig } = await import("./lib/config-resolver.mjs");
   const config = await resolveConfig(repoPath);
@@ -879,29 +950,7 @@ async function runBacklogAdd(
   return result;
 }
 
-async function runBacklogPmWrite(repoPath: string, flags: Record<string, any>, rest: string[]) {
-  const featureId = flags.id || rest[0];
-  if (!featureId) throw new Error("backlog pm-write requires --id FEAT-NNN.");
-  if (!flags.scores) throw new Error("backlog pm-write requires --scores '{...}'.");
-  const { parseJsonFlag } = await import("./lib/json-flag.mjs");
-  const parsedScores: Record<string, number> = parseJsonFlag(flags.scores, "scores");
-  const priority = flags.priority ?? null;
-  const autonomousSafe =
-    flags.autonomousSafe === "true"
-      ? true
-      : flags.autonomousSafe === "false"
-        ? false
-        : Boolean(flags.autonomousSafe);
-  const triageNotes: string | undefined = flags.reasoning ?? flags.evidence ?? undefined;
-  const { writePmScores } = await import("./lib/backlog-pm-write.mjs");
-  return writePmScores(repoPath, {
-    id: featureId,
-    scores: parsedScores as any,
-    priority,
-    autonomousSafe,
-    ...(triageNotes !== undefined ? { triageNotes } : {})
-  });
-}
+// runBacklogPmWrite removed in v0.53 — backlog-pm-write.mts deleted (FEAT-277).
 
 function isUnclassifiedEntry(entry: Record<string, any>): boolean {
   const fm = entry.frontmatter;
@@ -1019,9 +1068,6 @@ async function runBacklogSubcommand(
     if (!entry) throw new Error(`Feature not found: ${featureId}`);
     const moved = await moveFeature(entry.filePath, "in-progress");
     return { id: featureId, moved };
-  }
-  if (sub === "pm-write") {
-    return runBacklogPmWrite(repoPath, flags, rest);
   }
   if (sub === "enrich") {
     return runBacklogEnrich(repoPath, flags);
@@ -1233,25 +1279,7 @@ async function runSpecSubcommand(
   return handler(repoPath, flags, rest, config);
 }
 
-async function runReleaseSubcommand(
-  repoPath: string,
-  positionals: string[],
-  flags: Record<string, any>,
-  config: Record<string, any> | null
-) {
-  const [sub] = positionals;
-  if (!sub) throw new Error("release requires a subcommand: plan | status");
-  const { planRelease, releaseStatus } = await import("./lib/release-planner.mjs");
-  if (sub === "plan") {
-    if (!flags.version) throw new Error("release plan requires --version vX.Y.Z");
-    return await planRelease(repoPath, { version: flags.version, config });
-  }
-  if (sub === "status") {
-    if (!flags.version) throw new Error("release status requires --version vX.Y.Z");
-    return await releaseStatus(repoPath, { version: flags.version, config });
-  }
-  throw new Error(`Unknown release subcommand: ${sub}`);
-}
+// runReleaseSubcommand removed in v0.53 — release-planner.mts deleted (FEAT-277).
 
 // Resolves a required ID flag/positional or throws. Centralizes the
 // "missing --id" error shape across slice subcommands.
@@ -1473,17 +1501,6 @@ const SLICE_HANDLERS = {
       config: opts.config
     });
   },
-  "review-ladder": async (
-    repoPath: string,
-    _flags: Record<string, any>,
-    _rest: string[],
-    sliceId: string,
-    opts: { dispatchFn?: DispatchFn; config?: Record<string, any> | null } = {}
-  ) => {
-    requireId(sliceId, "slice review-ladder requires --id SLICE-NN.");
-    const { buildReviewLadder } = await import("./lib/reviewer-ladder.mjs");
-    return buildReviewLadder(repoPath, sliceId, { config: opts.config ?? null });
-  },
   "post-builder-fanout": async (
     repoPath: string,
     _flags: Record<string, any>,
@@ -1536,6 +1553,12 @@ async function runSliceSubcommand(
   return handler(repoPath, flags, rest, id, opts);
 }
 
+const DECISIONS_USAGE = `decisions subcommands:
+  decisions list       [--repo PATH] [--status accepted|superseded|reverted]
+  decisions show       --repo PATH --id DEC-NNN
+  decisions relevant   --repo PATH --files "a.cs,b.cs,..."
+  decisions supersede  --repo PATH --id DEC-OLD --by DEC-NEW`;
+
 async function runDecisionsSubcommand(
   repoPath: string,
   positionals: string[],
@@ -1543,7 +1566,10 @@ async function runDecisionsSubcommand(
   config: Record<string, any> | null
 ) {
   const [sub, ...rest] = positionals;
-  if (!sub) throw new Error("decisions requires a subcommand: list | show");
+  if (flags.help || !sub) {
+    process.stdout.write(DECISIONS_USAGE + "\n");
+    return { _suppressDefaultOutput: true };
+  }
   const { listDecisions, showDecision } = await import("./lib/decisions-store.mjs");
   if (sub === "list") {
     const decisions = await listDecisions(repoPath, { status: flags.status, config });

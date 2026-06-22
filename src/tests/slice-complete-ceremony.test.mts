@@ -4,6 +4,9 @@
 // The drainFn injection path was removed as part of the dead-code sweep in SLICE-69.
 // These tests now verify that completeSlice succeeds on the basic ceremony path without
 // the drain plumbing.
+//
+// Task 11 (FEAT-277): also verifies that closeSlice returns the runner:close canonical
+// payload shape { handoffPath, synthesisPath, costUsd, grades }.
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -12,6 +15,7 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 
 import { completeSlice } from "../scripts/lib/slice-linker.mjs";
+import { closeSlice } from "../scripts/lib/slice-linker/close-slice.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -165,4 +169,55 @@ test("slice-complete ceremony: completeSlice does NOT throw on basic ceremony pa
   assert.equal(thrown, null, "completeSlice must NOT throw on basic path");
   assert.ok(result?.slice?.id === sliceId, "slice id present in result");
   assert.match(result.slice.to, /completed[\\/]/, "slice moved to completed/");
+});
+
+// ---------------------------------------------------------------------------
+// Test 4 (FEAT-277 Task 11): runner:close canonical payload
+//
+// Verifies that closeSlice (the backbone behind runner:close) returns the
+// full payload shape specified in the design:
+//   { handoffPath, synthesisPath, costUsd, grades }
+//
+// grades must be defined even in scaffold-only mode (where no grade YAML was
+// supplied); in that case it holds the scaffolded grade path so the caller
+// can fill it and run grade-write as a follow-up.
+// ---------------------------------------------------------------------------
+
+test("close ceremony returns canonical runner:close payload { handoffPath, synthesisPath, costUsd, grades }", async () => {
+  const repo = await tmpRepo("scmd-close-payload-");
+  const featId = "FEAT-MD04";
+  const sliceId = "SLICE-MD04";
+
+  await createFeat(repo, featId, "triaged");
+  await createSlice(repo, sliceId, featId);
+
+  const result = await closeSlice(repo, sliceId, {
+    noDocWriter: true,
+    noMerge: true,
+    forceClose: true // pre-flight bypass: test fixture has unchecked ACs
+  });
+
+  // handoffPath — written by writeCrewHandoff inside completeSlice ceremony
+  assert.ok(
+    typeof result.handoffPath === "string" && result.handoffPath.length > 0,
+    `handoffPath must be a non-empty string; got ${JSON.stringify(result.handoffPath)}`
+  );
+
+  // synthesisPath — written by writeCrewFinalSynthesis inside completeSlice ceremony
+  assert.ok(
+    typeof result.synthesisPath === "string" && result.synthesisPath.length > 0,
+    `synthesisPath must be a non-empty string; got ${JSON.stringify(result.synthesisPath)}`
+  );
+
+  // costUsd — numeric (may be 0 when crew CLI is absent in test env)
+  assert.ok(
+    typeof result.costUsd === "number",
+    `costUsd must be a number; got ${JSON.stringify(result.costUsd)}`
+  );
+
+  // grades — must be defined; scaffold-only path sets grades.scaffoldOnly = true
+  assert.ok(
+    result.grades !== undefined && result.grades !== null,
+    `grades must be defined on the runner:close payload; got ${JSON.stringify(result.grades)}`
+  );
 });

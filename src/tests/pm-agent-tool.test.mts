@@ -52,12 +52,12 @@ test("agents/pm.md frontmatter declares maxTurns >= 30 (FEAT-199)", async () => 
   );
 });
 
-test("agents/pm.md frontmatter description no longer claims read-only without qualification", async () => {
+test("agents/pm.md frontmatter description reflects inline AC drafting capability (FEAT-277)", async () => {
   const { frontmatter } = await readPm();
   assert.match(
     frontmatter.description,
-    /Read.only on disk|Read.mostly|dispatches loop:spec-writer/i,
-    "description must reflect the new dispatch capability"
+    /Read.only on disk|Read.mostly|inline|Given.When.Then|drafts? ACs/i,
+    "description must reflect the inline AC drafting capability"
   );
   // The legacy unqualified "Read-only — no code edits" claim must be gone.
   assert.doesNotMatch(
@@ -67,32 +67,23 @@ test("agents/pm.md frontmatter description no longer claims read-only without qu
   );
 });
 
-test("agents/pm.md body restricts PM's Agent dispatch scope to loop:spec-writer", async () => {
+test("agents/pm.md body documents inline AC + SPEC drafting (FEAT-277)", async () => {
   const { body } = await readPm();
   assert.match(
     body,
-    /Dispatch discipline/i,
-    "body must include an explicit dispatch-discipline section"
+    /Inline AC \+ SPEC drafting|inline AC|inline drafting/i,
+    "body must include the inline AC + SPEC drafting section"
   );
   assert.match(
     body,
-    /loop:spec-writer/,
-    "body must name loop:spec-writer as the only allowed inline dispatch"
+    /Given.{0,3}When.{0,3}Then/i,
+    "body must mandate Given-When-Then format for ACs"
   );
-  // The rule must call out that other in-turn dispatches are a violation.
-  assert.match(
+  // PM must no longer dispatch spec-writer as an active sub-agent.
+  assert.doesNotMatch(
     body,
-    /discipline violation|MUST NOT|only allowed|do NOT dispatch other/i,
-    "body must call other in-turn Agent dispatches a discipline violation"
-  );
-});
-
-test("agents/pm.md still references the retriage gate that motivates the Agent grant", async () => {
-  const { body } = await readPm();
-  assert.match(
-    body,
-    /\/loop:retriage|retriage gate/i,
-    "body must cite the /loop:retriage gate so future readers understand the Agent grant"
+    /Dispatch.*spec-writer|spec-writer.*via.*Agent|fan out.*spec-writer/i,
+    "body must not list spec-writer as a live dispatch target (only historical / explanatory mentions allowed)"
   );
 });
 

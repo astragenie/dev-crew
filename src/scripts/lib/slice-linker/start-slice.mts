@@ -12,6 +12,7 @@ import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
 import { runPlanPreflight } from "../slice-plan.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
+import { sliceFromFeature } from "./feature-lifecycle.mjs";
 import { detectAcceptanceCriteria } from "../acceptance-criteria.mjs";
 import { computeConfidence } from "../confidence-signal.mjs";
 import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
@@ -55,14 +56,14 @@ function resolveInlinePath(
   return expanded && preferred.includes(shape) && shape !== "none";
 }
 
-/** Run classify-slice-shape, write marker (best-effort), return inline-path hint string or null. */
+/** Run classify-slice-shape, write marker (best-effort), return inline-path hint string or null + touchesFiles list. */
 async function applyShapeClassification(
   repoPath: string,
   sliceId: string,
   featureId: string | null,
   sliceContent: string | null,
   dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null
-): Promise<string | null> {
+): Promise<{ inlinePathHint: string | null; touchesFiles: string[] }> {
   const files = parseSliceFiles(sliceContent);
   const { shape, rationale } = classifySliceShape({ files });
   const inlinePath = resolveInlinePath(shape, dispatchLimits);
@@ -76,8 +77,10 @@ async function applyShapeClassification(
     rationale,
     inlinePathUsed: inlinePath
   });
-  if (!inlinePath) return null;
-  return `inline-path recommended (shape: ${shape}, rationale: ${rationale}) — orchestrator may skip dispatched specialists for tightly-scoped slices when other gates can be lead-attested per docs/sop/inline-criteria.md.`;
+  const inlinePathHint = inlinePath
+    ? `inline-path recommended (shape: ${shape}, rationale: ${rationale}) — orchestrator may skip dispatched specialists for tightly-scoped slices when other gates can be lead-attested per docs/sop/inline-criteria.md.`
+    : null;
+  return { inlinePathHint, touchesFiles: files.map((f) => f.path) };
 }
 
 function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>): number | null {
@@ -327,7 +330,7 @@ function resolveSliceMetaFields(
 // eslint-disable-next-line complexity -- orchestration function; each sequential async gate adds a branch but no extractable helper reduces it further. Track if complexity grows past 20.
 export async function startSlice(
   repoPath: string,
-  sliceId: string,
+  sliceIdOrFeatId: string,
   {
     config = null,
     goal = null,
@@ -338,7 +341,25 @@ export async function startSlice(
     dispatch?: boolean;
   } = {}
 ) {
-  if (!sliceId) throw new Error("startSlice requires a sliceId.");
+  if (!sliceIdOrFeatId) throw new Error("startSlice requires a sliceId or FEAT id.");
+
+  // FEAT-277 AC-7: when given a FEAT id, create the slice file first via
+  // sliceFromFeature, then start the resulting slice. This merges the
+  // former runner:slice-from-feature + runner:slice-start into one call.
+  let sliceId = sliceIdOrFeatId;
+  if (/^FEAT-\d+$/i.test(sliceIdOrFeatId)) {
+    const fromFeatResult = await sliceFromFeature(repoPath, sliceIdOrFeatId, { config });
+    // sliceFromFeature returns { slice: { id, path, title } } for single-slice
+    // and { slices: [...] } for multi-slice. Use first slice in both cases.
+    const firstSlice =
+      "slice" in fromFeatResult
+        ? fromFeatResult.slice
+        : (fromFeatResult as any).slices?.[0];
+    if (!firstSlice?.id) {
+      throw new Error(`startSlice: sliceFromFeature(${sliceIdOrFeatId}) returned no slice id`);
+    }
+    sliceId = firstSlice.id;
+  }
   const resolved: Record<string, any> = config ?? (await resolveConfig(repoPath));
   const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
@@ -389,8 +410,9 @@ export async function startSlice(
 
   const orchestratorMode = resolveOrchestratorModeConfig(resolved);
 
-  // SLICE-94 / FEAT-186: classify slice shape + write marker + build inline-path hint.
-  const inlinePathHint = await applyShapeClassification(
+  // SLICE-94 / FEAT-186 + FEAT-277: classify slice shape + write marker + build inline-path hint.
+  // touchesFiles is also returned so runner:start can surface it for wave planner conflict detection.
+  const { inlinePathHint, touchesFiles } = await applyShapeClassification(
     repoPath,
     sliceId,
     featureId,
@@ -423,7 +445,8 @@ export async function startSlice(
     confidenceReason,
     orchestratorMode,
     worktreeInfo,
-    inlinePathHint
+    inlinePathHint,
+    touchesFiles
   });
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
@@ -617,6 +640,7 @@ function buildStartSliceReturn({
   learningsDigest = null,
   planPreflight = null,
   requiresApprovalGate = false,
+  touchesFiles = [] as string[],
   confidence = null,
   confidenceReason = null,
   orchestratorMode = "slice-build" as OrchestratorMode,
@@ -643,6 +667,7 @@ function buildStartSliceReturn({
   learningsDigest?: string | null;
   planPreflight?: Record<string, any> | null;
   requiresApprovalGate?: boolean;
+  touchesFiles?: string[];
   confidence?: string | null;
   confidenceReason?: string | null;
   orchestratorMode?: OrchestratorMode;
@@ -688,7 +713,9 @@ function buildStartSliceReturn({
     planPreflight,
     requiresApprovalGate,
     confidence,
-    confidenceReason
+    confidenceReason,
+    // FEAT-277 AC-7: populated by classify-slice-shape; used by wave planner for conflict detection.
+    touchesFiles
   };
   attachWorktreeSection(base, worktreeInfo);
   return base;

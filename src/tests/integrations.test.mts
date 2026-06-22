@@ -11,7 +11,7 @@ import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
 import { addSpec, updateSpecFrontmatter } from "../scripts/lib/spec-parser.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature, completeSlice } from "../scripts/lib/slice-linker.mjs";
-import { buildReviewLadder } from "../scripts/lib/reviewer-ladder.mjs";
+// buildReviewLadder import removed (reviewer-ladder.mts deleted in FEAT-277)
 import { inferScoresForSlice } from "../scripts/lib/score-inference.mjs";
 import { mergeFrontmatter, parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
@@ -178,41 +178,4 @@ test("completeSlice writes a crew handoff artifact", async () => {
   assert.match(content, /Slice .* complete/);
 });
 
-test("buildReviewLadder produces parallel tasks per reviewers.ladder", async () => {
-  const repo = await tmpRepo("al-v19-ladder-");
-  const feat = await addFeature(repo, { title: "ladder" });
-  const { slice } = await sliceFromFeature(repo, feat.id);
-  const out = await buildReviewLadder(repo, slice.id);
-  assert.equal(out.tasks.length, 2);
-  assert.equal(out.tasks[0].reviewer, "A");
-  assert.equal(out.tasks[1].reviewer, "B");
-  assert.equal(out.tasks[0].subagent_type, "crew:inspector");
-  // Prompts mention the slice id
-  assert.match(out.tasks[0].prompt, new RegExp(slice.id));
-  // Both prompts reference the slice link command
-  assert.match(out.tasks[0].prompt, /slice link/);
-});
-
-test("buildReviewLadder respects custom ladder + focus from config", async () => {
-  const repo = await tmpRepo("al-v19-ladder-custom-");
-  await fs.writeFile(
-    path.join(repo, ".claude/loop.json"),
-    JSON.stringify({
-      preset: "dotnet-aspire-python",
-      loop: {
-        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
-        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
-        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
-        phaseGateArtifactDir: ".claude/artifacts/crew/validations"
-      },
-      stack: {},
-      reviewers: { ladder: ["A", "Security"], focus: { Security: "Threat-model the new surface." } }
-    })
-  );
-  const feat = await addFeature(repo, { title: "custom" });
-  const { slice } = await sliceFromFeature(repo, feat.id);
-  const out = await buildReviewLadder(repo, slice.id);
-  assert.equal(out.tasks.length, 2);
-  assert.equal(out.tasks[1].reviewer, "Security");
-  assert.match(out.tasks[1].prompt, /Threat-model/);
-});
+// buildReviewLadder tests removed — reviewer-ladder.mts deleted in FEAT-277

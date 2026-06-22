@@ -1,8 +1,34 @@
 ---
 name: intake
-description: Two-phase backlog intake. Phase 1 dispatches the PM agent to score every pending FEAT (5-dimension triage). Phase 2 dispatches runner:architect on each newly-triaged FEAT to classify tags / needs_contract / needs_ux. Replaces the manual /runner:triage + /runner:backlog-enrich split with one invocation.
+description: "Backlog intake. Free-text mode creates a new FEAT/SPEC from prose via PM agent (P0/P1 also drafts ACs inline). Pending-FEAT mode (legacy) runs two-phase processing: PM scoring (Phase 1) + architect classification (Phase 2). Flags: --deep, --spec, --from-issue, --dry-run."
 auto_execute_steps: false
 ---
+
+## Free-text mode (FEAT-277)
+
+`/runner:intake "<free text>"` — create a brand-new FEAT (or SPEC with
+`--spec`) from a prose description. The agent reads your text, calls the
+PM agent (now extended with AC drafting), and writes a FEAT-NNN.md to
+`pending/`. For P0/P1 features, the same agent call also writes
+Given-When-Then ACs in the FEAT body.
+
+Implementation: the skill dispatches the PM agent with your text +
+flags; the agent returns a JSON payload; the skill calls
+`loop.mts intake from-text` to write the file.
+
+Flags:
+
+- `--deep` — force AC writing regardless of priority
+- `--spec` — write a SPEC-NNN.md instead, then prompt for decomposition
+- `--from-issue <gh-url>` — pull issue body via the existing github-sync
+  loader and feed it through intake
+- `--dry-run` — preview extracted frontmatter without writing the file
+
+Cost guard: halts with `halt_reason: budget_exceeded` if the PM call
+exceeds `loop.intakeBudgetUsdPerCall` (default 1.50) or
+`loop.intakeBudgetTokensPerCall` (default 150000). No silent fallback.
+
+## Pending-FEAT processing mode (unchanged from FEAT-189)
 
 # Intake (FEAT-189 / SLICE-103)
 

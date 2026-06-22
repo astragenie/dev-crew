@@ -6,6 +6,69 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.53.0] — 2026-06-21 — runner simplification: 45 → 16 skills, free-text intake (FEAT-277)
+
+Collapses the runner plugin user-facing surface from 45 skills to 16
+(13 commands + 3 read-only helpers). Adds free-text intake with inline
+PM+AC writing for P0/P1 features. Merges slice ceremonies into single
+commands. Hard-break migration — invoking deleted skills exits non-zero
+with a clear "use X instead" stderr line.
+
+### Added
+
+- `runner:intake "<free text>"` — create FEAT from prose. PM agent
+  extracts title/scope/risks, scores 5 dimensions, and for P0/P1 writes
+  Given-When-Then ACs in the SAME agent call (no context loss). Flags:
+  `--deep` (force AC writing for any priority), `--spec` (write SPEC
+  instead), `--from-issue <gh-url>`, `--dry-run`.
+- `loop.intakeBudgetUsdPerCall` (default 1.50) +
+  `loop.intakeBudgetTokensPerCall` (default 150000) — intake call budget guard.
+- `runner:decisions [list|show|relevant|supersede]` — consolidates four
+  prior decisions-* skills under one router.
+
+### Changed
+
+- `runner:start` (was `runner:slice-start`) now accepts a FEAT id and
+  internally runs `slice-from-feature` + `classify-slice-shape` +
+  currentRun rotation. Slice author no longer needs to declare
+  `touches_files` manually — auto-populated for the wave planner.
+- `runner:close` (was `runner:slice-complete`) now runs the full
+  ceremony — verification-before-completion pre-flight + complete +
+  grade + grade-write + lessons — in one command.
+- `runner:pm` agent prompt extended with AC + SPEC drafting
+  capability. `runner:spec-writer` agent deleted.
+
+### Removed (hard break — exits non-zero with replacement pointer)
+
+backlog-add, backlog-enrich, backlog-list, backlog-promote, pm-review,
+pm-decompose, retriage, spec-add, spec-decompose, spec-list,
+slice-from-feature, derive-slice, next-slice, slice-plan, slice-link,
+slice-grade, slice-grade-write, slice-post-builder-fanout,
+slice-review-ladder, sync-claims, classify-slice-shape, release-plan,
+competitor-audit, architect, stop-check, snapshot-memory,
+decisions-list, decisions-show, decisions-relevant, decisions-supersede.
+30 SKILL.md files deleted total. The behaviors live on inside the new
+commands; only the standalone entry points are gone.
+
+### Removed lib modules
+
+backlog-writer (256 LOC), backlog-pm-write (109), reviewer-ladder (170),
+release-planner (207). Tied test files removed.
+
+reviewer-timing (61 LOC) was on the original kill list but retained — it
+has live callers in `grade-telemetry.mts` and `slice-linker/complete-slice.mts`
+that use `detectSerialReviewer`. Refactor + delete deferred to a follow-up.
+
+backlog-auditor.mts (242 LOC) trim was scoped for this release but deferred
+to a follow-up — current callers still rely on the full surface area.
+
+### Migration
+
+Audit your cron jobs and CLAUDE.md / loop rules for references to
+deleted skill names. The stderr message tells you what to use instead;
+fix the call site. There is no compat wrapper — running a deleted skill
+fails. This is intentional: silent delegation hides the migration debt.
+
 ## [0.52.0] — 2026-06-21 — cost-regression + alert-high demoted to advisory; nested loop.cost.*
 
 Demotes cost-regression and high-severity cost-alert halts to **advisory-only**
