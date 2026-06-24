@@ -7,22 +7,17 @@ on:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun ./src/scripts/validate-manifests.mts
-      - run: bun ./src/scripts/validate-content-length.mts
-      - run: bun ./src/scripts/validate-event-schemas.mts
-      - run: bun ./src/scripts/validate-decline-citations.mts --repo .
-      - run: bunx tsc --project tsconfig.json --noEmit
-      - run: bunx tsc --project tsconfig.test.json --noEmit
-      - run: bunx biome lint src/
-      - run: bunx biome format src/
-      - run: bun test src/tests/ --parallel --timeout 60000
+    uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@main
+    with:
+      install-cmd: bun install --frozen-lockfile
+      validators: |
+        bun ./src/scripts/validate-manifests.mts
+        bun ./src/scripts/validate-content-length.mts
+        bun ./src/scripts/validate-event-schemas.mts
+        bun ./src/scripts/validate-decline-citations.mts --repo .
+      bun-commands: |
+        bunx tsc --project tsconfig.json --noEmit
+        bunx tsc --project tsconfig.test.json --noEmit
+        bunx biome lint src/
+        bunx biome format src/
+        bun test src/tests/ --parallel --timeout 60000
