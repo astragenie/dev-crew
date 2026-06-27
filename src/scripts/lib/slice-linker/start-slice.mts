@@ -418,6 +418,11 @@ export async function startSlice(
     resolved.loop?.dispatchLimits ?? null
   );
 
+  // runner-plugin#291: recall prior failures + decisions before dispatch.
+  // Fire-and-forget on emit; never blocks slice-start path. Dormant when
+  // astramem CLI absent or memory.recall.enabled === false.
+  const recallBlock = await runRecallHook(featureId ?? sliceId, sliceId, touchesFiles, resolved);
+
   const result = buildStartSliceReturn({
     sliceId,
     title,
@@ -446,6 +451,11 @@ export async function startSlice(
     inlinePathHint,
     touchesFiles
   });
+
+  // Prepend recall block to dispatch instruction when present (non-empty).
+  if (recallBlock && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${recallBlock}\n\n${result.dispatchInstruction}`;
+  }
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
   void recordSliceStartEvent(repoPath, sliceId, featureId);
@@ -781,6 +791,64 @@ async function recordSliceStartEvent(
     console.warn(
       `[slice-events] start-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
     );
+  }
+}
+
+// runner-plugin#291: query astramem for prior context before dispatch.
+// Returns a formatted Markdown block (or empty string on any failure / opt-out).
+// Never throws. 5s cap enforced inside recallPrior().
+async function runRecallHook(
+  featId: string,
+  sliceId: string,
+  touchesFiles: string[],
+  config: Record<string, any>
+): Promise<string> {
+  try {
+    const memoryEnabled = config?.memory?.enabled;
+    if (memoryEnabled === "never") return "";
+    const recallEnabled = config?.memory?.recall?.enabled;
+    if (recallEnabled === false) return "";
+
+    const k: number = config?.memory?.recall?.k ?? 5;
+    const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
+
+    const { recallPrior } = await import("../memory-recall.mjs");
+    const { formatRecallBlock } = await import("../recall-injector.mjs");
+    const { emit, resolveCli } = await import("../memory-bridge.mjs");
+
+    const memories = await recallPrior({ featId, sliceId, touchesFiles, k, timeoutMs });
+    const block = formatRecallBlock(memories);
+
+    // Emit recall_used trainset event. Fire-and-forget — never awaited in a
+    // way that blocks slice-start. Dormant when CLI absent.
+    if (memories.length > 0) {
+      void (async () => {
+        try {
+          const cli = await resolveCli();
+          if (!cli) return;
+          const { getPromptVersion } = await import("../agent-version.mjs");
+          const promptVersion = await getPromptVersion("runner");
+          await emit({
+            ts: new Date().toISOString(),
+            slice_id: sliceId,
+            feat_id: featId,
+            source: "recall",
+            event: "recall_used",
+            score: 1,
+            feedback: `hits=${memories.length}`,
+            input: { feat_id: featId, slice_id: sliceId, k },
+            output: { hits: memories.length },
+            prompt_version: promptVersion
+          });
+        } catch {
+          // Fail-silent.
+        }
+      })();
+    }
+
+    return block;
+  } catch {
+    return "";
   }
 }
 

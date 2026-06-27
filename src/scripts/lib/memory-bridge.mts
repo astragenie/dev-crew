@@ -19,8 +19,8 @@ export interface GepaPayload {
   ts: string;
   slice_id: string;
   feat_id: string;
-  source: "close" | "phase-gate" | "start" | "triage";
-  event: "slice_close" | "phase_gate_fail" | "slice_started" | "triage_shift";
+  source: "close" | "phase-gate" | "start" | "triage" | "recall";
+  event: "slice_close" | "phase_gate_fail" | "slice_started" | "triage_shift" | "recall_used";
   /** Composite grade score in range 0..1. */
   score: number;
   /** Human-readable lessons, surprises, or failing check summary. */

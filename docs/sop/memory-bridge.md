@@ -13,6 +13,8 @@ auth, or bearer tokens — all of that lives in `memory-plugin`.
 |---|---|---|
 | `slice_close` | `grade-writer::writeGrade` | After every grade write (pass **and** fail). Bad grades are the highest-signal training data. |
 | `phase_gate_fail` | `phase-gate::runPhaseGate` | FAIL branch only. PASS is already captured by the next `slice_close`. |
+| `slice_started` | `slice-linker::startSlice` | On every slice start (runner-plugin#290). Score = 0.5 (neutral — no outcome yet). |
+| `recall_used` | `slice-linker::runRecallHook` | On every slice start where astramem returns ≥1 result (runner-plugin#291). |
 
 ## Payload shape (GEPA)
 
@@ -59,6 +61,32 @@ memory-bridge emission permanently:
 
 Default is `"auto"` (emit when CLI present). The flag is read fresh on every
 emit call from `loop.json` — no restart required.
+
+## Recall config (runner-plugin#291)
+
+The pre-dispatch recall hook is controlled by an optional `recall` block
+inside `memory`. Default: enabled with `k=5` and `timeoutMs=5000`.
+
+```json
+{
+  "memory": {
+    "enabled": "auto",
+    "recall": {
+      "enabled": true,
+      "k": 5,
+      "timeoutMs": 5000
+    }
+  }
+}
+```
+
+- `memory.recall.enabled: false` — skip recall only (emit still fires).
+- `memory.enabled: "never"` — disables both recall and emit.
+- `k` — number of memories to retrieve from astramem.
+- `timeoutMs` — wallclock cap for the astramem recall call (AbortSignal kill).
+
+The recall hook is dormant when `astramem` CLI is absent. When hits > 0, a
+`recall_used` trainset event is emitted fire-and-forget for A/B comparison.
 
 ## Failure contract
 
