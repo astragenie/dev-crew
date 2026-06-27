@@ -284,6 +284,12 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
   const sliceId = await resolveCurrentSliceId(repoPath);
   await emitPhaseGateModeDetected(repoPath, { sliceId, mode: "serial" });
 
+  // runner-plugin#288: emit GEPA memory payload on FAIL only (PASS is covered
+  // by runner:close grade write). Fire-and-forget — never throws, never blocks.
+  if (anyFailed) {
+    await emitPhaseGateFailMemory(repoPath, sliceId, phase, stageResults);
+  }
+
   return {
     mode: "phase-gate",
     status: overallStatus,
@@ -429,4 +435,69 @@ async function runRetrospectiveSincePreviousGate(repoPath: string, phase: unknow
       dimensionsBelowThreshold: result.report.dimensionsBelowThreshold
     }
   };
+}
+
+// runner-plugin#288: GEPA memory payload on phase-gate FAIL.
+// Fail-silent — emit() never throws and is already 2s-capped.
+async function emitPhaseGateFailMemory(
+  repoPath: string,
+  sliceId: string | null,
+  phase: unknown,
+  stageResults: Record<string, any>[]
+): Promise<void> {
+  try {
+    const loopJsonPath = path.join(repoPath, ".claude", "loop.json");
+    let memoryEnabled: string = "auto";
+    try {
+      const { readFile } = await import("node:fs/promises");
+      const raw = await readFile(loopJsonPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const configuredMode = parsed?.memory?.enabled;
+      if (configuredMode === "never") memoryEnabled = "never";
+    } catch {
+      // Defaults to auto.
+    }
+    if (memoryEnabled === "never") return;
+
+    const { emit, resolveCli } = await import("./memory-bridge.mjs");
+    const cli = await resolveCli();
+    if (!cli) return; // Dormant: astramem not installed.
+
+    const { getPromptVersion } = await import("./agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const failingStages = stageResults
+      .filter((s) => !s.skipped && !s.ok)
+      .map((s) => String(s.name));
+    const logTail = buildPhaseGateLogTail(stageResults);
+
+    await emit({
+      ts: new Date().toISOString(),
+      slice_id: sliceId ?? "unknown",
+      feat_id: "unknown",
+      source: "phase-gate",
+      event: "phase_gate_fail",
+      score: 0,
+      feedback: `Phase ${String(phase)} failed: ${failingStages.join(", ") || "unknown stage"}`,
+      input: { branch: "main", slice_id: sliceId ?? "unknown" },
+      output: { exit_code: 1, log_tail: logTail },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the phase-gate path.
+  }
+}
+
+function buildPhaseGateLogTail(stageResults: Record<string, any>[]): string {
+  const lines: string[] = [];
+  for (const stage of stageResults) {
+    if (stage.skipped || stage.ok) continue;
+    lines.push(`[${String(stage.name)}]`);
+    for (const run of (stage.runs as Record<string, any>[]) ?? []) {
+      if (run.ok) continue;
+      if (run.stderr) lines.push(String(run.stderr).slice(-500));
+      if (run.stdout) lines.push(String(run.stdout).slice(-200));
+    }
+  }
+  return lines.join("\n").slice(0, 2000);
 }
