@@ -6,6 +6,61 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.58.0] — 2026-06-27 — runner-plugin#291 + #292: recall + doctor
+
+### Added — online learning consumer (#291)
+
+`runner:start` now queries the memory layer for prior failures + decisions on
+the same FEAT / touches_files pattern BEFORE building the dispatch instruction,
+injects a Markdown context block into the builder prompt.
+
+- **`lib/memory-recall.mts`** — `recallPrior({ featId, sliceId, touchesFiles, k = 5 })`
+  spawns `astramem recall --query <q> --k <k> --project <featId>` with a 5s
+  wallclock cap via AbortController. Returns `[]` on CLI absent / timeout /
+  malformed JSON / non-zero exit. Never throws.
+- **`lib/recall-injector.mts`** — `formatRecallBlock(memories)` renders top-K
+  memories as Markdown with 200-char truncation + importance-desc ordering.
+  Empty array → empty string (no header, no whitespace).
+- **`slice-linker/start-slice.mts`** — pre-dispatch recall hook prepends the
+  block to the dispatch instruction. Emits a `recall_used` memory after
+  injection (score=1, feedback=`hits=N`) so the trainset captures
+  recall-vs-no-recall outcomes for later A/B comparison.
+- **Config**: `loop.json memory.recall.{enabled, k, timeoutMs}` (defaults:
+  `enabled: true`, `k: 5`, `timeoutMs: 5000`). Set `recall.enabled: false`
+  to disable online lookup without disabling capture.
+- **`GepaPayload`** — `source` + `event` unions extended with `"recall"` +
+  `"recall_used"`. Additive — back-compat preserved.
+
+Pattern mirrors Otta's `learn-from-pulse` skill — query before build, act on
+prior failures, no schema migration.
+
+### Added — operator visibility (#292)
+
+`runner:status` now surfaces a `## Memory layer` block summarizing the bridge's
+health.
+
+- **`lib/memory-doctor.mts`** — `probeMemory()` wraps `astramem doctor` with
+  a 3s AbortSignal cap. Returns a 4-state `MemoryStatus`:
+  - `ok` → CLI path + provider + version + URL + last ingest
+  - `cli_missing` → "dormant — bridge activates when memory-plugin v0.4 ships"
+  - `unreachable` → CLI path + fix hints (`astramem doctor` + provider switch)
+  - `disabled` → `loop.memory.enabled = "never"` reminder
+  Never throws.
+- **`lib/memory-doctor-renderer.mts`** — Markdown variants per state.
+- `runner:status` block injection — operator can see at a glance whether
+  capture is live, dormant, or disabled.
+
+### Dormancy
+
+Both #291 + #292 are dormant until **memory-plugin v0.4** ships the
+`astramem` CLI. Before then:
+- Recall returns `[]` → no block injected → dispatch instruction unchanged.
+- Doctor returns `cli_missing` → status block shows dormancy message + off-switch.
+
+### Closes
+- runner-plugin#291 — recall before slice start.
+- runner-plugin#292 — doctor integration in `runner:status`.
+
 ## [0.57.0] — 2026-06-27 — runner-plugin#290: expand capture (start + parallel phase-gate FAIL)
 
 ### Added — two new memory emit sites
