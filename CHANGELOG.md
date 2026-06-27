@@ -6,6 +6,44 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.55.0] — 2026-06-27 — FEAT-203 SLICE-A: backlog_state_changed envelope DORA fields
+
+### Added — DORA-aware envelope extension (cross-repo contract, additive)
+
+`loop.backlog_state_changed` envelope now carries four optional fields needed
+for DORA metric aggregation in astrarunner:
+
+- `priority` (`P0|P1|P2|P3|P4|null`) — MTTR open/close detection (P0 = incident)
+- `category` (`feat|fix|chore|null`) — CFR detection (fix-FEATs)
+- `relates_to` (`FEAT-N|null`) — CFR linkage (fix → original)
+- `createdAt` (ISO ts | null) — Lead time start anchor
+
+All four fields are **optional** — old runner ingest consumers that expect
+the v1 payload shape continue to work unchanged.
+
+**PM agent contract**: when a FEAT title matches `^(fix|hotfix):` (case-
+insensitive) OR the body declares a `relates_to:` line, the agent now
+populates `category: fix` + `relates_to: FEAT-N` in frontmatter. Emit path
+reads these onto the envelope.
+
+**Schema**: `schemas/loop-events/slice-event.schema.json` adds the four new
+properties; `required: [ts]` unchanged.
+
+**Files changed:**
+- `src/scripts/lib/backlog-state-emitter.mts` — payload builder + input type
+- `schemas/loop-events/slice-event.schema.json` — schema bump
+- `agents/pm.md` — fix-classification rule documented inline
+- `src/tests/backlog-state-emitter-dora-fields.test.mts` — 8 tests: field
+  propagation, back-compat (omit-and-still-valid), schema-contract round-trip,
+  category enum, priority pattern, null passthrough
+
+**Cross-repo SLICE-B..E** ship in astrarunner PR #426 (merged 2026-06-27):
+materialized view `dora_metrics_mv` + reusable feature-gate primitive
+(`[FeatureGate("X")]` + `<FeatureGate>` + `IFeatureGateService`) + REST
+endpoint `/api/v1/dora` + dashboard widget + detail page + tenant toggle UX.
+
+Closes FEAT-203 — all 8 ACs satisfied.
+
 ### Added — env-aware ingest routing (ASTRARUNNER_ENV)
 
 Introduce `ASTRARUNNER_ENV=local|staging|prod` as the canonical tier switch for
