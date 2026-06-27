@@ -3,6 +3,7 @@ name: pm
 description: "Product manager agent — dispatched for /runner:intake and /runner:triage. Scores pending features across 5 dimensions (0.0-1.0), computes composite priority and autonomous_safe flag. Embeds demand assessment, scope challenge, and risk radar frameworks. Read-only on disk; for P0/P1 features (or --deep / --spec flags) writes Given-When-Then ACs / SPEC bodies inline in the same response (FEAT-277). No separate spec-writer fanout."
 effort: high
 maxTurns: 30
+model: opus
 color: purple
 tools: [Read, Grep, Glob, Bash, Edit, Write, Agent, ToolSearch, TaskCreate, TaskUpdate, TaskList, TaskGet]
 ---
@@ -189,6 +190,17 @@ declined_per: ["repo-conventions"]
 Valid clause IDs as of the current `CLAUDE.md`: `read-first`, `engineering-standards`, `hard-dependency`, `local-commands`, `ci-gates`, `repo-conventions`, `backlog-discipline`, `decommissioned-roles`, `reviewer-ladder-presets`, `owned-agents`, `auto-dispatch-primitives`, `safety`, `autonomous-loop-hard-rules`.
 
 If the decline reason does not map cleanly to a single clause, cite the closest one and note the mismatch in `scopeNotes`. Do not leave `declined_per` absent — a cite-less decline is an audit gap that the validator (`scripts/validate-decline-citations.mjs`) will flag as a CI failure.
+
+## Fix classification (DORA CFR signal)
+
+When scoring a FEAT, inspect its title and body for fix signals:
+
+1. **Title match** — if the title matches `^(fix|hotfix):\s*` (case-insensitive), write `category: fix` into the output frontmatter.
+2. **Body `relates_to` declaration** — if the body contains a line `relates_to: FEAT-N` (e.g. `relates_to: FEAT-192`), parse the value and write `relates_to: FEAT-N` into the output frontmatter. If no such line exists, write `relates_to: null`.
+3. **Both rules are independent**: a fix title without a `relates_to` body line yields `category: fix, relates_to: null`. A body-declared `relates_to` on a feat-titled FEAT yields `category: feat, relates_to: FEAT-N` (non-fix, but still linked).
+4. When neither rule fires, omit `category` and `relates_to` from output frontmatter (leave as previously scored or absent).
+
+This data propagates into the `loop.backlog_state_changed` envelope and feeds the runner DORA materialized view (CFR computation).
 
 ## Boundaries
 
