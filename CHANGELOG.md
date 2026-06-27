@@ -6,6 +6,53 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.57.0] — 2026-06-27 — runner-plugin#290: expand capture (start + parallel phase-gate FAIL)
+
+### Added — two new memory emit sites
+
+Builds on the v0.56.0 memory-bridge shim. Adds:
+
+- **`runner:start`** → `slice_started` memory (score `0.5`). Fires after
+  the slice file is materialized + dispatch instruction built, BEFORE
+  agent dispatch. Carries dispatch label + agent name + confidence +
+  approval-gate flag.
+- **Parallel phase-gate FAIL** → `phase_gate_fail` memory. Parity with
+  the sequential injection from `runner:phase-gate` shipped in v0.56.0.
+  Covers `parallel-orchestrator.mts` FAIL branch with the same payload
+  shape (failing groups + exit codes).
+
+### Hardened — emit() child-process kill on cap
+
+`emit()` now uses `AbortController` to kill the spawned `astramem` child
+when the 2s wallclock cap fires. Previously the timeout resolved the
+race but the child process kept running, which made the timing test
+("emit resolves within 2.5s when child process hangs indefinitely") flaky
+at ~3070ms. Now consistently ~2010ms.
+
+### Type scaffold — deferred reviewer + verifier hooks
+
+`GepaPayload` gains three optional fields:
+- `reviewer_id?: string`
+- `verifier_id?: string`
+- `ac_results?: Array<{ ac_id, status, evidence_file_line? }>`
+
+No callers in this slice. Scaffolds the deferred crew-side hooks
+(reviewer + verifier emits live in `dev-team`, not `runner`; tracked
+separately in dev-team#121 Phase 1).
+
+### Deferred — `triage_shift` emit
+
+PM write-back path was simplified in v0.53 (`pm-write` CLI removed); the
+cleanest injection point requires a small refactor of the triage skill
+flow. Filed as known gap on runner-plugin#290 follow-up.
+
+### Known follow-ups
+- `runner-plugin#291` — recall before slice start (online learning consumer).
+- `runner-plugin#292` — doctor integration in `runner:status`.
+- `dev-team#121` — crew-side capture + GEPA optimization loop.
+
+Closes most of runner-plugin#290; triage emit deferred.
+
 ## [0.56.0] — 2026-06-27 — runner-plugin#288: memory-bridge shim (astramem CLI consumer)
 
 ### Added — opaque fire-and-forget memory capture
