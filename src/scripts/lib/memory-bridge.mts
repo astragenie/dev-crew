@@ -19,8 +19,8 @@ export interface GepaPayload {
   ts: string;
   slice_id: string;
   feat_id: string;
-  source: "close" | "phase-gate";
-  event: "slice_close" | "phase_gate_fail";
+  source: "close" | "phase-gate" | "start" | "triage";
+  event: "slice_close" | "phase_gate_fail" | "slice_started" | "triage_shift";
   /** Composite grade score in range 0..1. */
   score: number;
   /** Human-readable lessons, surprises, or failing check summary. */
@@ -31,6 +31,21 @@ export interface GepaPayload {
   output: Record<string, unknown>;
   /** Git sha7 of the dispatched agent file. */
   prompt_version: string;
+  // ---------------------------------------------------------------------------
+  // Scaffold for deferred reviewer + verifier hooks (runner-plugin#290).
+  // Fields are optional — no callers in this slice. Reserved for the follow-up
+  // dev-team integration described in docs/sop/cross-plugin-memory-hooks.md.
+  // ---------------------------------------------------------------------------
+  /** Agent id of the reviewer that produced a spec_review event (deferred). */
+  reviewer_id?: string;
+  /** Agent id of the verifier that produced a verify event (deferred). */
+  verifier_id?: string;
+  /** Per-AC pass/fail verdicts from a verifier run (deferred). */
+  ac_results?: Array<{
+    ac_id: string;
+    status: "PASS" | "FAIL";
+    evidence_file_line?: string;
+  }>;
 }
 
 // Module-scope cache: null = not yet resolved, false = confirmed absent.
@@ -86,7 +101,8 @@ export function _resetCliCache(): void {
 /**
  * Emit a GEPA payload to astramem. Fire-and-forget with a 2s wallclock cap.
  * Swallows ALL errors — network, ENOENT, timeout, non-zero exit, bad JSON.
- * Never throws. Never blocks > 2s wallclock.
+ * Never throws. Never blocks > 2s wallclock. Child process is killed via
+ * AbortSignal when the cap fires so the test runtime doesn't wait for stragglers.
  */
 export async function emit(payload: GepaPayload): Promise<void> {
   try {
@@ -94,27 +110,36 @@ export async function emit(payload: GepaPayload): Promise<void> {
     if (!cli) return;
 
     const json = JSON.stringify(payload);
-
-    await Promise.race([
-      spawnIngest(cli.path, json),
-      new Promise<void>((resolve) => setTimeout(resolve, 2000))
-    ]);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    try {
+      await spawnIngest(cli.path, json, controller.signal);
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
     // Fail-silent: any error (including serialisation) is swallowed.
   }
 }
 
-async function spawnIngest(cliPath: string, json: string): Promise<void> {
+async function spawnIngest(cliPath: string, json: string, signal: AbortSignal): Promise<void> {
   return new Promise<void>((resolve) => {
+    let settled = false;
+    const done = (): void => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
     try {
       const proc = spawn(cliPath, ["ingest", "--json", json], {
         stdio: "ignore",
-        detached: false
+        detached: false,
+        signal
       });
-      proc.on("close", () => resolve());
-      proc.on("error", () => resolve());
+      proc.on("close", done);
+      proc.on("error", done);
     } catch {
-      resolve();
+      done();
     }
   });
 }

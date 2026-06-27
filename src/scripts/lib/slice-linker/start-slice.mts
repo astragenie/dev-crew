@@ -449,6 +449,9 @@ export async function startSlice(
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
   void recordSliceStartEvent(repoPath, sliceId, featureId);
+  // runner-plugin#290: emit GEPA memory payload on slice start. Fire-and-forget
+  // — never throws, never blocks. Dormant when astramem CLI absent.
+  void emitSliceStartedMemory(repoPath, sliceId, featureId, result, resolved);
   return result;
 }
 
@@ -778,5 +781,55 @@ async function recordSliceStartEvent(
     console.warn(
       `[slice-events] start-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
     );
+  }
+}
+
+// runner-plugin#290: emit GEPA memory payload on slice start.
+// Fail-silent — emit() never throws and is already 2s-capped. Dormant when
+// astramem CLI absent or loop.memory.enabled === "never".
+async function emitSliceStartedMemory(
+  _repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  result: Record<string, any>,
+  config: Record<string, any>
+): Promise<void> {
+  try {
+    const memoryEnabled = config?.memory?.enabled;
+    if (memoryEnabled === "never") return;
+
+    const { emit, resolveCli } = await import("../memory-bridge.mjs");
+    const cli = await resolveCli();
+    if (!cli) return; // Dormant: astramem not installed.
+
+    const { getPromptVersion } = await import("../agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const dispatchLabel =
+      typeof result.dispatchInstruction === "string"
+        ? result.dispatchInstruction.slice(0, 120)
+        : "n/a";
+    const agentName = result.orchestratorMode ?? "slice-build";
+
+    await emit({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featureId ?? "FEAT-unknown",
+      source: "start",
+      event: "slice_started",
+      score: 0.5,
+      feedback: `Slice ${sliceId} started (dispatch: ${agentName})`,
+      input: {
+        dispatch_label: dispatchLabel,
+        agent_name: agentName
+      },
+      output: {
+        confidence: result.confidence ?? null,
+        requires_approval_gate: result.requiresApprovalGate ?? false
+      },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the slice-start path.
   }
 }
