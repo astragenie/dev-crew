@@ -6,6 +6,38 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+## [0.56.0] — 2026-06-27 — runner-plugin#288: memory-bridge shim (astramem CLI consumer)
+
+### Added — opaque fire-and-forget memory capture
+
+Runner ceremony now emits GEPA-shaped JSON payloads to the memory layer
+via the `astramem` CLI (shipped by `memory-plugin` issue #8 — dormant
+until that lands). Bridge is opaque: zero HTTP, zero env vars, zero
+provider knowledge. Provider selection (local-first → SaaS fallback)
+lives in `memory-plugin`.
+
+**Capture surface (v1):**
+- `runner:close` — `slice_close` memory after `grade.recorded` fanout.
+- `runner:phase-gate` FAIL only — `phase_gate_fail` memory with exit
+  code + failing checks + log tail.
+
+**Bridge contract:**
+- `resolveCli()` checks `${CLAUDE_PLUGIN_ROOT_MEMORY}/bin/astramem` then
+  PATH. Per-process cache. Returns `null` when not found.
+- `emit(payload)` spawns `astramem ingest --json '<json>'` with 2s
+  wallclock cap. Swallows all errors. Never throws. Never blocks.
+
+**Config**: `.claude/loop.json` `memory.enabled: "auto" | "never"`
+(default `"auto"`). Off-switch only.
+
+**Prompt-version stamping**: every memory carries `prompt_version` =
+git sha7 of the dispatched agent file. Future GEPA trainset partitions
+cleanly when prompts evolve.
+
+**Dormancy**: bridge is no-op when `astramem` CLI is absent.
+
+Closes runner-plugin#288. Supersedes #287.
+
 ## [0.55.0] — 2026-06-27 — FEAT-203 SLICE-A: backlog_state_changed envelope DORA fields
 
 ### Added — DORA-aware envelope extension (cross-repo contract, additive)
