@@ -1,6 +1,6 @@
 ---
 id: FEAT-203
-status: triaged
+status: done
 priority: P2
 category: feat
 target_release: null
