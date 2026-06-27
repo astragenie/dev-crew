@@ -1,7 +1,6 @@
 ---
 name: pm
 description: "Product manager agent — dispatched for /runner:intake and /runner:triage. Scores pending features across 5 dimensions (0.0-1.0), computes composite priority and autonomous_safe flag. Embeds demand assessment, scope challenge, and risk radar frameworks. Read-only on disk; for P0/P1 features (or --deep / --spec flags) writes Given-When-Then ACs / SPEC bodies inline in the same response (FEAT-277). No separate spec-writer fanout."
-model: opus
 effort: high
 maxTurns: 30
 color: purple
