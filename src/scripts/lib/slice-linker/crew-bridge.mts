@@ -15,6 +15,7 @@ import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
 import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
 import { renderIdentification } from "./agent-report-writer.mjs";
+import { dedupeCostReportsInDir } from "./cost-report-dedup.mjs";
 
 const execFile = promisify(_execFile);
 
@@ -247,6 +248,12 @@ export async function tryWriteCostReport(
   appendFeaturePhaseArgs(reportArgs, featureId, phase);
   const report = await runCrew(reportArgs);
 
+  // FEAT-204: sweep the cost-report directory for shared-session
+  // duplicates left by this (or a sibling wave FEAT's) invocation and
+  // collapse them to shared_with references. Best-effort -- a sweep
+  // failure never blocks the cost-report/advise flow.
+  const dedup = await sweepCostReportDedup(repoPath, config);
+
   const adviseArgs = [cli, "cost-advise", "--repo", repoPath, "--title", runTitle];
   appendFeaturePhaseArgs(adviseArgs, featureId, phase);
   let advise: Record<string, any> | null = null;
@@ -272,7 +279,27 @@ export async function tryWriteCostReport(
     await postCostAdviseEnvelope(repoPath, { sliceId, featureId, runTitle, advise });
   }
 
-  return { ...report, advise, costMode: mode };
+  return { ...report, advise, costMode: mode, dedup };
+}
+
+// Resolves the cost-report directory used by `crew cost-slice` writes and
+// runs the dedup sweep against it. A config override
+// (config.loop.costReportsDir) is honored for parity with any future
+// crew-side path customization; otherwise the standard
+// .claude/artifacts/crew/cost/ location is used.
+async function sweepCostReportDedup(
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<{ groups: number; deduped: string[] } | { error: string }> {
+  try {
+    const costDir =
+      typeof config?.loop?.costReportsDir === "string"
+        ? path.join(repoPath, config.loop.costReportsDir)
+        : path.join(repoPath, ".claude/artifacts/crew/cost");
+    return await dedupeCostReportsInDir(costDir);
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
+  }
 }
 
 /**

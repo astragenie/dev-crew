@@ -40,17 +40,19 @@ function parseFrontmatter(text: string) {
   return { fm, body };
 }
 
-// Load cost report USD values from the most recent cost reports.
-// Returns array of USD values for cost trajectory calculation.
-async function loadCostReportUSDValues(repoPath: string, limit = 20) {
+type CostReportFile = { dir: string; name: string };
+type CostReportEntry = { name: string; fm: Record<string, any> };
+
+// Locates the most recent `limit` cost-report files across the current
+// (cost/) and legacy (runs/) artifact directories, newest first.
+async function listCostReportFiles(repoPath: string, limit: number): Promise<CostReportFile[]> {
   const costDirParts = [".claude", "artifacts", "crew", "cost"];
   const legacyDirParts = [".claude", "artifacts", "crew", "runs"];
-
   const dirs = [path.join(repoPath, ...costDirParts), path.join(repoPath, ...legacyDirParts)];
 
-  const files: any[] = [];
+  const files: CostReportFile[] = [];
   for (const dir of dirs) {
-    let entries;
+    let entries: string[];
     try {
       entries = await fs.readdir(dir);
     } catch {
@@ -63,22 +65,71 @@ async function loadCostReportUSDValues(repoPath: string, limit = 20) {
 
   // Sort by basename desc (newest first via timestamp prefix)
   files.sort((a, b) => b.name.localeCompare(a.name));
-  const top = files.slice(0, limit);
+  return files.slice(0, limit);
+}
 
-  const usdValues: any[] = [];
-  for (const { dir, name } of top) {
+// Reads + parses each candidate file's frontmatter. Unreadable files are
+// skipped silently (best-effort, matches the original behavior).
+async function loadCostReportEntries(files: CostReportFile[]): Promise<CostReportEntry[]> {
+  const loaded: CostReportEntry[] = [];
+  for (const { dir, name } of files) {
     const f = path.join(dir, name);
     try {
       const text = await fs.readFile(f, "utf8");
       const { fm } = parseFrontmatter(text);
-      if (fm && typeof fm.usd === "number") {
-        usdValues.push(fm.usd);
-      }
+      if (fm) loaded.push({ name, fm });
     } catch {
       /* skip unreadable files silently */
     }
   }
+  return loaded;
+}
 
+// FEAT-204: resolves one cost-report entry's contribution to the cost
+// trajectory average, applying wave-mode shared-session dedup. A report
+// carrying `shared_with` is a reference to a sibling FEAT's report for the
+// same crew session (see slice-linker/cost-report-dedup.mts):
+//   - returns null when the primary it points at (`shared_session_of`) is
+//     also present in this window -- the primary already counts it (AC-2).
+//   - returns its own usd, with a distinguishing console.warn, when the
+//     primary has rotated out of the top-N window -- orphaned fallback
+//     (AC-3).
+//   - returns its own usd unconditionally for a plain (non-reference)
+//     report.
+function resolveCostReportUsd(entry: CostReportEntry, presentNames: Set<string>): number | null {
+  const { name, fm } = entry;
+  if (typeof fm.usd !== "number") return null;
+
+  const sharedWith = typeof fm.shared_with === "string" ? fm.shared_with : null;
+  if (!sharedWith) return fm.usd;
+
+  const sharedSessionOf = typeof fm.shared_session_of === "string" ? fm.shared_session_of : null;
+  if (sharedSessionOf && presentNames.has(sharedSessionOf)) {
+    return null; // AC-2: primary present in window -- skip the duplicate.
+  }
+
+  // AC-3: orphaned reference -- fall back to this report's own usd, logged
+  // distinctly from the true-duplicate skip above.
+  console.warn(
+    `[cost-dedup] orphaned shared_with reference ${name} -> ${sharedSessionOf ?? sharedWith}: ` +
+      "primary report not in window, counting own usd as fallback"
+  );
+  return fm.usd;
+}
+
+// Load cost report USD values from the most recent cost reports. Returns
+// an array of USD values for cost trajectory calculation, deduped per
+// FEAT-204 (see resolveCostReportUsd for the dedup contract).
+export async function loadCostReportUSDValues(repoPath: string, limit = 20): Promise<number[]> {
+  const files = await listCostReportFiles(repoPath, limit);
+  const loaded = await loadCostReportEntries(files);
+  const presentNames = new Set(loaded.map((entry) => entry.name));
+
+  const usdValues: number[] = [];
+  for (const entry of loaded) {
+    const usd = resolveCostReportUsd(entry, presentNames);
+    if (usd !== null) usdValues.push(usd);
+  }
   return usdValues;
 }
 
