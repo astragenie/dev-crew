@@ -51,12 +51,15 @@ PM-only triage. Single public command for the loop.
 
 2. **Capture cost baseline** from the most recent cost-report or cost-advisor sample. Record `(baselineUsd, baselineTokens)`.
 
-3. **Resolve PM skills via preset.** Before dispatching, run:
+3. **Resolve PM skills via preset.** Before dispatching, run (no `jq`
+   dependency — read the preset name with `bun -e` instead, portable to
+   the Windows/no-jq host):
 
    ```bash
+   PRESET_NAME=$(bun -e 'console.log(JSON.parse(require("node:fs").readFileSync(".claude/loop.json","utf8")).preset)')
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
      --variant pm \
-     --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/$(jq -r .preset .claude/loop.json).json" \
+     --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/${PRESET_NAME}.json" \
      --override .claude/loop.json
    ```
 
@@ -67,7 +70,9 @@ PM-only triage. Single public command for the loop.
 
 4. **Dispatch `runner:pm` agent.** Prepend the resolved-skills block (when
    present) to the prompt so PM invokes the right `Skill` tools before
-   scoring. Prompt MUST include the explicit id list:
+   scoring. Prompt MUST include the explicit id list AND a results-file
+   path (DEC-058 — PM's `Write` grant is scoped to this one file, under
+   `.claude/artifacts/loop/pm-reviews/`):
 
    ```
    <dispatchInstructionBlock from step 3 — omit if exit was 2>
@@ -75,49 +80,68 @@ PM-only triage. Single public command for the loop.
    Score the following FEATs (and ONLY these): FEAT-XXX, FEAT-YYY, ...
    For each, return the JSON contract from `agents/pm.md`.
    Do not return entries for any other id.
+
+   As each FEAT finishes scoring, APPEND its JSON result object to a
+   top-level JSON array written to
+   `.claude/artifacts/loop/pm-reviews/<ISO-timestamp>-triage-results.json`
+   (rewrite the full array on every append — do not wait for the whole
+   batch before the first write, so a truncated final message still
+   leaves recoverable results on disk per FEAT-214 AC-5). State the exact
+   file path in your final message.
    ```
 
 5. **Validate PM output.** For each returned result:
-   - `result.id` MUST be in the input id list. Reject otherwise.
-   - All 5 dimension scores MUST be numeric in `[0, 1]`. Reject otherwise.
-   - Required fields present (`scores`, `compositePriority`, `autonomousSafe`, `reasoning`).
+   - `result.featureId` MUST be in the input id list. Reject otherwise.
+   - All 5 dimension scores (`scores.customer_impact`, `.effort_estimate`, `.strategic_alignment`, `.technical_risk`, `.dependency_depth`) MUST be numeric in `[0, 1]`. Reject otherwise.
+   - Required fields present (`scores`, `compositePriority`, `autonomousSafe`, `reasoning`) — these are the literal field names PM emits per `agents/pm.md`'s output contract. PM never emits a bare `id` or `evidence` key; do not validate against those stale names.
    - **Decline contract**: if `compositePriority` is `P4`, the result MUST include `declined_per: [<clause-id>, ...]` citing at least one clause ID from `CLAUDE.md`. Missing `declined_per` = validation fail → halt (step 8). See `agents/pm.md` § "Decline contract" for the full clause registry.
 
 6. **Check budget delta.** After PM completes, sample cost again. If `(currentUsd - baselineUsd) > triageBudgetUsdPerBatch` OR `tokens > triageBudgetTokensPerBatch`, mark `BudgetExceeded` and halt (step 8).
 
-7. **Write PM scores** via the existing CLI:
-   ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog pm-write \
-     --id FEAT-NNN \
-     --scores '{"customer_impact":0.8,...}' \
-     --priority P1 \
-     --autonomous-safe true \
-     --evidence "..." \
-     --reasoning "..."
-   ```
-   When the FEAT is currently under `pending/`, `pm-write` also moves it
-   to `triaged/` and sets `status: triaged` in the same call — no
-   separate `mv` step required (since v0.28.2). Triaged entries that get
-   re-scored stay in place.
-   Write a PM review artifact per FEAT to `.claude/artifacts/loop/pm-reviews/`.
-   Return `{ triaged: N, path: "pm", results: [...] }`.
+7. **Commit PM scores** via the new CLI (DEC-058 hybrid write-path — the
+   results file from step 4 is the only thing PM itself writes; this
+   subcommand is the sole writer of backlog frontmatter):
 
-8. **Halt on PM error | BudgetExceeded | ValidationFail.** No fallback. Surface to operator with a structured message:
+   ```bash
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog pm-apply \
+     --file ".claude/artifacts/loop/pm-reviews/<ISO-timestamp>-triage-results.json" \
+     --ids FEAT-XXX,FEAT-YYY,...
+   ```
+
+   `pm-apply` re-validates every entry against the same contract as step 5
+   (defense in depth — an operator can also run it standalone against a
+   recovered results file after a crash), then per entry: moves
+   `pending/` → `triaged/` (or updates in place when already `triaged/`,
+   since v0.28.2 behavior), writes `pm_*` frontmatter, appends
+   Given-When-Then ACs / proposed slices to the FEAT body when the entry
+   carries them, and writes a PM review artifact to
+   `.claude/artifacts/loop/pm-reviews/`. A failing entry writes NOTHING
+   for that entry — inspect `failures` in the JSON output; re-running
+   against the same file is safe (already-applied entries are untouched).
+   Omit `--ids` to default to all currently pending FEATs.
+   Returns `{ triaged: N, path: "pm-apply", results: [...], failures: [...] }`.
+
+8. **Halt on PM error | BudgetExceeded | ValidationFail.** No fallback.
+   `pm-apply`'s own per-entry validation (step 7) is the last line of
+   defense — a malformed entry never reaches disk. Surface any CLI-level
+   failure (PM dispatch error, budget exceeded, or a non-empty
+   `pm-apply` `failures` array) to the operator with a structured message:
 
    ```json
    {
-     "triaged": <count-written-before-halt>,
+     "triaged": <count-applied-before-halt>,
      "path": "pm",
      "halted": true,
      "halt_reason": "<pm_error|budget_exceeded|validation_fail>",
-     "halt_detail": "<stderr | dimension that failed validation | usd delta>",
-     "results": [...written so far...]
+     "halt_detail": "<stderr | pm-apply failures[] | usd delta>",
+     "results": [...applied so far...]
    }
    ```
 
    Operator decides next step: re-run with adjusted budget, switch PM
-   model, hand-score the failing FEAT via `/runner:backlog pm-write`, or
-   skip the failing id and re-trigger with the remainder.
+   model, hand-fix the failing entries in the results file and re-run
+   `backlog pm-apply --file <path>`, or drop the failing id from `--ids`
+   and re-trigger with the remainder.
 
 9. **Tag `triage_notes`** on every entry — `via=pm` (the only path now).
 
@@ -127,7 +151,7 @@ PM-only triage. Single public command for the loop.
 {
   "triaged": <count>,
   "path": "pm",
-  "results": [{ "id": "FEAT-NNN", "priority": "P1", "autonomous_safe": true }]
+  "results": [{ "featureId": "FEAT-NNN", "filePath": "...", "movedToTriaged": true }]
 }
 ```
 

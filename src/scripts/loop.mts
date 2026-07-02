@@ -103,7 +103,9 @@ const FLAG_SPEC = {
   // intake from-text (FEAT-277)
   "--text": { key: "text" },
   "--deep": { key: "deep", boolean: true },
-  "--spec": { key: "spec", boolean: true }
+  "--spec": { key: "spec", boolean: true },
+  // backlog pm-apply (FEAT-214 / DEC-058): path to a PM results JSON file
+  "--file": { key: "file" }
 };
 
 function parseArgs(argv: string[]) {
@@ -175,7 +177,8 @@ function parseArgs(argv: string[]) {
     query: null,
     text: null,
     deep: false,
-    spec: false
+    spec: false,
+    file: null
   };
   const positionals: any[] = [];
 
@@ -949,6 +952,71 @@ async function runBacklogAdd(
 }
 
 // runBacklogPmWrite removed in v0.53 — backlog-pm-write.mts deleted (FEAT-277).
+// Replaced by runBacklogPmApply below (FEAT-214 / DEC-058 hybrid write-path):
+// PM writes a results file via its own scoped Write grant; this subcommand
+// validates + commits it via pm-apply.mts, reusing backlog-writer.mts for
+// the actual frontmatter/state mutation.
+
+export async function runBacklogPmApply(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  if (!flags.file) {
+    throw new Error("backlog pm-apply requires --file <path-to-pm-results.json>");
+  }
+  const resolvedPath = path.isAbsolute(flags.file)
+    ? flags.file
+    : path.resolve(repoPath, flags.file);
+
+  const fs = await import("node:fs/promises");
+  let raw: string;
+  try {
+    raw = await fs.readFile(resolvedPath, "utf8");
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog pm-apply: cannot read --file ${resolvedPath}: ${(err as Error).message}`
+    );
+  }
+
+  let entries: unknown;
+  try {
+    entries = JSON.parse(raw);
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog pm-apply: --file ${resolvedPath} is not valid JSON: ${(err as Error).message}`
+    );
+  }
+
+  let allowedIds: string[] | null;
+  if (flags.ids) {
+    allowedIds = String(flags.ids)
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+  } else {
+    const { listPendingFeatureIds } = await import("./lib/backlog-list-ids.mjs");
+    allowedIds = await listPendingFeatureIds(repoPath, {});
+  }
+
+  const { applyPmResults } = await import("./lib/pm-apply.mjs");
+  const result = await applyPmResults(repoPath, entries, { allowedIds, config });
+
+  if (result.failures.length > 0) {
+    // Entry point sets exitCode — pm-apply.mts itself never touches it
+    // (docs/code-conventions.md "Error handling").
+    process.exitCode = 1;
+  }
+
+  return {
+    triaged: result.applied.length,
+    applied: result.applied.length,
+    failed: result.failures.length,
+    path: "pm-apply",
+    results: result.applied,
+    failures: result.failures
+  };
+}
 
 function isUnclassifiedEntry(entry: Record<string, any>): boolean {
   const fm = entry.frontmatter;
@@ -1016,10 +1084,13 @@ async function runBacklogSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote"
+      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply"
     );
   if (sub === "add") {
     return runBacklogAdd(repoPath, flags, rest, config);
+  }
+  if (sub === "pm-apply") {
+    return runBacklogPmApply(repoPath, flags, config);
   }
   if (sub === "list") {
     const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");

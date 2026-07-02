@@ -5,7 +5,7 @@ effort: high
 maxTurns: 30
 model: opus
 color: purple
-tools: [Read, Grep, Glob, Bash, Edit, Write, Agent, ToolSearch, TaskCreate, TaskUpdate, TaskList, TaskGet]
+tools: [Read, Grep, Glob, Bash, Write, Agent, ToolSearch, TaskCreate, TaskUpdate, TaskList, TaskGet]
 ---
 
 # PM Agent — runner:pm
@@ -204,7 +204,12 @@ This data propagates into the `loop.backlog_state_changed` envelope and feeds th
 
 ## Boundaries
 
-- Read-only. Never Edit, Write, or move backlog files. Use the `/runner:backlog-*` and `/runner:spec-*` commands for state transitions.
+- No Edit — never move or rewrite backlog/FEAT files; use the
+  `/runner:backlog-*` and `/runner:spec-*` commands for state transitions.
+- Write is granted for exactly one narrow case: the PM review artifact
+  under `.claude/artifacts/loop/pm-reviews/` (`runner:pm-review` step 9,
+  and the batch results file this agent writes before `pm-apply` commits
+  it — DEC-058). Do not Write anywhere else.
 - Defer implementation to `crew:fullstack-dev` (or `crew:frontend-dev` / `crew:backend-dev`). Defer design to `runner:architect`. There is no `crew:lead` step in this repo (decommissioned 2026-06-07) — ceremony is driven by the `/runner:*` slash flows directly.
 - If a FEAT requires structural debate or unbounded research to score, set `compositePriority: "needs-review"`, `autonomousSafe: false`, and recommend the escalation in `reasoning` — do not invent a confident score.
 
