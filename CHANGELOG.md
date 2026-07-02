@@ -4,6 +4,31 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [0.60.0] — 2026-07-02 — crew 0.47.0 floor (FEAT-176) + crew CLI runtime fix
+
+**Compat**: `MIN_CREW_VERSION` raised `0.31.1` → `0.47.0` (FEAT-176 /
+SLICE-134, DEC-061). `/runner:install` now refuses crew installs below
+0.47.0 — the release carrying the scaffold-first HARD OUTPUT CONTRACT
+for `crew:inspector` / `crew:verifier`, which the specialist-pause SOP's
+self-heal path depends on. Builder-tier + aiplugin-dev contract coverage
+ships in crew 0.48.0 (upstream-request tracked as `partial`).
+
+### Fixed
+
+- **Crew CLI runtime picker** — `crewCliRuntime()` spawns the crew CLI
+  under Bun when the entry point is `crew.ts` (crew's own guard rejects
+  node), `node` for legacy `crew.mjs`. Fixes the persistent 3-test
+  phase-gate failure cluster; full suite green (1951 tests, 0 fail).
+- **CLAUDE.md drift** — lint/format gates corrected to Biome (ESLint /
+  Prettier references were stale); four v0.53-removed command references
+  rewritten to their successors; nonexistent `eslint.config.mjs`
+  exception dropped.
+- **SOP scope accuracy** — `specialist-pause-handling.md` §2 manual
+  fallback retired for inspector/verifier only; kept active for
+  builder-tier and aiplugin-dev until crew 0.48.0 (review-gate finding).
+- **Historical cost dedup** — one-time `dedupeCostReportsInDir` sweep:
+  in-window trajectory $34.19 → $25.36 across 15 unique reports.
+
 ## [0.59.0] — 2026-07-02 — retrospective quick-win wave (FEAT-204..214, #297)
 
 Eleven FEATs from the 2026-07-02 architecture retrospective
