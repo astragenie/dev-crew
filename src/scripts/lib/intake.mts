@@ -1,8 +1,22 @@
 /**
- * intake: free-text → PM → FEAT/SPEC file.
+ * intake: free-text → pending FEAT file.
  *
- * Extends the existing pending-FEAT intake (PM triage + architect enrich)
- * with a free-text creation path. Same skill, new entry point.
+ * FEAT-214 item 3: this CLI cannot dispatch an LLM (DEC-011 — CLI
+ * subcommands never auto-dispatch role agents; the slash flow is the
+ * dispatch boundary). So `intakeFromText` is NOT the "PM scores it inline"
+ * step commands/intake.md originally sketched — it is the mechanical half:
+ * normalize free text into a `pending/` FEAT file with `priority: null`
+ * (unscored), reusing the same `addFeature` write path every other backlog
+ * entry point uses. Scoring happens afterward via the normal PM/triage
+ * phase (`/runner:triage` → `pm-apply`, see pm-apply.mts), which already
+ * handles pending → triaged + `pm_*` frontmatter.
+ *
+ * `--spec` is explicitly NOT implemented here: a 10-section SPEC body
+ * requires PM/LLM drafting judgment this CLI cannot perform on its own —
+ * intakeFromText throws a clear `not_implemented`-shaped error rather than
+ * silently writing a wrong artifact type (FEAT-214 AC-3 option b).
+ * `--deep` is accepted but currently a no-op at this layer for the same
+ * reason (AC drafting needs PM); it does not change what gets written.
  */
 
 export interface IntakeFromTextOpts {
@@ -18,7 +32,8 @@ export interface IntakeFromTextOpts {
 
 export interface IntakeFromTextResult {
   featId: string;
-  priority: "P0" | "P1" | "P2" | "P3" | "P4";
+  /** null = not yet scored; scoring happens via the normal PM/triage phase. */
+  priority: "P0" | "P1" | "P2" | "P3" | "P4" | null;
   autonomousSafe: boolean;
   acCount: number;
   costUsd: number;
@@ -26,13 +41,80 @@ export interface IntakeFromTextResult {
   dryRunPreview?: string;
 }
 
-export async function intakeFromText(_opts: IntakeFromTextOpts): Promise<IntakeFromTextResult> {
+const TITLE_MAX_LEN = 80;
+
+/** First non-empty line, truncated — used as the FEAT title when none is supplied. */
+function deriveTitleFromText(text: string): string {
+  const firstLine = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
+  const source = firstLine ?? text.trim();
+  if (source.length <= TITLE_MAX_LEN) return source;
+  return `${source.slice(0, TITLE_MAX_LEN - 1).trimEnd()}…`;
+}
+
+function buildIntakeBody(text: string): string {
+  return [
+    "## Description",
+    "",
+    text.trim(),
+    "",
+    "## Intake notes",
+    "",
+    'Created via free-text intake (`/runner:intake "<text>"`). Priority is',
+    "unset — this FEAT has not been scored yet. Run `/runner:triage`",
+    "(PM scoring + `backlog pm-apply`) to score it before slicing."
+  ].join("\n");
+}
+
+export async function intakeFromText(opts: IntakeFromTextOpts): Promise<IntakeFromTextResult> {
+  const { repoPath, text, flags } = opts;
+  const trimmed = (text ?? "").trim();
+  if (!trimmed) {
+    throw new Error("intakeFromText requires non-empty text");
+  }
+  if (flags.spec) {
+    throw new Error(
+      "intakeFromText: --spec mode is not_implemented — a 10-section SPEC body needs PM/LLM " +
+        "drafting judgment this CLI cannot dispatch (DEC-011). Use the documented agent-driven " +
+        "flow instead: dispatch runner:pm with --spec from the intake skill, then write the " +
+        "SPEC file directly."
+    );
+  }
+
+  const title = deriveTitleFromText(trimmed);
+  const body = buildIntakeBody(trimmed);
+
+  if (flags.dryRun) {
+    const { nextFeatureId } = await import("./backlog-parser.mjs");
+    const previewId = await nextFeatureId(repoPath);
+    return {
+      featId: previewId,
+      priority: null,
+      autonomousSafe: false,
+      acCount: 0,
+      costUsd: 0,
+      dryRunPreview: `# ${previewId}: ${title}\n\n${body}`
+    };
+  }
+
+  const { addFeature } = await import("./backlog-writer.mjs");
+  const result = await addFeature(repoPath, {
+    title,
+    body,
+    priority: null,
+    category: "feature",
+    derived_from: null
+  });
+
   return {
-    featId: "FEAT-000",
-    priority: "P3",
+    featId: result.id,
+    priority: null,
     autonomousSafe: false,
     acCount: 0,
-    costUsd: 0
+    costUsd: 0,
+    filePath: result.filePath
   };
 }
 
@@ -115,7 +197,7 @@ export function buildFeatFrontmatter(opts: BuildFeatOpts): string {
     `# ${opts.id}: ${opts.title}`,
     "",
     opts.acs.length > 0
-      ? "## Acceptance criteria\n\n" + opts.acs.map((ac, i) => `- AC-${i + 1}: ${ac}`).join("\n")
+      ? `## Acceptance criteria\n\n${opts.acs.map((ac, i) => `- AC-${i + 1}: ${ac}`).join("\n")}`
       : ""
   ].join("\n");
 }

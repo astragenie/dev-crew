@@ -46,16 +46,16 @@
   "skills": ["typescript-pro", "frontend-advisory"],
   "roles": {
     "pm": {
-      "skills": ["superpowers:verification-before-completion", "loop:loop-discipline"]
+      "skills": ["superpowers:verification-before-completion", "runner:loop-discipline"]
     },
     "researcher": {
-      "skills": ["superpowers:verification-before-completion", "loop:loop-discipline"]
+      "skills": ["superpowers:verification-before-completion", "runner:loop-discipline"]
     },
     "architect": {
-      "skills": ["superpowers:brainstorming", "loop:loop-discipline"]
+      "skills": ["superpowers:brainstorming", "runner:loop-discipline"]
     },
     "document-writer": {
-      "skills": ["loop:loop-discipline"]
+      "skills": ["runner:loop-discipline"]
     }
   }
 }

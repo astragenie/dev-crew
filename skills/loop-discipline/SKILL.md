@@ -70,12 +70,12 @@ Skipping this step risks repeating known mistakes from prior sessions.
 
 <HARD-GATE>
 Before marking any acceptance criterion PASS or writing a completion
-report, load and apply
-[runner:verification-before-completion](../verification-before-completion/SKILL.md).
-No completion claim ("tests pass", "lint clean", "bug fixed", etc.) may
-be made without fresh command output from the current turn. See the
-claim→evidence table in that skill for the required evidence form per
-claim type.
+report, load and apply the `superpowers:verification-before-completion`
+skill (invoke via the `Skill` tool — this repo has no local
+`verification-before-completion` skill of its own). No completion claim
+("tests pass", "lint clean", "bug fixed", etc.) may be made without
+fresh command output from the current turn. See the claim→evidence
+table in that skill for the required evidence form per claim type.
 </HARD-GATE>
 
 ## Artifact discipline
