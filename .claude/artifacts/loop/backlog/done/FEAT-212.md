@@ -1,6 +1,6 @@
 ---
 id: FEAT-212
-status: triaged
+status: done
 priority: P2
 category: telemetry
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.3-0.5: new but additive JSONL event schema, cross-module (SOP detection step + brief/snapshot rendering), no breaking contract change, clean rollback. P2: moderate value (makes an unmeasurable reliability claim measurable) but not urgent since the underlying pause epidemic is already fixed per retrospective Section 0.3 -- this is observability hygiene, not an active-bug fix like FEAT-206/208. dependency_depth 0.4 reflects the real (if undeclared) sequencing on FEAT-206 and FEAT-211 landing first."
+completed_at: 2026-07-02
 ---
 # FEAT-212: Structured pause/retry telemetry
 
