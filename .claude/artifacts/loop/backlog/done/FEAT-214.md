@@ -1,6 +1,6 @@
 ---
 id: FEAT-214
-status: triaged
+status: done
 priority: P1
 category: bug
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-07-02
 autonomous_safe: false
 triage_notes: "via=pm (2026-07-02). P1: verified, live-discovered break in the loop's core intake/triage write path (loop.mts:951 confirms pm-write was deleted while skills/triage/SKILL.md:90-97 still calls it, and intake.mts:29-37 is a hardcoded stub) -- high customer_impact/strategic_alignment since this is the entry point to the entire autonomous backlog loop, tempered by an existing (if manual/unscalable) operator workaround; technical_risk 0.65 lands in the 0.6-0.8 band per the rubric (cross-module reach across CLI/skill-doc/agent-contract/presets, plus a latent write-ownership architecture question, no new external dependency) so pre-mortem is mandatory and provided; effort_estimate 0.7 calibrated against SLICE-50's $117 single-slice analog scaled to this FEAT's larger 6-part blast radius, pushing effort_points >= 8 and triggering the FEAT-168 decomposition gate (proposed_slices provided, sum 11); autonomousSafe false because the write-ownership decision is a structural/contract question that Boundaries reserves for runner:architect, not something PM or an autonomous builder should decide unilaterally."
+completed_at: 2026-07-02
 ---
 # FEAT-214: Repair intake/triage write path + contract sync
 
