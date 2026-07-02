@@ -1,31 +1,49 @@
 ---
 name: intake
-description: "Backlog intake. Free-text mode creates a new FEAT/SPEC from prose via PM agent (P0/P1 also drafts ACs inline). Pending-FEAT mode (legacy) runs two-phase processing: PM scoring (Phase 1) + architect classification (Phase 2). Flags: --deep, --spec, --from-issue, --dry-run."
+description: "Backlog intake. Free-text mode mechanically creates a new unscored FEAT from prose, then runs the normal PM triage phase to score it. Pending-FEAT mode (legacy) runs two-phase processing: PM scoring (Phase 1) + architect classification (Phase 2). Flags: --deep, --spec, --from-issue, --dry-run."
 auto_execute_steps: false
 ---
 
-## Free-text mode (FEAT-277)
+## Free-text mode (FEAT-277, corrected FEAT-214)
 
-`/runner:intake "<free text>"` — create a brand-new FEAT (or SPEC with
-`--spec`) from a prose description. The agent reads your text, calls the
-PM agent (now extended with AC drafting), and writes a FEAT-NNN.md to
-`pending/`. For P0/P1 features, the same agent call also writes
-Given-When-Then ACs in the FEAT body.
+`/runner:intake "<free text>"` — create a brand-new FEAT from a prose
+description, then score it. This is a two-step reality, not a single
+LLM call (FEAT-214 item 3 — a CLI subcommand cannot dispatch an LLM per
+DEC-011, so the write step and the scoring step are two separate calls):
 
-Implementation: the skill dispatches the PM agent with your text +
-flags; the agent returns a JSON payload; the skill calls
-`loop.mts intake from-text` to write the file.
+1. **Create (mechanical, no LLM).** The skill calls
+   `loop.mts intake from-text --text "<free text>"`, which writes a
+   `FEAT-NNN.md` to `pending/` with `priority: null` (unscored) via the
+   same `addFeature` write path every other backlog entry point uses.
+   The original free text becomes the FEAT body's `## Description`
+   section. Returns `{ featId, priority: null, filePath }`.
+2. **Score (LLM, via the normal triage phase).** The skill immediately
+   dispatches `runner:pm` against that one new id (same contract as
+   `commands/triage.md` / skill `runner:triage`) and runs
+   `loop.mts backlog pm-apply --file <results> --ids <featId>` to
+   commit the score and move `pending/` → `triaged/`. For P0/P1
+   priority (or `--deep`), the same PM dispatch also drafts
+   Given-When-Then ACs into the FEAT body (FEAT-277 inline drafting).
+
+`--spec` is NOT implemented at the CLI layer: `intake from-text --spec`
+throws a `not_implemented` error rather than writing a wrong artifact
+(FEAT-214 AC-3). A 10-section SPEC body needs PM/LLM drafting judgment
+the CLI cannot perform on its own — dispatch `runner:pm --spec` directly
+from the skill instead, and write the SPEC file from its response.
 
 Flags:
 
-- `--deep` — force AC writing regardless of priority
-- `--spec` — write a SPEC-NNN.md instead, then prompt for decomposition
+- `--deep` — force AC writing regardless of priority (applies at step 2,
+  the PM dispatch; step 1's create call accepts the flag but does not
+  act on it)
+- `--spec` — not implemented; step 1 throws `not_implemented` (see above)
 - `--from-issue <gh-url>` — pull issue body via the existing github-sync
-  loader and feed it through intake
-- `--dry-run` — preview extracted frontmatter without writing the file
+  loader and feed the resulting text through step 1
+- `--dry-run` — preview the FEAT id + body step 1 would write, without
+  writing anything to disk
 
 Cost guard: halts with `halt_reason: budget_exceeded` if the PM call
-exceeds `loop.intakeBudgetUsdPerCall` (default 1.50) or
+(step 2) exceeds `loop.intakeBudgetUsdPerCall` (default 1.50) or
 `loop.intakeBudgetTokensPerCall` (default 150000). No silent fallback.
 
 ## Pending-FEAT processing mode (unchanged from FEAT-189)
