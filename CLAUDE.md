@@ -146,21 +146,27 @@ items still require a human in the loop on review.
 **Recommended default for fresh intake**: `/runner:intake` runs both
 phases in one invocation — PM scoring (Phase 1) then architect
 classification (Phase 2), with a halt-on-PM-error gate and a P4-decline
-filter on Phase 2. Replaces the two-step `/runner:triage` + `/runner:backlog-enrich`
-sequence. Both legacy commands still work for partial-intake scenarios
-(score-only or classify-only).
+filter on Phase 2. This replaced the two-step `/runner:triage` +
+`/runner:backlog-enrich` sequence; `backlog-enrich` was removed as a
+standalone command in v0.53 (hard-break stub redirects to
+`/runner:intake` — see `src/tests/deleted-skills-stub.test.mts`).
+Phase 2's architect-classification contract is inlined in
+`commands/intake.md` itself, not delegated to a separate command file.
+Only-score (no classification) remains available standalone via
+`/runner:triage`; only-classify-already-triaged has no standalone
+entry point anymore.
 
-**Higher-quality opt-in for vague-AC batches**: `/runner:retriage` runs
-the same PM scoring contract as `/runner:triage` but PREPENDS an
-AC-clarity-gate pre-flight to the PM dispatch. When PM finds vague AC
-on a FEAT, it dispatches `runner:spec-writer` to rewrite the AC in
-Given-When-Then form, waits, re-reads, and scores against the cleaned
-AC. Cost up to 2× per FEAT vs. `/runner:triage`; scoring accuracy
-(especially `effort_estimate` + `technical_risk`) up. Spec-writer
-dispatch failure forces `composite_priority: "needs-review"` so the
-walker won't auto-promote a half-scored FEAT.
+**Higher-quality opt-in for vague-AC batches**: pass `--deep` to
+`/runner:triage` or `/runner:intake` (or rely on the automatic trigger
+for `P0`/`P1` priority). PM drafts Given-When-Then ACs inline in the
+SAME response that produces the scores (FEAT-277) — there is no
+separate `runner:spec-writer` fanout call and no standalone
+`/runner:retriage` command; both were removed in v0.53
+(`src/tests/deleted-skills-stub.test.mts` maps the old `retriage`
+skill name to `runner:triage --ids`). See `agents/pm.md` § "Inline AC
++ SPEC drafting (FEAT-277)" for the full contract.
 
-`/runner:backlog-enrich` writes three routing fields into FEAT
+`/runner:intake` Phase 2 writes three routing fields into FEAT
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives
 in `scripts/presets/*.json` and is read at builder-dispatch time via
@@ -177,7 +183,7 @@ PM declines that set `composite_priority: P4` MUST cite a clause id
 from this file in `declined_per: [<clause-id>]` frontmatter — the
 clause-id annotations (`<!-- clause: <id> -->`) on every H2 above are
 the citation surface. See `agents/pm.md` § "Decline contract" for the
-full contract, and `scripts/validate-decline-citations.mjs` for the CI
+full contract, and `src/scripts/validate-decline-citations.mts` for the CI
 gate that enforces it.
 
 ## Orchestrator mode
@@ -227,35 +233,30 @@ gates CI.
 
 <!-- clause: reviewer-ladder-presets -->
 
-Configurable in `.claude/loop.json` under `reviewers.ladder`. Default is
-`["A", "B"]` — two `crew:reviewer` dispatches with the existing
-Correctness / Production-readiness focus split. The slash flow that
-materializes the ladder lives in `commands/slice-review-ladder.md`.
+`.claude/loop.json` declares `reviewers.ladder: ["A", "B"]` (plus
+`strictParallel` and `serialTimingThresholdMs`). The ladder shape is
+fixed, not preset-selectable, at the implementation level:
+`src/scripts/lib/post-builder-fanout.mts` emits the single
+parallel-dispatch payload — Reviewer A (correctness + AC coverage),
+Reviewer B (production-readiness, observability, security), plus the
+validator — and `src/scripts/lib/reviewer-timing.mts` (consumed by
+`src/scripts/lib/grade-telemetry.mts` /
+`src/scripts/lib/slice-linker/complete-slice.mts`) detects
+serial-vs-parallel execution against `serialTimingThresholdMs`
+(default 90s) for telemetry.
 
-- **Default (`["A", "B"]`)** — unchanged. Reviewer A covers
-  correctness + AC coverage; Reviewer B covers production-readiness,
-  observability, security.
-- **`multidim` preset (FEAT-079 / SLICE-82)** — opt-in. Set
-  `reviewers.ladder: { "preset": "multidim" }` to expand to three
-  parallel narrow-dimension dispatches:
-  - **correctness** — logic, edge cases, regressions, AC coverage.
-  - **test-coverage** — test adequacy, gaps, mutation surface.
-  - **conventions** — repo conventions, lint posture, doc impact.
-    Each prompt declares one dimension only, carries an explicit
-    scope-fence ("NOT in scope" wording) so reviewers don't bleed into
-    adjacent concerns, and ships a hard tool budget (≤15 tool calls,
-    ≤8 min) plus an inline-output fallback per
-    `docs/sop/specialist-pause-handling.md`.
+- **Default (`["A", "B"]`)** — the only ladder shape implemented today.
+  Reviewer A covers correctness + AC coverage; Reviewer B covers
+  production-readiness, observability, security.
 
-**When to pick `multidim`.** Large or risky diffs spanning ≥5 files,
-or any slice touching public schemas / cross-module contracts.
-Wall-clock is ~2× faster than running a sequential three-pass review;
-token cost is ~3× a default two-reviewer ladder, so skip it for
-trivial fixups, single-line patches, doc-only slices, and refactors
-with `requires_validation: false`.
-
-Full preset documentation (focus copy, budget instruction, override
-recipes) lives in `commands/slice-review-ladder.md`.
+A `multidim` three-dimension preset (FEAT-079 / SLICE-82: correctness /
+test-coverage / conventions) was built for that one slice but left no
+surviving code under `src/scripts/` — `grep -rn multidim src/scripts`
+returns zero matches. It is not a general opt-in preset; there is no
+`commands/slice-review-ladder.md` (removed in v0.53 — see
+`src/tests/deleted-skills-stub.test.mts`) or config toggle that
+activates it. Re-enabling a multidim ladder requires re-implementing
+it, not flipping a switch.
 
 ## Owned agents
 
@@ -299,9 +300,11 @@ the contract. See DEC-011 (supersedes DEC-004).
 
 Slash flows that orchestrate role agents:
 
-- `/runner:backlog-enrich` — architect classifies triaged FEATs (tags,
-  needs_contract, needs_ux). **Wired to resolver since v0.28.0**: skill
-  block from `preset.roles.architect` is prepended to the dispatch prompt.
+- `/runner:intake` (Phase 2) — architect classifies triaged FEATs
+  (tags, needs_contract, needs_ux). **Wired to resolver since
+  v0.28.0**: skill block from `preset.roles.architect` is prepended to
+  the dispatch prompt. (Formerly a standalone `/runner:backlog-enrich`
+  command; removed in v0.53 — see "Backlog discipline" above.)
 - `/runner:triage` (via `skills/triage/SKILL.md`) — PM scores pending FEATs.
   **Wired to resolver since v0.28.1**: skill block from `preset.roles.pm`
   is prepended to the dispatch prompt.

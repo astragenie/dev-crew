@@ -32,7 +32,7 @@ exceeds `loop.intakeBudgetUsdPerCall` (default 1.50) or
 
 # Intake (FEAT-189 / SLICE-103)
 
-Single slash command that runs the two-phase backlog intake in order. Replaces the manual sequence of `/runner:triage` followed by `/runner:backlog-enrich`. Both legacy commands remain for back-compat and partial-intake scenarios.
+Single slash command that runs the two-phase backlog intake in order. Replaces the manual sequence of `/runner:triage` followed by `/runner:backlog-enrich`. `/runner:backlog-enrich` was removed as a standalone command in v0.53 (hard-break stub redirects to `/runner:intake` — see `src/tests/deleted-skills-stub.test.mts`); `/runner:triage` remains for score-only partial intake.
 
 ## When to use
 
@@ -40,7 +40,7 @@ Single slash command that runs the two-phase backlog intake in order. Replaces t
 - After a `/runner:backlog-add` of multiple new FEATs.
 - Any time you want one slash command to take the backlog from `pending/` all the way to `triaged/` with full routing metadata.
 
-When to use the legacy split instead: only-score a batch (no classification yet), or only-classify already-triaged FEATs.
+When to use the legacy split instead: only-score a batch (no classification yet) via `/runner:triage`. Only-classify-already-triaged is no longer available as a separate step — `/runner:backlog-enrich` was removed in v0.53; run `/runner:intake` (Phase 2 dispatches `runner:architect` immediately after Phase 1 in the same invocation).
 
 ## Phase 1 — PM scoring
 
@@ -50,11 +50,11 @@ Run the full contract from `commands/triage.md` (which delegates to skill `runne
 
 ## Phase 2 — architect classification
 
-After phase 1 returns success, list every FEAT that just landed in `triaged/`. For each, run the contract from `commands/backlog-enrich.md` (which dispatches `runner:architect`). Architect classifies `tags`, `needs_contract`, `needs_ux` and writes them to the FEAT's frontmatter.
+After phase 1 returns success, list every FEAT that just landed in `triaged/`. For each, dispatch `runner:architect` directly (the contract is inlined here — the standalone `commands/backlog-enrich.md` command was removed in v0.53). Architect classifies `tags`, `needs_contract`, `needs_ux` and writes them to the FEAT's frontmatter.
 
 **Decline filter**: skip the architect dispatch for any FEAT whose phase-1 `composite_priority` is `"P4"` — declined FEATs do not need routing tags because they will not be sliced. Count them and include `declined: <count>` in the final summary.
 
-**Failure handling**: a per-FEAT architect failure (timeout, parse error, missing classification fields) does NOT roll back the phase-1 writes for that FEAT. The PM scoring stays. The architect failure is reported as `architect_failed: <count>`; those FEATs can be enriched later via `/runner:backlog-enrich`. Phase 2 continues processing the remaining FEATs.
+**Failure handling**: a per-FEAT architect failure (timeout, parse error, missing classification fields) does NOT roll back the phase-1 writes for that FEAT. The PM scoring stays. The architect failure is reported as `architect_failed: <count>`; those FEATs can be enriched later by dispatching `runner:architect` directly against the FEAT id (no standalone slash command exists for this since `/runner:backlog-enrich` was removed in v0.53). Phase 2 continues processing the remaining FEATs.
 
 ## Final summary
 
@@ -72,14 +72,21 @@ The two-step backlog intake was a source of routing drift. Several FEATs (FEAT-1
 
 ## Back-compat
 
-- `/runner:triage` — still works, PM-only path.
-- `/runner:backlog-enrich` — still works, architect-only on already-triaged FEATs.
-- `/runner:intake` — the new merged path, recommended default for fresh backlog intake.
+- `/runner:triage` — still works, PM-only path. Supports `--ids` for a
+  targeted re-score of specific FEATs (the replacement for the old
+  `/runner:retriage`, removed in v0.53).
+- `/runner:backlog-enrich` — **removed in v0.53.** Hard-break stub
+  redirects to `/runner:intake` (see
+  `src/tests/deleted-skills-stub.test.mts`). Architect classification
+  is Phase 2 of `/runner:intake` now — no standalone command.
+- `/runner:intake` — the only path for fresh backlog intake AND the
+  only way to run architect classification.
 
 ## Refs
 
 - `commands/triage.md` — phase 1 contract source.
-- `commands/backlog-enrich.md` — phase 2 contract source.
+- Phase 2 contract — inlined above (this file); no separate contract
+  source since `commands/backlog-enrich.md` was removed in v0.53.
 - `skills/triage/SKILL.md` — phase 1 implementation skill.
 - `agents/pm.md` — phase 1 agent.
 - `agents/architect.md` (runner:architect) — phase 2 agent.

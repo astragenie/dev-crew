@@ -1,14 +1,31 @@
 ---
 target: hero-crew
 date: 2026-06-10
-status: open
+status: superseded-by-feat-191
 priority: P1
 related:
   - reverses: 2026-06-07 crew:lead decommission in loop CLAUDE.md
   - loop-side change: src/scripts/lib/slice-linker/dispatch.mts (added orchestratorMode: "lead")
+resolved: 2026-06-12
+resolved_by: >-
+  FEAT-191 / SLICE-107 dropped `lead` and `direct-builder` as loop-side
+  orchestrator modes (v0.43) for documented cause — `lead` mode
+  suffered persistent specialist-pause across SLICE-97/98/99/101/102/103/104.
+  This request asked hero-crew to route MORE surfaces (`/crew:build`,
+  `/crew:validate`, `/crew:fix`) through `crew:lead`; that direction is
+  now reversed on the loop side. See CLAUDE.md "Orchestrator mode" for
+  the current `slice-build` / `orchestrate-slice` contract. Do not
+  re-open this request without first re-litigating the lead-pause
+  root cause that motivated FEAT-191.
 ---
 
 # Restore crew:lead as orchestrator in /crew:build, /crew:validate, /crew:fix
+
+> **Superseded 2026-06-12 by FEAT-191.** Loop-side `lead` orchestrator
+> mode was removed for documented cause (persistent specialist-pause).
+> This request is closed — see `resolved_by` above and CLAUDE.md
+> "Orchestrator mode". If the upstream lead-pause issue is ever fixed
+> in hero-crew, file a fresh request rather than reopening this one.
 
 ## Context
 
