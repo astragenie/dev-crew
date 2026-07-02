@@ -16,6 +16,7 @@ jobs:
         bun ./src/scripts/validate-content-length.mts
         bun ./src/scripts/validate-event-schemas.mts
         bun ./src/scripts/validate-decline-citations.mts --repo .
+        bun ./src/scripts/validate-snapshot-freshness.mts
       bun-commands: |
         bunx tsc --project tsconfig.json --noEmit
         bunx tsc --project tsconfig.test.json --noEmit

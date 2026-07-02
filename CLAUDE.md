@@ -71,6 +71,12 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 6. `bunx eslint src eslint.config.mjs`
 7. `bunx prettier --check "src/**/*.mts"`
 8. `bun test src/tests/ --parallel --timeout 60000`
+9. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+   `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
+   Regenerates the snapshot content in-memory and diffs it against the
+   on-disk file; any drift (backlog/grade counts, "next to slice" list,
+   decisions, telemetry) fails CI. The pre-push hook still runs this
+   check in warn-only mode (`--check-generated`) — CI is the hard gate.
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
