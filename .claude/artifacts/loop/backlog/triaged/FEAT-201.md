@@ -1,17 +1,27 @@
 ---
 id: FEAT-201
-status: pending
-priority: null
+status: triaged
+priority: P2
 category: enhancement
 target_release: null
 created: 2026-06-16
-updated: 2026-06-16
+updated: 2026-07-02
 depends_on: []
 slices: []
 derived_from: null
 tags: [pm, triage, cost-control]
 needs_contract: false
 needs_ux: false
+pm_customer_impact: 0.5
+pm_effort_estimate: 0.2
+pm_strategic_alignment: 0.5
+pm_technical_risk: 0.15
+pm_dependency_depth: 0.05
+pm_composite_priority: P2
+pm_autonomous_safe: true
+pm_reviewed: 2026-07-02
+autonomous_safe: true
+triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.0-0.2: known repo pattern (file-filter at existing skill entry point), 1-2 files touched (loop.mts + SKILL.md), trivially git-revertable. P2 because customer_impact is real but moderate (cost-control convenience for an infrequent operator workflow, not a recurring blocker)."
 ---
 # FEAT-201: Targeted PM rescore — `--ids` flag on /loop:triage
 
