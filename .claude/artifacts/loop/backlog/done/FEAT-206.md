@@ -1,6 +1,6 @@
 ---
 id: FEAT-206
-status: triaged
+status: done
 priority: P1
 category: docs
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.0-0.2: docs-only edit to a single procedure file, no code path, trivially reverted. P1: cheap, high-confidence fix (H/Strong) for a false-positive in the loop's own safety procedure covering its historically worst failure mode, even though the underlying pause rate is now near-zero -- the SOP still needs to be correct for future regressions."
+completed_at: 2026-07-02
 ---
 # FEAT-206: SOP scaffold-status pause detection
 

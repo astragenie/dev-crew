@@ -1,6 +1,6 @@
 ---
 id: FEAT-207
-status: triaged
+status: done
 priority: P1
 category: docs
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.0-0.2: pure markdown edits across 1-2 files, trivially reverted. P1: verified-real (not just cited) drift in an always-injected file that every session pays a search-cost tax on, cheap fix, top-10 #4."
+completed_at: 2026-07-02
 ---
 # FEAT-207: CLAUDE.md drift purge (verified false pointers)
 
