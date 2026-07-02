@@ -94,6 +94,18 @@ describe("packWave", () => {
     expect(p.size).toBe(1);
     expect(p.items[0]!.sliceId).toBe("S1");
   });
+
+  // FEAT-205: WavePlanItem carries a classify-slice-shape.mts shape so
+  // real-deps.mts::realPrepare can resolve a per-item model tier.
+  test("WavePlanItem carries shape classified from an all-docs touches set", () => {
+    const p = packWave([cand("S1", ["docs/guide.md"])], opts);
+    expect(p.items[0]!.shape).toBe("doc-update");
+  });
+
+  test("WavePlanItem classifies a mixed-file touches set as shape 'none'", () => {
+    const p = packWave([cand("S1", ["src/a.mts", "docs/b.md"])], opts);
+    expect(p.items[0]!.shape).toBe("none");
+  });
 });
 
 describe("loadCandidates", () => {

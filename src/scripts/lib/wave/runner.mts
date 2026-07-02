@@ -30,6 +30,14 @@ export type PrepareResult = {
     worktreePath: string;
     branch: string;
     prompt: string;
+    // FEAT-205: resolved model tier for this worktree dispatch (structured
+    // field, never embedded in `prompt` text — the Agent tool's `model`
+    // parameter is the only supported override surface; see
+    // model-router.test.mts "does not contain model hint"). The harness
+    // passes this into Agent(subagent_type, model: <model>). Optional so
+    // pre-FEAT-205 test fixtures that don't exercise tier routing stay valid;
+    // realPrepare() always sets it.
+    model?: string;
   }>;
 };
 
