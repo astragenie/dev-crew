@@ -15,19 +15,30 @@ import { strict as assert } from "node:assert";
 
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
-async function readAgent(relPath: string): Promise<{ frontmatter: Record<string, any>; body: string }> {
+async function readAgent(
+  relPath: string
+): Promise<{ frontmatter: Record<string, any>; body: string }> {
   const raw = await fs.readFile(path.resolve(relPath), "utf8");
   return parseFrontmatter(raw);
 }
 
-const INJECTION_DEFENSE_AGENTS = ["agents/pm.md", "agents/architect.md", "agents/researcher.md", "agents/market-researcher.md"];
+const INJECTION_DEFENSE_AGENTS = [
+  "agents/pm.md",
+  "agents/architect.md",
+  "agents/researcher.md",
+  "agents/market-researcher.md"
+];
 
 // AC-2: each of pm/architect/researcher/market-researcher instructs treating
 // untrusted content as data, never instructions.
 for (const relPath of INJECTION_DEFENSE_AGENTS) {
   test(`${relPath} body contains an Injection defense section (FEAT-213 AC-2)`, async () => {
     const { body } = await readAgent(relPath);
-    assert.match(body, /##\s*Injection defense/i, `${relPath} must contain an "Injection defense" heading`);
+    assert.match(
+      body,
+      /##\s*Injection defense/i,
+      `${relPath} must contain an "Injection defense" heading`
+    );
     assert.match(
       body,
       /(data|evidence to (weigh|evaluate)).{0,80}never.{0,20}instructions?/is,

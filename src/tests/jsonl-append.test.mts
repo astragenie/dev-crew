@@ -51,11 +51,15 @@ test("appendJsonl throws by default when the write fails", async () => {
   const repo = await tmpRepo("jsonl-throw-");
   const target = path.join(repo, "log.jsonl");
   await assert.rejects(() =>
-    appendJsonl(target, { a: 1 }, {
-      appendFile: async () => {
-        throw new Error("disk full");
+    appendJsonl(
+      target,
+      { a: 1 },
+      {
+        appendFile: async () => {
+          throw new Error("disk full");
+        }
       }
-    })
+    )
   );
 });
 
@@ -169,9 +173,7 @@ test("appendJsonlSync swallows the error when swallowErrors is true", async () =
 test("concurrent appendJsonl calls to the same file all land as separate valid lines", async () => {
   const repo = await tmpRepo("jsonl-concurrent-");
   const target = path.join(repo, "concurrent.jsonl");
-  await Promise.all(
-    Array.from({ length: 10 }, (_, i) => appendJsonl(target, { i }))
-  );
+  await Promise.all(Array.from({ length: 10 }, (_, i) => appendJsonl(target, { i })));
   const lines = await readLines(target);
   assert.equal(lines.length, 10);
   const values = lines.map((l) => (l as { i: number }).i).sort((a, b) => a - b);
