@@ -1,6 +1,6 @@
 ---
 id: FEAT-204
-status: triaged
+status: done
 priority: P1
 category: bug
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.3-0.5 (new frontmatter field shared_with: = additive data-shape change, no contract break, cross-module reach between crew-bridge.mts and memory-snapshot.mts, clean rollback). P1: verified-real ~5x telemetry corruption feeding cost-advisor and stop-threshold decisions, top-10 rank #1, quick-win effort, zero dependencies."
+completed_at: 2026-07-02
 ---
 # FEAT-204: Wave-mode cost report deduplication
 
