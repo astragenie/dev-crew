@@ -35,6 +35,7 @@ export type DispatchConfig = {
   maxChildrenPerBatch: number;
   worktreeRoot: string | null;
   pruneStaleAfterDays: number;
+  autoPruneOnStart: boolean;
 };
 
 export class DispatchDepthExceeded extends Error {

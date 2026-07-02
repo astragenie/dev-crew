@@ -1,45 +1,37 @@
 ---
 id: FEAT-205
-status: triaged
+status: in-progress
 priority: P3
 category: tech-debt
 target_release: null
 created: 2026-07-01
-updated: 2026-07-01
+updated: 2026-07-02
 triaged_at: 2026-07-01
 depends_on: []
-slices: []
+slices: [SLICE-138, SLICE-139]
 derived_from: FEAT-020
 autonomous_safe: true
 tags: [dispatch, worktree, observability, cleanup, gc]
 pm_customer_impact: 0.35
-pm_effort_estimate: 0.30
+pm_effort_estimate: 0.3
 pm_strategic_alignment: 0.55
 pm_technical_risk: 0.25
-pm_dependency_depth: 0.10
+pm_dependency_depth: 0.1
 composite_score: 0.55
 ac_clarity_status: passed
 needs_ac_rewrite: false
 needs_contract: false
 needs_ux: false
 triage_notes: |
-  Follow-up to FEAT-020 close-out (architect review 2026-07-01). FEAT-020
-  shipped hierarchical dispatch as-scoped per design D3/D4/D5 (worktree
-  isolation + blocking awaitAll + continue-on-failure). Two ops risks
-  remain: (1) `pruneStaleAfterDays: 7` is a DEAD config knob in
-  dispatch-config.mts — accepted but no reader implements the reaper;
-  operators believe stale worktrees auto-clean, they don't; disk fills
-  silently under marathon+wave workloads. (2) No `snapshot.dispatchTree.*`
-  telemetry — marathon walker can't detect worktree accretion pressure
-  before it becomes a disk-full incident. autonomous_safe=true (additive,
-  observability-only + gated reaper). Effort ~5pts total.
 proposed_slices:
   - id_suffix: -SLICE-1
     title: Wire pruneStaleAfterDays reaper — dispatch prune subcommand + startup hook
     points: 2
   - id_suffix: -SLICE-2
-    title: Surface snapshot.dispatchTree observability (openRunIds, worktreeCount, oldestRunAgeDays)
+    title: "Surface snapshot.dispatchTree observability (openRunIds, worktreeCount, oldestRunAgeDays)"
     points: 2
+started_at: 2026-07-02
+slices_complete: [SLICE-138]
 ---
 # FEAT-205: Dispatch lifecycle GC + snapshot.dispatchTree observability
 

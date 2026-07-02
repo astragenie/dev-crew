@@ -6,7 +6,8 @@ const DEFAULT_CONFIG: DispatchConfig = {
   maxDepth: 3,
   maxChildrenPerBatch: 8,
   worktreeRoot: null,
-  pruneStaleAfterDays: 7
+  pruneStaleAfterDays: 7,
+  autoPruneOnStart: false
 };
 
 export function readDispatchConfig(configPath: string): DispatchConfig {
@@ -37,6 +38,10 @@ export function readDispatchConfig(configPath: string): DispatchConfig {
     pruneStaleAfterDays:
       typeof limits.pruneStaleAfterDays === "number"
         ? limits.pruneStaleAfterDays
-        : DEFAULT_CONFIG.pruneStaleAfterDays
+        : DEFAULT_CONFIG.pruneStaleAfterDays,
+    autoPruneOnStart:
+      typeof limits.autoPruneOnStart === "boolean"
+        ? limits.autoPruneOnStart
+        : DEFAULT_CONFIG.autoPruneOnStart
   };
 }

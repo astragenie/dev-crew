@@ -13,6 +13,9 @@
 // (default `.claude/artifacts/loop/retrospectives/`). The counter is
 // the number of grade files written AFTER the newest retrospective.
 //
+// Also evaluates dispatch-worktree-accretion: advisory badge emitted when
+// the oldest runId age exceeds 2 * pruneStaleAfterDays.
+//
 // Fail-open: returns null on missing directories or unreadable files.
 
 import fs from "node:fs/promises";
@@ -28,6 +31,14 @@ export interface MarathonCheckpointSignal {
   every: number;
   hardThreshold: number;
   lastRetroPath: string | null;
+}
+
+export interface DispatchAccretionBadge {
+  badge: "dispatch-worktree-accretion";
+  level: "advisory";
+  oldestRunAgeDays: number;
+  pruneStaleAfterDays: number;
+  threshold: number;
 }
 
 function resolveEvery(config: Record<string, any> | null): number {
@@ -92,6 +103,40 @@ async function countFilesSince(
 
 const GRADE_FILE_RE = /-grade\.md$/;
 const RETRO_FILE_RE = /\.md$/;
+
+/**
+ * Check dispatch worktree accretion. Returns an advisory badge when the
+ * oldest runId is older than 2 * pruneStaleAfterDays. Non-blocking: the
+ * walker continues regardless. Returns null when condition does not hold.
+ *
+ * Fail-open: returns null on any I/O error.
+ */
+export async function checkDispatchAccretion(
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<DispatchAccretionBadge | null> {
+  const pruneStaleAfterDays: number =
+    typeof config?.loop?.dispatch?.pruneStaleAfterDays === "number"
+      ? (config.loop.dispatch.pruneStaleAfterDays as number)
+      : 7;
+  const threshold = pruneStaleAfterDays * 2;
+
+  try {
+    const { readDispatchTreeSnapshot } = await import("./dispatch-tree-snapshot.mjs");
+    const snap = await readDispatchTreeSnapshot(repoPath);
+    if (snap.oldestRunAgeDays === null) return null;
+    if (snap.oldestRunAgeDays <= threshold) return null;
+    return {
+      badge: "dispatch-worktree-accretion",
+      level: "advisory",
+      oldestRunAgeDays: snap.oldestRunAgeDays,
+      pruneStaleAfterDays,
+      threshold
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Compute the marathon-checkpoint signal for the current repo state.
