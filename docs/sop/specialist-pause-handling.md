@@ -6,7 +6,7 @@
 
 ## Problem
 
-Subagent dispatches via `Agent({ subagent_type: "crew:fullstack-dev" | "crew:inspector" | "crew:verifier" })` sometimes pause mid-investigation and return interim narration text WITHOUT calling the required write-* CLI to land their artifact (handoff, review-result, validation-result). The lead receives a partial textual response; the artifact path is missing.
+Subagent dispatches via `Agent({ subagent_type: "crew:fullstack-dev" | "crew:inspector" | "crew:verifier" })` sometimes pause mid-investigation and return interim narration text WITHOUT calling the required write-\* CLI to land their artifact (handoff, review-result, validation-result). The lead receives a partial textual response; the artifact path is missing.
 
 When this happens, the lead must NOT treat the partial response as a completed gate. The gate is unresolved.
 
@@ -14,13 +14,13 @@ When this happens, the lead must NOT treat the partial response as a completed g
 
 Pattern observed across 6 slices in a single autonomous session:
 
-| Slice | Role(s) that paused |
-|---|---|
-| SLICE-51 | crew:inspector × 2 (both paused; review_skipped recorded with explicit reason) |
-| SLICE-52 | crew:fullstack-dev (lead wrote handoff) |
-| SLICE-53 | crew:fullstack-dev, crew:verifier (lead wrote both) |
-| SLICE-54 | crew:fullstack-dev, crew:verifier (lead wrote both) |
-| SLICE-56 | crew:fullstack-dev, crew:verifier (lead wrote both) |
+| Slice    | Role(s) that paused                                                              |
+| -------- | -------------------------------------------------------------------------------- |
+| SLICE-51 | crew:inspector × 2 (both paused; review_skipped recorded with explicit reason)   |
+| SLICE-52 | crew:fullstack-dev (lead wrote handoff)                                          |
+| SLICE-53 | crew:fullstack-dev, crew:verifier (lead wrote both)                              |
+| SLICE-54 | crew:fullstack-dev, crew:verifier (lead wrote both)                              |
+| SLICE-56 | crew:fullstack-dev, crew:verifier (lead wrote both)                              |
 | SLICE-57 | crew:fullstack-dev (lead skipped both reviewer + validator via lead-attestation) |
 
 Pattern is consistent across all three specialist roles in the crew plugin. Not a per-role bug.
@@ -30,16 +30,33 @@ Pattern is consistent across all three specialist roles in the crew plugin. Not 
 ### 1. Detect the pause
 
 Pause symptoms:
+
 - Subagent returns text but no artifact-path line in the response
 - Response ends mid-sentence ("Let me check..." / "Now I need to...")
 - `agentId: ...` line appears with usage block but no artifact-path was returned by the dispatch
 
-After the subagent returns, ALWAYS verify the artifact landed:
-- Builder → check `ls -t .claude/artifacts/crew/handoffs/*<slice-id>*` shows a fresh file
-- Reviewer → check `ls -t .claude/artifacts/crew/reviews/*<slice-id>*` shows a fresh file
-- Validator → check `ls -t .claude/artifacts/crew/validations/*<slice-id>*` shows a fresh file
+**Raw file existence is NOT sufficient to prove an artifact landed.** Since
+FEAT-161 (dev-team, 2026-06-13) shipped the scaffold-first output contract,
+builder/reviewer/validator agents write a stub artifact with
+`status: in-progress` as their FIRST tool call — before any Read/Grep/Bash
+investigation — then overwrite the same path with `status: completed` as
+their LAST tool call (see `dev-team/agents/inspector.md:41-52,295` for the
+reviewer contract; builder and validator follow the equivalent pattern). A
+pause mid-run leaves the in-progress scaffold behind: the file exists, but
+it is not a landed artifact. Treating file existence alone as "landed"
+false-positives on exactly the failure mode this SOP exists to catch — this
+is the primary defense the detection step below relies on.
 
-If the artifact is missing, the gate is unresolved regardless of how complete the textual response looks.
+After the subagent returns, ALWAYS verify BOTH that the artifact exists AND
+that its `status` field reads `completed`:
+
+- Builder → check `ls -t .claude/artifacts/crew/handoffs/*<slice-id>*` shows a fresh file, then read it and confirm `status: completed` (not `in-progress`)
+- Reviewer → check `ls -t .claude/artifacts/crew/reviews/*<slice-id>*` shows a fresh file, then read it and confirm `status: completed` (not `in-progress`)
+- Validator → check `ls -t .claude/artifacts/crew/validations/*<slice-id>*` shows a fresh file, then read it and confirm `status: completed` (not `in-progress`)
+
+If the artifact is missing, OR the artifact exists but its `status` field
+reads `in-progress`, the gate is unresolved regardless of how complete the
+textual response looks — classify it as a pause and proceed to Section 2.
 
 ### 2. Pick a resolution path
 
