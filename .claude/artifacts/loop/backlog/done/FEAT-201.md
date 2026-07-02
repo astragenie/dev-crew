@@ -1,6 +1,6 @@
 ---
 id: FEAT-201
-status: triaged
+status: done
 priority: P2
 category: enhancement
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.0-0.2: known repo pattern (file-filter at existing skill entry point), 1-2 files touched (loop.mts + SKILL.md), trivially git-revertable. P2 because customer_impact is real but moderate (cost-control convenience for an infrequent operator workflow, not a recurring blocker)."
+completed_at: 2026-07-02
 ---
 # FEAT-201: Targeted PM rescore — `--ids` flag on /loop:triage
 
