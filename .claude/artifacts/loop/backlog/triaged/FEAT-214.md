@@ -57,6 +57,8 @@ end-to-end broken write path:
 6. `skills/triage/SKILL.md` bash snippets require `jq`, absent on the
    Windows host — resolver step fails as written.
 
+7. (added 2026-07-02, wave 1) `snapshot-memory` has BOTH a live handler (loop.mts:336) and a v0.53 removal stub that intercepts it; the loop-snapshot header and validate-snapshot-freshness error message cite the stubbed command while writeMemorySnapshot works only via direct lib import. Un-stub or update all citations.
+
 ## Acceptance hints
 
 - Decide the write owner (restore a `pm-write`-equivalent CLI, or

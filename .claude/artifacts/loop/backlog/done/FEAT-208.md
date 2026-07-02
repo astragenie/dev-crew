@@ -1,6 +1,6 @@
 ---
 id: FEAT-208
-status: triaged
+status: done
 priority: P1
 category: ci
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.3-0.5 (behavior change to a shared quality gate -- pre-push hook + CI -- cross-module reach between validate script and CI workflow config, no data-shape change, clean rollback). P1 (upgraded from the retrospective stub's P2): I directly verified this is an active, currently-live routing bug (FEAT-090/094 mis-listed right now), not just a stale-metric nuisance, which raises customer_impact above what a purely cosmetic staleness fix would warrant."
+completed_at: 2026-07-02
 ---
 # FEAT-208: Blocking staleness gate for loop-snapshot
 
