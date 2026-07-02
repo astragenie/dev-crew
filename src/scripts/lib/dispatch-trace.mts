@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { DispatchResult, DispatchStatus } from "./dispatch-types.mjs";
+import { appendJsonlSync } from "./jsonl-append.mjs";
 
 type TraceEntry = {
   depth: number;
@@ -37,7 +38,5 @@ export function readMarker(
 
 export function appendTrace(repoRoot: string, runId: string, entry: TraceEntry): void {
   const dir = path.join(repoRoot, ".claude/artifacts/loop/dispatch", runId);
-  fs.mkdirSync(dir, { recursive: true });
-  const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n";
-  fs.appendFileSync(path.join(dir, "trace.jsonl"), line);
+  appendJsonlSync(path.join(dir, "trace.jsonl"), { ts: new Date().toISOString(), ...entry });
 }

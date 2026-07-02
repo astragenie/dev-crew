@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { fanoutEnvelope } from "./webhook-fanout.mjs";
+import { appendJsonl } from "./jsonl-append.mjs";
 
 // Append-only JSONL telemetry. Safe-by-construction: no shell, just JSON
 // stringification. Best-effort — failures (e.g. read-only filesystem)
@@ -14,13 +15,9 @@ export function telemetryPath(repoPath: string) {
 export async function logEvent(repoPath: string, event: Record<string, unknown>) {
   if (!event || typeof event !== "object") return { logged: false, reason: "invalid event" };
   const target = telemetryPath(repoPath);
-  const line = JSON.stringify({
-    timestamp: new Date().toISOString(),
-    ...event
-  });
+  const record = { timestamp: new Date().toISOString(), ...event };
   try {
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.appendFile(target, `${line}\n`);
+    await appendJsonl(target, record);
   } catch (error) {
     return { logged: false, reason: error instanceof Error ? error.message : String(error) };
   }
