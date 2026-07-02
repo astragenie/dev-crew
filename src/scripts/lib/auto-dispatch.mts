@@ -9,6 +9,10 @@ import path from "node:path";
 
 import { fanoutEnvelope } from "./webhook-fanout.mjs";
 
+export type DispatchKind = "auto" | "manual" | "wave" | "hierarchical";
+
+const VALID_DISPATCH_KINDS = new Set<string>(["auto", "manual", "wave", "hierarchical"]);
+
 export interface DispatchOpts {
   agent: string;
   prompt: string;
@@ -22,6 +26,8 @@ export interface DispatchOpts {
   stepType?: string;
   inputTokens?: number | null;
   outputTokens?: number | null;
+  dispatchKind?: DispatchKind | null;
+  iterationIndex?: number;
 }
 
 export interface DispatchResult {
@@ -105,6 +111,22 @@ export async function flushAuditLog(repoRoot: string, opts: AuditLogOpts = {}): 
   }
 }
 
+function resolveDispatchKind(raw: DispatchKind | null | undefined): DispatchKind | null {
+  if (raw === undefined || raw === null) return null;
+  if (VALID_DISPATCH_KINDS.has(raw)) return raw as DispatchKind;
+  console.warn(`[auto-dispatch] unknown dispatchKind "${raw}" — coercing to null`);
+  return null;
+}
+
+function resolveIterationIndex(raw: number | undefined): number {
+  if (raw === undefined) return 0;
+  if (raw < 0) {
+    console.warn(`[auto-dispatch] negative iterationIndex (${raw}) — clamping to 0`);
+    return 0;
+  }
+  return raw;
+}
+
 export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult> {
   const {
     agent,
@@ -117,8 +139,13 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
     featureId,
     stepType: optsStepType,
     inputTokens: optsInputTokens,
-    outputTokens: optsOutputTokens
+    outputTokens: optsOutputTokens,
+    dispatchKind: rawDispatchKind,
+    iterationIndex: rawIterationIndex
   } = opts;
+
+  const optsDispatchKind = resolveDispatchKind(rawDispatchKind);
+  const optsIterationIndex = resolveIterationIndex(rawIterationIndex);
   const start = Date.now();
 
   const buildAuditEntry = (
@@ -134,7 +161,10 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
     skipReason: partial.skipReason ?? null,
     stepType: optsStepType ?? "dispatch",
     inputTokens: optsInputTokens ?? null,
-    outputTokens: optsOutputTokens ?? null
+    outputTokens: optsOutputTokens ?? null,
+    dispatchKind: optsDispatchKind,
+    iterationIndex: optsIterationIndex,
+    sliceId: opts.sliceId ?? null
   });
 
   const emitEvent = async (event: import("./slice-events.mjs").SliceEvent) => {

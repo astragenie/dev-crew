@@ -21,8 +21,9 @@
 
 import { readProfile } from "../env-profiles.mjs";
 
-interface AgentRow {
+export interface AgentRow {
   agentType?: string;
+  agentId?: string | null;
   model?: string;
   turns?: number;
   duration_ms?: number;
@@ -35,6 +36,11 @@ interface AgentRow {
   skills?: string[];
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadInputTokens?: number | null;
+  cacheCreationInputTokens?: number | null;
+  costUsd?: number | null;
+  dispatchKind?: "auto" | "manual" | "wave" | "hierarchical" | null;
+  iterationIndex?: number;
   firstOutputAt?: string | null;
   startTs?: string | null;
   stopTs?: string | null;
@@ -60,7 +66,7 @@ function buildEnvelope(opts: PostOpts, row: AgentRow): Record<string, unknown> |
     kind: "slice.agent_completed",
     emittedAt: row.stopTs,
     sourcePath: ".claude/artifacts/crew/agents/",
-    schemaVersion: "v1",
+    schemaVersion: "v1.1",
     payload: {
       sliceId: opts.sliceId,
       featureId: opts.featureId ?? null,
@@ -79,7 +85,14 @@ function buildEnvelope(opts: PostOpts, row: AgentRow): Record<string, unknown> |
       // Runner-side AgentsBreakdown handler reads this for DistinctSkills field.
       // Always emit the array (even empty) so consumers can distinguish
       // "no skills used" from "skills not emitted by this version".
-      skills: row.skills ?? []
+      skills: row.skills ?? [],
+      // FEAT-203 — enrichment fields (SLICE-136). All additive-optional.
+      agentId: row.agentId ?? null,
+      costUsd: row.costUsd ?? null,
+      cacheReadInputTokens: row.cacheReadInputTokens ?? null,
+      cacheCreationInputTokens: row.cacheCreationInputTokens ?? null,
+      dispatchKind: row.dispatchKind ?? null,
+      iterationIndex: row.iterationIndex ?? 0
     }
   };
 }

@@ -186,7 +186,7 @@ test("appendInventoryLog: writes one JSONL row per call under runId dir", () => 
   assert.equal(row1.childId, "LOG1");
   assert.equal(row1.status, "PRE_MERGE");
   assert.equal(row1.filesOnBranchNotOnMain[0], "a.md");
-  assert.ok(row1.ts, "timestamp present");
+  assert.ok(row1.timestamp, "timestamp present");
 });
 
 test("writeWorkerPreservedArtifact: emits Markdown summary with file + WIP previews", () => {

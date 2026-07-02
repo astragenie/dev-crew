@@ -24,6 +24,10 @@ type DispatchFn = (opts: {
   repoRoot: string;
   argv?: string[];
   skipFlag?: string;
+  sliceId?: string;
+  featureId?: string;
+  dispatchKind?: "auto" | "manual" | "wave" | "hierarchical" | null;
+  iterationIndex?: number;
 }) => Promise<DispatchResult>;
 
 const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
@@ -240,7 +244,9 @@ async function classifySlice({
       parentCommand: "slice from-feature",
       repoRoot: repoPath,
       argv: [],
-      skipFlag: "--no-classify"
+      skipFlag: "--no-classify",
+      // SLICE-137: slice-from-feature is a direct slash-command dispatch.
+      dispatchKind: "manual"
     });
     if (dispatchOut.ok && !dispatchOut.skipped && dispatchOut.output) {
       const parsed = parseClassifyOutput(dispatchOut.output);
@@ -554,11 +560,14 @@ export async function featureSimplify(
     repoRoot: string;
     sliceId?: string;
     featureId?: string;
+    dispatchKind: "manual";
   } = {
     agent: "code-simplifier:code-simplifier",
     prompt,
     parentCommand: "feature-simplify",
-    repoRoot: repoPath
+    repoRoot: repoPath,
+    // SLICE-137: code-simplifier is a direct slash-command dispatch (not walker/wave).
+    dispatchKind: "manual"
   };
   if (sliceId !== undefined) dispatchOpts.sliceId = sliceId;
   dispatchOpts.featureId = featureId;

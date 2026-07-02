@@ -24,6 +24,12 @@ export interface DispatchEntry {
   durationMs?: number;
   ok?: boolean;
   skipped?: boolean;
+  /** Slice ID this dispatch was associated with. Added in SLICE-137. */
+  sliceId?: string | null;
+  /** Dispatch kind classification. Added in SLICE-137. */
+  dispatchKind?: "auto" | "manual" | "wave" | "hierarchical" | null;
+  /** Retry iteration index (0 = first attempt). Added in SLICE-137. */
+  iterationIndex?: number;
 }
 
 /** Aggregated cost row for a single skill/agent. */
@@ -41,6 +47,30 @@ export interface SkillCostRow {
   deltaPercent: number | null;
   /** Total entries in the 28-day window (includes skipped / zero-cost). */
   entryCount: number;
+}
+
+const DISPATCH_KIND_SET = new Set<string>(["auto", "manual", "wave", "hierarchical"]);
+
+/** Parse a single JSON object into a DispatchEntry. Extracted to keep readDispatchLog simple. */
+function parseEntry(obj: Record<string, unknown>): DispatchEntry {
+  const rawKind = obj.dispatchKind;
+  const costRaw = obj.costUsd;
+  return {
+    timestamp:
+      typeof obj.timestamp === "string" ? obj.timestamp : new Date(0).toISOString(),
+    agent: typeof obj.agent === "string" ? obj.agent : null,
+    costUsd:
+      typeof costRaw === "number" && Number.isFinite(costRaw) ? costRaw : null,
+    durationMs: typeof obj.durationMs === "number" ? obj.durationMs : 0,
+    ok: typeof obj.ok === "boolean" ? obj.ok : true,
+    skipped: typeof obj.skipped === "boolean" ? obj.skipped : false,
+    sliceId: typeof obj.sliceId === "string" ? obj.sliceId : null,
+    dispatchKind:
+      typeof rawKind === "string" && DISPATCH_KIND_SET.has(rawKind)
+        ? (rawKind as "auto" | "manual" | "wave" | "hierarchical")
+        : null,
+    iterationIndex: typeof obj.iterationIndex === "number" ? obj.iterationIndex : 0
+  };
 }
 
 /**
@@ -62,20 +92,7 @@ export async function readDispatchLog(logPath: string): Promise<DispatchEntry[]>
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
-      const obj = JSON.parse(trimmed) as Record<string, unknown>;
-      const entry: DispatchEntry = {
-        timestamp:
-          typeof obj["timestamp"] === "string" ? obj["timestamp"] : new Date(0).toISOString(),
-        agent: typeof obj["agent"] === "string" ? obj["agent"] : null,
-        costUsd:
-          typeof obj["costUsd"] === "number" && Number.isFinite(obj["costUsd"])
-            ? obj["costUsd"]
-            : null,
-        durationMs: typeof obj["durationMs"] === "number" ? obj["durationMs"] : 0,
-        ok: typeof obj["ok"] === "boolean" ? obj["ok"] : true,
-        skipped: typeof obj["skipped"] === "boolean" ? obj["skipped"] : false
-      };
-      results.push(entry);
+      results.push(parseEntry(JSON.parse(trimmed) as Record<string, unknown>));
     } catch {
       // Malformed line: skip silently (AC-3)
     }
