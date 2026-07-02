@@ -43,7 +43,12 @@ export async function fanoutEnvelope(
       senderConfig.disabled = wh.disabled;
     }
     const sender = createWebhookSender(senderConfig, { fetchFn });
+    // `resolvedAt` wins over `ts` when both are present: resolve envelopes
+    // (halt_badge.resolved) carry the ORIGINAL opened `ts` in their payload
+    // per the halt-events v1 contract, so the envelope-level emittedAt must
+    // fall back to the actual resolve time instead of that stale timestamp.
     const emittedAt =
+      (payload.resolvedAt as string | undefined) ??
       (payload.ts as string | undefined) ??
       (payload.timestamp as string | undefined) ??
       new Date().toISOString();

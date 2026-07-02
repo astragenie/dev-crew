@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/halt-badge-resolved.schema.json",
+  "title": "HaltBadgeResolvedPayload",
+  "type": "object",
+  "required": ["badgeKind", "ts", "resolvedAt"],
+  "properties": {
+    "schemaVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "badgeKind": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "sliceId": { "type": "string" },
+    "resolvedAt": { "type": "string", "format": "date-time" },
+    "resolverAgentRole": { "type": "string" }
+  }
+}

@@ -30,6 +30,59 @@ This file is the **single source of truth** for every halt-badge field loop emit
 
 Each halt-badge is `null` when not triggered; populated with a structured object when it fires. Consumers MUST handle `null` as "not triggered, do not render."
 
+## Fan-out envelope contract (halt-events v1)
+
+In addition to the local `snapshot.*` shape above, every populated halt-badge
+field is fanned out cross-plugin as a webhook envelope via
+`src/scripts/lib/stop-conditions.mts::fanoutHaltBadgesFromSnapshot`. This
+section documents the wire contract, distinct from the local snapshot shape
+documented per-badge below.
+
+**`halt_badge` envelope** (badge opened / still open) — payload shape per
+`schemas/loop-events/halt-badge.schema.json`:
+
+```ts
+{
+  schemaVersion: "1.0.0";
+  badgeKind: string;   // one of HALT_BADGE_FIELDS
+  ts: string;           // ISO-8601, this fan-out call's timestamp
+  details: object;      // the snapshot.<badgeKind> object
+  sliceId?: string;
+  waveId?: string;
+}
+```
+
+**`halt_badge.resolved` envelope** (badge cleared) — payload shape per
+`schemas/loop-events/halt-badge-resolved.schema.json`:
+
+```ts
+{
+  schemaVersion: "1.0.0";
+  badgeKind: string;
+  ts: string;              // the ORIGINAL opened timestamp, carried through
+  sliceId?: string;
+  resolvedAt: string;       // ISO-8601, when the clear was detected
+  resolverAgentRole?: string; // best-effort, omitted when unavailable
+}
+```
+
+**Fires when:** `fanoutHaltBadgesFromSnapshot` detects a `snapshot.<badgeKind>`
+field that was populated on a previous call (tracked via
+`.claude/state/loop/halt-badge-state.json`, see `src/scripts/lib/halt-badge-state.mts`)
+and is `null`/absent on the current call. `resolverAgentRole` is read
+best-effort from the last entry of `.claude/artifacts/loop/auto-dispatch.jsonl`
+(namespace prefix stripped, e.g. `crew:builder` → `builder`) and omitted
+entirely when unavailable.
+
+**BE semantics (astrarunner, out of loop's control):** upserts by
+`(appId, badgeKind, sliceId)` where `resolvedAt IS NULL`; out-of-order safe
+(falls through to insert-new when no matching open row exists). BE defaults
+`schemaVersion` to `"1.0.0"` when absent, so this contract is safe to adopt
+independently of BE deploy timing.
+
+**Origin:** runner-plugin#297. Contract source: `docs/contracts/halt-events-v1.md`
+in `astragenie/astrarunner`.
+
 ## Registry
 
 ### `snapshot.costRegression`

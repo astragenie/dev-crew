@@ -6,6 +6,20 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+### Added — halt-events v1 contract adoption (runner-plugin#297)
+
+- `fanoutHaltBadgesFromSnapshot` now stamps `schemaVersion: "1.0.0"` on every
+  `halt_badge` fan-out envelope.
+- New `halt_badge.resolved` envelope emitted when a previously-open badge
+  clears (populated -> cleared transition detected via
+  `.claude/state/loop/halt-badge-state.json`). Payload carries the original
+  opened `ts`, `resolvedAt`, and a best-effort `resolverAgentRole` sourced
+  from the last `auto-dispatch.jsonl` entry.
+- New `src/scripts/lib/halt-badge-state.mts` module; new
+  `schemas/loop-events/halt-badge-resolved.schema.json`, registered in
+  `schemas/loop-events/index.json`.
+- See `docs/halt-badges.md` § "Fan-out envelope contract (halt-events v1)".
+
 ## [0.58.0] — 2026-06-27 — runner-plugin#291 + #292: recall + doctor
 
 ### Added — online learning consumer (#291)
