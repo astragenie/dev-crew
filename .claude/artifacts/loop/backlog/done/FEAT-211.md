@@ -1,6 +1,6 @@
 ---
 id: FEAT-211
-status: triaged
+status: done
 priority: P2
 category: refactor
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.3-0.5: introduces one new shared pattern (not existing in repo as a single helper today) reused across 7-8 files -- cross-module reach but no contract/schema change, clean rollback via revert. P2: legitimate but low-severity (MED, not top-10) maintainability finding; cheap and safe but not customer-facing, so priority sits below the P1 telemetry-integrity and safety-procedure fixes in this batch."
+completed_at: 2026-07-02
 ---
 # FEAT-211: Shared appendJsonl helper
 
