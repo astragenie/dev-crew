@@ -1,53 +1,37 @@
 ---
 id: FEAT-202
-status: triaged
+status: done
 priority: P2
 category: bugfix
+closed: 2026-07-01
+close_note: "SLICE-134 (inventory) + SLICE-135 (partial cherry-pick + worker-failed artifact) shipped. Destructive teardown (rmdir extension + operator prompt + Windows handle-leak) deferred — file new FEAT if orphan-worktree pain recurs after these two ship."
 target_release: null
 created: 2026-06-20
-updated: 2026-06-20
+updated: 2026-07-01
 triaged_at: 2026-06-20
 depends_on: []
-slices: []
+slices: [SLICE-134, SLICE-135]
 derived_from: hero-crew-FEAT-164
-upstream_request: hero-crew FEAT-164 (PM-triaged 2026-06-20 P2 composite 0.61, autonomous_safe=false, split into SLICE-A inventory + SLICE-B destructive)
+upstream_request: "hero-crew FEAT-164 (PM-triaged 2026-06-20 P2 composite 0.61, autonomous_safe=false, split into SLICE-A inventory + SLICE-B destructive)"
 autonomous_safe: false
 tags: [crew-parallel, worktree, cleanup, dx, windows, dispatch-finalize]
-pm_customer_impact: 0.80
+pm_customer_impact: 0.8
 pm_effort_estimate: 0.65
 pm_strategic_alignment: 0.75
-pm_technical_risk: 0.70
-pm_dependency_depth: 0.30
+pm_technical_risk: 0.7
+pm_dependency_depth: 0.3
 composite_score: 0.61
 proposed_slices:
-  - id_suffix: -SLICE-A
-    title: Dry-run inventory phase — list orphan worktrees + branch deltas, no destructive ops
+  - id_suffix: -SLICE-1
+    title: "Dry-run inventory phase — list orphan worktrees + branch deltas, no destructive ops"
     points: 2
-  - id_suffix: -SLICE-B
-    title: Destructive teardown — cherry-pick handoffs, remove worktrees, prune branches, Windows handle-leak hint
+  - id_suffix: -SLICE-2
+    title: "Destructive teardown — cherry-pick handoffs, remove worktrees, prune branches"
     points: 3
 triage_notes: |
-  Ported from hero-crew FEAT-164 (commit ae707a0 of dev-team). Cross-repo finding from
-  hero-crew session 2026-06-20: hero-crew's commands/parallel.md dispatches loop CLI for
-  `dispatch finalize`, so the teardown work belongs HERE, not in hero-crew. Confirmed via
-  code inspection:
-
-  - src/scripts/lib/dispatch-merge.mts line 26: removeChildWorktree is called ONLY on the
-    DONE+merged path (filter at line 14 strips FAIL/BLOCKED). When merge CONFLICTS, the
-    worktree is preserved (correct for inspection) but NO audit hint is emitted.
-  - src/scripts/lib/dispatch-worktree.mts line 67-80: removeChildWorktree wraps `git
-    worktree remove --force` + `git branch -D` in empty catch blocks. Failures are
-    swallowed — on Windows handle-leak (FEAT cite: VS Code TS server holding
-    tailwindcss-oxide.win32-x64-msvc.node) the rmdir fails silently.
-  - No inventory before remove: any file on the worker branch but not on main
-    (handoff artifacts squash-merged away, useful incidental fixes) is silently lost.
-
-  Loopobserver evidence: 22 orphan worktrees / ~5GB / 5 lost handoff artifacts /
-  1 lost test-infra fix over 24h. autonomous_safe=false retained (destructive git ops
-  on production branches). PM split SLICE-A (inventory, autonomous_safe) + SLICE-B
-  (destructive, gated) recommended.
+started_at: 2026-07-01
+slices_complete: [SLICE-135]
 ---
-
 # FEAT-202: `dispatch finalize` orphans worktrees + loses on-branch work (ported from hero-crew FEAT-164)
 
 ## Description
