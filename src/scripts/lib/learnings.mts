@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { appendJsonl } from "./jsonl-append.mjs";
 
 // Persistent JSONL operational learnings store.
 // Each entry: { id, timestamp, key, insight, confidence, source, sliceId?, tags? }
@@ -64,8 +65,6 @@ export async function logLearning(
   }
 
   const filePath = learningsPath(repoPath);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-
   const existing = await readAllEntries(filePath);
   const id = nextId(existing);
   const record: any = {
@@ -79,7 +78,7 @@ export async function logLearning(
   if (entry.sliceId) record.sliceId = entry.sliceId;
   if (Array.isArray(entry.tags) && entry.tags.length > 0) record.tags = entry.tags;
 
-  await fs.appendFile(filePath, JSON.stringify(record) + "\n", "utf8");
+  await appendJsonl(filePath, record);
   return record;
 }
 

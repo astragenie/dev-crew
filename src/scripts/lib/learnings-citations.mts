@@ -5,6 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type { LearningEntry } from "./learnings-decay.mjs";
+import { appendJsonl } from "./jsonl-append.mjs";
 
 // ---------------------------------------------------------------------------
 // Internal I/O helpers (exported for test injection)
@@ -32,14 +33,19 @@ export async function appendCitation(
   learningIds: string[],
   artifactDir: string
 ): Promise<void> {
-  await _internals.mkdir(artifactDir);
   const citationsFile = path.join(artifactDir, "citations.jsonl");
   const record = {
     sliceId,
     learningIds,
     retrievedAt: new Date().toISOString()
   };
-  await _internals.appendFile(citationsFile, JSON.stringify(record) + "\n");
+  // Delegates the mkdir+append mechanics to the shared helper while routing
+  // I/O through this module's own `_internals` seam, so existing/future test
+  // injection via `_internals.mkdir` / `_internals.appendFile` keeps working.
+  await appendJsonl(citationsFile, record, {
+    mkdir: _internals.mkdir,
+    appendFile: _internals.appendFile
+  });
 }
 
 // ---------------------------------------------------------------------------
