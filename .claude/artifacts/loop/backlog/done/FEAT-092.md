@@ -1,16 +1,19 @@
 ---
 id: FEAT-092
-status: triaged
-priority: P2
+status: done
+closed: 2026-07-02
+close_note: "DECLINED as YAGNI per architect review 2026-07-02. Blunt call: CrewAI-envy, not real need. Evidence chain: (1) FEAT body declares demandEvidence: none; (2) src/scripts/lib/stuck-detector.mts + snapshot.stuckDetected already implement retry-ceiling halt-badge with same semantic as AC-003; (3) sliceCostCeiling + costRegression + marathonCheckpoint already gate runaway cost from 3 angles (AC-004 redundant); (4) /crew:fix covers operator retry (SLICE-134/135 evidence); (5) SLICE-81 grade evidence argues AGAINST auto-retry — manual gate caught fabrication 2×; (6) AC-005 confidence/fabricationSuspected fields don't exist in crew:verifier output contract — requires cross-plugin fork; (7) recent reliability dim 0.874 avg — not weak. Reopen only if a retro produces concrete pain evidence."
+priority: P4
 category: competitor-gap
+declined_per: ["backlog-discipline"]
 target_release: null
 created: 2026-06-08
-updated: 2026-06-13
+updated: 2026-07-02
 depends_on: []
 slices: []
 derived_from: null
 composite_score: 0.50
-composite_priority: P2
+composite_priority: P4
 source_competitors: [CrewAI]
 autonomous_safe: false
 tags: [validation, retry, workflow]
