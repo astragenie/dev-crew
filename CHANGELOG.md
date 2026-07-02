@@ -4,21 +4,67 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
-## Unreleased
+## [0.59.0] — 2026-07-02 — retrospective quick-win wave (FEAT-204..214, #297)
 
-### Added — halt-events v1 contract adoption (runner-plugin#297)
+Eleven FEATs from the 2026-07-02 architecture retrospective
+(`docs/research/2026-07-02-architecture-retrospective.md`), built as three
+parallel worktree waves, plus the halt-events v1 contract adoption.
 
-- `fanoutHaltBadgesFromSnapshot` now stamps `schemaVersion: "1.0.0"` on every
-  `halt_badge` fan-out envelope.
-- New `halt_badge.resolved` envelope emitted when a previously-open badge
-  clears (populated -> cleared transition detected via
-  `.claude/state/loop/halt-badge-state.json`). Payload carries the original
-  opened `ts`, `resolvedAt`, and a best-effort `resolverAgentRole` sourced
-  from the last `auto-dispatch.jsonl` entry.
-- New `src/scripts/lib/halt-badge-state.mts` module; new
-  `schemas/loop-events/halt-badge-resolved.schema.json`, registered in
-  `schemas/loop-events/index.json`.
-- See `docs/halt-badges.md` § "Fan-out envelope contract (halt-events v1)".
+### Added
+
+- **pm-apply CLI** (FEAT-214, DEC-058) — `bun loop.mts backlog pm-apply
+  --file <results.json>` restores the PM score write path deleted in
+  v0.53: validates each entry (5-dim scores, decline citations,
+  allowed-id set) and commits frontmatter/body atomically via
+  backlog-writer. `skills/triage/SKILL.md` contract synced to PM's real
+  field names; `jq` dependency dropped; `runner:loop-discipline` moved
+  under `skills/**` so it is actually Skill-invocable; `intakeFromText`
+  implemented for real (creates a pending FEAT for the normal PM phase);
+  `snapshot-memory` un-stubbed (live handler was intercepted by a stale
+  removal stub).
+- **Slice-shape-aware model tier routing** (FEAT-205) — `SHAPE_TIER_MAP`
+  + `resolveWaveDispatchModel`; docs/trivial slices no longer dispatch
+  on opus (SLICE-115 burned $121 of $143 on a docs-only slice).
+- **Wave-mode cost report deduplication** (FEAT-204) — one report per
+  session; siblings reference via `shared_with`; snapshot averaging
+  dedups by session fingerprint (headline was ~5x inflated).
+- **Blocking snapshot staleness gate** (FEAT-208) — CI gate #9
+  (`validate-snapshot-freshness.mts`); stale `loop-snapshot.md` fails CI.
+- **workflow-state schemaVersion guard** (FEAT-209, DEC-060) —
+  `workflow-state-guard.mts`; loop refuses cross-plugin pin-writes on
+  version mismatch (fail-open on DEC-018 path, fail-loud on DEC-019
+  path). Crew-side load validation requested upstream.
+- **Injection defense** (FEAT-213) — untrusted-input sections in all
+  owned agent prompts; PM `Edit` grant dropped, `Write` narrowed to
+  pm-reviews; provenance frontmatter on all vendored 3rdparty agents.
+- **Shared `appendJsonl` helper** (FEAT-211) — replaces 8 hand-rolled
+  JSONL appenders with one seam-tested module.
+- **Pause/retry telemetry** (FEAT-212) — `pause-telemetry.mts` +
+  `pause-events.jsonl`; snapshot renders a real pause rate (first
+  measurement: 80% of aiplugin-dev dispatches paused — see learnings #5).
+- **halt-events v1 contract adoption** (#297) —
+  `fanoutHaltBadgesFromSnapshot` stamps `schemaVersion: "1.0.0"`; new
+  `halt_badge.resolved` envelope on badge clear (transition detection
+  via `.claude/state/loop/halt-badge-state.json`, best-effort
+  `resolverAgentRole`); new `halt-badge-state.mts` +
+  `halt-badge-resolved.schema.json`. See `docs/halt-badges.md`
+  § "Fan-out envelope contract (halt-events v1)".
+
+### Fixed
+
+- SOP `specialist-pause-handling.md` no longer false-positives on
+  FEAT-161 in-progress scaffolds (FEAT-206).
+- CLAUDE.md drift purge (FEAT-207): dead `slice-review-ladder.md` /
+  `multidim` / `backlog-enrich`/`retriage` pointers corrected; stale
+  lead-restoration upstream-request closed as superseded by FEAT-191.
+- `--ids` targeted rescore flag (FEAT-201, shipped 2026-06-16) verified
+  and closed.
+
+### Decisions
+
+DEC-058 (pm-apply hybrid write path), DEC-059 (GEPA optimizes a
+delimited portable-core block, recorded before any live trial history),
+DEC-060 (workflow-state schemaVersion).
 
 ## [0.58.0] — 2026-06-27 — runner-plugin#291 + #292: recall + doctor
 
