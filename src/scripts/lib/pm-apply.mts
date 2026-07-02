@@ -85,17 +85,12 @@ function withId(index: number, featureId: string | null, msg: string): string {
   return `entry ${index}${featureId ? ` (${featureId})` : ""}: ${msg}`;
 }
 
-function validateEntryShape(
-  raw: unknown,
+function extractFeatureId(
+  e: Record<string, unknown>,
   index: number,
-  allowedIds: string[] | null
-): { issues: string[]; featureId: string | null } {
-  const issues: string[] = [];
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return { issues: [`entry ${index}: not a JSON object`], featureId: null };
-  }
-  const e = raw as Record<string, unknown>;
-
+  allowedIds: string[] | null,
+  issues: string[]
+): string | null {
   const featureId =
     typeof e.featureId === "string" && e.featureId.trim() !== "" ? e.featureId : null;
   if (!featureId) {
@@ -109,7 +104,15 @@ function validateEntryShape(
       )
     );
   }
+  return featureId;
+}
 
+function validateCoreFields(
+  e: Record<string, unknown>,
+  index: number,
+  featureId: string | null,
+  issues: string[]
+): void {
   const scores =
     e.scores && typeof e.scores === "object" && !Array.isArray(e.scores)
       ? (e.scores as Record<string, unknown>)
@@ -135,7 +138,14 @@ function validateEntryShape(
   if (typeof e.reasoning !== "string" || e.reasoning.trim() === "") {
     issues.push(withId(index, featureId, "reasoning must be a non-empty string"));
   }
+}
 
+function validateDeclineAndExtras(
+  e: Record<string, unknown>,
+  index: number,
+  featureId: string | null,
+  issues: string[]
+): void {
   if (e.compositePriority === "P4") {
     const declinedPer = e.declined_per;
     const valid =
@@ -164,7 +174,21 @@ function validateEntryShape(
       issues.push(withId(index, featureId, (err as Error).message));
     }
   }
+}
 
+function validateEntryShape(
+  raw: unknown,
+  index: number,
+  allowedIds: string[] | null
+): { issues: string[]; featureId: string | null } {
+  const issues: string[] = [];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { issues: [`entry ${index}: not a JSON object`], featureId: null };
+  }
+  const e = raw as Record<string, unknown>;
+  const featureId = extractFeatureId(e, index, allowedIds, issues);
+  validateCoreFields(e, index, featureId, issues);
+  validateDeclineAndExtras(e, index, featureId, issues);
   return { issues, featureId };
 }
 
@@ -190,6 +214,135 @@ function appendProposedSlicesSection(body: string, slices: ProposedSlice[]): str
     ""
   ].join("\n");
   return `${body.replace(/\n+$/, "\n")}${section}`;
+}
+
+interface WritableBacklogEntry {
+  filePath: string;
+  state: string;
+}
+
+async function resolveWritableEntry(
+  repoPath: string,
+  featureId: string,
+  index: number,
+  config: Record<string, unknown> | null
+): Promise<{ entry: WritableBacklogEntry } | { failure: PmApplyFailure }> {
+  const backlogEntry = await findFeatureById(repoPath, featureId, config);
+  if (!backlogEntry) {
+    return {
+      failure: {
+        index,
+        featureId,
+        issues: [withId(index, featureId, "no matching FEAT file found on disk")]
+      }
+    };
+  }
+  if (!WRITABLE_STATES.has(backlogEntry.state)) {
+    return {
+      failure: {
+        index,
+        featureId,
+        issues: [
+          withId(
+            index,
+            featureId,
+            `feature is in state "${backlogEntry.state}" — pm-apply only writes pending/triaged FEATs`
+          )
+        ]
+      }
+    };
+  }
+  return { entry: backlogEntry };
+}
+
+async function appendBodySections(
+  filePath: string,
+  e: Record<string, any>,
+  featureId: string
+): Promise<ProposedSlice[] | null> {
+  const freshContent = await fs.readFile(filePath, "utf8");
+  const { frontmatter: currentFm, body: currentBody } = parseFrontmatter(freshContent);
+
+  let newBody = currentBody;
+  if (Array.isArray(e.acs) && e.acs.length > 0) {
+    newBody = appendAcsSection(newBody, e.acs as string[]);
+  }
+  let proposedSlices: ProposedSlice[] | null = null;
+  if (e.proposedSlices) {
+    proposedSlices = parseProposedSlices(e.proposedSlices, featureId);
+    if (proposedSlices) {
+      newBody = appendProposedSlicesSection(newBody, proposedSlices);
+    }
+  }
+  if (newBody !== currentBody) {
+    await fs.writeFile(filePath, serializeFrontmatter(currentFm, newBody), "utf8");
+  }
+  return proposedSlices;
+}
+
+function buildPmUpdates(
+  e: Record<string, any>,
+  proposedSlices: ProposedSlice[] | null
+): Record<string, unknown> {
+  const scores = e.scores as Record<string, number>;
+  const pmUpdates: Record<string, unknown> = {
+    priority: e.compositePriority,
+    pm_customer_impact: scores.customer_impact,
+    pm_effort_estimate: scores.effort_estimate,
+    pm_strategic_alignment: scores.strategic_alignment,
+    pm_technical_risk: scores.technical_risk,
+    pm_dependency_depth: scores.dependency_depth,
+    pm_composite_priority: e.compositePriority,
+    pm_autonomous_safe: e.autonomousSafe,
+    pm_reviewed: new Date().toISOString().slice(0, 10),
+    autonomous_safe: e.autonomousSafe,
+    triage_notes: e.reasoning
+  };
+  if (e.compositePriority === "P4") {
+    pmUpdates.declined_per = e.declined_per;
+  }
+  if (proposedSlices) {
+    pmUpdates.proposed_slices = proposedSlices;
+  }
+  return pmUpdates;
+}
+
+async function commitEntry(
+  repoPath: string,
+  entry: WritableBacklogEntry,
+  e: Record<string, any>,
+  featureId: string,
+  config: Record<string, unknown> | null
+): Promise<PmApplyApplied> {
+  const proposedSlices = await appendBodySections(entry.filePath, e, featureId);
+  const pmUpdates = buildPmUpdates(e, proposedSlices);
+
+  let finalPath = entry.filePath;
+  let movedToTriaged = false;
+  if (entry.state === "pending") {
+    const moved = await moveFeature(entry.filePath, "triaged", pmUpdates, repoPath, config);
+    finalPath = moved.to;
+    movedToTriaged = true;
+  } else {
+    await updateFeatureFrontmatter(entry.filePath, pmUpdates, repoPath, config);
+  }
+
+  // exactOptionalPropertyTypes (tsconfig.json) forbids assigning
+  // `undefined` to an optional property directly — conditionally spread
+  // each optional field instead of setting it to `undefined`.
+  const reviewInput: Parameters<typeof writePmReviewArtifact>[1] = {
+    featureId,
+    scores: e.scores as Record<string, number>,
+    compositePriority: e.compositePriority as string,
+    autonomousSafe: e.autonomousSafe as boolean,
+    reasoning: e.reasoning as string,
+    ...(e.demandEvidence !== undefined ? { demandEvidence: e.demandEvidence as string } : {}),
+    ...(e.scopeNotes !== undefined ? { scopeNotes: e.scopeNotes as string } : {}),
+    ...(e.risks !== undefined ? { risks: e.risks as string[] } : {})
+  };
+  const { artifactPath } = await writePmReviewArtifact(repoPath, reviewInput);
+
+  return { featureId, filePath: finalPath, artifactPath, movedToTriaged };
 }
 
 /**
@@ -224,107 +377,21 @@ export async function applyPmResults(
       continue;
     }
 
-    const e = rawEntry as Record<string, any>;
-    const backlogEntry = await findFeatureById(repoPath, featureId as string, config);
-    if (!backlogEntry) {
-      failures.push({
-        index,
-        featureId,
-        issues: [withId(index, featureId, "no matching FEAT file found on disk")]
-      });
-      continue;
-    }
-    if (!WRITABLE_STATES.has(backlogEntry.state)) {
-      failures.push({
-        index,
-        featureId,
-        issues: [
-          withId(
-            index,
-            featureId,
-            `feature is in state "${backlogEntry.state}" — pm-apply only writes pending/triaged FEATs`
-          )
-        ]
-      });
+    const resolved = await resolveWritableEntry(repoPath, featureId as string, index, config);
+    if ("failure" in resolved) {
+      failures.push(resolved.failure);
       continue;
     }
 
-    const freshContent = await fs.readFile(backlogEntry.filePath, "utf8");
-    const { frontmatter: currentFm, body: currentBody } = parseFrontmatter(freshContent);
-
-    let newBody = currentBody;
-    if (Array.isArray(e.acs) && e.acs.length > 0) {
-      newBody = appendAcsSection(newBody, e.acs as string[]);
-    }
-    let proposedSlices: ProposedSlice[] | null = null;
-    if (e.proposedSlices) {
-      proposedSlices = parseProposedSlices(e.proposedSlices, featureId as string);
-      if (proposedSlices) {
-        newBody = appendProposedSlicesSection(newBody, proposedSlices);
-      }
-    }
-    if (newBody !== currentBody) {
-      await fs.writeFile(backlogEntry.filePath, serializeFrontmatter(currentFm, newBody), "utf8");
-    }
-
-    const scores = e.scores as Record<string, number>;
-    const pmUpdates: Record<string, unknown> = {
-      priority: e.compositePriority,
-      pm_customer_impact: scores.customer_impact,
-      pm_effort_estimate: scores.effort_estimate,
-      pm_strategic_alignment: scores.strategic_alignment,
-      pm_technical_risk: scores.technical_risk,
-      pm_dependency_depth: scores.dependency_depth,
-      pm_composite_priority: e.compositePriority,
-      pm_autonomous_safe: e.autonomousSafe,
-      pm_reviewed: new Date().toISOString().slice(0, 10),
-      autonomous_safe: e.autonomousSafe,
-      triage_notes: e.reasoning
-    };
-    if (e.compositePriority === "P4") {
-      pmUpdates.declined_per = e.declined_per;
-    }
-    if (proposedSlices) {
-      pmUpdates.proposed_slices = proposedSlices;
-    }
-
-    let finalPath = backlogEntry.filePath;
-    let movedToTriaged = false;
-    if (backlogEntry.state === "pending") {
-      const moved = await moveFeature(
-        backlogEntry.filePath,
-        "triaged",
-        pmUpdates,
+    applied.push(
+      await commitEntry(
         repoPath,
+        resolved.entry,
+        rawEntry as Record<string, any>,
+        featureId as string,
         config
-      );
-      finalPath = moved.to;
-      movedToTriaged = true;
-    } else {
-      await updateFeatureFrontmatter(backlogEntry.filePath, pmUpdates, repoPath, config);
-    }
-
-    // exactOptionalPropertyTypes (tsconfig.json) forbids assigning
-    // `undefined` to an optional property directly — conditionally spread
-    // each optional field instead of setting it to `undefined`.
-    const reviewInput: Parameters<typeof writePmReviewArtifact>[1] = {
-      featureId: featureId as string,
-      scores,
-      compositePriority: e.compositePriority as string,
-      autonomousSafe: e.autonomousSafe as boolean,
-      reasoning: e.reasoning as string,
-      ...(e.demandEvidence !== undefined ? { demandEvidence: e.demandEvidence as string } : {}),
-      ...(e.scopeNotes !== undefined ? { scopeNotes: e.scopeNotes as string } : {}),
-      ...(e.risks !== undefined ? { risks: e.risks as string[] } : {})
-    };
-    const { artifactPath } = await writePmReviewArtifact(repoPath, reviewInput);
-
-    applied.push({
-      featureId: featureId as string,
-      filePath: finalPath,
-      artifactPath,
-      movedToTriaged
-    });
+      )
+    );
   }
 
   return { applied, failures };

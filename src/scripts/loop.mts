@@ -821,7 +821,12 @@ async function main() {
     "competitor-audit": "crew:market-researcher",
     architect: "crew:architect",
     "stop-check": "internal-only (runner:auto)",
-    "snapshot-memory": "runner:status (includes snapshot)",
+    // "snapshot-memory" removed from this map (FEAT-214 item 7): a real
+    // handler has existed since v0.53 (see COMMANDS["snapshot-memory"]
+    // below) — this stub silently intercepted every invocation before the
+    // handler lookup ever ran, and its replacement pointer was also wrong
+    // (`runner:status` never regenerates the snapshot; see
+    // reportStatus() in loop-installer.mts).
     "decisions-list": "runner:decisions list",
     "decisions-show": "runner:decisions show",
     "decisions-relevant": "runner:decisions relevant",
