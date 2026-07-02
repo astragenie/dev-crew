@@ -1,6 +1,6 @@
 ---
 id: FEAT-209
-status: triaged
+status: done
 priority: P1
 category: reliability
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-07-02
 autonomous_safe: false
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.6-0.8: schema/data-shape change (new schemaVersion field) on a file that is a documented cross-plugin write contract (DEC-018/019) shared with another plugin's runtime -- rollback needs coordination across two repos, not a bare revert. P1 with review (autonomousSafe: false) matching the retrospective stub's own annotation: real prior incident, but full ADR-D completion depends on an out-of-repo upstream change I cannot verify or gate here."
+completed_at: 2026-07-02
 ---
 # FEAT-209: workflow-state runtime validation + schemaVersion guard
 
