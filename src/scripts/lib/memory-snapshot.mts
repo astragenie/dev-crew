@@ -8,6 +8,12 @@ import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
+import { summarizePauseRate, type PauseRateSummary } from "./pause-telemetry.mjs";
+
+// FEAT-212: window size for the "Pause rate (last N dispatches)" bullet in
+// the Loop telemetry section. Mirrors the cost-trajectory default window
+// (loadCostReportUSDValues limit = 20) for a consistent "recent N" feel.
+const PAUSE_RATE_WINDOW = 20;
 
 // Writes a single durable snapshot of loop state to
 // docs/loop-snapshot.md. Designed to be `@`-referenced from
@@ -238,7 +244,12 @@ function renderDecisions(recentDecisions: Record<string, any>[]) {
 
 function renderLoopTelemetry(
   iterationStatus: Record<string, any> | null,
-  costTrajectory: { avgUSD: number | null; count: number; lastCostAdvisorVerdict: string | null }
+  costTrajectory: {
+    avgUSD: number | null;
+    count: number;
+    lastCostAdvisorVerdict: string | null;
+  },
+  pauseSummary: PauseRateSummary
 ) {
   const out = ["## Loop telemetry", ""];
 
@@ -259,6 +270,15 @@ function renderLoopTelemetry(
     out.push("- Last cost-advisor verdict: n/a");
   } else {
     out.push(`- Last cost-advisor verdict: ${costTrajectory.lastCostAdvisorVerdict}`);
+  }
+
+  // FEAT-212: omit entirely when no dispatch-outcome telemetry has been
+  // recorded yet (pause-events.jsonl absent or empty) -- never render a
+  // misleading "0%" for a rate with no denominator, and never error.
+  if (pauseSummary.dispatches > 0) {
+    out.push(
+      `- Pause rate (last ${pauseSummary.dispatches} dispatches): ${(pauseSummary.pauseRate * 100).toFixed(1)}%`
+    );
   }
 
   out.push("");
@@ -285,24 +305,35 @@ async function collectSnapshotData(
   decisions: Record<string, any>[];
   iterationStatus: Record<string, any> | null;
   costReportUSDValues: number[];
+  pauseSummary: PauseRateSummary;
 }> {
-  const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues] =
+  const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, pauseSummary] =
     await Promise.all([
       listBacklog(repoPath, { config }),
       listSpecs(repoPath, { config }),
       listGrades(repoPath, { config }),
       listDecisions(repoPath, { config }),
       getIterationStatus(repoPath),
-      loadCostReportUSDValues(repoPath)
+      loadCostReportUSDValues(repoPath),
+      summarizePauseRate(repoPath, PAUSE_RATE_WINDOW)
     ]);
-  return { backlog, specs, grades, decisions, iterationStatus, costReportUSDValues };
+  return {
+    backlog,
+    specs,
+    grades,
+    decisions,
+    iterationStatus,
+    costReportUSDValues,
+    pauseSummary
+  };
 }
 
 function buildSnapshotLines(
   data: Awaited<ReturnType<typeof collectSnapshotData>>,
   today: string
 ): string[] {
-  const { backlog, specs, grades, decisions, iterationStatus, costReportUSDValues } = data;
+  const { backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, pauseSummary } =
+    data;
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
   // Exclude deferred items from "next to slice" — mirrors the auto walker's
   // pre-branch filter (walker-gates.mts: `entry.frontmatter.deferred === true`
@@ -338,7 +369,7 @@ function buildSnapshotLines(
     ...renderSpecs(specs, specsByStatus),
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
-    ...renderLoopTelemetry(iterationStatus, costTrajectory),
+    ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary),
     ...renderUsageFooter()
   ];
 }
@@ -387,7 +418,9 @@ type WaveIndexEntry = {
 export function renderWaveTelemetry(repoRoot: string): string {
   const indexPath = path.join(repoRoot, ".claude/artifacts/loop/waves/index.json");
   if (!existsSync(indexPath)) return "";
-  const idx = JSON.parse(readFileSync(indexPath, "utf8")) as { entries: WaveIndexEntry[] };
+  const idx = JSON.parse(readFileSync(indexPath, "utf8")) as {
+    entries: WaveIndexEntry[];
+  };
   if (idx.entries.length === 0) return "";
 
   const last = idx.entries[idx.entries.length - 1]!;

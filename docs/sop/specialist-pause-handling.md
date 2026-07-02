@@ -58,6 +58,58 @@ If the artifact is missing, OR the artifact exists but its `status` field
 reads `in-progress`, the gate is unresolved regardless of how complete the
 textual response looks — classify it as a pause and proceed to Section 2.
 
+### 1a. Record the event
+
+Once a pause is detected (Section 1) and again once it is resolved,
+append a structured event so the pause rate is machine-queryable instead
+of a hand-counted prose estimate (FEAT-212 — see
+`src/scripts/lib/pause-telemetry.mts`). Both calls write to the same
+append-only `.claude/artifacts/loop/pause-events.jsonl`:
+
+```bash
+# On detection (kind mirrors the symptom that fired — see Section 1):
+bun -e "
+import('./src/scripts/lib/pause-telemetry.mts').then(({ recordPauseEvent }) =>
+  recordPauseEvent(process.cwd(), {
+    sliceId: '<slice-id>',
+    agentRole: 'crew:fullstack-dev', // or crew:inspector / crew:verifier
+    kind: 'pause',
+    detection: 'no_artifact' // or scaffold_in_progress / mid_sentence
+  })
+)"
+
+# On resolution, once Option A or B below lands the artifact/skip badge:
+bun -e "
+import('./src/scripts/lib/pause-telemetry.mts').then(({ recordPauseEvent }) =>
+  recordPauseEvent(process.cwd(), {
+    sliceId: '<slice-id>',
+    agentRole: 'crew:fullstack-dev',
+    kind: 'resume_success',
+    detection: 'no_artifact'
+  })
+)"
+```
+
+Separately, every dispatch (paused or not) should record its outcome so
+a real per-dispatch pause rate is computable — not just per-slice
+incidence:
+
+```bash
+bun -e "
+import('./src/scripts/lib/pause-telemetry.mts').then(({ recordDispatchOutcome }) =>
+  recordDispatchOutcome(process.cwd(), {
+    sliceId: '<slice-id>',
+    agentRole: 'crew:fullstack-dev',
+    outcome: 'paused' // or 'completed'
+  })
+)"
+```
+
+`bun src/scripts/loop.mts snapshot-memory --repo <path>` surfaces the
+resulting rate as a `Pause rate (last N dispatches): X%` bullet in the
+Loop telemetry section once at least one dispatch outcome is recorded;
+it is omitted (never an error) when the file is absent.
+
 ### 2. Pick a resolution path
 
 **Option A — Lead writes the artifact inline (preferred when scope is clear).**

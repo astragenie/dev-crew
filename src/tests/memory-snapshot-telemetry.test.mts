@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { writeMemorySnapshot, generateSnapshotContent } from "../scripts/lib/memory-snapshot.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { initializeIterationCounter, incrementIteration } from "../scripts/lib/loop-iteration.mjs";
+import { recordDispatchOutcome, recordPauseEvent } from "../scripts/lib/pause-telemetry.mjs";
 
 async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -112,7 +113,10 @@ test("writeMemorySnapshot snapshot remains valid with mixed empty and full state
   // Create some backlog
   await addFeature(repo, { title: "Feature A" });
   const f = await addFeature(repo, { title: "Feature B" });
-  await moveFeature(f.filePath, "triaged", { priority: "P1", category: "feature" });
+  await moveFeature(f.filePath, "triaged", {
+    priority: "P1",
+    category: "feature"
+  });
 
   // No loop state, no cost reports
   const snapshot = await writeMemorySnapshot(repo);
@@ -163,14 +167,21 @@ function topTriagedIds(content: string): string[] {
 
 async function addTriaged(repo: string, title: string, updates: Record<string, any>) {
   const f = await addFeature(repo, { title });
-  await moveFeature(f.filePath, "triaged", { priority: "P2", category: "feature", ...updates });
+  await moveFeature(f.filePath, "triaged", {
+    priority: "P2",
+    category: "feature",
+    ...updates
+  });
   return f.id;
 }
 
 // AC-2: deferred FEAT excluded from Top-triaged when >=5 non-deferred exist
 test("writeMemorySnapshot excludes deferred FEAT from Top triaged (>=5 non-deferred)", async () => {
   const repo = await tmpRepo("al-snapshot-deferred-excl-");
-  const deferredId = await addTriaged(repo, "Blocked upstream", { priority: "P1", deferred: true });
+  const deferredId = await addTriaged(repo, "Blocked upstream", {
+    priority: "P1",
+    deferred: true
+  });
   const liveIds: string[] = [];
   for (let i = 0; i < 5; i++) liveIds.push(await addTriaged(repo, `Live feature ${i}`, {}));
 
@@ -187,7 +198,10 @@ test("writeMemorySnapshot excludes deferred FEAT from Top triaged (>=5 non-defer
 // AC-3: no padding with the deferred entry when fewer than 5 non-deferred exist
 test("writeMemorySnapshot does not pad Top triaged with deferred entry (<5 non-deferred)", async () => {
   const repo = await tmpRepo("al-snapshot-deferred-nopad-");
-  const deferredId = await addTriaged(repo, "Blocked upstream", { priority: "P1", deferred: true });
+  const deferredId = await addTriaged(repo, "Blocked upstream", {
+    priority: "P1",
+    deferred: true
+  });
   const liveA = await addTriaged(repo, "Live A", {});
   const liveB = await addTriaged(repo, "Live B", {});
 
@@ -245,6 +259,55 @@ test("generateSnapshotContent returns string starting with AUTO-GENERATED header
   assert.ok(
     content.startsWith(AUTO_HEADER),
     "generateSnapshotContent must start with the AUTO-GENERATED header"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// FEAT-212: Pause rate bullet — presence/absence in Loop telemetry section
+// ---------------------------------------------------------------------------
+
+test("writeMemorySnapshot omits Pause rate bullet when no pause-events.jsonl exists", async () => {
+  const repo = await tmpRepo("al-snapshot-pause-absent-");
+  await addFeature(repo, { title: "Test" });
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  assert.ok(content.includes("## Loop telemetry"), "should still render Loop telemetry section");
+  assert.ok(!content.includes("Pause rate"), "should omit Pause rate bullet with no data");
+});
+
+test("writeMemorySnapshot renders Pause rate bullet once dispatch outcomes exist", async () => {
+  const repo = await tmpRepo("al-snapshot-pause-present-");
+  await addFeature(repo, { title: "Test" });
+
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "completed"
+  });
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "completed"
+  });
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "paused"
+  });
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "completed"
+  });
+  await recordPauseEvent(repo, {
+    agentRole: "crew:fullstack-dev",
+    kind: "pause",
+    detection: "no_artifact"
+  });
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  assert.ok(
+    content.includes("Pause rate (last 4 dispatches): 25.0%"),
+    "should render the pause rate bullet with the correct window count and percentage"
   );
 });
 
