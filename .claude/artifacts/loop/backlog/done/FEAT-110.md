@@ -1,6 +1,8 @@
 ---
 id: FEAT-110
-status: triaged
+status: done
+closed: 2026-07-02
+close_note: "Shipped-as-scoped in `src/scripts/lib/pr-watch.mts` (342 lines, all 7 ACs covered) + CLI `pr-watch` subcommand at `loop.mts:491` + halt-badge integration + 18 tests in `src/tests/pr-watch.test.mts`. Discovered during 2026-07-02 backlog audit — implementation predates triage-status update, likely shipped alongside FEAT-202 SLICE-134 (header comment references `FEAT-110 / SLICE-134`). No follow-up needed."
 priority: P2
 category: competitor-gap
 target_release: null
