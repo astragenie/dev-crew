@@ -110,7 +110,55 @@ resulting rate as a `Pause rate (last N dispatches): X%` bullet in the
 Loop telemetry section once at least one dispatch outcome is recorded;
 it is omitted (never an error) when the file is absent.
 
-### 2. Pick a resolution path
+### 2. Pick a resolution path — partially retired for reviewer/validator since crew 0.47.0
+
+**Status: narrow retirement, reviewer/validator only.** Since crew 0.47.0
+(installed; floor bumped in `src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`,
+FEAT-176/SLICE-134), `crew:inspector` (reviewer) and `crew:verifier`
+(validator) dispatches write a scaffold artifact (`--scaffold --status
+in-progress`) as their FIRST tool call and overwrite it (`--update ...
+--status completed`) as their LAST (Section 1 above, confirmed present in
+`agents/inspector.md` and `agents/verifier.md`). A tool-less-exit pause on
+these two roles now leaves that scaffold behind — Section 1's
+existence-AND-status check already resumes/completes the gate from the
+scaffold in most cases without the lead needing to write an artifact from
+scratch.
+
+**Builder-tier dispatches (`crew:fullstack-dev` / `crew:frontend-dev` /
+`crew:backend-dev`) are NOT covered by the scaffold contract** — 0.47.0
+redesigned builders to never write a handoff artifact at all ("Builders
+do NOT write handoff artifacts ... NEVER invoke write-handoff"; inline
+follow-up only). There is no scaffold to check for a paused builder;
+Section 1's status-check guidance does not apply to this role. This is a
+different fix for the same underlying problem, not scaffold coverage —
+don't assume a missing builder artifact means a catastrophic pause.
+
+**`aiplugin-dev` is NOT covered as of 0.47.0.** It is a first-party crew
+agent (not a vendored `3rdparty/*` agent) and the contract extension for
+it landed in dev-team main via PR #150 but is **unreleased** — it ships
+with the next crew release above 0.47.0. `.claude/artifacts/loop/pause-events.jsonl`
+records `aiplugin-dev` pausing repeatedly on 2026-07-02 (FEAT-204/205/208/
+209/210/211/212/213/214) with `notes: "agent lacks scaffold-first HARD
+OUTPUT CONTRACT"` — live evidence the manual fallback is still needed for
+this role today.
+
+Section 2's manual fallback (Option A / Option B below) stays **ACTIVE**
+for:
+
+- builder-tier dispatches (`crew:fullstack-dev` / `crew:frontend-dev` /
+  `crew:backend-dev`) — no scaffold exists by design
+- `aiplugin-dev` — contract merged upstream but not yet released; re-check
+  this note after the next crew version bump
+- any agent invoked without the HARD OUTPUT CONTRACT (e.g. a vendored
+  `3rdparty/*` agent)
+- a catastrophic kill that occurs before even the scaffold's first tool
+  call lands (no stub, no artifact at all) — applies even to
+  inspector/verifier
+
+Only skip straight to Section 1's scaffold-status check (and treat
+manual fallback as optional) for `crew:inspector` / `crew:verifier`
+dispatches. For every other role, manual fallback remains the default
+path until its own contract ships and this section is updated again.
 
 **Option A — Lead writes the artifact inline (preferred when scope is clear).**
 
