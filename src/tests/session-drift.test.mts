@@ -306,6 +306,96 @@ test("slice-start: writeSessionIdToWorkflowState merges into existing state", as
 });
 
 // ---------------------------------------------------------------------------
+// DEC-060 / FEAT-209: schemaVersion guard on writeSessionIdToWorkflowState
+// (fail-open — refusal logged loudly, non-blocking)
+// ---------------------------------------------------------------------------
+
+test("slice-start: writeSessionIdToWorkflowState refuses write on schemaVersion mismatch, logs loudly, does not throw", async () => {
+  const repo = await tmpRepo("sd-write-session-mismatch-");
+  process.env.CLAUDE_SESSION_ID = "session-mismatch";
+  const statePath = path.join(repo, ".claude/state/crew/workflow-state.json");
+  await fs.mkdir(path.dirname(statePath), { recursive: true });
+  const before = { version: "1.0", schemaVersion: 99, currentRun: {} };
+  await fs.writeFile(statePath, JSON.stringify(before, null, 2));
+
+  const originalError = console.error;
+  const logged: string[] = [];
+  console.error = (msg: string) => {
+    logged.push(String(msg));
+  };
+  try {
+    const { writeSessionIdToWorkflowState } = await import("../scripts/lib/session-drift.mjs");
+    await assert.doesNotReject(() => writeSessionIdToWorkflowState(repo));
+
+    const after = JSON.parse(await fs.readFile(statePath, "utf8"));
+    assert.equal(after.currentRun.sessionId, undefined, "write must be refused, not applied");
+    assert.equal(after.schemaVersion, 99, "existing schemaVersion untouched");
+    assert.ok(
+      logged.some((l) => l.includes("WorkflowStateSchemaMismatchError")),
+      `expected a logged WorkflowStateSchemaMismatchError refusal, got: ${JSON.stringify(logged)}`
+    );
+  } finally {
+    console.error = originalError;
+    delete process.env.CLAUDE_SESSION_ID;
+  }
+});
+
+test("slice-start: writeSessionIdToWorkflowState refuses write on corrupt JSON, logs loudly, does not throw", async () => {
+  const repo = await tmpRepo("sd-write-session-corrupt-");
+  process.env.CLAUDE_SESSION_ID = "session-corrupt";
+  const statePath = path.join(repo, ".claude/state/crew/workflow-state.json");
+  await fs.mkdir(path.dirname(statePath), { recursive: true });
+  await fs.writeFile(statePath, "{ not valid json ][");
+
+  const originalError = console.error;
+  const logged: string[] = [];
+  console.error = (msg: string) => {
+    logged.push(String(msg));
+  };
+  try {
+    const { writeSessionIdToWorkflowState } = await import("../scripts/lib/session-drift.mjs");
+    await assert.doesNotReject(() => writeSessionIdToWorkflowState(repo));
+
+    const rawAfter = await fs.readFile(statePath, "utf8");
+    assert.equal(
+      rawAfter,
+      "{ not valid json ][",
+      "corrupt file must be left untouched, not overwritten"
+    );
+    assert.ok(
+      logged.some((l) => l.includes("WorkflowStateCorruptError")),
+      `expected a logged WorkflowStateCorruptError refusal, got: ${JSON.stringify(logged)}`
+    );
+  } finally {
+    console.error = originalError;
+    delete process.env.CLAUDE_SESSION_ID;
+  }
+});
+
+test("slice-start: writeSessionIdToWorkflowState proceeds when schemaVersion is absent (implicit v1)", async () => {
+  const repo = await tmpRepo("sd-write-session-implicit-v1-");
+  process.env.CLAUDE_SESSION_ID = "session-implicit-v1";
+  const statePath = path.join(repo, ".claude/state/crew/workflow-state.json");
+  await fs.mkdir(path.dirname(statePath), { recursive: true });
+  // No schemaVersion key at all — the shape every file on disk has today.
+  await fs.writeFile(statePath, JSON.stringify({ version: "1.0", currentRun: {} }, null, 2));
+
+  try {
+    const { writeSessionIdToWorkflowState } = await import("../scripts/lib/session-drift.mjs");
+    await writeSessionIdToWorkflowState(repo);
+
+    const after = JSON.parse(await fs.readFile(statePath, "utf8"));
+    assert.equal(
+      after.currentRun?.sessionId,
+      "session-implicit-v1",
+      "write should proceed without refusal when schemaVersion is absent"
+    );
+  } finally {
+    delete process.env.CLAUDE_SESSION_ID;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // allowCrossSession override flag (FEAT-056 AC-4)
 // ---------------------------------------------------------------------------
 

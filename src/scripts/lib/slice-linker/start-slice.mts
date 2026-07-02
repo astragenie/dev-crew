@@ -24,6 +24,11 @@ import { classifySliceShape } from "../classify-slice-shape.mjs";
 import type { FileChange } from "../classify-slice-shape.mjs";
 import { writeShapeMarker } from "../shape-marker.mjs";
 import { emitShapeClassified } from "../shape-event-emitter.mjs";
+import {
+  readWorkflowStateForWrite,
+  WorkflowStateCorruptError,
+  WorkflowStateSchemaMismatchError
+} from "../workflow-state-guard.mjs";
 
 // ---------------------------------------------------------------------------
 // SLICE-94 / FEAT-186: shape classification helpers
@@ -208,19 +213,22 @@ async function pinSessionId(repoPath: string): Promise<void> {
 
 const STATE_PATH_PARTS = [".claude", "state", "crew", "workflow-state.json"];
 
-/** Write worktreePath into workflow-state.currentRun. Returns prior value for rollback. */
+/**
+ * Write worktreePath into workflow-state.currentRun. Returns prior value for
+ * rollback.
+ *
+ * Fail-loud by design (DEC-019's failure-atomicity invariant). DEC-060 /
+ * FEAT-209: reads via readWorkflowStateForWrite — a corrupt file or a
+ * schemaVersion loop doesn't support throws WorkflowStateCorruptError /
+ * WorkflowStateSchemaMismatchError, which propagates unchanged to the caller
+ * (applyWorktreeResult) rather than silently falling back to a blank state.
+ */
 async function writeWorktreePathToState(
   repoPath: string,
   worktreePath: string
 ): Promise<string | null> {
   const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
-  let state: any = { version: "1.0", currentRun: {} };
-  try {
-    const raw = await fs.readFile(statePath, "utf8");
-    state = JSON.parse(raw);
-  } catch {
-    // Missing or unparseable — start from minimal schema.
-  }
+  const { state } = await readWorkflowStateForWrite(statePath);
   if (!state.currentRun) state.currentRun = {};
   const prior: string | null = state.currentRun.worktreePath ?? null;
   state.currentRun.worktreePath = worktreePath;
@@ -230,12 +238,30 @@ async function writeWorktreePathToState(
   return prior;
 }
 
-/** Roll back workflow-state.currentRun.worktreePath to its prior value (null clears it). */
+/**
+ * Roll back workflow-state.currentRun.worktreePath to its prior value (null
+ * clears it). Best-effort for ordinary I/O failures (no secondary throw that
+ * would mask the original frontmatter-write error being rolled back for) —
+ * but DEC-060 / FEAT-209's two named errors (WorkflowStateCorruptError /
+ * WorkflowStateSchemaMismatchError) propagate unchanged, since a corrupt or
+ * schema-mismatched state file at rollback time is itself the more urgent
+ * problem.
+ */
 async function rollbackWorktreePathInState(repoPath: string, prior: string | null): Promise<void> {
+  const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
+  let state: any;
   try {
-    const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
-    const raw = await fs.readFile(statePath, "utf8");
-    const state = JSON.parse(raw);
+    ({ state } = await readWorkflowStateForWrite(statePath));
+  } catch (err: unknown) {
+    if (
+      err instanceof WorkflowStateCorruptError ||
+      err instanceof WorkflowStateSchemaMismatchError
+    ) {
+      throw err;
+    }
+    return; // best-effort rollback — no secondary throw for unexpected I/O errors
+  }
+  try {
     if (!state.currentRun) state.currentRun = {};
     if (prior === null) {
       delete state.currentRun.worktreePath;

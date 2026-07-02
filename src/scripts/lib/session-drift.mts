@@ -15,6 +15,11 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  readWorkflowStateForWrite,
+  WorkflowStateCorruptError,
+  WorkflowStateSchemaMismatchError
+} from "./workflow-state-guard.mjs";
 
 /** Signal returned by checkSessionDrift when sessions differ. */
 export interface SessionDriftSignal {
@@ -72,19 +77,31 @@ export async function checkSessionDrift(repoPath: string): Promise<SessionDriftS
  * very first slice of a fresh repo (before crew has had a chance to write
  * its own state).
  *
- * Best-effort: any error is swallowed so slice-start is never blocked.
+ * Fail-open by design (DEC-018): best-effort — never blocks slice-start.
+ * DEC-060 / FEAT-209: a schemaVersion mismatch or corrupt workflow-state.json
+ * is caught specifically (not folded into the generic best-effort catch) so
+ * the refusal is logged loudly via console.error instead of silently
+ * discarding the file's existing content — slice-start still proceeds
+ * without the write.
  */
 export async function writeSessionIdToWorkflowState(repoPath: string): Promise<void> {
   const sessionId = process.env.CLAUDE_SESSION_ID;
   if (!sessionId) return;
 
   const statePath = path.join(repoPath, ...STATE_PATH);
-  let state: any = { version: "1.0", currentRun: {} };
+  let state: any;
   try {
-    const raw = await fs.readFile(statePath, "utf8");
-    state = JSON.parse(raw);
-  } catch {
-    // File missing or unparseable — start from minimal state shape.
+    ({ state } = await readWorkflowStateForWrite(statePath));
+  } catch (err: unknown) {
+    if (
+      err instanceof WorkflowStateSchemaMismatchError ||
+      err instanceof WorkflowStateCorruptError
+    ) {
+      console.error(`[session-drift] refusing session-pin write: ${err.name}: ${err.message}`);
+      return;
+    }
+    // Unexpected error shape — fall back to minimal scaffold, best-effort as before.
+    state = { version: "1.0", currentRun: {} };
   }
 
   if (!state.currentRun) state.currentRun = {};
