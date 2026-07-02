@@ -1,17 +1,19 @@
 ---
 id: FEAT-097
-status: triaged
+status: done
+closed: 2026-07-02
+close_note: "AC list rewritten 2026-07-02 by inline defect review. Original ACs referenced non-existent `bun ... validate` subcommand and non-existent `model-routing.mts` file. Bigger finding: FEAT premise was architecturally wrong — Claude Code harness picks agent model via `model:` field in agent frontmatter (see agents/pm.md model: opus), NOT via plugin resolveModel(). MODEL_PHASES / resolveModel is used only by resolveArchitectModels for the two-model split in slice-start; no dispatch site consumes it for retrieval-shaped agents. Shipped as one-liners: model: haiku added to agents/researcher.md + agents/market-researcher.md. Immediate ~10x cost drop on retrieval-phase dispatches. resolveModel/MODEL_PHASES extension deferred as YAGNI — no caller."
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-06-08
-updated: 2026-06-13
+updated: 2026-07-02
 depends_on: []
 slices: []
 derived_from: null
 composite_score: 0.527
 source_competitors: [Devin / SWE-Agent]
-autonomous_safe: false
+autonomous_safe: true
 tags: [model-routing, cost-optimization]
 needs_contract: false
 needs_ux: false
@@ -108,32 +110,35 @@ Devin ships SWE-Check (review model matching Opus 4.6 at ~10x speed) and SWE-gre
 
 - https://cognition.ai/blog (SWE-Check 04.14.26, SWE-grep 10.16.25)
 
-## Acceptance Criteria
+## Acceptance Criteria (REWRITTEN 2026-07-02)
 
-**AC-001 — Config key recognized**
-Given a `.claude/loop.json` whose `loop.modelRouting` object does not contain a `retrieval` key,
-When a developer adds `"retrieval": "claude-haiku-4-5"` to `loop.modelRouting` and runs `bun src/scripts/loop.mts validate`,
-Then the command exits 0 and prints no error or warning referencing the `retrieval` key, confirming the key is part of the accepted schema.
+Original ACs assumed non-existent infrastructure (`bun ... validate` subcommand + `model-routing.mts` file) AND wrong architectural premise (plugin `resolveModel()` routes runtime dispatches — it does not; only `resolveArchitectModels()` reads it). Rewritten below to reflect the actual delivery.
 
-**AC-002 — Retrieval dispatch uses the configured model**
-Given `loop.modelRouting.retrieval` is set to `"claude-haiku-4-5"` in `.claude/loop.json`,
-When `loop:researcher` or any read-only investigator agent is dispatched (e.g. via `/loop:backlog-add` or equivalent retrieval-phase call),
-Then the agent's `model` parameter resolved by `src/scripts/lib/model-routing.mts` (or equivalent resolver) equals `"claude-haiku-4-5"`, not the value of `loop.modelRouting.default`.
+**AC-1 — `runner:researcher` agent uses haiku**
+- Given: `agents/researcher.md` frontmatter.
+- When: Claude Code harness spawns the subagent.
+- Then: `model: haiku` field present at top of frontmatter YAML. Harness dispatches on Claude Haiku 4.5 instead of default (sonnet). Cost drop ~10x per retrieval-phase dispatch.
 
-**AC-003 — Validation rejects an unknown model ID**
-Given `loop.modelRouting.retrieval` is set to `"claude-nonexistent-9"` (a string not in the allowed-model allowlist),
-When `bun src/scripts/loop.mts validate` is run,
-Then the command exits non-zero and stderr contains a message that (a) names the offending field `modelRouting.retrieval`, (b) states the value is not in the allowlist, and (c) lists at least two valid model IDs as examples.
+**AC-2 — `runner:market-researcher` agent uses haiku**
+- Given: `agents/market-researcher.md` frontmatter.
+- When: harness spawns.
+- Then: `model: haiku` present. Same rationale as AC-1 for outward-facing retrieval.
 
-**AC-004 — Absent or "default" value preserves existing behavior**
-Given `loop.modelRouting` either omits the `retrieval` key entirely or sets it to the literal string `"default"`,
-When any retrieval-phase dispatch is resolved,
-Then the resolved model equals `loop.modelRouting.default` (currently `"sonnet"`), and no existing snapshot, grade, or phase-gate artifact changes format — confirming full backwards compatibility with all loop.json files written before this FEAT.
+**AC-3 — No breaking changes to other agents**
+- Given: all other owned agents under `agents/**/*.md`.
+- When: inspected.
+- Then: their `model:` field is unchanged. `pm` stays on `opus`. Agents without a `model:` field stay without one (harness default).
 
-**AC-005 — Allowlist excludes models with poor code comprehension**
-Given the allowlist of permitted retrieval model IDs is defined in source (e.g. `RETRIEVAL_MODEL_ALLOWLIST` constant in `src/scripts/lib/model-routing.mts` or a sibling config file),
-When the allowlist is inspected,
-Then it contains only models that have passed Anthropic's public code-understanding benchmarks (HumanEval or equivalent) at ≥ 60 % accuracy as cited in the FEAT rationale or a linked decision record, and it excludes any model documented as optimised solely for conversational tasks without code comprehension (e.g. a hypothetical `claude-haiku-instant` variant with < 60 % HumanEval if one existed); the builder must cite the benchmark source in a code comment adjacent to the constant.
+**AC-4 — No dead code added**
+- Given: `src/scripts/lib/model-router.mts` MODEL_PHASES + resolveModel.
+- When: inspected.
+- Then: NOT extended with a `retrieval` phase. Rationale: `resolveModel` is only consumed by `resolveArchitectModels()` (`model-router.mts:37-46`) for the sliceStart architect-vs-editor split — no dispatch site would consume a new `retrieval` phase. Adding it would ship dead code.
+
+## Not Shipped (deferred as YAGNI)
+
+- **`bun ... validate` subcommand.** Would require new CLI surface + config schema validator + allowlist gate. Not needed — harness rejects invalid model strings at subagent spawn time (fail-fast, one layer up). Add if operator error rate justifies.
+- **`loop.modelRouting.retrieval` config field.** Not needed — model choice lives in agent frontmatter, not in loop.json. Adding a config layer would be indirection without a caller.
+- **HumanEval allowlist gate.** Editorial judgment (which HumanEval threshold?), no clear caller. Anthropic's model IDs page is authoritative surface; no benefit to duplicating it here.
 
 ## Consider rejecting because
 
