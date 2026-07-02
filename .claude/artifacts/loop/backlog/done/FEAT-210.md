@@ -1,6 +1,6 @@
 ---
 id: FEAT-210
-status: triaged
+status: done
 priority: P2
 category: evals
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-07-02
 autonomous_safe: false
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.6-0.8: new dependency surface (GEPA has literally never run against real data), a judge-model swap, and the FEAT explicitly requires an unrecorded architectural decision (ADR-C) before any live-generator flip -- 'unknowns needing a spike' territory, though capped below 0.9 since the harness itself is described as architecturally sound. P2/autonomousSafe:false matches the retrospective stub exactly: real strategic value ('unblocks the entire optimization program') but gated on governance not yet in place, and effort spans 4 sub-workstreams -- not a single clean unit for unattended dispatch."
+completed_at: 2026-07-02
 ---
 # FEAT-210: GEPA capture canary + judge/held-out prerequisites
 
