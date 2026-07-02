@@ -26,6 +26,7 @@
     "agent.dispatch": "agent-dispatch.schema.json",
     "slice.agent_progress": "agent-progress.schema.json",
     "agent.tool_call": "tool-call.schema.json",
-    "halt_badge": "halt-badge.schema.json"
+    "halt_badge": "halt-badge.schema.json",
+    "halt_badge.resolved": "halt-badge-resolved.schema.json"
   }
 }

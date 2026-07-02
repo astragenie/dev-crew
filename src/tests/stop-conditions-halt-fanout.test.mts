@@ -77,6 +77,10 @@ describe("fanoutHaltBadgesFromSnapshot", () => {
     expect(typeof costBody.payload.ts).toBe("string");
     expect(costBody.payload.details).toBeDefined();
     expect((costBody.payload.details as Record<string, unknown>).currentUsd).toBe(25);
+    // schemaVersion (issue #297) — stamped on every halt_badge envelope.
+    expect(costBody.payload.schemaVersion).toBe("1.0.0");
+    const gradeBody = bodies.find((b) => b.payload.badgeKind === "gradeTrend")!;
+    expect(gradeBody.payload.schemaVersion).toBe("1.0.0");
   });
 
   test("no envelopes when all halt-badge fields are null", async () => {

@@ -16,6 +16,11 @@ import {
 } from "./paused-for-external-event.mjs";
 import { checkStuckDetector, type StuckDetectedSignal } from "./stuck-detector.mjs";
 import { fanoutEnvelope } from "./webhook-fanout.mjs";
+import {
+  diffHaltBadgeTransitions,
+  resolveResolverAgentRole,
+  type ResolvedHaltBadgeEntry
+} from "./halt-badge-state.mjs";
 
 // Unified stop-condition resolver. Returns a structured verdict:
 //   { shouldStop, reasons, blockers, suggestions, iterationCapReached }
@@ -615,11 +620,23 @@ export const HALT_BADGE_FIELDS = [
 export type HaltBadgeField = (typeof HALT_BADGE_FIELDS)[number];
 
 /**
+ * Halt-events v1 contract schema version (issue #297). BE tolerates absence
+ * (defaults to "1.0.0" on ingest) so this is safe to bump independently of
+ * BE deploys as long as the shape stays backward compatible.
+ */
+export const HALT_BADGE_SCHEMA_VERSION = "1.0.0";
+
+/**
  * Iterate every populated halt-badge field in `snapshot` and fan one envelope
  * per non-null field via `webhook-fanout::fanoutEnvelope` as kind `halt_badge`.
  *
  * Payload shape matches `schemas/loop-events/halt-badge.schema.json`:
- *   { badgeKind, ts, details, sliceId?, waveId? }
+ *   { schemaVersion, badgeKind, ts, details, sliceId?, waveId? }
+ *
+ * Also detects populated -> cleared transitions since the previous call
+ * (tracked via `halt-badge-state.mjs`) and fans out one `halt_badge.resolved`
+ * envelope per resolved badge — see
+ * `schemas/loop-events/halt-badge-resolved.schema.json`.
  *
  * Fail-silent on individual fanout errors — JSONL / snapshot data already
  * landed in the stop-check result and remain authoritative.
@@ -630,13 +647,17 @@ export async function fanoutHaltBadgesFromSnapshot(
   context: { sliceId?: string; waveId?: string } = {}
 ): Promise<void> {
   const ts = new Date().toISOString();
+  const currentOpen: Record<string, { ts: string; sliceId?: string }> = {};
+
   for (const field of HALT_BADGE_FIELDS) {
     const value = snapshot[field];
     if (value === null || value === undefined) continue;
     // Only object-shaped badges get fanned out — primitives are dashboard
     // fields, not halt-badges (defense-in-depth against future drift).
     if (typeof value !== "object") continue;
+    currentOpen[field] = context.sliceId ? { ts, sliceId: context.sliceId } : { ts };
     const payload: Record<string, unknown> = {
+      schemaVersion: HALT_BADGE_SCHEMA_VERSION,
       badgeKind: field,
       ts,
       details: value
@@ -645,6 +666,46 @@ export async function fanoutHaltBadgesFromSnapshot(
     if (context.waveId) payload.waveId = context.waveId;
     try {
       await fanoutEnvelope(repoPath, "halt_badge", payload);
+    } catch {
+      // Fail-silent — snapshot remains authoritative.
+    }
+  }
+
+  await fanoutResolvedHaltBadges(repoPath, currentOpen);
+}
+
+/**
+ * Emit one `halt_badge.resolved` envelope per badge that transitioned
+ * populated -> cleared since the previous `fanoutHaltBadgesFromSnapshot`
+ * call. `resolverAgentRole` is best-effort (last auto-dispatch.jsonl entry)
+ * and omitted entirely when unavailable — BE upsert is out-of-order safe
+ * and tolerates its absence.
+ */
+async function fanoutResolvedHaltBadges(
+  repoPath: string,
+  currentOpen: Record<string, { ts: string; sliceId?: string }>
+): Promise<void> {
+  let resolved: ResolvedHaltBadgeEntry[];
+  try {
+    resolved = await diffHaltBadgeTransitions(repoPath, currentOpen);
+  } catch {
+    return;
+  }
+  if (resolved.length === 0) return;
+
+  const resolverAgentRole = await resolveResolverAgentRole(repoPath);
+  const resolvedAt = new Date().toISOString();
+  for (const entry of resolved) {
+    const payload: Record<string, unknown> = {
+      schemaVersion: HALT_BADGE_SCHEMA_VERSION,
+      badgeKind: entry.badgeKind,
+      ts: entry.ts,
+      resolvedAt
+    };
+    if (entry.sliceId) payload.sliceId = entry.sliceId;
+    if (resolverAgentRole) payload.resolverAgentRole = resolverAgentRole;
+    try {
+      await fanoutEnvelope(repoPath, "halt_badge.resolved", payload);
     } catch {
       // Fail-silent — snapshot remains authoritative.
     }
