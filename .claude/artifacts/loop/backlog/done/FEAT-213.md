@@ -1,6 +1,6 @@
 ---
 id: FEAT-213
-status: triaged
+status: done
 priority: P1
 category: security
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-07-02
 autonomous_safe: false
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.6-0.8: cross-module reach (pm.md, architect.md, dev prompts, 12+ vendored 3rdparty frontmatter files) touching the security-relevant contract of what tools unattended agents can invoke under marathonMode -- not a public API break, but hard-to-fully-verify given the eval infrastructure needed for the canary AC doesn't yet have production data (per FEAT-210). P1/autonomousSafe:false matches the retrospective stub: highest-severity unmitigated threat in a system designed to run unattended, but self-modifying an agent's own tool grants and injection posture should not be fully autonomous."
+completed_at: 2026-07-02
 ---
 # FEAT-213: Injection defense for autonomous loop + PM tool-grant reconciliation
 
