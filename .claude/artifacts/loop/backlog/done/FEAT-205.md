@@ -1,6 +1,6 @@
 ---
 id: FEAT-205
-status: triaged
+status: done
 priority: P1
 category: enhancement
 target_release: null
@@ -22,6 +22,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-02
 autonomous_safe: true
 triage_notes: "via=pm (2026-07-02 retrospective intake). Technical risk band 0.3-0.5 (new policy-as-data pattern in repo, cross-module reach between wave planner and worktree dispatch, no persisted-data contract change, clean rollback). P1: same quantified-impact tier as FEAT-204 (top-10 #2, single-incident 20x median cost, recurring), low effort, independent."
+completed_at: 2026-07-02
 ---
 # FEAT-205: Slice-shape-aware model tier routing
 
