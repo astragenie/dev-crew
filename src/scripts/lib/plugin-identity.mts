@@ -102,6 +102,15 @@ export async function findCrewCli() {
   return null;
 }
 
+// Pick the runtime for spawning the crew CLI. Crew's Bun migration ships
+// `crew.ts` (TypeScript, guarded with "crew install requires Bun >= 1.3"
+// when run under node); older releases shipped `crew.mjs` which node runs
+// fine. Choosing by extension keeps both eras working — see the
+// phase-gate test-failure cluster this fixed (2026-07-02).
+export function crewCliRuntime(crewCliPath: string): "bun" | "node" {
+  return /\.(ts|mts)$/i.test(crewCliPath) ? "bun" : "node";
+}
+
 // Minimum compatible crew plugin version. Bump when this plugin starts to
 // depend on a crew capability that older versions don't have.
 // v0.31.1: current stable hero-crew release; bundled commands consumed by

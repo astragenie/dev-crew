@@ -51,8 +51,8 @@ Runtime is **Bun** — source `.mts` files run directly, no build/emit step.
 
 - `bun test src/tests/ --parallel --timeout 60000` — full test suite
   (also `bun run test`).
-- `bun run lint` — ESLint flat config.
-- `bun run format` / `bun run format:check` — Prettier.
+- `bun run lint` — Biome (`biome lint src/`; config in `biome.json`).
+- `bun run format` / `bun run format:check` — Biome formatter.
 - `bun ./src/scripts/validate-manifests.mts` — manifest sanity check.
 - `bun ./src/scripts/validate-content-length.mts` — owned-agent line cap
   (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
@@ -68,8 +68,8 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 3. `bun ./src/scripts/validate-content-length.mts`
 4. `bun ./src/scripts/validate-decline-citations.mts --repo .`
 5. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
-6. `bunx eslint src eslint.config.mjs`
-7. `bunx prettier --check "src/**/*.mts"`
+6. `bunx biome lint src/`
+7. `bunx biome format src/` (check mode — unformatted files fail)
 8. `bun test src/tests/ --parallel --timeout 60000`
 9. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
    `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
@@ -96,9 +96,10 @@ manifest + content-length + format-check locally before any `git push`.
   exempt — vendored, kept as-is to avoid fork-and-trim chores.
 - Tests colocated in `src/tests/*.mts`, run directly under Bun.
   Behavior-descriptive file names (no release-version prefixes).
-- Lint output must be clean. Zero warnings. ESLint cyclomatic
-  complexity capped at 15 — reduce by extracting helpers, not by
-  suppressing the rule.
+- Lint output must be clean in touched files (repo carries a legacy
+  warning baseline being burned down). Biome cognitive complexity capped
+  at 15 (`noExcessiveCognitiveComplexity`) — reduce by extracting
+  helpers, not by suppressing the rule.
 - No `process.exit(N)` from library functions — set
   `process.exitCode` from entry points only.
 - Runtime-only modules without `.mts` source (e.g. `github-sync/`)
@@ -110,7 +111,7 @@ manifest + content-length + format-check locally before any `git push`.
 - Entry-point scripts that ship as hand-authored `.mjs` (no `.mts`
   source) — currently `scripts/setup-github-sync.mjs`,
   `scripts/setup-task-store.mjs`,
-  `scripts/competitor-audit/aggregate.mjs`, `eslint.config.mjs`, and
+  `scripts/competitor-audit/aggregate.mjs`, and
   the two `hooks/*.mjs` files. These are intentional exceptions, not
   drift. Anything else under `scripts/` without an `src/scripts/...mts`
   counterpart is drift and should be ported.
@@ -314,17 +315,21 @@ Slash flows that orchestrate role agents:
 - `/runner:triage` (via `skills/triage/SKILL.md`) — PM scores pending FEATs.
   **Wired to resolver since v0.28.1**: skill block from `preset.roles.pm`
   is prepended to the dispatch prompt.
-- `/runner:backlog-add` — researcher enriches new FEAT body. Auto-dispatch
-  was removed in DEC-011; researcher work happens via separate user
-  invocation, not inline.
-- `/runner:spec-decompose` — agent reads SPEC and identifies features. No
-  inline role-agent dispatch from the slash flow itself.
-- `/runner:slice-complete` — document-writer drafts CHANGELOG / ADR /
-  release notes after slice close. Currently invoked by the orchestrating
-  agent, not by the CLI subcommand. Will wire to the resolver when a
-  CLI-driven dispatch is added.
-- `/runner:slice-from-feature` — dispatches `crew:architect` (not
-  `runner:architect`) for contracts. Cross-plugin; wire on hero-crew side.
+- `/runner:intake` (free-text mode) — subsumed the former
+  `/runner:backlog-add` (removed v0.53; stub redirects). Researcher
+  enrichment of new FEAT bodies happens via separate user invocation,
+  not inline (DEC-011).
+- `/runner:intake --spec` — subsumed the former `/runner:spec-decompose`
+  (removed v0.53; stub redirects). Agent reads SPEC and identifies
+  features; no inline role-agent dispatch from the flow itself.
+- `/runner:close` — subsumed the former `/runner:slice-complete`
+  (removed v0.53). Document-writer CHANGELOG / ADR / release-notes
+  drafting is invoked by the orchestrating agent, not by the CLI
+  subcommand.
+- `/runner:start FEAT-NNN` — subsumed the former
+  `/runner:slice-from-feature` (removed v0.53; stub redirects).
+  Contract pre-flights dispatch `crew:architect` (not
+  `runner:architect`); cross-plugin, wired on the hero-crew side.
 
 `dispatchAgent` remains exported for callers that want marker-write
 semantics. The marker queue at

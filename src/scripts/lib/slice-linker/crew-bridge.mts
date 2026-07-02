@@ -12,6 +12,7 @@ import { execFile as _execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
+import { crewCliRuntime } from "../plugin-identity.mjs";
 import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
 import { renderIdentification } from "./agent-report-writer.mjs";
@@ -120,7 +121,9 @@ export async function writeCrewRunBrief(
     ["--phase", phase !== null && phase !== undefined && String(phase).length > 0 ? phase : null]
   ]);
   try {
-    const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+    const { stdout } = await execFile(crewCliRuntime(String(args[0])), args, {
+      maxBuffer: 1024 * 1024
+    });
     let parsed;
     try {
       parsed = JSON.parse(stdout);
@@ -193,7 +196,9 @@ function appendFeaturePhaseArgs(
 // need its own try/catch around every invocation.
 async function runCrew(args: string[]) {
   try {
-    const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+    const { stdout } = await execFile(crewCliRuntime(String(args[0])), args, {
+      maxBuffer: 1024 * 1024
+    });
     try {
       return JSON.parse(stdout);
     } catch {
@@ -258,7 +263,7 @@ export async function tryWriteCostReport(
   appendFeaturePhaseArgs(adviseArgs, featureId, phase);
   let advise: Record<string, any> | null = null;
   try {
-    const { stdout } = await execFile("node", adviseArgs, {
+    const { stdout } = await execFile(crewCliRuntime(String(adviseArgs[0])), adviseArgs, {
       maxBuffer: 1024 * 1024
     });
     try {

@@ -4,7 +4,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 import { resolveConfig } from "./config-resolver.mjs";
-import { findCrewCli } from "./plugin-identity.mjs";
+import { findCrewCli, crewCliRuntime } from "./plugin-identity.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
 import type { Groups } from "./phase-gate/parallel-runner.mjs";
 import { runPhaseGateParallel } from "./phase-gate/parallel-orchestrator.mjs";
@@ -129,7 +129,9 @@ async function recordWithCrew(
     if (phase !== null && phase !== undefined && String(phase).length > 0) {
       args.push("--phase", String(phase));
     }
-    const { stdout } = await execFile("node", args, { maxBuffer: 1024 * 1024 });
+    const { stdout } = await execFile(crewCliRuntime(crewCli), args, {
+      maxBuffer: 1024 * 1024
+    });
     // Capture the crew-written artifact path so we can strip the leading
     // timestamp prefix (matches the repo-owned phase-gate filename surface).
     let crewArtifactPath: string | null = null;
