@@ -91,6 +91,37 @@ DEC-058 (pm-apply hybrid write path), DEC-059 (GEPA optimizes a
 delimited portable-core block, recorded before any live trial history),
 DEC-060 (workflow-state schemaVersion).
 
+### Added — plugin-manager ingest config (token + environment URL)
+
+The `runner` plugin now exposes `userConfig` in `plugin.json` so telemetry can
+be configured directly from the Claude Code plugin manager — no `connect`
+claim-code flow or hand-edited `~/.astrarunner/*.json` required:
+
+- `ingest_url` — environment URL to report loop telemetry to (default
+  `https://api.astrarunner.com`).
+- `ingest_token` — ingest bearer (`lrt_…`), stored in the OS keychain
+  (`sensitive: true`), never written to the repo.
+- `astrarunner_env` — tier label (`local | staging | prod`, default `prod`).
+
+Claude Code injects these as `CLAUDE_PLUGIN_OPTION_*` env vars (e.g.
+`ingest_token` → `CLAUDE_PLUGIN_OPTION_INGEST_TOKEN`). A new
+`plugin-options.mts` resolver reads them as a fallback behind the existing
+`LOOP_INGEST_URL` / `LOOP_INGEST_TOKEN` / `ASTRARUNNER_ENV` env vars (explicit
+env still wins, mirroring the mem0 pattern
+`MEM0_API_KEY ?? CLAUDE_PLUGIN_OPTION_API_KEY`). Both telemetry consumers read
+it:
+
+- The direct ingest sink (`astrarunner-ingest.mts`) resolves url + token + env
+  from the plugin options.
+- The webhook notifier (`event-notifier.mts`) resolves url + env, and uses
+  `ingest_token` as a **single-token bearer fallback** — applied only when no
+  committed literal bearer and no `appId`-bound Pattern-B token-store entry
+  resolve first (those still win, preserving cross-tier isolation).
+
+So pasting a token + URL in the plugin manager is enough for the loop to report
+on either path. Fail-silent contract preserved (no url/token → no-op, never
+throws).
+
 ## [0.58.0] — 2026-06-27 — runner-plugin#291 + #292: recall + doctor
 
 ### Added — online learning consumer (#291)

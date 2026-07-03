@@ -16,5 +16,25 @@
     "phase-gate",
     "quality-gates",
     "parallel-waves"
-  ]
+  ],
+  "userConfig": {
+    "ingest_url": {
+      "type": "string",
+      "title": "AstraRunner ingest URL",
+      "description": "Environment URL to report loop telemetry to (e.g. https://api.astrarunner.com for prod, or your dev/staging URL). Overridable per-run by LOOP_INGEST_URL.",
+      "default": "https://api.astrarunner.com"
+    },
+    "ingest_token": {
+      "type": "string",
+      "title": "AstraRunner ingest token",
+      "description": "Ingest bearer token (starts with lrt_) minted in the AstraRunner dashboard for your application. Stored in the OS keychain; never written to the repo.",
+      "sensitive": true
+    },
+    "astrarunner_env": {
+      "type": "string",
+      "title": "AstraRunner tier",
+      "description": "Tier label used to route ingest and pick the tokens file: local | staging | prod. Only needed when resolving the URL from ~/.astrarunner/profiles.json instead of ingest_url above.",
+      "default": "prod"
+    }
+  }
 }

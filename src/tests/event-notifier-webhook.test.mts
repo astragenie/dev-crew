@@ -66,7 +66,10 @@ describe("notifyEvent — webhook delegation", () => {
     expect(body.tenantId).toBe("T");
     expect(body.appId).toBe("A");
     expect(body.kind).toBe("slice-complete");
-    expect(body.payload).toMatchObject({ sliceId: "SLICE-1", featureId: "FEAT-9" });
+    expect(body.payload).toMatchObject({
+      sliceId: "SLICE-1",
+      featureId: "FEAT-9"
+    });
     expect(body.emittedAt).toBe("2026-06-15T12:00:00.000Z");
     expect(body.payload.type).toBeUndefined();
     expect(body.payload.timestamp).toBeUndefined();
@@ -91,7 +94,10 @@ describe("notifyEvent — webhook delegation", () => {
     const tokenDir = await fs.mkdtemp(path.join(os.tmpdir(), "pattern-b-store-"));
     await fs.writeFile(
       path.join(tokenDir, "tokens.json"),
-      JSON.stringify({ version: 1, tokens: { "app-pattern-b": { bearer: "lrt_resolved" } } })
+      JSON.stringify({
+        version: 1,
+        tokens: { "app-pattern-b": { bearer: "lrt_resolved" } }
+      })
     );
     const originalStorePath = tokenStoreInternals.storePath;
     tokenStoreInternals.storePath = () => path.join(tokenDir, "tokens.json");
@@ -107,7 +113,11 @@ describe("notifyEvent — webhook delegation", () => {
       const config = await readNotifyConfig(repo);
       expect(config.webhook?.bearer).toBe("lrt_resolved");
       await notifyEvent(
-        { type: "slice-complete", sliceId: "S", timestamp: "2026-06-19T00:00:00.000Z" },
+        {
+          type: "slice-complete",
+          sliceId: "S",
+          timestamp: "2026-06-19T00:00:00.000Z"
+        },
         config
       );
     } finally {
@@ -118,7 +128,9 @@ describe("notifyEvent — webhook delegation", () => {
     }
 
     expect(calls.length).toBe(1);
-    expect(calls[0].init?.headers).toMatchObject({ Authorization: "Bearer lrt_resolved" });
+    expect(calls[0].init?.headers).toMatchObject({
+      Authorization: "Bearer lrt_resolved"
+    });
   });
 
   test("Pattern B: skips send when bearer missing and token store has no entry", async () => {
@@ -151,7 +163,11 @@ describe("notifyEvent — webhook delegation", () => {
       const config = await readNotifyConfig(repo);
       expect(config.webhook?.bearer).toBeUndefined();
       await notifyEvent(
-        { type: "slice-complete", sliceId: "S", timestamp: "2026-06-19T00:00:00.000Z" },
+        {
+          type: "slice-complete",
+          sliceId: "S",
+          timestamp: "2026-06-19T00:00:00.000Z"
+        },
         config
       );
     } finally {
@@ -162,6 +178,93 @@ describe("notifyEvent — webhook delegation", () => {
     }
 
     expect(calls.length).toBe(0);
+  });
+
+  test("plugin-manager ingest_token drives webhook bearer when no appId token resolves", async () => {
+    // Onboarding path: user pasted a token in the plugin manager, webhook config
+    // carries no committed bearer and no appId-bound token-store entry.
+    const repo = await withTempRepo({
+      loop: {
+        notifications: {
+          enabled: true,
+          mode: "webhook",
+          events: ["slice-complete"],
+          webhook: {
+            url: "https://runner.local/ingest",
+            tenantId: "T",
+            appId: "" // no Pattern-B lookup
+          }
+        }
+      }
+    });
+    process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"] = "lrt_plugin_webhook";
+
+    const calls: { init?: RequestInit }[] = [];
+    const originalFetch = _internals.fetch;
+    _internals.fetch = (async (_url, init) => {
+      calls.push({ init });
+      return new Response(null, { status: 202 });
+    }) as typeof _internals.fetch;
+
+    try {
+      const config = await readNotifyConfig(repo);
+      expect(config.webhook?.bearer).toBe("lrt_plugin_webhook");
+      await notifyEvent(
+        {
+          type: "slice-complete",
+          sliceId: "S",
+          timestamp: "2026-06-19T00:00:00.000Z"
+        },
+        config
+      );
+    } finally {
+      _internals.fetch = originalFetch;
+      delete process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"];
+      await fs.rm(repo, { recursive: true, force: true });
+    }
+
+    expect(calls.length).toBe(1);
+    expect(calls[0].init?.headers).toMatchObject({
+      Authorization: "Bearer lrt_plugin_webhook"
+    });
+  });
+
+  test("appId-bound token-store bearer wins over plugin-manager ingest_token", async () => {
+    const repo = await withTempRepo({
+      loop: {
+        notifications: {
+          enabled: true,
+          mode: "webhook",
+          events: ["slice-complete"],
+          webhook: {
+            url: "https://runner.local/ingest",
+            tenantId: "T",
+            appId: "app-pattern-b"
+          }
+        }
+      }
+    });
+    const tokenDir = await fs.mkdtemp(path.join(os.tmpdir(), "pattern-b-prec-"));
+    await fs.writeFile(
+      path.join(tokenDir, "tokens.json"),
+      JSON.stringify({
+        version: 1,
+        tokens: { "app-pattern-b": { bearer: "lrt_store_wins" } }
+      })
+    );
+    const originalStorePath = tokenStoreInternals.storePath;
+    tokenStoreInternals.storePath = () => path.join(tokenDir, "tokens.json");
+    process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"] = "lrt_plugin_loses";
+
+    try {
+      const config = await readNotifyConfig(repo);
+      expect(config.webhook?.bearer).toBe("lrt_store_wins");
+    } finally {
+      tokenStoreInternals.storePath = originalStorePath;
+      delete process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"];
+      await fs.rm(repo, { recursive: true, force: true });
+      await fs.rm(tokenDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -214,7 +317,10 @@ describe("readNotifyConfig: ASTRARUNNER_ENV url precedence", () => {
     // staging tokens file with bearer
     await fs.writeFile(
       path.join(tmpDir, "tokens.staging.json"),
-      JSON.stringify({ version: 1, tokens: { "app-stg": { bearer: "lrt_stg_bearer" } } })
+      JSON.stringify({
+        version: 1,
+        tokens: { "app-stg": { bearer: "lrt_stg_bearer" } }
+      })
     );
     const repo = await fs.mkdtemp(path.join(os.tmpdir(), "repo-stg-"));
     await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
@@ -225,7 +331,11 @@ describe("readNotifyConfig: ASTRARUNNER_ENV url precedence", () => {
           notifications: {
             enabled: true,
             mode: "webhook",
-            webhook: { url: "http://localhost:5137", tenantId: "T", appId: "app-stg" }
+            webhook: {
+              url: "http://localhost:5137",
+              tenantId: "T",
+              appId: "app-stg"
+            }
           }
         }
       })
@@ -399,7 +509,10 @@ describe("readNotifyConfig: ASTRARUNNER_ENV url precedence", () => {
     );
     await fs.writeFile(
       path.join(tmpDir, "tokens.staging.json"),
-      JSON.stringify({ version: 1, tokens: { "app-env": { bearer: "lrt_env_bearer" } } })
+      JSON.stringify({
+        version: 1,
+        tokens: { "app-env": { bearer: "lrt_env_bearer" } }
+      })
     );
     const repo = await fs.mkdtemp(path.join(os.tmpdir(), "repo-bearerenv-"));
     await fs.mkdir(path.join(repo, ".claude"), { recursive: true });

@@ -8,18 +8,26 @@
 // from env vars only.
 //
 // URL resolution precedence (highest to lowest):
-//   1. LOOP_INGEST_URL  — explicit env override (legacy escape hatch, wins always)
-//   2. ASTRARUNNER_ENV  — reads ~/.astrarunner/profiles.json[env].ingestUrl
-//   3. (none)           — no repoPath available; sink is a no-op when URL absent
+//   1. LOOP_INGEST_URL                     — explicit env override (wins always)
+//   2. CLAUDE_PLUGIN_OPTION_INGEST_URL     — plugin-manager userConfig (ingest_url)
+//   3. ASTRARUNNER_ENV / plugin option     — ~/.astrarunner/profiles.json[env].ingestUrl
+//   4. (none)                              — no repoPath available; no-op when URL absent
 //
 // Token resolution:
-//   LOOP_INGEST_TOKEN only (Path 2 callers have no appId for Pattern-B lookup).
-//   When LOOP_INGEST_TOKEN absent the sink is a no-op.
+//   LOOP_INGEST_TOKEN, then CLAUDE_PLUGIN_OPTION_INGEST_TOKEN (plugin-manager
+//   ingest_token). Path 2 callers have no appId for Pattern-B lookup; when no
+//   token resolves the sink is a no-op.
 //
-// Set ASTRARUNNER_ENV=local|staging|prod to route ingest to the correct tier
-// without changing LOOP_INGEST_URL or committing anything to the repo.
+// Set ASTRARUNNER_ENV (or the plugin-manager astrarunner_env option) to
+// local|staging|prod to route ingest to the correct tier without changing
+// LOOP_INGEST_URL or committing anything to the repo. See ../plugin-options.mts.
 
 import { readProfile } from "../env-profiles.mjs";
+import {
+  resolveAstrarunnerEnvOption,
+  resolveIngestTokenOption,
+  resolveIngestUrlOption
+} from "../plugin-options.mjs";
 
 interface AgentRow {
   agentType?: string;
@@ -107,12 +115,12 @@ async function postOne(
  * Fail-silent — never throws.
  */
 async function resolveIngestUrl(): Promise<string> {
-  // 1. Explicit env override wins always.
-  const explicit = process.env["LOOP_INGEST_URL"];
+  // 1. Explicit URL: LOOP_INGEST_URL, then plugin-manager ingest_url. Wins always.
+  const explicit = resolveIngestUrlOption();
   if (explicit) return explicit;
 
-  // 2. ASTRARUNNER_ENV → profile lookup.
-  const activeEnv = process.env["ASTRARUNNER_ENV"];
+  // 2. ASTRARUNNER_ENV (or plugin astrarunner_env) → profile lookup.
+  const activeEnv = resolveAstrarunnerEnvOption();
   if (activeEnv) {
     try {
       const profile = await readProfile(activeEnv);
@@ -130,7 +138,7 @@ export async function postAgentCompletions(
   opts: PostOpts
 ): Promise<{ posted: number; skipped: number; failed: number }> {
   const url = await resolveIngestUrl();
-  const token = process.env["LOOP_INGEST_TOKEN"] ?? "";
+  const token = resolveIngestTokenOption() ?? "";
   if (!url || !token) return { posted: 0, skipped: opts.agents.length, failed: 0 };
 
   let posted = 0;

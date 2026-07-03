@@ -3,6 +3,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { readProfile } from "./env-profiles.mjs";
+import {
+  resolveAstrarunnerEnvOption,
+  resolveIngestTokenOption,
+  resolveIngestUrlOption
+} from "./plugin-options.mjs";
 import { resolveBearer } from "./token-store.mjs";
 import { createWebhookSender } from "./webhook-sender.mjs";
 
@@ -57,18 +62,21 @@ export const _internals = {
  * webhook.url + webhook.bearer in place.
  *
  * URL precedence (highest to lowest):
- *   1. process.env.LOOP_INGEST_URL  — explicit escape hatch
- *   2. ASTRARUNNER_ENV → profiles.json[env].ingestUrl
- *   3. loop.json webhook.url        — per-repo committed default
+ *   1. LOOP_INGEST_URL / plugin-manager ingest_url  — explicit override
+ *   2. ASTRARUNNER_ENV / plugin astrarunner_env → profiles.json[env].ingestUrl
+ *   3. loop.json webhook.url                        — per-repo committed default
  *
  * Bearer precedence (only when not already committed in loop.json):
- *   1. Literal bearer in loop.json (early-exit when present)
- *   2. ASTRARUNNER_ENV → profile.tokensFile (no fallback on miss; cross-tier guard)
- *   3. Default ~/.astrarunner/tokens.json
+ *   1. Literal bearer in loop.json (kept as-is when present)
+ *   2. appId → profile.tokensFile / default ~/.astrarunner/tokens.json (Pattern-B,
+ *      requires webhook.appId; no fallback on miss; cross-tier guard)
+ *   3. LOOP_INGEST_TOKEN / plugin-manager ingest_token — single-token fallback
+ *      when no appId-bound token resolves (mirrors the direct sink; lets a
+ *      pasted plugin-manager token drive the webhook path with no appId)
  */
 async function applyEnvOverrides(webhook: NotifyWebhookConfig): Promise<void> {
-  const activeEnv = process.env["ASTRARUNNER_ENV"];
-  const envOverrideUrl = process.env["LOOP_INGEST_URL"];
+  const activeEnv = resolveAstrarunnerEnvOption();
+  const envOverrideUrl = resolveIngestUrlOption();
 
   let profileTokensFile: string | undefined;
   if (envOverrideUrl) {
@@ -84,6 +92,15 @@ async function applyEnvOverrides(webhook: NotifyWebhookConfig): Promise<void> {
   if (webhook.appId && !webhook.bearer) {
     const resolved = await resolveBearer(webhook.appId, activeEnv, profileTokensFile);
     if (resolved) webhook.bearer = resolved;
+  }
+
+  // Single-token fallback: when no committed or appId-bound bearer resolved,
+  // honor the plugin-manager ingest_token (or LOOP_INGEST_TOKEN). This is the
+  // no-appId onboarding path — paste a token in the plugin manager and the
+  // webhook notifier can send without a Pattern-B token-store entry.
+  if (!webhook.bearer) {
+    const optToken = resolveIngestTokenOption();
+    if (optToken) webhook.bearer = optToken;
   }
 }
 
