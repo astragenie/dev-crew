@@ -51,8 +51,9 @@ Runtime is **Bun** — source `.mts` files run directly, no build/emit step.
 
 - `bun test src/tests/ --parallel --timeout 60000` — full test suite
   (also `bun run test`).
-- `bun run lint` — ESLint flat config.
-- `bun run format` / `bun run format:check` — Prettier.
+- `bun run lint` — Biome lint (`biome lint src/`).
+- `bun run format` / `bun run format:check` — Biome formatter
+  (`biome format --write src/` / `biome format src/`).
 - `bun ./src/scripts/validate-manifests.mts` — manifest sanity check.
 - `bun ./src/scripts/validate-content-length.mts` — owned-agent line cap
   (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
@@ -66,11 +67,12 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 1. `bun install --frozen-lockfile`
 2. `bun ./src/scripts/validate-manifests.mts`
 3. `bun ./src/scripts/validate-content-length.mts`
-4. `bun ./src/scripts/validate-decline-citations.mts --repo .`
-5. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
-6. `bunx eslint src eslint.config.mjs`
-7. `bunx prettier --check "src/**/*.mts"`
-8. `bun test src/tests/ --parallel --timeout 60000`
+4. `bun ./src/scripts/validate-event-schemas.mts`
+5. `bun ./src/scripts/validate-decline-citations.mts --repo .`
+6. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
+7. `bunx biome lint src/`
+8. `bunx biome format src/`
+9. `bun test src/tests/ --parallel --timeout 60000`
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
@@ -90,21 +92,22 @@ manifest + content-length + format-check locally before any `git push`.
   exempt — vendored, kept as-is to avoid fork-and-trim chores.
 - Tests colocated in `src/tests/*.mts`, run directly under Bun.
   Behavior-descriptive file names (no release-version prefixes).
-- Lint output must be clean. Zero warnings. ESLint cyclomatic
-  complexity capped at 15 — reduce by extracting helpers, not by
-  suppressing the rule.
+- Biome lint output must be clean. Cognitive complexity capped at 15
+  (`noExcessiveCognitiveComplexity`, `maxAllowedComplexity: 15` in
+  `biome.json`) — reduce by extracting helpers, not by suppressing the
+  rule.
 - No `process.exit(N)` from library functions — set
   `process.exitCode` from entry points only.
 - Runtime-only modules without `.mts` source (e.g. `github-sync/`)
   need ambient `.d.mts` shims under `src/scripts/lib/` so callers
   can drop `@ts-ignore`. Tests for these modules SHOULD still live
   under `src/tests/*.mts` (with `// @ts-nocheck` if they need to
-  import the runtime `.mjs` directly) — the `ban-ts-comment` rule is
-  disabled for `src/tests/**`.
+  import the runtime `.mjs` directly). `biome.json` relaxes
+  `src/tests/**` by disabling `noExcessiveCognitiveComplexity` there.
 - Entry-point scripts that ship as hand-authored `.mjs` (no `.mts`
   source) — currently `scripts/setup-github-sync.mjs`,
   `scripts/setup-task-store.mjs`,
-  `scripts/competitor-audit/aggregate.mjs`, `eslint.config.mjs`, and
+  `scripts/competitor-audit/aggregate.mjs`, and
   the two `hooks/*.mjs` files. These are intentional exceptions, not
   drift. Anything else under `scripts/` without an `src/scripts/...mts`
   counterpart is drift and should be ported.
