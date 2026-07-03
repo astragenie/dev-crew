@@ -188,6 +188,25 @@ export async function runAutoWalker(
     }
   }
 
+  // autoPruneOnStart: invoke reaper before entering the walker loop (non-blocking).
+  const autoPruneOnStart = resolvedConfig?.loop?.dispatch?.autoPruneOnStart === true;
+  if (autoPruneOnStart) {
+    try {
+      const { readDispatchConfig } = await import("./dispatch-config.mjs");
+      const { pruneStale } = await import("./dispatch-prune.mjs");
+      const cfgPath = path.join(repoPath, ".claude", "loop.json");
+      const dispatchCfg = readDispatchConfig(cfgPath);
+      await pruneStale(repoPath, {
+        olderThanDays: dispatchCfg.pruneStaleAfterDays,
+        dryRun: false
+      });
+    } catch (err) {
+      process.stderr.write(
+        `[auto-walker] autoPruneOnStart failed (non-fatal): ${(err as Error).message}\n`
+      );
+    }
+  }
+
   // Load triaged entries and sort by walker priority ordering.
   const allEntries = await listBacklog(repoPath);
   const triaged = filterBacklog(allEntries, { status: "triaged" });

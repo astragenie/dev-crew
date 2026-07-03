@@ -1,11 +1,13 @@
 ---
 id: FEAT-020
-status: triaged
+status: done
+closed: 2026-07-01
+close_note: "Shipped-as-scoped per design doc `docs/superpowers/specs/2026-06-09-feat020-hierarchical-dispatch-design.md` decisions D3/D4/D5. AC-003 (file-claim ledger), AC-004 (halt-cascade), AC-005 (rehydrate), AC-006 (retry) were REPLACED by design decisions during the SLICE-1 architecture pass — worktree isolation + blocking awaitAll + continue-on-failure + `/crew:fix` retry path make the original ACs architecturally redundant. AC list below rewritten 2026-07-01 by architect-reviewer to reflect shipped surface. Remaining ops risk (stale worktree GC + snapshot observability) split into follow-up FEAT-205."
 priority: P2
 category: competitor-gap
 target_release: null
 created: 2026-05-28
-updated: 2026-06-13
+updated: 2026-07-01
 depends_on: []
 slices: []
 derived_from: null
@@ -113,78 +115,33 @@ Format: Given / When / Then. Each AC is independently testable; the
 - **Evidence:** `src/tests/hierarchical-dispatch.depth-limit.test.mts ::
   "child at maxDepth refuses to fan out"`.
 
-### AC-003 — File-claim conflict short-circuits second child (error path)
+### AC-003 — File conflicts surface as merge-conflict CONFLICTED status (REWRITTEN 2026-07-01)
 
-- **Given** child `c1` has an active claim on `src/scripts/lib/halt-badges.mts`
-  recorded in `.claude/artifacts/loop/file-claims/<rootId>.jsonl` and child `c2` is
-  dispatched with a claim that overlaps the same path,
-- **When** the dispatcher reads the claim ledger before starting `c2`,
-- **Then** `c2` does NOT execute, the dispatcher returns
-  `{ status: "blocked", blockingChildId: "c1", conflictingPaths: ["src/scripts/lib/halt-badges.mts"] }`,
-  appends a `kind: "claim-rejected"` JSON line to the same ledger, and
-  logs `[hierarchical-dispatch] file-claim conflict child=c2 blocked-by=c1 paths=src/scripts/lib/halt-badges.mts`
-  to stderr at level `warn`.
-- **Evidence:** `src/tests/hierarchical-dispatch.file-claim.test.mts ::
-  "overlapping claim blocks second child"`.
+**Original AC-003 (file-claim ledger) REPLACED per design decisions D3/D4/D5.** Rationale: worktree-per-child isolation is stricter than a userspace file-claim ledger. Two children writing the same file produce a `git merge --no-ff` conflict at `mergeChildren`, not silent stomp. No ledger, no coordination, no orphan cleanup problem.
 
-### AC-004 — Halt-badge cascades through the tree (cross-cutting)
+- **Given** children `c1` and `c2` both write to `src/scripts/lib/foo.mts` in their respective worktrees,
+- **When** `mergeChildren` merges them sequentially onto `parentBranch`,
+- **Then** the first child merges cleanly (fast-forward or ff-merge), the second child gets `status: "CONFLICTED"`, both worktrees are preserved, and `worker-preserved-<childId>.md` audit artifact emitted (per FEAT-202 SLICE-134/135).
+- **Evidence:** `src/tests/hierarchical-dispatch.integration.test.mts`.
 
-- **Given** an in-flight `dispatchTree` with one parent + two children +
-  one grandchild, and `snapshot.mergeFailed` halt-badge is emitted by
-  the grandchild,
-- **When** the walker reads `snapshot.dispatchTree`,
-- **Then** every ancestor in the tree carries
-  `status: "halted", haltedByDescendantId: "<grandchildId>"`, the root's
-  `dispatchTree.openChildren` count drops to zero (none remain
-  in-flight), and the walker does NOT auto-continue (no new slice
-  picked up) until `/loop:resume` clears the badge per the FEAT-128
-  contract.
-- **Evidence:** `src/tests/hierarchical-dispatch.halt-cascade.test.mts ::
-  "halt-badge from grandchild halts entire tree"`.
+### AC-004 — DROPPED per design D4
 
-### AC-005 — State-recovery rehydrates dispatch tree after session restart
+**Original halt-cascade AC contradicts D4 (blocking awaitAll, continue-on-failure).** Halt-cascade requires cancelling in-flight sibling promises mid-`Promise.allSettled`; the design explicitly disclaims cancellation propagation. If a grandchild halts, its own status is FAIL/BLOCKED and siblings finish naturally. Halt-badge for the root is emitted via `mergeChildren` returning FAIL results.
 
-- **Given** an in-progress tree persisted at
-  `.claude/artifacts/loop/dispatch-tree/<rootId>.json` with three children
-  in state `running` and the session terminates mid-run,
-- **When** a new session calls `rehydrateDispatchTree(rootId)`,
-- **Then** the returned tree has `children[*].status === "orphaned"` for
-  every previously-running child, each orphaned entry carries
-  `rehydratedAt: <ISO timestamp>`, the file-claim ledger entries owned
-  by orphaned children are auto-released (one `kind: "claim-released-orphan"`
-  line per claim), and the rehydrate call returns within `<= 2 s` for trees up
-  to 50 nodes.
-- **Evidence:** `src/tests/hierarchical-dispatch.rehydrate.test.mts ::
-  "orphaned children are released on session restart"`.
+### AC-005 — DROPPED per design D4
 
-### AC-006 — Retry of a failed child preserves siblings (error path)
+**Original rehydrate AC contradicts D4 (blocking awaitAll).** Under blocking awaitAll, session death kills the parent process; there is no in-memory tree to rehydrate. Surviving on-disk state = worktrees + branches + `trace.jsonl` per runId. FEAT-202 SLICE-134/135 already added `inventoryWorkerBranch` + `cherryPickHandoffsFromBranch` for that exact case.
 
-- **Given** a `DispatchTreeResult` where `c1: completed`, `c2: failed`,
-  `c3: completed`,
-- **When** the operator runs
-  `bun src/scripts/loop.mts dispatch retry --root <rootId> --child c2`,
-- **Then** only `c2` is re-dispatched (verified by a new entry in
-  `.claude/artifacts/loop/auto-dispatch.jsonl` with
-  `parentDispatchId: <rootId>` and `retryOf: c2`), `c1` and `c3` are NOT
-  re-run, the dispatch-tree JSON now records `c2` with `attempts: 2`,
-  and the retry inherits the parent's `depth` (not `depth + 1`).
-- **Evidence:** `src/tests/hierarchical-dispatch.retry.test.mts ::
-  "retry of failed child does not restart siblings"`.
+### AC-006 — DROPPED per design D5
 
-### AC-007 — Observability: every dispatch + claim event lands in audit log
+**Original retry AC redundant.** Operator retry path = `/crew:fix <sliceId>` (per the `worker-preserved-<childId>.md` next-action copy). No `dispatch retry --root --child` CLI needed.
 
-- **Given** a dispatch tree of root + 2 children + 1 grandchild,
-- **When** the tree completes successfully,
-- **Then** `.claude/artifacts/loop/auto-dispatch.jsonl` contains exactly
-  four JSON lines (one per node), every line includes
-  `{dispatchId, parentDispatchId, depth, claimedPaths, durationMs,
-  costUsd}`, and `.claude/artifacts/loop/file-claims/<rootId>.jsonl`
-  contains paired `claim-acquired` + `claim-released` events for every
-  declared path (no orphaned acquisitions). The log lines satisfy the
-  `dispatchAudit` schema added to
-  `src/scripts/lib/auto-dispatch.schema.mts`.
-- **Evidence:** `src/tests/hierarchical-dispatch.audit-log.test.mts ::
-  "every dispatch and claim emits a paired audit entry"`.
+### AC-007 — Observability: `trace.jsonl` + `summary.md` per runId (REWRITTEN)
+
+- **Given** a dispatch tree of root + N children,
+- **When** the tree completes (any mix of DONE / CONFLICTED / FAIL),
+- **Then** `.claude/artifacts/loop/dispatch/<runId>/trace.jsonl` contains one line per child with `{ts, depth, childId, status, durationMs, costUsd}`; `.claude/artifacts/loop/dispatch/<runId>/summary.md` records parent branch, depth, per-child status, and error. FEAT-202 additions: per-child `inventory.jsonl` (files-on-branch, uncommitted WIP), plus `worker-preserved-<childId>.md` (CONFLICTED) and `worker-failed-<childId>.md` (FAIL).
+- **Evidence:** shipped in `dispatch-trace.mts::appendTrace` + `hierarchical-dispatch.mts::writeSummary` + FEAT-202 SLICE-134/135 audit path.
 
 ## Edge Cases
 

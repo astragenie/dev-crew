@@ -8,6 +8,7 @@ import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 import { listDecisions } from "./decisions-store.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
+import type { DispatchTreeSnapshot } from "./dispatch-tree-snapshot.mjs";
 import { summarizePauseRate, type PauseRateSummary } from "./pause-telemetry.mjs";
 
 // FEAT-212: window size for the "Pause rate (last N dispatches)" bullet in
@@ -295,6 +296,32 @@ function renderUsageFooter() {
   ];
 }
 
+function renderDispatchLifecycle(
+  dispatchTree: DispatchTreeSnapshot,
+  pruneStaleAfterDays: number
+): string[] {
+  if (dispatchTree.openRunIds.length === 0 && dispatchTree.worktreeCount === 0) {
+    return [];
+  }
+  const out = [
+    "## Dispatch lifecycle",
+    "",
+    `- Open runIds (${dispatchTree.openRunIds.length}): ${dispatchTree.openRunIds.length > 0 ? dispatchTree.openRunIds.join(", ") : "(none)"}`,
+    `- Worktree count (open runs): ${dispatchTree.worktreeCount}`,
+    `- Oldest runId age: ${dispatchTree.oldestRunAgeDays !== null ? `${dispatchTree.oldestRunAgeDays.toFixed(1)}d` : "n/a"}`
+  ];
+  if (
+    dispatchTree.oldestRunAgeDays !== null &&
+    dispatchTree.oldestRunAgeDays > pruneStaleAfterDays
+  ) {
+    out.push(
+      `- Hint: run \`bun src/scripts/loop.mts dispatch prune\` to reap stale runs (>${pruneStaleAfterDays}d)`
+    );
+  }
+  out.push("");
+  return out;
+}
+
 async function collectSnapshotData(
   repoPath: string,
   config: Record<string, any> | null
@@ -305,18 +332,33 @@ async function collectSnapshotData(
   decisions: Record<string, any>[];
   iterationStatus: Record<string, any> | null;
   costReportUSDValues: number[];
+  dispatchTree: DispatchTreeSnapshot;
   pauseSummary: PauseRateSummary;
 }> {
-  const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, pauseSummary] =
-    await Promise.all([
-      listBacklog(repoPath, { config }),
-      listSpecs(repoPath, { config }),
-      listGrades(repoPath, { config }),
-      listDecisions(repoPath, { config }),
-      getIterationStatus(repoPath),
-      loadCostReportUSDValues(repoPath),
-      summarizePauseRate(repoPath, PAUSE_RATE_WINDOW)
-    ]);
+  const { readDispatchTreeSnapshot } = await import("./dispatch-tree-snapshot.mjs");
+  const [
+    backlog,
+    specs,
+    grades,
+    decisions,
+    iterationStatus,
+    costReportUSDValues,
+    dispatchTree,
+    pauseSummary
+  ] = await Promise.all([
+    listBacklog(repoPath, { config }),
+    listSpecs(repoPath, { config }),
+    listGrades(repoPath, { config }),
+    listDecisions(repoPath, { config }),
+    getIterationStatus(repoPath),
+    loadCostReportUSDValues(repoPath),
+    readDispatchTreeSnapshot(repoPath).catch(() => ({
+      openRunIds: [],
+      worktreeCount: 0,
+      oldestRunAgeDays: null
+    })),
+    summarizePauseRate(repoPath, PAUSE_RATE_WINDOW)
+  ]);
   return {
     backlog,
     specs,
@@ -324,16 +366,26 @@ async function collectSnapshotData(
     decisions,
     iterationStatus,
     costReportUSDValues,
+    dispatchTree,
     pauseSummary
   };
 }
 
 function buildSnapshotLines(
   data: Awaited<ReturnType<typeof collectSnapshotData>>,
-  today: string
+  today: string,
+  pruneStaleAfterDays = 7
 ): string[] {
-  const { backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, pauseSummary } =
-    data;
+  const {
+    backlog,
+    specs,
+    grades,
+    decisions,
+    iterationStatus,
+    costReportUSDValues,
+    dispatchTree,
+    pauseSummary
+  } = data;
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
   // Exclude deferred items from "next to slice" — mirrors the auto walker's
   // pre-branch filter (walker-gates.mts: `entry.frontmatter.deferred === true`
@@ -370,6 +422,7 @@ function buildSnapshotLines(
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
     ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary),
+    ...renderDispatchLifecycle(dispatchTree, pruneStaleAfterDays),
     ...renderUsageFooter()
   ];
 }
@@ -380,7 +433,8 @@ export async function generateSnapshotContent(
 ): Promise<string> {
   const data = await collectSnapshotData(repoPath, config);
   const date = today ?? new Date().toISOString().slice(0, 10);
-  return buildSnapshotLines(data, date).join("\n");
+  const pruneStaleAfterDays = config?.loop?.dispatch?.pruneStaleAfterDays ?? 7;
+  return buildSnapshotLines(data, date, pruneStaleAfterDays).join("\n");
 }
 
 export async function writeMemorySnapshot(
@@ -389,7 +443,8 @@ export async function writeMemorySnapshot(
 ) {
   const data = await collectSnapshotData(repoPath, config);
   const today = new Date().toISOString().slice(0, 10);
-  const lines = buildSnapshotLines(data, today);
+  const pruneStaleAfterDays = config?.loop?.dispatch?.pruneStaleAfterDays ?? 7;
+  const lines = buildSnapshotLines(data, today, pruneStaleAfterDays);
 
   const target = resolveSnapshotPath(repoPath, config);
   await fs.mkdir(path.dirname(target), { recursive: true });
@@ -402,7 +457,8 @@ export async function writeMemorySnapshot(
       grades: data.grades.length,
       decisions: data.decisions.length,
       costReports: data.costReportUSDValues.length
-    }
+    },
+    dispatchTree: data.dispatchTree
   };
 }
 

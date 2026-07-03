@@ -15,6 +15,14 @@
     "durationMs": { "type": "integer", "minimum": 0 },
     "inputTokens": { "type": "integer", "minimum": 0 },
     "outputTokens": { "type": "integer", "minimum": 0 },
-    "stepType": { "type": "string" }
+    "stepType": { "type": "string" },
+    "agentId": { "type": ["string", "null"] },
+    "cacheReadInputTokens": { "type": "integer", "minimum": 0 },
+    "cacheCreationInputTokens": { "type": "integer", "minimum": 0 },
+    "dispatchKind": {
+      "type": ["string", "null"],
+      "enum": ["auto", "manual", "wave", "hierarchical", null]
+    },
+    "iterationIndex": { "type": "integer", "minimum": 0 }
   }
 }

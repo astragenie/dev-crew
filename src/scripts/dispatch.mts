@@ -13,7 +13,7 @@ import {
 import { writeDispatchMetrics, readDispatchMetrics } from "./lib/dispatch-metrics.mjs";
 
 type ParsedArgs = {
-  subcommand: "prepare" | "finalize" | "metrics" | "help";
+  subcommand: "prepare" | "finalize" | "metrics" | "prune" | "help";
   planPath?: string;
   parentBranch?: string;
   repo?: string;
@@ -23,6 +23,7 @@ type ParsedArgs = {
   runId?: string;
   configPath?: string;
   pr?: boolean;
+  olderThanDays?: number;
 };
 
 const VALUE_FLAGS: Record<string, keyof ParsedArgs> = {
@@ -30,7 +31,8 @@ const VALUE_FLAGS: Record<string, keyof ParsedArgs> = {
   "--parent-branch": "parentBranch",
   "--repo": "repo",
   "--run-id": "runId",
-  "--config": "configPath"
+  "--config": "configPath",
+  "--older-than-days": "olderThanDays"
 };
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -50,6 +52,11 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
     if (flag === "--depth") {
       if (next !== undefined) args.depth = Number(next);
+      i++;
+      continue;
+    }
+    if (flag === "--older-than-days") {
+      if (next !== undefined) args.olderThanDays = Number(next);
       i++;
       continue;
     }
@@ -77,6 +84,7 @@ function printHelp(): void {
   bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json]
   bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N] [--pr]
   bun src/scripts/dispatch.mts metrics --run-id <id> [--repo <path>]
+  bun src/scripts/dispatch.mts prune [--dry-run] [--older-than-days N] [--repo <path>]
 
 Subcommands:
   prepare   Run pre-flight gates, spawn worktrees, build Agent batch.
@@ -85,6 +93,9 @@ Subcommands:
             merge children to parent branch, write summary.md.
             --pr  Also push each DONE child branch and open a GitHub PR via gh CLI.
   metrics   Read and print the dispatch-metrics.json for a completed run.
+  prune     List and remove stale closed runId directories, their worktrees,
+            and their branches. --dry-run lists candidates without touching disk.
+            --older-than-days overrides loop.dispatch.pruneStaleAfterDays (default 7).
 
 `);
 }
@@ -231,6 +242,68 @@ function cmdMetrics(args: ParsedArgs): number {
   return 0;
 }
 
+async function cmdPrune(args: ParsedArgs): Promise<number> {
+  const repo = args.repo ?? process.cwd();
+  const dryRun = args.dryRun ?? false;
+
+  // Resolve olderThanDays: flag > config > default
+  let olderThanDays = args.olderThanDays;
+  if (olderThanDays === undefined) {
+    try {
+      const { readDispatchConfig } = await import("./lib/dispatch-config.mjs");
+      const cfgPath = path.join(repo, ".claude", "loop.json");
+      const cfg = readDispatchConfig(cfgPath);
+      olderThanDays = cfg.pruneStaleAfterDays;
+    } catch {
+      olderThanDays = 7;
+    }
+  }
+
+  const { listStaleRunIds, pruneRunId } = await import("./lib/dispatch-prune.mjs");
+  const stale = await listStaleRunIds(repo, olderThanDays);
+
+  if (stale.length === 0) {
+    process.stdout.write(`[dispatch prune] no stale runIds found (threshold: ${olderThanDays}d)\n`);
+    return 0;
+  }
+
+  // Print report table
+  process.stdout.write(
+    `[dispatch prune] ${dryRun ? "DRY-RUN: " : ""}${stale.length} stale runId(s) (>${olderThanDays}d)\n`
+  );
+  process.stdout.write(
+    `${"runId".padEnd(40)} ${"ageDays".padEnd(10)} ${"worktrees".padEnd(10)} branches\n`
+  );
+  process.stdout.write(`${"-".repeat(75)}\n`);
+  for (const entry of stale) {
+    process.stdout.write(
+      `${entry.runId.padEnd(40)} ${entry.ageDays.toFixed(1).padEnd(10)} ${String(entry.worktreeCount).padEnd(10)} ${entry.branchCount}\n`
+    );
+  }
+
+  if (dryRun) {
+    process.stdout.write("[dispatch prune] --dry-run: no changes made\n");
+    return 0;
+  }
+
+  let anyFailed = false;
+  for (const entry of stale) {
+    const result = await pruneRunId(repo, entry.runId);
+    if (result.errors.length > 0) {
+      anyFailed = true;
+      for (const e of result.errors) {
+        process.stderr.write(`[dispatch prune] error [${entry.runId}]: ${e}\n`);
+      }
+    } else {
+      process.stderr.write(
+        `[dispatch prune] pruned ${entry.runId} (worktrees=${result.worktreesRemoved}, branches=${result.branchesRemoved})\n`
+      );
+    }
+  }
+
+  return anyFailed ? 1 : 0;
+}
+
 const parsedArgs = parseArgs(process.argv.slice(2));
 (async () => {
   try {
@@ -243,6 +316,9 @@ const parsedArgs = parseArgs(process.argv.slice(2));
         break;
       case "metrics":
         process.exitCode = cmdMetrics(parsedArgs);
+        break;
+      case "prune":
+        process.exitCode = await cmdPrune(parsedArgs);
         break;
       case "help":
       default:

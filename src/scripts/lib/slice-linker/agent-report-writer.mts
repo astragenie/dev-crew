@@ -6,6 +6,10 @@ import readline from "node:readline";
 import { buildArtifactSlug } from "../artifact-naming.mjs";
 import { serializeFrontmatter } from "../frontmatter.mjs";
 import { postAgentCompletions } from "./astrarunner-ingest.mjs";
+import { deriveCostUsd } from "../cost-rate-table.mjs";
+import { joinAuditToPairs } from "../audit-envelope-join.mjs";
+import { readDispatchLog } from "../cost-by-skill.mjs";
+import { resolveAuditLogPath } from "../auto-dispatch.mjs";
 
 const EVENTS_JSONL = [".claude", "logs", "events.jsonl"];
 
@@ -182,6 +186,16 @@ function accumulateTranscriptLine(state: Record<string, any>, obj: Record<string
   if (obj.type !== "assistant") return;
   state.turns++;
   if (state.model === "n/a" && obj.message?.model) state.model = obj.message.model;
+  // Accumulate token usage fields from assistant message usage block.
+  // Treat absent fields as 0 per AC-1.
+  const usage = obj.message?.usage;
+  if (usage) {
+    state.inputTokens += (usage.input_tokens as number | undefined) ?? 0;
+    state.outputTokens += (usage.output_tokens as number | undefined) ?? 0;
+    state.cacheReadInputTokens += (usage.cache_read_input_tokens as number | undefined) ?? 0;
+    state.cacheCreationInputTokens +=
+      (usage.cache_creation_input_tokens as number | undefined) ?? 0;
+  }
   const content = obj.message?.content;
   if (!Array.isArray(content)) return;
   for (const block of content) {
@@ -196,7 +210,11 @@ async function parseTranscript(transcriptPath: string) {
     turns: 0,
     model: "n/a",
     tools: new Map<string, number>(),
-    skills: [] as string[]
+    skills: [] as string[],
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0
   };
   if (!transcriptPath) return { ...empty, error: "no transcript path" };
   try {
@@ -204,7 +222,16 @@ async function parseTranscript(transcriptPath: string) {
   } catch {
     return { ...empty, error: "transcript not found" };
   }
-  const state = { turns: 0, model: "n/a", tools: new Map(), skills: new Set() };
+  const state = {
+    turns: 0,
+    model: "n/a",
+    tools: new Map(),
+    skills: new Set(),
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0
+  };
   try {
     const rl = readline.createInterface({
       input: createReadStream(transcriptPath),
@@ -224,7 +251,16 @@ async function parseTranscript(transcriptPath: string) {
   } catch (err: unknown) {
     return { ...empty, error: (err as Error).message };
   }
-  return { turns: state.turns, model: state.model, tools: state.tools, skills: [...state.skills] };
+  return {
+    turns: state.turns,
+    model: state.model,
+    tools: state.tools,
+    skills: [...state.skills],
+    inputTokens: state.inputTokens,
+    outputTokens: state.outputTokens,
+    cacheReadInputTokens: state.cacheReadInputTokens,
+    cacheCreationInputTokens: state.cacheCreationInputTokens
+  };
 }
 
 function overlaps(a: Record<string, any>, b: Record<string, any>) {
@@ -495,7 +531,21 @@ export async function writeAgentReport(
     await collectEventPayloads(events);
 
   const pairs = pairAgentEvents(startPayloads, stopPayloads, startTimestamps, stopTimestamps);
-  const agents = (await enrichPairsWithTranscripts(pairs)) as Record<string, any>[];
+  const enrichedWithTranscripts = (await enrichPairsWithTranscripts(pairs)) as Record<
+    string,
+    any
+  >[];
+
+  // SLICE-137: join audit-log entries to pairs to thread real dispatchKind +
+  // iterationIndex into the slice.agent_completed envelope. Best-effort: if
+  // the audit log is missing or unreadable, readDispatchLog() returns [] and
+  // pairs retain null/0 defaults. Failures are swallowed by readDispatchLog.
+  const auditLogPath = resolveAuditLogPath(repoPath);
+  const auditEntries = await readDispatchLog(auditLogPath);
+  const agents = joinAuditToPairs(enrichedWithTranscripts, auditEntries, sliceId) as Record<
+    string,
+    any
+  >[];
   const groups = computeParallelGroups(agents);
 
   const agentCount = agents.length;
@@ -533,22 +583,64 @@ export async function writeAgentReport(
   // skills + tools + token data. Sink no-ops when LOOP_INGEST_URL/LOOP_INGEST_TOKEN
   // env vars are unset, so this is safe in environments without runner ingest.
   // Failures are swallowed internally — must never block slice completion.
+  //
+  // FEAT-203 (SLICE-136): load costRates override from loop.json for cost derivation.
+  let loopCostRates: Record<string, import("../cost-rate-table.mjs").ModelRates> | undefined;
+  try {
+    const loopJsonPath = path.join(repoPath, ".claude", "loop.json");
+    const loopJson = JSON.parse(await fs.readFile(loopJsonPath, "utf8")) as {
+      loop?: { costRates?: Record<string, import("../cost-rate-table.mjs").ModelRates> };
+    };
+    loopCostRates = loopJson.loop?.costRates;
+  } catch {
+    // Not present or unreadable — proceed with hardcoded rates.
+  }
+
   await postAgentCompletions({
     sliceId,
     featureId: featureId ?? null,
-    agents: agents.map((a) => ({
-      agentType: a.agentType,
-      model: a.model,
-      turns: a.turns,
-      duration_ms: a.duration_ms,
-      tools: a.tools,
-      skills: a.skills,
-      inputTokens: a.inputTokens,
-      outputTokens: a.outputTokens,
-      firstOutputAt: a.firstOutputAt ?? null,
-      startTs: a.startTs ?? null,
-      stopTs: a.stopTs ?? null
-    }))
+    agents: agents.map((a): import("./astrarunner-ingest.mjs").AgentRow => {
+      const cacheRead = (a.cacheReadInputTokens as number | undefined) ?? 0;
+      const cacheCreation = (a.cacheCreationInputTokens as number | undefined) ?? 0;
+      const inputT = (a.inputTokens as number | undefined) ?? 0;
+      const outputT = (a.outputTokens as number | undefined) ?? 0;
+      const rawModel = a.model as string | undefined;
+      const model = rawModel && rawModel !== "n/a" ? rawModel : "";
+      const costUsd = model
+        ? deriveCostUsd(
+            {
+              model,
+              inputTokens: inputT,
+              outputTokens: outputT,
+              cacheReadInputTokens: cacheRead,
+              cacheCreationInputTokens: cacheCreation
+            },
+            loopCostRates
+          )
+        : null;
+      const row: import("./astrarunner-ingest.mjs").AgentRow = {
+        agentId: (a.agentId as string | undefined) ?? null,
+        inputTokens: inputT,
+        outputTokens: outputT,
+        cacheReadInputTokens: cacheRead,
+        cacheCreationInputTokens: cacheCreation,
+        costUsd,
+        firstOutputAt: (a.firstOutputAt as string | undefined) ?? null,
+        startTs: (a.startTs as string | undefined) ?? null,
+        stopTs: (a.stopTs as string | undefined) ?? null,
+        // SLICE-137: threaded from joinAuditToPairs() above.
+        dispatchKind:
+          (a.dispatchKind as import("./astrarunner-ingest.mjs").AgentRow["dispatchKind"]) ?? null,
+        iterationIndex: typeof a.iterationIndex === "number" ? a.iterationIndex : 0
+      };
+      if (a.agentType !== undefined) row.agentType = a.agentType as string;
+      if (rawModel !== undefined) row.model = rawModel;
+      if (a.turns !== undefined) row.turns = a.turns as number;
+      if (a.duration_ms !== undefined) row.duration_ms = a.duration_ms as number;
+      if (a.tools !== undefined) row.tools = a.tools as Map<string, number>;
+      if (a.skills !== undefined) row.skills = a.skills as string[];
+      return row;
+    })
   });
 
   return { reportPath: target, agentCount, totalTurns, totalDurationMs };

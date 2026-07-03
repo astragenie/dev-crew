@@ -99,6 +99,44 @@ test("validateSnapshotFreshness fails on a stale snapshot reproducing live backl
   assert.match(result.errors.join("\n"), /out of date/);
 });
 
+// DEC-063: the FEAT-205 "## Dispatch lifecycle" section renders LIVE dispatch
+// state (worktree count, oldest-run age in days). It is machine- and
+// time-dependent — a clean CI checkout has zero live worktrees and the age
+// grows every hour — so the freshness gate must ignore it. Reproduces the
+// merge-time CI failure where an on-disk snapshot carrying a local Dispatch
+// lifecycle section failed against a regenerated one that had none.
+test("validateSnapshotFreshness ignores the volatile Dispatch lifecycle section", async () => {
+  const repo = await tmpRepo("al-freshness-dispatch-");
+  await addTriaged(repo, "Live feature");
+  const snap = await writeMemorySnapshot(repo);
+
+  // Inject a live-state Dispatch lifecycle section ahead of the usage footer —
+  // exactly what FEAT-205 renders on a machine with open worktrees, and what a
+  // clean CI regeneration would NOT produce.
+  const fresh = await fs.readFile(snap.artifactPath, "utf8");
+  const injected = fresh.replace(
+    "## How to use this file",
+    [
+      "## Dispatch lifecycle",
+      "",
+      "- Open runIds (1): 2026-06-13T10-55-42-834Z-888fb4",
+      "- Worktree count (open runs): 4",
+      "- Oldest runId age: 20.1d",
+      "- Hint: run `bun src/scripts/loop.mts dispatch prune` to reap stale runs (>7d)",
+      "",
+      "## How to use this file"
+    ].join("\n")
+  );
+  await fs.writeFile(snap.artifactPath, injected);
+
+  const result = await validateSnapshotFreshness(repo);
+  assert.equal(
+    result.ok,
+    true,
+    `dispatch-lifecycle drift must not fail the gate: ${result.errors.join("; ")}`
+  );
+});
+
 test("validateSnapshotFreshness fails when loop-snapshot.md does not exist", async () => {
   const repo = await tmpRepo("al-freshness-missing-");
   const result = await validateSnapshotFreshness(repo);
