@@ -599,6 +599,7 @@ export async function writeAgentReport(
   await postAgentCompletions({
     sliceId,
     featureId: featureId ?? null,
+    repoPath,
     agents: agents.map((a): import("./astrarunner-ingest.mjs").AgentRow => {
       const cacheRead = (a.cacheReadInputTokens as number | undefined) ?? 0;
       const cacheCreation = (a.cacheCreationInputTokens as number | undefined) ?? 0;

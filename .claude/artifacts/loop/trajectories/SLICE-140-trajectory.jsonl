@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-140","timestamp":"2026-07-03T10:50:29.421Z","featureId":"FEAT-215","title":"SLICE-140: Direct-sink per-repo ingest config via loop.json","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260703T105026Z-plan-SLICE-140.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-140","timestamp":"2026-07-03T12:28:08.584Z","featureId":"FEAT-215","featureMovedTo":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-215.md","validationSatisfied":true}
