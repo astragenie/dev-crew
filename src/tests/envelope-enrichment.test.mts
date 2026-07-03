@@ -203,7 +203,7 @@ describe("AC-1: parseTranscript token accumulation", () => {
       }) + "\n"
     );
 
-    let capturedAgents: any[] = [];
+    const capturedAgents: any[] = [];
     const originalFetch = globalThis.fetch;
     process.env["LOOP_INGEST_URL"] = "http://test-empty.example.com";
     process.env["LOOP_INGEST_TOKEN"] = "tok";
