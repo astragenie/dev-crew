@@ -718,3 +718,104 @@ test.skip("legacy structural rollback check (skipped — superseded by direct ap
 // throw added in src/scripts/lib/slice-linker/start-slice.mts. A direct
 // negative test would require exporting the helper, which the contract
 // forbids (only ensureSliceWorktree is public surface).
+
+// ---------------------------------------------------------------------------
+// 9. DEC-060 / FEAT-209: schemaVersion guard on writeWorktreePathToState
+// (fail-loud per DEC-019 — new error types propagate unchanged)
+// ---------------------------------------------------------------------------
+
+async function cleanupWorktree(repo, worktreePath, branchName) {
+  try {
+    await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`);
+    await exec(`git -C "${repo}" branch -D "${branchName}"`);
+  } catch {
+    // best-effort
+  }
+}
+
+test("applyWorktreeResult: schemaVersion greater than supported → throws WorkflowStateSchemaMismatchError", async () => {
+  const repo = await tmpDir("wm-schema-mismatch-");
+  await initGitRepo(repo);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-schema-mismatch-root-${randomUUID()}`);
+  const stateDir = path.join(repo, ".claude/state/crew");
+  await fs.mkdir(stateDir, { recursive: true });
+  await fs.writeFile(
+    path.join(stateDir, "workflow-state.json"),
+    JSON.stringify({ version: "1.0", schemaVersion: 99, currentRun: {} }, null, 2)
+  );
+  const sliceFile = path.join(repo, "slice-file.md");
+  await fs.writeFile(sliceFile, "---\nid: SLICE-99\n---\n# t\n");
+
+  const { applyWorktreeResult } = await import("../scripts/lib/slice-linker/start-slice.mjs");
+  const { WorkflowStateSchemaMismatchError } = await import(
+    "../scripts/lib/workflow-state-guard.mjs"
+  );
+
+  let caught = null;
+  try {
+    await applyWorktreeResult(
+      repo,
+      "SLICE-99",
+      sliceFile,
+      { loop: { worktreeMode: true, worktreeRoot } },
+      "FEAT-099"
+    );
+  } catch (err) {
+    caught = err;
+  }
+  assert.ok(
+    caught instanceof WorkflowStateSchemaMismatchError,
+    "must throw the named mismatch error"
+  );
+  assert.equal(caught.name, "WorkflowStateSchemaMismatchError");
+
+  // schemaVersion mismatch means the write never happened — file is untouched.
+  const stateAfter = JSON.parse(
+    await fs.readFile(path.join(stateDir, "workflow-state.json"), "utf8")
+  );
+  assert.equal(stateAfter.schemaVersion, 99, "state file must be left untouched");
+  assert.equal(stateAfter.currentRun.worktreePath, undefined, "no partial worktreePath write");
+
+  await cleanupWorktree(repo, path.join(worktreeRoot, "SLICE-99"), "slice/SLICE-99-FEAT-099");
+});
+
+test("applyWorktreeResult: corrupt workflow-state.json → throws WorkflowStateCorruptError, not raw JSON.parse", async () => {
+  const repo = await tmpDir("wm-corrupt-");
+  await initGitRepo(repo);
+  const worktreeRoot = path.join(os.tmpdir(), `wm-corrupt-root-${randomUUID()}`);
+  const stateDir = path.join(repo, ".claude/state/crew");
+  await fs.mkdir(stateDir, { recursive: true });
+  await fs.writeFile(path.join(stateDir, "workflow-state.json"), "{ not valid json ][");
+  const sliceFile = path.join(repo, "slice-file.md");
+  await fs.writeFile(sliceFile, "---\nid: SLICE-99\n---\n# t\n");
+
+  const { applyWorktreeResult } = await import("../scripts/lib/slice-linker/start-slice.mjs");
+  const { WorkflowStateCorruptError } = await import("../scripts/lib/workflow-state-guard.mjs");
+
+  let caught = null;
+  try {
+    await applyWorktreeResult(
+      repo,
+      "SLICE-99",
+      sliceFile,
+      { loop: { worktreeMode: true, worktreeRoot } },
+      "FEAT-099"
+    );
+  } catch (err) {
+    caught = err;
+  }
+  assert.ok(
+    caught instanceof WorkflowStateCorruptError,
+    "must throw the named corrupt-state error"
+  );
+  assert.ok(!(caught instanceof SyntaxError), "must not be the raw JSON.parse SyntaxError");
+
+  const rawAfter = await fs.readFile(path.join(stateDir, "workflow-state.json"), "utf8");
+  assert.equal(
+    rawAfter,
+    "{ not valid json ][",
+    "corrupt file must be left untouched, not overwritten"
+  );
+
+  await cleanupWorktree(repo, path.join(worktreeRoot, "SLICE-99"), "slice/SLICE-99-FEAT-099");
+});

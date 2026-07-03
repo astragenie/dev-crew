@@ -48,6 +48,9 @@ beforeEach(async () => {
   delete process.env["ASTRARUNNER_ENV"];
   delete process.env["LOOP_INGEST_URL"];
   delete process.env["LOOP_INGEST_TOKEN"];
+  delete process.env["CLAUDE_PLUGIN_OPTION_INGEST_URL"];
+  delete process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"];
+  delete process.env["CLAUDE_PLUGIN_OPTION_ASTRARUNNER_ENV"];
 });
 
 afterEach(async () => {
@@ -56,6 +59,9 @@ afterEach(async () => {
   delete process.env["ASTRARUNNER_ENV"];
   delete process.env["LOOP_INGEST_URL"];
   delete process.env["LOOP_INGEST_TOKEN"];
+  delete process.env["CLAUDE_PLUGIN_OPTION_INGEST_URL"];
+  delete process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"];
+  delete process.env["CLAUDE_PLUGIN_OPTION_ASTRARUNNER_ENV"];
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
@@ -91,6 +97,30 @@ describe("postAgentCompletions: Path 2 env resolution", () => {
     const result = await postAgentCompletions({ sliceId: "SLICE-2", agents: [BASE_ROW] });
     expect(fetchCalls.length).toBe(1);
     expect(fetchCalls[0].url).toBe("http://explicit.example.com/api/v2/ingest/loop-events");
+    expect(result.posted).toBe(1);
+  });
+
+  test("plugin-manager options (ingest_url + ingest_token) drive a real POST", async () => {
+    // Simulates a customer who pasted token + environment URL in the Claude
+    // Code plugin manager — no LOOP_INGEST_* env vars, no profiles.json.
+    process.env["CLAUDE_PLUGIN_OPTION_INGEST_URL"] = "https://api.astrarunner.com";
+    process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"] = "lrt_plugin";
+    const result = await postAgentCompletions({ sliceId: "SLICE-P1", agents: [BASE_ROW] });
+    expect(fetchCalls.length).toBe(1);
+    expect(fetchCalls[0].url).toBe("https://api.astrarunner.com/api/v2/ingest/loop-events");
+    expect(fetchCalls[0].init?.headers).toMatchObject({ authorization: "Bearer lrt_plugin" });
+    expect(result.posted).toBe(1);
+  });
+
+  test("LOOP_INGEST_* env vars win over plugin-manager options", async () => {
+    process.env["CLAUDE_PLUGIN_OPTION_INGEST_URL"] = "https://api.astrarunner.com";
+    process.env["CLAUDE_PLUGIN_OPTION_INGEST_TOKEN"] = "lrt_plugin";
+    process.env["LOOP_INGEST_URL"] = "http://localhost:5137";
+    process.env["LOOP_INGEST_TOKEN"] = "lrt_env";
+    const result = await postAgentCompletions({ sliceId: "SLICE-P2", agents: [BASE_ROW] });
+    expect(fetchCalls.length).toBe(1);
+    expect(fetchCalls[0].url).toBe("http://localhost:5137/api/v2/ingest/loop-events");
+    expect(fetchCalls[0].init?.headers).toMatchObject({ authorization: "Bearer lrt_env" });
     expect(result.posted).toBe(1);
   });
 

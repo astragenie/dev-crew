@@ -8,7 +8,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 import { runPhaseGate } from "../scripts/lib/phase-gate.mjs";
-import { findCrewCli } from "../scripts/lib/plugin-identity.mjs";
+import { findCrewCli, crewCliRuntime } from "../scripts/lib/plugin-identity.mjs";
 
 function execFile(file, args, opts) {
   return promisify(execFileCallback)(file, args, { timeout: 10000, ...opts });
@@ -28,7 +28,7 @@ async function initRepoWithCrewState(prefix: string) {
   // Seed minimal crew state so write-validation-result has somewhere to write.
   const crewCli = await findCrewCli();
   if (crewCli) {
-    await execFile("node", [crewCli, "init", "--repo", repo, "--allow-existing"]);
+    await execFile(crewCliRuntime(crewCli), [crewCli, "init", "--repo", repo, "--allow-existing"]);
   }
   return repo;
 }

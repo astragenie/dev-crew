@@ -97,9 +97,7 @@ function countWorktreesInLog(runDir: string): number {
  * - `oldestRunAgeDays`: age in days of the oldest runId dir (any state),
  *   null when the dispatch directory is absent or empty.
  */
-export async function readDispatchTreeSnapshot(
-  repoRoot: string,
-): Promise<DispatchTreeSnapshot> {
+export async function readDispatchTreeSnapshot(repoRoot: string): Promise<DispatchTreeSnapshot> {
   const dispDir = dispatchRoot(repoRoot);
   let entries: string[];
   try {

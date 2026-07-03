@@ -8,7 +8,7 @@
 import path from "node:path";
 
 import { nowIso } from "./runners.mjs";
-import { runParallelGroups, type Groups } from "./parallel-runner.mjs";
+import { runParallelGroups, type Groups, type RunResult } from "./parallel-runner.mjs";
 
 export type ParallelDeps = {
   writeReport: (
@@ -128,6 +128,12 @@ export async function runPhaseGateParallel(
   // returned shape rather than throwing.
   const post = await deps.runPassPostHooks(repoPath, phase, overallStatus);
 
+  // runner-plugin#290: parity with sequential path — emit GEPA memory payload
+  // on FAIL. Fire-and-forget — never throws, never blocks > 2s.
+  if (overallStatus === "FAIL") {
+    void emitParallelPhaseGateFailMemory(repoPath, phase, result);
+  }
+
   return {
     mode: "phase-gate",
     parallel: true,
@@ -144,4 +150,54 @@ export async function runPhaseGateParallel(
     retrospective: post.retrospective,
     deployHandoffs: post.deployHandoffs
   };
+}
+
+// runner-plugin#290: GEPA memory payload on parallel phase-gate FAIL.
+// Mirrors emitPhaseGateFailMemory in phase-gate.mts (sequential path).
+// Fail-silent — emit() never throws and is already 2s-capped.
+async function emitParallelPhaseGateFailMemory(
+  repoPath: string,
+  phase: unknown,
+  result: RunResult
+): Promise<void> {
+  try {
+    const fs = await import("node:fs/promises");
+    const path2 = await import("node:path");
+    const loopJsonPath = path2.join(repoPath, ".claude", "loop.json");
+    let memoryEnabled: string = "auto";
+    try {
+      const raw = await fs.readFile(loopJsonPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const configuredMode = parsed?.memory?.enabled;
+      if (configuredMode === "never") memoryEnabled = "never";
+    } catch {
+      // Defaults to auto.
+    }
+    if (memoryEnabled === "never") return;
+
+    const { emit, resolveCli } = await import("../memory-bridge.mjs");
+    const cli = await resolveCli();
+    if (!cli) return; // Dormant: astramem not installed.
+
+    const { getPromptVersion } = await import("../agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const failedGroups = result.groups.filter((g) => g.exitCode !== 0).map((g) => g.group);
+    const logTail = result.combinedLog.split("\n").slice(-10).join("\n");
+
+    await emit({
+      ts: new Date().toISOString(),
+      slice_id: "unknown",
+      feat_id: "unknown",
+      source: "phase-gate",
+      event: "phase_gate_fail",
+      score: 0,
+      feedback: `Phase ${String(phase)} failed (parallel): ${failedGroups.join(", ") || "unknown group"}`,
+      input: { branch: "main", mode: "parallel" },
+      output: { exit_code: result.exitCode, log_tail: logTail, failed_group: result.failedGroup },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the phase-gate path.
+  }
 }

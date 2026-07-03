@@ -28,7 +28,8 @@ const DELETED_SKILLS: Array<[string, string]> = [
   ["competitor-audit", "crew:market-researcher"],
   ["architect", "crew:architect"],
   ["stop-check", "internal-only (runner:auto)"],
-  ["snapshot-memory", "runner:status (includes snapshot)"],
+  // "snapshot-memory" removed from this table (FEAT-214 item 7) — it now
+  // has a live handler again; see memory-snapshot-command.test.mts.
   ["decisions-list", "runner:decisions list"],
   ["decisions-show", "runner:decisions show"],
   ["decisions-relevant", "runner:decisions relevant"],

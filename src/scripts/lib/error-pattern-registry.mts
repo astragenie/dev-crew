@@ -4,6 +4,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { appendJsonl } from "./jsonl-append.mjs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,7 +186,6 @@ export async function logPatternMatch(
   repoPath: string
 ): Promise<void> {
   const logPath = path.join(repoPath, ".claude/artifacts/loop/learnings.jsonl");
-  await fs.mkdir(path.dirname(logPath), { recursive: true });
 
   const entry = {
     timestamp: new Date().toISOString(),
@@ -195,5 +195,5 @@ export async function logPatternMatch(
     recovery: result.pattern.recovery
   };
 
-  await fs.appendFile(logPath, JSON.stringify(entry) + "\n", "utf8");
+  await appendJsonl(logPath, entry);
 }

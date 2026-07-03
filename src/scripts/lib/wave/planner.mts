@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PathSet } from "./conflict.mjs";
 import { readTouchesFiles } from "./touches-files.mjs";
+import { classifySliceShape } from "../classify-slice-shape.mjs";
 import type {
   SliceCandidate,
   SlicePriority,
@@ -19,6 +20,17 @@ export type PackOpts = {
   sliceCommand: string;
   waveId: string;
 };
+
+// Best-effort shape classification from declared/inferred touches_files.
+// No diff stats exist at plan time (pre-dispatch), so added/removed/
+// exportDelta default to 0 — same heuristic parseSliceFiles() uses in
+// slice-linker/start-slice.mts. This under-counts "single-module-edit"
+// LOC gates but never mis-classifies doc/config/test-only shapes, which
+// only look at file paths.
+function shapeForPaths(paths: string[]): string {
+  const files = paths.map((path) => ({ path, added: 0, removed: 0, exportDelta: 0 }));
+  return classifySliceShape({ files }).shape;
+}
 
 export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
   const picked: SliceCandidate[] = [];
@@ -58,7 +70,8 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
     sliceId: c.sliceId,
     featureId: c.featureId,
     worktreeBranch: `wave/${opts.waveId}/${c.sliceId}`,
-    sliceCommand: opts.sliceCommand
+    sliceCommand: opts.sliceCommand,
+    shape: shapeForPaths(c.touches.paths)
   }));
 
   return {

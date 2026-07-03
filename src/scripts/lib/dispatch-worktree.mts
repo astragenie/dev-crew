@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { DispatchWorktreeError } from "./dispatch-types.mjs";
 import { validateBranchName } from "./dispatch-gates.mjs";
+import { appendJsonlSync } from "./jsonl-append.mjs";
 
 type SpawnArgs = {
   repoRoot: string;
@@ -50,17 +51,13 @@ export function createChildWorktree(args: SpawnArgs): {
     );
   }
   const logDir = path.join(repoRoot, ".claude/artifacts/loop/dispatch", runId);
-  fs.mkdirSync(logDir, { recursive: true });
-  fs.appendFileSync(
-    path.join(logDir, "worktrees.jsonl"),
-    JSON.stringify({
-      ts: new Date().toISOString(),
-      childId,
-      branch: childBranch,
-      path: worktreePath,
-      depth
-    }) + "\n"
-  );
+  appendJsonlSync(path.join(logDir, "worktrees.jsonl"), {
+    ts: new Date().toISOString(),
+    childId,
+    branch: childBranch,
+    path: worktreePath,
+    depth
+  });
   return { worktreePath, branch: childBranch };
 }
 
@@ -310,14 +307,12 @@ export function appendInventoryLog(
   runId: string,
   entry: WorkerInventory & { childId: string; status: string; cherryPickResult?: CherryPickResult }
 ): void {
-  try {
-    const logDir = path.join(repoRoot, ".claude/artifacts/loop/dispatch", runId);
-    fs.mkdirSync(logDir, { recursive: true });
-    const row = { timestamp: new Date().toISOString(), ...entry };
-    fs.appendFileSync(path.join(logDir, "inventory.jsonl"), `${JSON.stringify(row)}\n`);
-  } catch {
-    // best-effort
-  }
+  const logDir = path.join(repoRoot, ".claude/artifacts/loop/dispatch", runId);
+  appendJsonlSync(
+    path.join(logDir, "inventory.jsonl"),
+    { ts: new Date().toISOString(), ...entry },
+    { swallowErrors: true }
+  );
 }
 
 /**

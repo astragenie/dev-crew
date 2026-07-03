@@ -255,3 +255,16 @@ loop CLI commands.
 
 See `ADOPTION.md` for a step-by-step adoption checklist when bringing the
 plugin into an existing repo.
+
+## Memory integration (optional)
+
+Runner ships a fire-and-forget memory bridge (`src/scripts/lib/memory-bridge.mts`)
+that emits GEPA-shaped JSON payloads to the `astramem` CLI after each
+`runner:close` (grade write) and on `runner:phase-gate` FAIL events.
+
+The bridge is **dormant until `memory-plugin` v0.4 ships `astramem`** — there
+is no observable effect when the CLI is absent.
+
+See [memory-plugin issue #8](https://github.com/astragenie/memory-plugin/issues/8)
+for the CLI contract and `docs/sop/memory-bridge.md` for the full SOP including
+the off-switch (`loop.memory.enabled: "never"` in `.claude/loop.json`).

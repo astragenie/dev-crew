@@ -1,4 +1,4 @@
-# Design: FEAT-206 Direct-sink per-repo ingest config via loop.json
+# Design: FEAT-215 Direct-sink per-repo ingest config via loop.json
 
 ## Problem
 
@@ -302,17 +302,17 @@ or plugin-options.mts - all consumed as-is.
 
 ## ADR stub
 
-id: DEC-058
+id: DEC-062
 title: Direct-sink ingest block outranks the ASTRARUNNER_ENV profile tier (intentional divergence from the webhook path)
 status: proposed
 introduced_by_slice: null
 introduced_at: 2026-07-03
-related_specs: [FEAT-206]
+related_specs: [FEAT-215]
 superseded_by: null
 
 ### Context
 
-FEAT-206 adds a loop.json loop.ingest block so the Path-2 direct sink
+FEAT-215 adds a loop.json loop.ingest block so the Path-2 direct sink
 (astrarunner-ingest.mts) can differentiate per-repo telemetry (appId to
 live bearer) without a per-repo env var. The Pattern-B webhook path
 (event-notifier.mts) already has an analogous committed block
@@ -351,7 +351,7 @@ Negative:
 
 Neutral:
 - No shared resolver module introduced to unify the two paths (see
-  FEAT-206 design doc, "Shared resolver - declined"); the two precedence
+  FEAT-215 design doc, "Shared resolver - declined"); the two precedence
   chains remain independently owned and independently testable.
 
 ### Alternatives considered
@@ -369,8 +369,8 @@ Neutral:
 
 ### References
 
-- FEAT: .claude/artifacts/loop/backlog/pending/FEAT-206.md
-- Design: .claude/artifacts/loop/design/FEAT-206-design.md
+- FEAT: .claude/artifacts/loop/backlog/pending/FEAT-215.md
+- Design: .claude/artifacts/loop/design/FEAT-215-design.md
 
 ## Risks
 

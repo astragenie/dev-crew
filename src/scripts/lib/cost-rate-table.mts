@@ -39,7 +39,10 @@ const HARDCODED_RATES: Record<string, ModelRates> = {
  *
  * Unknown model → returns 0 (never throws).
  */
-export function deriveCostUsd(usage: TokenUsage, ratesOverride?: Record<string, ModelRates>): number {
+export function deriveCostUsd(
+  usage: TokenUsage,
+  ratesOverride?: Record<string, ModelRates>
+): number {
   const rates = ratesOverride?.[usage.model] ?? HARDCODED_RATES[usage.model];
   if (!rates) return 0;
 

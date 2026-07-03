@@ -11,6 +11,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { buildDispatchPrompt } from "./dispatch-prompt.mjs";
+import { resolveConfig } from "../config-resolver.mjs";
+import { resolveWaveDispatchModel } from "../model-router.mjs";
 import type { GitStatus, StopCheckResult, PrepareResult, FinalizeResult } from "./runner.mjs";
 import type { WaveConfig, WavePlan, WorktreeResult } from "./types.mjs";
 
@@ -81,6 +83,17 @@ function parseTrailingJson(stdout: string): unknown {
   }
 }
 
+// resolveConfig deep-merges .claude/loop.json onto the stack preset. Wrapped
+// so a missing/malformed config never blocks wave dispatch — resolveModel
+// already fails safe to FALLBACK_MODEL on a null config.
+async function bestEffortConfig(repoRoot: string): Promise<Record<string, unknown> | null> {
+  try {
+    return await resolveConfig(repoRoot);
+  } catch {
+    return null;
+  }
+}
+
 export async function realPrepare(repoRoot: string, plan: WavePlan): Promise<PrepareResult> {
   const planFile = tmpPlanFile(plan);
   try {
@@ -108,6 +121,11 @@ export async function realPrepare(repoRoot: string, plan: WavePlan): Promise<Pre
       branchById: Record<string, string>;
       cwdById: Record<string, string>;
     };
+    // FEAT-205: resolve one model tier per item from its shape (data-driven —
+    // see SHAPE_TIER_MAP in model-router.mts), not a per-item conditional.
+    // Best-effort: a config-resolve failure must not block dispatch — fall
+    // back to the phase-default ("build") tier for every item.
+    const config = await bestEffortConfig(repoRoot);
     const agentBatch = plan.items.map((item) => {
       const worktreePath = raw.cwdById[item.sliceId] ?? "";
       return {
@@ -119,7 +137,8 @@ export async function realPrepare(repoRoot: string, plan: WavePlan): Promise<Pre
           worktreePath,
           sliceCommand: item.sliceCommand,
           mode: "normal"
-        })
+        }),
+        model: resolveWaveDispatchModel(item.shape ?? "none", config)
       };
     });
     return { runId: raw.runId, agentBatch };

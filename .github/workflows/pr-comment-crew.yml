@@ -39,7 +39,7 @@ jobs:
         id: parse
         run: |
           # Read comment body from the event JSON file (never interpolate untrusted
-          # input via ${{ }} expressions — GitHub Actions injection vector).
+          # input via GitHub Actions expression syntax — injection vector).
           COMMENT_BODY=$(jq -r '.comment.body // .review.body // empty' "$GITHUB_EVENT_PATH")
           if [ -z "$COMMENT_BODY" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"

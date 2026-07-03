@@ -4,10 +4,10 @@
 // audit log entry so callers can observe it. The marker-write path (pending-dispatch/
 // directory) was deprecated per DEC-011 — no consumer is planned.
 
-import fs from "node:fs/promises";
 import path from "node:path";
 
 import { fanoutEnvelope } from "./webhook-fanout.mjs";
+import { appendJsonlBatch } from "./jsonl-append.mjs";
 
 export type DispatchKind = "auto" | "manual" | "wave" | "hierarchical";
 
@@ -58,10 +58,13 @@ export function resolveAuditLogPath(repoRoot: string, opts: AuditLogOpts = {}): 
   return path.join(repoRoot, AUDIT_LOG_REL);
 }
 
-// Win 10: batch audit log writes — accumulate lines during a command invocation
-// and flush once at the end via flushAuditLog().
+// Win 10: batch audit log writes — accumulate entries during a command
+// invocation and flush once at the end via flushAuditLog(). The batch write
+// itself (mkdir + one appendFile call for every buffered line) is delegated
+// to the shared appendJsonlBatch helper; the queue-then-flush shape stays
+// local since it's orchestration, not JSONL-write mechanics.
 interface PendingBatch {
-  lines: string[];
+  records: Record<string, unknown>[];
   resolvedPath: string;
 }
 const pendingBatches = new Map<string, PendingBatch>();
@@ -72,19 +75,18 @@ export async function appendAuditLog(
   opts: AuditLogOpts = {}
 ): Promise<void> {
   const logPath = resolveAuditLogPath(repoRoot, opts);
-  const line = JSON.stringify(entry);
   let batch = pendingBatches.get(logPath);
   if (!batch) {
-    batch = { lines: [], resolvedPath: logPath };
+    batch = { records: [], resolvedPath: logPath };
     pendingBatches.set(logPath, batch);
   }
-  batch.lines.push(line);
+  batch.records.push(entry as Record<string, unknown>);
 }
 
 /**
- * Flush all buffered audit log lines to disk in a single appendFile call.
- * Call once per command invocation at completion. Safe to call when no lines
- * are buffered (no-op). Clears the buffer after writing.
+ * Flush all buffered audit log entries to disk in a single appendFile call.
+ * Call once per command invocation at completion. Safe to call when no
+ * entries are buffered (no-op). Clears the buffer after writing.
  *
  * L3-2: After the JSONL append succeeds, fan out one webhook envelope per
  * entry as kind `agent.dispatch`. If the JSONL write fails, no fanout happens
@@ -94,19 +96,12 @@ export async function appendAuditLog(
 export async function flushAuditLog(repoRoot: string, opts: AuditLogOpts = {}): Promise<void> {
   const logPath = resolveAuditLogPath(repoRoot, opts);
   const batch = pendingBatches.get(logPath);
-  if (!batch || batch.lines.length === 0) return;
-  await fs.mkdir(path.dirname(logPath), { recursive: true });
-  await fs.appendFile(logPath, batch.lines.join("\n") + "\n", "utf8");
-  const flushedLines = batch.lines.slice();
+  if (!batch || batch.records.length === 0) return;
+  const flushedRecords = batch.records.slice();
   pendingBatches.delete(logPath);
+  await appendJsonlBatch(logPath, flushedRecords);
 
-  for (const line of flushedLines) {
-    let entry: Record<string, unknown>;
-    try {
-      entry = JSON.parse(line) as Record<string, unknown>;
-    } catch {
-      continue;
-    }
+  for (const entry of flushedRecords) {
     await fanoutEnvelope(repoRoot, "agent.dispatch", entry);
   }
 }

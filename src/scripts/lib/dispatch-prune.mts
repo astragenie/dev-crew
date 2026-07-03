@@ -135,7 +135,7 @@ function readWorktreesFromLog(runDir: string): {
  */
 export async function listStaleRunIds(
   repoRoot: string,
-  olderThanDays: number,
+  olderThanDays: number
 ): Promise<StaleRunEntry[]> {
   const dispDir = dispatchRoot(repoRoot);
   let entries: string[];
@@ -170,7 +170,7 @@ export async function listStaleRunIds(
       runId: name,
       ageDays,
       worktreeCount: worktreePaths.length,
-      branchCount: branches.length,
+      branchCount: branches.length
     });
   }
 
@@ -181,10 +181,7 @@ export async function listStaleRunIds(
  * Remove a single runId: worktrees, branches, then the runId directory.
  * Continues on individual failures; aggregates errors in the result.
  */
-export async function pruneRunId(
-  repoRoot: string,
-  runId: string,
-): Promise<PruneRunResult> {
+export async function pruneRunId(repoRoot: string, runId: string): Promise<PruneRunResult> {
   const dispDir = dispatchRoot(repoRoot);
   const runDir = path.join(dispDir, runId);
   const errors: string[] = [];
@@ -199,7 +196,7 @@ export async function pruneRunId(
     try {
       execFileSync("git", ["worktree", "remove", "--force", wt], {
         cwd: repoRoot,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"]
       });
       worktreesRemoved += 1;
     } catch (err) {
@@ -212,7 +209,7 @@ export async function pruneRunId(
     try {
       execFileSync("git", ["branch", "-D", branch], {
         cwd: repoRoot,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"]
       });
       branchesRemoved += 1;
     } catch (err) {
@@ -237,7 +234,7 @@ export async function pruneRunId(
  */
 export async function pruneStale(
   repoRoot: string,
-  opts: PruneStaleOptions = {},
+  opts: PruneStaleOptions = {}
 ): Promise<PruneStaleResult> {
   const { olderThanDays = 7, dryRun = false } = opts;
   const stale = await listStaleRunIds(repoRoot, olderThanDays);

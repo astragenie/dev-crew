@@ -263,9 +263,7 @@ async function cmdPrune(args: ParsedArgs): Promise<number> {
   const stale = await listStaleRunIds(repo, olderThanDays);
 
   if (stale.length === 0) {
-    process.stdout.write(
-      `[dispatch prune] no stale runIds found (threshold: ${olderThanDays}d)\n`
-    );
+    process.stdout.write(`[dispatch prune] no stale runIds found (threshold: ${olderThanDays}d)\n`);
     return 0;
   }
 

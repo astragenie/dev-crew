@@ -1,13 +1,13 @@
 ---
 id: FEAT-176
-status: triaged
+status: done
 priority: P1
 category: tech-debt
 target_release: null
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-07-02
 depends_on: []
-slices: []
+slices: [SLICE-134]
 derived_from: null
 pm_customer_impact: 0.7
 pm_effort_estimate: 0.05
@@ -16,12 +16,15 @@ pm_technical_risk: 0.1
 pm_dependency_depth: 1
 composite_score: 0.795
 autonomous_safe: false
-deferred: true
-deferred_reason: Externally blocked — fix lives in hero-crew (specialist-dispatch completion enforcement). Loop work is tracking only (version bump + SOP retire) and cannot start until upstream merges. Un-defer when the hero-crew issue/PR lands.
+deferred: false
+deferred_reason: "Unblocked 2026-07-02: AC-2 satisfied via front-loaded-stub fallback (crew FEAT-161 scaffold contract, extended to aiplugin-dev via dev-team PR #150). Remaining ACs are loop-side."
 triage_notes: "via=pm | P1 visibility (root cause of cost spike) but dependency_depth=1.0 (100% blocked on upstream). autonomous_safe=false: external blocker, no builder. Monitor hero-crew issue; re-triage next iteration."
 github_issue: 196
 github_milestone: null
 github_url: "https://github.com/sergeymilashico/loop/issues/196"
+started_at: 2026-07-02
+slices_complete: [SLICE-134]
+completed_at: 2026-07-02
 ---
 ## Description
 

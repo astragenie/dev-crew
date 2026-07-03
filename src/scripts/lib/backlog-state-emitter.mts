@@ -13,6 +13,9 @@ import { fanoutEnvelope } from "./webhook-fanout.mjs";
 /** Closed-set of backlog states a FEAT can transition between. */
 export type BacklogState = "pending" | "triaged" | "in-progress" | "done";
 
+/** Category classification for DORA CFR signal. */
+export type FeatCategory = "feat" | "fix" | "chore";
+
 /** Input for `emitBacklogStateChanged`. */
 export interface BacklogStateChangedInput {
   /** Feature id, e.g. "FEAT-200". */
@@ -23,6 +26,14 @@ export interface BacklogStateChangedInput {
   toState: BacklogState | string;
   /** Optional ISO timestamp override (test seam). */
   timestamp?: string;
+  /** DORA: priority tier (P0..P4). Required for MTTR P0 detection. */
+  priority?: string | null;
+  /** DORA: category classification. Required for CFR fix detection. */
+  category?: FeatCategory | null;
+  /** DORA: linked FEAT this fixes (CFR linking). */
+  relates_to?: string | null;
+  /** DORA: creation timestamp (lead-time start anchor). */
+  createdAt?: string | null;
 }
 
 /**
@@ -35,10 +46,15 @@ export async function emitBacklogStateChanged(
   input: BacklogStateChangedInput
 ): Promise<void> {
   const ts = input.timestamp ?? new Date().toISOString();
-  await fanoutEnvelope(repoPath, "loop.backlog_state_changed", {
+  const payload: Record<string, unknown> = {
     featId: input.featId,
     fromState: input.fromState,
     toState: input.toState,
     ts
-  });
+  };
+  if (input.priority !== undefined) payload.priority = input.priority;
+  if (input.category !== undefined) payload.category = input.category;
+  if (input.relates_to !== undefined) payload.relates_to = input.relates_to;
+  if (input.createdAt !== undefined) payload.createdAt = input.createdAt;
+  await fanoutEnvelope(repoPath, "loop.backlog_state_changed", payload);
 }

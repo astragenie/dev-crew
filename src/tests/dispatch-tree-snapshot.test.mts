@@ -49,8 +49,8 @@ test("readDispatchTreeSnapshot: open runIds (missing summary) appear in openRunI
       childId: "A",
       branch: "main-A",
       path: "/tmp/fake-wt",
-      depth: 0,
-    }) + "\n",
+      depth: 0
+    }) + "\n"
   );
 
   // Closed runId: has summary.md + old trace
@@ -61,7 +61,7 @@ test("readDispatchTreeSnapshot: open runIds (missing summary) appear in openRunI
   const tracePath = path.join(closedDir, "trace.jsonl");
   fs.writeFileSync(
     tracePath,
-    '{"ts":"t","childId":"B","status":"DONE","durationMs":0,"costUsd":null}\n',
+    '{"ts":"t","childId":"B","status":"DONE","durationMs":0,"costUsd":null}\n'
   );
   // Set trace mtime to 10 minutes ago (outside in-flight window)
   const oldTrace = new Date(Date.now() - 10 * 60 * 1000);

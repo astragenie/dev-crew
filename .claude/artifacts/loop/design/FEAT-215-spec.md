@@ -1,12 +1,12 @@
-# Spec: FEAT-206 — Direct-sink per-repo ingest config via loop.json
+# Spec: FEAT-215 — Direct-sink per-repo ingest config via loop.json
 
 ## Metadata
 - developer_type: agent
 - estimated_complexity: medium
 - languages: [typescript]
-- derived_from: .claude/artifacts/loop/backlog/pending/FEAT-206.md
-- design_source: .claude/artifacts/loop/design/FEAT-206-design.md (authoritative — all DECISION markers ratified there; this spec transcribes, does not re-decide)
-- adr_stub: DEC-058 (see design doc "ADR stub" section — document-writer finalizes after this slice closes)
+- derived_from: .claude/artifacts/loop/backlog/pending/FEAT-215.md
+- design_source: .claude/artifacts/loop/design/FEAT-215-design.md (authoritative — all DECISION markers ratified there; this spec transcribes, does not re-decide)
+- adr_stub: DEC-062 (see design doc "ADR stub" section — document-writer finalizes after this slice closes)
 
 ---
 
@@ -14,7 +14,7 @@
 
 Give the Path-2 direct sink (`src/scripts/lib/slice-linker/astrarunner-ingest.mts`) a `repoPath`-aware `.claude/loop.json` `loop.ingest` block so a user running the loop across many repos can commit per-repo app identity (`appId`) and resolve a live bearer from the user-level token store, without regressing the existing env-only fail-silent contract. Precedence, schema, and inheritance are fully ratified in the design doc — this spec is the executable transcription: exact contracts, exact precedence pseudocode, ≥8 test cases mapped 1:1 to AC-1..AC-8, and exact verify commands.
 
-**Out of scope:** shared `resolveIngestConfig` module (declined — YAGNI/rule of three), `tokensFile` field on the ingest block (dropped — DECISION-3), `url`/`env` inheritance from `webhook.{url,tenantId}` (declined — DECISION-2, appId only), any change to `event-notifier.mts` / `token-store.mts` / `env-profiles.mts` (consumed as-is), reconciling the pre-existing FEAT-203 v1.1-envelope-enrichment fields on this branch against the PR #299 baseline (see **Build sequencing** — a separate, FEAT-206-unrelated merge concern).
+**Out of scope:** shared `resolveIngestConfig` module (declined — YAGNI/rule of three), `tokensFile` field on the ingest block (dropped — DECISION-3), `url`/`env` inheritance from `webhook.{url,tenantId}` (declined — DECISION-2, appId only), any change to `event-notifier.mts` / `token-store.mts` / `env-profiles.mts` (consumed as-is), reconciling the pre-existing FEAT-203 v1.1-envelope-enrichment fields on this branch against the PR #299 baseline (see **Build sequencing** — a separate, FEAT-215-unrelated merge concern).
 
 ---
 
@@ -22,7 +22,7 @@ Give the Path-2 direct sink (`src/scripts/lib/slice-linker/astrarunner-ingest.mt
 
 `astrarunner-ingest.mts` currently resolves URL/token from `LOOP_INGEST_*` env vars, then `CLAUDE_PLUGIN_OPTION_*` (via `../plugin-options.mjs`, PR #299), then an `ASTRARUNNER_ENV` → `~/.astrarunner/profiles.json[env]` profile lookup — all env-only, no repo identity. The sole production caller, `writeAgentReport(repoPath, opts)` in `agent-report-writer.mts` (line ~599, `postAgentCompletions({...})`), already has `repoPath` in scope and already reads `.claude/loop.json` for `costRates` a few lines above — threading `repoPath` through is additive at that one call site.
 
-The webhook path (`event-notifier.mts::applyEnvOverrides` + `readNotifyConfig`) already has an analogous committed block (`loop.notifications.webhook`) with `resolveBearer(appId, env, tokensFile)` from `token-store.mts`, but its precedence puts the committed `url` **below** the `ASTRARUNNER_ENV` profile tier. FEAT-206's new `loop.ingest` block is **ratified to sit above** that profile tier — an intentional, documented divergence (DEC-058), not a bug to reconcile.
+The webhook path (`event-notifier.mts::applyEnvOverrides` + `readNotifyConfig`) already has an analogous committed block (`loop.notifications.webhook`) with `resolveBearer(appId, env, tokensFile)` from `token-store.mts`, but its precedence puts the committed `url` **below** the `ASTRARUNNER_ENV` profile tier. FEAT-215's new `loop.ingest` block is **ratified to sit above** that profile tier — an intentional, documented divergence (DEC-062), not a bug to reconcile.
 
 ---
 
@@ -61,7 +61,7 @@ interface PostOpts {
   sliceId: string;
   featureId?: string | null;
   agents: AgentRow[];
-  /** New (FEAT-206). Optional so a caller without repo context still
+  /** New (FEAT-215). Optional so a caller without repo context still
    * degrades to the existing env-only behavior rather than throwing. Sole
    * production caller: agent-report-writer.mts::writeAgentReport. */
   repoPath?: string;
@@ -134,7 +134,7 @@ The current header (both on `origin/main` at commit `369e21d` and on this branch
 Replace with (exact text the builder should use, adjust only if line-wrap style drifts):
 
 ```
-// This is Path 2 (direct-POST). Since FEAT-206 it is repoPath-aware: when a
+// This is Path 2 (direct-POST). Since FEAT-215 it is repoPath-aware: when a
 // repoPath is supplied it also reads .claude/loop.json's `loop.ingest` block
 // for per-repo committed identity (appId -> live bearer via token-store.mts).
 //
@@ -154,8 +154,8 @@ Replace with (exact text the builder should use, adjust only if line-wrap style 
 // IMPORTANT — intentional divergence from the webhook path (event-notifier.mts):
 // the loop.ingest block outranks the ASTRARUNNER_ENV profile tier here, while
 // the committed webhook.url is the FLOOR default there (profile wins). This is
-// deliberate, not a bug — see DEC-058. Do not "fix" this asymmetry by editing
-// tier order in either module without re-reading DEC-058 first.
+// deliberate, not a bug — see DEC-062. Do not "fix" this asymmetry by editing
+// tier order in either module without re-reading DEC-062 first.
 //
 // See ../plugin-options.mts for the explicit-tier env/plugin-option folding.
 ```
@@ -264,7 +264,7 @@ All new cases live in **`src/tests/astrarunner-ingest.test.mts`** (the sole test
 ### AC-1 — happy path
 
 ```
-describe("postAgentCompletions: loop.ingest block (FEAT-206)")
+describe("postAgentCompletions: loop.ingest block (FEAT-215)")
 test("AC-1: ingest block resolves URL + appId-driven bearer with no env/plugin overrides")
 
 Setup:
@@ -622,25 +622,25 @@ Expected: every command exits 0. `bunx biome format src/` is a check-only invoca
 
 ### 5.1 MUST branch/rebase from `origin/main` first — read this before writing any code
 
-This repo's current branch (`feat/envelope-v1.1-enrichment`) has a confirmed, pre-existing state conflict unrelated to FEAT-206 that WILL break a naive edit if skipped:
+This repo's current branch (`feat/envelope-v1.1-enrichment`) has a confirmed, pre-existing state conflict unrelated to FEAT-215 that WILL break a naive edit if skipped:
 
 1. **`src/scripts/lib/plugin-options.mts` does not exist in this branch's committed history (HEAD = `f410072`).** It landed on `main` via PR #299 (commit `369e21d`, "feat(plugin): configure ingest token + environment URL from the plugin manager"). Confirmed via `git show origin/main:src/scripts/lib/plugin-options.mts` (exists, 3 exported resolvers) vs `git log --oneline -- src/scripts/lib/plugin-options.mts` on this branch (no history) and `ls src/scripts/lib/plugin-options.mts` (file absent on disk).
 2. **The working tree currently has an uncommitted, staged modification** to `src/scripts/lib/slice-linker/astrarunner-ingest.mts` (`git status --short` shows `M `) that already imports from `../plugin-options.mjs` — a module that does not exist on disk in this branch. This is a **broken import right now**; do not build on top of it as-is.
 3. **HEAD's committed version of `astrarunner-ingest.mts`** (pre-this-staged-change) carries FEAT-203 "v1.1 envelope enrichment" fields not present in `origin/main`'s PR #299 version: `AgentRow.agentId`, `.cacheReadInputTokens`, `.cacheCreationInputTokens`, `.costUsd`, `.dispatchKind`, `.iterationIndex`, `schemaVersion: "v1.1"` (vs `"v1"` on main), and `export interface AgentRow` (exported — `agent-report-writer.mts` on this branch types against it via `import("./astrarunner-ingest.mjs").AgentRow`). The currently-staged working-tree edit **drops all of these fields** to match `origin/main` exactly, including un-exporting `AgentRow`.
 4. **`src/tests/envelope-enrichment.test.mts`** on this branch tests the FEAT-203 fields directly (`agentId`, `costUsd`, `cacheReadInputTokens`, etc., `schemaVersion: "v1.1"`) — it will fail against the lean `origin/main` shape.
 
-**Reconciling #3/#4 (FEAT-203 v1.1 enrichment vs. PR #299 plugin-options integration) is a separate, FEAT-206-unrelated merge decision — this spec does not resolve it and the builder must not silently pick one side.** Before starting FEAT-206 implementation:
+**Reconciling #3/#4 (FEAT-203 v1.1 enrichment vs. PR #299 plugin-options integration) is a separate, FEAT-215-unrelated merge decision — this spec does not resolve it and the builder must not silently pick one side.** Before starting FEAT-215 implementation:
 
-- Confirm with the operator (or check for a newer commit / open PR) whether the FEAT-203 enrichment fields are meant to survive the `main` rebase. If yes, the merged `astrarunner-ingest.mts` baseline for FEAT-206 work is `origin/main`'s PR #299 shape **plus** the FEAT-203 fields re-applied (both `AgentRow` extensions), not either file in isolation.
-- Do NOT delete `src/tests/envelope-enrichment.test.mts` or its assertions to make CI pass — that erases FEAT-203 coverage. If the fields are confirmed dropped, that decision needs its own commit message / DEC entry, separate from FEAT-206's.
-- **FEAT-206's own contracts in §1 above (`IngestBlock`, `PostOpts.repoPath`, `readIngestBlock`, `resolveEffectiveAppId`, `resolveEffectiveEnv`, `resolveIngestUrl`, `resolveIngestToken`) are additive and orthogonal to whichever `AgentRow` shape survives this reconciliation** — apply them on top of whatever the merged baseline turns out to be. `buildEnvelope()`, `postOne()`, and `AgentRow` itself are untouched by FEAT-206.
+- Confirm with the operator (or check for a newer commit / open PR) whether the FEAT-203 enrichment fields are meant to survive the `main` rebase. If yes, the merged `astrarunner-ingest.mts` baseline for FEAT-215 work is `origin/main`'s PR #299 shape **plus** the FEAT-203 fields re-applied (both `AgentRow` extensions), not either file in isolation.
+- Do NOT delete `src/tests/envelope-enrichment.test.mts` or its assertions to make CI pass — that erases FEAT-203 coverage. If the fields are confirmed dropped, that decision needs its own commit message / DEC entry, separate from FEAT-215's.
+- **FEAT-215's own contracts in §1 above (`IngestBlock`, `PostOpts.repoPath`, `readIngestBlock`, `resolveEffectiveAppId`, `resolveEffectiveEnv`, `resolveIngestUrl`, `resolveIngestToken`) are additive and orthogonal to whichever `AgentRow` shape survives this reconciliation** — apply them on top of whatever the merged baseline turns out to be. `buildEnvelope()`, `postOne()`, and `AgentRow` itself are untouched by FEAT-215.
 
 Once the branch has a consistent baseline with a real, importable `../plugin-options.mjs`:
 
 ```bash
 git fetch origin main
 git rebase origin/main   # or branch fresh from origin/main if history divergence makes rebase noisy
-bunx tsc --project tsconfig.json --noEmit   # confirm plugin-options.mjs import resolves before writing any FEAT-206 code
+bunx tsc --project tsconfig.json --noEmit   # confirm plugin-options.mjs import resolves before writing any FEAT-215 code
 ```
 
 ### 5.2 Files touched by this slice (exactly 2 source + 1 test — after the pre-flight above)
@@ -650,14 +650,14 @@ bunx tsc --project tsconfig.json --noEmit   # confirm plugin-options.mjs import 
 - `src/scripts/lib/slice-linker/agent-report-writer.mts` — line ~599, add `repoPath` to the existing `postAgentCompletions({ ... })` call literal (`repoPath` is already in local scope from `writeAgentReport(repoPath, ...)`'s own first parameter). No other change to this file.
 
 **Test:**
-- `src/tests/astrarunner-ingest.test.mts` — add `describe("postAgentCompletions: loop.ingest block (FEAT-206)", ...)` containing the cases in §3 (AC-1 through AC-8b, plus the recommended env-scoping cross-check), extend `beforeEach`/`afterEach` per the idiom notes at the top of §3, add the `tokenStoreInternals` import and a `withTempLoopJson` helper.
+- `src/tests/astrarunner-ingest.test.mts` — add `describe("postAgentCompletions: loop.ingest block (FEAT-215)", ...)` containing the cases in §3 (AC-1 through AC-8b, plus the recommended env-scoping cross-check), extend `beforeEach`/`afterEach` per the idiom notes at the top of §3, add the `tokenStoreInternals` import and a `withTempLoopJson` helper.
 
-No other files are touched by this slice. `src/tests/envelope-enrichment.test.mts` and `src/tests/agent-report-writer.test.mts` are **not edited** by FEAT-206 itself — only re-verify they still pass after the rebase in §5.1 (their FEAT-203-vs-main reconciliation status is a pre-condition this slice depends on, not a deliverable of this slice).
+No other files are touched by this slice. `src/tests/envelope-enrichment.test.mts` and `src/tests/agent-report-writer.test.mts` are **not edited** by FEAT-215 itself — only re-verify they still pass after the rebase in §5.1 (their FEAT-203-vs-main reconciliation status is a pre-condition this slice depends on, not a deliverable of this slice).
 
 ---
 
 ## Risks (carried from design doc, restated for the builder)
 
-- **Fail-silent misordering is invisible.** Nothing errors if a future edit swaps the ingest-block/profile tier order back to webhook-symmetric. AC-4's test (§3) is the regression guard; the header-comment cross-reference to DEC-058 (§1.5) is the second guard. Do not remove either without re-reading DEC-058.
+- **Fail-silent misordering is invisible.** Nothing errors if a future edit swaps the ingest-block/profile tier order back to webhook-symmetric. AC-4's test (§3) is the regression guard; the header-comment cross-reference to DEC-062 (§1.5) is the second guard. Do not remove either without re-reading DEC-062.
 - **Confused-deputy surface doubles** (not new, shared with the webhook path): a malicious/careless `loop.json` `ingest.url` + `appId` can redirect a locally-resolved bearer to an attacker-chosen host. AC-2/AC-8a constrain this at the resolver level; no additional mitigation is in scope for this slice.
 - **`readIngestBlock` double-duty read.** If a future edit changes `loop.json`'s shape independently in `event-notifier.mts`'s reader, the two readers can drift on error handling. Both MUST keep the identical `try/catch { return {} }` shape — do not diverge them in this slice or a later one without updating both.

@@ -1,5 +1,5 @@
 ---
-id: FEAT-206
+id: FEAT-215
 status: pending
 priority: P2
 category: telemetry
@@ -25,7 +25,7 @@ pm_reviewed: 2026-07-03
 autonomous_safe: false
 triage_notes: "Low-risk parity fast-follow to PR #299, but architect-review (2026-07-03) found a HIGH precedence gap (new loop.json block never positioned vs the ASTRARUNNER_ENV profile tier — could silently defeat per-repo differentiation) plus appId-dedup + schema-asymmetry gaps. Downgraded autonomous_safe:false + needs_contract:true; route through runner:spec-writer to ratify the full precedence chain and appId-inheritance rule before slicing. Secret-adjacent surface + genuine spec ambiguity = human-in-loop on the slice."
 ---
-# FEAT-206: Direct-sink per-repo ingest config via loop.json
+# FEAT-215: Direct-sink per-repo ingest config via loop.json
 
 > **Design gate:** architect-review 2026-07-03 = NEEDS-CHANGES (direction sound,
 > spec ambiguities). Adjustments folded in below; open **DECISION** markers must

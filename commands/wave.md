@@ -56,6 +56,20 @@ instructs:
 3. Return a last-line JSON marker:
    `{"slice":"<id>","status":"PASS"|"FAIL","artifacts":[...]}`.
 
+Each `agentBatch` entry also carries a resolved `model` field (FEAT-205,
+`resolveWaveDispatchModel` in `src/scripts/lib/model-router.mts`) — pass it
+into the tool call as `Agent(subagent_type: general-purpose, model: <model>)`.
+Model choice never lives inside the `prompt` string; it is a separate
+structured field on the batch entry. Resolution order per slice:
+
+1. The slice's `classify-slice-shape.mts` shape (computed from its
+   `touches_files` at pack time) looks up `SHAPE_TIER_MAP` — trivial shapes
+   (`doc-update`, `config-tweak`, `test-only`, `single-module-edit`) route to
+   `sonnet` unless overridden via `loop.modelRouting.byShape.<shape>`.
+2. Shapes with no override (`none` — mixed file types, large diffs,
+   public-surface edits) fall through to the phase-based `build` routing
+   (`loop.modelRouting.build`, default `sonnet`).
+
 After all N agents return, `run` calls `dispatch finalize`: merges PASS
 branches, leaves FAIL worktrees on disk for next-wave `/crew:fix`, runs the
 post-merge test command, writes artifacts, and exits.

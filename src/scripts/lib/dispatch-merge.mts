@@ -22,10 +22,19 @@ function collectInventories(
 ): InventoryMap {
   const map: InventoryMap = new Map();
   for (const child of results) {
-    const inventory = inventoryWorkerBranch(repoRoot, child.worktreePath, child.branch, parentBranch);
+    const inventory = inventoryWorkerBranch(
+      repoRoot,
+      child.worktreePath,
+      child.branch,
+      parentBranch
+    );
     map.set(child.id, inventory);
     if (runId) {
-      appendInventoryLog(repoRoot, runId, { ...inventory, childId: child.id, status: child.status });
+      appendInventoryLog(repoRoot, runId, {
+        ...inventory,
+        childId: child.id,
+        status: child.status
+      });
     }
   }
   return map;
@@ -130,7 +139,11 @@ function mergeOne(
         `Merge against \`${parentBranch}\` conflicted. Worktree + branch left in place for inspection. Resolve conflicts manually OR rerun the slice via \`/crew:fix\`. Once resolved, run \`git worktree remove ${child.worktreePath}\` + \`git branch -D ${child.branch}\`.`
       );
     }
-    updated.set(child.id, { ...child, status: "CONFLICTED", error: `merge conflict against ${parentBranch}` });
+    updated.set(child.id, {
+      ...child,
+      status: "CONFLICTED",
+      error: `merge conflict against ${parentBranch}`
+    });
   }
 }
 
@@ -159,7 +172,13 @@ export function mergeChildren(
   // FEAT-202 SLICE-B: cherry-pick handoff commits from CONFLICTED/FAIL branches
   // onto parentBranch before emitting triage artifacts. parentBranch is checked
   // out above, satisfying the precondition of cherryPickHandoffsFromBranch.
-  const cherryPickMap = cherryPickNonDoneHandoffs(repoRoot, parentBranch, results, runId, inventoryMap);
+  const cherryPickMap = cherryPickNonDoneHandoffs(
+    repoRoot,
+    parentBranch,
+    results,
+    runId,
+    inventoryMap
+  );
 
   // Emit worker-preserved artifacts for CONFLICTED (non-DONE, non-FAIL) children.
   if (runId) emitPreservedArtifacts(repoRoot, runId, results, inventoryMap);

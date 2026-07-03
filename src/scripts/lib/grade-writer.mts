@@ -313,6 +313,10 @@ export async function writeGrade(
     gradeEvent as unknown as Record<string, unknown>
   );
 
+  // runner-plugin#288: fire-and-forget memory bridge emit on every grade write.
+  // Fail-silent — emit() never throws and is already 2s-capped.
+  await emitSliceCloseMemory(repoPath, sliceId, frontmatter, scores, gradeEvent);
+
   // L3-4: emit slice.agent_progress + agent.tool_call from each crew artifact
   // bundle that belongs to this slice. Fail-silent: any IO or parse error is
   // swallowed so the grade write contract is not affected.
@@ -474,4 +478,89 @@ async function extractDecisions(
     allocated.push({ id, title: dec.title });
   }
   return { allocated, updatedBody };
+}
+
+// runner-plugin#288: emit a GEPA-shaped memory payload on slice close.
+// Reads memory.enabled from loop.json — defaults to "auto" (emit when CLI present).
+// Fail-silent: any error is swallowed. Never throws.
+async function emitSliceCloseMemory(
+  repoPath: string,
+  sliceId: string,
+  frontmatter: Record<string, any>,
+  scores: Record<string, unknown>,
+  gradeEvent: GradeEventOut
+): Promise<void> {
+  try {
+    const loopJsonPath = path.join(repoPath, ".claude", "loop.json");
+    let memoryEnabled: string = "auto";
+    try {
+      const raw = await fs.readFile(loopJsonPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const configuredMode = parsed?.memory?.enabled;
+      if (configuredMode === "never") memoryEnabled = "never";
+    } catch {
+      // Missing or unparseable loop.json — default auto.
+    }
+    if (memoryEnabled === "never") return;
+
+    const { emit, resolveCli } = await import("./memory-bridge.mjs");
+    const cli = await resolveCli();
+    if (!cli) return; // Dormant: astramem not installed.
+
+    const { getPromptVersion } = await import("./agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const featureId =
+      typeof frontmatter.feature === "string" ? frontmatter.feature : "FEAT-unknown";
+    const scoresAvg = averageOf(scores);
+    const feedback = buildCloseFeedback(frontmatter, gradeEvent.decisions);
+
+    await emit({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featureId,
+      source: "close",
+      event: "slice_close",
+      score: scoresAvg ?? 0,
+      feedback,
+      input: {
+        ac_text: (frontmatter.ac_text as string | undefined) ?? "",
+        dispatch_instruction: (frontmatter.dispatch_instruction as string | undefined) ?? ""
+      },
+      output: {
+        changed_files: extractChangedFiles(frontmatter),
+        decisions: gradeEvent.decisions.map((d) => d.id)
+      },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the grade-write path.
+  }
+}
+
+function buildCloseFeedback(
+  frontmatter: Record<string, any>,
+  decisions: Array<{ id: string }>
+): string {
+  const parts: string[] = [];
+  const lessons = frontmatter.lessons_learned;
+  if (typeof lessons === "string" && lessons.trim().length > 0) {
+    parts.push(lessons.trim());
+  }
+  const surprises = frontmatter.surprises;
+  if (typeof surprises === "string" && surprises.trim().length > 0) {
+    parts.push(`Surprises: ${surprises.trim()}`);
+  }
+  if (decisions.length > 0) {
+    parts.push(`Decisions: ${decisions.map((d) => d.id).join(", ")}`);
+  }
+  return parts.length > 0 ? parts.join(" | ") : "Slice closed.";
+}
+
+function extractChangedFiles(frontmatter: Record<string, any>): string[] {
+  const files = frontmatter.changed_files ?? frontmatter.files;
+  if (Array.isArray(files)) {
+    return files.filter((f): f is string => typeof f === "string");
+  }
+  return [];
 }

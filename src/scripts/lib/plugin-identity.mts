@@ -102,12 +102,35 @@ export async function findCrewCli() {
   return null;
 }
 
+// Pick the runtime for spawning the crew CLI. Crew's Bun migration ships
+// `crew.ts` (TypeScript, guarded with "crew install requires Bun >= 1.3"
+// when run under node); older releases shipped `crew.mjs` which node runs
+// fine. Choosing by extension keeps both eras working — see the
+// phase-gate test-failure cluster this fixed (2026-07-02).
+export function crewCliRuntime(crewCliPath: string): "bun" | "node" {
+  return /\.(ts|mts)$/i.test(crewCliPath) ? "bun" : "node";
+}
+
 // Minimum compatible crew plugin version. Bump when this plugin starts to
 // depend on a crew capability that older versions don't have.
-// v0.31.1: current stable hero-crew release; bundled commands consumed by
-// loop slash flows (/crew:build, /crew:validate, /crew:fix, /crew:orchestrate-slice)
-// require this floor. Older crew installs may emit unrecognized-flag errors.
-export const MIN_CREW_VERSION = "0.31.1";
+// v0.47.0: ships the scaffold-first HARD OUTPUT CONTRACT (dev-team FEAT-161)
+// in agents/inspector.md and agents/verifier.md — reviewer/validator
+// dispatches write a stub artifact (--scaffold --status in-progress) as
+// their FIRST tool call and overwrite it (--update ... --status completed)
+// as their LAST, so a mid-run pause leaves a detectable stub instead of
+// nothing. This is the front-loaded-stub fallback for the specialist-pause
+// upstream-request (FEAT-176 / docs/upstream-requests/2026-06-10-hero-crew-specialist-pause-completion-enforcement.md),
+// covering the SOP's primary pause victims (inspector/verifier).
+// Builder-tier agents (agents/{frontend,backend,fullstack}-dev.md) took a
+// DIFFERENT fix in 0.47.0: they were redesigned to never write a handoff
+// artifact at all ("Builders do NOT write handoff artifacts ... NEVER
+// invoke write-handoff") — inline follow-up only, so there's no artifact
+// step to pause mid-write. The aiplugin-dev contract extension (dev-team
+// PR #150) is merged to dev-team main but UNRELEASED as of 0.47.0 — it
+// will arrive with the next crew release; pause-events.jsonl shows
+// aiplugin-dev pausing today (2026-07-02) without the contract. Older
+// crew installs may emit unrecognized-flag errors.
+export const MIN_CREW_VERSION = "0.47.0";
 
 // Minimum crew version that ships /crew:orchestrate-slice.
 // v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the
@@ -168,7 +191,9 @@ export const MIN_BUN_VERSION = "1.3.14";
 
 export async function getBunVersion(): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync("bun", ["--version"], { windowsHide: true });
+    const { stdout } = await execFileAsync("bun", ["--version"], {
+      windowsHide: true
+    });
     return stdout.trim() || null;
   } catch {
     return null;

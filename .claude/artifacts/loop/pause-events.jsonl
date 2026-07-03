@@ -1,0 +1,46 @@
+{"type":"pause_event","ts":"2026-07-02T13:44:11.651Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-205","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.654Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-205"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.659Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-208","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.661Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-208"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.662Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-204","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.664Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-204"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.665Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-204","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.667Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-204"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.668Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"297","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.670Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"297"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.671Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-213","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.673Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-213"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.677Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-209","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.678Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-209"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.679Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-211","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.681Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-211"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.682Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-210","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.684Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-210"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.685Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-214","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.687Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-214"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.688Z","agentRole":"aiplugin-dev","kind":"pause","detection":"mid_sentence","sliceId":"FEAT-212","notes":"2026-07-02 wave session; agent lacks scaffold-first HARD OUTPUT CONTRACT"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.690Z","agentRole":"aiplugin-dev","kind":"resume","detection":"mid_sentence","sliceId":"FEAT-212"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.694Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-205"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.695Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-205"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.696Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-208"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.697Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-208"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.699Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-204"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.700Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-204"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.701Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"297"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.703Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"297"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.704Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-213"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.706Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-213"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.707Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-209"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.710Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-209"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.711Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-211"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.713Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-211"}
+{"type":"pause_event","ts":"2026-07-02T13:44:11.714Z","agentRole":"aiplugin-dev","kind":"resume_success","detection":"mid_sentence","sliceId":"FEAT-212"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.715Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-212"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.717Z","agentRole":"aiplugin-dev","outcome":"completed","sliceId":"FEAT-206"}
+{"type":"dispatch_outcome","ts":"2026-07-02T13:44:11.718Z","agentRole":"aiplugin-dev","outcome":"completed","sliceId":"FEAT-207"}
+{"type":"pause_event","ts":"2026-07-02T14:23:58.493Z","agentRole":"aiplugin-dev","kind":"pickup","detection":"mid_sentence","sliceId":"FEAT-214","notes":"stalled 2nd resume; orchestrator finished inline (complexity refactor + item 4 commit)"}
+{"type":"dispatch_outcome","ts":"2026-07-02T14:23:58.495Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-214"}
+{"type":"dispatch_outcome","ts":"2026-07-02T14:23:58.496Z","agentRole":"aiplugin-dev","outcome":"paused","sliceId":"FEAT-210"}
+{"type":"dispatch_outcome","ts":"2026-07-02T18:34:21.847Z","agentRole":"fullstack-dev","outcome":"completed","sliceId":"SLICE-134"}
+{"type":"dispatch_outcome","ts":"2026-07-02T18:34:21.851Z","agentRole":"inspector","outcome":"completed","sliceId":"SLICE-134"}
+{"type":"dispatch_outcome","ts":"2026-07-02T18:34:21.852Z","agentRole":"verifier","outcome":"completed","sliceId":"SLICE-134"}

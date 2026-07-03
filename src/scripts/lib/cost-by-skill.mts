@@ -56,11 +56,9 @@ function parseEntry(obj: Record<string, unknown>): DispatchEntry {
   const rawKind = obj.dispatchKind;
   const costRaw = obj.costUsd;
   return {
-    timestamp:
-      typeof obj.timestamp === "string" ? obj.timestamp : new Date(0).toISOString(),
+    timestamp: typeof obj.timestamp === "string" ? obj.timestamp : new Date(0).toISOString(),
     agent: typeof obj.agent === "string" ? obj.agent : null,
-    costUsd:
-      typeof costRaw === "number" && Number.isFinite(costRaw) ? costRaw : null,
+    costUsd: typeof costRaw === "number" && Number.isFinite(costRaw) ? costRaw : null,
     durationMs: typeof obj.durationMs === "number" ? obj.durationMs : 0,
     ok: typeof obj.ok === "boolean" ? obj.ok : true,
     skipped: typeof obj.skipped === "boolean" ? obj.skipped : false,

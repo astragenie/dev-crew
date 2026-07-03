@@ -4,7 +4,295 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
-## Unreleased
+## [0.60.0] — 2026-07-02 — crew 0.47.0 floor (FEAT-176) + crew CLI runtime fix
+
+**Compat**: `MIN_CREW_VERSION` raised `0.31.1` → `0.47.0` (FEAT-176 /
+SLICE-134, DEC-061). `/runner:install` now refuses crew installs below
+0.47.0 — the release carrying the scaffold-first HARD OUTPUT CONTRACT
+for `crew:inspector` / `crew:verifier`, which the specialist-pause SOP's
+self-heal path depends on. Builder-tier + aiplugin-dev contract coverage
+ships in crew 0.48.0 (upstream-request tracked as `partial`).
+
+### Fixed
+
+- **Crew CLI runtime picker** — `crewCliRuntime()` spawns the crew CLI
+  under Bun when the entry point is `crew.ts` (crew's own guard rejects
+  node), `node` for legacy `crew.mjs`. Fixes the persistent 3-test
+  phase-gate failure cluster; full suite green (1951 tests, 0 fail).
+- **CLAUDE.md drift** — lint/format gates corrected to Biome (ESLint /
+  Prettier references were stale); four v0.53-removed command references
+  rewritten to their successors; nonexistent `eslint.config.mjs`
+  exception dropped.
+- **SOP scope accuracy** — `specialist-pause-handling.md` §2 manual
+  fallback retired for inspector/verifier only; kept active for
+  builder-tier and aiplugin-dev until crew 0.48.0 (review-gate finding).
+- **Historical cost dedup** — one-time `dedupeCostReportsInDir` sweep:
+  in-window trajectory $34.19 → $25.36 across 15 unique reports.
+
+## [0.59.0] — 2026-07-02 — retrospective quick-win wave (FEAT-204..214, #297)
+
+Eleven FEATs from the 2026-07-02 architecture retrospective
+(`docs/research/2026-07-02-architecture-retrospective.md`), built as three
+parallel worktree waves, plus the halt-events v1 contract adoption.
+
+### Added
+
+- **pm-apply CLI** (FEAT-214, DEC-058) — `bun loop.mts backlog pm-apply
+  --file <results.json>` restores the PM score write path deleted in
+  v0.53: validates each entry (5-dim scores, decline citations,
+  allowed-id set) and commits frontmatter/body atomically via
+  backlog-writer. `skills/triage/SKILL.md` contract synced to PM's real
+  field names; `jq` dependency dropped; `runner:loop-discipline` moved
+  under `skills/**` so it is actually Skill-invocable; `intakeFromText`
+  implemented for real (creates a pending FEAT for the normal PM phase);
+  `snapshot-memory` un-stubbed (live handler was intercepted by a stale
+  removal stub).
+- **Slice-shape-aware model tier routing** (FEAT-205) — `SHAPE_TIER_MAP`
+  + `resolveWaveDispatchModel`; docs/trivial slices no longer dispatch
+  on opus (SLICE-115 burned $121 of $143 on a docs-only slice).
+- **Wave-mode cost report deduplication** (FEAT-204) — one report per
+  session; siblings reference via `shared_with`; snapshot averaging
+  dedups by session fingerprint (headline was ~5x inflated).
+- **Blocking snapshot staleness gate** (FEAT-208) — CI gate #9
+  (`validate-snapshot-freshness.mts`); stale `loop-snapshot.md` fails CI.
+- **workflow-state schemaVersion guard** (FEAT-209, DEC-060) —
+  `workflow-state-guard.mts`; loop refuses cross-plugin pin-writes on
+  version mismatch (fail-open on DEC-018 path, fail-loud on DEC-019
+  path). Crew-side load validation requested upstream.
+- **Injection defense** (FEAT-213) — untrusted-input sections in all
+  owned agent prompts; PM `Edit` grant dropped, `Write` narrowed to
+  pm-reviews; provenance frontmatter on all vendored 3rdparty agents.
+- **Shared `appendJsonl` helper** (FEAT-211) — replaces 8 hand-rolled
+  JSONL appenders with one seam-tested module.
+- **Pause/retry telemetry** (FEAT-212) — `pause-telemetry.mts` +
+  `pause-events.jsonl`; snapshot renders a real pause rate (first
+  measurement: 80% of aiplugin-dev dispatches paused — see learnings #5).
+- **halt-events v1 contract adoption** (#297) —
+  `fanoutHaltBadgesFromSnapshot` stamps `schemaVersion: "1.0.0"`; new
+  `halt_badge.resolved` envelope on badge clear (transition detection
+  via `.claude/state/loop/halt-badge-state.json`, best-effort
+  `resolverAgentRole`); new `halt-badge-state.mts` +
+  `halt-badge-resolved.schema.json`. See `docs/halt-badges.md`
+  § "Fan-out envelope contract (halt-events v1)".
+
+### Fixed
+
+- SOP `specialist-pause-handling.md` no longer false-positives on
+  FEAT-161 in-progress scaffolds (FEAT-206).
+- CLAUDE.md drift purge (FEAT-207): dead `slice-review-ladder.md` /
+  `multidim` / `backlog-enrich`/`retriage` pointers corrected; stale
+  lead-restoration upstream-request closed as superseded by FEAT-191.
+- `--ids` targeted rescore flag (FEAT-201, shipped 2026-06-16) verified
+  and closed.
+
+### Decisions
+
+DEC-058 (pm-apply hybrid write path), DEC-059 (GEPA optimizes a
+delimited portable-core block, recorded before any live trial history),
+DEC-060 (workflow-state schemaVersion).
+
+### Added — plugin-manager ingest config (token + environment URL)
+
+The `runner` plugin now exposes `userConfig` in `plugin.json` so telemetry can
+be configured directly from the Claude Code plugin manager — no `connect`
+claim-code flow or hand-edited `~/.astrarunner/*.json` required:
+
+- `ingest_url` — environment URL to report loop telemetry to (default
+  `https://api.astrarunner.com`).
+- `ingest_token` — ingest bearer (`lrt_…`), stored in the OS keychain
+  (`sensitive: true`), never written to the repo.
+- `astrarunner_env` — tier label (`local | staging | prod`, default `prod`).
+
+Claude Code injects these as `CLAUDE_PLUGIN_OPTION_*` env vars (e.g.
+`ingest_token` → `CLAUDE_PLUGIN_OPTION_INGEST_TOKEN`). A new
+`plugin-options.mts` resolver reads them as a fallback behind the existing
+`LOOP_INGEST_URL` / `LOOP_INGEST_TOKEN` / `ASTRARUNNER_ENV` env vars (explicit
+env still wins, mirroring the mem0 pattern
+`MEM0_API_KEY ?? CLAUDE_PLUGIN_OPTION_API_KEY`). Both telemetry consumers read
+it:
+
+- The direct ingest sink (`astrarunner-ingest.mts`) resolves url + token + env
+  from the plugin options.
+- The webhook notifier (`event-notifier.mts`) resolves url + env, and uses
+  `ingest_token` as a **single-token bearer fallback** — applied only when no
+  committed literal bearer and no `appId`-bound Pattern-B token-store entry
+  resolve first (those still win, preserving cross-tier isolation).
+
+So pasting a token + URL in the plugin manager is enough for the loop to report
+on either path. Fail-silent contract preserved (no url/token → no-op, never
+throws).
+
+## [0.58.0] — 2026-06-27 — runner-plugin#291 + #292: recall + doctor
+
+### Added — online learning consumer (#291)
+
+`runner:start` now queries the memory layer for prior failures + decisions on
+the same FEAT / touches_files pattern BEFORE building the dispatch instruction,
+injects a Markdown context block into the builder prompt.
+
+- **`lib/memory-recall.mts`** — `recallPrior({ featId, sliceId, touchesFiles, k = 5 })`
+  spawns `astramem recall --query <q> --k <k> --project <featId>` with a 5s
+  wallclock cap via AbortController. Returns `[]` on CLI absent / timeout /
+  malformed JSON / non-zero exit. Never throws.
+- **`lib/recall-injector.mts`** — `formatRecallBlock(memories)` renders top-K
+  memories as Markdown with 200-char truncation + importance-desc ordering.
+  Empty array → empty string (no header, no whitespace).
+- **`slice-linker/start-slice.mts`** — pre-dispatch recall hook prepends the
+  block to the dispatch instruction. Emits a `recall_used` memory after
+  injection (score=1, feedback=`hits=N`) so the trainset captures
+  recall-vs-no-recall outcomes for later A/B comparison.
+- **Config**: `loop.json memory.recall.{enabled, k, timeoutMs}` (defaults:
+  `enabled: true`, `k: 5`, `timeoutMs: 5000`). Set `recall.enabled: false`
+  to disable online lookup without disabling capture.
+- **`GepaPayload`** — `source` + `event` unions extended with `"recall"` +
+  `"recall_used"`. Additive — back-compat preserved.
+
+Pattern mirrors Otta's `learn-from-pulse` skill — query before build, act on
+prior failures, no schema migration.
+
+### Added — operator visibility (#292)
+
+`runner:status` now surfaces a `## Memory layer` block summarizing the bridge's
+health.
+
+- **`lib/memory-doctor.mts`** — `probeMemory()` wraps `astramem doctor` with
+  a 3s AbortSignal cap. Returns a 4-state `MemoryStatus`:
+  - `ok` → CLI path + provider + version + URL + last ingest
+  - `cli_missing` → "dormant — bridge activates when memory-plugin v0.4 ships"
+  - `unreachable` → CLI path + fix hints (`astramem doctor` + provider switch)
+  - `disabled` → `loop.memory.enabled = "never"` reminder
+  Never throws.
+- **`lib/memory-doctor-renderer.mts`** — Markdown variants per state.
+- `runner:status` block injection — operator can see at a glance whether
+  capture is live, dormant, or disabled.
+
+### Dormancy
+
+Both #291 + #292 are dormant until **memory-plugin v0.4** ships the
+`astramem` CLI. Before then:
+- Recall returns `[]` → no block injected → dispatch instruction unchanged.
+- Doctor returns `cli_missing` → status block shows dormancy message + off-switch.
+
+### Closes
+- runner-plugin#291 — recall before slice start.
+- runner-plugin#292 — doctor integration in `runner:status`.
+
+## [0.57.0] — 2026-06-27 — runner-plugin#290: expand capture (start + parallel phase-gate FAIL)
+
+### Added — two new memory emit sites
+
+Builds on the v0.56.0 memory-bridge shim. Adds:
+
+- **`runner:start`** → `slice_started` memory (score `0.5`). Fires after
+  the slice file is materialized + dispatch instruction built, BEFORE
+  agent dispatch. Carries dispatch label + agent name + confidence +
+  approval-gate flag.
+- **Parallel phase-gate FAIL** → `phase_gate_fail` memory. Parity with
+  the sequential injection from `runner:phase-gate` shipped in v0.56.0.
+  Covers `parallel-orchestrator.mts` FAIL branch with the same payload
+  shape (failing groups + exit codes).
+
+### Hardened — emit() child-process kill on cap
+
+`emit()` now uses `AbortController` to kill the spawned `astramem` child
+when the 2s wallclock cap fires. Previously the timeout resolved the
+race but the child process kept running, which made the timing test
+("emit resolves within 2.5s when child process hangs indefinitely") flaky
+at ~3070ms. Now consistently ~2010ms.
+
+### Type scaffold — deferred reviewer + verifier hooks
+
+`GepaPayload` gains three optional fields:
+- `reviewer_id?: string`
+- `verifier_id?: string`
+- `ac_results?: Array<{ ac_id, status, evidence_file_line? }>`
+
+No callers in this slice. Scaffolds the deferred crew-side hooks
+(reviewer + verifier emits live in `dev-team`, not `runner`; tracked
+separately in dev-team#121 Phase 1).
+
+### Deferred — `triage_shift` emit
+
+PM write-back path was simplified in v0.53 (`pm-write` CLI removed); the
+cleanest injection point requires a small refactor of the triage skill
+flow. Filed as known gap on runner-plugin#290 follow-up.
+
+### Known follow-ups
+- `runner-plugin#291` — recall before slice start (online learning consumer).
+- `runner-plugin#292` — doctor integration in `runner:status`.
+- `dev-team#121` — crew-side capture + GEPA optimization loop.
+
+Closes most of runner-plugin#290; triage emit deferred.
+
+## [0.56.0] — 2026-06-27 — runner-plugin#288: memory-bridge shim (astramem CLI consumer)
+
+### Added — opaque fire-and-forget memory capture
+
+Runner ceremony now emits GEPA-shaped JSON payloads to the memory layer
+via the `astramem` CLI (shipped by `memory-plugin` issue #8 — dormant
+until that lands). Bridge is opaque: zero HTTP, zero env vars, zero
+provider knowledge. Provider selection (local-first → SaaS fallback)
+lives in `memory-plugin`.
+
+**Capture surface (v1):**
+- `runner:close` — `slice_close` memory after `grade.recorded` fanout.
+- `runner:phase-gate` FAIL only — `phase_gate_fail` memory with exit
+  code + failing checks + log tail.
+
+**Bridge contract:**
+- `resolveCli()` checks `${CLAUDE_PLUGIN_ROOT_MEMORY}/bin/astramem` then
+  PATH. Per-process cache. Returns `null` when not found.
+- `emit(payload)` spawns `astramem ingest --json '<json>'` with 2s
+  wallclock cap. Swallows all errors. Never throws. Never blocks.
+
+**Config**: `.claude/loop.json` `memory.enabled: "auto" | "never"`
+(default `"auto"`). Off-switch only.
+
+**Prompt-version stamping**: every memory carries `prompt_version` =
+git sha7 of the dispatched agent file. Future GEPA trainset partitions
+cleanly when prompts evolve.
+
+**Dormancy**: bridge is no-op when `astramem` CLI is absent.
+
+Closes runner-plugin#288. Supersedes #287.
+
+## [0.55.0] — 2026-06-27 — FEAT-203 SLICE-A: backlog_state_changed envelope DORA fields
+
+### Added — DORA-aware envelope extension (cross-repo contract, additive)
+
+`loop.backlog_state_changed` envelope now carries four optional fields needed
+for DORA metric aggregation in astrarunner:
+
+- `priority` (`P0|P1|P2|P3|P4|null`) — MTTR open/close detection (P0 = incident)
+- `category` (`feat|fix|chore|null`) — CFR detection (fix-FEATs)
+- `relates_to` (`FEAT-N|null`) — CFR linkage (fix → original)
+- `createdAt` (ISO ts | null) — Lead time start anchor
+
+All four fields are **optional** — old runner ingest consumers that expect
+the v1 payload shape continue to work unchanged.
+
+**PM agent contract**: when a FEAT title matches `^(fix|hotfix):` (case-
+insensitive) OR the body declares a `relates_to:` line, the agent now
+populates `category: fix` + `relates_to: FEAT-N` in frontmatter. Emit path
+reads these onto the envelope.
+
+**Schema**: `schemas/loop-events/slice-event.schema.json` adds the four new
+properties; `required: [ts]` unchanged.
+
+**Files changed:**
+- `src/scripts/lib/backlog-state-emitter.mts` — payload builder + input type
+- `schemas/loop-events/slice-event.schema.json` — schema bump
+- `agents/pm.md` — fix-classification rule documented inline
+- `src/tests/backlog-state-emitter-dora-fields.test.mts` — 8 tests: field
+  propagation, back-compat (omit-and-still-valid), schema-contract round-trip,
+  category enum, priority pattern, null passthrough
+
+**Cross-repo SLICE-B..E** ship in astrarunner PR #426 (merged 2026-06-27):
+materialized view `dora_metrics_mv` + reusable feature-gate primitive
+(`[FeatureGate("X")]` + `<FeatureGate>` + `IFeatureGateService`) + REST
+endpoint `/api/v1/dora` + dashboard widget + detail page + tenant toggle UX.
+
+Closes FEAT-203 — all 8 ACs satisfied.
 
 ### Added — env-aware ingest routing (ASTRARUNNER_ENV)
 

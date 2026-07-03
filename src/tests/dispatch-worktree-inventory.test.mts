@@ -45,7 +45,7 @@ test("inventoryWorkerBranch: committed handoff on branch appears in filesOnBranc
   const handoffDir = path.join(worktreePath, ".claude/artifacts/crew/handoffs");
   fs.mkdirSync(handoffDir, { recursive: true });
   fs.writeFileSync(path.join(handoffDir, "handoff.md"), "# handoff\n");
-  execSync("git add . && git commit -qm \"add handoff\"", { cwd: worktreePath });
+  execSync('git add . && git commit -qm "add handoff"', { cwd: worktreePath });
 
   const inv = inventoryWorkerBranch(repo, worktreePath, branch, "main");
 

@@ -606,19 +606,18 @@ export async function writeAgentReport(
       const outputT = (a.outputTokens as number | undefined) ?? 0;
       const rawModel = a.model as string | undefined;
       const model = rawModel && rawModel !== "n/a" ? rawModel : "";
-      const costUsd =
-        model
-          ? deriveCostUsd(
-              {
-                model,
-                inputTokens: inputT,
-                outputTokens: outputT,
-                cacheReadInputTokens: cacheRead,
-                cacheCreationInputTokens: cacheCreation
-              },
-              loopCostRates
-            )
-          : null;
+      const costUsd = model
+        ? deriveCostUsd(
+            {
+              model,
+              inputTokens: inputT,
+              outputTokens: outputT,
+              cacheReadInputTokens: cacheRead,
+              cacheCreationInputTokens: cacheCreation
+            },
+            loopCostRates
+          )
+        : null;
       const row: import("./astrarunner-ingest.mjs").AgentRow = {
         agentId: (a.agentId as string | undefined) ?? null,
         inputTokens: inputT,

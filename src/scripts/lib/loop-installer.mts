@@ -115,6 +115,12 @@ export async function reportStatus(repoPath: string): Promise<Record<string, any
   const tokens = buildTokens(config, { skillActivationBlock });
   const claudePath = path.join(repoPath, "CLAUDE.md");
   const claudeMd = await fs.readFile(claudePath, "utf8").catch(() => "");
+
+  const { probeMemory } = await import("./memory-doctor.mjs");
+  const { renderMemoryStatusBlock } = await import("./memory-doctor-renderer.mjs");
+  const memoryStatus = await probeMemory(repoPath);
+  const memoryBlock = renderMemoryStatusBlock(memoryStatus);
+
   return {
     preset: config.preset,
     aiLoopRoot: tokens.aiLoopRoot,
@@ -129,6 +135,8 @@ export async function reportStatus(repoPath: string): Promise<Record<string, any
       path.join(repoPath, tokens.aiLoopRoot!, "00-entry", "MASTER_PROMPT.md")
     ),
     crewCli: await findCrewCli(),
-    bun: await checkBunVersion()
+    bun: await checkBunVersion(),
+    memory: memoryStatus,
+    memoryBlock
   };
 }

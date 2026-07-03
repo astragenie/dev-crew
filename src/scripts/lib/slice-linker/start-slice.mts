@@ -24,6 +24,11 @@ import { classifySliceShape } from "../classify-slice-shape.mjs";
 import type { FileChange } from "../classify-slice-shape.mjs";
 import { writeShapeMarker } from "../shape-marker.mjs";
 import { emitShapeClassified } from "../shape-event-emitter.mjs";
+import {
+  readWorkflowStateForWrite,
+  WorkflowStateCorruptError,
+  WorkflowStateSchemaMismatchError
+} from "../workflow-state-guard.mjs";
 
 // ---------------------------------------------------------------------------
 // SLICE-94 / FEAT-186: shape classification helpers
@@ -208,19 +213,22 @@ async function pinSessionId(repoPath: string): Promise<void> {
 
 const STATE_PATH_PARTS = [".claude", "state", "crew", "workflow-state.json"];
 
-/** Write worktreePath into workflow-state.currentRun. Returns prior value for rollback. */
+/**
+ * Write worktreePath into workflow-state.currentRun. Returns prior value for
+ * rollback.
+ *
+ * Fail-loud by design (DEC-019's failure-atomicity invariant). DEC-060 /
+ * FEAT-209: reads via readWorkflowStateForWrite — a corrupt file or a
+ * schemaVersion loop doesn't support throws WorkflowStateCorruptError /
+ * WorkflowStateSchemaMismatchError, which propagates unchanged to the caller
+ * (applyWorktreeResult) rather than silently falling back to a blank state.
+ */
 async function writeWorktreePathToState(
   repoPath: string,
   worktreePath: string
 ): Promise<string | null> {
   const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
-  let state: any = { version: "1.0", currentRun: {} };
-  try {
-    const raw = await fs.readFile(statePath, "utf8");
-    state = JSON.parse(raw);
-  } catch {
-    // Missing or unparseable — start from minimal schema.
-  }
+  const { state } = await readWorkflowStateForWrite(statePath);
   if (!state.currentRun) state.currentRun = {};
   const prior: string | null = state.currentRun.worktreePath ?? null;
   state.currentRun.worktreePath = worktreePath;
@@ -230,12 +238,30 @@ async function writeWorktreePathToState(
   return prior;
 }
 
-/** Roll back workflow-state.currentRun.worktreePath to its prior value (null clears it). */
+/**
+ * Roll back workflow-state.currentRun.worktreePath to its prior value (null
+ * clears it). Best-effort for ordinary I/O failures (no secondary throw that
+ * would mask the original frontmatter-write error being rolled back for) —
+ * but DEC-060 / FEAT-209's two named errors (WorkflowStateCorruptError /
+ * WorkflowStateSchemaMismatchError) propagate unchanged, since a corrupt or
+ * schema-mismatched state file at rollback time is itself the more urgent
+ * problem.
+ */
 async function rollbackWorktreePathInState(repoPath: string, prior: string | null): Promise<void> {
+  const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
+  let state: any;
   try {
-    const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
-    const raw = await fs.readFile(statePath, "utf8");
-    const state = JSON.parse(raw);
+    ({ state } = await readWorkflowStateForWrite(statePath));
+  } catch (err: unknown) {
+    if (
+      err instanceof WorkflowStateCorruptError ||
+      err instanceof WorkflowStateSchemaMismatchError
+    ) {
+      throw err;
+    }
+    return; // best-effort rollback — no secondary throw for unexpected I/O errors
+  }
+  try {
     if (!state.currentRun) state.currentRun = {};
     if (prior === null) {
       delete state.currentRun.worktreePath;
@@ -418,6 +444,11 @@ export async function startSlice(
     resolved.loop?.dispatchLimits ?? null
   );
 
+  // runner-plugin#291: recall prior failures + decisions before dispatch.
+  // Fire-and-forget on emit; never blocks slice-start path. Dormant when
+  // astramem CLI absent or memory.recall.enabled === false.
+  const recallBlock = await runRecallHook(featureId ?? sliceId, sliceId, touchesFiles, resolved);
+
   const result = buildStartSliceReturn({
     sliceId,
     title,
@@ -447,8 +478,16 @@ export async function startSlice(
     touchesFiles
   });
 
+  // Prepend recall block to dispatch instruction when present (non-empty).
+  if (recallBlock && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${recallBlock}\n\n${result.dispatchInstruction}`;
+  }
+
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
   void recordSliceStartEvent(repoPath, sliceId, featureId);
+  // runner-plugin#290: emit GEPA memory payload on slice start. Fire-and-forget
+  // — never throws, never blocks. Dormant when astramem CLI absent.
+  void emitSliceStartedMemory(repoPath, sliceId, featureId, result, resolved);
   return result;
 }
 
@@ -778,5 +817,113 @@ async function recordSliceStartEvent(
     console.warn(
       `[slice-events] start-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
     );
+  }
+}
+
+// runner-plugin#291: query astramem for prior context before dispatch.
+// Returns a formatted Markdown block (or empty string on any failure / opt-out).
+// Never throws. 5s cap enforced inside recallPrior().
+async function runRecallHook(
+  featId: string,
+  sliceId: string,
+  touchesFiles: string[],
+  config: Record<string, any>
+): Promise<string> {
+  try {
+    const memoryEnabled = config?.memory?.enabled;
+    if (memoryEnabled === "never") return "";
+    const recallEnabled = config?.memory?.recall?.enabled;
+    if (recallEnabled === false) return "";
+
+    const k: number = config?.memory?.recall?.k ?? 5;
+    const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
+
+    const { recallPrior } = await import("../memory-recall.mjs");
+    const { formatRecallBlock } = await import("../recall-injector.mjs");
+    const { emit, resolveCli } = await import("../memory-bridge.mjs");
+
+    const memories = await recallPrior({ featId, sliceId, touchesFiles, k, timeoutMs });
+    const block = formatRecallBlock(memories);
+
+    // Emit recall_used trainset event. Fire-and-forget — never awaited in a
+    // way that blocks slice-start. Dormant when CLI absent.
+    if (memories.length > 0) {
+      void (async () => {
+        try {
+          const cli = await resolveCli();
+          if (!cli) return;
+          const { getPromptVersion } = await import("../agent-version.mjs");
+          const promptVersion = await getPromptVersion("runner");
+          await emit({
+            ts: new Date().toISOString(),
+            slice_id: sliceId,
+            feat_id: featId,
+            source: "recall",
+            event: "recall_used",
+            score: 1,
+            feedback: `hits=${memories.length}`,
+            input: { feat_id: featId, slice_id: sliceId, k },
+            output: { hits: memories.length },
+            prompt_version: promptVersion
+          });
+        } catch {
+          // Fail-silent.
+        }
+      })();
+    }
+
+    return block;
+  } catch {
+    return "";
+  }
+}
+
+// runner-plugin#290: emit GEPA memory payload on slice start.
+// Fail-silent — emit() never throws and is already 2s-capped. Dormant when
+// astramem CLI absent or loop.memory.enabled === "never".
+async function emitSliceStartedMemory(
+  _repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  result: Record<string, any>,
+  config: Record<string, any>
+): Promise<void> {
+  try {
+    const memoryEnabled = config?.memory?.enabled;
+    if (memoryEnabled === "never") return;
+
+    const { emit, resolveCli } = await import("../memory-bridge.mjs");
+    const cli = await resolveCli();
+    if (!cli) return; // Dormant: astramem not installed.
+
+    const { getPromptVersion } = await import("../agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const dispatchLabel =
+      typeof result.dispatchInstruction === "string"
+        ? result.dispatchInstruction.slice(0, 120)
+        : "n/a";
+    const agentName = result.orchestratorMode ?? "slice-build";
+
+    await emit({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featureId ?? "FEAT-unknown",
+      source: "start",
+      event: "slice_started",
+      score: 0.5,
+      feedback: `Slice ${sliceId} started (dispatch: ${agentName})`,
+      input: {
+        dispatch_label: dispatchLabel,
+        agent_name: agentName
+      },
+      output: {
+        confidence: result.confidence ?? null,
+        requires_approval_gate: result.requiresApprovalGate ?? false
+      },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the slice-start path.
   }
 }

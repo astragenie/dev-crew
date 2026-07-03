@@ -51,9 +51,8 @@ Runtime is **Bun** — source `.mts` files run directly, no build/emit step.
 
 - `bun test src/tests/ --parallel --timeout 60000` — full test suite
   (also `bun run test`).
-- `bun run lint` — Biome lint (`biome lint src/`).
-- `bun run format` / `bun run format:check` — Biome formatter
-  (`biome format --write src/` / `biome format src/`).
+- `bun run lint` — Biome (`biome lint src/`; config in `biome.json`).
+- `bun run format` / `bun run format:check` — Biome formatter.
 - `bun ./src/scripts/validate-manifests.mts` — manifest sanity check.
 - `bun ./src/scripts/validate-content-length.mts` — owned-agent line cap
   (300) + SKILL.md line cap (200). `agents/3rdparty/` exempt.
@@ -67,12 +66,17 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 1. `bun install --frozen-lockfile`
 2. `bun ./src/scripts/validate-manifests.mts`
 3. `bun ./src/scripts/validate-content-length.mts`
-4. `bun ./src/scripts/validate-event-schemas.mts`
-5. `bun ./src/scripts/validate-decline-citations.mts --repo .`
-6. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
-7. `bunx biome lint src/`
-8. `bunx biome format src/`
-9. `bun test src/tests/ --parallel --timeout 60000`
+4. `bun ./src/scripts/validate-decline-citations.mts --repo .`
+5. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
+6. `bunx biome lint src/`
+7. `bunx biome format src/` (check mode — unformatted files fail)
+8. `bun test src/tests/ --parallel --timeout 60000`
+9. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+   `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
+   Regenerates the snapshot content in-memory and diffs it against the
+   on-disk file; any drift (backlog/grade counts, "next to slice" list,
+   decisions, telemetry) fails CI. The pre-push hook still runs this
+   check in warn-only mode (`--check-generated`) — CI is the hard gate.
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
@@ -92,18 +96,18 @@ manifest + content-length + format-check locally before any `git push`.
   exempt — vendored, kept as-is to avoid fork-and-trim chores.
 - Tests colocated in `src/tests/*.mts`, run directly under Bun.
   Behavior-descriptive file names (no release-version prefixes).
-- Biome lint output must be clean. Cognitive complexity capped at 15
-  (`noExcessiveCognitiveComplexity`, `maxAllowedComplexity: 15` in
-  `biome.json`) — reduce by extracting helpers, not by suppressing the
-  rule.
+- Lint output must be clean in touched files (repo carries a legacy
+  warning baseline being burned down). Biome cognitive complexity capped
+  at 15 (`noExcessiveCognitiveComplexity`) — reduce by extracting
+  helpers, not by suppressing the rule.
 - No `process.exit(N)` from library functions — set
   `process.exitCode` from entry points only.
 - Runtime-only modules without `.mts` source (e.g. `github-sync/`)
   need ambient `.d.mts` shims under `src/scripts/lib/` so callers
   can drop `@ts-ignore`. Tests for these modules SHOULD still live
   under `src/tests/*.mts` (with `// @ts-nocheck` if they need to
-  import the runtime `.mjs` directly). `biome.json` relaxes
-  `src/tests/**` by disabling `noExcessiveCognitiveComplexity` there.
+  import the runtime `.mjs` directly) — the `ban-ts-comment` rule is
+  disabled for `src/tests/**`.
 - Entry-point scripts that ship as hand-authored `.mjs` (no `.mts`
   source) — currently `scripts/setup-github-sync.mjs`,
   `scripts/setup-task-store.mjs`,
@@ -149,21 +153,27 @@ items still require a human in the loop on review.
 **Recommended default for fresh intake**: `/runner:intake` runs both
 phases in one invocation — PM scoring (Phase 1) then architect
 classification (Phase 2), with a halt-on-PM-error gate and a P4-decline
-filter on Phase 2. Replaces the two-step `/runner:triage` + `/runner:backlog-enrich`
-sequence. Both legacy commands still work for partial-intake scenarios
-(score-only or classify-only).
+filter on Phase 2. This replaced the two-step `/runner:triage` +
+`/runner:backlog-enrich` sequence; `backlog-enrich` was removed as a
+standalone command in v0.53 (hard-break stub redirects to
+`/runner:intake` — see `src/tests/deleted-skills-stub.test.mts`).
+Phase 2's architect-classification contract is inlined in
+`commands/intake.md` itself, not delegated to a separate command file.
+Only-score (no classification) remains available standalone via
+`/runner:triage`; only-classify-already-triaged has no standalone
+entry point anymore.
 
-**Higher-quality opt-in for vague-AC batches**: `/runner:retriage` runs
-the same PM scoring contract as `/runner:triage` but PREPENDS an
-AC-clarity-gate pre-flight to the PM dispatch. When PM finds vague AC
-on a FEAT, it dispatches `runner:spec-writer` to rewrite the AC in
-Given-When-Then form, waits, re-reads, and scores against the cleaned
-AC. Cost up to 2× per FEAT vs. `/runner:triage`; scoring accuracy
-(especially `effort_estimate` + `technical_risk`) up. Spec-writer
-dispatch failure forces `composite_priority: "needs-review"` so the
-walker won't auto-promote a half-scored FEAT.
+**Higher-quality opt-in for vague-AC batches**: pass `--deep` to
+`/runner:triage` or `/runner:intake` (or rely on the automatic trigger
+for `P0`/`P1` priority). PM drafts Given-When-Then ACs inline in the
+SAME response that produces the scores (FEAT-277) — there is no
+separate `runner:spec-writer` fanout call and no standalone
+`/runner:retriage` command; both were removed in v0.53
+(`src/tests/deleted-skills-stub.test.mts` maps the old `retriage`
+skill name to `runner:triage --ids`). See `agents/pm.md` § "Inline AC
++ SPEC drafting (FEAT-277)" for the full contract.
 
-`/runner:backlog-enrich` writes three routing fields into FEAT
+`/runner:intake` Phase 2 writes three routing fields into FEAT
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives
 in `scripts/presets/*.json` and is read at builder-dispatch time via
@@ -180,7 +190,7 @@ PM declines that set `composite_priority: P4` MUST cite a clause id
 from this file in `declined_per: [<clause-id>]` frontmatter — the
 clause-id annotations (`<!-- clause: <id> -->`) on every H2 above are
 the citation surface. See `agents/pm.md` § "Decline contract" for the
-full contract, and `scripts/validate-decline-citations.mjs` for the CI
+full contract, and `src/scripts/validate-decline-citations.mts` for the CI
 gate that enforces it.
 
 ## Orchestrator mode
@@ -230,35 +240,30 @@ gates CI.
 
 <!-- clause: reviewer-ladder-presets -->
 
-Configurable in `.claude/loop.json` under `reviewers.ladder`. Default is
-`["A", "B"]` — two `crew:reviewer` dispatches with the existing
-Correctness / Production-readiness focus split. The slash flow that
-materializes the ladder lives in `commands/slice-review-ladder.md`.
+`.claude/loop.json` declares `reviewers.ladder: ["A", "B"]` (plus
+`strictParallel` and `serialTimingThresholdMs`). The ladder shape is
+fixed, not preset-selectable, at the implementation level:
+`src/scripts/lib/post-builder-fanout.mts` emits the single
+parallel-dispatch payload — Reviewer A (correctness + AC coverage),
+Reviewer B (production-readiness, observability, security), plus the
+validator — and `src/scripts/lib/reviewer-timing.mts` (consumed by
+`src/scripts/lib/grade-telemetry.mts` /
+`src/scripts/lib/slice-linker/complete-slice.mts`) detects
+serial-vs-parallel execution against `serialTimingThresholdMs`
+(default 90s) for telemetry.
 
-- **Default (`["A", "B"]`)** — unchanged. Reviewer A covers
-  correctness + AC coverage; Reviewer B covers production-readiness,
-  observability, security.
-- **`multidim` preset (FEAT-079 / SLICE-82)** — opt-in. Set
-  `reviewers.ladder: { "preset": "multidim" }` to expand to three
-  parallel narrow-dimension dispatches:
-  - **correctness** — logic, edge cases, regressions, AC coverage.
-  - **test-coverage** — test adequacy, gaps, mutation surface.
-  - **conventions** — repo conventions, lint posture, doc impact.
-    Each prompt declares one dimension only, carries an explicit
-    scope-fence ("NOT in scope" wording) so reviewers don't bleed into
-    adjacent concerns, and ships a hard tool budget (≤15 tool calls,
-    ≤8 min) plus an inline-output fallback per
-    `docs/sop/specialist-pause-handling.md`.
+- **Default (`["A", "B"]`)** — the only ladder shape implemented today.
+  Reviewer A covers correctness + AC coverage; Reviewer B covers
+  production-readiness, observability, security.
 
-**When to pick `multidim`.** Large or risky diffs spanning ≥5 files,
-or any slice touching public schemas / cross-module contracts.
-Wall-clock is ~2× faster than running a sequential three-pass review;
-token cost is ~3× a default two-reviewer ladder, so skip it for
-trivial fixups, single-line patches, doc-only slices, and refactors
-with `requires_validation: false`.
-
-Full preset documentation (focus copy, budget instruction, override
-recipes) lives in `commands/slice-review-ladder.md`.
+A `multidim` three-dimension preset (FEAT-079 / SLICE-82: correctness /
+test-coverage / conventions) was built for that one slice but left no
+surviving code under `src/scripts/` — `grep -rn multidim src/scripts`
+returns zero matches. It is not a general opt-in preset; there is no
+`commands/slice-review-ladder.md` (removed in v0.53 — see
+`src/tests/deleted-skills-stub.test.mts`) or config toggle that
+activates it. Re-enabling a multidim ladder requires re-implementing
+it, not flipping a switch.
 
 ## Owned agents
 
@@ -302,23 +307,29 @@ the contract. See DEC-011 (supersedes DEC-004).
 
 Slash flows that orchestrate role agents:
 
-- `/runner:backlog-enrich` — architect classifies triaged FEATs (tags,
-  needs_contract, needs_ux). **Wired to resolver since v0.28.0**: skill
-  block from `preset.roles.architect` is prepended to the dispatch prompt.
+- `/runner:intake` (Phase 2) — architect classifies triaged FEATs
+  (tags, needs_contract, needs_ux). **Wired to resolver since
+  v0.28.0**: skill block from `preset.roles.architect` is prepended to
+  the dispatch prompt. (Formerly a standalone `/runner:backlog-enrich`
+  command; removed in v0.53 — see "Backlog discipline" above.)
 - `/runner:triage` (via `skills/triage/SKILL.md`) — PM scores pending FEATs.
   **Wired to resolver since v0.28.1**: skill block from `preset.roles.pm`
   is prepended to the dispatch prompt.
-- `/runner:backlog-add` — researcher enriches new FEAT body. Auto-dispatch
-  was removed in DEC-011; researcher work happens via separate user
-  invocation, not inline.
-- `/runner:spec-decompose` — agent reads SPEC and identifies features. No
-  inline role-agent dispatch from the slash flow itself.
-- `/runner:slice-complete` — document-writer drafts CHANGELOG / ADR /
-  release notes after slice close. Currently invoked by the orchestrating
-  agent, not by the CLI subcommand. Will wire to the resolver when a
-  CLI-driven dispatch is added.
-- `/runner:slice-from-feature` — dispatches `crew:architect` (not
-  `runner:architect`) for contracts. Cross-plugin; wire on hero-crew side.
+- `/runner:intake` (free-text mode) — subsumed the former
+  `/runner:backlog-add` (removed v0.53; stub redirects). Researcher
+  enrichment of new FEAT bodies happens via separate user invocation,
+  not inline (DEC-011).
+- `/runner:intake --spec` — subsumed the former `/runner:spec-decompose`
+  (removed v0.53; stub redirects). Agent reads SPEC and identifies
+  features; no inline role-agent dispatch from the flow itself.
+- `/runner:close` — subsumed the former `/runner:slice-complete`
+  (removed v0.53). Document-writer CHANGELOG / ADR / release-notes
+  drafting is invoked by the orchestrating agent, not by the CLI
+  subcommand.
+- `/runner:start FEAT-NNN` — subsumed the former
+  `/runner:slice-from-feature` (removed v0.53; stub redirects).
+  Contract pre-flights dispatch `crew:architect` (not
+  `runner:architect`); cross-plugin, wired on the hero-crew side.
 
 `dispatchAgent` remains exported for callers that want marker-write
 semantics. The marker queue at

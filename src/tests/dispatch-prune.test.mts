@@ -9,11 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import {
-  listStaleRunIds,
-  pruneRunId,
-  pruneStale,
-} from "../scripts/lib/dispatch-prune.mjs";
+import { listStaleRunIds, pruneRunId, pruneStale } from "../scripts/lib/dispatch-prune.mjs";
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "loop-prune-test-"));
@@ -23,7 +19,7 @@ function tmpDir(): string {
 function makeRunDir(
   dispDir: string,
   runId: string,
-  opts: { hasSummary?: boolean; traceAgeMs?: number } = {},
+  opts: { hasSummary?: boolean; traceAgeMs?: number } = {}
 ): string {
   const runDir = path.join(dispDir, runId);
   fs.mkdirSync(runDir, { recursive: true });
@@ -34,7 +30,7 @@ function makeRunDir(
     const tracePath = path.join(runDir, "trace.jsonl");
     fs.writeFileSync(
       tracePath,
-      '{"ts":"t","childId":"A","status":"DONE","durationMs":0,"costUsd":null}\n',
+      '{"ts":"t","childId":"A","status":"DONE","durationMs":0,"costUsd":null}\n'
     );
     const targetMtime = new Date(Date.now() - opts.traceAgeMs);
     fs.utimesSync(tracePath, targetMtime, targetMtime);
@@ -83,10 +79,7 @@ test("listStaleRunIds: returns only runIds older than threshold", async () => {
   assert.equal(result.listed, 1);
   assert.equal(result.pruned, 0);
   assert.equal(result.failed, 0);
-  assert.ok(
-    fs.existsSync(path.join(dispDir, oldRunId)),
-    "runId dir still on disk after dry-run",
-  );
+  assert.ok(fs.existsSync(path.join(dispDir, oldRunId)), "runId dir still on disk after dry-run");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,8 +121,8 @@ test("pruneRunId: failure on git ops recorded in errors, does not throw", async 
       childId: "X",
       branch: "nonexistent-branch-zzz",
       path: path.join(repo, "does-not-exist"),
-      depth: 0,
-    }) + "\n",
+      depth: 0
+    }) + "\n"
   );
 
   // Need a git repo for git calls to run (even if they fail gracefully)
@@ -176,7 +169,7 @@ test("listStaleRunIds: skips in-flight runId (trace.jsonl modified <5min ago)", 
   const oldRunId = "2026-06-01T08-00-00-000Z-eee555";
   const runDir = makeRunDir(dispDir, oldRunId, {
     hasSummary: false, // missing summary = open
-    traceAgeMs: 30 * 1000, // 30 seconds ago = in-flight
+    traceAgeMs: 30 * 1000 // 30 seconds ago = in-flight
   });
   assert.ok(fs.existsSync(runDir), "runDir exists");
 

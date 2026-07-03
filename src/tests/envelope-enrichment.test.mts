@@ -9,10 +9,7 @@ import path from "node:path";
 
 import { deriveCostUsd } from "../scripts/lib/cost-rate-table.mjs";
 import { postAgentCompletions } from "../scripts/lib/slice-linker/astrarunner-ingest.mjs";
-import {
-  dispatchAgent,
-  flushAuditLog
-} from "../scripts/lib/auto-dispatch.mjs";
+import { dispatchAgent, flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,21 +58,41 @@ async function writeTranscript(
 
 describe("AC-1: parseTranscript token accumulation", () => {
   let tmp: string;
-  beforeEach(async () => { tmp = await tmpDir("parse-transcript-"); });
-  afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    tmp = await tmpDir("parse-transcript-");
+  });
+  afterEach(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
 
   test("accumulates all 4 token fields across 3 assistant messages", async () => {
     // We test via writeAgentReport indirectly through a fixture transcript.
     // Direct test: import the function via the .mjs path.
-    const { writeAgentReport } = await import("../scripts/lib/slice-linker/agent-report-writer.mjs");
+    const { writeAgentReport } = await import(
+      "../scripts/lib/slice-linker/agent-report-writer.mjs"
+    );
 
     // Build a minimal repo with an events.jsonl + transcript
     const logsDir = path.join(tmp, ".claude", "logs", "payloads");
     await fs.mkdir(logsDir, { recursive: true });
 
     const transcriptPath = await writeTranscript(tmp, "agent1.jsonl", [
-      { usage: { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 10, cache_creation_input_tokens: 20 } },
-      { usage: { input_tokens: 200, output_tokens: 80, cache_read_input_tokens: 5, cache_creation_input_tokens: 15 } },
+      {
+        usage: {
+          input_tokens: 100,
+          output_tokens: 50,
+          cache_read_input_tokens: 10,
+          cache_creation_input_tokens: 20
+        }
+      },
+      {
+        usage: {
+          input_tokens: 200,
+          output_tokens: 80,
+          cache_read_input_tokens: 5,
+          cache_creation_input_tokens: 15
+        }
+      },
       { usage: { input_tokens: 150, output_tokens: 60 } } // missing cache fields → treat as 0
     ]);
 
@@ -85,20 +102,51 @@ describe("AC-1: parseTranscript token accumulation", () => {
 
     const startPayloadPath = path.join(logsDir, `start-${agentId}.json`);
     const stopPayloadPath = path.join(logsDir, `stop-${agentId}.json`);
-    await fs.writeFile(startPayloadPath, JSON.stringify({
-      session_id: "sess1", agent_id: agentId, agent_type: "builder", hook_event_name: "SubagentStart"
-    }));
-    await fs.writeFile(stopPayloadPath, JSON.stringify({
-      session_id: "sess1", agent_id: agentId, agent_type: "builder", hook_event_name: "SubagentStop",
-      agent_transcript_path: transcriptPath, background_tasks: [], stop_hook_active: false
-    }));
+    await fs.writeFile(
+      startPayloadPath,
+      JSON.stringify({
+        session_id: "sess1",
+        agent_id: agentId,
+        agent_type: "builder",
+        hook_event_name: "SubagentStart"
+      })
+    );
+    await fs.writeFile(
+      stopPayloadPath,
+      JSON.stringify({
+        session_id: "sess1",
+        agent_id: agentId,
+        agent_type: "builder",
+        hook_event_name: "SubagentStop",
+        agent_transcript_path: transcriptPath,
+        background_tasks: [],
+        stop_hook_active: false
+      })
+    );
 
     const eventsLines = [
-      JSON.stringify({ schemaVersion: "1.0", source: "crew", timestamp: startTs, event: "subagent_start", repoPath: tmp, payloadPath: startPayloadPath }),
-      JSON.stringify({ schemaVersion: "1.0", source: "crew", timestamp: stopTs, event: "subagent_stop", repoPath: tmp, payloadPath: stopPayloadPath })
+      JSON.stringify({
+        schemaVersion: "1.0",
+        source: "crew",
+        timestamp: startTs,
+        event: "subagent_start",
+        repoPath: tmp,
+        payloadPath: startPayloadPath
+      }),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        source: "crew",
+        timestamp: stopTs,
+        event: "subagent_stop",
+        repoPath: tmp,
+        payloadPath: stopPayloadPath
+      })
     ];
     await fs.mkdir(path.join(tmp, ".claude", "logs"), { recursive: true });
-    await fs.writeFile(path.join(tmp, ".claude", "logs", "events.jsonl"), eventsLines.join("\n") + "\n");
+    await fs.writeFile(
+      path.join(tmp, ".claude", "logs", "events.jsonl"),
+      eventsLines.join("\n") + "\n"
+    );
 
     // Intercept postAgentCompletions via fetch mock — no-op (no URL set)
     delete process.env["LOOP_INGEST_URL"];
@@ -130,13 +178,29 @@ describe("AC-1: parseTranscript token accumulation", () => {
     const agentId = "000000000000000a1";
     const stopTs = "2026-07-01T11:00:00.000Z";
     const stopPayloadPath = path.join(logsDir, "stop-empty.json");
-    await fs.writeFile(stopPayloadPath, JSON.stringify({
-      session_id: "sess2", agent_id: agentId, agent_type: "reviewer", hook_event_name: "SubagentStop",
-      agent_transcript_path: transcriptPath, background_tasks: [], stop_hook_active: false
-    }));
+    await fs.writeFile(
+      stopPayloadPath,
+      JSON.stringify({
+        session_id: "sess2",
+        agent_id: agentId,
+        agent_type: "reviewer",
+        hook_event_name: "SubagentStop",
+        agent_transcript_path: transcriptPath,
+        background_tasks: [],
+        stop_hook_active: false
+      })
+    );
     await fs.mkdir(path.join(tmp, ".claude", "logs"), { recursive: true });
-    await fs.writeFile(path.join(tmp, ".claude", "logs", "events.jsonl"),
-      JSON.stringify({ schemaVersion: "1.0", source: "crew", timestamp: stopTs, event: "subagent_stop", repoPath: tmp, payloadPath: stopPayloadPath }) + "\n"
+    await fs.writeFile(
+      path.join(tmp, ".claude", "logs", "events.jsonl"),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        source: "crew",
+        timestamp: stopTs,
+        event: "subagent_stop",
+        repoPath: tmp,
+        payloadPath: stopPayloadPath
+      }) + "\n"
     );
 
     let capturedAgents: any[] = [];
@@ -149,7 +213,9 @@ describe("AC-1: parseTranscript token accumulation", () => {
     }) as typeof globalThis.fetch;
 
     try {
-      const { writeAgentReport } = await import("../scripts/lib/slice-linker/agent-report-writer.mjs");
+      const { writeAgentReport } = await import(
+        "../scripts/lib/slice-linker/agent-report-writer.mjs"
+      );
       await writeAgentReport(tmp, { sliceId: "SLICE-TEST-2" });
     } finally {
       globalThis.fetch = originalFetch;
@@ -301,8 +367,12 @@ describe("AC-4: deriveCostUsd config override via ratesOverride", () => {
 
 describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
   let repo: string;
-  beforeEach(async () => { repo = await tmpDir("dispatch-kind-"); });
-  afterEach(async () => { await fs.rm(repo, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    repo = await tmpDir("dispatch-kind-");
+  });
+  afterEach(async () => {
+    await fs.rm(repo, { recursive: true, force: true });
+  });
 
   function auditLogPath(r: string) {
     return path.join(r, ".claude/artifacts/loop/auto-dispatch.jsonl");
@@ -329,7 +399,9 @@ describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
   test("negative iterationIndex clamps to 0", async () => {
     const warnMessages: string[] = [];
     const origWarn = console.warn;
-    console.warn = (...args: any[]) => { warnMessages.push(args.join(" ")); };
+    console.warn = (...args: any[]) => {
+      warnMessages.push(args.join(" "));
+    };
     try {
       await dispatchAgent({
         agent: "runner:builder",
@@ -352,7 +424,9 @@ describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
   test("invalid dispatchKind coerces to null with warn", async () => {
     const warnMessages: string[] = [];
     const origWarn = console.warn;
-    console.warn = (...args: any[]) => { warnMessages.push(args.join(" ")); };
+    console.warn = (...args: any[]) => {
+      warnMessages.push(args.join(" "));
+    };
     try {
       await dispatchAgent({
         agent: "runner:builder",
@@ -400,7 +474,10 @@ describe("AC-6: buildEnvelope / postAgentCompletions new fields", () => {
     fetchCalls = [];
     originalFetch = globalThis.fetch;
     globalThis.fetch = (async (url, init) => {
-      fetchCalls.push({ url: typeof url === "string" ? url : url.toString(), body: init?.body ? JSON.parse(init.body as string) : null });
+      fetchCalls.push({
+        url: typeof url === "string" ? url : url.toString(),
+        body: init?.body ? JSON.parse(init.body as string) : null
+      });
       return new Response(null, { status: 202 });
     }) as typeof globalThis.fetch;
     process.env["LOOP_INGEST_URL"] = "http://test-envelope.example.com";
@@ -416,24 +493,26 @@ describe("AC-6: buildEnvelope / postAgentCompletions new fields", () => {
   test("schemaVersion is v1.1", async () => {
     await postAgentCompletions({
       sliceId: "SLICE-136",
-      agents: [{
-        agentType: "builder",
-        model: "claude-sonnet-4-6",
-        turns: 2,
-        duration_ms: 5000,
-        tools: new Map(),
-        skills: [],
-        inputTokens: 1000,
-        outputTokens: 500,
-        cacheReadInputTokens: 100,
-        cacheCreationInputTokens: 200,
-        costUsd: 0.01,
-        agentId: "abc123def456ghi",
-        dispatchKind: "auto",
-        iterationIndex: 1,
-        startTs: "2026-07-01T10:00:00.000Z",
-        stopTs: "2026-07-01T10:05:00.000Z"
-      }]
+      agents: [
+        {
+          agentType: "builder",
+          model: "claude-sonnet-4-6",
+          turns: 2,
+          duration_ms: 5000,
+          tools: new Map(),
+          skills: [],
+          inputTokens: 1000,
+          outputTokens: 500,
+          cacheReadInputTokens: 100,
+          cacheCreationInputTokens: 200,
+          costUsd: 0.01,
+          agentId: "abc123def456ghi",
+          dispatchKind: "auto",
+          iterationIndex: 1,
+          startTs: "2026-07-01T10:00:00.000Z",
+          stopTs: "2026-07-01T10:05:00.000Z"
+        }
+      ]
     });
 
     expect(fetchCalls.length).toBe(1);
@@ -444,24 +523,26 @@ describe("AC-6: buildEnvelope / postAgentCompletions new fields", () => {
   test("payload emits all new enrichment fields", async () => {
     await postAgentCompletions({
       sliceId: "SLICE-136",
-      agents: [{
-        agentType: "reviewer",
-        model: "claude-sonnet-4-6",
-        turns: 3,
-        duration_ms: 8000,
-        tools: new Map([["Read", 5]]),
-        skills: ["typescript-pro"],
-        inputTokens: 2000,
-        outputTokens: 800,
-        cacheReadInputTokens: 300,
-        cacheCreationInputTokens: 500,
-        costUsd: 0.025,
-        agentId: "reviewerabc123def",
-        dispatchKind: "hierarchical",
-        iterationIndex: 2,
-        startTs: "2026-07-01T12:00:00.000Z",
-        stopTs: "2026-07-01T12:08:00.000Z"
-      }]
+      agents: [
+        {
+          agentType: "reviewer",
+          model: "claude-sonnet-4-6",
+          turns: 3,
+          duration_ms: 8000,
+          tools: new Map([["Read", 5]]),
+          skills: ["typescript-pro"],
+          inputTokens: 2000,
+          outputTokens: 800,
+          cacheReadInputTokens: 300,
+          cacheCreationInputTokens: 500,
+          costUsd: 0.025,
+          agentId: "reviewerabc123def",
+          dispatchKind: "hierarchical",
+          iterationIndex: 2,
+          startTs: "2026-07-01T12:00:00.000Z",
+          stopTs: "2026-07-01T12:08:00.000Z"
+        }
+      ]
     });
 
     expect(fetchCalls.length).toBe(1);
@@ -478,17 +559,19 @@ describe("AC-6: buildEnvelope / postAgentCompletions new fields", () => {
   test("absent optional fields default: agentId=null, dispatchKind=null, iterationIndex=0, cost/token=null", async () => {
     await postAgentCompletions({
       sliceId: "SLICE-136",
-      agents: [{
-        agentType: "builder",
-        model: "claude-sonnet-4-6",
-        turns: 1,
-        duration_ms: 1000,
-        tools: new Map(),
-        skills: [],
-        startTs: "2026-07-01T13:00:00.000Z",
-        stopTs: "2026-07-01T13:01:00.000Z"
-        // No agentId, costUsd, cacheReadInputTokens, etc.
-      }]
+      agents: [
+        {
+          agentType: "builder",
+          model: "claude-sonnet-4-6",
+          turns: 1,
+          duration_ms: 1000,
+          tools: new Map(),
+          skills: [],
+          startTs: "2026-07-01T13:00:00.000Z",
+          stopTs: "2026-07-01T13:01:00.000Z"
+          // No agentId, costUsd, cacheReadInputTokens, etc.
+        }
+      ]
     });
 
     expect(fetchCalls.length).toBe(1);

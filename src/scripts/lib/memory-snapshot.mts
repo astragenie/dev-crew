@@ -9,6 +9,12 @@ import { listDecisions } from "./decisions-store.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
 import type { DispatchTreeSnapshot } from "./dispatch-tree-snapshot.mjs";
+import { summarizePauseRate, type PauseRateSummary } from "./pause-telemetry.mjs";
+
+// FEAT-212: window size for the "Pause rate (last N dispatches)" bullet in
+// the Loop telemetry section. Mirrors the cost-trajectory default window
+// (loadCostReportUSDValues limit = 20) for a consistent "recent N" feel.
+const PAUSE_RATE_WINDOW = 20;
 
 // Writes a single durable snapshot of loop state to
 // docs/loop-snapshot.md. Designed to be `@`-referenced from
@@ -41,17 +47,19 @@ function parseFrontmatter(text: string) {
   return { fm, body };
 }
 
-// Load cost report USD values from the most recent cost reports.
-// Returns array of USD values for cost trajectory calculation.
-async function loadCostReportUSDValues(repoPath: string, limit = 20) {
+type CostReportFile = { dir: string; name: string };
+type CostReportEntry = { name: string; fm: Record<string, any> };
+
+// Locates the most recent `limit` cost-report files across the current
+// (cost/) and legacy (runs/) artifact directories, newest first.
+async function listCostReportFiles(repoPath: string, limit: number): Promise<CostReportFile[]> {
   const costDirParts = [".claude", "artifacts", "crew", "cost"];
   const legacyDirParts = [".claude", "artifacts", "crew", "runs"];
-
   const dirs = [path.join(repoPath, ...costDirParts), path.join(repoPath, ...legacyDirParts)];
 
-  const files: any[] = [];
+  const files: CostReportFile[] = [];
   for (const dir of dirs) {
-    let entries;
+    let entries: string[];
     try {
       entries = await fs.readdir(dir);
     } catch {
@@ -64,22 +72,71 @@ async function loadCostReportUSDValues(repoPath: string, limit = 20) {
 
   // Sort by basename desc (newest first via timestamp prefix)
   files.sort((a, b) => b.name.localeCompare(a.name));
-  const top = files.slice(0, limit);
+  return files.slice(0, limit);
+}
 
-  const usdValues: any[] = [];
-  for (const { dir, name } of top) {
+// Reads + parses each candidate file's frontmatter. Unreadable files are
+// skipped silently (best-effort, matches the original behavior).
+async function loadCostReportEntries(files: CostReportFile[]): Promise<CostReportEntry[]> {
+  const loaded: CostReportEntry[] = [];
+  for (const { dir, name } of files) {
     const f = path.join(dir, name);
     try {
       const text = await fs.readFile(f, "utf8");
       const { fm } = parseFrontmatter(text);
-      if (fm && typeof fm.usd === "number") {
-        usdValues.push(fm.usd);
-      }
+      if (fm) loaded.push({ name, fm });
     } catch {
       /* skip unreadable files silently */
     }
   }
+  return loaded;
+}
 
+// FEAT-204: resolves one cost-report entry's contribution to the cost
+// trajectory average, applying wave-mode shared-session dedup. A report
+// carrying `shared_with` is a reference to a sibling FEAT's report for the
+// same crew session (see slice-linker/cost-report-dedup.mts):
+//   - returns null when the primary it points at (`shared_session_of`) is
+//     also present in this window -- the primary already counts it (AC-2).
+//   - returns its own usd, with a distinguishing console.warn, when the
+//     primary has rotated out of the top-N window -- orphaned fallback
+//     (AC-3).
+//   - returns its own usd unconditionally for a plain (non-reference)
+//     report.
+function resolveCostReportUsd(entry: CostReportEntry, presentNames: Set<string>): number | null {
+  const { name, fm } = entry;
+  if (typeof fm.usd !== "number") return null;
+
+  const sharedWith = typeof fm.shared_with === "string" ? fm.shared_with : null;
+  if (!sharedWith) return fm.usd;
+
+  const sharedSessionOf = typeof fm.shared_session_of === "string" ? fm.shared_session_of : null;
+  if (sharedSessionOf && presentNames.has(sharedSessionOf)) {
+    return null; // AC-2: primary present in window -- skip the duplicate.
+  }
+
+  // AC-3: orphaned reference -- fall back to this report's own usd, logged
+  // distinctly from the true-duplicate skip above.
+  console.warn(
+    `[cost-dedup] orphaned shared_with reference ${name} -> ${sharedSessionOf ?? sharedWith}: ` +
+      "primary report not in window, counting own usd as fallback"
+  );
+  return fm.usd;
+}
+
+// Load cost report USD values from the most recent cost reports. Returns
+// an array of USD values for cost trajectory calculation, deduped per
+// FEAT-204 (see resolveCostReportUsd for the dedup contract).
+export async function loadCostReportUSDValues(repoPath: string, limit = 20): Promise<number[]> {
+  const files = await listCostReportFiles(repoPath, limit);
+  const loaded = await loadCostReportEntries(files);
+  const presentNames = new Set(loaded.map((entry) => entry.name));
+
+  const usdValues: number[] = [];
+  for (const entry of loaded) {
+    const usd = resolveCostReportUsd(entry, presentNames);
+    if (usd !== null) usdValues.push(usd);
+  }
   return usdValues;
 }
 
@@ -91,7 +148,7 @@ function renderSnapshotHeader(today: string) {
     AUTO_GENERATED_HEADER,
     `# Autonomous Loop snapshot — ${today}`,
     "",
-    "_Generated by `/loop:snapshot-memory`. Regenerate after material state changes._",
+    "_Generated by `bun src/scripts/loop.mts snapshot-memory`. Regenerate after material state changes._",
     ""
   ];
 }
@@ -188,7 +245,12 @@ function renderDecisions(recentDecisions: Record<string, any>[]) {
 
 function renderLoopTelemetry(
   iterationStatus: Record<string, any> | null,
-  costTrajectory: { avgUSD: number | null; count: number; lastCostAdvisorVerdict: string | null }
+  costTrajectory: {
+    avgUSD: number | null;
+    count: number;
+    lastCostAdvisorVerdict: string | null;
+  },
+  pauseSummary: PauseRateSummary
 ) {
   const out = ["## Loop telemetry", ""];
 
@@ -211,6 +273,15 @@ function renderLoopTelemetry(
     out.push(`- Last cost-advisor verdict: ${costTrajectory.lastCostAdvisorVerdict}`);
   }
 
+  // FEAT-212: omit entirely when no dispatch-outcome telemetry has been
+  // recorded yet (pause-events.jsonl absent or empty) -- never render a
+  // misleading "0%" for a rate with no denominator, and never error.
+  if (pauseSummary.dispatches > 0) {
+    out.push(
+      `- Pause rate (last ${pauseSummary.dispatches} dispatches): ${(pauseSummary.pauseRate * 100).toFixed(1)}%`
+    );
+  }
+
   out.push("");
   return out;
 }
@@ -220,7 +291,7 @@ function renderUsageFooter() {
     "## How to use this file",
     "",
     "- Reference from `CLAUDE.md` via `@.claude/artifacts/loop/loop-snapshot.md` so agents pick it up at session start.",
-    "- Regenerate via `/loop:snapshot-memory` whenever the picture shifts materially.",
+    "- Regenerate via `bun src/scripts/loop.mts snapshot-memory --repo <path>` whenever the picture shifts materially.",
     ""
   ];
 }
@@ -262,23 +333,42 @@ async function collectSnapshotData(
   iterationStatus: Record<string, any> | null;
   costReportUSDValues: number[];
   dispatchTree: DispatchTreeSnapshot;
+  pauseSummary: PauseRateSummary;
 }> {
   const { readDispatchTreeSnapshot } = await import("./dispatch-tree-snapshot.mjs");
-  const [backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, dispatchTree] =
-    await Promise.all([
-      listBacklog(repoPath, { config }),
-      listSpecs(repoPath, { config }),
-      listGrades(repoPath, { config }),
-      listDecisions(repoPath, { config }),
-      getIterationStatus(repoPath),
-      loadCostReportUSDValues(repoPath),
-      readDispatchTreeSnapshot(repoPath).catch(() => ({
-        openRunIds: [],
-        worktreeCount: 0,
-        oldestRunAgeDays: null
-      }))
-    ]);
-  return { backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, dispatchTree };
+  const [
+    backlog,
+    specs,
+    grades,
+    decisions,
+    iterationStatus,
+    costReportUSDValues,
+    dispatchTree,
+    pauseSummary
+  ] = await Promise.all([
+    listBacklog(repoPath, { config }),
+    listSpecs(repoPath, { config }),
+    listGrades(repoPath, { config }),
+    listDecisions(repoPath, { config }),
+    getIterationStatus(repoPath),
+    loadCostReportUSDValues(repoPath),
+    readDispatchTreeSnapshot(repoPath).catch(() => ({
+      openRunIds: [],
+      worktreeCount: 0,
+      oldestRunAgeDays: null
+    })),
+    summarizePauseRate(repoPath, PAUSE_RATE_WINDOW)
+  ]);
+  return {
+    backlog,
+    specs,
+    grades,
+    decisions,
+    iterationStatus,
+    costReportUSDValues,
+    dispatchTree,
+    pauseSummary
+  };
 }
 
 function buildSnapshotLines(
@@ -286,8 +376,16 @@ function buildSnapshotLines(
   today: string,
   pruneStaleAfterDays = 7
 ): string[] {
-  const { backlog, specs, grades, decisions, iterationStatus, costReportUSDValues, dispatchTree } =
-    data;
+  const {
+    backlog,
+    specs,
+    grades,
+    decisions,
+    iterationStatus,
+    costReportUSDValues,
+    dispatchTree,
+    pauseSummary
+  } = data;
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
   // Exclude deferred items from "next to slice" — mirrors the auto walker's
   // pre-branch filter (walker-gates.mts: `entry.frontmatter.deferred === true`
@@ -323,7 +421,7 @@ function buildSnapshotLines(
     ...renderSpecs(specs, specsByStatus),
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
-    ...renderLoopTelemetry(iterationStatus, costTrajectory),
+    ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary),
     ...renderDispatchLifecycle(dispatchTree, pruneStaleAfterDays),
     ...renderUsageFooter()
   ];
@@ -376,7 +474,9 @@ type WaveIndexEntry = {
 export function renderWaveTelemetry(repoRoot: string): string {
   const indexPath = path.join(repoRoot, ".claude/artifacts/loop/waves/index.json");
   if (!existsSync(indexPath)) return "";
-  const idx = JSON.parse(readFileSync(indexPath, "utf8")) as { entries: WaveIndexEntry[] };
+  const idx = JSON.parse(readFileSync(indexPath, "utf8")) as {
+    entries: WaveIndexEntry[];
+  };
   if (idx.entries.length === 0) return "";
 
   const last = idx.entries[idx.entries.length - 1]!;

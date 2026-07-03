@@ -31,6 +31,13 @@ export type WavePlanItem = {
   featureId: string;
   worktreeBranch: string;
   sliceCommand: string;
+  // FEAT-205: classify-slice-shape.mts shape, computed from touches.paths at
+  // pack time. Drives resolveWaveDispatchModel() at prepare time so trivial
+  // shapes (doc-update, config-tweak, test-only, single-module-edit) route to
+  // the mid tier instead of inheriting whatever the "build" phase resolves
+  // to. Optional (not "none") so existing WavePlanItem fixtures pre-dating
+  // FEAT-205 stay valid; real-deps.mts treats an absent shape as "none".
+  shape?: string;
 };
 
 export type WaveRejection = {
