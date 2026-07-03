@@ -258,12 +258,14 @@ export async function writeGrade(
   }
 
   const decisions = parseDecisionsFromBody(body);
+  const featureId = typeof frontmatter.feature === "string" ? frontmatter.feature : undefined;
   const { allocated, updatedBody } = await extractDecisions(
     repoPath,
     sliceId,
     body,
     decisions,
-    config
+    config,
+    featureId
   );
 
   // Build merged decisions list: existing IDs (already allocated) + newly allocated
@@ -454,12 +456,17 @@ async function extractDecisions(
   sliceId: string,
   body: string,
   decisions: Record<string, any>[],
-  config: Record<string, any> | null
+  config: Record<string, any> | null,
+  featureId?: string
 ) {
   if (!decisions || decisions.length === 0) {
     return { allocated: [], updatedBody: body };
   }
   const { nextDecisionId, writeDecisionFile } = await import("./decisions-store.mjs");
+  // FEAT-217: mirror each newly-minted decision into astramem (gated on
+  // memory.enabled, fail-silent). Read the memory config once up front.
+  const { readMemoryConfig, recordDecision } = await import("./memory-sink.mjs");
+  const memCfg = await readMemoryConfig(repoPath);
   const allocated: any[] = [];
   let updatedBody = body;
   for (const dec of decisions) {
@@ -476,6 +483,21 @@ async function extractDecisions(
     // Replace the first DEC-TBD occurrence in the body with the allocated id
     updatedBody = updatedBody.replace(/###\s+DEC-TBD\s*:\s*/, `### ${id}: `);
     allocated.push({ id, title: dec.title });
+    // Fire-and-forget memory mirror — never blocks or fails decision extraction.
+    // recordDecision is already no-throw, but guard defensively for parity with
+    // the learnings.mts call site.
+    try {
+      await recordDecision(repoPath, {
+        id,
+        title: dec.title,
+        rationale: typeof dec.rationale === "string" ? dec.rationale : undefined,
+        featureId,
+        sliceId,
+        config: memCfg
+      });
+    } catch {
+      // swallow — memory mirror is non-critical
+    }
   }
   return { allocated, updatedBody };
 }
