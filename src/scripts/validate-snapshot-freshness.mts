@@ -32,6 +32,30 @@ function extractHeaderDate(onDisk: string): string | null {
   return m?.[1] ?? null;
 }
 
+// FEAT-205 renders a "## Dispatch lifecycle" section from LIVE dispatch state
+// (open-run count, worktree count, oldest-run age in days). That content is
+// machine- and time-dependent — a CI checkout has no live worktrees and the
+// age grows every hour — so it is intentionally NOT part of the durable
+// "pure aggregation" contract this gate enforces (DEC-063). Strip it from both
+// sides before diffing so the gate only fires on genuine aggregation drift.
+function stripVolatileSections(text: string): string {
+  const out: string[] = [];
+  let skipping = false;
+  for (const line of text.split("\n")) {
+    if (line === "## Dispatch lifecycle") {
+      skipping = true;
+      continue;
+    }
+    if (skipping) {
+      if (line.startsWith("## "))
+        skipping = false; // next section — keep it
+      else continue; // still inside the volatile section
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 export async function validateSnapshotFreshness(
   repoRoot: string,
   opts: { config?: Record<string, any> | null; today?: string } = {}
@@ -49,7 +73,9 @@ export async function validateSnapshotFreshness(
   const today = opts.today ?? extractHeaderDate(onDisk) ?? new Date().toISOString().slice(0, 10);
   const expected = await generateSnapshotContent(repoRoot, { config, today });
 
-  if (onDisk === expected) return { ok: true, errors: [] };
+  if (stripVolatileSections(onDisk) === stripVolatileSections(expected)) {
+    return { ok: true, errors: [] };
+  }
 
   return {
     ok: false,
