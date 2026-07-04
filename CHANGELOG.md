@@ -6,7 +6,7 @@ shipped under the name `loop`.
 
 
 
-## [Unreleased] — preset roster refresh + typescript-service
+## [0.61.0] — 2026-07-04 — P1 enforcement hardening
 
 ### Added — P1.4 close-refusal: verdict-aware review/validation gates (2026-07-04)
 
