@@ -11,6 +11,7 @@ import {
 } from "../scripts/lib/slice-linker.mjs";
 import { addFeature, findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -19,7 +20,7 @@ async function tmpRepo(prefix: string) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -37,7 +38,8 @@ test("sliceFromFeature creates a SLICE file and cross-links the feature", async 
   const feat = await addFeature(repo, {
     title: "Add login form",
     priority: "P1",
-    target_release: "v1.0.0"
+    target_release: "v1.0.0",
+    body: AC_SECTION_BODY
   });
   const result = await sliceFromFeature(repo, feat.id);
   assert.equal(result.feature.id, feat.id);
@@ -60,8 +62,8 @@ test("sliceFromFeature creates a SLICE file and cross-links the feature", async 
 
 test("sliceFromFeature allocates monotonically increasing ids", async () => {
   const repo = await tmpRepo("al-slice-mono-");
-  const a = await addFeature(repo, { title: "A" });
-  const b = await addFeature(repo, { title: "B" });
+  const a = await addFeature(repo, { title: "A", body: AC_SECTION_BODY });
+  const b = await addFeature(repo, { title: "B", body: AC_SECTION_BODY });
   const ra = await sliceFromFeature(repo, a.id);
   const rb = await sliceFromFeature(repo, b.id);
   const numA = Number(ra.slice.id.replace("SLICE-", ""));
@@ -75,7 +77,7 @@ test("sliceFromFeature respects existing flat slice layout (LoopBrain pattern)",
   const slicesRoot = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
   await fs.mkdir(slicesRoot, { recursive: true });
   await fs.writeFile(path.join(slicesRoot, "SLICE_05_OLD.md"), "# SLICE-05 pre-existing");
-  const feat = await addFeature(repo, { title: "New work" });
+  const feat = await addFeature(repo, { title: "New work", body: AC_SECTION_BODY });
   const result = await sliceFromFeature(repo, feat.id);
   // Next id should be 06 since the recursive scan saw 05
   assert.equal(result.slice.id, "SLICE-06");
@@ -85,7 +87,7 @@ test("sliceFromFeature respects existing flat slice layout (LoopBrain pattern)",
 
 test("sliceFromFeature is idempotent on the slice link", async () => {
   const repo = await tmpRepo("al-slice-idem-");
-  const feat = await addFeature(repo, { title: "Reentrant" });
+  const feat = await addFeature(repo, { title: "Reentrant", body: AC_SECTION_BODY });
   const r1 = await sliceFromFeature(repo, feat.id);
   // Re-running should not duplicate slice id in the feature's slices array
   // (it allocates a NEW slice id since old one was successfully written —
@@ -125,7 +127,7 @@ test("sliceFromFeature refuses when effort_points >= 8 and proposed_slices missi
 test("sliceFromFeature allows when effort_points < 8 even without proposed_slices", async () => {
   const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
   const repo = await tmpRepo("al-slice-small-");
-  const feat = await addFeature(repo, { title: "Small work" });
+  const feat = await addFeature(repo, { title: "Small work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, { effort_points: 5 });
   const result = await sliceFromFeature(repo, feat.id);
   assert.match(result.slice.id, /^SLICE-\d+$/);

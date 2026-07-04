@@ -9,6 +9,7 @@ import { writeShapeMarker, readShapeMarker } from "../scripts/lib/shape-marker.m
 import { computeTelemetry } from "../scripts/lib/grade-telemetry.mjs";
 import { startSlice, sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 const SHAPE_MARKERS_DIR = ".claude/artifacts/loop/shape-markers";
 const SHAPE_DOC_UPDATE = "doc-update";
@@ -23,7 +24,7 @@ async function tmpRepo(prefix: string) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -164,7 +165,7 @@ test("computeTelemetry populates shape.classified and shape.inline_path_used whe
 test("SLICE-94 AC-4 positive: dispatchInstruction contains inline-path recommended for doc-update shape", async () => {
   const repo = await tmpRepo("shape-inline-positive-");
   try {
-    const feat = await addFeature(repo, { title: "Doc update feature" });
+    const feat = await addFeature(repo, { title: "Doc update feature", body: AC_SECTION_BODY });
     const { slice } = await sliceFromFeature(repo, feat.id);
     await fillPlaceholderACs(slice.path);
     await appendFilesSection(slice.path, ["docs/foo.md", "docs/bar.md"]);
@@ -195,7 +196,7 @@ test("SLICE-94 AC-4 positive: dispatchInstruction contains inline-path recommend
 test("SLICE-94 AC-4 negative: dispatchInstruction omits inline-path hint when shape is none", async () => {
   const repo = await tmpRepo("shape-inline-negative-");
   try {
-    const feat = await addFeature(repo, { title: "Mixed files feature" });
+    const feat = await addFeature(repo, { title: "Mixed files feature", body: AC_SECTION_BODY });
     const { slice } = await sliceFromFeature(repo, feat.id);
     await fillPlaceholderACs(slice.path);
     // Mixed .md + .mts = shape "none"

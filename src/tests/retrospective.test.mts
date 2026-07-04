@@ -10,6 +10,7 @@ import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { SCORE_DIMENSIONS, findGradeFileForSlice } from "../scripts/lib/grade-parser.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -17,7 +18,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -31,7 +32,7 @@ async function tmpRepo(prefix) {
 }
 
 async function seedGradedSlice(repo, scores, lessons = []) {
-  const feat = await addFeature(repo, { title: "Test feature" });
+  const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });
   const sliceResult = await sliceFromFeature(repo, feat.id);
   const { gradePath } = await createGradeFile(repo, sliceResult.slice.id);
   let content = await fs.readFile(gradePath, "utf8");
@@ -134,7 +135,7 @@ test("buildRetrospective excludes unfilled (all-zero) grades from scoreAverages"
   // Create one unfilled grade with all-zero scores — don't call seedGradedSlice
   // because that calls writeGrade which now rejects unfilled grades. Instead,
   // manually create a template and leave it unfilled.
-  const feat = await addFeature(repo, { title: "Unfilled feature" });
+  const feat = await addFeature(repo, { title: "Unfilled feature", body: AC_SECTION_BODY });
   const sliceResult = await sliceFromFeature(repo, feat.id);
   await createGradeFile(repo, sliceResult.slice.id);
   // Don't fill scores or call writeGrade — leave as template

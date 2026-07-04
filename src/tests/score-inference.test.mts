@@ -9,6 +9,7 @@ import { inferScoresForSlice } from "../scripts/lib/score-inference.mjs";
 import { createGradeFile } from "../scripts/lib/grade-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 
 async function tmpRepo(prefix) {
@@ -17,7 +18,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -108,7 +109,7 @@ test("inferScoresForSlice handles SLICE-52 vs SLICE_52 vs SLICE 52 spellings", a
 
 test("createGradeFile injects inferred scores into template", async () => {
   const repo = await tmpRepo("al-grade-prefill-scores-");
-  const feat = await addFeature(repo, { title: "Demo" });
+  const feat = await addFeature(repo, { title: "Demo", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await writeArtifact(
     repo,

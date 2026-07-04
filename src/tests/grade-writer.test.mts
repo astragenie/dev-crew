@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { createGradeFile } from "../scripts/lib/grade-writer.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -14,7 +15,7 @@ async function tmpRepo(prefix: string) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -30,7 +31,7 @@ async function tmpRepo(prefix: string) {
 test("createGradeFile includes identification line when feature and phase are set", async () => {
   const repo = await tmpRepo("al-grade-id-header-");
   // Create a feature with a phase so slice frontmatter carries them
-  const feat = await addFeature(repo, { title: "ID Header Test" });
+  const feat = await addFeature(repo, { title: "ID Header Test", body: AC_SECTION_BODY });
   // Patch slice frontmatter to include phase after creation
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Patch slice file to add phase

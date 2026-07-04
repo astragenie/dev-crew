@@ -4,6 +4,38 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [Unreleased] — preset roster refresh + typescript-service
+
+### Breaking
+
+- **Placeholder AC auto-generation removed.** `sliceFromFeature` no longer
+  fabricates template acceptance criteria (`AC-1: All tests pass`,
+  `AC-2: <replace with…>`) when a FEAT has no `## Acceptance criteria` section.
+  It now throws `AcceptanceCriteriaRequiredError` — the PM owns AC authoring,
+  and a missing/empty AC section is a hard error, checked before the
+  in-progress move so a refuse leaves backlog state untouched. Ordered after
+  the sizing / proposed_slices structural gates. Re-run
+  `/runner:triage --deep <id>` or `/runner:pm-review <id>` to draft ACs. The
+  `startSlice` AC linter (placeholder detection) is unchanged and still runs.
+
+### Changed
+
+- **Preset renames**: `dotnet-aspire-python` → `dotnet-python` (content
+  unchanged; also the resolver default in `config-resolver.mts`),
+  `dotnet-vue` → `dotnet-typescript-vue`. Repos pinning the old names in
+  `.claude/loop.json` must update `preset:` — `resolveConfig` throws
+  `Unknown preset` otherwise.
+
+### Added
+
+- **`typescript-service` preset** — TypeScript Node service / daemon
+  (Fastify + better-sqlite3 / sqlite-vec, `tsc` build, Vitest, JSON-schema
+  ajv contracts, OS-service deployment). Drives `astramemory-local`.
+
+### Removed
+
+- **`python-only` preset** — pure-Python stack dropped; no consumer.
+
 ## [0.60.0] — 2026-07-02 — crew 0.47.0 floor (FEAT-176) + crew CLI runtime fix
 
 **Compat**: `MIN_CREW_VERSION` raised `0.31.1` → `0.47.0` (FEAT-176 /

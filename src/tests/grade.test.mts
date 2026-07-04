@@ -17,6 +17,7 @@ import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { listDecisions } from "../scripts/lib/decisions-store.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -24,7 +25,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -128,7 +129,8 @@ test("createGradeFile prefills feature + spec links from slice file", async () =
   const feat = await addFeature(repo, {
     title: "Linked feature",
     target_release: "v1.0.0",
-    priority: "P1"
+    priority: "P1",
+    body: AC_SECTION_BODY
   });
   await moveFeature(feat.filePath, "triaged");
   const sliceResult = await sliceFromFeature(repo, feat.id);
@@ -256,7 +258,7 @@ test("writeGrade mirrors an extracted decision into astramem when memory enabled
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       productName: "runner",
       memory: { enabled: "on" },
       loop: {

@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { closeSlice, sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 const LOOP_CLI = path.resolve("src/scripts/loop.mts");
 
@@ -19,7 +20,7 @@ async function tmpRepo(prefix: string): Promise<string> {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -37,7 +38,7 @@ async function setupSlice(
   opts: { autonomousSafe: boolean } = { autonomousSafe: true }
 ): Promise<{ sliceId: string; featureId: string }> {
   const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
-  const feat = await addFeature(repo, { title: "Test feature" });
+  const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, { autonomous_safe: opts.autonomousSafe });
   const result = await sliceFromFeature(repo, feat.id);
   // Mark all ACs checked so the runner:close pre-flight (FEAT-277) passes.
