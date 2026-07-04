@@ -475,7 +475,8 @@ export async function startSlice(
     orchestratorMode,
     worktreeInfo,
     inlinePathHint,
-    touchesFiles
+    touchesFiles,
+    loopConfig: resolved
   });
 
   // Prepend recall block to dispatch instruction when present (non-empty).
@@ -620,7 +621,8 @@ function resolveDispatchInstruction(
   dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
   worktreePath: string | null = null,
   orchestratorMode: OrchestratorMode = "slice-build",
-  inlinePathHint: string | null = null
+  inlinePathHint: string | null = null,
+  loopConfig: Record<string, any> | null = null
 ) {
   if (!dispatch) return null;
   const base = buildDispatchInstruction({
@@ -635,7 +637,8 @@ function resolveDispatchInstruction(
     featurePath,
     dispatchLimits,
     orchestratorMode,
-    worktreePath
+    worktreePath,
+    loopConfig
   });
   return inlinePathHint ? `${base}\n\n${inlinePathHint}` : base;
 }
@@ -682,7 +685,8 @@ function buildStartSliceReturn({
   confidenceReason = null,
   orchestratorMode = "slice-build" as OrchestratorMode,
   worktreeInfo = undefined,
-  inlinePathHint = null
+  inlinePathHint = null,
+  loopConfig = null
 }: {
   sliceId: string;
   title: string;
@@ -710,6 +714,7 @@ function buildStartSliceReturn({
   orchestratorMode?: OrchestratorMode;
   worktreeInfo?: WorktreeResult | undefined;
   inlinePathHint?: string | null;
+  loopConfig?: Record<string, any> | null;
 }) {
   const worktreePath = worktreeInfo?.worktreePath ?? null;
   const dispatchInstruction = resolveDispatchInstruction(
@@ -726,7 +731,8 @@ function buildStartSliceReturn({
     dispatchLimits,
     worktreePath,
     orchestratorMode,
-    inlinePathHint
+    inlinePathHint,
+    loopConfig
   );
   const activePlanSummary = resolveActivePlanSummary(activePlan);
   const nextAction = computeNextAction(
