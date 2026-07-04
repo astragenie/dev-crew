@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
+import { readNewestArtifactVerdict } from "./artifact-verdict.mjs";
 import { pathExists } from "./paths.mjs";
 
 const DEFAULT_VALIDATION_DIR = path.join(".claude", "artifacts", "crew", "validations");
@@ -108,11 +109,47 @@ export async function deriveValidationGate(
     };
   }
 
+  // P1.4: verdict-aware artifact check. Presence-only satisfaction is the
+  // SLICE-174 bug (a validation that FAILED still counted as evidence).
+  // New-format artifacts (crew P1.3) carry frontmatter `decision:` with
+  // canonical {pass, fail, skipped}; pre-P1.3 artifacts have no decision and
+  // are grandfathered as satisfied.
   const artifacts = await findValidationArtifacts(repoPath, sliceId);
-  if (artifacts.length > 0) {
+  const verdict = await readNewestArtifactVerdict(artifacts);
+  if (verdict) {
+    if (verdict.decision === null) {
+      return {
+        satisfied: true,
+        reason:
+          `validation artifact present (${artifacts.length}) — legacy, no decision frontmatter ` +
+          `(grandfathered pre-P1.3; newest: ${path.basename(verdict.file)})`,
+        evidence: artifacts
+      };
+    }
+    if (verdict.decision === "pass") {
+      return {
+        satisfied: true,
+        reason: `validation artifact decision: pass (${path.basename(verdict.file)})`,
+        evidence: artifacts
+      };
+    }
+    if (verdict.decision === "skipped") {
+      const why = verdict.skipReason ? `: ${verdict.skipReason}` : "";
+      // Known intentional divergence: crew's pre-push-verifier does NOT count
+      // skipped as pass; close-ceremony semantics follow the plan (skipped
+      // with a recorded reason satisfies the close gate).
+      return {
+        satisfied: true,
+        reason: `validation artifact decision: skipped${why} (${path.basename(verdict.file)})`,
+        evidence: artifacts
+      };
+    }
     return {
-      satisfied: true,
-      reason: `validation artifact present (${artifacts.length})`,
+      satisfied: false,
+      reason:
+        `validation artifact decision: ${verdict.decision} (${path.basename(verdict.file)}) — ` +
+        "a failed validation cannot close; fix and re-validate, " +
+        "record an explicit skip with --skip-validation-check, or use --force-close (audited)",
       evidence: artifacts
     };
   }

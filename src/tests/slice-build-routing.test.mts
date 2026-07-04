@@ -83,6 +83,31 @@ test("pickBuilderVariant: ignores non-string members in the tag array", () => {
   assert.equal(pickBuilderVariant(["fe", 42, null]), "frontend");
 });
 
+// P1.0 feature-flag envelope: features.parallel-fe-be-variant gates the
+// fe+be parallel route. Default (no config / no override) preserves the
+// SLICE-105 behavior; disabling it falls back to the single-agent fullstack
+// variant instead.
+
+test("pickBuilderVariant: fe+be with no loopConfig defaults to parallel-fe-be (zero behavior change)", () => {
+  assert.equal(pickBuilderVariant(["fe", "be"], null), "parallel-fe-be");
+});
+
+test("pickBuilderVariant: fe+be with parallel-fe-be-variant explicitly enabled stays parallel-fe-be", () => {
+  const config = { features: { "parallel-fe-be-variant": { enabled: true } } };
+  assert.equal(pickBuilderVariant(["fe", "be"], config), "parallel-fe-be");
+});
+
+test("pickBuilderVariant: fe+be with parallel-fe-be-variant disabled falls back to fullstack", () => {
+  const config = { features: { "parallel-fe-be-variant": { enabled: false } } };
+  assert.equal(pickBuilderVariant(["fe", "be"], config), "fullstack");
+});
+
+test("pickBuilderVariant: disabling parallel-fe-be-variant does not affect fe-only or be-only routing", () => {
+  const config = { features: { "parallel-fe-be-variant": { enabled: false } } };
+  assert.equal(pickBuilderVariant(["fe"], config), "frontend");
+  assert.equal(pickBuilderVariant(["be"], config), "backend");
+});
+
 test("buildDispatchInstruction slice-build + fe-only emits crew:frontend-dev", () => {
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",
@@ -107,6 +132,21 @@ test("buildDispatchInstruction slice-build + be-only emits crew:backend-dev", ()
     sliceContent: "---\ntags: [be]\n---\n# Slice\n"
   });
   assert.match(out, /^Dispatch crew:backend-dev subagent/);
+});
+
+test("buildDispatchInstruction slice-build + fe+be + parallel-fe-be-variant disabled emits crew:fullstack-dev (P1.0)", () => {
+  const out = buildDispatchInstruction({
+    sliceId: "SLICE-105",
+    title: "Test slice",
+    sliceFile: null,
+    repoPath: "/repo",
+    resolvedGoal: null,
+    orchestratorMode: "slice-build",
+    sliceContent: "---\ntags: [fe, be]\n---\n# Slice\n",
+    loopConfig: { features: { "parallel-fe-be-variant": { enabled: false } } }
+  });
+  assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
+  assert.ok(!out.includes("PARALLEL DISPATCH"));
 });
 
 test("buildDispatchInstruction slice-build + fe+be emits PARALLEL DISPATCH with both agents (SLICE-105)", () => {

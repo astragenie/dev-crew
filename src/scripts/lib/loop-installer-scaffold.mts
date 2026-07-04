@@ -69,60 +69,6 @@ export async function updateClaudeMd(
   }
 }
 
-// Register the read-guard PreToolUse hook in .claude/settings.json.
-//
-// The hook lives at ${CLAUDE_PLUGIN_ROOT}/hooks/read-guard.sh and runs
-// on every Read/Edit/Write call. See hooks/read-guard.sh for behavior
-// and the JSONL log schema.
-//
-// Idempotent: re-running on an already-registered repo is a no-op.
-// Preserves any other PreToolUse hooks the user has added.
-export async function registerReadGuardHook(repoPath: string, writes: string[]): Promise<void> {
-  const settingsPath = path.join(repoPath, ".claude", "settings.json");
-  await ensureDir(path.dirname(settingsPath));
-
-  let settings: Record<string, any> = {};
-  const existing = await fs.readFile(settingsPath, "utf8").catch((): null => null);
-  if (existing !== null) {
-    try {
-      settings = JSON.parse(existing);
-    } catch {
-      // Don't clobber malformed user settings — bail loudly instead.
-      throw new Error(
-        `loop installer: ${settingsPath} exists but is not valid JSON. ` +
-          "Fix or remove it before re-running /runner:install."
-      );
-    }
-  }
-
-  const hookCommand = "bash ${CLAUDE_PLUGIN_ROOT}/hooks/read-guard.sh";
-  settings.hooks ??= {};
-  settings.hooks.PreToolUse ??= [];
-
-  // Check if our hook is already registered (idempotency).
-  const alreadyRegistered = settings.hooks.PreToolUse.some((entry: any) => {
-    if (!entry || !Array.isArray(entry.hooks)) return false;
-    return entry.hooks.some(
-      (h: any) => h && typeof h.command === "string" && h.command.includes("hooks/read-guard.sh")
-    );
-  });
-
-  if (alreadyRegistered) return;
-
-  settings.hooks.PreToolUse.push({
-    matcher: "Read|Edit|Write",
-    hooks: [
-      {
-        type: "command",
-        command: hookCommand
-      }
-    ]
-  });
-
-  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
-  writes.push(path.relative(repoPath, settingsPath));
-}
-
 // Write the full HARD RULES out to a sibling file so the CLAUDE.md marker
 // block can stay lean (~10 lines instead of ~35). Agents follow the
 // reference and read this file when entering an autonomous loop run.

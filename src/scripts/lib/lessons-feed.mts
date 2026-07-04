@@ -4,7 +4,9 @@ import { listGrades, SCORE_DIMENSIONS } from "./grade-parser.mjs";
 // agent reads this before drafting acceptance criteria so prior pain doesn't
 // repeat. Returns structured data + a ready-to-include markdown digest.
 
-function parseListSection(body: string, sectionHeader: string) {
+// Exported so writeGrade (grade-writer.mts) can parse the same "## Lessons"
+// bullets for learnings-store capture (P1.11) without a second regex.
+export function parseListSection(body: string, sectionHeader: string) {
   const items: any[] = [];
   const lines = body.split("\n");
   let inSection = false;

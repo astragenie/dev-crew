@@ -15,8 +15,8 @@ test("bootstrap-context hook exits 0 and writes non-empty stdout", () => {
   assert.equal(result.status, 0, `expected exit 0, got ${result.status}; stderr: ${result.stderr}`);
   assert.ok(result.stdout.length > 0, "stdout must not be empty");
   assert.ok(
-    result.stdout.includes("loop bootstrap context"),
-    `stdout must include "loop bootstrap context"; got: ${result.stdout.slice(0, 200)}`
+    result.stdout.includes("runner bootstrap context"),
+    `stdout must include "runner bootstrap context"; got: ${result.stdout.slice(0, 200)}`
   );
 });
 
@@ -42,10 +42,13 @@ test("bootstrap-context hook output covers all six required topics", () => {
     'must include "autoMode" or "auto mode"'
   );
   assert.ok(
-    stdout.includes("slice start") || stdout.includes("/loop:slice start"),
-    'must include "slice start"'
+    stdout.includes("/runner:start"),
+    'must include "/runner:start" (P1.8 renamed from the retired /loop:slice start)'
   );
-  assert.ok(stdout.includes("crew:builder"), 'must include "crew:builder"');
+  assert.ok(
+    stdout.includes("crew:fullstack-dev"),
+    "must include a current builder reference (crew:fullstack-dev, P1.8-renamed from the retired crew:builder)"
+  );
   assert.ok(stdout.includes("escalated_to_human"), 'must include "escalated_to_human"');
   assert.ok(stdout.includes("rules.md"), 'must include "rules.md"');
 });

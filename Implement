@@ -1,0 +1,19 @@
+astramem — AstraMemory CLI v0.5.2
+
+Usage: astramem [--provider local|saas|auto] <subcommand> [options]
+
+Subcommands:
+  ingest-transcript   Ingest a JSONL transcript file (fire-and-forget; hook shim target)
+  recall              Recall memories matching a query
+  remember            Store a new memory item
+  health              Probe the selected provider's /health endpoint
+  config              Get or set configuration (config get [key] | config set <key> <val>)
+  doctor              Diagnose selector resolution, logs, env vars, and config
+  connect             Connect to the local AstraMemory daemon
+
+Global flags:
+  --provider local|saas|auto  Override provider selection
+  --help, -h                  Show this help message
+  --version, -v               Show version
+
+Run 'astramem <subcommand> --help' for subcommand-specific usage.
