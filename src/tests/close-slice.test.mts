@@ -121,6 +121,32 @@ test("closeSlice scaffold-only: no gradeYamlPath returns scaffoldOnly true", asy
   assert.ok(gradeStat.isFile(), "scaffolded grade file must exist on disk");
 });
 
+// P1.6: closeSlice's final step regenerates loop-snapshot.md via the
+// existing FEAT-208 generator, gated by the snapshot-autoregen flag.
+test("closeSlice regenerates loop-snapshot.md by default (snapshot-autoregen on)", async () => {
+  const repo = await tmpRepo("cs-snapshot-regen-");
+  const { sliceId } = await setupSlice(repo);
+  await closeSlice(repo, sliceId);
+  const snapshotPath = path.join(repo, ".claude/artifacts/loop/loop-snapshot.md");
+  const content = await fs.readFile(snapshotPath, "utf8");
+  assert.match(content, /# Autonomous Loop snapshot/);
+});
+
+test("closeSlice skips snapshot regen when snapshot-autoregen is disabled", async () => {
+  const repo = await tmpRepo("cs-snapshot-disabled-");
+  const configPath = path.join(repo, ".claude/loop.json");
+  const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+  config.features = { "snapshot-autoregen": { enabled: false } };
+  await fs.writeFile(configPath, JSON.stringify(config));
+  const { sliceId } = await setupSlice(repo);
+  await closeSlice(repo, sliceId);
+  const snapshotPath = path.join(repo, ".claude/artifacts/loop/loop-snapshot.md");
+  await assert.rejects(
+    () => fs.stat(snapshotPath),
+    "loop-snapshot.md must not be written when the flag is disabled"
+  );
+});
+
 test("closeSlice happy path: gradeYamlPath + autonomous_safe writes scores", async () => {
   const repo = await tmpRepo("cs-happy-");
   const { sliceId, featureId } = await setupSlice(repo, { autonomousSafe: true });
@@ -133,6 +159,13 @@ test("closeSlice happy path: gradeYamlPath + autonomous_safe writes scores", asy
   const { frontmatter } = parseFrontmatter(persistedContent);
   assert.equal(frontmatter.scores.architecture_quality, 0.85);
   assert.equal(frontmatter.scores.test_confidence, 0.85);
+  // P1.6 review fix: the full grade-write exit path must also regenerate the
+  // snapshot (the scaffold-only tests above cover the other call site).
+  const snapshotContent = await fs.readFile(
+    path.join(repo, ".claude/artifacts/loop/loop-snapshot.md"),
+    "utf8"
+  );
+  assert.match(snapshotContent, /# Autonomous Loop snapshot/);
 });
 
 test("closeSlice autonomous_safe gate: refuses --grade-yaml on autonomous_safe=false", async () => {

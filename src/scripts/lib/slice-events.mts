@@ -20,7 +20,8 @@ export type SliceEventType =
   | "agent_error"
   | "specialist_pause"
   | "shape_classified"
-  | "phase_gate_mode_detected";
+  | "phase_gate_mode_detected"
+  | "slice_force_closed";
 
 export interface SliceEventBase {
   type: SliceEventType;
@@ -109,6 +110,19 @@ export interface PhaseGateModeDetectedEvent extends SliceEventBase {
   mode: "parallel" | "serial";
 }
 
+/**
+ * P1.4 (D1): forceClose past a failed/unsatisfied gate is kept as an escape
+ * hatch but is fully audited — slice frontmatter gets `force_closed: true`,
+ * this event lands on the slice event stream, and the webhook fan-out
+ * surfaces it on the dashboard halt-badge tape.
+ */
+export interface SliceForceClosedEvent extends SliceEventBase {
+  type: "slice_force_closed";
+  /** Gate reasons that were overridden by the force close. */
+  overriddenGates: string[];
+  reason: string;
+}
+
 export type SliceEvent =
   | WorkflowStateChangedEvent
   | GateTransitionEvent
@@ -117,7 +131,8 @@ export type SliceEvent =
   | AgentErrorEvent
   | SpecialistPauseEvent
   | ShapeClassifiedEvent
-  | PhaseGateModeDetectedEvent;
+  | PhaseGateModeDetectedEvent
+  | SliceForceClosedEvent;
 
 /** Absolute path to the events file for a slice. */
 export function eventsPath(repoRoot: string, sliceId: string): string {

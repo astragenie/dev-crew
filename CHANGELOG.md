@@ -4,7 +4,91 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
-## [Unreleased] — preset roster refresh + typescript-service
+## [Unreleased] — memory sink + ingest env-tier hardening + preset roster refresh
+
+### Breaking
+
+- **Placeholder AC auto-generation removed.** `sliceFromFeature` no longer
+  fabricates template acceptance criteria (`AC-1: All tests pass`,
+  `AC-2: <replace with…>`) when a FEAT has no `## Acceptance criteria` section.
+  It now throws `AcceptanceCriteriaRequiredError` — the PM owns AC authoring,
+  and a missing/empty AC section is a hard error, checked before the
+  in-progress move so a refuse leaves backlog state untouched. Ordered after
+  the sizing / proposed_slices structural gates. Re-run
+  `/runner:triage --deep <id>` or `/runner:pm-review <id>` to draft ACs. The
+  `startSlice` AC linter (placeholder detection) is unchanged and still runs.
+
+### Changed
+
+- **Preset renames**: `dotnet-aspire-python` → `dotnet-python` (content
+  unchanged; also the resolver default in `config-resolver.mts`),
+  `dotnet-vue` → `dotnet-typescript-vue`. Repos pinning the old names in
+  `.claude/loop.json` must update `preset:` — `resolveConfig` throws
+  `Unknown preset` otherwise.
+
+### Added
+
+- **Memory sink (FEAT-217, DEC-065).** New opt-in `src/scripts/lib/memory-sink.mts`
+  mirrors durable knowledge — decisions and lessons — into astramem via the
+  `astramem remember` CLI. Gated on `.claude/loop.json` `memory.enabled`
+  (absent → OFF), cortex project derived from `memory.project` else the repo's
+  `productName`. Fire-and-forget, 2s-capped, fail-silent spawn that never throws
+  and never blocks the close / grade-write / learn contract. Wired at
+  `grade-writer.mts` (each newly-minted `DEC-NNN`) and `learnings.mts` (each
+  lesson), both double-guarded.
+- **Ingest env-tier hardening (FEAT-216, DEC-064).** The Path-2 direct sink
+  (`slice-linker/astrarunner-ingest.mts`) now resolves the bearer token tier via
+  a dedicated `resolveTokenEnv`: a committed `loop.ingest.url` without
+  `loop.ingest.env` no longer inherits the shell-global `ASTRARUNNER_ENV`, so a
+  wrong-tier bearer can never be paired with a committed URL. Adds a
+  `LOOP_DEBUG`-gated, non-secret skip signal to stderr (reason + appId only,
+  never a token) for no-url / no-appId / no-token cases.
+- **`typescript-service` preset** — TypeScript Node service / daemon
+  (Fastify + better-sqlite3 / sqlite-vec, `tsc` build, Vitest, JSON-schema
+  ajv contracts, OS-service deployment). Drives `astramemory-local`.
+
+### Removed
+
+- **`python-only` preset** — pure-Python stack dropped; no consumer.
+
+## [0.61.0] — 2026-07-04 — P1 enforcement hardening
+
+### Added — P1.4 close-refusal: verdict-aware review/validation gates (2026-07-04)
+
+Architecture-hardening plan P1.4 (SLICE-174 class fix — a slice whose review
+was `rejected` and validation `failed` could still close as done because gate
+checks tested artifact *presence*, never *decision content*).
+
+- **`src/scripts/lib/review-gate.mts`** (new) — `deriveReviewGate` mirrors
+  `deriveValidationGate`'s three-tier order (frontmatter waiver → workflow-state
+  badge → artifact filename scan), but the artifact tier is verdict-aware:
+  frontmatter `decision: rejected` (crew P1.3 canonical enum) fails the gate;
+  `approved`/`approved_with_notes` satisfy; pre-P1.3 artifacts without the
+  frontmatter field are grandfathered; artifact **absence** is tolerated with a
+  warning (review filenames often lack the slice token — absence enforcement
+  waits for P2 join keys).
+- **`src/scripts/lib/artifact-verdict.mts`** (new) — shared newest-artifact
+  frontmatter verdict reader (mtime ordering, never throws).
+- **`src/scripts/lib/validation-gate.mts`** — artifact tier now verdict-aware:
+  `decision: fail` blocks; `pass` satisfies; `skipped` (+`skip_reason`)
+  satisfies close-ceremony semantics (known intentional divergence: crew's
+  pre-push-verifier does not count `skipped` as pass); no-decision artifacts
+  grandfathered.
+- **`complete-slice.mts`** — review gate joins the existing soft-block
+  architecture (`evaluateFeatureGates` → `isReviewBlocked` → FEAT→done held);
+  `gate_transition` events now include the review gate. forceClose (D1: keep +
+  audit) may override review/validation/test-adequacy verdict blocks — never
+  `escalated_to_human`/`blocked` — and writes `force_closed: true` + reasons
+  into the slice frontmatter, emits a `slice_force_closed` event, and fans out
+  a `halt-badge` envelope.
+- **`close-slice.mts`** — hard `GATE_FAILED_AT_CLOSE` pre-flight on the
+  single-shot `--grade-yaml` path (sibling of `PREFLIGHT_EVIDENCE_MISSING`,
+  same forceClose bypass). Warn-mode for the first 3 gate-violating closes
+  (persisted counter `.claude/state/loop/close-refusal-state.json`), then
+  enforces. Gated by the `close-refusal` flag (P1.0 registry).
+- **`slice-events.mts`** — new `slice_force_closed` event type.
+- Tests: `src/tests/close-refusal.test.mts` (12 cases: gate units, tier-a
+  soft-block, tier-b throw + warm-up counter, flag-off, forceClose audit trail).
 
 ### Breaking
 
@@ -31,10 +115,96 @@ shipped under the name `loop`.
 - **`typescript-service` preset** — TypeScript Node service / daemon
   (Fastify + better-sqlite3 / sqlite-vec, `tsc` build, Vitest, JSON-schema
   ajv contracts, OS-service deployment). Drives `astramemory-local`.
+- **P1.0 feature-flag envelope** — runner features registry
+  (`src/scripts/lib/features-service.mts`) extended with 7 new named flags
+  mirroring crew's sibling registry shape ({version, default, description,
+  scope, owner, since}), so the two registries can merge into one kernel
+  service in Phase 2: `dispatch-guard-block` (guard-feat-dispatch exit-2
+  block vs warn-only), `close-refusal` (P1.4 close gate, registry entry
+  only), `snapshot-autoregen` (P1.6 snapshot regen, registry entry only),
+  `learnings-capture` (P1.11 lessons capture, registry entry only),
+  `version-check` and `bootstrap-context` (SessionStart hooks), and
+  `parallel-fe-be-variant` (`pickBuilderVariant` fe+be parallel dispatch
+  route). All default `true` — zero behavior change out of the box.
+  `hooks/version-check.mjs` and `hooks/bootstrap-context.mjs` now read
+  `.claude/loop.json`'s `features` block directly via a small
+  dependency-free `hooks/feature-flag-lite.mjs` reader (plain `.mjs` hooks
+  have no build step and can't import the compiled TS service).
+  `hooks/guard-feat-dispatch.mjs`'s exit-2 block path now degrades to
+  warn-only (exit 0, same stderr message) when `dispatch-guard-block` is
+  disabled — allowlist and messages unchanged (that's a separate P1.8 item).
+- **P1.8 stale-reference fixes in runner-plugin hooks.**
+  - `hooks/guard-feat-dispatch.mjs`: full `allowed[]` audit against the
+    live `dev-team/agents/*.md` and `runner-plugin/agents/*.md` trees.
+    `loop:architect/document-writer/pm/researcher` → `runner:architect/
+    document-writer/pm/researcher`; added the current per-stack builder +
+    ceremony ids actually emitted by `dispatch.mts` (`crew:frontend-dev`,
+    `crew:backend-dev`, `crew:fullstack-dev`, `crew:architect`, `crew:
+    inspector`, `crew:verifier`) plus `crew:dev-lite` (trivial-scope
+    fixups) and `crew:investigator` (read-only lookups). Retired ids
+    (`crew:builder*`, `crew:reviewer`, `crew:reviewer-validator`, `crew:
+    validator`, `crew:deployer`, `crew:copywriter`, `loop:*`) stay
+    allowlisted one more release as explicitly commented legacy aliases.
+    `general-purpose` is (and stays) never allowlisted — that's the
+    bypass this hook exists to close. Guidance text now points at
+    `/runner:start` / `/runner:close` / `/runner:auto` instead of the
+    retired `/loop:slice-*` commands, and the "Override:" line is now
+    generated from the `allowed` array itself instead of a hand-maintained
+    duplicate string, closing off the exact class of drift this fix
+    addresses.
+  - `hooks/version-check.mjs`: `loop@loop` → `runner@astra`; marketplace
+    clone path `marketplaces/loop/...` → `marketplaces/astra/...`;
+    manifest lookup `p.name === "loop"` → `"runner"`; upgrade commands and
+    the CHANGELOG link updated to match. Added `RUNNER_VERSION_CHECK_HOME`
+    env override so tests can point the hook at a fixture `~/.claude` tree.
+  - `hooks/bootstrap-context.mjs`: retired `/loop:slice start|complete`
+    guidance → `/runner:start` / `/runner:close`; `crew:builder` dispatch
+    mention → the current tag-routed builder set; `docs/ai-loop/...`
+    paths (never matched the installer's actual scaffold default) →
+    `.claude/artifacts/loop/ai-loop/...` per `paths.mts`'s
+    `aiLoopRoot`/`backlogPath` defaults.
+  - `hooks/feature-flag-lite.mjs`: replaced the hardcoded `true` fallback
+    with an explicit `HOOK_FLAG_DEFAULTS` map for the 3 flags it actually
+    reads, guarded by a `features-service.test.mts` parity test so a
+    default drifting between this file and the TS registry fails the
+    suite instead of silently misbehaving in production.
+- **P1.6 snapshot auto-regen in the close ceremony.** `closeSlice()`
+  (`slice-linker/close-slice.mts`) now calls the existing FEAT-208
+  generator (`memory-snapshot.mts::writeMemorySnapshot`) as a final step
+  on both exit paths (scaffold-only and full grade-write), rewriting
+  `.claude/artifacts/loop/loop-snapshot.md` so it is never more than one
+  slice stale. No second renderer — `slice-progress.md` was already
+  refreshed by `completeSlice`'s own `writeSliceProgress` call. Gated by
+  the `snapshot-autoregen` flag (P1.0, default on); regen failures warn
+  to stderr and never fail the close.
+- **P1.11 learnings store activation.** `writeGrade()`
+  (`grade-writer.mts`) now parses the grade body's `## Lessons` bullets
+  (reusing `lessons-feed.mts`'s `parseListSection`, now exported) and logs
+  each one to `.claude/artifacts/loop/learnings.jsonl` via `logLearning`,
+  deterministically keyed `grade-lesson:<sliceId>:<index>` so a
+  writeGrade re-run does not double-log. Gated by the `learnings-capture`
+  flag (P1.0, default on); fail-silent, matching the other best-effort
+  emits in this function. `startSlice`'s `learningsDigest` (previously
+  reading a permanently-empty store) now has real feed-forward content.
 
 ### Removed
 
 - **`python-only` preset** — pure-Python stack dropped; no consumer.
+- **`hooks/read-guard.sh` deleted (D2, serge 2026-07-04).** The post-Edit
+  re-read PreToolUse guard is retired as an advisory-noise anti-pattern —
+  agents were observed ignoring the stderr warning repeatedly (training
+  warning-blindness against real gates), legitimate re-reads exist
+  (fresh line numbers post-edit, offset paging), and the harness now
+  natively tracks file state ("no need to re-read" reminders), so the
+  substrate absorbed the feature. Removed alongside: `registerReadGuardHook`
+  (`loop-installer-scaffold.mts` — was the only code path that wrote
+  `.claude/settings.json` during `/runner:install`, so installs no longer
+  touch that file at all), its call site in `loop-installer.mts`, and
+  `src/tests/read-guard-hook.test.mts`. `.claude/state/crew/read-guard.jsonl`
+  is no longer written by fresh installs (pre-existing files in already-
+  installed repos are not retroactively cleaned up). This is a scoped
+  removal of the current shipped hook implementation, not a rewrite of the
+  historical FEAT-039 changelog entry below documenting when it shipped.
 
 ## [0.60.0] — 2026-07-02 — crew 0.47.0 floor (FEAT-176) + crew CLI runtime fix
 

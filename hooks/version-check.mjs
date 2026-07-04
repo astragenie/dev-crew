@@ -1,11 +1,18 @@
 #!/usr/bin/env node
-// SessionStart hook: detect when the locally-installed loop plugin lags
+// SessionStart hook: detect when the locally-installed runner plugin lags
 // behind the marketplace manifest, and surface the refresh command.
 //
 // Why: Claude Code's marketplace clones (~/.claude/plugins/marketplaces/<name>/)
 // are NOT auto-refreshed when the upstream GitHub repo ships new versions.
-// Until the user runs `/plugin marketplace update loop`, their other
+// Until the user runs `/plugin marketplace update astra`, their other
 // sessions silently keep installing the stale pinned version.
+//
+// Plugin id: the runner plugin installs as `runner@astra` (plugin name
+// "runner" under the "astra" marketplace, repo astragenie/runner-plugin —
+// renamed from the old standalone `loop@loop` marketplace circa the
+// loop-to-runner rename). Verified against
+// ~/.claude/plugins/installed_plugins.json and
+// ~/.claude/plugins/marketplaces/astra/.claude-plugin/marketplace.json.
 //
 // Incident 2026-06-07: sessions stayed on v0.22.0 for three minor releases.
 // This hook closes that observability gap. The hook NEVER auto-installs —
@@ -18,8 +25,19 @@ import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
+import { isFeatureEnabledLite, readHookPayload } from "./feature-flag-lite.mjs";
 
 const MIN_BUN_VERSION = "1.3.14";
+
+// Feature gate: features.version-check.enabled === false skips this hook
+// entirely (both the bun-version check and the marketplace drift check).
+// Fail-open — any error reading the flag resolves to enabled (current
+// behavior), per features-service's default-ON policy.
+const hookPayload = readHookPayload();
+const repoCwd = hookPayload?.cwd || process.cwd();
+if (!isFeatureEnabledLite("version-check", repoCwd)) {
+  process.exit(0);
+}
 
 function safeReadJson(p) {
   try {
@@ -51,7 +69,7 @@ try {
   const bunVersion = bunResult.stdout?.trim() || null;
   if (!bunVersion || compareSemver(bunVersion, MIN_BUN_VERSION) < 0) {
     console.warn(
-      `\n⚠ loop plugin requires bun >= ${MIN_BUN_VERSION} (found: ${bunVersion ?? "not installed"}).\n` +
+      `\n⚠ runner plugin requires bun >= ${MIN_BUN_VERSION} (found: ${bunVersion ?? "not installed"}).\n` +
         `  Install or upgrade: https://bun.sh\n`
     );
   }
@@ -60,14 +78,16 @@ try {
 }
 
 try {
-  const homeDir = os.homedir();
+  // Testability: RUNNER_VERSION_CHECK_HOME overrides os.homedir() so tests
+  // can point at a fixture ~/.claude tree without touching the real one.
+  const homeDir = process.env.RUNNER_VERSION_CHECK_HOME || os.homedir();
   const installedPath = path.join(homeDir, ".claude", "plugins", "installed_plugins.json");
   const marketplacePath = path.join(
     homeDir,
     ".claude",
     "plugins",
     "marketplaces",
-    "loop",
+    "astra",
     ".claude-plugin",
     "marketplace.json"
   );
@@ -80,10 +100,10 @@ try {
   const marketplace = safeReadJson(marketplacePath);
   if (!installed || !marketplace) process.exit(0);
 
-  const entry = installed?.plugins?.["loop@loop"]?.[0];
+  const entry = installed?.plugins?.["runner@astra"]?.[0];
   if (!entry?.version) process.exit(0);
 
-  const ownEntry = marketplace?.plugins?.find((p) => p.name === "loop");
+  const ownEntry = marketplace?.plugins?.find((p) => p.name === "runner");
   if (!ownEntry?.version) process.exit(0);
 
   const installedV = String(entry.version);
@@ -94,11 +114,11 @@ try {
   emit(
     [
       "",
-      `⚠ loop plugin: installed v${installedV} but marketplace lists v${marketplaceV}.`,
+      `⚠ runner plugin: installed v${installedV} but marketplace lists v${marketplaceV}.`,
       "  To upgrade in this session:",
-      "    1. /plugin marketplace update loop",
-      "    2. /plugin install loop@loop",
-      "  (See CHANGELOG.md at https://github.com/sergeymilashico/loop/releases for what changed.)",
+      "    1. /plugin marketplace update astra",
+      "    2. /plugin install runner@astra",
+      "  (See CHANGELOG.md at https://github.com/astragenie/runner-plugin/releases for what changed.)",
       ""
     ].join("\n")
   );

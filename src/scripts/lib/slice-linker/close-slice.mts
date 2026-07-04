@@ -29,6 +29,7 @@ import { parseFrontmatter } from "../frontmatter.mjs";
 import { resolveConfig } from "../config-resolver.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
 import { bust as bustCache } from "../cache.mjs";
+import { isFeatureEnabled } from "../features-service.mjs";
 
 // ---------------------------------------------------------------------------
 // Pre-flight: verification-before-completion (FEAT-277 / AC-9)
@@ -142,6 +143,16 @@ export async function closeSlice(
     await assertAutonomousSafe(repoPath, sliceId, config);
   }
 
+  // P1.4 tier (b): hard close-refusal pre-flight (GATE_FAILED_AT_CLOSE),
+  // sibling to PREFLIGHT_EVIDENCE_MISSING above. Single-shot --grade-yaml
+  // path only (a completion claim); scaffold-only closes are gated by the
+  // soft-block tier inside completeSlice. forceClose bypasses (audited in
+  // completeSlice); warn-mode for the first 3 gate-evaluated closes after
+  // landing (persisted counter) per the plan's rollout.
+  if (gradeYamlPath && !opts.forceClose && isFeatureEnabled("close-refusal", config)) {
+    await assertCloseGatesSatisfied(repoPath, sliceId, config, opts.skipValidationCheck ?? null);
+  }
+
   const complete = await completeSlice(repoPath, sliceId, {
     config,
     keepFeatureOpen: opts.keepFeatureOpen,
@@ -172,6 +183,7 @@ export async function closeSlice(
     typeof completeAny?.costReport?.totalUsd === "number" ? completeAny.costReport.totalUsd : 0;
 
   if (!gradeYamlPath) {
+    await regenerateSnapshot(repoPath, config);
     const grades: CloseSliceGrades = {
       gradePath: gradeScaffold.gradePath,
       scaffoldOnly: true,
@@ -194,6 +206,8 @@ export async function closeSlice(
   const yamlContent = await fs.readFile(gradeYamlPath, "utf8");
   await fs.writeFile(gradeScaffold.gradePath, yamlContent);
   const grade = await writeGrade(repoPath, sliceId, { config });
+
+  await regenerateSnapshot(repoPath, config);
 
   const grades: CloseSliceGrades = {
     gradePath: gradeScaffold.gradePath,
@@ -238,6 +252,127 @@ async function assertAutonomousSafe(
     throw new Error(
       `slice close: --grade-yaml requires FEAT autonomous_safe: true; ${sliceId}'s feature ${featureId} is human-in-loop. ` +
         "Use the 3-step path: slice complete + slice grade + slice grade-write."
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// P1.4 tier (b): GATE_FAILED_AT_CLOSE pre-flight
+// ---------------------------------------------------------------------------
+
+const WARMUP_STATE_REL = ".claude/state/loop/close-refusal-state.json";
+const WARMUP_CLOSES = 3;
+
+// Reads + increments the persisted gate-evaluated-close counter. Returns the
+// count BEFORE this close (0-based): counts 0..2 are the warn-mode warm-up.
+async function bumpCloseRefusalCounter(repoPath: string): Promise<number> {
+  const path = await import("node:path");
+  const statePath = path.join(repoPath, WARMUP_STATE_REL);
+  let prior = 0;
+  try {
+    const raw = await fs.readFile(statePath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.gateEvaluatedCloses === "number" && parsed.gateEvaluatedCloses >= 0) {
+      prior = parsed.gateEvaluatedCloses;
+    }
+  } catch {
+    // first run / corrupt state — start at 0
+  }
+  try {
+    await fs.mkdir(path.dirname(statePath), { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify({ gateEvaluatedCloses: prior + 1 }));
+  } catch {
+    // persistence is best-effort; a write failure must not affect the verdict
+  }
+  return prior;
+}
+
+// Derives review + validation gates for the single-shot close. Throws
+// GATE_FAILED_AT_CLOSE (post warm-up) when either is unsatisfied; warns +
+// fans out a halt-badge during the first WARMUP_CLOSES gate-evaluated closes.
+// An explicit --skip-validation-check reason counts as a satisfied validation
+// (completeSlice records the auditable validation_skipped badge downstream).
+async function assertCloseGatesSatisfied(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null,
+  skipValidationCheck: string | null
+): Promise<void> {
+  const slicesRoot = resolveSlicesRoot(repoPath, config);
+  const slicePath = await locateSliceFile(slicesRoot, sliceId);
+  let sliceFm: Record<string, any> | null = null;
+  if (slicePath) {
+    const raw = await fs.readFile(slicePath, "utf8");
+    sliceFm = parseFrontmatter(raw).frontmatter;
+  }
+
+  const { deriveReviewGate } = await import("../review-gate.mjs");
+  const { deriveValidationGate } = await import("../validation-gate.mjs");
+  const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
+  const validationGate =
+    skipValidationCheck && String(skipValidationCheck).trim().length > 0
+      ? { satisfied: true, reason: `--skip-validation-check: ${skipValidationCheck}` }
+      : await deriveValidationGate(repoPath, sliceId, { sliceFm });
+
+  const failures: string[] = [];
+  if (!reviewGate.satisfied) failures.push(`review-gate: ${reviewGate.reason}`);
+  if (!validationGate.satisfied) failures.push(`validation-gate: ${validationGate.reason}`);
+  if (failures.length === 0) return;
+
+  const priorCloses = await bumpCloseRefusalCounter(repoPath);
+
+  try {
+    const { fanoutEnvelope } = await import("../webhook-fanout.mjs");
+    await fanoutEnvelope(repoPath, "halt-badge", {
+      kind: "gateFailedAtClose",
+      sliceId,
+      failures,
+      enforced: priorCloses >= WARMUP_CLOSES,
+      ts: new Date().toISOString()
+    });
+  } catch {
+    // fan-out optional — silent
+  }
+
+  if (priorCloses < WARMUP_CLOSES) {
+    console.warn(
+      `[closeSlice] GATE_FAILED_AT_CLOSE (warn-mode ${priorCloses + 1}/${WARMUP_CLOSES}): ` +
+        `${failures.join(" | ")} — enforcing after warm-up.`
+    );
+    return;
+  }
+
+  const err = new Error(
+    `runner:close gate pre-flight failed for ${sliceId}: ${failures.join(" | ")}. ` +
+      "Fix and re-run the gate, record an explicit skip, or use --force-close (audited)."
+  ) as NodeJS.ErrnoException;
+  err.code = "GATE_FAILED_AT_CLOSE";
+  (err as any).gateFailures = failures;
+  throw err;
+}
+
+// P1.6: final-step snapshot auto-regen. Reuses the existing FEAT-208
+// generator (memory-snapshot.mts) — closeSlice does not render a second
+// copy of loop-snapshot.md. Runs on both closeSlice exit paths (scaffold-only
+// and full grade-write) so loop-snapshot.md is never more than one slice
+// stale, matching the CI freshness check in validate-snapshot-freshness.mts.
+// slice-progress.md is already refreshed inside completeSlice's own
+// writeSliceProgress call — no second renderer needed there either.
+// Gated by the snapshot-autoregen flag (P1.0); failure warns and never
+// throws — a snapshot regen must not fail a slice close.
+async function regenerateSnapshot(
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  if (!isFeatureEnabled("snapshot-autoregen", config)) return;
+  try {
+    const { writeMemorySnapshot } = await import("../memory-snapshot.mjs");
+    await writeMemorySnapshot(repoPath, { config });
+  } catch (err) {
+    console.warn(
+      `[closeSlice] snapshot auto-regen failed (non-fatal): ${
+        err instanceof Error ? err.message : String(err)
+      }`
     );
   }
 }

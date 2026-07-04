@@ -3,6 +3,7 @@ import { readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { locateSliceFile, backlogRoot as resolveBacklogRoot } from "../paths.mjs";
+import { isFeatureEnabled } from "../features-service.mjs";
 
 interface DispatchLimits {
   maxSubagentsPerSlice: number;
@@ -80,15 +81,22 @@ export type BuilderVariant = "frontend" | "backend" | "fullstack" | "parallel-fe
  * Mapping:
  *   - tags ⊇ {"fe"} AND NOT ⊇ {"be"} → "frontend"
  *   - tags ⊇ {"be"} AND NOT ⊇ {"fe"} → "backend"
- *   - tags ⊇ {"fe"} AND ⊇ {"be"}     → "parallel-fe-be"
+ *   - tags ⊇ {"fe"} AND ⊇ {"be"}     → "parallel-fe-be" (unless
+ *     features.parallel-fe-be-variant is disabled, in which case this
+ *     falls back to "fullstack" — P1.0 feature-flag envelope)
  *   - otherwise (missing / malformed / no surface tag) → "fullstack"
  */
-export function pickBuilderVariant(tags: unknown): BuilderVariant {
+export function pickBuilderVariant(
+  tags: unknown,
+  loopConfig: Record<string, any> | null = null
+): BuilderVariant {
   if (!Array.isArray(tags)) return "fullstack";
   const set = new Set(tags.filter((t): t is string => typeof t === "string"));
   const hasFe = set.has("fe");
   const hasBe = set.has("be");
-  if (hasFe && hasBe) return "parallel-fe-be";
+  if (hasFe && hasBe) {
+    return isFeatureEnabled("parallel-fe-be-variant", loopConfig) ? "parallel-fe-be" : "fullstack";
+  }
   if (hasFe) return "frontend";
   if (hasBe) return "backend";
   return "fullstack";
@@ -145,7 +153,8 @@ export function buildDispatchInstruction({
   featurePath = null,
   dispatchLimits = null as DispatchLimits | null,
   orchestratorMode,
-  worktreePath = null as string | null
+  worktreePath = null as string | null,
+  loopConfig = null as Record<string, any> | null
 }: {
   sliceId: string;
   title: string;
@@ -159,6 +168,7 @@ export function buildDispatchInstruction({
   dispatchLimits?: DispatchLimits | null;
   orchestratorMode?: OrchestratorMode;
   worktreePath?: string | null;
+  loopConfig?: Record<string, any> | null;
 }) {
   const mode = resolveOrchestratorMode(orchestratorMode);
   const rel = sliceFile ? path.relative(repoPath, sliceFile).replace(/\\/g, "/") : null;
@@ -168,7 +178,7 @@ export function buildDispatchInstruction({
   }
 
   // Default path: slice-build — tag-driven dispatch with optional architect pre-flight.
-  const variant: BuilderVariant = pickBuilderVariant(extractTags(sliceContent));
+  const variant: BuilderVariant = pickBuilderVariant(extractTags(sliceContent), loopConfig);
   const preflight = needsContractPreflight(sliceContent, repoPath, sliceId)
     ? buildArchitectPreflight(sliceId, title, rel) + "\n---\n\n"
     : "";

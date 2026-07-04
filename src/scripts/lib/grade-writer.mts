@@ -20,6 +20,8 @@ import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "./p
 import { buildArtifactSlug } from "./artifact-naming.mjs";
 import { appendGradeEvent } from "./grade-jsonl-writer.mjs";
 import { fanoutEnvelope } from "./webhook-fanout.mjs";
+import { isFeatureEnabled } from "./features-service.mjs";
+import { parseListSection } from "./lessons-feed.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 // Support two execution layouts:
@@ -324,6 +326,13 @@ export async function writeGrade(
   // swallowed so the grade write contract is not affected.
   await emitNarrativeForSlice(repoPath, sliceId);
 
+  // P1.11: capture "## Lessons" bullets into the persistent learnings store
+  // (.claude/artifacts/loop/learnings.jsonl) so startSlice's learningsDigest
+  // (previously reading an empty store) has real feed-forward signal.
+  // Gated by the learnings-capture flag; fail-silent by design — a learnings
+  // write must never affect the grade-write contract.
+  await captureLearnings(repoPath, sliceId, updatedBody, config);
+
   const scoresAvg = averageOf(scores);
   if (scoresAvg !== null) {
     const { recordGradeScore } = await import("./grade-trend.mjs");
@@ -557,6 +566,44 @@ async function emitSliceCloseMemory(
     });
   } catch {
     // Fail-silent: memory bridge must never affect the grade-write path.
+  }
+}
+
+// P1.11: log each "## Lessons" bullet into the learnings store. Keys are
+// content-derived (`grade-lesson:<sliceId>:<sha1(insight)[0..8]>`) so a
+// writeGrade retry with unchanged text does not double-log, while an EDITED
+// lesson (same position, new text) gets a fresh row instead of being silently
+// dropped — a positional index key had exactly that staleness bug (P1.6/11
+// review finding). Fail-silent: any error here must never affect the
+// grade-write contract (mirrors emitSliceCloseMemory / emitNarrativeForSlice).
+async function captureLearnings(
+  repoPath: string,
+  sliceId: string,
+  body: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  if (!isFeatureEnabled("learnings-capture", config)) return;
+  const lessons = parseListSection(body, "Lessons");
+  if (lessons.length === 0) return;
+  try {
+    const { logLearning, searchLearnings } = await import("./learnings.mjs");
+    const { createHash } = await import("node:crypto");
+    const { items: existing } = await searchLearnings(repoPath, sliceId);
+    const existingKeys = new Set(existing.map((e: any) => e.key));
+    for (const lesson of lessons) {
+      const digest = createHash("sha1").update(lesson).digest("hex").slice(0, 8);
+      const key = `grade-lesson:${sliceId}:${digest}`;
+      if (existingKeys.has(key)) continue;
+      await logLearning(repoPath, {
+        key,
+        insight: lesson,
+        source: "grade-write",
+        sliceId,
+        tags: ["lesson"]
+      });
+    }
+  } catch {
+    // swallow — learnings capture is non-critical
   }
 }
 

@@ -122,13 +122,15 @@ function describeBlockedGate({
   isSimplifyBlocked,
   blockingGates,
   validationGate,
-  testAdequacyGate
+  testAdequacyGate,
+  reviewGate
 }: {
   isBlocked: boolean;
   isSimplifyBlocked: boolean;
   blockingGates: Record<string, any>;
   validationGate: Record<string, any> | null;
   testAdequacyGate: Record<string, any> | null;
+  reviewGate?: Record<string, any> | null;
 }) {
   if (isBlocked) {
     return blockingGates.escalated
@@ -138,6 +140,7 @@ function describeBlockedGate({
   if (isSimplifyBlocked) {
     return "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
   }
+  if (reviewGate?.satisfied === false) return `review-gate: ${reviewGate.reason}`;
   if (testAdequacyGate?.satisfied === false) return testAdequacyGate.reason;
   return `validation-gate: ${validationGate?.reason ?? "no evidence"}`;
 }
@@ -148,22 +151,32 @@ async function evaluateFeatureGates(
   featureId: string | null,
   blockingGates: Record<string, any>,
   validationGate: Record<string, any> | null,
-  testAdequacyGate: Record<string, any> | null
+  testAdequacyGate: Record<string, any> | null,
+  reviewGate: Record<string, any> | null = null
 ) {
   const isBlocked = Boolean(blockingGates.blocked || blockingGates.escalated);
   const simplifyCeremony = featureId ? await readFeatureEndCeremony(repoPath, featureId) : null;
   const isSimplifyBlocked = Boolean(simplifyCeremony && simplifyCeremony.simplifyRan === false);
   const isValidationBlocked = Boolean(validationGate && validationGate.satisfied === false);
   const isTestAdequacyBlocked = Boolean(testAdequacyGate && testAdequacyGate.satisfied === false);
+  // P1.4: a rejected review holds the FEAT→done promotion (SLICE-174 fix).
+  const isReviewBlocked = Boolean(reviewGate && reviewGate.satisfied === false);
 
   void emitGateTransitionEvents(repoPath, sliceId, featureId, {
     isBlocked,
     isSimplifyBlocked,
     isValidationBlocked,
-    isTestAdequacyBlocked
+    isTestAdequacyBlocked,
+    isReviewBlocked
   });
 
-  return { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked };
+  return {
+    isBlocked,
+    isSimplifyBlocked,
+    isValidationBlocked,
+    isTestAdequacyBlocked,
+    isReviewBlocked
+  };
 }
 
 // Appends sliceId to the FEAT's slices_complete array (dedupe), writes back
@@ -238,12 +251,15 @@ function buildBlockedResult(
     isSimplifyBlocked: boolean;
     isValidationBlocked: boolean;
     isTestAdequacyBlocked: boolean;
+    isReviewBlocked?: boolean;
   },
   blockingGates: Record<string, any>,
   validationGate: Record<string, any> | null,
-  testAdequacyGate: Record<string, any> | null
+  testAdequacyGate: Record<string, any> | null,
+  reviewGate: Record<string, any> | null = null
 ) {
   const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } = gateState;
+  const isReviewBlocked = Boolean(gateState.isReviewBlocked);
   return {
     skipped: true,
     reason: describeBlockedGate({
@@ -251,12 +267,14 @@ function buildBlockedResult(
       isSimplifyBlocked,
       blockingGates,
       validationGate,
-      testAdequacyGate
+      testAdequacyGate,
+      reviewGate
     }),
     blockingGates: isBlocked ? blockingGates : null,
     simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null,
     validationGate: isValidationBlocked ? validationGate : null,
-    testAdequacyGate: isTestAdequacyBlocked ? testAdequacyGate : null
+    testAdequacyGate: isTestAdequacyBlocked ? testAdequacyGate : null,
+    reviewGate: isReviewBlocked ? reviewGate : null
   };
 }
 
@@ -269,7 +287,8 @@ async function computeFeatureResult(
   keepFeatureOpen = false,
   forceClose = false,
   validationGate: Record<string, any> | null = null,
-  testAdequacyGate: Record<string, any> | null = null
+  testAdequacyGate: Record<string, any> | null = null,
+  reviewGate: Record<string, any> | null = null
 ) {
   const gateState = await evaluateFeatureGates(
     repoPath,
@@ -277,12 +296,46 @@ async function computeFeatureResult(
     featureId,
     blockingGates,
     validationGate,
-    testAdequacyGate
+    testAdequacyGate,
+    reviewGate
   );
 
-  const { isBlocked, isSimplifyBlocked, isValidationBlocked, isTestAdequacyBlocked } = gateState;
-  if (isBlocked || isSimplifyBlocked || isValidationBlocked || isTestAdequacyBlocked) {
-    return buildBlockedResult(gateState, blockingGates, validationGate, testAdequacyGate);
+  const {
+    isBlocked,
+    isSimplifyBlocked,
+    isValidationBlocked,
+    isTestAdequacyBlocked,
+    isReviewBlocked
+  } = gateState;
+  const anyGateBlocked =
+    isBlocked ||
+    isSimplifyBlocked ||
+    isValidationBlocked ||
+    isTestAdequacyBlocked ||
+    isReviewBlocked;
+  if (anyGateBlocked) {
+    // P1.4 (D1): forceClose may override review/validation/test-adequacy
+    // verdict blocks — with a full audit trail (slice frontmatter badge +
+    // slice_force_closed event + halt-badge fan-out). escalated_to_human and
+    // crew `blocked` badges are NEVER force-closable.
+    const forceEligible = !isBlocked && !isSimplifyBlocked;
+    if (forceClose && forceEligible) {
+      const overridden: string[] = [];
+      if (isReviewBlocked && reviewGate) overridden.push(`review: ${reviewGate.reason}`);
+      if (isValidationBlocked && validationGate)
+        overridden.push(`validation: ${validationGate.reason}`);
+      if (isTestAdequacyBlocked && testAdequacyGate)
+        overridden.push(`test-adequacy: ${testAdequacyGate.reason}`);
+      await auditForceClose(repoPath, sliceId, featureId, overridden, config);
+    } else {
+      return buildBlockedResult(
+        gateState,
+        blockingGates,
+        validationGate,
+        testAdequacyGate,
+        reviewGate
+      );
+    }
   }
 
   if (featureId) {
@@ -302,6 +355,67 @@ async function computeFeatureResult(
   }
 
   return await moveFeatureToDone(repoPath, featureId, config, keepFeatureOpen);
+}
+
+// P1.4 (D1 resolved): forceClose past a failed verdict gate keeps working but
+// leaves a full audit trail — `force_closed: true` + reason in the slice
+// frontmatter (single- and multi-slice alike), a `slice_force_closed` event on
+// the slice event stream, and a halt-badge fan-out so the dashboard tape
+// surfaces it. Best-effort: audit failures never block the close itself.
+async function auditForceClose(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  overriddenGates: string[],
+  config: Record<string, any> | null
+): Promise<void> {
+  const reason = `force-close overrode ${overriddenGates.length} gate(s)`;
+  try {
+    const slicesRootDir = resolveSlicesRoot(repoPath, config);
+    // The slice file moved pending/ → completed/ before gate evaluation runs;
+    // bust the locate cache so the audit lands on the post-move path.
+    const { bust } = await import("../cache.mjs");
+    bust(`locateSlice:${slicesRootDir}:${sliceId}`);
+    const sliceFile = await locateSliceFile(slicesRootDir, sliceId);
+    if (sliceFile) {
+      const raw = await fs.readFile(sliceFile, "utf8");
+      const { frontmatter, body } = parseFrontmatter(raw);
+      frontmatter.force_closed = true;
+      frontmatter.force_closed_reason = overriddenGates;
+      await fs.writeFile(sliceFile, serializeFrontmatter(frontmatter, body));
+    }
+  } catch (err) {
+    console.warn(
+      `[force-close] frontmatter audit failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  try {
+    const { appendSliceEvent } = await import("../slice-events.mjs");
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "slice_force_closed",
+      sliceId,
+      featureId,
+      timestamp: new Date().toISOString(),
+      overriddenGates,
+      reason
+    });
+  } catch (err) {
+    console.warn(
+      `[force-close] event audit failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  try {
+    const { fanoutEnvelope } = await import("../webhook-fanout.mjs");
+    await fanoutEnvelope(repoPath, "halt-badge", {
+      kind: "forceClosedGate",
+      sliceId,
+      featureId,
+      overriddenGates,
+      ts: new Date().toISOString()
+    });
+  } catch {
+    // fan-out is optional connectivity — silent
+  }
 }
 
 // Resolves the validation gate: --skip-validation-check writes a
@@ -429,6 +543,7 @@ function buildCompleteResult({
   validationGate,
   validationSkippedBadge,
   testAdequacyGate,
+  reviewGate,
   builderEvidence,
   autoMergeResult
 }: {
@@ -445,6 +560,7 @@ function buildCompleteResult({
   validationGate: any;
   validationSkippedBadge: any;
   testAdequacyGate: any;
+  reviewGate?: any;
   builderEvidence: BuilderEvidence | null;
   autoMergeResult?: MergeResult | DryRunPlan | { skipped: true; reason: string } | null;
 }) {
@@ -461,6 +577,7 @@ function buildCompleteResult({
     validationGate,
     validationSkippedBadge,
     testAdequacyGate,
+    reviewGate: reviewGate ?? null,
     updated_confidence: updatedConfidence?.confidence ?? null,
     updated_confidence_reason: updatedConfidence?.reason ?? null,
     autoMerge: autoMergeResult ?? null,
@@ -511,6 +628,11 @@ export async function completeSlice(
     skipValidationCheck
   );
 
+  // P1.4: verdict-aware review gate (SLICE-174 fix) — a rejected review holds
+  // FEAT→done promotion via the same soft-block architecture as validation.
+  const { deriveReviewGate } = await import("../review-gate.mjs");
+  const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
+
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
     sliceContent,
@@ -527,7 +649,8 @@ export async function completeSlice(
     keepFeatureOpen,
     forceClose,
     validationGate,
-    testAdequacyGate
+    testAdequacyGate,
+    reviewGate
   );
 
   await maybeRunFeatureSimplify(
@@ -581,6 +704,7 @@ export async function completeSlice(
     validationGate,
     validationSkippedBadge,
     testAdequacyGate,
+    reviewGate,
     builderEvidence,
     autoMergeResult
   });
@@ -859,12 +983,20 @@ async function emitGateTransitionEvents(
     isSimplifyBlocked: boolean;
     isValidationBlocked: boolean;
     isTestAdequacyBlocked: boolean;
+    isReviewBlocked?: boolean;
   }
 ): Promise<void> {
   try {
     const { appendSliceEvent } = await import("../slice-events.mjs");
     const ts = new Date().toISOString();
     const base = { sliceId, featureId, timestamp: ts };
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "gate_transition",
+      ...base,
+      gate: "review",
+      from: null,
+      to: gates.isReviewBlocked ? "failed" : "passed"
+    });
     await appendSliceEvent(repoPath, sliceId, {
       type: "gate_transition",
       ...base,

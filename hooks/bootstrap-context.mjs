@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-// SessionStart hook: inject compact loop HARD RULES bootstrap context.
+// SessionStart hook: inject compact runner HARD RULES bootstrap context.
 //
-// Purpose: Ensures the six highest-leverage loop HARD RULE reminders
-// survive context compaction in long marathonMode: true sessions.
-// Content sourced from .claude/loop/rules.md (static copy — no filesystem read).
+// Purpose: Ensures the six highest-leverage HARD RULE reminders survive
+// context compaction in long marathonMode: true sessions.
+// Content sourced from .claude/loop/rules.md (static copy — no filesystem
+// read). Path retains the `loop/` directory prefix intentionally — only
+// the command namespace renamed to `runner:*` (see CHANGELOG "Loop→Runner
+// plugin rename").
 //
 // Fail-open contract: any error exits silently with code 0.
 // Never blocks session start.
@@ -11,7 +14,18 @@
 // Token budget: BOOTSTRAP_SUMMARY must not exceed 60 lines / ~150 tokens.
 // Format: stdout plaintext block consumed by Claude Code as additionalContext.
 
-const BOOTSTRAP_SUMMARY = `--- loop bootstrap context ---
+import { isFeatureEnabledLite, readHookPayload } from "./feature-flag-lite.mjs";
+
+// Feature gate: features.bootstrap-context.enabled === false skips this
+// hook entirely. Both helpers are internally fail-open (default to
+// enabled/process.cwd() on any read error) — never blocks session start.
+const hookPayload = readHookPayload();
+const repoCwd = hookPayload?.cwd || process.cwd();
+if (!isFeatureEnabledLite("bootstrap-context", repoCwd)) {
+  process.exit(0);
+}
+
+const BOOTSTRAP_SUMMARY = `--- runner bootstrap context ---
 HARD RULES — read .claude/loop/rules.md for the full set.
 
 1. Run until PASS. Do not stop for confirmation. Stop only when every
@@ -23,12 +37,13 @@ HARD RULES — read .claude/loop/rules.md for the full set.
    as a chat question.
 
 3. Slice ceremony is mandatory. Every slice MUST use:
-     /loop:slice start --id SLICE-NNN
+     /runner:start --id <FEAT-ID or SLICE-NN>
    AND on completion:
-     /loop:slice complete --id SLICE-NNN
+     /runner:close --id SLICE-NN
    No slice may skip either ceremony step.
 
-4. Dispatch discipline. Implementation goes to crew:builder subagent only.
+4. Dispatch discipline. Implementation goes to the tag-routed crew builder
+   (crew:frontend-dev / crew:backend-dev / crew:fullstack-dev) only.
    Never implement inline except trivial single-line fixups.
    Parent loop dispatches crew:inspector then crew:verifier after builder.
 
@@ -36,11 +51,11 @@ HARD RULES — read .claude/loop/rules.md for the full set.
    asking. Stop only on: escalated_to_human | cost cap exceeded |
    warn-severity pattern alerts | external blocker | backlog exhaustion.
 
-6. First action when starting the loop:
+6. First action when starting the runner:
      read .claude/loop/rules.md
-     → docs/ai-loop/00-entry/MASTER_PROMPT.md
-     → docs/ai-loop/backlog/approved-slices.md
---- end loop bootstrap context ---
+     → .claude/artifacts/loop/ai-loop/00-entry/MASTER_PROMPT.md
+     → .claude/artifacts/loop/ai-loop/backlog/approved-slices.md
+--- end runner bootstrap context ---
 `;
 
 try {

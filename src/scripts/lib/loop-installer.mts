@@ -20,7 +20,6 @@ import {
   writeDecisionsScaffold,
   writeLoopControlFiles,
   writeLoopRules,
-  registerReadGuardHook,
   updateClaudeMd,
   MARKER_START,
   MARKER_END
@@ -79,9 +78,6 @@ export async function installLoop(
   await writeSpecsScaffold(repoPath, config, writes);
   await writeGradesScaffold(repoPath, config, writes);
   await writeDecisionsScaffold(repoPath, config, writes);
-
-  // Register PreToolUse re-read guard hook in .claude/settings.json (FEAT-039).
-  await registerReadGuardHook(repoPath, writes);
 
   // Initialize loop iteration counter for runaway halting (FEAT-001).
   await initializeIterationCounter(repoPath);
