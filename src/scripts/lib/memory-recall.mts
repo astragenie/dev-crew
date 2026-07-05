@@ -8,7 +8,11 @@
 // Fail-silent contract: recallPrior() NEVER throws and NEVER blocks > 5s.
 // CLI absent → []. Provider failure → []. Malformed JSON → [].
 //
-// Dormant until memory-plugin v0.4 ships astramem CLI.
+// The cortex project MUST come from the caller (derived from productName /
+// memory.project per DEC-065) — never the featId. Passing featId as --project
+// (the pre-DEC-066 bug) queried a per-feature project that never exists, so
+// recall always returned []. When no project is supplied, --project is omitted
+// and astramem uses its own default.
 
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -41,6 +45,10 @@ export interface RecallOptions {
   k?: number;
   /** Wallclock timeout in ms. Default: 5000. */
   timeoutMs?: number;
+  /** Cortex project to query (derived from productName / memory.project per
+   * DEC-065). When absent, `--project` is omitted and astramem uses its default.
+   * MUST NOT be the featId. */
+  project?: string | undefined;
 }
 
 /**
@@ -110,7 +118,8 @@ export async function recallPrior(opts: RecallOptions): Promise<RecallResult[]> 
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const raw = await spawnRecall(cli.path, query, k, featId, repo, controller.signal);
+      const project = opts.project ?? "";
+      const raw = await spawnRecall(cli.path, query, k, project, repo, controller.signal);
       return parseRecallOutput(raw);
     } finally {
       clearTimeout(timer);
@@ -148,23 +157,19 @@ function spawnRecall(
     signal.addEventListener("abort", () => fail(new Error("recall timeout")), { once: true });
 
     try {
-      const proc = spawn(
-        cliPath,
-        [
-          "recall",
-          "--query",
-          query,
-          "--k",
-          String(k),
-          "--project",
-          project,
-          "--repo",
-          repo,
-          "--format",
-          "json"
-        ],
-        { stdio: ["ignore", "pipe", "ignore"], signal }
-      );
+      const args = [
+        "recall",
+        "--query",
+        query,
+        "--k",
+        String(k),
+        ...(project ? ["--project", project] : []),
+        "--repo",
+        repo,
+        "--format",
+        "json"
+      ];
+      const proc = spawn(cliPath, args, { stdio: ["ignore", "pipe", "ignore"], signal });
 
       proc.stdout?.on("data", (chunk: Buffer) => {
         out += chunk.toString();

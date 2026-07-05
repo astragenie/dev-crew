@@ -843,12 +843,19 @@ async function runRecallHook(
 
     const k: number = config?.memory?.recall?.k ?? 5;
     const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
+    // Cortex project derives from memory.project else productName (DEC-065) —
+    // never the featId (the pre-DEC-066 bug that queried a non-existent
+    // per-feature project). Undefined → recallPrior omits --project.
+    const project: string | undefined =
+      (typeof config?.memory?.project === "string" && config.memory.project) ||
+      (typeof config?.productName === "string" && config.productName) ||
+      undefined;
 
     const { recallPrior } = await import("../memory-recall.mjs");
     const { formatRecallBlock } = await import("../recall-injector.mjs");
     const { emit, resolveCli } = await import("../memory-bridge.mjs");
 
-    const memories = await recallPrior({ featId, sliceId, touchesFiles, k, timeoutMs });
+    const memories = await recallPrior({ featId, sliceId, touchesFiles, k, timeoutMs, project });
     const block = formatRecallBlock(memories);
 
     // Emit recall_used trainset event. Fire-and-forget — never awaited in a

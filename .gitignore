@@ -9,5 +9,5 @@ dist/
 .playwright-mcp/
 .claude/worktrees/
 
-# Stray astramem --help dump (accidental redirect of a dispatch prompt); never a real artifact
+# Stray astramem --help dump (accidental redirect); never a real artifact
 Implement
