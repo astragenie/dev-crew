@@ -8,6 +8,19 @@ import type { TaskStoreProvider } from "../provider-interface.mjs";
  * that want a real backend should configure a non-noop provider.
  */
 export class NoopProvider implements TaskStoreProvider {
+  /**
+   * True when this noop was configured deliberately (taskStore.provider:
+   * "noop", taskStore.enabled: false, or no taskStore config at all — the
+   * documented default). False when getProvider() fell back to noop because
+   * of an unrecognised provider name (SPEC-001 AC-3) — lets callers tell
+   * "configured noop" apart from "accidental fallback due to bad config".
+   */
+  readonly isExplicit: boolean;
+
+  constructor(isExplicit = true) {
+    this.isExplicit = isExplicit;
+  }
+
   async publishFeature(_feat: any): Promise<null> {
     return null;
   }

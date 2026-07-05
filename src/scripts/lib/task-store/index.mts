@@ -23,7 +23,7 @@ export function getProvider(config: any, repoPath: string): TaskStoreProvider {
 
   // Explicit disable
   if (ts?.enabled === false) {
-    return new NoopProvider();
+    return new NoopProvider(true);
   }
 
   const providerName: string | undefined =
@@ -35,14 +35,15 @@ export function getProvider(config: any, repoPath: string): TaskStoreProvider {
     case "linear":
       return new LinearProvider(repoPath, config);
     case "noop":
-      return new NoopProvider();
+      return new NoopProvider(true);
     default:
       if (providerName !== undefined) {
         console.warn(
           `[task-store] Unknown provider "${providerName}" — falling back to NoopProvider. ` +
             `Check taskStore.provider in loop.json. Valid values: github, noop, linear.`
         );
+        return new NoopProvider(false);
       }
-      return new NoopProvider();
+      return new NoopProvider(true);
   }
 }
