@@ -38,10 +38,32 @@ const QUOTE_NEEDED_RE = /[:#[\]{}'",]/;
 const LEADING_SPACE_RE = /^\s/;
 const TRAILING_SPACE_RE = /\s$/;
 const LEADING_NEWLINES_RE = /^\n+/;
+// An embedded line break would otherwise split a scalar across the hand-rolled
+// parser's line-oriented `block.split("\n")` walk (see parseFrontmatter
+// below), corrupting the frontmatter block or letting injected content
+// masquerade as a new key/line. Anything matching this must be escaped
+// inside a quoted scalar, not merely quoted.
+const NEWLINE_RE = /[\n\r]/;
+// Recognizes only the escape sequences this module itself emits when quoting
+// a scalar (see serializeScalar) — safe to reverse unconditionally on any
+// double-quoted scalar produced by this serializer.
+const DOUBLE_QUOTE_ESCAPE_RE = /\\\\|\\n|\\r|\\"/g;
+
+function unescapeDoubleQuoted(value: string): string {
+  return value.replace(DOUBLE_QUOTE_ESCAPE_RE, (m) => {
+    if (m === "\\\\") return "\\";
+    if (m === "\\n") return "\n";
+    if (m === "\\r") return "\r";
+    return '"';
+  });
+}
 
 function stripQuotes(value: string) {
   const v = value.trim();
-  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+  if (v.startsWith('"') && v.endsWith('"')) {
+    return unescapeDoubleQuoted(v.slice(1, -1));
+  }
+  if (v.startsWith("'") && v.endsWith("'")) {
     return v.slice(1, -1);
   }
   return v;
@@ -214,6 +236,19 @@ function serializeScalar(value: unknown): string {
   }
   const s = String(value);
   if (s === "") return '""';
+  // Embedded newlines/CRs must be escaped, not left raw — a raw line break
+  // would split this scalar across multiple lines of the emitted block and
+  // desync the hand-rolled parser (KEY_VALUE_RE / block-array detection).
+  // Backslashes are escaped first so the subsequent \n / \r escapes stay
+  // unambiguous on the way back through unescapeDoubleQuoted.
+  if (NEWLINE_RE.test(s)) {
+    const escaped = s
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r");
+    return `"${escaped}"`;
+  }
   // Quote when the value contains characters that confuse the parser
   if (QUOTE_NEEDED_RE.test(s) || LEADING_SPACE_RE.test(s) || TRAILING_SPACE_RE.test(s)) {
     return `"${s.replace(/"/g, '\\"')}"`;

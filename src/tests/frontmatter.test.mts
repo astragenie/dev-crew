@@ -153,3 +153,62 @@ test("serializeFrontmatter leaves empty arrays inline (preserves prior shape)", 
   const out = serializeFrontmatter(fm, "");
   assert.match(out, /tags: \[\]/);
 });
+
+// Newline-injection hardening — serializeScalar must not emit a raw line
+// break inside a scalar, since the hand-rolled parser splits the frontmatter
+// block on "\n" (parseFrontmatter's `block.split("\n")`) before it looks at
+// individual lines. An un-escaped embedded newline would either desync the
+// KEY_VALUE_RE walk or let injected text masquerade as an additional key.
+
+test("serializeFrontmatter round-trips an embedded newline in a scalar", () => {
+  const fm = { title: "line one\nline two" };
+  const out = serializeFrontmatter(fm, "body");
+  // Must stay on a single physical line inside the frontmatter block.
+  const blockLines = out
+    .split("---")[1]!
+    .split("\n")
+    .filter((l) => l.trim() !== "");
+  assert.equal(blockLines.length, 1, `expected one line, got: ${JSON.stringify(blockLines)}`);
+  const { frontmatter } = parseFrontmatter(out);
+  assert.equal(frontmatter.title, "line one\nline two");
+});
+
+test("serializeFrontmatter round-trips embedded CRLF in a scalar", () => {
+  const fm = { title: "line one\r\nline two" };
+  const out = serializeFrontmatter(fm, "body");
+  const { frontmatter } = parseFrontmatter(out);
+  assert.equal(frontmatter.title, "line one\r\nline two");
+});
+
+test("serializeFrontmatter round-trips a leading newline in a scalar", () => {
+  const fm = { title: "\nleading" };
+  const out = serializeFrontmatter(fm, "body");
+  const { frontmatter } = parseFrontmatter(out);
+  assert.equal(frontmatter.title, "\nleading");
+});
+
+test("serializeFrontmatter round-trips a trailing newline in a scalar", () => {
+  const fm = { title: "trailing\n" };
+  const out = serializeFrontmatter(fm, "body");
+  const { frontmatter } = parseFrontmatter(out);
+  assert.equal(frontmatter.title, "trailing\n");
+});
+
+test("serializeFrontmatter round-trips a bare CR in a scalar", () => {
+  const fm = { title: "line one\rline two" };
+  const out = serializeFrontmatter(fm, "body");
+  const { frontmatter } = parseFrontmatter(out);
+  assert.equal(frontmatter.title, "line one\rline two");
+});
+
+test("mergeFrontmatter round-trips a newline injected via an update value", () => {
+  // Guards against a caller writing attacker/LLM-controlled multi-line text
+  // (e.g. a free-text note) straight into frontmatter and corrupting the
+  // block for every key that follows it.
+  const input = "---\nid: FEAT-001\nstatus: pending\n---\nbody";
+  const out = mergeFrontmatter(input, { notes: "first line\nsecond line\nthird: not-a-key" });
+  const { frontmatter } = parseFrontmatter(out);
+  assert.equal(frontmatter.id, "FEAT-001");
+  assert.equal(frontmatter.status, "pending");
+  assert.equal(frontmatter.notes, "first line\nsecond line\nthird: not-a-key");
+});
