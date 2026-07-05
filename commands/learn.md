@@ -10,9 +10,13 @@ Log an operational learning to `.claude/artifacts/loop/learnings.jsonl`.
 Use this mid-session whenever you observe something that would help future
 agent sessions avoid a pitfall or use a better approach.
 
-These learnings are automatically surfaced at slice start via `startSlice`
-(in the `learningsDigest` field) so the agent inherits session-to-session
-observations without manual recall.
+`startSlice` computes a `learningsDigest` field (the last 3 recent
+learnings) at slice start, but today that digest is only returned as a
+sibling JSON field on the `startSlice` result — it is **not** spliced
+into the builder's `dispatchInstruction` string, so the agent does not
+yet inherit it automatically. That wiring is tracked as FEAT-219
+SLICE-3. Until it lands, pull recent learnings into context manually
+via `learnings recent` (below) or `/runner:lessons-recent`.
 
 ## Usage
 
