@@ -208,8 +208,8 @@ describe("recordMemory spawn (capturing fake CLI)", () => {
     const calls = await readCaptured();
     expect(calls).toHaveLength(1);
     const content = calls[0][calls[0].indexOf("--content") + 1];
-    expect(content).not.toContain("\n");
-    expect(content).not.toContain("");
+    expect(content).not.toContain("\n"); // newline stripped -> space
+    expect(content).not.toContain("\t"); // tab stripped -> space (control char)
     expect(content).toContain("FORGED"); // preserved, just inlined
   });
 
