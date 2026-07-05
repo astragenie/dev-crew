@@ -23,6 +23,12 @@ import { fanoutEnvelope } from "./webhook-fanout.mjs";
 import { isFeatureEnabled } from "./features-service.mjs";
 import { parseListSection } from "./lessons-feed.mjs";
 
+// FEAT-219/SLICE-1b: agent role attributed to grade-derived memory (decisions,
+// notes). Grade knowledge is produced by the slice's implementer, so it is
+// tagged crew:builder for agent-scoped recall. (Lessons flow through
+// learnings.mts and are tagged there in a follow-up.)
+const GRADE_AGENT_TYPE = "crew:builder";
+
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 // Support two execution layouts:
 // 1. Emitted (scripts/ tree): scripts/lib/ → templates
@@ -504,6 +510,7 @@ async function extractDecisions(
       rationale: typeof dec.rationale === "string" ? dec.rationale : undefined,
       featureId,
       sliceId,
+      agentType: GRADE_AGENT_TYPE,
       config: memCfg
     });
   }
@@ -634,7 +641,11 @@ async function captureGradeNotes(repoPath: string, sliceId: string, body: string
     // N×2s serial (PR #303 review MAJOR).
     await Promise.all(
       items.map(({ kind, text }) =>
-        recordNote(repoPath, { text: `[${sliceId}] ${kind}: ${text}`, config: memCfg })
+        recordNote(repoPath, {
+          text: `[${sliceId}] ${kind}: ${text}`,
+          agentType: GRADE_AGENT_TYPE,
+          config: memCfg
+        })
       )
     );
   } catch {

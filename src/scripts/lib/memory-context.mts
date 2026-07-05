@@ -64,6 +64,13 @@ function isMemoryEnabled(config: Record<string, any> | null | undefined): boolea
   return true;
 }
 
+/** Opt-in gate for agent-scoped recall (`memory.recall.scopeByAgent`). Default
+ * OFF: astramem's `--agent` is a HARD filter, so scoping before enough
+ * agent-tagged history exists would return nothing (#309). */
+function scopeByAgentEnabled(config: Record<string, any> | null | undefined): boolean {
+  return config?.memory?.recall?.scopeByAgent === true;
+}
+
 /** Runs fn, swallowing any error/rejection and returning fallback instead. Never throws. */
 async function safe<T>(fn: () => Promise<T> | T, fallback: T): Promise<T> {
   try {
@@ -242,7 +249,12 @@ export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promi
           sliceId: opts.agentType || "context",
           touchesFiles: tags,
           k,
-          ...(opts.project !== undefined ? { project: opts.project } : {})
+          ...(opts.project !== undefined ? { project: opts.project } : {}),
+          // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent). astramem
+          // treats --agent as a HARD filter, so enabling it before enough
+          // agent-tagged history exists would starve recall of untagged memories
+          // (#309). Off by default → unscoped by role.
+          ...(scopeByAgentEnabled(config) && opts.agentType ? { agent: opts.agentType } : {})
         }),
       [] as Record<string, any>[]
     )
