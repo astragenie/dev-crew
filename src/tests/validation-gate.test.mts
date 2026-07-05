@@ -131,3 +131,29 @@ test("satisfiedByReview OFF: an approved review does not satisfy validation", as
   assert.equal(result.satisfied, false);
   assert.match(result.reason, /no validation artifact/);
 });
+
+// BLOCKER regression (PR #304 review): with satisfiedByReview on, a slice with
+// NO review artifact at all must NOT satisfy validation. deriveReviewGate returns
+// `satisfied: true, unproven: true` on absence (tolerant fallthrough); that
+// tolerance must not leak across to the validation gate, or a slice could close
+// with no review AND no validation.
+test("satisfiedByReview: NO review artifact (unproven) does NOT satisfy validation", async () => {
+  const repo = await tmpRepo("al-vgate-review-absent-");
+  // No review artifact, no validation artifact, no badge, no waiver.
+  const result = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
+});
+
+// Guard the tolerance directly: a legacy review artifact with no decision
+// frontmatter grandfathers as satisfied-but-unproven for the REVIEW gate, yet
+// must still not delegate the VALIDATION gate under satisfiedByReview.
+test("satisfiedByReview: legacy no-decision review (unproven-ish) still requires real evidence", async () => {
+  const repo = await tmpRepo("al-vgate-review-legacy-");
+  await writeReviewArtifact(repo, "SLICE-01", "approved");
+  // A real approved artifact IS proven → should satisfy (positive control for the
+  // fix so we don't over-correct into rejecting genuine approvals).
+  const ok = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
+  assert.equal(ok.satisfied, true);
+  assert.match(ok.reason, /review-badge/);
+});
