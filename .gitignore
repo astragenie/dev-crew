@@ -8,3 +8,6 @@ dist/
 *.tmp
 .playwright-mcp/
 .claude/worktrees/
+
+# Stray astramem --help dump (accidental redirect); never a real artifact
+Implement

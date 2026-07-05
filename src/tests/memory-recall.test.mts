@@ -237,3 +237,69 @@ test("recallPrior returns typed RecallResult[] on happy-path JSON output", async
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// DEC-066 bug fix: --project comes from opts.project (productName), NOT featId.
+// Pre-fix, featId was passed as --project, querying a non-existent per-feature
+// project so recall always returned []. POSIX captures argv; Windows skips.
+// ---------------------------------------------------------------------------
+
+test("recallPrior passes opts.project as --project (never featId)", async () => {
+  if (process.platform === "win32") return; // argv capture unreliable on .cmd
+  const { mkdtemp, writeFile, chmod, rm, mkdir, readFile } = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "recall-proj-"));
+  const binDir = path.join(tmpDir, "bin");
+  await mkdir(binDir, { recursive: true });
+  const fakeCli = path.join(binDir, "astramem");
+  const argsFile = path.join(tmpDir, "argv.txt");
+  await writeFile(fakeCli, `#!/bin/sh\nprintf '%s\n' "$@" > "${argsFile}"\necho "[]"\n`);
+  await chmod(fakeCli, 0o755);
+
+  const orig = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
+  try {
+    await recallPrior({ featId: "FEAT-291", sliceId: "SLICE-99", project: "runner" });
+    const argv = (await readFile(argsFile, "utf8")).split("\n");
+    const pIdx = argv.indexOf("--project");
+    assert.ok(pIdx >= 0, "expected --project to be passed");
+    assert.equal(argv[pIdx + 1], "runner", "--project must be the productName, not featId");
+    assert.ok(
+      !argv.includes("FEAT-291") || argv[pIdx + 1] !== "FEAT-291",
+      "featId must not be the project"
+    );
+  } finally {
+    if (orig !== undefined) process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;
+    else delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("recallPrior omits --project when no project supplied", async () => {
+  if (process.platform === "win32") return;
+  const { mkdtemp, writeFile, chmod, rm, mkdir, readFile } = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "recall-noproj-"));
+  const binDir = path.join(tmpDir, "bin");
+  await mkdir(binDir, { recursive: true });
+  const fakeCli = path.join(binDir, "astramem");
+  const argsFile = path.join(tmpDir, "argv.txt");
+  await writeFile(fakeCli, `#!/bin/sh\nprintf '%s\n' "$@" > "${argsFile}"\necho "[]"\n`);
+  await chmod(fakeCli, 0o755);
+
+  const orig = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
+  try {
+    await recallPrior({ featId: "FEAT-291", sliceId: "SLICE-99" });
+    const argv = (await readFile(argsFile, "utf8")).split("\n");
+    assert.ok(!argv.includes("--project"), "expected --project omitted when no project supplied");
+  } finally {
+    if (orig !== undefined) process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;
+    else delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});

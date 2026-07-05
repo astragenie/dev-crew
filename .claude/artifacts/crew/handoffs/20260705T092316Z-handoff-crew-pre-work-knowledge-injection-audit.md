@@ -1,0 +1,31 @@
+# Task Handoff: crew pre-work knowledge injection audit
+
+- Created: 2026-07-05T09:23:16.512Z
+- From: researcher
+- To: dispatcher
+- Objective: Crew does NOT auto-inject recent learnings/decisions/lessons into agent dispatch prompts before work today; SessionStart hook only logs telemetry, brief-me/wake-up-brief are manual slash commands, and the exact capability the user is asking about (recall injection at dispatch) is an unbuilt backlog item (FEAT-188, S3, autonomous_safe:false).
+- Allowed Scope:
+  - Read-only investigation of C:\work\mega\dev-team (crew/dev-team plugin): hooks/hooks.json + hook scripts
+  - commands/wake-up-brief.md + brief-me.md and their backing scripts/lib/wakeup.mjs + scripts/lib/briefing/*
+  - agents/*.md and agents/3rdparty/*.md grep for pre-work recall instructions
+  - repo-wide grep for astramem/cortex/MemorySearch/recall_memory/session_digest
+  - scripts/lib/slice-linker/dispatch.mts dispatch-assembly code
+  - and confirmation of which agent .md files exist for the named crew agent types.
+- Forbidden Scope: -
+- Deliverable: Citation-backed 6-part findings report (relayed inline to user) covering: (1) hooks.json SessionStart only calls log_event.sh session_start, no context injection, Agent PreToolUse/PostToolUse hooks (pre-tool-use-agent.ts, check-subagent-return.ts) only do dispatch timing telemetry; (2) wake-up-brief.md/brief-me.md are manual debug/user-facing slash commands (not auto-run), backed by scripts/lib/wakeup.mjs (buildMemoryBuckets/repoMemory/claims/approvals) and scripts/lib/briefing/* (grade/finding aggregation into runHealth) -- assembled only on explicit command invocation; (3) agent .md files' 'before starting work' hits are all custom-instructions-file checks (researcher.md, reviewer.md, etc.), zero agent files instruct recall of past learnings/decisions/memory pre-work; (4) astramem/cortex/recall_memory grep hits 47 files but none are hook/dispatch wiring -- all are docs, specs, backlog items (notably pending FEAT-188), or agent guidance to 'reuse AstraMemory ingestion, never build a parallel store' (a data-hygiene rule, not an auto-recall mechanism); (5) scripts/lib/slice-linker/dispatch.mts buildDispatchPhase only threads routing/gate/parallel metadata, no findings/lessons content, and no per-role scoping of past issues; (6) confirmed which of the 7 named agent .md files exist (architect, backend-dev, frontend-dev, fullstack-dev, reviewer, verifier all exist; no builder.md or inspector.md anywhere in repo -- crew's live Agent tool roster likewise has no crew:builder or crew:inspector, only crew:dev-lite/frontend-dev/backend-dev/fullstack-dev for implementation and crew:reviewer/crew:verifier for gates).
+- Changed Files:
+  - C:\work\mega\dev-team\hooks\hooks.json
+  - C:\work\mega\dev-team\hooks\pre-tool-use-agent.ts
+  - C:\work\mega\dev-team\commands\wake-up-brief.md
+  - C:\work\mega\dev-team\commands\brief-me.md
+  - C:\work\mega\dev-team\scripts\lib\wakeup.mjs
+  - C:\work\mega\dev-team\scripts\lib\briefing.ts
+  - C:\work\mega\dev-team\scripts\lib\slice-linker\dispatch.mts
+  - C:\work\mega\dev-team\.claude\artifacts\loop\backlog\pending\FEAT-188-memory-provider-capture-recall.md
+  - C:\work\mega\dev-team\agents\fullstack-dev.md
+  - C:\work\mega\dev-team\agents\frontend-dev.md
+  - C:\work\mega\dev-team\agents\backend-dev.md
+- Confidence: high
+- Risks: Did not exhaustively read all 47 astramem/cortex grep hits line-by-line (only sampled agent files + FEAT-188); did not check the sibling loop-plugin repo's own hook wiring (out of scope -- question was scoped to dev-team/crew repo only); FEAT-188's design doc (2026-07-04-memory-provider-plan.md) was located but not deeply read beyond its backlog summary.
+- Suggested Next Handoff: If the user wants the actual planned mechanics of auto-recall (schema, injection format, token budget), read docs/superpowers/specs/2026-07-04-memory-provider-plan.md and docs/superpowers/specs/2026-07-04-crew-architecture-review-REPORT.md section 15 in full.
+
