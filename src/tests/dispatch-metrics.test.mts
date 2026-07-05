@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { writeDispatchMetrics, readDispatchMetrics } from "../scripts/lib/dispatch-metrics.mjs";
+import {
+  writeDispatchMetrics,
+  readDispatchMetrics,
+  formatPartialChildrenNote,
+  type DispatchMetrics
+} from "../scripts/lib/dispatch-metrics.mjs";
 
 // AC-001: writes file with all required fields
 test("writeDispatchMetrics: writes all required fields", () => {
@@ -109,4 +114,44 @@ test("readDispatchMetrics: returns null for unknown runId", () => {
   const result = readDispatchMetrics(dir, "run-unknown");
   assert.equal(result, null);
   fs.rmSync(dir, { recursive: true });
+});
+
+function baseMetrics(overrides: Partial<DispatchMetrics> = {}): DispatchMetrics {
+  return {
+    runId: "run-x",
+    startedAt: "2026-07-05T00:00:00.000Z",
+    completedAt: "2026-07-05T00:01:00.000Z",
+    status: "complete",
+    totalTokens: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    estimatedCostUsd: 0,
+    model: "unknown",
+    childCount: 0,
+    partialChildren: [],
+    ...overrides
+  };
+}
+
+// AC-005 (FEAT-220 SLICE-142): `dispatch.mts metrics --run-id <id>` prints
+// partialChildren when non-empty. cmdMetrics itself is a thin CLI wrapper
+// around this pure formatter, so the formatter is the testable surface —
+// see dispatch.mts::cmdMetrics.
+test("formatPartialChildrenNote: null when partialChildren is empty", () => {
+  assert.equal(formatPartialChildrenNote(baseMetrics({ partialChildren: [] })), null);
+});
+
+test("formatPartialChildrenNote: names every partial child when non-empty", () => {
+  const note = formatPartialChildrenNote(baseMetrics({ partialChildren: ["FE", "BE"] }));
+  assert.match(note ?? "", /partialChildren/);
+  assert.match(note ?? "", /FE/);
+  assert.match(note ?? "", /BE/);
+});
+
+// Guards against pre-FEAT-220 dispatch-metrics.json fixtures on disk that
+// predate the partialChildren field (parsed as `undefined`, not `[]`).
+test("formatPartialChildrenNote: tolerates a pre-FEAT-220 fixture missing the field", () => {
+  const legacy = baseMetrics() as Partial<DispatchMetrics>;
+  legacy.partialChildren = undefined;
+  assert.equal(formatPartialChildrenNote(legacy as DispatchMetrics), null);
 });

@@ -62,7 +62,7 @@ async function writeAgentEvents(repo, agents) {
       })
     );
   }
-  await fs.writeFile(path.join(logsDir, "events.jsonl"), lines.join("\n") + "\n");
+  await fs.writeFile(path.join(logsDir, "events.jsonl"), `${lines.join("\n")}\n`);
 }
 
 // Write a fake transcript JSONL with N assistant turns, each contributing a
@@ -88,7 +88,7 @@ async function writeTranscript(filePath, { turns, model, inputPerTurn = 100, out
       })
     );
   }
-  await fs.writeFile(filePath, lines.join("\n") + "\n");
+  await fs.writeFile(filePath, `${lines.join("\n")}\n`);
 }
 
 test("distinct agentTypes → non-zero totals matching the synthetic fixture sum", async () => {

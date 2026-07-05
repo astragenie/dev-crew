@@ -11,7 +11,11 @@ import {
   type DispatchResult,
   type PreparedDispatch
 } from "./lib/hierarchical-dispatch.mjs";
-import { writeDispatchMetrics, readDispatchMetrics } from "./lib/dispatch-metrics.mjs";
+import {
+  writeDispatchMetrics,
+  readDispatchMetrics,
+  formatPartialChildrenNote
+} from "./lib/dispatch-metrics.mjs";
 import { aggregateDispatchCost } from "./lib/dispatch-cost-aggregate.mjs";
 
 type ParsedArgs = {
@@ -279,14 +283,8 @@ function cmdMetrics(args: ParsedArgs): number {
     return 1;
   }
   process.stdout.write(`${JSON.stringify(metrics, null, 2)}\n`);
-  // Guard against pre-FEAT-220 dispatch-metrics.json fixtures on disk that
-  // predate the partialChildren field.
-  const partialChildren = metrics.partialChildren ?? [];
-  if (partialChildren.length > 0) {
-    process.stdout.write(
-      `[dispatch-metrics] partialChildren (cost unattributed): ${partialChildren.join(", ")}\n`
-    );
-  }
+  const note = formatPartialChildrenNote(metrics);
+  if (note) process.stdout.write(`${note}\n`);
   return 0;
 }
 
