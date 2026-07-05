@@ -482,6 +482,7 @@ async function extractDecisions(
   const { readMemoryConfig, recordDecision } = await import("./memory-sink.mjs");
   const memCfg = await readMemoryConfig(repoPath);
   const allocated: any[] = [];
+  const mirrorArgs: Array<Parameters<typeof recordDecision>[1]> = [];
   let updatedBody = body;
   for (const dec of decisions) {
     if (dec.id !== "DEC-TBD") continue;
@@ -497,22 +498,20 @@ async function extractDecisions(
     // Replace the first DEC-TBD occurrence in the body with the allocated id
     updatedBody = updatedBody.replace(/###\s+DEC-TBD\s*:\s*/, `### ${id}: `);
     allocated.push({ id, title: dec.title });
-    // Fire-and-forget memory mirror — never blocks or fails decision extraction.
-    // recordDecision is already no-throw, but guard defensively for parity with
-    // the learnings.mts call site.
-    try {
-      await recordDecision(repoPath, {
-        id,
-        title: dec.title,
-        rationale: typeof dec.rationale === "string" ? dec.rationale : undefined,
-        featureId,
-        sliceId,
-        config: memCfg
-      });
-    } catch {
-      // swallow — memory mirror is non-critical
-    }
+    mirrorArgs.push({
+      id,
+      title: dec.title,
+      rationale: typeof dec.rationale === "string" ? dec.rationale : undefined,
+      featureId,
+      sliceId,
+      config: memCfg
+    });
   }
+  // Fire-and-forget memory mirror in PARALLEL — never blocks decision
+  // extraction and, unlike a serial await-in-loop, its wallclock is bounded by
+  // the single 2s spawn cap regardless of N decisions (PR #303 review MAJOR).
+  // recordDecision is already no-throw; .catch is defensive parity.
+  await Promise.all(mirrorArgs.map((a) => recordDecision(repoPath, a).catch(() => {})));
   return { allocated, updatedBody };
 }
 
@@ -631,9 +630,13 @@ async function captureGradeNotes(repoPath: string, sliceId: string, body: string
       ...surprises.map((text) => ({ kind: "surprise", text })),
       ...followups.map((text) => ({ kind: "followup", text }))
     ];
-    for (const { kind, text } of items) {
-      await recordNote(repoPath, { text: `[${sliceId}] ${kind}: ${text}`, config: memCfg });
-    }
+    // Parallel mirror — wallclock bounded by the single 2s spawn cap, not
+    // N×2s serial (PR #303 review MAJOR).
+    await Promise.all(
+      items.map(({ kind, text }) =>
+        recordNote(repoPath, { text: `[${sliceId}] ${kind}: ${text}`, config: memCfg })
+      )
+    );
   } catch {
     // swallow — memory mirror is non-critical
   }
