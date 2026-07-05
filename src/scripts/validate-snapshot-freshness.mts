@@ -80,7 +80,7 @@ export async function validateSnapshotFreshness(
   return {
     ok: false,
     errors: [
-      "loop-snapshot.md is out of date — regenerated content does not match the on-disk file.",
+      `loop-snapshot.md is out of date at ${target} — regenerated content does not match the on-disk file.`,
       REGENERATE_HINT
     ]
   };
