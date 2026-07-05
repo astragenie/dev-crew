@@ -260,12 +260,14 @@ export async function writeGrade(
   }
 
   const decisions = parseDecisionsFromBody(body);
+  const featureId = typeof frontmatter.feature === "string" ? frontmatter.feature : undefined;
   const { allocated, updatedBody } = await extractDecisions(
     repoPath,
     sliceId,
     body,
     decisions,
-    config
+    config,
+    featureId
   );
 
   // Build merged decisions list: existing IDs (already allocated) + newly allocated
@@ -330,6 +332,11 @@ export async function writeGrade(
   // Gated by the learnings-capture flag; fail-silent by design — a learnings
   // write must never affect the grade-write contract.
   await captureLearnings(repoPath, sliceId, updatedBody, config);
+
+  // FEAT-217 follow-up: mirror "## Surprises" and "## Followups" bullets into
+  // astramem as notes so durable slice knowledge beyond decisions + lessons
+  // reaches memory. Fail-silent; gated on memory.enabled.
+  await captureGradeNotes(repoPath, sliceId, updatedBody);
 
   const scoresAvg = averageOf(scores);
   if (scoresAvg !== null) {
@@ -463,13 +470,19 @@ async function extractDecisions(
   sliceId: string,
   body: string,
   decisions: Record<string, any>[],
-  config: Record<string, any> | null
+  config: Record<string, any> | null,
+  featureId?: string
 ) {
   if (!decisions || decisions.length === 0) {
     return { allocated: [], updatedBody: body };
   }
   const { nextDecisionId, writeDecisionFile } = await import("./decisions-store.mjs");
+  // FEAT-217: mirror each newly-minted decision into astramem (gated on
+  // memory.enabled, fail-silent). Read the memory config once up front.
+  const { readMemoryConfig, recordDecision } = await import("./memory-sink.mjs");
+  const memCfg = await readMemoryConfig(repoPath);
   const allocated: any[] = [];
+  const mirrorArgs: Array<Parameters<typeof recordDecision>[1]> = [];
   let updatedBody = body;
   for (const dec of decisions) {
     if (dec.id !== "DEC-TBD") continue;
@@ -485,7 +498,20 @@ async function extractDecisions(
     // Replace the first DEC-TBD occurrence in the body with the allocated id
     updatedBody = updatedBody.replace(/###\s+DEC-TBD\s*:\s*/, `### ${id}: `);
     allocated.push({ id, title: dec.title });
+    mirrorArgs.push({
+      id,
+      title: dec.title,
+      rationale: typeof dec.rationale === "string" ? dec.rationale : undefined,
+      featureId,
+      sliceId,
+      config: memCfg
+    });
   }
+  // Fire-and-forget memory mirror in PARALLEL — never blocks decision
+  // extraction and, unlike a serial await-in-loop, its wallclock is bounded by
+  // the single 2s spawn cap regardless of N decisions (PR #303 review MAJOR).
+  // recordDecision is already no-throw; .catch is defensive parity.
+  await Promise.all(mirrorArgs.map((a) => recordDecision(repoPath, a).catch(() => {})));
   return { allocated, updatedBody };
 }
 
@@ -582,6 +608,37 @@ async function captureLearnings(
     }
   } catch {
     // swallow — learnings capture is non-critical
+  }
+}
+
+// FEAT-217 follow-up: mirror "## Surprises" and "## Followups" grade bullets
+// into astramem as notes (recordNote), extending the durable-knowledge mirror
+// beyond decisions (grade-writer) and lessons (learnings.mts). Gated on
+// memory.enabled; fail-silent — a memory write must never affect the
+// grade-write contract. Unlike the lessons store there is no local dedup
+// ledger, so a writeGrade re-run may re-send these notes; memory is a
+// non-critical best-effort mirror, so occasional duplicates are acceptable.
+async function captureGradeNotes(repoPath: string, sliceId: string, body: string): Promise<void> {
+  const surprises = parseListSection(body, "Surprises");
+  const followups = parseListSection(body, "Followups");
+  if (surprises.length === 0 && followups.length === 0) return;
+  try {
+    const { readMemoryConfig, recordNote } = await import("./memory-sink.mjs");
+    const memCfg = await readMemoryConfig(repoPath);
+    if (memCfg.mode === "off") return;
+    const items: Array<{ kind: string; text: string }> = [
+      ...surprises.map((text) => ({ kind: "surprise", text })),
+      ...followups.map((text) => ({ kind: "followup", text }))
+    ];
+    // Parallel mirror — wallclock bounded by the single 2s spawn cap, not
+    // N×2s serial (PR #303 review MAJOR).
+    await Promise.all(
+      items.map(({ kind, text }) =>
+        recordNote(repoPath, { text: `[${sliceId}] ${kind}: ${text}`, config: memCfg })
+      )
+    );
+  } catch {
+    // swallow — memory mirror is non-critical
   }
 }
 

@@ -71,7 +71,7 @@ test("installLoop writes marker block, loop-control files, backlog scaffold, con
   const result = await installLoop(repo, { migrateAdhoc: false });
 
   assert.equal(result.mode, "install-loop");
-  assert.equal(result.preset, "dotnet-aspire-python");
+  assert.equal(result.preset, "dotnet-python");
 
   const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
   assert.ok(claudeMd.includes(MARKER_START));
@@ -109,7 +109,7 @@ test("installLoop writes marker block, loop-control files, backlog scaffold, con
   }
 
   const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
-  assert.equal(cfg.preset, "dotnet-aspire-python");
+  assert.equal(cfg.preset, "dotnet-python");
 });
 
 test("installLoop is idempotent: re-running does not duplicate marker block", async () => {
@@ -247,7 +247,7 @@ test("reportStatus reflects install state", async () => {
   const repo = await initGitRepo("al-status-");
   await installLoop(repo, { migrateAdhoc: false });
   const status = await reportStatus(repo);
-  assert.equal(status.preset, "dotnet-aspire-python");
+  assert.equal(status.preset, "dotnet-python");
   assert.equal(status.hasMarkerBlock, true);
   assert.equal(status.hasApprovedSlices, true);
   assert.equal(status.hasMasterPrompt, true);

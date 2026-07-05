@@ -68,6 +68,35 @@ export function extractAcceptanceCriteria(body: string): string[] {
   return results;
 }
 
+/**
+ * Refuse to scaffold a slice from a FEAT with no PM-authored acceptance
+ * criteria. Placeholder AC auto-generation was removed — the PM owns AC
+ * authoring, and a missing `## Acceptance criteria` section is a hard error,
+ * not a template-filled stub.
+ */
+export class AcceptanceCriteriaRequiredError extends Error {
+  constructor(public readonly featureId: string) {
+    super(
+      `${featureId} has no acceptance criteria — the PM must author at least one ` +
+        "testable `## Acceptance criteria` bullet before a slice can be scaffolded. " +
+        "Placeholder AC auto-generation was removed; run " +
+        `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
+    );
+    this.name = "AcceptanceCriteriaRequiredError";
+  }
+}
+
+/**
+ * Throws {@link AcceptanceCriteriaRequiredError} when `body` carries no
+ * extractable acceptance-criteria bullets. Called before the in-progress
+ * move so a refuse leaves backlog state untouched (mirrors `assertSized`).
+ */
+export function assertAcceptanceCriteria(featureId: string, body: string): void {
+  if (extractAcceptanceCriteria(body).length === 0) {
+    throw new AcceptanceCriteriaRequiredError(featureId);
+  }
+}
+
 // Walks slicesRoot recursively, returns the max numeric slice id found.
 async function maxSliceIdUnder(dir: string) {
   if (!(await pathExists(dir))) return 0;
@@ -141,14 +170,14 @@ function buildSliceContent({
     .split(/\n+/)
     .find((line) => line && !line.startsWith("#") && !line.startsWith("---"));
 
-  const derivedAcs = extractAcceptanceCriteria(featureBody);
-  const acLines =
-    derivedAcs.length > 0
-      ? derivedAcs
-      : [
-          "- [ ] AC-1: All tests pass (npm test) and linter is clean (npm run lint)",
-          "- [ ] AC-2: <replace with a concrete, testable acceptance criterion>"
-        ];
+  // No AC auto-generation: sliceFromFeature's assertAcceptanceCriteria gate
+  // guarantees the FEAT body carries real ACs before we reach here. Refuse
+  // loudly rather than fabricate placeholder ACs if a future caller bypasses
+  // the gate.
+  const acLines = extractAcceptanceCriteria(featureBody);
+  if (acLines.length === 0) {
+    throw new AcceptanceCriteriaRequiredError(featureId);
+  }
 
   const body = [
     `# ${id}: ${safeTitle}`,
@@ -300,13 +329,20 @@ export async function sliceFromFeature(
   // proposal in the multi-slice path below. InvalidProposedSlicesError
   // propagates up to the CLI handler which audit-logs it.
   const sourceContent = await fs.readFile(entry.filePath, "utf8");
-  const { frontmatter: sourceFM } = parseFrontmatter(sourceContent);
+  const { frontmatter: sourceFM, body: sourceBody } = parseFrontmatter(sourceContent);
   assertSized(featureId, sourceFM.effort_points, sourceFM.proposed_slices);
   const proposed = parseProposedSlices(
     sourceFM.proposed_slices,
     featureId,
     typeof sourceFM.effort_points === "number" ? sourceFM.effort_points : undefined
   );
+  // AC gate: refuse to scaffold when the FEAT lacks PM-authored acceptance
+  // criteria. Both the single- and multi-slice paths derive every slice's ACs
+  // from this FEAT body, so one up-front check covers both. Ordered after the
+  // structural gates (sizing, proposed_slices parse) so those errors take
+  // precedence, and checked before the in-progress move so a refuse leaves
+  // backlog state untouched.
+  assertAcceptanceCriteria(featureId, sourceBody);
 
   // Move feature to in-progress if not already.
   const movedFromState = entry.state;

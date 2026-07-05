@@ -62,6 +62,67 @@ test("logLearning creates the parent directory when absent", async () => {
   assert.ok(stat.isFile());
 });
 
+// FEAT-217: logLearning mirrors the learning into astramem (type=lesson) when
+// memory is enabled. Capturing fake CLI; POSIX-only argv assertion.
+test("logLearning mirrors the learning into astramem when memory enabled", async () => {
+  const { _resetCliCache } = await import("../scripts/lib/memory-bridge.mjs");
+  _resetCliCache();
+  const repo = await tmpRepo("learnings-mem-");
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(
+    path.join(repo, ".claude/loop.json"),
+    JSON.stringify({ productName: "runner", memory: { enabled: "on" } })
+  );
+
+  const cliRoot = await tmpRepo("learnings-cli-");
+  const binDir = path.join(cliRoot, "bin");
+  await fs.mkdir(binDir, { recursive: true });
+  const argsFile = path.join(cliRoot, "captured.jsonl");
+  const isWin = process.platform === "win32";
+  if (isWin) {
+    await fs.writeFile(path.join(binDir, "astramem.cmd"), "@echo off\n");
+  } else {
+    await fs.writeFile(
+      path.join(binDir, "astramem"),
+      `#!/bin/sh\nnode -e "require('fs').appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2))+'\\n')" "${argsFile}" "$@"\n`
+    );
+    await fs.chmod(path.join(binDir, "astramem"), 0o755);
+  }
+  const origRoot = process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
+  process.env.CLAUDE_PLUGIN_ROOT_MEMORY = cliRoot;
+
+  try {
+    await logLearning(repo, {
+      key: "resolver-over-env",
+      insight: "prefer resolveTokenEnv over shell-global",
+      sliceId: "SLICE-140"
+    });
+    if (isWin) return;
+    await new Promise((r) => setTimeout(r, 300));
+    let calls = [];
+    try {
+      calls = (await fs.readFile(argsFile, "utf8"))
+        .split("\n")
+        .filter((l) => l.trim())
+        .map((l) => JSON.parse(l));
+    } catch {
+      return;
+    }
+    const rememberCalls = calls.filter((argv) => argv[0] === "remember");
+    assert.ok(rememberCalls.length >= 1, "expected a remember spawn for the learning");
+    const argv = rememberCalls[0];
+    assert.equal(argv[argv.indexOf("--type") + 1], "lesson");
+    const contentArg = argv[argv.indexOf("--content") + 1];
+    assert.match(contentArg, /resolver-over-env/);
+    assert.match(contentArg, /\[SLICE-140\]/);
+  } finally {
+    if (origRoot !== undefined) process.env.CLAUDE_PLUGIN_ROOT_MEMORY = origRoot;
+    else delete process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
+    _resetCliCache();
+    await fs.rm(cliRoot, { recursive: true, force: true });
+  }
+});
+
 test("logLearning throws on missing key", async () => {
   const repo = await tmpRepo("learnings-err-key-");
   await assert.rejects(

@@ -425,10 +425,11 @@ async function resolveValidationGate(
   repoPath: string,
   sliceId: string,
   sliceFm: Record<string, any>,
-  skipValidationCheck: string | null
+  skipValidationCheck: string | null,
+  config: Record<string, any> | null
 ): Promise<{ validationGate: any; validationSkippedBadge: any }> {
   if (!skipValidationCheck) {
-    const validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm });
+    const validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm, config });
     return { validationGate, validationSkippedBadge: null };
   }
   const reason = String(skipValidationCheck).trim();
@@ -625,7 +626,8 @@ export async function completeSlice(
     repoPath,
     sliceId,
     sliceFm,
-    skipValidationCheck
+    skipValidationCheck,
+    resolved
   );
 
   // P1.4: verdict-aware review gate (SLICE-174 fix) — a rejected review holds

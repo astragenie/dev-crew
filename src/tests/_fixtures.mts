@@ -38,7 +38,38 @@ export const BACKLOG_STATES = {
 } as const;
 
 // Preset name used across resolver/preset tests.
-export const PRESET_DOTNET_ASPIRE = "dotnet-aspire-python";
+export const PRESET_DOTNET = "dotnet-python";
+
+// A FEAT body with a `## Acceptance criteria` section for seeding test FEATs.
+// `addFeature` prepends the `# FEAT-NN: <title>` heading only when the body
+// does NOT start with `#`, so the body opens with a plain description line
+// (not the `##` AC heading) — otherwise the title heading would be skipped.
+// Passing this as the `body` option yields a FEAT that satisfies the
+// acceptance-criteria gate in `sliceFromFeature` (placeholder AC
+// auto-generation was removed — AC-less FEATs now hard-error).
+export const AC_SECTION_BODY = [
+  "Seeded test feature body.",
+  "",
+  "## Acceptance criteria",
+  "",
+  "- [ ] AC-1: seeded acceptance criterion for test scaffolding",
+  "- [ ] AC-2: second seeded acceptance criterion",
+  ""
+].join("\n");
+
+// A FEAT body whose single AC is an unfilled placeholder. It extracts as one
+// AC (so `sliceFromFeature` scaffolds a slice) but the resulting slice trips
+// the `startSlice` AC linter's placeholder detection — used to exercise that
+// gate now that the scaffolder no longer fabricates placeholder ACs. Opens
+// with a plain line so `addFeature` still prepends the title heading.
+export const AC_PLACEHOLDER_BODY = [
+  "Seeded test feature body.",
+  "",
+  "## Acceptance criteria",
+  "",
+  "- [ ] AC-1: <replace with a concrete, testable acceptance criterion>",
+  ""
+].join("\n");
 
 /** Create an isolated tmp repo with a `.claude/` subdir. Returns its path. */
 export async function makeTmpRepo(prefix = "loop-test-"): Promise<string> {

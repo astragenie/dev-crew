@@ -100,7 +100,7 @@ test("runCostSetup: migrates all legacy flat keys → nested + drops them", asyn
     await fs.writeFile(
       path.join(repo, ".claude", "loop.json"),
       JSON.stringify({
-        preset: "dotnet-aspire-python",
+        preset: "dotnet-python",
         loop: {
           backlogPath: ".claude/artifacts/loop/backlog",
           costSliceCeiling: 300,
@@ -149,7 +149,7 @@ test("runCostSetup: migrates all legacy flat keys → nested + drops them", asyn
     assert.deepEqual(cfg.loop.cost.regression.projectAliases, ["runner-hardening"]);
     // Non-cost loop keys preserved.
     assert.equal(cfg.loop.backlogPath, ".claude/artifacts/loop/backlog");
-    assert.equal(cfg.preset, "dotnet-aspire-python");
+    assert.equal(cfg.preset, "dotnet-python");
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }

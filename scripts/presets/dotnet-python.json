@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "presetName": "python-only",
-  "description": "Pure Python project (LangGraph, FastAPI, or library). No C# / no frontend / no Aspire. Phase gate runs pytest only.",
-  "projectType": "service",
-  "split": false,
-  "frontend": { "framework": "none", "language": "none" },
-  "backend": { "framework": "python", "language": "python", "storage": "postgres" },
+  "presetName": "dotnet-python",
+  "description": "C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra. Default stack for AstraGenie-style monorepos.",
+  "projectType": "saas",
+  "split": true,
+  "frontend": { "framework": "react", "language": "typescript" },
+  "backend": { "framework": "dotnet", "language": "csharp", "storage": "postgres" },
   "contract": "openapi",
-  "deployment": "docker",
+  "deployment": "aspire",
   "loop": {
     "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
     "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
@@ -17,12 +17,15 @@
     "gradesRoot": ".claude/artifacts/loop/grades",
     "decisionsRoot": ".claude/artifacts/loop/decisions",
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "maxIterations": 25,
     "marathonMode": true
   },
   "stack": {
-    "build": [],
+    "build": [
+      { "cmd": "dotnet", "args": ["build", "-c", "Release"] }
+    ],
     "test": [
-      { "cmd": "pytest", "args": [] }
+      { "cmd": "dotnet", "args": ["test", "-c", "Release", "--nologo"] }
     ],
     "frontendBuild": null,
     "infraPlan": null,
@@ -31,12 +34,17 @@
   },
   "reviewers": { "ladder": ["A", "B"] },
   "mandatoryDocs": [
-    "README.md"
+    "docs/architecture/platform-overview.md"
   ],
   "productName": "Untitled product",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- Python 3 (LangGraph / FastAPI / library depending on the project)\n- pytest for tests\n- pip-managed dependencies",
-  "skills": ["python-pro", "backend-advisory", "database-architecture", "contract-codegen"],
+  "stackDescription": "- C# .NET (Aspire local orchestration when configured)\n- Python agents (LangGraph or FastAPI) when configured\n- Terraform for infrastructure when configured",
+  "fe": {
+    "skills": ["react-engineering", "typescript-pro", "frontend-advisory", "contract-codegen", "a11y-advisory"]
+  },
+  "be": {
+    "skills": ["csharp-pro", "python-pro", "backend-advisory", "database-architecture", "contract-codegen"]
+  },
   "roles": {
     "pm": {
       "skills": ["superpowers:verification-before-completion", "loop:loop-discipline"]

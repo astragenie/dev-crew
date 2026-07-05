@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "presetName": "dotnet-vue",
+  "presetName": "dotnet-typescript-vue",
   "description": "C# .NET backend + Vue 3 / Vite frontend + .NET Aspire orchestration. Fits LoopBrain-style projects.",
   "projectType": "saas",
   "split": true,
