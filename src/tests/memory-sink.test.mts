@@ -11,6 +11,7 @@ import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
 import {
   readMemoryConfig,
   recordDecision,
+  recordFailure,
   recordLesson,
   recordMemory,
   recordNote
@@ -195,6 +196,52 @@ describe("recordMemory spawn (capturing fake CLI)", () => {
     expect(content).toContain("tier hardening");
     // FEAT/SLICE traceability embedded in content.
     expect(content).toContain("[FEAT-216/SLICE-140]");
+  });
+
+  test("agentType is passed as --agent (FEAT-219 / #309)", async () => {
+    repoDir = await writeRepo({ enabled: "on", project: "loop" });
+    await installCapturingCli();
+    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+
+    await recordDecision(repoDir, {
+      id: "DEC-070",
+      title: "x",
+      agentType: "crew:reviewer"
+    });
+    if (isWin) return;
+    await new Promise<void>((r) => setTimeout(r, 250));
+    const argv = (await readCaptured())[0];
+    expect(argv).toContain("--agent");
+    expect(argv[argv.indexOf("--agent") + 1]).toBe("crew:reviewer");
+  });
+
+  test("no --agent flag when agentType is absent", async () => {
+    repoDir = await writeRepo({ enabled: "on", project: "loop" });
+    await installCapturingCli();
+    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+
+    await recordNote(repoDir, { text: "untagged note" });
+    if (isWin) return;
+    await new Promise<void>((r) => setTimeout(r, 250));
+    expect((await readCaptured())[0]).not.toContain("--agent");
+  });
+
+  test("recordFailure uses type=failure and carries agent (AC-3)", async () => {
+    repoDir = await writeRepo({ enabled: "on", project: "loop" });
+    await installCapturingCli();
+    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+
+    const res = await recordFailure(repoDir, {
+      summary: "review rejected: missing null check",
+      sliceId: "SLICE-01",
+      agentType: "crew:reviewer"
+    });
+    expect(res.recorded).toBe(true);
+    if (isWin) return;
+    await new Promise<void>((r) => setTimeout(r, 250));
+    const argv = (await readCaptured())[0];
+    expect(argv[argv.indexOf("--type") + 1]).toBe("failure");
+    expect(argv[argv.indexOf("--agent") + 1]).toBe("crew:reviewer");
   });
 
   test("AC-4: content is sanitized (control chars stripped, no forged newline)", async () => {

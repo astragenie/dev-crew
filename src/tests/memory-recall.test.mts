@@ -303,3 +303,37 @@ test("recallPrior omits --project when no project supplied", async () => {
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+// FEAT-219 / #309: agent-scoped recall — --agent threaded like --project.
+test("recallPrior passes opts.agent as --agent, omits when absent", async () => {
+  if (process.platform === "win32") return;
+  const { mkdtemp, writeFile, chmod, rm, mkdir, readFile } = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "recall-agent-"));
+  const binDir = path.join(tmpDir, "bin");
+  await mkdir(binDir, { recursive: true });
+  const fakeCli = path.join(binDir, "astramem");
+  const argsFile = path.join(tmpDir, "argv.txt");
+  await writeFile(fakeCli, `#!/bin/sh\nprintf '%s\n' "$@" > "${argsFile}"\necho "[]"\n`);
+  await chmod(fakeCli, 0o755);
+
+  const orig = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
+  try {
+    await recallPrior({ featId: "F", sliceId: "S", agent: "crew:reviewer" });
+    let argv = (await readFile(argsFile, "utf8")).split("\n");
+    const aIdx = argv.indexOf("--agent");
+    assert.ok(aIdx >= 0, "expected --agent to be passed");
+    assert.equal(argv[aIdx + 1], "crew:reviewer");
+
+    await recallPrior({ featId: "F", sliceId: "S" }); // no agent
+    argv = (await readFile(argsFile, "utf8")).split("\n");
+    assert.ok(!argv.includes("--agent"), "expected --agent omitted when absent");
+  } finally {
+    if (orig !== undefined) process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;
+    else delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
