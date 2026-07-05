@@ -148,7 +148,7 @@ test("resolveCli skips the PATH probe when ASTRAMEM_DISABLE_PATH_PROBE is set, e
 });
 
 test("resolveCli finds a .cmd env-pinned CLI on Windows (extensionless-only lookup previously fell through to PATH)", async () => {
-  const { mkdtemp, writeFile, rm, mkdir } = await import("node:fs/promises");
+  const { mkdtemp, writeFile, chmod, rm, mkdir } = await import("node:fs/promises");
   const os = await import("node:os");
   const path = await import("node:path");
 
@@ -160,11 +160,12 @@ test("resolveCli finds a .cmd env-pinned CLI on Windows (extensionless-only look
   // no extensionless `astramem` file. Pre-fix, resolveCli()'s env-override
   // check only looked for the bare name and silently fell through to the
   // PATH probe — exactly the Windows leak vector this fix closes.
-  const fakeCli = path.join(binDir, process.platform === "win32" ? "astramem.cmd" : "astramem");
-  await writeFile(
-    fakeCli,
-    process.platform === "win32" ? "@echo off\r\nexit 0\r\n" : "#!/bin/sh\nexit 0\n"
-  );
+  const isWin = process.platform === "win32";
+  const fakeCli = path.join(binDir, isWin ? "astramem.cmd" : "astramem");
+  await writeFile(fakeCli, isWin ? "@echo off\r\nexit 0\r\n" : "#!/bin/sh\nexit 0\n");
+  // On POSIX the env-override lookup uses X_OK — the fake must be executable or
+  // resolveCli falls through to PATH and the assertion below fails (Linux CI).
+  if (!isWin) await chmod(fakeCli, 0o755);
 
   const origEnvOverride = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
   process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
