@@ -35,7 +35,9 @@ shipped under the name `loop`.
   `productName`. Fire-and-forget, 2s-capped, fail-silent spawn that never throws
   and never blocks the close / grade-write / learn contract. Wired at
   `grade-writer.mts` (each newly-minted `DEC-NNN`) and `learnings.mts` (each
-  lesson), both double-guarded.
+  lesson), both double-guarded. `grade-writer.mts` also mirrors each
+  `## Surprises` / `## Followups` grade bullet as a `note` (`recordNote`), so
+  durable slice knowledge beyond decisions + lessons reaches memory.
 - **Ingest env-tier hardening (FEAT-216, DEC-064).** The Path-2 direct sink
   (`slice-linker/astrarunner-ingest.mts`) now resolves the bearer token tier via
   a dedicated `resolveTokenEnv`: a committed `loop.ingest.url` without

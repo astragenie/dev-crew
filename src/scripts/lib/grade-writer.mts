@@ -333,6 +333,11 @@ export async function writeGrade(
   // write must never affect the grade-write contract.
   await captureLearnings(repoPath, sliceId, updatedBody, config);
 
+  // FEAT-217 follow-up: mirror "## Surprises" and "## Followups" bullets into
+  // astramem as notes so durable slice knowledge beyond decisions + lessons
+  // reaches memory. Fail-silent; gated on memory.enabled.
+  await captureGradeNotes(repoPath, sliceId, updatedBody);
+
   const scoresAvg = averageOf(scores);
   if (scoresAvg !== null) {
     const { recordGradeScore } = await import("./grade-trend.mjs");
@@ -604,6 +609,33 @@ async function captureLearnings(
     }
   } catch {
     // swallow — learnings capture is non-critical
+  }
+}
+
+// FEAT-217 follow-up: mirror "## Surprises" and "## Followups" grade bullets
+// into astramem as notes (recordNote), extending the durable-knowledge mirror
+// beyond decisions (grade-writer) and lessons (learnings.mts). Gated on
+// memory.enabled; fail-silent — a memory write must never affect the
+// grade-write contract. Unlike the lessons store there is no local dedup
+// ledger, so a writeGrade re-run may re-send these notes; memory is a
+// non-critical best-effort mirror, so occasional duplicates are acceptable.
+async function captureGradeNotes(repoPath: string, sliceId: string, body: string): Promise<void> {
+  const surprises = parseListSection(body, "Surprises");
+  const followups = parseListSection(body, "Followups");
+  if (surprises.length === 0 && followups.length === 0) return;
+  try {
+    const { readMemoryConfig, recordNote } = await import("./memory-sink.mjs");
+    const memCfg = await readMemoryConfig(repoPath);
+    if (memCfg.mode === "off") return;
+    const items: Array<{ kind: string; text: string }> = [
+      ...surprises.map((text) => ({ kind: "surprise", text })),
+      ...followups.map((text) => ({ kind: "followup", text }))
+    ];
+    for (const { kind, text } of items) {
+      await recordNote(repoPath, { text: `[${sliceId}] ${kind}: ${text}`, config: memCfg });
+    }
+  } catch {
+    // swallow — memory mirror is non-critical
   }
 }
 
