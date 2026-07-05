@@ -1376,6 +1376,9 @@ const SLICE_HANDLERS = {
     const { DecompositionRequiredError, InvalidProposedSlicesError } = await import(
       "./lib/proposed-slices.mjs"
     );
+    const { AcceptanceCriteriaRequiredError } = await import(
+      "./lib/slice-linker/feature-lifecycle.mjs"
+    );
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
     let out;
     try {
@@ -1385,7 +1388,11 @@ const SLICE_HANDLERS = {
         config: opts.config
       });
     } catch (err) {
-      if (err instanceof DecompositionRequiredError || err instanceof InvalidProposedSlicesError) {
+      if (
+        err instanceof DecompositionRequiredError ||
+        err instanceof InvalidProposedSlicesError ||
+        err instanceof AcceptanceCriteriaRequiredError
+      ) {
         await appendAuditLog(repoPath, {
           timestamp: new Date().toISOString(),
           parentCommand: "slice from-feature",

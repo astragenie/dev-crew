@@ -240,21 +240,33 @@ gates CI.
 
 <!-- clause: reviewer-ladder-presets -->
 
-`.claude/loop.json` declares `reviewers.ladder: ["A", "B"]` (plus
-`strictParallel` and `serialTimingThresholdMs`). The ladder shape is
-fixed, not preset-selectable, at the implementation level:
-`src/scripts/lib/post-builder-fanout.mts` emits the single
-parallel-dispatch payload — Reviewer A (correctness + AC coverage),
-Reviewer B (production-readiness, observability, security), plus the
-validator — and `src/scripts/lib/reviewer-timing.mts` (consumed by
-`src/scripts/lib/grade-telemetry.mts` /
+`.claude/loop.json` declares `reviewers.ladder` (plus `strictParallel`
+and `serialTimingThresholdMs`). The ladder is **config-driven**:
+`src/scripts/lib/post-builder-fanout.mts` reads
+`config.reviewers.ladder` (an ordered subset of `["A", "B"]`) and emits
+one parallel-dispatch payload with the configured reviewer(s) — **no
+validator** (see below). `src/scripts/lib/reviewer-timing.mts` (consumed
+by `src/scripts/lib/grade-telemetry.mts` /
 `src/scripts/lib/slice-linker/complete-slice.mts`) detects
 serial-vs-parallel execution against `serialTimingThresholdMs`
 (default 90s) for telemetry.
 
-- **Default (`["A", "B"]`)** — the only ladder shape implemented today.
-  Reviewer A covers correctness + AC coverage; Reviewer B covers
-  production-readiness, observability, security.
+- **`["A", "B"]`** — two reviewers. Reviewer A covers correctness + AC
+  coverage; Reviewer B covers production-readiness, observability,
+  security.
+- **`["A"]`** (this repo's current setting) — a single reviewer
+  (Reviewer A) for a lighter post-builder gate.
+- **`["B"]`** — Reviewer B only.
+- An absent / empty / all-invalid ladder falls back to the two-reviewer
+  default so the review gate is never silently dropped.
+
+**No post-builder validator.** Behavior/test validation is delegated to
+the CI test gate. The close-time validation gate is satisfied by the
+reviewer's approval badge when `loop.validation.satisfiedByReview: true`
+(this repo's setting) — see `deriveValidationGate` in
+`src/scripts/lib/validation-gate.mts`. Off by default; other repos keep
+independent validation (artifact / workflow-state badge / explicit
+`requires_validation: false` waiver).
 
 A `multidim` three-dimension preset (FEAT-079 / SLICE-82: correctness /
 test-coverage / conventions) was built for that one slice but left no

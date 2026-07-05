@@ -1,6 +1,9 @@
 {
   "preset": "typescript-plugin-dev",
   "schemaVersion": 1,
+  "memory": {
+    "enabled": "auto"
+  },
   "projectType": "claude-plugin",
   "split": false,
   "frontend": {
@@ -100,6 +103,9 @@
       "artifactsRoot": ".claude/artifacts/loop/waves"
     },
     "marathonCheckpointEvery": 4,
+    "validation": {
+      "satisfiedByReview": true
+    },
     "perfBaseline": {
       "medianWallClockSeconds": 1200,
       "avgGrade": 0.835,
@@ -143,8 +149,7 @@
   },
   "reviewers": {
     "ladder": [
-      "A",
-      "B"
+      "A"
     ],
     "strictParallel": true,
     "serialTimingThresholdMs": 90000

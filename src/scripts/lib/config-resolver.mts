@@ -99,7 +99,7 @@ function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
 
 export async function resolveConfig(repoPath: string, options: Record<string, unknown> = {}) {
   const userConfig = await readConfigFile(repoPath);
-  const presetName = options.preset || userConfig?.preset || "dotnet-aspire-python";
+  const presetName = options.preset || userConfig?.preset || "dotnet-python";
   const preset = await loadPreset(presetName);
 
   const merged = deepMerge(preset, userConfig || {});

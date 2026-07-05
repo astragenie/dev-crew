@@ -19,6 +19,7 @@ import { addFeature, updateFeatureFrontmatter } from "../scripts/lib/backlog-wri
 import { deriveReviewGate } from "../scripts/lib/review-gate.mjs";
 import { deriveValidationGate } from "../scripts/lib/validation-gate.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -26,7 +27,7 @@ async function tmpRepo(prefix: string): Promise<string> {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -40,7 +41,7 @@ async function tmpRepo(prefix: string): Promise<string> {
 }
 
 async function setupSlice(repo: string): Promise<{ sliceId: string; featureId: string }> {
-  const feat = await addFeature(repo, { title: "Test feature" });
+  const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, { autonomous_safe: true });
   const result = await sliceFromFeature(repo, feat.id);
   const slicePath = result.slice.path;

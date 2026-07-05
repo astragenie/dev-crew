@@ -39,7 +39,7 @@ async function writeConfig(repo: string, stack: Record<string, any>) {
   await fs.writeFile(
     path.join(dir, "loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       stack: {
         build: null,
         test: null,

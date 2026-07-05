@@ -4,7 +4,54 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [Unreleased] — memory sink + ingest env-tier hardening + preset roster refresh
 
+### Breaking
+
+- **Placeholder AC auto-generation removed.** `sliceFromFeature` no longer
+  fabricates template acceptance criteria (`AC-1: All tests pass`,
+  `AC-2: <replace with…>`) when a FEAT has no `## Acceptance criteria` section.
+  It now throws `AcceptanceCriteriaRequiredError` — the PM owns AC authoring,
+  and a missing/empty AC section is a hard error, checked before the
+  in-progress move so a refuse leaves backlog state untouched. Ordered after
+  the sizing / proposed_slices structural gates. Re-run
+  `/runner:triage --deep <id>` or `/runner:pm-review <id>` to draft ACs. The
+  `startSlice` AC linter (placeholder detection) is unchanged and still runs.
+
+### Changed
+
+- **Preset renames**: `dotnet-aspire-python` → `dotnet-python` (content
+  unchanged; also the resolver default in `config-resolver.mts`),
+  `dotnet-vue` → `dotnet-typescript-vue`. Repos pinning the old names in
+  `.claude/loop.json` must update `preset:` — `resolveConfig` throws
+  `Unknown preset` otherwise.
+
+### Added
+
+- **Memory sink (FEAT-217, DEC-065).** New opt-in `src/scripts/lib/memory-sink.mts`
+  mirrors durable knowledge — decisions and lessons — into astramem via the
+  `astramem remember` CLI. Gated on `.claude/loop.json` `memory.enabled`
+  (absent → OFF), cortex project derived from `memory.project` else the repo's
+  `productName`. Fire-and-forget, 2s-capped, fail-silent spawn that never throws
+  and never blocks the close / grade-write / learn contract. Wired at
+  `grade-writer.mts` (each newly-minted `DEC-NNN`) and `learnings.mts` (each
+  lesson), both double-guarded. `grade-writer.mts` also mirrors each
+  `## Surprises` / `## Followups` grade bullet as a `note` (`recordNote`), so
+  durable slice knowledge beyond decisions + lessons reaches memory.
+- **Ingest env-tier hardening (FEAT-216, DEC-064).** The Path-2 direct sink
+  (`slice-linker/astrarunner-ingest.mts`) now resolves the bearer token tier via
+  a dedicated `resolveTokenEnv`: a committed `loop.ingest.url` without
+  `loop.ingest.env` no longer inherits the shell-global `ASTRARUNNER_ENV`, so a
+  wrong-tier bearer can never be paired with a committed URL. Adds a
+  `LOOP_DEBUG`-gated, non-secret skip signal to stderr (reason + appId only,
+  never a token) for no-url / no-appId / no-token cases.
+- **`typescript-service` preset** — TypeScript Node service / daemon
+  (Fastify + better-sqlite3 / sqlite-vec, `tsc` build, Vitest, JSON-schema
+  ajv contracts, OS-service deployment). Drives `astramemory-local`.
+
+### Removed
+
+- **`python-only` preset** — pure-Python stack dropped; no consumer.
 
 ## [0.61.0] — 2026-07-04 — P1 enforcement hardening
 
@@ -160,7 +207,7 @@ checks tested artifact *presence*, never *decision content*).
   installed repos are not retroactively cleaned up). This is a scoped
   removal of the current shipped hook implementation, not a rewrite of the
   historical FEAT-039 changelog entry below documenting when it shipped.
->>>>>>> bc27c86c (feat(p1): enforcement hardening — flags, allowlist fix, close-refusal, learnings, snapshot regen)
+
 ## [0.60.0] — 2026-07-02 — crew 0.47.0 floor (FEAT-176) + crew CLI runtime fix
 
 **Compat**: `MIN_CREW_VERSION` raised `0.31.1` → `0.47.0` (FEAT-176 /

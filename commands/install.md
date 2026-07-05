@@ -29,7 +29,7 @@ Workflow:
 3. Run the installer:
    ```bash
    set -euo pipefail
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" install --repo "$PWD" --preset dotnet-aspire-python
+   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" install --repo "$PWD" --preset dotnet-python
    ```
    Omit `--preset` to use whatever preset is already recorded in `.claude/loop.json`, or the default if no config exists yet.
 4. Report which files were written and which preset is active.

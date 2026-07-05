@@ -57,7 +57,7 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 In a repo with `crew` already installed:
 
 ```bash
-/runner:install --preset dotnet-aspire-python
+/runner:install --preset dotnet-python
 ```
 
 Then edit `.claude/loop.json` to set `productName`,
@@ -81,7 +81,7 @@ Once configured:
 
 ```jsonc
 {
-  "preset": "dotnet-aspire-python",
+  "preset": "dotnet-python",
   "loop": {
     "aiLoopRoot": "docs/architecture/ai-loop",
     "backlogPath": "docs/architecture/ai-loop/backlog",
@@ -113,9 +113,14 @@ is auto-skipped if `healthchecks` is empty (otherwise it would hang).
 
 ## Built-in presets
 
-| Preset                 | Stack                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------- |
-| `dotnet-aspire-python` | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra |
+| Preset                   | Stack                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `dotnet-python`          | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra (default; split FE React + BE .NET) |
+| `dotnet-only`            | C# .NET backend only — no frontend, Aspire, or Python sidecars                    |
+| `dotnet-react`           | C# .NET backend + React / Vite frontend                                          |
+| `dotnet-typescript-vue`  | C# .NET backend + Vue 3 / Vite (TypeScript) frontend + .NET Aspire               |
+| `typescript-plugin-dev`  | TypeScript Claude Code plugin repos — Bun test + manifest validators             |
+| `typescript-service`     | TypeScript Node service / daemon — Fastify + better-sqlite3 / sqlite-vec, `tsc`, Vitest, JSON-schema contracts |
 
 More presets ship as new repo types surface. See `scripts/presets/` to author your own.
 
