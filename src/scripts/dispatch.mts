@@ -8,9 +8,15 @@ import {
   finalizeDispatch,
   augmentPrompt,
   type DispatchPlan,
+  type DispatchResult,
   type PreparedDispatch
 } from "./lib/hierarchical-dispatch.mjs";
-import { writeDispatchMetrics, readDispatchMetrics } from "./lib/dispatch-metrics.mjs";
+import {
+  writeDispatchMetrics,
+  readDispatchMetrics,
+  formatPartialChildrenNote
+} from "./lib/dispatch-metrics.mjs";
+import { aggregateDispatchCost } from "./lib/dispatch-cost-aggregate.mjs";
 
 type ParsedArgs = {
   subcommand: "prepare" | "finalize" | "metrics" | "prune" | "help";
@@ -157,14 +163,11 @@ function cmdPrepare(args: ParsedArgs): number {
   return 0;
 }
 
-async function cmdFinalize(args: ParsedArgs): Promise<number> {
-  if (!args.runId || !args.parentBranch || !args.planPath) {
-    process.stderr.write("--run-id, --parent-branch, --plan are required\n");
-    return 1;
-  }
-  const repo = args.repo ?? process.cwd();
-  const plans = readPlanFile(args.planPath);
-  const wtLog = path.join(repo, ".claude/artifacts/loop/dispatch", args.runId, "worktrees.jsonl");
+function loadWorktreeLog(
+  repo: string,
+  runId: string
+): { branchById: Record<string, string>; cwdById: Record<string, string> } {
+  const wtLog = path.join(repo, ".claude/artifacts/loop/dispatch", runId, "worktrees.jsonl");
   const branchById: Record<string, string> = {};
   const cwdById: Record<string, string> = {};
   for (const line of fs.readFileSync(wtLog, "utf8").trim().split("\n")) {
@@ -172,6 +175,80 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
     branchById[e.childId] = e.branch;
     cwdById[e.childId] = e.path;
   }
+  return { branchById, cwdById };
+}
+
+// FEAT-220: real token/cost aggregation, scoped to this run's window.
+// aggregateDispatchCost() never throws — it degrades to a zeroed,
+// fully-partial aggregate on any read/parse failure so finalize can never
+// fail because of telemetry.
+async function writeFinalizeMetrics(
+  repo: string,
+  runId: string,
+  plans: DispatchPlan[],
+  prepared: PreparedDispatch,
+  results: DispatchResult[]
+): Promise<void> {
+  const completedAt = new Date().toISOString();
+  const allFailedOrBlocked = results.every((r) => r.status === "FAILED" || r.status === "BLOCKED");
+  const startTimestamps = Object.values(prepared.startTimes);
+  const startedAt = new Date(
+    startTimestamps.length > 0 ? Math.min(...startTimestamps) : Date.now()
+  ).toISOString();
+  const costAggregate = await aggregateDispatchCost(plans, {
+    repoRoot: repo,
+    startedAt,
+    completedAt
+  });
+  const status =
+    allFailedOrBlocked || costAggregate.partialChildren.length > 0 ? "partial" : "complete";
+  const model =
+    costAggregate.model !== "unknown"
+      ? costAggregate.model
+      : (process.env["CLAUDE_MODEL"] ?? "unknown");
+  writeDispatchMetrics(repo, runId, {
+    runId,
+    startedAt,
+    completedAt,
+    status,
+    totalTokens: costAggregate.totalTokens,
+    promptTokens: costAggregate.promptTokens,
+    completionTokens: costAggregate.completionTokens,
+    estimatedCostUsd: costAggregate.estimatedCostUsd,
+    model,
+    childCount: plans.length,
+    partialChildren: costAggregate.partialChildren
+  });
+}
+
+async function emitPrResults(results: DispatchResult[], repo: string): Promise<void> {
+  const { dispatchFinalizePr } = await import("./lib/dispatch-pr-mode.mjs");
+  const children = results.map((r) => ({
+    branch: r.branch,
+    worktreePath: r.worktreePath,
+    status: (r.status === "DONE" ? "DONE" : r.status === "FAILED" ? "FAILED" : "SKIPPED") as
+      | "DONE"
+      | "FAILED"
+      | "SKIPPED"
+  }));
+  const prResults = await dispatchFinalizePr(children, repo);
+  for (const pr of prResults) {
+    if (pr.prUrl) {
+      process.stdout.write(`PR created: ${pr.branch} → ${pr.prUrl}\n`);
+    } else {
+      process.stderr.write(`PR failed for ${pr.branch}: ${pr.error ?? "unknown error"}\n`);
+    }
+  }
+}
+
+async function cmdFinalize(args: ParsedArgs): Promise<number> {
+  if (!args.runId || !args.parentBranch || !args.planPath) {
+    process.stderr.write("--run-id, --parent-branch, --plan are required\n");
+    return 1;
+  }
+  const repo = args.repo ?? process.cwd();
+  const plans = readPlanFile(args.planPath);
+  const { branchById, cwdById } = loadWorktreeLog(repo, args.runId);
   const prepared: PreparedDispatch = {
     runId: args.runId,
     batch: [],
@@ -183,43 +260,10 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
   const summary = path.join(repo, ".claude/artifacts/loop/dispatch", args.runId, "summary.md");
   process.stdout.write(`Summary: ${summary}\n`);
 
-  const completedAt = new Date().toISOString();
-  const allFailedOrBlocked = results.every((r) => r.status === "FAILED" || r.status === "BLOCKED");
-  const startTimestamps = Object.values(prepared.startTimes);
-  const startedAt = new Date(
-    startTimestamps.length > 0 ? Math.min(...startTimestamps) : Date.now()
-  ).toISOString();
-  writeDispatchMetrics(repo, args.runId, {
-    runId: args.runId,
-    startedAt,
-    completedAt,
-    status: allFailedOrBlocked ? "partial" : "complete",
-    totalTokens: 0,
-    promptTokens: 0,
-    completionTokens: 0,
-    estimatedCostUsd: 0,
-    model: process.env["CLAUDE_MODEL"] ?? "unknown",
-    childCount: plans.length
-  });
+  await writeFinalizeMetrics(repo, args.runId, plans, prepared, results);
 
   if (args.pr) {
-    const { dispatchFinalizePr } = await import("./lib/dispatch-pr-mode.mjs");
-    const children = results.map((r) => ({
-      branch: r.branch,
-      worktreePath: r.worktreePath,
-      status: (r.status === "DONE" ? "DONE" : r.status === "FAILED" ? "FAILED" : "SKIPPED") as
-        | "DONE"
-        | "FAILED"
-        | "SKIPPED"
-    }));
-    const prResults = await dispatchFinalizePr(children, repo);
-    for (const pr of prResults) {
-      if (pr.prUrl) {
-        process.stdout.write(`PR created: ${pr.branch} → ${pr.prUrl}\n`);
-      } else {
-        process.stderr.write(`PR failed for ${pr.branch}: ${pr.error ?? "unknown error"}\n`);
-      }
-    }
+    await emitPrResults(results, repo);
   }
 
   const allFailed = results.every((r) => r.status === "FAILED" || r.status === "BLOCKED");
@@ -238,7 +282,9 @@ function cmdMetrics(args: ParsedArgs): number {
     process.stderr.write(`[dispatch-metrics] not found: ${args.runId}\n`);
     return 1;
   }
-  process.stdout.write(JSON.stringify(metrics, null, 2) + "\n");
+  process.stdout.write(`${JSON.stringify(metrics, null, 2)}\n`);
+  const note = formatPartialChildrenNote(metrics);
+  if (note) process.stdout.write(`${note}\n`);
   return 0;
 }
 

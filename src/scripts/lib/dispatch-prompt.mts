@@ -43,7 +43,7 @@ export function augmentPrompt(prompt: string, args: AugmentArgs): string {
     `  "childResults": [],  // populate if you spawn grandchildren`,
     `  "artifactPath": "(optional path to your run artifact)",`,
     `  "error": "(only set on FAILED/BLOCKED)",`,
-    `  "costUsd": null  // FEAT-165 populates; leave null in SLICE-1`,
+    `  "costUsd": null  // parent derives this from events.jsonl at finalize (FEAT-220); leave null here`,
     "}",
     "```",
     "",
