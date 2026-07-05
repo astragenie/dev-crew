@@ -89,9 +89,11 @@ Returns:
 }
 ```
 
-Reviewer workflow integration: the slice review ladder prompts include a step to
-surface prior decisions relevant to changed files via `decisions relevant` before
-rendering a verdict.
+Reviewer workflow integration: none today. `decisions relevant` is a manual
+CLI lookup only — `findRelevantDecisions` is not called from the reviewer
+fanout (`post-builder-fanout.mts`), so reviewer/validator prompts carry no
+decision context automatically. Run this subcommand by hand before a review
+if you want prior-decision context for the changed files.
 
 ## supersede
 
