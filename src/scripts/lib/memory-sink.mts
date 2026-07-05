@@ -25,7 +25,11 @@ import path from "node:path";
 
 import { resolveCli } from "./memory-bridge.mjs";
 
-export type MemoryKind = "decision" | "lesson" | "note";
+export type MemoryKind = "decision" | "lesson" | "note" | "failure";
+
+/** Agent role that produced a memory (astramem --agent, FEAT-219 / #309). Used
+ * for agent-scoped recall. `crew:*` / `runner:*` dispatch ids, or a bare role. */
+export type AgentType = string;
 
 export interface MemoryConfig {
   /** Normalized mode: "off" | "on" | "auto". */
@@ -113,6 +117,9 @@ export async function recordMemory(
     kind: MemoryKind;
     content: string;
     project?: string | undefined;
+    /** Producing agent role (astramem --agent). Persisted for agent-scoped
+     * recall (#309). Omitted from argv when absent. */
+    agentType?: AgentType | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -128,8 +135,10 @@ export async function recordMemory(
 
     const rawProject = opts.project ?? cfg.project;
     const project = rawProject ? sanitizeArg(rawProject) : "";
+    const agent = opts.agentType ? sanitizeArg(opts.agentType) : "";
     const args = ["remember", "--content", content, "--type", opts.kind];
     if (project) args.push("--project", project);
+    if (agent) args.push("--agent", agent);
 
     await spawnRemember(cli.path, args);
     return { recorded: true, reason: "ok" };
@@ -156,6 +165,7 @@ export function recordDecision(
     featureId?: string | undefined;
     sliceId?: string | undefined;
     project?: string | undefined;
+    agentType?: AgentType | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -164,6 +174,7 @@ export function recordDecision(
     kind: "decision",
     content: `${d.id}: ${d.title}${rationale}${traceTag(d.featureId, d.sliceId)}`,
     project: d.project,
+    agentType: d.agentType,
     config: d.config
   });
 }
@@ -176,6 +187,7 @@ export function recordLesson(
     featureId?: string | undefined;
     sliceId?: string | undefined;
     project?: string | undefined;
+    agentType?: AgentType | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -183,6 +195,7 @@ export function recordLesson(
     kind: "lesson",
     content: `${l.lesson}${traceTag(l.featureId, l.sliceId)}`,
     project: l.project,
+    agentType: l.agentType,
     config: l.config
   });
 }
@@ -190,13 +203,42 @@ export function recordLesson(
 /** Record an ad-hoc note. */
 export function recordNote(
   repoPath: string,
-  n: { text: string; project?: string | undefined; config?: MemoryConfig | undefined }
+  n: {
+    text: string;
+    project?: string | undefined;
+    agentType?: AgentType | undefined;
+    config?: MemoryConfig | undefined;
+  }
 ): Promise<RecordResult> {
   return recordMemory(repoPath, {
     kind: "note",
     content: n.text,
     project: n.project,
+    agentType: n.agentType,
     config: n.config
+  });
+}
+
+/** Record a failure (review-FAIL / validation-FAIL / incident). Distinct
+ * `failure` kind so agent-scoped recall can surface prior failures to the role
+ * that owns them (FEAT-219 AC-3). */
+export function recordFailure(
+  repoPath: string,
+  f: {
+    summary: string;
+    featureId?: string | undefined;
+    sliceId?: string | undefined;
+    project?: string | undefined;
+    agentType?: AgentType | undefined;
+    config?: MemoryConfig | undefined;
+  }
+): Promise<RecordResult> {
+  return recordMemory(repoPath, {
+    kind: "failure",
+    content: `${f.summary}${traceTag(f.featureId, f.sliceId)}`,
+    project: f.project,
+    agentType: f.agentType,
+    config: f.config
   });
 }
 

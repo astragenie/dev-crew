@@ -49,6 +49,10 @@ export interface RecallOptions {
    * DEC-065). When absent, `--project` is omitted and astramem uses its default.
    * MUST NOT be the featId. */
   project?: string | undefined;
+  /** Agent role to scope recall to (astramem --agent, #309). When absent,
+   * `--agent` is omitted (unscoped by role). Note: astramem treats `--agent`
+   * as a HARD filter — excludes non-matching atoms. */
+  agent?: string | undefined;
 }
 
 /**
@@ -119,7 +123,8 @@ export async function recallPrior(opts: RecallOptions): Promise<RecallResult[]> 
 
     try {
       const project = opts.project ?? "";
-      const raw = await spawnRecall(cli.path, query, k, project, repo, controller.signal);
+      const agent = opts.agent ?? "";
+      const raw = await spawnRecall(cli.path, query, k, project, agent, repo, controller.signal);
       return parseRecallOutput(raw);
     } finally {
       clearTimeout(timer);
@@ -135,6 +140,7 @@ function spawnRecall(
   query: string,
   k: number,
   project: string,
+  agent: string,
   repo: string,
   signal: AbortSignal
 ): Promise<string> {
@@ -164,6 +170,7 @@ function spawnRecall(
         "--k",
         String(k),
         ...(project ? ["--project", project] : []),
+        ...(agent ? ["--agent", agent] : []),
         "--repo",
         repo,
         "--format",
