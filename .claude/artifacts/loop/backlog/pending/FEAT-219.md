@@ -1,12 +1,16 @@
 ---
 id: FEAT-219
-status: pending
+status: in-progress
 priority: P1
 category: platform
 target_release: null
 created: 2026-07-05
 depends_on: []
-slices: []
+slices: [SLICE-1, SLICE-2, SLICE-3, SLICE-5]
+slices_complete: [SLICE-2, SLICE-5]
+slices_partial: [SLICE-1, SLICE-3]
+slices_deferred: [SLICE-4]
+shipped_prs: [311, 306, 319, 317, 308]
 derived_from: null
 tags: [concern:memory, concern:dispatch, surface:plugin, stack:typescript]
 autonomous_safe: false
@@ -21,22 +25,58 @@ proposed_slices:
   - id_suffix: -SLICE-1
     title: Write-side agent_type + failure-kind tagging (memory-sink + learnings)
     points: 2
+    state: partial # shipped #311
+    shipped_pr: 311
+    residual: "memory-sink.mts fully done (MemoryKind incl. failure, agentType threaded, recordFailure); src/scripts/lib/learnings.mts logLearning still carries NO agent_type field — AC-1/AC-2 unmet for the learnings-store write path"
   - id_suffix: -SLICE-2
     title: buildMemoryContext helper (rank/lessons/decisions + optional recallPrior, noop-safe)
     points: 3
+    state: shipped # shipped #306
+    shipped_pr: 306
   - id_suffix: -SLICE-3
     title: Wire helper into start-slice + post-builder-fanout, completeness fitness test
     points: 3
+    state: partial # shipped #319, #317
+    shipped_prs: [319, 317]
+    residual: "start-slice.mts half done (learningsDigest splice AC-7 + memory.recall.scopeByAgent gate); post-builder-fanout.mts has ZERO memory-context wiring (AC-8 unmet, reviewerPrompt/validatorPrompt carry no memory block) and no completeness fitness test exists anywhere under src/tests (AC-9 unmet)"
   - id_suffix: -SLICE-4
     title: PM/architect entry-point wiring + agent-type soft-boost scoring blend
     points: 3
+    state: deferred # per PR #309
+    note: "deferred per PR #309; not shipped, no code landed"
   - id_suffix: -SLICE-5
     title: Fix stale docs (commands/learn.md, commands/decisions.md)
     points: 1
+    state: shipped # shipped #308
+    shipped_pr: 308
 triage_notes: "Free-text intake 2026-07-05. Role-scoped pre-work memory injection into dispatch prompts. Sibling/runner-side of dev-team FEAT-188 (MemoryProvider). Needs PM scope + ACs and architect approach review before slicing."
 ---
 
 # FEAT-219: role-scoped pre-work memory injection into agent dispatch
+
+## Shipped status (reconciled 2026-07-05)
+
+Most of this FEAT shipped across four PRs on `main` after this record was
+last touched. The tracking item was stale (`status: pending`, `slices: []`)
+and would have caused the loop to re-slice already-merged work. Reconciled
+below from `git log` on `main` plus direct code verification in this
+worktree; residual work stays open under SLICE-1/SLICE-3 (partial) and
+SLICE-4 (deferred).
+
+| Slice | Status | PR(s) | Residual / note |
+|---|---|---|---|
+| SLICE-1 — write-side agent_type + failure-kind tagging | **partial** | #311 | `src/scripts/lib/memory-sink.mts` is fully done: `MemoryKind` includes `"failure"` (line 28), every write path threads an `agentType` field, and a dedicated `recordFailure` helper exists (lines 222–240). But `src/scripts/lib/learnings.mts`'s `logLearning` (lines 49–96) still has **no `agent_type` field at all** — grep for `agentType\|agent_type` returns zero matches. AC-1/AC-2 (every `logLearning` entry carries a non-empty `agent_type`, rejecting/defaulting when absent) are unmet. |
+| SLICE-2 — `buildMemoryContext` helper | **shipped** | #306 | `src/scripts/lib/memory-context.mts` exists with `src/tests/memory-context.test.mts` covering the happy-path / noop / fail-open behavior (AC-4/5/6). No gaps found. |
+| SLICE-3 — wire helper into start-slice + post-builder-fanout + completeness test | **partial** | #319, #317 | `start-slice.mts` half is done: `learningsDigest` is spliced into `result.dispatchInstruction` (AC-7, lines 490–491), and agent-scoped recall is gated by `memory.recall.scopeByAgent` (lines 860–866, PR #319). But `src/scripts/lib/post-builder-fanout.mts`'s `reviewerPrompt`/`validatorPrompt` (lines 69–124) carry **zero** memory-context content — no `buildMemoryContext` import or call anywhere in the file, and `src/tests/post-builder-fanout.test.mts` only imports `buildPostBuilderFanout`. AC-8 is unmet. The AC-9 completeness/fitness test (grep-based, "no dispatch site skips injection") does not exist anywhere under `src/tests/` — confirmed via repo-wide grep for `completeness`/`dispatch-assembly`/`fitness`. AC-9 is unmet. |
+| SLICE-4 — PM/architect entry-point wiring + agent-type soft-boost blend | **deferred** | — | Deferred per PR #309; no code landed. Not started. |
+| SLICE-5 — fix stale docs (`commands/learn.md`, `commands/decisions.md`) | **shipped** | #308 | Confirmed: repo-wide grep for `"automatically surfaced"` and the stale `reviewer-ladder` reference returns zero matches under `commands/`. |
+
+**Net**: SLICE-2 and SLICE-5 are fully done. SLICE-1 and SLICE-3 each shipped
+their code-assembly-side half but left their fanout/write-store half
+unwired — the residual work is real, not a rename or no-op. SLICE-4 has not
+started. `status` is set to `in-progress` (not `done`) so the loop treats
+this as touched-with-open-residual rather than either untouched-pending or
+fully closed.
 
 ## Problem
 
