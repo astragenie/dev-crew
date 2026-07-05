@@ -4,7 +4,11 @@ import path from "node:path";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { extractAcceptanceCriteria } from "../scripts/lib/slice-linker/feature-lifecycle.mjs";
+import {
+  extractAcceptanceCriteria,
+  AcceptanceCriteriaRequiredError
+} from "../scripts/lib/slice-linker/feature-lifecycle.mjs";
+import { findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 
@@ -114,7 +118,7 @@ async function tmpRepo(prefix: string) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -149,21 +153,26 @@ test("sliceFromFeature injects FEAT ACs verbatim into slice scaffold when FEAT h
   assert.doesNotMatch(sliceContent, /<replace with/);
 });
 
-test("sliceFromFeature falls back to placeholder when FEAT has no AC section", async () => {
+test("sliceFromFeature throws AcceptanceCriteriaRequiredError when FEAT has no AC section", async () => {
   const repo = await tmpRepo("eff-no-ac-");
   const feat = await addFeature(repo, {
     title: "FEAT without ACs",
     priority: "P2"
   });
 
-  const result = await sliceFromFeature(repo, feat.id, { noClassify: true });
-  const sliceContent = await fs.readFile(result.slice.path, "utf8");
+  // Placeholder AC auto-generation was removed — an AC-less FEAT is a hard
+  // error, not a template-filled stub.
+  await assert.rejects(
+    () => sliceFromFeature(repo, feat.id, { noClassify: true }),
+    (err: unknown) => err instanceof AcceptanceCriteriaRequiredError && err.featureId === feat.id
+  );
 
-  // Placeholder should appear as fallback
-  assert.match(sliceContent, /<replace with/);
+  // Refuse is checked before the in-progress move — backlog state untouched.
+  const still = await findFeatureById(repo, feat.id);
+  assert.equal(still?.state, "pending");
 });
 
-test("sliceFromFeature falls back to placeholder when FEAT AC section is malformed (no checkbox lines)", async () => {
+test("sliceFromFeature throws when FEAT AC section is malformed (no checkbox lines)", async () => {
   const repo = await tmpRepo("eff-malformed-ac-");
   const feat = await addFeature(repo, {
     title: "FEAT with malformed ACs",
@@ -175,11 +184,12 @@ test("sliceFromFeature falls back to placeholder when FEAT AC section is malform
     existing + "\n## Acceptance criteria\n\nSome prose, no checkboxes.\n- plain bullet\n"
   );
 
-  const result = await sliceFromFeature(repo, feat.id, { noClassify: true });
-  const sliceContent = await fs.readFile(result.slice.path, "utf8");
-
-  // Safe degrade: placeholder used
-  assert.match(sliceContent, /<replace with/);
+  // A heading with no checkbox lines extracts to zero ACs → hard error, no
+  // placeholder degrade.
+  await assert.rejects(
+    () => sliceFromFeature(repo, feat.id, { noClassify: true }),
+    AcceptanceCriteriaRequiredError
+  );
 });
 
 test("sliceFromFeature preserves all FEAT ACs verbatim (checkbox state preserved — all unchecked)", async () => {

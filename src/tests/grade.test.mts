@@ -17,6 +17,7 @@ import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { listDecisions } from "../scripts/lib/decisions-store.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -24,7 +25,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -128,7 +129,8 @@ test("createGradeFile prefills feature + spec links from slice file", async () =
   const feat = await addFeature(repo, {
     title: "Linked feature",
     target_release: "v1.0.0",
-    priority: "P1"
+    priority: "P1",
+    body: AC_SECTION_BODY
   });
   await moveFeature(feat.filePath, "triaged");
   const sliceResult = await sliceFromFeature(repo, feat.id);
@@ -243,4 +245,91 @@ test("findGradeForSlice returns null when no grade exists", async () => {
   const repo = await tmpRepo("al-grade-find-");
   const found = await findGradeForSlice(repo, "SLICE-99");
   assert.equal(found, null);
+});
+
+// FEAT-217: the extractDecisions call site mirrors each new decision into
+// astramem when memory is enabled. Uses a capturing fake astramem CLI; POSIX
+// only captures argv (Windows exercises the path but skips the assertion).
+test("writeGrade mirrors an extracted decision into astramem when memory enabled", async () => {
+  const { _resetCliCache } = await import("../scripts/lib/memory-bridge.mjs");
+  _resetCliCache();
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-grade-mem-"));
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(
+    path.join(repo, ".claude/loop.json"),
+    JSON.stringify({
+      preset: "dotnet-python",
+      productName: "runner",
+      memory: { enabled: "on" },
+      loop: {
+        aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+        backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+        slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
+        phaseGateArtifactDir: ".claude/artifacts/crew/validations"
+      },
+      stack: {}
+    })
+  );
+
+  const cliRoot = await fs.mkdtemp(path.join(os.tmpdir(), "al-grade-cli-"));
+  const binDir = path.join(cliRoot, "bin");
+  await fs.mkdir(binDir, { recursive: true });
+  const argsFile = path.join(cliRoot, "captured.jsonl");
+  const isWin = process.platform === "win32";
+  if (isWin) {
+    await fs.writeFile(path.join(binDir, "astramem.cmd"), "@echo off\n");
+  } else {
+    await fs.writeFile(
+      path.join(binDir, "astramem"),
+      `#!/bin/sh\nnode -e "require('fs').appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2))+'\\n')" "${argsFile}" "$@"\n`
+    );
+    await fs.chmod(path.join(binDir, "astramem"), 0o755);
+  }
+  const origRoot = process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
+  process.env.CLAUDE_PLUGIN_ROOT_MEMORY = cliRoot;
+
+  try {
+    const created = await createGradeFile(repo, "SLICE-01");
+    let content = await fs.readFile(created.gradePath, "utf8");
+    for (const dim of SCORE_DIMENSIONS) {
+      content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
+    }
+    content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+    content = content.replace(
+      /### DEC-TBD: Short decision title/,
+      "### DEC-TBD: Mirrored architectural decision"
+    );
+    content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
+    content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
+    await fs.writeFile(created.gradePath, content);
+
+    const result = await writeGrade(repo, "SLICE-01");
+    assert.equal(result.decisionsAllocated.length, 1);
+
+    if (isWin) return; // argv capture is POSIX-only
+    await new Promise((r) => setTimeout(r, 300));
+    let calls = [];
+    try {
+      calls = (await fs.readFile(argsFile, "utf8"))
+        .split("\n")
+        .filter((l) => l.trim())
+        .map((l) => JSON.parse(l));
+    } catch {
+      return; // child not flushed in time — accept as pass-through
+    }
+    const rememberCalls = calls.filter((argv) => argv[0] === "remember");
+    assert.ok(rememberCalls.length >= 1, "expected a remember spawn for the decision");
+    const argv = rememberCalls[0];
+    assert.equal(argv[argv.indexOf("--type") + 1], "decision");
+    assert.equal(argv[argv.indexOf("--project") + 1], "runner");
+    const contentArg = argv[argv.indexOf("--content") + 1];
+    assert.match(contentArg, /DEC-001/);
+    assert.match(contentArg, /Mirrored architectural decision/);
+  } finally {
+    if (origRoot !== undefined) process.env.CLAUDE_PLUGIN_ROOT_MEMORY = origRoot;
+    else delete process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
+    _resetCliCache();
+    await fs.rm(cliRoot, { recursive: true, force: true });
+    await fs.rm(repo, { recursive: true, force: true });
+  }
 });

@@ -79,6 +79,19 @@ export async function logLearning(
   if (Array.isArray(entry.tags) && entry.tags.length > 0) record.tags = entry.tags;
 
   await appendJsonl(filePath, record);
+
+  // FEAT-217: mirror the learning into astramem (gated on memory.enabled,
+  // fail-silent). Must never affect the learnings-store write contract.
+  try {
+    const { recordLesson } = await import("./memory-sink.mjs");
+    await recordLesson(repoPath, {
+      lesson: `${record.key}: ${record.insight}`,
+      sliceId: typeof record.sliceId === "string" ? record.sliceId : undefined
+    });
+  } catch {
+    // swallow — memory mirror is non-critical
+  }
+
   return record;
 }
 
@@ -105,9 +118,7 @@ export async function searchLearnings(
   const all = await readAllEntries(filePath);
   const q = query.toLowerCase();
   const items = all.filter(
-    (e) =>
-      (e.key && e.key.toLowerCase().includes(q)) ||
-      (e.insight && e.insight.toLowerCase().includes(q))
+    (e) => e.key?.toLowerCase().includes(q) || e.insight?.toLowerCase().includes(q)
   );
   return { count: items.length, items };
 }

@@ -9,6 +9,7 @@ import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { recordGradeScore } from "../scripts/lib/grade-trend.mjs";
+import { AC_SECTION_BODY, AC_PLACEHOLDER_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -16,7 +17,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -64,7 +65,7 @@ test("startSlice refreshes slice-progress and includes plan-derived title", asyn
     { id: "SLICE-01", title: "First" },
     { id: "SLICE-02", title: "Second" }
   ]);
-  const feat = await addFeature(repo, { title: "Test feature" });
+  const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -95,7 +96,7 @@ test("startSlice tolerates missing plan and missing slice file", async () => {
 test("startSlice emits slice-build tag-routed dispatch by default (FEAT-191: lead removed)", async () => {
   const repo = await tmpRepo("al-slice-start-dispatch-");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
-  const feat = await addFeature(repo, { title: "Test feature" });
+  const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   // Default orchestratorMode = "slice-build" — no config override needed.
@@ -115,7 +116,7 @@ test("slice-start emits orchestrate-slice when orchestratorMode='orchestrate-sli
   const repo = await tmpRepo("al-slice-start-orchestrate-");
   await pinOrchestratorMode(repo, "orchestrate-slice");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
-  const feat = await addFeature(repo, { title: "Orchestrate feature" });
+  const feat = await addFeature(repo, { title: "Orchestrate feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id);
@@ -137,7 +138,7 @@ test("slice-build mode falls back to crew:fullstack-dev when slice has no fe/be 
   const repo = await tmpRepo("al-slice-start-fullstack-");
   await pinOrchestratorMode(repo, "slice-build");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
-  const feat = await addFeature(repo, { title: "No surface tags" });
+  const feat = await addFeature(repo, { title: "No surface tags", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id);
@@ -147,7 +148,7 @@ test("slice-build mode falls back to crew:fullstack-dev when slice has no fe/be 
 test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-038)", async () => {
   const repo = await tmpRepo("al-slice-start-progress-signals-");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
-  const feat = await addFeature(repo, { title: "Visibility feature" });
+  const feat = await addFeature(repo, { title: "Visibility feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id);
@@ -174,7 +175,7 @@ test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-
 
 test("startSlice with dispatch:false omits the instruction", async () => {
   const repo = await tmpRepo("al-slice-start-nodispatch-");
-  const feat = await addFeature(repo, { title: "Manual" });
+  const feat = await addFeature(repo, { title: "Manual", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id, { dispatch: false });
@@ -185,7 +186,7 @@ test("startSlice with dispatch:false omits the instruction", async () => {
 test("completeSlice also refreshes slice-progress", async () => {
   const repo = await tmpRepo("al-slice-progress-on-complete-");
   await writePlan(repo, [{ id: "SLICE-01", title: "Only one" }]);
-  const feat = await addFeature(repo, { title: "Done feature" });
+  const feat = await addFeature(repo, { title: "Done feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"
@@ -200,9 +201,9 @@ test("completeSlice also refreshes slice-progress", async () => {
 
 test("startSlice throws when slice has placeholder ACs", async () => {
   const repo = await tmpRepo("al-slice-ac-gate-");
-  const feat = await addFeature(repo, { title: "AC gate" });
+  const feat = await addFeature(repo, { title: "AC gate", body: AC_PLACEHOLDER_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  // slice has AC-2: <replace ...> — do NOT patch → linter must reject
+  // slice carries the unfilled placeholder AC verbatim → linter must reject
   await assert.rejects(
     () => startSlice(repo, slice.id),
     (err) => {
@@ -215,7 +216,7 @@ test("startSlice throws when slice has placeholder ACs", async () => {
 
 test("startSlice accepts slice with all concrete ACs", async () => {
   const repo = await tmpRepo("al-slice-ac-pass-");
-  const feat = await addFeature(repo, { title: "Concrete ACs" });
+  const feat = await addFeature(repo, { title: "Concrete ACs", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id, { dispatch: false });
@@ -226,7 +227,7 @@ test("startSlice accepts slice with all concrete ACs", async () => {
 
 test("startSlice throws when grade trend signals quality stop", async () => {
   const repo = await tmpRepo("al-slice-ladder-gate-");
-  const feat = await addFeature(repo, { title: "Ladder gate" });
+  const feat = await addFeature(repo, { title: "Ladder gate", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   // Record 2 consecutive below-threshold scores (default limit = 2)
@@ -246,7 +247,7 @@ test("startSlice throws when grade trend signals quality stop", async () => {
 
 test("startSlice returns marathonMilestone when all window scores above threshold", async () => {
   const repo = await tmpRepo("al-slice-marathon-");
-  const feat = await addFeature(repo, { title: "Marathon" });
+  const feat = await addFeature(repo, { title: "Marathon", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   await recordGradeScore(repo, { sliceId: "SLICE-00", avg: 0.9 });
@@ -261,7 +262,7 @@ test("startSlice returns marathonMilestone when all window scores above threshol
 
 test("startSlice returns orchestratorModel from config when set", async () => {
   const repo = await tmpRepo("al-slice-orch-model-");
-  const feat = await addFeature(repo, { title: "Model gate" });
+  const feat = await addFeature(repo, { title: "Model gate", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const config = { loop: { orchestratorModel: "sonnet" } };
@@ -271,7 +272,7 @@ test("startSlice returns orchestratorModel from config when set", async () => {
 
 test("startSlice returns orchestratorModel null when not configured", async () => {
   const repo = await tmpRepo("al-slice-orch-model-null-");
-  const feat = await addFeature(repo, { title: "No model gate" });
+  const feat = await addFeature(repo, { title: "No model gate", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const config = { loop: {} };
@@ -284,7 +285,7 @@ test("startSlice returns orchestratorModel null when not configured", async () =
 // AC-7a: startSlice always returns touchesFiles (classify-slice-shape runs on every start)
 test("startSlice result includes touchesFiles array from classify step (FEAT-277 AC-7)", async () => {
   const repo = await tmpRepo("al-start-touches-files-");
-  const feat = await addFeature(repo, { title: "Classify test feature" });
+  const feat = await addFeature(repo, { title: "Classify test feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -303,7 +304,10 @@ test("startSlice result includes touchesFiles array from classify step (FEAT-277
 // The AC linter gate fires after slice creation, confirming the FEAT branch was entered.
 test("startSlice with FEAT id enters sliceFromFeature dispatch path (FEAT-277 AC-7)", async () => {
   const repo = await tmpRepo("al-start-feat-dispatch-");
-  const feat = await addFeature(repo, { title: "FEAT-id dispatch test" });
+  const feat = await addFeature(repo, {
+    title: "FEAT-id dispatch test",
+    body: AC_PLACEHOLDER_BODY
+  });
 
   // startSlice with a FEAT id should detect it, call sliceFromFeature (creating SLICE-01),
   // then hit the AC linter gate on the newly created slice — which has a placeholder AC.
@@ -322,7 +326,6 @@ test("startSlice with FEAT id enters sliceFromFeature dispatch path (FEAT-277 AC
     "error must be from AC linter, not a missing-slice error"
   );
   // Confirm the slice was actually created before the linter fired
-  const { listBacklog } = await import("../scripts/lib/backlog-parser.mjs");
   const slicesRoot = path.join(repo, ".claude/artifacts/loop/ai-loop/slices");
   const slicePending = path.join(slicesRoot, "pending");
   let sliceFiles: string[] = [];

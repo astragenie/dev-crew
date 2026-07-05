@@ -9,6 +9,7 @@ import type { DispatchResult } from "../scripts/lib/auto-dispatch.mjs";
 import { parseClassifyOutput } from "../scripts/lib/classify-parser.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker/feature-lifecycle.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,7 +33,7 @@ async function createFeature(
       return `${k}: ${v}`;
     })
     .join("\n");
-  const content = `---\n${fmPairs}\n---\n# ${id}: Test feature\n\nTest feature description.\n`;
+  const content = `---\n${fmPairs}\n---\n# ${id}: Test feature\n\nTest feature description.\n\n${AC_SECTION_BODY}`;
   const filePath = path.join(dir, `${id}.md`);
   await fs.writeFile(filePath, content, "utf8");
   return filePath;

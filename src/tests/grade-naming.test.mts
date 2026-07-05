@@ -15,6 +15,7 @@ import { createGradeFile } from "../scripts/lib/grade-writer.mjs";
 import { listGrades, findGradeForSlice, gradeFilePath } from "../scripts/lib/grade-parser.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 const LEADING_TS_RE = /^\d{8}T\d{6}Z-/;
 const GRADE_SUFFIX = "-grade.md";
@@ -25,7 +26,7 @@ async function tmpRepo(prefix: string) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -69,7 +70,8 @@ test("createGradeFile — filename embeds feat segment when feature present", as
   const feat = await addFeature(repo, {
     title: "Feature for naming test",
     target_release: "v1.0.0",
-    priority: "P1"
+    priority: "P1",
+    body: AC_SECTION_BODY
   });
   await moveFeature(feat.filePath, "triaged");
   const sliceResult = await sliceFromFeature(repo, feat.id);

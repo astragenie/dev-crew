@@ -16,7 +16,7 @@ async function tmpRepo(prefix: string, configOverrides: Record<string, any> = {}
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   const config = {
-    preset: "dotnet-aspire-python",
+    preset: "dotnet-python",
     loop: {
       aiLoopRoot: ".claude/artifacts/loop/ai-loop",
       backlogPath: ".claude/artifacts/loop/ai-loop/backlog",

@@ -14,6 +14,7 @@ import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { recordGradeScore } from "../scripts/lib/grade-trend.mjs";
+import { AC_SECTION_BODY, AC_PLACEHOLDER_BODY } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,7 +26,7 @@ async function tmpRepo(prefix: string): Promise<string> {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -232,9 +233,12 @@ test("gates: deriveTestAdequacyGate passes when test adequacy has skip reason", 
 
 test("gates: runSliceStartGates blocks when slice has placeholder ACs", async () => {
   const repo = await tmpRepo("gt-start-acblock-");
-  const feat = await addFeature(repo, { title: "AC placeholder test" });
+  const feat = await addFeature(repo, {
+    title: "AC placeholder test",
+    body: AC_PLACEHOLDER_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  // Do NOT fill placeholder ACs — linter should reject
+  // Slice carries the unfilled placeholder AC verbatim — linter should reject
   await assert.rejects(
     () => startSlice(repo, slice.id),
     (err) => {
@@ -247,7 +251,7 @@ test("gates: runSliceStartGates blocks when slice has placeholder ACs", async ()
 
 test("gates: runSliceStartGates blocks when grade trend is below threshold", async () => {
   const repo = await tmpRepo("gt-start-ladderblock-");
-  const feat = await addFeature(repo, { title: "Grade trend gate" });
+  const feat = await addFeature(repo, { title: "Grade trend gate", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -271,7 +275,7 @@ test("gates: runSliceStartGates blocks when grade trend is below threshold", asy
 
 test("gates: runSliceStartGates passes with concrete ACs and clean grade trend", async () => {
   const repo = await tmpRepo("gt-start-pass-");
-  const feat = await addFeature(repo, { title: "Clean gate test" });
+  const feat = await addFeature(repo, { title: "Clean gate test", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -285,7 +289,7 @@ test("gates: runSliceStartGates passes with concrete ACs and clean grade trend",
 
 test("gates: computeFeatureResult skips feature when crew run is escalated_to_human", async () => {
   const repo = await tmpRepo("gt-cfr-escalated-");
-  const feat = await addFeature(repo, { title: "Escalated run" });
+  const feat = await addFeature(repo, { title: "Escalated run", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
   // Write escalated workflow state
@@ -314,7 +318,7 @@ test("gates: computeFeatureResult skips feature when crew run is escalated_to_hu
 
 test("gates: computeFeatureResult moves feature to done when all gates pass", async () => {
   const repo = await tmpRepo("gt-cfr-pass-");
-  const feat = await addFeature(repo, { title: "All gates pass" });
+  const feat = await addFeature(repo, { title: "All gates pass", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
   // Write validation artifact

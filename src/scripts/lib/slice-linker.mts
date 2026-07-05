@@ -1,4 +1,10 @@
-export { sliceFromFeature, featureSimplify } from "./slice-linker/feature-lifecycle.mjs";
+export {
+  sliceFromFeature,
+  featureSimplify,
+  AcceptanceCriteriaRequiredError,
+  assertAcceptanceCriteria,
+  extractAcceptanceCriteria
+} from "./slice-linker/feature-lifecycle.mjs";
 export { completeSlice } from "./slice-linker/complete-slice.mjs";
 export { closeSlice } from "./slice-linker/close-slice.mjs";
 export type { CloseSliceOpts, CloseSliceResult } from "./slice-linker/close-slice.mjs";

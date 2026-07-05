@@ -22,6 +22,7 @@ import assert from "node:assert/strict";
 import { ensureSliceWorktree, WorktreeError } from "../scripts/lib/worktree-manager.mjs";
 import { startSlice, sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 function exec(cmd, opts) {
   return promisify(execCb)(cmd, { timeout: 10000, ...opts });
@@ -443,7 +444,7 @@ test("startSlice: worktreePath written to workflow-state and frontmatter when wo
 
   // Add a feature and create a slice so startSlice has a real slice file.
   // These writes happen before initGitRepo so they're part of the initial commit.
-  const feat = await addFeature(repo, { title: "Worktree test feature" });
+  const feat = await addFeature(repo, { title: "Worktree test feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
   // Fix placeholder ACs so startSlice doesn't abort on AC linter

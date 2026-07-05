@@ -1,6 +1,9 @@
 {
   "preset": "typescript-plugin-dev",
   "schemaVersion": 1,
+  "memory": {
+    "enabled": "auto"
+  },
   "projectType": "claude-plugin",
   "split": false,
   "frontend": {

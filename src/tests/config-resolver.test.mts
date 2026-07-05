@@ -15,17 +15,17 @@ async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-test("listPresets returns dotnet-aspire-python with required fields", async () => {
+test("listPresets returns dotnet-python with required fields", async () => {
   const presets = await listPresets();
-  const dotnet = presets.find((p) => p.name === "dotnet-aspire-python");
-  assert.ok(dotnet, "dotnet-aspire-python preset must ship in v1");
+  const dotnet = presets.find((p) => p.name === "dotnet-python");
+  assert.ok(dotnet, "dotnet-python preset must ship in v1");
   assert.ok(dotnet.description.length > 0);
 });
 
 test("resolveConfig returns preset defaults when no user config exists", async () => {
   const repo = await tmpRepo("al-resolve-default-");
   const config = (await resolveConfig(repo)) as Record<string, any>;
-  assert.equal(config.preset, "dotnet-aspire-python");
+  assert.equal(config.preset, "dotnet-python");
   assert.equal(config.loop.aiLoopRoot, ".claude/artifacts/loop/ai-loop");
   assert.ok(Array.isArray(config.stack.build));
   assert.ok(config.stack.build.length > 0);
@@ -37,7 +37,7 @@ test("resolveConfig deep-merges user overrides on top of preset", async () => {
   await fs.writeFile(
     path.join(repo, CONFIG_FILENAME),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       productName: "My Test Product",
       stack: {
         test: [{ cmd: "custom-test", args: ["--all"] }]
@@ -59,7 +59,7 @@ test("resolveConfig treats explicit null as disable", async () => {
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
     path.join(repo, CONFIG_FILENAME),
-    JSON.stringify({ preset: "dotnet-aspire-python", stack: { build: null } })
+    JSON.stringify({ preset: "dotnet-python", stack: { build: null } })
   );
   const config = (await resolveConfig(repo)) as Record<string, any>;
   assert.equal(
@@ -80,10 +80,10 @@ test("resolveConfig throws on unknown preset", async () => {
 test("writeConfigIfMissing does not clobber existing config", async () => {
   const repo = await tmpRepo("al-write-skip-");
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
-  const original = JSON.stringify({ preset: "dotnet-aspire-python", productName: "existing" });
+  const original = JSON.stringify({ preset: "dotnet-python", productName: "existing" });
   await fs.writeFile(path.join(repo, CONFIG_FILENAME), original);
   const result = await writeConfigIfMissing(repo, {
-    preset: "dotnet-aspire-python",
+    preset: "dotnet-python",
     productName: "new"
   });
   assert.equal(result.written, false);
@@ -94,7 +94,7 @@ test("writeConfigIfMissing does not clobber existing config", async () => {
 test("writeConfigIfMissing writes new config when missing", async () => {
   const repo = await tmpRepo("al-write-new-");
   const result = await writeConfigIfMissing(repo, {
-    preset: "dotnet-aspire-python",
+    preset: "dotnet-python",
     productName: "Fresh"
   });
   assert.equal(result.written, true);
@@ -108,7 +108,7 @@ test("default config includes intake budgets", async () => {
   await fs.writeFile(
     path.join(repo, CONFIG_FILENAME),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         intakeBudgetUsdPerCall: 1.5,
         intakeBudgetTokensPerCall: 150000

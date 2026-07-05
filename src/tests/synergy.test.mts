@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import { sliceFromFeature, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 import { writeMemorySnapshot } from "../scripts/lib/memory-snapshot.mjs";
 import { recentLessons } from "../scripts/lib/lessons-feed.mjs";
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
@@ -19,7 +20,7 @@ async function tmpRepo(prefix: string) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -67,7 +68,7 @@ async function seedGrade(
 
 test("completeSlice writes a crew final-synthesis artifact", async () => {
   const repo = await tmpRepo("al-v110-syn-");
-  const feat = await addFeature(repo, { title: "synthesis test" });
+  const feat = await addFeature(repo, { title: "synthesis test", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"
@@ -84,7 +85,7 @@ test("completeSlice writes a crew final-synthesis artifact", async () => {
 
 test("completeSlice filename embeds FEAT + phase from slice frontmatter", async () => {
   const repo = await tmpRepo("al-syn-feat-phase-");
-  const feat = await addFeature(repo, { title: "phase tagged" });
+  const feat = await addFeature(repo, { title: "phase tagged", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
   // Inject phase into slice frontmatter (sliceFromFeature defaults phase: null).
@@ -129,7 +130,7 @@ test("completeSlice filename embeds FEAT + phase from slice frontmatter", async 
 
 test("completeSlice falls back to bare sliceNN slug when phase null", async () => {
   const repo = await tmpRepo("al-syn-bare-");
-  const feat = await addFeature(repo, { title: "no phase" });
+  const feat = await addFeature(repo, { title: "no phase", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"
@@ -150,7 +151,7 @@ test("completeSlice falls back to bare sliceNN slug when phase null", async () =
 
 test("completeSlice synthesis embeds grade summary when grade exists", async () => {
   const repo = await tmpRepo("al-v110-syn-grade-");
-  const feat = await addFeature(repo, { title: "graded" });
+  const feat = await addFeature(repo, { title: "graded", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Seed grade BEFORE complete (recommended order)
   const scores: Record<string, number> = {};
@@ -188,7 +189,7 @@ test("recentLessons aggregates last N grades' lessons + surprises + followups", 
   for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
   // Seed 3 grades with distinct lessons
   for (let i = 1; i <= 3; i += 1) {
-    const f = await addFeature(repo, { title: `f${i}` });
+    const f = await addFeature(repo, { title: `f${i}`, body: AC_SECTION_BODY });
     const { slice } = await sliceFromFeature(repo, f.id);
     await seedGrade(repo, slice.id, scores, [`Lesson from slice ${i}`], [`Surprise ${i}`]);
   }
