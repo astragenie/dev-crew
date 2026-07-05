@@ -49,14 +49,22 @@ export async function installLoop(
   }
 
   // Hard dependency: crew CLI must be discoverable.
-  const crewCli = await findCrewCli();
+  // Test seam: options.crewCliOverride / options.crewVersionOverride let tests
+  // pin the discovered CLI path and installed version deterministically
+  // (mirrors the bunVersionOverride seam above). Both are undefined in
+  // production, so real discovery still runs and behavior is unchanged.
+  const crewCli =
+    options.crewCliOverride !== undefined ? options.crewCliOverride : await findCrewCli();
   if (!crewCli) {
     throw new Error(
       "Hard dependency missing: the `crew` plugin is not installed in the Claude Code plugin cache. " +
         "Install `crew` first (it lives in the astra marketplace), then re-run /loop:install."
     );
   }
-  const installedCrewVersion = await getCrewVersion(crewCli);
+  const installedCrewVersion =
+    options.crewVersionOverride !== undefined
+      ? options.crewVersionOverride
+      : await getCrewVersion(crewCli);
   if (installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) < 0) {
     throw new Error(
       `Incompatible crew plugin: found v${installedCrewVersion}, need >= v${MIN_CREW_VERSION}. ` +

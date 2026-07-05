@@ -57,6 +57,69 @@ test("installLoop refuses when bun below minimum", async () => {
   );
 });
 
+// Regression coverage for the MIN_CREW_VERSION refusal boundary
+// (flagged by reviewer + verifier on FEAT-176/SLICE-134 — the guard at
+// loop-installer.mts had no injectable seam so it was never exercised
+// deterministically). crewCliOverride / crewVersionOverride let these
+// tests pin the discovered CLI + version without touching the real
+// plugin cache, independent of whatever crew build happens to be
+// installed in the environment running the suite.
+const fakeCrewCliPath = path.join(os.tmpdir(), "fake-crew-cli", "scripts", "crew.ts");
+// One release below MIN_CREW_VERSION under compareSemver's component-wise
+// ordering (MIN_CREW_VERSION's patch component is 0, so "one patch below"
+// is expressed as the previous minor line — compareSemver short-circuits
+// on the first differing component, so any patch value here compares below).
+const belowMinCrewVersion = "0.46.9";
+
+test("installLoop installs when crew version is exactly at MIN_CREW_VERSION", async () => {
+  const repo = await initGitRepo("al-install-crew-min-");
+  const result = await installLoop(repo, {
+    migrateAdhoc: false,
+    crewCliOverride: fakeCrewCliPath,
+    crewVersionOverride: MIN_CREW_VERSION
+  });
+
+  assert.equal(result.mode, "install-loop");
+  assert.equal(result.crewCli, fakeCrewCliPath);
+
+  const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
+  assert.ok(claudeMd.includes(MARKER_START), "install must proceed at exactly MIN_CREW_VERSION");
+});
+
+test("installLoop refuses when crew version is one release below MIN_CREW_VERSION", async () => {
+  const repo = await initGitRepo("al-install-crew-old-");
+
+  await assert.rejects(
+    () =>
+      installLoop(repo, {
+        migrateAdhoc: false,
+        crewCliOverride: fakeCrewCliPath,
+        crewVersionOverride: belowMinCrewVersion
+      }),
+    /Incompatible crew plugin/
+  );
+
+  const claudeMdExists = await fs
+    .access(path.join(repo, "CLAUDE.md"))
+    .then(() => true)
+    .catch(() => false);
+  assert.equal(
+    claudeMdExists,
+    false,
+    "installLoop must not write CLAUDE.md when the crew version gate rejects"
+  );
+
+  const loopJsonExists = await fs
+    .access(path.join(repo, ".claude", "loop.json"))
+    .then(() => true)
+    .catch(() => false);
+  assert.equal(
+    loopJsonExists,
+    false,
+    "installLoop must not write .claude/loop.json when the crew version gate rejects"
+  );
+});
+
 test("installLoop errors when target dir does not exist", async () => {
   await assert.rejects(
     () =>
