@@ -81,7 +81,7 @@ function readGateStatus(workflowState: unknown) {
 export async function deriveValidationGate(
   repoPath: string,
   sliceId: string,
-  { sliceFm = null }: Record<string, any> = {}
+  { sliceFm = null, config = null }: Record<string, any> = {}
 ) {
   if (sliceFm && sliceFm.requires_validation === false) {
     return {
@@ -152,6 +152,23 @@ export async function deriveValidationGate(
         "record an explicit skip with --skip-validation-check, or use --force-close (audited)",
       evidence: artifacts
     };
+  }
+
+  // Opt-in (loop.validation.satisfiedByReview): a satisfied review gate — the
+  // reviewer's approval badge — also satisfies the validation gate. The CI test
+  // gate covers behavior/test validation, so no separate loop-side validator is
+  // dispatched (see post-builder-fanout.mts). Placed last so real validation
+  // evidence (artifact/badge/waiver) still wins when present.
+  if (config?.loop?.validation?.satisfiedByReview === true) {
+    const { deriveReviewGate } = await import("./review-gate.mjs");
+    const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
+    if (reviewGate.satisfied) {
+      return {
+        satisfied: true,
+        reason: `review-badge: validation delegated to reviewer approval + CI test gate (${reviewGate.reason})`,
+        evidence: []
+      };
+    }
   }
 
   return {

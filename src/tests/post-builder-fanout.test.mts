@@ -17,28 +17,94 @@ async function makeRepo() {
   return repo;
 }
 
-test("emits N+1 tasks (reviewer-A, reviewer-B, validator)", async () => {
+test("default ladder emits two reviewers, no validator (N=2)", async () => {
   const repo = await makeRepo();
   try {
     const out = await buildPostBuilderFanout(repo, "SLICE-99");
-    assert.equal(out.tasks.length, 3);
-    const roles = out.tasks.map((t) => t.role).sort();
-    assert.deepEqual(roles, ["reviewer-A", "reviewer-B", "validator"]);
+    assert.equal(out.tasks.length, 2);
+    assert.deepEqual(
+      out.tasks.map((t) => t.role),
+      ["reviewer-A", "reviewer-B"]
+    );
     const subagents = out.tasks.map((t) => t.subagent_type);
-    assert.ok(subagents.includes("crew:verifier"));
     assert.equal(subagents.filter((s) => s === "crew:inspector").length, 2);
+    assert.ok(!subagents.includes("crew:verifier" as never));
+    assert.ok(out.instructions.includes("N=2"));
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
 });
 
-test("validator prompt independent of reviewers (no reviewer artifact refs)", async () => {
+test("single-entry ladder ['A'] dispatches ONE reviewer, no validator (N=1)", async () => {
+  const repo = await makeRepo();
+  try {
+    const out = await buildPostBuilderFanout(repo, "SLICE-99", {
+      config: { reviewers: { ladder: ["A"] } }
+    });
+    assert.equal(out.tasks.length, 1);
+    assert.deepEqual(
+      out.tasks.map((t) => t.role),
+      ["reviewer-A"]
+    );
+    assert.equal(out.tasks[0].subagent_type, "crew:inspector");
+    assert.ok(out.instructions.includes("N=1"));
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+test("single-entry ladder ['B'] dispatches only Reviewer B", async () => {
+  const repo = await makeRepo();
+  try {
+    const out = await buildPostBuilderFanout(repo, "SLICE-99", {
+      config: { reviewers: { ladder: ["B"] } }
+    });
+    assert.deepEqual(
+      out.tasks.map((t) => t.role),
+      ["reviewer-B"]
+    );
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+test("empty / invalid ladder falls back to the two-reviewer default", async () => {
+  const repo = await makeRepo();
+  try {
+    const empty = await buildPostBuilderFanout(repo, "SLICE-99", {
+      config: { reviewers: { ladder: [] } }
+    });
+    assert.equal(empty.tasks.length, 2);
+    const bogus = await buildPostBuilderFanout(repo, "SLICE-99", {
+      config: { reviewers: { ladder: ["Z", 7, null] } }
+    });
+    assert.equal(bogus.tasks.length, 2);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+test("ladder is deduped and order-preserving", async () => {
+  const repo = await makeRepo();
+  try {
+    const out = await buildPostBuilderFanout(repo, "SLICE-99", {
+      config: { reviewers: { ladder: ["B", "A", "b"] } }
+    });
+    assert.deepEqual(
+      out.tasks.map((t) => t.role),
+      ["reviewer-B", "reviewer-A"]
+    );
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+test("no config produces no validator / crew:verifier task", async () => {
   const repo = await makeRepo();
   try {
     const out = await buildPostBuilderFanout(repo, "SLICE-99");
-    const validator = out.tasks.find((t) => t.role === "validator")!;
-    assert.ok(!/reviewer-[AB]/i.test(validator.prompt));
-    assert.ok(!/reviews\//.test(validator.prompt));
+    assert.ok(out.tasks.every((t) => t.role !== ("validator" as never)));
+    assert.ok(out.tasks.every((t) => t.subagent_type === "crew:inspector"));
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
@@ -49,7 +115,6 @@ test("instructions reuse PARALLEL_DISPATCH_CONTRACT v1", async () => {
   try {
     const out = await buildPostBuilderFanout(repo, "SLICE-99");
     assert.ok(out.instructions.includes("PARALLEL_DISPATCH_CONTRACT v1"));
-    assert.ok(out.instructions.includes("N=3"));
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
@@ -75,18 +140,6 @@ test("throws on slice file missing frontmatter header", async () => {
       () => buildPostBuilderFanout(repo, "SLICE-98"),
       /missing frontmatter header/
     );
-  } finally {
-    await fs.rm(repo, { recursive: true, force: true });
-  }
-});
-
-test("validator prompt does not embed the inert --slice flag", async () => {
-  const repo = await makeRepo();
-  try {
-    const out = await buildPostBuilderFanout(repo, "SLICE-99");
-    const validator = out.tasks.find((t) => t.role === "validator")!;
-    assert.ok(!/--slice\s/i.test(validator.prompt));
-    assert.ok(validator.prompt.includes("SLICE-99")); // sliced id still mentioned for humans
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }

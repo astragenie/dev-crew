@@ -94,3 +94,40 @@ test("deriveValidationGate: waiver wins over missing artifact", async () => {
   assert.equal(result.satisfied, true);
   assert.match(result.reason, /explicit-waiver/);
 });
+
+// satisfiedByReview (loop.validation.satisfiedByReview): the reviewer's
+// approval badge satisfies the validation gate, delegating behavior/test
+// validation to CI. Opt-in — off by default so independent validation stands.
+async function writeReviewArtifact(repo: string, sliceId: string, decision: string) {
+  const dir = path.join(repo, ".claude", "artifacts", "crew", "reviews");
+  await fs.mkdir(dir, { recursive: true });
+  const token = sliceId.toLowerCase();
+  const body = `---\ndecision: ${decision}\n---\n# review for ${sliceId}\n`;
+  await fs.writeFile(path.join(dir, `20260705T120000Z-review-result-${token}-test.md`), body);
+}
+
+const REVIEW_BADGE_CONFIG = { loop: { validation: { satisfiedByReview: true } } };
+
+test("satisfiedByReview: approved review satisfies validation gate", async () => {
+  const repo = await tmpRepo("al-vgate-review-ok-");
+  await writeReviewArtifact(repo, "SLICE-01", "approved");
+  const result = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
+  assert.equal(result.satisfied, true);
+  assert.match(result.reason, /review-badge/);
+});
+
+test("satisfiedByReview: rejected review does NOT satisfy (review gate unsatisfied)", async () => {
+  const repo = await tmpRepo("al-vgate-review-rejected-");
+  await writeReviewArtifact(repo, "SLICE-01", "rejected");
+  const result = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
+});
+
+test("satisfiedByReview OFF: an approved review does not satisfy validation", async () => {
+  const repo = await tmpRepo("al-vgate-review-flagoff-");
+  await writeReviewArtifact(repo, "SLICE-01", "approved");
+  const result = await deriveValidationGate(repo, "SLICE-01"); // no config → flag off
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
+});
