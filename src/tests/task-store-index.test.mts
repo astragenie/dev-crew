@@ -172,6 +172,52 @@ test("getProvider does NOT warn when no taskStore configured (default noop)", ()
 });
 
 // ---------------------------------------------------------------------------
+// NoopProvider.isExplicit — SPEC-001 AC-3
+// ---------------------------------------------------------------------------
+test("NoopProvider defaults isExplicit to true when constructed directly", () => {
+  const p = new NoopProvider();
+  assert.equal(p.isExplicit, true);
+});
+
+test("NoopProvider isExplicit false when constructed with false", () => {
+  const p = new NoopProvider(false);
+  assert.equal(p.isExplicit, false);
+});
+
+test("getProvider isExplicit true when provider is explicitly 'noop'", () => {
+  const p = getProvider({ taskStore: { provider: "noop" } }, REPO);
+  assert.ok(p instanceof NoopProvider);
+  assert.equal(p.isExplicit, true);
+});
+
+test("getProvider isExplicit true when taskStore.enabled is false", () => {
+  const p = getProvider({ taskStore: { enabled: false, provider: "github" } }, REPO);
+  assert.ok(p instanceof NoopProvider);
+  assert.equal(p.isExplicit, true);
+});
+
+test("getProvider isExplicit true when no taskStore configured (default noop)", () => {
+  const p = getProvider({}, REPO);
+  assert.ok(p instanceof NoopProvider);
+  assert.equal(p.isExplicit, true);
+});
+
+test("getProvider isExplicit false for unknown provider name (accidental fallback)", () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (...args: any[]) => {
+    warns.push(args.join(" "));
+  };
+  try {
+    const p = getProvider({ taskStore: { provider: "jira" } }, REPO);
+    assert.ok(p instanceof NoopProvider);
+    assert.equal(p.isExplicit, false);
+  } finally {
+    console.warn = orig;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Re-exports from index
 // ---------------------------------------------------------------------------
 test("index re-exports GithubProvider, LinearProvider, NoopProvider", () => {
