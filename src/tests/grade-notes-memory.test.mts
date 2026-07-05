@@ -116,6 +116,11 @@ test("writeGrade mirrors Surprises + Followups into astramem as notes", async ()
     contents.every((c) => c.startsWith("[SLICE-01] ")),
     "notes should carry the slice trace tag"
   );
+  // SLICE-1b: grade-derived notes are agent-tagged as the slice implementer.
+  assert.ok(
+    notes.every((argv) => argv[argv.indexOf("--agent") + 1] === "crew:builder"),
+    `notes should carry --agent crew:builder, got: ${JSON.stringify(notes)}`
+  );
 });
 
 test("writeGrade with memory disabled emits no notes (opt-in default)", async () => {

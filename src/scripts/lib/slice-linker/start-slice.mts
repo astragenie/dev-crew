@@ -850,12 +850,29 @@ async function runRecallHook(
       (typeof config?.memory?.project === "string" && config.memory.project) ||
       (typeof config?.productName === "string" && config.productName) ||
       undefined;
+    // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent) — astramem's
+    // --agent is a HARD filter, so scoping before enough agent-tagged history
+    // exists starves recall (#309). Slice-start recall serves the builder, so
+    // it scopes to memory.recall.agent (default crew:builder) when enabled.
+    const agent: string | undefined =
+      config?.memory?.recall?.scopeByAgent === true
+        ? (typeof config?.memory?.recall?.agent === "string" && config.memory.recall.agent) ||
+          "crew:builder"
+        : undefined;
 
     const { recallPrior } = await import("../memory-recall.mjs");
     const { formatRecallBlock } = await import("../recall-injector.mjs");
     const { emit, resolveCli } = await import("../memory-bridge.mjs");
 
-    const memories = await recallPrior({ featId, sliceId, touchesFiles, k, timeoutMs, project });
+    const memories = await recallPrior({
+      featId,
+      sliceId,
+      touchesFiles,
+      k,
+      timeoutMs,
+      project,
+      agent
+    });
     const block = formatRecallBlock(memories);
 
     // Emit recall_used trainset event. Fire-and-forget — never awaited in a
