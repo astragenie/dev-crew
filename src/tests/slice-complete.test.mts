@@ -14,6 +14,7 @@ import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { writeFeatureEndCeremony, featureEnd } from "../scripts/lib/ceremonies.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 function execFile(file, args, opts) {
   return promisify(execFileCb)(file, args, { timeout: 10000, ...opts });
@@ -25,7 +26,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -57,7 +58,7 @@ afterAll(() => {
 
 test("completeSlice moves slice to completed/ and feature to done/", async () => {
   const repo = await tmpRepo("al-slice-complete-");
-  const feat = await addFeature(repo, { title: "Test work" });
+  const feat = await addFeature(repo, { title: "Test work", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"
@@ -83,6 +84,13 @@ test("completeSlice auto-rolls parent spec to satisfied when all features done",
   await updateSpecFrontmatter(spec.filePath, { status: "approved" });
   await decomposeSpec(repo, spec.id, ["Single feature"]);
   const [feat] = await listBacklog(repo);
+  // decomposeSpec-derived FEATs carry no ACs; seed one so the scaffold gate
+  // (placeholder AC auto-generation was removed) is satisfied.
+  const featBody = await fs.readFile(feat.filePath, "utf8");
+  await fs.writeFile(
+    feat.filePath,
+    `${featBody}\n## Acceptance criteria\n\n- [ ] AC-1: parent feature behaves as specified\n`
+  );
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"
@@ -96,7 +104,7 @@ test("completeSlice auto-rolls parent spec to satisfied when all features done",
 
 test("completeSlice is idempotent — re-running on a completed slice doesn't error", async () => {
   const repo = await tmpRepo("al-slice-complete-idem-");
-  const feat = await addFeature(repo, { title: "Idempotent" });
+  const feat = await addFeature(repo, { title: "Idempotent", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"
@@ -132,7 +140,7 @@ test("moveFeature stamps started_at on first in-progress entry", async () => {
 
 test("completeSlice blocked when featureEnd ceremony has simplifyRan: false", async () => {
   const repo = await tmpRepo("al-slice-simplify-blocked-");
-  const feat = await addFeature(repo, { title: "Simplify gate test" });
+  const feat = await addFeature(repo, { title: "Simplify gate test", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Write a ceremony with simplifyRan: false
   const ceremony = featureEnd(
@@ -154,7 +162,7 @@ test("completeSlice blocked when featureEnd ceremony has simplifyRan: false", as
 
 test("completeSlice allowed when featureEnd ceremony has simplifyRan: true", async () => {
   const repo = await tmpRepo("al-slice-simplify-allowed-");
-  const feat = await addFeature(repo, { title: "Simplify passed" });
+  const feat = await addFeature(repo, { title: "Simplify passed", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Write a ceremony with simplifyRan: true
   const ceremony = featureEnd(
@@ -172,7 +180,7 @@ test("completeSlice allowed when featureEnd ceremony has simplifyRan: true", asy
 
 test("completeSlice allowed when no featureEnd ceremony exists", async () => {
   const repo = await tmpRepo("al-slice-simplify-no-ceremony-");
-  const feat = await addFeature(repo, { title: "No ceremony" });
+  const feat = await addFeature(repo, { title: "No ceremony", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // No ceremony written — feature is still in-progress
   const result = await completeSlice(repo, slice.id, {
@@ -187,7 +195,7 @@ test("completeSlice allowed when no featureEnd ceremony exists", async () => {
 
 test("completeSlice keeps feature in-progress when feature_complete: false in frontmatter", async () => {
   const repo = await tmpRepo("al-keep-fm-");
-  const feat = await addFeature(repo, { title: "Multi-slice work" });
+  const feat = await addFeature(repo, { title: "Multi-slice work", body: AC_SECTION_BODY });
   // Set feature_complete: false in the feature frontmatter
   const { mergeFrontmatter } = await import("../scripts/lib/frontmatter.mjs");
   const featContent = await fs.readFile(feat.filePath, "utf8");
@@ -208,7 +216,10 @@ test("completeSlice keeps feature in-progress when feature_complete: false in fr
 
 test("completeSlice keeps feature in-progress when keepFeatureOpen runtime flag passed", async () => {
   const repo = await tmpRepo("al-keep-flag-");
-  const feat = await addFeature(repo, { title: "Multi-slice work via flag" });
+  const feat = await addFeature(repo, {
+    title: "Multi-slice work via flag",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     keepFeatureOpen: true,
@@ -226,7 +237,10 @@ test("completeSlice keeps feature in-progress when keepFeatureOpen runtime flag 
 
 test("completeSlice still moves feature to done when feature_complete: true explicitly set", async () => {
   const repo = await tmpRepo("al-explicit-true-");
-  const feat = await addFeature(repo, { title: "Single slice with explicit flag" });
+  const feat = await addFeature(repo, {
+    title: "Single slice with explicit flag",
+    body: AC_SECTION_BODY
+  });
   const { mergeFrontmatter } = await import("../scripts/lib/frontmatter.mjs");
   const featContent = await fs.readFile(feat.filePath, "utf8");
   await fs.writeFile(feat.filePath, mergeFrontmatter(featContent, { feature_complete: true }));
@@ -262,7 +276,7 @@ async function writeValidationBadge(repo, status, note = "") {
 
 test("completeSlice holds feature open when validation gate unmet (no artifact, no badge)", async () => {
   const repo = await tmpRepo("al-vgate-block-");
-  const feat = await addFeature(repo, { title: "Behavior-bearing work" });
+  const feat = await addFeature(repo, { title: "Behavior-bearing work", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id);
   // Slice still moves
@@ -278,7 +292,7 @@ test("completeSlice holds feature open when validation gate unmet (no artifact, 
 
 test("completeSlice proceeds when validation artifact present for the slice", async () => {
   const repo = await tmpRepo("al-vgate-artifact-");
-  const feat = await addFeature(repo, { title: "Validated" });
+  const feat = await addFeature(repo, { title: "Validated", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await writeValidationsArtifact(
     repo,
@@ -292,7 +306,7 @@ test("completeSlice proceeds when validation artifact present for the slice", as
 
 test("completeSlice proceeds when validation_passed badge present", async () => {
   const repo = await tmpRepo("al-vgate-passed-");
-  const feat = await addFeature(repo, { title: "Passed via badge" });
+  const feat = await addFeature(repo, { title: "Passed via badge", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await writeValidationBadge(repo, "passed", "all green");
   const result = await completeSlice(repo, slice.id);
@@ -302,7 +316,7 @@ test("completeSlice proceeds when validation_passed badge present", async () => 
 
 test("completeSlice proceeds when validation_skipped badge present", async () => {
   const repo = await tmpRepo("al-vgate-pre-skipped-");
-  const feat = await addFeature(repo, { title: "Pre-skipped" });
+  const feat = await addFeature(repo, { title: "Pre-skipped", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await writeValidationBadge(repo, "skipped", "no env");
   const result = await completeSlice(repo, slice.id);
@@ -313,7 +327,7 @@ test("completeSlice proceeds when validation_skipped badge present", async () =>
 
 test("completeSlice proceeds when slice frontmatter requires_validation: false", async () => {
   const repo = await tmpRepo("al-vgate-waiver-");
-  const feat = await addFeature(repo, { title: "Doc-only slice" });
+  const feat = await addFeature(repo, { title: "Doc-only slice", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Patch the slice file to add requires_validation: false
   const { mergeFrontmatter } = await import("../scripts/lib/frontmatter.mjs");
@@ -327,7 +341,7 @@ test("completeSlice proceeds when slice frontmatter requires_validation: false",
 
 test("completeSlice --skip-validation-check bypass requires non-empty reason", async () => {
   const repo = await tmpRepo("al-vgate-skip-empty-");
-  const feat = await addFeature(repo, { title: "Bad skip" });
+  const feat = await addFeature(repo, { title: "Bad skip", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await assert.rejects(
     () => completeSlice(repo, slice.id, { skipValidationCheck: "   " }),
@@ -337,7 +351,7 @@ test("completeSlice --skip-validation-check bypass requires non-empty reason", a
 
 test("completeSlice --skip-validation-check with reason bypasses gate", async () => {
   const repo = await tmpRepo("al-vgate-skip-ok-");
-  const feat = await addFeature(repo, { title: "Skip with reason" });
+  const feat = await addFeature(repo, { title: "Skip with reason", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "no DB available in sandbox"
@@ -352,7 +366,7 @@ test("completeSlice --skip-validation-check with reason bypasses gate", async ()
 // AC-1 + AC-2: updated_confidence returned and downgrades to red on hard failure
 test("completeSlice returns updated_confidence red when builderEvidence has test-fail", async () => {
   const repo = await tmpRepo("al-builder-evidence-red-");
-  const feat = await addFeature(repo, { title: "Builder evidence red" });
+  const feat = await addFeature(repo, { title: "Builder evidence red", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test",
@@ -365,7 +379,7 @@ test("completeSlice returns updated_confidence red when builderEvidence has test
 // AC-3: updated_confidence is null when no builderEvidence provided
 test("completeSlice returns updated_confidence null when no builderEvidence", async () => {
   const repo = await tmpRepo("al-builder-evidence-null-");
-  const feat = await addFeature(repo, { title: "No builder evidence" });
+  const feat = await addFeature(repo, { title: "No builder evidence", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"

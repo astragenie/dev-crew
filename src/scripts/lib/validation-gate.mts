@@ -81,7 +81,7 @@ function readGateStatus(workflowState: unknown) {
 export async function deriveValidationGate(
   repoPath: string,
   sliceId: string,
-  { sliceFm = null }: Record<string, any> = {}
+  { sliceFm = null, config = null }: Record<string, any> = {}
 ) {
   if (sliceFm && sliceFm.requires_validation === false) {
     return {
@@ -152,6 +152,31 @@ export async function deriveValidationGate(
         "record an explicit skip with --skip-validation-check, or use --force-close (audited)",
       evidence: artifacts
     };
+  }
+
+  // Opt-in (loop.validation.satisfiedByReview): an EXPLICITLY-EVIDENCED review
+  // gate — a real reviewer approval badge/artifact — also satisfies the
+  // validation gate, delegating behavior/test validation to the CI test gate
+  // (no separate loop-side validator is dispatched — see post-builder-fanout).
+  // Placed last so real validation evidence (artifact/badge/waiver) still wins.
+  //
+  // CRITICAL: require `!reviewGate.unproven`. deriveReviewGate treats the
+  // ABSENCE of any matching review artifact as `satisfied: true, unproven: true`
+  // (a tolerant fallthrough for filename-token variance). That tolerance must
+  // NOT leak across to the validation gate — otherwise a slice with no review
+  // AND no validation would close as satisfied with a misleading "reviewer
+  // approval" reason. Only an artifact/badge/waiver-backed review (satisfied &&
+  // !unproven) delegates validation here.
+  if (config?.loop?.validation?.satisfiedByReview === true) {
+    const { deriveReviewGate } = await import("./review-gate.mjs");
+    const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
+    if (reviewGate.satisfied && !reviewGate.unproven) {
+      return {
+        satisfied: true,
+        reason: `review-badge: validation delegated to evidenced reviewer approval + CI test gate (${reviewGate.reason})`,
+        evidence: []
+      };
+    }
   }
 
   return {

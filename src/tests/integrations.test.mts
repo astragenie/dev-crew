@@ -15,6 +15,7 @@ import { sliceFromFeature, completeSlice } from "../scripts/lib/slice-linker.mjs
 import { inferScoresForSlice } from "../scripts/lib/score-inference.mjs";
 import { mergeFrontmatter, parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -22,7 +23,7 @@ async function tmpRepo(prefix) {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -46,7 +47,7 @@ async function writeArtifact(repo, subdir, filename, body) {
 
 test("linkArtifactToSlice preserves timestamp in artifact filename", async () => {
   const repo = await tmpRepo("al-link-ts-keep-");
-  const feat = await addFeature(repo, { title: "keep ts" });
+  const feat = await addFeature(repo, { title: "keep ts", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const tsName = "20260524T083250Z-phase3-feat021-slice36-review-result.md";
   const artPath = await writeArtifact(repo, "reviews", tsName, "# review body");
@@ -71,7 +72,7 @@ test("linkArtifactToSlice preserves timestamp in artifact filename", async () =>
 
 test("linkArtifactToSlice appends to slice frontmatter and is idempotent", async () => {
   const repo = await tmpRepo("al-v19-link-");
-  const feat = await addFeature(repo, { title: "x" });
+  const feat = await addFeature(repo, { title: "x", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const artPath = await writeArtifact(repo, "reviews", "r1.md", "# review");
   const r1 = await linkArtifactToSlice(repo, {
@@ -93,7 +94,7 @@ test("linkArtifactToSlice appends to slice frontmatter and is idempotent", async
 
 test("score-inference prefers frontmatter linkage over body-scrape", async () => {
   const repo = await tmpRepo("al-v19-infer-linkage-");
-  const feat = await addFeature(repo, { title: "x" });
+  const feat = await addFeature(repo, { title: "x", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   // Artifact does NOT mention the slice id in body — only linkage would surface it
   const artPath = await writeArtifact(
@@ -164,7 +165,7 @@ test("decomposeSpec accepts JSON-object array shape from researcher output", asy
 
 test("completeSlice writes a crew handoff artifact", async () => {
   const repo = await tmpRepo("al-v19-handoff-");
-  const feat = await addFeature(repo, { title: "h" });
+  const feat = await addFeature(repo, { title: "h", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
   const result = await completeSlice(repo, slice.id, {
     skipValidationCheck: "test-fixture: gate not under test"

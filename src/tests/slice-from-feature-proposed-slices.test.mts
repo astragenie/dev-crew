@@ -15,6 +15,7 @@ import {
   updateFeatureFrontmatter
 } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 const LOOP_CLI = path.resolve("src/scripts/loop.mts");
 
@@ -24,7 +25,7 @@ async function tmpRepo(prefix: string): Promise<string> {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -39,7 +40,7 @@ async function tmpRepo(prefix: string): Promise<string> {
 
 test("sliceFromFeature creates all proposed slices atomically", async () => {
   const repo = await tmpRepo("sfp-atomic-");
-  const feat = await addFeature(repo, { title: "Big work" });
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
     effort_points: 13,
     proposed_slices: [
@@ -78,7 +79,7 @@ test("sliceFromFeature creates all proposed slices atomically", async () => {
 
 test("sliceFromFeature is idempotent on proposed_slices rerun (no duplicate slices)", async () => {
   const repo = await tmpRepo("sfp-idem-");
-  const feat = await addFeature(repo, { title: "Big work" });
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
     effort_points: 8,
     proposed_slices: [
@@ -102,7 +103,7 @@ test("sliceFromFeature is idempotent on proposed_slices rerun (no duplicate slic
 
 test("sliceFromFeature single-slice path (no proposed_slices) returns slices array of length 1", async () => {
   const repo = await tmpRepo("sfp-single-");
-  const feat = await addFeature(repo, { title: "Small work" });
+  const feat = await addFeature(repo, { title: "Small work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, { effort_points: 5 });
 
   const out = await sliceFromFeature(repo, feat.id);

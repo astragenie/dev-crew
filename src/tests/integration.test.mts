@@ -11,6 +11,7 @@ import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,7 +23,7 @@ async function tmpRepo(prefix: string): Promise<string> {
   await fs.writeFile(
     path.join(repo, ".claude/loop.json"),
     JSON.stringify({
-      preset: "dotnet-aspire-python",
+      preset: "dotnet-python",
       loop: {
         aiLoopRoot: ".claude/artifacts/loop/ai-loop",
         backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
@@ -62,7 +63,10 @@ async function writeValidationArtifact(repo: string, sliceId: string): Promise<v
 
 test("integration: startSlice → completeSlice happy path moves slice+feature to done", async () => {
   const repo = await tmpRepo("it-happy-");
-  const feat = await addFeature(repo, { title: "Integration happy path" });
+  const feat = await addFeature(repo, {
+    title: "Integration happy path",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -102,7 +106,10 @@ test("integration: startSlice → completeSlice happy path moves slice+feature t
 
 test("integration: startSlice → completeSlice blocked by validation gate keeps feature open", async () => {
   const repo = await tmpRepo("it-blocked-");
-  const feat = await addFeature(repo, { title: "Integration blocked gate" });
+  const feat = await addFeature(repo, {
+    title: "Integration blocked gate",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -127,7 +134,10 @@ test("integration: startSlice → completeSlice blocked by validation gate keeps
 
 test("integration: startSlice → completeSlice with --skip-validation-check bypasses gate", async () => {
   const repo = await tmpRepo("it-skip-");
-  const feat = await addFeature(repo, { title: "Integration skip bypass" });
+  const feat = await addFeature(repo, {
+    title: "Integration skip bypass",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 
@@ -158,7 +168,8 @@ test("integration: feature priority and target_release flow through to slice fro
   const feat = await addFeature(repo, {
     title: "Data flow test",
     priority: "P1",
-    target_release: "v2.0.0"
+    target_release: "v2.0.0",
+    body: AC_SECTION_BODY
   });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
@@ -177,7 +188,10 @@ test("integration: feature priority and target_release flow through to slice fro
 
 test("integration: completeSlice nextAction always mentions slice grade command", async () => {
   const repo = await tmpRepo("it-nextaction-");
-  const feat = await addFeature(repo, { title: "Next action regression" });
+  const feat = await addFeature(repo, {
+    title: "Next action regression",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
   const result = await completeSlice(repo, slice.id, {
@@ -194,7 +208,10 @@ test("integration: completeSlice nextAction always mentions slice grade command"
 
 test("integration: completeSlice with requires_validation: false waiver skips gate automatically", async () => {
   const repo = await tmpRepo("it-waiver-");
-  const feat = await addFeature(repo, { title: "Waiver regression" });
+  const feat = await addFeature(repo, {
+    title: "Waiver regression",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
   // Patch slice frontmatter with explicit waiver
@@ -214,7 +231,10 @@ test("integration: completeSlice with requires_validation: false waiver skips ga
 
 test("integration: startSlice slice.id matches the id written in the slice file frontmatter", async () => {
   const repo = await tmpRepo("it-idmatch-");
-  const feat = await addFeature(repo, { title: "ID consistency check" });
+  const feat = await addFeature(repo, {
+    title: "ID consistency check",
+    body: AC_SECTION_BODY
+  });
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
 

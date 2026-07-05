@@ -1,6 +1,6 @@
 ---
 id: FEAT-216
-status: pending
+status: done
 priority: P3
 category: telemetry
 target_release: null
@@ -24,6 +24,7 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-07-03
 autonomous_safe: false
 triage_notes: "SLICE-140 (FEAT-215) review follow-ups. One MEDIUM (secret-adjacent precedence change) + one LOW (observability). needs_contract:true / autonomous_safe:false because the tightening alters bearer-tier routing — must be a conscious design decision, not an unattended edit."
+completed_at: 2026-07-03
 ---
 # FEAT-216: Ingest env-tier hardening + silent-skip observability (FEAT-215 follow-ups)
 

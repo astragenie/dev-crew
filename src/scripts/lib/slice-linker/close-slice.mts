@@ -312,7 +312,7 @@ async function assertCloseGatesSatisfied(
   const validationGate =
     skipValidationCheck && String(skipValidationCheck).trim().length > 0
       ? { satisfied: true, reason: `--skip-validation-check: ${skipValidationCheck}` }
-      : await deriveValidationGate(repoPath, sliceId, { sliceFm });
+      : await deriveValidationGate(repoPath, sliceId, { sliceFm, config });
 
   const failures: string[] = [];
   if (!reviewGate.satisfied) failures.push(`review-gate: ${reviewGate.reason}`);

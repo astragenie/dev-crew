@@ -282,8 +282,12 @@ describe("postAgentCompletions: loop.ingest block (FEAT-215)", () => {
   });
 
   test("AC-4: ingest block outranks a shell-global ASTRARUNNER_ENV profile (load-bearing regression)", async () => {
+    // Post-FEAT-216 (DEC-064): a committed url pairs its bearer with an
+    // EXPLICIT ingest.env — here "prod" — so the tier is verified, not
+    // inherited from the shell-global ASTRARUNNER_ENV. This still proves the
+    // load-bearing property: the committed block url wins over the profile url.
     const repo = await withTempLoopJson(tmpDir, {
-      loop: { ingest: { appId: "app-1", url: "https://from-block.example.com" } }
+      loop: { ingest: { appId: "app-1", url: "https://from-block.example.com", env: "prod" } }
     });
     await fs.writeFile(
       path.join(tmpDir, "profiles.json"),
@@ -304,9 +308,6 @@ describe("postAgentCompletions: loop.ingest block (FEAT-215)", () => {
       JSON.stringify({ version: 1, tokens: { "app-1": { bearer: "lrt_resolved" } } })
     );
     process.env["ASTRARUNNER_ENV"] = "prod";
-    // ingest.env NOT set, so effectiveEnv falls through to
-    // resolveAstrarunnerEnvOption() = "prod" — exercises that branch
-    // specifically while still proving the block wins on URL.
 
     const result = await postAgentCompletions({
       sliceId: "SLICE-4",
@@ -315,6 +316,7 @@ describe("postAgentCompletions: loop.ingest block (FEAT-215)", () => {
     });
     expect(fetchCalls.length).toBe(1);
     expect(fetchCalls[0].url).toBe("https://from-block.example.com/api/v2/ingest/loop-events");
+    expect(fetchCalls[0].init?.headers).toMatchObject({ authorization: "Bearer lrt_resolved" });
     expect(result.posted).toBe(1);
   });
 
@@ -379,13 +381,13 @@ describe("postAgentCompletions: loop.ingest block (FEAT-215)", () => {
     expect(result).toEqual({ posted: 0, skipped: 1, failed: 0 });
   });
 
-  // SLICE-140 review (Reviewer B MEDIUM): pins the documented wrong-tier hazard.
-  // A committed ingest.url WITHOUT ingest.env lets the bearer's effective env
-  // fall through to a shell-global ASTRARUNNER_ENV — so a fleet with
-  // ASTRARUNNER_ENV=staging pairs a staging bearer with the committed url.
-  // Behavior is intentional (DECISION-1: ingest.env optional); this test makes
-  // the pairing explicit so a future tightening is a conscious change.
-  test("Reviewer-B: ingest.url without ingest.env pairs bearer from shell-global ASTRARUNNER_ENV", async () => {
+  // FEAT-216 Item 1 / DEC-064 (was the SLICE-140 Reviewer-B pin, now retired).
+  // A committed ingest.url WITHOUT ingest.env must NOT inherit the shell-global
+  // ASTRARUNNER_ENV tier for the bearer — that would pair a staging-tier token
+  // with the committed (prod) url. The tightened rule refuses the shell-global
+  // tier; with only tokens.staging.json present (no env-less default store) the
+  // bearer stays unresolved and the sink no-ops rather than sending wrong-tier.
+  test("FEAT-216: ingest.url without ingest.env refuses the shell-global ASTRARUNNER_ENV bearer tier -> no-op", async () => {
     const repo = await withTempLoopJson(tmpDir, {
       loop: { ingest: { appId: "app-1", url: "https://prod-url.example.com" } }
     });
@@ -406,15 +408,101 @@ describe("postAgentCompletions: loop.ingest block (FEAT-215)", () => {
     process.env["ASTRARUNNER_ENV"] = "staging";
 
     const result = await postAgentCompletions({
-      sliceId: "SLICE-BNote",
+      sliceId: "SLICE-216-1",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    // No wrong-tier send: the staging bearer is never resolved.
+    expect(fetchCalls.length).toBe(0);
+    expect(result).toEqual({ posted: 0, skipped: 1, failed: 0 });
+  });
+
+  test("FEAT-216: inherited webhook.appId + committed url without env also refuses the shell-global bearer tier", async () => {
+    // Combined path: appId is INHERITED from notifications.webhook.appId (not
+    // ingest.appId), a committed ingest.url is present, ingest.env is absent,
+    // and a mismatched shell-global ASTRARUNNER_ENV=staging is set. The
+    // tightening must apply regardless of how effectiveAppId was derived, so
+    // the staging-tier bearer is never resolved -> no-op.
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: {
+        notifications: {
+          webhook: { url: "https://wh.example.com", tenantId: "T", appId: "app-webhook" }
+        },
+        ingest: { url: "https://prod-url.example.com" }
+      }
+    });
+    tokenStoreInternals.profilesDir = () => tmpDir;
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.staging.json"),
+      JSON.stringify({ version: 1, tokens: { "app-webhook": { bearer: "lrt_staging_bearer" } } })
+    );
+    process.env["ASTRARUNNER_ENV"] = "staging";
+
+    const result = await postAgentCompletions({
+      sliceId: "SLICE-216-inherit-mismatch",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    expect(fetchCalls.length).toBe(0);
+    expect(result).toEqual({ posted: 0, skipped: 1, failed: 0 });
+  });
+
+  test("FEAT-216: committed url + explicit ingest.env resolves the tier-specific bearer (correct usage)", async () => {
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: { ingest: { appId: "app-1", url: "https://prod-url.example.com", env: "staging" } }
+    });
+    tokenStoreInternals.profilesDir = () => tmpDir;
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.staging.json"),
+      JSON.stringify({ version: 1, tokens: { "app-1": { bearer: "lrt_staging_bearer" } } })
+    );
+    process.env["ASTRARUNNER_ENV"] = "prod"; // shell-global, must be overridden by ingest.env
+
+    const result = await postAgentCompletions({
+      sliceId: "SLICE-216-2",
       agents: [BASE_ROW],
       repoPath: repo
     });
     expect(fetchCalls.length).toBe(1);
-    // Committed prod url + staging-tier bearer — the documented mismatch.
     expect(fetchCalls[0].url).toBe("https://prod-url.example.com/api/v2/ingest/loop-events");
     expect(fetchCalls[0].init?.headers).toMatchObject({
       authorization: "Bearer lrt_staging_bearer"
+    });
+    expect(result.posted).toBe(1);
+  });
+
+  test("FEAT-216: committed url without env still uses the env-less default token store (tier-neutral, not shell-global)", async () => {
+    // Proves DEC-064's env-less fallback is preserved: a shell-global
+    // ASTRARUNNER_ENV is refused for the bearer tier, but the legacy env-less
+    // default store still resolves — it carries no tier claim, so no mismatch.
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: { ingest: { appId: "app-1", url: "https://from-block.example.com" } }
+    });
+    tokenStoreInternals.storePath = () => path.join(tmpDir, "tokens.json");
+    tokenStoreInternals.profilesDir = () => tmpDir;
+    // Default env-less store has the token; a staging tier store also exists and
+    // MUST be ignored because the shell-global tier is refused.
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.json"),
+      JSON.stringify({ version: 1, tokens: { "app-1": { bearer: "lrt_default_store" } } })
+    );
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.staging.json"),
+      JSON.stringify({
+        version: 1,
+        tokens: { "app-1": { bearer: "lrt_staging_should_be_ignored" } }
+      })
+    );
+    process.env["ASTRARUNNER_ENV"] = "staging";
+
+    const result = await postAgentCompletions({
+      sliceId: "SLICE-216-3",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    expect(fetchCalls.length).toBe(1);
+    expect(fetchCalls[0].init?.headers).toMatchObject({
+      authorization: "Bearer lrt_default_store"
     });
     expect(result.posted).toBe(1);
   });
@@ -626,5 +714,131 @@ describe("postAgentCompletions: loop.ingest block (FEAT-215)", () => {
     expect(fetchCalls[0].url).toBe("https://staging.example.com/api/v2/ingest/loop-events");
     expect(fetchCalls[0].init?.headers).toMatchObject({ authorization: "Bearer lrt_staging" });
     expect(result.posted).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FEAT-216 Item 2: silent-skip observability (LOOP_DEBUG-gated, non-secret)
+// ---------------------------------------------------------------------------
+
+describe("postAgentCompletions: LOOP_DEBUG skip observability (FEAT-216)", () => {
+  let errCalls: string[];
+  let originalErr: typeof console.error;
+
+  beforeEach(() => {
+    errCalls = [];
+    originalErr = console.error;
+    console.error = ((...args: unknown[]) => {
+      errCalls.push(args.map(String).join(" "));
+    }) as typeof console.error;
+    delete process.env["LOOP_DEBUG"];
+  });
+
+  afterEach(() => {
+    console.error = originalErr;
+    delete process.env["LOOP_DEBUG"];
+  });
+
+  test("AC-3: LOOP_DEBUG emits a skip line naming the appId + 'no token' reason on an unresolved token", async () => {
+    process.env["LOOP_DEBUG"] = "1";
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: { ingest: { appId: "app-missing", url: "https://from-block.example.com" } }
+    });
+    tokenStoreInternals.storePath = () => path.join(tmpDir, "tokens.json");
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.json"),
+      JSON.stringify({ version: 1, tokens: { "some-other-app": { bearer: "lrt_x" } } })
+    );
+
+    const result = await postAgentCompletions({
+      sliceId: "SLICE-216-dbg1",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    expect(result).toEqual({ posted: 0, skipped: 1, failed: 0 });
+    const joined = errCalls.join("\n");
+    expect(joined).toContain("app-missing");
+    expect(joined).toContain("no token");
+    // AC-4: never log a bearer/token value.
+    expect(joined).not.toContain("lrt_x");
+    expect(joined.toLowerCase()).not.toContain("bearer ");
+  });
+
+  test("AC-3: LOOP_DEBUG emits a 'no url' skip line when no url resolves", async () => {
+    process.env["LOOP_DEBUG"] = "true";
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: { ingest: { appId: "app-1" } } // appId but no url and no profile
+    });
+
+    const result = await postAgentCompletions({
+      sliceId: "SLICE-216-dbg2",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    expect(result).toEqual({ posted: 0, skipped: 1, failed: 0 });
+    expect(errCalls.join("\n")).toContain("no url");
+  });
+
+  test("AC-3: default (LOOP_DEBUG unset) runs stay silent on skip", async () => {
+    // No LOOP_DEBUG in env.
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: { ingest: { appId: "app-missing", url: "https://from-block.example.com" } }
+    });
+    tokenStoreInternals.storePath = () => path.join(tmpDir, "tokens.json");
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.json"),
+      JSON.stringify({ version: 1, tokens: {} })
+    );
+
+    const result = await postAgentCompletions({
+      sliceId: "SLICE-216-dbg3",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    expect(result).toEqual({ posted: 0, skipped: 1, failed: 0 });
+    expect(errCalls.length).toBe(0);
+  });
+
+  test("skip line sanitizes a control-char-bearing appId (no forged second line)", async () => {
+    process.env["LOOP_DEBUG"] = "1";
+    const repo = await withTempLoopJson(tmpDir, {
+      loop: {
+        ingest: { appId: "app\n[loop:ingest] skipped: FORGED", url: "https://x.example.com" }
+      }
+    });
+    tokenStoreInternals.storePath = () => path.join(tmpDir, "tokens.json");
+    await fs.writeFile(
+      path.join(tmpDir, "tokens.json"),
+      JSON.stringify({ version: 1, tokens: {} })
+    );
+
+    await postAgentCompletions({
+      sliceId: "SLICE-216-inj",
+      agents: [BASE_ROW],
+      repoPath: repo
+    });
+    // Every emitted arg is a single line — the newline was stripped, so the
+    // config-sourced appId cannot forge an extra log record.
+    for (const line of errCalls) {
+      expect(line).not.toContain("\n");
+    }
+    // Content still present, just inlined + space-escaped.
+    expect(errCalls.join(" ")).toContain("FORGED");
+  });
+
+  test("LOOP_DEBUG=0 and =false count as disabled (no skip line)", async () => {
+    for (const val of ["0", "false", "False", ""]) {
+      errCalls = [];
+      process.env["LOOP_DEBUG"] = val;
+      const repo = await withTempLoopJson(tmpDir, {
+        loop: { ingest: { appId: "app-1" } }
+      });
+      await postAgentCompletions({
+        sliceId: `SLICE-216-dbgoff-${val || "empty"}`,
+        agents: [BASE_ROW],
+        repoPath: repo
+      });
+      expect(errCalls.length).toBe(0);
+    }
   });
 });
