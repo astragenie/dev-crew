@@ -484,6 +484,13 @@ export async function startSlice(
     result.dispatchInstruction = `${recallBlock}\n\n${result.dispatchInstruction}`;
   }
 
+  // FEAT-219 AC-7: splice the already-computed learningsDigest into
+  // dispatchInstruction, mirroring the recallBlock splice above. Additive +
+  // fail-safe — an empty/null digest is a strict no-op (byte-identical).
+  if (learningsDigest && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${learningsDigest}\n\n${result.dispatchInstruction}`;
+  }
+
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
   void recordSliceStartEvent(repoPath, sliceId, featureId);
   // runner-plugin#290: emit GEPA memory payload on slice start. Fire-and-forget

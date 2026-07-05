@@ -9,6 +9,7 @@ import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { recordGradeScore } from "../scripts/lib/grade-trend.mjs";
+import { logLearning } from "../scripts/lib/learnings.mjs";
 import { AC_SECTION_BODY, AC_PLACEHOLDER_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
@@ -171,6 +172,55 @@ test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-
     /\[CHECKPOINT\] AC-<N>: <pass\|fail\|skip>/,
     "CHECKPOINT tag spec missing or malformed"
   );
+});
+
+test("startSlice splices a non-empty learningsDigest into dispatchInstruction (FEAT-219 AC-7)", async () => {
+  const repo = await tmpRepo("al-slice-start-learnings-digest-");
+  await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+  await logLearning(repo, {
+    key: "recurring-flake",
+    insight: "Retry the astramem daemon check before marking it unreachable."
+  });
+  const feat = await addFeature(repo, { title: "Learnings digest feature", body: AC_SECTION_BODY });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+
+  const result = await startSlice(repo, slice.id);
+  assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+  assert.ok(result.learningsDigest, "learningsDigest should be computed on the result too");
+  // The digest carries its own header (learnings.mts renderLearningsDigest) —
+  // splice must not double-wrap it in a second header.
+  assert.match(result.dispatchInstruction, /## Operational learnings/);
+  assert.match(result.dispatchInstruction, /recurring-flake/);
+  assert.match(result.dispatchInstruction, /Retry the astramem daemon check/);
+  // Digest is prepended, mirroring the recallBlock splice pattern.
+  assert.ok(
+    result.dispatchInstruction.indexOf("## Operational learnings") <
+      result.dispatchInstruction.indexOf("Dispatch crew:"),
+    "learnings digest must be prepended ahead of the dispatch body"
+  );
+});
+
+test("startSlice leaves dispatchInstruction unchanged when learningsDigest is empty (FEAT-219 AC-7 noop)", async () => {
+  const repo = await tmpRepo("al-slice-start-learnings-noop-");
+  await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
+  // No learnings.jsonl seeded — recentLearnings() returns digest: null.
+  const feat = await addFeature(repo, { title: "No learnings feature", body: AC_SECTION_BODY });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+
+  const result = await startSlice(repo, slice.id);
+  assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
+  assert.equal(result.learningsDigest, null);
+  assert.doesNotMatch(
+    result.dispatchInstruction,
+    /## Operational learnings/,
+    "no digest block should be spliced in when learningsDigest is empty"
+  );
+  // Byte-identical noop: instruction is exactly the pre-existing dispatch
+  // body (no leading digest concatenation), matching the shape asserted by
+  // the FEAT-191 default-dispatch test above.
+  assert.match(result.dispatchInstruction, /^Dispatch crew:fullstack-dev subagent/);
 });
 
 test("startSlice with dispatch:false omits the instruction", async () => {
