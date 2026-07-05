@@ -18,7 +18,8 @@ test("writeDispatchMetrics: writes all required fields", () => {
     completionTokens: 40,
     estimatedCostUsd: 0.01,
     model: "claude-sonnet-4-6",
-    childCount: 3
+    childCount: 3,
+    partialChildren: []
   };
   writeDispatchMetrics(dir, "run-001", metrics);
   const filePath = path.join(dir, ".claude/artifacts/loop/dispatch/run-001/dispatch-metrics.json");
@@ -43,7 +44,8 @@ test("readDispatchMetrics: reads back written metrics", () => {
     completionTokens: 0,
     estimatedCostUsd: 0,
     model: "unknown",
-    childCount: 1
+    childCount: 1,
+    partialChildren: []
   };
   writeDispatchMetrics(dir, "run-002", metrics);
   const read = readDispatchMetrics(dir, "run-002");
@@ -66,12 +68,14 @@ test("writeDispatchMetrics: partial status written correctly", () => {
     completionTokens: 0,
     estimatedCostUsd: 0,
     model: "unknown",
-    childCount: 2
+    childCount: 2,
+    partialChildren: ["A", "B"]
   };
   writeDispatchMetrics(dir, "run-fail", metrics);
   const read = readDispatchMetrics(dir, "run-fail");
   assert.ok(read !== null);
   assert.equal(read.status, "partial");
+  assert.deepEqual(read.partialChildren, ["A", "B"]);
   fs.rmSync(dir, { recursive: true });
 });
 
@@ -91,7 +95,8 @@ test("writeDispatchMetrics: non-blocking when dir is unwritable", () => {
     completionTokens: 0,
     estimatedCostUsd: 0,
     model: "unknown",
-    childCount: 0
+    childCount: 0,
+    partialChildren: []
   };
   // must not throw
   assert.doesNotThrow(() => writeDispatchMetrics(dir, "run-block", metrics));

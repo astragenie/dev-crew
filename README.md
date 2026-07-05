@@ -182,7 +182,7 @@ the Agent tool with the returned batch in **one message**, then runs `finalize`.
 ### Telemetry artifacts
 
 - `.claude/artifacts/loop/dispatch/<runId>/worktrees.jsonl` — spawn log
-- `.claude/artifacts/loop/dispatch/<runId>/trace.jsonl` — per-child result + duration + cost (`null` in SLICE-1; FEAT-165 populates)
+- `.claude/artifacts/loop/dispatch/<runId>/trace.jsonl` — per-child result + duration + cost (per-child `costUsd` in the marker stays `null`; run-level totals are populated in `dispatch-metrics.json` by `finalize`, see FEAT-220)
 - `.claude/artifacts/loop/dispatch/<runId>/<childId>.result.json` — canonical child result (marker)
 - `.claude/artifacts/loop/dispatch/<runId>/summary.md` — human-readable run summary
 

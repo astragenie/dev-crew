@@ -12,6 +12,10 @@ export type DispatchMetrics = {
   estimatedCostUsd: number;
   model: string; // "unknown" if undetermined
   childCount: number; // number of plans in plan file
+  // FEAT-220: children whose token/cost usage could not be attributed
+  // unambiguously (missing events, or 2+ children sharing an agentType
+  // within the run window). Empty when every child was matched 1:1.
+  partialChildren: string[];
 };
 
 function metricsPath(repoRoot: string, runId: string): string {
