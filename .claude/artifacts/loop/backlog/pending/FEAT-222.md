@@ -126,6 +126,55 @@ PR first — out of scope here, recorded as a known constraint.
 - **Volume control** — cap manufactured specs per run and per cluster so a noisy
   class can't flood the corpus.
 
+## Contract (pinned — DEC-068)
+
+Full investigation + rationale: `.claude/artifacts/loop/decisions/DEC-068.md`.
+Summary the builder needs:
+
+- **No crew-side change required.** `evals/lib/run-eval.ts` parses specs via
+  a bare `parseYaml(raw) as EvalSpec` cast (no Zod) — additive fields are
+  silently tolerated. Precedent: `held_out: true` already appears on test
+  entries in 3 real files despite not being in the `EvalTest` interface.
+- **Routing: append, never fork.** Write into the EXISTING
+  `evals/agents/crew-<agent>.yaml` file's `tests:` array for the mapped
+  agent. `findSpecByPromptId` returns only the first file matching a
+  `prompt_id` — a second file sharing that id would be silently ignored by
+  `bun run evals --prompt <id>`.
+- **Cross-repo write target is a NEW config key, not yet added:**
+  `loop.crewRepoPath` in `.claude/loop.json`, pointing at a local crew
+  (`dev-team`) checkout. Absent/missing `evals/agents/` → skip all clusters
+  with a logged reason, same never-throw contract as AC-4.
+- **failure_class → agent-under-test** (4 of 9 mapped; rest intentionally
+  undefined/skip — see DEC-068 §5 for full rationale):
+  - `review_fail` → `reviewer` (`evals/agents/crew-reviewer.yaml`)
+  - `validation_fail` → `verifier` (`evals/agents/crew-verifier.yaml`)
+  - `hallucinated_ref` → `refactor` (`evals/agents/crew-refactor.yaml`)
+  - `bad_patch` → `fullstack-dev` (`evals/agents/crew-fullstack-dev.yaml`)
+  - `bad_tool_use`, `ignored_policy`, `stale_context`, `subagent_incomplete`,
+    `other` → undefined, skip with logged reason (AC-4).
+
+Concrete generated-test YAML template (appended to the target file's
+`tests:` array):
+
+```yaml
+  - name: manufactured-<failure_class>-<cluster_hash>
+    manufactured: true
+    provenance:
+      generator: loop-eval-generator
+      failure_class: <FailureClass>
+      cluster_hash: <sha256(failure_class + "::" + normalizeRootCause(representative_root_cause)).hex.slice(0,16)>
+      source_run_id: <FailureCluster.exemplar_ids[0]>
+      generated_at: <ISO-8601>
+    fixture: file://evals/fixtures/manufactured-<cluster_hash>.txt
+    assert:
+      - type: llm-rubric
+        rubric: "<derived from representative_fix / recommended_fix>"
+```
+
+Dedup (AC-3): before writing, parse the target file's existing `tests[]`
+and skip (no write) if any `provenance.cluster_hash` already matches the
+computed hash — `cluster_hash` is the dedup key, not the file/test id.
+
 ## Refs
 
 - crew `evals/cli.ts`, `evals/agents/*.yaml` (e.g. `crew-refactor.yaml`) — target
