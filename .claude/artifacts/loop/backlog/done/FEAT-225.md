@@ -1,6 +1,6 @@
 ---
 id: FEAT-225
-status: pending
+status: done
 priority: P3
 category: bug
 target_release: null
@@ -17,6 +17,23 @@ pm_reviewed: null
 triage_notes: "Surfaced by #324 investigation (PR #328). memory-sink.mts passes `--project` to astramem `remember`, but remember.ts does not parse it (folds only agent into metadata) -> project scope silently dropped, weakening project-scoped decision/lesson recall. Low priority (degrades, does not break). Likely settled together with FEAT-223's `remember` wire-contract work. Mechanical -> autonomous_safe."
 ---
 # FEAT-225: memory-sink drops `--project` on astramem `remember`
+
+## Resolution (2026-07-06): RESOLVED UPSTREAM — no repo change
+
+Verified against the live astramem **0.6.0** binary
+(`~/.claude/plugins/cache/astra/astramem/0.6.0/src/cli/remember.ts`): `remember`
+now **parses `--project`** (line 50-51) and folds it into `metadata.project`
+under **FEAT-423** (lines 63-67: `if (project !== undefined && metadata['project']
+=== undefined) metadata['project'] = project`). The daemon reads
+`metadata.project` and persists it on the atom. `memory-sink.mts`'s existing
+`--project` argument is therefore no longer dropped — the scope leak this FEAT
+targeted is fixed upstream. The #324 findings-doc claim ("not parsed in either
+cached version") was already stale when written.
+
+No repo-side change required. Closed as done. If a future astramem downgrade
+reintroduces the drop, reopen with the scope below.
+
+---
 
 ## Origin
 
