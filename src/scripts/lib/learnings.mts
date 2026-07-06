@@ -7,6 +7,8 @@ import type { AgentType } from "./memory-sink.mjs";
 
 const execFile = promisify(execFileCb);
 
+const execFile = promisify(execFileCb);
+
 // Persistent JSONL operational learnings store.
 // Each entry: { id, timestamp, key, insight, confidence, source, sliceId?,
 // tags?, failure_class?, root_cause?, recommended_fix?, evidence?, status?,
