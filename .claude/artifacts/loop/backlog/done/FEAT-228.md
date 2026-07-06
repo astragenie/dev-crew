@@ -1,6 +1,6 @@
 ---
 id: FEAT-228
-status: pending
+status: done
 priority: P2
 category: enhancement
 target_release: null

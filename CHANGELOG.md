@@ -4,7 +4,9 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
-## [Unreleased] — memory sink + ingest env-tier hardening + preset roster refresh
+## [Unreleased]
+
+## [0.62.0] — 2026-07-06 — continuous-learning-loop repair + preset removal
 
 ### Breaking
 
@@ -17,6 +19,18 @@ shipped under the name `loop`.
   the sizing / proposed_slices structural gates. Re-run
   `/runner:triage --deep <id>` or `/runner:pm-review <id>` to draft ACs. The
   `startSlice` AC linter (placeholder detection) is unchanged and still runs.
+- **FEAT-218 Phase 2: preset layer removed (DEC-069, #348).** Install-time
+  templates replace the runtime preset tier — `/runner:install --preset X`
+  now inlines the selected stack's config directly into `.claude/loop.json`
+  at install time instead of leaving a `preset:` pointer for `resolveConfig`
+  to re-resolve on every run. `resolveConfig` no longer merges
+  `scripts/presets/*.json` at all and no longer falls back to the
+  `dotnet-python` default — unconfigured repos get a clear error instead of a
+  silent wrong-stack default. Repos with an existing `.claude/loop.json`
+  written by the old preset-merge flow are unaffected (their config was
+  already materialized); repos relying on live re-resolution of a `preset:`
+  key on every run must re-install to get an inlined config. Phase 1 analysis:
+  `docs/research/2026-07-03-preset-removal.md` (#342).
 
 ### Changed
 
@@ -25,6 +39,9 @@ shipped under the name `loop`.
   `dotnet-vue` → `dotnet-typescript-vue`. Repos pinning the old names in
   `.claude/loop.json` must update `preset:` — `resolveConfig` throws
   `Unknown preset` otherwise.
+- `slice-linker`: extracted the AC-line classifier out of
+  `extractAcceptanceCriteria` to drop it under the Biome cognitive-complexity
+  cap (FEAT-226, #331). No behavior change.
 
 ### Added
 
@@ -48,10 +65,64 @@ shipped under the name `loop`.
 - **`typescript-service` preset** — TypeScript Node service / daemon
   (Fastify + better-sqlite3 / sqlite-vec, `tsc` build, Vitest, JSON-schema
   ajv contracts, OS-service deployment). Drives `astramemory-local`.
+- **Continuous-learning-loop enrichment.** With the three dormancy bugs fixed
+  (see Fixed), the loop's mid-tier now has real content to work with:
+  - **Learnings schema lifecycle fields** (FEAT-220, #332) — `learnings.jsonl`
+    write-shape enriched with evidence + `status: candidate|validated` lifecycle
+    fields.
+  - **`FailureClassifier` + `mine-failures` job** (FEAT-221, #336) —
+    `src/scripts/lib/failure-classifier.mts` clusters failure-adjacent signal
+    from grades + captured runs into ranked `FailureCluster`s.
+  - **Grade-mining widened to Surprises/Followups** (FEAT-228, #345) — the
+    classifier's grade collector no longer requires a non-pass-like `verdict`
+    (0/119 real grade files set one); it now also mines `## Surprises` /
+    `## Followups` bullets, independent of verdict, while keeping the
+    mined-lesson anti-inflation guard intact.
+  - **`EvalGenerator` → crew eval-spec (FEAT-222, DEC-068, #346)** — converts a
+    `FailureCluster` into a machine-manufactured eval spec appended to the
+    matching `evals/agents/crew-<agent>.yaml` `tests:` array (crew-owned
+    schema, no fork), marked `manufactured: true` with provenance
+    (`source_run_id`, `cluster_hash`) and deduped on `cluster_hash`. Gated on
+    a new `loop.crewRepoPath` config key; skips (never throws) when absent or
+    when a `failure_class` has no mapped agent-under-test.
+- FEAT-219 residual: `agentType` tagging + reviewer memory-context injection
+  wired into `post-builder-fanout` (#347).
+- `docs/research/2026-07-03-preset-removal.md` — FEAT-218 Phase 1 analysis of
+  every preset field, every consumer, and the chosen removal path (#342).
 
 ### Removed
 
 - **`python-only` preset** — pure-Python stack dropped; no consumer.
+- FEAT-225 closed as resolved-upstream — superseded by astramem 0.6.0
+  FEAT-423 (#337).
+
+### Fixed
+
+- **Continuous-learning loop was dead in three places; all three repaired**:
+  - Capture write — `runner:close` / pr-fix / retro capture wrote learnings to
+    a worktree-relative path instead of the canonical repo root, so entries
+    silently vanished on worktree cleanup (FEAT-188 S1b, #327, #343).
+  - Astramem mirror — `memory-sink.mts`'s `emit()` called a non-existent
+    astramem subcommand; it now persists via the real `remember` subcommand
+    (FEAT-223, DEC-067, #333).
+  - Recall read — `recallPrior()` parsed a response shape the real astramem
+    CLI never returns; fixed to match the actual CLI output (FEAT-227, #338).
+- `memory-doctor` health probe no longer reports `ok` unconditionally — it now
+  reflects real failures from the checks it runs (FEAT-224, #334).
+- AC-extractor now parses FEAT-277 Given-When-Then + per-slice `### SN`
+  acceptance-criteria formats instead of only the legacy list format (#323).
+- `grades.jsonl` worktree-cwd bug — grade writes from a worktree resolved to
+  the worktree path instead of the canonical repo root (reuses the S1b
+  `resolveCanonicalRepoRoot` fix) (issue #326, #344).
+- Duplicate `execFile` declarations removed from the learnings module that
+  were breaking `tsc` on `main` (#349).
+
+### Decisions
+
+DEC-067 (astramem mirror persists via `remember`, not a nonexistent
+subcommand), DEC-068 (EvalGenerator targets the crew eval-spec YAML schema,
+not gepa-core Trial JSONL — see FEAT-222), DEC-069 (preset layer removed in
+favor of install-time templates — see FEAT-218).
 
 ## [0.61.0] — 2026-07-04 — P1 enforcement hardening
 

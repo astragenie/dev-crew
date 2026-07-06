@@ -1,11 +1,11 @@
 ---
 id: FEAT-218
-status: pending
+status: done
 priority: P1
 category: architecture
 target_release: null
 created: 2026-07-03
-updated: 2026-07-03
+updated: 2026-07-06
 depends_on: []
 slices: []
 derived_from: null
