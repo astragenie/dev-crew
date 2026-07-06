@@ -39,7 +39,7 @@ export interface DispatchOutcomeInput {
   outcome: DispatchOutcome;
 }
 
-interface PauseEventRecord
+export interface PauseEventRecord
   extends Required<Pick<PauseEventInput, "ts" | "agentRole" | "kind" | "detection">> {
   type: "pause_event";
   sliceId?: string;
@@ -47,13 +47,13 @@ interface PauseEventRecord
   notes?: string;
 }
 
-interface DispatchOutcomeRecord
+export interface DispatchOutcomeRecord
   extends Required<Pick<DispatchOutcomeInput, "ts" | "agentRole" | "outcome">> {
   type: "dispatch_outcome";
   sliceId?: string;
 }
 
-type PauseTelemetryRecord = PauseEventRecord | DispatchOutcomeRecord;
+export type PauseTelemetryRecord = PauseEventRecord | DispatchOutcomeRecord;
 
 export interface PauseRateSummary {
   dispatches: number;
@@ -120,6 +120,14 @@ async function readPauseTelemetry(repoPath: string): Promise<PauseTelemetryRecor
     }
   }
   return records;
+}
+
+// Exported tail-safe reader — FEAT-221's FailureClassifier needs the raw
+// event stream (not just the pauseRate aggregate) to build per-signal
+// failure clusters. Same missing-file/malformed-line tolerance as the
+// private summarizePauseRate path above.
+export async function listPauseTelemetry(repoPath: string): Promise<PauseTelemetryRecord[]> {
+  return readPauseTelemetry(repoPath);
 }
 
 /**

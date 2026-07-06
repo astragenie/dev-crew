@@ -298,6 +298,24 @@ const COMMANDS = {
     });
     return result;
   },
+  "mine-failures": async ({ repoPath, flags, config }: CmdCtx) => {
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { mineFailures } = await import("./lib/failure-mining.mjs");
+    const result = await mineFailures(cwd, {
+      since: flags.since || null,
+      sinceDays: flags.spanDays ? Number(flags.spanDays) : null,
+      ...(flags.limit ? { maxLessons: Number(flags.limit) } : {}),
+      config
+    });
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, {
+      command: "mine-failures",
+      clusters: result.clusters.length,
+      lessons_written: result.lessonsWritten.length
+    });
+    return result;
+  },
   brief: async ({ repoPath, flags }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
     const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });

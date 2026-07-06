@@ -198,6 +198,16 @@ export async function logLearning(repoPath: string, entry: LogLearningEntry): Pr
   return record;
 }
 
+// Return every entry in the store, unfiltered and unranked. Exposed for
+// callers (failure-classifier.mts) that need the full corpus rather than a
+// tail slice — mirrors recentLearnings' canonical-root resolution so both
+// readers converge on the same file regardless of which worktree invoked them.
+export async function listAllLearnings(repoPath: string): Promise<any[]> {
+  const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
+  const filePath = learningsPath(canonicalRoot);
+  return readAllEntries(filePath);
+}
+
 // Return the last N entries from the store plus a markdown digest.
 // Returns { count, items, digest } where digest is null when store is empty.
 export async function recentLearnings(
