@@ -2,9 +2,13 @@
 filed: 2026-06-10
 target_plugin: hero-crew
 target_repo: astragenie/dev-team
-status: partial
-resolved: null
+status: merged
+resolved: 2026-07-06
 partially_resolved: 2026-07-02
+resolved_note: >-
+  Final residual (aiplugin-dev anti-pause contract, PR #150) SHIPPED in crew
+  0.48.0. Loop-side MIN_CREW_VERSION raised 0.47.0 → 0.48.0
+  (plugin-identity.mts) so the contract is guaranteed present. Archived.
 resolved_by: >-
   FEAT-161 (dev-team) scaffold-first HARD OUTPUT CONTRACT — SLICE-A
   (b31ca77) + SLICE-B (83fb35e) landed 2026-06-11 and SHIPPED in

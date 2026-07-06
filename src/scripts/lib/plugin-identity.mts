@@ -125,12 +125,13 @@ export function crewCliRuntime(crewCliPath: string): "bun" | "node" {
 // DIFFERENT fix in 0.47.0: they were redesigned to never write a handoff
 // artifact at all ("Builders do NOT write handoff artifacts ... NEVER
 // invoke write-handoff") — inline follow-up only, so there's no artifact
-// step to pause mid-write. The aiplugin-dev contract extension (dev-team
-// PR #150) is merged to dev-team main but UNRELEASED as of 0.47.0 — it
-// will arrive with the next crew release; pause-events.jsonl shows
-// aiplugin-dev pausing today (2026-07-02) without the contract. Older
-// crew installs may emit unrecognized-flag errors.
-export const MIN_CREW_VERSION = "0.47.0";
+// step to pause mid-write. The aiplugin-dev anti-pause contract extension
+// (dev-team PR #150) SHIPPED in crew 0.48.0 ("GEPA cluster + aiplugin-dev
+// anti-pause contract + capture canary") — agents/aiplugin-dev.md carries
+// the full HARD OUTPUT CONTRACT there. Floor raised to 0.48.0 so the
+// contract is guaranteed present (docs/upstream-requests/archive/2026-06-10-
+// hero-crew-specialist-pause-completion-enforcement.md).
+export const MIN_CREW_VERSION = "0.48.0";
 
 // Minimum crew version that ships /crew:orchestrate-slice.
 // v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the

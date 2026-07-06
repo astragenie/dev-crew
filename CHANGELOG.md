@@ -6,6 +6,16 @@ shipped under the name `loop`.
 
 ## [Unreleased]
 
+### Changed
+
+- **`MIN_CREW_VERSION` raised `0.47.0` → `0.48.0`.** The aiplugin-dev anti-pause
+  contract (dev-team PR #150) shipped in crew 0.48.0; the floor now guarantees
+  it, so `/runner:install` refuses crew `< 0.48.0`. Retires the loop-side
+  workaround for that pause pattern. Archived the corresponding
+  upstream-request. Also archived two upstream-requests confirmed resolved
+  upstream (preflight chained-`cd` MSYS-path translation; lead-orchestrator
+  restoration, self-superseded by FEAT-191).
+
 ## [0.63.0] — 2026-07-06 — continuous-learning loop activation
 
 ### Added
