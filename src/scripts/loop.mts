@@ -230,6 +230,7 @@ function usage() {
     "  bun src/scripts/loop.mts list-presets",
     "  bun src/scripts/loop.mts doctor --repo <path> [--check|--fix]",
     "  bun src/scripts/loop.mts dispatch <subcommand> [args...]   (see: dispatch --help)",
+    "  bun src/scripts/loop.mts learn --repo <path>   (runs the continuous-learning cycle once)",
     "",
     "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
     "artifact through `crew write-validation-result`."
@@ -283,7 +284,7 @@ const COMMANDS = {
     runFeatureSubcommand(repoPath, positionals, flags, config),
   decisions: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runDecisionsSubcommand(repoPath, positionals, flags, config),
-  retrospective: async ({ repoPath, flags }: CmdCtx) => {
+  retrospective: async ({ repoPath, flags, config }: CmdCtx) => {
     const { writeRetrospective } = await import("./lib/retrospective.mjs");
     const result = await writeRetrospective(repoPath, {
       since: flags.since,
@@ -296,7 +297,30 @@ const COMMANDS = {
       since: flags.since,
       span_days: flags.spanDays
     });
-    return result;
+    // DEC-070: a written retrospective is the learning-loop cadence trigger
+    // (FEAT-229 option a) — the marathon-checkpoint hard stop's own remedy is
+    // "run a retrospective", so hooking here fires a cycle at exactly the
+    // reflection point the loop already has. Fire-and-forget: runLearningCycle
+    // never throws and is a no-op unless loop.learningLoop.enabled is true.
+    const { runLearningCycle } = await import("./lib/learning-cycle.mjs");
+    const learningCycle = await runLearningCycle(repoPath, config);
+    return { ...result, learningCycle };
+  },
+  learn: async ({ repoPath, flags, config }: CmdCtx) => {
+    const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
+    const { cwd } = await resolveEffectiveCwd({ repoPath, worktreeOverride: flags.worktree });
+    const { runLearningCycle } = await import("./lib/learning-cycle.mjs");
+    const result = await runLearningCycle(cwd, config);
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(cwd, {
+      command: "learn",
+      ran: result !== null,
+      clusters_processed: result?.clustersProcessed ?? 0,
+      specs_written: result?.specResults.filter((r) => r.status === "written").length ?? 0
+    });
+    return (
+      result ?? { skipped: true, reason: "loop.learningLoop.enabled is not true — see FEAT-229" }
+    );
   },
   "mine-failures": async ({ repoPath, flags, config }: CmdCtx) => {
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");

@@ -14,6 +14,7 @@ const PATH_DEFAULTS = {
   releasesRoot: ".claude/artifacts/loop/releases",
   retrospectivesRoot: ".claude/artifacts/loop/retrospectives",
   miningRoot: ".claude/artifacts/loop/mining",
+  learningRunsRoot: ".claude/artifacts/loop/learning-runs",
   snapshotPath: ".claude/artifacts/loop/loop-snapshot.md",
   phaseGateArtifactDir: ".claude/artifacts/crew/validations"
 };
@@ -54,6 +55,9 @@ export function retroRoot(repoPath: string, config: Record<string, any> | null |
 }
 export function miningRoot(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("miningRoot", config));
+}
+export function learningRunsRoot(repoPath: string, config: Record<string, any> | null | undefined) {
+  return path.join(repoPath, resolve("learningRunsRoot", config));
 }
 export function snapshotPath(repoPath: string, config: Record<string, any> | null | undefined) {
   return path.join(repoPath, resolve("snapshotPath", config));
