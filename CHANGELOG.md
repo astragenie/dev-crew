@@ -6,6 +6,39 @@ shipped under the name `loop`.
 
 ## [Unreleased]
 
+## [0.63.0] — 2026-07-06 — continuous-learning loop activation
+
+### Added
+
+- **Continuous-learning loop activation (FEAT-229, DEC-070, #351).** The
+  0.62.0 release assembled every piece of the learning loop (classifier,
+  mining, eval-generation) but nothing scheduled them — `mine-failures` was
+  operator-run only and `generateEvalsForClusters` had no caller. This
+  release wires them into one pipeline that actually runs on a cadence:
+  - **`runLearningCycle`** (new `src/scripts/lib/learning-cycle.mts`) chains
+    `mineFailures` (FEAT-221) → `generateEvalsForClusters` (FEAT-222) → a
+    single dated cycle report under
+    `.claude/artifacts/loop/learning-runs/YYYY-MM-DD.md`. Each stage is
+    fire-and-forget: a throw in one stage never blocks the other or
+    propagates to the caller.
+  - **`loop.mts learn`** — new operator-invocable subcommand that runs one
+    cycle immediately, independent of any cadence trigger.
+  - **Cadence (DEC-070)**: hooked into the existing `retrospective` CLI
+    subcommand — `runLearningCycle` fires right after `writeRetrospective`
+    succeeds, merging onto the result as `learningCycle`. No new scheduler:
+    a retrospective is the loop's existing "look back and consolidate"
+    moment (and the exact remedy the marathon-checkpoint hard stop already
+    tells operators to run). `checkMarathonCheckpoint` itself was
+    considered and rejected as the hook point — it runs on every
+    `checkStopConditions` call (every `/runner:brief`, every auto-loop
+    iteration boundary), which would fire the cycle on every status poll
+    instead of only when a retro actually lands.
+  - **Opt-in `loop.learningLoop` config** — `enabled` (default `false`, same
+    posture as memory-sink/DEC-065), plus `maxClustersPerRun`,
+    `maxSpecsPerRun`, and `windowDays` volume caps; a run that exceeds a cap
+    records what was dropped in the cycle report rather than silently
+    truncating.
+
 ## [0.62.0] — 2026-07-06 — continuous-learning-loop repair + preset removal
 
 ### Breaking
