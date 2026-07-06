@@ -13,11 +13,19 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" list-presets
 Returns an array of `{ name, description }` for each `scripts/presets/*.json`
 shipped by the plugin.
 
+**These are install-time templates only** (FEAT-218 Phase 2 / DEC-069):
+`/runner:install --preset <name>` inlines the chosen template's full content
+into `.claude/loop.json` once, at scaffold time. After install, nothing at
+runtime reads `scripts/presets/*.json` again — `.claude/loop.json` is the
+sole source of truth for `resolveConfig`, phase-gate, and builder skill
+injection.
+
 Built-in presets:
 
 - `dotnet-python` — C# .NET + Aspire local orchestration + Python
-  LangGraph agents + Terraform infra. **Default** stack for AstraGenie-style
-  monorepos (split: FE React + BE .NET).
+  LangGraph agents + Terraform infra. Fits AstraGenie-style
+  monorepos (split: FE React + BE .NET). No preset is a default — pick
+  explicitly with `--preset` at install time.
 - `dotnet-only` — C# .NET backend only. No frontend, Aspire, or Python
   sidecars. Standalone .NET service or library repos.
 - `dotnet-react` — C# .NET backend + React / Vite frontend. One solution,

@@ -16,7 +16,15 @@ import { AC_SECTION_BODY } from "./_fixtures.mjs";
 // ---------------------------------------------------------------------------
 
 async function tmpRepo(prefix: string): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  // FEAT-218 Phase 2: resolveConfig no longer defaults to a hardcoded preset
+  // when .claude/loop.json is absent — it throws (AC-5). sliceFromFeature
+  // calls resolveConfig internally, so every temp repo here needs a config
+  // file present (path-default fields are enough; these tests don't assert
+  // on stack/loop values).
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(path.join(repo, ".claude/loop.json"), JSON.stringify({}));
+  return repo;
 }
 
 async function createFeature(

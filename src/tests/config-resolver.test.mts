@@ -22,29 +22,42 @@ test("listPresets returns dotnet-python with required fields", async () => {
   assert.ok(dotnet.description.length > 0);
 });
 
-test("resolveConfig returns preset defaults when no user config exists", async () => {
-  const repo = await tmpRepo("al-resolve-default-");
-  const config = (await resolveConfig(repo)) as Record<string, any>;
+// FEAT-218 Phase 2: resolveConfig no longer defaults to a hardcoded preset
+// (AC-5) — an unconfigured repo (no .claude/loop.json, no explicit
+// options.preset) must fail clearly instead of silently inheriting a
+// wrong-for-most-repos stack.
+test("resolveConfig throws a clear error when unconfigured", async () => {
+  const repo = await tmpRepo("al-resolve-unconfigured-");
+  await assert.rejects(
+    () => resolveConfig(repo),
+    /No \.claude\/loop\.json found.*\/runner:install --preset/s
+  );
+});
+
+// Explicit options.preset remains the install-time scaffold path (used by
+// loop-installer.mts to inline a template into a fresh .claude/loop.json).
+test("resolveConfig with an explicit preset still merges the named template", async () => {
+  const repo = await tmpRepo("al-resolve-scaffold-");
+  const config = (await resolveConfig(repo, { preset: "dotnet-python" })) as Record<string, any>;
   assert.equal(config.preset, "dotnet-python");
   assert.equal(config.loop.aiLoopRoot, ".claude/artifacts/loop/ai-loop");
   assert.ok(Array.isArray(config.stack.build));
   assert.ok(config.stack.build.length > 0);
 });
 
-test("resolveConfig deep-merges user overrides on top of preset", async () => {
+test("resolveConfig with an explicit preset deep-merges user overrides on top of it", async () => {
   const repo = await tmpRepo("al-resolve-merge-");
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
     path.join(repo, CONFIG_FILENAME),
     JSON.stringify({
-      preset: "dotnet-python",
       productName: "My Test Product",
       stack: {
         test: [{ cmd: "custom-test", args: ["--all"] }]
       }
     })
   );
-  const config = (await resolveConfig(repo)) as Record<string, any>;
+  const config = (await resolveConfig(repo, { preset: "dotnet-python" })) as Record<string, any>;
   assert.equal(config.productName, "My Test Product");
   assert.equal(
     config.stack.test[0].cmd,
@@ -54,14 +67,11 @@ test("resolveConfig deep-merges user overrides on top of preset", async () => {
   assert.ok(config.stack.build.length > 0, "preset build should remain after merge");
 });
 
-test("resolveConfig treats explicit null as disable", async () => {
+test("resolveConfig with an explicit preset treats explicit null as disable", async () => {
   const repo = await tmpRepo("al-resolve-null-");
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
-  await fs.writeFile(
-    path.join(repo, CONFIG_FILENAME),
-    JSON.stringify({ preset: "dotnet-python", stack: { build: null } })
-  );
-  const config = (await resolveConfig(repo)) as Record<string, any>;
+  await fs.writeFile(path.join(repo, CONFIG_FILENAME), JSON.stringify({ stack: { build: null } }));
+  const config = (await resolveConfig(repo, { preset: "dotnet-python" })) as Record<string, any>;
   assert.equal(
     config.stack.build,
     null,
@@ -75,6 +85,20 @@ test("resolveConfig throws on unknown preset", async () => {
     () => resolveConfig(repo, { preset: "nonexistent-preset" }),
     /Unknown preset "nonexistent-preset"/
   );
+});
+
+// Post-install runtime path: no options.preset given, .claude/loop.json is
+// read as-is (no merge) — it is expected to already be self-contained
+// because the installer inlined the full template at scaffold time (AC-3).
+test("resolveConfig with no explicit preset reads an already self-contained config as-is", async () => {
+  const repo = await tmpRepo("al-resolve-self-contained-");
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  const scaffolded = await resolveConfig(repo, { preset: "dotnet-python" });
+  await fs.writeFile(path.join(repo, CONFIG_FILENAME), JSON.stringify(scaffolded));
+  const config = (await resolveConfig(repo)) as Record<string, any>;
+  assert.equal(config.preset, "dotnet-python");
+  assert.ok(Array.isArray(config.stack.build));
+  assert.ok(config.stack.build.length > 0);
 });
 
 test("writeConfigIfMissing does not clobber existing config", async () => {

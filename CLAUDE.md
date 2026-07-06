@@ -176,10 +176,22 @@ skill name to `runner:triage --ids`). See `agents/pm.md` § "Inline AC
 `/runner:intake` Phase 2 writes three routing fields into FEAT
 frontmatter: `tags`, `needs_contract`, `needs_ux`. Project-level
 stack identity (language, framework, contract type, deployment) lives
-in `scripts/presets/*.json` and is read at builder-dispatch time via
-`bun src/scripts/loop.mts resolve-skills --variant <fe|be|single>`. See
-`docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md`
-for the design.
+in each repo's own `.claude/loop.json`, read at builder-dispatch time via
+`bun src/scripts/loop.mts resolve-skills --preset <path> --variant <fe|be|single>`.
+See `docs/superpowers/specs/2026-06-07-preset-driven-skill-activation-design.md`
+for the original design.
+
+**FEAT-218 Phase 2 (DEC-069, 2026-07-06)**: `scripts/presets/*.json` are now
+install-time templates only — `/runner:install --preset X` inlines a
+template's full content into `.claude/loop.json` once, and `resolveConfig`
+no longer reads or merges preset files at runtime (no more hardcoded
+`dotnet-python` default; an unconfigured repo errors clearly instead). The
+`resolve-skills` CLI is unchanged in shape (still `--preset <path>
+--variant ...`), but the path it's pointed at should now be a repo's own
+`.claude/loop.json`, not a `scripts/presets/<name>.json` file — dev-team's
+`orchestrate-slice.md` Step 2.5 still greps the old path as of this writing;
+see `docs/upstream-requests/2026-07-06-crew-orchestrate-slice-preset-path.md`
+for the pending cross-plugin repoint.
 
 Prior `surface` / `stack` per-FEAT classification was dropped on
 feat/preset-skill-activation — preset is sole source. The earlier

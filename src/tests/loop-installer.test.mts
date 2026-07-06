@@ -20,6 +20,7 @@ import {
   compareSemver,
   MIN_CREW_VERSION
 } from "../scripts/lib/plugin-identity.mjs";
+import { resolveSkills } from "../scripts/lib/skill-resolver.mjs";
 
 function execFile(file, args, opts) {
   return promisify(execFileCallback)(file, args, { timeout: 10000, ...opts });
@@ -46,7 +47,10 @@ const crewAvailable = Boolean(
 
 test("installLoop errors when target is not a git repo", async () => {
   const repo = await tmpRepo("al-install-no-git-");
-  await assert.rejects(() => installLoop(repo, { migrateAdhoc: false }), /Not a git repository/);
+  await assert.rejects(
+    () => installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" }),
+    /Not a git repository/
+  );
 });
 
 test("installLoop refuses when bun below minimum", async () => {
@@ -75,6 +79,7 @@ test("installLoop installs when crew version is exactly at MIN_CREW_VERSION", as
   const repo = await initGitRepo("al-install-crew-min-");
   const result = await installLoop(repo, {
     migrateAdhoc: false,
+    preset: "dotnet-python",
     crewCliOverride: fakeCrewCliPath,
     crewVersionOverride: MIN_CREW_VERSION
   });
@@ -123,15 +128,31 @@ test("installLoop refuses when crew version is one release below MIN_CREW_VERSIO
 test("installLoop errors when target dir does not exist", async () => {
   await assert.rejects(
     () =>
-      installLoop(path.join(os.tmpdir(), `al-nonexistent-${Date.now()}`), { migrateAdhoc: false }),
+      installLoop(path.join(os.tmpdir(), `al-nonexistent-${Date.now()}`), {
+        migrateAdhoc: false,
+        preset: "dotnet-python"
+      }),
     /does not exist/
+  );
+});
+
+// FEAT-218 Phase 2 (AC-5): resolveConfig no longer defaults to a hardcoded
+// preset, so a genuinely fresh install (no --preset, no existing
+// .claude/loop.json) must fail with an actionable error instead of silently
+// picking a stack.
+test("installLoop errors on a fresh repo when no --preset is given and no config exists", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-no-preset-");
+  await assert.rejects(
+    () => installLoop(repo, { migrateAdhoc: false }),
+    /No --preset given and no existing \.claude\/loop\.json found/
   );
 });
 
 test("installLoop writes marker block, loop-control files, backlog scaffold, config", async () => {
   if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-happy-");
-  const result = await installLoop(repo, { migrateAdhoc: false });
+  const result = await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
   assert.equal(result.mode, "install-loop");
   assert.equal(result.preset, "dotnet-python");
@@ -175,11 +196,24 @@ test("installLoop writes marker block, loop-control files, backlog scaffold, con
   assert.equal(cfg.preset, "dotnet-python");
 });
 
+// AC-3: a freshly installed repo's .claude/loop.json is self-contained
+// enough to drive builder skill injection with no scripts/presets/ file
+// involved — resolveSkills validates and resolves directly against it.
+test("installLoop's .claude/loop.json alone satisfies resolve-skills (AC-3)", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-skill-injection-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "typescript-plugin-dev" });
+  const loopJsonPath = path.join(repo, ".claude", "loop.json");
+  const resolved = resolveSkills({ presetPath: loopJsonPath, variant: "single" });
+  assert.ok(resolved, "expected a resolved skills block for variant=single");
+  assert.deepEqual(resolved!.skills, ["typescript-pro", "frontend-advisory"]);
+});
+
 test("installLoop is idempotent: re-running does not duplicate marker block", async () => {
   if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-idempotent-");
-  await installLoop(repo, { migrateAdhoc: false });
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
   const startCount = claudeMd.split(MARKER_START).length - 1;
   const endCount = claudeMd.split(MARKER_END).length - 1;
@@ -200,7 +234,7 @@ test("installLoop collapses stacked orphan start markers (regression: < 0.1.12 s
     `# CLAUDE.md\n\n## Preserve me\n\nUser content above the bad block.\n\n${orphans}`
   );
 
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
   const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
   const startCount = claudeMd.split(MARKER_START).length - 1;
@@ -222,9 +256,9 @@ test("installLoop is convergent: second run after orphan-collapse is a no-op", a
     .join("\n");
   await fs.writeFile(path.join(repo, "CLAUDE.md"), `# CLAUDE.md\n\n${orphans}`);
 
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const afterFirst = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const afterSecond = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
 
   assert.equal(
@@ -241,7 +275,7 @@ test("installLoop preserves user content outside the marker block", async () => 
     path.join(repo, "CLAUDE.md"),
     "# CLAUDE.md\n\n## Custom section\n\nUser-authored content.\n"
   );
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
   assert.ok(claudeMd.includes("## Custom section"));
   assert.ok(claudeMd.includes("User-authored content."));
@@ -271,7 +305,7 @@ test("installLoop does not create or modify .claude/settings.json", async () => 
   const before = JSON.stringify(userHook, null, 2) + "\n";
   await fs.writeFile(path.join(settingsDir, "settings.json"), before);
 
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
   const after = await fs.readFile(path.join(settingsDir, "settings.json"), "utf8");
   assert.equal(after, before, "installLoop must leave a pre-existing settings.json untouched");
@@ -308,7 +342,7 @@ test("buildContextRulesList output contains in_scope_globs instruction prose", (
 test("reportStatus reflects install state", async () => {
   if (!crewAvailable) return;
   const repo = await initGitRepo("al-status-");
-  await installLoop(repo, { migrateAdhoc: false });
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const status = await reportStatus(repo);
   assert.equal(status.preset, "dotnet-python");
   assert.equal(status.hasMarkerBlock, true);

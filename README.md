@@ -113,16 +113,22 @@ is auto-skipped if `healthchecks` is empty (otherwise it would hang).
 
 ## Built-in presets
 
+Presets are **install-time templates only** (FEAT-218 Phase 2 / DEC-069):
+`/runner:install --preset <name>` inlines the chosen template's full content
+into `.claude/loop.json` once, at scaffold time, and nothing at runtime reads
+`scripts/presets/*.json` again. There is no default — `--preset` is required
+for a first-time install.
+
 | Preset                   | Stack                                                                            |
 | ------------------------ | -------------------------------------------------------------------------------- |
-| `dotnet-python`          | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra (default; split FE React + BE .NET) |
+| `dotnet-python`          | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra (split FE React + BE .NET) |
 | `dotnet-only`            | C# .NET backend only — no frontend, Aspire, or Python sidecars                    |
 | `dotnet-react`           | C# .NET backend + React / Vite frontend                                          |
 | `dotnet-typescript-vue`  | C# .NET backend + Vue 3 / Vite (TypeScript) frontend + .NET Aspire               |
 | `typescript-plugin-dev`  | TypeScript Claude Code plugin repos — Bun test + manifest validators             |
 | `typescript-service`     | TypeScript Node service / daemon — Fastify + better-sqlite3 / sqlite-vec, `tsc`, Vitest, JSON-schema contracts |
 
-More presets ship as new repo types surface. See `scripts/presets/` to author your own.
+More templates ship as new repo types surface. See `scripts/presets/` to author your own.
 
 ## Plugin architecture
 
@@ -132,7 +138,9 @@ More presets ship as new repo types surface. See `scripts/presets/` to author yo
 - `scripts/lib/phase-gate.mjs` — `execFile`-only runner + markdown report
 - `scripts/lib/adhoc-migrator.mjs` — detects + migrates pre-plugin HARD RULE
   blocks
-- `scripts/lib/config-resolver.mjs` — preset + per-repo config deep merge
+- `scripts/lib/config-resolver.mjs` — reads `.claude/loop.json` at runtime
+  (no preset merge post-install); merges a named preset template only when
+  the installer scaffolds a fresh config
 - `scripts/lib/plugin-identity.mjs` — marketplace/plugin name discovery,
   reused from the crew plugin's pattern
 - `scripts/lib/hierarchical-dispatch.mjs` — hierarchical parallel subagent

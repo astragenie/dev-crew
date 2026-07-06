@@ -19,7 +19,14 @@ import { listPendingFeatureIds } from "../scripts/lib/backlog-list-ids.mjs";
 const LOOP_CLI = path.resolve("src/scripts/loop.mts");
 
 async function tmpRepo(prefix: string) {
-  return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  // FEAT-218 Phase 2: the loop.mts CLI dispatcher resolves config once for
+  // every command (AC-5 — resolveConfig throws when .claude/loop.json is
+  // absent instead of silently defaulting), so every temp repo driving the
+  // CLI needs a config file present, exactly like a real installed repo.
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  await fs.writeFile(path.join(repo, ".claude/loop.json"), JSON.stringify({}));
+  return repo;
 }
 
 // ---------------------------------------------------------------------------

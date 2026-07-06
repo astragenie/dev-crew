@@ -8,8 +8,9 @@
 //   needs_ux: <true|false>
 //
 // Note: `stack` and `surface` are no longer FEAT-level fields. Project-level
-// stack identity now lives in `scripts/presets/*.json` (consumed by
-// `bun src/scripts/loop.mts resolve-skills`). The parser tolerates input lines
+// stack identity lives in each repo's own `.claude/loop.json` (inlined from a
+// `scripts/presets/*.json` install-time template — see DEC-069), consumed by
+// `bun src/scripts/loop.mts resolve-skills`. The parser tolerates input lines
 // for those fields (architect may still emit them transitionally) but does
 // not surface them on the result — callers must not propagate stack/surface
 // into FEAT or slice frontmatter.

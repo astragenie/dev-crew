@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { resolveConfig, writeConfigIfMissing } from "./config-resolver.mjs";
+import { resolveConfig, writeConfigIfMissing, configPath } from "./config-resolver.mjs";
 import {
   findCrewCli,
   getCrewVersion,
@@ -74,6 +74,18 @@ export async function installLoop(
 
   const writes: any[] = [];
 
+  // FEAT-218 (Phase 2): presets are install-time templates only, and
+  // resolveConfig no longer defaults to a hardcoded stack (AC-5) — a first
+  // install with no existing .claude/loop.json MUST name a template
+  // explicitly. Re-installing an already-configured repo may omit --preset;
+  // resolveConfig then reads the existing (already self-contained) config.
+  if (!options.preset && !(await pathExists(configPath(repoPath)))) {
+    throw new Error(
+      "No --preset given and no existing .claude/loop.json found. " +
+        "Run `/runner:install --preset <name>` to scaffold one (see `/runner:list-presets` for options)."
+    );
+  }
+
   const config = await resolveConfig(repoPath, { preset: options.preset });
   const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
   const tokens = buildTokens(config, { skillActivationBlock });
@@ -92,13 +104,29 @@ export async function installLoop(
 
   const configResult = await writeConfigIfMissing(repoPath, {
     preset: config.preset,
+    // presetName + schemaVersion are required by validatePreset's common
+    // header — carried over so a future `resolve-skills --preset
+    // .claude/loop.json` call validates against this file directly (AC-3),
+    // without needing scripts/presets/<name>.json on disk.
+    presetName: config.presetName,
+    schemaVersion: config.schemaVersion,
+    projectType: config.projectType,
+    split: config.split,
+    frontend: config.frontend,
+    backend: config.backend,
+    contract: config.contract,
+    deployment: config.deployment,
     loop: config.loop,
     stack: config.stack,
     reviewers: config.reviewers,
     mandatoryDocs: config.mandatoryDocs,
     productName: config.productName,
     productDescription: config.productDescription,
-    stackDescription: config.stackDescription
+    stackDescription: config.stackDescription,
+    // Skill-injection payload (AC-3): inlined so builder/role dispatch reads
+    // .claude/loop.json directly, with no scripts/presets/ file present.
+    ...(config.split ? { fe: config.fe, be: config.be } : { skills: config.skills }),
+    roles: config.roles
   });
   if (configResult.written) {
     writes.push(path.relative(repoPath, configResult.path));

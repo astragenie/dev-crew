@@ -253,8 +253,9 @@ function buildSliceContent({
 
 // Mirror of classify-parser's ClassifyResult — kept local to avoid a circular
 // `import type` from a sibling lib module. Stack / surface are deliberately
-// absent: preset-driven skill activation (scripts/presets/*.json) is the sole
-// source of project-level stack identity.
+// absent: preset-driven skill activation (each repo's own `.claude/loop.json`,
+// inlined from a `scripts/presets/*.json` install-time template — DEC-069) is
+// the sole source of project-level stack identity.
 type ClassifyResult = {
   tags: string[];
   needs_contract: boolean | null;

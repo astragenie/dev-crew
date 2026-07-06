@@ -83,9 +83,10 @@ function parseTrailingJson(stdout: string): unknown {
   }
 }
 
-// resolveConfig deep-merges .claude/loop.json onto the stack preset. Wrapped
-// so a missing/malformed config never blocks wave dispatch — resolveModel
-// already fails safe to FALLBACK_MODEL on a null config.
+// resolveConfig reads .claude/loop.json directly (no preset merge post
+// FEAT-218 Phase 2 — see DEC-069). Wrapped so a missing/malformed config
+// never blocks wave dispatch — resolveModel already fails safe to
+// FALLBACK_MODEL on a null config.
 async function bestEffortConfig(repoRoot: string): Promise<Record<string, unknown> | null> {
   try {
     return await resolveConfig(repoRoot);

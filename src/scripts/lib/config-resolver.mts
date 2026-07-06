@@ -3,11 +3,25 @@ import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Loads a per-repo config from .claude/loop.json and merges it on
-// top of a built-in preset. Returns the fully-resolved config that downstream
-// modules (loop-installer, phase-gate) consume.
+// Resolves the per-repo config from .claude/loop.json.
 //
-// Preset shape and override semantics:
+// Post-FEAT-218 (Phase 2): presets are install-time templates only.
+// `/runner:install --preset X` inlines a preset's full content into
+// `.claude/loop.json` once, at scaffold time (see loop-installer.mts) — after
+// that, nothing at runtime reads `scripts/presets/*.json` again.
+//
+// `resolveConfig` has two modes:
+// - `options.preset` given (a string): the install-time scaffold path. Loads
+//   that named preset and deep-merges it under `.claude/loop.json` (or `{}`
+//   for a brand-new repo). This is how `loop-installer.mts` produces the
+//   fully-resolved config it then writes to disk.
+// - `options.preset` absent (the normal runtime path used by phase-gate,
+//   doctor, status, etc.): reads `.claude/loop.json` directly, no preset
+//   merge, no hardcoded stack default. Throws a clear error if the file is
+//   missing — an unconfigured repo should fail loudly, not silently inherit
+//   an arbitrary stack's build/test commands.
+//
+// Merge semantics (still used by the scaffold path):
 // - Top-level keys (loop, stack, reviewers, etc.) are deep-merged for object
 //   values and replaced for arrays and primitives.
 // - A stack stage set to `null` in the user config disables that stage even if
@@ -99,12 +113,28 @@ function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
 
 export async function resolveConfig(repoPath: string, options: Record<string, unknown> = {}) {
   const userConfig = await readConfigFile(repoPath);
-  const presetName = options.preset || userConfig?.preset || "dotnet-python";
-  const preset = await loadPreset(presetName);
 
-  const merged = deepMerge(preset, userConfig || {});
-  merged.preset = presetName;
-  return merged;
+  // Explicit preset: the install-time scaffold path (loop-installer.mts).
+  // Never defaults — the caller decides which template to inline.
+  if (options.preset) {
+    const presetName = options.preset as string;
+    const preset = await loadPreset(presetName);
+    const merged = deepMerge(preset, userConfig || {});
+    merged.preset = presetName;
+    return merged;
+  }
+
+  // Normal runtime path: .claude/loop.json is the sole source of truth.
+  // No preset merge, no hardcoded stack default (AC-5) — a repo that hasn't
+  // been installed yet must fail clearly rather than silently inherit
+  // whatever stack happened to be the default.
+  if (!userConfig) {
+    throw new Error(
+      `No ${CONFIG_FILENAME} found in ${repoPath}. Run \`/runner:install --preset <name>\` first ` +
+        `(see \`/runner:list-presets\` for available templates).`
+    );
+  }
+  return userConfig;
 }
 
 export async function writeConfigIfMissing(repoPath: string, config: unknown) {

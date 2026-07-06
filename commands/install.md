@@ -12,7 +12,7 @@ Adds the Wiggin Loop methodology to the current repo:
 - Writes plugin-owned loop-control docs under `<aiLoopRoot>/01-loop-control/`: `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`. **Always overwritten** — user customization lives in `.claude/loop.json`, not in these files.
 - Writes `<aiLoopRoot>/00-entry/MASTER_PROMPT.md` and `SLICE_TEMPLATE.md` (always overwritten).
 - Creates backlog scaffolds at `<backlogPath>/{approved,completed,product-backlog}.md` and `<slicesRoot>/pending/.gitkeep` — **only if missing**, never clobbered.
-- Writes `.claude/loop.json` from the chosen preset — **only if missing**.
+- Writes `.claude/loop.json` from the chosen preset — **only if missing**. This is a one-time scaffold: the preset's full content (`loop.*`, `stack.*`, `reviewers`, `mandatoryDocs`, `productName`/`productDescription`, `stackDescription`, `skills`/`fe`/`be`, `roles.*`) is inlined directly. After install, nothing at runtime reads `scripts/presets/*.json` again — `.claude/loop.json` is the sole source of truth (FEAT-218 Phase 2 / DEC-069).
 
 If the repo currently has an ad-hoc HARD RULE block hand-pasted into CLAUDE.md (the pattern from WigginHarnes / MemoryService / AstraGenie.Tools), the installer migrates it: extracts the phase-gate commands into the config, deletes the ad-hoc block, writes the new marker-bracketed block in its place.
 
@@ -31,7 +31,7 @@ Workflow:
    set -euo pipefail
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" install --repo "$PWD" --preset dotnet-python
    ```
-   Omit `--preset` to use whatever preset is already recorded in `.claude/loop.json`, or the default if no config exists yet.
+   `--preset` is **required** for a first-time install (no `.claude/loop.json` on disk yet) — there is no hardcoded default stack. Omit `--preset` only to re-install/refresh an already-configured repo; the installer then reads the existing `.claude/loop.json` as-is (no re-merge).
 4. Report which files were written and which preset is active.
 5. Suggest the user populate `.claude/loop.json` `productName`, `productDescription`, and `stack` overrides before running `/runner:phase-gate` for the first time.
 
