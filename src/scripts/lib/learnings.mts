@@ -1,6 +1,10 @@
+import { execFile as execFileCb } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { appendJsonl } from "./jsonl-append.mjs";
+
+const execFile = promisify(execFileCb);
 
 // Persistent JSONL operational learnings store.
 // Each entry: { id, timestamp, key, insight, confidence, source, sliceId?, tags? }
@@ -8,6 +12,50 @@ import { appendJsonl } from "./jsonl-append.mjs";
 
 export function learningsPath(repoPath: string): string {
   return path.join(repoPath, ".claude", "artifacts", "loop", "learnings.jsonl");
+}
+
+// FEAT-188 S1b root-cause fix: `slice close` / `slice grade-write` resolve
+// their effective cwd to the active per-slice worktree (effective-cwd.mts)
+// whenever a wave/worktree-mode run is in flight — the dominant path for
+// this repo (`marathonRunner: "wave"`). A capture write keyed off that
+// worktree-local repoPath lands in `<worktree>/.claude/artifacts/loop/
+// learnings.jsonl`, a copy that never reaches main once the worktree is
+// merged and pruned (git's line-based merge has no way to reconcile
+// concurrent JSONL appends from sibling worktrees; the other side is
+// silently dropped). grades.jsonl shows the identical symptom — this is a
+// worktree-isolation problem, not something specific to the learnings
+// store. Resolve to the MAIN worktree root before touching the store so
+// every caller — regardless of which worktree it was invoked from —
+// converges on one canonical file. Falls back to repoPath unchanged when
+// git is unavailable/not a repo (plain test fixtures) or repoPath IS the
+// main worktree already (no-op).
+const canonicalRootCache = new Map<string, Promise<string>>();
+
+async function resolveCanonicalRepoRoot(repoPath: string): Promise<string> {
+  let cached = canonicalRootCache.get(repoPath);
+  if (!cached) {
+    cached = computeCanonicalRepoRoot(repoPath);
+    canonicalRootCache.set(repoPath, cached);
+  }
+  return cached;
+}
+
+async function computeCanonicalRepoRoot(repoPath: string): Promise<string> {
+  try {
+    const [{ stdout: commonDir }, { stdout: gitDir }] = await Promise.all([
+      execFile("git", ["rev-parse", "--git-common-dir"], { cwd: repoPath, maxBuffer: 64 * 1024 }),
+      execFile("git", ["rev-parse", "--git-dir"], { cwd: repoPath, maxBuffer: 64 * 1024 })
+    ]);
+    const commonAbs = path.resolve(repoPath, commonDir.trim());
+    const gitAbs = path.resolve(repoPath, gitDir.trim());
+    if (commonAbs === gitAbs) return repoPath; // not a linked worktree
+    // Standard layout: the common dir is <mainRepo>/.git — its parent is the
+    // main worktree root. Anything else (bare repo, unusual layout) falls
+    // back to repoPath rather than guessing.
+    return path.basename(commonAbs) === ".git" ? path.dirname(commonAbs) : repoPath;
+  } catch {
+    return repoPath; // not a git repo (or git unavailable) — use as-is
+  }
 }
 
 // Read and parse all lines from the learnings JSONL file.
@@ -64,7 +112,8 @@ export async function logLearning(
     throw new Error("logLearning: entry.insight must be a non-empty string");
   }
 
-  const filePath = learningsPath(repoPath);
+  const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
+  const filePath = learningsPath(canonicalRoot);
   const existing = await readAllEntries(filePath);
   const id = nextId(existing);
   const record: any = {
@@ -102,7 +151,8 @@ export async function recentLearnings(
   n: number = 3
 ): Promise<{ count: number; items: any[]; digest: string | null }> {
   if (n <= 0) return { count: 0, items: [], digest: null };
-  const filePath = learningsPath(repoPath);
+  const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
+  const filePath = learningsPath(canonicalRoot);
   const all = await readAllEntries(filePath);
   const items = all.slice(-n);
   const digest = items.length > 0 ? renderLearningsDigest(items) : null;
@@ -114,7 +164,8 @@ export async function searchLearnings(
   repoPath: string,
   query: string
 ): Promise<{ count: number; items: any[] }> {
-  const filePath = learningsPath(repoPath);
+  const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
+  const filePath = learningsPath(canonicalRoot);
   const all = await readAllEntries(filePath);
   const q = query.toLowerCase();
   const items = all.filter(
@@ -131,7 +182,8 @@ export async function deleteLearning(
   repoPath: string,
   id: number
 ): Promise<Record<string, unknown> | null> {
-  const filePath = learningsPath(repoPath);
+  const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
+  const filePath = learningsPath(canonicalRoot);
   const all = await readAllEntries(filePath);
   const target = all.find((e) => e.id === id);
   if (!target) return null;

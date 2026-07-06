@@ -408,12 +408,12 @@ const COMMANDS = {
     const steps = await readTrajectory(repoPath, sliceId);
     return { sliceId, steps, count: steps.length, path: trajectoryPath(repoPath, sliceId) };
   },
-  "pr-fix": async ({ repoPath, flags }: CmdCtx) => {
+  "pr-fix": async ({ repoPath, flags, config }: CmdCtx) => {
     const { runPrFix } = await import("./lib/pr-fixer.mjs");
     const prNumber = flags.pr;
     if (!prNumber) throw new Error("pr-fix requires --pr <number>");
     const priorAttempts = flags.body ? JSON.parse(flags.body) : {};
-    return runPrFix(repoPath, prNumber, { priorAttempts });
+    return runPrFix(repoPath, prNumber, { priorAttempts, config });
   },
   doctor: async ({ repoPath, flags, config }: CmdCtx) => {
     const { runDoctor } = await import("./lib/doctor.mjs");

@@ -293,5 +293,110 @@ export async function writeRetrospective(repoPath: string, options: Record<strin
   const filename = `${report.range.until}.md`;
   const target = path.join(dir, filename);
   await fs.writeFile(target, md);
+
+  // FEAT-188 S1b: capture the retrospective's own findings — systemic
+  // dimension gaps and undispositioned recurring lessons — into the
+  // learnings store with zero operator action. Today `commands/retrospective.md`
+  // ("Synthesis step") asks the dispatching agent to manually run
+  // `/runner:learn` for each of these; this makes the persistence automatic
+  // (the agent's synthesis/disposition judgment is unchanged — this only
+  // guarantees the raw finding survives even if that follow-up is skipped).
+  // Fire-and-forget: must never affect the retrospective artifact write.
+  await captureRetrospectiveFindings(repoPath, report, options.config || null);
+
   return { artifactPath: target, report };
+}
+
+// FEAT-188 S1b: mirror retrospective-level findings into the persistent
+// learnings store (reuses learnings.mts::logLearning — same store +
+// astramem mirror grade-writer.mts already uses; no parallel capture
+// mechanism). Dedup key is content-derived and scoped to the retro's own
+// date range so re-running the same window is idempotent, while a NEW
+// window (different `until`) gets fresh rows. Fail-silent: any error here
+// must never affect the retrospective-write contract.
+async function captureRetrospectiveFindings(
+  repoPath: string,
+  report: Record<string, any>,
+  config: Record<string, any> | null
+): Promise<void> {
+  const until = report?.range?.until;
+  if (!until) return;
+  const dimensionGaps: string[] = Array.isArray(report.dimensionsBelowThreshold)
+    ? report.dimensionsBelowThreshold
+    : [];
+  const recurringLessons: Array<{ key: string; count: number }> = Array.isArray(report.topLessons)
+    ? report.topLessons.filter((item: { count: number }) => item.count >= 2)
+    : [];
+  if (dimensionGaps.length === 0 && recurringLessons.length === 0) return;
+
+  try {
+    const { isFeatureEnabled } = await import("./features-service.mjs");
+    if (!isFeatureEnabled("learnings-capture", config)) return;
+
+    const { logLearning, searchLearnings } = await import("./learnings.mjs");
+    const { items: existing } = await searchLearnings(repoPath, `retro:${until}`);
+    const existingKeys = new Set(existing.map((e: any) => e.key));
+
+    await captureDimensionGaps(repoPath, report, until, dimensionGaps, existingKeys, logLearning);
+    await captureRecurringLessons(repoPath, until, recurringLessons, existingKeys, logLearning);
+  } catch {
+    // swallow — capture is non-critical, must never break the retro write
+  }
+}
+
+type LogLearningFn = (
+  repoPath: string,
+  entry: {
+    key: string;
+    insight: string;
+    confidence?: number;
+    source?: string;
+    sliceId?: string;
+    tags?: string[];
+  }
+) => Promise<unknown>;
+
+async function captureDimensionGaps(
+  repoPath: string,
+  report: Record<string, any>,
+  until: string,
+  dimensionGaps: string[],
+  existingKeys: Set<string>,
+  logLearning: LogLearningFn
+): Promise<void> {
+  for (const dim of dimensionGaps) {
+    const key = `retro:${until}:dimension-gap:${dim}`;
+    if (existingKeys.has(key)) continue;
+    const value = report.scoreAverages?.[dim];
+    await logLearning(repoPath, {
+      key,
+      insight:
+        `Retrospective ${report.range.since ?? "(all time)"} -> ${until}: "${dim}" averaged ` +
+        `${value ?? "n/a"} across ${report.counts?.gradesInWindow ?? "?"} slices — below the 0.80 threshold.`,
+      source: "retrospective",
+      tags: ["retrospective", "dimension-gap", dim]
+    });
+  }
+}
+
+async function captureRecurringLessons(
+  repoPath: string,
+  until: string,
+  recurringLessons: Array<{ key: string; count: number }>,
+  existingKeys: Set<string>,
+  logLearning: LogLearningFn
+): Promise<void> {
+  if (recurringLessons.length === 0) return;
+  const { createHash } = await import("node:crypto");
+  for (const lesson of recurringLessons) {
+    const digest = createHash("sha1").update(lesson.key).digest("hex").slice(0, 8);
+    const key = `retro:${until}:recurring-lesson:${digest}`;
+    if (existingKeys.has(key)) continue;
+    await logLearning(repoPath, {
+      key,
+      insight: `Retrospective ${until}: recurring lesson (${lesson.count}x) — "${lesson.key}". Needs disposition (process fix / backlog item / already-covered DEC).`,
+      source: "retrospective",
+      tags: ["retrospective", "recurring-lesson"]
+    });
+  }
 }

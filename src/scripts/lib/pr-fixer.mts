@@ -195,9 +195,13 @@ export async function runPrFix(
     repo?: string;
     maxAttemptsPerCategory?: number;
     priorAttempts?: Partial<Record<PrIssueCategory, number>>;
+    /** Resolved loop.json config (FEAT-188 S1b). Capture is skipped when
+     * omitted — callers that don't resolve a config (e.g. unit tests
+     * invoking this against the real repo path) get zero side effects. */
+    config?: Record<string, any> | null;
   } = {}
 ): Promise<PrFixResult> {
-  const { ghExec, repo, maxAttemptsPerCategory = 3, priorAttempts = {} } = options;
+  const { ghExec, repo, maxAttemptsPerCategory = 3, priorAttempts = {}, config = null } = options;
 
   // Fetch PR status
   const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, {
@@ -216,9 +220,9 @@ export async function runPrFix(
   }
 
   // Check if CI is green (no FAILURE/ERROR in statusCheckRollup)
-  const ciGreen =
-    !raw.statusCheckRollup ||
-    !raw.statusCheckRollup.some((c: any) => c.conclusion === "FAILURE" || c.conclusion === "ERROR");
+  const ciGreen = !raw.statusCheckRollup?.some(
+    (c: any) => c.conclusion === "FAILURE" || c.conclusion === "ERROR"
+  );
 
   // Categorize issues
   const categories = categorizePrIssues(raw);
@@ -237,6 +241,13 @@ export async function runPrFix(
     };
   });
 
+  // FEAT-188 S1b: capture circuit-breaker trips into the learnings store so
+  // an operator/agent re-polling this PR (or a future slice) sees the halt
+  // without re-discovering it. Fire-and-forget — never affects the plan
+  // result, and skipped entirely when no config was resolved (test safety:
+  // see captureCircuitBreakerTrips doc comment).
+  await captureCircuitBreakerTrips(repoPath, prNumber, plans, config);
+
   return {
     prNumber,
     ciGreen,
@@ -244,4 +255,49 @@ export async function runPrFix(
     haltReason: null,
     walkedCategories: categories
   };
+}
+
+// FEAT-188 S1b: mirror each circuit-broken plan into the persistent learnings
+// store (reuses learnings.mts::logLearning — same store + astramem mirror
+// grade-writer.mts already uses for lessons; no parallel capture mechanism).
+// Dedup key is content-derived (`pr-fix-circuit-breaker:<pr>:<category>`) so
+// re-polling the same PR with an unchanged trip doesn't spam duplicate rows.
+// Gated on `config` being supplied: callers that don't resolve one (notably
+// existing unit tests invoking runPrFix against the real repo path) get zero
+// filesystem side effects. Fail-silent: any error here must never affect the
+// pr-fix planning contract.
+async function captureCircuitBreakerTrips(
+  repoPath: string,
+  prNumber: number | string,
+  plans: PrFixPlan[],
+  config: Record<string, any> | null
+): Promise<void> {
+  if (!config) return;
+  const tripped = plans.filter((p) => p.circuitBroken);
+  if (tripped.length === 0) return;
+  try {
+    const { isFeatureEnabled } = await import("./features-service.mjs");
+    if (!isFeatureEnabled("learnings-capture", config)) return;
+
+    const { logLearning, searchLearnings } = await import("./learnings.mjs");
+    const { items: existing } = await searchLearnings(
+      repoPath,
+      `pr-fix-circuit-breaker:${prNumber}`
+    );
+    const existingKeys = new Set(existing.map((e: any) => e.key));
+    for (const plan of tripped) {
+      const key = `pr-fix-circuit-breaker:${prNumber}:${plan.category}`;
+      if (existingKeys.has(key)) continue;
+      await logLearning(repoPath, {
+        key,
+        insight:
+          `Circuit breaker tripped for "${plan.category}" on PR #${prNumber} after ` +
+          `${plan.attemptCount} attempt(s) — halting auto-fix dispatch for this category.`,
+        source: "pr-fix",
+        tags: ["pr-fix", "circuit-breaker", plan.category]
+      });
+    }
+  } catch {
+    // swallow — capture is non-critical, must never break pr-fix planning
+  }
 }
