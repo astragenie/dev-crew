@@ -4,7 +4,7 @@
 import { test, beforeEach } from "bun:test";
 import assert from "node:assert/strict";
 
-import { recallPrior, type RecallResult } from "../scripts/lib/memory-recall.mjs";
+import { recallPrior } from "../scripts/lib/memory-recall.mjs";
 import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
 
 // Reset module-scope cache before each test so cases are independent.
@@ -156,7 +156,10 @@ test("recallPrior returns [] when CLI exits with non-zero code", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Happy path: mocked JSON output round-trips to typed array
+// Happy path (FEAT-227): real astramem CLI response shape is an OBJECT
+// `{ hits: [...], total_searched, provider }` (RecallResponseSchema, verified
+// against astramem 0.6.0's recall.ts), and each hit uses `text` (RecallHitSchema),
+// not `content`. AC-1 (object shape parses) + AC-2 (text -> content mapping).
 // ---------------------------------------------------------------------------
 
 test("recallPrior returns typed RecallResult[] on happy-path JSON output", async () => {
@@ -164,21 +167,28 @@ test("recallPrior returns typed RecallResult[] on happy-path JSON output", async
   const os = await import("node:os");
   const path = await import("node:path");
 
-  const expected: RecallResult[] = [
-    {
-      type: "decision",
-      content: "Use AbortController for all timeouts.",
-      importance: 0.92,
-      slice_id: "SLICE-79",
-      feat_id: "FEAT-288"
-    },
-    {
-      type: "lesson",
-      content: "Cyclomatic complexity cap at 15 — extract helpers.",
-      score: 0.85
-    }
-  ];
-  const json = JSON.stringify(expected);
+  // Real astramem 0.6.0 recall.ts output shape: { hits, total_searched, provider }.
+  // Each hit follows RecallHitSchema: id, type, text, score, source?, importance?, confidence?.
+  const response = {
+    hits: [
+      {
+        id: "mem_1",
+        type: "decision",
+        text: "Use AbortController for all timeouts.",
+        score: 0.97,
+        importance: 0.92
+      },
+      {
+        id: "mem_2",
+        type: "lesson",
+        text: "Cyclomatic complexity cap at 15 — extract helpers.",
+        score: 0.85
+      }
+    ],
+    total_searched: 42,
+    provider: "local"
+  };
+  const json = JSON.stringify(response);
 
   const tmpDir = await mkdtemp(path.join(os.tmpdir(), "recall-happy-"));
   const binDir = path.join(tmpDir, "bin");
@@ -227,7 +237,83 @@ test("recallPrior returns typed RecallResult[] on happy-path JSON output", async
     assert.equal(result[0]!.content, "Use AbortController for all timeouts.");
     assert.equal(result[0]!.importance, 0.92);
     assert.equal(result[1]!.type, "lesson");
+    assert.equal(result[1]!.content, "Cyclomatic complexity cap at 15 — extract helpers.");
     assert.equal(result[1]!.score, 0.85);
+  } finally {
+    if (orig !== undefined) {
+      process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;
+    } else {
+      delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+    }
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: defensive tolerance for a bare-array response (older/hypothetical CLI
+// variance) — still parses via the same `text` field, never throws.
+// ---------------------------------------------------------------------------
+
+test("recallPrior tolerates a bare-array response defensively", async () => {
+  if (process.platform === "win32") return; // covered by the object-shape case above on Windows
+  const { mkdtemp, writeFile, chmod, rm, mkdir } = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const bareArray = [
+    { id: "mem_1", type: "fact", text: "Bare-array fallback still parses.", score: 0.5 }
+  ];
+  const json = JSON.stringify(bareArray);
+
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "recall-barearray-"));
+  const binDir = path.join(tmpDir, "bin");
+  await mkdir(binDir, { recursive: true });
+  const fakeCli = path.join(binDir, "astramem");
+  await writeFile(fakeCli, `#!/bin/sh\nprintf '%s' '${json}'\n`);
+  await chmod(fakeCli, 0o755);
+
+  const orig = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
+  try {
+    const result = await recallPrior({ featId: "FEAT-291", sliceId: "SLICE-99" });
+    assert.equal(result.length, 1);
+    assert.equal(result[0]!.type, "fact");
+    assert.equal(result[0]!.content, "Bare-array fallback still parses.");
+  } finally {
+    if (orig !== undefined) {
+      process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;
+    } else {
+      delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+    }
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: a well-formed JSON object with no `hits` array (e.g. an error payload)
+// -> [], never throws.
+// ---------------------------------------------------------------------------
+
+test("recallPrior returns [] when the JSON object has no hits array", async () => {
+  if (process.platform === "win32") return;
+  const { mkdtemp, writeFile, chmod, rm, mkdir } = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const json = JSON.stringify({ error: "backend unavailable" });
+
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "recall-nohits-"));
+  const binDir = path.join(tmpDir, "bin");
+  await mkdir(binDir, { recursive: true });
+  const fakeCli = path.join(binDir, "astramem");
+  await writeFile(fakeCli, `#!/bin/sh\nprintf '%s' '${json}'\n`);
+  await chmod(fakeCli, 0o755);
+
+  const orig = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
+  try {
+    const result = await recallPrior({ featId: "FEAT-291", sliceId: "SLICE-99" });
+    assert.deepEqual(result, []);
   } finally {
     if (orig !== undefined) {
       process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;

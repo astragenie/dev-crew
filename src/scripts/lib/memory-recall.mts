@@ -22,7 +22,9 @@ import { resolveCli } from "./memory-bridge.mjs";
 export interface RecallResult {
   /** Memory type: "decision" | "lesson" | "fact" | "insight" | (unknown). */
   type: string;
-  /** Distilled memory text. */
+  /** Distilled memory text. Mapped from the real CLI's RecallHit `text` field
+   * (astramem RecallHitSchema) — kept as `content` here to match this
+   * module's existing consumers (recall-injector.mts, memory-context.mts). */
   content: string;
   /** Relevance score in range 0..1, if astramem provides. */
   importance?: number;
@@ -201,16 +203,41 @@ function parseRecallOutput(raw: string): RecallResult[] {
     const trimmed = raw.trim();
     if (!trimmed) return [];
     const parsed: unknown = JSON.parse(trimmed);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isRecallResult);
+    return extractHits(parsed).filter(isRawHit).map(toRecallResult);
   } catch {
     return [];
   }
 }
 
-/** Type guard for RecallResult. */
-function isRecallResult(val: unknown): val is RecallResult {
+/**
+ * Real CLI prints `JSON.stringify({ hits, total_searched, provider })`
+ * (astramem RecallResponseSchema) — an object, not a bare array. Read
+ * `.hits`; also tolerate a bare array defensively. Anything else -> [].
+ */
+function extractHits(parsed: unknown): unknown[] {
+  if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed === "object" && parsed !== null) {
+    const hits = (parsed as Record<string, unknown>)["hits"];
+    if (Array.isArray(hits)) return hits;
+  }
+  return [];
+}
+
+/** Type guard for a raw astramem RecallHit (id, type, text, score, ...). */
+function isRawHit(val: unknown): val is Record<string, unknown> {
   if (typeof val !== "object" || val === null) return false;
   const obj = val as Record<string, unknown>;
-  return typeof obj["type"] === "string" && typeof obj["content"] === "string";
+  return typeof obj["type"] === "string" && typeof obj["text"] === "string";
+}
+
+/** Map a raw astramem RecallHit onto RecallResult, renaming `text` -> `content`
+ * to match this module's existing consumers. */
+function toRecallResult(hit: Record<string, unknown>): RecallResult {
+  const result: RecallResult = {
+    type: hit["type"] as string,
+    content: hit["text"] as string
+  };
+  if (typeof hit["importance"] === "number") result.importance = hit["importance"];
+  if (typeof hit["score"] === "number") result.score = hit["score"];
+  return result;
 }
