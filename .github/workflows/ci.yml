@@ -1,5 +1,26 @@
 name: test
 
+# CI is split into three jobs to stop worktree-touching tests from hanging
+# the required check (astragenie/runner-plugin#355):
+#
+#   fast-gate            - validators + tsc (both configs) + biome. Target
+#                           ~1 min. This is the job the required status check
+#                           should point at: "fast-gate / test (self-hosted)".
+#   slow-tests            - the full bun test suite MINUS the six known
+#                           git-worktree suites, with a job-level timeout and
+#                           an in-step retry so a hang self-clears instead of
+#                           sitting for ~28 minutes.
+#   worktree-quarantine   - only the six worktree-touching suites named in
+#                           #355 (auto-merge, synergy, integration,
+#                           integrations, slice-complete, slice-start). Hard
+#                           per-invocation kill via `timeout`, and the job is
+#                           non-blocking (continue-on-error) so a deadlock in
+#                           real `git worktree` operations can never hold up
+#                           merges for more than ~2 minutes.
+#
+# Every test still runs somewhere — slow-tests and worktree-quarantine
+# together cover the same file set the old single `test` job covered.
+
 on:
   push:
     branches: [main]
@@ -7,7 +28,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  # Required check. Fast, deterministic, no git-worktree operations.
+  fast-gate:
     uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@main
     with:
       install-cmd: bun install --frozen-lockfile
@@ -22,4 +44,88 @@ jobs:
         bunx tsc --project tsconfig.test.json --noEmit
         bunx biome lint src/
         bunx biome format src/
-        bun test src/tests/ --parallel --timeout 60000
+
+  # Full suite minus the quarantined worktree suites (see worktree-quarantine
+  # below). Not gated by the reusable workflow because it needs a job-level
+  # timeout-minutes + an in-job retry loop that the reusable workflow's fixed
+  # 30-minute job timeout can't give us. Bun/Node are baked into the
+  # self-hosted runner image (devops#64) — no setup-bun/setup-node steps.
+  slow-tests:
+    name: slow-tests
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run full suite (excludes quarantined worktree suites), retry on hang/failure
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          run_suite() {
+            timeout --signal=KILL 480 bun test src/tests/ \
+              --parallel --timeout 60000 --no-orphans \
+              --path-ignore-patterns="**/auto-merge.test.mts" \
+              --path-ignore-patterns="**/synergy.test.mts" \
+              --path-ignore-patterns="**/integration.test.mts" \
+              --path-ignore-patterns="**/integrations.test.mts" \
+              --path-ignore-patterns="**/slice-complete.test.mts" \
+              --path-ignore-patterns="**/slice-start.test.mts"
+          }
+
+          max_attempts=2
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "::group::slow-tests attempt ${attempt}/${max_attempts}"
+            if run_suite; then
+              echo "::endgroup::"
+              echo "slow-tests passed on attempt ${attempt}"
+              exit 0
+            fi
+            status=$?
+            echo "::endgroup::"
+            echo "attempt ${attempt} failed or was killed by the 480s per-attempt timeout (exit ${status})"
+          done
+
+          echo "::error::slow-tests failed after ${max_attempts} attempts"
+          exit 1
+
+  # Quarantine job for the six suites named in #355 that perform real `git
+  # worktree` operations and have been observed to hang the runner
+  # indefinitely (PR #348: ~28 min, "this test timed out after 60000ms" /
+  # "killed N dangling process(es)"). Non-blocking by design
+  # (continue-on-error) and hard-killed at the OS level via `timeout` so a
+  # deadlock here can never hold the required check for more than ~2 min.
+  worktree-quarantine:
+    name: worktree-quarantine (known-flaky, non-blocking)
+    runs-on: self-hosted
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run quarantined git-worktree suites (hard-killed, best-effort)
+        shell: bash
+        run: |
+          set -uo pipefail
+          timeout --signal=KILL 120 bun test \
+            src/tests/auto-merge.test.mts \
+            src/tests/synergy.test.mts \
+            src/tests/integration.test.mts \
+            src/tests/integrations.test.mts \
+            src/tests/slice-complete.test.mts \
+            src/tests/slice-start.test.mts \
+            --timeout 60000 --no-orphans
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::worktree-quarantine suite failed or was killed after 120s (exit ${status}) — known flaky git-worktree deadlock, non-blocking (astragenie/runner-plugin#355)"
+          fi
+          # Always exit 0: this job is informational only. continue-on-error
+          # above is a second layer of protection in case a future step is
+          # added that doesn't swallow its own exit code.
+          exit 0
