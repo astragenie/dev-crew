@@ -10,19 +10,39 @@
 // Fail-silent contract: emit() NEVER throws and NEVER blocks > 2s.
 // CLI absent → no-op. Provider failure → swallowed in astramem itself.
 //
-// KNOWN GAP (#324): astramem's real subcommand surface is
+// FEAT-223 / DEC-067: astramem's real subcommand surface is
 // ingest-transcript | recall | remember | health | config | doctor | connect
-// — there is no generic single-event "ingest" subcommand. spawnIngest()
-// below still invokes "ingest", so emit() no-ops functionally (spawns,
-// gets "unknown subcommand", swallows it like any other failure) even once
-// resolveCli() finds a real binary. recallPrior() in memory-recall.mts is
-// NOT affected — its `recall` invocation matches the real CLI. See the
-// findings doc above for remediation options before relying on emit()
-// actually persisting anything.
+// — there is no generic single-event "ingest" subcommand (#324), so emit()
+// persists GEPA payloads through `remember` instead (see buildRememberArgs()
+// below for the exact mapping):
+//   --type     <- payload.event. `remember` does not validate/coerce --type;
+//                 this is a DIFFERENT free-string vocabulary than
+//                 memory-sink.mts's closed MemoryKind enum
+//                 (decision|lesson|note|failure) — both live under the same
+//                 flag on the wire, they are not meant to unify.
+//   --content  <- payload.feedback, sanitized + capped (memory-sanitize.mts,
+//                 shared with memory-sink.mts).
+//   --metadata <- a bounded JSON object (sliceId/featId/score/phase/source/
+//                 prompt_version + summarized input/output).
+//   (no --agent: GepaPayload carries no agent field, unlike memory-sink.mts's
+//   writers, which pass one when the caller has a role.)
+//
+// IMPORTANT — --metadata is WRITE-ONLY. astramem's RecallHitSchema has no
+// `metadata` field and its response schema is non-strict, so Zod silently
+// strips whatever is sent there — nothing placed in --metadata ever comes
+// back out via `recall`, for any consumer. Do not "fix" recall later
+// expecting GEPA fields to reappear; that round trip does not exist in the
+// real CLI. This is fine for emit()'s purpose: the GEPA optimizer never
+// reads astramem — it reads its own local JSONL store (gepa-core
+// file-store) — so recall fidelity through astramem was never required
+// here. recallPrior() in memory-recall.mts is unaffected by any of this —
+// its `recall` invocation already matches the real CLI.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+
+import { sanitizeArg, sanitizeContent } from "./memory-sanitize.mjs";
 
 /** GEPA-shaped payload for memory ingestion (trainset-ready day 1). */
 export interface GepaPayload {
@@ -149,6 +169,70 @@ export function _resetCliCache(): void {
   _cliCache = null;
 }
 
+// Caps for the summarized `input`/`output` blocks folded into --metadata
+// (FEAT-223 / DEC-067). Both fields are caller-supplied
+// `Record<string, unknown>` of unbounded shape (AC text, changed-file lists,
+// dispatch instructions, ...), and --metadata is passed as a literal argv
+// string by every spawn path here — Windows caps a command line at ~32KB.
+// These caps keep the summarized JSON tiny relative to that limit regardless
+// of what a caller passes in.
+const METADATA_STRING_CAP = 300;
+const METADATA_ARRAY_CAP = 10;
+const METADATA_KEY_CAP = 20;
+const METADATA_DEPTH_CAP = 3;
+
+/** Recursively cap a structured value (payload.input / payload.output) so an
+ * arbitrarily large caller-supplied object can never blow up --metadata's
+ * argv size: strings are sanitized + capped, arrays/objects are capped by
+ * length/key-count, and depth bottoms out at a truncation marker rather than
+ * recursing unbounded. */
+function summarizeStructured(value: unknown, depth = 0): unknown {
+  if (depth >= METADATA_DEPTH_CAP) return "[capped: max depth]";
+  if (typeof value === "string") return sanitizeContent(value, METADATA_STRING_CAP);
+  if (Array.isArray(value)) {
+    return value.slice(0, METADATA_ARRAY_CAP).map((item) => summarizeStructured(item, depth + 1));
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>).slice(
+      0,
+      METADATA_KEY_CAP
+    )) {
+      out[sanitizeArg(key, 64)] = summarizeStructured(val, depth + 1);
+    }
+    return out;
+  }
+  return value; // number | boolean | null | undefined pass through as-is.
+}
+
+/**
+ * Build the `astramem remember` argv for a GEPA payload (FEAT-223 / DEC-067).
+ * Pure — no I/O — so the wire mapping is unit-testable without spawning a
+ * CLI. See the module docstring for the field mapping and the --metadata
+ * write-only caveat.
+ */
+export function buildRememberArgs(payload: GepaPayload): string[] {
+  const metadata = {
+    sliceId: payload.slice_id,
+    featId: payload.feat_id,
+    score: payload.score,
+    phase: payload.event,
+    source: payload.source,
+    prompt_version: payload.prompt_version,
+    input: summarizeStructured(payload.input),
+    output: summarizeStructured(payload.output)
+  };
+  return [
+    "remember",
+    "--type",
+    payload.event,
+    "--content",
+    sanitizeContent(payload.feedback),
+    "--metadata",
+    JSON.stringify(metadata)
+  ];
+}
+
 /**
  * Emit a GEPA payload to astramem. Fire-and-forget with a 2s wallclock cap.
  * Swallows ALL errors — network, ENOENT, timeout, non-zero exit, bad JSON.
@@ -160,11 +244,11 @@ export async function emit(payload: GepaPayload): Promise<void> {
     const cli = await resolveCli();
     if (!cli) return;
 
-    const json = JSON.stringify(payload);
+    const args = buildRememberArgs(payload);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 2000);
     try {
-      await spawnIngest(cli.path, json, controller.signal);
+      await spawnRemember(cli.path, args, controller.signal);
     } finally {
       clearTimeout(timer);
     }
@@ -173,10 +257,10 @@ export async function emit(payload: GepaPayload): Promise<void> {
   }
 }
 
-// NOTE (#324): "ingest" is not a real astramem subcommand today — see the
-// module docstring above. Kept as-is pending a resolved remediation path
-// (fail-silent contract means this is a functional no-op, not a crash).
-async function spawnIngest(cliPath: string, json: string, signal: AbortSignal): Promise<void> {
+/** Spawn `astramem remember <args>` with the given argv. Resolves on close,
+ * error, or the caller's abort signal — never rejects. Mirrors
+ * memory-sink.mts::spawnRemember. */
+async function spawnRemember(cliPath: string, args: string[], signal: AbortSignal): Promise<void> {
   return new Promise<void>((resolve) => {
     let settled = false;
     const done = (): void => {
@@ -185,7 +269,7 @@ async function spawnIngest(cliPath: string, json: string, signal: AbortSignal): 
       resolve();
     };
     try {
-      const proc = spawn(cliPath, ["ingest", "--json", json], {
+      const proc = spawn(cliPath, args, {
         stdio: "ignore",
         detached: false,
         signal

@@ -24,6 +24,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { resolveCli } from "./memory-bridge.mjs";
+import { sanitizeArg, sanitizeContent } from "./memory-sanitize.mjs";
 
 export type MemoryKind = "decision" | "lesson" | "note" | "failure";
 
@@ -44,7 +45,6 @@ export interface RecordResult {
 }
 
 const CAP_MS = 2000;
-const CONTENT_MAX = 2000;
 
 /**
  * Read the `memory` block from `<repoPath>/.claude/loop.json`. Fail-silent:
@@ -87,24 +87,6 @@ function normalizeMode(enabled: unknown): "off" | "on" | "auto" {
   }
   // false, "off"/"never"/"disabled", absent, or any unknown value -> OFF (opt-in).
   return "off";
-}
-
-/** Strip control chars and cap length so content can never forge extra records
- * or carry huge payloads. Callers already pass non-secret text. */
-function sanitizeContent(text: string): string {
-  return text
-    .replace(/[\p{Cc}\p{Cf}]/gu, " ")
-    .trim()
-    .slice(0, CONTENT_MAX);
-}
-
-/** Sanitize a short argv value (e.g. project id) — strip control chars and cap
- * tightly. A config-sourced value must not forge extra args or log records. */
-function sanitizeArg(value: string): string {
-  return value
-    .replace(/[\p{Cc}\p{Cf}]/gu, "")
-    .trim()
-    .slice(0, 128);
 }
 
 /**
@@ -243,7 +225,7 @@ export function recordFailure(
 }
 
 /** Spawn `astramem remember ...` with a 2s wallclock cap. Resolves on close,
- * error, or timeout — never rejects. Mirrors memory-bridge.mts::spawnIngest. */
+ * error, or timeout — never rejects. Mirrors memory-bridge.mts::spawnRemember. */
 async function spawnRemember(cliPath: string, args: string[]): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CAP_MS);

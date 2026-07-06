@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   resolveCli,
   emit,
+  buildRememberArgs,
   _resetCliCache,
   type GepaPayload
 } from "../scripts/lib/memory-bridge.mjs";
@@ -267,10 +268,75 @@ test("emit resolves without throwing when CLI path does not exist (ENOENT)", asy
 });
 
 // ---------------------------------------------------------------------------
-// emit — payload schema round-trip
+// buildRememberArgs — payload -> `astramem remember` wire mapping (FEAT-223)
+// ---------------------------------------------------------------------------
+//
+// Pure-function coverage (platform-independent, no spawn) for the
+// emit()->remember mapping, plus a real-spawn round-trip below. This is the
+// AC-3 regression guard: it asserts the REAL subcommand surface and fails
+// against the old (wrong) `ingest` invocation, unlike the previous version
+// of this test which locked in a self-consistent fake.
+
+test("buildRememberArgs maps a GEPA payload onto the real `remember` contract, not `ingest`", () => {
+  const payload = makePayload();
+  const args = buildRememberArgs(payload);
+
+  // Would FAIL here against the old contract: old code produced
+  // ["ingest", "--json", json] — args[0] would be "ingest", not "remember".
+  assert.equal(args[0], "remember");
+  assert.equal(args[1], "--type");
+  assert.equal(args[2], payload.event);
+  assert.equal(args[3], "--content");
+  assert.equal(args[4], payload.feedback);
+  assert.equal(args[5], "--metadata");
+
+  const metadata = JSON.parse(args[6]!);
+  assert.equal(metadata.sliceId, payload.slice_id);
+  assert.equal(metadata.featId, payload.feat_id);
+  assert.equal(metadata.score, payload.score);
+  assert.equal(metadata.phase, payload.event);
+  assert.equal(metadata.source, payload.source);
+  assert.equal(metadata.prompt_version, payload.prompt_version);
+  assert.ok("input" in metadata && typeof metadata.input === "object");
+  assert.ok("output" in metadata && typeof metadata.output === "object");
+
+  // No --agent: GepaPayload carries no agent field.
+  assert.ok(!args.includes("--agent"));
+});
+
+test("buildRememberArgs bounds arbitrarily large input/output well under the ~32KB argv limit", () => {
+  const hugeString = "x".repeat(50_000);
+  const deepArray = Array.from({ length: 500 }, (_, i) => `item-${i}`);
+  const payload: GepaPayload = {
+    ...makePayload(),
+    input: {
+      note: hugeString,
+      files: deepArray,
+      nested: { deeper: { deepest: { tooDeep: hugeString } } }
+    },
+    output: { note: hugeString, files: deepArray }
+  };
+
+  const args = buildRememberArgs(payload);
+  const metadataJson = args[6]!;
+
+  // Well under the ~32KB Windows command-line cap, regardless of how large
+  // the caller's input/output objects were.
+  assert.ok(
+    metadataJson.length < 10_000,
+    `expected bounded --metadata JSON, got ${metadataJson.length} bytes`
+  );
+
+  const metadata = JSON.parse(metadataJson);
+  assert.ok(metadata.input.files.length <= 10, "expected array to be capped");
+  assert.ok(metadata.input.note.length <= 300, "expected nested string to be capped");
+});
+
+// ---------------------------------------------------------------------------
+// emit — payload schema round-trip (real spawn)
 // ---------------------------------------------------------------------------
 
-test("emit passes well-formed JSON as the --json argument (payload round-trip)", async () => {
+test("emit invokes `remember` with the mapped argv (real-spawn round-trip)", async () => {
   // Intercept the spawn call via a fake CLI that writes its argv to a tmp file.
   const { mkdtemp, readFile, rm, mkdir, writeFile, chmod } = await import("node:fs/promises");
   const os = await import("node:os");
@@ -284,7 +350,8 @@ test("emit passes well-formed JSON as the --json argument (payload round-trip)",
 
   if (process.platform === "win32") {
     // On Windows the direct spawn won't run a shell script cleanly.
-    // Skip capturing and just assert no throw — round-trip validated on POSIX.
+    // Skip capturing and just assert no throw — round-trip validated on POSIX
+    // (and unconditionally, platform-independent, by buildRememberArgs above).
     await writeFile(fakeCli + ".cmd", "@echo off\n");
     const orig = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
     process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = tmpDir;
@@ -326,18 +393,7 @@ test("emit passes well-formed JSON as the --json argument (payload round-trip)",
       return;
     }
 
-    // Expect ["ingest", "--json", "<json>"]
-    assert.equal(captured[0], "ingest");
-    assert.equal(captured[1], "--json");
-    const parsed = JSON.parse(captured[2]!);
-    assert.equal(parsed.slice_id, payload.slice_id);
-    assert.equal(parsed.feat_id, payload.feat_id);
-    assert.equal(parsed.source, payload.source);
-    assert.equal(parsed.event, payload.event);
-    assert.equal(typeof parsed.score, "number");
-    assert.ok("input" in parsed && typeof parsed.input === "object");
-    assert.ok("output" in parsed && typeof parsed.output === "object");
-    assert.ok("prompt_version" in parsed);
+    assert.deepEqual(captured, buildRememberArgs(payload));
   } finally {
     if (orig !== undefined) {
       process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = orig;

@@ -33,6 +33,31 @@ auth, or bearer tokens — all of that lives in `memory-plugin`.
 }
 ```
 
+This is the in-process trainset shape kept for the local JSONL store
+(gepa-core file-store, the GEPA optimizer's actual read path). What actually
+crosses the wire to astramem is a narrower `remember` mapping — see
+"Wire contract to astramem" below.
+
+## Wire contract to astramem (FEAT-223 / DEC-067)
+
+`emit()` persists a GEPA payload through the real `astramem remember`
+subcommand (`buildRememberArgs()` in memory-bridge.mts):
+
+| astramem flag | Source |
+|---|---|
+| `--type` | `payload.event` (free string; `remember` does not validate or coerce it — this is a different vocabulary from memory-sink.mts's closed `MemoryKind` enum, they simply coexist on the same flag) |
+| `--content` | `payload.feedback`, sanitized + length-capped |
+| `--metadata` | bounded JSON: `{ sliceId, featId, score, phase, source, prompt_version, input, output }` — `input`/`output` are recursively summarized (string/array/key/depth caps) so an arbitrarily large caller object can never blow up the argv size |
+
+No `--project` and no `--agent`: `GepaPayload` carries neither field.
+
+**`--metadata` is write-only.** astramem's `RecallHitSchema` has no
+`metadata` field and its response schema is non-strict, so anything placed
+there is silently stripped on the way back out via `recall` — for every
+consumer, not just this one. Do not design around round-tripping GEPA
+fields through astramem; the GEPA optimizer never reads astramem in the
+first place; it reads the local JSONL store shown above.
+
 ## Where logs go
 
 `astramem` handles fail-silent logging on the memory-plugin side at
@@ -48,14 +73,13 @@ network activity or log noise. In real dispatch environments where the
 astramem plugin is installed, the PATH probe finds the plugin's own
 `bin/astramem` and this gate is no longer the blocker it once was.
 
-**Known gap (#324):** even when the CLI resolves, `emit()`'s `spawnIngest()`
-invokes an `ingest` subcommand that does not exist in the real astramem CLI
-(`ingest-transcript | recall | remember | health | config | doctor | connect`).
-`emit()` therefore still writes nothing today — it fails silently per the
-fail-silent contract below, exactly as if the CLI were absent. `recallPrior()`
-is unaffected; its `recall` invocation matches the real CLI contract. See
-`docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md` for details
-and remediation options before assuming `emit()` persists events.
+`emit()` persists through the real `remember` subcommand (see "Wire contract
+to astramem" above) — the `#324` gap where `spawnIngest()` invoked a
+nonexistent `ingest` subcommand is fixed as of FEAT-223/DEC-067.
+`recallPrior()` was never affected; its `recall` invocation already matched
+the real CLI contract. See
+`docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md` for the
+original investigation.
 
 ## Off-switch
 
