@@ -1,6 +1,6 @@
 ---
 id: FEAT-221
-status: pending
+status: done
 priority: P2
 category: architecture
 target_release: null

@@ -1,6 +1,6 @@
 ---
 id: FEAT-226
-status: pending
+status: done
 priority: P3
 category: tech-debt
 target_release: null
