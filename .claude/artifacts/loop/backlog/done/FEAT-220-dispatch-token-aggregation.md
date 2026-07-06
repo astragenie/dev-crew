@@ -1,11 +1,11 @@
 ---
 id: FEAT-220
-status: pending
+status: done
 priority: P2
 category: platform
 target_release: null
 created: 2026-07-05
-updated: 2026-07-05
+updated: 2026-07-06
 depends_on: []
 slices: [SLICE-141, SLICE-142]
 derived_from: null
