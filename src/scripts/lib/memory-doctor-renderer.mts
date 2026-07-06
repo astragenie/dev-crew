@@ -7,7 +7,8 @@ import type { MemoryStatus } from "./memory-doctor.mjs";
 
 /**
  * Render a MemoryStatus as a Markdown block starting with `## Memory layer`.
- * Covers 4 variants: ok, cli_missing, unreachable, disabled.
+ * Covers all health variants: ok, cli_missing, unreachable, not_configured,
+ * unknown, disabled — the latter three share the fix-hint layout.
  */
 export function renderMemoryStatusBlock(status: MemoryStatus): string {
   const lines: string[] = ["## Memory layer", ""];
@@ -21,6 +22,7 @@ export function renderMemoryStatusBlock(status: MemoryStatus): string {
       break;
     case "unreachable":
     case "not_configured":
+    case "unknown":
       renderUnreachable(status, lines);
       break;
     case "disabled":
@@ -54,7 +56,7 @@ function renderCliMissing(lines: string[]): void {
 }
 
 function renderUnreachable(status: MemoryStatus, lines: string[]): void {
-  lines.push("**Status:** unreachable");
+  lines.push(`**Status:** ${status.health}`);
   if (status.cli_path) lines.push(`**CLI:** \`${status.cli_path}\``);
   if (status.version) lines.push(`**Version:** ${status.version}`);
   if (status.provider) lines.push(`**Provider:** ${status.provider}`);

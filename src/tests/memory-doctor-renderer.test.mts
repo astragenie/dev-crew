@@ -120,6 +120,30 @@ test("renderMemoryStatusBlock ok state with URL and version appear correctly", (
 });
 
 // -----------------------------------------------------------------------
+// Case 5b: unknown state — FEAT-224, indeterminate health from doctor --json
+// -----------------------------------------------------------------------
+
+test("renderMemoryStatusBlock unknown state shows unknown status with fix hints", () => {
+  const status: MemoryStatus = {
+    cli_present: true,
+    cli_path: "/usr/local/bin/astramem",
+    health: "unknown",
+    provider: "auto-undetermined",
+    fix_hint: "astramem doctor --json does not report local/saas reachability directly."
+  };
+
+  const output = renderMemoryStatusBlock(status);
+
+  assert.ok(output.includes("## Memory layer"), "must start with ## Memory layer");
+  assert.ok(output.includes("**Status:** unknown"), "must show unknown status, not ok");
+  assert.ok(output.includes("**Fix hints:**"), "must include Fix hints section");
+  assert.ok(
+    output.includes("astramem doctor --json does not report local/saas reachability directly."),
+    "must include custom fix_hint"
+  );
+});
+
+// -----------------------------------------------------------------------
 // Case 6: States produce distinct output (no cross-contamination)
 // -----------------------------------------------------------------------
 

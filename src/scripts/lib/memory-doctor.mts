@@ -1,12 +1,19 @@
 // Memory doctor probe (runner-plugin#292).
 //
-// Spawns `astramem doctor` and returns a structured MemoryStatus.
+// Spawns `astramem doctor --json` and returns a structured MemoryStatus.
 // 3s wallclock cap via AbortController — mirrors memory-bridge.mts emit() shape.
 //
 // Never throws. Returns a valid MemoryStatus on ALL paths (disabled, cli_missing,
-// unreachable, or ok).
+// unreachable, unknown, not_configured, or ok).
 //
-// Dormant until memory-plugin v0.4 ships the astramem CLI.
+// FEAT-224: the real astramem CLI (0.6.0) activates JSON mode on
+// `args.includes('--json')`, not `--format json`, and its `doctor --json`
+// payload shape is `env_vars | local_url | local_url_source | pending |
+// deprecation_hits` — it never reports whether the local/saas probe actually
+// succeeded (that result is text-only, printed in the human-readable report).
+// So "ok" cannot be truthfully derived from this shape at all; mapDoctorOutput()
+// below never returns "ok" and reports "unknown" when nothing indicates a
+// problem. See docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
@@ -19,8 +26,9 @@ export interface MemoryStatus {
   cli_present: boolean;
   cli_path?: string;
   provider?: "local" | "saas" | "auto-undetermined";
-  health: "ok" | "unreachable" | "not_configured" | "cli_missing" | "disabled";
+  health: "ok" | "unreachable" | "not_configured" | "unknown" | "cli_missing" | "disabled";
   version?: string;
+  /** Resolved local daemon URL (`local_url` in `doctor --json`). */
   url?: string;
   /** ISO 8601 timestamp of last ingested event, if astramem doctor reports it. */
   last_ingest_at?: string;
@@ -47,7 +55,7 @@ async function readMemoryEnabled(repoPath: string): Promise<string> {
       parsed.memory !== null &&
       typeof parsed.memory === "object" &&
       "enabled" in parsed.memory &&
-      (parsed.memory as Record<string, unknown>)["enabled"] === "never"
+      (parsed.memory as Record<string, unknown>).enabled === "never"
     ) {
       return "never";
     }
@@ -58,7 +66,7 @@ async function readMemoryEnabled(repoPath: string): Promise<string> {
 }
 
 /**
- * Spawn `astramem doctor --format json` and collect stdout.
+ * Spawn `astramem doctor --json` and collect stdout.
  * Rejects on timeout (AbortSignal), non-zero exit, or spawn error.
  */
 function spawnDoctor(cliPath: string, signal: AbortSignal): Promise<string> {
@@ -80,7 +88,7 @@ function spawnDoctor(cliPath: string, signal: AbortSignal): Promise<string> {
     signal.addEventListener("abort", () => fail(new Error("doctor timeout")), { once: true });
 
     try {
-      const proc = spawn(cliPath, ["doctor", "--format", "json"], {
+      const proc = spawn(cliPath, ["doctor", "--json"], {
         stdio: ["ignore", "pipe", "ignore"],
         // shell:true needed on Windows to run .cmd wrappers installed by package managers.
         shell: process.platform === "win32",
@@ -104,7 +112,63 @@ function spawnDoctor(cliPath: string, signal: AbortSignal): Promise<string> {
   });
 }
 
-/** Map raw astramem doctor JSON output to MemoryStatus fields. */
+/**
+ * Derive a truthful health signal from the real `doctor --json` shape.
+ *
+ * The payload has no field that reports whether the local/saas probe
+ * succeeded — that result only exists in the human-readable report. The one
+ * positive evidence of a real problem is `pending.rejected_count` (ingest
+ * events astramem itself gave up on). Absent that, "not_configured" applies
+ * only when nothing about the memory layer was explicitly set (pure
+ * defaults); otherwise health is genuinely indeterminate from this shape, so
+ * "unknown" is reported rather than guessing "ok".
+ */
+function deriveHealth(
+  rejectedCount: number,
+  provider: string | null,
+  apiUrl: string | null,
+  localUrlSource: unknown
+): MemoryStatus["health"] {
+  if (rejectedCount > 0) return "unreachable";
+  if (provider === null && apiUrl === null && localUrlSource === "default") return "not_configured";
+  return "unknown";
+}
+
+/** Fix-hint text per derived health value — none of them is "ok". */
+function fixHintFor(health: MemoryStatus["health"], rejectedCount: number): string {
+  if (health === "unreachable") {
+    return `astramem doctor reports ${rejectedCount} rejected pending event(s). Run \`astramem doctor\` for details.`;
+  }
+  if (health === "not_configured") {
+    return "astramem has no explicit provider/URL configuration; running on defaults. Run `astramem config` to set one up.";
+  }
+  return "astramem doctor --json does not report local/saas reachability directly. Run `astramem doctor` (without --json) for the full diagnostic.";
+}
+
+/** Pull `provider` + `apiUrl` out of the real `env_vars` sub-object. */
+function extractEnvSignals(envVars: Record<string, unknown>): {
+  configuredProvider: "local" | "saas" | null;
+  provider: "local" | "saas" | "auto-undetermined";
+  apiUrl: string | null;
+} {
+  const providerRaw = envVars.ASTRAMEM_PROVIDER;
+  const configuredProvider: "local" | "saas" | null =
+    providerRaw === "local" || providerRaw === "saas" ? providerRaw : null;
+  const apiUrl = typeof envVars.MEMORY_API_URL === "string" ? envVars.MEMORY_API_URL : null;
+  return { configuredProvider, provider: configuredProvider ?? "auto-undetermined", apiUrl };
+}
+
+/** Read `pending.rejected_count` out of the real `pending` sub-object. */
+function extractRejectedCount(obj: Record<string, unknown>): number {
+  const pendingRaw = obj.pending;
+  const pending =
+    pendingRaw !== null && typeof pendingRaw === "object"
+      ? (pendingRaw as Record<string, unknown>)
+      : {};
+  return typeof pending.rejected_count === "number" ? pending.rejected_count : 0;
+}
+
+/** Map raw astramem `doctor --json` output to MemoryStatus fields. */
 function mapDoctorOutput(cliPath: string, raw: string): MemoryStatus {
   try {
     const trimmed = raw.trim();
@@ -127,26 +191,24 @@ function mapDoctorOutput(cliPath: string, raw: string): MemoryStatus {
     }
     const obj = parsed as Record<string, unknown>;
 
-    const providerRaw = obj["provider"];
-    const provider: MemoryStatus["provider"] =
-      providerRaw === "local" || providerRaw === "saas" || providerRaw === "auto-undetermined"
-        ? providerRaw
-        : undefined;
-
-    const health: MemoryStatus["health"] =
-      obj["health"] === "ok" ? "ok" : obj["health"] === "not_configured" ? "not_configured" : "ok";
+    // Real shape (astramem 0.6.0 `src/cli/doctor.ts`):
+    //   { env_vars, local_url, local_url_source, pending, deprecation_hits }
+    const envVars =
+      obj.env_vars !== null && typeof obj.env_vars === "object"
+        ? (obj.env_vars as Record<string, unknown>)
+        : {};
+    const { configuredProvider, provider, apiUrl } = extractEnvSignals(envVars);
+    const rejectedCount = extractRejectedCount(obj);
+    const health = deriveHealth(rejectedCount, configuredProvider, apiUrl, obj.local_url_source);
 
     const status: MemoryStatus = {
       cli_present: true,
       cli_path: cliPath,
       health,
-      ...(provider !== undefined ? { provider } : {})
+      provider,
+      fix_hint: fixHintFor(health, rejectedCount)
     };
-
-    if (typeof obj["version"] === "string") status.version = obj["version"];
-    if (typeof obj["url"] === "string") status.url = obj["url"];
-    if (typeof obj["last_ingest_at"] === "string") status.last_ingest_at = obj["last_ingest_at"];
-    if (typeof obj["error"] === "string") status.error = obj["error"];
+    if (typeof obj.local_url === "string") status.url = obj.local_url;
 
     return status;
   } catch {

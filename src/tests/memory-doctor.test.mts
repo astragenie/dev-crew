@@ -27,15 +27,15 @@ let origPluginRoot: string | undefined;
 
 beforeEach(() => {
   _resetCliCache();
-  origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-  delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  origPluginRoot = process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
+  delete process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
 });
 
 afterEach(async () => {
   if (origPluginRoot !== undefined) {
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
+    process.env.CLAUDE_PLUGIN_ROOT_MEMORY = origPluginRoot;
   } else {
-    delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+    delete process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
   }
   if (tmpDir) {
     await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
@@ -156,37 +156,128 @@ test("probeMemory returns unreachable when astramem doctor outputs malformed JSO
 });
 
 // -----------------------------------------------------------------------
-// Case 5: Happy path — mocked JSON output maps to populated fields
+// Case 5: Real `doctor --json` shape (astramem 0.6.0) — configured but
+// indeterminate reachability → "unknown", never "ok" (AC-1, AC-4).
 // -----------------------------------------------------------------------
 
-test("probeMemory maps well-formed astramem doctor JSON to MemoryStatus fields", async () => {
+/** Write a fixture reflecting the real `astramem doctor --json` output shape. */
+async function writeDoctorFixture(
+  repoPath: string,
+  output: Record<string, unknown>
+): Promise<string> {
+  const outputFile = path.join(repoPath, "doctor-output.json");
+  await fs.writeFile(outputFile, JSON.stringify(output), "utf8");
+  return outputFile;
+}
+
+/**
+ * Build a fake CLI script that both captures its own argv (to `argsFile`, as
+ * a plain space-joined string — enough to assert the invoking flag) and
+ * echoes the fixture JSON from `outputFile`, so one invocation covers both
+ * the flag-name assertion (AC-4) and the output-shape mapping (AC-1/AC-2).
+ */
+function captureAndEmitScript(argsFile: string, outputFile: string): string {
+  return process.platform === "win32"
+    ? `echo %* > "${argsFile}"\ntype "${outputFile}"`
+    : `echo "$*" > "${argsFile}"\ncat "${outputFile}"`;
+}
+
+test("probeMemory invokes doctor with --json (not --format json) and maps unknown when configured but indeterminate", async () => {
   const repoPath = await makeTmpRepo();
 
-  const doctorOutput = JSON.stringify({
-    health: "ok",
-    provider: "saas",
-    version: "0.4.1",
-    url: "https://mem.astragenie.dev",
-    last_ingest_at: "2026-06-20T12:00:00Z"
+  // Real shape: env_vars set (provider configured via env), no rejected pending.
+  const outputFile = await writeDoctorFixture(repoPath, {
+    env_vars: {
+      MEMORY_BEARER: "[present, redacted]",
+      MEMORY_API_URL: "https://mem.astragenie.dev",
+      ASTRAMEM_PROVIDER: "saas"
+    },
+    local_url: "https://mem.astragenie.dev",
+    local_url_source: "env",
+    pending: { count: 0, bytes: 0, oldest_epoch_ms: null, rejected_count: 0 },
+    deprecation_hits: []
   });
 
-  // Write JSON to a temp file and have the fake CLI cat/type it — avoids
-  // echo quoting issues on Windows (CMD adds trailing spaces, CR/LF, etc.).
-  const outputFile = path.join(repoPath, "doctor-output.json");
-  await fs.writeFile(outputFile, doctorOutput, "utf8");
-
-  const scriptBody = process.platform === "win32" ? `type "${outputFile}"` : `cat "${outputFile}"`;
-  const { exePath, resolver } = await makeFakeCli(repoPath, scriptBody);
+  const argsFile = path.join(repoPath, "captured-args.txt");
+  const { exePath, resolver } = await makeFakeCli(
+    repoPath,
+    captureAndEmitScript(argsFile, outputFile)
+  );
 
   const result = await probeMemory(repoPath, { _resolveCli: resolver });
 
-  assert.equal(result.health, "ok");
+  assert.equal(
+    result.health,
+    "unknown",
+    "must never default to ok when reachability is indeterminate"
+  );
+  assert.notEqual(result.health, "ok");
   assert.equal(result.cli_present, true);
   assert.equal(result.provider, "saas");
-  assert.equal(result.version, "0.4.1");
   assert.equal(result.url, "https://mem.astragenie.dev");
-  assert.equal(result.last_ingest_at, "2026-06-20T12:00:00Z");
   assert.ok(result.cli_path === exePath, "cli_path should match the injected exePath");
+  assert.ok(typeof result.fix_hint === "string" && result.fix_hint.length > 0);
+
+  const captured = (await fs.readFile(argsFile, "utf8")).trim();
+  assert.ok(captured.includes("--json"), `expected --json in invocation, got: ${captured}`);
+  assert.ok(
+    !captured.includes("--format"),
+    `must not invoke the old --format flag, got: ${captured}`
+  );
+});
+
+// -----------------------------------------------------------------------
+// Case 5b: rejected pending events → "unreachable", not "ok" (AC-2).
+// -----------------------------------------------------------------------
+
+test("probeMemory reports unreachable (not ok) when doctor --json shows rejected pending events", async () => {
+  const repoPath = await makeTmpRepo();
+
+  const outputFile = await writeDoctorFixture(repoPath, {
+    env_vars: { MEMORY_BEARER: null, MEMORY_API_URL: null, ASTRAMEM_PROVIDER: "local" },
+    local_url: "http://127.0.0.1:7777",
+    local_url_source: "config",
+    pending: { count: 3, bytes: 512, oldest_epoch_ms: 1750000000000, rejected_count: 2 },
+    deprecation_hits: []
+  });
+
+  const { resolver } = await makeFakeCli(
+    repoPath,
+    process.platform === "win32" ? `type "${outputFile}"` : `cat "${outputFile}"`
+  );
+
+  const result = await probeMemory(repoPath, { _resolveCli: resolver });
+
+  assert.equal(result.health, "unreachable");
+  assert.notEqual(result.health, "ok");
+  assert.ok(result.fix_hint?.includes("2"), "fix_hint should surface the rejected count");
+});
+
+// -----------------------------------------------------------------------
+// Case 5c: nothing configured (pure defaults) → "not_configured", not "ok".
+// -----------------------------------------------------------------------
+
+test("probeMemory reports not_configured (not ok) when doctor --json shows pure defaults", async () => {
+  const repoPath = await makeTmpRepo();
+
+  const outputFile = await writeDoctorFixture(repoPath, {
+    env_vars: { MEMORY_BEARER: null, MEMORY_API_URL: null, ASTRAMEM_PROVIDER: null },
+    local_url: "http://127.0.0.1:7777",
+    local_url_source: "default",
+    pending: { count: 0, bytes: 0, oldest_epoch_ms: null, rejected_count: 0 },
+    deprecation_hits: []
+  });
+
+  const { resolver } = await makeFakeCli(
+    repoPath,
+    process.platform === "win32" ? `type "${outputFile}"` : `cat "${outputFile}"`
+  );
+
+  const result = await probeMemory(repoPath, { _resolveCli: resolver });
+
+  assert.equal(result.health, "not_configured");
+  assert.notEqual(result.health, "ok");
+  assert.equal(result.provider, "auto-undetermined");
 });
 
 // -----------------------------------------------------------------------
