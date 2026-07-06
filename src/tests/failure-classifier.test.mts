@@ -25,13 +25,13 @@ async function writeGradeFile(
 ): Promise<void> {
   const dir = gradesRoot(repo, null);
   await fs.mkdir(dir, { recursive: true });
-  const { verdict = "fail", gradedAt = "2026-07-01", surprises = [], followups = [] } = opts;
+  const { verdict, gradedAt = "2026-07-01", surprises = [], followups = [] } = opts;
   const body = [
     "---",
     `slice: ${sliceId}`,
     "feature: FEAT-999",
     `graded_at: ${gradedAt}`,
-    `verdict: ${verdict}`,
+    ...(verdict !== undefined ? [`verdict: ${verdict}`] : []),
     "---",
     "",
     "## Surprises",
@@ -173,21 +173,84 @@ test("classifyFailures infers failure_class for legacy learnings rows lacking th
   assert.equal(clusters[0]!.failure_class, "subagent_incomplete");
 });
 
-test("classifyFailures only treats non-pass-verdict grades as failure signal", async () => {
-  const repo = await makeTmpRepo("fc-grades-");
+// ---------------------------------------------------------------------------
+// FEAT-228: Surprises/Followups bullets are failure signal regardless of
+// verdict; a non-pass verdict remains an additional, stronger signal.
+// ---------------------------------------------------------------------------
+
+test("AC-1: a Surprises bullet with no verdict at all contributes failure signal", async () => {
+  const repo = await makeTmpRepo("fc-ac1-grades-");
   await writeGradeFile(repo, "SLICE-01", {
+    gradedAt: "2026-07-01",
+    surprises: ["retry logic behaved unexpectedly under load"]
+  });
+  const signals = await collectFailureSignals(repo, {
+    sinceDays: 30,
+    nowMs: Date.parse("2026-07-05")
+  });
+  assert.equal(signals.length, 1);
+  assert.equal(signals[0]!.id, "SLICE-01#surprises");
+  assert.equal(signals[0]!.source, "grade");
+});
+
+test("AC-2: a Followups bullet is grouped with an inferred failure_class and carries grade id + section as evidence", async () => {
+  const repo = await makeTmpRepo("fc-ac2-grades-");
+  await writeGradeFile(repo, "SLICE-02", {
+    gradedAt: "2026-07-02",
+    followups: ["review the retry logic for correctness"]
+  });
+  const clusters = await classifyFailures(repo, { sinceDays: 30, nowMs: Date.parse("2026-07-05") });
+  assert.equal(clusters.length, 1);
+  assert.equal(
+    clusters[0]!.failure_class,
+    inferFailureClass("review the retry logic for correctness")
+  );
+  assert.deepEqual(clusters[0]!.exemplar_ids, ["SLICE-02#followups"]);
+});
+
+test("AC-3: a pass-like grade with no surprises/followups contributes no signal", async () => {
+  const repo = await makeTmpRepo("fc-ac3-grades-");
+  await writeGradeFile(repo, "SLICE-03", { verdict: "pass", gradedAt: "2026-07-01" });
+  const clusters = await classifyFailures(repo, { sinceDays: 30, nowMs: Date.parse("2026-07-05") });
+  assert.deepEqual(clusters, []);
+});
+
+test("a non-pass verdict still contributes its own additional, stronger signal on top of bullet signals", async () => {
+  const repo = await makeTmpRepo("fc-verdict-plus-bullets-");
+  await writeGradeFile(repo, "SLICE-04", {
+    verdict: "fail",
+    gradedAt: "2026-07-02",
+    followups: ["test coverage gap for retry path"]
+  });
+  const signals = await collectFailureSignals(repo, {
+    sinceDays: 30,
+    nowMs: Date.parse("2026-07-05")
+  });
+  // One bullet-derived signal (verdict-independent) + one verdict-derived
+  // signal (verdict-gated) — the non-pass verdict adds weight, it doesn't
+  // replace the bullet signal.
+  assert.equal(signals.length, 2);
+  assert.deepEqual(signals.map((s) => s.id).sort(), ["SLICE-04", "SLICE-04#followups"]);
+});
+
+test("a pass-verdict grade with followups now contributes signal (grades source is no longer inert)", async () => {
+  const repo = await makeTmpRepo("fc-grades-inert-fix-");
+  await writeGradeFile(repo, "SLICE-05", {
     verdict: "pass",
     gradedAt: "2026-07-01",
     followups: ["review the retry logic"]
   });
-  await writeGradeFile(repo, "SLICE-02", {
+  await writeGradeFile(repo, "SLICE-06", {
     verdict: "fail",
     gradedAt: "2026-07-02",
     followups: ["test coverage gap for retry path"]
   });
   const clusters = await classifyFailures(repo, { sinceDays: 30, nowMs: Date.parse("2026-07-05") });
   assert.equal(clusters.length, 1);
-  assert.deepEqual(clusters[0]!.exemplar_ids, ["SLICE-02"]);
+  assert.deepEqual(
+    clusters[0]!.exemplar_ids.sort(),
+    ["SLICE-05#followups", "SLICE-06", "SLICE-06#followups"].sort()
+  );
 });
 
 // ---------------------------------------------------------------------------

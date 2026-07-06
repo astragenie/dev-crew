@@ -3,11 +3,12 @@
 //
 // Read-only over four sources:
 //   - grades/*.md         (via grade-parser/lessons-feed) — PRIMARY lesson
-//     corpus. Only grades whose `verdict` is present and not a pass-like
-//     value count as failure signal; today's corpus has zero such grades
-//     (verdict is either absent or one of approved/approved_with_notes/pass),
-//     so this source legitimately contributes 0 signals until reviewers
-//     start recording non-pass verdicts — see AC-5.
+//     corpus. FEAT-228 widened this: Surprises and Followups bullets are
+//     failure-adjacent signal on their own, independent of `verdict` — the
+//     real corpus has ~110/119 grades carrying those sections vs. only
+//     13/119 setting a (pass-like) verdict at all, so verdict-gating alone
+//     left this source inert. A non-pass `verdict` is kept as an additional,
+//     stronger signal on top of the bullet-derived ones (not a replacement).
 //   - pause-events.jsonl   (dispatch_outcome rows, outcome:"paused")
 //   - auto-dispatch.jsonl  (rows with ok:false)
 //   - learnings.jsonl      (entries carrying FEAT-220's failure_class field,
@@ -123,6 +124,54 @@ function isValidFailureClass(value: unknown): value is FailureClass {
 // Per-source collectors
 // ---------------------------------------------------------------------------
 
+// Verdict-independent signal (FEAT-228): a Surprises or Followups section
+// with content is failure-adjacent on its own — a clean grade with neither
+// section populated contributes nothing here (AC-3).
+function buildBulletSignals(
+  gradeId: string,
+  ts: string,
+  surprises: string[],
+  followups: string[]
+): FailureSignal[] {
+  const signals: FailureSignal[] = [];
+  for (const [section, bullets] of [
+    ["surprises", surprises],
+    ["followups", followups]
+  ] as const) {
+    if (bullets.length === 0) continue;
+    signals.push({
+      id: `${gradeId}#${section}`,
+      ts,
+      failureClass: inferFailureClass(bullets.join(" ")),
+      rootCause: bullets[0]!,
+      recommendedFix: "",
+      source: "grade"
+    });
+  }
+  return signals;
+}
+
+// A non-pass verdict is an additional, stronger signal on top of the
+// bullet-derived ones above — kept from the original FEAT-221 behavior.
+function buildVerdictSignal(
+  gradeId: string,
+  ts: string,
+  verdict: string,
+  surprises: string[],
+  followups: string[]
+): FailureSignal | null {
+  if (!verdict || PASS_VERDICTS.has(verdict)) return null;
+  const text = [...surprises, ...followups].join(" ");
+  return {
+    id: gradeId,
+    ts,
+    failureClass: inferFailureClass(text),
+    rootCause: followups[0] ?? surprises[0] ?? verdict,
+    recommendedFix: "",
+    source: "grade"
+  };
+}
+
 async function collectGradeSignals(
   repoPath: string,
   config: Record<string, unknown> | null | undefined,
@@ -134,21 +183,18 @@ async function collectGradeSignals(
     const verdict = String(grade.frontmatter?.verdict ?? "")
       .trim()
       .toLowerCase();
-    if (!verdict || PASS_VERDICTS.has(verdict)) continue;
     const ts = grade.frontmatter?.graded_at ?? grade.frontmatter?.date ?? null;
     const tsMs = ts ? Date.parse(ts) : Number.NaN;
     if (!Number.isNaN(tsMs) && tsMs < sinceMs) continue;
+    const resolvedTs = ts ?? new Date(0).toISOString();
+    const gradeId = grade.frontmatter?.slice ?? grade.filePath;
+
     const surprises = parseListSection(grade.body, "Surprises");
     const followups = parseListSection(grade.body, "Followups");
-    const text = [...surprises, ...followups].join(" ");
-    signals.push({
-      id: grade.frontmatter?.slice ?? grade.filePath,
-      ts: ts ?? new Date(0).toISOString(),
-      failureClass: inferFailureClass(text),
-      rootCause: followups[0] ?? surprises[0] ?? verdict,
-      recommendedFix: "",
-      source: "grade"
-    });
+
+    signals.push(...buildBulletSignals(gradeId, resolvedTs, surprises, followups));
+    const verdictSignal = buildVerdictSignal(gradeId, resolvedTs, verdict, surprises, followups);
+    if (verdictSignal) signals.push(verdictSignal);
   }
   return signals;
 }
