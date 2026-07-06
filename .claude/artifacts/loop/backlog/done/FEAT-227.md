@@ -1,6 +1,6 @@
 ---
 id: FEAT-227
-status: pending
+status: done
 priority: P1
 category: bug
 target_release: null
