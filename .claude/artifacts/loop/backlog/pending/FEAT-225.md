@@ -1,0 +1,54 @@
+---
+id: FEAT-225
+status: pending
+priority: P3
+category: bug
+target_release: null
+created: 2026-07-06
+updated: 2026-07-06
+depends_on: []
+slices: []
+derived_from: null
+tags: [backend, memory, bug]
+needs_contract: false
+needs_ux: false
+autonomous_safe: true
+pm_reviewed: null
+triage_notes: "Surfaced by #324 investigation (PR #328). memory-sink.mts passes `--project` to astramem `remember`, but remember.ts does not parse it (folds only agent into metadata) -> project scope silently dropped, weakening project-scoped decision/lesson recall. Low priority (degrades, does not break). Likely settled together with FEAT-223's `remember` wire-contract work. Mechanical -> autonomous_safe."
+---
+# FEAT-225: memory-sink drops `--project` on astramem `remember`
+
+## Origin
+
+#324 investigation (PR #328 findings). `memory-sink.mts::recordMemory` passes
+`--project` to `astramem remember`, but the real `remember.ts` (0.5.4 + 0.6.0)
+parses only `--content --type --metadata --agent` — it folds `agent` into
+`metadata.agent` and **silently drops `--project`** (falls to `default:`). So
+project-scoped memories are stored without their project tag, weakening
+project-scoped recall. Not fatal (fail-open, silent), but a real scope leak.
+
+## Scope
+
+Route project scope through a channel the real CLI accepts — most likely
+`--metadata` (as `metadata.project`), matching how `agent` is folded. Confirm the
+recall side (`memory-recall.mts` / astramem `recall --project`) reads it back from
+the same location so round-trip scoping actually works.
+
+Coordinate with FEAT-223: both touch the `remember` wire contract. If 223 chooses
+the `remember`-reshape path, fold this in there rather than double-editing.
+
+## Acceptance criteria
+
+- AC-1: GIVEN a project-scoped `recordMemory` call, WHEN it invokes `remember`,
+  THEN the project is carried on a field the real CLI parses (not the dropped
+  `--project` flag), verified against the real CLI arg surface.
+- AC-2: GIVEN a stored project-scoped memory, WHEN recalled with a project filter,
+  THEN it round-trips (scoping is not silently lost).
+- AC-3: Full suite green; typecheck + lint + format clean; snapshot-freshness passes.
+
+## Refs
+
+- `src/scripts/lib/memory-sink.mts` (`recordMemory`).
+- `src/scripts/lib/memory-recall.mts` (recall-side project handling).
+- FEAT-223 (shared `remember` wire contract).
+- `docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md`.
