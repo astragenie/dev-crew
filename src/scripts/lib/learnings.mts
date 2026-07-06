@@ -9,6 +9,8 @@ const execFile = promisify(execFileCb);
 
 const execFile = promisify(execFileCb);
 
+const execFile = promisify(execFileCb);
+
 // Persistent JSONL operational learnings store.
 // Each entry: { id, timestamp, key, insight, confidence, source, sliceId?,
 // tags?, failure_class?, root_cause?, recommended_fix?, evidence?, status?,
@@ -47,7 +49,10 @@ export function learningsPath(repoPath: string): string {
 // main worktree already (no-op).
 const canonicalRootCache = new Map<string, Promise<string>>();
 
-async function resolveCanonicalRepoRoot(repoPath: string): Promise<string> {
+// Exported for reuse by other stores keyed off repoPath that hit the same
+// worktree-isolation problem (grade-jsonl-writer.mts / runner-plugin#326).
+// Do NOT duplicate this helper — import it.
+export async function resolveCanonicalRepoRoot(repoPath: string): Promise<string> {
   let cached = canonicalRootCache.get(repoPath);
   if (!cached) {
     cached = computeCanonicalRepoRoot(repoPath);
