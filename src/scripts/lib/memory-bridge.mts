@@ -1,13 +1,24 @@
 // Memory bridge shim (runner-plugin#288).
 //
-// Fire-and-forget consumer of the `astramem` CLI provided by memory-plugin.
+// Fire-and-forget consumer of the `astramem` CLI shipped by the astramem
+// plugin (live since v0.5.x; this repo has observed it at v0.6.0 — see
+// docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md, #324).
 // Runner discovers the CLI via env or PATH — never manages providers, auth,
-// or bearer tokens. All of that lives in memory-plugin.
+// or bearer tokens, or picks local-vs-SaaS. All of that lives in astramem's
+// own provider selector.
 //
 // Fail-silent contract: emit() NEVER throws and NEVER blocks > 2s.
 // CLI absent → no-op. Provider failure → swallowed in astramem itself.
 //
-// Dormant until memory-plugin v0.4 ships astramem.
+// KNOWN GAP (#324): astramem's real subcommand surface is
+// ingest-transcript | recall | remember | health | config | doctor | connect
+// — there is no generic single-event "ingest" subcommand. spawnIngest()
+// below still invokes "ingest", so emit() no-ops functionally (spawns,
+// gets "unknown subcommand", swallows it like any other failure) even once
+// resolveCli() finds a real binary. recallPrior() in memory-recall.mts is
+// NOT affected — its `recall` invocation matches the real CLI. See the
+// findings doc above for remediation options before relying on emit()
+// actually persisting anything.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
@@ -162,6 +173,9 @@ export async function emit(payload: GepaPayload): Promise<void> {
   }
 }
 
+// NOTE (#324): "ingest" is not a real astramem subcommand today — see the
+// module docstring above. Kept as-is pending a resolved remediation path
+// (fail-silent contract means this is a functional no-op, not a crash).
 async function spawnIngest(cliPath: string, json: string, signal: AbortSignal): Promise<void> {
   return new Promise<void>((resolve) => {
     let settled = false;

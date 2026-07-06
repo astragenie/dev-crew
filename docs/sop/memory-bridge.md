@@ -39,14 +39,23 @@ auth, or bearer tokens — all of that lives in `memory-plugin`.
 `~/.astramemory/ingest.log` (append-only, rotates at 10 MB). Runner never
 writes memory logs directly.
 
-## Dormant state
+## CLI resolution state
 
-**The bridge is a no-op until `memory-plugin` v0.4 ships `astramem`.**
-`resolveCli()` returns `null` when neither `$CLAUDE_PLUGIN_ROOT_MEMORY/bin/astramem`
-nor a PATH entry is found — `emit()` skips immediately without network activity
-or log noise.
+`astramem` is live (observed at plugin v0.6.0; astramem/#324). `resolveCli()`
+returns `null` only when neither `$CLAUDE_PLUGIN_ROOT_MEMORY/bin/astramem` nor
+a PATH entry is found — in that case `emit()` skips immediately without
+network activity or log noise. In real dispatch environments where the
+astramem plugin is installed, the PATH probe finds the plugin's own
+`bin/astramem` and this gate is no longer the blocker it once was.
 
-See: [memory-plugin issue #8](https://github.com/astragenie/memory-plugin/issues/8)
+**Known gap (#324):** even when the CLI resolves, `emit()`'s `spawnIngest()`
+invokes an `ingest` subcommand that does not exist in the real astramem CLI
+(`ingest-transcript | recall | remember | health | config | doctor | connect`).
+`emit()` therefore still writes nothing today — it fails silently per the
+fail-silent contract below, exactly as if the CLI were absent. `recallPrior()`
+is unaffected; its `recall` invocation matches the real CLI contract. See
+`docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md` for details
+and remediation options before assuming `emit()` persists events.
 
 ## Off-switch
 
