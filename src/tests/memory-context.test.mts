@@ -317,3 +317,132 @@ test("buildMemoryContext stays fail-open when astramem is unreachable — other 
     "non-astramem sources must still surface"
   );
 });
+
+// ---------------------------------------------------------------------------
+// FEAT-220 — enriched learnings schema surfaces through the real
+// memory-context → toLearningEntry → rankLearnings call graph (not a
+// fictional readAllEntries→rankLearnings pairing).
+// ---------------------------------------------------------------------------
+
+// AC-1: legacy rows (old 8 fields only, no FEAT-220 fields at all) rank in
+// the same order they would have before this change — decayed confidence *
+// utility_score, no boost/drop applied since neither status nor expires_at
+// is present.
+test("buildMemoryContext (AC-1): legacy rows keep pre-FEAT-220 ranking order", async () => {
+  const repoPath = await makeTmpRepo();
+  await writeLearningsJsonl(repoPath, [
+    {
+      id: 1,
+      timestamp: "2026-05-28T19:48:53.059Z",
+      key: "legacy-low",
+      insight: "legacy-low insight",
+      confidence: 0.2,
+      source: "agent"
+    },
+    {
+      id: 2,
+      timestamp: "2026-05-28T19:48:53.059Z",
+      key: "legacy-high",
+      insight: "legacy-high insight",
+      confidence: 0.9,
+      source: "agent"
+    }
+  ]);
+
+  const result = await buildMemoryContext({
+    repoPath,
+    k: 5,
+    tokenCap: 800,
+    config: { memory: { enabled: true } }
+  });
+
+  const highIdx = result.indexOf("legacy-high insight");
+  const lowIdx = result.indexOf("legacy-low insight");
+  assert.ok(highIdx >= 0 && lowIdx >= 0, "both legacy entries must surface");
+  assert.ok(
+    highIdx < lowIdx,
+    "higher-confidence legacy entry must rank first, unchanged by FEAT-220"
+  );
+});
+
+// AC-3: status=rejected excluded; status=validated ranks above an
+// otherwise-equal candidate — exercised through buildMemoryContext.
+test("buildMemoryContext (AC-3): rejected excluded, validated ranks above candidate", async () => {
+  const repoPath = await makeTmpRepo();
+  await writeLearningsJsonl(repoPath, [
+    {
+      id: 1,
+      timestamp: "2026-07-01T00:00:00.000Z",
+      key: "cand",
+      insight: "candidate insight",
+      confidence: 1.0,
+      source: "agent",
+      status: "candidate"
+    },
+    {
+      id: 2,
+      timestamp: "2026-07-01T00:00:00.000Z",
+      key: "val",
+      insight: "validated insight",
+      confidence: 1.0,
+      source: "agent",
+      status: "validated"
+    },
+    {
+      id: 3,
+      timestamp: "2026-07-01T00:00:00.000Z",
+      key: "rej",
+      insight: "rejected insight",
+      confidence: 1.0,
+      source: "agent",
+      status: "rejected"
+    }
+  ]);
+
+  const result = await buildMemoryContext({
+    repoPath,
+    k: 5,
+    tokenCap: 800,
+    config: { memory: { enabled: true } }
+  });
+
+  assert.ok(!result.includes("rejected insight"), "rejected entries must be excluded entirely");
+  const validIdx = result.indexOf("validated insight");
+  const candIdx = result.indexOf("candidate insight");
+  assert.ok(validIdx >= 0 && candIdx >= 0, "candidate and validated entries must both surface");
+  assert.ok(validIdx < candIdx, "validated must rank above an otherwise-equal candidate");
+});
+
+// AC-4: a past expires_at hard-drops the entry from the rendered block.
+test("buildMemoryContext (AC-4): entry with a past expires_at is dropped", async () => {
+  const repoPath = await makeTmpRepo();
+  await writeLearningsJsonl(repoPath, [
+    {
+      id: 1,
+      timestamp: "2020-01-01T00:00:00.000Z",
+      key: "stale",
+      insight: "stale expired insight",
+      confidence: 1.0,
+      source: "agent",
+      expires_at: "2020-02-01T00:00:00.000Z"
+    },
+    {
+      id: 2,
+      timestamp: "2026-07-01T00:00:00.000Z",
+      key: "fresh",
+      insight: "fresh unexpired insight",
+      confidence: 1.0,
+      source: "agent"
+    }
+  ]);
+
+  const result = await buildMemoryContext({
+    repoPath,
+    k: 5,
+    tokenCap: 800,
+    config: { memory: { enabled: true } }
+  });
+
+  assert.ok(!result.includes("stale expired insight"), "expired entry must not surface");
+  assert.ok(result.includes("fresh unexpired insight"), "unexpired entry must still surface");
+});

@@ -13,6 +13,24 @@ const TOKEN_BUDGET = 1000;
 // Query boost added to entries whose text contains any query word.
 const QUERY_BOOST = 0.1;
 
+// FEAT-220: boost added to entries whose lifecycle status is "validated" or
+// "promoted", so they rank above an otherwise-equal "candidate" entry.
+// Entries with no status field (legacy rows) get no boost — same as
+// "candidate" — which is what keeps AC-1's golden ranking byte-identical.
+const STATUS_BOOST = 0.05;
+
+/** True when entry.status is "rejected" — dropped from ranking entirely (AC-3). */
+function isRejected(entry: LearningEntry): boolean {
+  return entry.status === "rejected";
+}
+
+/** True when entry.expires_at is a parseable timestamp at or before nowMs (AC-4). */
+function isExpired(entry: LearningEntry, nowMs: number): boolean {
+  if (!entry.expires_at) return false;
+  const expiresMs = Date.parse(entry.expires_at);
+  return !Number.isNaN(expiresMs) && expiresMs <= nowMs;
+}
+
 /**
  * Estimate token count for a single learning entry.
  * Approximation: ceil(text.length / 4).
@@ -38,6 +56,10 @@ function compositeScore(entry: LearningEntry, nowMs: number, queryWords: string[
     const lower = entry.text.toLowerCase();
     const hasMatch = queryWords.some((w) => lower.includes(w));
     if (hasMatch) score += QUERY_BOOST;
+  }
+
+  if (entry.status === "validated" || entry.status === "promoted") {
+    score += STATUS_BOOST;
   }
 
   return score;
@@ -69,8 +91,12 @@ export function rankLearnings(
           .filter((w) => w.length > 0)
       : [];
 
+  // FEAT-220: drop rejected/expired entries before scoring — additive gates
+  // that never fire for legacy entries (no status/expires_at field).
+  const candidates = entries.filter((e) => !isRejected(e) && !isExpired(e, nowMs));
+
   // Sort descending by composite score.
-  const scored = entries
+  const scored = candidates
     .map((e) => ({ entry: e, score: compositeScore(e, nowMs, queryWords) }))
     .sort((a, b) => b.score - a.score);
 

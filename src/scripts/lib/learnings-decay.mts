@@ -14,6 +14,11 @@ export interface LearningEntry {
   confidence?: number; // 0–1; undefined treated as 1.0
   utility_score?: number; // cumulative pass/fail tracker
   last_cited_at?: number; // Unix ms of last retrieval
+  // FEAT-220: lifecycle gating fields, mirrored from the write-shape
+  // (learnings.mts) via memory-context.mts::toLearningEntry. Absent on
+  // legacy entries — treated as "candidate" / never-expiring by the ranker.
+  status?: "candidate" | "validated" | "promoted" | "rejected";
+  expires_at?: string; // ISO timestamp; hard-expires the entry when past
 }
 
 /**

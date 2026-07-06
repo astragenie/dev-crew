@@ -303,3 +303,86 @@ test("deleteLearning preserves order of remaining entries after deletion", async
   assert.equal(all.items[0].id, r1.id);
   assert.equal(all.items[1].id, r3.id);
 });
+
+// --- FEAT-220 enriched schema tests (AC-2) ---
+
+test("logLearning round-trips all 7 FEAT-220 fields", async () => {
+  const repo = await tmpRepo("learnings-feat220-full-");
+  const record = await logLearning(repo, {
+    key: "eval-gap",
+    insight: "builder skipped the AC-3 edge case",
+    failure_class: "validation_fail",
+    root_cause: "reviewer prompt omitted the edge-case checklist",
+    recommended_fix: "add edge-case checklist to reviewer dispatch",
+    evidence: ["run-42/trace.json", ".claude/artifacts/crew/reviews/SLICE-1.md"],
+    status: "validated",
+    scope: "workflow",
+    expires_at: "2027-01-01T00:00:00.000Z"
+  });
+
+  assert.equal(record.failure_class, "validation_fail");
+  assert.equal(record.root_cause, "reviewer prompt omitted the edge-case checklist");
+  assert.equal(record.recommended_fix, "add edge-case checklist to reviewer dispatch");
+  assert.deepEqual(record.evidence, [
+    "run-42/trace.json",
+    ".claude/artifacts/crew/reviews/SLICE-1.md"
+  ]);
+  assert.equal(record.status, "validated");
+  assert.equal(record.scope, "workflow");
+  assert.equal(record.expires_at, "2027-01-01T00:00:00.000Z");
+
+  const filePath = learningsPath(repo);
+  const raw = await fs.readFile(filePath, "utf8");
+  const parsed = JSON.parse(raw.trim());
+  assert.equal(parsed.failure_class, "validation_fail");
+  assert.equal(parsed.status, "validated");
+});
+
+test("logLearning omits failure_class/root_cause/recommended_fix/evidence/expires_at when absent — never null", async () => {
+  const repo = await tmpRepo("learnings-feat220-absent-");
+  const record = await logLearning(repo, { key: "bare", insight: "no optional fields supplied" });
+
+  assert.equal("failure_class" in record, false);
+  assert.equal("root_cause" in record, false);
+  assert.equal("recommended_fix" in record, false);
+  assert.equal("evidence" in record, false);
+  assert.equal("expires_at" in record, false);
+});
+
+test("logLearning defaults status to 'candidate' and scope to 'repo' when omitted", async () => {
+  const repo = await tmpRepo("learnings-feat220-defaults-");
+  const record = await logLearning(repo, { key: "default-check", insight: "check defaults" });
+  assert.equal(record.status, "candidate");
+  assert.equal(record.scope, "repo");
+});
+
+// --- FEAT-220 backward compatibility (AC-1) ---
+
+test("legacy 8-field learnings.jsonl row parses unchanged through recentLearnings", async () => {
+  const repo = await tmpRepo("learnings-feat220-legacy-");
+  const filePath = learningsPath(repo);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(
+    filePath,
+    `${JSON.stringify({
+      id: 1,
+      timestamp: "2026-05-28T19:48:53.059Z",
+      key: "test-key",
+      insight: "test insight",
+      confidence: 0.8,
+      source: "agent"
+    })}\n`,
+    "utf8"
+  );
+
+  const result = await recentLearnings(repo, 1);
+  assert.equal(result.count, 1);
+  assert.equal(result.items[0].key, "test-key");
+  assert.equal(result.items[0].insight, "test insight");
+  assert.equal(
+    "status" in result.items[0],
+    false,
+    "legacy row must not gain a status field on read"
+  );
+  assert.equal("scope" in result.items[0], false, "legacy row must not gain a scope field on read");
+});

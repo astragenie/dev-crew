@@ -7,8 +7,16 @@ import { appendJsonl } from "./jsonl-append.mjs";
 const execFile = promisify(execFileCb);
 
 // Persistent JSONL operational learnings store.
-// Each entry: { id, timestamp, key, insight, confidence, source, sliceId?, tags? }
+// Each entry: { id, timestamp, key, insight, confidence, source, sliceId?,
+// tags?, failure_class?, root_cause?, recommended_fix?, evidence?, status?,
+// scope?, expires_at? }
 // Store location: <repoPath>/.claude/artifacts/loop/learnings.jsonl
+//
+// FEAT-220: the 7 trailing optional fields enrich the write-shape for
+// evidence-backed promotion / automated eval generation (FEAT-221/222). All
+// are additive — omitted fields serialize as absent, never `null`, so the 5
+// legacy rows parse unchanged and rankLearnings' ordering is untouched
+// (see learnings-ranker.mts).
 
 export function learningsPath(repoPath: string): string {
   return path.join(repoPath, ".claude", "artifacts", "loop", "learnings.jsonl");
@@ -90,21 +98,68 @@ function nextId(entries: any[]): number {
   return max + 1;
 }
 
+// FEAT-220 enum fields — kept here (not in a separate types module) since
+// logLearning's whitelisting record builder is the single write path and
+// validate-learnings-schema.mts imports these same lists for its checks.
+export const FAILURE_CLASSES = [
+  "stale_context",
+  "bad_tool_use",
+  "hallucinated_ref",
+  "ignored_policy",
+  "bad_patch",
+  "review_fail",
+  "validation_fail",
+  "subagent_incomplete",
+  "other"
+] as const;
+export type FailureClass = (typeof FAILURE_CLASSES)[number];
+
+export const LEARNING_STATUSES = ["candidate", "validated", "promoted", "rejected"] as const;
+export type LearningStatus = (typeof LEARNING_STATUSES)[number];
+
+export const LEARNING_SCOPES = ["agent", "workflow", "repo", "global"] as const;
+export type LearningScope = (typeof LEARNING_SCOPES)[number];
+
+export interface LogLearningEntry {
+  key: string;
+  insight: string;
+  confidence?: number;
+  source?: string;
+  sliceId?: string;
+  tags?: string[];
+  failure_class?: FailureClass;
+  root_cause?: string;
+  recommended_fix?: string;
+  evidence?: string[];
+  status?: LearningStatus;
+  scope?: LearningScope;
+  expires_at?: string;
+}
+
+// Whitelists the optional fields onto the record one at a time. Extracted
+// from logLearning to keep its cognitive complexity under the repo's
+// noExcessiveCognitiveComplexity cap (15) now that FEAT-220 added 7 more
+// optional fields. status/scope carry explicit defaults (per FEAT-220 scope
+// doc) — always written, even when the caller omits them. The other 5 new
+// fields stay purely absent-when-omitted since they have no default value.
+function applyOptionalFields(record: Record<string, unknown>, entry: LogLearningEntry): void {
+  if (entry.sliceId) record.sliceId = entry.sliceId;
+  if (Array.isArray(entry.tags) && entry.tags.length > 0) record.tags = entry.tags;
+  if (entry.failure_class) record.failure_class = entry.failure_class;
+  if (entry.root_cause) record.root_cause = entry.root_cause;
+  if (entry.recommended_fix) record.recommended_fix = entry.recommended_fix;
+  if (Array.isArray(entry.evidence) && entry.evidence.length > 0) record.evidence = entry.evidence;
+  record.status = entry.status ?? "candidate";
+  record.scope = entry.scope ?? "repo";
+  if (entry.expires_at) record.expires_at = entry.expires_at;
+}
+
 // Append a new learning to the JSONL store.
 // Required fields: key (string), insight (string).
-// Optional: confidence (0–1), source (string), sliceId (string), tags (string[]).
+// Optional: confidence (0–1), source (string), sliceId (string), tags (string[]),
+// plus the FEAT-220 evidence/lifecycle fields (see applyOptionalFields).
 // Throws when key or insight are missing/invalid.
-export async function logLearning(
-  repoPath: string,
-  entry: {
-    key: string;
-    insight: string;
-    confidence?: number;
-    source?: string;
-    sliceId?: string;
-    tags?: string[];
-  }
-): Promise<any> {
+export async function logLearning(repoPath: string, entry: LogLearningEntry): Promise<any> {
   if (!entry || typeof entry.key !== "string" || !entry.key.trim()) {
     throw new Error("logLearning: entry.key must be a non-empty string");
   }
@@ -124,8 +179,7 @@ export async function logLearning(
     confidence: typeof entry.confidence === "number" ? entry.confidence : null,
     source: entry.source || "agent"
   };
-  if (entry.sliceId) record.sliceId = entry.sliceId;
-  if (Array.isArray(entry.tags) && entry.tags.length > 0) record.tags = entry.tags;
+  applyOptionalFields(record, entry);
 
   await appendJsonl(filePath, record);
 

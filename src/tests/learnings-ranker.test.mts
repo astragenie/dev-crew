@@ -163,3 +163,127 @@ test("rankLearnings + limit: post-rank slice returns top-N by score", () => {
   assert.equal(ranked[0]!.id, "score9", "highest utility should rank first");
   assert.equal(ranked[1]!.id, "score5", "second highest should be second");
 });
+
+// --- FEAT-220: status/expires_at gating (AC-3, AC-4) ---
+
+test("rankLearnings: status=rejected entries are excluded", () => {
+  const nowMs = 0;
+  const entries: LearningEntry[] = [
+    makeEntry({ id: "kept", text: "kept entry", utility_score: 1, confidence: 1.0, createdAt: 0 }),
+    makeEntry({
+      id: "rejected",
+      text: "rejected entry",
+      utility_score: 10,
+      confidence: 1.0,
+      createdAt: 0,
+      status: "rejected"
+    })
+  ];
+  const result = rankLearnings(entries, { nowMs });
+  assert.equal(result.length, 1);
+  assert.equal(result[0]!.id, "kept");
+});
+
+test("rankLearnings: status=validated ranks above an otherwise-equal candidate", () => {
+  const nowMs = 0;
+  const entries: LearningEntry[] = [
+    makeEntry({
+      id: "candidate",
+      text: "same text length",
+      utility_score: 2,
+      confidence: 1.0,
+      createdAt: 0,
+      status: "candidate"
+    }),
+    makeEntry({
+      id: "validated",
+      text: "same text length",
+      utility_score: 2,
+      confidence: 1.0,
+      createdAt: 0,
+      status: "validated"
+    })
+  ];
+  const result = rankLearnings(entries, { nowMs });
+  assert.equal(
+    result[0]!.id,
+    "validated",
+    "validated must rank above an otherwise-equal candidate"
+  );
+  assert.equal(result[1]!.id, "candidate");
+});
+
+test("rankLearnings: status=promoted ranks above an otherwise-equal candidate", () => {
+  const nowMs = 0;
+  const entries: LearningEntry[] = [
+    makeEntry({ id: "candidate", text: "x", utility_score: 2, confidence: 1.0, createdAt: 0 }),
+    makeEntry({
+      id: "promoted",
+      text: "x",
+      utility_score: 2,
+      confidence: 1.0,
+      createdAt: 0,
+      status: "promoted"
+    })
+  ];
+  const result = rankLearnings(entries, { nowMs });
+  assert.equal(result[0]!.id, "promoted");
+});
+
+test("rankLearnings: entry with a past expires_at is dropped", () => {
+  const nowMs = Date.parse("2026-07-01T00:00:00.000Z");
+  const entries: LearningEntry[] = [
+    makeEntry({
+      id: "expired",
+      text: "stale learning",
+      utility_score: 10,
+      confidence: 1.0,
+      createdAt: 0,
+      expires_at: "2026-06-01T00:00:00.000Z"
+    }),
+    makeEntry({ id: "fresh", text: "still valid", utility_score: 1, confidence: 1.0, createdAt: 0 })
+  ];
+  const result = rankLearnings(entries, { nowMs });
+  assert.equal(result.length, 1);
+  assert.equal(result[0]!.id, "fresh");
+});
+
+test("rankLearnings: entry with a future expires_at is retained", () => {
+  const nowMs = Date.parse("2026-07-01T00:00:00.000Z");
+  const entries: LearningEntry[] = [
+    makeEntry({
+      id: "not-yet-expired",
+      text: "still valid",
+      utility_score: 1,
+      confidence: 1.0,
+      createdAt: 0,
+      expires_at: "2027-01-01T00:00:00.000Z"
+    })
+  ];
+  const result = rankLearnings(entries, { nowMs });
+  assert.equal(result.length, 1);
+  assert.equal(result[0]!.id, "not-yet-expired");
+});
+
+test("rankLearnings: absent status/expires_at preserves pre-FEAT-220 ordering exactly", () => {
+  // Regression guard for AC-1: entries with neither field behave identically
+  // to the pre-FEAT-220 ranker (no drop, no boost) — same assertions as the
+  // "ordered by composite score descending" test above, unaffected by the
+  // new gates.
+  const nowMs = 0;
+  const entries: LearningEntry[] = [
+    makeEntry({ id: "low", text: "low utility", utility_score: 1, confidence: 1.0, createdAt: 0 }),
+    makeEntry({
+      id: "high",
+      text: "high utility",
+      utility_score: 5,
+      confidence: 1.0,
+      createdAt: 0
+    }),
+    makeEntry({ id: "mid", text: "mid utility", utility_score: 3, confidence: 1.0, createdAt: 0 })
+  ];
+  const result = rankLearnings(entries, { nowMs });
+  assert.equal(result[0]!.id, "high");
+  assert.equal(result[1]!.id, "mid");
+  assert.equal(result[2]!.id, "low");
+});
