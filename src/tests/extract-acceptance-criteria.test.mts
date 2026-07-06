@@ -110,6 +110,57 @@ test("extractAcceptanceCriteria is case-insensitive on heading name", () => {
   assert.deepEqual(result, ["- [ ] AC-1: lowercase heading"]);
 });
 
+test("extractAcceptanceCriteria collects FEAT-277 Given-When-Then prose bullets (no checkbox)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- GIVEN a slice closes, WHEN the ceremony completes, THEN a learnings entry is appended.",
+    "- **GIVEN** a review-FAIL artifact, WHEN written, THEN a failure entry is captured.",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] GIVEN a slice closes, WHEN the ceremony completes, THEN a learnings entry is appended.",
+    "- [ ] **GIVEN** a review-FAIL artifact, WHEN written, THEN a failure entry is captured."
+  ]);
+});
+
+test("extractAcceptanceCriteria collects bullets grouped under per-slice ### SN subheadings", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "### S1 — Capture repair",
+    "- GIVEN X, WHEN Y, THEN Z.",
+    "",
+    "### S2 — Interface",
+    "- AC-1: provider constructs without error",
+    "",
+    "## Notes",
+    "- GIVEN this belongs to Notes and must be excluded"
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] GIVEN X, WHEN Y, THEN Z.",
+    "- [ ] AC-1: provider constructs without error"
+  ]);
+});
+
+test("extractAcceptanceCriteria mixes checkbox + prose bullets in one section", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- [x] AC-1: already checked",
+    "- GIVEN a nudge, WHEN sent, THEN no fork.",
+    "- a plain non-AC bullet that must be ignored",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] AC-1: already checked",
+    "- [ ] GIVEN a nudge, WHEN sent, THEN no fork."
+  ]);
+});
+
 // --- Integration tests: sliceFromFeature scaffold population ---
 
 async function tmpRepo(prefix: string) {

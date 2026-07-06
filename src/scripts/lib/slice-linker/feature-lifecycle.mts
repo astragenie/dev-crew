@@ -34,15 +34,22 @@ const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
 
 /**
  * Parses the `## Acceptance criteria` section from a FEAT body and returns
- * the checkbox lines verbatim.
+ * the criteria as unchecked checkbox lines.
+ *
+ * Accepts two authoring formats:
+ * - `- [ ]` / `- [x]` checkbox bullets (normalized to unchecked)
+ * - FEAT-277 inline-AC prose: `- GIVEN … WHEN … THEN …` or `- AC-N: …`
+ *   bullets (optionally bold-prefixed), including bullets grouped under
+ *   per-slice `### SN` subheadings — normalized to `- [ ] …`
  *
  * Returns an empty array when:
  * - body is falsy
  * - no `## Acceptance criteria` heading found (case-insensitive)
- * - the section contains no `- [ ]` or `- [x]` lines (malformed)
+ * - the section contains no recognized criteria lines (malformed)
  *
  * Stops at the next `##`-level heading so lines from later sections are
- * not included.
+ * not included; `### SN` subheadings do not terminate the section.
+ * See astragenie/runner-plugin#322.
  */
 export function extractAcceptanceCriteria(body: string): string[] {
   if (!body) return [];
@@ -55,13 +62,24 @@ export function extractAcceptanceCriteria(body: string): string[] {
       continue;
     }
     if (inSection) {
-      // Stop at the next ## heading
+      // Stop at the next ##-level heading (a `### SN` per-slice subheading is
+      // NOT a `##` and does not break — its bullets are collected below).
       if (/^##\s/.test(line)) break;
       // Collect checkbox lines (checked or unchecked).
       // Normalize to unchecked per AC-3: slice scaffold ACs start as work,
       // not as already-done work, even if the parent FEAT had check marks.
       if (/^- \[[ x]\]/.test(line)) {
         results.push(line.replace(/^- \[x\]/i, "- [ ]"));
+        continue;
+      }
+      // FEAT-277 inline-AC format: the PM writes Given-When-Then (or `AC-N:`)
+      // prose bullets, often grouped under per-slice `### SN` subheadings, with
+      // no checkbox. Accept those too — normalize to an unchecked checkbox so
+      // the derived slice inherits the PM's real criteria instead of falling
+      // through to AcceptanceCriteriaRequiredError. See astragenie/runner-plugin#322.
+      const acText = line.match(/^-\s+(.*\S)\s*$/)?.[1];
+      if (acText && /^\*{0,2}(given\b|ac-\d+\b)/i.test(acText)) {
+        results.push(`- [ ] ${acText}`);
       }
     }
   }
