@@ -3,13 +3,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { appendJsonl } from "./jsonl-append.mjs";
+import type { AgentType } from "./memory-sink.mjs";
 
 const execFile = promisify(execFileCb);
 
 // Persistent JSONL operational learnings store.
 // Each entry: { id, timestamp, key, insight, confidence, source, sliceId?,
 // tags?, failure_class?, root_cause?, recommended_fix?, evidence?, status?,
-// scope?, expires_at? }
+// scope?, expires_at?, agentType }
 // Store location: <repoPath>/.claude/artifacts/loop/learnings.jsonl
 //
 // FEAT-220: the 7 trailing optional fields enrich the write-shape for
@@ -17,6 +18,11 @@ const execFile = promisify(execFileCb);
 // are additive — omitted fields serialize as absent, never `null`, so the 5
 // legacy rows parse unchanged and rankLearnings' ordering is untouched
 // (see learnings-ranker.mts).
+//
+// FEAT-219 AC-1/AC-2: `agentType` is additive too, but always written —
+// defaults to "unknown" when the caller omits it, matching status/scope's
+// existing always-write-with-default pattern so agent-scoped recall never
+// mistakes an omitted tag for a successfully scoped one.
 
 export function learningsPath(repoPath: string): string {
   return path.join(repoPath, ".claude", "artifacts", "loop", "learnings.jsonl");
@@ -134,6 +140,7 @@ export interface LogLearningEntry {
   status?: LearningStatus;
   scope?: LearningScope;
   expires_at?: string;
+  agentType?: AgentType;
 }
 
 // Whitelists the optional fields onto the record one at a time. Extracted
@@ -142,6 +149,9 @@ export interface LogLearningEntry {
 // optional fields. status/scope carry explicit defaults (per FEAT-220 scope
 // doc) — always written, even when the caller omits them. The other 5 new
 // fields stay purely absent-when-omitted since they have no default value.
+// FEAT-219 AC-2: agentType joins status/scope as always-written-with-default
+// — a caller that omits it must never silently produce an entry that later
+// agent-scoped ranking treats as successfully scoped.
 function applyOptionalFields(record: Record<string, unknown>, entry: LogLearningEntry): void {
   if (entry.sliceId) record.sliceId = entry.sliceId;
   if (Array.isArray(entry.tags) && entry.tags.length > 0) record.tags = entry.tags;
@@ -152,6 +162,7 @@ function applyOptionalFields(record: Record<string, unknown>, entry: LogLearning
   record.status = entry.status ?? "candidate";
   record.scope = entry.scope ?? "repo";
   if (entry.expires_at) record.expires_at = entry.expires_at;
+  record.agentType = entry.agentType || "unknown";
 }
 
 // Append a new learning to the JSONL store.

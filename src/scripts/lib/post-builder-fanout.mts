@@ -27,6 +27,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { buildMemoryContext } from "./memory-context.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 export type FanoutTask = {
@@ -66,12 +67,23 @@ function resolveLadder(config: Record<string, any> | null): Array<"A" | "B"> {
   return resolved.length > 0 ? resolved : [...DEFAULT_LADDER];
 }
 
-function reviewerPrompt(sliceId: string, slicePathRel: string, role: "A" | "B"): string {
+// FEAT-219 AC-8: fold in a reviewer-scoped memory-context block, mirroring the
+// splice pattern already used at start-slice.mts:483-491 (prepend, blank-line
+// separated). `buildMemoryContext` is noop-safe — memory disabled/absent
+// (today's default) returns "" and this function's output is byte-identical
+// to pre-FEAT-219 (see the golden test in post-builder-fanout.test.mts).
+async function reviewerPrompt(
+  repoPath: string,
+  sliceId: string,
+  slicePathRel: string,
+  role: "A" | "B",
+  config: Record<string, any> | null
+): Promise<string> {
   const focus =
     role === "A"
       ? "Correctness, regressions, and explicit coverage of each acceptance criterion."
       : "Production-readiness, observability, security posture, edge cases.";
-  return [
+  const prompt = [
     `You are Reviewer ${role} on the post-builder fanout for slice ${sliceId}.`,
     `**Slice file**: \`${slicePathRel}\``,
     "",
@@ -81,6 +93,14 @@ function reviewerPrompt(sliceId: string, slicePathRel: string, role: "A" | "B"):
     "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
     "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."
   ].join("\n");
+
+  const memoryBlock = await buildMemoryContext({
+    repoPath,
+    agentType: "reviewer",
+    query: sliceId,
+    config
+  });
+  return memoryBlock ? `${memoryBlock}\n\n${prompt}` : prompt;
 }
 
 export async function buildPostBuilderFanout(
@@ -99,12 +119,14 @@ export async function buildPostBuilderFanout(
   }
 
   const ladder = resolveLadder(config);
-  const reviewerTasks: FanoutTask[] = ladder.map((role) => ({
-    role: `reviewer-${role}` as "reviewer-A" | "reviewer-B",
-    subagent_type: "crew:inspector",
-    description: `Reviewer ${role} review of ${sliceId} (fanout)`,
-    prompt: reviewerPrompt(sliceId, slicePathRel, role)
-  }));
+  const reviewerTasks: FanoutTask[] = await Promise.all(
+    ladder.map(async (role) => ({
+      role: `reviewer-${role}` as "reviewer-A" | "reviewer-B",
+      subagent_type: "crew:inspector" as const,
+      description: `Reviewer ${role} review of ${sliceId} (fanout)`,
+      prompt: await reviewerPrompt(repoPath, sliceId, slicePathRel, role, config)
+    }))
+  );
   const tasks: FanoutTask[] = reviewerTasks;
 
   const contractBlock = [

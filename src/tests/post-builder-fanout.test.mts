@@ -1,10 +1,50 @@
-import { test } from "bun:test";
+import { test, beforeEach, afterEach } from "bun:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 
 import { buildPostBuilderFanout } from "../scripts/lib/post-builder-fanout.mjs";
+import { logLearning } from "../scripts/lib/learnings.mjs";
+import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
+
+// FEAT-219 AC-8/AC-5: the "memory on" golden test below drives buildMemoryContext
+// -> recallPrior, which shells out to astramem. Neutralize CLI resolution with a
+// deliberately-broken binary (mirrors memory-context.test.mts) so the test is
+// hermetic and deterministic regardless of whether the real astramem CLI happens
+// to be on the host PATH.
+let brokenCliRoot: string | null = null;
+let origPluginRoot: string | undefined;
+
+beforeEach(async () => {
+  _resetCliCache();
+  origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  brokenCliRoot = await makeBrokenAstramemCli();
+  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = brokenCliRoot;
+});
+
+afterEach(async () => {
+  if (origPluginRoot !== undefined) {
+    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
+  } else {
+    delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  }
+  if (brokenCliRoot) {
+    await fs.rm(brokenCliRoot, { recursive: true, force: true }).catch(() => undefined);
+    brokenCliRoot = null;
+  }
+  _resetCliCache();
+});
+
+async function makeBrokenAstramemCli(): Promise<string> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "fanout-cli-"));
+  const binDir = path.join(dir, "bin");
+  await fs.mkdir(binDir, { recursive: true });
+  const cliPath = path.join(binDir, "astramem");
+  await fs.writeFile(cliPath, "#!/bin/sh\nexit 1\n");
+  await fs.chmod(cliPath, 0o755).catch(() => undefined);
+  return dir;
+}
 
 async function makeRepo() {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "fanout-"));
@@ -140,6 +180,51 @@ test("throws on slice file missing frontmatter header", async () => {
       () => buildPostBuilderFanout(repo, "SLICE-98"),
       /missing frontmatter header/
     );
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+// FEAT-219 AC-5/AC-8 golden test — mirrors SLICE-2's start-slice AC-5 golden
+// test (slice-start.test.mts: "startSlice leaves dispatchInstruction unchanged
+// when learningsDigest is empty"). Guards two things at once: (1) memory
+// off/absent produces a byte-identical reviewer prompt to the pre-FEAT-219
+// template (no accidental header leaking into the default, unconfigured
+// path), and (2) when memory IS on, the injected block prepends cleanly
+// without garbling the PARALLEL_DISPATCH_CONTRACT v1 wording or the reviewer
+// body beneath it (PM pre-mortem follow-up flagged in FEAT-219.md).
+test("FEAT-219 golden: memory off/absent is byte-identical; memory on prepends without garbling the contract wording", async () => {
+  const repo = await makeRepo();
+  try {
+    const expectedBody = [
+      "You are Reviewer A on the post-builder fanout for slice SLICE-99.",
+      "**Slice file**: `.claude/artifacts/loop/ai-loop/slices/in-progress/SLICE_99_test.md`",
+      "",
+      "**Focus**:",
+      "Correctness, regressions, and explicit coverage of each acceptance criterion.",
+      "",
+      "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
+      "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."
+    ].join("\n");
+
+    // Off/absent (today's default): byte-identical to the pre-FEAT-219 prompt.
+    const off = await buildPostBuilderFanout(repo, "SLICE-99");
+    assert.equal(off.tasks[0]?.prompt, expectedBody);
+    assert.ok(!off.tasks[0]?.prompt.includes("## Recent context"));
+    assert.ok(off.instructions.includes("PARALLEL_DISPATCH_CONTRACT v1"));
+
+    // On: memory-context block prepends, contract wording and reviewer body survive intact.
+    await logLearning(repo, {
+      key: "flaky-ci",
+      insight: "Retry once before failing the gate.",
+      agentType: "reviewer"
+    });
+    const on = await buildPostBuilderFanout(repo, "SLICE-99", {
+      config: { memory: { enabled: true } }
+    });
+    assert.ok(on.tasks[0]?.prompt.startsWith("## Recent context"));
+    assert.ok(on.tasks[0]?.prompt.endsWith(expectedBody));
+    assert.equal(on.instructions, off.instructions);
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
