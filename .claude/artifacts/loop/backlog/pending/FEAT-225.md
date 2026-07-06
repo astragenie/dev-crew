@@ -27,6 +27,17 @@ parses only `--content --type --metadata --agent` — it folds `agent` into
 project-scoped memories are stored without their project tag, weakening
 project-scoped recall. Not fatal (fail-open, silent), but a real scope leak.
 
+## Verify first — may already be resolved upstream
+
+The DEC-067 architect-review (2026-07-06) found the installed astramem **0.6.0**
+`remember.ts` (dated 2026-07-05, under "FEAT-423") **already folds `--project`
+and `--agent` into `metadata`** — the exact fix this FEAT proposes. The #324
+findings-doc claim that `--project` is dropped "in both cached versions" is
+stale for the live 0.6.0 binary. **Before building: re-verify against the live
+binary.** If `remember` now parses `--project`, this FEAT closes as
+"resolved upstream — verify round-trip and drop," not a repo-side change. Only
+proceed with the scope below if the live binary still drops it.
+
 ## Scope
 
 Route project scope through a channel the real CLI accepts — most likely
