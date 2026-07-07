@@ -881,13 +881,23 @@ async function main() {
     process.exit(2);
   }
 
-  // Resolve config once at dispatcher level and pass to all handlers
-  const { resolveConfig } = await import("./lib/config-resolver.mjs");
-  const config = await resolveConfig(repoPath);
-
   const handler = (COMMANDS as Record<string, (ctx: CmdCtx) => Promise<unknown>>)[command];
   if (!handler) {
     throw new Error(`Unknown command: ${command}`);
+  }
+
+  // Resolve config once at dispatcher level and pass to handlers that read it.
+  // Skipped for CONFIG_OPTIONAL_COMMANDS: their handlers never touch `config`
+  // and must run on a fresh repo before `.claude/loop.json` exists —
+  // `install` bootstraps the config itself (loop-installer does its own
+  // preset-aware resolve) and `list-presets` is static. resolveConfig() throws
+  // by design (DEC-069) when no config file exists, so pre-resolving it here
+  // would block a fresh-repo `install` even with a valid --preset (#364).
+  const CONFIG_OPTIONAL_COMMANDS = new Set(["install", "list-presets"]);
+  let config: Record<string, any> | null = null;
+  if (!CONFIG_OPTIONAL_COMMANDS.has(command)) {
+    const { resolveConfig } = await import("./lib/config-resolver.mjs");
+    config = await resolveConfig(repoPath);
   }
 
   try {
