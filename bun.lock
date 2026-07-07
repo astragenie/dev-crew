@@ -5,6 +5,7 @@
     "": {
       "name": "loop-plugin",
       "dependencies": {
+        "@astragenie/astramem-client": "0.1.0",
         "ajv": "^8.17",
         "ajv-formats": "^3.0",
       },
@@ -17,6 +18,8 @@
     },
   },
   "packages": {
+    "@astragenie/astramem-client": ["@astragenie/astramem-client@0.1.0", "", { "peerDependencies": { "@astragenie/astramem-plugin": ">=0.6.0" }, "optionalPeers": ["@astragenie/astramem-plugin"] }, "sha512-yz4d3BhxrI/vLmvAHePsyKjBn9LVpeH29MjIzy+IvVwuv3d9AHEHhPhhvL6KlTlcsrVhKR2+1C6z+jBOE8QThA=="],
+
     "@biomejs/biome": ["@biomejs/biome@2.5.0", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.5.0", "@biomejs/cli-darwin-x64": "2.5.0", "@biomejs/cli-linux-arm64": "2.5.0", "@biomejs/cli-linux-arm64-musl": "2.5.0", "@biomejs/cli-linux-x64": "2.5.0", "@biomejs/cli-linux-x64-musl": "2.5.0", "@biomejs/cli-win32-arm64": "2.5.0", "@biomejs/cli-win32-x64": "2.5.0" }, "bin": { "biome": "bin/biome" } }, "sha512-4kURkd9hAPrdDM3C9n82ycYgx8hvQcW6MjKTEejruj8rK0N8P3OPpdy8BvI8kt3KWY4ycF5XtDOrktetEfhfuw=="],
 
     "@biomejs/cli-darwin-arm64": ["@biomejs/cli-darwin-arm64@2.5.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Mn3Fwi3SA5fgmfCPqmzpWF2DLZnms3BVAhM088nTnGrTZmHS3wwIjcoZPqpXeNgd3DrrLH6xp8vTLIBuJoZiXw=="],
