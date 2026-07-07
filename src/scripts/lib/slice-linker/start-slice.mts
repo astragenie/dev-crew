@@ -833,9 +833,99 @@ async function recordSliceStartEvent(
   }
 }
 
-// runner-plugin#291: query astramem for prior context before dispatch.
-// Returns a formatted Markdown block (or empty string on any failure / opt-out).
-// Never throws. 5s cap enforced inside recallPrior().
+// FEAT-188 S3b: astramem RecallHit kinds this hook will label a block line
+// with — mirrors dev-team's MemoryKindSchema (schema.ts). An unrecognized
+// `hit.type` falls back to "lesson", matching dev-team's own degraded-
+// fidelity wire mapping (astramem-provider.ts mapHitsToEntries).
+const RECALL_V1_KINDS = new Set(["failure", "lesson", "decision", "standard_violation"]);
+// MemoryEntrySchema caps summary at 280 chars (schema.ts MAX_SUMMARY_LENGTH).
+const RECALL_V1_MAX_SUMMARY = 280;
+
+/**
+ * Format recalled astramem hits per the frozen recall-injection-v1 contract
+ * (dev-team docs/contracts/recall-injection-v1.md): same
+ * `## Prior context (from astramem)` header as before, but the per-line
+ * shape now matches MemoryEntry's kind/severity/source/summary rather than
+ * the retired RecallResult type/score/slice_id/content shape. RecallHit (the
+ * wire shape astramem-client hands back) carries no severity, so every line
+ * is labeled "medium" — the same hardcode dev-team's own wire-hit mapping
+ * uses for the paired, no-local-duplicate case. Empty input -> "".
+ */
+function formatRecallBlockV1(
+  hits: { type: string; text: string; score: number; source?: string | undefined }[],
+  k: number
+): string {
+  if (hits.length === 0) return "";
+  const sorted = [...hits].sort((a, b) => b.score - a.score).slice(0, k);
+  const lines = sorted.map((hit) => {
+    const kind = RECALL_V1_KINDS.has(hit.type) ? hit.type : "lesson";
+    const summary = hit.text.slice(0, RECALL_V1_MAX_SUMMARY);
+    const source = hit.source ?? "astramem";
+    return `- **[${kind} medium]** ${source} ${summary}`;
+  });
+  return `## Prior context (from astramem)\n${lines.join("\n")}`;
+}
+
+/** Build the recallSilent request — extracted from runRecallHook to keep its
+ * cognitive complexity under the repo cap. */
+function buildRecallRequest(
+  featId: string,
+  sliceId: string,
+  touchesFiles: string[],
+  k: number,
+  project: string | undefined,
+  agent: string | undefined
+): { query: string; k: number; project?: string; agent?: string } {
+  const filePart = touchesFiles.length > 0 ? ` files:${touchesFiles.slice(0, 5).join(",")}` : "";
+  const query = `${featId} ${sliceId}${filePart} prior failures decisions lessons`;
+  return {
+    query,
+    k,
+    ...(project ? { project } : {}),
+    ...(agent ? { agent } : {})
+  };
+}
+
+/** Emit the recall_used trainset event — extracted from runRecallHook to keep
+ * its cognitive complexity under the repo cap. Fail-silent, never throws;
+ * no-ops when hitCount is 0 or no transport is discoverable. */
+async function emitRecallUsedEvent(
+  featId: string,
+  sliceId: string,
+  k: number,
+  hitCount: number
+): Promise<void> {
+  if (hitCount === 0) return;
+  try {
+    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
+    // itself when neither a provider nor the CLI is discoverable.
+    const { emit } = await import("../memory-bridge.mjs");
+    const { getPromptVersion } = await import("../agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+    await emit({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featId,
+      source: "recall",
+      event: "recall_used",
+      score: 1,
+      feedback: `hits=${hitCount}`,
+      input: { feat_id: featId, slice_id: sliceId, k },
+      output: { hits: hitCount },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent.
+  }
+}
+
+// runner-plugin#291 / FEAT-188 S3b: query astramem for prior context before
+// dispatch, formatted per the frozen recall-injection-v1 contract (see
+// formatRecallBlockV1 above). Returns a formatted Markdown block (or empty
+// string on any failure / opt-out). Never throws. Transport is the shared
+// @astragenie/astramem-client's recallSilent — a single wallclock-capped,
+// fail-silent call — retiring the CLI-spawn recallPrior/legacy
+// recall-injector.mts block this hook used before S3b.
 async function runRecallHook(
   featId: string,
   sliceId: string,
@@ -852,62 +942,36 @@ async function runRecallHook(
     const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
     // Cortex project derives from memory.project else productName (DEC-065) —
     // never the featId (the pre-DEC-066 bug that queried a non-existent
-    // per-feature project). Undefined → recallPrior omits --project.
+    // per-feature project). Undefined → recallSilent omits project.
     const project: string | undefined =
       (typeof config?.memory?.project === "string" && config.memory.project) ||
       (typeof config?.productName === "string" && config.productName) ||
       undefined;
     // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent) — astramem's
-    // --agent is a HARD filter, so scoping before enough agent-tagged history
-    // exists starves recall (#309). Slice-start recall serves the builder, so
-    // it scopes to memory.recall.agent (default crew:builder) when enabled.
+    // agent filter is a HARD filter, so scoping before enough agent-tagged
+    // history exists starves recall (#309). Slice-start recall serves the
+    // builder, so it scopes to memory.recall.agent (default crew:builder)
+    // when enabled.
     const agent: string | undefined =
       config?.memory?.recall?.scopeByAgent === true
         ? (typeof config?.memory?.recall?.agent === "string" && config.memory.recall.agent) ||
           "crew:builder"
         : undefined;
 
-    const { recallPrior } = await import("../memory-recall.mjs");
-    const { formatRecallBlock } = await import("../recall-injector.mjs");
-    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
-    // itself when neither a provider nor the CLI is discoverable.
-    const { emit } = await import("../memory-bridge.mjs");
+    const { recallSilent } = await import("@astragenie/astramem-client");
 
-    const memories = await recallPrior({
-      featId,
-      sliceId,
-      touchesFiles,
-      k,
-      timeoutMs,
-      project,
-      agent
-    });
-    const block = formatRecallBlock(memories);
+    const response = await recallSilent(
+      buildRecallRequest(featId, sliceId, touchesFiles, k, project, agent),
+      {
+        capMs: timeoutMs
+      }
+    );
+    const hits = response?.hits ?? [];
+    const block = formatRecallBlockV1(hits, k);
 
-    // Emit recall_used trainset event. Fire-and-forget — never awaited in a
-    // way that blocks slice-start. Dormant when no transport is discoverable.
-    if (memories.length > 0) {
-      void (async () => {
-        try {
-          const { getPromptVersion } = await import("../agent-version.mjs");
-          const promptVersion = await getPromptVersion("runner");
-          await emit({
-            ts: new Date().toISOString(),
-            slice_id: sliceId,
-            feat_id: featId,
-            source: "recall",
-            event: "recall_used",
-            score: 1,
-            feedback: `hits=${memories.length}`,
-            input: { feat_id: featId, slice_id: sliceId, k },
-            output: { hits: memories.length },
-            prompt_version: promptVersion
-          });
-        } catch {
-          // Fail-silent.
-        }
-      })();
-    }
+    // Fire-and-forget trainset telemetry — never blocks slice-start. Dormant
+    // when hits is empty or no transport is discoverable.
+    void emitRecallUsedEvent(featId, sliceId, k, hits.length);
 
     return block;
   } catch {
