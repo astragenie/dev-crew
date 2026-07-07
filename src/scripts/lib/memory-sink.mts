@@ -1,11 +1,13 @@
-// Memory sink (FEAT-217).
+// Memory sink (FEAT-217; transport migrated FEAT-188 S1b / #357).
 //
 // Reusable, gated writer that mirrors durable knowledge — decisions, lessons,
-// and notes — into astramem via the `astramem remember` CLI. Any close / learn
-// / decision path calls the typed helpers; the sink decides whether memory is
-// enabled and whether the CLI is present, then fires a fire-and-forget,
-// 2s-capped, fail-silent spawn. It NEVER throws and NEVER blocks the caller —
-// memory is non-critical and must not affect the grade-write / learn contract.
+// and notes — into astramem. Any close / learn / decision path calls the
+// typed helpers; the sink decides whether memory is enabled, then sends via
+// the in-process MemoryProvider (memory-transport.mts, primary per
+// dev-team#172) with the `astramem remember` CLI spawn kept as a rollout
+// fallback. Both paths are fire-and-forget, 2s-capped, fail-silent. It NEVER
+// throws and NEVER blocks the caller — memory is non-critical and must not
+// affect the grade-write / learn contract.
 //
 // Enablement (`.claude/loop.json` -> memory.enabled). This sink is OPT-IN:
 // an absent `memory` block (or absent `enabled`) is treated as OFF, so a repo
@@ -20,11 +22,13 @@
 // shaping, and the `remember` invocation.
 
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
 import { resolveCli } from "./memory-bridge.mjs";
 import { sanitizeArg, sanitizeContent } from "./memory-sanitize.mjs";
+import { sendViaProvider } from "./memory-transport.mjs";
 
 export type MemoryKind = "decision" | "lesson" | "note" | "failure";
 
@@ -105,6 +109,9 @@ export async function recordMemory(
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
+  // Single CAP_MS wallclock envelope shared by BOTH transports: the provider
+  // attempt spends from it first, the CLI fallback gets only what remains.
+  const deadline = Date.now() + CAP_MS;
   try {
     const content = sanitizeContent(opts.content ?? "");
     if (!content) return { recorded: false, reason: "empty" };
@@ -112,21 +119,54 @@ export async function recordMemory(
     const cfg = opts.config ?? (await readMemoryConfig(repoPath));
     if (cfg.mode === "off") return { recorded: false, reason: "disabled" };
 
-    const cli = await resolveCli();
-    if (!cli) return { recorded: false, reason: "no-cli" };
-
     const rawProject = opts.project ?? cfg.project;
     const project = rawProject ? sanitizeArg(rawProject) : "";
     const agent = opts.agentType ? sanitizeArg(opts.agentType) : "";
-    const args = ["remember", "--content", content, "--type", opts.kind];
-    if (project) args.push("--project", project);
-    if (agent) args.push("--agent", agent);
 
-    await spawnRemember(cli.path, args);
-    return { recorded: true, reason: "ok" };
+    // Primary transport (S1b / dev-team#172): in-process MemoryProvider via
+    // the installed astramem plugin. project/agent fold into metadata — the
+    // same shape the plugin's own `remember` CLI persists them under.
+    const metadata: Record<string, unknown> = {};
+    if (project) metadata["project"] = project;
+    if (agent) metadata["agent"] = agent;
+    const sent = await sendViaProvider(
+      {
+        id: randomUUID(),
+        type: opts.kind,
+        text: content,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {})
+      },
+      deadline - Date.now()
+    );
+    if (sent) return { recorded: true, reason: "ok" };
+
+    return await recordViaCliFallback(deadline, content, opts.kind, project, agent);
   } catch {
     return { recorded: false, reason: "error" };
   }
+}
+
+/** Fallback transport: CLI spawn (pre-S1b path, kept for rollout safety).
+ * Spends only what remains of the caller's wallclock envelope. */
+async function recordViaCliFallback(
+  deadline: number,
+  content: string,
+  kind: MemoryKind,
+  project: string,
+  agent: string
+): Promise<RecordResult> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) return { recorded: false, reason: "error" };
+
+  const cli = await resolveCli();
+  if (!cli) return { recorded: false, reason: "no-cli" };
+
+  const args = ["remember", "--content", content, "--type", kind];
+  if (project) args.push("--project", project);
+  if (agent) args.push("--agent", agent);
+
+  await spawnRemember(cli.path, args, remaining);
+  return { recorded: true, reason: "ok" };
 }
 
 /** Build a `[FEAT-x/SLICE-y]` trace tag from whichever ids are present. */
@@ -224,11 +264,17 @@ export function recordFailure(
   });
 }
 
-/** Spawn `astramem remember ...` with a 2s wallclock cap. Resolves on close,
- * error, or timeout — never rejects. Mirrors memory-bridge.mts::spawnRemember. */
-async function spawnRemember(cliPath: string, args: string[]): Promise<void> {
+/** Spawn `astramem remember ...` with a wallclock cap (default CAP_MS; the
+ * caller passes the envelope remainder when a provider attempt already spent
+ * part of it). Resolves on close, error, or timeout — never rejects. Mirrors
+ * memory-bridge.mts::spawnRemember. */
+async function spawnRemember(
+  cliPath: string,
+  args: string[],
+  capMs: number = CAP_MS
+): Promise<void> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), CAP_MS);
+  const timer = setTimeout(() => controller.abort(), capMs);
   try {
     await new Promise<void>((resolve) => {
       let settled = false;

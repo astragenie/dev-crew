@@ -545,9 +545,9 @@ async function emitSliceCloseMemory(
     }
     if (memoryEnabled === "never") return;
 
-    const { emit, resolveCli } = await import("./memory-bridge.mjs");
-    const cli = await resolveCli();
-    if (!cli) return; // Dormant: astramem not installed.
+    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
+    // itself when neither a provider nor the CLI is discoverable.
+    const { emit } = await import("./memory-bridge.mjs");
 
     const { getPromptVersion } = await import("./agent-version.mjs");
     const promptVersion = await getPromptVersion("runner");

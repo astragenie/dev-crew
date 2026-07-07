@@ -869,7 +869,9 @@ async function runRecallHook(
 
     const { recallPrior } = await import("../memory-recall.mjs");
     const { formatRecallBlock } = await import("../recall-injector.mjs");
-    const { emit, resolveCli } = await import("../memory-bridge.mjs");
+    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
+    // itself when neither a provider nor the CLI is discoverable.
+    const { emit } = await import("../memory-bridge.mjs");
 
     const memories = await recallPrior({
       featId,
@@ -883,12 +885,10 @@ async function runRecallHook(
     const block = formatRecallBlock(memories);
 
     // Emit recall_used trainset event. Fire-and-forget — never awaited in a
-    // way that blocks slice-start. Dormant when CLI absent.
+    // way that blocks slice-start. Dormant when no transport is discoverable.
     if (memories.length > 0) {
       void (async () => {
         try {
-          const cli = await resolveCli();
-          if (!cli) return;
           const { getPromptVersion } = await import("../agent-version.mjs");
           const promptVersion = await getPromptVersion("runner");
           await emit({
@@ -929,9 +929,9 @@ async function emitSliceStartedMemory(
     const memoryEnabled = config?.memory?.enabled;
     if (memoryEnabled === "never") return;
 
-    const { emit, resolveCli } = await import("../memory-bridge.mjs");
-    const cli = await resolveCli();
-    if (!cli) return; // Dormant: astramem not installed.
+    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
+    // itself when neither a provider nor the CLI is discoverable.
+    const { emit } = await import("../memory-bridge.mjs");
 
     const { getPromptVersion } = await import("../agent-version.mjs");
     const promptVersion = await getPromptVersion("runner");

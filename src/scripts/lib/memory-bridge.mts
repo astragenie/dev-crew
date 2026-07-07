@@ -10,6 +10,12 @@
 // Fail-silent contract: emit() NEVER throws and NEVER blocks > 2s.
 // CLI absent → no-op. Provider failure → swallowed in astramem itself.
 //
+// FEAT-188 S1b (#357, dev-team#172): emit()'s PRIMARY transport is now the
+// in-process MemoryProvider (memory-transport.mts — dynamic-imports the
+// installed astramem plugin's selector and calls provider.remember()). The
+// CLI spawn below survives as the rollout fallback; the wire mapping
+// (buildRememberArgs / buildGepaMetadata) is shared by both paths.
+//
 // FEAT-223 / DEC-067: astramem's real subcommand surface is
 // ingest-transcript | recall | remember | health | config | doctor | connect
 // — there is no generic single-event "ingest" subcommand (#324), so emit()
@@ -39,6 +45,7 @@
 // its `recall` invocation already matches the real CLI.
 
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -205,14 +212,10 @@ function summarizeStructured(value: unknown, depth = 0): unknown {
   return value; // number | boolean | null | undefined pass through as-is.
 }
 
-/**
- * Build the `astramem remember` argv for a GEPA payload (FEAT-223 / DEC-067).
- * Pure — no I/O — so the wire mapping is unit-testable without spawning a
- * CLI. See the module docstring for the field mapping and the --metadata
- * write-only caveat.
- */
-export function buildRememberArgs(payload: GepaPayload): string[] {
-  const metadata = {
+/** Bounded GEPA metadata block shared by both transports (argv --metadata and
+ * the in-process provider payload). Pure — no I/O. */
+export function buildGepaMetadata(payload: GepaPayload): Record<string, unknown> {
+  return {
     sliceId: payload.slice_id,
     featId: payload.feat_id,
     score: payload.score,
@@ -222,6 +225,15 @@ export function buildRememberArgs(payload: GepaPayload): string[] {
     input: summarizeStructured(payload.input),
     output: summarizeStructured(payload.output)
   };
+}
+
+/**
+ * Build the `astramem remember` argv for a GEPA payload (FEAT-223 / DEC-067).
+ * Pure — no I/O — so the wire mapping is unit-testable without spawning a
+ * CLI. See the module docstring for the field mapping and the --metadata
+ * write-only caveat.
+ */
+export function buildRememberArgs(payload: GepaPayload): string[] {
   return [
     "remember",
     "--type",
@@ -229,7 +241,7 @@ export function buildRememberArgs(payload: GepaPayload): string[] {
     "--content",
     sanitizeContent(payload.feedback),
     "--metadata",
-    JSON.stringify(metadata)
+    JSON.stringify(buildGepaMetadata(payload))
   ];
 }
 
@@ -240,13 +252,38 @@ export function buildRememberArgs(payload: GepaPayload): string[] {
  * AbortSignal when the cap fires so the test runtime doesn't wait for stragglers.
  */
 export async function emit(payload: GepaPayload): Promise<void> {
+  // Single 2s wallclock envelope shared by BOTH transports: the provider
+  // attempt spends from it first, the CLI fallback gets only what remains.
+  const deadline = Date.now() + 2000;
   try {
+    // Primary transport (S1b / dev-team#172): in-process MemoryProvider.
+    // Lazy import — memory-transport.mts imports resolveCli from this module,
+    // so a static import here would create an ESM cycle.
+    try {
+      const { sendViaProvider } = await import("./memory-transport.mjs");
+      const sent = await sendViaProvider(
+        {
+          id: randomUUID(),
+          type: payload.event,
+          text: sanitizeContent(payload.feedback),
+          metadata: buildGepaMetadata(payload)
+        },
+        deadline - Date.now()
+      );
+      if (sent) return;
+    } catch {
+      // Fall through to the CLI spawn path.
+    }
+
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return;
+
     const cli = await resolveCli();
     if (!cli) return;
 
     const args = buildRememberArgs(payload);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2000);
+    const timer = setTimeout(() => controller.abort(), remaining);
     try {
       await spawnRemember(cli.path, args, controller.signal);
     } finally {
