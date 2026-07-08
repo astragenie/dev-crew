@@ -13,7 +13,7 @@
 | Mention | Action |
 |---------|--------|
 | `@crew triage` | Run PM triage on the issue body |
-| `@crew build` | Dispatch crew:builder against the issue |
+| `@crew build` | Dispatch a crew builder subagent (`crew:fullstack-dev`, or the stack-specific `crew:backend-dev` / `crew:frontend-dev`) against the issue — there is no agent literally named `crew:builder` |
 | `@crew status` | Post current slice status as a comment |
 
 ## Architecture

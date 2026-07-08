@@ -26,7 +26,10 @@ Split a SPEC into FEAT files with PM scores pre-filled.
    c. Draft acceptance criteria per the AC quality checklist in
       `runner:authoring-slices` (Given-When-Then, concrete values, edge +
       error coverage). If the spec context is too thin to write AC to
-      that standard, dispatch `runner:spec-writer` to draft them.
+      that standard, draft them inline yourself per the "AC drafting
+      rules" in `agents/pm.md` — the standalone `runner:spec-writer`
+      agent was retired and absorbed into PM (FEAT-277); there is no
+      separate agent to dispatch for this.
    d. Pre-score all 5 PM dimensions based on the spec context.
    e. Compute composite priority and autonomous_safe.
    f. Identify dependencies between the proposed features.

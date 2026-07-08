@@ -110,6 +110,39 @@ test("extractAcceptanceCriteria is case-insensitive on heading name", () => {
   assert.deepEqual(result, ["- [ ] AC-1: lowercase heading"]);
 });
 
+test("extractAcceptanceCriteria accepts the FEAT-277 qualified heading '## Acceptance criteria (Given-When-Then)' (#370)", () => {
+  const body = [
+    "## Acceptance criteria (Given-When-Then)",
+    "",
+    "- GIVEN a slice closes, WHEN the ceremony completes, THEN a learnings entry is appended.",
+    "- AC-2: Second criterion",
+    "",
+    "## Notes"
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] GIVEN a slice closes, WHEN the ceremony completes, THEN a learnings entry is appended.",
+    "- [ ] AC-2: Second criterion"
+  ]);
+});
+
+test("extractAcceptanceCriteria still accepts the bare '## Acceptance criteria' heading (regression, #370)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- [ ] AC-1: First criterion",
+    "- [ ] AC-2: Second criterion"
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, ["- [ ] AC-1: First criterion", "- [ ] AC-2: Second criterion"]);
+});
+
+test("extractAcceptanceCriteria does NOT match a heading with no space ('## Acceptancecriteria') (#370)", () => {
+  const body = ["## Acceptancecriteria", "", "- [ ] AC-1: should not be collected"].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, []);
+});
+
 test("extractAcceptanceCriteria collects FEAT-277 Given-When-Then prose bullets (no checkbox)", () => {
   const body = [
     "## Acceptance criteria",

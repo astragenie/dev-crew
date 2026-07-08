@@ -19,6 +19,14 @@
 //   residual's scope, so this test accepts either marker rather than
 //   forcing a false failure on already-fixed code.
 //
+// - wave/real-deps.mts (FEAT-188 S3b residual, #368) wires wave-mode's
+//   per-slot dispatch prompt via a third-party wrapper,
+//   `buildDispatchPromptWithMemory` (wave/dispatch-prompt.mts), which itself
+//   calls `buildMemoryContext(` — same mechanism as post-builder-fanout.mts,
+//   just one indirection layer deeper because the prompt-builder is a pure
+//   function (dispatch-prompt.mts) and the repo/config context only exists
+//   at the real-deps.mts call site.
+//
 // Surface B (pm/architect markdown-prose dispatch via a `resolve-memory`
 // CLI subcommand) is a separate, not-yet-built completeness gate — see
 // FEAT-219-architect-review.md SLICE-D. Out of scope here.
@@ -40,6 +48,12 @@ const SURFACE_A_MODULES: Array<{ file: string; matchers: RegExp[]; evidence: str
     file: "src/scripts/lib/post-builder-fanout.mts",
     matchers: [/buildMemoryContext\(/],
     evidence: "buildMemoryContext( call (AC-8)"
+  },
+  {
+    file: "src/scripts/lib/wave/real-deps.mts",
+    matchers: [/buildDispatchPromptWithMemory\(/],
+    evidence:
+      "buildDispatchPromptWithMemory( call wrapping buildMemoryContext for wave-mode dispatch (FEAT-188 S3b residual, #368)"
   }
 ];
 

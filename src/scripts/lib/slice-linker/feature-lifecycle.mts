@@ -71,7 +71,9 @@ function classifyAcceptanceCriteriaLine(line: string): string | null {
  *
  * Returns an empty array when:
  * - body is falsy
- * - no `## Acceptance criteria` heading found (case-insensitive)
+ * - no `## Acceptance criteria` heading found (case-insensitive; matched as a
+ *   prefix, so qualifier suffixes like `## Acceptance criteria (Given-When-Then)`
+ *   — the FEAT-277 heading form — are accepted; see astragenie/runner-plugin#370)
  * - the section contains no recognized criteria lines (malformed)
  *
  * Stops at the next `##`-level heading so lines from later sections are
@@ -84,7 +86,7 @@ export function extractAcceptanceCriteria(body: string): string[] {
   let inSection = false;
   const results: string[] = [];
   for (const line of lines) {
-    if (/^##\s+acceptance criteria\s*$/i.test(line.trim())) {
+    if (/^##\s+acceptance criteria\b/i.test(line.trim())) {
       inSection = true;
       continue;
     }
@@ -108,7 +110,9 @@ export class AcceptanceCriteriaRequiredError extends Error {
   constructor(public readonly featureId: string) {
     super(
       `${featureId} has no acceptance criteria — the PM must author at least one ` +
-        "testable `## Acceptance criteria` bullet before a slice can be scaffolded. " +
+        "testable bullet under a `## Acceptance criteria` heading (qualifier suffixes " +
+        "like `## Acceptance criteria (Given-When-Then)` are accepted; check for a typo'd " +
+        "heading first) before a slice can be scaffolded. " +
         "Placeholder AC auto-generation was removed; run " +
         `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
     );

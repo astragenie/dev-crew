@@ -10,7 +10,7 @@ import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
-import { buildDispatchPrompt } from "./dispatch-prompt.mjs";
+import { buildDispatchPromptWithMemory } from "./dispatch-prompt.mjs";
 import { resolveConfig } from "../config-resolver.mjs";
 import { resolveWaveDispatchModel } from "../model-router.mjs";
 import type { GitStatus, StopCheckResult, PrepareResult, FinalizeResult } from "./runner.mjs";
@@ -127,21 +127,31 @@ export async function realPrepare(repoRoot: string, plan: WavePlan): Promise<Pre
     // Best-effort: a config-resolve failure must not block dispatch — fall
     // back to the phase-default ("build") tier for every item.
     const config = await bestEffortConfig(repoRoot);
-    const agentBatch = plan.items.map((item) => {
-      const worktreePath = raw.cwdById[item.sliceId] ?? "";
-      return {
-        sliceId: item.sliceId,
-        worktreePath,
-        branch: raw.branchById[item.sliceId] ?? item.worktreeBranch,
-        prompt: buildDispatchPrompt({
+    // FEAT-188 S3b residual (#368): fold in a builder-scoped memory-context
+    // block via the same mechanism post-builder-fanout.mts already uses
+    // (buildMemoryContext, FEAT-219 AC-8) — byte-identical to the plain
+    // buildDispatchPrompt() output when memory is disabled/absent, and
+    // fail-open on any reader error (never blocks wave dispatch).
+    const agentBatch = await Promise.all(
+      plan.items.map(async (item) => {
+        const worktreePath = raw.cwdById[item.sliceId] ?? "";
+        return {
           sliceId: item.sliceId,
           worktreePath,
-          sliceCommand: item.sliceCommand,
-          mode: "normal"
-        }),
-        model: resolveWaveDispatchModel(item.shape ?? "none", config)
-      };
-    });
+          branch: raw.branchById[item.sliceId] ?? item.worktreeBranch,
+          prompt: await buildDispatchPromptWithMemory({
+            sliceId: item.sliceId,
+            worktreePath,
+            sliceCommand: item.sliceCommand,
+            mode: "normal",
+            repoPath: repoRoot,
+            featureId: item.featureId,
+            config
+          }),
+          model: resolveWaveDispatchModel(item.shape ?? "none", config)
+        };
+      })
+    );
     return { runId: raw.runId, agentBatch };
   } finally {
     try {

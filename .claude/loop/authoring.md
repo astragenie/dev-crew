@@ -59,8 +59,11 @@ Every acceptance criterion in the slice MUST satisfy:
   weak → AC requiring a log line or metric on the new code path, with
   the test that asserts it).
 
-When AC can't be written to this standard from the FEAT body alone,
-dispatch `runner:spec-writer` to draft them rather than shipping vague AC.
+When AC can't be written to this standard from the FEAT body alone, do not
+ship vague AC — the standalone `runner:spec-writer` agent was retired and
+absorbed into PM (see the "AC drafting rules" in `agents/pm.md`). Pass
+`--deep` to `/runner:triage` or `/runner:intake` (or rely on the automatic
+P0/P1 trigger) so PM drafts Given-When-Then AC inline in the same response.
 
 ## INVEST check (slice shape)
 

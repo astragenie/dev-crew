@@ -67,11 +67,16 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 2. `bun ./src/scripts/validate-manifests.mts`
 3. `bun ./src/scripts/validate-content-length.mts`
 4. `bun ./src/scripts/validate-decline-citations.mts --repo .`
-5. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
-6. `bunx biome lint src/`
-7. `bunx biome format src/` (check mode — unformatted files fail)
-8. `bun test src/tests/ --parallel --timeout 60000`
-9. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+5. `bun ./src/scripts/validate-agent-refs.mts` — blocks a `crew:<name>` /
+   `runner:<name>` dispatch instruction whose `<name>` doesn't resolve to a
+   real agent, command, or skill (astragenie/runner-plugin#371 — a phantom
+   `crew:builder` shipped in installed loop rules and broke consumer
+   orchestrators).
+6. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
+7. `bunx biome lint src/`
+8. `bunx biome format src/` (check mode — unformatted files fail)
+9. `bun test src/tests/ --parallel --timeout 60000`
+10. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
    `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
    Regenerates the snapshot content in-memory and diffs it against the
    on-disk file; any drift (backlog/grade counts, "next to slice" list,
@@ -244,7 +249,8 @@ wave-size-3 config with `maxIterations: 25` allows up to 75 slice closes
 per run). Tighten `maxIterations` or pass `--max-waves` to cap cost
 proportionally.
 
-Slices must declare `touches_files` in frontmatter; spec-writer populates
+Slices must declare `touches_files` in frontmatter; the PM's inline spec
+drafting (FEAT-277) populates
 this automatically and `bun ./src/scripts/validate-slice-touches-files.mts`
 gates CI.
 
@@ -313,12 +319,16 @@ bare frontmatter `name:` field:
   repo questions go there, market questions come here.
 - `runner:document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
   retros, release notes, agent / skill prompts). Will NOT edit source.
-- `runner:spec-writer` — AI-ready specs at two levels: formal SPEC documents
-  (10-section, REQ/SEC/CON ids, Given-When-Then AC) and executable
-  slice-level SDD specs (exact contracts, ≥3 test cases, verify commands).
-  Dispatched by `runner:pm` when AC clarity fails or `autonomous_safe` is
-  uncertain. Supersedes the vendored `3rdparty/sdd-spec-writer` and
-  `3rdparty/specification` agents (merged + removed 2026-06-10).
+- `runner:spec-writer` — **retired in v0.53**; there is no dispatchable
+  `runner:spec-writer` agent anymore (no `agents/spec-writer.md` on disk).
+  Its two-level spec drafting — formal SPEC documents (10-section,
+  REQ/SEC/CON ids, Given-When-Then AC) and executable slice-level SDD specs
+  (exact contracts, ≥3 test cases, verify commands) — was absorbed into
+  `runner:pm`, drafted inline via `--deep` / `--spec` (FEAT-277; see
+  `agents/pm.md` § "Inline AC + SPEC drafting"). It formerly superseded the
+  vendored `3rdparty/sdd-spec-writer` and `3rdparty/specification` agents
+  (merged + removed 2026-06-10). The agent-ref validator
+  (astragenie/runner-plugin#371) now flags the retired name as a phantom.
 
 ## Auto-dispatch primitives
 
@@ -383,7 +393,7 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
 - **Auto mode (default — `loop.marathonMode: true`).** Loop walks entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts.
 - **Slice start/close ceremony.** Every slice MUST use `/runner:slice start` and `/runner:slice complete`.
-- **Dispatch discipline.** Hand `dispatchInstruction` to `crew:builder` subagent (implementation only); parent loop dispatches `crew:reviewer` then `crew:validator` after; never implement inline except trivial single-line fixups.
+- **Dispatch discipline.** Hand `dispatchInstruction` to a crew builder subagent — `crew:fullstack-dev` (or the stack-specific `crew:backend-dev` / `crew:frontend-dev`), or generic `claude` (implementation only; there is no agent literally named `crew:builder`); parent loop dispatches `crew:reviewer` then `crew:validator` after; never implement inline except trivial single-line fixups.
 - **Auto-continue.** After ceremony, promote next item without asking.
 
 First action when starting the runner: read `.claude/loop/rules.md` → `docs/ai-loop/00-entry/MASTER_PROMPT.md` → `docs/ai-loop/backlog/approved-slices.md`.
