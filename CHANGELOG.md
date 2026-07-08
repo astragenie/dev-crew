@@ -6,6 +6,46 @@ shipped under the name `loop`.
 
 ## [Unreleased]
 
+## [0.65.0] — 2026-07-08 — agent-ref validator + slice-start / wave fixes
+
+### Fixed
+
+- **Phantom `crew:builder` in installed loop rules (#371, HIGH,
+  customer-facing).** The loop methodology `/runner:install` writes into every
+  consumer repo instructed dispatching a `crew:builder` subagent — an agent that
+  does not exist (real builders: `crew:fullstack-dev` / `crew:backend-dev` /
+  `crew:frontend-dev` / `crew:dev-lite`; "builder" is a role). Consumer
+  orchestrators broke on the first slice build. Corrected every
+  dispatch-instruction occurrence in `.claude/loop/rules.md`, `CLAUDE.md`,
+  `docs/integrations/linear-teammate.md`, and the **install templates**
+  (`templates/loop-rules.md`, `templates/claude-md-hard-rules.md` — the root of
+  the consumer breakage). Also fixed stale `runner:spec-writer` dispatch refs
+  (retired v0.53, absorbed into `runner:pm` per FEAT-277) in
+  `.claude/loop/authoring.md`, `skills/pm-decompose/SKILL.md`, and CLAUDE.md.
+- **`slice start` rejected PM's Given-When-Then AC heading (#370).** The
+  AC-presence gate matched `## Acceptance criteria` with an end-anchor, so
+  PM/FEAT-277's `## Acceptance criteria (Given-When-Then)` heading was invisible
+  → false "no acceptance criteria" error that blocked slicing of any
+  PM-triaged FEAT and misdirected the operator to re-run triage. Parser now
+  prefix-matches (`/^##\s+acceptance criteria\b/i`), tolerating any qualifier
+  suffix; the error message hints a heading typo instead.
+
+### Added
+
+- **`validate-agent-refs` CI gate (#371).** New
+  `src/scripts/validate-agent-refs.mts` flags any `crew:` / `runner:` token in
+  **dispatch context** that doesn't resolve to a real agent, command, or skill
+  (proximity-bounded so negated/descriptive mentions don't false-trigger).
+  Scans `.claude/loop`, `commands`, `skills`, `agents`, `templates`,
+  `docs/integrations`, and `CLAUDE.md`. Wired into CI as gate #5. Closes the
+  drift class that let the phantom `crew:builder` ship, not just the instance.
+- **Wave-runner recall injection (FEAT-188 S3b residual, #368).** Wave mode's
+  per-slot dispatch-assembly (`wave/real-deps.mts` `realPrepare`) now folds a
+  builder-scoped `buildMemoryContext` block via a new
+  `buildDispatchPromptWithMemory` wrapper — fail-open + byte-identical when
+  memory is off. Completeness fitness test extended to cover the wave surface.
+  (The fix-mode retry path remains unwired — tracked as a follow-up.)
+
 ## [0.64.0] — 2026-07-08 — memory-transport unification
 
 ### Added
