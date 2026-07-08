@@ -18,6 +18,39 @@ triage_notes: "Full astramem-client adoption + memory-bridge/memory-recall retir
 ---
 # FEAT-235: retire memory-bridge/memory-recall CLI-spawn transport (finish astramem-client adoption)
 
+## Contract landed (2026-07-08) — build gated on operator go
+
+Architect design artifact:
+`.claude/artifacts/crew/runs/2026-07-08-feat235-bridge-retirement-contract.md`.
+
+- **Decision 1 (crux):** drop `emit()`'s CLI-spawn fallback **entirely** —
+  verified `@astragenie/astramem-client`'s `resolve.js` runtime discovery already
+  superset-replicates `resolveCli`'s env + PATH probe (+ dep-mode selector +
+  local/saas probe). Strict-superset-safe, not a fail-open regression. **Caveat:
+  wants one live no-provider spot-check before fully trusted.**
+- **6th consumer the FEAT body missed:** `memory-sink.mts::recordViaCliFallback`
+  (`:32,169-188`) imports `resolveCli` directly, independent of `emit()` — must
+  migrate the same wave or `memory-bridge.mts` can't be deleted (AC-1 blocked).
+- `recall-injector.mts` was already deleted by FEAT-232 → SLICE-1 is now just
+  `memory-recall.mts` deletion.
+- **Decision 2:** `MemoryKind` enum wins + explicit event→kind map
+  (`slice_close→lesson`, `phase_gate_fail→failure`, `slice_started/recall_used→note`,
+  `triage_shift→decision`), in a new leaf `src/scripts/lib/memory-gepa.mts`. Also
+  fixes a **live bug**: the provider path currently writes `type: payload.event`
+  (raw string), contradicting the #365 Q4 decision. → DEC proposal in the artifact.
+- **6-slice sequence:** S1 delete `memory-recall.mts` → S2 new `memory-gepa.mts`
+  + migrate 4 `emit()` callers → S3 drop `memory-sink.mts` fallback → S4 delete
+  `memory-bridge.mts` → S5 redesign `memory-doctor.mts` → S6 test migration (10
+  files onto the `_setWireProvider`/`_resetResolveCache` seam) + AC-1 grep gate.
+
+**⚠️ OPERATOR DECISION REQUIRED before build (autonomous_safe: false):**
+SLICE-5 carries a **named, visible regression** — `memory-doctor` on the client's
+`HealthResponse{ok}` is coarser than today's `doctor --json` (loses
+`rejected_count` / `not_configured` signals). Accept the regression, or spend
+extra to preserve those signals via a richer client-path probe. Also: the
+no-provider superset claim (Decision 1) should get one live spot-check. Build is
+HELD pending this call — do not autonomously dispatch.
+
 ## Problem
 
 The astramem transport unification (FEAT-188, v0.64.0/v0.65.0) migrated the
