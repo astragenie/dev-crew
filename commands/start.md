@@ -81,7 +81,7 @@ The returned `nextAction` is a literal prompt to follow:
 1. Dispatch `crew:fullstack-dev` subagent for slice implementation. Builder
    owns implementation only and returns a write-handoff artifact path
    when acceptance criteria PASS in its self-verify gates.
-2. Dispatch `crew:inspector` subagent for the review gate.
+2. Dispatch `crew:reviewer` subagent for the review gate.
 3. If behavior changed, dispatch `crew:verifier` subagent for the validation gate.
 4. Run `/runner:close SLICE-NN` to close.
 
@@ -107,8 +107,8 @@ If `RUNNER === "sequential"` (default), proceed with the sequential workflow.
 | Role | Agent ID | Responsibility |
 |---|---|---|
 | **builder** | `crew:fullstack-dev` / `crew:backend-dev` / `crew:frontend-dev` | Implements acceptance criteria in bounded scope; owns tests for changed behavior |
-| **reviewer A** | `crew:inspector` | Correctness, logic, edge cases, AC coverage |
-| **reviewer B** | `crew:inspector` | Production-readiness, observability, security |
+| **reviewer A** | `crew:reviewer` | Correctness, logic, edge cases, AC coverage |
+| **reviewer B** | `crew:reviewer` | Production-readiness, observability, security |
 | **validator** | `crew:verifier` | Behavior validation — runs or inspects the changed behavior against ACs |
 | **deployer** | `crew:release-engineer` | Deployment and environment evidence; promotion to dev/prod |
 | **pm** | `runner:pm` | Backlog scoring across 5 dimensions; AC clarity gate; `autonomous_safe` determination |

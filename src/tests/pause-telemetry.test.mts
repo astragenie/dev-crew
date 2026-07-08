@@ -56,7 +56,7 @@ test("recordPauseEvent honors a caller-supplied ts instead of stamping now()", a
   const repo = await tmpRepo("pt-pause-ts-");
   await recordPauseEvent(repo, {
     ts: "2026-07-01T00:00:00.000Z",
-    agentRole: "crew:inspector",
+    agentRole: "crew:reviewer",
     kind: "resume_success",
     detection: "scaffold_in_progress"
   });
@@ -101,12 +101,12 @@ test("recordPauseEvent and recordDispatchOutcome share one file, interleaved in 
     outcome: "completed"
   });
   await recordPauseEvent(repo, {
-    agentRole: "crew:inspector",
+    agentRole: "crew:reviewer",
     kind: "pause",
     detection: "no_artifact"
   });
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:inspector",
+    agentRole: "crew:reviewer",
     outcome: "paused"
   });
 

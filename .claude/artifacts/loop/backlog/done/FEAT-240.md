@@ -1,11 +1,12 @@
 ---
 id: FEAT-240
-status: pending
+status: done
 priority: P1
 category: bug
 target_release: null
 created: 2026-07-08
 updated: 2026-07-08
+closed: 2026-07-08
 depends_on: []
 slices: []
 derived_from: null

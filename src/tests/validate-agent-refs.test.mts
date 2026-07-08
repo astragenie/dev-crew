@@ -36,6 +36,39 @@ test("flags the known phantom crew:builder in dispatch-instruction context", asy
   );
 });
 
+// FEAT-240: crew renamed inspector -> reviewer. `crew:inspector` was
+// previously allowlisted as a tolerated drift alias, so the phantom slipped
+// through. It must now be flagged.
+test("flags the renamed phantom crew:inspector (FEAT-240)", async () => {
+  const root = await mkTmp();
+  await writeFile(
+    root,
+    ".claude/loop/rules.md",
+    "After the builder returns, dispatch `crew:inspector` subagent for the review gate.\n"
+  );
+
+  const result = await validateAgentRefs(root);
+  assert.equal(result.ok, false);
+  const tokens = result.findings.map((f) => f.token);
+  assert.ok(
+    tokens.includes("crew:inspector"),
+    `expected crew:inspector in findings, got ${tokens.join(", ")}`
+  );
+});
+
+test("the renamed crew:reviewer agent id passes (FEAT-240)", async () => {
+  const root = await mkTmp();
+  await writeFile(
+    root,
+    ".claude/loop/rules.md",
+    "After the builder returns, dispatch `crew:reviewer` subagent for the review gate.\n"
+  );
+
+  const result = await validateAgentRefs(root);
+  assert.equal(result.ok, true);
+  assert.equal(result.findings.length, 0);
+});
+
 test("a real crew agent id (crew:fullstack-dev) passes", async () => {
   const root = await mkTmp();
   await writeFile(

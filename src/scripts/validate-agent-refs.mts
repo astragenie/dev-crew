@@ -31,9 +31,14 @@
 //     manifests, pinned the same way MIN_CREW_VERSION pins the crew
 //     dependency in src/scripts/lib/plugin-identity.mts. The allowlist
 //     deliberately tolerates a few naming-drift aliases already in ACTIVE
-//     use across this repo's methodology docs (inspector/reviewer,
-//     validator/verifier, deployer/release-engineer) — reconciling that
-//     drift is a separate concern from #371. `builder` / `builder-be` /
+//     use across this repo's methodology docs (validator/verifier,
+//     deployer/release-engineer) — reconciling that drift is a separate
+//     concern from #371. NOTE: `inspector` was removed from the tolerated
+//     set (FEAT-240) — crew renamed that agent to `reviewer`, so a
+//     `crew:inspector` dispatch is a phantom and is now flagged. The
+//     remaining local-allowlist approach is itself the cross-plugin gap
+//     FEAT-240 documents; the durable fix is a shared agent registry in
+//     plugins-common. `builder` / `builder-be` /
 //     `builder-fe` are deliberately OMITTED: that is the exact phantom
 //     family this validator exists to catch, and the CHANGELOG's v0.24-era
 //     "allowlisted one more release" grace period for it is long over.
@@ -125,8 +130,10 @@ const CREW_KNOWN_TOKENS = new Set([
   "show-conflicts",
   "validate",
   "wake-up-brief",
-  // tolerated naming-drift aliases already in active use (see file header)
-  "inspector",
+  // tolerated naming-drift aliases already in active use (see file header).
+  // `inspector` was REMOVED (FEAT-240): crew renamed it to `reviewer`
+  // (dev-team 2026-06-30-reviewer-rename-design.md), so a stale `crew:inspector`
+  // dispatch is now a phantom and MUST be flagged, not tolerated.
   "validator",
   "deployer"
 ]);

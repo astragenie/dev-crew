@@ -91,7 +91,7 @@ describe("specialist-pause-detector", () => {
         repoPath: repo,
         sliceId: "SLICE-7",
         featureId: "FEAT-7",
-        agent: "crew:inspector",
+        agent: "crew:reviewer",
         builderOutput: "Let me check the file... pausing now to think.",
         expectedArtifactPath: ".claude/artifacts/crew/reviews/missing.md",
         timestamp: "2026-06-15T13:00:00.000Z"
@@ -103,7 +103,7 @@ describe("specialist-pause-detector", () => {
     expect(calls.length).toBe(1);
     const body = JSON.parse(String(calls[0].init?.body));
     expect(body.kind).toBe("slice.specialist_pause");
-    expect(body.payload.agent).toBe("crew:inspector");
+    expect(body.payload.agent).toBe("crew:reviewer");
     expect(body.payload.sliceId).toBe("SLICE-7");
     expect(String(body.payload.reason)).toContain("pause keywords");
   });

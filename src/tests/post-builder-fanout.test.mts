@@ -44,7 +44,7 @@ test("default ladder emits two reviewers, no validator (N=2)", async () => {
       ["reviewer-A", "reviewer-B"]
     );
     const subagents = out.tasks.map((t) => t.subagent_type);
-    assert.equal(subagents.filter((s) => s === "crew:inspector").length, 2);
+    assert.equal(subagents.filter((s) => s === "crew:reviewer").length, 2);
     assert.ok(!subagents.includes("crew:verifier" as never));
     assert.ok(out.instructions.includes("N=2"));
   } finally {
@@ -63,7 +63,7 @@ test("single-entry ladder ['A'] dispatches ONE reviewer, no validator (N=1)", as
       out.tasks.map((t) => t.role),
       ["reviewer-A"]
     );
-    assert.equal(out.tasks[0].subagent_type, "crew:inspector");
+    assert.equal(out.tasks[0].subagent_type, "crew:reviewer");
     assert.ok(out.instructions.includes("N=1"));
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
@@ -121,7 +121,7 @@ test("no config produces no validator / crew:verifier task", async () => {
   try {
     const out = await buildPostBuilderFanout(repo, "SLICE-99");
     assert.ok(out.tasks.every((t) => t.role !== ("validator" as never)));
-    assert.ok(out.tasks.every((t) => t.subagent_type === "crew:inspector"));
+    assert.ok(out.tasks.every((t) => t.subagent_type === "crew:reviewer"));
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }

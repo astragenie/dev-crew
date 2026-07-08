@@ -609,7 +609,7 @@ function computeNextAction(
     return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch crew:inspector (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
+    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch crew:reviewer (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
   }
   return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }

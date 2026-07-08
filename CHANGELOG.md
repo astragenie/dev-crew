@@ -6,6 +6,47 @@ shipped under the name `loop`.
 
 ## [Unreleased]
 
+## [0.66.0] — 2026-07-08 — loop-blocker bug sweep (memory import, grade-yaml, crew:reviewer rename)
+
+### Fixed
+
+- **Phantom `crew:inspector` review dispatch (FEAT-240, P1).** Crew renamed its
+  review agent `crew:inspector` → `crew:reviewer` (dev-team
+  `2026-06-30-reviewer-rename-design.md`), but runner still emitted the old name
+  — `post-builder-fanout.mts` (the structured reviewer-ladder `subagent_type`
+  payload) plus prose dispatch instructions in `loop.mts`, `slice-linker/
+  dispatch.mts`, `slice-linker/start-slice.mts`, and `commands/start.md`. Every
+  loop-driven review dispatch targeted a non-existent agent, silently breaking
+  the review gate (and, downstream, the FEAT→done promotion that depends on a
+  review PASS badge). Sibling of the v0.65.0 `crew:builder` phantom fix (#371),
+  which this one was missed by because `validate-agent-refs.mts` **allowlisted**
+  the bare name `inspector` as a "tolerated drift alias." Renamed every emit
+  site to `crew:reviewer` and removed `inspector` from the validator allowlist,
+  so a future stale rename fails CI instead of dispatching a phantom.
+  (`crew:verifier` is unaffected — it still exists.) The durable cross-plugin
+  fix — a shared agent registry in `plugins-common` the validator resolves
+  against instead of a hand-maintained local set — is tracked separately.
+- **Static `@astragenie/astramem-client` import crashed slice-start with ENOENT
+  (FEAT-238, P1).** `memory-context.mts` resolved the shared client via a
+  top-level static import — at module **load**, before the `memory.enabled`
+  gate. In any repo where the package was absent from the runner plugin cache,
+  merely importing the module (post-builder-fanout, wave dispatch, slice-start)
+  hard-crashed, and `memory.enabled = "never"` could not bypass it. Converted to
+  a memory-enabled-gated dynamic `await import(...)` inside the existing
+  fail-silent `safe()` block (matching `grade-writer.mts` / `learnings.mts`); the
+  erased `import type { RecallHit }` is retained. Absent package → recall
+  skipped, not crashed. (#383)
+- **`slice close --grade-yaml` half-closed on frontmatter-only grade yaml
+  (FEAT-239, P2).** The single-shot close wrote the supplied yaml verbatim, but
+  `writeGrade` reads scores (`parseScoresFromBody`) and decisions
+  (`parseDecisionsFromBody`) from the markdown **body**. A frontmatter-only grade
+  yaml (the shape the autonomous close path emits) failed with `missing
+  dimension: *` for all 7 scores — slice/feature files moved but no grade
+  written, no decisions extracted. New `grade-yaml-normalizer.mts` renders a
+  frontmatter-only yaml into the template `## Scores` / `## Lessons` /
+  `### DEC-TBD` body; a full grade-markdown input passes through byte-identical.
+  (#383)
+
 ## [0.65.0] — 2026-07-08 — agent-ref validator + slice-start / wave fixes
 
 ### Fixed

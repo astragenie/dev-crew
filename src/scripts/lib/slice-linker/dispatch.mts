@@ -124,20 +124,20 @@ function buildParallelFeBeInstruction(
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
-  const closeTail = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`;
+  const closeTail = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`;
   return [
     `PARALLEL DISPATCH — issue ONE Agent message with TWO parallel tool calls:`,
     "",
     `  1. crew:frontend-dev with the **Frontend prompt** below.`,
     `  2. crew:backend-dev with the **Backend prompt** below.`,
     "",
-    `Both subagents own their respective slice surface. The parent loop drives crew:inspector and crew:verifier AFTER both return. Never use caveman:* agents for slice work.`,
+    `Both subagents own their respective slice surface. The parent loop drives crew:reviewer and crew:verifier AFTER both return. Never use caveman:* agents for slice work.`,
     "",
     `**Frontend prompt** (for crew:frontend-dev):`,
-    `> Implement the frontend portion of ${title}.${sliceRef}${goalLine} You own implementation of the frontend surface only. Do NOT dispatch crew:inspector or crew:verifier yourself. ${closeTail}`,
+    `> Implement the frontend portion of ${title}.${sliceRef}${goalLine} You own implementation of the frontend surface only. Do NOT dispatch crew:reviewer or crew:verifier yourself. ${closeTail}`,
     "",
     `**Backend prompt** (for crew:backend-dev):`,
-    `> Implement the backend portion of ${title}.${sliceRef}${goalLine} You own implementation of the backend surface only. Do NOT dispatch crew:inspector or crew:verifier yourself. ${closeTail}`
+    `> Implement the backend portion of ${title}.${sliceRef}${goalLine} You own implementation of the backend surface only. Do NOT dispatch crew:reviewer or crew:verifier yourself. ${closeTail}`
   ].join("\n");
 }
 
@@ -194,7 +194,7 @@ export function buildDispatchInstruction({
     header = [
       `Dispatch ${agentName} subagent with this prompt:`,
       "",
-      `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:inspector or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:inspector, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
+      `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
     ].join("\n");
   }
   const lines = [preflight + header];
