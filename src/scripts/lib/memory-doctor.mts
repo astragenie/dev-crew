@@ -1,7 +1,17 @@
 // Memory doctor probe (runner-plugin#292).
 //
 // Spawns `astramem doctor --json` and returns a structured MemoryStatus.
-// 3s wallclock cap via AbortController — mirrors memory-bridge.mts emit() shape.
+// 3s wallclock cap via AbortController.
+//
+// FEAT-235: every capture/recall hot path migrated onto the shared
+// @astragenie/astramem-client, and the CLI-spawn transport
+// (memory-bridge.mts) was retired — but this diagnostic stays CLI-based on
+// purpose. The client's resolveWireProvider() resolves an in-process
+// WireProvider object (its health() only reports {ok: boolean}); it has no
+// equivalent for the rich `doctor --json` shape this module reports
+// (env_vars / pending.rejected_count / etc). resolveCli() now lives in the
+// standalone astramem-cli-resolver.mts leaf, extracted from memory-bridge.mts
+// before that module was deleted, so this probe keeps its full signal set.
 //
 // Never throws. Returns a valid MemoryStatus on ALL paths (disabled, cli_missing,
 // unreachable, unknown, not_configured, or ok).
@@ -19,7 +29,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { resolveCli } from "./memory-bridge.mjs";
+import { resolveCli } from "./astramem-cli-resolver.mjs";
 
 /** Structured health report from probeMemory(). */
 export interface MemoryStatus {
@@ -223,7 +233,7 @@ function mapDoctorOutput(cliPath: string, raw: string): MemoryStatus {
 
 /** Options for probeMemory — primarily used for test seams. */
 export interface ProbeMemoryOptions {
-  /** Override CLI resolver (test seam). Default: resolveCli from memory-bridge. */
+  /** Override CLI resolver (test seam). Default: resolveCli from astramem-cli-resolver.mts. */
   _resolveCli?: () => Promise<{ path: string } | null>;
 }
 

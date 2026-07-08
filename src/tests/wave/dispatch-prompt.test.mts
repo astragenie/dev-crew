@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 import {
   buildDispatchPrompt,
   buildDispatchPromptWithMemory
 } from "../../scripts/lib/wave/dispatch-prompt.mjs";
 import { logLearning } from "../../scripts/lib/learnings.mjs";
-import { _resetCliCache } from "../../scripts/lib/memory-bridge.mjs";
 
 describe("buildDispatchPrompt", () => {
   test("normal mode contains slice command + slice id + worktree path", () => {
@@ -49,39 +49,24 @@ describe("buildDispatchPrompt", () => {
 
 // FEAT-188 S3b residual (#368) golden test — mirrors post-builder-fanout.test.mts's
 // "FEAT-219 golden: memory off/absent is byte-identical; memory on prepends
-// without garbling the contract wording". Neutralizes astramem CLI resolution
-// the same way (deliberately-broken binary pinned via CLAUDE_PLUGIN_ROOT_MEMORY)
-// so recallPrior's fallback path is deterministic regardless of host PATH state.
+// without garbling the contract wording". Neutralizes astramem provider
+// resolution via @astragenie/astramem-client's own test seam (FEAT-235 —
+// recallSilent's underlying resolveWireProvider(), not a CLI fixture) so the
+// test is deterministic regardless of host provider state.
 describe("buildDispatchPromptWithMemory", () => {
   let repo: string | null = null;
-  let brokenCliRoot: string | null = null;
-  let origPluginRoot: string | undefined;
 
   beforeEach(async () => {
-    _resetCliCache();
-    origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "wave-memctx-cli-"));
-    const binDir = path.join(dir, "bin");
-    await fs.mkdir(binDir, { recursive: true });
-    await fs.writeFile(path.join(binDir, "astramem"), "#!/bin/sh\nexit 1\n");
-    await fs.chmod(path.join(binDir, "astramem"), 0o755).catch(() => undefined);
-    brokenCliRoot = dir;
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = dir;
+    _setWireProvider(null);
+    _resetResolveCache();
     repo = await fs.mkdtemp(path.join(os.tmpdir(), "wave-memctx-repo-"));
   });
 
   afterEach(async () => {
-    if (origPluginRoot !== undefined) {
-      process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
-    } else {
-      delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-    }
-    if (brokenCliRoot)
-      await fs.rm(brokenCliRoot, { recursive: true, force: true }).catch(() => undefined);
     if (repo) await fs.rm(repo, { recursive: true, force: true }).catch(() => undefined);
-    brokenCliRoot = null;
     repo = null;
-    _resetCliCache();
+    _setWireProvider(null);
+    _resetResolveCache();
   });
 
   test("memory off/absent is byte-identical to buildDispatchPrompt", async () => {

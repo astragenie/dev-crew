@@ -461,9 +461,9 @@ async function emitPhaseGateFailMemory(
     }
     if (memoryEnabled === "never") return;
 
-    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
-    // itself when neither a provider nor the CLI is discoverable.
-    const { emit } = await import("./memory-bridge.mjs");
+    // No provider pre-gate: emitGepaEvent() is fail-silent and no-ops itself
+    // when no astramem provider is discoverable (FEAT-235).
+    const { emitGepaEvent } = await import("./memory-gepa.mjs");
 
     const { getPromptVersion } = await import("./agent-version.mjs");
     const promptVersion = await getPromptVersion("runner");
@@ -473,7 +473,7 @@ async function emitPhaseGateFailMemory(
       .map((s) => String(s.name));
     const logTail = buildPhaseGateLogTail(stageResults);
 
-    await emit({
+    await emitGepaEvent({
       ts: new Date().toISOString(),
       slice_id: sliceId ?? "unknown",
       feat_id: "unknown",

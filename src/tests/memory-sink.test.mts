@@ -1,13 +1,14 @@
-// Tests for src/scripts/lib/memory-sink.mts (FEAT-217).
-// A capturing fake `astramem` CLI is injected via CLAUDE_PLUGIN_ROOT_MEMORY so
-// no real astramem process is ever spawned. Every path must be fail-silent.
+// Tests for src/scripts/lib/memory-sink.mts (FEAT-217; CLI-spawn fallback
+// retired FEAT-235). A fake WireProvider is injected via
+// @astragenie/astramem-client's _setWireProvider test seam so no real
+// astramem process is ever spawned. Every path must be fail-silent.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
+import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 import {
   readMemoryConfig,
   recordDecision,
@@ -17,13 +18,16 @@ import {
   recordNote
 } from "../scripts/lib/memory-sink.mjs";
 
-const isWin = process.platform === "win32";
-
 let tmpDir: string;
 let repoDir: string;
-let cliRoot: string;
-let argsFile: string;
-let origPluginRoot: string | undefined;
+
+/** A single captured provider.remember() call. */
+interface CapturedCall {
+  id: string;
+  type: string;
+  text: string;
+  metadata?: Record<string, unknown>;
+}
 
 /** Write a repo dir with .claude/loop.json holding the given memory block. */
 async function writeRepo(memory: unknown): Promise<string> {
@@ -34,48 +38,28 @@ async function writeRepo(memory: unknown): Promise<string> {
   return dir;
 }
 
-/** Install a fake astramem CLI that appends its argv (JSON) to argsFile.
- * POSIX only writes reliably; on Windows we install a no-op .cmd and skip the
- * argv-capture assertions (spawn still exercises the enable/resolve path). */
-async function installCapturingCli(): Promise<void> {
-  const binDir = path.join(cliRoot, "bin");
-  await fs.mkdir(binDir, { recursive: true });
-  if (isWin) {
-    await fs.writeFile(path.join(binDir, "astramem.cmd"), "@echo off\n");
-    return;
-  }
-  const cli = path.join(binDir, "astramem");
-  await fs.writeFile(
-    cli,
-    `#!/bin/sh\nnode -e "require('fs').appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2))+'\\n')" "${argsFile}" "$@"\n`
-  );
-  await fs.chmod(cli, 0o755);
-}
-
-async function readCaptured(): Promise<string[][]> {
-  try {
-    const raw = await fs.readFile(argsFile, "utf8");
-    return raw
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l) as string[]);
-  } catch {
-    return [];
-  }
+/** Inject a capturing fake provider; returns the array calls are pushed to. */
+function installCapturingProvider(): CapturedCall[] {
+  const calls: CapturedCall[] = [];
+  _setWireProvider({
+    remember: async (req) => {
+      calls.push(req as CapturedCall);
+    },
+    recall: async () => ({ hits: [] }),
+    health: async () => ({ ok: true })
+  });
+  return calls;
 }
 
 beforeEach(async () => {
-  _resetCliCache();
+  _setWireProvider(null);
+  _resetResolveCache();
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "memsink-"));
-  cliRoot = await fs.mkdtemp(path.join(tmpDir, "cliroot-"));
-  argsFile = path.join(tmpDir, "captured.jsonl");
-  origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
 });
 
 afterEach(async () => {
-  _resetCliCache();
-  if (origPluginRoot !== undefined) process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
-  else delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  _setWireProvider(null);
+  _resetResolveCache();
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
@@ -152,42 +136,36 @@ describe("readMemoryConfig", () => {
 });
 
 describe("recordMemory gating", () => {
-  test("AC-1: disabled -> no-op, CLI never resolved/spawned", async () => {
+  test("AC-1: disabled -> no-op, provider never resolved/called", async () => {
     repoDir = await writeRepo({ enabled: "off" });
-    // Point the env at a valid capturing CLI to prove it is NOT used when off.
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    // Inject a valid capturing provider to prove it is NOT used when off.
+    const calls = installCapturingProvider();
 
     const res = await recordMemory(repoDir, { kind: "decision", content: "DEC-999: x" });
     expect(res).toEqual({ recorded: false, reason: "disabled" });
-    expect(await readCaptured()).toHaveLength(0);
+    expect(calls).toHaveLength(0);
   });
 
-  test("AC-2: enabled but no CLI -> no-op, no throw", async () => {
+  test("AC-2: enabled but no provider -> no-op, no throw", async () => {
     repoDir = await writeRepo({ enabled: "on" });
-    // Env points at an empty root (no bin/astramem); with no astramem on PATH
-    // in CI this resolves to null. On a dev box with astramem on PATH this may
-    // resolve — so assert only the contract: never throws, boolean recorded.
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = path.join(tmpDir, "empty");
+    _setWireProvider(null);
     const res = await recordMemory(repoDir, { kind: "note", content: "hi" });
-    expect(typeof res.recorded).toBe("boolean");
+    expect(res).toEqual({ recorded: false, reason: "no-cli" });
   });
 
   test("empty content -> no-op regardless of enablement", async () => {
     repoDir = await writeRepo({ enabled: "on" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
     const res = await recordMemory(repoDir, { kind: "note", content: "   " });
     expect(res).toEqual({ recorded: false, reason: "empty" });
-    expect(await readCaptured()).toHaveLength(0);
+    expect(calls).toHaveLength(0);
   });
 });
 
-describe("recordMemory spawn (capturing fake CLI)", () => {
-  test("AC-3: enabled + CLI resolves -> spawns `remember --content .. --type ..`", async () => {
+describe("recordMemory delivery (capturing fake provider)", () => {
+  test("AC-3: enabled + provider resolves -> delivers type/content/project", async () => {
     repoDir = await writeRepo({ enabled: "on", project: "loop" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     const res = await recordDecision(repoDir, {
       id: "DEC-064",
@@ -197,56 +175,39 @@ describe("recordMemory spawn (capturing fake CLI)", () => {
     });
     expect(res.recorded).toBe(true);
 
-    if (isWin) return; // argv capture is POSIX-only
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const calls = await readCaptured();
     expect(calls).toHaveLength(1);
-    const argv = calls[0];
-    expect(argv[0]).toBe("remember");
-    expect(argv).toContain("--content");
-    expect(argv).toContain("--type");
-    expect(argv[argv.indexOf("--type") + 1]).toBe("decision");
-    expect(argv).toContain("--project");
-    expect(argv[argv.indexOf("--project") + 1]).toBe("loop");
-    const content = argv[argv.indexOf("--content") + 1];
-    expect(content).toContain("DEC-064");
-    expect(content).toContain("tier hardening");
+    const call = calls[0]!;
+    expect(call.type).toBe("decision");
+    expect(call.metadata?.["project"]).toBe("loop");
+    expect(call.text).toContain("DEC-064");
+    expect(call.text).toContain("tier hardening");
     // FEAT/SLICE traceability embedded in content.
-    expect(content).toContain("[FEAT-216/SLICE-140]");
+    expect(call.text).toContain("[FEAT-216/SLICE-140]");
   });
 
-  test("agentType is passed as --agent (FEAT-219 / #309)", async () => {
+  test("agentType is passed in metadata.agent (FEAT-219 / #309)", async () => {
     repoDir = await writeRepo({ enabled: "on", project: "loop" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     await recordDecision(repoDir, {
       id: "DEC-070",
       title: "x",
       agentType: "crew:reviewer"
     });
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const argv = (await readCaptured())[0];
-    expect(argv).toContain("--agent");
-    expect(argv[argv.indexOf("--agent") + 1]).toBe("crew:reviewer");
+    expect(calls[0]?.metadata?.["agent"]).toBe("crew:reviewer");
   });
 
-  test("no --agent flag when agentType is absent", async () => {
+  test("no agent metadata key when agentType is absent", async () => {
     repoDir = await writeRepo({ enabled: "on", project: "loop" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     await recordNote(repoDir, { text: "untagged note" });
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    expect((await readCaptured())[0]).not.toContain("--agent");
+    expect(calls[0]?.metadata?.["agent"]).toBeUndefined();
   });
 
   test("recordFailure uses type=failure and carries agent (AC-3)", async () => {
     repoDir = await writeRepo({ enabled: "on", project: "loop" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     const res = await recordFailure(repoDir, {
       summary: "review rejected: missing null check",
@@ -254,24 +215,17 @@ describe("recordMemory spawn (capturing fake CLI)", () => {
       agentType: "crew:reviewer"
     });
     expect(res.recorded).toBe(true);
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const argv = (await readCaptured())[0];
-    expect(argv[argv.indexOf("--type") + 1]).toBe("failure");
-    expect(argv[argv.indexOf("--agent") + 1]).toBe("crew:reviewer");
+    expect(calls[0]?.type).toBe("failure");
+    expect(calls[0]?.metadata?.["agent"]).toBe("crew:reviewer");
   });
 
   test("AC-4: content is sanitized (control chars stripped, no forged newline)", async () => {
     repoDir = await writeRepo({ enabled: "on" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     await recordNote(repoDir, { text: "line1\nline2\tFORGEDend" });
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const calls = await readCaptured();
     expect(calls).toHaveLength(1);
-    const content = calls[0][calls[0].indexOf("--content") + 1];
+    const content = calls[0]!.text;
     expect(content).not.toContain("\n"); // newline stripped -> space
     expect(content).not.toContain("\t"); // tab stripped -> space (control char)
     expect(content).toContain("FORGED"); // preserved, just inlined
@@ -279,93 +233,63 @@ describe("recordMemory spawn (capturing fake CLI)", () => {
 
   test("recordLesson uses type=lesson and prefixes the sliceId", async () => {
     repoDir = await writeRepo({ enabled: "on" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     await recordLesson(repoDir, { lesson: "prefer resolver over env", sliceId: "SLICE-1" });
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const calls = await readCaptured();
     expect(calls).toHaveLength(1);
-    const argv = calls[0];
-    expect(argv[argv.indexOf("--type") + 1]).toBe("lesson");
-    expect(argv[argv.indexOf("--content") + 1]).toContain("[SLICE-1]");
+    expect(calls[0]!.type).toBe("lesson");
+    expect(calls[0]!.text).toContain("[SLICE-1]");
   });
 
-  test("project argv is sanitized (control chars stripped)", async () => {
+  test("project metadata is sanitized (control chars stripped)", async () => {
     repoDir = await writeRepo({ enabled: "on" });
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     await recordMemory(repoDir, {
       kind: "note",
       content: "x",
       project: "proj\n--type\nevil"
     });
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const calls = await readCaptured();
     expect(calls).toHaveLength(1);
-    const argv = calls[0];
-    const project = argv[argv.indexOf("--project") + 1];
+    const project = calls[0]!.metadata?.["project"] as string;
     expect(project).not.toContain("\n");
     // The injected control chars are gone; the payload is a single flat token.
     expect(project).toBe("proj--typeevil");
   });
 
-  test("no --project flag when project is unconfigured", async () => {
+  test("no project metadata key when project is unconfigured", async () => {
     repoDir = await writeRepo({ enabled: "on" }); // no project
-    await installCapturingCli();
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    const calls = installCapturingProvider();
 
     await recordNote(repoDir, { text: "note without project" });
-    if (isWin) return;
-    await new Promise<void>((r) => setTimeout(r, 250));
-    const calls = await readCaptured();
     expect(calls).toHaveLength(1);
-    expect(calls[0]).not.toContain("--project");
+    expect(calls[0]?.metadata?.["project"]).toBeUndefined();
   });
 });
 
 describe("recordMemory fail-silent + cap", () => {
-  test("AC-5: resolves within ~2.5s even when the CLI hangs", async () => {
+  test("AC-5: resolves within ~2.5s even when the provider hangs", async () => {
     repoDir = await writeRepo({ enabled: "on" });
-    const binDir = path.join(cliRoot, "bin");
-    await fs.mkdir(binDir, { recursive: true });
-    if (isWin) {
-      await fs.writeFile(
-        path.join(binDir, "astramem.cmd"),
-        '@echo off\npowershell -Command "Start-Sleep 30"\n'
-      );
-    } else {
-      const cli = path.join(binDir, "astramem");
-      await fs.writeFile(cli, "#!/bin/sh\nsleep 30\n");
-      await fs.chmod(cli, 0o755);
-    }
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    _setWireProvider({
+      remember: () => new Promise(() => {}), // never settles
+      recall: async () => ({ hits: [] }),
+      health: async () => ({ ok: true })
+    });
 
     const start = Date.now();
     const res = await recordNote(repoDir, { text: "should not block" });
     const elapsed = Date.now() - start;
     expect(elapsed).toBeLessThan(2500);
-    expect(res.recorded).toBe(true);
+    expect(res.recorded).toBe(false); // hung provider never resolves -> no-cli
   });
 
   test("FEAT-233/DEC-071: memory.capMs shortens the envelope below DEFAULT_MEMORY_CAP_MS (2000ms)", async () => {
     repoDir = await writeRepo({ enabled: "on", capMs: 300 });
-    const binDir = path.join(cliRoot, "bin");
-    await fs.mkdir(binDir, { recursive: true });
-    if (isWin) {
-      await fs.writeFile(
-        path.join(binDir, "astramem.cmd"),
-        '@echo off\npowershell -Command "Start-Sleep 30"\n'
-      );
-    } else {
-      const cli = path.join(binDir, "astramem");
-      await fs.writeFile(cli, "#!/bin/sh\nsleep 30\n");
-      await fs.chmod(cli, 0o755);
-    }
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+    _setWireProvider({
+      remember: () => new Promise(() => {}), // never settles
+      recall: async () => ({ hits: [] }),
+      health: async () => ({ ok: true })
+    });
 
     const start = Date.now();
     await recordNote(repoDir, { text: "should not block" });

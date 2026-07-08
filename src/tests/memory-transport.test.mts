@@ -18,14 +18,12 @@ import {
   _setProvider,
   sendViaProvider
 } from "../scripts/lib/memory-transport.mjs";
-import { _resetCliCache, emit } from "../scripts/lib/memory-bridge.mjs";
 import { recordMemory } from "../scripts/lib/memory-sink.mjs";
 
 let tmpRepo: string;
 
 beforeEach(async () => {
   _resetTransportCache();
-  _resetCliCache();
   tmpRepo = await fs.mkdtemp(path.join(os.tmpdir(), "mem-transport-"));
   await fs.mkdir(path.join(tmpRepo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -36,7 +34,6 @@ beforeEach(async () => {
 
 afterEach(async () => {
   _resetTransportCache();
-  _resetCliCache();
   await fs.rm(tmpRepo, { recursive: true, force: true });
 });
 
@@ -189,51 +186,8 @@ describe("recordMemory — provider-first transport", () => {
   });
 });
 
-describe("emit — provider-first transport", () => {
-  const gepaPayload = {
-    ts: "2026-07-07T00:00:00Z",
-    slice_id: "SLICE-1",
-    feat_id: "FEAT-188",
-    source: "close" as const,
-    event: "slice_close" as const,
-    score: 0.9,
-    feedback: "lesson learned",
-    input: { ac: "given/when/then" },
-    output: { files: ["a.mts"] },
-    prompt_version: "abc1234"
-  };
-
-  test("delivers GEPA payload via provider (type=event, metadata carries slice/feat)", async () => {
-    const seen: ProviderIngestPayload[] = [];
-    _setProvider({
-      remember: async (req) => {
-        seen.push(req);
-      }
-    });
-
-    await emit(gepaPayload);
-
-    expect(seen).toHaveLength(1);
-    expect(seen[0]?.type).toBe("slice_close");
-    expect(seen[0]?.text).toBe("lesson learned");
-    const meta = seen[0]?.metadata as Record<string, unknown>;
-    expect(meta["sliceId"]).toBe("SLICE-1");
-    expect(meta["featId"]).toBe("FEAT-188");
-    expect(meta["score"]).toBe(0.9);
-    expect(meta["prompt_version"]).toBe("abc1234");
-  });
-
-  test("never throws when provider absent and CLI unresolvable", async () => {
-    _setProvider(null);
-    await expect(emit(gepaPayload)).resolves.toBeUndefined();
-  });
-
-  test("never throws when provider rejects", async () => {
-    _setProvider({
-      remember: async () => {
-        throw new Error("boom");
-      }
-    });
-    await expect(emit(gepaPayload)).resolves.toBeUndefined();
-  });
-});
+// GEPA event capture (emit/emitGepaEvent) coverage moved to
+// memory-gepa.test.mts (FEAT-235) — memory-bridge.mts's emit() was retired
+// and replaced by memory-gepa.mts::emitGepaEvent, which maps GepaPayload.event
+// onto the closed MemoryKind enum (DEC-072) instead of sending the raw event
+// string.

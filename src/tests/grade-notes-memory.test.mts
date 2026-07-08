@@ -1,9 +1,9 @@
 // @ts-nocheck
 // FEAT-217 follow-up: writeGrade mirrors "## Surprises" / "## Followups" grade
-// bullets into astramem as notes via recordNote. A capturing fake `astramem`
-// CLI is injected through CLAUDE_PLUGIN_ROOT_MEMORY so no real process runs.
-// POSIX captures argv and asserts the note payloads; Windows installs a no-op
-// .cmd and only asserts the fail-silent contract (writeGrade never throws).
+// bullets into astramem as notes via recordNote. A fake WireProvider is
+// injected via @astragenie/astramem-client's _setWireProvider test seam
+// (FEAT-235 — the CLI-spawn fallback this test used to exercise was retired)
+// so no real astramem process is ever run.
 
 import { afterEach, beforeEach, test } from "bun:test";
 import assert from "node:assert/strict";
@@ -11,41 +11,30 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
 import { SCORE_DIMENSIONS } from "../scripts/lib/grade-parser.mjs";
-import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
 
-const isWin = process.platform === "win32";
 let tmpDir: string;
-let cliRoot: string;
-let argsFile: string;
-let origPluginRoot: string | undefined;
 
-async function installCapturingCli(): Promise<void> {
-  const binDir = path.join(cliRoot, "bin");
-  await fs.mkdir(binDir, { recursive: true });
-  if (isWin) {
-    await fs.writeFile(path.join(binDir, "astramem.cmd"), "@echo off\n");
-    return;
-  }
-  const cli = path.join(binDir, "astramem");
-  await fs.writeFile(
-    cli,
-    `#!/bin/sh\nnode -e "require('fs').appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2))+'\\n')" "${argsFile}" "$@"\n`
-  );
-  await fs.chmod(cli, 0o755);
+/** A single captured provider.remember() call. */
+interface CapturedCall {
+  type: string;
+  text: string;
+  metadata?: Record<string, unknown>;
 }
 
-async function readCaptured(): Promise<string[][]> {
-  try {
-    const raw = await fs.readFile(argsFile, "utf8");
-    return raw
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l) as string[]);
-  } catch {
-    return [];
-  }
+/** Inject a capturing fake provider; returns the array calls are pushed to. */
+function installCapturingProvider(): CapturedCall[] {
+  const calls: CapturedCall[] = [];
+  _setWireProvider({
+    remember: async (req) => {
+      calls.push(req as CapturedCall);
+    },
+    recall: async () => ({ hits: [] }),
+    health: async () => ({ ok: true })
+  });
+  return calls;
 }
 
 async function seedGradeRepo(): Promise<string> {
@@ -78,32 +67,25 @@ async function seedGradeRepo(): Promise<string> {
 }
 
 beforeEach(async () => {
-  _resetCliCache();
+  _setWireProvider(null);
+  _resetResolveCache();
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "grade-notes-"));
-  cliRoot = await fs.mkdtemp(path.join(tmpDir, "cliroot-"));
-  argsFile = path.join(tmpDir, "captured.jsonl");
-  origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
-  await installCapturingCli();
 });
 
 afterEach(async () => {
-  _resetCliCache();
-  if (origPluginRoot !== undefined) process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
-  else delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
+  _setWireProvider(null);
+  _resetResolveCache();
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
 test("writeGrade mirrors Surprises + Followups into astramem as notes", async () => {
   const repo = await seedGradeRepo();
+  const calls = installCapturingProvider();
   // Must not throw regardless of platform (fail-silent contract).
   await writeGrade(repo, "SLICE-01", { config: null });
 
-  if (isWin) return; // no argv capture on Windows
-
-  const captured = await readCaptured();
-  const notes = captured.filter((argv) => argv.includes("--type") && argv.includes("note"));
-  const contents = notes.map((argv) => argv[argv.indexOf("--content") + 1] ?? "");
+  const notes = calls.filter((c) => c.type === "note");
+  const contents = notes.map((c) => c.text);
   assert.ok(
     contents.some((c) => c.includes("surprise:") && c.includes("Prod config drifted")),
     `expected a surprise note, got: ${JSON.stringify(contents)}`
@@ -118,13 +100,14 @@ test("writeGrade mirrors Surprises + Followups into astramem as notes", async ()
   );
   // SLICE-1b: grade-derived notes are agent-tagged as the slice implementer.
   assert.ok(
-    notes.every((argv) => argv[argv.indexOf("--agent") + 1] === "crew:builder"),
-    `notes should carry --agent crew:builder, got: ${JSON.stringify(notes)}`
+    notes.every((c) => c.metadata?.["agent"] === "crew:builder"),
+    `notes should carry agent metadata crew:builder, got: ${JSON.stringify(notes)}`
   );
 });
 
 test("writeGrade with memory disabled emits no notes (opt-in default)", async () => {
   const repo = await seedGradeRepo();
+  const calls = installCapturingProvider();
   // Override memory back off in this repo's config.
   const cfgPath = path.join(repo, ".claude/loop.json");
   const cfg = JSON.parse(await fs.readFile(cfgPath, "utf8"));
@@ -133,8 +116,6 @@ test("writeGrade with memory disabled emits no notes (opt-in default)", async ()
 
   await writeGrade(repo, "SLICE-01", { config: null });
 
-  if (isWin) return;
-  const captured = await readCaptured();
-  const notes = captured.filter((argv) => argv.includes("--type") && argv.includes("note"));
+  const notes = calls.filter((c) => c.type === "note");
   assert.equal(notes.length, 0);
 });

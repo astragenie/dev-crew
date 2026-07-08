@@ -7,11 +7,14 @@
 // and dev-team's astramem-provider.ts into one implementation. This module
 // keeps runner-plugin's local surface (`sendViaProvider`, the injectable
 // test seam, the ProviderIngestPayload shape) so callers (memory-sink.mts,
-// memory-bridge.mts) and existing tests are unchanged.
+// memory-gepa.mts) and existing tests are unchanged.
 //
 // Contract (unchanged): NEVER throws, NEVER blocks the caller beyond the
-// shared package's cap envelope. Any failure resolves `false` so callers
-// fall back to the CLI spawn path.
+// shared package's cap envelope. Any failure resolves `false` — FEAT-235
+// retired the CLI-spawn fallback callers used to fall back to (verified
+// strict superset per resolve.js's discovery chain, see DEC-072), so a
+// `false` here is now the terminal outcome, not a hand-off to a second
+// transport.
 
 import { _resetResolveCache, _setWireProvider, rememberSilent } from "@astragenie/astramem-client";
 

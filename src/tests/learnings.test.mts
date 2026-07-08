@@ -63,10 +63,14 @@ test("logLearning creates the parent directory when absent", async () => {
 });
 
 // FEAT-217: logLearning mirrors the learning into astramem (type=lesson) when
-// memory is enabled. Capturing fake CLI; POSIX-only argv assertion.
+// memory is enabled. A fake WireProvider is injected via
+// @astragenie/astramem-client's _setWireProvider test seam (FEAT-235 — the
+// CLI-spawn fallback this test used to exercise was retired) so no real
+// astramem process is ever run.
 test("logLearning mirrors the learning into astramem when memory enabled", async () => {
-  const { _resetCliCache } = await import("../scripts/lib/memory-bridge.mjs");
-  _resetCliCache();
+  const { _resetResolveCache, _setWireProvider } = await import("@astragenie/astramem-client");
+  _setWireProvider(null);
+  _resetResolveCache();
   const repo = await tmpRepo("learnings-mem-");
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -74,22 +78,14 @@ test("logLearning mirrors the learning into astramem when memory enabled", async
     JSON.stringify({ productName: "runner", memory: { enabled: "on" } })
   );
 
-  const cliRoot = await tmpRepo("learnings-cli-");
-  const binDir = path.join(cliRoot, "bin");
-  await fs.mkdir(binDir, { recursive: true });
-  const argsFile = path.join(cliRoot, "captured.jsonl");
-  const isWin = process.platform === "win32";
-  if (isWin) {
-    await fs.writeFile(path.join(binDir, "astramem.cmd"), "@echo off\n");
-  } else {
-    await fs.writeFile(
-      path.join(binDir, "astramem"),
-      `#!/bin/sh\nnode -e "require('fs').appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2))+'\\n')" "${argsFile}" "$@"\n`
-    );
-    await fs.chmod(path.join(binDir, "astramem"), 0o755);
-  }
-  const origRoot = process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
-  process.env.CLAUDE_PLUGIN_ROOT_MEMORY = cliRoot;
+  const calls = [];
+  _setWireProvider({
+    remember: async (req) => {
+      calls.push(req);
+    },
+    recall: async () => ({ hits: [] }),
+    health: async () => ({ ok: true })
+  });
 
   try {
     await logLearning(repo, {
@@ -97,29 +93,14 @@ test("logLearning mirrors the learning into astramem when memory enabled", async
       insight: "prefer resolveTokenEnv over shell-global",
       sliceId: "SLICE-140"
     });
-    if (isWin) return;
-    await new Promise((r) => setTimeout(r, 300));
-    let calls = [];
-    try {
-      calls = (await fs.readFile(argsFile, "utf8"))
-        .split("\n")
-        .filter((l) => l.trim())
-        .map((l) => JSON.parse(l));
-    } catch {
-      return;
-    }
-    const rememberCalls = calls.filter((argv) => argv[0] === "remember");
-    assert.ok(rememberCalls.length >= 1, "expected a remember spawn for the learning");
-    const argv = rememberCalls[0];
-    assert.equal(argv[argv.indexOf("--type") + 1], "lesson");
-    const contentArg = argv[argv.indexOf("--content") + 1];
-    assert.match(contentArg, /resolver-over-env/);
-    assert.match(contentArg, /\[SLICE-140\]/);
+    const rememberCalls = calls.filter((c) => c.type === "lesson");
+    assert.ok(rememberCalls.length >= 1, "expected a remember call for the learning");
+    const call = rememberCalls[0];
+    assert.match(call.text, /resolver-over-env/);
+    assert.match(call.text, /\[SLICE-140\]/);
   } finally {
-    if (origRoot !== undefined) process.env.CLAUDE_PLUGIN_ROOT_MEMORY = origRoot;
-    else delete process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
-    _resetCliCache();
-    await fs.rm(cliRoot, { recursive: true, force: true });
+    _setWireProvider(null);
+    _resetResolveCache();
   }
 });
 

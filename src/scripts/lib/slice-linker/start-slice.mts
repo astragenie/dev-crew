@@ -898,12 +898,12 @@ async function emitRecallUsedEvent(
 ): Promise<void> {
   if (hitCount === 0) return;
   try {
-    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
-    // itself when neither a provider nor the CLI is discoverable.
-    const { emit } = await import("../memory-bridge.mjs");
+    // No provider pre-gate: emitGepaEvent() is fail-silent and no-ops itself
+    // when no astramem provider is discoverable (FEAT-235).
+    const { emitGepaEvent } = await import("../memory-gepa.mjs");
     const { getPromptVersion } = await import("../agent-version.mjs");
     const promptVersion = await getPromptVersion("runner");
-    await emit({
+    await emitGepaEvent({
       ts: new Date().toISOString(),
       slice_id: sliceId,
       feat_id: featId,
@@ -1003,9 +1003,9 @@ async function emitSliceStartedMemory(
     const memoryEnabled = config?.memory?.enabled;
     if (memoryEnabled === "never") return;
 
-    // No resolveCli() pre-gate: emit() is provider-first (S1b) and no-ops
-    // itself when neither a provider nor the CLI is discoverable.
-    const { emit } = await import("../memory-bridge.mjs");
+    // No provider pre-gate: emitGepaEvent() is fail-silent and no-ops itself
+    // when no astramem provider is discoverable (FEAT-235).
+    const { emitGepaEvent } = await import("../memory-gepa.mjs");
 
     const { getPromptVersion } = await import("../agent-version.mjs");
     const promptVersion = await getPromptVersion("runner");
@@ -1016,7 +1016,7 @@ async function emitSliceStartedMemory(
         : "n/a";
     const agentName = result.orchestratorMode ?? "slice-build";
 
-    await emit({
+    await emitGepaEvent({
       ts: new Date().toISOString(),
       slice_id: sliceId,
       feat_id: featureId ?? "FEAT-unknown",

@@ -1,12 +1,12 @@
 // Shared content/argv sanitizers for the astramem write paths.
 //
 // memory-sink.mts (`remember` for decisions/lessons/notes/failures) and
-// memory-bridge.mts (`remember` for GEPA events, FEAT-223) both spawn CLI
-// argv from config- or event-sourced text. Extracted here — rather than one
-// importing the other's private helper — because memory-sink.mts already
-// imports `resolveCli` from memory-bridge.mts; the reverse import would be
-// circular. Neither module has I/O or module-scope state, so this stays a
-// pure-function leaf.
+// memory-gepa.mts (`remember` for GEPA events, FEAT-223; migrated off the
+// retired memory-bridge.mts by FEAT-235) both sanitize config- or
+// event-sourced text before it reaches the provider payload. Extracted here
+// — rather than one importing the other's private helper — to avoid a
+// cross-module dependency for a pure text-shaping concern. Neither module
+// has I/O or module-scope state, so this stays a pure-function leaf.
 
 const CONTENT_MAX = 2000;
 const ARG_MAX = 128;

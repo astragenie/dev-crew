@@ -1,6 +1,7 @@
 ---
 id: FEAT-235
-status: pending
+status: done
+closed: 2026-07-08
 priority: P2
 category: architecture
 target_release: null

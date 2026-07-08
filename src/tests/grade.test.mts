@@ -18,6 +18,7 @@ import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { listDecisions } from "../scripts/lib/decisions-store.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { AC_SECTION_BODY } from "./_fixtures.mjs";
+import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -248,11 +249,13 @@ test("findGradeForSlice returns null when no grade exists", async () => {
 });
 
 // FEAT-217: the extractDecisions call site mirrors each new decision into
-// astramem when memory is enabled. Uses a capturing fake astramem CLI; POSIX
-// only captures argv (Windows exercises the path but skips the assertion).
+// astramem when memory is enabled. A fake WireProvider is injected via
+// @astragenie/astramem-client's _setWireProvider test seam (FEAT-235 — the
+// CLI-spawn fallback this test used to exercise was retired) so no real
+// astramem process is ever run.
 test("writeGrade mirrors an extracted decision into astramem when memory enabled", async () => {
-  const { _resetCliCache } = await import("../scripts/lib/memory-bridge.mjs");
-  _resetCliCache();
+  _setWireProvider(null);
+  _resetResolveCache();
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "al-grade-mem-"));
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
@@ -271,22 +274,14 @@ test("writeGrade mirrors an extracted decision into astramem when memory enabled
     })
   );
 
-  const cliRoot = await fs.mkdtemp(path.join(os.tmpdir(), "al-grade-cli-"));
-  const binDir = path.join(cliRoot, "bin");
-  await fs.mkdir(binDir, { recursive: true });
-  const argsFile = path.join(cliRoot, "captured.jsonl");
-  const isWin = process.platform === "win32";
-  if (isWin) {
-    await fs.writeFile(path.join(binDir, "astramem.cmd"), "@echo off\n");
-  } else {
-    await fs.writeFile(
-      path.join(binDir, "astramem"),
-      `#!/bin/sh\nnode -e "require('fs').appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2))+'\\n')" "${argsFile}" "$@"\n`
-    );
-    await fs.chmod(path.join(binDir, "astramem"), 0o755);
-  }
-  const origRoot = process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
-  process.env.CLAUDE_PLUGIN_ROOT_MEMORY = cliRoot;
+  const calls = [];
+  _setWireProvider({
+    remember: async (req) => {
+      calls.push(req);
+    },
+    recall: async () => ({ hits: [] }),
+    health: async () => ({ ok: true })
+  });
 
   try {
     const created = await createGradeFile(repo, "SLICE-01");
@@ -306,30 +301,15 @@ test("writeGrade mirrors an extracted decision into astramem when memory enabled
     const result = await writeGrade(repo, "SLICE-01");
     assert.equal(result.decisionsAllocated.length, 1);
 
-    if (isWin) return; // argv capture is POSIX-only
-    await new Promise((r) => setTimeout(r, 300));
-    let calls = [];
-    try {
-      calls = (await fs.readFile(argsFile, "utf8"))
-        .split("\n")
-        .filter((l) => l.trim())
-        .map((l) => JSON.parse(l));
-    } catch {
-      return; // child not flushed in time — accept as pass-through
-    }
-    const rememberCalls = calls.filter((argv) => argv[0] === "remember");
-    assert.ok(rememberCalls.length >= 1, "expected a remember spawn for the decision");
-    const argv = rememberCalls[0];
-    assert.equal(argv[argv.indexOf("--type") + 1], "decision");
-    assert.equal(argv[argv.indexOf("--project") + 1], "runner");
-    const contentArg = argv[argv.indexOf("--content") + 1];
-    assert.match(contentArg, /DEC-001/);
-    assert.match(contentArg, /Mirrored architectural decision/);
+    const rememberCalls = calls.filter((c) => c.type === "decision");
+    assert.ok(rememberCalls.length >= 1, "expected a remember call for the decision");
+    const call = rememberCalls[0];
+    assert.equal(call.metadata?.project, "runner");
+    assert.match(call.text, /DEC-001/);
+    assert.match(call.text, /Mirrored architectural decision/);
   } finally {
-    if (origRoot !== undefined) process.env.CLAUDE_PLUGIN_ROOT_MEMORY = origRoot;
-    else delete process.env.CLAUDE_PLUGIN_ROOT_MEMORY;
-    _resetCliCache();
-    await fs.rm(cliRoot, { recursive: true, force: true });
+    _setWireProvider(null);
+    _resetResolveCache();
     await fs.rm(repo, { recursive: true, force: true });
   }
 });

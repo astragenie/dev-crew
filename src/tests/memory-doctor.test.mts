@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { probeMemory } from "../scripts/lib/memory-doctor.mjs";
-import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
+import { _resetCliCache } from "../scripts/lib/astramem-cli-resolver.mjs";
 
 // Null CLI resolver — used to guarantee cli_missing path regardless of PATH.
 const nullCli = async (): Promise<null> => null;

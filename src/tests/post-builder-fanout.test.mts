@@ -4,47 +4,24 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 
+import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 import { buildPostBuilderFanout } from "../scripts/lib/post-builder-fanout.mjs";
 import { logLearning } from "../scripts/lib/learnings.mjs";
-import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
 
 // FEAT-219 AC-8/AC-5: the "memory on" golden test below drives buildMemoryContext
-// -> recallPrior, which shells out to astramem. Neutralize CLI resolution with a
-// deliberately-broken binary (mirrors memory-context.test.mts) so the test is
-// hermetic and deterministic regardless of whether the real astramem CLI happens
-// to be on the host PATH.
-let brokenCliRoot: string | null = null;
-let origPluginRoot: string | undefined;
-
-beforeEach(async () => {
-  _resetCliCache();
-  origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-  brokenCliRoot = await makeBrokenAstramemCli();
-  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = brokenCliRoot;
+// -> recallSilent (@astragenie/astramem-client, FEAT-231). Neutralize provider
+// resolution via the client's own test seam (mirrors memory-context.test.mts)
+// so the test is hermetic and deterministic regardless of whether a real
+// astramem provider happens to be reachable on the host.
+beforeEach(() => {
+  _setWireProvider(null);
+  _resetResolveCache();
 });
 
-afterEach(async () => {
-  if (origPluginRoot !== undefined) {
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
-  } else {
-    delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-  }
-  if (brokenCliRoot) {
-    await fs.rm(brokenCliRoot, { recursive: true, force: true }).catch(() => undefined);
-    brokenCliRoot = null;
-  }
-  _resetCliCache();
+afterEach(() => {
+  _setWireProvider(null);
+  _resetResolveCache();
 });
-
-async function makeBrokenAstramemCli(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "fanout-cli-"));
-  const binDir = path.join(dir, "bin");
-  await fs.mkdir(binDir, { recursive: true });
-  const cliPath = path.join(binDir, "astramem");
-  await fs.writeFile(cliPath, "#!/bin/sh\nexit 1\n");
-  await fs.chmod(cliPath, 0o755).catch(() => undefined);
-  return dir;
-}
 
 async function makeRepo() {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "fanout-"));

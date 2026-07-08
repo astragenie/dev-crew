@@ -1,35 +1,32 @@
-// Memory sink (FEAT-217; transport migrated FEAT-188 S1b / #357).
+// Memory sink (FEAT-217; transport migrated FEAT-188 S1b / #357; CLI-spawn
+// fallback retired FEAT-235 / DEC-072).
 //
 // Reusable, gated writer that mirrors durable knowledge — decisions, lessons,
 // and notes — into astramem. Any close / learn / decision path calls the
 // typed helpers; the sink decides whether memory is enabled, then sends via
-// the in-process MemoryProvider (memory-transport.mts, primary per
-// dev-team#172) with the `astramem remember` CLI spawn kept as a rollout
-// fallback. Both paths are fire-and-forget, fail-silent, and capped at
-// DEFAULT_MEMORY_CAP_MS (2s) unless `memory.capMs` overrides it (FEAT-233 /
-// DEC-071 — the single documented cap policy shared with recall's
-// `memory.recall.timeoutMs`, see slice-linker/start-slice.mts). It NEVER
-// throws and NEVER blocks the caller — memory is non-critical and must not
-// affect the grade-write / learn contract.
+// the in-process MemoryProvider (memory-transport.mts). Provider-only:
+// the `astramem remember` CLI-spawn fallback this module used to keep as a
+// rollout hedge was retired per FEAT-235 Decision 1 — astramem-client's
+// resolveWireProvider() is a verified strict superset of that discovery
+// chain, so no repo loses capture capability it had before. Fire-and-forget,
+// fail-silent, and capped at DEFAULT_MEMORY_CAP_MS (2s) unless `memory.capMs`
+// overrides it (FEAT-233 / DEC-071 — the single documented cap policy shared
+// with recall's `memory.recall.timeoutMs`, see slice-linker/start-slice.mts).
+// It NEVER throws and NEVER blocks the caller — memory is non-critical and
+// must not affect the grade-write / learn contract.
 //
 // Enablement (`.claude/loop.json` -> memory.enabled). This sink is OPT-IN:
 // an absent `memory` block (or absent `enabled`) is treated as OFF, so a repo
 // that never configures memory (and every test temp-repo) is silent. Values:
-//   "off" | "never" | "disabled" | false -> disabled (no CLI resolution, no spawn)
-//   "on"  | "always" | true               -> enabled (still needs the CLI to send)
-//   "auto"                                 -> enabled when the astramem CLI resolves
+//   "off" | "never" | "disabled" | false -> disabled (no provider resolution)
+//   "on"  | "always" | true               -> enabled (still needs a provider to send)
+//   "auto"                                 -> enabled when a provider resolves
 //   absent / unknown                       -> OFF (opt-in default)
-//
-// CLI resolution + spawn mechanics are shared with memory-bridge.mts
-// (resolveCli). This module owns only the enablement gate, the typed content
-// shaping, and the `remember` invocation.
 
-import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { resolveCli } from "./memory-bridge.mjs";
 import { sanitizeArg, sanitizeContent } from "./memory-sanitize.mjs";
 import { DEFAULT_MEMORY_CAP_MS, sendViaProvider } from "./memory-transport.mjs";
 
@@ -129,8 +126,6 @@ export async function recordMemory(
     const cfg = opts.config ?? (await readMemoryConfig(repoPath));
     if (cfg.mode === "off") return { recorded: false, reason: "disabled" };
 
-    // Single wallclock envelope shared by BOTH transports: the provider
-    // attempt spends from it first, the CLI fallback gets only what remains.
     // Cap source (FEAT-233 / DEC-071): cfg.capMs (memory.capMs override) else
     // the shared DEFAULT_MEMORY_CAP_MS default — one documented policy,
     // no more locally-hardcoded literal.
@@ -158,33 +153,10 @@ export async function recordMemory(
     );
     if (sent) return { recorded: true, reason: "ok" };
 
-    return await recordViaCliFallback(deadline, content, opts.kind, project, agent);
+    return { recorded: false, reason: "no-cli" };
   } catch {
     return { recorded: false, reason: "error" };
   }
-}
-
-/** Fallback transport: CLI spawn (pre-S1b path, kept for rollout safety).
- * Spends only what remains of the caller's wallclock envelope. */
-async function recordViaCliFallback(
-  deadline: number,
-  content: string,
-  kind: MemoryKind,
-  project: string,
-  agent: string
-): Promise<RecordResult> {
-  const remaining = deadline - Date.now();
-  if (remaining <= 0) return { recorded: false, reason: "error" };
-
-  const cli = await resolveCli();
-  if (!cli) return { recorded: false, reason: "no-cli" };
-
-  const args = ["remember", "--content", content, "--type", kind];
-  if (project) args.push("--project", project);
-  if (agent) args.push("--agent", agent);
-
-  await spawnRemember(cli.path, args, remaining);
-  return { recorded: true, reason: "ok" };
 }
 
 /** Build a `[FEAT-x/SLICE-y]` trace tag from whichever ids are present. */
@@ -280,40 +252,4 @@ export function recordFailure(
     agentType: f.agentType,
     config: f.config
   });
-}
-
-/** Spawn `astramem remember ...` with a wallclock cap (default
- * DEFAULT_MEMORY_CAP_MS; the caller passes the envelope remainder when a
- * provider attempt already spent part of it). Resolves on close, error, or
- * timeout — never rejects. Mirrors memory-bridge.mts::spawnRemember. */
-async function spawnRemember(
-  cliPath: string,
-  args: string[],
-  capMs: number = DEFAULT_MEMORY_CAP_MS
-): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), capMs);
-  try {
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const done = (): void => {
-        if (settled) return;
-        settled = true;
-        resolve();
-      };
-      try {
-        const proc = spawn(cliPath, args, {
-          stdio: "ignore",
-          detached: false,
-          signal: controller.signal
-        });
-        proc.on("close", done);
-        proc.on("error", done);
-      } catch {
-        done();
-      }
-    });
-  } finally {
-    clearTimeout(timer);
-  }
 }
