@@ -18,6 +18,39 @@ triage_notes: "Operator-requested 2026-07-06. Decommission presets as the skill 
 ---
 # FEAT-230: task-driven skill selection — decommission presets as the skill source
 
+## Contract landed (2026-07-08)
+
+Architect design artifact:
+`.claude/artifacts/crew/runs/2026-07-08-feat230-task-driven-skill-selection-contract.md`
+(5 decisions, Options-Considered each; verified live against `dev-team/skills/domain/*`).
+
+- **Decision 1 (central):** enumerate `<crewRepoPath>/skills/domain/**` recursively
+  at resolve time (marker `SKILL.md`), gated on `loop.crewRepoPath` (reuse
+  `eval-generator.mts:65-69` pattern, DEC-068 precedent). **Rejected the
+  hardcoded-allowlist** — `validate-agent-refs.mts`'s `CREW_KNOWN_TOKENS` is the
+  *same* drift-failure shape this FEAT fixes, not a fix.
+- **Decision 2:** explicit hand-authored `Record<tagToken, skillId[]>` table,
+  validated (never derived) against the live catalog. Rejected trigger-frontmatter
+  heuristic matching.
+- **Decision 3 (gap the FEAT glossed):** `resolve-skills` CLI (`loop.mts:712-753`)
+  has **no task/tag input today** — `--variant` selects a role only. The upstream
+  "only the path changes" premise
+  (`docs/upstream-requests/2026-07-06-crew-orchestrate-slice-preset-path.md:55`)
+  is false once task-driven selection lands → add an additive `--slice`/`--tags`
+  flag, keep the old `pickBlock` path as fallback (DEC-069 "demote don't delete").
+- **Decision 4:** layered validation — resolve-time catalog check (load-bearing)
+  + CI fixture-snapshot regression guard on the mapping table.
+- **Present-day finding:** this repo's own `.claude/loop.json` has **no
+  `crewRepoPath`**, and the default `slice-build` dispatch
+  (`dispatch.mts:69-80`) never calls `resolve-skills` — so AC-3 is trivially true
+  for this repo's own default path. Real integration point = the CLI/resolver core
+  + crew's external `orchestrate-slice.md` consumer, NOT a new in-loop call site.
+
+Proposed slices: SLICE-1 catalog enumerator → SLICE-2 mapping/matcher →
+SLICE-3 CLI integration + fallback → SLICE-4 cross-plugin docs (amend the
+upstream-request) → SLICE-5 CI gate + DEC-071. Still `autonomous_safe: false`
+(cross-plugin) — build behind the contract with a review-heavy lane.
+
 ## Origin
 
 Operator request, 2026-07-06. An upstream-request audit surfaced a concrete
