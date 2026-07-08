@@ -160,6 +160,30 @@ test("buildMemoryContext returns '' when memory is enabled but no source has any
   assert.equal(result, "");
 });
 
+// FEAT-238: the astramem-client import is now dynamic and gated behind
+// isMemoryEnabled. When memory is disabled the recall transport must not be
+// touched at all (the field crash was a top-level static import resolving
+// @astragenie/astramem-client at module load, before the gate — which
+// `memory.enabled = "never"` could not bypass).
+test("buildMemoryContext (FEAT-238): disabled memory never touches astramem recall", async () => {
+  const repoPath = await makeTmpRepo();
+  let recalled = false;
+  _setWireProvider({
+    remember: async () => undefined,
+    recall: async () => {
+      recalled = true;
+      return { hits: [] };
+    },
+    health: async () => ({ ok: true })
+  });
+  const result = await buildMemoryContext({
+    repoPath,
+    config: { memory: { enabled: "never" } }
+  });
+  assert.equal(result, "");
+  assert.equal(recalled, false, "recall must not run when memory is disabled");
+});
+
 // ---------------------------------------------------------------------------
 // AC-4 — happy path: wraps rankLearnings + recentLessons + findRelevantDecisions
 // ---------------------------------------------------------------------------

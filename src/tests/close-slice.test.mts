@@ -110,6 +110,61 @@ function gradeYamlBody(sliceId: string, featureId: string): string {
   ].join("\n");
 }
 
+// FEAT-239: the pure-YAML grade shape the autonomous close path emits —
+// frontmatter-only (scores map + lessons/decisions arrays), NO markdown body.
+function pureYamlGradeBody(sliceId: string, featureId: string): string {
+  return [
+    "---",
+    `id: GRADE-${sliceId}`,
+    `slice: ${sliceId}`,
+    `feature: ${featureId}`,
+    "spec: null",
+    "phase: null",
+    "target_release: null",
+    "graded_at: 2026-07-08",
+    "duration_hours: 0.5",
+    "scores:",
+    "  architecture_quality: 0.9",
+    "  reliability: 0.88",
+    "  observability: 0.82",
+    "  production_readiness: 0.86",
+    "  security: 0.9",
+    "  test_confidence: 0.91",
+    "  product_completeness: 0.84",
+    "lessons:",
+    "  - Pure yaml close renders into the template body.",
+    "decisions:",
+    "  - title: Normalize grade yaml before writeGrade",
+    "    rationale: writeGrade reads scores from the markdown body.",
+    "    consequences: Both yaml and markdown inputs close identically.",
+    "---",
+    ""
+  ].join("\n");
+}
+
+test("closeSlice FEAT-239: pure-yaml grade closes with scores + decisions", async () => {
+  const repo = await tmpRepo("cs-pureyaml-");
+  const { sliceId, featureId } = await setupSlice(repo, { autonomousSafe: true });
+  const yamlPath = path.join(repo, "grade.yaml");
+  await fs.writeFile(yamlPath, pureYamlGradeBody(sliceId, featureId));
+  const out = await closeSlice(repo, sliceId, { gradeYamlPath: yamlPath });
+  assert.equal(out.scaffoldOnly, false);
+  const result = out.grade as { scoresAverage: number | null; decisionsAllocated: string[] };
+  assert.ok(
+    result.scoresAverage !== null && result.scoresAverage > 0,
+    `expected non-zero scoresAverage, got ${result.scoresAverage}`
+  );
+  assert.equal(
+    result.decisionsAllocated.length,
+    1,
+    "the inline decision must be allocated a DEC id"
+  );
+  assert.match(result.decisionsAllocated[0]!, /^DEC-\d+$/);
+  // Persisted grade frontmatter carries the parsed scores map.
+  const { frontmatter } = parseFrontmatter(await fs.readFile(out.gradePath, "utf8"));
+  assert.equal(frontmatter.scores.architecture_quality, 0.9);
+});
+
 test("closeSlice scaffold-only: no gradeYamlPath returns scaffoldOnly true", async () => {
   const repo = await tmpRepo("cs-scaffold-");
   const { sliceId } = await setupSlice(repo);

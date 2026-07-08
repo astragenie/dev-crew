@@ -31,8 +31,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+// FEAT-238: `recallSilent` is imported dynamically (inside the memory-enabled
+// safe() block below), NOT statically here. A top-level value import resolves
+// @astragenie/astramem-client at module LOAD — before the `memory.enabled`
+// gate runs — so in any repo where the package is absent from the runner
+// plugin cache, merely importing this module (post-builder-fanout, wave
+// dispatch, slice start) crashed with ENOENT, and `memory.enabled = "never"`
+// could not bypass it. `import type` is erased at compile time and never
+// triggers runtime resolution, so the RecallHit type import is safe to keep.
 import type { RecallHit } from "@astragenie/astramem-client";
-import { recallSilent } from "@astragenie/astramem-client";
 import { findRelevantDecisions } from "./decisions-store.mjs";
 import { rankLearnings } from "./learnings-ranker.mjs";
 import { recentLessons } from "./lessons-feed.mjs";
@@ -266,6 +273,11 @@ export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promi
     }),
     safe(() => findRelevantDecisions(repoPath, tags, config), [] as Record<string, any>[]),
     safe(async () => {
+      // FEAT-238: resolve the shared client lazily. This only runs when memory
+      // is enabled (the isMemoryEnabled early-return above guards it), and any
+      // resolution failure (package absent from the plugin cache) is swallowed
+      // by the enclosing safe() -> returns [] rather than throwing at load.
+      const { recallSilent } = await import("@astragenie/astramem-client");
       const featId = opts.query || opts.agentType || "context";
       const sliceId = opts.agentType || "context";
       const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;

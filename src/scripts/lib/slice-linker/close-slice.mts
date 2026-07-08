@@ -24,6 +24,7 @@ import fs from "node:fs/promises";
 
 import { completeSlice } from "./complete-slice.mjs";
 import { createGradeFile, writeGrade } from "../grade-writer.mjs";
+import { normalizeGradeYaml } from "../grade-yaml-normalizer.mjs";
 import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { resolveConfig } from "../config-resolver.mjs";
@@ -202,9 +203,12 @@ export async function closeSlice(
   }
 
   // Single-shot path: replace the scaffolded grade with the supplied yaml,
-  // then run writeGrade to validate + persist.
+  // then run writeGrade to validate + persist. FEAT-239: normalizeGradeYaml
+  // renders a frontmatter-only grade yaml (scores map + lessons/decisions) into
+  // the `## Scores` / `## Lessons` / `## Decisions` markdown body writeGrade
+  // reads; a full grade-markdown input is passed through unchanged.
   const yamlContent = await fs.readFile(gradeYamlPath, "utf8");
-  await fs.writeFile(gradeScaffold.gradePath, yamlContent);
+  await fs.writeFile(gradeScaffold.gradePath, normalizeGradeYaml(yamlContent));
   const grade = await writeGrade(repoPath, sliceId, { config });
 
   await regenerateSnapshot(repoPath, config);
