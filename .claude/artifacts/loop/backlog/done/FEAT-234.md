@@ -1,11 +1,13 @@
 ---
 id: FEAT-234
-status: pending
+status: done
+closed: 2026-07-08
 priority: P3
 category: documentation
 target_release: null
 created: 2026-07-08
 updated: 2026-07-08
+satisfied_by: dev-team#182
 depends_on: [FEAT-188]
 slices: []
 derived_from: null
