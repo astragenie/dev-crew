@@ -6,6 +6,27 @@ shipped under the name `loop`.
 
 ## [Unreleased]
 
+### Added
+
+- **AstraRunner dev-activity hook emitter, generalized to every plugin
+  consumer.** New `hooks/emit-astrarunner-event.mjs`, registered for
+  `SessionStart` / `SubagentStart` / `SubagentStop` / `TaskCreated` /
+  `TaskCompleted`, ships a minimal `{kind, emittedAt, repoPath}` envelope to
+  the AstraRunner ingest endpoint on every lifecycle tick. Previously this
+  telemetry only existed as a one-off local bash hook
+  (`.claude/hooks/log_event.sh`'s `emit_astrarunner()`) hand-copied into a
+  single repo (astramemory-local); it now ships with the plugin so any repo
+  installing `runner@astra` gets it automatically. Silent no-op when no
+  ingest URL/token can be resolved — URL/token resolution mirrors the
+  existing Path-2 direct-POST precedence in `astrarunner-ingest.mts`
+  (explicit env/plugin option → `.claude/loop.json` `loop.ingest` block →
+  `ASTRARUNNER_ENV` profile lookup), reimplemented dependency-free since
+  hooks run via plain `node` with no build step. Fire-and-forget: the hook
+  process does only synchronous, zero-network work and always exits
+  immediately; the actual async resolution + POST (4s timeout, all errors
+  swallowed) runs in a detached one-shot child so a slow/unreachable ingest
+  host can never add latency to a session.
+
 ## [0.66.0] — 2026-07-08 — loop-blocker bug sweep (memory import, grade-yaml, crew:reviewer rename)
 
 ### Fixed
