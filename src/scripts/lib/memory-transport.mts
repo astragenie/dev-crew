@@ -55,6 +55,27 @@ export function _resetTransportCache(): void {
 }
 
 /**
+ * Shared default wallclock cap (ms) for the memory transport's capture path
+ * (`memory-sink.mts::recordMemory`). FEAT-233 / DEC-071: capture and recall
+ * used to hardcode their own cap defaults (2000 and 5000 respectively) with
+ * no documented relationship between them — this constant is now the single
+ * source of truth capture reads (via `memory.capMs` config override, falling
+ * back to this value). See DEC-071 for the full reconciled policy.
+ */
+export const DEFAULT_MEMORY_CAP_MS = 2000;
+
+/**
+ * Recall's default wallclock cap (ms) — a documented per-path override of
+ * `DEFAULT_MEMORY_CAP_MS`, longer because recall runs once at slice-start
+ * (not a hot per-call path like capture) and feeds directly into dispatch
+ * quality, so it can afford a larger budget before falling back to an empty
+ * result. Read by `slice-linker/start-slice.mts::runRecallHook` as the last
+ * fallback in its `memory.recall.timeoutMs` -> `memory.capMs` -> this
+ * constant chain. See DEC-071.
+ */
+export const DEFAULT_RECALL_CAP_MS = 5000;
+
+/**
  * Attempt an in-process `provider.remember()` send. Resolves `true` when the
  * provider accepted the payload, `false` on ANY failure (plugin absent,
  * resolution error, provider rejection, cap exceeded). Never throws.
@@ -62,6 +83,21 @@ export function _resetTransportCache(): void {
  * `capMs` is the caller's remaining wallclock budget — one envelope covers
  * resolution + send inside the shared package, so the provider attempt can
  * never starve the caller's CLI fallback (S1b review finding #2).
+ *
+ * KNOWN LIMIT (FEAT-233 AC-1/AC-2, tracked upstream `astramem-plugin#29`,
+ * see `docs/upstream-requests/2026-07-08-astramem-plugin-abortsignal-cancellation.md`):
+ * the shared package's `rememberSilent` races the provider call against
+ * `capMs`, but the LOSING call is abandoned, not cancelled — astramem-plugin's
+ * internal abort timers are neither unref'd nor driven by an `AbortSignal`,
+ * so a slow-but-reachable backend can hold this (usually short-lived CLI)
+ * process's event loop open for up to that provider's own internal timeout
+ * after `sendViaProvider` has already resolved. Do NOT work around this by
+ * reimplementing the HTTP client locally (retired per dev-team#172) — the
+ * only sanctioned fix is upstream signal/unref support. SEAM: once
+ * astramem-plugin#29 ships and `@astragenie/astramem-client` threads an
+ * `AbortSignal` through `rememberSilent`'s options, this function would grow
+ * an optional `signal?: AbortSignal` parameter forwarded alongside `capMs` —
+ * at that point the KNOWN LIMIT note above can be removed.
  */
 export async function sendViaProvider(
   payload: ProviderIngestPayload,

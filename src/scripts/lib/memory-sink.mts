@@ -5,7 +5,10 @@
 // typed helpers; the sink decides whether memory is enabled, then sends via
 // the in-process MemoryProvider (memory-transport.mts, primary per
 // dev-team#172) with the `astramem remember` CLI spawn kept as a rollout
-// fallback. Both paths are fire-and-forget, 2s-capped, fail-silent. It NEVER
+// fallback. Both paths are fire-and-forget, fail-silent, and capped at
+// DEFAULT_MEMORY_CAP_MS (2s) unless `memory.capMs` overrides it (FEAT-233 /
+// DEC-071 — the single documented cap policy shared with recall's
+// `memory.recall.timeoutMs`, see slice-linker/start-slice.mts). It NEVER
 // throws and NEVER blocks the caller — memory is non-critical and must not
 // affect the grade-write / learn contract.
 //
@@ -28,7 +31,7 @@ import path from "node:path";
 
 import { resolveCli } from "./memory-bridge.mjs";
 import { sanitizeArg, sanitizeContent } from "./memory-sanitize.mjs";
-import { sendViaProvider } from "./memory-transport.mjs";
+import { DEFAULT_MEMORY_CAP_MS, sendViaProvider } from "./memory-transport.mjs";
 
 export type MemoryKind = "decision" | "lesson" | "note" | "failure";
 
@@ -41,14 +44,17 @@ export interface MemoryConfig {
   mode: "off" | "on" | "auto";
   /** Optional cortex project id (astramem --project). */
   project?: string | undefined;
+  /** Optional override (ms) for the capture wallclock cap (`memory.capMs`,
+   * FEAT-233 / DEC-071). Falls back to `DEFAULT_MEMORY_CAP_MS` when absent
+   * or not a positive number — this is the single documented policy shared
+   * with recall's `memory.recall.timeoutMs` (see start-slice.mts). */
+  capMs?: number | undefined;
 }
 
 export interface RecordResult {
   recorded: boolean;
   reason?: "disabled" | "no-cli" | "empty" | "ok" | "error";
 }
-
-const CAP_MS = 2000;
 
 /**
  * Read the `memory` block from `<repoPath>/.claude/loop.json`. Fail-silent:
@@ -79,7 +85,14 @@ export async function readMemoryConfig(
     typeof memObj.project === "string" && memObj.project ? memObj.project : undefined;
   const productName =
     typeof root?.productName === "string" && root.productName ? root.productName : undefined;
-  return { mode: normalizeMode(enabled), project: explicitProject ?? productName };
+  // Capture cap override (FEAT-233 / DEC-071): a positive memory.capMs wins;
+  // anything else (absent, non-numeric, <= 0) leaves it undefined so the
+  // caller falls back to DEFAULT_MEMORY_CAP_MS.
+  const capMs =
+    typeof memObj.capMs === "number" && Number.isFinite(memObj.capMs) && memObj.capMs > 0
+      ? memObj.capMs
+      : undefined;
+  return { mode: normalizeMode(enabled), project: explicitProject ?? productName, capMs };
 }
 
 function normalizeMode(enabled: unknown): "off" | "on" | "auto" {
@@ -109,15 +122,20 @@ export async function recordMemory(
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
-  // Single CAP_MS wallclock envelope shared by BOTH transports: the provider
-  // attempt spends from it first, the CLI fallback gets only what remains.
-  const deadline = Date.now() + CAP_MS;
   try {
     const content = sanitizeContent(opts.content ?? "");
     if (!content) return { recorded: false, reason: "empty" };
 
     const cfg = opts.config ?? (await readMemoryConfig(repoPath));
     if (cfg.mode === "off") return { recorded: false, reason: "disabled" };
+
+    // Single wallclock envelope shared by BOTH transports: the provider
+    // attempt spends from it first, the CLI fallback gets only what remains.
+    // Cap source (FEAT-233 / DEC-071): cfg.capMs (memory.capMs override) else
+    // the shared DEFAULT_MEMORY_CAP_MS default — one documented policy,
+    // no more locally-hardcoded literal.
+    const capMs = cfg.capMs ?? DEFAULT_MEMORY_CAP_MS;
+    const deadline = Date.now() + capMs;
 
     const rawProject = opts.project ?? cfg.project;
     const project = rawProject ? sanitizeArg(rawProject) : "";
@@ -264,14 +282,14 @@ export function recordFailure(
   });
 }
 
-/** Spawn `astramem remember ...` with a wallclock cap (default CAP_MS; the
- * caller passes the envelope remainder when a provider attempt already spent
- * part of it). Resolves on close, error, or timeout — never rejects. Mirrors
- * memory-bridge.mts::spawnRemember. */
+/** Spawn `astramem remember ...` with a wallclock cap (default
+ * DEFAULT_MEMORY_CAP_MS; the caller passes the envelope remainder when a
+ * provider attempt already spent part of it). Resolves on close, error, or
+ * timeout — never rejects. Mirrors memory-bridge.mts::spawnRemember. */
 async function spawnRemember(
   cliPath: string,
   args: string[],
-  capMs: number = CAP_MS
+  capMs: number = DEFAULT_MEMORY_CAP_MS
 ): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), capMs);

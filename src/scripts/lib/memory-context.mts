@@ -1,19 +1,28 @@
 // FEAT-219 SLICE-2 — buildMemoryContext: role-scoped pre-work memory injection helper.
 //
 // Wraps the EXISTING readers (rankLearnings, recentLessons, findRelevantDecisions,
-// and optionally recallPrior) into a single Markdown "Recent context" block meant
-// to be spliced into a dispatch prompt. Introduces no new store — every entry
-// still lives in learnings.jsonl / grade files / decisions/*.md / astramem.
+// and optionally the shared astramem recall transport) into a single Markdown
+// "Recent context" block meant to be spliced into a dispatch prompt. Introduces
+// no new store — every entry still lives in learnings.jsonl / grade files /
+// decisions/*.md / astramem.
 //
 // Contract:
 // - AC-5 (noop / byte-identical dispatch): memory config absent/disabled
 //   ("off"/falsy) -> returns "". Callers that don't opt in see zero change.
-// - AC-6 (fail-open): any single reader (recallPrior/astramem in particular)
+// - AC-6 (fail-open): any single reader (astramem recall in particular)
 //   throwing never propagates -- the helper still returns whatever the other
 //   readers found, matching the bestEffort() pattern already used at
 //   start-slice.mts:535.
 // - Output is hard-capped at opts.tokenCap (default 800, ~chars/4), truncating
 //   deterministically by keeping the highest-ranked entries first.
+//
+// FEAT-231: the astramem source now calls the shared @astragenie/astramem-
+// client's `recallSilent` — the same transport start-slice.mts's
+// runRecallHook uses — instead of the legacy CLI-spawn `recallPrior`
+// (memory-recall.mts). One astramem recall transport across every dispatch
+// surface. `recallSilent` is itself fail-silent (resolves null on any
+// failure); the `safe()` wrapper below still guards it so a thrown error
+// can never escape.
 //
 // Wiring this helper into dispatch-assembly sites (start-slice, post-builder-
 // fanout, pm/architect entry points) is SLICE-3 -- this module is standalone
@@ -22,10 +31,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import type { RecallHit } from "@astragenie/astramem-client";
+import { recallSilent } from "@astragenie/astramem-client";
 import { findRelevantDecisions } from "./decisions-store.mjs";
 import { rankLearnings } from "./learnings-ranker.mjs";
 import { recentLessons } from "./lessons-feed.mjs";
-import { recallPrior } from "./memory-recall.mjs";
 
 export interface BuildMemoryContextOptions {
   repoPath: string;
@@ -164,19 +174,31 @@ function decisionsToLines(decisions: Record<string, any>[]): ContextLine[] {
   }));
 }
 
-function recallToLines(results: Record<string, any>[]): ContextLine[] {
+// Consumes recallSilent's RecallHit shape directly ({id,type,text,score,
+// source?,...}) — no adapter needed beyond the field-name mapping below
+// (text -> summary, source -> source). Keeps the rendered line format
+// ("- [kind] summary — source") unchanged from the pre-FEAT-231 recallPrior
+// path.
+function recallToLines(results: RecallHit[]): ContextLine[] {
   const lines: ContextLine[] = [];
   results.forEach((r, idx) => {
-    const summary = String(r.content ?? "").trim();
+    const summary = String(r.text ?? "").trim();
     if (!summary) return;
     lines.push({
       kind: typeof r.type === "string" && r.type ? r.type : "insight",
       summary,
-      source: r.slice_id || r.feat_id || "astramem",
+      source: r.source || "astramem",
       weight: 100 - idx
     });
   });
   return lines;
+}
+
+/** Builds the recallSilent query string, mirroring start-slice.mts's
+ * buildRecallRequest so both dispatch surfaces query astramem the same way. */
+function buildAstramemQuery(featId: string, sliceId: string, touchesFiles: string[]): string {
+  const filePart = touchesFiles.length > 0 ? ` files:${touchesFiles.slice(0, 5).join(",")}` : "";
+  return `${featId} ${sliceId}${filePart} prior failures decisions lessons`;
 }
 
 function tokenCost(text: string): number {
@@ -218,12 +240,13 @@ function safeLines(fn: () => ContextLine[]): ContextLine[] {
 
 /**
  * Build a role-scoped "recent context" Markdown block by wrapping the existing
- * rank/lessons/decisions readers (plus optional astramem recall via recallPrior).
+ * rank/lessons/decisions readers (plus optional astramem recall via the
+ * shared @astragenie/astramem-client's recallSilent).
  * Returns "" when memory is disabled/absent, or when no candidate entries exist.
  *
- * Fail-open (AC-6): any individual reader throwing — recallPrior in particular,
- * which shells out to astramem — never prevents the other sources' entries
- * from appearing in the output.
+ * Fail-open (AC-6): any individual reader throwing — the astramem recall in
+ * particular — never prevents the other sources' entries from appearing in
+ * the output.
  */
 export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promise<string> {
   const config = opts.config ?? null;
@@ -242,12 +265,13 @@ export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promi
       digest: ""
     }),
     safe(() => findRelevantDecisions(repoPath, tags, config), [] as Record<string, any>[]),
-    safe(
-      () =>
-        recallPrior({
-          featId: opts.query || opts.agentType || "context",
-          sliceId: opts.agentType || "context",
-          touchesFiles: tags,
+    safe(async () => {
+      const featId = opts.query || opts.agentType || "context";
+      const sliceId = opts.agentType || "context";
+      const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
+      const response = await recallSilent(
+        {
+          query: buildAstramemQuery(featId, sliceId, tags),
           k,
           ...(opts.project !== undefined ? { project: opts.project } : {}),
           // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent). astramem
@@ -255,9 +279,11 @@ export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promi
           // agent-tagged history exists would starve recall of untagged memories
           // (#309). Off by default → unscoped by role.
           ...(scopeByAgentEnabled(config) && opts.agentType ? { agent: opts.agentType } : {})
-        }),
-      [] as Record<string, any>[]
-    )
+        },
+        { capMs: timeoutMs }
+      );
+      return response?.hits ?? [];
+    }, [] as RecallHit[])
   ]);
 
   const combined: ContextLine[] = [

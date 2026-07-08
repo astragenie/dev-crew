@@ -113,6 +113,23 @@ describe("readMemoryConfig", () => {
     expect(cfg.project).toBe("explicit");
   });
 
+  test("FEAT-233/DEC-071: memory.capMs is parsed through as-is", async () => {
+    repoDir = await writeRepo({ enabled: "on", capMs: 500 });
+    const cfg = await readMemoryConfig(repoDir);
+    expect(cfg.capMs).toBe(500);
+  });
+
+  test("FEAT-233/DEC-071: non-positive or non-numeric memory.capMs is dropped (falls back later)", async () => {
+    repoDir = await writeRepo({ enabled: "on", capMs: -1 });
+    expect((await readMemoryConfig(repoDir)).capMs).toBeUndefined();
+
+    repoDir = await writeRepo({ enabled: "on", capMs: "2000" });
+    expect((await readMemoryConfig(repoDir)).capMs).toBeUndefined();
+
+    repoDir = await writeRepo({ enabled: "on" });
+    expect((await readMemoryConfig(repoDir)).capMs).toBeUndefined();
+  });
+
   const modeCases: Array<[unknown, "off" | "on" | "auto"]> = [
     [false, "off"],
     ["off", "off"],
@@ -332,5 +349,27 @@ describe("recordMemory fail-silent + cap", () => {
     const elapsed = Date.now() - start;
     expect(elapsed).toBeLessThan(2500);
     expect(res.recorded).toBe(true);
+  });
+
+  test("FEAT-233/DEC-071: memory.capMs shortens the envelope below DEFAULT_MEMORY_CAP_MS (2000ms)", async () => {
+    repoDir = await writeRepo({ enabled: "on", capMs: 300 });
+    const binDir = path.join(cliRoot, "bin");
+    await fs.mkdir(binDir, { recursive: true });
+    if (isWin) {
+      await fs.writeFile(
+        path.join(binDir, "astramem.cmd"),
+        '@echo off\npowershell -Command "Start-Sleep 30"\n'
+      );
+    } else {
+      const cli = path.join(binDir, "astramem");
+      await fs.writeFile(cli, "#!/bin/sh\nsleep 30\n");
+      await fs.chmod(cli, 0o755);
+    }
+    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = cliRoot;
+
+    const start = Date.now();
+    await recordNote(repoDir, { text: "should not block" });
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1500);
   });
 });

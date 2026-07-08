@@ -24,6 +24,7 @@ import { classifySliceShape } from "../classify-slice-shape.mjs";
 import type { FileChange } from "../classify-slice-shape.mjs";
 import { writeShapeMarker } from "../shape-marker.mjs";
 import { emitShapeClassified } from "../shape-event-emitter.mjs";
+import { DEFAULT_RECALL_CAP_MS } from "../memory-transport.mjs";
 import {
   readWorkflowStateForWrite,
   WorkflowStateCorruptError,
@@ -939,7 +940,16 @@ async function runRecallHook(
     if (recallEnabled === false) return "";
 
     const k: number = config?.memory?.recall?.k ?? 5;
-    const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
+    // Cap policy (FEAT-233 / DEC-071): recall's own explicit
+    // memory.recall.timeoutMs wins (a documented per-path override — recall
+    // runs once at slice-start, not a hot per-call path, and feeds dispatch
+    // quality, so it can afford a longer budget); else the shared
+    // memory.capMs (same knob capture reads, memory-sink.mts); else
+    // DEFAULT_RECALL_CAP_MS (5000), recall's historical default. Never a
+    // second bare literal — single source of truth lives in
+    // memory-transport.mts.
+    const timeoutMs: number =
+      config?.memory?.recall?.timeoutMs ?? config?.memory?.capMs ?? DEFAULT_RECALL_CAP_MS;
     // Cortex project derives from memory.project else productName (DEC-065) —
     // never the featId (the pre-DEC-066 bug that queried a non-existent
     // per-feature project). Undefined → recallSilent omits project.

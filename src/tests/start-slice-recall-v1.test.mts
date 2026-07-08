@@ -147,3 +147,29 @@ test("recall ON: block matches recall-injection-v1 contract format; dispatch bod
     "dispatch body beneath the recall block must be byte-identical to the OFF-path dispatch"
   );
 });
+
+test("FEAT-233/DEC-071: memory.capMs is the fallback cap when memory.recall.timeoutMs is unset", async () => {
+  const repo = await tmpRepo("al-recall-v1-capms-");
+  const config = await baseConfig(repo);
+  // No memory.recall.timeoutMs set -> recall should fall back to the shared
+  // memory.capMs override instead of its own DEFAULT_RECALL_CAP_MS (5000).
+  config.memory = { enabled: "on", capMs: 300, recall: { enabled: true, k: 5 } };
+
+  // Provider that never resolves: proves the cap that actually fired was the
+  // small memory.capMs override, not the 5000ms recall default.
+  _setWireProvider({
+    remember: async () => undefined,
+    recall: () => new Promise(() => {}),
+    health: async () => ({ ok: true })
+  });
+
+  const started = Date.now();
+  const result = await makeStartedSlice(repo, config);
+  const elapsed = Date.now() - started;
+
+  assert.ok(result.dispatchInstruction);
+  assert.ok(
+    elapsed < 3000,
+    `expected memory.capMs=300 fallback to cap recall well under the 5000ms default (elapsed=${elapsed}ms)`
+  );
+});

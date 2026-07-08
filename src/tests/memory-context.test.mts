@@ -9,40 +9,29 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 import { buildMemoryContext } from "../scripts/lib/memory-context.mjs";
-import { _resetCliCache } from "../scripts/lib/memory-bridge.mjs";
 
 let tmpDir: string | null = null;
-let brokenCliRoot: string | null = null;
-let origPluginRoot: string | undefined;
 
-// Every test neutralizes astramem resolution via a deliberately-broken CLI
-// pinned through CLAUDE_PLUGIN_ROOT_MEMORY. This makes recallPrior's fallback
-// path deterministic (fail-open, returns []) regardless of whether the real
-// astramem CLI happens to be on the host PATH — matching AC-6's "astramem
-// daemon unreachable" scenario without depending on host state or network I/O.
-beforeEach(async () => {
-  _resetCliCache();
-  origPluginRoot = process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-  brokenCliRoot = await makeBrokenAstramemCli();
-  process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = brokenCliRoot;
+// FEAT-231: buildMemoryContext's astramem source now goes through the shared
+// @astragenie/astramem-client's recallSilent (same transport start-slice.mts
+// uses), not the legacy CLI-spawn recallPrior. Every test neutralizes
+// resolution via the client's own test seam so recall is deterministic
+// (fail-open unless a test explicitly injects a provider) regardless of
+// whether a real astramem plugin/daemon happens to be reachable on the host.
+beforeEach(() => {
+  _setWireProvider(null);
+  _resetResolveCache();
 });
 
 afterEach(async () => {
-  if (origPluginRoot !== undefined) {
-    process.env["CLAUDE_PLUGIN_ROOT_MEMORY"] = origPluginRoot;
-  } else {
-    delete process.env["CLAUDE_PLUGIN_ROOT_MEMORY"];
-  }
+  _setWireProvider(null);
+  _resetResolveCache();
   if (tmpDir) {
     await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
     tmpDir = null;
   }
-  if (brokenCliRoot) {
-    await fs.rm(brokenCliRoot, { recursive: true, force: true }).catch(() => undefined);
-    brokenCliRoot = null;
-  }
-  _resetCliCache();
 });
 
 async function makeTmpRepo(): Promise<string> {
@@ -120,25 +109,6 @@ ${affects}
 Body.
 `;
   await fs.writeFile(path.join(decisionsDir, `${id}.md`), content, "utf8");
-}
-
-/**
- * Writes a deliberately-broken astramem CLI at the exact literal path
- * resolveCli() checks first (`<root>/bin/astramem`, no extension). fs.access
- * X_OK succeeds for any existing file on both POSIX and Windows (Windows
- * treats X_OK like F_OK per Node docs), so this always wins over the PATH
- * fallback. On POSIX it's a real executable that exits 1; on Windows,
- * spawning an extensionless file fails immediately (no shebang support) —
- * either way recallPrior's spawn error/non-zero path fires and it returns [].
- */
-async function makeBrokenAstramemCli(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "memctx-cli-"));
-  const binDir = path.join(dir, "bin");
-  await fs.mkdir(binDir, { recursive: true });
-  const cliPath = path.join(binDir, "astramem");
-  await fs.writeFile(cliPath, "#!/bin/sh\nexit 1\n");
-  await fs.chmod(cliPath, 0o755).catch(() => undefined);
-  return dir;
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +269,7 @@ test("buildMemoryContext stays fail-open when astramem is unreachable — other 
       id: 1,
       timestamp: "2026-07-01T00:00:00Z",
       key: "fail-open",
-      insight: "recallPrior failure must not blank the whole block.",
+      insight: "astramem recall failure must not blank the whole block.",
       sliceId: "SLICE-200"
     }
   ]);
@@ -313,8 +283,77 @@ test("buildMemoryContext stays fail-open when astramem is unreachable — other 
 
   assert.notEqual(result, "", "must not be blank just because astramem is unreachable");
   assert.ok(
-    result.includes("recallPrior failure must not blank the whole block. — SLICE-200"),
+    result.includes("astramem recall failure must not blank the whole block. — SLICE-200"),
     "non-astramem sources must still surface"
+  );
+});
+
+test("buildMemoryContext stays fail-open when the resolved provider's recall() throws", async () => {
+  const repoPath = await makeTmpRepo();
+  await writeLearningsJsonl(repoPath, [
+    {
+      id: 1,
+      timestamp: "2026-07-01T00:00:00Z",
+      key: "fail-open-throw",
+      insight: "a throwing provider must not blank the whole block.",
+      sliceId: "SLICE-201"
+    }
+  ]);
+  _setWireProvider({
+    remember: async () => undefined,
+    recall: async () => {
+      throw new Error("boom");
+    },
+    health: async () => ({ ok: true })
+  });
+
+  const result = await buildMemoryContext({
+    repoPath,
+    agentType: "builder",
+    config: { memory: { enabled: true } }
+  });
+
+  assert.notEqual(result, "", "must not be blank when the provider's recall() rejects");
+  assert.ok(
+    result.includes("a throwing provider must not blank the whole block. — SLICE-201"),
+    "non-astramem sources must still surface"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// FEAT-231 — astramem source is now recallSilent (@astragenie/astramem-client),
+// not the legacy CLI-spawn recallPrior. AC-1: buildMemoryContext folds in
+// hits from the shared transport, in the same "- [kind] summary — source"
+// rendered shape the legacy recallPrior path produced.
+// ---------------------------------------------------------------------------
+
+test("buildMemoryContext folds in recallSilent hits from the shared astramem transport", async () => {
+  const repoPath = await makeTmpRepo();
+  _setWireProvider({
+    remember: async () => undefined,
+    recall: async () => ({
+      hits: [
+        {
+          id: "h1",
+          type: "lesson",
+          text: "Recall now flows through the shared astramem-client.",
+          score: 0.9,
+          source: "SLICE-231"
+        }
+      ]
+    }),
+    health: async () => ({ ok: true })
+  });
+
+  const result = await buildMemoryContext({
+    repoPath,
+    agentType: "reviewer",
+    config: { memory: { enabled: true } }
+  });
+
+  assert.ok(
+    result.includes("[lesson] Recall now flows through the shared astramem-client. — SLICE-231"),
+    "recallSilent hits must be wrapped in using the same rendered line format"
   );
 });
 

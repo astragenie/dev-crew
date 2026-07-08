@@ -22,26 +22,15 @@ const execFile = promisify(_execFile);
 
 async function findHeroCrewCli() {
   // Lookup order, most-specific-first:
-  // 1. $HERO_CREW_PATH env override (explicit user pin).
-  // 2. Local dev checkouts. These hold the LIVE source — features added
-  //    since the last plugin publish are present here but missing from the
-  //    cached install. Preferring the cache here causes recently-added
-  //    artifact schemas (e.g. the cost/ vs runs/ split) to silently
-  //    degrade when invoked from loop.
-  // 3. Plugin cache (whatever version is installed).
+  // 1. $HERO_CREW_PATH env override (explicit user pin). This is the only
+  //    supported way to point at a local dev checkout — there is
+  //    deliberately no hardcoded author-machine absolute path here (a prior
+  //    version probed one unconditionally before the plugin cache, which
+  //    was wrong for anyone but the original author; see FEAT-236 B3).
+  // 2. Plugin cache (whatever version is installed).
   if (process.env.HERO_CREW_PATH) {
     const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
     if (await pathExists(explicit)) return explicit;
-  }
-
-  const home = process.env.HOME || process.env.USERPROFILE || "";
-  const localCandidates = [
-    "C:/work/mega/hero-crew/scripts/crew.mjs",
-    home ? `${home}/work/mega/hero-crew/scripts/crew.mjs` : null,
-    home ? `${home}/hero-crew/scripts/crew.mjs` : null
-  ].filter((c): c is string => c !== null);
-  for (const candidate of localCandidates) {
-    if (await pathExists(candidate)) return candidate;
   }
 
   // Fall back to the plugin cache (handles installs without a local checkout).

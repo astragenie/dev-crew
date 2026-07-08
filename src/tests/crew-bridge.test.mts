@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
@@ -37,6 +38,25 @@ async function makeSliceFile(repo: string, sliceId: string) {
   await fs.writeFile(slicePath, `---\nid: ${sliceId}\nstatus: completed\n---\n# ${sliceId}\n`);
   return slicePath;
 }
+
+// --- FEAT-236 B3 regression: no author-machine absolute path in resolver ---
+
+test("crew-bridge resolver source contains no hardcoded author-absolute-path literal", async () => {
+  const sourcePath = fileURLToPath(
+    new URL("../scripts/lib/slice-linker/crew-bridge.mts", import.meta.url)
+  );
+  const source = await fs.readFile(sourcePath, "utf8");
+  // The B3 bug was a hardcoded `C:/work/mega/hero-crew/...` probe that ran
+  // BEFORE the plugin cache, breaking resolution on any machine other than
+  // the author's. `C:/work/mega` is unique to that literal (unlike
+  // "hero-crew", which legitimately appears throughout as the plugin name)
+  // so its absence is a precise regression guard.
+  assert.doesNotMatch(
+    source,
+    /C:\/work\/mega/i,
+    "crew-bridge.mts must not contain an author-machine absolute path literal"
+  );
+});
 
 // --- writeCrewHandoff tests ---
 

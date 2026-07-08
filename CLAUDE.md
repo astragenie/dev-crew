@@ -75,8 +75,11 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 6. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
 7. `bunx biome lint src/`
 8. `bunx biome format src/` (check mode — unformatted files fail)
-9. `bun test src/tests/ --parallel --timeout 60000`
-10. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+9. `bun ./src/scripts/validate-imports.mts` — enforces the slice-linker
+   sub-module import boundary (files outside `slice-linker/` must go
+   through the barrel, not reach into sub-modules directly).
+10. `bun test src/tests/ --parallel --timeout 60000`
+11. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
    `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
    Regenerates the snapshot content in-memory and diffs it against the
    on-disk file; any drift (backlog/grade counts, "next to slice" list,
@@ -214,7 +217,7 @@ gate that enforces it.
 
 <!-- clause: orchestrator-mode -->
 
-`/runner:slice start` emits a slice-build tag-routed dispatch by default.
+`/runner:start` emits a slice-build tag-routed dispatch by default.
 Controlled by `config.loop.orchestratorMode` in `.claude/loop.json`:
 
 - `"slice-build"` (default) — emit `Dispatch crew:<variant>-dev subagent...`
@@ -392,7 +395,7 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`
 
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
 - **Auto mode (default — `loop.marathonMode: true`).** Loop walks entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts.
-- **Slice start/close ceremony.** Every slice MUST use `/runner:slice start` and `/runner:slice complete`.
+- **Slice start/close ceremony.** Every slice MUST use `/runner:start` and `/runner:close`.
 - **Dispatch discipline.** Hand `dispatchInstruction` to a crew builder subagent — `crew:fullstack-dev` (or the stack-specific `crew:backend-dev` / `crew:frontend-dev`), or generic `claude` (implementation only; there is no agent literally named `crew:builder`); parent loop dispatches `crew:reviewer` then `crew:validator` after; never implement inline except trivial single-line fixups.
 - **Auto-continue.** After ceremony, promote next item without asking.
 
