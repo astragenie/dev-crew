@@ -1,16 +1,17 @@
 ---
 id: FEAT-219
-status: in-progress
+status: done
 priority: P1
 category: platform
 target_release: null
 created: 2026-07-05
+closed: 2026-07-08
 depends_on: []
 slices: [SLICE-1, SLICE-2, SLICE-3, SLICE-5]
-slices_complete: [SLICE-2, SLICE-5]
-slices_partial: [SLICE-1, SLICE-3]
+slices_complete: [SLICE-1, SLICE-2, SLICE-3, SLICE-5]
+slices_partial: []
 slices_deferred: [SLICE-4]
-shipped_prs: [311, 306, 319, 317, 308]
+shipped_prs: [311, 306, 319, 317, 308, 347]
 derived_from: null
 tags: [concern:memory, concern:dispatch, surface:plugin, stack:typescript]
 autonomous_safe: false
@@ -25,9 +26,9 @@ proposed_slices:
   - id_suffix: -SLICE-1
     title: Write-side agent_type + failure-kind tagging (memory-sink + learnings)
     points: 2
-    state: partial # shipped #311
+    state: shipped # shipped #311; residual closed
     shipped_pr: 311
-    residual: "memory-sink.mts fully done (MemoryKind incl. failure, agentType threaded, recordFailure); src/scripts/lib/learnings.mts logLearning still carries NO agent_type field — AC-1/AC-2 unmet for the learnings-store write path"
+    residual: "CLOSED (verified 2026-07-08): learnings.mts logLearning now carries agentType — always written with an \"unknown\" default (record.agentType = entry.agentType || \"unknown\"). AC-1/AC-2 met."
   - id_suffix: -SLICE-2
     title: buildMemoryContext helper (rank/lessons/decisions + optional recallPrior, noop-safe)
     points: 3
@@ -36,9 +37,9 @@ proposed_slices:
   - id_suffix: -SLICE-3
     title: Wire helper into start-slice + post-builder-fanout, completeness fitness test
     points: 3
-    state: partial # shipped #319, #317
-    shipped_prs: [319, 317]
-    residual: "start-slice.mts half done (learningsDigest splice AC-7 + memory.recall.scopeByAgent gate); post-builder-fanout.mts has ZERO memory-context wiring (AC-8 unmet, reviewerPrompt/validatorPrompt carry no memory block) and no completeness fitness test exists anywhere under src/tests (AC-9 unmet)"
+    state: shipped # shipped #319, #317, #347; residual closed
+    shipped_prs: [319, 317, 347]
+    residual: "CLOSED (verified 2026-07-08): post-builder-fanout.mts imports buildMemoryContext and folds a reviewer-scoped block (agentType: reviewer, #347) — AC-8 met. Completeness fitness test exists: src/tests/memory-context-completeness.test.mts — AC-9 met. (Slice-start recall injection itself further unified onto recall-injection-v1 by FEAT-188 S3b #366.)"
   - id_suffix: -SLICE-4
     title: PM/architect entry-point wiring + agent-type soft-boost scoring blend
     points: 3
@@ -53,6 +54,32 @@ triage_notes: "Free-text intake 2026-07-05. Role-scoped pre-work memory injectio
 ---
 
 # FEAT-219: role-scoped pre-work memory injection into agent dispatch
+
+## Closed 2026-07-08
+
+Reconciled to **done**. The two residual slices (SLICE-1, SLICE-3) that were
+`partial` on 2026-07-05 both landed and are verified in the current tree:
+
+- **SLICE-1 AC-1/AC-2** — `src/scripts/lib/learnings.mts` `logLearning` now
+  carries `agentType`, always written with an `"unknown"` default
+  (`record.agentType = entry.agentType || "unknown"`). No longer stores an
+  untagged entry.
+- **SLICE-3 AC-8** — `src/scripts/lib/post-builder-fanout.mts` imports
+  `buildMemoryContext` and folds a reviewer-scoped memory block into the
+  reviewer prompt (`agentType: "reviewer"`, #347).
+- **SLICE-3 AC-9** — `src/tests/memory-context-completeness.test.mts` exists
+  (grep-based "no dispatch site skips injection" fitness test).
+
+Slice-start recall injection was further unified onto the frozen
+`recall-injection-v1` contract by the sibling FEAT-188 S3b (#366), retiring the
+runner-private recall hook — the last-mile injection path this FEAT set out to
+fix is now shared cross-repo, not forked.
+
+**SLICE-4 stays deferred** (agent-type soft-boost scoring blend, AC-10/AC-11) —
+an optional ranking enhancement per PR #309, not required for the FEAT's core
+value. If revived it re-opens as its own scoped item.
+
+The 2026-07-05 reconciliation below is retained as history.
 
 ## Shipped status (reconciled 2026-07-05)
 

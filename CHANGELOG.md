@@ -6,15 +6,58 @@ shipped under the name `loop`.
 
 ## [Unreleased]
 
+## [0.64.0] — 2026-07-08 — memory-transport unification
+
+### Added
+
+- **Memory capture transport — in-process `MemoryProvider` (FEAT-188 S1b, #357,
+  merged as #361).** Learnings capture no longer shells `astramem remember` per
+  write. `src/scripts/lib/memory-transport.mts` discovers the installed astramem
+  plugin at runtime, dynamic-imports its provider selector, and calls
+  `provider.remember(payload)` in-process; the CLI spawn is demoted to a
+  fallback when no provider is discoverable. Fail-silent contract preserved
+  (never throws, never blocks past `CAP_MS`; a single wallclock envelope covers
+  resolution + send so the provider attempt can never starve a caller's
+  fallback). KNOWN LIMIT: a losing capped call is abandoned, not cancelled —
+  astramem-plugin's un-unref'd 5s abort timers can hold a short-lived process's
+  event loop open up to ~5s on a slow-but-reachable backend (upstream
+  astramem-plugin#29).
+- **Slice-start recall unified onto the frozen `recall-injection-v1` contract
+  (FEAT-188 S3b, #358, merged as #366).** Slice-start recall now routes through
+  the shared recall-injection interface instead of a runner-private hook, so
+  runner and dev-team emit one identical `## Prior context (from astramem)`
+  block format (no forked recall path). Byte-identical dispatch when
+  `provider:none` / `recall.enabled:false`, guarded by a golden dispatch-trace
+  test.
+
 ### Changed
 
-- **`MIN_CREW_VERSION` raised `0.47.0` → `0.48.0`.** The aiplugin-dev anti-pause
-  contract (dev-team PR #150) shipped in crew 0.48.0; the floor now guarantees
-  it, so `/runner:install` refuses crew `< 0.48.0`. Retires the loop-side
-  workaround for that pause pattern. Archived the corresponding
+- **astramem consumer transport delegated to the shared client (#362).** The
+  runner `memory-transport` seam is now a thin adapter over the published
+  `@astragenie/astramem-client@0.1.0` package (plugins-common), the single
+  source of truth for the astramem resolution chain (injected seam → dep-mode
+  `@astragenie/astramem-plugin/selector` → local/saas provider health probe →
+  runtime plugin-root discovery). Added a project `.npmrc` pinning
+  `@astragenie:registry` to npmjs.org so bun/npm don't follow the user-global
+  GitHub-Packages scope mapping.
+- **`MIN_CREW_VERSION` raised `0.47.0` → `0.48.0` (#353).** The aiplugin-dev
+  anti-pause contract (dev-team PR #150) shipped in crew 0.48.0; the floor now
+  guarantees it, so `/runner:install` refuses crew `< 0.48.0`. Retires the
+  loop-side workaround for that pause pattern. Archived the corresponding
   upstream-request. Also archived two upstream-requests confirmed resolved
   upstream (preflight chained-`cd` MSYS-path translation; lead-orchestrator
   restoration, self-superseded by FEAT-191).
+- **CI split into fast/slow gates; worktree-deadlock suites quarantined
+  (#355, merged as #356).** The full suite is partitioned so the blocking gate
+  excludes the six known git-worktree-touching suites (they run in a separate
+  non-blocking `worktree-quarantine` job, hard-killed/best-effort). Removes the
+  flaky Windows worktree-cwd hangs from the merge gate without dropping coverage.
+
+### Fixed
+
+- **`/runner:install` could not bootstrap a fresh repo (#364, merged as #367).**
+  Install pre-resolved the dispatcher config before one existed, failing on a
+  clean repo. Fix skips the dispatcher config pre-resolve during install.
 
 ## [0.63.0] — 2026-07-06 — continuous-learning loop activation
 
