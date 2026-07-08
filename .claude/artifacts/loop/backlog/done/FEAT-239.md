@@ -8,14 +8,18 @@ target_release: null
 created: 2026-07-08
 updated: 2026-07-08
 depends_on: []
-slices: []
+slices: [SLICE-142]
 derived_from: null
-tags: [concern:reliability, area:slice-ceremony, area:grading]
+tags: ["concern:reliability", "area:slice-ceremony", "area:grading"]
 needs_contract: false
 needs_ux: false
 autonomous_safe: true
 pm_reviewed: null
 triage_notes: "Filed 2026-07-08 from plugins-common loop adoption. Reproduced: `slice close --grade-yaml <valid.yaml>` fails with `Score validation failed: missing dimension: *` for all 7 dimensions even though the yaml is well-formed. Breaks the single-shot autonomous close path; workaround is scaffold + hand-edit markdown + standalone `slice grade-write`."
+started_at: 2026-07-08
+github_issue: 386
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/386"
 ---
 ## Description
 

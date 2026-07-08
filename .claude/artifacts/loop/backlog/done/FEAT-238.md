@@ -8,14 +8,18 @@ target_release: null
 created: 2026-07-08
 updated: 2026-07-08
 depends_on: []
-slices: []
+slices: [SLICE-141]
 derived_from: null
-tags: [concern:reliability, area:memory, area:slice-ceremony]
+tags: ["concern:reliability", "area:memory", "area:slice-ceremony"]
 needs_contract: false
 needs_ux: false
 autonomous_safe: true
 pm_reviewed: null
 triage_notes: "Filed 2026-07-08 from plugins-common loop adoption. Reproduced: fresh repo with runner installed but @astragenie/astramem-client absent from the runner plugin cache node_modules → every `slice start` (and any command that builds memory context) hard-crashes at module load. Blocks the entire loop in that repo."
+started_at: 2026-07-08
+github_issue: 384
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/384"
 ---
 ## Description
 
