@@ -42,6 +42,64 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" session_start",
+            "description": "runner:astrarunner-emit-session-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" subagent_start",
+            "description": "runner:astrarunner-emit-subagent-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" subagent_stop",
+            "description": "runner:astrarunner-emit-subagent-stop",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" task_created",
+            "description": "runner:astrarunner-emit-task-created",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" task_completed",
+            "description": "runner:astrarunner-emit-task-completed",
+            "timeout": 5
+          }
+        ]
       }
     ]
   }
