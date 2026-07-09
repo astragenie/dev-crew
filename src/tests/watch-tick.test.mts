@@ -8,6 +8,12 @@ import { runTick } from "../scripts/lib/watch/tick.mjs";
 import type { WatchTickExec } from "../scripts/lib/watch/tick.mjs";
 import { acquireTickLock, tickStatePath } from "../scripts/lib/watch/state.mjs";
 import { claimFinding, getActiveClaim } from "../scripts/lib/watch/claims.mjs";
+import {
+  costSpentInWindow,
+  countInFlight,
+  recordReactionFinish,
+  recordReactionStart
+} from "../scripts/lib/watch/ledger.mjs";
 import type { RegistryFile } from "../scripts/lib/watch/types.mjs";
 
 async function tmpWatchHome(): Promise<string> {
@@ -208,9 +214,14 @@ test("AC-3: claim label + state entry are written BEFORE the reaction spawn (hap
 });
 
 // ---------------------------------------------------------------------------
-// AC-4: spawn-gate cap / cost ceiling skip path.
+// AC-4: spawn-gate cap / cost ceiling skip path, against the REAL
+// machine-wide ledger (watch/ledger.mts) — not stub-injected counts. The
+// gh-facing parts of the exec (listOpenIssues etc.) stay mocked as
+// everywhere else in this file; only getInFlightReactionCount /
+// getCostSpentUsd are wired to the real ledger functions, seeded by the
+// real writer functions (recordReactionStart / recordReactionFinish).
 
-test("AC-4 concurrency-cap variant: 3 in-flight reactions block a 4th finding from spawning", async () => {
+test("AC-4 concurrency-cap variant: 3 in-flight reactions (seeded via the real ledger, across two repos) block a 4th finding from spawning", async () => {
   const watchHome = await tmpWatchHome();
   const registry: RegistryFile = {
     controlRepoPath: "C:\\work\\control-repo",
@@ -226,13 +237,35 @@ test("AC-4 concurrency-cap variant: 3 in-flight reactions block a 4th finding fr
     ]
   };
   const registryPath = await tmpRegistry(registry);
+  const now = () => new Date("2026-07-10T00:00:00.000Z");
+
+  // Seed 3 in-flight reactions through the real ledger writer — machine-wide,
+  // so even a mix of repos (one of them not in this tick's registry at all)
+  // must trip the cap.
+  await recordReactionStart(
+    watchHome,
+    { kind: "issue", findingId: "issue:1", ghSlug: "org/repo-a" },
+    now
+  );
+  await recordReactionStart(
+    watchHome,
+    { kind: "issue", findingId: "issue:2", ghSlug: "org/repo-a" },
+    now
+  );
+  await recordReactionStart(
+    watchHome,
+    { kind: "red-pr", findingId: "pr:9", ghSlug: "org/repo-z" },
+    now
+  );
+  assert.equal(await countInFlight(watchHome, now), 3, "sanity: real ledger reports 3 in-flight");
 
   const exec = makeExec({
     listOpenIssues: async () => [{ number: 100 }],
-    getInFlightReactionCount: async () => 3 // at the default cap
+    getInFlightReactionCount: async () => countInFlight(watchHome, now),
+    getCostSpentUsd: async () => costSpentInWindow(watchHome, undefined, now)
   });
 
-  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec });
+  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec, now });
 
   assert.equal(result.outcome, "swept");
   if (result.outcome !== "swept") throw new Error("unreachable");
@@ -250,7 +283,7 @@ test("AC-4 concurrency-cap variant: 3 in-flight reactions block a 4th finding fr
   assert.equal(activeClaim, undefined, "finding must remain unclaimed for next tick");
 });
 
-test("AC-4 cost-ceiling variant: cost at the configured ceiling blocks the spawn", async () => {
+test("AC-4 cost-ceiling variant: cost recorded via the real ledger (recordReactionFinish) within the window blocks the spawn", async () => {
   const watchHome = await tmpWatchHome();
   const registry: RegistryFile = {
     controlRepoPath: "C:\\work\\control-repo",
@@ -266,13 +299,30 @@ test("AC-4 cost-ceiling variant: cost at the configured ceiling blocks the spawn
     ]
   };
   const registryPath = await tmpRegistry(registry);
+  const now = () => new Date("2026-07-10T00:00:00.000Z");
+
+  // A finished reaction (possibly on a different repo — the ceiling is
+  // machine-wide) that spent exactly the default ceiling, recorded through
+  // the real ledger writer.
+  await recordReactionFinish(
+    watchHome,
+    { kind: "issue", findingId: "issue:77", ghSlug: "org/repo-z" },
+    5.0, // == default maxCostUsdPerWindow
+    now
+  );
+  assert.equal(
+    await costSpentInWindow(watchHome, undefined, now),
+    5.0,
+    "sanity: real ledger reports the spend"
+  );
 
   const exec = makeExec({
     listOpenIssues: async () => [{ number: 200 }],
-    getCostSpentUsd: async () => 5.0 // == default maxCostUsdPerWindow
+    getInFlightReactionCount: async () => countInFlight(watchHome, now),
+    getCostSpentUsd: async () => costSpentInWindow(watchHome, undefined, now)
   });
 
-  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec });
+  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec, now });
 
   assert.equal(result.outcome, "swept");
   if (result.outcome !== "swept") throw new Error("unreachable");
@@ -282,6 +332,32 @@ test("AC-4 cost-ceiling variant: cost at the configured ceiling blocks the spawn
   const raw = await fs.readFile(tickStatePath(watchHome, "org/repo-a"), "utf-8");
   const state = JSON.parse(raw) as { skippedCeiling: Array<{ findingId: string; reason: string }> };
   assert.equal(state.skippedCeiling[0]!.reason, "cost-ceiling");
+
+  const activeClaim = await getActiveClaim(watchHome, "org/repo-a", "issue:200");
+  assert.equal(activeClaim, undefined, "finding must remain unclaimed for next tick");
+});
+
+test("AC-4: a successful spawn is itself recorded as in-flight via the real ledger", async () => {
+  const watchHome = await tmpWatchHome();
+  const registryPath = await tmpRegistry(oneEntryRegistry());
+  const now = () => new Date("2026-07-10T00:00:00.000Z");
+
+  const exec = makeExec({
+    listOpenIssues: async () => [{ number: 5 }],
+    getInFlightReactionCount: async () => countInFlight(watchHome, now),
+    getCostSpentUsd: async () => costSpentInWindow(watchHome, undefined, now)
+  });
+
+  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec, now });
+
+  assert.equal(result.outcome, "swept");
+  if (result.outcome !== "swept") throw new Error("unreachable");
+  assert.equal(result.spawnedCount, 1);
+  assert.equal(
+    await countInFlight(watchHome, now),
+    1,
+    "the spawned reaction is now tracked as in-flight"
+  );
 });
 
 // ---------------------------------------------------------------------------

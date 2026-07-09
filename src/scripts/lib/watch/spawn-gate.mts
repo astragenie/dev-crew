@@ -2,12 +2,12 @@
 // ceiling (COND-4). Correlated failures (a shared CI dependency breaking
 // many repos at once) must not spawn unbounded parallel headless sessions.
 //
-// Full in-flight tracking (a durable ledger of currently-running Layer 2
-// reactions) is SLICE-145 scope — this module is the pure decision function;
-// SLICE-143 wires it against caller-supplied inFlightCount/costSpentUsd
-// (see watch/tick.mts::WatchTickExec.getInFlightReactionCount /
-// getCostSpentUsd, both stubbed to 0 in the production default exec until
-// SLICE-145 lands a real ledger).
+// This module is the pure decision function; the caller (watch/sweep.mts)
+// supplies inFlightCount/costSpentUsd via WatchTickExec.getInFlightReactionCount
+// / getCostSpentUsd. SLICE-143 wired those against stubs (always 0);
+// SLICE-145 backs the production exec with the durable machine-wide ledger
+// in watch/ledger.mts (recordReactionStart/Finish, countInFlight,
+// costSpentInWindow).
 
 import type { SpawnGateConfig, SpawnGateDecision } from "./types.mjs";
 

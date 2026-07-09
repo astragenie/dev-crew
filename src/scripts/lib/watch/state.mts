@@ -75,7 +75,9 @@ async function releaseLockDir(lockDir: string): Promise<void> {
   await fs.rm(lockDir, { recursive: true, force: true });
 }
 
-async function readJsonOrDefault<T>(filePath: string, defaultValue: T): Promise<T> {
+// Exported for watch/ledger.mts (SLICE-145) — a plain read-or-default that
+// never creates the file, unlike updateStateAtomic which is a full RMW.
+export async function readJsonOrDefault<T>(filePath: string, defaultValue: T): Promise<T> {
   try {
     const raw = await fs.readFile(filePath, "utf-8");
     return JSON.parse(raw) as T;

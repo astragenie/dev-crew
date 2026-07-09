@@ -21,6 +21,7 @@ import type { WatchTickExec } from "./sweep.mjs";
 import { readRegistry, validateRegistry } from "./registry.mjs";
 import { DEFAULT_SPAWN_GATE_CONFIG } from "./spawn-gate.mjs";
 import { emitWatchReactionEnvelope, emitWatchTickEnvelope } from "./envelopes.mjs";
+import { recordReactionFinish } from "./ledger.mjs";
 import {
   acquireTickLock,
   defaultWatchHome,
@@ -48,9 +49,9 @@ export interface RunTickOptions {
 
 export async function runTick(options: RunTickOptions): Promise<TickResult> {
   const watchHome = options.watchHome ?? defaultWatchHome();
-  const exec = options.exec ?? buildDefaultTickExec();
-  const spawnGateConfig = options.spawnGateConfig ?? DEFAULT_SPAWN_GATE_CONFIG;
   const now = options.now ?? (() => new Date());
+  const exec = options.exec ?? buildDefaultTickExec(watchHome, now);
+  const spawnGateConfig = options.spawnGateConfig ?? DEFAULT_SPAWN_GATE_CONFIG;
 
   // AC-2: second tick on the same machine exits immediately, no sweeping.
   const locked = await acquireTickLock(watchHome);
@@ -109,6 +110,7 @@ export interface RecordReactionOutcomeOptions {
   spawn: ReactionSpawn;
   outcome: "spawned" | "circuit-broken" | "skipped-ceiling";
   costUsd: number;
+  now?: () => Date;
 }
 
 export async function recordReactionOutcome(opts: RecordReactionOutcomeOptions): Promise<void> {
@@ -126,6 +128,12 @@ export async function recordReactionOutcome(opts: RecordReactionOutcomeOptions):
       };
     }
   );
+
+  // COND-4 machine-wide ledger: clear the in-flight slot (this outcome IS
+  // the reaction finishing, from the gate's perspective) and record the
+  // cost against the rolling window — mirrors the reaction.json bookkeeping
+  // above but scoped machine-wide rather than per-repo.
+  await recordReactionFinish(opts.watchHome, opts.spawn.finding, opts.costUsd, opts.now);
 
   await emitWatchReactionEnvelope(opts.registry, {
     ghSlug: opts.spawn.finding.ghSlug,

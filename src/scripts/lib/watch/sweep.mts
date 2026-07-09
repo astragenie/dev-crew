@@ -28,7 +28,8 @@ import {
   getActiveClaim
 } from "./claims.mjs";
 import { evaluateSpawnGate } from "./spawn-gate.mjs";
-import { readTickState, updateTickState } from "./state.mjs";
+import { defaultWatchHome, readTickState, updateTickState } from "./state.mjs";
+import { countInFlight, costSpentInWindow, recordReactionStart } from "./ledger.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -62,7 +63,10 @@ export interface WatchTickExec {
 // ---------------------------------------------------------------------------
 // Production exec — gh CLI for sweeps + a logging stub for Layer 2 spawn.
 
-export function buildDefaultTickExec(): WatchTickExec {
+export function buildDefaultTickExec(
+  watchHome: string = defaultWatchHome(),
+  now: () => Date = () => new Date()
+): WatchTickExec {
   return {
     listOpenIssues: async (entry) => {
       const { stdout } = await execFile(
@@ -138,11 +142,13 @@ export function buildDefaultTickExec(): WatchTickExec {
     spawnReaction: async (spawn) => {
       console.log(`[watch-tick] would spawn: ${spawn.command} (cwd=${spawn.cwd})`);
     },
-    // Real in-flight tracking + a window-scoped cost ledger are SLICE-145
-    // (watch/spawn-gate.mts full implementation). Stubbed per the contract's
-    // "spawn-gate can be stubbed as interfaces" allowance for SLICE-143.
-    getInFlightReactionCount: async () => 0,
-    getCostSpentUsd: async () => 0
+    // Machine-wide (COND-4), not per-repo — a correlated failure across many
+    // repos must not spawn unbounded parallel headless sessions, so the
+    // ghSlug argument is intentionally ignored here. Backed by the durable
+    // ledger landed in SLICE-145 (watch/ledger.mts); SLICE-143 wired this
+    // interface against stubbed 0s pending that ledger.
+    getInFlightReactionCount: async () => countInFlight(watchHome, now),
+    getCostSpentUsd: async () => costSpentInWindow(watchHome, undefined, now)
   };
 }
 
@@ -322,6 +328,11 @@ export async function sweepEntry(
       command: commandForFinding(finding, action, entry),
       cwd: entry.path
     });
+    // Machine-wide in-flight ledger (COND-4) — recorded right after the
+    // spawn resolves, mirroring the claim-before-spawn ordering above.
+    // Layer 2 clears this slot by reporting an outcome (recordReactionFinish,
+    // called from watch/tick.mts::recordReactionOutcome) once it completes.
+    await recordReactionStart(watchHome, finding, now);
     spawnedCount++;
   }
 
