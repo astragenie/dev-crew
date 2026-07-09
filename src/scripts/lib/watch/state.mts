@@ -53,7 +53,7 @@ const DEFAULT_REACTION_STATE: ReactionState = {
 };
 
 const LOCK_RETRY_MS = 25;
-const LOCK_MAX_ATTEMPTS = 80; // ~2s worst case for the RMW critical-section lock
+const LOCK_MAX_ATTEMPTS = 200; // ~5s worst case for the (now cross-process-only) RMW critical-section lock
 
 async function acquireLockDir(lockDir: string): Promise<void> {
   for (let attempt = 0; attempt < LOCK_MAX_ATTEMPTS; attempt++) {
@@ -101,12 +101,42 @@ async function writeAtomic(filePath: string, data: unknown): Promise<void> {
   await fs.rename(tmp, filePath);
 }
 
+// In-process mutex, keyed by filePath. The mkdir-based lock below exists for
+// cross-process safety (a separate watch-tick invocation vs a separate
+// reaction process); it was never meant to also arbitrate same-process
+// concurrency. Under load, N same-process callers polling that lock every
+// LOCK_RETRY_MS could collectively exceed LOCK_MAX_ATTEMPTS and throw, even
+// though nothing was actually deadlocked — just queued too slowly. Chaining
+// same-process callers on an in-memory promise removes that polling entirely
+// for the common (same-process) case; only genuine cross-process contention
+// ever touches the filesystem lock's retry loop.
+const inProcessChains = new Map<string, Promise<unknown>>();
+
 /**
  * Atomic read-modify-write against a single state file, guarded by a
  * sibling mkdir-based lock (`<path>.lock/`) held only across this critical
  * section — never across a gh/claude call (contract §2).
  */
 export async function updateStateAtomic<T>(
+  filePath: string,
+  defaultState: T,
+  mutator: (current: T) => T
+): Promise<T> {
+  const prior = inProcessChains.get(filePath) ?? Promise.resolve();
+  const run = prior
+    .catch(() => {})
+    .then(() => updateStateAtomicLocked(filePath, defaultState, mutator));
+  inProcessChains.set(filePath, run);
+  try {
+    return await run;
+  } finally {
+    if (inProcessChains.get(filePath) === run) {
+      inProcessChains.delete(filePath);
+    }
+  }
+}
+
+async function updateStateAtomicLocked<T>(
   filePath: string,
   defaultState: T,
   mutator: (current: T) => T

@@ -10,6 +10,12 @@ export interface RegistryEntry {
   checks?: string[];
   tenantId: string;
   appId: string;
+  // Per-repo override for the claim TTL (COND-1 self-heal window), seconds.
+  // Falls back to claims.mts::DEFAULT_CLAIM_TTL_SECONDS when absent — most
+  // repos want the machine-wide default; a repo whose reactions routinely
+  // run long (e.g. a slow test suite in pr-fix) can widen its own window
+  // without changing the default for every other watched repo.
+  claimTtlSeconds?: number;
 }
 
 export interface RegistryFile {
