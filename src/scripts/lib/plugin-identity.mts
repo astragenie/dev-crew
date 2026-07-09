@@ -131,7 +131,13 @@ export function crewCliRuntime(crewCliPath: string): "bun" | "node" {
 // the full HARD OUTPUT CONTRACT there. Floor raised to 0.48.0 so the
 // contract is guaranteed present (docs/upstream-requests/archive/2026-06-10-
 // hero-crew-specialist-pause-completion-enforcement.md).
-export const MIN_CREW_VERSION = "0.48.0";
+//
+// Raised to 0.57.0 (FEAT-180): the reviewer prompt now instructs reviewers to
+// run `crew write-review-result --not-checked "<a,b>"`, whose flag + the
+// not_checked[]/author_id/judge_id/self_approval review-artifact fields ship in
+// crew 0.57.0 (dev-team PR #196). Below that floor the prompt would tell
+// reviewers to pass a flag the CLI rejects.
+export const MIN_CREW_VERSION = "0.57.0";
 
 // Minimum crew version that ships /crew:orchestrate-slice.
 // v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the
