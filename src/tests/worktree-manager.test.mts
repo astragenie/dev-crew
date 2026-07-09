@@ -19,7 +19,11 @@ import { randomUUID } from "node:crypto";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { ensureSliceWorktree, WorktreeError } from "../scripts/lib/worktree-manager.mjs";
+import {
+  ensureSliceWorktree,
+  WorktreeError,
+  isBranchInProgress
+} from "../scripts/lib/worktree-manager.mjs";
 import { startSlice, sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { AC_SECTION_BODY } from "./_fixtures.mjs";
@@ -73,6 +77,11 @@ async function initGitRepo(dir: string): Promise<void> {
   await run("git init -b main");
   await run("git config user.email test@test.com");
   await run("git config user.name Test");
+  // gpg signing off: under concurrent load a machine-configured signing key
+  // (or gpg-agent contention) can make "git commit -m initial" hang/fail
+  // even though it passes reliably in isolation. Matches _fixtures.mts'
+  // shared initGitRepo() and the slice-start.test.mts tmpRepo() fix.
+  await run("git config commit.gpgsign false");
   await fs.writeFile(path.join(dir, "README.md"), "# test");
   await run("git add -A");
   await run("git commit -m initial");
@@ -819,4 +828,201 @@ test("applyWorktreeResult: corrupt workflow-state.json → throws WorkflowStateC
   );
 
   await cleanupWorktree(repo, path.join(worktreeRoot, "SLICE-99"), "slice/SLICE-99-FEAT-099");
+});
+
+// ---------------------------------------------------------------------------
+// 10. isBranchInProgress — WS-4 collision-triggered worktree isolation.
+// Git-native: no lock file. Each worktree owns its own
+// .claude/state/crew/workflow-state.json, so detection means reading a
+// sibling worktree's own state file, not the caller's local one.
+// ---------------------------------------------------------------------------
+
+test("isBranchInProgress: sibling worktree with active currentRun.sliceId → returns hit", async () => {
+  const repo = await tmpDir("wm-bip-hit-");
+  await initGitRepo(repo);
+  const siblingPath = path.join(os.tmpdir(), `wm-bip-sibling-${randomUUID()}`);
+  const branchName = `feat/bip-test-${randomUUID()}`;
+  await exec(`git -C "${repo}" worktree add -b "${branchName}" "${siblingPath}" main`, {
+    env: GIT_ENV
+  });
+
+  await writeWorkflowState(siblingPath, { sliceId: "SLICE-42", title: "in progress" });
+
+  const result = await isBranchInProgress(repo, branchName);
+  assert.ok(result, "expected a hit");
+  assert.equal(result.sliceId, "SLICE-42");
+  assert.equal(path.normalize(result.worktreePath), path.normalize(siblingPath));
+
+  await cleanupWorktree(repo, siblingPath, branchName);
+});
+
+test("isBranchInProgress: no worktree checked out on branch → returns null (no-hit)", async () => {
+  const repo = await tmpDir("wm-bip-nomatch-");
+  await initGitRepo(repo);
+
+  const result = await isBranchInProgress(repo, "branch-that-does-not-exist-anywhere");
+  assert.equal(result, null);
+});
+
+test("isBranchInProgress: sibling worktree with no workflow-state.json → fails open to null", async () => {
+  const repo = await tmpDir("wm-bip-nostate-");
+  await initGitRepo(repo);
+  const siblingPath = path.join(os.tmpdir(), `wm-bip-sibling-nostate-${randomUUID()}`);
+  const branchName = `feat/bip-nostate-${randomUUID()}`;
+  await exec(`git -C "${repo}" worktree add -b "${branchName}" "${siblingPath}" main`, {
+    env: GIT_ENV
+  });
+
+  // No .claude/state/crew/workflow-state.json written at all — missing state.
+  const result = await isBranchInProgress(repo, branchName);
+  assert.equal(result, null, "missing state file should fail open to null, not throw");
+
+  await cleanupWorktree(repo, siblingPath, branchName);
+});
+
+test("isBranchInProgress: currentRun present without sliceId → returns null (not a hit)", async () => {
+  const repo = await tmpDir("wm-bip-nosliceid-");
+  await initGitRepo(repo);
+  const siblingPath = path.join(os.tmpdir(), `wm-bip-sibling-nosliceid-${randomUUID()}`);
+  const branchName = `feat/bip-nosliceid-${randomUUID()}`;
+  await exec(`git -C "${repo}" worktree add -b "${branchName}" "${siblingPath}" main`, {
+    env: GIT_ENV
+  });
+
+  await writeWorkflowState(siblingPath, {});
+
+  const result = await isBranchInProgress(repo, branchName);
+  assert.equal(result, null);
+
+  await cleanupWorktree(repo, siblingPath, branchName);
+});
+
+test("isBranchInProgress: corrupt workflow-state.json on sibling → fails open to null", async () => {
+  const repo = await tmpDir("wm-bip-corrupt-");
+  await initGitRepo(repo);
+  const siblingPath = path.join(os.tmpdir(), `wm-bip-sibling-corrupt-${randomUUID()}`);
+  const branchName = `feat/bip-corrupt-${randomUUID()}`;
+  await exec(`git -C "${repo}" worktree add -b "${branchName}" "${siblingPath}" main`, {
+    env: GIT_ENV
+  });
+
+  const stateDir = path.join(siblingPath, ".claude", "state", "crew");
+  await fs.mkdir(stateDir, { recursive: true });
+  await fs.writeFile(path.join(stateDir, "workflow-state.json"), "{ not valid json");
+
+  const result = await isBranchInProgress(repo, branchName);
+  assert.equal(result, null, "corrupt state file should fail open to null, not throw");
+
+  await cleanupWorktree(repo, siblingPath, branchName);
+});
+
+test("isBranchInProgress: unreadable repo (git failure) → fails open to null", async () => {
+  const notARepo = await tmpDir("wm-bip-not-a-repo-");
+  const result = await isBranchInProgress(notARepo, "main");
+  assert.equal(result, null, "non-repo path should fail open to null, not throw");
+});
+
+// ---------------------------------------------------------------------------
+// 11. WS-4 integration: startSlice forces isolation on a same-branch
+// collision even when loop.worktreeMode is off, without flipping the global
+// default for the rest of the resolved config.
+// ---------------------------------------------------------------------------
+
+test("startSlice: worktreeMode off + branch already in-progress (self) → forces isolation", async () => {
+  const repo = await tmpDir("wm-collision-force-");
+  const worktreeRoot = path.join(os.tmpdir(), `wm-collision-force-root-${randomUUID()}`);
+
+  await writeLoopJson(repo, { worktreeMode: false, worktreeRoot });
+
+  const config = {
+    loop: {
+      aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+      backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+      slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
+      phaseGateArtifactDir: ".claude/artifacts/crew/validations",
+      worktreeMode: false,
+      worktreeRoot
+    },
+    stack: {}
+  };
+
+  const feat = await addFeature(repo, {
+    title: "Collision force isolation feature",
+    body: AC_SECTION_BODY
+  });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const sliceContent = await fs.readFile(slice.path, "utf8");
+  await fs.writeFile(
+    slice.path,
+    sliceContent.replace(
+      /- \[ \] AC-2: <replace with a concrete, testable acceptance criterion>/g,
+      "- [ ] AC-2: Forced isolation kicks in on same-branch collision"
+    )
+  );
+
+  // initGitRepo runs git add -A + commit, so all files written above land
+  // in the initial commit — repoPath ends up checked out on "main".
+  await initGitRepo(repo);
+
+  // Simulate a stale, unfinished prior run left in THIS repo's own state
+  // (.claude/state is untracked, so it doesn't dirty the tree) — this IS the
+  // "another slice already in progress on this branch" collision to detect,
+  // since repoPath is the sole worktree entry on "main" when worktreeMode is off.
+  await writeWorkflowState(repo, {
+    sliceId: "SLICE-EXISTING-STALE",
+    title: "unfinished prior slice"
+  });
+
+  const result = await startSlice(repo, slice.id, { config, dispatch: false });
+
+  assert.ok(result.worktree, "collision should force isolation even though worktreeMode is off");
+  assert.equal(result.worktree.created, true);
+  // The caller's own config object must not be mutated — global default stays off.
+  assert.equal(config.loop.worktreeMode, false, "global worktreeMode default must not flip");
+
+  try {
+    const state = await readWorkflowState(repo);
+    const worktreePath = state?.currentRun?.worktreePath;
+    if (worktreePath) {
+      await exec(`git -C "${repo}" worktree remove --force "${worktreePath}"`);
+      await exec(`git -C "${repo}" branch -D "${result.worktree.branchName}"`);
+    }
+    await fs.rm(worktreeRoot, { recursive: true, force: true }).catch(() => {});
+  } catch {
+    // best-effort
+  }
+});
+
+test("startSlice: worktreeMode off + no collision → still runs in place (no forced isolation)", async () => {
+  const repo = await tmpDir("wm-no-collision-");
+  await writeLoopJson(repo, { worktreeMode: false });
+
+  const config = {
+    loop: {
+      aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+      backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+      slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
+      phaseGateArtifactDir: ".claude/artifacts/crew/validations",
+      worktreeMode: false
+    },
+    stack: {}
+  };
+
+  const feat = await addFeature(repo, { title: "No collision feature", body: AC_SECTION_BODY });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const sliceContent = await fs.readFile(slice.path, "utf8");
+  await fs.writeFile(
+    slice.path,
+    sliceContent.replace(
+      /- \[ \] AC-2: <replace with a concrete, testable acceptance criterion>/g,
+      "- [ ] AC-2: No collision means no forced isolation"
+    )
+  );
+
+  await initGitRepo(repo);
+  // No pre-existing workflow-state.json → nothing in progress → no collision.
+
+  const result = await startSlice(repo, slice.id, { config, dispatch: false });
+
+  assert.equal(result.worktree, undefined, "no collision → worktreeMode stays off, no isolation");
 });

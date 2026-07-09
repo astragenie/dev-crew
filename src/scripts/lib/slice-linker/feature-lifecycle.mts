@@ -167,6 +167,20 @@ function kebab(text: string) {
     .slice(0, 60);
 }
 
+// WS-3: propagate the FEAT's canonical surface:*/stack:* tags down onto the
+// slice frontmatter so `pickBuilderVariant` (dispatch.mts) — which reads
+// `extractTags(sliceContent)`, i.e. the SLICE's own tags, not the FEAT's —
+// resolves a real variant instead of falling through to "unknown". Only the
+// canonical vocabulary propagates; other FEAT tags (concern:*, category
+// labels, etc.) are dispatch-irrelevant and stay off the slice.
+function propagatedSurfaceStackTags(featureTags: unknown): string[] {
+  if (!Array.isArray(featureTags)) return [];
+  return featureTags.filter(
+    (t): t is string =>
+      typeof t === "string" && (t.startsWith("surface:") || t.startsWith("stack:"))
+  );
+}
+
 function buildSliceContent({
   id,
   title,
@@ -199,6 +213,10 @@ function buildSliceContent({
   };
   if (typeof effortPoints === "number") {
     frontmatter.effort_points = effortPoints;
+  }
+  const propagatedTags = propagatedSurfaceStackTags(featureFrontmatter.tags);
+  if (propagatedTags.length > 0) {
+    frontmatter.tags = propagatedTags;
   }
   const featureDescriptionLine = (featureBody || "")
     .split(/\n+/)

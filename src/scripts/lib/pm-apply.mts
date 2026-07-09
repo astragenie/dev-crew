@@ -40,6 +40,15 @@ import { writePmReviewArtifact } from "./pm-artifact-writer.mjs";
 const VALID_PRIORITIES = new Set(["P0", "P1", "P2", "P3", "P4"]);
 const WRITABLE_STATES = new Set(["pending", "triaged"]);
 
+// Rescope-only writable states (FU: allow `--rescope` on in-progress FEATs).
+// A mid-slice design reject can land after a FEAT has already been promoted
+// to in-progress; `applyPmRescope` only rewrites the AC section (via
+// `replaceAcsSection`, below) — it never re-scores or re-promotes — so
+// operating on an in-progress FEAT is safe. Deliberately a SEPARATE set from
+// `WRITABLE_STATES`: normal `applyPmResults` scoring/promotion must never
+// touch in-progress FEATs, so that set stays pending/triaged only.
+const RESCOPE_WRITABLE_STATES = new Set(["pending", "triaged", "in-progress"]);
+
 const AC_HEADING_RE = /^##\s+Acceptance criteria/im;
 const SLICES_HEADING_RE = /^##\s+Proposed slices/im;
 
@@ -70,9 +79,20 @@ export interface PmApplyApplied {
   movedToTriaged: boolean;
 }
 
+// Entries skipped because the ARCHITECT GATE is active/deferred for that
+// FEAT — distinct from `failures` (which are validation errors): a gated
+// skip is not a batch-quality problem, so it must not flip process.exitCode
+// the way a real failure does (see loop.mts runBacklogPmApply).
+export interface PmApplyGated {
+  index: number;
+  featureId: string;
+  archStatus: string;
+}
+
 export interface PmApplyResult {
   applied: PmApplyApplied[];
   failures: PmApplyFailure[];
+  gated: PmApplyGated[];
 }
 
 export interface ApplyPmResultsOpts {
@@ -204,6 +224,50 @@ function appendAcsSection(body: string, acs: string[]): string {
   return `${body.replace(/\n+$/, "\n")}${section}`;
 }
 
+/**
+ * Rescope entry point (GATE reject-loop integration): replaces the body of
+ * an existing "## Acceptance criteria" section in place rather than
+ * skipping when the heading already exists. Every FEAT that reaches
+ * rescope has already been scored/triaged and therefore already has an AC
+ * section from `appendAcsSection` — a skip-if-exists write would leave the
+ * stale, objected-to ACs on disk. `applyPmRescope` (below) is the only
+ * caller; kept as a sibling of `appendAcsSection` in the SAME module so
+ * there is still exactly one writer of FEAT body content.
+ *
+ * Idempotent: calling this twice with different `acs` replaces the section
+ * both times — the heading is never duplicated, and sibling sections
+ * (anything before the heading, and the next "## " heading onward) are
+ * left untouched.
+ */
+function replaceAcsSection(body: string, acs: string[]): string {
+  if (acs.length === 0) return body;
+  const newSectionLines = [
+    "## Acceptance criteria (Given-When-Then)",
+    "",
+    ...acs.map((ac) => `- ${ac}`)
+  ];
+
+  const lines = body.split("\n");
+  const headingIdx = lines.findIndex((l) => AC_HEADING_RE.test(l));
+  if (headingIdx === -1) {
+    // No existing section on this FEAT yet — append, mirroring appendAcsSection.
+    const section = ["", ...newSectionLines, ""].join("\n");
+    return `${body.replace(/\n+$/, "\n")}${section}`;
+  }
+
+  // Next top-level heading after the AC heading (exclusive), or EOF.
+  let endIdx = lines.length;
+  for (let i = headingIdx + 1; i < lines.length; i += 1) {
+    if (/^##\s+/.test(lines[i]!)) {
+      endIdx = i;
+      break;
+    }
+  }
+  const before = lines.slice(0, headingIdx);
+  const after = lines.slice(endIdx);
+  return [...before, ...newSectionLines, "", ...after].join("\n");
+}
+
 function appendProposedSlicesSection(body: string, slices: ProposedSlice[]): string {
   if (slices.length === 0 || SLICES_HEADING_RE.test(body)) return body;
   const section = [
@@ -219,13 +283,35 @@ function appendProposedSlicesSection(body: string, slices: ProposedSlice[]): str
 interface WritableBacklogEntry {
   filePath: string;
   state: string;
+  // findFeatureById's backlog entry carries the full parsed frontmatter —
+  // widened here (rather than re-reading the file) so the arch-gate
+  // read-guard below can inspect arch_status without a second FS read.
+  frontmatter?: Record<string, unknown>;
+}
+
+// ARCHITECT GATE read-guard (runner-plugin GATE workstream): a FEAT that is
+// mid-gate (`gate_in_progress`) or already `deferred_design` must not have
+// its priority/promotion re-written by a routine `pm-apply` triage pass —
+// that would silently undo the gate's own transition (a demoted priority,
+// or an in-flight rescope cycle) the next time PM re-scores the backlog.
+// READ-ONLY: this never writes arch_* fields itself — see arch-gate.mts for
+// the sole writer of the reject-loop state machine. Deliberately NOT
+// applied to applyPmRescope below: a rescope IS the expected write during
+// `gate_in_progress` (the reviewer-objection round the gate itself asked
+// for), so gating that path would deadlock the reject loop.
+const GATE_ACTIVE_ARCH_STATUSES = new Set(["deferred_design", "gate_in_progress"]);
+
+function isArchGateActive(frontmatter: Record<string, unknown> | undefined): boolean {
+  const status = frontmatter?.arch_status;
+  return typeof status === "string" && GATE_ACTIVE_ARCH_STATUSES.has(status);
 }
 
 async function resolveWritableEntry(
   repoPath: string,
   featureId: string,
   index: number,
-  config: Record<string, unknown> | null
+  config: Record<string, unknown> | null,
+  writableStates: Set<string> = WRITABLE_STATES
 ): Promise<{ entry: WritableBacklogEntry } | { failure: PmApplyFailure }> {
   const backlogEntry = await findFeatureById(repoPath, featureId, config);
   if (!backlogEntry) {
@@ -237,7 +323,7 @@ async function resolveWritableEntry(
       }
     };
   }
-  if (!WRITABLE_STATES.has(backlogEntry.state)) {
+  if (!writableStates.has(backlogEntry.state)) {
     return {
       failure: {
         index,
@@ -246,7 +332,7 @@ async function resolveWritableEntry(
           withId(
             index,
             featureId,
-            `feature is in state "${backlogEntry.state}" — pm-apply only writes pending/triaged FEATs`
+            `feature is in state "${backlogEntry.state}" — pm-apply only writes ${[...writableStates].join("/")} FEATs`
           )
         ]
       }
@@ -359,6 +445,7 @@ export async function applyPmResults(
 
   const applied: PmApplyApplied[] = [];
   const failures: PmApplyFailure[] = [];
+  const gated: PmApplyGated[] = [];
 
   if (!Array.isArray(entries)) {
     failures.push({
@@ -366,7 +453,7 @@ export async function applyPmResults(
       featureId: null,
       issues: ["results file must contain a top-level JSON array of PM entries"]
     });
-    return { applied, failures };
+    return { applied, failures, gated };
   }
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -383,8 +470,212 @@ export async function applyPmResults(
       continue;
     }
 
+    // ARCHITECT GATE read-guard: skip priority/promotion writes while the
+    // gate is active or already deferred for this FEAT — read-only, never a
+    // second writer of arch_* fields (see isArchGateActive docstring above).
+    if (isArchGateActive(resolved.entry.frontmatter)) {
+      gated.push({
+        index,
+        featureId: featureId as string,
+        archStatus: String(resolved.entry.frontmatter?.arch_status)
+      });
+      continue;
+    }
+
     applied.push(
       await commitEntry(
+        repoPath,
+        resolved.entry,
+        rawEntry as Record<string, any>,
+        featureId as string,
+        config
+      )
+    );
+  }
+
+  return { applied, failures, gated };
+}
+
+// ---------------------------------------------------------------------
+// Rescope (GATE reject-loop integration): `runner:pm --rescope <FEAT-ID>`
+// rewrites scope + Given-When-Then ACs to address architect-reviewer
+// objections. Distinct entry point from `applyPmResults` above because a
+// rescope is not a re-score — it does not touch scores/compositePriority/
+// autonomousSafe — but it funnels through the SAME writer primitives:
+// `resolveWritableEntry` (state gate — called with `RESCOPE_WRITABLE_STATES`
+// so an in-progress FEAT stays writable for rescope even though it is
+// excluded from `applyPmResults` scoring/promotion), `replaceAcsSection` (AC
+// body write, sibling of `appendAcsSection`), `updateFeatureFrontmatter` and
+// `writePmReviewArtifact` (both already part of the pm-apply funnel used
+// by `commitEntry` above). No second writer touches FEAT frontmatter/body.
+// ---------------------------------------------------------------------
+
+export interface PmRescopeEntryInput {
+  featureId?: unknown;
+  objections?: unknown;
+  acs?: unknown;
+  scopeNotes?: unknown;
+  reasoning?: unknown;
+}
+
+export interface PmRescopeApplied {
+  featureId: string;
+  filePath: string;
+  artifactPath: string;
+  rescopeCount: number;
+}
+
+export interface PmRescopeResult {
+  applied: PmRescopeApplied[];
+  failures: PmApplyFailure[];
+}
+
+function isNonEmptyStringArray(v: unknown): v is string[] {
+  return (
+    Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string" && s.trim() !== "")
+  );
+}
+
+function validateRescopeEntryShape(
+  raw: unknown,
+  index: number,
+  allowedIds: string[] | null
+): { issues: string[]; featureId: string | null } {
+  const issues: string[] = [];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { issues: [`entry ${index}: not a JSON object`], featureId: null };
+  }
+  const e = raw as Record<string, unknown>;
+  const featureId = extractFeatureId(e, index, allowedIds, issues);
+
+  if (!isNonEmptyStringArray(e.objections)) {
+    issues.push(
+      withId(index, featureId, "objections must be a non-empty array of non-empty strings")
+    );
+  }
+
+  if (!isNonEmptyStringArray(e.acs)) {
+    issues.push(withId(index, featureId, "acs must be a non-empty array of non-empty strings"));
+  } else {
+    const missingGwt = (e.acs as string[]).filter(
+      (ac) => !(/\bGiven\b/.test(ac) && /\bWhen\b/.test(ac) && /\bThen\b/.test(ac))
+    );
+    if (missingGwt.length > 0) {
+      issues.push(
+        withId(
+          index,
+          featureId,
+          `every AC must contain the literal words Given/When/Then (${missingGwt.length} offending)`
+        )
+      );
+    }
+  }
+
+  if (typeof e.reasoning !== "string" || e.reasoning.trim() === "") {
+    issues.push(withId(index, featureId, "reasoning must be a non-empty string"));
+  }
+
+  if (e.scopeNotes !== undefined && typeof e.scopeNotes !== "string") {
+    issues.push(withId(index, featureId, "scopeNotes must be a string when present"));
+  }
+
+  return { issues, featureId };
+}
+
+async function commitRescopeEntry(
+  repoPath: string,
+  entry: WritableBacklogEntry,
+  e: Record<string, any>,
+  featureId: string,
+  config: Record<string, unknown> | null
+): Promise<PmRescopeApplied> {
+  const freshContent = await fs.readFile(entry.filePath, "utf8");
+  const { frontmatter: currentFm, body: currentBody } = parseFrontmatter(freshContent);
+
+  const newBody = replaceAcsSection(currentBody, e.acs as string[]);
+  if (newBody !== currentBody) {
+    await fs.writeFile(entry.filePath, serializeFrontmatter(currentFm, newBody), "utf8");
+  }
+
+  const priorCount =
+    typeof currentFm.pm_rescope_count === "number" ? currentFm.pm_rescope_count : 0;
+  const rescopeCount = priorCount + 1;
+
+  const fmUpdates: Record<string, unknown> = {
+    pm_rescope_count: rescopeCount,
+    pm_last_rescoped: new Date().toISOString().slice(0, 10),
+    rescope_objections: e.objections
+  };
+  if (e.scopeNotes !== undefined) {
+    fmUpdates.rescope_scope_notes = e.scopeNotes;
+  }
+  await updateFeatureFrontmatter(entry.filePath, fmUpdates, repoPath, config);
+
+  const reviewInput: Parameters<typeof writePmReviewArtifact>[1] = {
+    featureId,
+    scores: {},
+    compositePriority:
+      (currentFm.priority as string) || (currentFm.pm_composite_priority as string) || "P2",
+    autonomousSafe: Boolean(currentFm.autonomous_safe),
+    reasoning: e.reasoning as string,
+    risks: e.objections as string[],
+    ...(e.scopeNotes !== undefined ? { scopeNotes: e.scopeNotes as string } : {})
+  };
+  const { artifactPath } = await writePmReviewArtifact(repoPath, reviewInput);
+
+  return { featureId, filePath: entry.filePath, artifactPath, rescopeCount };
+}
+
+/**
+ * Validate and commit a batch of PM rescope results (GATE reject-loop).
+ * See the section docstring above for the write-path contract. Re-running
+ * against the same or a newer results file for the same FEAT is safe:
+ * `replaceAcsSection` overwrites the AC section in place rather than
+ * appending, and `pm_rescope_count` / `pm_last_rescoped` are plain
+ * overwrites.
+ */
+export async function applyPmRescope(
+  repoPath: string,
+  entries: unknown,
+  opts: ApplyPmResultsOpts = {}
+): Promise<PmRescopeResult> {
+  const allowedIds = opts.allowedIds ?? null;
+  const config = opts.config ?? null;
+
+  const applied: PmRescopeApplied[] = [];
+  const failures: PmApplyFailure[] = [];
+
+  if (!Array.isArray(entries)) {
+    failures.push({
+      index: 0,
+      featureId: null,
+      issues: ["results file must contain a top-level JSON array of PM rescope entries"]
+    });
+    return { applied, failures };
+  }
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const rawEntry = entries[index];
+    const { issues, featureId } = validateRescopeEntryShape(rawEntry, index, allowedIds);
+    if (issues.length > 0) {
+      failures.push({ index, featureId, issues });
+      continue;
+    }
+
+    const resolved = await resolveWritableEntry(
+      repoPath,
+      featureId as string,
+      index,
+      config,
+      RESCOPE_WRITABLE_STATES
+    );
+    if ("failure" in resolved) {
+      failures.push(resolved.failure);
+      continue;
+    }
+
+    applied.push(
+      await commitRescopeEntry(
         repoPath,
         resolved.entry,
         rawEntry as Record<string, any>,

@@ -12,7 +12,11 @@ import { spawnSync } from "node:child_process";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { addFeature } from "../scripts/lib/backlog-writer.mjs";
+import {
+  addFeature,
+  moveFeature,
+  updateFeatureFrontmatter
+} from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { applyPmResults } from "../scripts/lib/pm-apply.mjs";
 
@@ -161,6 +165,32 @@ test("applyPmResults: featureId outside the allowed id set fails validation, wri
   assert.equal(frontmatter.status, "pending");
 });
 
+test("applyPmResults: refuses to write an in-progress FEAT (scoring/promotion must never touch in-progress) (FU)", async () => {
+  const repo = await tmpRepo("pm-apply-inprogress-");
+  const a = await addFeature(repo, { title: "Alpha", body: "x", category: "feature" });
+  const moved = await moveFeature(a.filePath, "in-progress");
+
+  const entries = [
+    {
+      featureId: a.id,
+      scores: validScores(),
+      compositePriority: "P2",
+      autonomousSafe: true,
+      reasoning: "should be refused — feature is already in-progress"
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(result.applied.length, 0);
+  assert.equal(result.failures.length, 1);
+  assert.match(result.failures[0]!.issues.join(" "), /in state "in-progress"/);
+
+  const content = await fs.readFile(moved.to, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.status, "in-progress");
+  assert.equal(frontmatter.priority, null);
+});
+
 test("applyPmResults: re-running against the same results is idempotent (already-triaged entries update in place)", async () => {
   const repo = await tmpRepo("pm-apply-idempotent-");
   const a = await addFeature(repo, { title: "Alpha", body: "x", category: "feature" });
@@ -185,6 +215,105 @@ test("applyPmResults: re-running against the same results is idempotent (already
     false,
     "already triaged — updates in place, no re-move"
   );
+});
+
+// ARCHITECT GATE read-guard (runner-plugin GATE workstream): a FEAT that is
+// mid-gate or already deferred must not have pm-apply re-promote its
+// priority or reset arch_attempt. Read-only skip — never a second writer of
+// arch_* fields (see pm-apply.mts isArchGateActive).
+test("applyPmResults: skips priority/promotion writes when arch_status is gate_in_progress (read-guard)", async () => {
+  const repo = await tmpRepo("pm-apply-gate-inprogress-");
+  const a = await addFeature(repo, {
+    title: "Alpha",
+    body: "x",
+    category: "feature",
+    priority: "P0"
+  });
+  await updateFeatureFrontmatter(
+    a.filePath,
+    { arch_status: "gate_in_progress", arch_attempt: 1 },
+    repo,
+    null
+  );
+
+  const entries = [
+    {
+      featureId: a.id,
+      scores: validScores(),
+      compositePriority: "P2",
+      autonomousSafe: true,
+      reasoning: "routine re-triage while gate is mid-cycle"
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(result.applied.length, 0);
+  assert.equal(result.failures.length, 0, "a gated skip is not a validation failure");
+  assert.equal(result.gated.length, 1);
+  assert.equal(result.gated[0]!.archStatus, "gate_in_progress");
+
+  const content = await fs.readFile(a.filePath, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.status, "pending", "not moved to triaged — write skipped");
+  assert.equal(frontmatter.priority, "P0", "priority not re-promoted to P2");
+  assert.equal(frontmatter.arch_attempt, 1, "arch_attempt not reset");
+  assert.equal(frontmatter.arch_status, "gate_in_progress");
+});
+
+test("applyPmResults: skips priority/promotion writes when arch_status is deferred_design (read-guard)", async () => {
+  const repo = await tmpRepo("pm-apply-gate-deferred-");
+  const a = await addFeature(repo, {
+    title: "Bravo",
+    body: "x",
+    category: "feature",
+    priority: "P1"
+  });
+  await updateFeatureFrontmatter(
+    a.filePath,
+    { arch_status: "deferred_design", arch_attempt: 2, autonomous_safe: false },
+    repo,
+    null
+  );
+
+  const entries = [
+    {
+      featureId: a.id,
+      scores: validScores(),
+      compositePriority: "P0",
+      autonomousSafe: true,
+      reasoning: "should not undo the gate's own defer"
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(result.applied.length, 0);
+  assert.equal(result.gated.length, 1);
+  assert.equal(result.gated[0]!.archStatus, "deferred_design");
+
+  const content = await fs.readFile(a.filePath, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.priority, "P1", "priority not re-promoted to P0");
+  assert.equal(frontmatter.autonomous_safe, false, "not flipped back to true");
+  assert.equal(frontmatter.arch_attempt, 2, "arch_attempt not reset");
+});
+
+test("applyPmResults: a FEAT with no arch_status at all is unaffected by the read-guard", async () => {
+  const repo = await tmpRepo("pm-apply-gate-none-");
+  const a = await addFeature(repo, { title: "Charlie", body: "x", category: "feature" });
+
+  const entries = [
+    {
+      featureId: a.id,
+      scores: validScores(),
+      compositePriority: "P1",
+      autonomousSafe: true,
+      reasoning: "normal triage, no gate in play"
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(result.applied.length, 1);
+  assert.equal(result.gated.length, 0);
 });
 
 test("CLI: backlog pm-apply --file commits a fixture results file end-to-end", async () => {

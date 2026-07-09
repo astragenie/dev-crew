@@ -10,6 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { beforeEach, afterEach } from "bun:test";
 import { PATH_DEFAULTS } from "../scripts/lib/paths.mjs";
 
 const run = promisify(execFile);
@@ -86,10 +87,48 @@ export async function writeLoopJson(repo: string, loop: Record<string, unknown>)
   );
 }
 
-/** Initialize a git repo (main branch, test identity, gpg signing off). */
+/**
+ * Initialize a git repo (main branch, test identity, gpg signing off) with an
+ * initial empty commit. The commit matters as much as `git init` itself:
+ * without a real repo boundary + a commit on `main`, git subprocesses invoked
+ * by code under test (e.g. crew-bridge's cost-report git diff/log calls, or
+ * `git worktree add`) can walk up past the tmp dir to whatever ancestor repo
+ * the OS temp path lives under (e.g. a git-initialized home directory) —
+ * which can make a test scan/lock far more than its own tmp dir and
+ * hang/time out under concurrent load even though it passes in isolation.
+ */
 export async function initGitRepo(repo: string): Promise<void> {
   await run("git", ["init", "-b", "main"], { cwd: repo });
   await run("git", ["config", "user.email", "test@test.com"], { cwd: repo });
   await run("git", ["config", "user.name", "Test"], { cwd: repo });
   await run("git", ["config", "commit.gpgsign", "false"], { cwd: repo });
+  await run("git", ["commit", "--allow-empty", "-m", "init"], { cwd: repo });
+}
+
+/**
+ * Registers bun:test `beforeEach`/`afterEach` hooks that point
+ * `CREW_MARKETPLACE_NAME` at a marketplace name that cannot resolve to a real
+ * plugin cache dir, for the duration of every test in the calling file. This
+ * makes `findCrewCli()` (plugin-identity.mts) short-circuit to null, so every
+ * crew-bridge call inside `completeSlice` (tryWriteCostReport,
+ * markValidationSkippedBadge, etc.) becomes an instant `{ skipped }` no-op
+ * instead of shelling out to a real, unmocked crew CLI on the host machine.
+ * On a dev box that actually has the crew plugin cached, that real subprocess
+ * call can run far longer than a unit test's timeout budget — deterministic
+ * and fast regardless of what's installed on the host running the test.
+ *
+ * Call once at module scope in any `*.test.mts` file whose tests call
+ * `completeSlice()`. Save/restore is scoped per-test (not per-file) so it
+ * can't leak into other test files' assertions about the real env var.
+ */
+export function isolateCrewCli(): void {
+  let saved: string | undefined;
+  beforeEach(() => {
+    saved = process.env.CREW_MARKETPLACE_NAME;
+    process.env.CREW_MARKETPLACE_NAME = "al-test-isolated-no-such-marketplace";
+  });
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CREW_MARKETPLACE_NAME;
+    else process.env.CREW_MARKETPLACE_NAME = saved;
+  });
 }

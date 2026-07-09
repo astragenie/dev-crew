@@ -112,6 +112,31 @@ test("sliceFromFeature single-slice path (no proposed_slices) returns slices arr
   assert.equal(out.slice.id, out.slices[0].id, "out.slice must equal out.slices[0] (back-compat)");
 });
 
+// WS-3: surface:*/stack:* propagation must also apply to the multi-slice
+// (proposed_slices) materialization path, since it calls the same
+// buildSliceContent helper as the single-slice path.
+test("sliceFromFeature proposed_slices path: FEAT surface:*/stack:* tags propagate to every materialized slice", async () => {
+  const repo = await tmpRepo("sfp-propagate-");
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 8,
+    tags: ["surface:api", "stack:csharp"],
+    proposed_slices: [
+      { id_suffix: "-SLICE-1", title: "First", points: 5 },
+      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+    ]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 2);
+
+  for (const sl of out.slices as { id: string; path: string }[]) {
+    const sliceContent = await fs.readFile(sl.path, "utf8");
+    const { frontmatter } = parseFrontmatter(sliceContent);
+    assert.deepEqual(frontmatter.tags, ["surface:api", "stack:csharp"]);
+  }
+});
+
 test("from-feature CLI on malformed proposed_slices writes audit + exits 1", async () => {
   const repo = await tmpRepo("sfp-malformed-cli-");
   const feat = await addFeature(repo, { title: "Bad sized" });

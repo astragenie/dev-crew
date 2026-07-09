@@ -34,6 +34,15 @@ const BLOCK_ARRAY_ITEM_STRIP_RE = /^\s+-\s+/;
 const KEY_VALUE_RE = /^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
 // Nested mapping item: indented "key: value" (no leading dash).
 const NESTED_KV_RE = /^\s+([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/;
+// Disambiguates a block-array item's own content: "id_suffix: -SLICE-1" (a
+// one-entry nested mapping, used by proposed_slices) from a plain string that
+// merely contains a colon, e.g. "surface:ui" (a surface/stack tag value).
+// Mirrors real YAML's rule that a colon is a mapping indicator only when
+// followed by whitespace or end-of-line — KEY_VALUE_RE's `\s*` (zero-or-more)
+// doesn't enforce that, so `- surface:ui` was misread as `{surface: "ui"}`
+// instead of the string "surface:ui" (found via the WS-3 surface/stack tag
+// propagation round-trip, FU-6). Do NOT reuse KEY_VALUE_RE/NESTED_KV_RE here.
+const BLOCK_ARRAY_MAPPING_ITEM_RE = /^([A-Za-z_][A-Za-z0-9_-]*):(\s+.*|)$/;
 const QUOTE_NEEDED_RE = /[:#[\]{}'",]/;
 const LEADING_SPACE_RE = /^\s/;
 const TRAILING_SPACE_RE = /\s$/;
@@ -131,7 +140,7 @@ function applyEmptyValue(
 function consumeBlockArrayItem(frontmatter: Frontmatter, state: ParseState, line: string): void {
   const itemRaw = line.replace(BLOCK_ARRAY_ITEM_STRIP_RE, "");
   const arr = frontmatter[state.currentArrayKey!];
-  const kv = itemRaw.match(KEY_VALUE_RE);
+  const kv = itemRaw.match(BLOCK_ARRAY_MAPPING_ITEM_RE);
   if (kv) {
     const obj: Record<string, unknown> = {};
     obj[kv[1]!] = parseScalar(kv[2]!);

@@ -7,8 +7,15 @@
 // strict zero-op — no child process, no mkdir, no file write. Only the
 // cheap config read happens.
 //
-// Public surface: WorktreeResult, WorktreeError, ensureSliceWorktree.
-// All other helpers are module-private.
+// Also provides `isBranchInProgress` (WS-4): git-native collision detection
+// for "another build/fix/slice is already in progress on this branch",
+// deliberately with no lock file — each worktree owns its own
+// .claude/state/crew/workflow-state.json, so detection means enumerating
+// `git worktree list` and reading a candidate worktree's own state file.
+//
+// Public surface: WorktreeResult, WorktreeError, ensureSliceWorktree,
+// BranchInProgressResult, isBranchInProgress. All other helpers are
+// module-private.
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -339,4 +346,92 @@ export async function ensureSliceWorktree(
     created: true,
     reused: false
   };
+}
+
+// ---------------------------------------------------------------------------
+// isBranchInProgress — WS-4 collision-triggered worktree isolation
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the branch currently checked out at `repoPath` (e.g. "main" or
+ * "feat/foo"). Returns null on failure — detached HEAD, not a repo, or any
+ * other git error — fail-open, since callers only use this to feed
+ * isBranchInProgress and a null branch name simply means "skip the check."
+ */
+export async function getCurrentBranch(repoPath: string): Promise<string | null> {
+  try {
+    const out = (await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
+    if (!out || out === "HEAD") return null; // detached HEAD
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** Result of a positive isBranchInProgress hit. */
+export interface BranchInProgressResult {
+  /** The sliceId found active in the matching worktree's own state. */
+  sliceId: string;
+  /** The worktree path (as reported by `git worktree list`) that is active. */
+  worktreePath: string;
+}
+
+/**
+ * Detect whether another build/fix/slice is already in progress on
+ * `branchName`, by scanning `git worktree list --porcelain` and reading each
+ * matching worktree's OWN `.claude/state/crew/workflow-state.json`.
+ *
+ * Design (git-native, no lock file): every worktree of a repo has its own
+ * `.claude/state` directory, so the only way to observe a sibling's active
+ * run is to read its state file directly — there is no shared lock to poll.
+ * This also covers the (worktreeMode: off) dominant path, where `repoPath`
+ * itself is the sole worktree entry: if it already has an unfinished
+ * `currentRun.sliceId`, that counts as a collision too, since a second slice
+ * starting there would share the same working directory.
+ *
+ * Fail-open by design: this is a collision *trigger*, not a hard gate — a
+ * missing/corrupt state file, or an inability to enumerate worktrees at all,
+ * is treated as "no active run observed" rather than thrown. A false
+ * negative here just means the caller proceeds without isolation (today's
+ * default behavior); a thrown error would block slice start on an unrelated
+ * read failure, which is worse.
+ */
+export async function isBranchInProgress(
+  repoPath: string,
+  branchName: string
+): Promise<BranchInProgressResult | null> {
+  let entries: Array<{ worktreePath: string; branch: string }>;
+  try {
+    const raw = await git(repoPath, ["worktree", "list", "--porcelain"]);
+    entries = parseWorktreeList(raw);
+  } catch {
+    return null; // fail-open: cannot enumerate worktrees
+  }
+
+  for (const entry of entries) {
+    const entryBranch = entry.branch.replace(/^refs\/heads\//, "");
+    if (entryBranch !== branchName) continue;
+
+    try {
+      const statePath = path.join(
+        entry.worktreePath,
+        ".claude",
+        "state",
+        "crew",
+        "workflow-state.json"
+      );
+      const raw = await fs.readFile(statePath, "utf8");
+      const state = JSON.parse(raw);
+      const sliceId = state?.currentRun?.sliceId;
+      if (typeof sliceId === "string" && sliceId.length > 0) {
+        return { sliceId, worktreePath: entry.worktreePath };
+      }
+    } catch {
+      // fail-open: unreadable/missing/corrupt state for this entry means
+      // "no active run observed there" — keep scanning other entries.
+      continue;
+    }
+  }
+
+  return null;
 }

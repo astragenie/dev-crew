@@ -15,7 +15,7 @@ import { sliceFromFeature, completeSlice } from "../scripts/lib/slice-linker.mjs
 import { inferScoresForSlice } from "../scripts/lib/score-inference.mjs";
 import { mergeFrontmatter, parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
-import { AC_SECTION_BODY } from "./_fixtures.mjs";
+import { AC_SECTION_BODY, initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -34,8 +34,11 @@ async function tmpRepo(prefix) {
       reviewers: { ladder: ["A", "B"] }
     })
   );
+  await initGitRepo(repo);
   return repo;
 }
+
+isolateCrewCli();
 
 async function writeArtifact(repo, subdir, filename, body) {
   const dir = path.join(repo, ".claude/artifacts/crew", subdir);

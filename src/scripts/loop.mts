@@ -105,7 +105,12 @@ const FLAG_SPEC = {
   "--deep": { key: "deep", boolean: true },
   "--spec": { key: "spec", boolean: true },
   // backlog pm-apply (FEAT-214 / DEC-058): path to a PM results JSON file
-  "--file": { key: "file" }
+  "--file": { key: "file" },
+  // ARCHITECT GATE (runner side): backlog arch-gate-apply
+  "--verdict": { key: "verdict" },
+  "--objections": { key: "objections" },
+  "--risk-flags": { key: "risk-flags" },
+  "--spent-usd": { key: "spent-usd" }
 };
 
 function parseArgs(argv: string[]) {
@@ -178,7 +183,11 @@ function parseArgs(argv: string[]) {
     text: null,
     deep: false,
     spec: false,
-    file: null
+    file: null,
+    verdict: null,
+    objections: null,
+    "risk-flags": null,
+    "spent-usd": null
   };
   const positionals: any[] = [];
 
@@ -1069,10 +1078,181 @@ export async function runBacklogPmApply(
     triaged: result.applied.length,
     applied: result.applied.length,
     failed: result.failures.length,
+    // ARCHITECT GATE read-guard (pm-apply.mts isArchGateActive): entries
+    // skipped because the FEAT is mid-gate/deferred. Distinct from
+    // `failed` — a gated skip is expected behavior, not a batch error, so
+    // it never flips process.exitCode.
+    gated: result.gated.length,
     path: "pm-apply",
+    results: result.applied,
+    failures: result.failures,
+    gatedEntries: result.gated
+  };
+}
+
+// runBacklogPmRescope: GATE reject-loop integration (autonomous --rescope
+// mode). Mirrors runBacklogPmApply's read-file / validate / commit shape —
+// PM writes a rescope-results JSON file via its own scoped Write grant
+// (same `.claude/artifacts/loop/pm-reviews/` path as triage results); this
+// subcommand is the sole caller of `applyPmRescope`, which is the sole
+// writer of the FEAT's AC section + rescope frontmatter fields.
+export async function runBacklogPmRescope(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  if (!flags.file) {
+    throw new Error("backlog pm-rescope requires --file <path-to-rescope-results.json>");
+  }
+  const resolvedPath = path.isAbsolute(flags.file)
+    ? flags.file
+    : path.resolve(repoPath, flags.file);
+
+  const fs = await import("node:fs/promises");
+  let raw: string;
+  try {
+    raw = await fs.readFile(resolvedPath, "utf8");
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog pm-rescope: cannot read --file ${resolvedPath}: ${(err as Error).message}`
+    );
+  }
+
+  let entries: unknown;
+  try {
+    entries = JSON.parse(raw);
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog pm-rescope: --file ${resolvedPath} is not valid JSON: ${(err as Error).message}`
+    );
+  }
+
+  let allowedIds: string[] | null;
+  if (flags.ids) {
+    allowedIds = String(flags.ids)
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+  } else {
+    allowedIds = null;
+  }
+
+  const { applyPmRescope } = await import("./lib/pm-apply.mjs");
+  const result = await applyPmRescope(repoPath, entries, { allowedIds, config });
+
+  if (result.failures.length > 0) {
+    // Entry point sets exitCode — pm-apply.mts itself never touches it
+    // (docs/code-conventions.md "Error handling").
+    process.exitCode = 1;
+  }
+
+  return {
+    applied: result.applied.length,
+    failed: result.failures.length,
+    path: "pm-rescope",
     results: result.applied,
     failures: result.failures
   };
+}
+
+// Read a JSON-array-of-strings file for an arch-gate-apply flag
+// (--objections / --risk-flags share this exact shape). Extracted so both
+// flags get identical resolve/read/parse/validate error messages.
+async function readStringArrayFlagFile(
+  repoPath: string,
+  flagName: string,
+  rawPath: string
+): Promise<string[]> {
+  const resolvedPath = path.isAbsolute(rawPath) ? rawPath : path.resolve(repoPath, rawPath);
+  const fs = await import("node:fs/promises");
+  let raw: string;
+  try {
+    raw = await fs.readFile(resolvedPath, "utf8");
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog arch-gate-apply: cannot read --${flagName} ${resolvedPath}: ${(err as Error).message}`
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog arch-gate-apply: --${flagName} ${resolvedPath} is not valid JSON: ${(err as Error).message}`
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(
+      `backlog arch-gate-apply: --${flagName} ${resolvedPath} must be a JSON array of strings`
+    );
+  }
+  return parsed.filter((s): s is string => typeof s === "string");
+}
+
+// runBacklogArchGateApply: ARCHITECT GATE reject-loop integration. Sole CLI
+// caller of `applyArchGateVerdict` (arch-gate.mts) — persists an
+// architect-reviewer verdict (`arch_review`, normalized) plus risk flags
+// (`arch_risk`) into FEAT frontmatter and advances the
+// gate_in_progress/approved/deferred_design state machine. `--objections`
+// and `--risk-flags` each point at a JSON file containing a string array
+// (mirrors pm-rescope's results-file shape); `--risk-flags` is optional —
+// when omitted, `applyArchGateVerdict` falls back to `--objections` as the
+// risk-flag record (see arch-gate.mts ApplyArchGateVerdictOpts). Omit both
+// for an approved verdict with no reviewer notes. `--spent-usd`, when
+// supplied, is checked against `loop.archGateBudgetUsdPerFeat` BEFORE any
+// frontmatter write — an exceeded budget halts (exit 1, `halt_reason:
+// "budget_exceeded"`), never a silent defer.
+export async function runBacklogArchGateApply(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  if (!flags.id) {
+    throw new Error("backlog arch-gate-apply requires --id <FEAT-ID>");
+  }
+  if (!flags.verdict) {
+    throw new Error(
+      "backlog arch-gate-apply requires --verdict <approved|approved_with_notes|rejected|needs_revision>"
+    );
+  }
+
+  const objections = flags.objections
+    ? await readStringArrayFlagFile(repoPath, "objections", flags.objections)
+    : [];
+  const riskFlags = flags["risk-flags"]
+    ? await readStringArrayFlagFile(repoPath, "risk-flags", flags["risk-flags"])
+    : undefined;
+
+  const actualUsdSpent =
+    flags["spent-usd"] !== undefined && flags["spent-usd"] !== null
+      ? Number(flags["spent-usd"])
+      : null;
+
+  const { applyArchGateVerdict, ArchGateBudgetExceededError } = await import("./lib/arch-gate.mjs");
+  try {
+    const result = await applyArchGateVerdict(repoPath, String(flags.id), String(flags.verdict), {
+      objections,
+      ...(riskFlags !== undefined ? { riskFlags } : {}),
+      actualUsdSpent,
+      config
+    });
+    return { path: "arch-gate-apply", halted: false, ...result };
+  } catch (err: unknown) {
+    if (err instanceof ArchGateBudgetExceededError) {
+      // Entry point sets exitCode — halt-and-escalate to the operator,
+      // never a silent defer (see arch-gate.mts checkArchGateBudget).
+      process.exitCode = 1;
+      return {
+        path: "arch-gate-apply",
+        halted: true,
+        halt_reason: err.halt_reason,
+        featureId: err.featureId,
+        actualUsd: err.actualUsd,
+        ceilingUsd: err.ceilingUsd
+      };
+    }
+    throw err;
+  }
 }
 
 function isUnclassifiedEntry(entry: Record<string, any>): boolean {
@@ -1141,13 +1321,19 @@ async function runBacklogSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply"
+      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply | pm-rescope | arch-gate-apply"
     );
   if (sub === "add") {
     return runBacklogAdd(repoPath, flags, rest, config);
   }
   if (sub === "pm-apply") {
     return runBacklogPmApply(repoPath, flags, config);
+  }
+  if (sub === "pm-rescope") {
+    return runBacklogPmRescope(repoPath, flags, config);
+  }
+  if (sub === "arch-gate-apply") {
+    return runBacklogArchGateApply(repoPath, flags, config);
   }
   if (sub === "list") {
     const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");

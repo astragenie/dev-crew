@@ -6,8 +6,15 @@ import { lintAcceptanceCriteria } from "../ac-linter.mjs";
 import { writeCrewRunBrief } from "./crew-bridge.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
 import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
-import { readSliceContext, readFeatureExcerpt, buildDispatchInstruction } from "./dispatch.mjs";
+import {
+  readSliceContext,
+  readFeatureExcerpt,
+  buildDispatchInstruction,
+  pickBuilderVariant,
+  extractTags
+} from "./dispatch.mjs";
 import type { OrchestratorMode } from "./dispatch.mjs";
+import { maybeBuildArchGatePreflight } from "../arch-gate.mjs";
 import { recentLearnings } from "../learnings.mjs";
 import { resolveOrchestratorModel } from "../model-router.mjs";
 import { runPlanPreflight } from "../slice-plan.mjs";
@@ -16,7 +23,7 @@ import { sliceFromFeature } from "./feature-lifecycle.mjs";
 import { detectAcceptanceCriteria } from "../acceptance-criteria.mjs";
 import { computeConfidence } from "../confidence-signal.mjs";
 import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
-import { ensureSliceWorktree } from "../worktree-manager.mjs";
+import { ensureSliceWorktree, isBranchInProgress, getCurrentBranch } from "../worktree-manager.mjs";
 import type { WorktreeResult } from "../worktree-manager.mjs";
 import { mergeFrontmatter } from "../frontmatter.mjs";
 import { displaySliceTitle } from "../slice-title.mjs";
@@ -143,6 +150,35 @@ async function bestEffort(fn: (...args: any[]) => any) {
     return await fn();
   } catch (err: unknown) {
     return { error: (err as Error).message };
+  }
+}
+
+// ARCHITECT GATE (runner side): before slice 1 of a P0/P1 fullstack FEAT
+// dispatches, surface the pre-slice-1 architect + risk gate preflight (see
+// arch-gate.mts module docstring for the full architecture decision — this
+// CLI only emits the instruction; it never dispatches agents itself).
+// Best-effort: any failure resolving the gate (missing FEAT, FS error) is a
+// soft no-op, mirroring runRecallHook/learningsDigest below — the gate must
+// never block a slice-build dispatch it can't confidently evaluate.
+async function runArchGateHook(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  sliceContent: string | null,
+  resolved: Record<string, any>
+): Promise<string | null> {
+  if (!featureId) return null;
+  try {
+    const variant = pickBuilderVariant(extractTags(sliceContent), resolved);
+    return await maybeBuildArchGatePreflight({
+      repoPath,
+      sliceId,
+      featureId,
+      variant,
+      config: resolved
+    });
+  } catch {
+    return null;
   }
 }
 
@@ -287,9 +323,55 @@ async function writeWorktreePathToFrontmatter(
 }
 
 /**
+ * WS-4: when loop.worktreeMode is off (the dominant path), check whether
+ * another build/fix/slice is already in progress on the branch currently
+ * checked out at `repoPath` — git-native, no lock file: `isBranchInProgress`
+ * enumerates `git worktree list` and reads each matching worktree's own
+ * `.claude/state/crew/workflow-state.json` (which also covers the common
+ * case where `repoPath` itself is the sole worktree entry and still has an
+ * unfinished `currentRun.sliceId` from an earlier slice).
+ *
+ * On a hit, force isolation for THIS slice-start call only by returning a
+ * shallow-cloned config with `loop.worktreeMode` set true — the caller's own
+ * config object (and therefore the global worktreeMode default) is never
+ * mutated. Fail-open: any error resolving the branch or scanning worktrees
+ * leaves the config untouched (today's default behavior).
+ *
+ * MUST be called before any step that mutates workflow-state.currentRun
+ * (e.g. gatherSliceResources' crew write-run-brief call rotates the prior
+ * currentRun into history) — otherwise the very signal this reads is gone
+ * by the time we look for it. Callers should invoke this immediately after
+ * `resolved` is established, not "near" the later resolveSliceWorktree call.
+ */
+async function resolveWorktreeConfigWithCollisionCheck(
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<Record<string, any> | null> {
+  if (config?.loop?.worktreeMode === true) return config; // already isolating
+
+  const branchName = await getCurrentBranch(repoPath);
+  if (!branchName) return config;
+
+  const collision = await isBranchInProgress(repoPath, branchName);
+  if (!collision) return config;
+
+  return {
+    ...config,
+    loop: {
+      ...(config?.loop ?? {}),
+      worktreeMode: true
+    }
+  };
+}
+
+/**
  * Run ensureSliceWorktree, then persist the result into workflow-state and
  * slice frontmatter. Implements the write-order contract (state first,
  * frontmatter second) with compensating rollback on frontmatter failure.
+ *
+ * `config` is expected to already reflect the WS-4 collision check (see
+ * resolveWorktreeConfigWithCollisionCheck) — resolved early in startSlice,
+ * before any state-mutating step erases the signal it depends on.
  *
  * Returns WorktreeResult on success, or null when gate is off.
  * Propagates WorktreeError on hard git failure (no partial state written).
@@ -388,6 +470,13 @@ export async function startSlice(
   const resolved: Record<string, any> = config ?? (await resolveConfig(repoPath));
   const slicesRoot = resolveSlicesRoot(repoPath, resolved);
 
+  // WS-4: resolve the collision check FIRST, before any step below mutates
+  // workflow-state.currentRun (gatherSliceResources' crew write-run-brief
+  // call rotates it) and erases the very signal this depends on. Only this
+  // local `worktreeConfig` is affected — `resolved` (used everywhere else in
+  // this function) is untouched, so the global worktreeMode default never flips.
+  const worktreeConfig = await resolveWorktreeConfigWithCollisionCheck(repoPath, resolved);
+
   const { activePlan, title: planTitle } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
 
   const ctx = await readSliceContext(slicesRoot, sliceId);
@@ -422,7 +511,13 @@ export async function startSlice(
   // loop.worktreeMode === true. Propagates WorktreeError on hard failure so
   // the CLI exits non-zero with an actionable message. When the gate is off
   // (default) this is a strict zero-op — worktreeInfo is undefined.
-  const worktreeInfo = await resolveSliceWorktree(repoPath, sliceId, ctx.file, resolved, featureId);
+  const worktreeInfo = await resolveSliceWorktree(
+    repoPath,
+    sliceId,
+    ctx.file,
+    worktreeConfig,
+    featureId
+  );
 
   const { confidence, confidenceReason, requiresApprovalGate } = await resolveFeatureSignals(
     repoPath,
@@ -449,6 +544,12 @@ export async function startSlice(
   // Fire-and-forget on emit; never blocks slice-start path. Dormant when
   // astramem CLI absent or memory.recall.enabled === false.
   const recallBlock = await runRecallHook(featureId ?? sliceId, sliceId, touchesFiles, resolved);
+
+  // ARCHITECT GATE: only relevant when a dispatch instruction is actually
+  // being emitted (dispatch: false is the manual/debugging path — no gate).
+  const archGateBlock = dispatch
+    ? await runArchGateHook(repoPath, sliceId, featureId, ctx.content ?? null, resolved)
+    : null;
 
   const result = buildStartSliceReturn({
     sliceId,
@@ -490,6 +591,12 @@ export async function startSlice(
   // fail-safe — an empty/null digest is a strict no-op (byte-identical).
   if (learningsDigest && typeof result.dispatchInstruction === "string") {
     result.dispatchInstruction = `${learningsDigest}\n\n${result.dispatchInstruction}`;
+  }
+
+  // ARCHITECT GATE: prepend last so it's the most prominent block — the
+  // loop must see it before learnings/recall/the base dispatch prompt.
+  if (archGateBlock && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${archGateBlock}\n\n${result.dispatchInstruction}`;
   }
 
   await recordStartTrajectory(repoPath, sliceId, result, featureId, title);

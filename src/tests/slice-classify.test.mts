@@ -240,6 +240,73 @@ test("sliceFromFeature with mock dispatch: surface/stack NOT written to slice fr
   assert.ok(!("stack" in frontmatter), "frontmatter.stack must not be written");
 });
 
+// ---------------------------------------------------------------------------
+// WS-3: surface:*/stack:* tag propagation from FEAT frontmatter down onto
+// the created slice's frontmatter. pickBuilderVariant (dispatch.mts) reads
+// the SLICE's own tags via extractTags(sliceContent) — without this
+// propagation, a FEAT carrying real surface:*/stack:* tags still produced
+// an untagged slice, which resolved to "unknown"/fullstack regardless of
+// the FEAT's actual classification.
+// ---------------------------------------------------------------------------
+
+test("sliceFromFeature: FEAT surface:*/stack:* tags propagate onto the created slice", async () => {
+  const repo = await tmpRepo("sfc-propagate-");
+  await createFeature(repo, "FEAT-001", "triaged", {
+    tags: ["surface:api", "surface:ui", "stack:node"]
+  });
+  await ensureSlicesRoot(repo);
+
+  const out = await sliceFromFeature(repo, "FEAT-001");
+
+  const sliceContent = await fs.readFile(out.slice.path, "utf8");
+  const { frontmatter } = parseFrontmatter(sliceContent);
+  assert.deepEqual(frontmatter.tags, ["surface:api", "surface:ui", "stack:node"]);
+});
+
+test("sliceFromFeature: non-surface/stack FEAT tags are dropped during propagation", async () => {
+  const repo = await tmpRepo("sfc-propagate-filter-");
+  await createFeature(repo, "FEAT-001", "triaged", {
+    tags: ["concern:security", "surface:api", "priority-hot"]
+  });
+  await ensureSlicesRoot(repo);
+
+  const out = await sliceFromFeature(repo, "FEAT-001");
+
+  const sliceContent = await fs.readFile(out.slice.path, "utf8");
+  const { frontmatter } = parseFrontmatter(sliceContent);
+  assert.deepEqual(frontmatter.tags, ["surface:api"]);
+});
+
+test("sliceFromFeature: FEAT with no surface:*/stack:* tags leaves slice frontmatter without a tags field", async () => {
+  const repo = await tmpRepo("sfc-propagate-none-");
+  await createFeature(repo, "FEAT-001", "triaged", { tags: ["concern:security"] });
+  await ensureSlicesRoot(repo);
+
+  const out = await sliceFromFeature(repo, "FEAT-001");
+
+  const sliceContent = await fs.readFile(out.slice.path, "utf8");
+  const { frontmatter } = parseFrontmatter(sliceContent);
+  assert.ok(!frontmatter.tags, "no surface:*/stack:* tags on the FEAT -> no tags field propagated");
+});
+
+test("sliceFromFeature: FEAT with no tags at all propagates nothing (classify path still runs)", async () => {
+  const repo = await tmpRepo("sfc-propagate-empty-");
+  await createFeature(repo, "FEAT-001", "triaged");
+  await ensureSlicesRoot(repo);
+
+  const mockDispatch = async (_opts: any): Promise<DispatchResult> => {
+    return { ok: true, skipped: false, output: "tags: [ux]\nneeds_contract: false", durationMs: 1 };
+  };
+
+  const out = await sliceFromFeature(repo, "FEAT-001", { dispatchFn: mockDispatch });
+
+  // classifySlice ran (feature had no tags) and wrote its own tags after
+  // buildSliceContent left the frontmatter tags-free — no collision.
+  const sliceContent = await fs.readFile(out.slice.path, "utf8");
+  const { frontmatter } = parseFrontmatter(sliceContent);
+  assert.deepEqual(frontmatter.tags, ["ux"]);
+});
+
 test("sliceFromFeature with --no-classify: dispatch not called", async () => {
   const repo = await tmpRepo("sfc-noclassify-");
   await createFeature(repo, "FEAT-001", "triaged");

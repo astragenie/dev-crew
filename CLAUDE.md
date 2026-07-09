@@ -213,6 +213,67 @@ the citation surface. See `agents/pm.md` § "Decline contract" for the
 full contract, and `src/scripts/validate-decline-citations.mts` for the CI
 gate that enforces it.
 
+### ARCHITECT GATE frontmatter (`arch_*` fields, additive, DEC-075)
+
+The pre-slice-1 ARCHITECT GATE (`src/scripts/lib/arch-gate.mts`; see
+`.claude/artifacts/loop/decisions/DEC-075.md` for the full design
+record) adds five `arch_*` fields to FEAT frontmatter. This is a
+**schema v2, additive-only** change — no existing frontmatter field was
+renamed or removed; a FEAT that never entered the gate simply has none
+of these fields set.
+
+- **`arch_status`** (string enum) — `gate_in_progress` | `approved` |
+  `deferred_design`. Written and transitioned solely by
+  `applyArchGateVerdict`; read by `shouldRunArchGate` (re-entry
+  decision) and `isArchGateActive` (pm-apply read-guard, below).
+- **`arch_attempt`** (integer) — persisted rejection counter, starts
+  unset/`0`, increments on each `rejected`/`needs_revision` verdict.
+  Compared against `MAX_ARCH_GATE_ATTEMPTS = 2` to decide retry vs
+  defer. Survives process restarts and re-triage passes because it is
+  read straight off the FEAT file on every call, never held in memory.
+- **`arch_defer_reason`** (string) — set only when a FEAT transitions to
+  `arch_status: deferred_design`. Joined architect-reviewer objections,
+  or a fallback string when none were supplied. Absent on FEATs that
+  never deferred.
+- **`arch_review`** (string enum) — the *normalized* architect-reviewer
+  verdict, `approved` | `rejected` (`normalizeVerdict()` collapses
+  `approved_with_notes` → `approved` and `needs_revision` → `rejected`).
+  Written by `applyArchGateVerdict` on every non-no-op verdict call —
+  including a `gate_in_progress` round, not only the terminal
+  `approved`/`deferred_design` transitions — so a mid-cycle FEAT still
+  shows what the reviewer actually said last.
+- **`arch_risk`** (string array, or omitted) — the reviewer's risk flags.
+  `applyArchGateVerdict(..., { riskFlags })` writes `riskFlags` verbatim
+  when supplied; when omitted it falls back to `objections` (on a
+  rejected verdict the objections themselves ARE the risk flags — no
+  need to thread the same list through twice). Omitted entirely (no
+  `arch_risk` key written) when there is neither an explicit `riskFlags`
+  nor a non-empty `objections` list — e.g. a clean `approved` verdict
+  with no reviewer notes. `backlog arch-gate-apply` exposes this as the
+  optional `--risk-flags <file.json>` flag, a sibling of `--objections`
+  with the same JSON-array-of-strings file shape. A numeric `arch_risk`
+  *threshold* (as an alternative/supplement to the categorical verdict
+  string the gate's approve/reject decision itself is driven by) remains
+  explicitly deferred future work — `arch_risk` today is a recorded list,
+  not a scored gate input.
+
+**`--include-triaged` interaction.** `pm-apply`'s `--include-triaged`
+flag (mutually exclusive with `--ids`) lets a PM re-triage pass reach
+FEATs already in `triaged/`, which includes any FEAT the gate has
+touched. `isArchGateActive()` (`src/scripts/lib/pm-apply.mts`) checks
+`arch_status` against `{"deferred_design", "gate_in_progress"}` **before**
+`applyPmResults` commits a priority/promotion write for that FEAT; a
+match skips the write for that FEAT entirely (reported back as `gated`,
+not a failure) regardless of whether the pass was scoped by `--ids` or
+`--include-triaged`. This preserves pm-apply's sole-writer invariant for
+`arch_*` fields (`arch-gate.mts` is the only writer) and guarantees a
+routine re-triage — triggered by `--include-triaged` or otherwise — can
+never clobber `arch_*` fields or silently re-promote/re-prioritize a
+FEAT the gate has deferred or is mid-cycle on. The guard does **not**
+apply to `applyPmRescope` — a rescope write during `gate_in_progress` is
+the write the gate itself requested, so gating that path would deadlock
+the reject loop.
+
 ## Orchestrator mode
 
 <!-- clause: orchestrator-mode -->

@@ -2,8 +2,14 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
 import { test } from "bun:test";
 import assert from "node:assert/strict";
+
+function execFile(file, args, opts) {
+  return promisify(execFileCb)(file, args, { timeout: 10000, ...opts });
+}
 
 import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
@@ -28,6 +34,19 @@ async function tmpRepo(prefix) {
       stack: {}
     })
   );
+  // Initialize git so discovery doesn't traverse the entire temp path on
+  // Windows — without a real repo boundary here, git commands invoked by
+  // completeSlice (e.g. crew-bridge's cost-report git diff/log calls) walk
+  // up past the tmp dir to whatever ancestor repo the OS temp path lives
+  // under (e.g. a git-initialized home directory), which can make the
+  // "completeSlice also refreshes slice-progress" test scan the entire
+  // home directory and hang/time out. Matches the tmpRepo() pattern in
+  // slice-complete.test.mts.
+  await execFile("git", ["init", "-b", "main"], { cwd: repo });
+  await execFile("git", ["config", "user.email", "test@test.com"], { cwd: repo });
+  await execFile("git", ["config", "user.name", "Test"], { cwd: repo });
+  await execFile("git", ["config", "commit.gpgsign", "false"], { cwd: repo });
+  await execFile("git", ["commit", "--allow-empty", "-m", "init"], { cwd: repo });
   return repo;
 }
 
@@ -238,9 +257,30 @@ test("completeSlice also refreshes slice-progress", async () => {
   await writePlan(repo, [{ id: "SLICE-01", title: "Only one" }]);
   const feat = await addFeature(repo, { title: "Done feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
-  const result = await completeSlice(repo, slice.id, {
-    skipValidationCheck: "test-fixture: gate not under test"
-  });
+
+  // Root cause of this test's flakiness/timeout: completeSlice's
+  // crew-bridge best-effort calls (tryWriteCostReport, markValidationSkippedBadge)
+  // resolve the REAL hero-crew CLI via findCrewCli() (plugin-identity.mts),
+  // which scans ~/.claude/plugins/cache/<marketplace>/crew. On any machine
+  // that actually has the crew plugin installed (e.g. a developer box),
+  // this shells out to the real `crew cost-slice --aggregate-all` — a real,
+  // unmocked subprocess that does cross-repo cost aggregation and can run
+  // far longer than this unit test's timeout budget. Point
+  // CREW_MARKETPLACE_NAME at a marketplace name that can't resolve to a
+  // real cache dir so findCrewCli() short-circuits to null (all crew-bridge
+  // calls become instant `{ skipped }` no-ops) — deterministic and fast
+  // regardless of what's installed on the host running the test.
+  const savedMarketplace = process.env.CREW_MARKETPLACE_NAME;
+  process.env.CREW_MARKETPLACE_NAME = "al-test-isolated-no-such-marketplace";
+  let result;
+  try {
+    result = await completeSlice(repo, slice.id, {
+      skipValidationCheck: "test-fixture: gate not under test"
+    });
+  } finally {
+    if (savedMarketplace === undefined) delete process.env.CREW_MARKETPLACE_NAME;
+    else process.env.CREW_MARKETPLACE_NAME = savedMarketplace;
+  }
   assert.ok(result.sliceProgress && !result.sliceProgress.error);
   const dashboard = path.join(repo, ".claude/state/crew/slice-progress.md");
   const text = await fs.readFile(dashboard, "utf8");

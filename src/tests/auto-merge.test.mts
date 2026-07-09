@@ -35,6 +35,9 @@ import {
   isValidationGateSatisfied
 } from "../scripts/lib/auto-merge.mjs";
 import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
+import { isolateCrewCli } from "./_fixtures.mjs";
+
+isolateCrewCli();
 
 function exec(cmd, opts) {
   return promisify(execCb)(cmd, { timeout: 10000, ...opts });
@@ -61,6 +64,11 @@ async function initGitRepo(dir: string): Promise<void> {
   await run("git init -b main");
   await run("git config user.email test@test.com");
   await run("git config user.name Test");
+  // gpg signing off: under concurrent load a machine-configured signing key
+  // (or gpg-agent contention) can make "git commit -m initial" hang/fail
+  // even though it passes reliably in isolation. Matches _fixtures.mts'
+  // shared initGitRepo() and the slice-start.test.mts tmpRepo() fix.
+  await run("git config commit.gpgsign false");
   await fs.writeFile(path.join(dir, "README.md"), "# test");
   await run("git add -A");
   await run("git commit -m initial");
