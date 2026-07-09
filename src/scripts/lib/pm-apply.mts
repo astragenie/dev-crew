@@ -38,6 +38,14 @@ import { parseProposedSlices, type ProposedSlice } from "./proposed-slices.mjs";
 import { writePmReviewArtifact } from "./pm-artifact-writer.mjs";
 
 const VALID_PRIORITIES = new Set(["P0", "P1", "P2", "P3", "P4"]);
+
+// agents/pm.md escape valve: PM may verdict "needs-review" instead of a
+// P0-P4 score when scope exceeds its ability. Issue #402 bug 2 — this is a
+// legitimate verdict and must have an apply path (held in pending/ with a
+// `pm_needs_review: true` marker) rather than hard-failing the entry and
+// leaving no on-disk trace of the PM's decision.
+const NEEDS_REVIEW_PRIORITY = "needs-review";
+
 const WRITABLE_STATES = new Set(["pending", "triaged"]);
 
 // Rescope-only writable states (FU: allow `--rescope` on in-progress FEATs).
@@ -54,6 +62,10 @@ const SLICES_HEADING_RE = /^##\s+Proposed slices/im;
 
 export interface PmApplyEntryInput {
   featureId?: unknown;
+  /** Documented alias for `featureId` (issue #402 live-drift tolerance). */
+  featId?: unknown;
+  /** Documented alias for `proposedSlices` (issue #402 live-drift tolerance). */
+  proposed_slices?: unknown;
   scores?: unknown;
   compositePriority?: unknown;
   autonomousSafe?: unknown;
@@ -77,6 +89,13 @@ export interface PmApplyApplied {
   filePath: string;
   artifactPath: string;
   movedToTriaged: boolean;
+  /**
+   * Held disposition (issue #402 bug 2): the PM verdicted
+   * `compositePriority: "needs-review"`. The FEAT stays in `pending/` with
+   * a `pm_needs_review: true` marker and no priority assigned — a human
+   * must size it before it can be triaged. Absent on normal P0-P4 entries.
+   */
+  needsReview?: boolean;
 }
 
 // Entries skipped because the ARCHITECT GATE is active/deferred for that
@@ -103,6 +122,29 @@ export interface ApplyPmResultsOpts {
 
 function withId(index: number, featureId: string | null, msg: string): string {
   return `entry ${index}${featureId ? ` (${featureId})` : ""}: ${msg}`;
+}
+
+/**
+ * Issue #402 bug 1 — documented key aliases for live LLM output drift.
+ * A dispatched `runner:pm` emitted `featId` / `proposed_slices` instead of
+ * the contract's `featureId` / `proposedSlices` and the whole batch was
+ * rejected, defeating the FEAT-214 AC-5 "recoverable results on disk" goal.
+ * Exactly these two aliases are tolerated (belt-and-suspenders with the
+ * prompt-side contract note in `agents/pm.md`); any other drift — notably
+ * the bare `id` from FEAT-214 AC-2 — still fails validation.
+ */
+function normalizePmEntryAliases(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const source = raw as Record<string, unknown>;
+  if (source.featureId !== undefined && source.proposedSlices !== undefined) return raw;
+  const e = { ...source };
+  if (e.featureId === undefined && e.featId !== undefined) {
+    e.featureId = e.featId;
+  }
+  if (e.proposedSlices === undefined && e.proposed_slices !== undefined) {
+    e.proposedSlices = e.proposed_slices;
+  }
+  return e;
 }
 
 function extractFeatureId(
@@ -141,12 +183,15 @@ function validateCoreFields(
     issues.push(withId(index, featureId, issue));
   }
 
-  if (typeof e.compositePriority !== "string" || !VALID_PRIORITIES.has(e.compositePriority)) {
+  if (
+    typeof e.compositePriority !== "string" ||
+    !(VALID_PRIORITIES.has(e.compositePriority) || e.compositePriority === NEEDS_REVIEW_PRIORITY)
+  ) {
     issues.push(
       withId(
         index,
         featureId,
-        `compositePriority must be one of P0-P4, got ${JSON.stringify(e.compositePriority)}`
+        `compositePriority must be one of P0-P4 or "${NEEDS_REVIEW_PRIORITY}", got ${JSON.stringify(e.compositePriority)}`
       )
     );
   }
@@ -371,19 +416,31 @@ function buildPmUpdates(
   proposedSlices: ProposedSlice[] | null
 ): Record<string, unknown> {
   const scores = e.scores as Record<string, number>;
+  const needsReview = e.compositePriority === NEEDS_REVIEW_PRIORITY;
+  // A held verdict is never autonomous-safe, whatever the PM emitted — the
+  // whole point of "needs-review" is that a human decides before the loop
+  // may touch this FEAT.
+  const autonomousSafe = needsReview ? false : e.autonomousSafe;
   const pmUpdates: Record<string, unknown> = {
-    priority: e.compositePriority,
     pm_customer_impact: scores.customer_impact,
     pm_effort_estimate: scores.effort_estimate,
     pm_strategic_alignment: scores.strategic_alignment,
     pm_technical_risk: scores.technical_risk,
     pm_dependency_depth: scores.dependency_depth,
     pm_composite_priority: e.compositePriority,
-    pm_autonomous_safe: e.autonomousSafe,
+    pm_autonomous_safe: autonomousSafe,
     pm_reviewed: new Date().toISOString().slice(0, 10),
-    autonomous_safe: e.autonomousSafe,
+    autonomous_safe: autonomousSafe,
     triage_notes: e.reasoning
   };
+  if (needsReview) {
+    // Held disposition: marker instead of a priority, so ranking/promotion
+    // never picks it up and a later re-triage pass can see the prior verdict
+    // instead of scoring blind (issue #402 bug 2).
+    pmUpdates.pm_needs_review = true;
+  } else {
+    pmUpdates.priority = e.compositePriority;
+  }
   if (e.compositePriority === "P4") {
     pmUpdates.declined_per = e.declined_per;
   }
@@ -402,14 +459,17 @@ async function commitEntry(
 ): Promise<PmApplyApplied> {
   const proposedSlices = await appendBodySections(entry.filePath, e, featureId);
   const pmUpdates = buildPmUpdates(e, proposedSlices);
+  const needsReview = e.compositePriority === NEEDS_REVIEW_PRIORITY;
 
   let finalPath = entry.filePath;
   let movedToTriaged = false;
-  if (entry.state === "pending") {
+  if (entry.state === "pending" && !needsReview) {
     const moved = await moveFeature(entry.filePath, "triaged", pmUpdates, repoPath, config);
     finalPath = moved.to;
     movedToTriaged = true;
   } else {
+    // In-place update: already-triaged FEATs (re-triage pass), and held
+    // needs-review verdicts, which stay in pending/ by design.
     await updateFeatureFrontmatter(entry.filePath, pmUpdates, repoPath, config);
   }
 
@@ -428,7 +488,14 @@ async function commitEntry(
   };
   const { artifactPath } = await writePmReviewArtifact(repoPath, reviewInput);
 
-  return { featureId, filePath: finalPath, artifactPath, movedToTriaged };
+  return {
+    featureId,
+    filePath: finalPath,
+    artifactPath,
+    movedToTriaged,
+    // exactOptionalPropertyTypes — spread instead of assigning undefined.
+    ...(needsReview ? { needsReview: true } : {})
+  };
 }
 
 /**
@@ -457,7 +524,7 @@ export async function applyPmResults(
   }
 
   for (let index = 0; index < entries.length; index += 1) {
-    const rawEntry = entries[index];
+    const rawEntry = normalizePmEntryAliases(entries[index]);
     const { issues, featureId } = validateEntryShape(rawEntry, index, allowedIds);
     if (issues.length > 0) {
       failures.push({ index, featureId, issues });

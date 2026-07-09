@@ -344,3 +344,122 @@ test("CLI: backlog pm-apply --file commits a fixture results file end-to-end", a
   assert.equal(parsed.applied, 1);
   assert.equal(parsed.failed, 0);
 });
+
+// ---------------------------------------------------------------------
+// Issue #402 — live-drift hardening.
+//
+// Bug 1: runner:pm emitted `featId` / `proposed_slices` instead of the
+// documented `featureId` / `proposedSlices`, and pm-apply rejected 4/4
+// entries. The recovered results file (FEAT-214 AC-5) was unappliable as
+// written. `featId` and `proposed_slices` are now accepted as documented
+// aliases; the bare `id` drift from FEAT-214 AC-2 stays rejected.
+//
+// Bug 2: `compositePriority: "needs-review"` is a legitimate PM verdict
+// (agents/pm.md escape valve) but had no apply path — the entry hard-failed
+// and the verdict left no on-disk trace. It now commits as a held
+// disposition: FEAT stays in pending/, pm_* scores + pm_needs_review: true
+// land in frontmatter, autonomous_safe is forced false, and no priority is
+// assigned.
+// ---------------------------------------------------------------------
+
+test("applyPmResults: featId + proposed_slices aliases normalize to the documented keys (#402 bug 1)", async () => {
+  const repo = await tmpRepo("pm-apply-alias-");
+  const a = await addFeature(repo, { title: "Alpha", body: "x", category: "feature" });
+
+  const entries = [
+    {
+      featId: a.id,
+      scores: validScores(),
+      compositePriority: "P1",
+      autonomousSafe: true,
+      reasoning: "emitted with drifted keys by a live runner:pm dispatch",
+      acs: ["Given X, When Y, Then Z"],
+      proposed_slices: [
+        { id_suffix: "-SLICE-1", title: "Library + tests", points: 5 },
+        { id_suffix: "-SLICE-2", title: "CLI wiring", points: 3 }
+      ]
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(
+    result.failures.length,
+    0,
+    `expected aliases to apply cleanly, got ${JSON.stringify(result.failures)}`
+  );
+  assert.equal(result.applied.length, 1);
+  assert.equal(result.applied[0]!.featureId, a.id);
+  assert.match(result.applied[0]!.filePath, /triaged/);
+
+  const content = await fs.readFile(result.applied[0]!.filePath, "utf8");
+  const { frontmatter, body } = parseFrontmatter(content);
+  assert.equal(frontmatter.status, "triaged");
+  assert.equal(frontmatter.pm_composite_priority, "P1");
+  assert.ok(Array.isArray(frontmatter.proposed_slices), "proposed_slices alias must be parsed");
+  assert.match(body, /Given X, When Y, Then Z/);
+});
+
+test("applyPmResults: needs-review verdict commits as held-in-pending with pm_needs_review marker (#402 bug 2)", async () => {
+  const repo = await tmpRepo("pm-apply-needsreview-");
+  const a = await addFeature(repo, { title: "Alpha", body: "x", category: "feature" });
+
+  const entries = [
+    {
+      featureId: a.id,
+      scores: validScores(),
+      compositePriority: "needs-review",
+      autonomousSafe: false,
+      reasoning: "blocked on external research deliverable — human must size"
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(
+    result.failures.length,
+    0,
+    `expected needs-review to commit, got ${JSON.stringify(result.failures)}`
+  );
+  assert.equal(result.applied.length, 1);
+  assert.equal(result.applied[0]!.movedToTriaged, false);
+  assert.equal(result.applied[0]!.needsReview, true);
+  assert.match(result.applied[0]!.filePath, /pending/);
+
+  const content = await fs.readFile(result.applied[0]!.filePath, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.status, "pending");
+  assert.equal(frontmatter.pm_needs_review, true);
+  assert.equal(frontmatter.pm_composite_priority, "needs-review");
+  assert.equal(frontmatter.autonomous_safe, false);
+  // No real priority may be assigned — the verdict is "a human decides".
+  assert.notEqual(frontmatter.priority, "needs-review");
+  assert.ok(!VALID_PRIORITY_VALUES.has(String(frontmatter.priority)));
+  assert.equal(typeof frontmatter.triage_notes, "string");
+
+  // Verdict must be durable on disk via the pm-review artifact too.
+  const artifactContent = await fs.readFile(result.applied[0]!.artifactPath, "utf8");
+  assert.ok(artifactContent.includes(a.id));
+});
+
+const VALID_PRIORITY_VALUES = new Set(["P0", "P1", "P2", "P3", "P4"]);
+
+test("applyPmResults: needs-review forces autonomous_safe false even when PM says true", async () => {
+  const repo = await tmpRepo("pm-apply-needsreview-safe-");
+  const a = await addFeature(repo, { title: "Alpha", body: "x", category: "feature" });
+
+  const entries = [
+    {
+      featureId: a.id,
+      scores: validScores(),
+      compositePriority: "needs-review",
+      autonomousSafe: true,
+      reasoning: "contradictory flags — held verdict must stay human-gated"
+    }
+  ];
+
+  const result = await applyPmResults(repo, entries, { allowedIds: [a.id] });
+  assert.equal(result.applied.length, 1);
+  const content = await fs.readFile(result.applied[0]!.filePath, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.equal(frontmatter.autonomous_safe, false);
+  assert.equal(frontmatter.pm_autonomous_safe, false);
+});

@@ -1074,9 +1074,14 @@ export async function runBacklogPmApply(
     process.exitCode = 1;
   }
 
+  // Held needs-review verdicts (issue #402 bug 2) commit successfully but
+  // do NOT count as triaged — the FEAT stays in pending/ awaiting a human.
+  const heldForReview = result.applied.filter((a) => a.needsReview).length;
+
   return {
-    triaged: result.applied.length,
+    triaged: result.applied.length - heldForReview,
     applied: result.applied.length,
+    heldForReview,
     failed: result.failures.length,
     // ARCHITECT GATE read-guard (pm-apply.mts isArchGateActive): entries
     // skipped because the FEAT is mid-gate/deferred. Distinct from
