@@ -66,8 +66,12 @@ test("bootstrap-context hook exits 0 when stdout is ignored", () => {
   );
 });
 
-// Test 5 — hooks.json registers the new hook entry correctly
-test("hooks.json has two SessionStart entries with correct bootstrap-context config", () => {
+// Test 5 — hooks.json registers the bootstrap-context hook correctly. Asserts
+// the entry is present and correctly configured by description rather than a
+// fixed array length/position — SessionStart is a shared array that other
+// hooks (e.g. runner:astrarunner-emit-session-start) also register into, so
+// pinning an exact count here would make this test couple to unrelated hooks.
+test("hooks.json registers the bootstrap-context SessionStart hook correctly", () => {
   const raw = readFileSync(HOOKS_JSON, "utf8");
   const config = JSON.parse(raw) as {
     hooks: {
@@ -78,17 +82,21 @@ test("hooks.json has two SessionStart entries with correct bootstrap-context con
   };
 
   const sessionStart = config.hooks.SessionStart;
-  assert.equal(
-    sessionStart.length,
-    2,
-    `expected 2 SessionStart entries, got ${sessionStart.length}`
+  assert.ok(
+    sessionStart.length >= 2,
+    `expected at least 2 SessionStart entries (version-check + bootstrap-context), got ${sessionStart.length}`
   );
 
-  const second = sessionStart[1];
-  assert.ok(
-    second.hooks[0].command.includes("bootstrap-context.mjs"),
-    `second entry command must include "bootstrap-context.mjs"; got: ${second.hooks[0].command}`
+  const bootstrapEntry = sessionStart.find(
+    (entry) => entry.hooks[0]?.description === "loop:bootstrap-context"
   );
-  assert.equal(second.hooks[0].description, "loop:bootstrap-context");
-  assert.equal(second.hooks[0].timeout, 5);
+  assert.ok(
+    bootstrapEntry,
+    `expected a SessionStart entry with description "loop:bootstrap-context"; got descriptions: ${sessionStart.map((e) => e.hooks[0]?.description).join(", ")}`
+  );
+  assert.ok(
+    bootstrapEntry.hooks[0].command.includes("bootstrap-context.mjs"),
+    `bootstrap-context entry command must include "bootstrap-context.mjs"; got: ${bootstrapEntry.hooks[0].command}`
+  );
+  assert.equal(bootstrapEntry.hooks[0].timeout, 5);
 });
