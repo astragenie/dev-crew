@@ -126,6 +126,64 @@ function detectBacklogFlowAlerts(backlog: Record<string, any>[]) {
   ];
 }
 
+const DEFAULT_NOT_CHECKED_THRESHOLD = 3;
+
+function isValidThresholdCount(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 1;
+}
+
+/**
+ * Resolve config for detectNotCheckedEmptyAlerts.
+ *
+ * `not_checked` is a brand-new grade/review frontmatter field (FEAT-180 /
+ * issue #247, see reviewerPrompt() in post-builder-fanout.mts). Every grade
+ * artifact written before this feature shipped has NO `not_checked` field
+ * at all — not even an empty array — because the field didn't exist yet.
+ * If this detector defaulted to "on", replaying an existing repo's grade
+ * history would immediately trip a warn alert purely because the recent
+ * window predates the feature, not because any reviewer actually skipped
+ * documenting their blind spots. That's a false positive on 100% of repos
+ * upgrading to this version, on day one, with zero signal value.
+ *
+ * So: default OFF (`enabled: false`). A repo opts in explicitly once its
+ * trailing grade window is expected to be dominated by post-FEAT-180
+ * reviews, via `loop.notCheckedAlertEnabled: true` in `.claude/loop.json`.
+ */
+export function resolveNotCheckedConfig(config: any): { enabled: boolean; threshold: number } {
+  const loop = config?.loop ?? {};
+  const enabled = loop.notCheckedAlertEnabled === true;
+  const threshold = isValidThresholdCount(loop.notCheckedAlertThreshold)
+    ? loop.notCheckedAlertThreshold
+    : DEFAULT_NOT_CHECKED_THRESHOLD;
+  return { enabled, threshold };
+}
+
+// Counts consecutive grades (most-recent-first, i.e. walking the end of the
+// `listGrades()`-sorted array backward) whose `not_checked` field is absent
+// or empty. Mirrors the consecutiveBelow-style counter shape used by
+// detectScoreTrendAlerts above, but walks true consecutive runs from the
+// most recent grade rather than a fixed trailing window, since a single
+// recent non-empty `not_checked` should reset the streak.
+function detectNotCheckedEmptyAlerts(grades: Record<string, any>[], config: unknown) {
+  const { enabled, threshold } = resolveNotCheckedConfig(config);
+  if (!enabled) return [];
+  let consecutiveEmpty = 0;
+  for (let i = grades.length - 1; i >= 0; i -= 1) {
+    const notChecked = grades[i]?.notChecked;
+    if (Array.isArray(notChecked) && notChecked.length > 0) break;
+    consecutiveEmpty += 1;
+  }
+  if (consecutiveEmpty < threshold) return [];
+  return [
+    {
+      severity: "warn",
+      category: "not-checked-empty",
+      message: `not_checked missing or empty across last ${consecutiveEmpty} consecutive reviews`,
+      suggested_action: `Ensure reviewers pass --not-checked "<a,b>" (>=2 items) to crew write-review-result per the reviewer-prompt contract.`
+    }
+  ];
+}
+
 function detectInProgressOrphanAlerts(backlog: Record<string, any>[]) {
   const out: Record<string, string>[] = [];
   for (const f of backlog.filter((b) => b.state === "in-progress")) {
@@ -156,6 +214,7 @@ export async function detectPatterns(
     ...detectDecompositionAlerts(backlog),
     ...detectSpecFlowAlerts(specs),
     ...detectBacklogFlowAlerts(backlog),
-    ...detectInProgressOrphanAlerts(backlog)
+    ...detectInProgressOrphanAlerts(backlog),
+    ...detectNotCheckedEmptyAlerts(grades, config)
   ];
 }

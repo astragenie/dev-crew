@@ -137,6 +137,42 @@ test("instructions reuse PARALLEL_DISPATCH_CONTRACT v1", async () => {
   }
 });
 
+// FEAT-180 (issue #247): regression coverage for the restored "## Not
+// checked" required-section block (originally shipped in
+// commands/slice-review-ladder.md at 42d044c7, dropped by the FEAT-277
+// consolidation at ee5cea95). Asserts the block appears, with role-specific
+// wording, in both Reviewer A and Reviewer B prompts.
+test("both reviewer prompts include the '## Not checked' required section with the --not-checked flag instruction", async () => {
+  const repo = await makeRepo();
+  try {
+    const out = await buildPostBuilderFanout(repo, "SLICE-99");
+    const [reviewerA, reviewerB] = out.tasks;
+
+    for (const task of [reviewerA, reviewerB]) {
+      assert.ok(task, "expected both reviewer tasks to be present");
+      assert.ok(task!.prompt.includes("## Not checked (required, ≥2 items)"));
+      assert.ok(task!.prompt.includes("List at least 2 things you deliberately did NOT cover"));
+      assert.ok(
+        task!.prompt.includes('crew write-review-result --not-checked "<item-a>,<item-b>"')
+      );
+    }
+
+    // Role-specific hint text differs between A and B (mirrors the original
+    // per-role examples recovered from 42d044c7).
+    assert.ok(reviewerA!.prompt.includes("performance characteristics"));
+    assert.ok(reviewerB!.prompt.includes("owned by Reviewer A"));
+
+    // The section sits between **Focus** and the write-review-result
+    // instruction line, not after it.
+    const idxFocus = reviewerA!.prompt.indexOf("**Focus**:");
+    const idxNotChecked = reviewerA!.prompt.indexOf("## Not checked");
+    const idxHandoff = reviewerA!.prompt.indexOf("Read the builder handoff");
+    assert.ok(idxFocus < idxNotChecked && idxNotChecked < idxHandoff);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
 test("aggregation rules match contract", async () => {
   const repo = await makeRepo();
   try {
@@ -179,6 +215,11 @@ test("FEAT-219 golden: memory off/absent is byte-identical; memory on prepends w
       "",
       "**Focus**:",
       "Correctness, regressions, and explicit coverage of each acceptance criterion.",
+      "",
+      "## Not checked (required, ≥2 items)",
+      "List at least 2 things you deliberately did NOT cover in this review pass.",
+      "e.g. performance characteristics, cross-platform behavior beyond the CI environment, interaction with concurrent slice changes on other branches — anything outside correctness/regressions/AC coverage.",
+      'Pass them via `crew write-review-result --not-checked "<item-a>,<item-b>"`.',
       "",
       "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
       "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."

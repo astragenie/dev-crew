@@ -54,6 +54,37 @@ async function seedGrade(repo, sliceId, scores) {
   await writeGrade(repo, sliceId);
 }
 
+// FEAT-180 (issue #247): same seeding shape as seedGrade above, plus
+// optional `not_checked` frontmatter control for detectNotCheckedEmptyAlerts
+// coverage. `notChecked === undefined` leaves the key out entirely (the
+// historical-artifact shape — field never existed); `[]` writes it present
+// but empty; a non-empty array writes real items (breaks the empty streak).
+async function seedGradeWithNotChecked(repo, sliceId, notChecked) {
+  const scores = {};
+  for (const dim of SCORE_DIMENSIONS) scores[dim] = 0.85;
+  const { gradePath } = await createGradeFile(repo, sliceId);
+  let content = await fs.readFile(gradePath, "utf8");
+  for (const [dim, value] of Object.entries(scores)) {
+    content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: ${value}`);
+  }
+  content = content.replace(
+    /## Lessons\n\n- bullet 1\n- bullet 2/,
+    `## Lessons\n\n- Lesson 1\n- Lesson 2`
+  );
+  content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Followup");
+  if (notChecked !== undefined) {
+    const block =
+      Array.isArray(notChecked) && notChecked.length > 0
+        ? ["not_checked:", ...notChecked.map((item) => `  - ${item}`)].join("\n")
+        : "not_checked: []";
+    content = content.replace(/^decisions: \[\]\n/m, (m) => `${m}${block}\n`);
+  }
+  await fs.writeFile(gradePath, content);
+  await writeGrade(repo, sliceId);
+}
+
 test("detectPatterns returns empty array on empty repo", async () => {
   const repo = await tmpRepo("al-alerts-empty-");
   const alerts = await detectPatterns(repo);
@@ -292,6 +323,52 @@ test("detectPatterns: per-dim override fires when score below per-dim threshold"
     (a) => a.category === "score-trend" && a.message.includes("observability")
   );
   assert.ok(trend, "per-dim 0.7 threshold, score 0.65 — alert fires");
+});
+
+// FEAT-180 (issue #247): detectNotCheckedEmptyAlerts coverage.
+test("detectPatterns: not-checked-empty alert fires at threshold with consecutive empty/absent not_checked (opt-in enabled)", async () => {
+  const repo = await tmpRepo("al-notchecked-fires-");
+  await seedGradeWithNotChecked(repo, "SLICE-01", undefined); // absent
+  await seedGradeWithNotChecked(repo, "SLICE-02", []); // present but empty
+  await seedGradeWithNotChecked(repo, "SLICE-03", undefined); // absent
+  const config = { loop: { notCheckedAlertEnabled: true } };
+  const alerts = await detectPatterns(repo, { config });
+  const alert = alerts.find((a) => a.category === "not-checked-empty");
+  assert.ok(alert, "expected a not-checked-empty alert at the default threshold of 3");
+  assert.equal(alert.severity, "warn");
+  assert.match(alert.message, /3 consecutive reviews/);
+});
+
+test("detectPatterns: not-checked-empty alert does NOT fire below threshold", async () => {
+  const repo = await tmpRepo("al-notchecked-below-");
+  // Non-empty not_checked breaks the streak, then two absent — total
+  // consecutive-from-most-recent run is 2, below the default threshold of 3.
+  await seedGradeWithNotChecked(repo, "SLICE-01", ["reviewed everything relevant"]);
+  await seedGradeWithNotChecked(repo, "SLICE-02", undefined);
+  await seedGradeWithNotChecked(repo, "SLICE-03", undefined);
+  const config = { loop: { notCheckedAlertEnabled: true } };
+  const alerts = await detectPatterns(repo, { config });
+  const alert = alerts.find((a) => a.category === "not-checked-empty");
+  assert.equal(alert, undefined, "should NOT fire when the consecutive run is below threshold");
+});
+
+test("detectPatterns: not-checked-empty is disabled by default — tolerates fully-historical data (all absent) without throwing or spamming", async () => {
+  const repo = await tmpRepo("al-notchecked-default-off-");
+  // All grades predate the `not_checked` field entirely (the real-world
+  // shape for every repo upgrading to this version).
+  await seedGradeWithNotChecked(repo, "SLICE-01", undefined);
+  await seedGradeWithNotChecked(repo, "SLICE-02", undefined);
+  await seedGradeWithNotChecked(repo, "SLICE-03", undefined);
+  await seedGradeWithNotChecked(repo, "SLICE-04", undefined);
+  await seedGradeWithNotChecked(repo, "SLICE-05", undefined);
+  // No config override — default gate must be OFF.
+  const alerts = await detectPatterns(repo);
+  const alert = alerts.find((a) => a.category === "not-checked-empty");
+  assert.equal(
+    alert,
+    undefined,
+    "default-disabled gate must not fire on historical data lacking the field entirely"
+  );
 });
 
 // AC-3: invalid per-dim value falls back to global threshold

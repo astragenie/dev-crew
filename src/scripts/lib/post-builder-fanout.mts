@@ -83,12 +83,26 @@ async function reviewerPrompt(
     role === "A"
       ? "Correctness, regressions, and explicit coverage of each acceptance criterion."
       : "Production-readiness, observability, security posture, edge cases.";
+  // Restores the "## Not checked" required-section spec that shipped in
+  // commands/slice-review-ladder.md (42d044c7) and was accidentally dropped
+  // when FEAT-277 (ee5cea95) consolidated that file away without re-porting
+  // it into this generator. Wording adapted from the original per-role
+  // examples so it reads correctly for both Reviewer A and Reviewer B.
+  const notCheckedHint =
+    role === "A"
+      ? "e.g. performance characteristics, cross-platform behavior beyond the CI environment, interaction with concurrent slice changes on other branches — anything outside correctness/regressions/AC coverage."
+      : "e.g. business-logic correctness and AC coverage (owned by Reviewer A), test case adequacy and branch coverage, third-party dependency version compatibility outside the pinned lock file — anything outside production-readiness/observability/security.";
   const prompt = [
     `You are Reviewer ${role} on the post-builder fanout for slice ${sliceId}.`,
     `**Slice file**: \`${slicePathRel}\``,
     "",
     "**Focus**:",
     focus,
+    "",
+    "## Not checked (required, ≥2 items)",
+    "List at least 2 things you deliberately did NOT cover in this review pass.",
+    notCheckedHint,
+    'Pass them via `crew write-review-result --not-checked "<item-a>,<item-b>"`.',
     "",
     "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
     "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."
