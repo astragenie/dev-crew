@@ -12,6 +12,7 @@ created: 2026-07-09
 updated: 2026-07-09
 github_issue: 410
 github_url: "https://github.com/astragenie/runner-plugin/issues/410"
+touches_files: [src/scripts/lib/backlog-writer.mts, src/scripts/lib/backlog-state-emitter.mts, src/scripts/lib/grade-writer.mts, src/scripts/lib/slice-events.mts, schemas/loop-events/grade-event.schema.json, schemas/loop-events/agent-dispatch.schema.json, src/tests/backlog-writer.test.mts, src/tests/grade.test.mts]
 ---
 # SLICE-147: Implement FEAT-247
 
