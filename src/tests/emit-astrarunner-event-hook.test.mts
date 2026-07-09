@@ -35,7 +35,11 @@ interface CapturedRequest {
   body: string;
 }
 
-function startCaptureServer(): Promise<{ port: number; close: () => Promise<void>; wait: () => Promise<CapturedRequest | null> }> {
+function startCaptureServer(): Promise<{
+  port: number;
+  close: () => Promise<void>;
+  wait: () => Promise<CapturedRequest | null>;
+}> {
   return new Promise((resolve) => {
     let captured: CapturedRequest | null = null;
     const server = http.createServer((req, res) => {
