@@ -4,7 +4,10 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
-## [Unreleased]
+## [v0.67.0] — 2026-07-09 — arch-gate epic (pre-slice-1 architect + risk gate)
+
+Minor: pre-slice-1 architect + risk gate epic (PR #395) plus companion
+surface-tag, autonomous-rescope, worktree-isolation, and CI fast-path work.
 
 ### Added
 
@@ -26,6 +29,25 @@ shipped under the name `loop`.
   immediately; the actual async resolution + POST (4s timeout, all errors
   swallowed) runs in a detached one-shot child so a slow/unreachable ingest
   host can never add latency to a session.
+- **Pre-slice-1 architect + risk gate (arch-gate epic, PR #395).** Bounded
+  PM-rescope→defer loop with an `arch_*` frontmatter state machine and budget,
+  gating `runner:start` before slice 1 begins.
+- **WS-3 — canonical surface-tag builder-variant resolution.** Surface tags
+  now resolve to a canonical builder variant, propagated through to slice
+  tags.
+- **PM `--rescope` autonomous mode.**
+- **WS-4 — collision-triggered worktree isolation.**
+- **FEAT-241 — OpenSpec specs-tree adoption (backlog).**
+- **DEC-075 ADR.**
+
+### Fixed
+
+- **FU-6 — frontmatter block-array colon parse fix.**
+- **FU-7 — test-isolation sweep.**
+
+### CI
+
+- **Docs-only fast-path + auto-merge-on-green** (#397/#398/#400).
 
 ## [0.66.0] — 2026-07-08 — loop-blocker bug sweep (memory import, grade-yaml, crew:reviewer rename)
 
