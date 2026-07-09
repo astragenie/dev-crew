@@ -122,7 +122,11 @@
           "C--work-mega-hero-crew-autonomous-loop"
         ]
       }
-    }
+    },
+    "warnAlertCategoriesIgnoredInAutoMode": [
+      "score-trend",
+      "decomposition"
+    ]
   },
   "stack": {
     "build": [
