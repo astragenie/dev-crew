@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   readPrWatchConfig,
   parsePrState,
+  parsePrMergeInfo,
   parseChecks,
   classifyChecks,
   buildBuilderPrompt,
@@ -46,7 +47,13 @@ test("TC-001: all-green on first poll", async () => {
 test("TC-002: PR already merged before first poll", async () => {
   let listChecksCalled = false;
   const exec = makeExec({
-    viewPr: async () => JSON.stringify({ state: "MERGED", title: "my PR" }),
+    viewPr: async () =>
+      JSON.stringify({
+        state: "MERGED",
+        title: "my PR",
+        mergedAt: "2026-07-09T09:30:00.000Z",
+        number: 42
+      }),
     listChecks: async () => {
       listChecksCalled = true;
       return JSON.stringify([]);
@@ -55,6 +62,22 @@ test("TC-002: PR already merged before first poll", async () => {
   const result = await runPrWatch(TEST_PR_URL, BASE_CONFIG, false, exec);
   assert.equal(result.outcome, "pr-merged");
   assert.equal(listChecksCalled, false);
+  if (result.outcome === "pr-merged") {
+    assert.equal(result.mergedAt, "2026-07-09T09:30:00.000Z");
+    assert.equal(result.prNumber, 42);
+  }
+});
+
+test("TC-002b: PR merged without mergedAt/number in gh output degrades to null", async () => {
+  const exec = makeExec({
+    viewPr: async () => JSON.stringify({ state: "MERGED", title: "my PR" })
+  });
+  const result = await runPrWatch(TEST_PR_URL, BASE_CONFIG, false, exec);
+  assert.equal(result.outcome, "pr-merged");
+  if (result.outcome === "pr-merged") {
+    assert.equal(result.mergedAt, null);
+    assert.equal(result.prNumber, null);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -214,6 +237,26 @@ test("parsePrState throws on missing state field", () => {
       return true;
     }
   );
+});
+
+test("parsePrMergeInfo extracts mergedAt and number", () => {
+  const info = parsePrMergeInfo(
+    JSON.stringify({ state: "MERGED", mergedAt: "2026-07-09T09:30:00.000Z", number: 99 })
+  );
+  assert.equal(info.mergedAt, "2026-07-09T09:30:00.000Z");
+  assert.equal(info.prNumber, 99);
+});
+
+test("parsePrMergeInfo returns nulls when fields are absent", () => {
+  const info = parsePrMergeInfo(JSON.stringify({ state: "MERGED" }));
+  assert.equal(info.mergedAt, null);
+  assert.equal(info.prNumber, null);
+});
+
+test("parsePrMergeInfo returns nulls on unparsable JSON instead of throwing", () => {
+  const info = parsePrMergeInfo("not json");
+  assert.equal(info.mergedAt, null);
+  assert.equal(info.prNumber, null);
 });
 
 test("parseChecks returns empty array for empty JSON array", () => {

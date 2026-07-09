@@ -31,7 +31,7 @@ export type PrWatchResult =
   | { outcome: "all-green" }
   | { outcome: "max-retries"; retriesUsed: number }
   | { outcome: "cost-exceeded"; cumulativeCostUsd: number }
-  | { outcome: "pr-merged" }
+  | { outcome: "pr-merged"; mergedAt: string | null; prNumber: number | null }
   | { outcome: "pr-closed" }
   | { outcome: "no-checks" };
 
@@ -95,6 +95,26 @@ export function parsePrState(raw: string): PrState {
     );
   }
   return data.state as PrState;
+}
+
+/** Merge metadata extracted from the same `gh pr view` JSON as `parsePrState`. */
+export interface PrMergeInfo {
+  mergedAt: string | null;
+  prNumber: number | null;
+}
+
+export function parsePrMergeInfo(raw: string): PrMergeInfo {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { mergedAt: null, prNumber: null };
+  }
+  const data = parsed as Record<string, unknown>;
+  return {
+    mergedAt: typeof data.mergedAt === "string" ? data.mergedAt : null,
+    prNumber: typeof data.number === "number" ? data.number : null
+  };
 }
 
 export function parseChecks(raw: string): PrCheckItem[] {
@@ -201,9 +221,11 @@ export function buildBuilderPrompt(opts: {
 export function buildDefaultExec(): PrWatchExec {
   return {
     viewPr: async (prUrl: string): Promise<string> => {
-      const { stdout } = await execFile("gh", ["pr", "view", prUrl, "--json", "state,title"], {
-        encoding: "utf8"
-      });
+      const { stdout } = await execFile(
+        "gh",
+        ["pr", "view", prUrl, "--json", "state,title,mergedAt,number"],
+        { encoding: "utf8" }
+      );
       return stdout;
     },
 
@@ -260,7 +282,8 @@ export async function runPrWatch(
     const prState = parsePrState(prStateRaw);
 
     if (prState === "MERGED") {
-      return { outcome: "pr-merged" };
+      const mergeInfo = parsePrMergeInfo(prStateRaw);
+      return { outcome: "pr-merged", mergedAt: mergeInfo.mergedAt, prNumber: mergeInfo.prNumber };
     }
     if (prState === "CLOSED") {
       return { outcome: "pr-closed" };
