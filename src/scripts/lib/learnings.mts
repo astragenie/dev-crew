@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { appendJsonl } from "./jsonl-append.mjs";
@@ -94,11 +95,27 @@ async function readAllEntries(filePath: string): Promise<any[]> {
   return entries;
 }
 
-// Compute the next monotonic ID given existing entries.
-function nextId(entries: any[]): number {
-  if (entries.length === 0) return 1;
-  const max = entries.reduce((m, e) => Math.max(m, typeof e.id === "number" ? e.id : 0), 0);
-  return max + 1;
+// Mint a collision-safe learning id.
+//
+// Prior scheme was `max(existing ids) + 1` — a sequential counter computed
+// from whatever the local store looked like at write time. Two branches (or
+// two worktrees, per the canonical-root note above) that each log a learning
+// before either side has seen the other's write independently compute the
+// same "next" integer for two DIFFERENT insights; the collision surfaces only
+// at merge time and required hand-renumbering to reconcile (observed 3x on
+// 2026-07-10). A sequential counter fundamentally cannot be collision-safe
+// across concurrent writers with no shared state — the fix is to stop
+// deriving the id from existing entries at all.
+//
+// Format matches the dispatch runId convention (hierarchical-dispatch.mts)
+// so it reads the same way elsewhere in this repo: an ISO timestamp with
+// `:`/`.` swapped for `-` (filesystem/JSON-safe, still lexically sortable —
+// e.g. "2026-07-10T00-28-49-710Z-d11484"), plus 3 random bytes to break ties
+// within the same millisecond. Existing on-disk integer ids are left as-is;
+// every reader below accepts both shapes (see id-comparison notes on
+// deleteLearning).
+function mintLearningId(): string {
+  return `${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomBytes(3).toString("hex")}`;
 }
 
 // FEAT-220 enum fields — kept here (not in a separate types module) since
@@ -177,8 +194,7 @@ export async function logLearning(repoPath: string, entry: LogLearningEntry): Pr
 
   const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
   const filePath = learningsPath(canonicalRoot);
-  const existing = await readAllEntries(filePath);
-  const id = nextId(existing);
+  const id = mintLearningId();
   const record: any = {
     id,
     timestamp: new Date().toISOString(),
@@ -246,20 +262,26 @@ export async function searchLearnings(
   return { count: items.length, items };
 }
 
-// Delete a learning entry by its numeric id.
+// Delete a learning entry by its id. Accepts both id shapes the store may
+// contain: a legacy numeric id (pre-existing rows) or a new mintLearningId()
+// string (see mintLearningId above). Comparison goes through String() so a
+// caller that parsed a legacy id off argv into a number still matches a
+// stored numeric id, without requiring the caller to know which shape a
+// given id is ahead of time.
 // Returns the deleted record when found, or null when no entry with that id exists.
 // Rewrites the entire JSONL file atomically (read → filter → write).
 // Throws when the file cannot be read for reasons other than absence.
 export async function deleteLearning(
   repoPath: string,
-  id: number
+  id: number | string
 ): Promise<Record<string, unknown> | null> {
   const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
   const filePath = learningsPath(canonicalRoot);
   const all = await readAllEntries(filePath);
-  const target = all.find((e) => e.id === id);
+  const key = String(id);
+  const target = all.find((e) => String(e.id) === key);
   if (!target) return null;
-  const remaining = all.filter((e) => e.id !== id);
+  const remaining = all.filter((e) => String(e.id) !== key);
   const content =
     remaining.map((e) => JSON.stringify(e)).join("\n") + (remaining.length > 0 ? "\n" : "");
   await fs.writeFile(filePath, content, "utf8");

@@ -31,7 +31,11 @@ test("logLearning appends a valid JSON line to learnings.jsonl", async () => {
   assert.equal(record.insight, "test insight");
   assert.equal(record.confidence, 0.8);
   assert.equal(record.source, "agent");
-  assert.equal(typeof record.id, "number");
+  // Ids are minted, not derived from existing entries (see learnings.mts
+  // mintLearningId — a sequential counter collides across concurrent
+  // branches/worktrees with no shared state).
+  assert.equal(typeof record.id, "string");
+  assert.match(record.id, /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d+Z-[0-9a-f]{6}$/);
   assert.equal(typeof record.timestamp, "string");
 
   // Verify file written
@@ -42,15 +46,28 @@ test("logLearning appends a valid JSON line to learnings.jsonl", async () => {
   assert.equal(parsed.insight, "test insight");
 });
 
-test("logLearning assigns monotonically increasing IDs", async () => {
+test("logLearning assigns a unique id per call (no cross-branch collision)", async () => {
   const repo = await tmpRepo("learnings-ids-");
   const r1 = await logLearning(repo, { key: "k1", insight: "i1" });
   const r2 = await logLearning(repo, { key: "k2", insight: "i2" });
   const r3 = await logLearning(repo, { key: "k3", insight: "i3" });
 
-  assert.equal(r1.id, 1);
-  assert.equal(r2.id, 2);
-  assert.equal(r3.id, 3);
+  assert.notEqual(r1.id, r2.id);
+  assert.notEqual(r2.id, r3.id);
+  assert.notEqual(r1.id, r3.id);
+  assert.equal(new Set([r1.id, r2.id, r3.id]).size, 3);
+});
+
+// Two mints issued back-to-back in the same tick (the exact shape of the
+// production collision: two branches independently computing an id with no
+// visibility into each other's write) must still never collide.
+test("logLearning ids are unique under two rapid concurrent mints", async () => {
+  const repo = await tmpRepo("learnings-ids-concurrent-");
+  const [r1, r2] = await Promise.all([
+    logLearning(repo, { key: "concurrent-a", insight: "insight A" }),
+    logLearning(repo, { key: "concurrent-b", insight: "insight B" })
+  ]);
+  assert.notEqual(r1.id, r2.id);
 });
 
 test("logLearning creates the parent directory when absent", async () => {
@@ -143,9 +160,12 @@ test("logLearning skips malformed existing lines (guards against corrupt store)"
     "utf8"
   );
 
-  // Should still compute next ID correctly (max valid id is 1, next is 2)
+  // Ids are minted independently of existing store contents (see
+  // mintLearningId) — the new row must land with a fresh unique id, and the
+  // malformed line must not have thrown or otherwise blocked the write.
   const record = await logLearning(repo, { key: "after-malformed", insight: "ok" });
-  assert.equal(record.id, 2);
+  assert.equal(typeof record.id, "string");
+  assert.notEqual(String(record.id), "1");
 });
 
 // --- recentLearnings tests ---
@@ -366,4 +386,82 @@ test("legacy 8-field learnings.jsonl row parses unchanged through recentLearning
     "legacy row must not gain a status field on read"
   );
   assert.equal("scope" in result.items[0], false, "legacy row must not gain a scope field on read");
+});
+
+// --- Mixed legacy-numeric / new mintLearningId() id shapes ---
+//
+// A store that lived across the id-scheme change has both shapes on disk
+// simultaneously (old rows keep their integer id forever; new rows mint a
+// string id). Every reader must treat both shapes as opaque and interchangeable.
+
+async function seedMixedIdStore(repo: string): Promise<string> {
+  const filePath = learningsPath(repo);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const legacyRow = {
+    id: 7,
+    timestamp: "2026-05-01T00:00:00.000Z",
+    key: "legacy-numeric",
+    insight: "written before the id-scheme change",
+    confidence: null,
+    source: "agent"
+  };
+  const newRow = {
+    id: "2026-07-10T00-28-49-710Z-d11484",
+    timestamp: "2026-07-10T00:28:49.710Z",
+    key: "new-string-id",
+    insight: "written after the id-scheme change",
+    confidence: null,
+    source: "agent"
+  };
+  await fs.writeFile(filePath, `${JSON.stringify(legacyRow)}\n${JSON.stringify(newRow)}\n`, "utf8");
+  return filePath;
+}
+
+test("recentLearnings returns both a legacy numeric id row and a new string id row unchanged", async () => {
+  const repo = await tmpRepo("learnings-mixed-ids-recent-");
+  await seedMixedIdStore(repo);
+
+  const result = await recentLearnings(repo, 10);
+  assert.equal(result.count, 2);
+  assert.equal(result.items[0].id, 7);
+  assert.equal(result.items[1].id, "2026-07-10T00-28-49-710Z-d11484");
+});
+
+test("searchLearnings finds entries regardless of which id shape they carry", async () => {
+  const repo = await tmpRepo("learnings-mixed-ids-search-");
+  await seedMixedIdStore(repo);
+
+  const legacy = await searchLearnings(repo, "legacy-numeric");
+  assert.equal(legacy.count, 1);
+  assert.equal(legacy.items[0].id, 7);
+
+  const fresh = await searchLearnings(repo, "new-string-id");
+  assert.equal(fresh.count, 1);
+  assert.equal(fresh.items[0].id, "2026-07-10T00-28-49-710Z-d11484");
+});
+
+test("deleteLearning removes a legacy numeric id row without disturbing a new string id row", async () => {
+  const repo = await tmpRepo("learnings-mixed-ids-delete-legacy-");
+  await seedMixedIdStore(repo);
+
+  const deleted = await deleteLearning(repo, 7);
+  assert.ok(deleted !== null);
+  assert.equal(deleted.key, "legacy-numeric");
+
+  const remaining = await recentLearnings(repo, 10);
+  assert.equal(remaining.count, 1);
+  assert.equal(remaining.items[0].id, "2026-07-10T00-28-49-710Z-d11484");
+});
+
+test("deleteLearning removes a new string id row without disturbing a legacy numeric id row", async () => {
+  const repo = await tmpRepo("learnings-mixed-ids-delete-new-");
+  await seedMixedIdStore(repo);
+
+  const deleted = await deleteLearning(repo, "2026-07-10T00-28-49-710Z-d11484");
+  assert.ok(deleted !== null);
+  assert.equal(deleted.key, "new-string-id");
+
+  const remaining = await recentLearnings(repo, 10);
+  assert.equal(remaining.count, 1);
+  assert.equal(remaining.items[0].id, 7);
 });

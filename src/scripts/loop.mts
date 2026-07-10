@@ -1813,18 +1813,36 @@ async function runLearningsLog(
   return logLearning(repoPath, entry);
 }
 
+// FEAT-256-ish (ledger merge-driver hardening): learnings ids are either a
+// legacy positive integer or a mintLearningId() string
+// ("2026-07-10T00-28-49-710Z-d11484") — see learnings.mts. Try the legacy
+// numeric shape first (unchanged CLI contract for existing callers/scripts);
+// fall back to accepting the raw string for the new shape rather than
+// rejecting it as "not a positive integer".
+const LEARNING_ID_STRING_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d+Z-[0-9a-f]+$/;
+
+function parseLearningsPruneId(raw: string): number | string {
+  const parsed = Number(raw);
+  if (!Number.isNaN(parsed) && Number.isInteger(parsed) && parsed > 0) {
+    return parsed;
+  }
+  if (LEARNING_ID_STRING_RE.test(raw.trim())) {
+    return raw.trim();
+  }
+  throw new Error(
+    "learnings prune --id must be a positive integer (legacy) or a mintLearningId string (e.g. 2026-07-10T00-28-49-710Z-d11484)"
+  );
+}
+
 async function runLearningsPrune(
   repoPath: string,
   flags: Record<string, any>,
-  deleteLearning: (r: string, id: number) => Promise<Record<string, unknown> | null>
+  deleteLearning: (r: string, id: number | string) => Promise<Record<string, unknown> | null>
 ) {
   if (flags.id === null || flags.id === undefined) {
-    throw new Error("learnings prune requires --id <numeric-id>");
+    throw new Error("learnings prune requires --id <id>");
   }
-  const parsed = Number(flags.id);
-  if (Number.isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
-    throw new Error("learnings prune --id must be a positive integer");
-  }
+  const parsed = parseLearningsPruneId(String(flags.id));
   const deleted = await deleteLearning(repoPath, parsed);
   return { deleted };
 }

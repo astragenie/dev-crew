@@ -17,3 +17,11 @@
 *.pdf  binary
 *.zip  binary
 *.gz   binary
+
+# Append-only JSONL ledgers written from multiple branches/worktrees — every
+# branch merge otherwise conflicts on the shared tail and needs a hand-union
+# resolution. `merge=union` keeps both sides' lines and folds textually
+# identical duplicate lines within the conflicting region. Residual risk and
+# the collision-safe id scheme this pairs with: docs/sop/jsonl-ledger-merge-driver.md
+.claude/artifacts/loop/grades.jsonl    merge=union
+.claude/artifacts/loop/learnings.jsonl merge=union
