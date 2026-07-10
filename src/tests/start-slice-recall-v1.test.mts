@@ -19,7 +19,7 @@ import path from "node:path";
 
 import { _resetResolveCache, _setWireProvider } from "@astragenie/astramem-client";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
-import { sliceFromFeature, startSlice } from "../scripts/lib/slice-linker.mjs";
+import { resolveRecallCapMs, sliceFromFeature, startSlice } from "../scripts/lib/slice-linker.mjs";
 import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
@@ -148,28 +148,48 @@ test("recall ON: block matches recall-injection-v1 contract format; dispatch bod
   );
 });
 
-test("FEAT-233/DEC-071: memory.capMs is the fallback cap when memory.recall.timeoutMs is unset", async () => {
-  const repo = await tmpRepo("al-recall-v1-capms-");
+// FEAT-233/DEC-071 recall cap-precedence, asserted deterministically on the
+// pure resolveRecallCapMs() rather than by racing makeStartedSlice()'s wall
+// clock. The prior wallclock version (assert elapsed < 3000ms with a
+// never-resolving provider) flaked ~15-20% even standalone: `elapsed` timed the
+// entire makeStartedSlice() pipeline (addFeature + sliceFromFeature + startSlice
+// — all high-variance file IO), of which the recall cap is only a minority
+// term, so parallel-suite CPU contention swamped the 300ms-vs-5000ms gap the
+// assertion depended on (same class of flake as memory-transport.test.mts,
+// FEAT-260/PR #456). The cap policy is a pure config expression — test it as one.
+test("FEAT-233/DEC-071: memory.capMs is the recall cap fallback when memory.recall.timeoutMs is unset", () => {
+  // recall.timeoutMs unset -> falls back to the shared memory.capMs override.
+  assert.equal(
+    resolveRecallCapMs({ memory: { enabled: "on", capMs: 300, recall: { enabled: true, k: 5 } } }),
+    300
+  );
+});
+
+test("FEAT-233/DEC-071: memory.recall.timeoutMs wins over memory.capMs", () => {
+  assert.equal(resolveRecallCapMs({ memory: { capMs: 300, recall: { timeoutMs: 1500 } } }), 1500);
+});
+
+test("FEAT-233/DEC-071: no timeoutMs and no capMs -> DEFAULT_RECALL_CAP_MS (5000)", () => {
+  assert.equal(resolveRecallCapMs({ memory: { enabled: "on", recall: { enabled: true } } }), 5000);
+  assert.equal(resolveRecallCapMs({}), 5000);
+});
+
+// Anti-hang guarantee (restores the secondary assertion of the retired wallclock
+// test, deterministically): a recall provider that NEVER resolves must not hang
+// startSlice — recallSilent's capMs must fire and let dispatch proceed. No
+// wall-clock threshold; bun test's own --timeout is the hang detector, so this
+// is contention-proof (the flake was the 3000ms threshold, not the behavior).
+test("FEAT-233/DEC-071: a never-resolving recall provider does not hang startSlice", async () => {
+  const repo = await tmpRepo("al-recall-v1-nohang-");
   const config = await baseConfig(repo);
-  // No memory.recall.timeoutMs set -> recall should fall back to the shared
-  // memory.capMs override instead of its own DEFAULT_RECALL_CAP_MS (5000).
   config.memory = { enabled: "on", capMs: 300, recall: { enabled: true, k: 5 } };
 
-  // Provider that never resolves: proves the cap that actually fired was the
-  // small memory.capMs override, not the 5000ms recall default.
   _setWireProvider({
     remember: async () => undefined,
     recall: () => new Promise(() => {}),
     health: async () => ({ ok: true })
   });
 
-  const started = Date.now();
   const result = await makeStartedSlice(repo, config);
-  const elapsed = Date.now() - started;
-
   assert.ok(result.dispatchInstruction);
-  assert.ok(
-    elapsed < 3000,
-    `expected memory.capMs=300 fallback to cap recall well under the 5000ms default (elapsed=${elapsed}ms)`
-  );
 });

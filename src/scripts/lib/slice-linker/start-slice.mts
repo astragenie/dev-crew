@@ -1058,6 +1058,18 @@ async function emitRecallUsedEvent(
   }
 }
 
+// Cap policy (FEAT-233 / DEC-071), extracted as a pure helper so it can be
+// asserted deterministically without racing a wallclock: recall's own explicit
+// memory.recall.timeoutMs wins (a documented per-path override — recall runs
+// once at slice-start, not a hot per-call path, and feeds dispatch quality, so
+// it can afford a longer budget); else the shared memory.capMs (same knob
+// capture reads, memory-sink.mts); else DEFAULT_RECALL_CAP_MS (5000), recall's
+// historical default. Never a second bare literal — single source of truth
+// lives in memory-transport.mts.
+export function resolveRecallCapMs(config: Record<string, any>): number {
+  return config?.memory?.recall?.timeoutMs ?? config?.memory?.capMs ?? DEFAULT_RECALL_CAP_MS;
+}
+
 // runner-plugin#291 / FEAT-188 S3b: query astramem for prior context before
 // dispatch, formatted per the frozen recall-injection-v1 contract (see
 // formatRecallBlockV1 above). Returns a formatted Markdown block (or empty
@@ -1078,16 +1090,8 @@ async function runRecallHook(
     if (recallEnabled === false) return "";
 
     const k: number = config?.memory?.recall?.k ?? 5;
-    // Cap policy (FEAT-233 / DEC-071): recall's own explicit
-    // memory.recall.timeoutMs wins (a documented per-path override — recall
-    // runs once at slice-start, not a hot per-call path, and feeds dispatch
-    // quality, so it can afford a longer budget); else the shared
-    // memory.capMs (same knob capture reads, memory-sink.mts); else
-    // DEFAULT_RECALL_CAP_MS (5000), recall's historical default. Never a
-    // second bare literal — single source of truth lives in
-    // memory-transport.mts.
-    const timeoutMs: number =
-      config?.memory?.recall?.timeoutMs ?? config?.memory?.capMs ?? DEFAULT_RECALL_CAP_MS;
+    // Cap policy (FEAT-233 / DEC-071) — see resolveRecallCapMs above.
+    const timeoutMs: number = resolveRecallCapMs(config);
     // Cortex project derives from memory.project else productName (DEC-065) —
     // never the featId (the pre-DEC-066 bug that queried a non-existent
     // per-feature project). Undefined → recallSilent omits project.
