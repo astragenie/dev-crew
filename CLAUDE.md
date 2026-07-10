@@ -78,8 +78,14 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 9. `bun ./src/scripts/validate-imports.mts` — enforces the slice-linker
    sub-module import boundary (files outside `slice-linker/` must go
    through the barrel, not reach into sub-modules directly).
-10. `bun test src/tests/ --parallel --timeout 60000`
-11. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+10. `bun ./src/scripts/validate-backlog-writes.mts` — explicit-allowlist
+   guard (SLICE-153 / FEAT-250, COND-D): fails when a file outside
+   `backlog-store.mts` (the sole sanctioned BacklogStore writer, DEC-076)
+   raw-writes a backlog-shaped FEAT/SLICE path. `doctor.mts` (cross-tree
+   reconciliation) and `pm-apply.mts` (body-section content edits) are
+   named allowlist exceptions with an inline rationale each.
+11. `bun test src/tests/ --parallel --timeout 60000`
+12. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
    `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
    Regenerates the snapshot content in-memory and diffs it against the
    on-disk file; any drift (backlog/grade counts, "next to slice" list,

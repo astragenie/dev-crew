@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveConfig } from "../config-resolver.mjs";
-import { parseFrontmatter, mergeFrontmatter } from "../frontmatter.mjs";
+import { parseFrontmatter } from "../frontmatter.mjs";
 import { detectSerialReviewer } from "../reviewer-timing.mjs";
-import { findFeatureById, moveFeature } from "../backlog-writer.mjs";
+import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
 import { updateSliceFrontmatter, moveSlice } from "../backlog-store.mjs";
 import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "../ceremonies.mjs";
@@ -185,7 +185,10 @@ async function evaluateFeatureGates(
 }
 
 // Appends sliceId to the FEAT's slices_complete array (dedupe), writes back
-// the updated frontmatter. Returns { slicesComplete, remainingSlices }.
+// the updated frontmatter via BacklogStore. Returns { slicesComplete, remainingSlices }.
+// repoPath/config omitted (matches the sibling moveFeature call in
+// applyMultiSliceLogic below) — assertStatePath enforcement here is future
+// work, not part of this migration.
 async function updateSlicesComplete(
   feat: any,
   sliceId: string
@@ -199,10 +202,7 @@ async function updateSlicesComplete(
   const slicesComplete: string[] = existing.includes(sliceId) ? existing : [...existing, sliceId];
   const remainingSlices: string[] = planned.filter((s) => !slicesComplete.includes(s));
 
-  // Write back to FEAT file
-  const content = await fs.readFile(feat.filePath, "utf8");
-  const updated = mergeFrontmatter(content, { slices_complete: slicesComplete });
-  await fs.writeFile(feat.filePath, updated);
+  await updateFeatureFrontmatter(feat.filePath, { slices_complete: slicesComplete });
 
   return { slicesComplete, remainingSlices };
 }

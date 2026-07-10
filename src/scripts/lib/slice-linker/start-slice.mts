@@ -25,7 +25,7 @@ import { computeConfidence } from "../confidence-signal.mjs";
 import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
 import { ensureSliceWorktree, isBranchInProgress, getCurrentBranch } from "../worktree-manager.mjs";
 import type { WorktreeResult } from "../worktree-manager.mjs";
-import { mergeFrontmatter } from "../frontmatter.mjs";
+import { updateSliceFrontmatter } from "../backlog-store.mjs";
 import { displaySliceTitle } from "../slice-title.mjs";
 import { classifySliceShape } from "../classify-slice-shape.mjs";
 import type { FileChange } from "../classify-slice-shape.mjs";
@@ -315,11 +315,11 @@ async function rollbackWorktreePathInState(repoPath: string, prior: string | nul
 /** Write worktreePath into slice frontmatter. sliceFile must be an absolute path. */
 async function writeWorktreePathToFrontmatter(
   sliceFile: string,
-  worktreePath: string
+  worktreePath: string,
+  repoPath: string,
+  config: Record<string, any> | null
 ): Promise<void> {
-  const content = await fs.readFile(sliceFile, "utf8");
-  const updated = mergeFrontmatter(content, { worktreePath });
-  await fs.writeFile(sliceFile, updated, "utf8");
+  await updateSliceFrontmatter(sliceFile, { worktreePath }, repoPath, config);
 }
 
 /**
@@ -414,7 +414,7 @@ export async function applyWorktreeResult(
   // Write slice frontmatter — roll back state on failure.
   // sliceFile is non-null here (guarded above) — direct call, no nested if.
   try {
-    await writeWorktreePathToFrontmatter(sliceFile, result.worktreePath);
+    await writeWorktreePathToFrontmatter(sliceFile, result.worktreePath, repoPath, config);
   } catch (err) {
     await rollbackWorktreePathInState(repoPath, prior);
     throw err;

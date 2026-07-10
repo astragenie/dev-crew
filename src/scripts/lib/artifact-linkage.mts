@@ -1,9 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
+import { parseFrontmatter } from "./frontmatter.mjs";
 import { resolveConfig } from "./config-resolver.mjs";
 import { pathExists, locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
+import { updateSliceFrontmatter } from "./backlog-store.mjs";
 
 const SUPPORTED_KINDS = ["reviews", "validations", "deployments", "agents"];
 
@@ -39,14 +40,17 @@ export async function linkArtifactToSlice(
   const artifactRel = relativize(repoPath, artifactAbs);
 
   const content = await fs.readFile(sliceFile, "utf8");
-  const { frontmatter, body } = parseFrontmatter(content);
+  const { frontmatter } = parseFrontmatter(content);
   const existing = Array.isArray(frontmatter[kind]) ? frontmatter[kind] : [];
   if (existing.includes(artifactRel)) {
     return { sliceFile, kind, artifactRel, alreadyLinked: true };
   }
-  const updated = { ...frontmatter, [kind]: [...existing, artifactRel] };
-  const newContent = serializeFrontmatter(updated, body);
-  await fs.writeFile(sliceFile, newContent);
+  await updateSliceFrontmatter(
+    sliceFile,
+    { [kind]: [...existing, artifactRel] },
+    repoPath,
+    resolved
+  );
   return { sliceFile, kind, artifactRel, alreadyLinked: false };
 }
 
