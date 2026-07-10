@@ -11,7 +11,13 @@ risk: medium
 created: 2026-07-09
 updated: 2026-07-09
 effort_points: 2
-touches_files: [src/scripts/lib/watch/spawn-gate.mts, src/scripts/lib/watch/tick.mts, src/scripts/lib/watch/types.mts, src/scripts/lib/watch/state.mts, src/tests/watch-spawn-gate.test.mts, src/tests/watch-tick.test.mts]
+touches_files:
+  - src/scripts/lib/watch/spawn-gate.mts
+  - src/scripts/lib/watch/tick.mts
+  - src/scripts/lib/watch/types.mts
+  - src/scripts/lib/watch/state.mts
+  - src/tests/watch-spawn-gate.test.mts
+  - src/tests/watch-tick.test.mts
 ---
 # SLICE-145: Concurrency cap + cost ceiling (COND-4)
 

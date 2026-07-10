@@ -11,7 +11,12 @@ risk: medium
 created: 2026-07-09
 updated: 2026-07-09
 effort_points: 2
-touches_files: [src/scripts/lib/watch.mts, commands/watch.md, scripts/setup-watch-scheduler.mjs, src/scripts/lib/watch/tick.mts, src/tests/watch-tick.test.mts]
+touches_files:
+  - src/scripts/lib/watch.mts
+  - commands/watch.md
+  - scripts/setup-watch-scheduler.mjs
+  - src/scripts/lib/watch/tick.mts
+  - src/tests/watch-tick.test.mts
 ---
 # SLICE-146: Scheduler setup script + /runner:watch command
 
