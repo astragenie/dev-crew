@@ -3,11 +3,12 @@
   "$id": "https://loop.astragenie.dev/schemas/loop-events/grade-event.schema.json",
   "title": "GradeEventPayload",
   "type": "object",
-  "required": ["sliceId", "recordedAt", "scores"],
+  "required": ["sliceId", "ts", "scores"],
   "properties": {
     "sliceId": { "type": "string" },
     "featureId": { "type": "string" },
     "spec": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
     "recordedAt": { "type": "string", "format": "date-time" },
     "scores": {
       "type": "object",

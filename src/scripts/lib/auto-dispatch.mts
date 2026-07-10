@@ -145,22 +145,29 @@ export async function dispatchAgent(opts: DispatchOpts): Promise<DispatchResult>
 
   const buildAuditEntry = (
     partial: Omit<DispatchResult, "durationMs"> & { durationMs?: number }
-  ) => ({
-    timestamp: new Date().toISOString(),
-    agent,
-    parentCommand,
-    costUsd: partial.costUsd ?? null,
-    durationMs: partial.durationMs ?? Date.now() - start,
-    ok: partial.ok,
-    skipped: partial.skipped,
-    skipReason: partial.skipReason ?? null,
-    stepType: optsStepType ?? "dispatch",
-    inputTokens: optsInputTokens ?? null,
-    outputTokens: optsOutputTokens ?? null,
-    dispatchKind: optsDispatchKind,
-    iterationIndex: optsIterationIndex,
-    sliceId: opts.sliceId ?? null
-  });
+  ) => {
+    const timestamp = new Date().toISOString();
+    return {
+      timestamp,
+      // FEAT-247 / A2: dual-emit canonical `ts` alongside legacy `timestamp`
+      // — the "agent.dispatch" fanout kind validates against
+      // agent-dispatch.schema.json, which now requires `ts`.
+      ts: timestamp,
+      agent,
+      parentCommand,
+      costUsd: partial.costUsd ?? null,
+      durationMs: partial.durationMs ?? Date.now() - start,
+      ok: partial.ok,
+      skipped: partial.skipped,
+      skipReason: partial.skipReason ?? null,
+      stepType: optsStepType ?? "dispatch",
+      inputTokens: optsInputTokens ?? null,
+      outputTokens: optsOutputTokens ?? null,
+      dispatchKind: optsDispatchKind,
+      iterationIndex: optsIterationIndex,
+      sliceId: opts.sliceId ?? null
+    };
+  };
 
   const emitEvent = async (event: import("./slice-events.mjs").SliceEvent) => {
     if (!sliceId) return;

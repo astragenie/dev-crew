@@ -370,6 +370,9 @@ interface GradeEventOut {
   featureId?: string;
   spec?: string;
   recordedAt: string;
+  /** FEAT-247 / A2: canonical timestamp field, dual-emitted alongside the
+   * legacy `recordedAt` for one release cycle. Always equal to `recordedAt`. */
+  ts: string;
   scores: Record<string, number>;
   decisions: Array<{ id: string; status: "accepted"; body: string }>;
   timing: Record<string, unknown>;
@@ -392,6 +395,7 @@ function buildGradeEvent(
   const event: GradeEventOut = {
     sliceId,
     recordedAt,
+    ts: recordedAt,
     scores: scores as Record<string, number>,
     decisions: allocated.map((d) => ({
       id: d.id as string,

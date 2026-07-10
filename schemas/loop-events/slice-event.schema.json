@@ -26,8 +26,17 @@
     "firstOutputAt": { "type": "string", "format": "date-time" },
     "toolCalls": { "type": "integer", "minimum": 0 },
     "priority": { "type": ["string", "null"], "pattern": "^P[0-4]$" },
-    "category": { "type": ["string", "null"], "enum": ["feat", "fix", "chore", null] },
+    "category": {
+      "type": ["string", "null"],
+      "$comment": "Freeform, repo-defined backlog category vocabulary (competitor-gap, feature, workflow, tech-debt, bug, bugfix, infrastructure, ...) — not a closed enum. Normalization/bucketing happens at the consumer (astrarunner A3 SQL), not here. See FEAT-247."
+    },
     "relates_to": { "type": ["string", "null"] },
-    "createdAt": { "type": ["string", "null"], "format": "date-time" }
+    "createdAt": {
+      "anyOf": [
+        { "type": "string", "format": "date" },
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    }
   }
 }

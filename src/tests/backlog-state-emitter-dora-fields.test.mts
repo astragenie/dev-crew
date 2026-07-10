@@ -208,15 +208,15 @@ describe("backlog-state-emitter — DORA fields", () => {
     assert.ok(!rx.test("high"), "pattern must not match non-Pn strings");
   });
 
-  it("AC1 — schema contract: category enum covers feat/fix/chore and null", async () => {
+  it("AC1 — schema contract: category is freeform (string or null), not a closed enum", async () => {
+    // Real backlog category vocabulary (competitor-gap, feature, workflow,
+    // tech-debt, bug, bugfix, infrastructure, ...) is repo-defined and
+    // freeform — a closed enum silently drops most real envelopes and
+    // undercounts CFR fix-detection at the consumer. See SLICE-147 review.
     const schema = await loadSchema();
-    const categoryProp = schema.properties.category as { enum?: unknown[] };
-    assert.ok(Array.isArray(categoryProp.enum), "category must declare an enum");
-    const values = categoryProp.enum!;
-    assert.ok(values.includes("feat"), "enum must include feat");
-    assert.ok(values.includes("fix"), "enum must include fix");
-    assert.ok(values.includes("chore"), "enum must include chore");
-    assert.ok(values.includes(null), "enum must include null");
+    const categoryProp = schema.properties.category as { type?: unknown; enum?: unknown[] };
+    assert.ok(!("enum" in categoryProp), "category must not declare a closed enum");
+    assert.deepEqual(categoryProp.type, ["string", "null"]);
   });
 
   it("AC1 — feat category value propagates correctly", async () => {

@@ -50,4 +50,49 @@ describe("createEventValidator", () => {
     expect(result.ok).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
   });
+
+  // SLICE-147: real backlog envelopes carry a freeform category vocabulary
+  // (competitor-gap, feature, workflow, tech-debt, bug, bugfix,
+  // infrastructure, ...) and a bare-date createdAt (nowIsoDate() output,
+  // forwarded verbatim by doraFieldsFromFrontmatter) — not the closed
+  // feat/fix/chore enum or date-time format the schema previously required.
+  test("accepts a realistic loop.backlog_state_changed envelope — freeform category + bare-date createdAt", () => {
+    const result = validator({
+      tenantId: "t1",
+      appId: "a1",
+      kind: "loop.backlog_state_changed",
+      payload: {
+        featId: "FEAT-247",
+        fromState: "triaged",
+        toState: "in-progress",
+        ts: "2026-07-08T12:00:00.000Z",
+        priority: "P1",
+        category: "tech-debt",
+        relates_to: null,
+        createdAt: "2026-07-08"
+      },
+      emittedAt: "2026-07-08T12:00:00.000Z"
+    });
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  test("rejects loop.backlog_state_changed envelope with a malformed createdAt", () => {
+    const result = validator({
+      tenantId: "t1",
+      appId: "a1",
+      kind: "loop.backlog_state_changed",
+      payload: {
+        featId: "FEAT-247",
+        fromState: "triaged",
+        toState: "in-progress",
+        ts: "2026-07-08T12:00:00.000Z",
+        category: "tech-debt",
+        createdAt: "not-a-date"
+      },
+      emittedAt: "2026-07-08T12:00:00.000Z"
+    });
+    expect(result.ok).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
 });

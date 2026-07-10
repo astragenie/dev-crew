@@ -9,6 +9,8 @@ export interface GradeEventPayload {
   featureId?: string;
   spec?: string;
   recordedAt: string;
+  /** FEAT-247 / A2: canonical timestamp, dual-emitted alongside `recordedAt`. */
+  ts?: string;
   scores: Record<string, number>;
   decisions?: Array<{ id: string; status: string; body?: string }>;
   timing?: Record<string, unknown>;

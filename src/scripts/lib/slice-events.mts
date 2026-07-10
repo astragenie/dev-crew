@@ -148,10 +148,14 @@ export async function appendSliceEvent(
   sliceId: string,
   event: SliceEvent
 ): Promise<void> {
+  // FEAT-247 / A2: dual-emit canonical `ts` alongside the legacy `timestamp`
+  // field for one release cycle — always equal to `timestamp`.
+  const enriched = { ...event, ts: event.timestamp };
+
   try {
     const filePath = eventsPath(repoRoot, sliceId);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.appendFile(filePath, JSON.stringify(event) + "\n");
+    await fs.appendFile(filePath, JSON.stringify(enriched) + "\n");
   } catch (err) {
     console.warn(
       `[slice-events] write failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
@@ -160,6 +164,6 @@ export async function appendSliceEvent(
 
   // M1: also fan out to runner via webhook if configured. Fail-silent.
   const kind = `slice.${event.type}`;
-  const { type: _t, ...payload } = event;
+  const { type: _t, ...payload } = enriched;
   await fanoutEnvelope(repoRoot, kind, payload as Record<string, unknown>);
 }

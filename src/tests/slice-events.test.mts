@@ -106,6 +106,26 @@ describe("slice-events", () => {
     assert.ok(warns[0]!.includes("SLICE-00"), `expected sliceId in warn, got: ${warns[0]}`);
   });
 
+  // FEAT-247 / A2 (SLICE-147): appendSliceEvent dual-emits canonical `ts`
+  // alongside the legacy `timestamp` field for one release cycle.
+  it("appendSliceEvent dual-emits ts equal to timestamp in the written JSONL row", async () => {
+    const sliceId = "SLICE-03";
+    await appendSliceEvent(tmpDir, sliceId, {
+      type: "workflow_state_changed",
+      sliceId,
+      featureId: "FEAT-010",
+      timestamp: "2026-06-08T00:00:00.000Z",
+      from: null,
+      to: "building"
+    });
+    const raw = await fs.readFile(eventsPath(tmpDir, sliceId), "utf8");
+    const lines = raw.trim().split("\n").filter(Boolean);
+    const parsed = JSON.parse(lines[lines.length - 1]!);
+    assert.equal(parsed.timestamp, "2026-06-08T00:00:00.000Z");
+    assert.equal(parsed.ts, "2026-06-08T00:00:00.000Z");
+    assert.equal(parsed.ts, parsed.timestamp);
+  });
+
   it("WorkflowStateChangedEvent has correct shape", () => {
     const event: import("../scripts/lib/slice-events.mjs").WorkflowStateChangedEvent = {
       type: "workflow_state_changed",

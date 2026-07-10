@@ -28,8 +28,13 @@ export interface BacklogStateChangedInput {
   timestamp?: string;
   /** DORA: priority tier (P0..P4). Required for MTTR P0 detection. */
   priority?: string | null;
-  /** DORA: category classification. Required for CFR fix detection. */
-  category?: FeatCategory | null;
+  /**
+   * DORA: category classification. FEAT frontmatter `category` is freeform
+   * (e.g. "bugfix", "architecture", "feature") — `FeatCategory` names the
+   * subset the CFR aggregation recognizes, but any string is forwarded
+   * as-is rather than narrowed/validated here.
+   */
+  category?: FeatCategory | string | null;
   /** DORA: linked FEAT this fixes (CFR linking). */
   relates_to?: string | null;
   /** DORA: creation timestamp (lead-time start anchor). */

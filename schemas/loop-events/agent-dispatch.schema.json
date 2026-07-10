@@ -3,8 +3,9 @@
   "$id": "https://loop.astragenie.dev/schemas/loop-events/agent-dispatch.schema.json",
   "title": "AgentDispatchPayload",
   "type": "object",
-  "required": ["timestamp", "agent", "ok"],
+  "required": ["ts", "agent", "ok"],
   "properties": {
+    "ts": { "type": "string", "format": "date-time" },
     "timestamp": { "type": "string", "format": "date-time" },
     "agent": { "type": "string" },
     "parentCommand": { "type": "string" },

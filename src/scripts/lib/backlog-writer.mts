@@ -219,11 +219,29 @@ export async function moveFeature(
       await emitBacklogStateChanged(repoRoot, {
         featId,
         fromState,
-        toState
+        toState,
+        ...doraFieldsFromFrontmatter(existingFm)
       });
     }
   }
   return { from: filePath, to: targetPath };
+}
+
+// FEAT-247 / A2: forward DORA CFR/MTTR fields out of existingFm. Every field
+// is returned explicitly (falling back to null) rather than omitted when
+// absent, so the emitted envelope always carries the key — a missing FEAT
+// field is a known-null signal, not a dropped one.
+function stringOrNull(value: unknown): string | null {
+  return (typeof value === "string" && value) || null;
+}
+
+function doraFieldsFromFrontmatter(existingFm: Record<string, any>) {
+  return {
+    priority: stringOrNull(existingFm.priority),
+    category: stringOrNull(existingFm.category),
+    relates_to: stringOrNull(existingFm.relates_to),
+    createdAt: stringOrNull(existingFm.created)
+  };
 }
 
 /**

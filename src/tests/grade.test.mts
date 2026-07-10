@@ -242,6 +242,34 @@ test("writeGrade extracts DEC-TBD blocks into .claude/artifacts/loop/decisions/"
   assert.equal(second.decisionsAllocated.length, 0);
 });
 
+// FEAT-247 / A2 (SLICE-147): buildGradeEvent dual-emits canonical `ts`
+// alongside the legacy `recordedAt` field for one release cycle. Verified
+// by reading back the JSONL row written by appendGradeEvent (grades.jsonl),
+// since buildGradeEvent itself is not exported.
+test("writeGrade emits a grade event with ts equal to recordedAt (dual-emit)", async () => {
+  const repo = await tmpRepo("al-grade-ts-dualemit-");
+  const created = await createGradeFile(repo, "SLICE-05");
+  let content = await fs.readFile(created.gradePath, "utf8");
+  for (const dim of SCORE_DIMENSIONS) {
+    content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
+  }
+  content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
+  await fs.writeFile(created.gradePath, content);
+
+  await writeGrade(repo, "SLICE-05");
+
+  const jsonlPath = path.join(repo, ".claude", "artifacts", "loop", "grades.jsonl");
+  const raw = await fs.readFile(jsonlPath, "utf8");
+  const lines = raw.trim().split("\n").filter(Boolean);
+  const event = JSON.parse(lines[lines.length - 1]);
+  assert.ok(typeof event.recordedAt === "string" && event.recordedAt.length > 0);
+  assert.ok(typeof event.ts === "string" && event.ts.length > 0);
+  assert.equal(event.ts, event.recordedAt);
+});
+
 test("findGradeForSlice returns null when no grade exists", async () => {
   const repo = await tmpRepo("al-grade-find-");
   const found = await findGradeForSlice(repo, "SLICE-99");
