@@ -180,7 +180,8 @@ function emptyTickState(): TickState {
     lastPrShas: {},
     lastTickAt: "",
     claims: {},
-    skippedCeiling: []
+    skippedCeiling: [],
+    lastSweepError: null
   };
 }
 

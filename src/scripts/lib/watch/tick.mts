@@ -71,12 +71,14 @@ export async function runTick(options: RunTickOptions): Promise<TickResult> {
     let findingsCount = 0;
     let spawnedCount = 0;
     let skippedCount = 0;
+    let errorCount = 0;
 
     for (const entry of assigned) {
       const result = await sweepEntry(entry, exec, watchHome, spawnGateConfig, now);
       findingsCount += result.findingsCount;
       spawnedCount += result.spawnedCount;
       skippedCount += result.skippedCount;
+      if (result.error) errorCount++;
 
       await emitWatchTickEnvelope(registry, {
         ghSlug: entry.ghSlug,
@@ -85,11 +87,19 @@ export async function runTick(options: RunTickOptions): Promise<TickResult> {
         appId: entry.appId,
         tickAt: now().toISOString(),
         findingsCount: result.findingsCount,
-        skippedCeilingCount: result.skippedCount
+        skippedCeilingCount: result.skippedCount,
+        // B3 AC-2: darkens this repo for dashboards without spamming a full
+        // error log — kind + running consecutive-failure streak only.
+        ...(result.error
+          ? {
+              sweepErrorKind: result.error.kind,
+              sweepErrorConsecutiveCount: result.error.consecutiveCount
+            }
+          : {})
       });
     }
 
-    return { outcome: "swept", findingsCount, spawnedCount, skippedCount };
+    return { outcome: "swept", findingsCount, spawnedCount, skippedCount, errorCount };
   } finally {
     await releaseTickLock(watchHome);
   }

@@ -18,7 +18,8 @@ import type {
   ReactionAction,
   ReactionSpawn,
   RegistryEntry,
-  SpawnGateConfig
+  SpawnGateConfig,
+  SweepErrorState
 } from "./types.mjs";
 import {
   claimFinding,
@@ -285,7 +286,59 @@ function assembleFindings(cursorFindings: Finding[], expiredClaimFindings: Findi
 }
 
 // ---------------------------------------------------------------------------
+// B3 AC-2 / AC-2b — gh failure classification for the per-entry detection
+// calls below. A registry entry the token cannot reach (403/insufficient
+// scope) or that no longer exists (404/not found) must record a clear,
+// distinguishable error state and let the tick move on to the next entry
+// rather than throwing out of sweepEntry (which would abort the whole tick —
+// see runTick's for-loop in tick.mts).
+
+function extractGhErrorText(err: unknown): string {
+  if (err && typeof err === "object") {
+    const { message, stderr } = err as { message?: unknown; stderr?: unknown };
+    return [message, stderr].filter((part): part is string => typeof part === "string").join(" ");
+  }
+  return String(err);
+}
+
+function classifyGhErrorKind(err: unknown): SweepErrorState["kind"] {
+  const text = extractGhErrorText(err);
+  if (
+    /\b403\b/.test(text) ||
+    /insufficient.?scope/i.test(text) ||
+    /resource not accessible/i.test(text)
+  ) {
+    return "insufficient-scope";
+  }
+  if (/\b404\b/.test(text) || /not found/i.test(text)) {
+    return "not-found";
+  }
+  return "other";
+}
+
+function buildSweepErrorState(
+  err: unknown,
+  priorError: SweepErrorState | null,
+  now: () => Date
+): SweepErrorState {
+  return {
+    kind: classifyGhErrorKind(err),
+    message: extractGhErrorText(err).trim() || "unknown gh failure",
+    at: now().toISOString(),
+    consecutiveCount: (priorError?.consecutiveCount ?? 0) + 1
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Per-entry sweep
+
+export interface SweepEntryResult {
+  findingsCount: number;
+  spawnedCount: number;
+  skippedCount: number;
+  // Present only when this entry's gh detection failed this tick (B3 AC-2).
+  error?: SweepErrorState;
+}
 
 export async function sweepEntry(
   entry: RegistryEntry,
@@ -293,14 +346,27 @@ export async function sweepEntry(
   watchHome: string,
   spawnGateConfig: SpawnGateConfig,
   now: () => Date
-): Promise<{ findingsCount: number; spawnedCount: number; skippedCount: number }> {
+): Promise<SweepEntryResult> {
   const priorState = await readTickState(watchHome, entry.ghSlug);
 
-  const [issues, runs, prs] = await Promise.all([
-    exec.listOpenIssues(entry),
-    exec.listFailedRuns(entry),
-    exec.listOpenPrChecks(entry)
-  ]);
+  let issues: GhIssueLite[];
+  let runs: GhFailedRunLite[];
+  let prs: GhPrCheckSnapshot[];
+  try {
+    [issues, runs, prs] = await Promise.all([
+      exec.listOpenIssues(entry),
+      exec.listFailedRuns(entry),
+      exec.listOpenPrChecks(entry)
+    ]);
+  } catch (err) {
+    const errorState = buildSweepErrorState(err, priorState.lastSweepError, now);
+    await updateTickState(watchHome, entry.ghSlug, (current) => ({
+      ...current,
+      lastSweepError: errorState,
+      lastTickAt: now().toISOString()
+    }));
+    return { findingsCount: 0, spawnedCount: 0, skippedCount: 0, error: errorState };
+  }
 
   const issueResult = detectIssueFindings(entry, issues, priorState.lastSeenIssue);
   const runResult = detectFailedRunFindings(entry, runs, priorState.lastFailedRunIds);
@@ -399,7 +465,9 @@ export async function sweepEntry(
     lastSeenIssue: issueResult.newLastSeen,
     lastFailedRunIds: runResult.newLastFailedRunIds,
     lastPrShas: prResult.newLastPrShas,
-    lastTickAt: now().toISOString()
+    lastTickAt: now().toISOString(),
+    // AC-2b: a successful sweep of this entry clears any prior error state.
+    lastSweepError: null
   }));
 
   return { findingsCount: findings.length, spawnedCount, skippedCount };

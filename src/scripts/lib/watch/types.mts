@@ -36,6 +36,18 @@ export interface SkippedCeilingEntry {
   at: string;
 }
 
+// B3 AC-2 / AC-2b — classifies a gh failure encountered while sweeping a
+// registry entry so an unreachable / insufficient-scope repo is
+// distinguishable from a genuinely deleted one or a transient network blip.
+export type SweepErrorKind = "insufficient-scope" | "not-found" | "other";
+
+export interface SweepErrorState {
+  kind: SweepErrorKind;
+  message: string;
+  at: string; // ISO timestamp
+  consecutiveCount: number; // consecutive failed sweeps for this entry
+}
+
 export interface TickState {
   lastSeenIssue: number | null;
   lastFailedRunIds: number[];
@@ -43,6 +55,9 @@ export interface TickState {
   lastTickAt: string;
   claims: Record<string, ClaimEntry>; // keyed by findingId
   skippedCeiling: SkippedCeilingEntry[];
+  // Tick-owned (COND-2): set when the gh detection calls for this entry
+  // fail; cleared back to null on the next successful sweep.
+  lastSweepError: SweepErrorState | null;
 }
 
 export interface ReactionState {
@@ -60,7 +75,13 @@ export interface Finding {
 }
 
 export type TickResult =
-  | { outcome: "swept"; findingsCount: number; spawnedCount: number; skippedCount: number }
+  | {
+      outcome: "swept";
+      findingsCount: number;
+      spawnedCount: number;
+      skippedCount: number;
+      errorCount: number; // entries whose gh detection failed this tick
+    }
   | { outcome: "lock-held" };
 
 export interface SpawnGateConfig {

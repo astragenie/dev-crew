@@ -30,7 +30,9 @@ export type {
   SpawnGateConfig,
   SpawnGateDecision,
   ReactionAction,
-  ReactionSpawn
+  ReactionSpawn,
+  SweepErrorKind,
+  SweepErrorState
 } from "./watch/types.mjs";
 export type { RunTickOptions, WatchTickExec } from "./watch/tick.mjs";
 export type { RegistryValidationResult } from "./watch/registry.mjs";

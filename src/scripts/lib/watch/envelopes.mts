@@ -10,7 +10,7 @@
 // config physically sent the HTTP call.
 
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
-import type { ReactionAction, RegistryFile } from "./types.mjs";
+import type { ReactionAction, RegistryFile, SweepErrorKind } from "./types.mjs";
 
 export interface WatchTickPayload {
   ghSlug: string;
@@ -20,6 +20,10 @@ export interface WatchTickPayload {
   tickAt: string; // ISO timestamp
   findingsCount: number;
   skippedCeilingCount: number;
+  // B3 AC-2 — present only when this entry's gh detection failed this tick,
+  // so a dashboard can see a repo went dark without polling per-repo state.
+  sweepErrorKind?: SweepErrorKind;
+  sweepErrorConsecutiveCount?: number;
 }
 
 export interface WatchReactionPayload {

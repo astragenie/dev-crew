@@ -15,6 +15,9 @@ touches_files:
   - src/scripts/lib/watch/sweep.mts
   - src/scripts/lib/watch/state.mts
   - src/scripts/lib/watch/types.mts
+  - src/scripts/lib/watch/tick.mts
+  - src/scripts/lib/watch/envelopes.mts
+  - src/scripts/lib/watch.mts
   - src/tests/watch-sweep-errors.test.mts
 ---
 # SLICE-148: Tick resilience — unreachable / insufficient-scope repos (B3 AC-2)
@@ -40,8 +43,8 @@ A registry entry the token cannot reach (403/404 from `gh`) must not fail silent
 
 ## Acceptance criteria
 
-- [ ] AC-2 [B3]: Given a registry entry for a private repo the PAT cannot reach, When a tick attempts to sweep it, Then the tick logs a clear "unreachable / insufficient scope" state rather than failing silently or crashing the whole tick — evidenced by a test simulating a 403/404 from `gh` for one repo and asserting the tick continues sweeping remaining repos with a recorded per-repo error state. (source: 2026-07-07-watcher-acs-eta.md AC-2, B3 section)
-- [ ] AC-2b: Given a previously-erroring repo becomes reachable again, When the next tick sweeps it successfully, Then the recorded error state is cleared — evidenced by a two-tick test asserting the error field is present after tick 1 and absent (or reset) after tick 2.
+- [x] AC-2 [B3]: Given a registry entry for a private repo the PAT cannot reach, When a tick attempts to sweep it, Then the tick logs a clear "unreachable / insufficient scope" state rather than failing silently or crashing the whole tick — evidenced by a test simulating a 403/404 from `gh` for one repo and asserting the tick continues sweeping remaining repos with a recorded per-repo error state. (source: 2026-07-07-watcher-acs-eta.md AC-2, B3 section)
+- [x] AC-2b: Given a previously-erroring repo becomes reachable again, When the next tick sweeps it successfully, Then the recorded error state is cleared — evidenced by a two-tick test asserting the error field is present after tick 1 and absent (or reset) after tick 2.
 
 ## Done When
 

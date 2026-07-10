@@ -43,7 +43,8 @@ const DEFAULT_TICK_STATE: TickState = {
   lastPrShas: {},
   lastTickAt: "",
   claims: {},
-  skippedCeiling: []
+  skippedCeiling: [],
+  lastSweepError: null
 };
 
 const DEFAULT_REACTION_STATE: ReactionState = {
