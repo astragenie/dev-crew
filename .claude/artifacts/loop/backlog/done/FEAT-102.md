@@ -56,3 +56,36 @@ First-party Linear adapter that:
 - Codex for Linear: https://developers.openai.com/codex/integrations/linear
 - FEAT-024 (existing LinearProvider stub).
 - Strategy doc §6 small startups segment.
+## Reconciliation (DEC-077)
+
+This FEAT was marked `done` on 2026-06-13 with its acceptance criteria
+only partially satisfied:
+
+- `LinearProvider` was never upgraded past the FEAT-024 stub (all methods
+  still throw).
+- The webhook receiver AC landed as `scripts/linear-sync/webhook-handler.mts`
+  (unit-tested) but was never wired to a live endpoint or dispatch path.
+- The round-trip AC (Linear issue → FEAT/SPEC → PR; PR closes → Linear
+  status → Done with grade summary in comment) was never implemented or
+  demonstrated.
+- The docs AC (`docs/integrations/linear-teammate.md`) was never written.
+
+This FEAT is **superseded by FEAT-252** (LinearProvider — Phase 3 of the
+tracker-provider migration program) **and FEAT-254** (issue-flow hooks —
+Phase 5: close-comment + issue-close via provider, `intake --from-issue`
+Linear URLs, `issue.published`/`issue.closed` emitters — the outbound half
+of this FEAT's round-trip ambition). FEAT-252's scope is narrower than
+this FEAT's original "teammate flow" (it implements the outbound
+`LinearProvider` GraphQL client only — `issueCreate`, workflow-state
+transitions, `commentCreate`; it does not implement inbound webhook
+handling, `@crew` mention commands, or round-trip status sync). The
+inbound/teammate-flow half of this FEAT's original scope is deferred to
+the Watcher track (FEAT-245 IssueBroker), not resumed by FEAT-252.
+
+`scripts/linear-sync/` (the prototype built against this FEAT's AC) is
+scheduled for deletion as an explicit FEAT-252 SLICE-1 task — see
+DEC-077 for the full rationale (its inbound/webhook-shaped code has no
+reuse value for FEAT-252's outbound GraphQL API work).
+
+Frontmatter `status: done` is intentionally left unchanged by this
+reconciliation — see DEC-077 Part A for why.
