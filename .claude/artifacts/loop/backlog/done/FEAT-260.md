@@ -1,6 +1,6 @@
 ---
 id: FEAT-260
-status: pending
+status: done
 priority: null
 category: tooling
 target_release: null
@@ -9,9 +9,11 @@ updated: 2026-07-10
 depends_on: []
 slices: []
 derived_from: null
-autonomous_safe: null
+autonomous_safe: false
 pm_reviewed: null
 triage_notes: "Filed 2026-07-10 from the v0.68.0 release run. slow-tests failed BOTH in-run attempts on self-hosted actions-runner-4 with `memory-transport.test.mts > sendViaProvider — runtime discovery (no injection) > discovers the env-pinned plugin root and delivers via its selector` (sendViaProvider returned false), then passed clean on a full re-run; passes locally and passed on the immediately-preceding commit whose diff could not touch the transport path. Runner-box-sensitive, not code-sensitive."
+resolution: "Fixed by PR #456 (fix/qw1, 2026-07-10): root cause was the production DEFAULT_CAP_MS=2000 racing the real disk-based dynamic import under --parallel/loaded-runner contention — timing, not shared state. Test given an explicit 20000ms capMs; 3/3 consecutive full-suite runs green pre-merge and all CI runs since merge green (PRs #457-462)."
+completed_at: 2026-07-10
 ---
 # FEAT-260: harden or quarantine memory-transport runtime-discovery test on self-hosted CI
 
