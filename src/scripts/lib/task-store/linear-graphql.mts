@@ -88,8 +88,14 @@ export async function createIssue(
   return transport(ISSUE_CREATE_MUTATION, variables, apiKey);
 }
 
+// $teamId MUST be declared ID! (not String!) — it feeds TeamFilter.id, an
+// IDComparator, whose `eq` field is typed ID in Linear's schema. A live
+// smoke test against the real API caught this: a String! declaration here
+// fails with 'Variable "$teamId" of type "String!" used in position
+// expecting type "ID"' (mock-transport tests can't catch a variable-type
+// mismatch, since mocks never validate the query against a real schema).
 const WORKFLOW_STATE_BY_NAME_QUERY = `
-  query WorkflowStateByName($teamId: String!, $name: String!) {
+  query WorkflowStateByName($teamId: ID!, $name: String!) {
     workflowStates(filter: { team: { id: { eq: $teamId } }, name: { eq: $name } }) {
       nodes { id name }
     }

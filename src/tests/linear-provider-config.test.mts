@@ -6,7 +6,6 @@ import path from "node:path";
 
 import { resolveLinearConfig } from "../scripts/lib/task-store/linear-config.mjs";
 import { LinearProvider } from "../scripts/lib/task-store/providers/linear-provider.mjs";
-import { getProvider } from "../scripts/lib/task-store/index.mjs";
 import { _internals } from "../scripts/lib/token-store.mjs";
 import type {
   LinearGraphQLResult,
@@ -447,48 +446,5 @@ describe("LinearProvider.updateStatus — AC-4 default stateMap", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// AC-5: syncPull / bootstrap stay documented warning-stubs (COND-C descope)
-// ---------------------------------------------------------------------------
-describe("LinearProvider.syncPull / bootstrap — AC-5 COND-C descope", () => {
-  test("syncPull warns naming the descope, returns empty shape, makes zero transport calls", async () => {
-    process.env.LINEAR_API_KEY = "lin_api_fromenv";
-    const { transport, calls } = makeMockTransport(() => OK_ISSUE_CREATE("unused"));
-    const p = new LinearProvider(REPO, {
-      taskStore: { linear: VALID_LINEAR },
-      linearTransport: transport
-    });
-
-    const result = await p.syncPull(REPO);
-
-    expect(result).toEqual({ features: [], slices: [] });
-    expect(calls.length).toBe(0);
-    expect(warns.some((w) => w.includes("syncPull") && w.includes("COND-C"))).toBe(true);
-  });
-
-  test("bootstrap warns naming the descope, returns empty shape, makes zero transport calls", async () => {
-    process.env.LINEAR_API_KEY = "lin_api_fromenv";
-    const { transport, calls } = makeMockTransport(() => OK_ISSUE_CREATE("unused"));
-    const p = new LinearProvider(REPO, {
-      taskStore: { linear: VALID_LINEAR },
-      linearTransport: transport
-    });
-
-    const result = await p.bootstrap(REPO);
-
-    expect(result).toEqual({ features: [] });
-    expect(calls.length).toBe(0);
-    expect(warns.some((w) => w.includes("bootstrap") && w.includes("COND-C"))).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// getProvider("linear") resolution
-// ---------------------------------------------------------------------------
-describe("getProvider resolves LinearProvider", () => {
-  test("taskStore.provider: 'linear' resolves a LinearProvider instance", () => {
-    const p = getProvider({ taskStore: { provider: "linear", linear: VALID_LINEAR } }, REPO);
-    expect(p instanceof LinearProvider).toBe(true);
-    expect(p.repoPath).toBe(REPO);
-  });
-});
+// AC-5 (syncPull/bootstrap COND-C descope stubs) and getProvider("linear")
+// resolution coverage moved to linear-provider-stubs.test.mts (SLICE-158).
