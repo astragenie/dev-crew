@@ -1,7 +1,7 @@
 ---
 id: SLICE-151
 title: Feature-side delegate conversion across 11 backlog-writer callers
-status: pending
+status: completed
 feature: FEAT-250
 phase: null
 priority: P1
@@ -13,10 +13,8 @@ updated: 2026-07-10
 effort_points: 5
 github_issue: 420
 github_url: "https://github.com/astragenie/runner-plugin/issues/420"
-touches_files:
-  - src/scripts/lib/backlog-store.mts
-  - src/scripts/lib/backlog-writer.mts
-  - src/tests/backlog-store-parity.test.mts
+touches_files: [src/scripts/lib/backlog-store.mts, src/scripts/lib/backlog-writer.mts, src/tests/backlog-store-parity.test.mts]
+completed_at: 2026-07-10
 ---
 # SLICE-151: Feature-side delegate conversion across 11 backlog-writer callers
 
