@@ -1,11 +1,11 @@
 ---
 id: FEAT-247
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 depends_on: []
 tags: [dora, telemetry, observability, workflow]
 needs_contract: false
@@ -26,6 +26,8 @@ started_at: 2026-07-09
 github_issue: 409
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/409"
+slices_complete: [SLICE-147]
+completed_at: 2026-07-10
 ---
 ## Description
 
