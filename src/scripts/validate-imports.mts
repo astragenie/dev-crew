@@ -42,7 +42,8 @@ const BOUNDARIES: ModuleBoundary[] = [
       /watch\/claims/,
       /watch\/spawn-gate/,
       /watch\/envelopes/,
-      /watch\/tick/
+      /watch\/tick/,
+      /watch\/sweep/
     ]
   }
 ];

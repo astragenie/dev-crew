@@ -83,6 +83,12 @@ function validateEntryShape(e: Record<string, unknown>, label: string, errors: s
   if (e.checks !== undefined && !Array.isArray(e.checks)) {
     errors.push(`${label}.checks must be an array of strings when present`);
   }
+  if (
+    e.claimTtlSeconds !== undefined &&
+    (typeof e.claimTtlSeconds !== "number" || e.claimTtlSeconds <= 0)
+  ) {
+    errors.push(`${label}.claimTtlSeconds must be a positive number when present`);
+  }
 }
 
 function validateEntry(entry: unknown, idx: number, seenSlugs: Map<string, number>): string[] {

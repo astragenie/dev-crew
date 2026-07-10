@@ -1,6 +1,6 @@
 ---
-id: PM-REVIEW-FEAT-249
-feature: FEAT-249
+id: PM-REVIEW-FEAT-256
+feature: FEAT-256
 reviewed_at: 2026-07-09
 pm_customer_impact: 0.25
 pm_effort_estimate: 0.15
@@ -10,7 +10,7 @@ pm_dependency_depth: 0.1
 composite_priority: P2
 autonomous_safe: true
 ---
-# PM Review — FEAT-249
+# PM Review — FEAT-256
 
 ## Demand Assessment
 
@@ -18,7 +18,7 @@ autonomous_safe: true
 
 ## Scope Challenge
 
-- **Scope notes:** Smallest deliverable: one DEC recording (a) FEAT-102 superseded-by-this-program with the unmet-AC citation, and (b) fold-vs-delete disposition of scripts/linear-sync/ (mention-parser.mts, linear-types.mts, webhook-handler.mts -- confirmed present on disk, unit-tested, wired to nothing). Both decisions gate later work (FEAT-252 explicitly says 'Reuse or delete scripts/linear-sync/ prototype per FEAT-249 DEC') but neither is itself blocked by anything. No weak grade dimensions currently (all 7 loop-snapshot averages >=0.80: architecture_quality 0.846, reliability 0.86, observability 0.82, production_readiness 0.872, security 0.88, test_confidence 0.914, product_completeness 0.844), so no dimension-targeting AC is required. No cost analog found for a DEC-only housekeeping slice this small; scored from the effort table.
+- **Scope notes:** Smallest deliverable: one DEC recording (a) FEAT-102 superseded-by-this-program with the unmet-AC citation, and (b) fold-vs-delete disposition of scripts/linear-sync/ (mention-parser.mts, linear-types.mts, webhook-handler.mts -- confirmed present on disk, unit-tested, wired to nothing). Both decisions gate later work (FEAT-252 explicitly says 'Reuse or delete scripts/linear-sync/ prototype per FEAT-256 DEC') but neither is itself blocked by anything. No weak grade dimensions currently (all 7 loop-snapshot averages >=0.80: architecture_quality 0.846, reliability 0.86, observability 0.82, production_readiness 0.872, security 0.88, test_confidence 0.914, product_completeness 0.844), so no dimension-targeting AC is required. No cost analog found for a DEC-only housekeeping slice this small; scored from the effort table.
 
 ## Scores
 
