@@ -7,9 +7,8 @@ import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backl
 import { updateSliceFrontmatter, moveSlice } from "../backlog-store.mjs";
 import { readCrewWorkflowState, workflowStatePath } from "../crew-workflow-reader.mjs";
 import {
-  evaluateBlockedBadgeStaleness,
-  formatBlockedGateReason,
-  formatStaleBlockedBadgeWarning
+  applyStaleBlockedBadgePolicy,
+  formatBlockedGateReason
 } from "../blocked-badge-staleness.mjs";
 import { readFeatureEndCeremony } from "../ceremonies.mjs";
 import {
@@ -34,25 +33,6 @@ function deriveBlockingGates(workflowState: Record<string, any> | null) {
   const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;
   const escalated = gates.escalation?.status === "escalated" ? gates.escalation : null;
   return { blocked, escalated };
-}
-
-// A `blocked` badge from a long-resolved run should not silently hold every
-// subsequent feature roll (QW3). Badges older than `loop.staleBadgeMaxAgeDays`
-// (default 3) are downgraded to a console warning instead of blocking; fresh
-// badges — and any badge with no parseable `updatedAt` — keep blocking as
-// before. Escalation is never downgraded.
-function applyStaleBlockedBadgePolicy(
-  blockingGates: { blocked: Record<string, any> | null; escalated: Record<string, any> | null },
-  config: Record<string, any> | null,
-  repoPath: string
-) {
-  if (!blockingGates.blocked) return blockingGates;
-  const staleness = evaluateBlockedBadgeStaleness(blockingGates.blocked, config);
-  if (!staleness.stale) return blockingGates;
-  console.warn(
-    formatStaleBlockedBadgeWarning(blockingGates.blocked, staleness, workflowStatePath(repoPath))
-  );
-  return { ...blockingGates, blocked: null };
 }
 
 async function bestEffort(fn: (...args: any[]) => any) {

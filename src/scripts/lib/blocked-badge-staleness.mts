@@ -7,6 +7,8 @@
 // still-blocking reason) so both name the badge's updatedAt and the state
 // file path.
 
+import { workflowStatePath } from "./crew-workflow-reader.mjs";
+
 export const DEFAULT_STALE_BADGE_MAX_AGE_DAYS = 3;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const NOTE_SNIPPET_LEN = 120;
@@ -74,9 +76,37 @@ export function formatStaleBlockedBadgeWarning(
 /** Skip-reason text used when a `blocked` badge still holds the roll (any age). */
 export function formatBlockedGateReason(
   badge: BlockedBadgeLike | null,
-  workflowStatePath: string
+  workflowStatePathStr: string
 ): string {
   const note = badge?.note || "";
   const updatedAt = badge?.updatedAt || "unknown";
-  return `crew run blocked: ${note} (updatedAt: ${updatedAt}, state: ${workflowStatePath})`;
+  return `crew run blocked: ${note} (updatedAt: ${updatedAt}, state: ${workflowStatePathStr})`;
+}
+
+export interface BlockingGates {
+  blocked: BlockedBadgeLike | null;
+  escalated: Record<string, any> | null;
+}
+
+/**
+ * A `blocked` badge from a long-resolved run should not silently hold every
+ * subsequent feature roll or halt the autonomous loop (QW3). Badges older
+ * than `loop.staleBadgeMaxAgeDays` (default 3) are downgraded to a console
+ * warning instead of blocking; fresh badges — and any badge with no
+ * parseable `updatedAt` — keep blocking as before. Escalation is never
+ * downgraded. Shared by complete-slice.mts (feature roll) and
+ * stop-conditions.mts (autonomous loop halt).
+ */
+export function applyStaleBlockedBadgePolicy<T extends BlockingGates>(
+  gates: T,
+  config: Record<string, any> | null,
+  repoPath: string
+): T {
+  if (!gates.blocked) return gates;
+  const staleness = evaluateBlockedBadgeStaleness(gates.blocked, config);
+  if (!staleness.stale) return gates;
+  console.warn(
+    formatStaleBlockedBadgeWarning(gates.blocked, staleness, workflowStatePath(repoPath))
+  );
+  return { ...gates, blocked: null };
 }

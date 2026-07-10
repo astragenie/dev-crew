@@ -3,15 +3,8 @@ import { listSpecs } from "./spec-parser.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
-import {
-  readCrewBlockingGates,
-  readCrewWorkflowState,
-  workflowStatePath
-} from "./crew-workflow-reader.mjs";
-import {
-  evaluateBlockedBadgeStaleness,
-  formatStaleBlockedBadgeWarning
-} from "./blocked-badge-staleness.mjs";
+import { readCrewBlockingGates, readCrewWorkflowState } from "./crew-workflow-reader.mjs";
+import { applyStaleBlockedBadgePolicy } from "./blocked-badge-staleness.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
@@ -59,26 +52,6 @@ import {
 //   - In autonomous mode: log + halt + ping user
 //   - In hand-driven mode: surface in brief
 //   - In phase-gate: include in retrospective + handoff
-
-// A `blocked` badge from a long-resolved run should not silently halt the
-// autonomous loop (QW3 staleness policy — see blocked-badge-staleness.mts and
-// its complete-slice.mts application). Badges older than
-// `loop.staleBadgeMaxAgeDays` (default 3) are downgraded to a console warning
-// instead of a halt reason; fresh badges — and any badge with no parseable
-// `updatedAt` — still halt as before. Escalation is never downgraded.
-function applyStaleBlockedBadgePolicy(
-  crewGates: { blocked: Record<string, any> | null; escalated: Record<string, any> | null },
-  config: Record<string, any> | null,
-  repoPath: string
-) {
-  if (!crewGates.blocked) return crewGates;
-  const staleness = evaluateBlockedBadgeStaleness(crewGates.blocked, config);
-  if (!staleness.stale) return crewGates;
-  console.warn(
-    formatStaleBlockedBadgeWarning(crewGates.blocked, staleness, workflowStatePath(repoPath))
-  );
-  return { ...crewGates, blocked: null };
-}
 
 function computeBacklogStats(backlog: any[], specs: any[]) {
   const pendingOrTriaged =
