@@ -5,6 +5,7 @@ import { listDecisions } from "./decisions-store.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { readEvents } from "./telemetry.mjs";
 import { readCrewBlockingGates } from "./crew-workflow-reader.mjs";
+import { evaluateBlockedBadgeStaleness } from "./blocked-badge-staleness.mjs";
 import { checkCostRegression } from "./cost-regression.mjs";
 import { checkSessionDrift } from "./session-drift.mjs";
 import { computeConfidence } from "./confidence-signal.mjs";
@@ -83,6 +84,39 @@ function countDemotedAlerts(alerts: any[], config: any): number {
   ];
   return alerts.filter((a) => a.severity === "warn" && ignoredCategories.includes(a.category))
     .length;
+}
+
+// A stale `blocked` badge (QW3 staleness policy) is not an active blocker —
+// the loop and complete-slice ceremony both downgrade it to a warning. The
+// brief must not misreport it as a live block; instead it's surfaced with an
+// explicit STALE marker so the operator knows it isn't being enforced.
+function formatBlockedBadgeNote(
+  badge: Record<string, any>,
+  staleness: ReturnType<typeof evaluateBlockedBadgeStaleness>
+): string | null {
+  const note = badge.note || null;
+  if (!staleness.stale) return note;
+  const ageDays = staleness.ageDays !== null ? staleness.ageDays.toFixed(1) : "unknown";
+  return `blocked badge (STALE, ${ageDays}d old — not enforcing): ${note ?? "(no note)"}`;
+}
+
+function buildBlockedGateSnapshot(
+  badge: Record<string, any> | null,
+  config: Record<string, any> | null
+): {
+  note: string | null;
+  blockedBy: string | null;
+  stale: boolean;
+  ageDays: number | null;
+} | null {
+  if (!badge) return null;
+  const staleness = evaluateBlockedBadgeStaleness(badge, config);
+  return {
+    note: formatBlockedBadgeNote(badge, staleness),
+    blockedBy: badge.blockedBy || null,
+    stale: staleness.stale,
+    ageDays: staleness.ageDays
+  };
 }
 
 export async function buildBrief(
@@ -182,9 +216,7 @@ export async function buildBrief(
       summary: e.slice || e.feature || e.version || null
     })),
     crewGates: {
-      blocked: crewGates.blocked
-        ? { note: crewGates.blocked.note || null, blockedBy: crewGates.blocked.blockedBy || null }
-        : null,
+      blocked: buildBlockedGateSnapshot(crewGates.blocked, config),
       escalated: crewGates.escalated ? { note: crewGates.escalated.note || null } : null
     },
     costRegression: costRegression

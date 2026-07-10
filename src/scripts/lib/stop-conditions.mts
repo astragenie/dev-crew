@@ -3,7 +3,15 @@ import { listSpecs } from "./spec-parser.mjs";
 import { detectPatterns } from "./pattern-alerts.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { countHighSeverityCostAlerts } from "./cost-alert-loader.mjs";
-import { readCrewBlockingGates, readCrewWorkflowState } from "./crew-workflow-reader.mjs";
+import {
+  readCrewBlockingGates,
+  readCrewWorkflowState,
+  workflowStatePath
+} from "./crew-workflow-reader.mjs";
+import {
+  evaluateBlockedBadgeStaleness,
+  formatStaleBlockedBadgeWarning
+} from "./blocked-badge-staleness.mjs";
 import { checkGradeTrend } from "./grade-trend.mjs";
 import { checkSliceCostCeiling, type SliceCostCeilingSignal } from "./slice-cost-ceiling.mjs";
 import { checkCostRegression, type CostRegressionSignal } from "./cost-regression.mjs";
@@ -51,6 +59,26 @@ import {
 //   - In autonomous mode: log + halt + ping user
 //   - In hand-driven mode: surface in brief
 //   - In phase-gate: include in retrospective + handoff
+
+// A `blocked` badge from a long-resolved run should not silently halt the
+// autonomous loop (QW3 staleness policy — see blocked-badge-staleness.mts and
+// its complete-slice.mts application). Badges older than
+// `loop.staleBadgeMaxAgeDays` (default 3) are downgraded to a console warning
+// instead of a halt reason; fresh badges — and any badge with no parseable
+// `updatedAt` — still halt as before. Escalation is never downgraded.
+function applyStaleBlockedBadgePolicy(
+  crewGates: { blocked: Record<string, any> | null; escalated: Record<string, any> | null },
+  config: Record<string, any> | null,
+  repoPath: string
+) {
+  if (!crewGates.blocked) return crewGates;
+  const staleness = evaluateBlockedBadgeStaleness(crewGates.blocked, config);
+  if (!staleness.stale) return crewGates;
+  console.warn(
+    formatStaleBlockedBadgeWarning(crewGates.blocked, staleness, workflowStatePath(repoPath))
+  );
+  return { ...crewGates, blocked: null };
+}
 
 function computeBacklogStats(backlog: any[], specs: any[]) {
   const pendingOrTriaged =
@@ -172,7 +200,7 @@ function buildSessionDriftSnapshotEntry(sig: SessionDriftSignal | null) {
 /** Build the snapshot entry for the merge_failed halt-badge (FEAT-062 / SLICE-64). */
 export function buildMergeFailedSnapshotEntry(workflowState: any): any | null {
   const badge = workflowState?.currentRun?.gates?.mergeFailed;
-  if (!badge || badge.status !== "failed") return null;
+  if (badge?.status !== "failed") return null;
   return badge;
 }
 
@@ -464,7 +492,7 @@ export async function checkStopConditions(
     specs,
     alerts,
     costAlertCount,
-    crewGates,
+    crewGates: rawCrewGates,
     gradeTrendSignal,
     costCeilingSignal,
     costRegressionSignal,
@@ -475,6 +503,8 @@ export async function checkStopConditions(
     pausedForExternalEventSignal,
     stuckDetectedSignal
   } = await gatherStopInputs(repoPath, config);
+
+  const crewGates = applyStaleBlockedBadgePolicy(rawCrewGates, config, repoPath);
 
   // autoMode defaults to true so freshly hand-rolled .claude/loop.json
   // (without the key) get the new behavior. Presets ship the key explicitly

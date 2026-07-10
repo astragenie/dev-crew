@@ -310,3 +310,109 @@ test("checkStopConditions: marathon-checkpoint below threshold → null snapshot
   const out = await checkStopConditions(repo, { config: { loop: { autoMode: true } } });
   assert.equal(out.snapshot.marathonCheckpoint, null);
 });
+
+// W1-4: blocked-badge staleness policy applied to stop-conditions (previously
+// only complete-slice.mts honored it; stop-conditions treated any blocked
+// badge as live). autoMode must be false here since the blocked-badge halt
+// branch is itself disabled in autoMode — see appendCrewGateSignals.
+
+async function writeCrewState(repoPath: string, state: Record<string, any>) {
+  const dir = path.join(repoPath, ".claude/state/crew");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, "workflow-state.json"), JSON.stringify(state, null, 2));
+}
+
+test("checkStopConditions: fresh blocked badge still halts (unchanged)", async () => {
+  const repo = await tmpRepo("sc-blocked-fresh-");
+  await addFeature(repo, { title: "queued" });
+  const updatedAt = new Date().toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: { blocked: { status: "blocked", note: "waiting on unrelated run", updatedAt } }
+    }
+  });
+
+  const out = await checkStopConditions(repo, { config: { loop: { autoMode: false } } });
+
+  assert.equal(out.shouldStop, true, "fresh blocked badge halts as before");
+  assert.ok(out.reasons.some((r: string) => r.includes("crew run blocked")));
+  assert.equal(out.snapshot.crewBlocked, true);
+});
+
+test("checkStopConditions: stale blocked badge downgrades to a warning, does not halt", async () => {
+  const repo = await tmpRepo("sc-blocked-stale-");
+  await addFeature(repo, { title: "queued" });
+  // 5 days old — past the default 3-day threshold.
+  const staleUpdatedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: {
+        blocked: { status: "blocked", note: "long-resolved run", updatedAt: staleUpdatedAt }
+      }
+    }
+  });
+
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (msg: unknown) => {
+    warnings.push(String(msg));
+  };
+  let out;
+  try {
+    out = await checkStopConditions(repo, { config: { loop: { autoMode: false } } });
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(out.shouldStop, false, "stale blocked badge should not halt");
+  assert.ok(!out.reasons.some((r: string) => r.includes("crew run blocked")));
+  assert.equal(out.snapshot.crewBlocked, false, "snapshot no longer reports it as blocking");
+  assert.ok(
+    warnings.some((w) => w.includes("stale-blocked-badge") && w.includes(staleUpdatedAt)),
+    `expected a stale-blocked-badge warning, got: ${JSON.stringify(warnings)}`
+  );
+});
+
+test("checkStopConditions: staleBadgeMaxAgeDays threshold is configurable", async () => {
+  const repo = await tmpRepo("sc-blocked-threshold-");
+  await addFeature(repo, { title: "queued" });
+  // 2 days old.
+  const twoDaysOld = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: { blocked: { status: "blocked", note: "2 days old", updatedAt: twoDaysOld } }
+    }
+  });
+
+  // Default threshold (3d): a 2d-old badge is still fresh enough to halt.
+  const defaultOut = await checkStopConditions(repo, { config: { loop: { autoMode: false } } });
+  assert.equal(defaultOut.shouldStop, true);
+
+  // Override the threshold to 1 day: the same-age badge is now stale.
+  const overriddenOut = await checkStopConditions(repo, {
+    config: { loop: { autoMode: false, staleBadgeMaxAgeDays: 1 } }
+  });
+  assert.equal(
+    overriddenOut.shouldStop,
+    false,
+    "1-day threshold should treat the 2d-old badge as stale"
+  );
+});
+
+test("checkStopConditions: escalated badge is never downgraded by staleness", async () => {
+  const repo = await tmpRepo("sc-escalated-stale-");
+  await addFeature(repo, { title: "queued" });
+  const staleUpdatedAt = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: {
+        escalation: { status: "escalated", note: "needs a human", updatedAt: staleUpdatedAt }
+      }
+    }
+  });
+
+  const out = await checkStopConditions(repo, { config: { loop: { autoMode: true } } });
+
+  assert.equal(out.shouldStop, true, "escalation halts even in autoMode, regardless of age");
+  assert.ok(out.reasons.some((r: string) => r.includes("escalated_to_human")));
+});

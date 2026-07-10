@@ -177,3 +177,70 @@ test("buildBrief: sliceStartConfidence has featureId, confidence, reason when no
   assert.ok("reason" in out.sliceStartConfidence);
   assert.ok(["green", "yellow", "red"].includes(out.sliceStartConfidence.confidence));
 });
+
+// W1-4: blocked-badge staleness policy applied to brief.mts (previously any
+// blocked badge was reported as an unqualified active blocker).
+
+async function writeCrewState(repoPath: string, state: Record<string, any>) {
+  const dir = path.join(repoPath, ".claude/state/crew");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, "workflow-state.json"), JSON.stringify(state, null, 2));
+}
+
+test("buildBrief: fresh blocked badge reported as-is, not stale", async () => {
+  const repo = await tmpRepo("al-brief-blocked-fresh-");
+  const updatedAt = new Date().toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: { blocked: { status: "blocked", note: "waiting on unrelated run", updatedAt } }
+    }
+  });
+  const out = await buildBrief(repo);
+  assert.ok(out.crewGates.blocked);
+  assert.equal(out.crewGates.blocked.stale, false);
+  assert.equal(out.crewGates.blocked.note, "waiting on unrelated run");
+});
+
+test("buildBrief: stale blocked badge is reported distinctly, not as an active blocker", async () => {
+  const repo = await tmpRepo("al-brief-blocked-stale-");
+  // 5 days old — past the default 3-day threshold.
+  const staleUpdatedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: {
+        blocked: { status: "blocked", note: "long-resolved run", updatedAt: staleUpdatedAt }
+      }
+    }
+  });
+  const out = await buildBrief(repo);
+  assert.ok(out.crewGates.blocked);
+  assert.equal(out.crewGates.blocked.stale, true);
+  assert.ok(out.crewGates.blocked.ageDays >= 5);
+  assert.match(out.crewGates.blocked.note, /STALE/);
+  assert.match(out.crewGates.blocked.note, /not enforcing/);
+  assert.match(out.crewGates.blocked.note, /long-resolved run/);
+});
+
+test("buildBrief: staleBadgeMaxAgeDays threshold is configurable", async () => {
+  const repo = await tmpRepo("al-brief-blocked-threshold-");
+  // 2 days old.
+  const twoDaysOld = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: { blocked: { status: "blocked", note: "2 days old", updatedAt: twoDaysOld } }
+    }
+  });
+  // Default threshold (3d): a 2d-old badge is still fresh.
+  const defaultOut = await buildBrief(repo);
+  assert.equal(defaultOut.crewGates.blocked.stale, false);
+
+  // Override the threshold to 1 day: the same-age badge is now stale.
+  const overriddenOut = await buildBrief(repo, {
+    config: { loop: { staleBadgeMaxAgeDays: 1 } }
+  });
+  assert.equal(
+    overriddenOut.crewGates.blocked.stale,
+    true,
+    "1-day threshold should treat the 2d-old badge as stale"
+  );
+});
