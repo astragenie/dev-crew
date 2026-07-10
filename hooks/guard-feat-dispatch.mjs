@@ -74,6 +74,12 @@ const allowed = [
   "crew:integrator",
   "crew:dev-lite",
   "crew:investigator",
+  // read-only review gate fan-out (runner#404): stack + design reviewers are
+  // legitimate FEAT participants; blocking them stalled parallel review.
+  "crew:architect-reviewer",
+  "crew:csharp-reviewer",
+  "crew:typescript-reviewer",
+  "crew:reviewer-lite",
   "runner:architect",
   "runner:document-writer",
   "runner:pm",

@@ -53,7 +53,7 @@
       "skills": ["superpowers:verification-before-completion", "loop:loop-discipline"]
     },
     "architect": {
-      "skills": ["superpowers:brainstorming", "loop:loop-discipline"]
+      "skills": ["loop:loop-discipline"]
     },
     "document-writer": {
       "skills": ["loop:loop-discipline"]

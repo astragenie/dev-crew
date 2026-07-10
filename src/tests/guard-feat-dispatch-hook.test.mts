@@ -163,6 +163,22 @@ test("guard-feat-dispatch: crew:dev-lite and crew:investigator pass (newly added
   assert.equal(investigatorResult.status, 0);
 });
 
+test("guard-feat-dispatch: read-only review-gate reviewers pass (runner#404)", async () => {
+  for (const reviewer of [
+    "crew:architect-reviewer",
+    "crew:csharp-reviewer",
+    "crew:typescript-reviewer",
+    "crew:reviewer-lite"
+  ]) {
+    const repo = await tmpRepo("gfd-reviewer-fanout-");
+    const result = runHook(repo, {
+      tool_name: "Agent",
+      tool_input: { subagent_type: reviewer, prompt: "review FEAT-999 diff" }
+    });
+    assert.equal(result.status, 0, `${reviewer} should pass the FEAT-dispatch guard`);
+  }
+});
+
 test("guard-feat-dispatch: general-purpose stays blocked — never allowlisted, that's the point of the hook", async () => {
   const repo = await tmpRepo("gfd-general-purpose-still-blocked-");
   const result = runHook(repo, {

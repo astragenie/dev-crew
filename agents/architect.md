@@ -65,8 +65,14 @@ Optionally append a Mermaid or ASCII diagram when shape change is non-trivial.
 
 These execute BEFORE you produce a design block — no exceptions:
 
-- `superpowers:brainstorming` — problem framing before any structural proposal
 - `runner:loop-discipline` — repo HARD RULES, autonomous loop constraints, slice ceremony
+
+Do NOT invoke `superpowers:brainstorming` when running as a dispatched subagent:
+it is an interactive elicitation skill (one question per turn, wait for answer)
+and there is no interlocutor in a dispatch — a skill-compliant agent stalls
+forever (dev-team#197, 66.7% pause rate). Frame the problem from the FEAT body,
+SPEC, and prior decisions instead; state assumptions explicitly in the design
+block. Brainstorming is for interactive `/crew:design` sessions only.
 
 ## Skills you should consult (invoke when context matches)
 

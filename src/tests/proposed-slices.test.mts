@@ -77,6 +77,18 @@ test("AC-7: non-Fibonacci points fails", () => {
   );
 });
 
+test("runner#393: per-entry points above the cap of 5 throws even when Fibonacci-valid", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "everything", points: 13 },
+    { id_suffix: "-SLICE-2", title: "crumbs", points: 1 }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT, 13),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /per-slice cap of 5/.test(err.message)
+  );
+});
+
 test("AC-1: sum(points) < effort_points throws (decomposition undersized)", () => {
   const raw = [
     { id_suffix: "-SLICE-1", title: "A", points: 3 },

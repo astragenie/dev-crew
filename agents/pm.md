@@ -115,7 +115,7 @@ Grades are the loop's outcome signal — scoring that ignores them repeats known
 
 After mapping `pm_effort_estimate` (0.0–1.0) to a Fibonacci `effort_points` via the `pm-effort-mapper` table (FEAT-167), if `effort_points >= 8` you MUST do one of the following — there is no third option:
 
-1. Emit the decomposition in your JSON result as `proposedSlices` (pm-apply renders it into the FEAT's `proposed_slices:` YAML frontmatter) with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci). Frontmatter rendering for a 13-point FEAT:
+1. Emit the decomposition in your JSON result as `proposedSlices` (pm-apply renders it into the FEAT's `proposed_slices:` YAML frontmatter) with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci, **≤5 per entry** — runner#393: a slice above 5 points exceeds the dispatch budget and dies mid-run; `{13,1}` is NOT a valid decomposition of a 13-point FEAT, split the 13). Frontmatter rendering for a 13-point FEAT:
 
    ```yaml
    proposed_slices:

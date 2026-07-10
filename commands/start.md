@@ -107,8 +107,10 @@ If `RUNNER === "sequential"` (default), proceed with the sequential workflow.
 | Role | Agent ID | Responsibility |
 |---|---|---|
 | **builder** | `crew:fullstack-dev` / `crew:backend-dev` / `crew:frontend-dev` | Implements acceptance criteria in bounded scope; owns tests for changed behavior |
-| **reviewer A** | `crew:reviewer` | Correctness, logic, edge cases, AC coverage |
-| **reviewer B** | `crew:reviewer` | Production-readiness, observability, security |
+| **reviewer A** | stack-specific: `crew:csharp-reviewer` (.cs diff) / `crew:typescript-reviewer` (.ts diff) / skip when no stack match | Stack idiom, type safety, framework wiring |
+| **reviewer B** | `crew:reviewer` | Correctness, logic, edge cases, AC coverage, production-readiness |
+| **design reviewer** (ADR/contract slices) | `crew:architect-reviewer` | Service boundaries, scalability, integration risk |
+| **light reviewer** (≤2 files, ≤50 LOC) | `crew:reviewer-lite` | Single-pass light-tier review |
 | **validator** | `crew:verifier` | Behavior validation — runs or inspects the changed behavior against ACs |
 | **deployer** | `crew:release-engineer` | Deployment and environment evidence; promotion to dev/prod |
 | **pm** | `runner:pm` | Backlog scoring across 5 dimensions; AC clarity gate; `autonomous_safe` determination |

@@ -25,6 +25,10 @@ export interface ProposedSlice {
 
 const ID_SUFFIX_RE = /^-SLICE-\d+$/;
 const MAX_TITLE_LEN = 100;
+// runner#393: a single slice larger than 5 points routinely exceeds the
+// ~200k-token dispatch budget and dies mid-run. Cap per-entry size so the
+// sum(points) coverage rule cannot be satisfied by one oversized slice.
+const MAX_SLICE_POINTS = 5;
 
 /** FEAT-168 AC-7 — parse failure on malformed `proposed_slices` frontmatter. */
 export class InvalidProposedSlicesError extends Error {
@@ -80,6 +84,12 @@ function validateOne(s: unknown, featureId: string, index: number): ProposedSlic
     throw new InvalidProposedSlicesError(
       featureId,
       `points value in slice ${index} is not in the Fibonacci set [1, 2, 3, 5, 8, 13] (got ${JSON.stringify(points)})`
+    );
+  }
+  if (points > MAX_SLICE_POINTS) {
+    throw new InvalidProposedSlicesError(
+      featureId,
+      `points value in slice ${index} exceeds the per-slice cap of ${MAX_SLICE_POINTS} (got ${points}) — oversized slices die mid-dispatch (runner#393); decompose further`
     );
   }
 
