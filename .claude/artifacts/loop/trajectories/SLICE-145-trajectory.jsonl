@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-145","timestamp":"2026-07-09T23:36:33.785Z","featureId":"FEAT-242","title":"SLICE-145: Concurrency cap + cost ceiling (COND-4)","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260709T233633Z-plan-SLICE-145.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-145","timestamp":"2026-07-10T00:08:15.305Z","featureId":"FEAT-242","featureMovedTo":null,"validationSatisfied":true}

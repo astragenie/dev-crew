@@ -17,6 +17,13 @@ touches_files:
   - scripts/setup-watch-scheduler.mjs
   - src/scripts/lib/watch/tick.mts
   - src/tests/watch-tick.test.mts
+  - src/scripts/watch-tick.mts
+  - src/scripts/lib/watch/tick.mts
+  - src/scripts/lib/watch/registry.mts
+  - scripts/setup-watch-scheduler.mjs
+  - commands/watch.md
+  - src/tests/watch-tick-entry.test.mts
+  - src/tests/watch-scheduler-setup.test.mts
 ---
 # SLICE-146: Scheduler setup script + /runner:watch command
 
@@ -26,14 +33,19 @@ Implements FEAT-242. See [feature file](../../../backlog/in-progress/FEAT-242.md
 
 Watcher MVP: deterministic tick + registry/state + scheduler setup (Track B1). Implement watch-tick.mts (pure Bun, zero LLM) run by OS scheduler every ~5 min: sweep assigned shard from ~/.claude/watch/repos.json registry (gh issue list delta, gh run list --status failure, open-PR statusCheckRollup), set claim label + timestamped state entry BEFORE spawning headless claude -p reactions (intake --from-issue / pr-fix / crew:fix), enforce machine-wide reaction concurrency cap (default 3) + cost ceiling, emit watch.tick / watch.reaction envelopes via fanoutEnvelope. Includes /runner:watch interactive command sharing same tick function, tick lockfile, Task Scheduler registration script (platform-neutral tick script). State-write ownership split per COND-2 (tick owns detection fields, reactions own attemptCounts/costSpent). Full ACs AC-1..AC-8: .claude/artifacts/crew/runs/2026-07-07-watcher-acs-eta.md section B1. Design: 2026-07-07-watcher-implementation-plan.md (APPROVED-WITH-CONDITIONS). Est 4 slices, 2-3 days. Blocks C1, C3, B1.5 pilot.
 
-## In scope
+## In scope (SLICE-146 delivered scope — AC-7 and AC-8 are the primary ACs; AC-1..AC-5 are regression guards already green from SLICE-143/144/145)
 
-- bullet 1
-- bullet 2
+- Entry-point script `src/scripts/watch-tick.mts` (platform-neutral: no `process.platform` branches; sets `process.exitCode`, never `process.exit` from lib code) invoking the exported tick function
+- Scheduler registration script (Task Scheduler on Windows, documented cron alternative) registering a ~5-minute interval invocation of the tick entry point
+- `/runner:watch` command (commands/watch.md) whose handler calls the SAME exported tick function as the scheduler entry point — no divergent code path
+- Resolve `machineShard` from config (open contract question carried from SLICE-143 — runTick currently takes it as a caller parameter); decide source (.claude/loop.json vs ~/.claude/watch/ config) and document
+- Tests: AC-7 registration smoke test (or documented manual verification if Task Scheduler can't run in CI) + grep assertion of no process.platform branches in watch-tick.mts; AC-8 same-tick-function assertion
 
 ## Out of scope
 
-- bullet 1
+- Headless-reaction permission allowlist (FEAT-244)
+- Pilot operation (FEAT-243, human-run)
+- IssueBroker / cross-repo filing (FEAT-245/246)
 
 ## Acceptance criteria
 
@@ -42,6 +54,8 @@ Watcher MVP: deterministic tick + registry/state + scheduler setup (Track B1). I
 - [ ] AC-3: Given a finding (new issue / red build / red PR) not previously claimed, When Layer 1 processes it, Then it sets a claim label via `gh issue edit --add-label loop-claimed` AND writes a timestamped claim entry to that repo's state file BEFORE spawning any Layer 2 `claude -p` reaction — evidenced by a test asserting claim-write happens-before spawn (ordering, not just presence). (source: 2026-07-07-watcher-acs-eta.md AC-3, B1 section)
 - [ ] AC-4 [COND-4, failure/skip path]: Given machine-wide concurrent reactions at the configured cap (default 3) and/or the configured cost ceiling, When a new finding would exceed either, Then Layer 1 skips spawning and records a `skipped_ceiling` note in state (finding remains unclaimed for next tick) — evidenced by a test seeding 3 in-flight reactions and asserting the 4th finding is not spawned, plus a cost-ceiling variant of the same test. (source: 2026-07-07-watcher-acs-eta.md AC-4, B1 section)
 - [ ] AC-5 [COND-2, data-integrity edge case]: Given a tick's detection write (`lastSeenIssue`, tick timestamp) and a concurrently-running reaction's write (`attemptCounts`, `costSpent`) to the same repo's state, When both complete, Then neither write is lost — evidenced by a test that interleaves a tick write and a reaction write against the same state file and asserts both field sets are present after both complete (not just that the file parses). (source: 2026-07-07-watcher-acs-eta.md AC-5, B1 section)
+- [ ] AC-7: Given the Task Scheduler / cron setup script runs on Windows, When it registers the scheduled task, Then the task invokes `watch-tick.mts` on a 5-minute interval and the tick script itself is platform-neutral (no OS-specific branching inside `watch-tick.mts`) — evidenced by a script-registration smoke test (or documented manual verification step if Task Scheduler registration can't be exercised in CI) plus a grep assertion that `watch-tick.mts` has no `process.platform` branches. (source: 2026-07-07-watcher-acs-eta.md AC-7, B1 section)
+- [ ] AC-8: Given `/runner:watch` is invoked interactively, When it runs, Then it executes the same tick logic as the scheduled path (no divergent code path) — evidenced by a test asserting `/runner:watch`'s command handler calls the same exported tick function as the scheduler entry point. (source: 2026-07-07-watcher-acs-eta.md AC-8, B1 section)
 
 ## Done When
 

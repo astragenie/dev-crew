@@ -12,3 +12,5 @@
 {"type":"gate_transition","sliceId":"SLICE-143","featureId":"FEAT-242","timestamp":"2026-07-09T20:06:27.162Z","gate":"test-adequacy","from":null,"to":"passed"}
 {"type":"gate_transition","sliceId":"SLICE-143","featureId":"FEAT-242","timestamp":"2026-07-09T20:06:27.162Z","gate":"simplify","from":null,"to":"passed"}
 {"type":"workflow_state_changed","sliceId":"SLICE-143","featureId":"FEAT-242","timestamp":"2026-07-09T20:06:30.174Z","from":"building","to":"done"}
+{"type":"shape_classified","sliceId":"SLICE-143","featureId":"FEAT-242","timestamp":"2026-07-09T23:34:09.305Z","shape":"none","rationale":"no files","inlinePathUsed":false}
+{"type":"workflow_state_changed","sliceId":"SLICE-143","featureId":"FEAT-242","timestamp":"2026-07-09T23:34:09.414Z","from":null,"to":"building"}

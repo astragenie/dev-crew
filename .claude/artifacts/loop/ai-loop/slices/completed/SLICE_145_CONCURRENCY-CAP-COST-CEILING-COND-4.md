@@ -1,7 +1,7 @@
 ---
 id: SLICE-145
 title: Concurrency cap + cost ceiling (COND-4)
-status: pending
+status: completed
 feature: FEAT-242
 phase: null
 priority: P1
@@ -9,7 +9,7 @@ target_release: null
 requires_validation: true
 risk: medium
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 effort_points: 2
 touches_files:
   - src/scripts/lib/watch/spawn-gate.mts
@@ -18,6 +18,7 @@ touches_files:
   - src/scripts/lib/watch/state.mts
   - src/tests/watch-spawn-gate.test.mts
   - src/tests/watch-tick.test.mts
+completed_at: 2026-07-10
 ---
 # SLICE-145: Concurrency cap + cost ceiling (COND-4)
 
@@ -43,6 +44,7 @@ Watcher MVP: deterministic tick + registry/state + scheduler setup (Track B1). I
 - [x] AC-3 (regression guard, landed SLICE-143): Given a finding (new issue / red build / red PR) not previously claimed, When Layer 1 processes it, Then it sets a claim label via `gh issue edit --add-label loop-claimed` AND writes a timestamped claim entry to that repo's state file BEFORE spawning any Layer 2 `claude -p` reaction — evidenced by a test asserting claim-write happens-before spawn (ordering, not just presence). (source: 2026-07-07-watcher-acs-eta.md AC-3, B1 section)
 - [x] AC-4 [COND-4, failure/skip path]: Given machine-wide concurrent reactions at the configured cap (default 3) and/or the configured cost ceiling, When a new finding would exceed either, Then Layer 1 skips spawning and records a `skipped_ceiling` note in state (finding remains unclaimed for next tick) — evidenced by a test seeding 3 in-flight reactions and asserting the 4th finding is not spawned, plus a cost-ceiling variant of the same test. (source: 2026-07-07-watcher-acs-eta.md AC-4, B1 section)
 - [x] AC-5 [COND-2, data-integrity edge case]: Given a tick's detection write (`lastSeenIssue`, tick timestamp) and a concurrently-running reaction's write (`attemptCounts`, `costSpent`) to the same repo's state, When both complete, Then neither write is lost — evidenced by a test that interleaves a tick write and a reaction write against the same state file and asserts both field sets are present after both complete (not just that the file parses). (source: 2026-07-07-watcher-acs-eta.md AC-5, B1 section)
+- [x] AC-6: Given `watch.tick` / `watch.reaction` envelopes are emitted via `fanoutEnvelope` (webhook-fanout.mts), When they reach astrarunner's ingest, Then they persist verbatim as unknown-kind rows in `loop_events` (no `loop.raw` misrouting) — evidenced by the envelope-shape unit test `src/tests/watch-envelopes.test.mts` (kind strings, required fields, all 12 action×outcome combinations; reviewer-verified in SLICE-145 review); FEAT-B2 owns the projection-side assertion. (source: 2026-07-07-watcher-acs-eta.md AC-6, B1 section)
 
 ## Done When
 

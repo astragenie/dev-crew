@@ -36,7 +36,7 @@ proposed_slices:
     title: "Scheduler setup script + /runner:watch command"
     points: 2
 started_at: 2026-07-09
-slices_complete: [SLICE-143, SLICE-144]
+slices_complete: [SLICE-143, SLICE-144, SLICE-145]
 ---
 ## Description
 
