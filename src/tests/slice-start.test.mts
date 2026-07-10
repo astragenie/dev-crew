@@ -16,6 +16,7 @@ import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { recordGradeScore } from "../scripts/lib/grade-trend.mjs";
 import { logLearning } from "../scripts/lib/learnings.mjs";
+import { updateSliceFrontmatter } from "../scripts/lib/backlog-store.mjs";
 import { AC_SECTION_BODY, AC_PLACEHOLDER_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix) {
@@ -388,6 +389,30 @@ test("startSlice result includes touchesFiles array from classify step (FEAT-277
   assert.ok(Array.isArray(result.touchesFiles), "touchesFiles must be an array");
   // New slice has no ## Files section → classify returns empty array (shape: none)
   assert.equal(result.touchesFiles.length, 0);
+});
+
+// Regression: startSlice must honor a frontmatter-declared touches_files list
+// (the shape PM's inline drafting and /runner:start actually write) rather
+// than silently returning [] because the "## Files" body section is empty.
+test("startSlice honors frontmatter touches_files over empty ## Files classification", async () => {
+  const repo = await tmpRepo("al-start-touches-files-frontmatter-");
+  const feat = await addFeature(repo, {
+    title: "Frontmatter touches_files",
+    body: AC_SECTION_BODY
+  });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  await fillPlaceholderACs(slice.path);
+
+  const declared = ["src/scripts/lib/foo.mts", "src/tests/foo.test.mts"];
+  await updateSliceFrontmatter(slice.path, { touches_files: declared });
+
+  const result = await startSlice(repo, slice.id, { dispatch: false });
+
+  assert.deepEqual(
+    result.touchesFiles,
+    declared,
+    "touchesFiles must come from frontmatter touches_files, not the empty ## Files body scan"
+  );
 });
 
 // AC-7b: startSlice detects a FEAT id and enters the sliceFromFeature dispatch path.

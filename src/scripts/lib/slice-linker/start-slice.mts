@@ -69,15 +69,37 @@ function resolveInlinePath(
   return expanded && preferred.includes(shape) && shape !== "none";
 }
 
+/**
+ * Normalize a raw frontmatter `touches_files` value into a string[], or null
+ * when absent/empty/malformed. The canonical frontmatter parser
+ * (frontmatter.mts parseScalar) already turns `touches_files: [a, b, c]`
+ * into a real array — this just guards against unexpected shapes (a bare
+ * string, non-string items) rather than re-parsing.
+ */
+function normalizeDeclaredTouchesFiles(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const paths = raw.filter((p): p is string => typeof p === "string" && p.length > 0);
+  return paths.length > 0 ? paths : null;
+}
+
 /** Run classify-slice-shape, write marker (best-effort), return inline-path hint string or null + touchesFiles list. */
 async function applyShapeClassification(
   repoPath: string,
   sliceId: string,
   featureId: string | null,
   sliceContent: string | null,
-  dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null
+  dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null,
+  declaredTouchesFiles: unknown = null
 ): Promise<{ inlinePathHint: string | null; touchesFiles: string[] }> {
-  const files = parseSliceFiles(sliceContent);
+  // FEAT-277 declares touches_files in slice frontmatter directly (no "##
+  // Files" body section) — prefer that over parseSliceFiles's body-section
+  // scan, which is empty for every frontmatter-only slice and would silently
+  // starve the wave planner's conflict-packing input (touchesFiles: []).
+  // Fall back to the body scan only when frontmatter has nothing declared.
+  const declared = normalizeDeclaredTouchesFiles(declaredTouchesFiles);
+  const files = declared
+    ? declared.map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }))
+    : parseSliceFiles(sliceContent);
   const { shape, rationale } = classifySliceShape({ files });
   const inlinePath = resolveInlinePath(shape, dispatchLimits);
   void writeShapeMarker(repoPath, sliceId, shape, rationale, inlinePath);
@@ -436,6 +458,14 @@ function resolveSliceMetaFields(
   };
 }
 
+// Read the frontmatter-declared touches_files value (or null when absent).
+// Extracted to a one-line helper so startSlice's applyShapeClassification
+// call site stays a plain argument list — an inline `?? null` there would
+// add to startSlice's already-over-cap cognitive complexity score.
+function resolveDeclaredTouchesFiles(ctx: Record<string, any>): unknown {
+  return ctx.frontmatter.touches_files ?? null;
+}
+
 // eslint-disable-next-line complexity -- orchestration function; each sequential async gate adds a branch but no extractable helper reduces it further. Track if complexity grows past 20.
 export async function startSlice(
   repoPath: string,
@@ -537,7 +567,8 @@ export async function startSlice(
     sliceId,
     featureId,
     ctx.content ?? null,
-    resolved.loop?.dispatchLimits ?? null
+    resolved.loop?.dispatchLimits ?? null,
+    resolveDeclaredTouchesFiles(ctx)
   );
 
   // runner-plugin#291: recall prior failures + decisions before dispatch.
