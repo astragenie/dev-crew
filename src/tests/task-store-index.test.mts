@@ -94,7 +94,7 @@ test("NoopProvider all methods resolve without throwing", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// LinearProvider — all methods throw not-implemented
+// LinearProvider — SLICE-156: warning-stub methods, never throw
 // ---------------------------------------------------------------------------
 test("LinearProvider constructor stores repoPath and config", () => {
   const p = new LinearProvider(REPO, { token: "abc" });
@@ -107,19 +107,20 @@ test("LinearProvider constructor defaults config to empty object", () => {
   assert.deepEqual(p.config, {});
 });
 
-test("LinearProvider methods throw 'not implemented'", async () => {
-  const p = new LinearProvider(REPO);
-  const methods: [string, () => Promise<any>][] = [
-    ["publishFeature", () => p.publishFeature({})],
-    ["publishSlice", () => p.publishSlice({}, null)],
-    ["closeSlice", () => p.closeSlice(1, "done")],
-    ["postSliceComment", () => p.postSliceComment(1, "body")],
-    ["updateStatus", () => p.updateStatus(1, "done")],
-    ["syncPull", () => p.syncPull(REPO)],
-    ["bootstrap", () => p.bootstrap(REPO)]
+test("LinearProvider methods never throw and resolve interface-shaped empty values", async () => {
+  const p = new LinearProvider(REPO, {});
+  const methods: [string, () => Promise<any>, any][] = [
+    ["publishFeature", () => p.publishFeature({}), null],
+    ["publishSlice", () => p.publishSlice({}, null), null],
+    ["closeSlice", () => p.closeSlice(1, "done"), undefined],
+    ["postSliceComment", () => p.postSliceComment(1, "body"), undefined],
+    ["updateStatus", () => p.updateStatus(1, "done"), undefined],
+    ["syncPull", () => p.syncPull(REPO), { features: [], slices: [] }],
+    ["bootstrap", () => p.bootstrap(REPO), { features: [] }]
   ];
-  for (const [name, call] of methods) {
-    await assert.rejects(call, /not implemented/, `${name} should throw not implemented`);
+  for (const [name, call, expected] of methods) {
+    const result = await call();
+    assert.deepEqual(result, expected, `${name} should resolve without throwing`);
   }
 });
 

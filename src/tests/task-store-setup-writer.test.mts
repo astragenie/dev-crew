@@ -117,3 +117,69 @@ test("writeTaskStoreConfig throws when loop.json missing", async () => {
     await fs.rm(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// writeTaskStoreConfig — provider=linear idempotent taskStore.linear seeding
+// ---------------------------------------------------------------------------
+test("writeTaskStoreConfig provider=linear seeds taskStore.linear.{teamKey,teamId,workspace}", async () => {
+  const dir = await makeTmpRepo();
+  try {
+    await writeTaskStoreConfig(dir, "linear", {
+      linear: {
+        teamKey: "AST",
+        teamId: "81cea472-33a9-4fbe-a797-147e17c6ca05",
+        workspace: "Astragenie"
+      }
+    });
+    const cfg = JSON.parse(await fs.readFile(path.join(dir, ".claude/loop.json"), "utf8"));
+    assert.equal(cfg.taskStore.provider, "linear");
+    assert.equal(cfg.taskStore.linear.teamKey, "AST");
+    assert.equal(cfg.taskStore.linear.teamId, "81cea472-33a9-4fbe-a797-147e17c6ca05");
+    assert.equal(cfg.taskStore.linear.workspace, "Astragenie");
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("writeTaskStoreConfig provider=linear is idempotent across repeated calls with the same options", async () => {
+  const dir = await makeTmpRepo();
+  try {
+    const seed = { linear: { teamKey: "AST", teamId: "81cea472-33a9-4fbe-a797-147e17c6ca05" } };
+    await writeTaskStoreConfig(dir, "linear", seed);
+    await writeTaskStoreConfig(dir, "linear", seed);
+    const cfg = JSON.parse(await fs.readFile(path.join(dir, ".claude/loop.json"), "utf8"));
+    assert.deepEqual(cfg.taskStore.linear, {
+      teamKey: "AST",
+      teamId: "81cea472-33a9-4fbe-a797-147e17c6ca05"
+    });
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("writeTaskStoreConfig provider=linear preserves fields not passed in a later call", async () => {
+  const dir = await makeTmpRepo();
+  try {
+    await writeTaskStoreConfig(dir, "linear", { linear: { teamKey: "AST", teamId: "team-uuid" } });
+    await writeTaskStoreConfig(dir, "linear", { linear: { workspace: "Astragenie" } });
+    const cfg = JSON.parse(await fs.readFile(path.join(dir, ".claude/loop.json"), "utf8"));
+    assert.equal(cfg.taskStore.linear.teamKey, "AST");
+    assert.equal(cfg.taskStore.linear.teamId, "team-uuid");
+    assert.equal(cfg.taskStore.linear.workspace, "Astragenie");
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("writeTaskStoreConfig never persists an apiKey field into loop.json even if passed", async () => {
+  const dir = await makeTmpRepo();
+  try {
+    await writeTaskStoreConfig(dir, "linear", {
+      linear: { teamKey: "AST", teamId: "team-uuid", apiKey: "lin_api_shouldnotpersist" }
+    });
+    const cfg = JSON.parse(await fs.readFile(path.join(dir, ".claude/loop.json"), "utf8"));
+    assert.equal(cfg.taskStore.linear.apiKey, undefined);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
