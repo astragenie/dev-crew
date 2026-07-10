@@ -77,6 +77,14 @@ post-merge test command, writes artifacts, and exits.
 With `--dry-run`, worktrees are created but no agents are dispatched; plan
 JSON is printed instead.
 
+When `dispatch finalize` is invoked with `--pr` (auto-PR mode), each PASS
+branch is pushed and a PR is opened via `gh pr create`
+(`dispatch-pr-mode.mts::dispatchFinalizePr`) instead of merging locally.
+That is the one place in-repo where a `prUrl` is known immediately after
+creation — follow up with `pr-watch <prUrl> --wait-for-merge` per created
+PR so the `pr.merged` DORA envelope fires once GitHub merges it. See
+`commands/close.md` → "PR-merge detection".
+
 ### loop — repeat `run` until a stop condition fires
 
 ```bash

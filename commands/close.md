@@ -158,3 +158,35 @@ Aggregation rules:
 - Any reviewer FAIL halts the slice.
 - Validator FAIL halts the slice.
 - All PASS → `runner:close`.
+
+## PR-merge detection (DORA pr.merged — FEAT-494 unblock)
+
+`runner:close` itself only moves files and grades — it has no git/PR
+awareness, and GitHub-native auto-merge completes asynchronously (there is
+no in-code "just merged" moment the ceremony can hook). If this slice
+shipped through a PR (i.e. the work landed via `crew:ship` or any other
+PR-filing flow rather than a direct commit to main), the orchestrator
+should follow `runner:close` with a `pr-watch` call so the `pr.merged`
+DORA envelope actually fires once GitHub merges it:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" pr-watch <pr-url> \
+  --repo "$PWD" \
+  --wait-for-merge \
+  --slice-id <slice-id> \
+  --feat-id <feat-id>
+```
+
+`--wait-for-merge` makes the CLI re-poll for the MERGED transition for a
+bounded window after checks go green (`loop.prWatch.postGreenMergePolls`,
+default 3, spaced by `pollIntervalSeconds`) before giving up — see
+`pr-watch.mts`. Without this flag, `pr-watch` only detects a PR that was
+*already* merged before the first poll (the "PR checks all green" exit
+does not by itself imply merged). This step is best-effort: skip it for
+slices with no PR (local-only ceremonies), and don't let a `pr-watch`
+timeout block the close — the slice is already closed by the time this
+runs.
+
+Wave-mode's own PR-creation path (`dispatch finalize --pr`, see
+`commands/wave.md`) is the other place a `prUrl` is known in-repo; the
+same `pr-watch --wait-for-merge` call applies there per-branch.

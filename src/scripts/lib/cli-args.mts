@@ -64,6 +64,8 @@ export const FLAG_SPEC = {
   // pr-watch: optional slice/feat context forwarded onto the emitted pr.merged envelope
   "--slice-id": { key: "sliceId" },
   "--feat-id": { key: "featId" },
+  // pr-watch (FEAT-494 unblock): re-poll for the MERGED transition after checks go green
+  "--wait-for-merge": { key: "waitForMerge", boolean: true },
   "--explain-halts": { key: "explainHalts", boolean: true },
   "--worktree": { key: "worktree" },
   // SLICE-64: auto-merge flags
@@ -156,6 +158,7 @@ export function parseArgs(argv: string[]) {
     allowHumanComments: false,
     sliceId: null,
     featId: null,
+    waitForMerge: false,
     worktree: null,
     explainHalts: false,
     noMerge: false,

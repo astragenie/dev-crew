@@ -30,7 +30,12 @@ function makeExec(overrides = {}) {
   };
 }
 
-const BASE_CONFIG = { pollIntervalSeconds: 30, maxRetries: 3, maxCostUsd: 5.0 };
+const BASE_CONFIG = {
+  pollIntervalSeconds: 30,
+  maxRetries: 3,
+  maxCostUsd: 5.0,
+  postGreenMergePolls: 3
+};
 
 // ---------------------------------------------------------------------------
 // TC-001 — Happy path: all-green on first poll
@@ -78,6 +83,77 @@ test("TC-002b: PR merged without mergedAt/number in gh output degrades to null",
     assert.equal(result.mergedAt, null);
     assert.equal(result.prNumber, null);
   }
+});
+
+// ---------------------------------------------------------------------------
+// TC-011..013 — waitForMergeAfterGreen (FEAT-494 unblock: pr.merged on the
+// real GitHub-native-auto-merge lifecycle, not just "already merged before
+// the first poll").
+
+test("TC-011: waitForMergeAfterGreen defaults to false — all-green with no extra viewPr calls", async () => {
+  let viewPrCalls = 0;
+  const exec = makeExec({
+    viewPr: async () => {
+      viewPrCalls++;
+      return JSON.stringify({ state: "OPEN", title: "my PR" });
+    }
+  });
+  // 4th positional arg omitted — exercises the default.
+  const result = await runPrWatch(TEST_PR_URL, BASE_CONFIG, false, exec);
+  assert.equal(result.outcome, "all-green");
+  assert.equal(viewPrCalls, 1, "no post-green viewPr polling when the flag is not passed");
+});
+
+test("TC-012: waitForMergeAfterGreen=true detects a merge that completes shortly after checks go green", async () => {
+  let viewPrCalls = 0;
+  const exec = makeExec({
+    viewPr: async () => {
+      viewPrCalls++;
+      // 1st call: initial state check (OPEN). 2nd call: post-green poll — merged by now.
+      if (viewPrCalls === 1) {
+        return JSON.stringify({ state: "OPEN", title: "my PR" });
+      }
+      return JSON.stringify({
+        state: "MERGED",
+        title: "my PR",
+        mergedAt: "2026-07-09T09:31:00.000Z",
+        number: 55
+      });
+    }
+  });
+  const result = await runPrWatch(TEST_PR_URL, BASE_CONFIG, false, exec, true);
+  assert.equal(result.outcome, "pr-merged");
+  assert.equal(viewPrCalls, 2);
+  if (result.outcome === "pr-merged") {
+    assert.equal(result.mergedAt, "2026-07-09T09:31:00.000Z");
+    assert.equal(result.prNumber, 55);
+  }
+});
+
+test("TC-013: waitForMergeAfterGreen=true exhausts postGreenMergePolls and falls back to all-green", async () => {
+  let viewPrCalls = 0;
+  const exec = makeExec({
+    viewPr: async () => {
+      viewPrCalls++;
+      return JSON.stringify({ state: "OPEN", title: "my PR" });
+    }
+  });
+  const result = await runPrWatch(TEST_PR_URL, BASE_CONFIG, false, exec, true);
+  assert.equal(result.outcome, "all-green");
+  // 1 initial state check + postGreenMergePolls (3) post-green polls.
+  assert.equal(viewPrCalls, 1 + BASE_CONFIG.postGreenMergePolls);
+});
+
+test("TC-013b: readPrWatchConfig defaults postGreenMergePolls to 3", () => {
+  const config = readPrWatchConfig(null);
+  assert.equal(config.postGreenMergePolls, 3);
+});
+
+test("TC-013c: readPrWatchConfig honors a configured postGreenMergePolls", () => {
+  const config = readPrWatchConfig({
+    loop: { prWatch: { postGreenMergePolls: 1 } }
+  });
+  assert.equal(config.postGreenMergePolls, 1);
 });
 
 // ---------------------------------------------------------------------------

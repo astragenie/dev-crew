@@ -151,7 +151,11 @@ export async function addSpec(
       "(narrative)",
       ""
     ].join("\n");
-  const fullBody = docBody.startsWith("#") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
+  // Detect an existing H1 by "# " (hash-space), NOT any "#": a spec body that
+  // starts with a section header like "## 1. Purpose" must still get the real
+  // "# <id>: <title>" H1 prepended. Callers (e.g. the PM --spec flow) cannot
+  // know the sequential id, so they omit the H1 and let addSpec supply it here.
+  const fullBody = docBody.startsWith("# ") ? docBody : `# ${id}: ${title}\n\n${docBody}`;
   const contents = serializeFrontmatter(frontmatter, fullBody);
   const filePath = path.join(root, `${id}.md`);
   await fs.writeFile(filePath, contents);

@@ -36,6 +36,21 @@ test("parseArgs defaults sliceId/featId to null when not passed", () => {
   assert.equal(flags.featId, null);
 });
 
+// ---------------------------------------------------------------------------
+// FEAT-494 unblock: --wait-for-merge wires the CLI handler's runPrWatch call
+// into the post-green merge-detection path (see pr-watch.mts TC-011..013).
+// ---------------------------------------------------------------------------
+
+test("parseArgs accepts --wait-for-merge as a boolean flag on pr-watch", () => {
+  const { flags } = parseArgs(["pr-watch", TEST_PR_URL, "--wait-for-merge"]);
+  assert.equal(flags.waitForMerge, true);
+});
+
+test("parseArgs defaults waitForMerge to false when not passed", () => {
+  const { flags } = parseArgs(["pr-watch", TEST_PR_URL]);
+  assert.equal(flags.waitForMerge, false);
+});
+
 test("buildPrMergedInput forwards sliceId/featId from CLI flags into the emitPrMerged payload", () => {
   const input = buildPrMergedInput(
     TEST_PR_URL,

@@ -363,7 +363,8 @@ const COMMANDS = {
     }
 
     const exec = buildDefaultExec();
-    const result = await runPrWatch(prUrl, watchConfig, allowHumanComments, exec);
+    const waitForMerge = Boolean(flags.waitForMerge);
+    const result = await runPrWatch(prUrl, watchConfig, allowHumanComments, exec, waitForMerge);
 
     if (result.outcome === "all-green") {
       console.log("PR checks all green — watch complete");
@@ -371,7 +372,7 @@ const COMMANDS = {
       return { outcome: "all-green" };
     }
     if (result.outcome === "pr-merged") {
-      console.log("PR already merged — nothing to watch");
+      console.log("PR merged — watch complete");
       const { emitPrMerged, buildPrMergedInput } = await import("./lib/pr-merged-emitter.mjs");
       await emitPrMerged(repoPath, buildPrMergedInput(prUrl, result, flags));
       process.exitCode = 0;

@@ -41,6 +41,37 @@ test("addSpec creates SPEC-NNN.md with required frontmatter and template body", 
   assert.match(body, /## Problem/);
 });
 
+test("addSpec prepends the real id H1 when body starts with a ## section (PM --spec path)", async () => {
+  const repo = await tmpRepo("al-spec-h1-");
+  // PM's --spec flow emits a specBody starting at "## 1. Purpose ..." with NO
+  // "# SPEC-NNN:" H1 (it cannot know the real id). addSpec must supply the H1.
+  const s = await addSpec(repo, {
+    type: "prd",
+    title: "OAuth token refresh",
+    body: "## 1. Purpose & Scope\n\nHarden token refresh.\n"
+  });
+  assert.equal(s.id, "SPEC-001");
+  const { body } = parseFrontmatter(await fs.readFile(s.filePath, "utf8"));
+  // Real id H1 prepended, matching frontmatter — not the "## 1." swallowing it.
+  assert.match(body, /^# SPEC-001: OAuth token refresh\n/);
+  assert.match(body, /## 1\. Purpose & Scope/);
+  // No stray SPEC-NNN placeholder leaked through.
+  assert.doesNotMatch(body, /SPEC-NNN/);
+});
+
+test("addSpec keeps a body that already has a real '# ' H1 verbatim (no double header)", async () => {
+  const repo = await tmpRepo("al-spec-h1-verbatim-");
+  const s = await addSpec(repo, {
+    type: "prd",
+    title: "Ignored",
+    body: "# SPEC-001: Real Title\n\n## 1. Purpose\n\nbody\n"
+  });
+  const { body } = parseFrontmatter(await fs.readFile(s.filePath, "utf8"));
+  assert.match(body, /^# SPEC-001: Real Title\n/);
+  // exactly one H1 line
+  assert.equal(body.split("\n").filter((l) => /^# /.test(l)).length, 1);
+});
+
 test("addSpec rejects unknown type", async () => {
   const repo = await tmpRepo("al-spec-bad-type-");
   await assert.rejects(() => addSpec(repo, { type: "nope", title: "x" }), /spec type must be/);

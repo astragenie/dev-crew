@@ -29,7 +29,25 @@ DEC-011, so the write step and the scoring step are two separate calls):
 throws a `not_implemented` error rather than writing a wrong artifact
 (FEAT-214 AC-3). A 10-section SPEC body needs PM/LLM drafting judgment
 the CLI cannot perform on its own — dispatch `runner:pm --spec` directly
-from the skill instead, and write the SPEC file from its response.
+from the skill instead, then persist its `specBody` via `spec add`:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" spec add \
+  --repo "$PWD" \
+  --type <prd|user-journey|sre|research|adr|other> \
+  --title "<title>" \
+  --body "<specBody>"
+```
+
+Do NOT write the SPEC file directly with the Write tool. `addSpec`
+(`spec-parser.mts`) is the sole spec-file creation point and the only
+place that fires the `spec.created` DORA envelope (FEAT-494 unblock —
+see `spec-created-emitter.mts`); a direct file write produces a spec
+that is invisible to the `leadTime` metric. `spec add --body` accepts
+the `specBody` markdown as-is. The PM's `specBody` must start at
+`## 1. Purpose & Scope` with NO `# SPEC-NNN: Title` H1 (the PM cannot know
+the real sequential id) — `addSpec` assigns the id and prepends the correct
+`# <id>: <title>` H1 so the body header matches the frontmatter id.
 
 Flags:
 

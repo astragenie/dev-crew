@@ -250,13 +250,17 @@ Add an `acs` array to the JSON payload produced under "Your output contract":
 }
 ```
 
-For `--spec` mode, also include `specBody` and emit `acs` as an empty array:
+For `--spec` mode, also include `specBody` and emit `acs` as an empty array. Do
+NOT put a `# SPEC-NNN: Title` H1 at the top of `specBody` — you cannot know the
+real sequential id (it is assigned when the file is written). Start `specBody`
+directly at `## 1. Purpose & Scope`; `spec add` prepends the correct
+`# <real-id>: <title>` H1 so the body header always matches the frontmatter id.
 
 ```json
 {
   "...": "...",
   "acs": [],
-  "specBody": "# SPEC-NNN: Title\n\n## 1. Purpose & Scope\n..."
+  "specBody": "## 1. Purpose & Scope\n..."
 }
 ```
 

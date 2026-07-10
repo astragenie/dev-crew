@@ -1,6 +1,13 @@
 // pr-watch.mts — PR check polling + auto-fix dispatch loop (FEAT-110 / SLICE-134).
 // Polls `gh pr checks`, dispatches crew:builder on failures, enforces retry/cost
 // ceilings, handles PR state edge cases, and returns a discriminated result.
+//
+// FEAT-494 unblock: `waitForMergeAfterGreen` (opt-in, default false) makes
+// the "all-green" exit re-poll `viewPr` a bounded number of times looking
+// for the MERGED transition, so the "pr-watch" CLI handler's existing
+// emitPrMerged call also fires for the common GitHub-native-auto-merge case
+// (checks pass -> GitHub merges shortly after), not just the "PR was already
+// merged before the first poll" case.
 
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
@@ -25,6 +32,8 @@ export interface PrWatchConfig {
   pollIntervalSeconds: number;
   maxRetries: number;
   maxCostUsd: number;
+  /** Extra `viewPr` polls after checks go green, only consulted when the caller opts into waitForMergeAfterGreen. */
+  postGreenMergePolls: number;
 }
 
 export type PrWatchResult =
@@ -50,7 +59,8 @@ export interface PrWatchExec {
 const DEFAULT_CONFIG: PrWatchConfig = {
   pollIntervalSeconds: 30,
   maxRetries: 3,
-  maxCostUsd: 5.0
+  maxCostUsd: 5.0,
+  postGreenMergePolls: 3
 };
 
 const MIN_POLL_INTERVAL = 10;
@@ -74,7 +84,11 @@ export function readPrWatchConfig(config: Record<string, any> | null): PrWatchCo
   return {
     pollIntervalSeconds,
     maxRetries: typeof block.maxRetries === "number" ? block.maxRetries : DEFAULT_CONFIG.maxRetries,
-    maxCostUsd: typeof block.maxCostUsd === "number" ? block.maxCostUsd : DEFAULT_CONFIG.maxCostUsd
+    maxCostUsd: typeof block.maxCostUsd === "number" ? block.maxCostUsd : DEFAULT_CONFIG.maxCostUsd,
+    postGreenMergePolls:
+      typeof block.postGreenMergePolls === "number"
+        ? block.postGreenMergePolls
+        : DEFAULT_CONFIG.postGreenMergePolls
   };
 }
 
@@ -268,11 +282,51 @@ export function buildDefaultExec(): PrWatchExec {
 
 const DEFAULT_MAX_LOG_CHARS = 2000;
 
+/**
+ * Bounded post-green merge check (FEAT-494 unblock — DORA pr.merged emitter).
+ * GitHub-native auto-merge fires asynchronously once required checks pass —
+ * there is no in-code "just merged" moment, so this re-polls `viewPr` a few
+ * times after the check suite goes green, looking for the MERGED transition.
+ * Opt-in only (`waitForMergeAfterGreen`); callers that don't pass it get the
+ * exact pre-existing "all-green" behavior with zero extra `viewPr` calls.
+ */
+async function pollForMergeAfterGreen(
+  prUrl: string,
+  config: PrWatchConfig,
+  exec: PrWatchExec
+): Promise<PrMergeInfo | null> {
+  for (let attempt = 0; attempt < config.postGreenMergePolls; attempt++) {
+    const prStateRaw = await exec.viewPr(prUrl);
+    if (parsePrState(prStateRaw) === "MERGED") {
+      return parsePrMergeInfo(prStateRaw);
+    }
+    await exec.sleep(config.pollIntervalSeconds * 1000);
+  }
+  return null;
+}
+
+/** Shared by both "green" exit points in the loop below. */
+async function resolveGreenOutcome(
+  prUrl: string,
+  config: PrWatchConfig,
+  exec: PrWatchExec,
+  waitForMergeAfterGreen: boolean
+): Promise<PrWatchResult> {
+  if (waitForMergeAfterGreen) {
+    const merged = await pollForMergeAfterGreen(prUrl, config, exec);
+    if (merged) {
+      return { outcome: "pr-merged", mergedAt: merged.mergedAt, prNumber: merged.prNumber };
+    }
+  }
+  return { outcome: "all-green" };
+}
+
 export async function runPrWatch(
   prUrl: string,
   config: PrWatchConfig,
   allowHumanComments: boolean,
-  exec: PrWatchExec
+  exec: PrWatchExec,
+  waitForMergeAfterGreen = false
 ): Promise<PrWatchResult> {
   let retriesUsed = 0;
   let cumulativeCostUsd = 0;
@@ -299,7 +353,7 @@ export async function runPrWatch(
     const classification = classifyChecks(checks);
 
     if (classification === "green") {
-      return { outcome: "all-green" };
+      return await resolveGreenOutcome(prUrl, config, exec, waitForMergeAfterGreen);
     }
 
     if (classification === "pending") {
@@ -355,7 +409,7 @@ export async function runPrWatch(
       const checks2 = parseChecks(checksRaw2);
       const classification2 = classifyChecks(checks2);
       if (classification2 === "green") {
-        return { outcome: "all-green" };
+        return await resolveGreenOutcome(prUrl, config, exec, waitForMergeAfterGreen);
       }
       return { outcome: "max-retries", retriesUsed };
     }
