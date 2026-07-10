@@ -1,7 +1,7 @@
 ---
 id: PM-REVIEW-FEAT-251
 feature: FEAT-251
-reviewed_at: 2026-07-09
+reviewed_at: 2026-07-10
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.35
 pm_strategic_alignment: 0.7
@@ -14,11 +14,11 @@ autonomous_safe: true
 
 ## Demand Assessment
 
-- **Evidence:** Plan Phase 2 (.claude/artifacts/crew/runs/2026-07-09-tracker-provider-migration-prompt.md:142-145): 'After this FEAT, taskStore.provider is the single switch for ALL mirror traffic' -- the core 'flip provider, zero code edits' whole-program AC (plan line 219-220) is unrealized until this FEAT routes the bypass call sites through getProvider(). Review finding 8 independently confirms the getProvider call-site citation itself has already drifted (1923 -> 1920), underscoring the re-grep-before-code instruction in the plan's own header note.
+- **Evidence:** Source plan .claude/artifacts/crew/runs/2026-07-09-tracker-provider-migration-prompt.md 'Acceptance (whole program)': 'Flipping taskStore.provider/providers between noop|github|linear|composite changes all publish+sync behavior, zero code edits.' Currently false: getProvider() is called ONLY at loop.mts:1918-1920 (github sync|bootstrap); re-grepped and confirmed loop.mts:815, 1338, 1454, 1893 still call importGithubSync('github-sync.mjs') directly, bypassing the provider switch entirely for auto-publish + the setup|publish|feat-publish|status subcommands.
 
 ## Scope Challenge
 
-- **Scope notes:** Smallest deliverable: route the 3 loop.mts auto-publish call sites (plan-cited ~1002/1343/1459, explicitly flagged as drifted -- must re-grep, not trust) plus the four github setup|publish|feat-publish|status subcommands through getProvider(). Explicitly independent of FEAT-250 per plan text: 'Independent of the BacklogStore refactor (publish path does not touch backlog-writer).' No weak grade dimensions to target. Cost analog: SLICE-14 cost report ($7.3878, 15.0 min, 3 sessions, 99% cache hit) built the getProvider resolver + NoopProvider + LinearProvider stub itself -- a related but larger greenfield task. This FEAT only consumes the already-existing resolver at new call sites, so actual cost should undershoot SLICE-14's $7.39, supporting effort 0.35 (3 pts) rather than higher.
+- **Scope notes:** Smallest deliverable is exactly what's scoped: migrate the 4 confirmed call sites (loop.mts:815/1338/1454/1893) plus the github subcommand handlers onto getProvider(config, repoPath) from src/scripts/lib/task-store/index.mts. Splitting the subcommands out into a separate slice would fragment a single-module PR without reducing real risk, so not recommended. Cost analog: FEAT-242/SLICE-143 (.claude/artifacts/crew/cost/20260709T200437Z-cost-report-slice-feat242-slice143.md) — single-module, contained resolver-adjacent change, $9.85 / 51 min actual. Not a perfect analog (SLICE-143 was watcher tick/registry, this is call-site rewiring) but similar in shape and confirms effort_estimate 0.35 is not an underestimate for a mechanical 4-site swap in one file. Weak grade dimensions (last-5 avg per loop-snapshot.md): none below 0.80 (observability lowest at 0.82) — Framework 4 does not force an additional observability/reliability AC here.
 
 ## Scores
 
@@ -32,9 +32,9 @@ autonomous_safe: true
 
 composite_priority: P2
 autonomous_safe: true
-reasoning: Contained, one-module (loop.mts) call-site swap onto an already-existing getProvider() resolver in task-store/index.mts; technical_risk 0.35 (top of 0.3-0.5 band: one module, no schema change, explicit behavior-parity test required by the plan itself, clean rollback); realizes the program's headline 'flip provider, zero code edits' AC -> P2.
+reasoning: Contained getProvider call-site swap; re-grep reconfirmed all 4 anchors despite the plan's own noted line-number drift; technical_risk 0.35 sits at the top of the 0.3-0.5 band (one module, no schema change, explicit parity test required) — confirmed, not adjusted. Realizes the program's headline zero-code-edit provider-flip AC. P2 confirmed.
 
 ## Risks
 
-- Line-number anchors in the plan for loop.mts auto-publish sites (~1002/1343/1459) are stated as drifted by the plan itself (review finding 8) -- builder must re-grep, not trust the cited numbers.
-- github.enabled back-compat regression: if the getProvider() reroute changes resolution order for repos that set github.enabled: true without an explicit taskStore.provider, existing installs could silently stop publishing -- needs an explicit back-compat test, not just a behavioral read-through of the diff.
+- Line-number anchors in the source plan drift (review F8 note, explicitly called out in the plan itself: 'line-number anchors in this doc drift — re-grep... before Phase 1 code, do not trust cited numbers verbatim'). Re-grep confirmed actual call sites are loop.mts:815/1338/1454/1893, not the plan's approximate ~1002/1343/1459 — a builder trusting the stale numbers verbatim could patch the wrong block; AC-1/AC-4 require an explicit re-grep step before edit.
+- Behavior-parity regression risk: if getProvider's GithubProvider wrapper (src/scripts/lib/task-store/providers/github-provider.mts) doesn't preserve identical error-handling/return shape to the direct importGithubSync('github-sync.mjs') call at all 4 sites, a github-enabled repo's mirror could silently diverge (e.g. different issue body formatting) with no existing test catching it — AC-1 and AC-4 exist specifically to close this gap with a parity test and a regression-guard grep test.
