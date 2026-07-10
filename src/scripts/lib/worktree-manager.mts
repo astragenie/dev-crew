@@ -240,13 +240,40 @@ async function checkPathCollision(worktreePath: string, branchName: string): Pro
   });
 }
 
+/**
+ * Resolve the base ref a new slice worktree should be created from.
+ *
+ * Defaults to the invoking checkout's current HEAD (resolved fresh via
+ * `git rev-parse --verify HEAD` in `repoPath`) rather than a hardcoded
+ * `"main"` literal, which silently used whatever the local `main` ref
+ * happened to point to — stale if it hadn't been fetched/pulled (FEAT-261).
+ * An explicit `explicitBase` is verified and resolved to its sha instead.
+ */
+async function resolveWorktreeBase(
+  repoPath: string,
+  explicitBase?: string | null
+): Promise<string> {
+  const ref = explicitBase && explicitBase.trim().length > 0 ? explicitBase.trim() : "HEAD";
+  try {
+    return (await git(repoPath, ["rev-parse", "--verify", ref])).trim();
+  } catch (err: any) {
+    throw new WorktreeError({
+      code: "GIT_NOT_AVAILABLE",
+      message: `Could not resolve base ref "${ref}" in ${repoPath}: ${err?.stderr || err?.message || "unknown error"}`,
+      attemptedPath: repoPath,
+      attemptedBranch: ref
+    });
+  }
+}
+
 async function executeWorktreeAdd(
   repoPath: string,
   worktreePath: string,
-  branchName: string
+  branchName: string,
+  baseRef: string
 ): Promise<void> {
   try {
-    await git(repoPath, ["worktree", "add", "-b", branchName, worktreePath, "main"]);
+    await git(repoPath, ["worktree", "add", "-b", branchName, worktreePath, baseRef]);
   } catch (err: any) {
     const stderr = (err?.stderr ?? "").trim();
     throw new WorktreeError({
@@ -300,9 +327,11 @@ export async function ensureSliceWorktree(
   opts: {
     config?: Record<string, any> | null;
     featureId?: string | null;
+    /** Explicit base ref override (additive, FEAT-261); see resolveWorktreeBase. */
+    baseRef?: string | null;
   } = {}
 ): Promise<WorktreeResult | null> {
-  const { config = null, featureId = null } = opts;
+  const { config = null, featureId = null, baseRef = null } = opts;
 
   const resolved = resolveWorktreeConfig(repoPath, config);
   if (!resolved.mode) return null;
@@ -335,7 +364,8 @@ export async function ensureSliceWorktree(
   await checkPathCollision(worktreePath, branchName);
   if (await branchExists(repoPath, branchName)) throwBranchExists(branchName, worktreePath);
 
-  await executeWorktreeAdd(repoPath, worktreePath, branchName);
+  const resolvedBase = await resolveWorktreeBase(repoPath, baseRef);
+  await executeWorktreeAdd(repoPath, worktreePath, branchName, resolvedBase);
 
   return {
     worktreePath: path.normalize(worktreePath),

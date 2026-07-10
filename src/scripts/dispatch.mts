@@ -30,6 +30,7 @@ type ParsedArgs = {
   configPath?: string;
   pr?: boolean;
   olderThanDays?: number;
+  baseRef?: string;
 };
 
 const VALUE_FLAGS: Record<string, keyof ParsedArgs> = {
@@ -38,7 +39,8 @@ const VALUE_FLAGS: Record<string, keyof ParsedArgs> = {
   "--repo": "repo",
   "--run-id": "runId",
   "--config": "configPath",
-  "--older-than-days": "olderThanDays"
+  "--older-than-days": "olderThanDays",
+  "--base": "baseRef"
 };
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -87,7 +89,7 @@ function readPlanFile(planPath: string): DispatchPlan[] {
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json]
+  bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json] [--base <ref>]
   bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N] [--pr]
   bun src/scripts/dispatch.mts metrics --run-id <id> [--repo <path>]
   bun src/scripts/dispatch.mts prune [--dry-run] [--older-than-days N] [--repo <path>]
@@ -95,6 +97,8 @@ function printHelp(): void {
 Subcommands:
   prepare   Run pre-flight gates, spawn worktrees, build Agent batch.
             Outputs: human-readable preview (default), or batch JSON (--json).
+            --base    Explicit base ref for child worktrees (default: invoking
+                      checkout's current HEAD — never a possibly-stale branch name).
   finalize  After the caller has invoked the Agent batch, aggregate results,
             merge children to parent branch, write summary.md.
             --pr  Also push each DONE child branch and open a GitHub PR via gh CLI.
@@ -139,6 +143,7 @@ function cmdPrepare(args: ParsedArgs): number {
   };
   if (args.depth !== undefined) opts.depth = args.depth;
   if (args.configPath !== undefined) opts.configPath = args.configPath;
+  if (args.baseRef !== undefined) opts.baseRef = args.baseRef;
   const prepared = prepareDispatch(plans, opts);
   if (args.json) {
     process.stdout.write(

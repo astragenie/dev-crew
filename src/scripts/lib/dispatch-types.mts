@@ -28,6 +28,12 @@ export type DispatchOptions = {
   depth?: number;
   configPath?: string;
   onChildFailure?: "continue";
+  /**
+   * Explicit base ref override for child worktree creation (additive,
+   * FEAT-261). When omitted, each child worktree bases on the invoking
+   * checkout's current HEAD instead of trusting `parentBranch` to be fresh.
+   */
+  baseRef?: string;
 };
 
 export type DispatchConfig = {

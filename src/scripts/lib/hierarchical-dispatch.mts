@@ -52,7 +52,8 @@ export function prepareDispatch(plans: DispatchPlan[], opts: DispatchOptions): P
       parentBranch: opts.parentBranch,
       childId: plan.id,
       depth,
-      runId
+      runId,
+      ...(opts.baseRef !== undefined ? { baseRef: opts.baseRef } : {})
     });
     branchById[plan.id] = spawn.branch;
     cwdById[plan.id] = spawn.worktreePath;

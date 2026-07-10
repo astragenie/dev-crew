@@ -11,8 +11,11 @@ import {
   preflightGitClean,
   inventoryWorkerBranch,
   appendInventoryLog,
-  writeWorkerPreservedArtifact
+  writeWorkerPreservedArtifact,
+  resolveDispatchBase,
+  assertSliceExistsAtBase
 } from "../scripts/lib/dispatch-worktree.mjs";
+import { DispatchWorktreeError } from "../scripts/lib/dispatch-types.mjs";
 
 test("createChildWorktree: creates worktree off parentBranch", () => {
   const repo = initRepo();
@@ -216,4 +219,127 @@ test("writeWorkerPreservedArtifact: emits Markdown summary with file + WIP previ
   assert.ok(body.includes("`y.md`"));
   assert.ok(body.includes("`z.txt`"));
   assert.ok(body.includes("Resolve conflicts manually."));
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// FEAT-261 — stale-base dispatch guard
+// ──────────────────────────────────────────────────────────────────────────
+
+test("createChildWorktree: bases on invoking checkout's HEAD, not a stale parentBranch literal", () => {
+  const repo = initRepo();
+  // Simulate the invoking checkout sitting ahead of whatever "main" locally
+  // resolves to — the exact shape of the 2026-07-10 incident (base ref
+  // missing recent commits the invoking checkout already had).
+  execSync("git checkout -q -b feature/ahead-of-main", { cwd: repo });
+  fs.writeFileSync(path.join(repo, "extra.txt"), "ahead\n");
+  execSync('git add . && git commit -q -m "ahead commit"', { cwd: repo });
+  const headSha = execSync("git rev-parse HEAD", { cwd: repo }).toString().trim();
+  const mainSha = execSync("git rev-parse main", { cwd: repo }).toString().trim();
+  assert.notEqual(headSha, mainSha, "test setup: HEAD must differ from main");
+
+  const result = createChildWorktree({
+    repoRoot: repo,
+    parentBranch: "main", // stale literal — must NOT be trusted as the base
+    childId: "AHEAD",
+    depth: 0,
+    runId: "test-ahead"
+  });
+
+  assert.equal(result.baseRef, headSha, "child worktree bases on invoking HEAD, not literal main");
+  assert.ok(
+    fs.existsSync(path.join(result.worktreePath, "extra.txt")),
+    "worktree must contain the commit only present on the invoking checkout's HEAD"
+  );
+});
+
+test("createChildWorktree: explicit baseRef override is honored over HEAD", () => {
+  const repo = initRepo();
+  const initialSha = execSync("git rev-parse HEAD", { cwd: repo }).toString().trim();
+  fs.writeFileSync(path.join(repo, "more.txt"), "more\n");
+  execSync('git add . && git commit -q -m "more"', { cwd: repo });
+  const headSha = execSync("git rev-parse HEAD", { cwd: repo }).toString().trim();
+  assert.notEqual(initialSha, headSha, "test setup: HEAD must have moved past initialSha");
+
+  const result = createChildWorktree({
+    repoRoot: repo,
+    parentBranch: "main",
+    childId: "PINNED",
+    depth: 0,
+    runId: "test-pinned",
+    baseRef: initialSha
+  });
+
+  assert.equal(result.baseRef, initialSha);
+  assert.ok(
+    !fs.existsSync(path.join(result.worktreePath, "more.txt")),
+    "explicit baseRef must win over the current HEAD"
+  );
+});
+
+test("resolveDispatchBase: unresolvable ref throws DispatchWorktreeError", () => {
+  const repo = initRepo();
+  assert.throws(
+    () => resolveDispatchBase(repo, "totally-not-a-ref"),
+    (e) => e instanceof DispatchWorktreeError && /could not resolve/i.test(e.message)
+  );
+});
+
+test("assertSliceExistsAtBase: skips non-backlog-shaped childId (role fanout)", () => {
+  const repo = initRepo();
+  const base = execSync("git rev-parse HEAD", { cwd: repo }).toString().trim();
+  assert.doesNotThrow(() => assertSliceExistsAtBase(repo, base, "FE"));
+});
+
+test("assertSliceExistsAtBase: passes when the slice file exists at the base tree", () => {
+  const repo = initRepo();
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop/backlog/triaged"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, ".claude/artifacts/loop/backlog/triaged/SLICE-500.md"),
+    "# slice\n"
+  );
+  execSync('git add . && git commit -q -m "add slice"', { cwd: repo });
+  const base = execSync("git rev-parse HEAD", { cwd: repo }).toString().trim();
+  assert.doesNotThrow(() => assertSliceExistsAtBase(repo, base, "SLICE-500"));
+});
+
+test("assertSliceExistsAtBase: throws structured error naming base + candidate paths when slice missing at a stale base", () => {
+  const repo = initRepo();
+  const staleBase = execSync("git rev-parse HEAD", { cwd: repo }).toString().trim();
+  // The slice file lands on a LATER commit — staleBase predates it entirely.
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop/backlog/pending"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, ".claude/artifacts/loop/backlog/pending/SLICE-501.md"),
+    "# slice\n"
+  );
+  execSync('git add . && git commit -q -m "add slice after stale base"', { cwd: repo });
+
+  assert.throws(
+    () => assertSliceExistsAtBase(repo, staleBase, "SLICE-501"),
+    (e) =>
+      e instanceof DispatchWorktreeError &&
+      e.message.includes("SLICE-501") &&
+      e.message.includes(staleBase) &&
+      /stale/i.test(e.message)
+  );
+});
+
+test("createChildWorktree: fails loudly and leaves no worktree when the base tree lacks the dispatched slice", () => {
+  const repo = initRepo();
+  // No SLICE-999 file exists anywhere in history — every candidate path misses.
+  assert.throws(
+    () =>
+      createChildWorktree({
+        repoRoot: repo,
+        parentBranch: "main",
+        childId: "SLICE-999",
+        depth: 0,
+        runId: "test-missing-slice"
+      }),
+    (e) => e instanceof DispatchWorktreeError && /stale dispatch base/i.test(e.message)
+  );
+  const worktreeDirName = `${path.basename(repo)}-SLICE-999-0`;
+  assert.ok(
+    !fs.existsSync(path.join(path.dirname(repo), worktreeDirName)),
+    "no partial worktree left behind after the guard rejects"
+  );
 });

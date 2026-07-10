@@ -11,7 +11,84 @@ type SpawnArgs = {
   childId: string;
   depth: number;
   runId: string;
+  /**
+   * Explicit base ref override (additive, FEAT-261). When omitted, the child
+   * worktree bases on the invoking checkout's current HEAD (resolved fresh
+   * via `git rev-parse --verify HEAD`) rather than trusting `parentBranch`
+   * as a branch name — a stale local branch ref was the root cause of a
+   * 2026-07-10 wave dispatch basing a worktree 21 commits behind.
+   */
+  baseRef?: string;
 };
+
+// FEAT-261 — status dirs a slice/feature file can live under; checked in this
+// order when verifying a dispatched id exists at the resolved base tree.
+const BACKLOG_STATUS_DIRS = ["pending", "triaged", "in-progress", "done"] as const;
+// Only childIds shaped like a real backlog id are gated — hierarchical-dispatch
+// role-fanout children (e.g. "FE", "BE") never have a backlog file and must
+// not be blocked by this check.
+const SLICE_OR_FEAT_ID = /^(FEAT|SLICE)-\d+/i;
+
+/**
+ * Resolve the git ref/sha a new child worktree should be based on.
+ *
+ * Defaults to the invoking checkout's current HEAD — resolved fresh via
+ * `git rev-parse --verify HEAD` in `repoRoot` at call time — rather than
+ * trusting `parentBranch` (a branch *name*) to already point at the latest
+ * commit. An explicit `explicitBase` (e.g. a `--base` CLI flag) is verified
+ * and resolved to its sha instead. Throws `DispatchWorktreeError` if the ref
+ * cannot be resolved (never proceeds silently on an unresolvable base).
+ */
+export function resolveDispatchBase(repoRoot: string, explicitBase?: string): string {
+  const ref = explicitBase && explicitBase.trim().length > 0 ? explicitBase.trim() : "HEAD";
+  try {
+    return execFileSync("git", ["rev-parse", "--verify", ref], {
+      cwd: repoRoot,
+      stdio: ["ignore", "pipe", "pipe"]
+    })
+      .toString()
+      .trim();
+  } catch (err) {
+    throw new DispatchWorktreeError(
+      `could not resolve dispatch base ref "${ref}" in ${repoRoot}: ${(err as Error).message}`
+    );
+  }
+}
+
+/**
+ * Fail loudly if `childId` looks like a backlog id (FEAT-NNN / SLICE-NNN) and
+ * its file is absent from the resolved base tree in every known status dir.
+ * A no-op for non-backlog-shaped ids (role-fanout children like "FE"/"BE").
+ *
+ * This is the FEAT-261 guard: the 2026-07-10 incident based a wave worktree
+ * on a ref 21 commits behind, missing the dispatched slice's own file
+ * entirely — the builder then re-authored ACs and minted colliding ids
+ * rather than failing fast.
+ */
+export function assertSliceExistsAtBase(repoRoot: string, baseRef: string, childId: string): void {
+  const match = childId.match(SLICE_OR_FEAT_ID);
+  if (!match) return;
+  const idPrefix = match[0];
+  const candidates = BACKLOG_STATUS_DIRS.map(
+    (dir) => `.claude/artifacts/loop/backlog/${dir}/${idPrefix}.md`
+  );
+  for (const candidate of candidates) {
+    try {
+      execFileSync("git", ["cat-file", "-e", `${baseRef}:${candidate}`], {
+        cwd: repoRoot,
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+      return;
+    } catch {
+      // not at this candidate path — try the next status dir
+    }
+  }
+  throw new DispatchWorktreeError(
+    `stale dispatch base: "${idPrefix}" not found at base ${baseRef} in any of ` +
+      `${candidates.join(", ")}. The base ref is likely stale (missing recent backlog ` +
+      "commits) — refresh it (fetch/pull) or pass an explicit base ref that contains this id."
+  );
+}
 
 export function preflightGitClean(repoRoot: string, parentBranch: string): void {
   try {
@@ -34,14 +111,17 @@ export function preflightGitClean(repoRoot: string, parentBranch: string): void 
 export function createChildWorktree(args: SpawnArgs): {
   worktreePath: string;
   branch: string;
+  baseRef: string;
 } {
-  const { repoRoot, parentBranch, childId, depth, runId } = args;
+  const { repoRoot, parentBranch, childId, depth, runId, baseRef } = args;
   const childBranch = `${parentBranch}-${childId}`;
   validateBranchName(childBranch);
+  const resolvedBase = resolveDispatchBase(repoRoot, baseRef);
+  assertSliceExistsAtBase(repoRoot, resolvedBase, childId);
   const baseName = path.basename(repoRoot);
   const worktreePath = path.join(path.dirname(repoRoot), `${baseName}-${childId}-${depth}`);
   try {
-    execFileSync("git", ["worktree", "add", worktreePath, parentBranch, "-b", childBranch], {
+    execFileSync("git", ["worktree", "add", worktreePath, resolvedBase, "-b", childBranch], {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"]
     });
@@ -56,9 +136,10 @@ export function createChildWorktree(args: SpawnArgs): {
     childId,
     branch: childBranch,
     path: worktreePath,
-    depth
+    depth,
+    baseRef: resolvedBase
   });
-  return { worktreePath, branch: childBranch };
+  return { worktreePath, branch: childBranch, baseRef: resolvedBase };
 }
 
 export function removeChildWorktree(repoRoot: string, worktreePath: string, branch: string): void {

@@ -344,6 +344,79 @@ test("ensureSliceWorktree: git failure leaves no partial state in workflow-state
 });
 
 // ---------------------------------------------------------------------------
+// 4b. FEAT-261 — worktree bases on invoking checkout's HEAD, not literal "main"
+// ---------------------------------------------------------------------------
+
+test("ensureSliceWorktree: worktree bases on invoking checkout's HEAD, not a hardcoded main literal", async () => {
+  const repo = await tmpDir("wm-head-base-");
+  await initGitRepo(repo);
+
+  // Move the checkout onto a branch that is ahead of "main" — the exact
+  // shape of a stale-base bug: a literal "main" ref would silently drop
+  // this commit from the new worktree.
+  await exec("git checkout -q -b feature/ahead", { cwd: repo, env: GIT_ENV });
+  await fs.writeFile(path.join(repo, "extra.txt"), "ahead\n");
+  await exec('git add -A && git commit -m "ahead commit"', { cwd: repo, env: GIT_ENV });
+  const { stdout: headSha } = await exec("git rev-parse HEAD", { cwd: repo, env: GIT_ENV });
+  const { stdout: mainSha } = await exec("git rev-parse main", { cwd: repo, env: GIT_ENV });
+  assert.notEqual(headSha.trim(), mainSha.trim(), "test setup: HEAD must differ from main");
+
+  const worktreeRoot = path.join(os.tmpdir(), `wm-head-base-root-${randomUUID()}`);
+  const result = await ensureSliceWorktree(repo, "SLICE-70", {
+    config: { loop: { worktreeMode: true, worktreeRoot } },
+    featureId: "FEAT-070"
+  });
+
+  assert.ok(result);
+  assert.ok(
+    await fs
+      .stat(path.join(result.worktreePath, "extra.txt"))
+      .then(() => true)
+      .catch(() => false),
+    "worktree must contain the commit only present on the invoking checkout's HEAD, not stale main"
+  );
+
+  try {
+    await exec(`git -C "${repo}" worktree remove --force "${result.worktreePath}"`);
+    await exec(`git -C "${repo}" branch -D "${result.branchName}"`);
+  } catch {
+    // best-effort cleanup
+  }
+});
+
+test("ensureSliceWorktree: explicit baseRef override is honored over HEAD", async () => {
+  const repo = await tmpDir("wm-base-override-");
+  await initGitRepo(repo);
+
+  const { stdout: initialSha } = await exec("git rev-parse HEAD", { cwd: repo, env: GIT_ENV });
+  await fs.writeFile(path.join(repo, "more.txt"), "more\n");
+  await exec('git add -A && git commit -m "more"', { cwd: repo, env: GIT_ENV });
+
+  const worktreeRoot = path.join(os.tmpdir(), `wm-base-override-root-${randomUUID()}`);
+  const result = await ensureSliceWorktree(repo, "SLICE-71", {
+    config: { loop: { worktreeMode: true, worktreeRoot } },
+    featureId: "FEAT-071",
+    baseRef: initialSha.trim()
+  });
+
+  assert.ok(result);
+  assert.ok(
+    !(await fs
+      .stat(path.join(result.worktreePath, "more.txt"))
+      .then(() => true)
+      .catch(() => false)),
+    "explicit baseRef must win over the current HEAD"
+  );
+
+  try {
+    await exec(`git -C "${repo}" worktree remove --force "${result.worktreePath}"`);
+    await exec(`git -C "${repo}" branch -D "${result.branchName}"`);
+  } catch {
+    // best-effort cleanup
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 5. Custom worktreeRoot path honored
 // ---------------------------------------------------------------------------
 
