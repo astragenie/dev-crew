@@ -1,13 +1,13 @@
 ---
 id: FEAT-251
-status: triaged
+status: in-progress
 priority: P2
 category: feature
 target_release: null
 created: 2026-07-09
 updated: 2026-07-10
 depends_on: []
-slices: []
+slices: [SLICE-155]
 derived_from: null
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.35
@@ -22,6 +22,10 @@ triage_notes: "Contained getProvider call-site swap; re-grep reconfirmed all 4 a
 tags: [refactor, workflow]
 needs_contract: false
 needs_ux: false
+started_at: 2026-07-10
+github_issue: 432
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/432"
 ---
 ## Description
 
