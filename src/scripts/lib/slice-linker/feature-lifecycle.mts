@@ -1,6 +1,4 @@
 import fs from "node:fs/promises";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { resolveConfig } from "../config-resolver.mjs";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
@@ -16,6 +14,7 @@ import { parseClassifyOutput } from "../classify-parser.mjs";
 import { writeFeatureEndCeremony } from "../ceremonies.mjs";
 import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
 import { assertSized } from "../proposed-slices.mjs";
+import { gitTextOrThrow } from "../run-git.mjs";
 
 // Re-exported for slice-linker.mjs barrel + existing direct importers — moved
 // to backlog-store.mts (FEAT-250 SLICE-3) because createSlice's private
@@ -23,8 +22,6 @@ import { assertSized } from "../proposed-slices.mjs";
 // slice-linker/, where the validate-imports.mts boundary forbids the reverse
 // import. See backlog-store.mts's module doc comment.
 export { extractAcceptanceCriteria, AcceptanceCriteriaRequiredError, assertAcceptanceCriteria };
-
-const execFileAsync = promisify(execFile);
 
 type DispatchFn = (opts: {
   agent: string;
@@ -436,7 +433,7 @@ async function collectChangedSourceFiles(repoPath: string, startedAt?: string): 
   try {
     const args = ["log", "--name-only", "--format=", "--diff-filter=AM"];
     if (startedAt) args.push(`--since=${startedAt}`);
-    const { stdout } = await execFileAsync("git", args, { cwd: repoPath, timeout: 30_000 });
+    const { stdout } = await gitTextOrThrow(args, { cwd: repoPath, timeoutMs: 30_000 });
     const seen = new Set<string>();
     for (const line of stdout.split("\n")) {
       const f = line.trim();

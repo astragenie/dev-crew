@@ -19,10 +19,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile as execFileCb } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFile = promisify(execFileCb);
+import { gitTextOrThrow } from "./run-git.mjs";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -109,7 +106,7 @@ function resolveWorktreeConfig(
 
 /** Run git with given args under repoPath. Returns stdout. Throws on non-zero exit. */
 async function git(repoPath: string, args: string[]): Promise<string> {
-  const { stdout } = await execFile("git", ["-C", repoPath, ...args]);
+  const { stdout } = await gitTextOrThrow(["-C", repoPath, ...args]);
   return stdout;
 }
 

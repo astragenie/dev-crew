@@ -14,17 +14,14 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile as _execFile } from "node:child_process";
-import { promisify } from "node:util";
 
 import { parseFrontmatter } from "../frontmatter.mjs";
+import { gitTextOrThrow } from "../run-git.mjs";
 import {
   backlogPath as resolveBacklogPath,
   slicesRoot as resolveSlicesRoot,
   pathExists
 } from "../paths.mjs";
-
-const execFile = promisify(_execFile);
 
 const TASK_HEADING_RE = /^##\s+Task\s+\d+:\s+(SLICE[-_]\d+)\s*[—–-]\s*(.+?)\s*$/;
 const APPROVED_SLICE_RE = /^[-*]\s+\[([ xX])\]\s+(SLICE[-_]\d+)\s*[—–:-]\s*(.+?)\s*$/;
@@ -133,7 +130,7 @@ export async function detectSliceStatus(
 async function sliceNumbersCompletedInGit(repoPath: string) {
   const out = new Set();
   try {
-    const { stdout } = await execFile("git", ["log", "--pretty=%s", "--grep", "mark SLICE", "-i"], {
+    const { stdout } = await gitTextOrThrow(["log", "--pretty=%s", "--grep", "mark SLICE", "-i"], {
       cwd: repoPath,
       maxBuffer: 1024 * 1024
     });

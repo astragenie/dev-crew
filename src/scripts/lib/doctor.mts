@@ -3,14 +3,11 @@
 // cross-tree state contradictions. Detection never mutates.
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile as execFileCb } from "node:child_process";
-import { promisify } from "node:util";
 import { resolveConfig } from "./config-resolver.mjs";
 import { artifactRoot, backlogRoot, pathExists } from "./paths.mjs";
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { validateFeat } from "./state-schemas.mjs";
-
-const execFile = promisify(execFileCb);
+import { gitText } from "./run-git.mjs";
 
 export interface Finding {
   kind:
@@ -242,23 +239,17 @@ async function applyFix(
  * Falls back to filesystem mtime if not in git.
  */
 async function lastTouched(repoPath: string, filePath: string): Promise<number> {
-  try {
-    // Use git log to get the last commit timestamp for this file
-    const relativePath = path.relative(repoPath, filePath);
-    const { stdout } = await execFile(
-      "git",
-      ["-C", repoPath, "log", "-1", "--format=%cI", "--", relativePath],
-      { timeout: 10_000 }
-    );
-    const commitTime = stdout.trim();
-    if (commitTime) {
-      return new Date(commitTime).getTime();
-    }
-  } catch {
-    // Not in git or git command failed; fall back to mtime
+  // Use git log to get the last commit timestamp for this file
+  const relativePath = path.relative(repoPath, filePath);
+  const commitTime = await gitText(
+    ["-C", repoPath, "log", "-1", "--format=%cI", "--", relativePath],
+    { timeoutMs: 10_000 }
+  );
+  if (commitTime) {
+    return new Date(commitTime).getTime();
   }
 
-  // Fall back to filesystem mtime
+  // Not in git, git command failed, or no commit touched this file; fall back to mtime
   const stat = await fs.stat(filePath);
   return stat.mtimeMs;
 }

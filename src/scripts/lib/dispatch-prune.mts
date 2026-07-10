@@ -13,7 +13,7 @@
 import fs from "node:fs/promises";
 import { existsSync, statSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { runGit } from "./run-git.mjs";
 
 export interface StaleRunEntry {
   runId: string;
@@ -194,10 +194,12 @@ export async function pruneRunId(repoRoot: string, runId: string): Promise<Prune
   // Remove worktrees first
   for (const wt of worktreePaths) {
     try {
-      execFileSync("git", ["worktree", "remove", "--force", wt], {
-        cwd: repoRoot,
-        stdio: ["ignore", "pipe", "pipe"]
-      });
+      const result = await runGit(["worktree", "remove", "--force", wt], { cwd: repoRoot });
+      if (!result.ok) {
+        throw new Error(
+          `git worktree remove --force ${wt} exited ${result.status}: ${result.stderr}`
+        );
+      }
       worktreesRemoved += 1;
     } catch (err) {
       errors.push(`worktree remove ${wt}: ${(err as Error).message}`);
@@ -207,10 +209,10 @@ export async function pruneRunId(repoRoot: string, runId: string): Promise<Prune
   // Remove branches
   for (const branch of branches) {
     try {
-      execFileSync("git", ["branch", "-D", branch], {
-        cwd: repoRoot,
-        stdio: ["ignore", "pipe", "pipe"]
-      });
+      const result = await runGit(["branch", "-D", branch], { cwd: repoRoot });
+      if (!result.ok) {
+        throw new Error(`git branch -D ${branch} exited ${result.status}: ${result.stderr}`);
+      }
       branchesRemoved += 1;
     } catch (err) {
       errors.push(`branch -D ${branch}: ${(err as Error).message}`);

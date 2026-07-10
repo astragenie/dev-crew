@@ -8,13 +8,10 @@
 // On any failure, sets the `merge_failed` halt-badge and preserves the worktree
 // so the operator can resume via /crew:fix.
 
-import { execFile as execFileCb } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
-
-const execFile = promisify(execFileCb);
+import { gitTextOrThrow } from "./run-git.mjs";
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -212,8 +209,7 @@ export function renderCommitMessage(
 // ---------------------------------------------------------------------------
 
 async function git(repoPath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
-  const { stdout, stderr } = await execFile("git", ["-C", repoPath, ...args], { timeout: 30_000 });
-  return { stdout: stdout ?? "", stderr: stderr ?? "" };
+  return gitTextOrThrow(["-C", repoPath, ...args], { timeoutMs: 30_000 });
 }
 
 // ---------------------------------------------------------------------------

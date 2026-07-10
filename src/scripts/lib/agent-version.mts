@@ -8,7 +8,7 @@
 // Cached per process via a Map<agentName, sha7> — git is only called once
 // per agent name per CLI invocation.
 
-import { spawn } from "node:child_process";
+import { gitText } from "./run-git.mjs";
 
 const _cache = new Map<string, string>();
 
@@ -33,22 +33,6 @@ export async function getPromptVersion(agentName: string): Promise<string> {
 }
 
 async function resolveVersion(agentName: string): Promise<string> {
-  return new Promise<string>((resolve) => {
-    try {
-      const proc = spawn("git", ["log", "-1", "--format=%h", `agents/${agentName}.md`], {
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-      let out = "";
-      proc.stdout?.on("data", (chunk: Buffer) => {
-        out += chunk.toString();
-      });
-      proc.on("close", (code) => {
-        const sha = out.trim();
-        resolve(code === 0 && /^[0-9a-f]{7,}$/.test(sha) ? sha.slice(0, 7) : "unknown");
-      });
-      proc.on("error", () => resolve("unknown"));
-    } catch {
-      resolve("unknown");
-    }
-  });
+  const sha = await gitText(["log", "-1", "--format=%h", `agents/${agentName}.md`]);
+  return sha !== null && /^[0-9a-f]{7,}$/.test(sha) ? sha.slice(0, 7) : "unknown";
 }

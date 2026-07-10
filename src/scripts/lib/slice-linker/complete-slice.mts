@@ -944,17 +944,8 @@ async function checkWorktreeExists(worktreePath: string): Promise<boolean> {
 
 /** Check whether a git branch exists in the repo. */
 async function checkBranchExists(repoPath: string, branchName: string): Promise<boolean> {
-  try {
-    const { execFile: execFileCb } = await import("node:child_process");
-    const { promisify } = await import("node:util");
-    const execFile = promisify(execFileCb);
-    await execFile("git", ["-C", repoPath, "rev-parse", "--verify", branchName], {
-      timeout: 30_000
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  const { gitOk } = await import("../run-git.mjs");
+  return gitOk(["-C", repoPath, "rev-parse", "--verify", branchName], { timeoutMs: 30_000 });
 }
 
 /** Derive grade info (gradeAvg + decisionIds) from the grade file. Best-effort: returns nulls on failure. */

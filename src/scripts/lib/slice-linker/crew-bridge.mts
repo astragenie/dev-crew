@@ -15,6 +15,7 @@ import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
 import { crewCliRuntime } from "../plugin-identity.mjs";
 import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
+import { gitTextOrThrow } from "../run-git.mjs";
 import { renderIdentification } from "./agent-report-writer.mjs";
 import { dedupeCostReportsInDir } from "./cost-report-dedup.mjs";
 
@@ -137,11 +138,11 @@ export async function writeCrewRunBrief(
 export async function detectCostMode(repoPath: string, config: Record<string, any> | null) {
   if (config?.loop?.costProject) return "scoped";
   try {
-    const { stdout: commonDir } = await execFile("git", ["rev-parse", "--git-common-dir"], {
+    const { stdout: commonDir } = await gitTextOrThrow(["rev-parse", "--git-common-dir"], {
       cwd: repoPath,
       maxBuffer: 64 * 1024
     });
-    const { stdout: gitDir } = await execFile("git", ["rev-parse", "--git-dir"], {
+    const { stdout: gitDir } = await gitTextOrThrow(["rev-parse", "--git-dir"], {
       cwd: repoPath,
       maxBuffer: 64 * 1024
     });
@@ -152,7 +153,7 @@ export async function detectCostMode(repoPath: string, config: Record<string, an
     const commonAbs = path.resolve(repoPath, commonDir.trim());
     const gitAbs = path.resolve(repoPath, gitDir.trim());
     if (commonAbs !== gitAbs) return "scoped";
-    const { stdout: list } = await execFile("git", ["worktree", "list", "--porcelain"], {
+    const { stdout: list } = await gitTextOrThrow(["worktree", "list", "--porcelain"], {
       cwd: repoPath,
       maxBuffer: 256 * 1024
     });

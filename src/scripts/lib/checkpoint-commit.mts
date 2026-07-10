@@ -1,7 +1,8 @@
-import { execFile as execFileCallback } from "node:child_process";
-import { promisify } from "node:util";
+import { gitText, gitTextOrThrow } from "./run-git.mjs";
 
-const execFile = promisify(execFileCallback);
+async function git(repoPath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return gitTextOrThrow(args, { cwd: repoPath });
+}
 
 export interface CheckpointCommitOptions {
   repoPath: string;
@@ -41,12 +42,8 @@ function buildBody(
 }
 
 async function isWorkingTreeClean(repoPath: string): Promise<boolean> {
-  try {
-    const { stdout } = await execFile("git", ["status", "--porcelain"], { cwd: repoPath });
-    return stdout.trim() === "";
-  } catch {
-    return false;
-  }
+  const stdout = await gitText(["status", "--porcelain"], { cwd: repoPath });
+  return stdout === "";
 }
 
 export async function checkpointCommit(
@@ -58,13 +55,11 @@ export async function checkpointCommit(
     if (await isWorkingTreeClean(repoPath)) {
       return { committed: false, reason: "clean" };
     }
-    await execFile("git", ["add", "-u"], { cwd: repoPath });
+    await git(repoPath, ["add", "-u"]);
   }
 
   // Re-check after staging: if nothing staged, tree was clean
-  const { stdout: diffStat } = await execFile("git", ["diff", "--cached", "--stat"], {
-    cwd: repoPath
-  });
+  const { stdout: diffStat } = await git(repoPath, ["diff", "--cached", "--stat"]);
   if (diffStat.trim() === "") {
     return { committed: false, reason: "clean" };
   }
@@ -73,8 +68,8 @@ export async function checkpointCommit(
   const body = buildBody(opts);
   const message = body ? `${subject}\n\n${body}` : subject;
 
-  await execFile("git", ["commit", "-m", message], { cwd: repoPath });
+  await git(repoPath, ["commit", "-m", message]);
 
-  const { stdout: sha } = await execFile("git", ["rev-parse", "HEAD"], { cwd: repoPath });
+  const { stdout: sha } = await git(repoPath, ["rev-parse", "HEAD"]);
   return { committed: true, sha: sha.trim() };
 }

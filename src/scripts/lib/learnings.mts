@@ -1,11 +1,8 @@
-import { execFile as execFileCb } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { appendJsonl } from "./jsonl-append.mjs";
 import type { AgentType } from "./memory-sink.mjs";
-
-const execFile = promisify(execFileCb);
+import { gitText } from "./run-git.mjs";
 
 // Persistent JSONL operational learnings store.
 // Each entry: { id, timestamp, key, insight, confidence, source, sliceId?,
@@ -58,21 +55,18 @@ export async function resolveCanonicalRepoRoot(repoPath: string): Promise<string
 }
 
 async function computeCanonicalRepoRoot(repoPath: string): Promise<string> {
-  try {
-    const [{ stdout: commonDir }, { stdout: gitDir }] = await Promise.all([
-      execFile("git", ["rev-parse", "--git-common-dir"], { cwd: repoPath, maxBuffer: 64 * 1024 }),
-      execFile("git", ["rev-parse", "--git-dir"], { cwd: repoPath, maxBuffer: 64 * 1024 })
-    ]);
-    const commonAbs = path.resolve(repoPath, commonDir.trim());
-    const gitAbs = path.resolve(repoPath, gitDir.trim());
-    if (commonAbs === gitAbs) return repoPath; // not a linked worktree
-    // Standard layout: the common dir is <mainRepo>/.git — its parent is the
-    // main worktree root. Anything else (bare repo, unusual layout) falls
-    // back to repoPath rather than guessing.
-    return path.basename(commonAbs) === ".git" ? path.dirname(commonAbs) : repoPath;
-  } catch {
-    return repoPath; // not a git repo (or git unavailable) — use as-is
-  }
+  const [commonDir, gitDir] = await Promise.all([
+    gitText(["rev-parse", "--git-common-dir"], { cwd: repoPath, maxBuffer: 64 * 1024 }),
+    gitText(["rev-parse", "--git-dir"], { cwd: repoPath, maxBuffer: 64 * 1024 })
+  ]);
+  if (commonDir === null || gitDir === null) return repoPath; // not a git repo (or git unavailable) — use as-is
+  const commonAbs = path.resolve(repoPath, commonDir);
+  const gitAbs = path.resolve(repoPath, gitDir);
+  if (commonAbs === gitAbs) return repoPath; // not a linked worktree
+  // Standard layout: the common dir is <mainRepo>/.git — its parent is the
+  // main worktree root. Anything else (bare repo, unusual layout) falls
+  // back to repoPath rather than guessing.
+  return path.basename(commonAbs) === ".git" ? path.dirname(commonAbs) : repoPath;
 }
 
 // Read and parse all lines from the learnings JSONL file.

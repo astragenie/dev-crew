@@ -13,6 +13,7 @@ import { randomBytes } from "node:crypto";
 import { buildDispatchPromptWithMemory } from "./dispatch-prompt.mjs";
 import { resolveConfig } from "../config-resolver.mjs";
 import { resolveWaveDispatchModel } from "../model-router.mjs";
+import { runGit } from "../run-git.mjs";
 import type { GitStatus, StopCheckResult, PrepareResult, FinalizeResult } from "./runner.mjs";
 import type { WaveConfig, WavePlan, WorktreeResult } from "./types.mjs";
 
@@ -33,8 +34,14 @@ function tmpPlanFile(plan: WavePlan): string {
 }
 
 export async function realGitStatus(repoRoot: string): Promise<GitStatus> {
-  const r = spawnSync("git", ["-C", repoRoot, "status", "--porcelain"], { encoding: "utf8" });
-  return { clean: r.status === 0 && r.stdout.trim() === "" };
+  try {
+    const r = await runGit(["-C", repoRoot, "status", "--porcelain"]);
+    return { clean: r.ok && r.stdout.trim() === "" };
+  } catch {
+    // Spawn failure (e.g. git binary missing) — matches spawnSync's non-throwing
+    // ENOENT contract, where `r.status !== 0` simply fell through to `clean: false`.
+    return { clean: false };
+  }
 }
 
 export async function realStopCheck(repoRoot: string): Promise<StopCheckResult> {
