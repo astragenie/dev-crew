@@ -13,6 +13,7 @@ import {
   SCORE_DIMENSIONS,
   findGradeForSlice
 } from "../scripts/lib/grade-parser.mjs";
+import { normalizeGradeYaml } from "../scripts/lib/grade-yaml-normalizer.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { listDecisions } from "../scripts/lib/decisions-store.mjs";
@@ -150,6 +151,51 @@ test("writeGrade rejects when all scores are 0 (all-zero block)", async () => {
   // writeGrade should reject with GRADE_TEMPLATE_UNFILLED error.
   await assert.rejects(
     () => writeGrade(repo, "SLICE-01"),
+    (err) => err.code === "GRADE_TEMPLATE_UNFILLED"
+  );
+});
+
+// FEAT-258: a grade with SOME (not all) dimensions at a genuine 0 is a valid
+// grade — only an all-zero block indicates an unfilled template.
+test("writeGrade accepts a grade with some (not all) zero scores", async () => {
+  const repo = await tmpRepo("al-grade-partial-zero-");
+  const created = await createGradeFile(repo, "SLICE-06");
+  let content = await fs.readFile(created.gradePath, "utf8");
+  // Fill all scores to real values, then re-zero exactly one dimension —
+  // a legitimate 0 score on a single dimension, not an unfilled stub.
+  for (const dim of SCORE_DIMENSIONS) {
+    content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
+  }
+  content = content.replace(`- ${SCORE_DIMENSIONS[0]}: 0.85`, `- ${SCORE_DIMENSIONS[0]}: 0`);
+  // Replace placeholder lessons/decisions/surprises/followups.
+  content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
+  content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
+  content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
+  await fs.writeFile(created.gradePath, content);
+  const result = await writeGrade(repo, "SLICE-06");
+  assert.equal(result.sliceId, "SLICE-06");
+});
+
+// FEAT-258: the `--grade-yaml` normalizer path (grade-yaml-normalizer.mts)
+// renders a missing `scores:` frontmatter map as an explicit all-zero
+// `## Scores` list (one line per dimension, defaulted to 0) — this is exactly
+// the silent-stub scenario the FEAT was filed against, so it MUST hit the
+// same GRADE_TEMPLATE_UNFILLED rejection as a hand-authored all-zero grade.
+test("writeGrade rejects a normalizeGradeYaml grade with an entirely missing scores map", async () => {
+  const repo = await tmpRepo("al-grade-normalizer-missing-scores-");
+  const created = await createGradeFile(repo, "SLICE-07");
+  const yamlOnly = [
+    "---",
+    "id: GRADE-SLICE-07",
+    "slice: SLICE-07",
+    "feature: FEAT-258",
+    "---",
+    ""
+  ].join("\n");
+  await fs.writeFile(created.gradePath, normalizeGradeYaml(yamlOnly));
+  await assert.rejects(
+    () => writeGrade(repo, "SLICE-07"),
     (err) => err.code === "GRADE_TEMPLATE_UNFILLED"
   );
 });
