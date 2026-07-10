@@ -37,6 +37,13 @@ export async function recordStep(
  * Flush all buffered step records for a slice to disk in a single appendFile call.
  * Clears the buffer after a successful write.
  * No-ops if buffer is empty. Never throws — returns false on error.
+ *
+ * Left off the central jsonl-append.mts / plugin-std route (#449 W2b S1):
+ * the buffer holds pre-serialized JSON-string lines (built in recordStep),
+ * not raw records, so appendJsonlBatch's per-record JSON.stringify would
+ * double-encode them. Routing through it would require restructuring the
+ * buffer to hold raw records instead — a larger change than an internal
+ * write-primitive swap.
  */
 export async function flushTrajectory(repoPath: string, sliceId: string): Promise<boolean> {
   const key = `${repoPath}:${sliceId}`;

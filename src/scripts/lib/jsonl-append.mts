@@ -11,6 +11,10 @@
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
+import {
+  append as pluginJsonlAppend,
+  appendBatch as pluginJsonlAppendBatch
+} from "@astragenie/plugin-std/jsonl";
 
 // ---------------------------------------------------------------------------
 // I/O seam — exported for test injection. Mirrors the `_internals` pattern
@@ -43,6 +47,11 @@ export interface AppendJsonlSyncOptions {
   swallowErrors?: boolean;
 }
 
+/** True when the caller injected its own mkdir/appendFile (the test seam) — that path keeps the legacy local orchestration instead of delegating to plugin-std. */
+function hasInjectedPrimitives(opts: AppendJsonlOptions): boolean {
+  return opts.mkdir !== undefined || opts.appendFile !== undefined;
+}
+
 async function writeLinesAsync(
   filePath: string,
   lines: string[],
@@ -69,15 +78,24 @@ export async function appendJsonl(
   record: unknown,
   opts: AppendJsonlOptions = {}
 ): Promise<void> {
+  const swallowErrors = opts.swallowErrors ?? false;
+  if (!hasInjectedPrimitives(opts)) {
+    // Default path (no injected mkdir/appendFile): delegate to plugin-std,
+    // which already does mkdir(recursive) + one appendFile call and throws
+    // on failure — matches this helper's throw-unless-swallowed contract.
+    try {
+      await pluginJsonlAppend(filePath, record);
+    } catch (err) {
+      if (swallowErrors) return;
+      throw err;
+    }
+    return;
+  }
+  // Injected mkdir/appendFile is the test-injection seam (see _internals
+  // above) — keep the legacy local orchestration so overrides still work.
   const mkdir = opts.mkdir ?? _internals.mkdir;
   const appendFile = opts.appendFile ?? _internals.appendFile;
-  await writeLinesAsync(
-    filePath,
-    [JSON.stringify(record)],
-    mkdir,
-    appendFile,
-    opts.swallowErrors ?? false
-  );
+  await writeLinesAsync(filePath, [JSON.stringify(record)], mkdir, appendFile, swallowErrors);
 }
 
 /**
@@ -89,6 +107,19 @@ export async function appendJsonlBatch(
   records: unknown[],
   opts: AppendJsonlOptions = {}
 ): Promise<void> {
+  const swallowErrors = opts.swallowErrors ?? false;
+  if (!hasInjectedPrimitives(opts)) {
+    // Default path: delegate to plugin-std's appendBatch, which does the
+    // same mkdir(recursive) + single pre-joined appendFile call this helper
+    // already did, and is a no-op for an empty array (matches writeLinesAsync).
+    try {
+      await pluginJsonlAppendBatch(filePath, records);
+    } catch (err) {
+      if (swallowErrors) return;
+      throw err;
+    }
+    return;
+  }
   const mkdir = opts.mkdir ?? _internals.mkdir;
   const appendFile = opts.appendFile ?? _internals.appendFile;
   await writeLinesAsync(
@@ -96,13 +127,14 @@ export async function appendJsonlBatch(
     records.map((r) => JSON.stringify(r)),
     mkdir,
     appendFile,
-    opts.swallowErrors ?? false
+    swallowErrors
   );
 }
 
 /**
  * Synchronous variant of {@link appendJsonl} for call sites that cannot go
  * async without a wider refactor of their (currently sync) public signature.
+ * Stays fully local — plugin-std/jsonl has no synchronous variant to delegate to.
  */
 export function appendJsonlSync(
   filePath: string,

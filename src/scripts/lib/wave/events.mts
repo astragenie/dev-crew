@@ -5,8 +5,9 @@
 // can chart wave throughput / failure rate / time-to-finalize without
 // stitching together the JSON snapshots.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { appendJsonlSync } from "../jsonl-append.mjs";
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
 
 export type WaveEventType =
@@ -120,9 +121,7 @@ export async function appendWaveEvent(
   let ok = true;
   try {
     const path = waveEventsPath(repoRoot, artifactsRoot, event.waveId);
-    const dir = dirname(path);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    appendFileSync(path, JSON.stringify(event) + "\n", "utf8");
+    appendJsonlSync(path, event);
   } catch {
     ok = false;
   }

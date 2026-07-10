@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
 import path from "node:path";
+import { appendJsonl } from "./jsonl-append.mjs";
 import { resolveCanonicalRepoRoot } from "./learnings.mjs";
 
 export const GRADE_JSONL_RELATIVE = path.join(".claude", "artifacts", "loop", "grades.jsonl");
@@ -28,7 +28,5 @@ export interface GradeEventPayload {
 export async function appendGradeEvent(repoPath: string, event: GradeEventPayload): Promise<void> {
   const canonicalRoot = await resolveCanonicalRepoRoot(repoPath);
   const file = path.join(canonicalRoot, GRADE_JSONL_RELATIVE);
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const line = JSON.stringify(event) + "\n";
-  await fs.appendFile(file, line, "utf8");
+  await appendJsonl(file, event);
 }

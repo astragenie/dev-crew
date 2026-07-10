@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
 import path from "node:path";
+import { appendJsonl } from "./jsonl-append.mjs";
 import { TRAJECTORY_DIR } from "./trajectory-writer.mjs";
 import { fanoutEnvelope } from "./webhook-fanout.mjs";
 
@@ -154,8 +154,7 @@ export async function appendSliceEvent(
 
   try {
     const filePath = eventsPath(repoRoot, sliceId);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.appendFile(filePath, JSON.stringify(enriched) + "\n");
+    await appendJsonl(filePath, enriched);
   } catch (err) {
     console.warn(
       `[slice-events] write failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
