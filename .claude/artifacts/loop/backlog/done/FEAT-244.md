@@ -1,16 +1,16 @@
 ---
 id: FEAT-244
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 depends_on: [FEAT-242]
 tags: [auth, infra]
 needs_contract: false
 needs_ux: false
-slices: []
+slices: [SLICE-149, SLICE-148]
 derived_from: null
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.2
@@ -22,6 +22,8 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-09
 autonomous_safe: true
 triage_notes: "P2: important security-gating item for fleet rollout but small, narrowly-scoped, and not on the B1.5 pilot's critical path (can build in parallel with B1 per the plan's own ETA table note). technical_risk 0.3 and priority P2 — pre-mortem not mandatory, but cascade risk named per Framework 3 given this touches the headless-dispatch permission surface directly."
+slices_complete: [SLICE-149, SLICE-148]
+completed_at: 2026-07-10
 ---
 ## Description
 

@@ -1,7 +1,7 @@
 ---
 id: SLICE-148
 title: "Tick resilience: unreachable / insufficient-scope repos (B3 AC-2)"
-status: pending
+status: completed
 feature: FEAT-244
 phase: null
 priority: P2
@@ -11,14 +11,8 @@ risk: low
 created: 2026-07-10
 updated: 2026-07-10
 effort_points: 1
-touches_files:
-  - src/scripts/lib/watch/sweep.mts
-  - src/scripts/lib/watch/state.mts
-  - src/scripts/lib/watch/types.mts
-  - src/scripts/lib/watch/tick.mts
-  - src/scripts/lib/watch/envelopes.mts
-  - src/scripts/lib/watch.mts
-  - src/tests/watch-sweep-errors.test.mts
+touches_files: [src/scripts/lib/watch/sweep.mts, src/scripts/lib/watch/state.mts, src/scripts/lib/watch/types.mts, src/scripts/lib/watch/tick.mts, src/scripts/lib/watch/envelopes.mts, src/scripts/lib/watch.mts, src/tests/watch-sweep-errors.test.mts]
+completed_at: 2026-07-10
 ---
 # SLICE-148: Tick resilience — unreachable / insufficient-scope repos (B3 AC-2)
 
@@ -37,7 +31,7 @@ A registry entry the token cannot reach (403/404 from `gh`) must not fail silent
 
 ## Out of scope
 
-- Spawn/allowlist work (SLICE-147)
+- Spawn/allowlist work (SLICE-149)
 - Retry/backoff policy beyond the consecutive-failure counter (future FEAT if needed)
 - Alerting on darkened repos (astrarunner dashboard side, FEAT-B2)
 
@@ -50,7 +44,7 @@ A registry entry the token cannot reach (403/404 from `gh`) must not fail silent
 
 - all acceptance criteria PASS with evidence
 - build / test commands per `.claude/loop.json` pass
-- feature FEAT-244 rolls to done/ when both SLICE-147 and SLICE-148 are closed
+- feature FEAT-244 rolls to done/ when both SLICE-149 and SLICE-148 are closed
 - Crew `final-synthesis` artifact written
 
 ## Reviewer ladder

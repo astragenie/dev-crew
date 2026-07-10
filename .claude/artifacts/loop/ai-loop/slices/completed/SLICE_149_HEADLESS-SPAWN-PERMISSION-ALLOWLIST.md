@@ -1,7 +1,7 @@
 ---
-id: SLICE-147
-title: "Real headless spawn wiring + permission allowlist (B3 AC-3)"
-status: pending
+id: SLICE-149
+title: Real headless spawn wiring + permission allowlist (B3 AC-3)
+status: completed
 feature: FEAT-244
 phase: null
 priority: P2
@@ -11,16 +11,10 @@ risk: medium
 created: 2026-07-10
 updated: 2026-07-10
 effort_points: 2
-touches_files:
-  - src/scripts/lib/watch/reaction-spawn.mts
-  - src/scripts/lib/watch/sweep.mts
-  - src/scripts/lib/watch/config.mts
-  - src/scripts/lib/watch/types.mts
-  - src/scripts/validate-imports.mts
-  - src/tests/watch-reaction-spawn.test.mts
-  - src/tests/watch-tick.test.mts
+touches_files: [src/scripts/lib/watch/reaction-spawn.mts, src/scripts/lib/watch/sweep.mts, src/scripts/lib/watch/config.mts, src/scripts/lib/watch/types.mts, src/scripts/validate-imports.mts, src/tests/watch-reaction-spawn.test.mts, src/tests/watch-tick.test.mts]
+completed_at: 2026-07-10
 ---
-# SLICE-147: Real headless spawn wiring + permission allowlist (B3 AC-3)
+# SLICE-149: Real headless spawn wiring + permission allowlist (B3 AC-3)
 
 Implements FEAT-244 (Track B3 code half). See [feature file](../../../backlog/in-progress/FEAT-244.md).
 
