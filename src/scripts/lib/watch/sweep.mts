@@ -28,8 +28,16 @@ import {
   getActiveClaim
 } from "./claims.mjs";
 import { evaluateSpawnGate } from "./spawn-gate.mjs";
+import { readMachineConfig } from "./config.mjs";
+import { buildSpawnArgs, spawnReactionProcess } from "./reaction-spawn.mjs";
+import type { SpawnFn } from "./reaction-spawn.mjs";
 import { defaultWatchHome, readTickState, updateTickState } from "./state.mjs";
-import { countInFlight, costSpentInWindow, recordReactionStart } from "./ledger.mjs";
+import {
+  countInFlight,
+  costSpentInWindow,
+  recordReactionFinish,
+  recordReactionStart
+} from "./ledger.mjs";
 
 const execFile = promisify(execFileCallback);
 
@@ -65,7 +73,11 @@ export interface WatchTickExec {
 
 export function buildDefaultTickExec(
   watchHome: string = defaultWatchHome(),
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
+  // Injectable so tests can prove buildDefaultTickExec's real spawnReaction
+  // wiring (allowlist lookup + arg construction) without ever launching an
+  // actual `claude` process (AC-reg) — production callers never pass this.
+  spawnFn?: SpawnFn
 ): WatchTickExec {
   return {
     listOpenIssues: async (entry) => {
@@ -139,8 +151,15 @@ export function buildDefaultTickExec(
         // is a human-visible hint. Never block the tick on a label failure.
       }
     },
+    // AC-3: real headless spawn, gated by the pre-configured permission
+    // allowlist (~/.claude/watch/config.json's allowedTools). Never passes
+    // --dangerously-skip-permissions — buildSpawnArgs enforces that, and an
+    // absent allowlist means no --allowedTools flag at all rather than a
+    // bypass (see watch/reaction-spawn.mts).
     spawnReaction: async (spawn) => {
-      console.log(`[watch-tick] would spawn: ${spawn.command} (cwd=${spawn.cwd})`);
+      const { allowedTools } = await readMachineConfig(watchHome);
+      const spawnArgs = buildSpawnArgs(spawn, allowedTools);
+      spawnReactionProcess(spawnArgs, spawnFn);
     },
     // Machine-wide (COND-4), not per-repo — a correlated failure across many
     // repos must not spawn unbounded parallel headless sessions, so the
@@ -224,18 +243,31 @@ function actionForFinding(finding: Finding, tier: 1 | 2): ReactionAction {
   return "crew-fix";
 }
 
-function commandForFinding(finding: Finding, action: ReactionAction, entry: RegistryEntry): string {
+// The exact `-p` argument text for a real spawn (no shell quoting, no
+// `claude -p` wrapper) — reaction-spawn.mts::buildSpawnArgs consumes this
+// directly via ReactionSpawn.promptArg. Empty for issue-broker-file, which
+// never spawns.
+function promptForFinding(finding: Finding, action: ReactionAction, entry: RegistryEntry): string {
   const number = finding.findingId.split(":")[1];
   switch (action) {
     case "intake":
-      return `claude -p "/runner:intake --from-issue https://github.com/${entry.ghSlug}/issues/${number}"`;
+      return `/runner:intake --from-issue https://github.com/${entry.ghSlug}/issues/${number}`;
     case "pr-fix":
-      return `claude -p "/runner:pr-fix ${number}"`;
+      return `/runner:pr-fix ${number}`;
     case "crew-fix":
-      return `claude -p "/crew:fix run:${number}"`;
+      return `/crew:fix run:${number}`;
     case "issue-broker-file":
-      return `# issue-broker-file: ${finding.findingId} (tier-2, watch-only — no headless spawn)`;
+      return "";
   }
+}
+
+// Human-readable display/audit string — unchanged shape from pre-SLICE-147
+// (still what the "would spawn" log line and any future audit trail show).
+function commandForFinding(finding: Finding, action: ReactionAction, entry: RegistryEntry): string {
+  if (action === "issue-broker-file") {
+    return `# issue-broker-file: ${finding.findingId} (tier-2, watch-only — no headless spawn)`;
+  }
+  return `claude -p "${promptForFinding(finding, action, entry)}"`;
 }
 
 // ---------------------------------------------------------------------------
@@ -322,17 +354,40 @@ export async function sweepEntry(
     });
 
     const action = actionForFinding(finding, entry.tier);
-    await exec.spawnReaction({
-      finding,
-      action,
-      command: commandForFinding(finding, action, entry),
-      cwd: entry.path
-    });
-    // Machine-wide in-flight ledger (COND-4) — recorded right after the
-    // spawn resolves, mirroring the claim-before-spawn ordering above.
-    // Layer 2 clears this slot by reporting an outcome (recordReactionFinish,
-    // called from watch/tick.mts::recordReactionOutcome) once it completes.
+
+    // AC-3b (SLICE-145 reviewer INFO): record the machine-wide ledger slot
+    // BEFORE attempting the spawn, not after it resolves. Recording-after
+    // left a gap where a crash between "spawn requested" and "ledger
+    // recorded" would under-count in-flight reactions — an under-count
+    // that could let the fleet-wide concurrency cap (COND-4) be exceeded.
+    // Recording first flips the failure mode to a harmless *over*-count:
+    //   - if exec.spawnReaction itself throws, the catch below prunes the
+    //     slot immediately (failure-prune) since we know for certain no
+    //     reaction actually started;
+    //   - if the whole process dies before that catch can run, the slot
+    //     self-heals via ledger.mts's MAX_REACTION_RUNTIME_SECONDS
+    //     staleness window (same self-heal shape as claims.mts's TTL) —
+    //     it never permanently leaks.
+    // The finding's claim (written above) is untouched by a spawn failure —
+    // it stays claimed and self-heals via COND-1's claim TTL on a later
+    // tick, since a local spawn failure is not evidence the finding itself
+    // is unreachable.
     await recordReactionStart(watchHome, finding, now);
+    try {
+      await exec.spawnReaction({
+        finding,
+        action,
+        command: commandForFinding(finding, action, entry),
+        promptArg: promptForFinding(finding, action, entry),
+        cwd: entry.path
+      });
+    } catch (err) {
+      await recordReactionFinish(watchHome, finding, 0, now);
+      console.error(
+        `[watch/sweep] spawnReaction failed for ${finding.findingId}: ${(err as Error).message}`
+      );
+      continue;
+    }
     spawnedCount++;
   }
 

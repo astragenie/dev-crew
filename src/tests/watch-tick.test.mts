@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { runTick } from "../scripts/lib/watch/tick.mjs";
 import type { WatchTickExec } from "../scripts/lib/watch/tick.mjs";
+import { buildDefaultTickExec } from "../scripts/lib/watch/sweep.mjs";
 import { acquireTickLock, tickStatePath } from "../scripts/lib/watch/state.mjs";
 import { claimFinding, getActiveClaim } from "../scripts/lib/watch/claims.mjs";
 import {
@@ -15,6 +16,7 @@ import {
   recordReactionStart
 } from "../scripts/lib/watch/ledger.mjs";
 import type { RegistryFile } from "../scripts/lib/watch/types.mjs";
+import type { SpawnFn } from "../scripts/lib/watch/reaction-spawn.mjs";
 
 async function tmpWatchHome(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "watch-tick-test-"));
@@ -358,6 +360,214 @@ test("AC-4: a successful spawn is itself recorded as in-flight via the real ledg
     1,
     "the spawned reaction is now tracked as in-flight"
   );
+});
+
+// ---------------------------------------------------------------------------
+// AC-3b (SLICE-145 reviewer INFO / SLICE-147): record-before-spawn +
+// failure-prune ordering — a spawn failure must never leak an untracked
+// concurrency slot, and must never cause a double-spawn on a later tick.
+
+test("AC-3b: the ledger slot is recorded BEFORE spawnReaction is invoked (happens-before, not just eventual consistency)", async () => {
+  const watchHome = await tmpWatchHome();
+  const registryPath = await tmpRegistry(oneEntryRegistry());
+  const now = () => new Date("2026-07-10T00:00:00.000Z");
+
+  let inFlightAtSpawnTime = -1;
+  const exec = makeExec({
+    listOpenIssues: async () => [{ number: 1 }],
+    spawnReaction: async () => {
+      inFlightAtSpawnTime = await countInFlight(watchHome, now);
+    }
+  });
+
+  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec, now });
+
+  assert.equal(result.outcome, "swept");
+  if (result.outcome !== "swept") throw new Error("unreachable");
+  assert.equal(
+    inFlightAtSpawnTime,
+    1,
+    "the ledger slot must already be recorded when spawnReaction runs"
+  );
+});
+
+test("AC-3b: a spawnReaction failure prunes the ledger slot immediately (failure-prune) instead of leaking it", async () => {
+  const watchHome = await tmpWatchHome();
+  const registryPath = await tmpRegistry(oneEntryRegistry());
+  const now = () => new Date("2026-07-10T00:00:00.000Z");
+
+  const exec = makeExec({
+    listOpenIssues: async () => [{ number: 1 }],
+    spawnReaction: async () => {
+      throw new Error("spawn ENOENT");
+    }
+  });
+
+  const result = await runTick({ registryPath, machineShard: 1, watchHome, exec, now });
+
+  assert.equal(result.outcome, "swept");
+  if (result.outcome !== "swept") throw new Error("unreachable");
+  assert.equal(result.spawnedCount, 0, "a failed spawn is never counted as spawned");
+  assert.equal(
+    await countInFlight(watchHome, now),
+    0,
+    "the ledger slot recorded before the failed spawn must be pruned, not leaked"
+  );
+});
+
+test("AC-3b: a failed spawn leaves the claim in place (self-heals via COND-1 TTL) and does not double-spawn before the TTL expires", async () => {
+  const watchHome = await tmpWatchHome();
+  const registryPath = await tmpRegistry(oneEntryRegistry({ claimTtlSeconds: 60 }));
+
+  let attempts = 0;
+  const execThatFailsOnce = makeExec({
+    listOpenIssues: async () => [{ number: 1 }],
+    spawnReaction: async () => {
+      attempts++;
+      throw new Error("spawn ENOENT");
+    }
+  });
+
+  const firstTick = await runTick({
+    registryPath,
+    machineShard: 1,
+    watchHome,
+    exec: execThatFailsOnce,
+    now: () => new Date("2026-07-10T00:00:00.000Z")
+  });
+  assert.equal(firstTick.outcome, "swept");
+  if (firstTick.outcome !== "swept") throw new Error("unreachable");
+  assert.equal(attempts, 1);
+
+  // Still inside the 60s claim TTL — the finding stays claimed, so a second
+  // tick (even with a working spawner) must not re-spawn it: no double-spawn
+  // caused by the failed first attempt.
+  const execThatWorks = makeExec({ listOpenIssues: async () => [] });
+  const secondTick = await runTick({
+    registryPath,
+    machineShard: 1,
+    watchHome,
+    exec: execThatWorks,
+    now: () => new Date("2026-07-10T00:00:30.000Z")
+  });
+  assert.equal(secondTick.outcome, "swept");
+  if (secondTick.outcome !== "swept") throw new Error("unreachable");
+  assert.equal(
+    execThatWorks.calls.spawnReaction,
+    0,
+    "still inside the claim TTL — no double-spawn"
+  );
+
+  // Past the TTL — COND-1 self-heal steals the orphaned claim and retries
+  // exactly once (no leftover stale ledger slots accumulated from the
+  // earlier failure).
+  const execAfterTtl = makeExec({ listOpenIssues: async () => [] });
+  const thirdTick = await runTick({
+    registryPath,
+    machineShard: 1,
+    watchHome,
+    exec: execAfterTtl,
+    now: () => new Date("2026-07-10T00:02:00.000Z")
+  });
+  assert.equal(thirdTick.outcome, "swept");
+  if (thirdTick.outcome !== "swept") throw new Error("unreachable");
+  assert.equal(
+    thirdTick.spawnedCount,
+    1,
+    "past TTL, the orphaned claim is stolen and retried exactly once"
+  );
+  assert.equal(
+    await countInFlight(watchHome, () => new Date("2026-07-10T00:02:00.000Z")),
+    1,
+    "the retried spawn is tracked as in-flight, with no leftover slot from the earlier failure"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AC-reg: buildDefaultTickExec's REAL spawnReaction wiring (allowlist lookup
+// + arg construction), proven with the underlying process-spawn call
+// injected — this suite must never launch an actual `claude` process.
+
+test("AC-reg: buildDefaultTickExec wires the configured allowlist into a real spawn's args and never launches an actual process", async () => {
+  const watchHome = await tmpWatchHome();
+  await fs.writeFile(
+    path.join(watchHome, "config.json"),
+    JSON.stringify({ allowedTools: ["Read", "Bash(gh:*)"] }),
+    "utf-8"
+  );
+
+  const spawnCalls: Array<{ bin: string; args: string[] }> = [];
+  const spawnFn: SpawnFn = (bin, args) => {
+    spawnCalls.push({ bin, args });
+    return { on: () => {}, unref: () => {} };
+  };
+
+  const exec = buildDefaultTickExec(watchHome, () => new Date("2026-07-10T00:00:00.000Z"), spawnFn);
+
+  await exec.spawnReaction({
+    finding: { kind: "issue", findingId: "issue:1", ghSlug: "org/repo-a" },
+    action: "intake",
+    command: 'claude -p "/runner:intake --from-issue x"',
+    promptArg: "/runner:intake --from-issue x",
+    cwd: "C:\\work\\repo-a"
+  });
+
+  assert.equal(
+    spawnCalls.length,
+    1,
+    "the real spawner must call only the injected spawnFn — it never itself launches claude"
+  );
+  assert.equal(spawnCalls[0]!.bin, "claude");
+  assert.deepEqual(spawnCalls[0]!.args, [
+    "-p",
+    "/runner:intake --from-issue x",
+    "--allowedTools",
+    "Read,Bash(gh:*)"
+  ]);
+  assert.ok(!spawnCalls[0]!.args.includes("--dangerously-skip-permissions"));
+});
+
+test("AC-reg: buildDefaultTickExec with no allowedTools configured adds no --allowedTools flag (never a bypass)", async () => {
+  const watchHome = await tmpWatchHome(); // no config.json written — zero-config default
+
+  const spawnCalls: string[][] = [];
+  const spawnFn: SpawnFn = (_bin, args) => {
+    spawnCalls.push(args);
+    return { on: () => {}, unref: () => {} };
+  };
+
+  const exec = buildDefaultTickExec(watchHome, () => new Date("2026-07-10T00:00:00.000Z"), spawnFn);
+
+  await exec.spawnReaction({
+    finding: { kind: "red-pr", findingId: "pr:9", ghSlug: "org/repo-a" },
+    action: "pr-fix",
+    command: 'claude -p "/runner:pr-fix 9"',
+    promptArg: "/runner:pr-fix 9",
+    cwd: "C:\\work\\repo-a"
+  });
+
+  assert.deepEqual(spawnCalls, [["-p", "/runner:pr-fix 9"]]);
+});
+
+test("AC-reg: buildDefaultTickExec never calls spawnFn for an issue-broker-file (tier-2) reaction", async () => {
+  const watchHome = await tmpWatchHome();
+  let called = false;
+  const spawnFn: SpawnFn = () => {
+    called = true;
+    return { on: () => {}, unref: () => {} };
+  };
+
+  const exec = buildDefaultTickExec(watchHome, () => new Date("2026-07-10T00:00:00.000Z"), spawnFn);
+
+  await exec.spawnReaction({
+    finding: { kind: "issue", findingId: "issue:1", ghSlug: "org/repo-b" },
+    action: "issue-broker-file",
+    command: "# issue-broker-file: issue:1 (tier-2, watch-only — no headless spawn)",
+    promptArg: "",
+    cwd: "C:\\work\\repo-b"
+  });
+
+  assert.equal(called, false);
 });
 
 // ---------------------------------------------------------------------------

@@ -22,6 +22,16 @@ import path from "node:path";
 
 export interface MachineConfig {
   machineShard: number;
+  // Pre-configured permission allowlist for Layer 2's headless `claude -p`
+  // reaction sessions (FEAT-244 SLICE-147 / contract B3 AC-3) — joined and
+  // passed as `--allowedTools <a,b,c>` by watch/reaction-spawn.mts. Absent,
+  // empty, or malformed means NO --allowedTools flag is added at all: the
+  // spawned session falls back to Claude Code's normal interactive
+  // permission prompts. A headless `-p` session with no configured
+  // allowlist may then stall waiting on a prompt it can never answer — an
+  // accepted, documented trade-off. It is NEVER resolved by substituting
+  // `--dangerously-skip-permissions` (see reaction-spawn.mts).
+  allowedTools?: string[];
 }
 
 export const DEFAULT_MACHINE_SHARD = 1;
@@ -30,21 +40,34 @@ export function machineConfigPath(watchHome: string): string {
   return path.join(watchHome, "config.json");
 }
 
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((v) => typeof v === "string" && v.length > 0)
+  );
+}
+
 /**
  * Reads `<watchHome>/config.json`. Missing file, unparseable JSON, or a
  * non-positive-integer `machineShard` all fall back to
  * DEFAULT_MACHINE_SHARD rather than throwing — an absent config is the
- * expected zero-config single-machine case, not an error.
+ * expected zero-config single-machine case, not an error. `allowedTools` is
+ * similarly best-effort: a malformed value is dropped (treated as absent)
+ * rather than failing the whole config read.
  */
 export async function readMachineConfig(watchHome: string): Promise<MachineConfig> {
   try {
     const raw = await fs.readFile(machineConfigPath(watchHome), "utf-8");
     const parsed = JSON.parse(raw) as Partial<MachineConfig>;
-    const { machineShard } = parsed;
-    if (typeof machineShard === "number" && Number.isInteger(machineShard) && machineShard > 0) {
-      return { machineShard };
-    }
-    return { machineShard: DEFAULT_MACHINE_SHARD };
+    const { machineShard, allowedTools } = parsed;
+    const shard =
+      typeof machineShard === "number" && Number.isInteger(machineShard) && machineShard > 0
+        ? machineShard
+        : DEFAULT_MACHINE_SHARD;
+    return isNonEmptyStringArray(allowedTools)
+      ? { machineShard: shard, allowedTools }
+      : { machineShard: shard };
   } catch {
     return { machineShard: DEFAULT_MACHINE_SHARD };
   }

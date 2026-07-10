@@ -44,9 +44,9 @@ Replace the `spawnReaction` console.log stub in `sweep.mts` (deferred from SLICE
 
 ## Acceptance criteria
 
-- [ ] AC-3 [B3]: Given Layer 2's headless `claude -p` reaction sessions, When they run, Then they execute under a pre-configured permission allowlist (settings permissions / `--allowedTools`) and NEVER pass `--dangerously-skip-permissions` — evidenced by a grep/lint check over the spawn call sites plus a unit test asserting the constructed command args never include that flag. (source: 2026-07-07-watcher-acs-eta.md AC-3, B3 section)
-- [ ] AC-3b [carried SLICE-145 INFO]: Given a crash between reaction spawn and ledger record, When the next tick runs, Then no concurrency slot is leaked untracked and no reaction double-spawns — evidenced by a test covering the chosen ordering semantics (record-before-spawn with failure-prune, or equivalent) asserting ledger + claim state after a simulated spawn failure.
-- [ ] AC-reg: Given a quiet tick and a cap/ceiling-blocked finding, When the real spawner is wired, Then existing B1 AC-1/AC-4 tests still pass with zero real processes spawned in any test run.
+- [x] AC-3 [B3]: Given Layer 2's headless `claude -p` reaction sessions, When they run, Then they execute under a pre-configured permission allowlist (settings permissions / `--allowedTools`) and NEVER pass `--dangerously-skip-permissions` — evidenced by a grep/lint check over the spawn call sites plus a unit test asserting the constructed command args never include that flag. (source: 2026-07-07-watcher-acs-eta.md AC-3, B3 section)
+- [x] AC-3b [carried SLICE-145 INFO]: Given a crash between reaction spawn and ledger record, When the next tick runs, Then no concurrency slot is leaked untracked and no reaction double-spawns — evidenced by a test covering the chosen ordering semantics (record-before-spawn with failure-prune, or equivalent) asserting ledger + claim state after a simulated spawn failure.
+- [x] AC-reg: Given a quiet tick and a cap/ceiling-blocked finding, When the real spawner is wired, Then existing B1 AC-1/AC-4 tests still pass with zero real processes spawned in any test run.
 
 ## Done When
 

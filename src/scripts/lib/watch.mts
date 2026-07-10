@@ -14,6 +14,8 @@ export {
   DEFAULT_MACHINE_SHARD
 } from "./watch/config.mjs";
 export type { MachineConfig } from "./watch/config.mjs";
+export { buildSpawnArgs, spawnReactionProcess, CLAUDE_BIN } from "./watch/reaction-spawn.mjs";
+export type { SpawnArgs, SpawnFn, SpawnHandle } from "./watch/reaction-spawn.mjs";
 
 export type {
   RegistryEntry,

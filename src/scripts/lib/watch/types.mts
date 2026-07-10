@@ -77,6 +77,10 @@ export type ReactionAction = "intake" | "pr-fix" | "crew-fix" | "issue-broker-fi
 export interface ReactionSpawn {
   finding: Finding;
   action: ReactionAction;
-  command: string; // the `claude -p "..."` invocation string
+  command: string; // human-readable display/audit string, e.g. `claude -p "..."`
+  // Exact `-p` argument text for a real headless spawn — no shell quoting,
+  // passed as a single argv element (watch/reaction-spawn.mts). Empty for
+  // "issue-broker-file" (tier-2, watch-only — never a real spawn).
+  promptArg: string;
   cwd: string; // RegistryEntry.path
 }
