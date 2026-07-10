@@ -4,6 +4,65 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.69.0] — 2026-07-10 — plugin-std adoption (W2b) + tracker Phase 3 close
+
+Minor: adopts the shared `@astragenie/plugin-std` library from plugins-common
+(issue #449, mirroring dev-team's W2a / crew v0.60.0), and closes the
+tracker-provider program's Phase 3 (FEAT-252 LinearProvider, live-verified).
+
+### Added
+
+- **`src/scripts/lib/run-git.mts`** (#454) — central git wrapper over
+  `@astragenie/plugin-std/git`: `gitText` (null on failure, trimmed),
+  `gitOk`, `gitTextOrThrow` (mirrors `promisify(execFile)` rejection —
+  attaches `.stdout`/`.stderr`/`.code`), raw passthrough. 12 files migrated
+  off inline `child_process` git spawns; sync `execFileSync` sites
+  (dispatch-merge / dispatch-worktree / dispatch-pr-mode) stay local until
+  plugin-std ships a sync variant. New 12-case `run-git.test.mts` pins the
+  error contract.
+- **`docs/task-store.md`** (#447) — operator doc for the task-store provider
+  system (provider selection, `taskStore.linear` schema, auth order,
+  soft-fail contract, COND-C descope, setup CLI).
+
+### Changed
+
+- **Dependencies** (#450): `@astragenie/astramem-client` 0.1.0 → ^0.2.0;
+  `@astragenie/plugin-std` ^0.5.0 added.
+- **jsonl** (#452): `jsonl-append.mts` default path delegates to
+  `@astragenie/plugin-std/jsonl`; injected-primitive test seam and
+  `appendJsonlSync` stay local. `grade-jsonl-writer` / `slice-events` /
+  `wave/events` routed through the central helper with their exact
+  throw/swallow contracts preserved.
+- **result** (#453): `ok`/`err` delegate to plugin-std at runtime
+  (byte-identical shape); `Result<T, E = Error>` aliased with the E default
+  pinned locally per DEC-002; `isOk`/`isErr`/`Ok`/`Err` remain local.
+- **LinearProvider** (#443, #447): real GraphQL write ops (issueCreate,
+  sub-issue parentId, workflow-state transition, commentCreate) behind
+  injectable transport; auth via `LINEAR_API_KEY` env → token-store
+  fallback; default state map; COND-C descope stubs for syncPull/bootstrap.
+  Live-smoked against the Astragenie workspace (validation artifact in
+  `.claude/artifacts/crew/validations/`).
+
+### Fixed
+
+- **Linear workflow-state transitions silently failing live** (#447):
+  `WorkflowStateByName` declared `$teamId: String!` where Linear's schema
+  requires `ID!` — found by the mandated live smoke (mock transports cannot
+  catch GraphQL variable-type mismatches), schema-verified, and pinned by
+  query-text regression assertions.
+- **`gitTextOrThrow` error contract** (#454): initial wrapper threw a bare
+  `Error`, dropping the `.stderr` consumed by 8 `MergeError`/`WorktreeError`
+  readers — caught by review, fixed with promisify-shape parity + tests.
+
+### Documented (evaluated, intentionally not adopted)
+
+- **frontmatter stays local** (#451): a 2,169-file parity corpus against
+  plugin-std's real-YAML parser found 47 divergences + 7 throws on real
+  production files (block-scalar folding, flow-mapping string-vs-object,
+  inline-array number coercion, backtick-leading scalars). Recorded in a
+  documentation block inside `frontmatter.mts`; revisit if plugin-std ships
+  a tolerant mode.
+
 ## [v0.68.0] — 2026-07-10 — watcher MVP + real headless reactions
 
 Minor: the autonomous repo watcher lands end-to-end (FEAT-242 + FEAT-244),
