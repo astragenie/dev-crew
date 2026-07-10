@@ -25,6 +25,7 @@ Slice SLICE-150 closed with acceptance criteria PASS. Capture lessons + decision
 - Any extracted `.claude/artifacts/loop/decisions/DEC-NNN.md` files
 ## Changed files / evidence
 - slice file (completed): `.claude/artifacts/loop/ai-loop/slices/completed/SLICE_150_ARCHITECT-DEC-BACKLOGSTORE-INTERFACE-DOCTOR-MTS-CLASSIFICATI.md`
+- feature file (done): `.claude/artifacts/loop/backlog/done/FEAT-250.md`
 ## Confidence
 High — slice + feature moves atomic; spec reconciliation idempotent.
 ## Risks or open questions
