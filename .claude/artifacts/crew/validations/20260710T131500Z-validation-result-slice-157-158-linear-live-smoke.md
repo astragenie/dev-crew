@@ -3,7 +3,7 @@ run: slice-157-158-completion
 slices: [SLICE-157, SLICE-158]
 feature: FEAT-252
 validator: main-thread manual smoke (per slice AC "one documented manual smoke against Astragenie workspace")
-decision: passed
+decision: pass
 recorded_at: 2026-07-10T13:15:00Z
 ---
 

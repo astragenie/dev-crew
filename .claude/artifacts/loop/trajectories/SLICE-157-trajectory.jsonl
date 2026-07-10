@@ -1,0 +1,4 @@
+{"type":"slice_start","sliceId":"SLICE-157","timestamp":"2026-07-10T13:03:37.772Z","featureId":"FEAT-252","title":"SLICE-157: Core GraphQL write methods: issueCreate + parentId, state transition, commentCreate","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260710T130337Z-plan-SLICE-157.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-157","timestamp":"2026-07-10T13:31:21.000Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-157","timestamp":"2026-07-10T13:31:23.400Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-157","timestamp":"2026-07-10T13:33:48.565Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":true}

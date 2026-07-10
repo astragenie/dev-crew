@@ -1,0 +1,6 @@
+{"type":"slice_start","sliceId":"SLICE-158","timestamp":"2026-07-10T13:03:38.656Z","featureId":"FEAT-252","title":"SLICE-158: COND-C warning-stubs + config seeding + IssueBroker-reusable ops + manual smoke","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260710T130338Z-plan-SLICE-158.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-158","timestamp":"2026-07-10T13:31:25.310Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-158","timestamp":"2026-07-10T13:31:31.610Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-158","timestamp":"2026-07-10T13:32:38.298Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":false}
+{"type":"slice_complete","sliceId":"SLICE-158","timestamp":"2026-07-10T13:33:27.814Z","featureId":"FEAT-252","featureMovedTo":null,"validationSatisfied":true}
+{"type":"slice_complete","sliceId":"SLICE-158","timestamp":"2026-07-10T13:33:50.918Z","featureId":"FEAT-252","featureMovedTo":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-252.md","validationSatisfied":true}
