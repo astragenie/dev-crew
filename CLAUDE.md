@@ -84,8 +84,17 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
    raw-writes a backlog-shaped FEAT/SLICE path. `doctor.mts` (cross-tree
    reconciliation) and `pm-apply.mts` (body-section content edits) are
    named allowlist exceptions with an inline rationale each.
-11. `bun test src/tests/ --parallel --timeout 60000`
-12. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+11. `bun ./src/scripts/validate-slice-touches-files.mts` — validates every
+   pending/in-progress/needs-review slice's `touches_files` (declared or
+   inferred from body prose). Errors on absolute paths, `..` traversal, or a
+   path whose top-level segment doesn't exist anywhere in the repo (a typo'd
+   or fabricated root). A missing immediate parent dir under a real
+   top-level area is allowed — slices routinely plan a new subdirectory
+   (e.g. `docs/architecture/foo.md` when `docs/architecture` doesn't exist
+   yet). Warns (does not fail) when `touches_files` is absent altogether on
+   a slice created on/after `--warn-cutoff` (default 2026-06-15).
+12. `bun test src/tests/ --parallel --timeout 60000`
+13. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
    `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
    Regenerates the snapshot content in-memory and diffs it against the
    on-disk file; any drift (backlog/grade counts, "next to slice" list,

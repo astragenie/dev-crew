@@ -27,7 +27,28 @@ function listSlices(repoRoot: string): string[] {
 function extractCreated(slicePath: string): string | null {
   const raw = readFileSync(slicePath, "utf8");
   const m = raw.match(/^created:\s*(\d{4}-\d{2}-\d{2})/m);
-  return m && m[1] ? m[1] : null;
+  return m?.[1] ? m[1] : null;
+}
+
+function topLevelSegment(p: string): string {
+  const idx = p.indexOf("/");
+  return idx === -1 ? p : p.slice(0, idx);
+}
+
+// Validates one declared/inferred path, returning an error message or null.
+// A missing immediate parent dir is not itself an error — a slice
+// legitimately plans to create a new subdirectory under an existing
+// top-level area (e.g. "docs/architecture/foo.md" when "docs/architecture"
+// doesn't exist yet but "docs" does). Only an unknown top-level segment
+// (the signal of a typo'd or fabricated path) is flagged.
+function checkPath(p: string, repoRoot: string): string | null {
+  if (isAbsolute(p)) return `path "${p}" outside repo (absolute)`;
+  if (p.includes("..")) return `path "${p}" outside repo (parent traversal)`;
+  if (p.includes("*")) return null;
+  if (existsSync(join(repoRoot, dirname(p)))) return null;
+  const top = topLevelSegment(p);
+  if (existsSync(join(repoRoot, top))) return null;
+  return `top-level dir "${top}" does not exist for "${p}"`;
 }
 
 export function validateRepo(repoRoot: string, opts: { warnCutoff: string }): ValidateResult {
@@ -48,19 +69,8 @@ export function validateRepo(repoRoot: string, opts: { warnCutoff: string }): Va
     }
 
     for (const p of r.paths) {
-      if (isAbsolute(p)) {
-        errors.push(`${sliceId}: path "${p}" outside repo (absolute)`);
-        continue;
-      }
-      if (p.includes("..")) {
-        errors.push(`${sliceId}: path "${p}" outside repo (parent traversal)`);
-        continue;
-      }
-      if (p.includes("*")) continue;
-      const parent = dirname(p);
-      if (!existsSync(join(repoRoot, parent))) {
-        errors.push(`${sliceId}: parent dir "${parent}" does not exist for "${p}"`);
-      }
+      const problem = checkPath(p, repoRoot);
+      if (problem !== null) errors.push(`${sliceId}: ${problem}`);
     }
   }
 

@@ -76,6 +76,24 @@ touches_files_confidence: declared
     expect(r.errors[0]).toContain("bogus/path");
   });
 
+  test("clean: declared path whose immediate parent is missing but top-level dir exists (planned new subdir)", () => {
+    mkdirSync(join(tmp, "docs"), { recursive: true });
+    writeSlice(
+      "pending",
+      "SLICE-5.md",
+      `---
+id: SLICE-5
+created: 2026-06-15
+touches_files:
+  - docs/architecture/operating-loop.md
+touches_files_confidence: declared
+---
+`
+    );
+    const r = validateRepo(tmp, { warnCutoff: "2026-06-01" });
+    expect(r.errors).toEqual([]);
+  });
+
   test("error: absolute path declared", () => {
     writeSlice(
       "pending",

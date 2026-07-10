@@ -75,6 +75,7 @@ jobs:
         bun ./src/scripts/validate-agent-refs.mts
         bun ./src/scripts/validate-imports.mts
         bun ./src/scripts/validate-backlog-writes.mts
+        bun ./src/scripts/validate-slice-touches-files.mts
         bun ./src/scripts/validate-snapshot-freshness.mts
       bun-commands: |
         bunx tsc --project tsconfig.json --noEmit
