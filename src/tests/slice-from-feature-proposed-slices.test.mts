@@ -137,6 +137,114 @@ test("sliceFromFeature proposed_slices path: FEAT surface:*/stack:* tags propaga
   }
 });
 
+// QW4: per-slice ACs from proposed_slices, and the shared-copy warning for
+// siblings that fall back to the FEAT-level ACs.
+test("QW4: a proposed_slices entry with its own acceptance_criteria uses those, not the FEAT-level ACs", async () => {
+  const repo = await tmpRepo("sfp-own-ac-");
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 8,
+    proposed_slices: [
+      {
+        id_suffix: "-SLICE-1",
+        title: "First",
+        points: 5,
+        acceptance_criteria: ["AC-1: first slice's own scoped criterion"]
+      },
+      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+    ]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 2);
+
+  const firstContent = await fs.readFile((out.slices[0] as { path: string }).path, "utf8");
+  assert.match(firstContent, /- \[ \] AC-1: first slice's own scoped criterion/);
+  assert.ok(
+    !firstContent.includes("seeded acceptance criterion"),
+    "own acceptance_criteria must replace, not merge with, the FEAT-level ACs"
+  );
+  assert.ok(
+    !firstContent.includes("WARNING"),
+    "own acceptance_criteria must not trigger the shared-copy warning"
+  );
+
+  const secondContent = await fs.readFile((out.slices[1] as { path: string }).path, "utf8");
+  assert.match(secondContent, /seeded acceptance criterion/);
+  assert.match(
+    secondContent,
+    /> WARNING: ACs copied from .+ and shared across 2 sibling slices — scope per-slice before close/
+  );
+});
+
+// QW4 review — the unit tests above construct proposed_slices as an in-memory
+// JS object and never touch serializeFrontmatter/parseFrontmatter, so they
+// missed that a comma-bearing GWT acceptance_criteria entry got shredded by
+// frontmatter.mts's inline-array parser. This test goes through the REAL
+// write + read path (updateFeatureFrontmatter -> sliceFromFeature) with
+// comma-heavy prose, the median shape for FEAT-277 inline-AC content.
+test("QW4: a comma-bearing acceptance_criteria entry round-trips through the real frontmatter read/write path as exactly one checkbox bullet", async () => {
+  const repo = await tmpRepo("sfp-comma-ac-");
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
+  const gwt = "Given a logged-in user, when they click save, then the record persists";
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 8,
+    proposed_slices: [
+      {
+        id_suffix: "-SLICE-1",
+        title: "First",
+        points: 5,
+        acceptance_criteria: [gwt]
+      },
+      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+    ]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  const firstContent = await fs.readFile((out.slices[0] as { path: string }).path, "utf8");
+
+  const acBullets = firstContent
+    .split("\n")
+    .filter((line) => line.startsWith("- [ ]") || line.startsWith("- [x]"));
+  assert.equal(acBullets.length, 1, "the comma-bearing AC must produce exactly one bullet");
+  assert.equal(acBullets[0], `- [ ] ${gwt}`);
+});
+
+test("QW4: no proposed_slices entry carries its own ACs — every sibling gets the shared-copy warning", async () => {
+  const repo = await tmpRepo("sfp-shared-warn-");
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 8,
+    proposed_slices: [
+      { id_suffix: "-SLICE-1", title: "First", points: 5 },
+      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+    ]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  for (const sl of out.slices as { path: string }[]) {
+    const content = await fs.readFile(sl.path, "utf8");
+    assert.match(content, /> WARNING: ACs copied from .+ and shared across 2 sibling slices/);
+  }
+});
+
+test("QW4: a single-entry proposed_slices array does not trigger the shared-copy warning", async () => {
+  const repo = await tmpRepo("sfp-single-proposed-");
+  const feat = await addFeature(repo, { title: "Right-sized work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 5,
+    proposed_slices: [{ id_suffix: "-SLICE-1", title: "Only slice", points: 5 }]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 1);
+  const content = await fs.readFile((out.slices[0] as { path: string }).path, "utf8");
+  assert.ok(
+    !content.includes("WARNING"),
+    "single-slice proposed_slices must stay silent like the single-slice path"
+  );
+});
+
 test("from-feature CLI on malformed proposed_slices writes audit + exits 1", async () => {
   const repo = await tmpRepo("sfp-malformed-cli-");
   const feat = await addFeature(repo, { title: "Bad sized" });

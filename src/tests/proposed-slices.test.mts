@@ -140,6 +140,60 @@ test("AC-2: assertSized is a no-op when effort_points is missing / non-integer",
   assert.doesNotThrow(() => assertSized(FEAT, "13" as unknown as number, undefined));
 });
 
+// QW4: optional per-slice acceptance_criteria field.
+test("QW4: acceptance_criteria present and valid is parsed through verbatim", () => {
+  const raw = [
+    {
+      id_suffix: "-SLICE-1",
+      title: "Auth",
+      points: 5,
+      acceptance_criteria: ["AC-1: given X when Y then Z"]
+    }
+  ];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.deepEqual(out![0]!.acceptance_criteria, ["AC-1: given X when Y then Z"]);
+});
+
+test("QW4: acceptance_criteria is optional — absent entries parse fine", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 5 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.acceptance_criteria, undefined);
+});
+
+test("QW4: acceptance_criteria that is not an array throws", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "Auth", points: 5, acceptance_criteria: "not an array" }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError &&
+      /acceptance_criteria in slice 0/.test(err.message)
+  );
+});
+
+test("QW4: empty acceptance_criteria array throws", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 5, acceptance_criteria: [] }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError &&
+      /acceptance_criteria in slice 0/.test(err.message)
+  );
+});
+
+test("QW4: acceptance_criteria with a blank-string entry throws", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "Auth", points: 5, acceptance_criteria: ["ok", "   "] }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError &&
+      /acceptance_criteria in slice 0/.test(err.message)
+  );
+});
+
 test("AC-2: threshold is configurable via 4th arg", () => {
   assert.throws(
     () => assertSized(FEAT, 5, undefined, 5),

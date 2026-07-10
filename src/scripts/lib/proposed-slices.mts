@@ -21,6 +21,13 @@ export interface ProposedSlice {
   id_suffix: string;
   title: string;
   points: EffortPoints;
+  // Optional per-slice acceptance criteria (astragenie/runner-plugin QW4).
+  // When a PM decomposition supplies this, the materializer uses it verbatim
+  // for that slice's AC section instead of copying the FEAT-level ACs into
+  // every sibling slice. Absent on decompositions authored before this field
+  // existed — callers fall back to FEAT-level ACs (with a shared-copy
+  // warning for multi-slice FEATs).
+  acceptance_criteria?: string[];
 }
 
 const ID_SUFFIX_RE = /^-SLICE-\d+$/;
@@ -93,7 +100,28 @@ function validateOne(s: unknown, featureId: string, index: number): ProposedSlic
     );
   }
 
-  return { id_suffix: idSuffix, title, points };
+  const acRaw = obj["acceptance_criteria"];
+  let acceptanceCriteria: string[] | undefined;
+  if (acRaw !== undefined) {
+    const isValid =
+      Array.isArray(acRaw) &&
+      acRaw.length > 0 &&
+      acRaw.every((x) => typeof x === "string" && x.trim().length > 0);
+    if (!isValid) {
+      throw new InvalidProposedSlicesError(
+        featureId,
+        `acceptance_criteria in slice ${index} must be a non-empty array of non-empty strings (got ${JSON.stringify(acRaw)})`
+      );
+    }
+    acceptanceCriteria = acRaw as string[];
+  }
+
+  return {
+    id_suffix: idSuffix,
+    title,
+    points,
+    ...(acceptanceCriteria ? { acceptance_criteria: acceptanceCriteria } : {})
+  };
 }
 
 /**

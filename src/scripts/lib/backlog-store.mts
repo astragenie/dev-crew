@@ -456,13 +456,29 @@ function deriveSliceTitleFromFeatureBody(featureBody: string, featureId: string)
   return titleLine ? titleLine.replace(/^#\s+[A-Z]+-\d+:\s*/, "").trim() : `Implement ${featureId}`;
 }
 
+// Normalizes a raw acceptance-criteria string (plain prose, a `- AC-N: ...`
+// bullet, or a `- [ ]`/`- [x]` checkbox line) into the slice file's canonical
+// `- [ ] ...` bullet form. Mirrors classifyAcceptanceCriteriaLine's checkbox
+// handling but accepts any non-empty string, since proposed_slices'
+// `acceptance_criteria` entries are PM-authored free text, not constrained to
+// the FEAT body's heading-scoped bullet grammar.
+function normalizeAcBullet(raw: string): string {
+  const text = raw
+    .trim()
+    .replace(/^-\s*\[[ xX]\]\s*/, "")
+    .replace(/^-\s+/, "");
+  return `- [ ] ${text}`;
+}
+
 function buildSliceMarkdown({
   id,
   title,
   featureId,
   featureFrontmatter,
   featureBody,
-  effortPoints
+  effortPoints,
+  acceptanceCriteria,
+  acWarning
 }: {
   id: string;
   title: string;
@@ -470,6 +486,8 @@ function buildSliceMarkdown({
   featureFrontmatter: Record<string, unknown>;
   featureBody: string;
   effortPoints?: number;
+  acceptanceCriteria?: string[];
+  acWarning?: string;
 }): string {
   const today = nowIsoDate();
   const safeTitle = clampSliceTitle(title);
@@ -497,14 +515,20 @@ function buildSliceMarkdown({
     .split(/\n+/)
     .find((line) => line && !line.startsWith("#") && !line.startsWith("---"));
 
-  // No AC auto-generation: the caller's assertAcceptanceCriteria gate
-  // guarantees the FEAT body carries real ACs before we reach here. Refuse
-  // loudly rather than fabricate placeholder ACs if a future caller bypasses
-  // the gate.
-  const acLines = extractAcceptanceCriteria(featureBody);
+  // Per-slice ACs win when the proposed_slices entry carries its own
+  // acceptance_criteria (QW4) — each sibling slice then claims only the
+  // ACs it actually delivers instead of the whole FEAT's list. Otherwise
+  // fall back to the FEAT-level ACs; the caller's assertAcceptanceCriteria
+  // gate guarantees the FEAT body carries real ACs before we reach here, so
+  // this only throws if a future caller bypasses that gate.
+  const usingOwnAc = Array.isArray(acceptanceCriteria) && acceptanceCriteria.length > 0;
+  const acLines = usingOwnAc
+    ? acceptanceCriteria.map(normalizeAcBullet)
+    : extractAcceptanceCriteria(featureBody);
   if (acLines.length === 0) {
     throw new AcceptanceCriteriaRequiredError(featureId);
   }
+  const acSectionLines = !usingOwnAc && acWarning ? [acWarning, "", ...acLines] : acLines;
 
   const body = [
     `# ${id}: ${safeTitle}`,
@@ -528,7 +552,7 @@ function buildSliceMarkdown({
     "",
     "## Acceptance criteria",
     "",
-    ...acLines,
+    ...acSectionLines,
     "",
     "## Done When",
     "",
@@ -557,6 +581,13 @@ export interface CreateSliceOpts {
   title?: string;
   effortPoints?: number;
   config?: Record<string, unknown> | null;
+  // QW4: per-slice ACs from a proposed_slices entry's own acceptance_criteria
+  // field, when the caller has one. Takes priority over featureBody's ACs.
+  acceptanceCriteria?: string[];
+  // QW4: visible AC-section warning line, injected only when acceptanceCriteria
+  // is absent and the caller (materializeProposedSlices) determined this
+  // slice's ACs are copied from the FEAT and shared across sibling slices.
+  acWarning?: string;
 }
 
 export interface CreateSliceResult {
@@ -582,6 +613,8 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     featureFrontmatter,
     featureBody,
     effortPoints,
+    acceptanceCriteria,
+    acWarning,
     config = null
   } = opts;
   const slicesRootDir = slicesRoot(repoPath, config);
@@ -599,7 +632,9 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     featureId,
     featureFrontmatter,
     featureBody,
-    ...(effortPoints !== undefined ? { effortPoints } : {})
+    ...(effortPoints !== undefined ? { effortPoints } : {}),
+    ...(acceptanceCriteria !== undefined ? { acceptanceCriteria } : {}),
+    ...(acWarning !== undefined ? { acWarning } : {})
   });
   await fs.writeFile(filePath, content);
   return { id, filePath, title };

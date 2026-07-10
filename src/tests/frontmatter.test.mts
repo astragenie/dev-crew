@@ -197,6 +197,95 @@ test("serializeFrontmatter -> parseFrontmatter round-trips surface:*/stack:* tag
   assert.deepEqual(reparsed.tags, ["surface:ui", "surface:api", "stack:typescript"]);
 });
 
+// QW4 review — an array-of-mappings item field whose OWN value is an array
+// (e.g. proposed_slices[].acceptance_criteria) only has one authorable shape:
+// inline. Comma-bearing GWT prose is the motivating content (FEAT-277's
+// inline-AC contract), and it must round-trip as exactly one item, not shred
+// on every embedded comma.
+test("QW4: an inline array item containing commas round-trips as one string, not split on every comma", () => {
+  const fm = {
+    proposed_slices: [
+      {
+        id_suffix: "-SLICE-1",
+        title: "First",
+        points: 5,
+        acceptance_criteria: [
+          "Given a logged-in user, when they click save, then the record persists"
+        ]
+      }
+    ]
+  };
+  const out = serializeFrontmatter(fm, "body");
+  const reparsed = parseFrontmatter(out).frontmatter;
+  assert.deepEqual(reparsed.proposed_slices[0].acceptance_criteria, [
+    "Given a logged-in user, when they click save, then the record persists"
+  ]);
+});
+
+test("QW4: multiple comma-bearing inline array items round-trip individually", () => {
+  const fm = {
+    proposed_slices: [
+      {
+        id_suffix: "-SLICE-1",
+        title: "First",
+        points: 5,
+        acceptance_criteria: ["Given A, when B, then C", "Given D, when E, then F"]
+      }
+    ]
+  };
+  const out = serializeFrontmatter(fm, "body");
+  const reparsed = parseFrontmatter(out).frontmatter;
+  assert.deepEqual(reparsed.proposed_slices[0].acceptance_criteria, [
+    "Given A, when B, then C",
+    "Given D, when E, then F"
+  ]);
+});
+
+test("QW4: a nested block list under a proposed_slices item field throws FrontmatterNestingError, not silent corruption", () => {
+  const input = [
+    "---",
+    "proposed_slices:",
+    "  - id_suffix: -SLICE-1",
+    "    title: First",
+    "    points: 5",
+    "    acceptance_criteria:",
+    "      - Given a logged-in user, when they click save, then the record persists",
+    "      - A second criterion",
+    "  - id_suffix: -SLICE-2",
+    "    title: Second",
+    "    points: 3",
+    "---",
+    "body"
+  ].join("\n");
+  assert.throws(
+    () => parseFrontmatter(input),
+    (err: Error) =>
+      err.name === "FrontmatterNestingError" &&
+      /"proposed_slices" item field "acceptance_criteria"/.test(err.message) &&
+      /inline array/.test(err.message)
+  );
+});
+
+test("QW4: an item field left genuinely empty, followed by the array's next item, still parses as null (not misread as nesting)", () => {
+  const input = [
+    "---",
+    "proposed_slices:",
+    "  - id_suffix: -SLICE-1",
+    "    title: First",
+    "    points: 5",
+    "    acceptance_criteria:",
+    "  - id_suffix: -SLICE-2",
+    "    title: Second",
+    "    points: 3",
+    "---",
+    "body"
+  ].join("\n");
+  const { frontmatter } = parseFrontmatter(input);
+  assert.equal(frontmatter.proposed_slices.length, 2);
+  assert.equal(frontmatter.proposed_slices[0].acceptance_criteria, null);
+  assert.equal(frontmatter.proposed_slices[1].id_suffix, "-SLICE-2");
+});
+
 test("serializeFrontmatter leaves empty arrays inline (preserves prior shape)", () => {
   const fm = { tags: [] };
   const out = serializeFrontmatter(fm, "");

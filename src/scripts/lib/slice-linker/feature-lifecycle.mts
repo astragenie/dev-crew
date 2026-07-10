@@ -318,10 +318,27 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
   const toCreate = proposed.slice(existingSlices.length);
   const newSlices: { id: string; path: string; title: string; points: number }[] = [];
 
+  // A FEAT-level AC copy is only misleading when there are 2+ sibling
+  // slices to split scope across — a lone proposed_slices entry legitimately
+  // owns the whole FEAT's ACs, same as the single-slice path.
+  const isSharedAcRisk = proposed.length >= 2;
+
   // Sequential, not parallel: each createSlice call allocates its next id by
   // scanning slicesRoot for the current max, so the previous iteration's
   // write must land on disk before the next allocates.
   for (const item of toCreate) {
+    const ownAc =
+      Array.isArray(item.acceptance_criteria) && item.acceptance_criteria.length > 0
+        ? item.acceptance_criteria
+        : undefined;
+    const warnSharedAc = !ownAc && isSharedAcRisk;
+    if (warnSharedAc) {
+      console.warn(
+        `[slice-linker] ${featureId} ${item.id_suffix}: no acceptance_criteria on this ` +
+          `proposed_slices entry — copying FEAT-level ACs across ${proposed.length} sibling ` +
+          "slices. Scope this slice's AC section before close."
+      );
+    }
     const created = await createSlice({
       repoPath,
       featureId,
@@ -330,6 +347,14 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       featureBody,
       title: item.title,
       effortPoints: item.points,
+      ...(ownAc ? { acceptanceCriteria: ownAc } : {}),
+      ...(warnSharedAc
+        ? {
+            acWarning:
+              `> WARNING: ACs copied from ${featureId} and shared across ${proposed.length} ` +
+              "sibling slices — scope per-slice before close"
+          }
+        : {}),
       config
     });
     newSlices.push({

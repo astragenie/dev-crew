@@ -18,6 +18,19 @@
 // arrays etc.), multiline scalars beyond strings, anchors/aliases. Schema
 // enforcement happens at the caller.
 //
+// An array-of-mappings item field (e.g. a `proposed_slices` entry's
+// `acceptance_criteria`) that itself needs an array value MUST be authored
+// as an inline array on one line (`acceptance_criteria: ["a", "b"]`) — a
+// nested block list one level deeper (`acceptance_criteria:\n      - a`) is
+// the "mappings inside arrays" case the paragraph above already rejects, and
+// parseFrontmatter now throws FrontmatterNestingError with an actionable
+// message on that shape instead of silently misparsing it (QW4 review,
+// astragenie/runner-plugin). Comma-bearing inline-array items (GWT-style
+// acceptance-criteria prose is the motivating case) round-trip correctly:
+// serializeScalar already quotes any item containing a comma, and
+// parseScalar's inline-array split is quote-aware so it doesn't split inside
+// a quoted segment.
+//
 // Zero deps — pure Node. Keeps the plugin install-light.
 //
 // @astragenie/plugin-std/frontmatter adoption (issue #449, W2b S2) evaluated
@@ -110,6 +123,47 @@ function stripQuotes(value: string) {
   return v;
 }
 
+// Splits an inline array's inner content on top-level commas only — a comma
+// inside a single- or double-quoted segment does not split. serializeScalar
+// already quotes any array item containing a comma (QUOTE_NEEDED_RE), so a
+// naive `.split(",")` here shredded quoted GWT-style prose ("Given X, when Y,
+// then Z") into multiple garbled items with no error (astragenie/runner-plugin
+// QW4 review — reproduced via acceptance_criteria nested in a proposed_slices
+// item). Backslash-escapes inside a double-quoted segment (`\"`, `\\`) are
+// passed through verbatim so they don't prematurely close the quote; stripQuotes
+// / unescapeDoubleQuoted resolve them afterwards.
+function splitInlineArrayItems(inner: string): string[] {
+  const items: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < inner.length; i += 1) {
+    const ch = inner[i]!;
+    if (quote) {
+      current += ch;
+      if (quote === '"' && ch === "\\" && i + 1 < inner.length) {
+        current += inner[i + 1];
+        i += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === ",") {
+      items.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  items.push(current);
+  return items;
+}
+
 function parseScalar(raw: string) {
   const v = raw.trim();
   if (v === "" || v === "~" || v === "null") return null;
@@ -120,7 +174,7 @@ function parseScalar(raw: string) {
   if (v.startsWith("[") && v.endsWith("]")) {
     const inner = v.slice(1, -1).trim();
     if (inner === "") return [];
-    return inner.split(",").map((item: string) => stripQuotes(item.trim()));
+    return splitInlineArrayItems(inner).map((item: string) => stripQuotes(item.trim()));
   }
   return stripQuotes(v);
 }
@@ -184,17 +238,64 @@ function consumeBlockArrayItem(frontmatter: Frontmatter, state: ParseState, line
   }
 }
 
+// Thrown when an array-of-mappings item's own field looks like it opens a
+// further-nested block list (`key:\n      - a\n      - b`), which this parser
+// does not support — the module doc's "rejects multi-level nesting" rule
+// applies one level deeper than proposed_slices items themselves. Before this
+// check, that shape parsed silently and wrong: the empty `key:` value became
+// `null`, and the following `- ...` lines were misread as new top-level items
+// of the OUTER array (astragenie/runner-plugin QW4 review). Failing loudly
+// here, with a message naming the actual authoring mistake, beats a
+// downstream schema validator blaming the caller's data for a parser gap.
+export class FrontmatterNestingError extends Error {
+  constructor(
+    public readonly arrayKey: string,
+    public readonly field: string
+  ) {
+    super(
+      `frontmatter parse error: "${arrayKey}" item field "${field}" is written as a ` +
+        "nested block list, which this hand-rolled parser does not support one level " +
+        `deep inside an array-of-mappings item — rewrite it as an inline array on one ` +
+        `line instead, e.g. \`${field}: ["a", "b"]\`.`
+    );
+    this.name = "FrontmatterNestingError";
+  }
+}
+
+function leadingWhitespaceLength(line: string): number {
+  return line.match(/^[ \t]*/)?.[0].length ?? 0;
+}
+
 function extendLastArrayMapping(
   frontmatter: Frontmatter,
   state: ParseState,
-  line: string
+  line: string,
+  lines: string[],
+  lineIndex: number
 ): boolean {
   const nm = line.match(NESTED_KV_RE);
   if (!nm) return false;
   const arr = frontmatter[state.currentArrayKey!];
   const last = arr[arr.length - 1];
   if (!last || typeof last !== "object" || Array.isArray(last)) return false;
-  (last as Record<string, unknown>)[nm[1]!] = parseScalar(nm[2]!);
+  const field = nm[1]!;
+  const rawValue = nm[2]!;
+  if (rawValue.trim() === "") {
+    // Peek ahead: an indented "- ..." line strictly deeper than this field's
+    // own indentation is a nested block list under THIS field, not the outer
+    // array's next item (which sits at this field's sibling indentation or
+    // shallower). Only the deeper case is the unsupported shape.
+    const shape = detectEmptyValueShape(lines, lineIndex + 1);
+    if (shape === "array") {
+      const nextLine = lines
+        .slice(lineIndex + 1)
+        .find((l) => l.replace(CRLF_STRIP_RE, "").trim() !== "");
+      if (nextLine && leadingWhitespaceLength(nextLine) > leadingWhitespaceLength(line)) {
+        throw new FrontmatterNestingError(state.currentArrayKey!, field);
+      }
+    }
+  }
+  (last as Record<string, unknown>)[field] = parseScalar(rawValue);
   return true;
 }
 
@@ -203,7 +304,9 @@ function extendLastArrayMapping(
 function tryConsumeContinuation(
   frontmatter: Frontmatter,
   state: ParseState,
-  line: string
+  line: string,
+  lines: string[],
+  lineIndex: number
 ): boolean {
   if (state.currentArrayKey && BLOCK_ARRAY_ITEM_RE.test(line)) {
     consumeBlockArrayItem(frontmatter, state, line);
@@ -215,7 +318,7 @@ function tryConsumeContinuation(
     NESTED_KV_RE.test(line) &&
     !BLOCK_ARRAY_ITEM_RE.test(line)
   ) {
-    if (extendLastArrayMapping(frontmatter, state, line)) return true;
+    if (extendLastArrayMapping(frontmatter, state, line, lines, lineIndex)) return true;
   }
   if (state.currentMapKey && NESTED_KV_RE.test(line) && !BLOCK_ARRAY_ITEM_RE.test(line)) {
     const nm = line.match(NESTED_KV_RE);
@@ -250,7 +353,7 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
       resetState(state);
       continue;
     }
-    if (tryConsumeContinuation(frontmatter, state, line)) continue;
+    if (tryConsumeContinuation(frontmatter, state, line, lines, i)) continue;
     const m = line.match(KEY_VALUE_RE);
     if (!m) {
       resetState(state);

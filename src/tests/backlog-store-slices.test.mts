@@ -124,6 +124,68 @@ describe("createSlice", () => {
     expect(frontmatter.tags).toEqual(["surface:api", "stack:node"]);
   });
 
+  // QW4: per-slice ACs from proposed_slices, and the shared-copy warning.
+  test("uses acceptanceCriteria verbatim (normalized to checkbox bullets) instead of the FEAT body's ACs when given", async () => {
+    const repo = await tmpRepo("bss-create-own-ac-");
+    const feat = await seedFeature(repo);
+
+    const created = await createSlice({
+      repoPath: repo,
+      featureId: "FEAT-001",
+      featureFilePath: feat.filePath,
+      featureFrontmatter: feat.frontmatter,
+      featureBody: feat.body,
+      title: "Own AC slice",
+      acceptanceCriteria: ["AC-1: this slice's own scoped criterion"]
+    });
+
+    const raw = await fs.readFile(created.filePath, "utf8");
+    expect(raw).toContain("- [ ] AC-1: this slice's own scoped criterion");
+    // The FEAT body's seeded ACs must NOT appear — own AC replaces, not merges.
+    expect(raw).not.toContain("seeded acceptance criterion for test scaffolding");
+  });
+
+  test("acWarning is ignored when acceptanceCriteria is also given (no shared-copy warning for own ACs)", async () => {
+    const repo = await tmpRepo("bss-create-own-ac-no-warn-");
+    const feat = await seedFeature(repo);
+
+    const created = await createSlice({
+      repoPath: repo,
+      featureId: "FEAT-001",
+      featureFilePath: feat.filePath,
+      featureFrontmatter: feat.frontmatter,
+      featureBody: feat.body,
+      title: "Own AC slice",
+      acceptanceCriteria: ["AC-1: own criterion"],
+      acWarning: "> WARNING: should not appear"
+    });
+
+    const raw = await fs.readFile(created.filePath, "utf8");
+    expect(raw).not.toContain("WARNING");
+  });
+
+  test("falls back to FEAT-level ACs and injects acWarning banner when acceptanceCriteria is absent", async () => {
+    const repo = await tmpRepo("bss-create-fallback-warn-");
+    const feat = await seedFeature(repo);
+
+    const created = await createSlice({
+      repoPath: repo,
+      featureId: "FEAT-001",
+      featureFilePath: feat.filePath,
+      featureFrontmatter: feat.frontmatter,
+      featureBody: feat.body,
+      title: "Fallback slice",
+      acWarning:
+        "> WARNING: ACs copied from FEAT-001 and shared across 3 sibling slices — scope per-slice before close"
+    });
+
+    const raw = await fs.readFile(created.filePath, "utf8");
+    expect(raw).toContain(
+      "> WARNING: ACs copied from FEAT-001 and shared across 3 sibling slices — scope per-slice before close"
+    );
+    expect(raw).toContain("seeded acceptance criterion for test scaffolding");
+  });
+
   test("throws AcceptanceCriteriaRequiredError when the feature body has no AC section", async () => {
     const repo = await tmpRepo("bss-create-no-ac-");
     const feat = await seedFeature(repo);
