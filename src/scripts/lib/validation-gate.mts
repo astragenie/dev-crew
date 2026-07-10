@@ -31,6 +31,42 @@ function normalizeSliceId(sliceId: string) {
 }
 
 /**
+ * Unpadded numeric id for a canonical `SLICE-<n>`-shaped id, or null when
+ * `sliceId` doesn't match that shape (matching then falls back to the
+ * substring-token scheme in {@link normalizeSliceId}).
+ * @param {string} sliceId
+ * @returns {string|null}
+ */
+function sliceNumericId(sliceId: string): string | null {
+  if (!sliceId) return null;
+  const m = sliceId.toUpperCase().match(/^SLICE[_-]?(\d+)/);
+  return m ? String(parseInt(m[1]!, 10)) : null;
+}
+
+/**
+ * Extracts every slice number referenced in a filename as an unpadded
+ * string set, including combined multi-slice artifacts such as
+ * `...validation-result-slice-157-158-....md`. The digit run following a
+ * `slice` prefix segment is split on its own separators so `157-158` yields
+ * both `157` and `158` — this also fixes the substring-collision bug where
+ * a naive `includes("slice-15")` matched `slice-158` (only a boundary-aware
+ * digit-run split can tell them apart).
+ * @param {string} text
+ * @returns {Set<string>}
+ */
+function extractSliceNumberTokens(text: string): Set<string> {
+  const numbers = new Set<string>();
+  const re = /slice[-_]?(\d+(?:[-_]\d+)*)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    for (const part of match[1]!.split(/[-_]/)) {
+      if (part) numbers.add(String(parseInt(part, 10)));
+    }
+  }
+  return numbers;
+}
+
+/**
  * @param {string} repoPath
  * @param {string} sliceId
  * @returns {Promise<string[]>}
@@ -39,16 +75,107 @@ async function findValidationArtifacts(repoPath: string, sliceId: string) {
   const dir = path.join(repoPath, DEFAULT_VALIDATION_DIR);
   if (!(await pathExists(dir))) return [];
   const entries = await fs.readdir(dir);
+  const numericId = sliceNumericId(sliceId);
   const tokens = normalizeSliceId(sliceId).map((t) => t.toLowerCase());
   const matches: any[] = [];
   for (const entry of entries) {
     if (!entry.endsWith(".md")) continue;
     const lower = entry.toLowerCase();
+    if (numericId !== null) {
+      if (extractSliceNumberTokens(lower).has(numericId)) {
+        matches.push(path.join(dir, entry));
+      }
+      continue;
+    }
     if (tokens.some((token) => lower.includes(token))) {
       matches.push(path.join(dir, entry));
     }
   }
   return matches;
+}
+
+// Synonyms a validator sometimes writes in place of the canonical
+// {pass, fail, skipped} decision vocabulary. Normalization is local to this
+// gate — the review gate has its own vocabulary (approved/approved_with_notes/
+// rejected) via the same shared readNewestArtifactVerdict() reader and must
+// not see this mapping.
+const DECISION_ALIASES: Record<string, "pass" | "fail" | "skipped"> = {
+  pass: "pass",
+  passed: "pass",
+  approved: "pass",
+  fail: "fail",
+  failed: "fail",
+  skipped: "skipped",
+  skip: "skipped"
+};
+
+/**
+ * @param {string} decision
+ * @returns {"pass"|"fail"|"skipped"|null}
+ */
+function normalizeDecision(decision: string): "pass" | "fail" | "skipped" | null {
+  return DECISION_ALIASES[decision.trim().toLowerCase()] ?? null;
+}
+
+/**
+ * Resolves the gate outcome for an already-read artifact verdict. Split out
+ * of {@link deriveValidationGate} to keep that function's branching within
+ * the repo's cognitive-complexity cap.
+ * @param {import("./artifact-verdict.mjs").ArtifactVerdict} verdict
+ * @param {string[]} artifacts
+ * @returns {{ satisfied: boolean, reason: string, evidence: string[] }}
+ */
+function resolveVerdictOutcome(
+  verdict: { decision: string | null; skipReason: string | null; file: string },
+  artifacts: string[]
+) {
+  if (verdict.decision === null) {
+    return {
+      satisfied: true,
+      reason:
+        `validation artifact present (${artifacts.length}) — legacy, no decision frontmatter ` +
+        `(grandfathered pre-P1.3; newest: ${path.basename(verdict.file)})`,
+      evidence: artifacts
+    };
+  }
+  const normalized = normalizeDecision(verdict.decision);
+  const normalizedNote =
+    normalized && normalized !== verdict.decision ? ` [normalized from '${verdict.decision}']` : "";
+  if (normalized === "pass") {
+    return {
+      satisfied: true,
+      reason: `validation artifact decision: pass${normalizedNote} (${path.basename(verdict.file)})`,
+      evidence: artifacts
+    };
+  }
+  if (normalized === "skipped") {
+    const why = verdict.skipReason ? `: ${verdict.skipReason}` : "";
+    // Known intentional divergence: crew's pre-push-verifier does NOT count
+    // skipped as pass; close-ceremony semantics follow the plan (skipped
+    // with a recorded reason satisfies the close gate).
+    return {
+      satisfied: true,
+      reason: `validation artifact decision: skipped${normalizedNote}${why} (${path.basename(verdict.file)})`,
+      evidence: artifacts
+    };
+  }
+  if (normalized === "fail") {
+    return {
+      satisfied: false,
+      reason:
+        `validation artifact decision: fail${normalizedNote} (${path.basename(verdict.file)}) — ` +
+        "a failed validation cannot close; fix and re-validate, " +
+        "record an explicit skip with --skip-validation-check, or use --force-close (audited)",
+      evidence: artifacts
+    };
+  }
+  return {
+    satisfied: false,
+    reason:
+      `unrecognized decision '${verdict.decision}' — expected pass|fail|skipped ` +
+      `(${path.basename(verdict.file)})`,
+    evidence: artifacts
+  };
 }
 
 /**
@@ -117,41 +244,7 @@ export async function deriveValidationGate(
   const artifacts = await findValidationArtifacts(repoPath, sliceId);
   const verdict = await readNewestArtifactVerdict(artifacts);
   if (verdict) {
-    if (verdict.decision === null) {
-      return {
-        satisfied: true,
-        reason:
-          `validation artifact present (${artifacts.length}) — legacy, no decision frontmatter ` +
-          `(grandfathered pre-P1.3; newest: ${path.basename(verdict.file)})`,
-        evidence: artifacts
-      };
-    }
-    if (verdict.decision === "pass") {
-      return {
-        satisfied: true,
-        reason: `validation artifact decision: pass (${path.basename(verdict.file)})`,
-        evidence: artifacts
-      };
-    }
-    if (verdict.decision === "skipped") {
-      const why = verdict.skipReason ? `: ${verdict.skipReason}` : "";
-      // Known intentional divergence: crew's pre-push-verifier does NOT count
-      // skipped as pass; close-ceremony semantics follow the plan (skipped
-      // with a recorded reason satisfies the close gate).
-      return {
-        satisfied: true,
-        reason: `validation artifact decision: skipped${why} (${path.basename(verdict.file)})`,
-        evidence: artifacts
-      };
-    }
-    return {
-      satisfied: false,
-      reason:
-        `validation artifact decision: ${verdict.decision} (${path.basename(verdict.file)}) — ` +
-        "a failed validation cannot close; fix and re-validate, " +
-        "record an explicit skip with --skip-validation-check, or use --force-close (audited)",
-      evidence: artifacts
-    };
+    return resolveVerdictOutcome(verdict, artifacts);
   }
 
   // Opt-in (loop.validation.satisfiedByReview): an EXPLICITLY-EVIDENCED review

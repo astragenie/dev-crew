@@ -157,3 +157,85 @@ test("satisfiedByReview: legacy no-decision review (unproven-ish) still requires
   assert.equal(ok.satisfied, true);
   assert.match(ok.reason, /review-badge/);
 });
+
+// Decision-vocabulary synonyms (operator papercut: a validator wrote
+// `decision: passed` and the gate reported a confusing "a failed validation
+// cannot close" message for what was actually a pass).
+async function writeValidationArtifactWithDecision(
+  repo: string,
+  sliceId: string,
+  decision: string,
+  extraFrontmatter = ""
+) {
+  const token = sliceId.toLowerCase();
+  const body = `---\ndecision: ${decision}\n${extraFrontmatter}---\n# validation for ${sliceId}\n`;
+  await writeValidationsArtifact(repo, `20260709T120000Z-validation-result-${token}-test.md`, body);
+}
+
+for (const [synonym, expectedSatisfied, expectedReasonPattern] of [
+  ["pass", true, /validation artifact decision: pass \(/],
+  ["passed", true, /validation artifact decision: pass \[normalized from 'passed'\]/],
+  ["approved", true, /validation artifact decision: pass \[normalized from 'approved'\]/],
+  ["fail", false, /validation artifact decision: fail \(/],
+  ["failed", false, /validation artifact decision: fail \[normalized from 'failed'\]/],
+  ["skipped", true, /validation artifact decision: skipped \(/],
+  ["skip", true, /validation artifact decision: skipped \[normalized from 'skip'\]/]
+] as const) {
+  test(`deriveValidationGate normalizes decision synonym '${synonym}'`, async () => {
+    const repo = await tmpRepo(`al-vgate-synonym-${synonym}-`);
+    await writeValidationArtifactWithDecision(repo, "SLICE-01", synonym);
+    const result = await deriveValidationGate(repo, "SLICE-01");
+    assert.equal(result.satisfied, expectedSatisfied);
+    assert.match(result.reason, expectedReasonPattern);
+  });
+}
+
+test("deriveValidationGate: unrecognized decision reports 'unrecognized decision' shape, not a failure implication", async () => {
+  const repo = await tmpRepo("al-vgate-unrecognized-");
+  await writeValidationArtifactWithDecision(repo, "SLICE-01", "wontfix");
+  const result = await deriveValidationGate(repo, "SLICE-01");
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /^unrecognized decision 'wontfix' — expected pass\|fail\|skipped/);
+  assert.doesNotMatch(result.reason, /a failed validation cannot close/);
+});
+
+// Combined-slice filename tokens: one artifact can validate multiple slices,
+// e.g. "...validation-result-slice-157-158-....md". Both SLICE-157 and
+// SLICE-158 must match it; a boundary-unaware substring check only matched
+// the first number in the run.
+test("deriveValidationGate: combined-slice artifact filename matches both slice ids", async () => {
+  const repo = await tmpRepo("al-vgate-combined-");
+  await writeValidationsArtifact(
+    repo,
+    "20260709T120000Z-validation-result-slice-157-158-deploy.md"
+  );
+  const result157 = await deriveValidationGate(repo, "SLICE-157");
+  const result158 = await deriveValidationGate(repo, "SLICE-158");
+  assert.equal(result157.satisfied, true);
+  assert.equal(result157.evidence.length, 1);
+  assert.equal(result158.satisfied, true);
+  assert.equal(result158.evidence.length, 1);
+});
+
+// Boundary guard: SLICE-15 must NOT match a slice-158 artifact even though
+// "slice-15" is a string-prefix of "slice-158" — a naive `includes()` check
+// would falsely match.
+test("deriveValidationGate: SLICE-15 does NOT match a slice-158 artifact", async () => {
+  const repo = await tmpRepo("al-vgate-noboundary-");
+  await writeValidationsArtifact(repo, "20260709T120000Z-validation-result-slice-158-deploy.md");
+  const result = await deriveValidationGate(repo, "SLICE-15");
+  assert.equal(result.satisfied, false);
+});
+
+// Same boundary guard against the combined-slice artifact itself: SLICE-15
+// must not match "slice-157-158" just because "157" starts with "15" as a
+// substring at the wrong split point.
+test("deriveValidationGate: SLICE-15 does NOT match the combined slice-157-158 artifact", async () => {
+  const repo = await tmpRepo("al-vgate-noboundary-combined-");
+  await writeValidationsArtifact(
+    repo,
+    "20260709T120000Z-validation-result-slice-157-158-deploy.md"
+  );
+  const result = await deriveValidationGate(repo, "SLICE-15");
+  assert.equal(result.satisfied, false);
+});
