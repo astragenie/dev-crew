@@ -19,6 +19,38 @@
 // enforcement happens at the caller.
 //
 // Zero deps — pure Node. Keeps the plugin install-light.
+//
+// @astragenie/plugin-std/frontmatter adoption (issue #449, W2b S2) evaluated
+// and REJECTED for this module — left fully local. Its `parseFrontmatter` is
+// backed by a real YAML parser and would be a strict behavior CHANGE, not a
+// drop-in, for content this repo already has on disk. Proved by parsing every
+// .md file under this worktree with a frontmatter fence (2169 files) through
+// both parsers and byte-comparing the JSON.stringify of the result:
+//   - 47 files diverge in *parsed value*, not just formatting, e.g.:
+//     - a `key: |` / `key: >-` block-scalar continuation is silently dropped
+//       by this parser's line-oriented walk (kept as literal "|"/">-"); real
+//       YAML folds the following indented lines into the full string
+//       (docs/upstream-requests/2026-07-02-...md, agents/hierarchical-
+//       dispatcher.md's multi-line `description:` truncates to its first
+//       line here today).
+//     - an unquoted `{ a: 1, b: 2 }` flow-mapping value (e.g. `diff_stat` in
+//       .claude/artifacts/crew/bundles/orphan/*.md, an `id: X` item inside a
+//       block array) is kept as a literal string here; real YAML parses it
+//       as an object — this is the exact "findings"-as-JSON-string trap
+//       dev-team hit in artifact-cache (PR #207/#209 precedent).
+//     - inline-array scalars are never number-coerced here (`shipped_prs:
+//       [311, 306]` round-trips as strings); real YAML coerces per-item.
+//   - 7 files throw `DeterministicError` on plugin-std's parser for content
+//     this parser accepts today (a value beginning with a backtick, a
+//     reserved YAML plain-scalar indicator — e.g. DEC-055's
+//     `` title: `camelTight` drops on overflow `` — is invalid YAML but a
+//     completely ordinary string here).
+// Given the "existing tests pass unmodified, no behavior change" constraint,
+// none of this is a wrappable edge case — it's material divergence on real,
+// current production files, so the swap does not happen. serializeFrontmatter
+// / mergeFrontmatter were not evaluated further once parse was rejected (they
+// sit downstream of the same parse contract). Revisit only if this module's
+// hand-rolled scope is deliberately upgraded to real YAML as its own change.
 
 // Tolerate CRLF line endings (Windows). Earlier this regex required LF only,
 // silently returning {} on every CRLF-encoded backlog file. parseFrontmatter
