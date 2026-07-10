@@ -4,6 +4,61 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.70.0] — 2026-07-10 — collision-proof slice IDs, backlog-store split, TypeScript 7, quick-win gate hardening
+
+Minor: adds collision-proof slice-ID allocation (FEAT-257), splits the
+backlog-store storage seam into sub-modules (FEAT-262), adopts the native
+TypeScript 7 compiler for the typecheck gate, and lands a wave of gate /
+flake / ledger hardening (the quick-win + wave-1 batches).
+
+### Added
+
+- **`src/scripts/lib/backlog-store/slice-id-allocator.mts` + `slice-renumber`
+  CLI** (FEAT-257, DEC-079) — slice IDs are now allocated remote-aware:
+  a best-effort `git fetch origin main` + `git ls-tree origin/main` scan
+  takes `max(local, remote) + 1`, closing the common concurrent-session
+  collision (offline degrades cleanly to local-only + warning). For the
+  residual both-numbered-before-push race, a new
+  `bun loop.mts backlog slice-renumber --from SLICE-A --to SLICE-B
+  [--dry-run]` renames the slice file + every `KIND_REGISTRY` artifact +
+  bespoke families (trajectory/events/shape-marker), rewrites the FEAT
+  `slices:` entry, and appends corrective ledger events — refusing on
+  `--to` collision and reporting partial progress on mid-op failure.
+  Replaces the 19-file manual renumber the 2026-07-10 SLICE-147 incident
+  required. Adds `slice_renumber` to the `SliceEventType` union.
+- **TypeScript 7 native compiler** (#462) — the typecheck gate now runs the
+  native `tsc` (~3× faster; `strict: false` honored).
+
+### Changed
+
+- **`backlog-store.mts` split** (FEAT-262, #471) — the 746-line module is now
+  a thin barrel over `backlog-store/{feature-store,slice-store,shared}.mts`;
+  `validate-imports` enforces the sub-module import boundary and
+  `validate-backlog-writes` allowlists the new sole-writer files (DEC-076).
+- **Dispatch worktrees base on the invoking HEAD** (FEAT-261, #468) with a
+  loud missing-slice-in-base guard.
+- **Blocked-badge staleness** (#459, #467, #470) — a stale workflow-state
+  `blocked` badge downgrades to a warning after N days; the policy is now a
+  single writer (`applyStaleBlockedBadgePolicy` in `blocked-badge-staleness`)
+  applied to stop-conditions + brief.
+
+### Fixed
+
+- **`writeGrade` refuses all-zero score stubs** (FEAT-258, #465).
+- **Deterministic recall cap-precedence test** (W1-2, #472) — replaces a
+  wall-clock flake (`elapsed < 3000ms`) with a pure `resolveRecallCapMs`
+  precedence assertion.
+- **Hermetic memory-transport discovery test under `--parallel`**
+  (FEAT-260, #456).
+- **JSONL ledger union merge driver + collision-safe learnings ids** (#466).
+- **`validate-slice-touches-files`** planned-path handling + wired into CI;
+  the touches-files planned-path rule caps fabricated depth at one new
+  level (#457, #464).
+- **validation-gate** decision synonyms + combined-slice filename tokens
+  (#455); per-slice ACs from `proposed_slices` + quote-aware frontmatter
+  arrays (#460); slice-start honors frontmatter `touches_files` over empty
+  reclassification (#458).
+
 ## [v0.69.0] — 2026-07-10 — plugin-std adoption (W2b) + tracker Phase 3 close
 
 Minor: adopts the shared `@astragenie/plugin-std` library from plugins-common

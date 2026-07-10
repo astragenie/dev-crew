@@ -22,6 +22,7 @@ import { clampSliceTitle } from "../slice-title.mjs";
 import { classifyRisk } from "../risk-classifier.mjs";
 import type { FeatFrontmatterForRisk } from "../risk-classifier.mjs";
 import { nowIsoDate, mergeAndWriteFrontmatter } from "./shared.mjs";
+import { allocateNextSliceId, SLICE_FILE_RE } from "./slice-id-allocator.mjs";
 
 /**
  * Classifies a single line inside the `## Acceptance criteria` section and
@@ -99,32 +100,6 @@ export function assertAcceptanceCriteria(featureId: string, body: string): void 
   if (extractAcceptanceCriteria(body).length === 0) {
     throw new AcceptanceCriteriaRequiredError(featureId);
   }
-}
-
-const SLICE_FILE_RE = /^SLICE[-_](\d+)/;
-
-// Walks slicesRoot recursively, returns the max numeric slice id found.
-async function maxSliceIdUnder(dir: string): Promise<number> {
-  if (!(await pathExists(dir))) return 0;
-  let max = 0;
-  const stack = [dir];
-  while (stack.length > 0) {
-    const current = stack.pop() as string;
-    const entries = await fs.readdir(current, { withFileTypes: true });
-    for (const entry of entries) {
-      const full = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(full);
-        continue;
-      }
-      const m = entry.name.match(SLICE_FILE_RE);
-      if (m) {
-        const n = Number(m[1]);
-        if (n > max) max = n;
-      }
-    }
-  }
-  return max;
 }
 
 function sliceIdFor(n: number): string {
@@ -300,7 +275,10 @@ export interface CreateSliceResult {
 
 /**
  * Creates a slice file under `<slicesRoot>/pending/` from a feature. Allocates
- * the next SLICE id by scanning slicesRoot recursively for the current max.
+ * the next SLICE id via {@link allocateNextSliceId} — a local slicesRoot scan
+ * combined with a best-effort remote origin/main scan (DEC-079) — so two
+ * worktrees minting a slice from the same base commit are less likely to
+ * collide on the same id.
  * `title` defaults to the feature body's H1 line (single-slice derivation);
  * pass it explicitly for the multi-slice (proposed_slices) path where the
  * title comes from the proposal, not the feature body. Subsumes what used to
@@ -320,8 +298,8 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     config = null
   } = opts;
   const slicesRootDir = slicesRoot(repoPath, config);
-  const maxId = await maxSliceIdUnder(slicesRootDir);
-  const id = sliceIdFor(maxId + 1);
+  const nextId = await allocateNextSliceId(repoPath, slicesRootDir, config);
+  const id = sliceIdFor(nextId);
   const title = opts.title ?? deriveSliceTitleFromFeatureBody(featureBody, featureId);
   const sliceDir = path.join(slicesRootDir, "pending");
   await ensureDir(sliceDir);
@@ -395,6 +373,42 @@ export async function moveSlice(
 // barrel lives inside this module's import boundary (validate-imports.mts),
 // so this is not a boundary bypass; it is the composition point the
 // boundary is designed to allow.
+/**
+ * Renames a slice markdown file in place — same directory/state, new
+ * `SLICE_NN`-prefixed basename plus a matching `id:` frontmatter field.
+ * Sole consumer is the FEAT-257/DEC-079 slice-renumber CLI
+ * (`src/scripts/lib/slice-renumber.mts`), remediating the residual
+ * allocation-race collision (two worktrees minting the same id before
+ * either pushes). Kept inside BacklogStore rather than a raw `fs.rename` in
+ * the CLI module so the DEC-076 sole-writer invariant for SLICE files holds
+ * even for this rare corrective path. Mints no new lifecycle state — just
+ * the id-bearing basename + frontmatter `id` field; the caller is
+ * responsible for renaming sibling artifacts and updating the owning FEAT.
+ */
+export async function renameSliceId(
+  filePath: string,
+  toId: string,
+  repoPath?: string,
+  config?: Record<string, any> | null
+): Promise<{ from: string; to: string }> {
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath);
+  const newBase = base.replace(SLICE_FILE_RE, toId.replace("-", "_"));
+  const targetPath = path.join(dir, newBase);
+  if (repoPath) {
+    assertStatePath(repoPath, config, targetPath);
+  }
+  const content = await fs.readFile(filePath, "utf8");
+  const merged = mergeFrontmatter(content, { id: toId, updated: nowIsoDate() });
+  await fs.writeFile(targetPath, merged);
+  if (targetPath !== filePath) {
+    await fs.unlink(filePath);
+  }
+  clearAll();
+  clearFrontmatterCache();
+  return { from: filePath, to: targetPath };
+}
+
 export async function readSliceEntry(filePath: string) {
   const raw = await fs.readFile(filePath, "utf8");
   const { frontmatter, body } = parseFrontmatter(raw);

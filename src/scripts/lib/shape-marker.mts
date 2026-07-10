@@ -10,7 +10,7 @@ import path from "node:path";
 
 import { safeSliceId } from "./slice-id-guard.mjs";
 
-const MARKER_DIR_PARTS = [".claude", "artifacts", "loop", "shape-markers"];
+export const MARKER_DIR_PARTS = [".claude", "artifacts", "loop", "shape-markers"];
 
 export type ShapeMarker = {
   sliceId: string;

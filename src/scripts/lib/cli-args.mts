@@ -101,7 +101,10 @@ export const FLAG_SPEC = {
   "--verdict": { key: "verdict" },
   "--objections": { key: "objections" },
   "--risk-flags": { key: "risk-flags" },
-  "--spent-usd": { key: "spent-usd" }
+  "--spent-usd": { key: "spent-usd" },
+  // backlog slice-renumber (FEAT-257 SLICE-B / DEC-079)
+  "--from": { key: "from" },
+  "--to": { key: "to" }
 };
 
 export function parseArgs(argv: string[]) {
@@ -181,7 +184,9 @@ export function parseArgs(argv: string[]) {
     verdict: null,
     objections: null,
     "risk-flags": null,
-    "spent-usd": null
+    "spent-usd": null,
+    from: null,
+    to: null
   };
   const positionals: any[] = [];
 

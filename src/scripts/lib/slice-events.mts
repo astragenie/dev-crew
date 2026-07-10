@@ -21,7 +21,8 @@ export type SliceEventType =
   | "specialist_pause"
   | "shape_classified"
   | "phase_gate_mode_detected"
-  | "slice_force_closed";
+  | "slice_force_closed"
+  | "slice_renumber";
 
 export interface SliceEventBase {
   type: SliceEventType;
@@ -123,6 +124,20 @@ export interface SliceForceClosedEvent extends SliceEventBase {
   reason: string;
 }
 
+/**
+ * FEAT-257 SLICE-B (DEC-079): a residual slice-id allocation-race collision
+ * was remediated by `bun loop.mts backlog slice-renumber`. `sliceId` is the
+ * new (winning) id per SliceEventBase; `fromId` is the id it was renumbered
+ * from. Emitted by `lib/slice-renumber.mts::renumberSlice` — routes the
+ * ledger append through this typed helper (rather than a hand-rolled JSONL
+ * line) so the existing webhook fan-out surfaces the renumber on dashboards
+ * too.
+ */
+export interface SliceRenumberedEvent extends SliceEventBase {
+  type: "slice_renumber";
+  fromId: string;
+}
+
 export type SliceEvent =
   | WorkflowStateChangedEvent
   | GateTransitionEvent
@@ -132,7 +147,8 @@ export type SliceEvent =
   | SpecialistPauseEvent
   | ShapeClassifiedEvent
   | PhaseGateModeDetectedEvent
-  | SliceForceClosedEvent;
+  | SliceForceClosedEvent
+  | SliceRenumberedEvent;
 
 /** Absolute path to the events file for a slice. */
 export function eventsPath(repoRoot: string, sliceId: string): string {

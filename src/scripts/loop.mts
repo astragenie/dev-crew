@@ -1099,6 +1099,29 @@ export async function runBacklogArchGateApply(
   }
 }
 
+// runBacklogSliceRenumber: FEAT-257 SLICE-B / DEC-079 residual-race
+// remediation. `--from`/`--to` are required SLICE-NN ids; `--dry-run` lists
+// what would be renamed/appended without mutating anything. Refuses
+// (nonzero exit, propagated via main()'s catch) rather than clobbering when
+// `--to` already exists as a slice file or a referencing artifact.
+export async function runBacklogSliceRenumber(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  if (!flags.from) {
+    throw new Error("backlog slice-renumber requires --from <SLICE-NN>");
+  }
+  if (!flags.to) {
+    throw new Error("backlog slice-renumber requires --to <SLICE-NN>");
+  }
+  const { renumberSlice } = await import("./lib/slice-renumber.mjs");
+  const result = await renumberSlice(repoPath, String(flags.from), String(flags.to), config, {
+    dryRun: Boolean(flags.dryRun)
+  });
+  return { path: "slice-renumber", dryRun: Boolean(flags.dryRun), ...result };
+}
+
 function isUnclassifiedEntry(entry: Record<string, any>): boolean {
   const fm = entry.frontmatter;
   const tagsEmpty = !Array.isArray(fm.tags) || fm.tags.length === 0;
@@ -1156,6 +1179,28 @@ export async function runBacklogEnrich(repoPath: string, _flags: Record<string, 
   return { enriched: 0, alreadyTagged, failed: 0, refused: true };
 }
 
+// Subcommands that are a pure (repoPath, flags, config) forward to a single
+// handler — dispatched via one lookup instead of an `if (sub === ...)`
+// branch apiece, so runBacklogSubcommand's cognitive complexity doesn't grow
+// linearly with every new simple subcommand (extracted when adding
+// slice-renumber pushed the if-chain over the repo's complexity cap).
+const SIMPLE_BACKLOG_HANDLERS: Record<
+  string,
+  (
+    repoPath: string,
+    flags: Record<string, any>,
+    config: Record<string, any> | null
+  ) => Promise<unknown>
+> = {
+  "pm-apply": runBacklogPmApply,
+  "pm-rescope": runBacklogPmRescope,
+  "arch-gate-apply": runBacklogArchGateApply,
+  "slice-renumber": runBacklogSliceRenumber,
+  "list-pending-ids": (repoPath, flags) => runBacklogListPendingIds(repoPath, flags),
+  enrich: (repoPath, flags) => runBacklogEnrich(repoPath, flags),
+  audit: (repoPath, flags) => runBacklogAudit(repoPath, flags)
+};
+
 async function runBacklogSubcommand(
   repoPath: string,
   positionals: string[],
@@ -1165,19 +1210,12 @@ async function runBacklogSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply | pm-rescope | arch-gate-apply"
+      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply | pm-rescope | arch-gate-apply | slice-renumber"
     );
+  const simpleHandler = SIMPLE_BACKLOG_HANDLERS[sub];
+  if (simpleHandler) return simpleHandler(repoPath, flags, config);
   if (sub === "add") {
     return runBacklogAdd(repoPath, flags, rest, config);
-  }
-  if (sub === "pm-apply") {
-    return runBacklogPmApply(repoPath, flags, config);
-  }
-  if (sub === "pm-rescope") {
-    return runBacklogPmRescope(repoPath, flags, config);
-  }
-  if (sub === "arch-gate-apply") {
-    return runBacklogArchGateApply(repoPath, flags, config);
   }
   if (sub === "list") {
     const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");
@@ -1213,9 +1251,6 @@ async function runBacklogSubcommand(
       "`backlog triage` (regex fallback) was removed on 2026-06-11. Triage is PM-only — invoke `/loop:triage` (skill) instead. On PM error, halt and surface to the operator."
     );
   }
-  if (sub === "list-pending-ids") {
-    return runBacklogListPendingIds(repoPath, flags);
-  }
   if (sub === "promote") {
     const featureId = flags.id || rest[0];
     if (!featureId) throw new Error("backlog promote requires --id FEAT-NNN.");
@@ -1224,12 +1259,6 @@ async function runBacklogSubcommand(
     if (!entry) throw new Error(`Feature not found: ${featureId}`);
     const moved = await moveFeature(entry.filePath, "in-progress");
     return { id: featureId, moved };
-  }
-  if (sub === "enrich") {
-    return runBacklogEnrich(repoPath, flags);
-  }
-  if (sub === "audit") {
-    return runBacklogAudit(repoPath, flags);
   }
   throw new Error(`Unknown backlog subcommand: ${sub}`);
 }

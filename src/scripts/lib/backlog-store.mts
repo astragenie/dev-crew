@@ -40,7 +40,8 @@ export {
   assertAcceptanceCriteria,
   createSlice,
   updateSliceFrontmatter,
-  moveSlice
+  moveSlice,
+  renameSliceId
 } from "./backlog-store/slice-store.mjs";
 export type { CreateSliceOpts, CreateSliceResult } from "./backlog-store/slice-store.mjs";
 
