@@ -4,6 +4,47 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.68.0] — 2026-07-10 — watcher MVP + real headless reactions
+
+Minor: the autonomous repo watcher lands end-to-end (FEAT-242 + FEAT-244),
+alongside DORA event conformance (FEAT-247), the 2026-07 idle/drift audit
+fixes (#414), and the first BacklogStore seam of the tracker program
+(FEAT-250 / DEC-076/077).
+
+### Added
+
+- **Watcher MVP (FEAT-242, SLICE-143–146).** `src/scripts/watch-tick.mts` —
+  deterministic, zero-LLM Layer-1 tick run by the OS scheduler: sweeps the
+  machine shard from `~/.claude/watch/repos.json` (new-issue delta, failed
+  runs, red PR checks via `gh`), sets claim labels with TTL self-heal
+  (COND-1), enforces the machine-wide reaction concurrency cap (default 3)
+  and per-repo cost ceiling (COND-4). Platform-neutral entry point;
+  OS-specific registration lives in `scripts/setup-watch-scheduler.mjs`;
+  `/runner:watch` invokes the same script (no divergent path).
+- **Real headless reaction spawning + permission allowlist (FEAT-244,
+  SLICE-149).** `watch/reaction-spawn.mts` replaces the spawn stub: detached
+  `claude -p` sessions with `--allowedTools` from
+  `~/.claude/watch/config.json`. Constructed args can NEVER include
+  `--dangerously-skip-permissions` — enforced by construction, a runtime
+  guard, a unit test across every ReactionAction, and a grep-test over the
+  watch source. Record-before-spawn with failure-prune closes the
+  SLICE-145 crash window. Tier-2 (`issue-broker-file`) never spawns.
+- **Per-repo sweep error isolation (FEAT-244, SLICE-148).** A 403/404/network
+  failure on one registry entry no longer kills the tick: classified
+  `lastSweepError {kind, at, consecutiveCount}` recorded in that repo's
+  tick state (cleared on recovery), per-repo error counts surfaced in the
+  tick envelope.
+- **DORA events (FEAT-247 + #415).** A2 event-field conformance plus
+  `pr.merged` / `spec.created` emitters wired into the real lifecycle.
+- **BacklogStore seam (FEAT-250 SLICE-1/2, DEC-076/077).**
+  `src/scripts/lib/backlog-store.mts` feature-side seam + Phase 0 hygiene
+  for the tracker-as-queue program.
+
+### Fixed
+
+- **2026-07 idle/drift audit (#414).** Reviewer fan-out unblocked, dispatch
+  idle-inducers removed, slice size capped (#404, #393, dev-team#197).
+
 ## [v0.67.0] — 2026-07-09 — arch-gate epic (pre-slice-1 architect + risk gate)
 
 Minor: pre-slice-1 architect + risk gate epic (PR #395) plus companion
