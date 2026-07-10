@@ -1,7 +1,7 @@
 ---
 id: SLICE-152
 title: "Slice-side new construction: consolidate complete-slice/feature-lifecycle/failure-pivot writes"
-status: pending
+status: completed
 feature: FEAT-250
 phase: null
 priority: P1
@@ -13,12 +13,8 @@ updated: 2026-07-10
 effort_points: 5
 github_issue: 422
 github_url: "https://github.com/astragenie/runner-plugin/issues/422"
-touches_files:
-  - src/scripts/lib/backlog-store.mts
-  - src/scripts/lib/slice-linker/complete-slice.mts
-  - src/scripts/lib/slice-linker/feature-lifecycle.mts
-  - src/scripts/lib/wave/failure-pivot.mts
-  - src/tests/backlog-store-slices.test.mts
+touches_files: [src/scripts/lib/backlog-store.mts, src/scripts/lib/slice-linker/complete-slice.mts, src/scripts/lib/slice-linker/feature-lifecycle.mts, src/scripts/lib/wave/failure-pivot.mts, src/tests/backlog-store-slices.test.mts]
+completed_at: 2026-07-10
 ---
 # SLICE-152: Slice-side new construction: consolidate complete-slice/feature-lifecycle/failure-pivot writes
 

@@ -1,9 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveConfig } from "../config-resolver.mjs";
-import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "../frontmatter.mjs";
+import { parseFrontmatter, mergeFrontmatter } from "../frontmatter.mjs";
 import { detectSerialReviewer } from "../reviewer-timing.mjs";
 import { findFeatureById, moveFeature } from "../backlog-writer.mjs";
+import { updateSliceFrontmatter, moveSlice } from "../backlog-store.mjs";
 import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
 import { readFeatureEndCeremony } from "../ceremonies.mjs";
 import {
@@ -18,7 +19,7 @@ import type { BuilderEvidence } from "../confidence-signal.mjs";
 import { deriveValidationGate } from "../validation-gate.mjs";
 import { deriveTestAdequacyGate } from "../test-adequacy-gate.mjs";
 import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
-import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "../paths.mjs";
+import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { clearWorktreePathInState } from "../auto-merge.mjs";
 import { resolveSliceTitle } from "../slice-title.mjs";
 import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
@@ -39,36 +40,40 @@ async function bestEffort(fn: (...args: any[]) => any) {
 }
 
 // Decides the target path (pending/active/in-progress -> completed; else
-// flat), stamps frontmatter, writes the updated file, removes the old one
-// if it moved. Returns the new path.
+// stamps in place), merges frontmatter via BacklogStore. Returns the new
+// path.
 async function moveAndStampSlice({
   sliceFile,
-  sliceContent,
   sliceFm,
-  slicesRoot,
-  today
+  today,
+  repoPath,
+  config
 }: {
   sliceFile: string;
-  sliceContent: string;
   sliceFm: Record<string, any>;
-  slicesRoot: string;
   today: string;
+  repoPath: string;
+  config: Record<string, any> | null;
 }) {
   const parentDir = path.basename(path.dirname(sliceFile));
-  let targetSlicePath = sliceFile;
+  const completedAt = sliceFm.completed_at || today;
   if (parentDir === "pending" || parentDir === "active" || parentDir === "in-progress") {
-    const completedDir = path.join(slicesRoot, "completed");
-    await ensureDir(completedDir);
-    targetSlicePath = path.join(completedDir, path.basename(sliceFile));
+    const result = await moveSlice(
+      sliceFile,
+      "completed",
+      { completed_at: completedAt },
+      repoPath,
+      config
+    );
+    return result.to;
   }
-  const updated = mergeFrontmatter(sliceContent, {
-    status: "completed",
-    completed_at: sliceFm.completed_at || today,
-    updated: today
-  });
-  await fs.writeFile(targetSlicePath, updated);
-  if (targetSlicePath !== sliceFile) await fs.unlink(sliceFile);
-  return targetSlicePath;
+  await updateSliceFrontmatter(
+    sliceFile,
+    { status: "completed", completed_at: completedAt },
+    repoPath,
+    config
+  );
+  return sliceFile;
 }
 
 // Moves the slice's linked feature to done/ when present and not yet done.
@@ -378,11 +383,12 @@ async function auditForceClose(
     bust(`locateSlice:${slicesRootDir}:${sliceId}`);
     const sliceFile = await locateSliceFile(slicesRootDir, sliceId);
     if (sliceFile) {
-      const raw = await fs.readFile(sliceFile, "utf8");
-      const { frontmatter, body } = parseFrontmatter(raw);
-      frontmatter.force_closed = true;
-      frontmatter.force_closed_reason = overriddenGates;
-      await fs.writeFile(sliceFile, serializeFrontmatter(frontmatter, body));
+      await updateSliceFrontmatter(
+        sliceFile,
+        { force_closed: true, force_closed_reason: overriddenGates },
+        repoPath,
+        config
+      );
     }
   } catch (err) {
     console.warn(
@@ -637,10 +643,10 @@ export async function completeSlice(
 
   const targetSlicePath = await moveAndStampSlice({
     sliceFile,
-    sliceContent,
     sliceFm,
-    slicesRoot,
-    today
+    today,
+    repoPath,
+    config: resolved
   });
   const featureResult = await computeFeatureResult(
     repoPath,
@@ -755,12 +761,11 @@ async function appendSliceBadge(
   const sliceFile = await locateSliceFile(slicesRootDir, sliceId);
   if (!sliceFile) return;
   const raw = await fs.readFile(sliceFile, "utf8");
-  const { frontmatter, body } = parseFrontmatter(raw);
+  const { frontmatter } = parseFrontmatter(raw);
   const badges = Array.isArray(frontmatter.badges) ? (frontmatter.badges as string[]).slice() : [];
   if (badges.includes(badge)) return;
   badges.push(badge);
-  frontmatter.badges = badges;
-  await fs.writeFile(sliceFile, serializeFrontmatter(frontmatter, body));
+  await updateSliceFrontmatter(sliceFile, { badges }, repoPath, config);
 }
 
 // Append a bullet under the grade's "## Surprises" heading (creates it
