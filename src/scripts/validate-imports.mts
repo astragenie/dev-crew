@@ -3,9 +3,10 @@
  * a barrel and its own sub-modules) must not import that barrel's
  * sub-modules directly — they must go through the barrel.
  *
- * Two boundaries are enforced today: slice-linker.mts / slice-linker/ and
+ * Three boundaries are enforced today: slice-linker.mts / slice-linker/,
  * watch.mts / watch/ (FEAT-242 contract §3 — the watch/ boundary mirrors the
- * slice-linker precedent verbatim).
+ * slice-linker precedent verbatim), and backlog-store.mts / backlog-store/
+ * (FEAT-262 — same precedent again for the feature/slice-store split).
  */
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
@@ -47,6 +48,15 @@ const BOUNDARIES: ModuleBoundary[] = [
       /watch\/ledger/,
       /watch\/config/,
       /watch\/reaction-spawn/
+    ]
+  },
+  {
+    barrel: resolve("src/scripts/lib/backlog-store.mts"),
+    dir: resolve("src/scripts/lib/backlog-store"),
+    blockedPatterns: [
+      /backlog-store\/feature-store/,
+      /backlog-store\/slice-store/,
+      /backlog-store\/shared/
     ]
   }
 ];

@@ -2,12 +2,14 @@
 // validate-backlog-writes.mts — CI allowlist guard for backlog-state raw
 // filesystem writes (SLICE-153 / FEAT-250 AC-5, COND-D).
 //
-// BacklogStore (src/scripts/lib/backlog-store.mts, DEC-076) is the sole
-// sanctioned writer for backlog lifecycle state: FEAT files under
-// `.claude/artifacts/loop/backlog/**` (createFeature/updateFeatureFrontmatter/
-// moveFeature) and SLICE files under `.claude/artifacts/loop/ai-loop/slices/**`
-// (createSlice/updateSliceFrontmatter/moveSlice). Every other caller migrated
-// onto that API in FEAT-250 SLICE-2/3 (see src/scripts/lib/backlog-writer.mts's
+// BacklogStore (src/scripts/lib/backlog-store.mts barrel + its
+// backlog-store/{feature-store,slice-store,shared}.mts sub-modules since the
+// FEAT-262 split, DEC-076) is the sole sanctioned writer for backlog
+// lifecycle state: FEAT files under `.claude/artifacts/loop/backlog/**`
+// (createFeature/updateFeatureFrontmatter/moveFeature) and SLICE files under
+// `.claude/artifacts/loop/ai-loop/slices/**` (createSlice/
+// updateSliceFrontmatter/moveSlice). Every other caller migrated onto that
+// API in FEAT-250 SLICE-2/3 (see src/scripts/lib/backlog-writer.mts's
 // thin-delegate re-exports and backlog-store.mts's module doc comment).
 //
 // This is an explicit ALLOWLIST gate (validate-imports.mts BOUNDARIES style),
@@ -50,7 +52,17 @@ export interface BacklogWriteFinding {
 // rationale inline.
 const ALLOWLIST: Record<string, string> = {
   "src/scripts/lib/backlog-store.mts":
-    "the BacklogStore module itself — sole sanctioned writer (DEC-076).",
+    "the BacklogStore barrel (FEAT-262 split) — re-exports the sub-modules " +
+    "below and carries no raw writes of its own; listed defensively.",
+  "src/scripts/lib/backlog-store/feature-store.mts":
+    "feature-lifecycle half of BacklogStore (FEAT-262 split) — sole " +
+    "sanctioned writer for FEAT files (DEC-076).",
+  "src/scripts/lib/backlog-store/slice-store.mts":
+    "slice-lifecycle half of BacklogStore (FEAT-262 split) — sole " +
+    "sanctioned writer for SLICE files (DEC-076).",
+  "src/scripts/lib/backlog-store/shared.mts":
+    "merge+write+cache-bust primitive shared by feature-store.mts and " +
+    "slice-store.mts (FEAT-262) — same DEC-076 writer classification.",
   "src/scripts/lib/doctor.mts":
     "cross-tree stray-backlog reconciliation (merges/archives whole FEAT " +
     "files between trees) — structural repair, not a frontmatter-lifecycle " +
