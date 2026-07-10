@@ -5,7 +5,12 @@ import { parseFrontmatter } from "../frontmatter.mjs";
 import { detectSerialReviewer } from "../reviewer-timing.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
 import { updateSliceFrontmatter, moveSlice } from "../backlog-store.mjs";
-import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
+import { readCrewWorkflowState, workflowStatePath } from "../crew-workflow-reader.mjs";
+import {
+  evaluateBlockedBadgeStaleness,
+  formatBlockedGateReason,
+  formatStaleBlockedBadgeWarning
+} from "../blocked-badge-staleness.mjs";
 import { readFeatureEndCeremony } from "../ceremonies.mjs";
 import {
   markValidationSkippedBadge,
@@ -29,6 +34,25 @@ function deriveBlockingGates(workflowState: Record<string, any> | null) {
   const blocked = gates.blocked?.status === "blocked" ? gates.blocked : null;
   const escalated = gates.escalation?.status === "escalated" ? gates.escalation : null;
   return { blocked, escalated };
+}
+
+// A `blocked` badge from a long-resolved run should not silently hold every
+// subsequent feature roll (QW3). Badges older than `loop.staleBadgeMaxAgeDays`
+// (default 3) are downgraded to a console warning instead of blocking; fresh
+// badges — and any badge with no parseable `updatedAt` — keep blocking as
+// before. Escalation is never downgraded.
+function applyStaleBlockedBadgePolicy(
+  blockingGates: { blocked: Record<string, any> | null; escalated: Record<string, any> | null },
+  config: Record<string, any> | null,
+  repoPath: string
+) {
+  if (!blockingGates.blocked) return blockingGates;
+  const staleness = evaluateBlockedBadgeStaleness(blockingGates.blocked, config);
+  if (!staleness.stale) return blockingGates;
+  console.warn(
+    formatStaleBlockedBadgeWarning(blockingGates.blocked, staleness, workflowStatePath(repoPath))
+  );
+  return { ...blockingGates, blocked: null };
 }
 
 async function bestEffort(fn: (...args: any[]) => any) {
@@ -128,7 +152,8 @@ function describeBlockedGate({
   blockingGates,
   validationGate,
   testAdequacyGate,
-  reviewGate
+  reviewGate,
+  repoPath
 }: {
   isBlocked: boolean;
   isSimplifyBlocked: boolean;
@@ -136,11 +161,12 @@ function describeBlockedGate({
   validationGate: Record<string, any> | null;
   testAdequacyGate: Record<string, any> | null;
   reviewGate?: Record<string, any> | null;
+  repoPath: string;
 }) {
   if (isBlocked) {
     return blockingGates.escalated
       ? `crew run escalated_to_human: ${blockingGates.escalated.note || ""}`
-      : `crew run blocked: ${blockingGates.blocked?.note || ""}`;
+      : formatBlockedGateReason(blockingGates.blocked, workflowStatePath(repoPath));
   }
   if (isSimplifyBlocked) {
     return "simplify-gate: featureEnd ceremony exists but simplifyRan is false";
@@ -251,6 +277,7 @@ async function applyMultiSliceLogic(
 }
 
 function buildBlockedResult(
+  repoPath: string,
   gateState: {
     isBlocked: boolean;
     isSimplifyBlocked: boolean;
@@ -273,7 +300,8 @@ function buildBlockedResult(
       blockingGates,
       validationGate,
       testAdequacyGate,
-      reviewGate
+      reviewGate,
+      repoPath
     }),
     blockingGates: isBlocked ? blockingGates : null,
     simplifyGate: isSimplifyBlocked ? { simplifyRan: false } : null,
@@ -334,6 +362,7 @@ async function computeFeatureResult(
       await auditForceClose(repoPath, sliceId, featureId, overridden, config);
     } else {
       return buildBlockedResult(
+        repoPath,
         gateState,
         blockingGates,
         validationGate,
@@ -461,7 +490,8 @@ async function resolveValidationGate(
 async function resolveSliceContext(
   repoPath: string,
   sliceFile: string,
-  cachedWorkflowState?: Awaited<ReturnType<typeof readCrewWorkflowState>>
+  cachedWorkflowState?: Awaited<ReturnType<typeof readCrewWorkflowState>>,
+  config: Record<string, any> | null = null
 ) {
   const sliceContent = await fs.readFile(sliceFile, "utf8");
   const { frontmatter: sliceFm } = parseFrontmatter(sliceContent);
@@ -470,7 +500,11 @@ async function resolveSliceContext(
   const today = new Date().toISOString().slice(0, 10);
   const workflowState = cachedWorkflowState ?? (await readCrewWorkflowState(repoPath));
   const startedAt = workflowState?.currentRun?.startedAt ?? null;
-  const blockingGates = deriveBlockingGates(workflowState);
+  const blockingGates = applyStaleBlockedBadgePolicy(
+    deriveBlockingGates(workflowState),
+    config,
+    repoPath
+  );
   return { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates };
 }
 
@@ -626,7 +660,7 @@ export async function completeSlice(
   const workflowState = await readCrewWorkflowState(repoPath);
 
   const { sliceContent, sliceFm, featureId, phase, today, startedAt, blockingGates } =
-    await resolveSliceContext(repoPath, sliceFile, workflowState);
+    await resolveSliceContext(repoPath, sliceFile, workflowState, resolved);
 
   const { validationGate, validationSkippedBadge } = await resolveValidationGate(
     repoPath,

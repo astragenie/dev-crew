@@ -389,3 +389,117 @@ test("completeSlice returns updated_confidence null when no builderEvidence", as
   assert.equal(result.updated_confidence, null);
   assert.equal(result.updated_confidence_reason, null);
 });
+
+// QW3 (2026-07-10 incident): a `blocked` badge left over from a
+// long-resolved crew run silently held every subsequent feature roll,
+// echoing only the note text. Stale badges now downgrade to a warning
+// instead of blocking; fresh badges are unaffected.
+
+async function writeCrewState(repoPath, state) {
+  const dir = path.join(repoPath, ".claude", "state", "crew");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, "workflow-state.json"), JSON.stringify(state, null, 2));
+}
+
+function baseLoopConfig(loopOverrides = {}) {
+  return {
+    preset: "dotnet-python",
+    loop: {
+      aiLoopRoot: ".claude/artifacts/loop/ai-loop",
+      backlogPath: ".claude/artifacts/loop/ai-loop/backlog",
+      slicesRoot: ".claude/artifacts/loop/ai-loop/slices",
+      phaseGateArtifactDir: ".claude/artifacts/crew/validations",
+      ...loopOverrides
+    },
+    stack: {}
+  };
+}
+
+test("completeSlice: fresh blocked badge still blocks the feature roll (unchanged)", async () => {
+  const repo = await tmpRepo("al-blocked-fresh-");
+  const feat = await addFeature(repo, { title: "Fresh blocked badge", body: AC_SECTION_BODY });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  const updatedAt = new Date().toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: { blocked: { status: "blocked", note: "waiting on unrelated run", updatedAt } }
+    }
+  });
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
+  assert.equal(result.feature.skipped, true);
+  assert.match(result.feature.reason, /crew run blocked/);
+  assert.ok(
+    result.feature.reason.includes(updatedAt),
+    `expected reason to include updatedAt, got: ${result.feature.reason}`
+  );
+  assert.match(result.feature.reason, /workflow-state\.json/);
+});
+
+test("completeSlice: stale blocked badge downgrades to a warning and the roll proceeds", async () => {
+  const repo = await tmpRepo("al-blocked-stale-");
+  const feat = await addFeature(repo, { title: "Stale blocked badge", body: AC_SECTION_BODY });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  // 5 days old — past the default 3-day threshold.
+  const staleUpdatedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: {
+        blocked: { status: "blocked", note: "long-resolved run", updatedAt: staleUpdatedAt }
+      }
+    }
+  });
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (msg: unknown) => {
+    warnings.push(String(msg));
+  };
+  let result;
+  try {
+    result = await completeSlice(repo, slice.id, {
+      skipValidationCheck: "test-fixture: gate not under test"
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.ok(!result.feature.skipped, "stale blocked badge should not block the roll");
+  assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
+  assert.ok(
+    warnings.some((w) => w.includes("stale-blocked-badge") && w.includes(staleUpdatedAt)),
+    `expected a stale-blocked-badge warning, got: ${JSON.stringify(warnings)}`
+  );
+});
+
+test("completeSlice: staleBadgeMaxAgeDays threshold is configurable", async () => {
+  const repo = await tmpRepo("al-blocked-threshold-");
+  const feat = await addFeature(repo, { title: "Configurable threshold", body: AC_SECTION_BODY });
+  const { slice } = await sliceFromFeature(repo, feat.id);
+  // 2 days old.
+  const twoDaysOld = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  await writeCrewState(repo, {
+    currentRun: {
+      gates: { blocked: { status: "blocked", note: "2 days old", updatedAt: twoDaysOld } }
+    }
+  });
+  // Default threshold (3d): a 2d-old badge is still fresh enough to block.
+  const blockedResult = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
+  assert.equal(blockedResult.feature.skipped, true);
+
+  // Override the threshold to 1 day: the same-age badge is now stale.
+  const feat2 = await addFeature(repo, {
+    title: "Configurable threshold 2",
+    body: AC_SECTION_BODY
+  });
+  const { slice: slice2 } = await sliceFromFeature(repo, feat2.id);
+  const overriddenResult = await completeSlice(repo, slice2.id, {
+    skipValidationCheck: "test-fixture: gate not under test",
+    config: baseLoopConfig({ staleBadgeMaxAgeDays: 1 })
+  });
+  assert.ok(
+    !overriddenResult.feature.skipped,
+    "1-day threshold should treat the 2d-old badge as stale"
+  );
+});

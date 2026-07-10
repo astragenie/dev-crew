@@ -30,6 +30,11 @@ export async function readCrewWorkflowState(repoPath: string) {
   return readJsonOrNull(path.join(repoPath, ...LEGACY_STATE_PATH));
 }
 
+/** The primary workflow-state.json path — used in operator-facing gate messages. */
+export function workflowStatePath(repoPath: string): string {
+  return path.join(repoPath, ...STATE_PATH);
+}
+
 /**
  * Returns the blocked / escalation gate snapshot from the current crew run.
  *
