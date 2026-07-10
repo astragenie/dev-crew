@@ -1,5 +1,5 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { TaskStoreProvider } from "../provider-interface.mjs";
 
 // Types for the runtime-only github-sync modules live in ambient .d.mts
@@ -11,18 +11,36 @@ import type { TaskStoreProvider } from "../provider-interface.mjs";
 // When running under bun directly, src-relative paths need adjustment.
 async function importGithubSyncModule(relPath: string): Promise<any> {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  // Try relative paths in order:
-  // 1. Compiled layout: ../../github-sync/... (from scripts/lib/task-store/providers/)
-  // 2. Src layout: ../../../../../scripts/lib/github-sync/... (from src/scripts/lib/task-store/providers/)
+  // Try candidate paths in order:
+  // 1. Compiled/co-located layout: ../../github-sync/... (from scripts/lib/task-store/providers/)
+  // 2. Src-direct layout, submodules: <repoRoot>/scripts/lib/github-sync/... (gh.mjs, issue-sync.mjs, ...)
+  // 3. Src-direct layout, top-level file: <repoRoot>/scripts/lib/github-sync.mjs itself — it is a
+  //    SIBLING of the github-sync/ submodule folder, not inside it (SLICE-155 fix: candidate 2 alone
+  //    always 404s for relPath === "github-sync.mjs", silently swallowed by the catch below — masked
+  //    pre-SLICE-155 because syncPull/bootstrap only reach this call after an _isInstalled() check
+  //    that every existing test short-circuits via a throwing mock ghExec).
   const paths = [
     path.resolve(currentDir, "..", "..", "github-sync", relPath),
-    path.resolve(currentDir, "..", "..", "..", "..", "..", "scripts", "lib", "github-sync", relPath)
+    path.resolve(
+      currentDir,
+      "..",
+      "..",
+      "..",
+      "..",
+      "..",
+      "scripts",
+      "lib",
+      "github-sync",
+      relPath
+    ),
+    path.resolve(currentDir, "..", "..", "..", "..", "..", "scripts", "lib", relPath)
   ];
 
   for (const modulePath of paths) {
     try {
-      // Use file:// URL for import to bypass relative path issues
-      return await import(modulePath);
+      // pathToFileURL is required on Windows — a bare backslash path handed to
+      // import() is parsed as a bare specifier, not a filesystem path, and fails.
+      return await import(pathToFileURL(modulePath).href);
     } catch {}
   }
 
@@ -167,5 +185,70 @@ export class GithubProvider implements TaskStoreProvider {
     const ghExec = await this._resolvedExec();
     const result = await bootstrapFromGithub(repoPath, { ghExec, config: this.config });
     return { features: result.featIds ?? [] };
+  }
+
+  // --- High-level, id-based operations below ---------------------------------
+  //
+  // These four methods are GithubProvider-specific (not part of the generic
+  // TaskStoreProvider interface — Linear has no milestone concept and the CLI
+  // `github` subcommand family is inherently GitHub-shaped). They exist so
+  // loop.mts's auto-publish call sites and `github` subcommand can route
+  // through getProvider() (SLICE-155 / FEAT-251 Phase 2) while staying
+  // byte-for-byte identical to the pre-migration direct github-sync.mjs calls:
+  // idempotency checks, milestone upserts, and frontmatter stamping all live
+  // in github-sync.mjs's publishFeat/publishSlice/publishAll/syncMilestones,
+  // which the interface's own publishFeature/publishSlice methods above do
+  // NOT replicate (they only create the issue and return its number).
+
+  /**
+   * github-sync.mjs's own functions gate on `config.github.enabled` (their
+   * pre-existing, still-live legacy check). getProvider() already decided
+   * this call should reach GithubProvider — via taskStore.provider:"github"
+   * OR the github.enabled back-compat branch (task-store/index.mts) — so by
+   * the time a GithubProvider method runs, that decision must be authoritative.
+   * Without this override, `taskStore.provider: "github"` set explicitly
+   * without ALSO setting `github.enabled: true` would resolve a GithubProvider
+   * here and then have every call silently no-op inside github-sync.mjs's own
+   * isEnabled() check — a double-gate that breaks FEAT-251 AC-5.
+   */
+  private _enabledConfig(): any {
+    return { ...this.config, github: { ...this.config?.github, enabled: true } };
+  }
+
+  async publishFeatureById(
+    featId: string
+  ): Promise<{ created: boolean; issueNum: number; url: string | null } | null> {
+    const { publishFeat } = await importGithubSyncModule("github-sync.mjs");
+    const ghExec = await this._resolvedExec();
+    return publishFeat(this.repoPath, featId, { ghExec, config: this._enabledConfig() });
+  }
+
+  async publishSliceById(
+    sliceId: string,
+    featId: string
+  ): Promise<{ created: boolean; issueNum: number; url: string | null } | null> {
+    const { publishSlice } = await importGithubSyncModule("github-sync.mjs");
+    const ghExec = await this._resolvedExec();
+    return publishSlice(this.repoPath, sliceId, featId, {
+      ghExec,
+      config: this._enabledConfig()
+    });
+  }
+
+  async publishAll(): Promise<{ milestones: number; issues: number; subissues: number }> {
+    const { publishAll: publishAllImpl } = await importGithubSyncModule("github-sync.mjs");
+    const ghExec = await this._resolvedExec();
+    return publishAllImpl(this.repoPath, { ghExec, config: this._enabledConfig() });
+  }
+
+  async syncMilestones(): Promise<{ milestones: number; updated: number; closed: number }> {
+    const { syncMilestones: syncMilestonesImpl } = await importGithubSyncModule("github-sync.mjs");
+    const ghExec = await this._resolvedExec();
+    return syncMilestonesImpl(this.repoPath, { ghExec, config: this._enabledConfig() });
+  }
+
+  async setup(options: { overwrite?: boolean } = {}): Promise<any> {
+    const { setupGithubSync } = await importGithubSyncModule("github-sync.mjs");
+    return setupGithubSync(this.repoPath, options);
   }
 }

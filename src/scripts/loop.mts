@@ -3,7 +3,6 @@
 import path from "node:path";
 import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
 import { resolveSkills } from "./lib/skill-resolver.mjs";
-import { importGithubSync } from "./lib/github-sync-loader.mjs";
 import { parseArgs } from "./lib/cli-args.mjs";
 
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
@@ -80,10 +79,10 @@ const COMMANDS = {
     const { listPresets } = await import("./lib/config-resolver.mjs");
     return { presets: await listPresets() };
   },
-  github: ({ repoPath, flags, positionals }: CmdCtx) =>
-    runGithubSubcommand(repoPath, positionals, flags),
-  "task-store": ({ repoPath, flags, positionals }: CmdCtx) =>
-    runGithubSubcommand(repoPath, positionals, flags),
+  github: ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runGithubSubcommand(repoPath, positionals, flags, config),
+  "task-store": ({ repoPath, flags, positionals, config }: CmdCtx) =>
+    runGithubSubcommand(repoPath, positionals, flags, config),
   backlog: ({ repoPath, flags, positionals, config }: CmdCtx) =>
     runBacklogSubcommand(repoPath, positionals, flags, config),
   "backlog-audit": async ({ repoPath, flags }: CmdCtx) => runBacklogAudit(repoPath, flags),
@@ -729,6 +728,42 @@ async function main() {
 
 type DispatchFn = typeof import("./lib/auto-dispatch.mjs").dispatchAgent;
 
+// FEAT-251 Phase 2 (SLICE-155): tracker mirror traffic routes through
+// getProvider() exclusively — taskStore.provider in loop.json is the single
+// switch. These two helpers resolve the configured provider and, when it is
+// a GithubProvider (explicit "github", or the "github.enabled" back-compat
+// branch — see getProvider() in lib/task-store/index.mts), delegate to its
+// id-based publish methods (identical behavior to the pre-migration direct
+// github-sync.mjs calls: idempotency check, milestone upsert, frontmatter
+// stamp). Any other resolved provider (noop, linear-stub) is a silent no-op
+// here, mirroring the old "github.enabled: false" skip.
+export async function publishFeatureViaProvider(
+  repoPath: string,
+  featId: string,
+  config: Record<string, any> | null
+): Promise<{ created: boolean; issueNum: number; url: string | null } | null> {
+  const { getProvider, GithubProvider } = await import("./lib/task-store/index.mjs");
+  const provider = getProvider(config, repoPath);
+  if (provider instanceof GithubProvider) {
+    return provider.publishFeatureById(featId);
+  }
+  return null;
+}
+
+export async function publishSliceViaProvider(
+  repoPath: string,
+  sliceId: string,
+  featId: string,
+  config: Record<string, any> | null
+): Promise<{ created: boolean; issueNum: number; url: string | null } | null> {
+  const { getProvider, GithubProvider } = await import("./lib/task-store/index.mjs");
+  const provider = getProvider(config, repoPath);
+  if (provider instanceof GithubProvider) {
+    return provider.publishSliceById(sliceId, featId);
+  }
+  return null;
+}
+
 async function resolveBacklogAddBody(
   repoPath: string,
   _title: string,
@@ -813,9 +848,8 @@ async function runBacklogAdd(
     ...(githubIssue !== null ? { github_issue: githubIssue } : {}),
     ...(githubUrl !== null ? { github_url: githubUrl } : {})
   });
-  const { publishFeat } = await importGithubSync("github-sync.mjs");
   try {
-    await (publishFeat as any)(repoPath, result.id);
+    await publishFeatureViaProvider(repoPath, result.id, config);
   } catch (e) {
     console.error(`[github] publish warning (backlog add): ${(e as Error).message}`);
   }
@@ -1336,10 +1370,9 @@ const SPEC_HANDLERS = {
       const entries = parseFeatureEntries(flags);
       const { decomposeSpec } = await import("./lib/spec-decomposer.mjs");
       const out = await decomposeSpec(repoPath, specId, entries, { config });
-      const { publishFeat } = await importGithubSync("github-sync.mjs");
       for (const feat of out.created) {
         try {
-          await (publishFeat as any)(repoPath, feat.id);
+          await publishFeatureViaProvider(repoPath, feat.id, config);
         } catch (e) {
           console.error(
             `[github] publish warning (spec decompose ${feat.id}): ${(e as Error).message}`
@@ -1452,11 +1485,10 @@ const SLICE_HANDLERS = {
       }
       throw err;
     }
-    const { publishSlice } = await importGithubSync("github-sync.mjs");
     const slicesList = Array.isArray((out as any).slices) ? (out as any).slices : [out.slice];
     for (const sl of slicesList) {
       try {
-        await (publishSlice as any)(repoPath, sl.id, featureId);
+        await publishSliceViaProvider(repoPath, sl.id, featureId, opts.config ?? null);
       } catch (e) {
         console.error(`[github] publish warning (slice from-feature): ${(e as Error).message}`);
       }
@@ -1888,40 +1920,75 @@ async function runLessonsRankSubcommand(
   return { _suppressDefaultOutput: true };
 }
 
-async function runGithubSubcommand(repoPath: any, positionals: any, flags: any) {
+// "setup" bootstraps github.enabled itself (writes loop.json, bulk-sets
+// phases) — it must run before any provider would resolve to GithubProvider,
+// so it always targets GithubProvider directly rather than going through
+// getProvider()'s taskStore.provider/github.enabled gate. Matches the
+// pre-migration behavior, which never gated setup on config at all.
+async function runGithubSetup(repoPath: string, config: Record<string, any> | null) {
+  const { GithubProvider } = await import("./lib/task-store/index.mjs");
+  const provider = new GithubProvider(repoPath, config ?? {});
+  const result = await provider.setup();
+  console.log("[github-sync] Setup complete. Run 'github publish' next.");
+  return result;
+}
+
+async function runGithubPublish(provider: any, GithubProvider: any) {
+  if (!(provider instanceof GithubProvider)) return { milestones: 0, issues: 0, subissues: 0 };
+  return provider.publishAll();
+}
+
+async function runGithubFeatPublish(
+  provider: any,
+  GithubProvider: any,
+  positionals: any,
+  flags: any
+) {
+  const featId = flags?.id || positionals[1];
+  if (!featId) throw new Error("github feat-publish requires --id FEAT-NNN.");
+  const result =
+    provider instanceof GithubProvider ? await provider.publishFeatureById(featId) : null;
+  if (!result) {
+    console.log("[github-sync] GitHub sync disabled — skipped.");
+    return { skipped: true };
+  }
+  console.log(
+    result.created
+      ? `Published: #${result.issueNum} ${result.url}`
+      : `Already published: #${result.issueNum}`
+  );
+  return result;
+}
+
+async function runGithubStatus(provider: any, GithubProvider: any) {
+  if (!(provider instanceof GithubProvider)) return { milestones: 0, updated: 0, closed: 0 };
+  return provider.syncMilestones();
+}
+
+async function runGithubSyncOrBootstrap(provider: any, repoPath: string, sub: string) {
+  console.log(`[task-store] provider: ${provider.constructor.name}`);
+  return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
+}
+
+export async function runGithubSubcommand(
+  repoPath: any,
+  positionals: any,
+  flags: any,
+  config: Record<string, any> | null = null
+) {
   const [sub] = positionals;
-  const { publishAll, publishFeat, syncMilestones, setupGithubSync } =
-    await importGithubSync("github-sync.mjs");
-  if (sub === "setup") {
-    const result = await (setupGithubSync as any)(repoPath);
-    console.log("[github-sync] Setup complete. Run 'github publish' next.");
-    return result;
-  }
-  if (sub === "publish") return (publishAll as any)(repoPath);
-  if (sub === "feat-publish") {
-    const featId = flags?.id || positionals[1];
-    if (!featId) throw new Error("github feat-publish requires --id FEAT-NNN.");
-    const result = await (publishFeat as any)(repoPath, featId);
-    if (!result) {
-      console.log("[github-sync] GitHub sync disabled — skipped.");
-      return { skipped: true };
-    }
-    console.log(
-      result.created
-        ? `Published: #${result.issueNum} ${result.url}`
-        : `Already published: #${result.issueNum}`
-    );
-    return result;
-  }
-  if (sub === "status") return (syncMilestones as any)(repoPath);
-  if (sub === "sync" || sub === "bootstrap") {
-    const { resolveConfig } = await import("./lib/config-resolver.mjs");
-    const { getProvider } = await import("./lib/task-store/index.mjs");
-    const config = await resolveConfig(repoPath);
-    const provider = getProvider(config, repoPath);
-    console.log(`[task-store] provider: ${provider.constructor.name}`);
-    return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
-  }
+  if (sub === "setup") return runGithubSetup(repoPath, config);
+
+  const { getProvider, GithubProvider } = await import("./lib/task-store/index.mjs");
+  const provider = getProvider(config, repoPath);
+
+  if (sub === "publish") return runGithubPublish(provider, GithubProvider);
+  if (sub === "feat-publish")
+    return runGithubFeatPublish(provider, GithubProvider, positionals, flags);
+  if (sub === "status") return runGithubStatus(provider, GithubProvider);
+  if (sub === "sync" || sub === "bootstrap")
+    return runGithubSyncOrBootstrap(provider, repoPath, sub);
+
   throw new Error(
     "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap"
   );
