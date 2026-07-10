@@ -44,7 +44,8 @@ const BOUNDARIES: ModuleBoundary[] = [
       /watch\/envelopes/,
       /watch\/tick/,
       /watch\/sweep/,
-      /watch\/ledger/
+      /watch\/ledger/,
+      /watch\/config/
     ]
   }
 ];
