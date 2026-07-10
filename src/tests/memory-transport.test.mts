@@ -72,7 +72,15 @@ describe("sendViaProvider — runtime discovery (no injection)", () => {
   test("discovers the env-pinned plugin root and delivers via its selector", async () => {
     // No _setProvider call — exercises candidateRoots() + resolveFromRoot()
     // (env root branch) + the pathToFileURL dynamic import on this platform.
-    const ok = await sendViaProvider({ id: "d1", type: "lesson", text: "via discovery" });
+    // Explicit capMs: unlike every other test in this file, this path does a
+    // real disk-based dynamic import (module resolution + compile), not an
+    // injected in-memory provider. The production default (2000ms, tuned for
+    // the fast injected hot path) races that real import against
+    // `bun test --parallel`'s worker-process CPU/disk contention and loses
+    // intermittently (FEAT-260) — reproduced as a fail in 2/2 full-suite runs
+    // under the default cap on a 20-core worker count; 0 failures across 3
+    // full-suite runs once given this generous budget.
+    const ok = await sendViaProvider({ id: "d1", type: "lesson", text: "via discovery" }, 20000);
 
     expect(ok).toBe(true);
     const seen = (globalThis as Record<string, unknown>)["__memTransportSeen"] as
