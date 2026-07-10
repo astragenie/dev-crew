@@ -5,7 +5,8 @@
     "": {
       "name": "loop-plugin",
       "dependencies": {
-        "@astragenie/astramem-client": "0.1.0",
+        "@astragenie/astramem-client": "^0.2.0",
+        "@astragenie/plugin-std": "^0.5.0",
         "ajv": "^8.17",
         "ajv-formats": "^3.0",
       },
@@ -18,7 +19,9 @@
     },
   },
   "packages": {
-    "@astragenie/astramem-client": ["@astragenie/astramem-client@0.1.0", "", { "peerDependencies": { "@astragenie/astramem-plugin": ">=0.6.0" }, "optionalPeers": ["@astragenie/astramem-plugin"] }, "sha512-yz4d3BhxrI/vLmvAHePsyKjBn9LVpeH29MjIzy+IvVwuv3d9AHEHhPhhvL6KlTlcsrVhKR2+1C6z+jBOE8QThA=="],
+    "@astragenie/astramem-client": ["@astragenie/astramem-client@0.2.0", "", { "peerDependencies": { "@astragenie/astramem-plugin": ">=0.6.0" }, "optionalPeers": ["@astragenie/astramem-plugin"] }, "sha512-5cmiPMgHKeudFQN0TmHAv4ybcZX7SWsKo12UrfThiKbTK7Nx/JjPtr7aFcpWkABc8/n5Jil1YQ+vf72mfzmKcg=="],
+
+    "@astragenie/plugin-std": ["@astragenie/plugin-std@0.5.0", "", { "dependencies": { "yaml": "^2.6.0" } }, "sha512-Ymk8BfQvnZZybZtJfwsPuV0IUTnFOSsPfm9eyf9SeKHNLyllSyppF/QyJSueLopaAin/zIkHrMrKEfYu8exbHw=="],
 
     "@biomejs/biome": ["@biomejs/biome@2.5.0", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.5.0", "@biomejs/cli-darwin-x64": "2.5.0", "@biomejs/cli-linux-arm64": "2.5.0", "@biomejs/cli-linux-arm64-musl": "2.5.0", "@biomejs/cli-linux-x64": "2.5.0", "@biomejs/cli-linux-x64-musl": "2.5.0", "@biomejs/cli-win32-arm64": "2.5.0", "@biomejs/cli-win32-x64": "2.5.0" }, "bin": { "biome": "bin/biome" } }, "sha512-4kURkd9hAPrdDM3C9n82ycYgx8hvQcW6MjKTEejruj8rK0N8P3OPpdy8BvI8kt3KWY4ycF5XtDOrktetEfhfuw=="],
 
@@ -57,5 +60,7 @@
     "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "undici-types": ["undici-types@7.24.6", "", {}, "sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg=="],
+
+    "yaml": ["yaml@2.9.0", "", { "bin": { "yaml": "bin.mjs" } }, "sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA=="],
   }
 }
