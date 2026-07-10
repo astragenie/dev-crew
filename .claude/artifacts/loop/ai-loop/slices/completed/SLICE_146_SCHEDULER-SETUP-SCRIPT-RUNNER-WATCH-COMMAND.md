@@ -1,7 +1,7 @@
 ---
 id: SLICE-146
 title: "Scheduler setup script + /runner:watch command"
-status: pending
+status: completed
 feature: FEAT-242
 phase: null
 priority: P1
@@ -9,23 +9,21 @@ target_release: null
 requires_validation: true
 risk: medium
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 effort_points: 2
 touches_files:
-  - src/scripts/lib/watch.mts
-  - commands/watch.md
-  - scripts/setup-watch-scheduler.mjs
-  - src/scripts/lib/watch/tick.mts
-  - src/tests/watch-tick.test.mts
   - src/scripts/watch-tick.mts
   - src/scripts/lib/watch.mts
   - src/scripts/lib/watch/config.mts
+  - src/scripts/lib/watch/tick.mts
   - src/scripts/validate-imports.mts
   - scripts/setup-watch-scheduler.mjs
   - commands/watch.md
+  - src/tests/watch-tick.test.mts
   - src/tests/watch-tick-entry.test.mts
   - src/tests/watch-scheduler-setup.test.mts
   - src/tests/watch-config.test.mts
+completed_at: 2026-07-10
 ---
 # SLICE-146: Scheduler setup script + /runner:watch command
 

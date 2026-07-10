@@ -1,11 +1,11 @@
 ---
 id: FEAT-242
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 depends_on: []
 slices: [SLICE-143, SLICE-144, SLICE-145, SLICE-146]
 derived_from: null
@@ -36,7 +36,8 @@ proposed_slices:
     title: "Scheduler setup script + /runner:watch command"
     points: 2
 started_at: 2026-07-09
-slices_complete: [SLICE-143, SLICE-144, SLICE-145]
+slices_complete: [SLICE-143, SLICE-144, SLICE-145, SLICE-146]
+completed_at: 2026-07-10
 ---
 ## Description
 

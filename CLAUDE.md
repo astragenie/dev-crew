@@ -119,6 +119,7 @@ manifest + content-length + format-check locally before any `git push`.
 - Entry-point scripts that ship as hand-authored `.mjs` (no `.mts`
   source) — currently `scripts/setup-github-sync.mjs`,
   `scripts/setup-task-store.mjs`,
+  `scripts/setup-watch-scheduler.mjs`,
   `scripts/competitor-audit/aggregate.mjs`, and
   the two `hooks/*.mjs` files. These are intentional exceptions, not
   drift. Anything else under `scripts/` without an `src/scripts/...mts`
