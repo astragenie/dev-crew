@@ -1,6 +1,6 @@
 ---
 id: FEAT-261
-status: pending
+status: done
 priority: null
 category: feature
 target_release: null
@@ -9,6 +9,8 @@ updated: 2026-07-10
 depends_on: []
 slices: []
 derived_from: null
+resolution: "Implemented by PR #468 (2026-07-10): dispatch worktrees base on invoking HEAD (resolveDispatchBase) with loud missing-slice-in-base guard (assertSliceExistsAtBase); worktree-manager main-literal also fixed; --base override CLI flag. Reviewer-approved, 10 new tests."
+completed_at: 2026-07-10
 ---
 ## Description
 

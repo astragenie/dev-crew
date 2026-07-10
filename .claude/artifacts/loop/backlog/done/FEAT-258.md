@@ -1,6 +1,6 @@
 ---
 id: FEAT-258
-status: pending
+status: done
 priority: null
 category: tooling
 target_release: null
@@ -12,6 +12,8 @@ derived_from: null
 autonomous_safe: null
 pm_reviewed: null
 triage_notes: "Filed 2026-07-10 from SLICE-149 grade followup. The FEAT-244 close ceremony emitted two all-zero grade stubs (empty frontmatter, every score 0) — one of them mislabeled with the wrong feature id (feat247 instead of feat244) — and the ceremony reported success. Grading had to be reconstructed manually a session later; until then the telemetry averages silently ingested seven 0.0 scores per stub."
+resolution: "Guard already existed (FEAT-145 isAllZeroScores in grade-writer.mts); PR #465 (2026-07-10) added the missing regression coverage: all-zero rejected, normalizer missing-scores-map rejected, partial-zero accepted."
+completed_at: 2026-07-10
 ---
 # FEAT-258: grade ceremony must refuse silent all-zero grade stubs
 
