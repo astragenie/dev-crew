@@ -1,0 +1,192 @@
+[
+  {
+    "featureId": "FEAT-249",
+    "scores": {
+      "customer_impact": 0.25,
+      "effort_estimate": 0.15,
+      "strategic_alignment": 0.5,
+      "technical_risk": 0.15,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Plan Phase 0 (.claude/artifacts/crew/runs/2026-07-09-tracker-provider-migration-prompt.md:111-115): 'Reconcile FEAT-102 (done-but-unsatisfied): supersede with new FEAT citing unmet AC.' FEAT-102 is on disk at .claude/artifacts/loop/backlog/done/FEAT-102.md marked done despite the plan's claim its Linear webhook receiver was never built and LinearProvider stayed a stub -- an audit-integrity gap, not user demand per se.",
+    "scopeNotes": "Smallest deliverable: one DEC recording (a) FEAT-102 superseded-by-this-program with the unmet-AC citation, and (b) fold-vs-delete disposition of scripts/linear-sync/ (mention-parser.mts, linear-types.mts, webhook-handler.mts -- confirmed present on disk, unit-tested, wired to nothing). Both decisions gate later work (FEAT-252 explicitly says 'Reuse or delete scripts/linear-sync/ prototype per FEAT-249 DEC') but neither is itself blocked by anything. No weak grade dimensions currently (all 7 loop-snapshot averages >=0.80: architecture_quality 0.846, reliability 0.86, observability 0.82, production_readiness 0.872, security 0.88, test_confidence 0.914, product_completeness 0.844), so no dimension-targeting AC is required. No cost analog found for a DEC-only housekeeping slice this small; scored from the effort table.",
+    "risks": [
+      "The fold-vs-delete call on scripts/linear-sync/ needs an architect pass before a builder touches it -- if a builder decides unilaterally, FEAT-252's LinearProvider could either miss reusable mention-parser/webhook logic or drag in dead code.",
+      "FEAT-102's supersede record must cite the exact unmet AC (Linear webhook receiver, LinearProvider stub) or the decline/supersede audit trail is incomplete."
+    ],
+    "reasoning": "Small, low-risk, well-understood DEC-writing task (technical_risk band 0.0-0.2: known repo pattern, 1-2 files, trivially reverted); moderate strategic value as a gate for Phase 3's reuse decision but no direct customer evidence -> P2. No cost analog."
+  },
+  {
+    "featureId": "FEAT-250",
+    "scores": {
+      "customer_impact": 0.5,
+      "effort_estimate": 0.8,
+      "strategic_alignment": 0.75,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.45
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Architecture review (.claude/artifacts/crew/reviews/2026-07-09-tracker-provider-plan-review.md:14-18) MAJOR finding 1: 'Phase 1 slice-side scope understated -- no canonical slice-writer exists to consolidate... New construction + divergence reconciliation, not delegate swap.' Program's headline AC (plan line 219-220) 'Flipping taskStore.provider/providers... changes all publish+sync behavior, zero code edits' is structurally impossible without this storage seam existing first.",
+    "scopeNotes": "COND-A requires the slice-side new-construction and feature-side delegate swap be budgeted together, not split casually. `grep -rl backlog-writer.mjs src/scripts` confirms 11 caller files (matches review finding 7, not the plan's original 8). Weak dimensions: none currently (all loop-snapshot averages >=0.80). No direct cost analog on disk; SLICE-14 ($7.39/15min) built the getProvider resolver itself, not this storage layer, so it's not comparable. Using FEAT-242 (pm_effort_estimate 0.65 -> 8 Fibonacci points, 4-slice decomposition, architect-approved, still in-progress so no closed-cost actual) only as a scope-shape anchor: FEAT-250's combined interface-design + 11-caller conversion + net-new slice-writer consolidation + CI allowlist gate exceeds FEAT-242's blast radius, supporting effort_estimate 0.8 -> 13 points.",
+    "risks": [
+      "It is two weeks later and this slice failed review or validation -- most likely cause: the slice-side 'new construction' (COND-A) under-scoped wave/failure-pivot.mts's hand-rolled regex frontmatter mutation, and porting it to mergeFrontmatter silently changed output shape on an edge-case frontmatter block that wave-mode's light test coverage never exercised.",
+      "This merged and broke the loop -- rollback requires more than git revert once Phase 2/3/4 FEATs start calling BacklogStore: a mid-migration revert leaves a mixed thin-delegate/raw-fs state across the 11 converted callers that is hard to bisect cleanly, not a clean single-commit revert.",
+      "Existing tests exercise backlog-writer.mts's moveFeature and the DORA emitter directly, but there is no existing integration test asserting the new createSlice/updateSliceFrontmatter/moveSlice produce byte-identical frontmatter to the three consolidated raw-fs writers (complete-slice.mts, feature-lifecycle.mts x2) -- that parity test does not exist today and must be added as an AC, not assumed.",
+      "HARD DEPENDENCY on FEAT-247 (triaged P1, not yet started) -- do not start Phase 1 code until FEAT-247's moveFeature integration test lands and stays green untouched through this refactor."
+    ],
+    "reasoning": "Cross-module reach (11+ callers, 3+ scattered write sites to consolidate, new CI allowlist gate) with no new external dependency and no persisted-data-shape change lands technical_risk at 0.65 (bottom of the 0.6-0.8 band), triggering the mandatory pre-mortem; foundational to every downstream phase (2-6) -> P1; effort_estimate 0.8 maps to 13 Fibonacci points, tripping the FEAT-168 decomposition gate -- decomposed into 4 slices below summing to 16 points.",
+    "acs": [
+      "AC-1: Given the current moveFeature/updateFeatureFrontmatter callers across the 11 files identified via grep (src/scripts/loop.mts, slice-linker/start-slice.mts, slice-linker/feature-lifecycle.mts, pm-apply.mts, arch-gate.mts, slice-linker/close-slice.mts, grade-writer.mts, slice-linker/complete-slice.mts, intake.mts, spec-decomposer.mts, claims-sync.mts), When the BacklogStore interface (createFeature, updateFeatureFrontmatter, moveFeature, listByState, getById) lands and backlog-writer.mts functions become thin delegates, Then every caller's frontmatter output is byte-identical to pre-refactor output for the same input -- evidenced by a before/after parity test run across all 11 callers.",
+      "AC-2: Given the DORA A2 integration test added by FEAT-247 (asserting moveFeature forwards priority/category/relates_to/createdAt into emitBacklogStateChanged), When moveFeature is re-homed onto BacklogStore, Then that integration test still passes unmodified -- evidenced by CI showing the FEAT-247 test green after the Phase 1 refactor with zero edits to the test file itself.",
+      "AC-3: Given no canonical slice-writer exists today (raw fs writes scattered across slice-linker/complete-slice.mts's moveAndStampSlice and slice-linker/feature-lifecycle.mts's materializeSingleSlice/materializeProposedSlices), When createSlice/updateSliceFrontmatter/moveSlice are introduced on BacklogStore, Then all three call sites are migrated to call the new methods and no raw fs.writeFileSync/fs.renameSync against slice files remains outside the BacklogStore module -- evidenced by the CI allowlist gate (AC-5) finding zero disallowed writers.",
+      "AC-4 (edge/error path): Given wave/failure-pivot.mts currently mutates slice frontmatter via hand-rolled regex rather than the shared frontmatter.mjs/mergeFrontmatter parser, When the Phase 1 architect DEC decides port-vs-exception, Then either (a) failure-pivot.mts is ported to mergeFrontmatter and a regression test proves identical output on a malformed/edge-case frontmatter block it previously handled via regex, or (b) the DEC documents it as a named allowlist exception with a one-line rationale in the CI guard config -- evidenced by the DEC file and, for path (a), the regression test; for path (b), a CI guard test asserting failure-pivot.mts is present in the exception list.",
+      "AC-5: Given the CI guard must be an explicit allowlist (not a bare 'no fs on backlog paths' rule) per COND-D, When any file outside the BacklogStore module or the allowlist writes to .claude/artifacts/loop/backlog/**, Then the validate-imports.mts-style CI check fails the build; When doctor.mts performs its content-level reconciliation writes, Then it passes because it is either migrated onto BacklogStore or explicitly allowlisted per the up-front DEC classification -- evidenced by a new CI script test with a violating fixture (fails) and doctor.mts/test-fixture writers (pass)."
+    ],
+    "proposedSlices": [
+      {
+        "id_suffix": "-SLICE-1",
+        "title": "Architect DEC: BacklogStore interface + doctor.mts classification + failure-pivot regex decision",
+        "points": 3
+      },
+      {
+        "id_suffix": "-SLICE-2",
+        "title": "Feature-side delegate conversion across 11 backlog-writer callers",
+        "points": 5
+      },
+      {
+        "id_suffix": "-SLICE-3",
+        "title": "Slice-side new construction: consolidate complete-slice/feature-lifecycle/failure-pivot writes",
+        "points": 5
+      },
+      {
+        "id_suffix": "-SLICE-4",
+        "title": "CI allowlist guard + CLAUDE.md CI-list registration + DORA A2 parity test",
+        "points": 3
+      }
+    ]
+  },
+  {
+    "featureId": "FEAT-251",
+    "scores": {
+      "customer_impact": 0.45,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.7,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Plan Phase 2 (.claude/artifacts/crew/runs/2026-07-09-tracker-provider-migration-prompt.md:142-145): 'After this FEAT, taskStore.provider is the single switch for ALL mirror traffic' -- the core 'flip provider, zero code edits' whole-program AC (plan line 219-220) is unrealized until this FEAT routes the bypass call sites through getProvider(). Review finding 8 independently confirms the getProvider call-site citation itself has already drifted (1923 -> 1920), underscoring the re-grep-before-code instruction in the plan's own header note.",
+    "scopeNotes": "Smallest deliverable: route the 3 loop.mts auto-publish call sites (plan-cited ~1002/1343/1459, explicitly flagged as drifted -- must re-grep, not trust) plus the four github setup|publish|feat-publish|status subcommands through getProvider(). Explicitly independent of FEAT-250 per plan text: 'Independent of the BacklogStore refactor (publish path does not touch backlog-writer).' No weak grade dimensions to target. Cost analog: SLICE-14 cost report ($7.3878, 15.0 min, 3 sessions, 99% cache hit) built the getProvider resolver + NoopProvider + LinearProvider stub itself -- a related but larger greenfield task. This FEAT only consumes the already-existing resolver at new call sites, so actual cost should undershoot SLICE-14's $7.39, supporting effort 0.35 (3 pts) rather than higher.",
+    "risks": [
+      "Line-number anchors in the plan for loop.mts auto-publish sites (~1002/1343/1459) are stated as drifted by the plan itself (review finding 8) -- builder must re-grep, not trust the cited numbers.",
+      "github.enabled back-compat regression: if the getProvider() reroute changes resolution order for repos that set github.enabled: true without an explicit taskStore.provider, existing installs could silently stop publishing -- needs an explicit back-compat test, not just a behavioral read-through of the diff."
+    ],
+    "reasoning": "Contained, one-module (loop.mts) call-site swap onto an already-existing getProvider() resolver in task-store/index.mts; technical_risk 0.35 (top of 0.3-0.5 band: one module, no schema change, explicit behavior-parity test required by the plan itself, clean rollback); realizes the program's headline 'flip provider, zero code edits' AC -> P2."
+  },
+  {
+    "featureId": "FEAT-252",
+    "scores": {
+      "customer_impact": 0.6,
+      "effort_estimate": 0.7,
+      "strategic_alignment": 0.75,
+      "technical_risk": 0.7,
+      "dependency_depth": 0.25
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "LINEAR_API_KEY is already set as a user-level env var on this machine and the Astragenie workspace/team (key AST, teamId 81cea472-33a9-4fbe-a797-147e17c6ca05) is pre-identified in the plan's Context section -- concrete operator-level intent to use Linear, not a hypothetical. FEAT-245 (IssueBroker, triaged P2, on disk at .claude/artifacts/loop/backlog/triaged/FEAT-245.md) explicitly states 'LinearProvider slot documented as pending C2, deferred' -- a second in-repo FEAT is blocked waiting on this one specifically.",
+    "scopeNotes": "Smallest deliverable per COND-B/COND-C: the four GraphQL write methods (issueCreate feature, issueCreate+parentId slice, workflow-state transition, commentCreate) plus soft-fail contract and the COND-B stamping DEC -- syncPull/bootstrap default to documented warning-stubs (COND-C), not full pagination/rate-limit handling, unless the architect DEC explicitly raises the estimate. provider-interface.mts:35 confirms publishFeature returns a single Promise<number|string|null> today -- COND-B's map-return-vs-composite-stamps-frontmatter choice must be made before this FEAT's publishFeature implementation is written, or Phase 4 (FEAT-253) reworks it. No weak grade dimensions to target. Cost analog: SLICE-14 ($7.3878, 15.0 min, 99% cache hit) built the getProvider resolver + LinearProvider *stub* (all-throw) + NoopProvider -- this FEAT replaces the stub with real GraphQL calls: external API, auth, soft-fail contract, mock-transport tests, one manual smoke -- materially larger than SLICE-14's scaffolding-only scope, supporting effort 0.7 (8 pts) well above SLICE-14's actual.",
+    "risks": [
+      "It is two weeks later and this slice failed review or validation -- most likely cause: the COND-B stamping DEC was skipped or made inline without architect sign-off, so publishFeature's return shape doesn't match what Phase 4's CompositeProvider (FEAT-253) needs, forcing a signature change after FEAT-253 has already built against it.",
+      "This merged and broke the loop -- rollback is a config-only revert (taskStore.provider back to github/noop) for the code path, but any Linear issues already created by a soft-fail bug during the bad window need manual cleanup in the live Astragenie Linear workspace, not a git revert.",
+      "Existing test suite has zero live-API coverage by design (COND-C: injectable mock transport only, no live calls in CI) -- a Linear GraphQL schema change (renamed mutation field, changed required arg) would not be caught until the single documented manual smoke test runs, which is not part of CI and has no cadence specified.",
+      "COND-B partial-failure warn semantics and id-recording contract are shared with FEAT-253 (CompositeProvider) -- if this FEAT's DEC and FEAT-253's implementation land out of sync, the composite fan-out silently mis-stamps frontmatter."
+    ],
+    "reasoning": "New external dependency (Linear GraphQL API) plus auth handling across a cross-module reuse target (IssueBroker/FEAT-245) lands technical_risk at 0.7 (0.6-0.8 band: new dependency, no schema/data-shape change to this repo's own persisted state); real operator-level demand (key + workspace already provisioned, FEAT-245 blocked on this slot) -> P1; effort_estimate 0.7 maps to 8 Fibonacci points, tripping the FEAT-168 decomposition gate -- decomposed into 3 slices below summing to 11 points.",
+    "acs": [
+      "AC-1: Given taskStore.linear.teamKey set to 'AST' and LINEAR_API_KEY present in the environment (per token-store.mts fallback contract), When LinearProvider.publishFeature(feat) is called for a FEAT not yet published, Then it issues a Linear issueCreate GraphQL mutation against https://api.linear.app/graphql scoped to team AST and returns the created issue's identifier as Promise<string> (matching the TaskStoreProvider.publishFeature contract in provider-interface.mts:35) -- evidenced by a unit test against an injectable mock transport asserting the mutation payload and the parsed return value.",
+      "AC-2: Given a slice with a known parent feature's Linear issue id, When LinearProvider.publishSlice(slice, parentExternalId) is called, Then it issues issueCreate with parentId set to parentExternalId (creating a Linear sub-issue), matching provider-interface.mts:43-46's publishSlice(slice, parentExternalId): Promise<number | string | null> contract -- evidenced by a mock-transport test asserting parentId is present in the mutation variables.",
+      "AC-3 (edge/error path): Given the Linear API returns a non-2xx response, a GraphQL error payload, or LINEAR_API_KEY is unset, When any LinearProvider method is called, Then it resolves (never throws), logs a warning distinguishing 'not configured' (missing key) from 'call failed' (API error), and returns null (or { features: [], slices: [] } for syncPull) per the soft-fail contract in provider-interface.mts:8-9 -- evidenced by three unit tests: missing-key, HTTP-error, and GraphQL-error-payload cases, each asserting no exception propagates and the correct warn-message shape.",
+      "AC-4: Given taskStore.linear.stateMap is unset, When a slice or feature transitions state via LinearProvider.updateStatus, Then the default state mapping (pending->Backlog, triaged->Todo, in-progress->In Progress, done->Done) is applied and the corresponding Linear workflow-state transition mutation is sent -- evidenced by a test asserting the correct target state name is sent for each of the four default mappings.",
+      "AC-5 (COND-C descope path): Given the default v1 scope descopes syncPull and bootstrap to documented warning-stubs (no pagination/rate-limit handling), When either method is called, Then it logs a warning naming the descope and returns an empty-but-well-shaped result ({ features: [], slices: [] } / { features: [] }) without throwing and without making a real API call -- evidenced by a test asserting the warning fires and zero mock-transport calls occur."
+    ],
+    "proposedSlices": [
+      {
+        "id_suffix": "-SLICE-1",
+        "title": "COND-B stamping DEC + auth (LINEAR_API_KEY/token-store) + taskStore.linear config schema",
+        "points": 3
+      },
+      {
+        "id_suffix": "-SLICE-2",
+        "title": "Core GraphQL write methods: issueCreate + parentId, state transition, commentCreate",
+        "points": 5
+      },
+      {
+        "id_suffix": "-SLICE-3",
+        "title": "COND-C warning-stubs + config seeding + IssueBroker-reusable ops + manual smoke",
+        "points": 3
+      }
+    ]
+  },
+  {
+    "featureId": "FEAT-253",
+    "scores": {
+      "customer_impact": 0.5,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.65,
+      "technical_risk": 0.5,
+      "dependency_depth": 0.45
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Program's whole-program acceptance criterion (plan line 219-220): 'Flipping taskStore.provider/providers between noop|github|linear|composite changes all publish+sync behavior, zero code edits' -- CompositeProvider is the only phase that realizes the providers: [...] array / dual-tracker case of that AC. Review finding 3 [MAJOR] independently flags partial-publish-failure invisibility as a real correctness gap this FEAT must close.",
+    "scopeNotes": "Smallest deliverable: CompositeProvider(providers[]) implementing TaskStoreProvider with per-child error isolation and the COND-B warn-distinguishing-not-configured-vs-failed behavior; the docs page split (BacklogStore vs TaskStoreProvider) can ship in the same slice since it's markdown-only. Hard-depends on FEAT-252 (LinearProvider) landing first since CompositeProvider's id-recording approach is fixed by FEAT-252's COND-B DEC -- cannot be scoped independently. No weak grade dimensions to target. No direct cost analog on disk for a fan-out/composite-provider pattern; scored from the effort table using FEAT-251 (0.35/3pts, single-module getProvider consumer) as a lower-bound anchor and FEAT-252 (0.7/8pts, new external integration) as an upper-bound anchor -- CompositeProvider composes two already-built providers with no new external calls, landing between them at 0.45.",
+    "risks": [
+      "Partial-failure warn behavior (COND-B) is the review's top MAJOR finding for this phase -- if the warn doesn't distinguish 'not configured' from 'configured but call failed', a github-ok/linear-fail scenario silently no-ops at Phase 5a close-time with zero operator signal, exactly the failure mode the review flagged.",
+      "Blocked entirely until FEAT-252 lands and its COND-B DEC resolves the id-recording contract (map-return vs composite-owns-stamping) -- starting this FEAT before FEAT-252 closes risks building against a stamping approach that changes underneath it."
+    ],
+    "reasoning": "Composes two already-existing providers (no new external dependency) but correctness-critical partial-failure semantics keep technical_risk at the top of the 0.3-0.5 band (0.5); hard-blocked on FEAT-252 (dependency_depth 0.45); realizes the program's dual-tracker AC -> P2."
+  },
+  {
+    "featureId": "FEAT-254",
+    "scores": {
+      "customer_impact": 0.55,
+      "effort_estimate": 0.5,
+      "strategic_alignment": 0.6,
+      "technical_risk": 0.45,
+      "dependency_depth": 0.65
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Plan hook (c) states explicit purpose: 'Gives astrarunner issue open->close timestamps for lead-time/MTTR' -- direct DORA-consumer demand. Hook (b) states 'FEAT-242's watcher reactions calling intake --from-issue make Linear issues watchable findings with zero watcher changes' -- a second in-repo FEAT (FEAT-242's reactions) gets free value from this one. Lessons digest (bun src/scripts/loop.mts lessons recent 5, last 5 slice grades) has no entries naming issue-close hooks or --from-issue directly, so this demand is plan-evidenced, not lesson-evidenced.",
+    "scopeNotes": "Three separable hooks (close-comment+close, --from-issue Linear support, issue.published/closed events) but explicitly gated: 'SEQUENCING: queue until FEAT-242 (B1) slices close -- shared envelope/fanout surface' and depends_on FEAT-251 + FEAT-252 for the getProvider path and LinearProvider respectively. Event emission MUST copy the landed PR #406 pattern exactly (dedicated <kind>-emitter.mts, schema under schemas/loop-events/ + index.json, fanoutEnvelope sink, no-op without webhook config, canonical ts field) -- a known template reduces effort/risk versus greenfield design. No weak grade dimensions to target. No cost analog for this exact hook-shape found under .claude/artifacts/crew/cost/ matching a PR #406 slug; scored from the effort table.",
+    "risks": [
+      "Three-way dependency (FEAT-251, FEAT-252, FEAT-242) with FEAT-242 only 1 of 4 slices closed today (slices_complete: [SLICE-143]) -- this FEAT cannot start yet and may need re-triage once all three land, since scope/risk assumptions could drift in the meantime.",
+      "Hook (a) (/runner:close posts close-comment + closes the mirrored issue) changes close-ceremony behavior for every github-enabled repo, not just Linear ones -- needs an explicit back-compat test so existing github.enabled installs don't get double-commented or an unexpected auto-close."
+    ],
+    "reasoning": "Moderate-effort finesse layer reusing the proven PR #406 emitter pattern (technical_risk 0.45, top of 0.3-0.5: known pattern, multiple modules, no schema change to existing data); real DORA-consumer demand (astrarunner lead-time/MTTR) but the highest dependency_depth in this batch (three named blockers, one still in-progress) keeps it P2 pending sequencing."
+  },
+  {
+    "featureId": "FEAT-255",
+    "scores": {
+      "customer_impact": 0.3,
+      "effort_estimate": 0.3,
+      "strategic_alignment": 0.5,
+      "technical_risk": 0.25,
+      "dependency_depth": 0.3
+    },
+    "compositePriority": "P3",
+    "autonomousSafe": false,
+    "demandEvidence": "Review COND-E (finding 6, [MODERATE]): 'Bundled AC not verifiable from this repo's CI (dev-team prompt scan is cross-repo) -- split into in-repo CI AC + manual Phase 6 verification.' Plan Context section: 'dev-team prompt offender (only one across both repos): commands/architect-feature.md Step 3 (lines ~128-148) hand-writes FEAT frontmatter tags' -- a concretely identified, single offending file, not a broad audit.",
+    "scopeNotes": "Smallest in-repo deliverable: the backlog tag-merge --id FEAT-NNN --tags a,b CLI subcommand routed through BacklogStore (depends_on FEAT-250 for that routing to exist) plus docs updates (CLAUDE.md, halt-badges.md if new badges, CHANGELOG, loop-snapshot regen -- snapshot-freshness CI gate already exists per CLAUDE.md). The dev-team rewrite (item 2) and the cross-repo prompt-scan re-run (item 3) are explicitly 'NOT a CI AC of this repo' per COND-E and touch a sibling repo (dev-team) this loop doesn't own -- that portion cannot be autonomous_safe inside runner-plugin's own dispatch/CI loop and should be filed/executed as a separate dev-team-side FEAT or an explicit manual step, not folded silently into this FEAT's autonomous slices. No weak grade dimensions to target. No cost analog found for a CLI-subcommand+docs-only slice of this shape; scored from the effort table.",
+    "risks": [
+      "Cross-repo scope creep: if a builder treats items 1-4 as one undifferentiated slice, the dev-team edit (item 2) either gets skipped silently (COND-E's manual step never happens) or a builder attempts an out-of-repo edit outside its authorized worktree.",
+      "Hard-blocked on FEAT-250 (BacklogStore) landing first since tag-merge is specified to route through it, not legacy backlog-writer.mts."
+    ],
+    "reasoning": "Low-risk, low-effort program closeout (known CLI pattern + docs, technical_risk 0.25: known repo pattern, 1-2 modules, clean rollback); real but narrow demand evidence (one identified offending file); the in-repo portion is autonomous_safe but the cross-repo dev-team edit sits outside this FEAT's own CI/dispatch authority -- autonomousSafe false at the FEAT level pending a slice split that isolates the in-repo CLI+docs work from the cross-repo manual step, P3."
+  }
+]

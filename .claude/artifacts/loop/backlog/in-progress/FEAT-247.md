@@ -1,6 +1,6 @@
 ---
 id: FEAT-247
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
@@ -10,7 +10,7 @@ depends_on: []
 tags: [dora, telemetry, observability, workflow]
 needs_contract: false
 needs_ux: false
-slices: []
+slices: [SLICE-147]
 derived_from: null
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.3
@@ -22,6 +22,10 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-09
 autonomous_safe: true
 triage_notes: "Small, mechanical, additive field-forwarding + dual-emit into an emitter interface that already declares these fields (technical_risk 0.45, band: new pattern across 3 modules + 2 schema files but no new dependency and clean git-revert rollback since no historical data is mutated); real evidenced pain (CFR/MTTR have zero live signal) plus it unblocks astrarunner's A3 cross-repo FEAT, architect-reviewed and APPROVED-WITH-CONDITIONS -> P1, autonomous_safe true given pre-drafted, testable Given-When-Then ACs and a clean rollback path; effort 0.3 (3 points) confirmed against three same-domain cost analogs (FEAT-203/204/205), no decomposition gate triggered."
+started_at: 2026-07-09
+github_issue: 409
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/409"
 ---
 ## Description
 
