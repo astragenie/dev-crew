@@ -4,6 +4,7 @@ import path from "node:path";
 import { parseFrontmatter, mergeFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
 import { specsRoot, pathExists } from "./paths.mjs";
 import { cached, bust, clearAll } from "./cache.mjs";
+import { emitSpecCreated } from "./spec-created-emitter.mjs";
 
 export const specRoot = specsRoot;
 
@@ -155,5 +156,7 @@ export async function addSpec(
   const filePath = path.join(root, `${id}.md`);
   await fs.writeFile(filePath, contents);
   bust(`listSpecs:${repoPath}`);
+  const createdAt = new Date().toISOString();
+  await emitSpecCreated(repoPath, { specId: id, createdAt });
   return { id, filePath, frontmatter };
 }

@@ -28,8 +28,42 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Required check. Fast, deterministic, no git-worktree operations.
+  # Docs-only fast-path: detect whether the PR touches anything other than
+  # docs/markdown/backlog. If not, the heavy jobs below are skipped and the
+  # `gate` summary job passes without running tests — so a docs-only PR
+  # auto-merges in seconds instead of waiting on the full suite.
+  changes:
+    name: detect changes
+    runs-on: self-hosted
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        run: |
+          set -uo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null; then base="HEAD~1"; fi
+          changed=$(git diff --name-only "$base" HEAD || echo "UNKNOWN")
+          echo "changed files:"; echo "$changed"
+          # code=true if ANY changed path is not docs/markdown/backlog. Empty or
+          # unresolved diff → treat as code (fail safe: run the full gate).
+          if [ -z "$changed" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          elif echo "$changed" | grep -qvE '(^docs/|\.md$|/backlog/|^\.github/backlog/)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs-only change detected — tests will be skipped"
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Fast validators + tsc + biome. Skipped on docs-only PRs (see `changes`).
   fast-gate:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@main
     with:
       install-cmd: bun install --frozen-lockfile
@@ -54,6 +88,8 @@ jobs:
   # self-hosted runner image (devops#64) — no setup-bun/setup-node steps.
   slow-tests:
     name: slow-tests
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: self-hosted
     timeout-minutes: 10
     steps:
@@ -102,6 +138,8 @@ jobs:
   # deadlock here can never hold the required check for more than ~2 min.
   worktree-quarantine:
     name: worktree-quarantine (known-flaky, non-blocking)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: self-hosted
     timeout-minutes: 5
     continue-on-error: true
@@ -131,3 +169,30 @@ jobs:
           # above is a second layer of protection in case a future step is
           # added that doesn't swallow its own exit code.
           exit 0
+
+  # Required check. Always runs (if: always) so it reports on every PR, which
+  # avoids the "required check never runs → PR stuck" trap on a strict ruleset.
+  # Passes when the change is docs-only (fast-gate skipped) OR when fast-gate
+  # succeeded. slow-tests/worktree are intentionally NOT gated here (slow-tests
+  # can be flaky; worktree is already non-blocking) — fast-gate is the merge
+  # gate, matching the pre-existing required-check semantics.
+  gate:
+    name: gate
+    needs: [changes, fast-gate]
+    if: always()
+    runs-on: self-hosted
+    steps:
+      - name: Evaluate gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          code='${{ needs.changes.outputs.code }}'
+          fg='${{ needs.fast-gate.result }}'
+          echo "changes.code=$code  fast-gate.result=$fg"
+          if [ "$code" != "true" ]; then
+            echo "✅ docs-only change — gate passes without tests"; exit 0
+          fi
+          if [ "$fg" = "success" ]; then
+            echo "✅ fast-gate passed"; exit 0
+          fi
+          echo "❌ fast-gate did not pass (result=$fg)"; exit 1

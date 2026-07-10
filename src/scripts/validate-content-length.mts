@@ -18,6 +18,15 @@ export const SKILL_MAX_LINES = 200;
 // under the strict cap.
 export const AGENT_SKIP_PATHS = ["agents/3rdparty/"];
 
+// Per-file cap overrides (repo-relative, forward-slash paths). For owned
+// agents whose contract density has deliberately outgrown the default cap —
+// pm.md carries the full output/decline/decomposition/AC-drafting contract
+// (FEAT-277 absorbed spec-writer) plus the issue #402 key-name contract.
+// Bump per file, never the global default.
+export const AGENT_LINE_OVERRIDES: Record<string, number> = {
+  "agents/pm.md": 325
+};
+
 async function walk(
   dir: string,
   predicate: (full: string, name: string) => boolean,
@@ -48,11 +57,17 @@ function countLines(content: string): number {
 
 export async function validateContentLength(
   repoRoot: string,
-  opts: { agentMax?: number; skillMax?: number; agentSkipPaths?: string[] } = {}
+  opts: {
+    agentMax?: number;
+    skillMax?: number;
+    agentSkipPaths?: string[];
+    agentLineOverrides?: Record<string, number>;
+  } = {}
 ) {
   const agentMax = opts.agentMax ?? AGENT_MAX_LINES;
   const skillMax = opts.skillMax ?? SKILL_MAX_LINES;
   const agentSkipPaths = opts.agentSkipPaths ?? AGENT_SKIP_PATHS;
+  const agentLineOverrides = opts.agentLineOverrides ?? AGENT_LINE_OVERRIDES;
 
   const agentsDir = path.join(repoRoot, "agents");
   const skillsDir = path.join(repoRoot, "skills");
@@ -68,9 +83,10 @@ export async function validateContentLength(
     const exempt = agentSkipPaths.some((prefix) => rel.startsWith(prefix));
     const content = await fs.readFile(file, "utf8");
     const lines = countLines(content);
-    checks.push({ path: rel, lines, limit: agentMax, kind: "agent", exempt });
-    if (!exempt && lines > agentMax) {
-      failures.push(`${rel}: ${lines} lines exceeds agent cap of ${agentMax}`);
+    const limit = agentLineOverrides[rel] ?? agentMax;
+    checks.push({ path: rel, lines, limit, kind: "agent", exempt });
+    if (!exempt && lines > limit) {
+      failures.push(`${rel}: ${lines} lines exceeds agent cap of ${limit}`);
     }
   }
 

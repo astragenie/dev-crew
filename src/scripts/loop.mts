@@ -4,10 +4,13 @@ import path from "node:path";
 import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
 import { resolveSkills } from "./lib/skill-resolver.mjs";
 import { importGithubSync } from "./lib/github-sync-loader.mjs";
+import { parseArgs } from "./lib/cli-args.mjs";
 
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
-// the same way at the command line.
+// the same way at the command line. FLAG_SPEC + parseArgs live in
+// lib/cli-args.mts (side-effect-free, unlike this file — see that module's
+// header comment for why).
 
 function normalizeMsysPath(value: string): string {
   if (!value || process.platform !== "win32") {
@@ -18,198 +21,6 @@ function normalizeMsysPath(value: string): string {
     return value;
   }
   return `${(match[1] ?? "").toUpperCase()}:/${match[2] ?? ""}`;
-}
-
-// Flag schema. See hero-crew/scripts/crew.mjs for the same pattern.
-const FLAG_SPEC = {
-  "--help": { key: "help", boolean: true },
-  "-h": { key: "help", boolean: true },
-  "--repo": { key: "repo" },
-  "--preset": { key: "preset" },
-  "--variant": { key: "variant" },
-  "--override": { key: "override" },
-  "--strict": { key: "strict", boolean: true },
-  "--phase": { key: "phase" },
-  "--note": { key: "note" },
-  "--status": { key: "status" },
-  "--priority": { key: "priority" },
-  "--category": { key: "category" },
-  "--target-release": { key: "targetRelease" },
-  "--type": { key: "type" },
-  "--title": { key: "title" },
-  "--id": { key: "id" },
-  "--body": { key: "body" },
-  "--features": { key: "features" },
-  "--goal": { key: "goal" },
-  "--no-dispatch": { key: "noDispatch", boolean: true },
-  "--no-research": { key: "noResearch", boolean: true },
-  "--no-architect": { key: "noArchitect", boolean: true },
-  "--no-doc-writer": { key: "noDocWriter", boolean: true },
-  "--no-classify": { key: "noClassify", boolean: true },
-  "--keep-feature-open": { key: "keepFeatureOpen", boolean: true },
-  "--force-close": { key: "forceClose", boolean: true },
-  "--skip-validation-check": { key: "skipValidationCheck" },
-  "--version": { key: "version" },
-  "--since": { key: "since" },
-  "--span-days": { key: "spanDays" },
-  "--until": { key: "until" },
-  "--by": { key: "by" },
-  "--artifact": { key: "artifact" },
-  "--kind": { key: "kind" },
-  "--files": { key: "files" },
-  "--features-json": { key: "featuresJson" },
-  "--key": { key: "key" },
-  "--insight": { key: "insight" },
-  "--confidence": { key: "confidence" },
-  "--slice": { key: "slice" },
-  "--limit": { key: "limit" },
-  "--window": { key: "window" },
-  "--max-features": { key: "maxFeatures" },
-  "--dry-run": { key: "dryRun", boolean: true },
-  "--auto-mode": { key: "autoMode", boolean: true },
-  "--provider": { key: "provider" },
-  "--pr": { key: "pr" },
-  "--scores": { key: "scores" },
-  "--autonomous-safe": { key: "autonomousSafe" },
-  "--evidence": { key: "evidence" },
-  "--reasoning": { key: "reasoning" },
-  "--allow-cross-session": { key: "allowCrossSession", boolean: true },
-  "--allow-human-comments": { key: "allowHumanComments", boolean: true },
-  "--explain-halts": { key: "explainHalts", boolean: true },
-  "--worktree": { key: "worktree" },
-  // SLICE-64: auto-merge flags
-  "--no-merge": { key: "noMerge", boolean: true },
-  "--skip-simplify": { key: "skipSimplify", boolean: true },
-  "--grade-yaml": { key: "gradeYaml" },
-  "--include-triaged": { key: "includeTriaged", boolean: true },
-  // FEAT-201: targeted PM rescore — comma-separated FEAT ids
-  "--ids": { key: "ids" },
-  // doctor flags
-  "--check": { key: "check", boolean: true },
-  "--fix": { key: "fix", boolean: true },
-  // phase-gate flags
-  "--serial": { key: "serial", boolean: true },
-  "--only": { key: "only" },
-  // backlog-add: pre-fill from GitHub issue
-  "--from-issue": { key: "fromIssue" },
-  // cost-by-skill report
-  "--cost-by-skill": { key: "costBySkill", boolean: true },
-  // pause / resume subcommands
-  "--reason": { key: "reason" },
-  // backlog-audit output format / lint-artifacts
-  "--json": { key: "json", boolean: true },
-  // learnings rank
-  "--query": { key: "query" },
-  // intake from-text (FEAT-277)
-  "--text": { key: "text" },
-  "--deep": { key: "deep", boolean: true },
-  "--spec": { key: "spec", boolean: true },
-  // backlog pm-apply (FEAT-214 / DEC-058): path to a PM results JSON file
-  "--file": { key: "file" }
-};
-
-function parseArgs(argv: string[]) {
-  const [command, ...rest] = argv;
-  const flags: Record<string, any> = {
-    repo: process.cwd(),
-    preset: null,
-    variant: null,
-    override: null,
-    strict: false,
-    phase: null,
-    note: null,
-    help: false,
-    status: null,
-    priority: null,
-    category: null,
-    targetRelease: null,
-    type: null,
-    title: null,
-    id: null,
-    body: null,
-    features: null,
-    version: null,
-    since: null,
-    spanDays: null,
-    until: null,
-    by: null,
-    artifact: null,
-    kind: null,
-    files: null,
-    featuresJson: null,
-    keepFeatureOpen: false,
-    skipValidationCheck: null,
-    key: null,
-    insight: null,
-    confidence: null,
-    slice: null,
-    limit: null,
-    window: null,
-    maxFeatures: null,
-    dryRun: false,
-    autoMode: false,
-    provider: null,
-    pr: null,
-    noResearch: false,
-    noArchitect: false,
-    noDocWriter: false,
-    noClassify: false,
-    scores: null,
-    autonomousSafe: null,
-    evidence: null,
-    reasoning: null,
-    allowCrossSession: false,
-    allowHumanComments: false,
-    worktree: null,
-    explainHalts: false,
-    noMerge: false,
-    skipSimplify: false,
-    check: false,
-    fix: false,
-    serial: false,
-    only: null,
-    includeTriaged: false,
-    ids: null,
-    fromIssue: null,
-    costBySkill: false,
-    reason: null,
-    json: false,
-    query: null,
-    text: null,
-    deep: false,
-    spec: false,
-    file: null
-  };
-  const positionals: any[] = [];
-
-  for (let index = 0; index < rest.length; index += 1) {
-    const value = rest[index]!;
-    if (value === "--") {
-      for (let tail = index + 1; tail < rest.length; tail += 1) {
-        positionals.push(rest[tail]);
-      }
-      break;
-    }
-    const spec = FLAG_SPEC[value as keyof typeof FLAG_SPEC];
-    if (spec) {
-      if ("boolean" in spec && spec.boolean) {
-        (flags as Record<string, any>)[spec.key] = true;
-      } else {
-        (flags as Record<string, any>)[spec.key] = rest[index + 1];
-        index += 1;
-      }
-      continue;
-    }
-    if (value.startsWith("--")) {
-      throw new Error(`Unknown argument: ${value}`);
-    }
-    positionals.push(value);
-  }
-
-  if (!command || command === "--help" || command === "-h") {
-    return { command: "help", flags, positionals };
-  }
-  return { command, flags, positionals };
 }
 
 type CmdCtx = {
@@ -533,7 +344,7 @@ const COMMANDS = {
     process.exitCode = 0;
     return { resumed: true };
   },
-  "pr-watch": async ({ repoPath: _repoPath, flags, positionals, config }: CmdCtx) => {
+  "pr-watch": async ({ repoPath, flags, positionals, config }: CmdCtx) => {
     const prUrl = positionals[0] as string | undefined;
     if (!prUrl) {
       console.error("pr-watch requires a PR URL as the first positional argument");
@@ -561,6 +372,8 @@ const COMMANDS = {
     }
     if (result.outcome === "pr-merged") {
       console.log("PR already merged — nothing to watch");
+      const { emitPrMerged, buildPrMergedInput } = await import("./lib/pr-merged-emitter.mjs");
+      await emitPrMerged(repoPath, buildPrMergedInput(prUrl, result, flags));
       process.exitCode = 0;
       return { outcome: "pr-merged" };
     }
@@ -1065,14 +878,190 @@ export async function runBacklogPmApply(
     process.exitCode = 1;
   }
 
+  // Held needs-review verdicts (issue #402 bug 2) commit successfully but
+  // do NOT count as triaged — the FEAT stays in pending/ awaiting a human.
+  const heldForReview = result.applied.filter((a) => a.needsReview).length;
+
   return {
-    triaged: result.applied.length,
+    triaged: result.applied.length - heldForReview,
+    applied: result.applied.length,
+    heldForReview,
+    failed: result.failures.length,
+    // ARCHITECT GATE read-guard (pm-apply.mts isArchGateActive): entries
+    // skipped because the FEAT is mid-gate/deferred. Distinct from
+    // `failed` — a gated skip is expected behavior, not a batch error, so
+    // it never flips process.exitCode.
+    gated: result.gated.length,
+    path: "pm-apply",
+    results: result.applied,
+    failures: result.failures,
+    gatedEntries: result.gated
+  };
+}
+
+// runBacklogPmRescope: GATE reject-loop integration (autonomous --rescope
+// mode). Mirrors runBacklogPmApply's read-file / validate / commit shape —
+// PM writes a rescope-results JSON file via its own scoped Write grant
+// (same `.claude/artifacts/loop/pm-reviews/` path as triage results); this
+// subcommand is the sole caller of `applyPmRescope`, which is the sole
+// writer of the FEAT's AC section + rescope frontmatter fields.
+export async function runBacklogPmRescope(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  if (!flags.file) {
+    throw new Error("backlog pm-rescope requires --file <path-to-rescope-results.json>");
+  }
+  const resolvedPath = path.isAbsolute(flags.file)
+    ? flags.file
+    : path.resolve(repoPath, flags.file);
+
+  const fs = await import("node:fs/promises");
+  let raw: string;
+  try {
+    raw = await fs.readFile(resolvedPath, "utf8");
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog pm-rescope: cannot read --file ${resolvedPath}: ${(err as Error).message}`
+    );
+  }
+
+  let entries: unknown;
+  try {
+    entries = JSON.parse(raw);
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog pm-rescope: --file ${resolvedPath} is not valid JSON: ${(err as Error).message}`
+    );
+  }
+
+  let allowedIds: string[] | null;
+  if (flags.ids) {
+    allowedIds = String(flags.ids)
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+  } else {
+    allowedIds = null;
+  }
+
+  const { applyPmRescope } = await import("./lib/pm-apply.mjs");
+  const result = await applyPmRescope(repoPath, entries, { allowedIds, config });
+
+  if (result.failures.length > 0) {
+    // Entry point sets exitCode — pm-apply.mts itself never touches it
+    // (docs/code-conventions.md "Error handling").
+    process.exitCode = 1;
+  }
+
+  return {
     applied: result.applied.length,
     failed: result.failures.length,
-    path: "pm-apply",
+    path: "pm-rescope",
     results: result.applied,
     failures: result.failures
   };
+}
+
+// Read a JSON-array-of-strings file for an arch-gate-apply flag
+// (--objections / --risk-flags share this exact shape). Extracted so both
+// flags get identical resolve/read/parse/validate error messages.
+async function readStringArrayFlagFile(
+  repoPath: string,
+  flagName: string,
+  rawPath: string
+): Promise<string[]> {
+  const resolvedPath = path.isAbsolute(rawPath) ? rawPath : path.resolve(repoPath, rawPath);
+  const fs = await import("node:fs/promises");
+  let raw: string;
+  try {
+    raw = await fs.readFile(resolvedPath, "utf8");
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog arch-gate-apply: cannot read --${flagName} ${resolvedPath}: ${(err as Error).message}`
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err: unknown) {
+    throw new Error(
+      `backlog arch-gate-apply: --${flagName} ${resolvedPath} is not valid JSON: ${(err as Error).message}`
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(
+      `backlog arch-gate-apply: --${flagName} ${resolvedPath} must be a JSON array of strings`
+    );
+  }
+  return parsed.filter((s): s is string => typeof s === "string");
+}
+
+// runBacklogArchGateApply: ARCHITECT GATE reject-loop integration. Sole CLI
+// caller of `applyArchGateVerdict` (arch-gate.mts) — persists an
+// architect-reviewer verdict (`arch_review`, normalized) plus risk flags
+// (`arch_risk`) into FEAT frontmatter and advances the
+// gate_in_progress/approved/deferred_design state machine. `--objections`
+// and `--risk-flags` each point at a JSON file containing a string array
+// (mirrors pm-rescope's results-file shape); `--risk-flags` is optional —
+// when omitted, `applyArchGateVerdict` falls back to `--objections` as the
+// risk-flag record (see arch-gate.mts ApplyArchGateVerdictOpts). Omit both
+// for an approved verdict with no reviewer notes. `--spent-usd`, when
+// supplied, is checked against `loop.archGateBudgetUsdPerFeat` BEFORE any
+// frontmatter write — an exceeded budget halts (exit 1, `halt_reason:
+// "budget_exceeded"`), never a silent defer.
+export async function runBacklogArchGateApply(
+  repoPath: string,
+  flags: Record<string, any>,
+  config: Record<string, any> | null
+) {
+  if (!flags.id) {
+    throw new Error("backlog arch-gate-apply requires --id <FEAT-ID>");
+  }
+  if (!flags.verdict) {
+    throw new Error(
+      "backlog arch-gate-apply requires --verdict <approved|approved_with_notes|rejected|needs_revision>"
+    );
+  }
+
+  const objections = flags.objections
+    ? await readStringArrayFlagFile(repoPath, "objections", flags.objections)
+    : [];
+  const riskFlags = flags["risk-flags"]
+    ? await readStringArrayFlagFile(repoPath, "risk-flags", flags["risk-flags"])
+    : undefined;
+
+  const actualUsdSpent =
+    flags["spent-usd"] !== undefined && flags["spent-usd"] !== null
+      ? Number(flags["spent-usd"])
+      : null;
+
+  const { applyArchGateVerdict, ArchGateBudgetExceededError } = await import("./lib/arch-gate.mjs");
+  try {
+    const result = await applyArchGateVerdict(repoPath, String(flags.id), String(flags.verdict), {
+      objections,
+      ...(riskFlags !== undefined ? { riskFlags } : {}),
+      actualUsdSpent,
+      config
+    });
+    return { path: "arch-gate-apply", halted: false, ...result };
+  } catch (err: unknown) {
+    if (err instanceof ArchGateBudgetExceededError) {
+      // Entry point sets exitCode — halt-and-escalate to the operator,
+      // never a silent defer (see arch-gate.mts checkArchGateBudget).
+      process.exitCode = 1;
+      return {
+        path: "arch-gate-apply",
+        halted: true,
+        halt_reason: err.halt_reason,
+        featureId: err.featureId,
+        actualUsd: err.actualUsd,
+        ceilingUsd: err.ceilingUsd
+      };
+    }
+    throw err;
+  }
 }
 
 function isUnclassifiedEntry(entry: Record<string, any>): boolean {
@@ -1141,13 +1130,19 @@ async function runBacklogSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply"
+      "backlog requires a subcommand: add | list | list-pending-ids | triage | promote | pm-apply | pm-rescope | arch-gate-apply"
     );
   if (sub === "add") {
     return runBacklogAdd(repoPath, flags, rest, config);
   }
   if (sub === "pm-apply") {
     return runBacklogPmApply(repoPath, flags, config);
+  }
+  if (sub === "pm-rescope") {
+    return runBacklogPmRescope(repoPath, flags, config);
+  }
+  if (sub === "arch-gate-apply") {
+    return runBacklogArchGateApply(repoPath, flags, config);
   }
   if (sub === "list") {
     const { listBacklog, filterBacklog } = await import("./lib/backlog-parser.mjs");

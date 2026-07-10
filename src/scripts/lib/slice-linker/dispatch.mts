@@ -72,39 +72,149 @@ function resolveOrchestratorMode(orchestratorMode: OrchestratorMode | undefined)
   return orchestratorMode ?? "slice-build";
 }
 
-export type BuilderVariant = "frontend" | "backend" | "fullstack" | "parallel-fe-be";
+export type BuilderVariant = "frontend" | "backend" | "fullstack" | "parallel-fe-be" | "unknown";
+
+// Canonical surface/stack vocabulary (feat-tag-schema.md). `stack:react` is
+// the sole built-in frontend-stack signal in the schema today; the built-in
+// backend-stack set below covers the stacks this repo's presets actually
+// ship (WS-3 — extend here, not with a heuristic, if a new backend stack
+// preset is added). A repo can additionally opt an otherwise-ambiguous stack
+// tag (e.g. `stack:typescript`, which is used on both sides of the stack) into
+// one side via `loop.json`'s `dispatch.frontendStackTags` /
+// `dispatch.backendStackTags` string arrays — see resolveFrontendStackTags /
+// resolveBackendStackTags (FU #2). No config → behavior unchanged.
+const FRONTEND_STACK_TAGS = new Set(["stack:react"]);
+const BACKEND_STACK_TAGS = new Set([
+  "stack:csharp",
+  "stack:dotnet",
+  "stack:node",
+  "stack:python",
+  "stack:go",
+  "stack:java",
+  "stack:rust"
+]);
+
+// classifySlice() (feature-lifecycle.mts) emits a third, LIVE vocabulary —
+// api-change/storage/workflow/ux/auth/infra/test/docs/refactor — that never
+// produced a canonical surface:*/stack:* tag. Reconcile the subset that
+// carries an unambiguous FE/BE surface signal so FEATs classified only via
+// that path still resolve to a real variant instead of falling through to
+// "unknown". needs_contract/needs_ux (classifySlice's other outputs) are
+// untouched by this mapping.
+const CLASSIFY_UI_TAGS = new Set(["ux"]);
+const CLASSIFY_API_TAGS = new Set(["api-change", "storage"]);
+
+function hasAnyTag(set: Set<string>, candidates: Set<string>): boolean {
+  for (const t of candidates) {
+    if (set.has(t)) return true;
+  }
+  return false;
+}
+
+/** Read a string-array config field at loopConfig.dispatch.<key>, else []. */
+function readConfiguredStackTags(
+  loopConfig: Record<string, any> | null,
+  key: "frontendStackTags" | "backendStackTags"
+): string[] {
+  if (!loopConfig || typeof loopConfig !== "object") return [];
+  const dispatch = (loopConfig as Record<string, unknown>).dispatch;
+  if (!dispatch || typeof dispatch !== "object") return [];
+  const arr = (dispatch as Record<string, unknown>)[key];
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((t): t is string => typeof t === "string");
+}
+
+/**
+ * Merge loop.json's `dispatch.frontendStackTags` (if present) into the
+ * built-in frontend stack-tag set. Returns the built-in set unchanged (same
+ * reference) when no config override is configured, so the zero-config path
+ * has zero overhead / zero behavior change.
+ */
+function resolveFrontendStackTags(loopConfig: Record<string, any> | null): Set<string> {
+  const extra = readConfiguredStackTags(loopConfig, "frontendStackTags");
+  if (extra.length === 0) return FRONTEND_STACK_TAGS;
+  return new Set([...FRONTEND_STACK_TAGS, ...extra]);
+}
+
+/** Backend-side counterpart of resolveFrontendStackTags. */
+function resolveBackendStackTags(loopConfig: Record<string, any> | null): Set<string> {
+  const extra = readConfiguredStackTags(loopConfig, "backendStackTags");
+  if (extra.length === 0) return BACKEND_STACK_TAGS;
+  return new Set([...BACKEND_STACK_TAGS, ...extra]);
+}
+
+function detectUiSignal(set: Set<string>, frontendStackTags: Set<string>): boolean {
+  return (
+    set.has("surface:ui") || hasAnyTag(set, frontendStackTags) || hasAnyTag(set, CLASSIFY_UI_TAGS)
+  );
+}
+
+function detectApiSignal(set: Set<string>, backendStackTags: Set<string>): boolean {
+  return (
+    set.has("surface:api") || hasAnyTag(set, backendStackTags) || hasAnyTag(set, CLASSIFY_API_TAGS)
+  );
+}
 
 /**
  * Pick a crew builder variant from a slice's frontmatter `tags` array.
  * FEAT-190 / SLICE-104 (single-variant) + SLICE-105 (parallel fanout).
+ * WS-3: rewritten to read the canonical `surface:*`/`stack:*` vocabulary
+ * (feat-tag-schema.md) instead of the orphaned bare `fe`/`be` tags, whose
+ * producer was removed in v0.53 — the missing-tag default used to be
+ * "fullstack", which meant a fullstack-gated dispatch fired on every slice
+ * that carried no fe/be tag at all (which was every slice, post-v0.53).
+ *
+ * Signal resolution (first match per surface wins; UI and API signals are
+ * independent and can both be present):
+ *   - UI signal:  tags ⊇ {"surface:ui"} OR any tag in FRONTEND_STACK_TAGS
+ *                 (built-in: "stack:react", plus any repo-configured
+ *                 `dispatch.frontendStackTags` from loop.json — FU #2) OR a
+ *                 classifySlice tag in CLASSIFY_UI_TAGS (currently: "ux")
+ *   - API signal: tags ⊇ {"surface:api"} OR any tag in BACKEND_STACK_TAGS
+ *                 (built-in stacks, plus any repo-configured
+ *                 `dispatch.backendStackTags` from loop.json) OR a
+ *                 classifySlice tag in CLASSIFY_API_TAGS (currently:
+ *                 "api-change", "storage")
+ *
+ * The bare `fe`/`be` tag fallback (deprecated since its producer was removed
+ * in v0.53) has been removed entirely (FU #4) — those tags are no longer
+ * special-cased and carry no signal on their own.
  *
  * Mapping:
- *   - tags ⊇ {"fe"} AND NOT ⊇ {"be"} → "frontend"
- *   - tags ⊇ {"be"} AND NOT ⊇ {"fe"} → "backend"
- *   - tags ⊇ {"fe"} AND ⊇ {"be"}     → "parallel-fe-be" (unless
+ *   - UI signal AND API signal     → "parallel-fe-be" (unless
  *     features.parallel-fe-be-variant is disabled, in which case this
  *     falls back to "fullstack" — P1.0 feature-flag envelope)
- *   - otherwise (missing / malformed / no surface tag) → "fullstack"
+ *   - API signal only              → "backend"
+ *   - UI signal only               → "frontend"
+ *   - no signal at all             → "unknown" — a distinct value from
+ *     "fullstack" so a positive-signal gate can tell "no tag data" apart
+ *     from "confirmed fullstack". variantToAgent still dispatches the
+ *     fullstack builder for "unknown" as a safe superset.
  */
 export function pickBuilderVariant(
   tags: unknown,
   loopConfig: Record<string, any> | null = null
 ): BuilderVariant {
-  if (!Array.isArray(tags)) return "fullstack";
-  const set = new Set(tags.filter((t): t is string => typeof t === "string"));
-  const hasFe = set.has("fe");
-  const hasBe = set.has("be");
-  if (hasFe && hasBe) {
+  const set = Array.isArray(tags)
+    ? new Set(tags.filter((t): t is string => typeof t === "string"))
+    : new Set<string>();
+
+  const hasUi = detectUiSignal(set, resolveFrontendStackTags(loopConfig));
+  const hasApi = detectApiSignal(set, resolveBackendStackTags(loopConfig));
+
+  if (hasUi && hasApi) {
     return isFeatureEnabled("parallel-fe-be-variant", loopConfig) ? "parallel-fe-be" : "fullstack";
   }
-  if (hasFe) return "frontend";
-  if (hasBe) return "backend";
-  return "fullstack";
+  if (hasApi) return "backend";
+  if (hasUi) return "frontend";
+  return "unknown";
 }
 
 function variantToAgent(variant: BuilderVariant): string {
   if (variant === "frontend") return "crew:frontend-dev";
   if (variant === "backend") return "crew:backend-dev";
+  // "fullstack" and "unknown" both dispatch the fullstack builder — for
+  // "unknown" this is a safe superset, not a confirmed fullstack signal.
   return "crew:fullstack-dev";
 }
 
@@ -204,7 +314,7 @@ export function buildDispatchInstruction({
   return lines.join("\n");
 }
 
-function extractTags(sliceContent: string | null): unknown {
+export function extractTags(sliceContent: string | null): unknown {
   if (!sliceContent) return undefined;
   const { frontmatter } = parseFrontmatter(sliceContent);
   return frontmatter?.tags;

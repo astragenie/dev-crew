@@ -7,7 +7,8 @@ import assert from "node:assert/strict";
 import {
   sliceFromFeature,
   buildDispatchInstruction,
-  readFeatureExcerpt
+  readFeatureExcerpt,
+  pickBuilderVariant
 } from "../scripts/lib/slice-linker.mjs";
 import { addFeature, findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
@@ -131,6 +132,70 @@ test("sliceFromFeature allows when effort_points < 8 even without proposed_slice
   await updateFeatureFrontmatter(feat.filePath, { effort_points: 5 });
   const result = await sliceFromFeature(repo, feat.id);
   assert.match(result.slice.id, /^SLICE-\d+$/);
+});
+
+// FU-6 — WS-3 surface:*/stack:* tag propagation round-trip. propagatedSurfaceStackTags
+// (feature-lifecycle.mts) copies the FEAT's surface:*/stack:* tags onto the
+// generated slice's frontmatter; dispatch.mts later reads them back via
+// extractTags(sliceContent) -> pickBuilderVariant to decide whether the P0/P1
+// fullstack architect gate fires. A frontmatter-parser bug that mis-parses an
+// unquoted colon-bearing block-list item (e.g. `- surface:ui`) as a one-entry
+// mapping instead of the string "surface:ui" would silently swallow this
+// signal — propagatedSurfaceStackTags filters to `typeof t === "string"`, so
+// a mangled tag is dropped entirely and pickBuilderVariant falls through to
+// "unknown", meaning the gate would never fire. Proven empirically: this repo's
+// own writers (serializeFrontmatter) always emit flow-style, quoted arrays, so
+// the standard machine-written path already round-trips correctly (first test
+// below, kept as a permanent regression guard). But a hand-edited FEAT file
+// using idiomatic block-style YAML tags (second test) hit the mis-parse before
+// the frontmatter.mts fix (FU-6) — proving the defect was real and severe, not
+// merely test-only.
+test("FU-6: surface:*/stack:* tags survive FEAT -> slice propagation when the FEAT was written by the standard (flow-style) pipeline", async () => {
+  const { extractTags } = await import("../scripts/lib/slice-linker/dispatch.mjs");
+  const repo = await tmpRepo("al-fu6-flow-");
+  const feat = await addFeature(repo, { title: "Fullstack thing", body: AC_SECTION_BODY });
+  // addFeature + updateFeatureFrontmatter both write through serializeFrontmatter,
+  // which always emits flow-style quoted arrays — this is the FEAT shape every
+  // in-repo writer (pm-apply, intake, architect-feature) actually produces.
+  const { updateFeatureFrontmatter } = await import("../scripts/lib/backlog-writer.mjs");
+  await updateFeatureFrontmatter(feat.filePath, { tags: ["surface:ui", "surface:api"] });
+
+  const result = await sliceFromFeature(repo, feat.id, { noClassify: true });
+  const sliceContent = await fs.readFile(result.slice.path, "utf8");
+  const tags = extractTags(sliceContent);
+  assert.deepEqual(tags, ["surface:ui", "surface:api"]);
+  assert.equal(pickBuilderVariant(tags), "parallel-fe-be");
+});
+
+test("FU-6: surface:*/stack:* tags survive FEAT -> slice propagation when the FEAT frontmatter uses hand-authored block-style YAML", async () => {
+  const { extractTags } = await import("../scripts/lib/slice-linker/dispatch.mjs");
+  const repo = await tmpRepo("al-fu6-block-");
+  const feat = await addFeature(repo, {
+    title: "Fullstack thing (hand-edited)",
+    body: AC_SECTION_BODY
+  });
+
+  // Simulate a human hand-editing the FEAT file's tags using idiomatic block-
+  // style YAML (unquoted, colon-bearing list items) rather than the flow-style
+  // `[a, b]` this repo's own writers happen to always emit. Nothing in the
+  // schema or docs mandates flow-style, so this is a realistic input, not a
+  // contrived one.
+  const featContent = await fs.readFile(feat.filePath, "utf8");
+  const withBlockTags = featContent.replace(
+    /^---\n/,
+    "---\ntags:\n  - surface:ui\n  - surface:api\n"
+  );
+  await fs.writeFile(feat.filePath, withBlockTags);
+
+  const result = await sliceFromFeature(repo, feat.id, { noClassify: true });
+  const sliceContent = await fs.readFile(result.slice.path, "utf8");
+  const tags = extractTags(sliceContent);
+  assert.deepEqual(tags, ["surface:ui", "surface:api"]);
+  assert.equal(
+    pickBuilderVariant(tags),
+    "parallel-fe-be",
+    "surface signal must not be lost — a regression here means the P0/P1 fullstack architect gate silently never fires"
+  );
 });
 
 // FEAT-168: full integration of proposed_slices (AC-1 schema validation +

@@ -248,6 +248,39 @@ test("findGradeForSlice returns null when no grade exists", async () => {
   assert.equal(found, null);
 });
 
+// FEAT-180 (issue #247): readGrade (via findGradeForSlice) tolerantly reads
+// the new optional not_checked/author_id/judge_id/self_approval fields.
+// Historical grade artifacts predate all four fields entirely — this must
+// degrade to safe defaults, never throw, never leave `undefined` for a
+// downstream consumer to explode on.
+test("findGradeForSlice defaults notChecked/authorId/judgeId/selfApproval when absent from frontmatter (historical artifact shape)", async () => {
+  const repo = await tmpRepo("al-grade-notchecked-absent-");
+  await createGradeFile(repo, "SLICE-01");
+  // Grade file is created with none of the new fields (matches every
+  // pre-FEAT-180 artifact on disk).
+  const grade = await findGradeForSlice(repo, "SLICE-01");
+  assert.deepEqual(grade.notChecked, []);
+  assert.equal(grade.authorId, null);
+  assert.equal(grade.judgeId, null);
+  assert.equal(grade.selfApproval, null);
+});
+
+test("findGradeForSlice surfaces notChecked/authorId/judgeId/selfApproval when present in frontmatter", async () => {
+  const repo = await tmpRepo("al-grade-notchecked-present-");
+  const { gradePath } = await createGradeFile(repo, "SLICE-01");
+  let content = await fs.readFile(gradePath, "utf8");
+  content = content.replace(
+    /^decisions: \[\]\n/m,
+    "decisions: []\nnot_checked:\n  - performance benchmarks\n  - concurrent branch interactions\nauthor_id: builder-42\njudge_id: reviewer-7\nself_approval: false\n"
+  );
+  await fs.writeFile(gradePath, content);
+  const grade = await findGradeForSlice(repo, "SLICE-01");
+  assert.deepEqual(grade.notChecked, ["performance benchmarks", "concurrent branch interactions"]);
+  assert.equal(grade.authorId, "builder-42");
+  assert.equal(grade.judgeId, "reviewer-7");
+  assert.equal(grade.selfApproval, false);
+});
+
 // FEAT-217: the extractDecisions call site mirrors each new decision into
 // astramem when memory is enabled. A fake WireProvider is injected via
 // @astragenie/astramem-client's _setWireProvider test seam (FEAT-235 — the

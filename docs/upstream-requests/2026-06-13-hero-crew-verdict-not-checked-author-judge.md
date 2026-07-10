@@ -2,7 +2,9 @@
 filed: 2026-06-13
 target_plugin: hero-crew
 target_repo: astragenie/dev-team
-status: open
+status: resolved-by-upstream
+resolved: 2026-07-09
+resolved_by: astragenie/dev-team#196 (crew 0.57.0)
 priority: P2
 loop_tracking_feat: FEAT-180
 related:

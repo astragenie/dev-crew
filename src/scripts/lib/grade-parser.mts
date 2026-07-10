@@ -164,7 +164,18 @@ export async function readGrade(filePath: string) {
     frontmatter,
     body,
     scores: parseScoresFromBody(body),
-    decisions: parseDecisionsFromBody(body)
+    decisions: parseDecisionsFromBody(body),
+    // FEAT-180 (issue #247): optional review-metadata fields. Every grade
+    // artifact written before this feature shipped has NONE of these keys —
+    // not even as empty values — so each read is tolerant of full absence
+    // (mirrors the Array.isArray(...) ? ... : [] / ?? null precedent used
+    // for other optional frontmatter fields elsewhere in this codebase, e.g.
+    // brief.mts's autonomousSafe / dependsOnCount). Never throws, never
+    // leaves `undefined` for a downstream consumer to explode on.
+    notChecked: Array.isArray(frontmatter.not_checked) ? frontmatter.not_checked : [],
+    authorId: typeof frontmatter.author_id === "string" ? frontmatter.author_id : null,
+    judgeId: typeof frontmatter.judge_id === "string" ? frontmatter.judge_id : null,
+    selfApproval: typeof frontmatter.self_approval === "boolean" ? frontmatter.self_approval : null
   };
 }
 

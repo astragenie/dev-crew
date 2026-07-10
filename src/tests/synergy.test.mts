@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { sliceFromFeature, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature, moveFeature } from "../scripts/lib/backlog-writer.mjs";
-import { AC_SECTION_BODY } from "./_fixtures.mjs";
+import { AC_SECTION_BODY, initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
 import { writeMemorySnapshot } from "../scripts/lib/memory-snapshot.mjs";
 import { recentLessons } from "../scripts/lib/lessons-feed.mjs";
 import { createGradeFile, writeGrade } from "../scripts/lib/grade-writer.mjs";
@@ -30,8 +30,11 @@ async function tmpRepo(prefix: string) {
       stack: {}
     })
   );
+  await initGitRepo(repo);
   return repo;
 }
+
+isolateCrewCli();
 
 async function seedGrade(
   repo: string,

@@ -1,23 +1,51 @@
 /**
- * Enforces the slice-linker sub-module boundary:
- * files under src/scripts/ (excluding the barrel and sub-modules themselves)
- * must not import slice-linker sub-modules directly.
+ * Enforces sub-module import boundaries: files under src/scripts/ (excluding
+ * a barrel and its own sub-modules) must not import that barrel's
+ * sub-modules directly — they must go through the barrel.
+ *
+ * Two boundaries are enforced today: slice-linker.mts / slice-linker/ and
+ * watch.mts / watch/ (FEAT-242 contract §3 — the watch/ boundary mirrors the
+ * slice-linker precedent verbatim).
  */
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 const SRC_SCRIPTS = resolve("src/scripts");
-const BARREL = resolve("src/scripts/lib/slice-linker.mts");
-const LINKER_DIR = resolve("src/scripts/lib/slice-linker");
 
-const BLOCKED_PATTERNS = [
-  /slice-linker\/feature-lifecycle/,
-  /slice-linker\/complete-slice/,
-  /slice-linker\/start-slice/,
-  /slice-linker\/dispatch/,
-  /slice-linker\/crew-bridge/,
-  /slice-linker\/slice-progress/,
-  /slice-linker\/agent-report-writer/
+interface ModuleBoundary {
+  barrel: string;
+  dir: string;
+  blockedPatterns: RegExp[];
+}
+
+const BOUNDARIES: ModuleBoundary[] = [
+  {
+    barrel: resolve("src/scripts/lib/slice-linker.mts"),
+    dir: resolve("src/scripts/lib/slice-linker"),
+    blockedPatterns: [
+      /slice-linker\/feature-lifecycle/,
+      /slice-linker\/complete-slice/,
+      /slice-linker\/start-slice/,
+      /slice-linker\/dispatch/,
+      /slice-linker\/crew-bridge/,
+      /slice-linker\/slice-progress/,
+      /slice-linker\/agent-report-writer/
+    ]
+  },
+  {
+    barrel: resolve("src/scripts/lib/watch.mts"),
+    dir: resolve("src/scripts/lib/watch"),
+    blockedPatterns: [
+      /watch\/types/,
+      /watch\/registry/,
+      /watch\/state/,
+      /watch\/claims/,
+      /watch\/spawn-gate/,
+      /watch\/envelopes/,
+      /watch\/tick/,
+      /watch\/sweep/
+    ]
+  }
 ];
 
 async function collectMts(dir: string): Promise<string[]> {
@@ -31,33 +59,47 @@ async function collectMts(dir: string): Promise<string[]> {
   return files;
 }
 
+function isInsideBoundary(abs: string, boundary: ModuleBoundary): boolean {
+  return (
+    abs === boundary.barrel ||
+    abs.startsWith(`${boundary.dir}\\`) ||
+    abs.startsWith(`${boundary.dir}/`)
+  );
+}
+
+function findBoundaryViolations(file: string, content: string, boundary: ModuleBoundary): string[] {
+  const violations: string[] = [];
+  const barrelName = relative(".", boundary.barrel);
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.includes("import")) continue;
+    if (!boundary.blockedPatterns.some((pat) => pat.test(line))) continue;
+    violations.push(
+      `${relative(".", file)}:${i + 1}: direct sub-module import blocked — use ${barrelName} barrel instead\n  ${line.trim()}`
+    );
+  }
+  return violations;
+}
+
+async function checkFile(file: string): Promise<string[]> {
+  const abs = resolve(file);
+  const applicableBoundaries = BOUNDARIES.filter((boundary) => !isInsideBoundary(abs, boundary));
+  if (applicableBoundaries.length === 0) return [];
+
+  const content = await readFile(file, "utf8");
+  return applicableBoundaries.flatMap((boundary) =>
+    findBoundaryViolations(file, content, boundary)
+  );
+}
+
 async function main(): Promise<void> {
   const files = await collectMts(SRC_SCRIPTS);
-  const violations: string[] = [];
-
-  for (const file of files) {
-    const abs = resolve(file);
-    if (abs === BARREL) continue;
-    if (abs.startsWith(LINKER_DIR + "\\") || abs.startsWith(LINKER_DIR + "/")) continue;
-
-    const content = await readFile(file, "utf8");
-    const lines = content.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line === undefined) continue;
-      if (!line.includes("import")) continue;
-      for (const pat of BLOCKED_PATTERNS) {
-        if (pat.test(line)) {
-          violations.push(
-            `${relative(".", file)}:${i + 1}: direct sub-module import blocked — use slice-linker barrel instead\n  ${line.trim()}`
-          );
-        }
-      }
-    }
-  }
+  const violationLists = await Promise.all(files.map(checkFile));
+  const violations = violationLists.flat();
 
   if (violations.length > 0) {
-    console.error("Slice-linker boundary violations:\n" + violations.join("\n"));
+    console.error(`Module boundary violations:\n${violations.join("\n")}`);
     process.exit(1);
   }
   console.log("validate-imports: OK");

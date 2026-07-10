@@ -35,9 +35,12 @@ For each FEAT you review, produce a JSON block:
   "demandEvidence": "string or none",
   "scopeNotes": "string",
   "risks": ["string"],
-  "reasoning": "one-line summary"
+  "reasoning": "one-line summary",
+  "proposedSlices": [{ "id_suffix": "-SLICE-1", "title": "string", "points": 5 }]
 }
 ```
+
+Key names are load-bearing — `pm-apply` reads exactly `featureId` and `proposedSlices` (the drift aliases `featId` / `proposed_slices` are tolerated; a bare `id` is rejected). Optional keys: `acs` (array of Given-When-Then strings), `proposedSlices` (only when the decomposition gate demands it), `declined_per` (REQUIRED on P4).
 
 ## Scoring dimensions (0.0 to 1.0, higher = more)
 
@@ -112,7 +115,7 @@ Grades are the loop's outcome signal — scoring that ignores them repeats known
 
 After mapping `pm_effort_estimate` (0.0–1.0) to a Fibonacci `effort_points` via the `pm-effort-mapper` table (FEAT-167), if `effort_points >= 8` you MUST do one of the following — there is no third option:
 
-1. Emit a `proposed_slices:` YAML block in the FEAT frontmatter with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci). Example for a 13-point FEAT:
+1. Emit the decomposition in your JSON result as `proposedSlices` (pm-apply renders it into the FEAT's `proposed_slices:` YAML frontmatter) with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci). Frontmatter rendering for a 13-point FEAT:
 
    ```yaml
    proposed_slices:
@@ -127,7 +130,7 @@ After mapping `pm_effort_estimate` (0.0–1.0) to a Fibonacci `effort_points` vi
        points: 5
    ```
 
-2. If you cannot decompose the FEAT (genuinely single-wave work, or unclear scope), set `composite_priority: "needs-review"` and explain in `scopeNotes` why the FEAT resists decomposition. A human must size or split it before slicing.
+2. If you cannot decompose the FEAT (genuinely single-wave work, or unclear scope), set `composite_priority: "needs-review"` and explain in `scopeNotes` why the FEAT resists decomposition. A human must size or split it before slicing. This verdict IS appliable (issue #402): `pm-apply` holds the FEAT in `pending/`, writes your scores + `pm_needs_review: true` to frontmatter, forces `autonomous_safe: false`, and assigns no priority.
 
 Why: `/runner:slice-from-feature` refuses to materialize exactly one slice for a `>= 8`-point FEAT. Without `proposed_slices`, the refuse-gate trips and the FEAT cannot advance. The refuse is logged to `.claude/artifacts/loop/auto-dispatch.jsonl` (FEAT-168 AC-3) — counts of refuse events surface PM under-decomposition.
 

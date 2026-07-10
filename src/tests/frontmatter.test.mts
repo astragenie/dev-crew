@@ -148,6 +148,55 @@ test("serializeFrontmatter regression — string block arrays still round-trip",
   assert.equal(reparsed.status, "decomposed");
 });
 
+// FU-6 — colon-bearing block-list items (surface:*/stack:* tag vocabulary,
+// WS-3) were misread as a one-entry mapping instead of a plain string,
+// because the array-item mapping check reused KEY_VALUE_RE's lenient `\s*`
+// (zero-or-more) after the colon. Real YAML only treats a colon as a mapping
+// indicator when followed by whitespace or end-of-line; `- surface:ui` has no
+// space after the colon, so it must parse as the string "surface:ui", not
+// {surface: "ui"}. This was found empirically: WS-3 propagates a FEAT's
+// surface:*/stack:* tags onto its slice frontmatter, and dispatch.mts reads
+// them back via extractTags -> pickBuilderVariant to decide whether the
+// P0/P1 fullstack architect gate fires — a silent mis-parse here would drop
+// the surface signal entirely and the gate would never fire.
+
+test("parseFrontmatter reads an unquoted colon-bearing block-list item as a string, not a map", () => {
+  const input = "---\ntags:\n  - surface:ui\n  - surface:api\n  - plain-tag\n---\nbody";
+  const { frontmatter } = parseFrontmatter(input);
+  assert.deepEqual(frontmatter.tags, ["surface:ui", "surface:api", "plain-tag"]);
+});
+
+test("parseFrontmatter reads an unquoted colon-bearing flow-list item as a string", () => {
+  const input = "---\ntags: [surface:ui, surface:api, plain-tag]\n---\nbody";
+  const { frontmatter } = parseFrontmatter(input);
+  assert.deepEqual(frontmatter.tags, ["surface:ui", "surface:api", "plain-tag"]);
+});
+
+test("parseFrontmatter reads a quoted colon-bearing block-list item as a string", () => {
+  const input = "---\ntags:\n  - \"surface:ui\"\n  - 'surface:api'\n---\nbody";
+  const { frontmatter } = parseFrontmatter(input);
+  assert.deepEqual(frontmatter.tags, ["surface:ui", "surface:api"]);
+});
+
+test("parseFrontmatter still parses a genuine nested-mapping block-list item as a map (mixed with plain items elsewhere)", () => {
+  // proposed_slices-shaped mapping items (colon FOLLOWED BY a space) must
+  // still become objects — only the no-space-after-colon case is a string.
+  const input =
+    "---\nproposed_slices:\n  - id_suffix: -SLICE-1\n    title: Has:colon inside\n    points: 5\ntags: [surface:ui]\n---\nbody";
+  const { frontmatter } = parseFrontmatter(input);
+  assert.deepEqual(frontmatter.proposed_slices, [
+    { id_suffix: "-SLICE-1", title: "Has:colon inside", points: 5 }
+  ]);
+  assert.deepEqual(frontmatter.tags, ["surface:ui"]);
+});
+
+test("serializeFrontmatter -> parseFrontmatter round-trips surface:*/stack:* tags emitted by the slice-tag propagation path", () => {
+  const fm = { tags: ["surface:ui", "surface:api", "stack:typescript"] };
+  const out = serializeFrontmatter(fm, "body");
+  const reparsed = parseFrontmatter(out).frontmatter;
+  assert.deepEqual(reparsed.tags, ["surface:ui", "surface:api", "stack:typescript"]);
+});
+
 test("serializeFrontmatter leaves empty arrays inline (preserves prior shape)", () => {
   const fm = { tags: [] };
   const out = serializeFrontmatter(fm, "");

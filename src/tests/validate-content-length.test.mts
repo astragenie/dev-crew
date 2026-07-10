@@ -170,3 +170,26 @@ test("agentSkipPaths opt overrides default exemption list", async () => {
 test("default AGENT_SKIP_PATHS lists agents/3rdparty/", () => {
   assert.ok(AGENT_SKIP_PATHS.includes("agents/3rdparty/"));
 });
+
+test("agentLineOverrides raises the cap for a single file only", async () => {
+  const root = await mkTmp();
+  await writeFile(root, "agents/pm.md", nLines(320));
+  await writeFile(root, "agents/other.md", nLines(320));
+
+  const res = await validateContentLength(root, {
+    agentLineOverrides: { "agents/pm.md": 325 }
+  });
+  assert.equal(res.ok, false, "non-overridden agent must still fail at 320 lines");
+  assert.equal(res.failures.length, 1);
+  assert.match(res.failures[0], /agents\/other\.md: 320 lines exceeds agent cap of 300/);
+
+  const pmCheck = res.checks.find((c: any) => c.path === "agents/pm.md");
+  assert.equal(pmCheck.limit, 325);
+});
+
+test("default AGENT_LINE_OVERRIDES grants agents/pm.md 325 lines", async () => {
+  const root = await mkTmp();
+  await writeFile(root, "agents/pm.md", nLines(325));
+  const res = await validateContentLength(root);
+  assert.equal(res.ok, true, JSON.stringify(res.failures));
+});
