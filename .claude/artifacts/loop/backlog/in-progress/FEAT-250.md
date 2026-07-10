@@ -1,13 +1,13 @@
 ---
 id: FEAT-250
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 depends_on: [FEAT-247]
-slices: []
+slices: [SLICE-150, SLICE-151, SLICE-152, SLICE-153]
 derived_from: null
 pm_customer_impact: 0.5
 pm_effort_estimate: 0.8
@@ -35,6 +35,10 @@ proposed_slices:
 tags: [storage, refactor, infra]
 needs_contract: true
 needs_ux: false
+started_at: 2026-07-10
+github_issue: 423
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/423"
 ---
 ## Description
 

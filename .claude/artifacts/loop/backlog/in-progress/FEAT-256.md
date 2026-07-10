@@ -1,13 +1,13 @@
 ---
 id: FEAT-256
-status: triaged
+status: in-progress
 priority: P2
 category: feature
 target_release: null
 created: 2026-07-09
 updated: 2026-07-10
 depends_on: []
-slices: []
+slices: [SLICE-154]
 derived_from: null
 pm_customer_impact: 0.25
 pm_effort_estimate: 0.15
@@ -22,6 +22,10 @@ triage_notes: "Small DEC-writing hygiene task reconciling FEAT-102's unmet round
 tags: [workflow, docs]
 needs_contract: false
 needs_ux: false
+started_at: 2026-07-10
+github_issue: 425
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/425"
 ---
 ## Description
 
