@@ -67,6 +67,13 @@ export function buildFailurePivot(
 // grep at port time), which already treats `null` and "absent" identically
 // — neither matches `"true"`/`true`, so both fall through to the `false`
 // fallback. No reader update needed.
+//
+// GUARD DROPPED (review 2026-07-10-slice-152): the old moveToNeedsReview
+// only moved a slice out of a `pending/`-named dir; moveSlice always moves.
+// Dormant today — nothing in production calls persistPivotAt. Whoever wires
+// it into wave/runner.mts must re-add a source-state check first, or a
+// late/duplicate pivot can drag an already-completed slice back to
+// needs-review/.
 export async function persistPivotAt(
   slicePath: string,
   pivot: FailurePivot,

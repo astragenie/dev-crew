@@ -1,21 +1,19 @@
 ---
 id: SLICE-155
 title: Implement FEAT-251
-status: pending
+status: completed
 feature: FEAT-251
 phase: null
 priority: P2
 target_release: null
-requires_validation: true
+requires_validation: false
 risk: medium
 created: 2026-07-10
 updated: 2026-07-10
 github_issue: 433
 github_url: "https://github.com/astragenie/runner-plugin/issues/433"
-touches_files:
-  - src/scripts/loop.mts
-  - src/scripts/lib/task-store/index.mts
-  - src/tests/task-store-provider-routing.test.mts
+touches_files: [src/scripts/loop.mts, src/scripts/lib/task-store/providers/github-provider.mts, src/tests/task-store-provider-routing.test.mts]
+completed_at: 2026-07-10
 ---
 # SLICE-155: Implement FEAT-251
 

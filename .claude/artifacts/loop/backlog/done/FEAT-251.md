@@ -1,6 +1,6 @@
 ---
 id: FEAT-251
-status: in-progress
+status: done
 priority: P2
 category: feature
 target_release: null
@@ -26,6 +26,8 @@ started_at: 2026-07-10
 github_issue: 432
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/432"
+slices_complete: [SLICE-155]
+completed_at: 2026-07-10
 ---
 ## Description
 
