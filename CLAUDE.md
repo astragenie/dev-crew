@@ -87,12 +87,14 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 11. `bun ./src/scripts/validate-slice-touches-files.mts` — validates every
    pending/in-progress/needs-review slice's `touches_files` (declared or
    inferred from body prose). Errors on absolute paths, `..` traversal, or a
-   path whose top-level segment doesn't exist anywhere in the repo (a typo'd
-   or fabricated root). A missing immediate parent dir under a real
-   top-level area is allowed — slices routinely plan a new subdirectory
-   (e.g. `docs/architecture/foo.md` when `docs/architecture` doesn't exist
-   yet). Warns (does not fail) when `touches_files` is absent altogether on
-   a slice created on/after `--warn-cutoff` (default 2026-06-15).
+   path whose grandparent directory doesn't exist (a typo'd or fabricated
+   path). A missing immediate parent dir is allowed — slices routinely plan
+   ONE new subdirectory level under an existing area (e.g.
+   `docs/architecture/foo.md` when `docs/architecture` doesn't exist yet but
+   `docs` does) — but deeper fabricated nesting under a real top-level dir
+   still errors. Warns (does not fail) when `touches_files` is absent
+   altogether on a slice created on/after `--warn-cutoff` (default
+   2026-06-15).
 12. `bun test src/tests/ --parallel --timeout 60000`
 13. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
    `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).

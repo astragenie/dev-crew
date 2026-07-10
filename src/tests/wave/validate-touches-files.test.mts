@@ -76,6 +76,24 @@ touches_files_confidence: declared
     expect(r.errors[0]).toContain("bogus/path");
   });
 
+  test("error: deep fabricated path under a real top-level dir is rejected", () => {
+    writeSlice(
+      "pending",
+      "SLICE-6.md",
+      `---
+id: SLICE-6
+created: 2026-06-15
+touches_files:
+  - src/totally/made/up/nested/path/foo.mts
+touches_files_confidence: declared
+---
+`
+    );
+    const r = validateRepo(tmp, { warnCutoff: "2026-06-01" });
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toContain("src/totally/made/up/nested");
+  });
+
   test("clean: declared path whose immediate parent is missing but top-level dir exists (planned new subdir)", () => {
     mkdirSync(join(tmp, "docs"), { recursive: true });
     writeSlice(
