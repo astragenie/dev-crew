@@ -39,7 +39,7 @@ started_at: 2026-07-10
 github_issue: 423
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/423"
-slices_complete: [SLICE-151]
+slices_complete: [SLICE-151, SLICE-152]
 ---
 ## Description
 

@@ -128,7 +128,7 @@ describe("persistPivotAt", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  test("mutates slice frontmatter with wave_attempts + pending_fix + last_failure", () => {
+  test("mutates slice frontmatter with wave_attempts + pending_fix + last_failure", async () => {
     const slicePath = join(tmp, "slices/SLICE-1.md");
     writeFileSync(
       slicePath,
@@ -147,7 +147,7 @@ body
       "wave-1",
       cfg
     );
-    persistPivotAt(slicePath, pivot, cfg);
+    await persistPivotAt(slicePath, pivot, cfg);
     const updated = readFileSync(slicePath, "utf8");
     expect(updated).toContain("wave_attempts: 1");
     expect(updated).toContain("pending_fix: true");
@@ -155,7 +155,7 @@ body
     expect(updated).toContain("wave-1");
   });
 
-  test("escalates to needs-review at maxWaveAttempts and moves file from pending/ to needs-review/", () => {
+  test("escalates to needs-review at maxWaveAttempts and moves file from pending/ to needs-review/", async () => {
     const pendingDir = join(tmp, "pending");
     mkdirSync(pendingDir, { recursive: true });
     const slicePath = join(pendingDir, "SLICE-2.md");
@@ -176,7 +176,7 @@ wave_attempts: 1
       "wave-1",
       cfg
     );
-    const newPath = persistPivotAt(slicePath, pivot, cfg);
+    const newPath = await persistPivotAt(slicePath, pivot, cfg);
 
     // Original path must no longer exist; new path under needs-review/
     expect(existsSync(slicePath)).toBe(false);
@@ -188,7 +188,7 @@ wave_attempts: 1
     expect(updated).not.toContain("pending_fix: true");
   });
 
-  test("non-escalation keeps file in place; returns original path", () => {
+  test("non-escalation keeps file in place; returns original path", async () => {
     const slicePath = join(tmp, "slices/SLICE-keep.md");
     writeFileSync(
       slicePath,
@@ -206,7 +206,7 @@ status: pending
       "wave-1",
       cfg
     );
-    const newPath = persistPivotAt(slicePath, pivot, cfg);
+    const newPath = await persistPivotAt(slicePath, pivot, cfg);
     expect(newPath).toBe(slicePath);
     expect(existsSync(slicePath)).toBe(true);
   });
@@ -222,7 +222,7 @@ describe("persistPivotAt — second failure overwrites first cleanly", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  test("calling persistPivotAt twice does not duplicate last_failure sub-fields", () => {
+  test("calling persistPivotAt twice does not duplicate last_failure sub-fields", async () => {
     const slicePath = join(tmp, "slices/SLICE-9.md");
     writeFileSync(
       slicePath,
@@ -242,7 +242,7 @@ body
       "wave-A",
       cfg
     );
-    persistPivotAt(slicePath, pivot1, cfg);
+    await persistPivotAt(slicePath, pivot1, cfg);
 
     const pivot2 = buildFailurePivot(
       mkResult("SLICE-9"),
@@ -251,7 +251,7 @@ body
       "wave-B",
       cfg
     );
-    persistPivotAt(slicePath, pivot2, cfg);
+    await persistPivotAt(slicePath, pivot2, cfg);
 
     const updated = readFileSync(slicePath, "utf8");
     // Should contain wave-B exactly once, not wave-A

@@ -1,0 +1,2 @@
+{"type":"slice_start","sliceId":"SLICE-152","timestamp":"2026-07-10T08:08:45.813Z","featureId":"FEAT-250","title":"SLICE-152: Slice-side new construction: consolidate complete-slice/feature-lifecycle/failure-pivot writes","planPath":"C:\\work\\mega\\runner-plugin-worktrees\\tp-SLICE-152\\.claude\\artifacts\\loop\\plans\\20260710T080845Z-plan-SLICE-152.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-152","timestamp":"2026-07-10T08:18:28.134Z","featureId":"FEAT-250","featureMovedTo":null,"validationSatisfied":true}
