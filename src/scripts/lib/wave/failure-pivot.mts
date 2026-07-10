@@ -1,6 +1,5 @@
 // src/scripts/lib/wave/failure-pivot.mts
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { updateSliceFrontmatter, moveSlice } from "../backlog-store.mjs";
 import { buildDispatchPrompt } from "./dispatch-prompt.mjs";
 import type {
   FailureKind,
@@ -57,69 +56,50 @@ export function buildFailurePivot(
   };
 }
 
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---/;
-
-function upsertFrontmatterField(fmBlock: string, key: string, value: string): string {
-  const re = new RegExp(`^${key}:.*$`, "m");
-  if (re.test(fmBlock)) {
-    return fmBlock.replace(re, `${key}: ${value}`);
-  }
-  return `${fmBlock}\n${key}: ${value}`;
-}
-
-function removeFrontmatterField(fmBlock: string, key: string): string {
-  return fmBlock.replace(new RegExp(`^${key}:.*\n?`, "m"), "");
-}
-
-function setLastFailureBlock(fmBlock: string, pivot: FailurePivot): string {
-  const stripped = fmBlock.replace(/\nlast_failure:(?:\n[ \t]+.*)*/, "");
-  const block = [
-    "last_failure:",
-    `  wave_id: ${pivot.originalWaveId}`,
-    `  kind: ${pivot.failureKind}`,
-    `  artifact: ${pivot.failureArtifactPath}`,
-    `  pivot_command: ${pivot.fixCommand}`
-  ].join("\n");
-  return `${stripped.replace(/\n+$/, "")}\n${block}`;
-}
-
-/**
- * Move an escalated slice from .../slices/pending/ to .../slices/needs-review/.
- * Returns the new path. Idempotent: if source is already outside pending/,
- * returns the original path unchanged.
- */
-function moveToNeedsReview(slicePath: string): string {
-  const parent = dirname(slicePath);
-  if (!parent.endsWith("pending")) return slicePath;
-  const target = join(dirname(parent), "needs-review");
-  if (!existsSync(target)) mkdirSync(target, { recursive: true });
-  const targetPath = join(target, slicePath.split(/[\\/]/).pop() ?? "");
-  renameSync(slicePath, targetPath);
-  return targetPath;
-}
-
-export function persistPivotAt(slicePath: string, pivot: FailurePivot, cfg: WaveConfig): string {
-  const raw = readFileSync(slicePath, "utf8");
-  const m = raw.match(FRONTMATTER_RE);
-  if (!m || !m[1]) throw new Error(`slice file missing frontmatter: ${slicePath}`);
-  let fm = m[1];
+// FEAT-250 SLICE-3 / DEC-076 decision 2: ported from a hand-rolled regex
+// frontmatter mutator to BacklogStore's mergeFrontmatter-based
+// updateSliceFrontmatter/moveSlice — the shared parser already natively
+// supports the nested `last_failure:` mapping shape the regex hand-built.
+// `pending_fix` deletion (previously a regex field-strip on the escalating
+// branch) is represented as `pending_fix: null`, written through
+// mergeFrontmatter's set-only merge. The only reader of `pending_fix` is
+// wave/planner.mts's `asBoolean(fm["pending_fix"], false)` (verified via
+// grep at port time), which already treats `null` and "absent" identically
+// — neither matches `"true"`/`true`, so both fall through to the `false`
+// fallback. No reader update needed.
+//
+// GUARD DROPPED (review 2026-07-10-slice-152): the old moveToNeedsReview
+// only moved a slice out of a `pending/`-named dir; moveSlice always moves.
+// Dormant today — nothing in production calls persistPivotAt. Whoever wires
+// it into wave/runner.mts must re-add a source-state check first, or a
+// late/duplicate pivot can drag an already-completed slice back to
+// needs-review/.
+export async function persistPivotAt(
+  slicePath: string,
+  pivot: FailurePivot,
+  cfg: WaveConfig
+): Promise<string> {
   const escalating = pivot.retryCount >= cfg.maxWaveAttempts;
-
+  const updates: Record<string, unknown> = {
+    wave_attempts: pivot.retryCount,
+    last_failure: {
+      wave_id: pivot.originalWaveId,
+      kind: pivot.failureKind,
+      artifact: pivot.failureArtifactPath,
+      pivot_command: pivot.fixCommand
+    }
+  };
   if (escalating) {
-    fm = upsertFrontmatterField(fm, "status", "needs-review");
-    fm = upsertFrontmatterField(fm, "wave_attempts", String(pivot.retryCount));
-    fm = removeFrontmatterField(fm, "pending_fix");
-    fm = setLastFailureBlock(fm, pivot);
+    updates.status = "needs-review";
+    updates.pending_fix = null;
   } else {
-    fm = upsertFrontmatterField(fm, "wave_attempts", String(pivot.retryCount));
-    fm = upsertFrontmatterField(fm, "pending_fix", "true");
-    fm = setLastFailureBlock(fm, pivot);
+    updates.pending_fix = "true";
   }
-  const updated = raw.replace(FRONTMATTER_RE, `---\n${fm}\n---`);
-  writeFileSync(slicePath, updated, "utf8");
+  await updateSliceFrontmatter(slicePath, updates);
 
   if (escalating) {
-    return moveToNeedsReview(slicePath);
+    const result = await moveSlice(slicePath, "needs-review", {});
+    return result.to;
   }
   return slicePath;
 }
