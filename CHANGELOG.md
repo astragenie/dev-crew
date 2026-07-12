@@ -4,6 +4,19 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.71.0] — 2026-07-12 — model routing kill-switch
+
+Minor: model-tier routing gains a config-level disable and is turned off in
+this repo — dispatched agents' own `model:` frontmatter (`agents/*.md`)
+governs instead of routed tiers.
+
+- **`loop.modelRouting.enabled: false`** (#476): when set,
+  `resolveWaveDispatchModel` / `resolveArchitectModels` return `null`, wave
+  `agentBatch` entries omit the `model` field, and the architect dispatch
+  instruction tells the orchestrator to omit `model:`. Absent block or absent
+  `enabled` key keeps routing on — backward compatible. Mirrors dev-team's
+  `resolve-model.ts` semantics (dev-team v0.62.0); keep the two in sync.
+
 ## [v0.70.0] — 2026-07-10 — collision-proof slice IDs, backlog-store split, TypeScript 7, quick-win gate hardening
 
 Minor: adds collision-proof slice-ID allocation (FEAT-257), splits the
