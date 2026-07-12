@@ -273,12 +273,8 @@ test("assertAcceptanceCriteria: heading absent produces the original typo'd-head
 });
 
 test("assertAcceptanceCriteria: heading present but zero bullets classify produces the new distinct error (#475)", () => {
-  const body = [
-    "## Acceptance criteria",
-    "",
-    "- **AC1 — Root cause, not a bandage.**",
-    ""
-  ].join("\n")
+  const body = ["## Acceptance criteria", "", "- **AC1 — Root cause, not a bandage.**", ""]
+    .join("\n")
     // Deliberately break the AC marker so nothing classifies, to isolate the
     // "heading found, no valid bullets" path from the widened-parser path
     // exercised elsewhere in this file.
