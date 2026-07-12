@@ -15,8 +15,8 @@ const FEAT = "FEAT-999";
 
 test("AC-1: valid array returns the parsed ProposedSlice[]", () => {
   const raw = [
-    { id_suffix: "-SLICE-1", title: "Lib + tests", points: 5 },
-    { id_suffix: "-SLICE-2", title: "CLI + agent", points: 3 }
+    { id_suffix: "-SLICE-1", title: "Lib + tests", points: 2 },
+    { id_suffix: "-SLICE-2", title: "CLI + agent", points: 2 }
   ];
   const out = parseProposedSlices(raw, FEAT);
   assert.deepEqual(out, raw);
@@ -77,7 +77,7 @@ test("AC-7: non-Fibonacci points fails", () => {
   );
 });
 
-test("runner#393: per-entry points above the cap of 5 throws even when Fibonacci-valid", () => {
+test("runner#393: per-entry points above the cap of 2 throws even when Fibonacci-valid", () => {
   const raw = [
     { id_suffix: "-SLICE-1", title: "everything", points: 13 },
     { id_suffix: "-SLICE-2", title: "crumbs", points: 1 }
@@ -85,16 +85,40 @@ test("runner#393: per-entry points above the cap of 5 throws even when Fibonacci
   assert.throws(
     () => parseProposedSlices(raw, FEAT, 13),
     (err: Error) =>
-      err instanceof InvalidProposedSlicesError && /per-slice cap of 5/.test(err.message)
+      err instanceof InvalidProposedSlicesError && /per-slice cap of 2/.test(err.message)
   );
+});
+
+test("runner#393: points value of 3 is rejected by the per-slice cap", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "too big", points: 3 }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /per-slice cap of 2/.test(err.message)
+  );
+});
+
+test("runner#393: points value of 2 is accepted (at the cap)", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "A", points: 2 },
+    { id_suffix: "-SLICE-2", title: "B", points: 2 }
+  ];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out!.length, 2);
+});
+
+test("runner#393: points value of 1 is accepted", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 1 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out!.length, 1);
 });
 
 test("AC-1: sum(points) < effort_points throws (decomposition undersized)", () => {
   const raw = [
-    { id_suffix: "-SLICE-1", title: "A", points: 3 },
-    { id_suffix: "-SLICE-2", title: "B", points: 3 }
+    { id_suffix: "-SLICE-1", title: "A", points: 2 },
+    { id_suffix: "-SLICE-2", title: "B", points: 2 }
   ];
-  // effort_points = 13 but sum = 6 → fails coverage invariant
+  // effort_points = 13 but sum = 4 → fails coverage invariant
   assert.throws(
     () => parseProposedSlices(raw, FEAT, 13),
     (err: Error) =>
@@ -104,12 +128,16 @@ test("AC-1: sum(points) < effort_points throws (decomposition undersized)", () =
 
 test("AC-1: sum(points) >= effort_points passes", () => {
   const raw = [
-    { id_suffix: "-SLICE-1", title: "A", points: 5 },
-    { id_suffix: "-SLICE-2", title: "B", points: 5 },
-    { id_suffix: "-SLICE-3", title: "C", points: 3 }
+    { id_suffix: "-SLICE-1", title: "A", points: 2 },
+    { id_suffix: "-SLICE-2", title: "B", points: 2 },
+    { id_suffix: "-SLICE-3", title: "C", points: 2 },
+    { id_suffix: "-SLICE-4", title: "D", points: 2 },
+    { id_suffix: "-SLICE-5", title: "E", points: 2 },
+    { id_suffix: "-SLICE-6", title: "F", points: 2 },
+    { id_suffix: "-SLICE-7", title: "G", points: 1 }
   ];
   const out = parseProposedSlices(raw, FEAT, 13);
-  assert.equal(out!.length, 3);
+  assert.equal(out!.length, 7);
 });
 
 test("AC-2: assertSized refuses when effort_points >= 8 and no proposed_slices", () => {
@@ -146,7 +174,7 @@ test("QW4: acceptance_criteria present and valid is parsed through verbatim", ()
     {
       id_suffix: "-SLICE-1",
       title: "Auth",
-      points: 5,
+      points: 2,
       acceptance_criteria: ["AC-1: given X when Y then Z"]
     }
   ];
@@ -155,14 +183,14 @@ test("QW4: acceptance_criteria present and valid is parsed through verbatim", ()
 });
 
 test("QW4: acceptance_criteria is optional — absent entries parse fine", () => {
-  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 5 }];
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 2 }];
   const out = parseProposedSlices(raw, FEAT);
   assert.equal(out![0]!.acceptance_criteria, undefined);
 });
 
 test("QW4: acceptance_criteria that is not an array throws", () => {
   const raw = [
-    { id_suffix: "-SLICE-1", title: "Auth", points: 5, acceptance_criteria: "not an array" }
+    { id_suffix: "-SLICE-1", title: "Auth", points: 2, acceptance_criteria: "not an array" }
   ];
   assert.throws(
     () => parseProposedSlices(raw, FEAT),
@@ -173,7 +201,7 @@ test("QW4: acceptance_criteria that is not an array throws", () => {
 });
 
 test("QW4: empty acceptance_criteria array throws", () => {
-  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 5, acceptance_criteria: [] }];
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 2, acceptance_criteria: [] }];
   assert.throws(
     () => parseProposedSlices(raw, FEAT),
     (err: Error) =>
@@ -184,7 +212,7 @@ test("QW4: empty acceptance_criteria array throws", () => {
 
 test("QW4: acceptance_criteria with a blank-string entry throws", () => {
   const raw = [
-    { id_suffix: "-SLICE-1", title: "Auth", points: 5, acceptance_criteria: ["ok", "   "] }
+    { id_suffix: "-SLICE-1", title: "Auth", points: 2, acceptance_criteria: ["ok", "   "] }
   ];
   assert.throws(
     () => parseProposedSlices(raw, FEAT),

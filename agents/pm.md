@@ -115,22 +115,39 @@ Grades are the loop's outcome signal — scoring that ignores them repeats known
 
 After mapping `pm_effort_estimate` (0.0–1.0) to a Fibonacci `effort_points` via the `pm-effort-mapper` table (FEAT-167), if `effort_points >= 8` you MUST do one of the following — there is no third option:
 
-1. Emit the decomposition in your JSON result as `proposedSlices` (pm-apply renders it into the FEAT's `proposed_slices:` YAML frontmatter) with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci, **≤5 per entry** — runner#393: a slice above 5 points exceeds the dispatch budget and dies mid-run; `{13,1}` is NOT a valid decomposition of a 13-point FEAT, split the 13). Frontmatter rendering for a 13-point FEAT:
+1. Emit the decomposition in your JSON result as `proposedSlices` (pm-apply renders it into the FEAT's `proposed_slices:` YAML frontmatter) with **at least 2 entries** whose `sum(points) >= effort_points`. Each entry has `id_suffix` (matching `/^-SLICE-\d+$/`), `title` (non-empty, ≤100 chars), `points` (Fibonacci, **≤2 per entry** — runner#393: slices above 2 points still exceeded the dispatch budget and died mid-run even after the earlier 5-point cap, so the cap is tightened to 2; `{13,1}` is NOT a valid decomposition of a 13-point FEAT, split the 13 into ≤2-point pieces). Frontmatter rendering for a 13-point FEAT:
 
    ```yaml
    proposed_slices:
      - id_suffix: -SLICE-1
-       title: Library + unit tests
-       points: 5
+       title: Library core
+       points: 2
      - id_suffix: -SLICE-2
-       title: CLI + agent
-       points: 3
+       title: Library unit tests
+       points: 2
      - id_suffix: -SLICE-3
-       title: Integration + upstream PR
-       points: 5
+       title: CLI wiring
+       points: 2
+     - id_suffix: -SLICE-4
+       title: Agent wiring
+       points: 2
+     - id_suffix: -SLICE-5
+       title: Integration tests
+       points: 2
+     - id_suffix: -SLICE-6
+       title: Upstream PR + docs
+       points: 2
+     - id_suffix: -SLICE-7
+       title: Rollout flag flip
+       points: 1
    ```
 
 2. If you cannot decompose the FEAT (genuinely single-wave work, or unclear scope), set `composite_priority: "needs-review"` and explain in `scopeNotes` why the FEAT resists decomposition. A human must size or split it before slicing. This verdict IS appliable (issue #402): `pm-apply` holds the FEAT in `pending/`, writes your scores + `pm_needs_review: true` to frontmatter, forces `autonomous_safe: false`, and assigns no priority.
+
+Additional decomposition policy (runner#393), applies whenever you emit `proposedSlices` under option 1 above:
+
+- (a) **Isolate every flagged landmine or design-decision into its own slice.** If your scoring or the architect's notes flag N landmines / open design decisions, each becomes its own slice — never absorbed into the "happy path" slice alongside unrelated mechanical work. A slice that mixes a design-sensitive unknown with routine implementation inherits the unknown's risk of blowing the token budget.
+- (b) **Never bundle N independent sites/files into one slice.** When a FEAT touches N structurally-independent locations (e.g. "add RLS policy to 5 tables"), split the mechanical, uniform-pattern sites into one batch slice and carve any design-sensitive site (one requiring judgment, not just pattern repetition) into its own slice. Do not let slice count convenience override this split.
 
 Why: `/runner:slice-from-feature` refuses to materialize exactly one slice for a `>= 8`-point FEAT. Without `proposed_slices`, the refuse-gate trips and the FEAT cannot advance. The refuse is logged to `.claude/artifacts/loop/auto-dispatch.jsonl` (FEAT-168 AC-3) — counts of refuse events surface PM under-decomposition.
 

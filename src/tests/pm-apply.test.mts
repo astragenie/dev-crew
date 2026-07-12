@@ -375,8 +375,8 @@ test("applyPmResults: featId + proposed_slices aliases normalize to the document
       reasoning: "emitted with drifted keys by a live runner:pm dispatch",
       acs: ["Given X, When Y, Then Z"],
       proposed_slices: [
-        { id_suffix: "-SLICE-1", title: "Library + tests", points: 5 },
-        { id_suffix: "-SLICE-2", title: "CLI wiring", points: 3 }
+        { id_suffix: "-SLICE-1", title: "Library + tests", points: 2 },
+        { id_suffix: "-SLICE-2", title: "CLI wiring", points: 2 }
       ]
     }
   ];

@@ -5,7 +5,7 @@
 //   proposed_slices:
 //     - id_suffix: -SLICE-1     # matches /^-SLICE-\d+$/
 //       title: Library + tests  # 1..100 chars
-//       points: 5               # one of 1 | 2 | 3 | 5 | 8 | 13
+//       points: 2               # Fibonacci value, but capped at 2 per entry (runner#393)
 //
 // Two distinct error paths the gate cares about:
 //   - parseProposedSlices  → InvalidProposedSlicesError (AC-7)
@@ -32,10 +32,11 @@ export interface ProposedSlice {
 
 const ID_SUFFIX_RE = /^-SLICE-\d+$/;
 const MAX_TITLE_LEN = 100;
-// runner#393: a single slice larger than 5 points routinely exceeds the
-// ~200k-token dispatch budget and dies mid-run. Cap per-entry size so the
+// runner#393: slices above 2 points routinely exceed the ~200k-token
+// dispatch budget and die mid-run (tightened from the original 5-point cap
+// shipped in #414 — 5 was still too coarse). Cap per-entry size so the
 // sum(points) coverage rule cannot be satisfied by one oversized slice.
-const MAX_SLICE_POINTS = 5;
+const MAX_SLICE_POINTS = 2;
 
 /** FEAT-168 AC-7 — parse failure on malformed `proposed_slices` frontmatter. */
 export class InvalidProposedSlicesError extends Error {

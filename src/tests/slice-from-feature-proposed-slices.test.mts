@@ -42,11 +42,11 @@ test("sliceFromFeature creates all proposed slices atomically", async () => {
   const repo = await tmpRepo("sfp-atomic-");
   const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 13,
+    effort_points: 6,
     proposed_slices: [
-      { id_suffix: "-SLICE-1", title: "Auth", points: 5 },
-      { id_suffix: "-SLICE-2", title: "API", points: 5 },
-      { id_suffix: "-SLICE-3", title: "Integration", points: 3 }
+      { id_suffix: "-SLICE-1", title: "Auth", points: 2 },
+      { id_suffix: "-SLICE-2", title: "API", points: 2 },
+      { id_suffix: "-SLICE-3", title: "Integration", points: 2 }
     ]
   });
 
@@ -81,10 +81,10 @@ test("sliceFromFeature is idempotent on proposed_slices rerun (no duplicate slic
   const repo = await tmpRepo("sfp-idem-");
   const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 8,
+    effort_points: 4,
     proposed_slices: [
-      { id_suffix: "-SLICE-1", title: "First", points: 5 },
-      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+      { id_suffix: "-SLICE-1", title: "First", points: 2 },
+      { id_suffix: "-SLICE-2", title: "Second", points: 2 }
     ]
   });
 
@@ -119,11 +119,11 @@ test("sliceFromFeature proposed_slices path: FEAT surface:*/stack:* tags propaga
   const repo = await tmpRepo("sfp-propagate-");
   const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 8,
+    effort_points: 4,
     tags: ["surface:api", "stack:csharp"],
     proposed_slices: [
-      { id_suffix: "-SLICE-1", title: "First", points: 5 },
-      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+      { id_suffix: "-SLICE-1", title: "First", points: 2 },
+      { id_suffix: "-SLICE-2", title: "Second", points: 2 }
     ]
   });
 
@@ -143,15 +143,15 @@ test("QW4: a proposed_slices entry with its own acceptance_criteria uses those, 
   const repo = await tmpRepo("sfp-own-ac-");
   const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 8,
+    effort_points: 4,
     proposed_slices: [
       {
         id_suffix: "-SLICE-1",
         title: "First",
-        points: 5,
+        points: 2,
         acceptance_criteria: ["AC-1: first slice's own scoped criterion"]
       },
-      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+      { id_suffix: "-SLICE-2", title: "Second", points: 2 }
     ]
   });
 
@@ -188,15 +188,15 @@ test("QW4: a comma-bearing acceptance_criteria entry round-trips through the rea
   const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   const gwt = "Given a logged-in user, when they click save, then the record persists";
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 8,
+    effort_points: 4,
     proposed_slices: [
       {
         id_suffix: "-SLICE-1",
         title: "First",
-        points: 5,
+        points: 2,
         acceptance_criteria: [gwt]
       },
-      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+      { id_suffix: "-SLICE-2", title: "Second", points: 2 }
     ]
   });
 
@@ -214,10 +214,10 @@ test("QW4: no proposed_slices entry carries its own ACs — every sibling gets t
   const repo = await tmpRepo("sfp-shared-warn-");
   const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 8,
+    effort_points: 4,
     proposed_slices: [
-      { id_suffix: "-SLICE-1", title: "First", points: 5 },
-      { id_suffix: "-SLICE-2", title: "Second", points: 3 }
+      { id_suffix: "-SLICE-1", title: "First", points: 2 },
+      { id_suffix: "-SLICE-2", title: "Second", points: 2 }
     ]
   });
 
@@ -232,8 +232,8 @@ test("QW4: a single-entry proposed_slices array does not trigger the shared-copy
   const repo = await tmpRepo("sfp-single-proposed-");
   const feat = await addFeature(repo, { title: "Right-sized work", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, {
-    effort_points: 5,
-    proposed_slices: [{ id_suffix: "-SLICE-1", title: "Only slice", points: 5 }]
+    effort_points: 2,
+    proposed_slices: [{ id_suffix: "-SLICE-1", title: "Only slice", points: 2 }]
   });
 
   const out = await sliceFromFeature(repo, feat.id);
@@ -251,7 +251,7 @@ test("from-feature CLI on malformed proposed_slices writes audit + exits 1", asy
   await updateFeatureFrontmatter(feat.filePath, {
     effort_points: 8,
     proposed_slices: [
-      { id_suffix: "-SLICE-1", title: "OK", points: 5 },
+      { id_suffix: "-SLICE-1", title: "OK", points: 2 },
       { id_suffix: "-SLICE-2", title: "Bad points", points: 4 } // 4 is NOT Fibonacci
     ]
   });
@@ -279,16 +279,16 @@ test("sliceFromFeature on undersized proposed_slices throws InvalidProposedSlice
   const feat = await addFeature(repo, { title: "Undersized" });
   await updateFeatureFrontmatter(feat.filePath, {
     effort_points: 13,
-    // sum(points) = 5 + 3 = 8 < 13 — should refuse
+    // sum(points) = 2 + 2 = 4 < 13 — should refuse
     proposed_slices: [
-      { id_suffix: "-SLICE-1", title: "A", points: 5 },
-      { id_suffix: "-SLICE-2", title: "B", points: 3 }
+      { id_suffix: "-SLICE-1", title: "A", points: 2 },
+      { id_suffix: "-SLICE-2", title: "B", points: 2 }
     ]
   });
   await assert.rejects(
     () => sliceFromFeature(repo, feat.id),
     (err: Error) =>
       err.name === "InvalidProposedSlicesError" &&
-      /sum\(points\)=8 is less than feature effort_points=13/.test(err.message)
+      /sum\(points\)=4 is less than feature effort_points=13/.test(err.message)
   );
 });
