@@ -4,6 +4,21 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.72.0] — 2026-07-12 — capture-at-close hook, AC-parser widening
+
+- **`hooks/capture-at-close.mjs`** (#394, `1a6d9592`): astramem ingest fires
+  on session/subagent close instead of the legacy deferred path, which handed
+  the daemon a path to an ephemeral transcript that was already deleted by
+  the time async ingest read it — the root cause of a multi-day zero-capture
+  production outage. Cached installs of 0.71.0 predate this hook entirely.
+- **AC-parser widening** (FEAT-475, `fix/ac-parser-hyphenless-forms`,
+  reviewed `approved_with_notes`): `extract-acceptance-criteria` now accepts
+  hyphenless AC-bullet forms and requires a delimiter after the AC marker to
+  disambiguate the refuse error; per-slice ACs now parse correctly from
+  `proposed_slices` with quote-aware frontmatter arrays.
+- `fix(cli)`: hoist dynamic imports out of module scope, eliminating a
+  TLA/`--parallel` TDZ failure in `connect.mts` / `dispatch.mts` / `loop.mts`.
+
 ## [v0.71.0] — 2026-07-12 — model routing kill-switch
 
 Minor: model-tier routing gains a config-level disable and is turned off in
