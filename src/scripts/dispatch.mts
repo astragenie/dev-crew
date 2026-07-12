@@ -3,20 +3,24 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import {
-  prepareDispatch,
-  finalizeDispatch,
-  augmentPrompt,
-  type DispatchPlan,
-  type DispatchResult,
-  type PreparedDispatch
+import { ensureBunRuntime } from "./lib/node-bun-guard.mjs";
+import type {
+  DispatchPlan,
+  DispatchResult,
+  PreparedDispatch
 } from "./lib/hierarchical-dispatch.mjs";
-import {
-  writeDispatchMetrics,
-  readDispatchMetrics,
-  formatPartialChildrenNote
-} from "./lib/dispatch-metrics.mjs";
-import { aggregateDispatchCost } from "./lib/dispatch-cost-aggregate.mjs";
+
+// Must run before any import of this file's other internal .mjs-specifier
+// modules — see node-bun-guard.mjs header. No-ops under Bun; exits under Node.
+ensureBunRuntime(import.meta.url, process.argv.slice(2));
+
+const { prepareDispatch, finalizeDispatch, augmentPrompt } = await import(
+  "./lib/hierarchical-dispatch.mjs"
+);
+const { writeDispatchMetrics, readDispatchMetrics, formatPartialChildrenNote } = await import(
+  "./lib/dispatch-metrics.mjs"
+);
+const { aggregateDispatchCost } = await import("./lib/dispatch-cost-aggregate.mjs");
 
 type ParsedArgs = {
   subcommand: "prepare" | "finalize" | "metrics" | "prune" | "help";

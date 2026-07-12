@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // bunx astrarunner connect <code> — claim-code pairing CLI.
 //
 // Redeems a claim code from the AstraRunner dashboard, writes the bearer
@@ -22,8 +23,14 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 
-import { readProfile, _internals as profilesInternals } from "../lib/env-profiles.mjs";
-import { createWebhookSender } from "../lib/webhook-sender.mjs";
+import { ensureBunRuntime } from "../lib/node-bun-guard.mjs";
+
+// Must run before any import of this file's other internal .mjs-specifier
+// modules — see node-bun-guard.mjs header. No-ops under Bun; exits under Node.
+ensureBunRuntime(import.meta.url, process.argv.slice(2));
+
+const { readProfile, _internals: profilesInternals } = await import("../lib/env-profiles.mjs");
+const { createWebhookSender } = await import("../lib/webhook-sender.mjs");
 
 // ─── Overridable internals (test injection) ──────────────────────────────────
 

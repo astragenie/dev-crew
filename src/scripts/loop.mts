@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 
+import { ensureBunRuntime } from "./lib/node-bun-guard.mjs";
 import path from "node:path";
-import { clearFrontmatterCache } from "./lib/frontmatter-cache.mjs";
-import { resolveSkills } from "./lib/skill-resolver.mjs";
-import { parseArgs } from "./lib/cli-args.mjs";
+
+// Must run before any import of this file's other internal .mjs-specifier
+// modules — see node-bun-guard.mjs header. No-ops under Bun; exits under Node.
+ensureBunRuntime(import.meta.url, process.argv.slice(2));
+
+const { clearFrontmatterCache } = await import("./lib/frontmatter-cache.mjs");
+const { resolveSkills } = await import("./lib/skill-resolver.mjs");
+const { parseArgs } = await import("./lib/cli-args.mjs");
 
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
@@ -1304,8 +1310,6 @@ function stripListMarker(line: string): string {
   s = s.replace(/^[*_`]+|[*_`]+$/g, "");
   return s.trim();
 }
-
-export { parseClassifyOutput } from "./lib/classify-parser.mjs";
 
 export function parseArchitectOutput(raw: string): string[] {
   if (!raw || !raw.trim()) return [];
