@@ -76,6 +76,28 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/capture-at-close.mjs\"",
+            "description": "runner:capture-at-close-subagent-stop",
+            "timeout": 8
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/capture-at-close.mjs\"",
+            "description": "runner:capture-at-close-session-end",
+            "timeout": 8
+          }
+        ]
       }
     ],
     "TaskCreated": [
