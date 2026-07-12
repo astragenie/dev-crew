@@ -3,7 +3,8 @@ export {
   featureSimplify,
   AcceptanceCriteriaRequiredError,
   assertAcceptanceCriteria,
-  extractAcceptanceCriteria
+  extractAcceptanceCriteria,
+  SliceAlreadyShippedError
 } from "./slice-linker/feature-lifecycle.mjs";
 export { completeSlice } from "./slice-linker/complete-slice.mjs";
 export { closeSlice } from "./slice-linker/close-slice.mjs";

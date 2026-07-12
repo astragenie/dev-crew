@@ -41,6 +41,9 @@ Once resolved at dispatcher startup, roots are threaded through all command hand
 | `depends_on` | Array of `FEAT-NNN` strings | Yes (may be empty array) |
 | `slices` | Array of `SLICE-NN` strings | Yes (may be empty array) |
 | `schemaVersion` | Integer; only `1` accepted | No (absent ⇒ v1) |
+| `proposed_slices` | Array of `{id_suffix, title, points, acceptance_criteria?}` (see `proposed-slices.mts`) | No |
+| `proposed_slices_shipped` | Array of `id_suffix` strings (runner-plugin#392) — stamped by the git-anchored reconcile pass when merged-commit evidence shows a proposed slice was already shipped through a path that never ran `sliceFromFeature`. Durable audit trail; not schema-enforced. | No |
+| `proposed_slices_shipped_commits` | Array of commit SHAs, index-aligned with `proposed_slices_shipped` (runner-plugin#392) | No |
 
 ### Slice Frontmatter
 

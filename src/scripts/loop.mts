@@ -1499,7 +1499,7 @@ const SLICE_HANDLERS = {
     const { DecompositionRequiredError, InvalidProposedSlicesError } = await import(
       "./lib/proposed-slices.mjs"
     );
-    const { AcceptanceCriteriaRequiredError } = await import(
+    const { AcceptanceCriteriaRequiredError, SliceAlreadyShippedError } = await import(
       "./lib/slice-linker/feature-lifecycle.mjs"
     );
     const dispatchFn = opts.dispatchFn ?? dispatchAgent;
@@ -1514,7 +1514,8 @@ const SLICE_HANDLERS = {
       if (
         err instanceof DecompositionRequiredError ||
         err instanceof InvalidProposedSlicesError ||
-        err instanceof AcceptanceCriteriaRequiredError
+        err instanceof AcceptanceCriteriaRequiredError ||
+        err instanceof SliceAlreadyShippedError
       ) {
         await appendAuditLog(repoPath, {
           timestamp: new Date().toISOString(),

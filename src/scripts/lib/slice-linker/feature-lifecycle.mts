@@ -15,6 +15,15 @@ import { writeFeatureEndCeremony } from "../ceremonies.mjs";
 import type { DispatchOpts, DispatchResult } from "../auto-dispatch.mjs";
 import { assertSized } from "../proposed-slices.mjs";
 import { gitTextOrThrow } from "../run-git.mjs";
+import {
+  reconcileProposedSlicesAgainstGit,
+  planReconcileAction,
+  SliceAlreadyShippedError
+} from "./git-anchored-completion.mjs";
+
+// Re-exported so CLI handlers (loop.mts) can catch it alongside
+// DecompositionRequiredError/InvalidProposedSlicesError/AcceptanceCriteriaRequiredError.
+export { SliceAlreadyShippedError };
 
 // Re-exported for slice-linker.mjs barrel + existing direct importers — moved
 // to backlog-store.mts (FEAT-250 SLICE-3) because createSlice's private
@@ -111,6 +120,71 @@ async function classifySlice({
   return null;
 }
 
+// runner-plugin#392: run the git-anchored reconcile pass for a FEAT's
+// proposed_slices decomposition and translate the verdict into a
+// materializeProposedSlices `startIndex` override.
+//
+// Returns:
+//   - `undefined` when there's nothing to reconcile (all proposed slices
+//     already materialized, or no shipped evidence found) — the caller
+//     falls back to its normal existingSlices.length-based start index.
+//   - a number (0-indexed) when a contiguous shipped prefix was detected
+//     and safely auto-reconciled — also durably stamps the evidence onto
+//     the FEAT frontmatter (proposed_slices_shipped / _commits) so the
+//     finding survives a fresh checkout, per the state-survival AC.
+//
+// Throws SliceAlreadyShippedError when the FEAT looks fully shipped or the
+// evidence is non-contiguous (ambiguous — refuse rather than reorder).
+// Never throws on a git-level failure — reconcileProposedSlicesAgainstGit's
+// own gitError signal is treated as "no evidence" (fail-open).
+async function reconcileProposedSlicesStartIndex(
+  repoPath: string,
+  featureId: string,
+  featureFilePath: string,
+  sourceFM: Record<string, any>,
+  proposed: ProposedSlice[],
+  config: Record<string, any> | null
+): Promise<number | undefined> {
+  const existingSlicesRaw: string[] = Array.isArray(sourceFM.slices) ? sourceFM.slices : [];
+  const existingCount = Math.min(existingSlicesRaw.length, proposed.length);
+  if (existingCount >= proposed.length) return undefined; // already fully materialized
+
+  const reconcile = await reconcileProposedSlicesAgainstGit(repoPath, featureId, proposed, config);
+  if (reconcile.gitError) {
+    // Fail-open: log for operator visibility, never block the start.
+    console.warn(
+      `[git-anchored-completion] ${featureId}: ${reconcile.gitError} — proceeding unchecked.`
+    );
+    return undefined;
+  }
+  if (reconcile.shipped.length === 0) return undefined;
+
+  const action = planReconcileAction(proposed.length, existingCount, reconcile.shipped);
+  if (action.kind === "refuse") {
+    throw new SliceAlreadyShippedError(featureId, reconcile.shipped, action.reason);
+  }
+  if (action.kind === "proceed") return undefined;
+
+  // action.kind === "advance" — durably stamp the evidence before returning
+  // the override, so the finding survives a fresh checkout / worktree even
+  // if the caller's subsequent materialize step never runs. The stamp is an
+  // audit trail, not a gate: an fs failure here must not block the start
+  // (same fail-open contract as the git checks above) — the advance verdict
+  // stands either way, it just won't survive a fresh checkout.
+  try {
+    await updateFeatureFrontmatter(featureFilePath, {
+      proposed_slices_shipped: reconcile.shipped.map((s) => s.idSuffix),
+      proposed_slices_shipped_commits: reconcile.shipped.map((s) => s.commitSha)
+    });
+  } catch (err: unknown) {
+    console.warn(
+      `[git-anchored-completion] ${featureId}: failed to stamp shipped-slice evidence on ` +
+        `${featureFilePath} (${err instanceof Error ? err.message : String(err)}) — advancing anyway.`
+    );
+  }
+  return action.newStartIndex;
+}
+
 // Creates a slice file under <slicesRoot>/pending/ from a feature.
 // - Looks up feature in any backlog state.
 // - Moves feature -> in-progress/ if not already there.
@@ -160,6 +234,27 @@ export async function sliceFromFeature(
   // backlog state untouched.
   assertAcceptanceCriteria(featureId, sourceBody);
 
+  // runner-plugin#392: git-anchored completion check. Cross-check the
+  // proposed_slices decomposition against merged commit history BEFORE the
+  // in-progress move, so a refuse (SliceAlreadyShippedError) leaves backlog
+  // state untouched — same ordering rationale as the AC gate above. Only
+  // applies to the multi-slice (proposed_slices) path: that's where
+  // `sliceFromFeature` picks `proposed[existingCount]` by index, the exact
+  // mechanism that silently re-scaffolds shipped work when the FEAT's
+  // `slices` frontmatter has drifted from git reality. Fail-open by
+  // contract — a git error never blocks a legitimate start.
+  const gitReconciledStartIndex =
+    proposed && proposed.length > 0
+      ? await reconcileProposedSlicesStartIndex(
+          repoPath,
+          featureId,
+          entry.filePath,
+          sourceFM,
+          proposed,
+          resolved
+        )
+      : undefined;
+
   // Move feature to in-progress if not already.
   const movedFromState = entry.state;
   let featureFilePath = entry.filePath;
@@ -180,7 +275,8 @@ export async function sliceFromFeature(
       featureBody,
       movedFromState,
       proposed,
-      config: resolved
+      config: resolved,
+      ...(gitReconciledStartIndex !== undefined ? { startIndex: gitReconciledStartIndex } : {})
     });
   }
 
@@ -274,6 +370,12 @@ interface MaterializeMultiOpts {
   movedFromState: string;
   proposed: ProposedSlice[];
   config: Record<string, any> | null;
+  // runner-plugin#392: 0-indexed override from the git-anchored reconcile
+  // pass — set when a contiguous shipped prefix was detected beyond what
+  // `featureFM.slices` records. `Math.max`'d against existingSlices.length
+  // below so it can only ever skip forward, never re-materialize something
+  // already tracked.
+  startIndex?: number;
 }
 
 async function materializeProposedSlices(opts: MaterializeMultiOpts) {
@@ -289,12 +391,13 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
   } = opts;
 
   const existingSlices = Array.isArray(featureFM.slices) ? featureFM.slices : [];
+  const startAt = Math.max(existingSlices.length, opts.startIndex ?? 0);
 
   // Idempotent rerun: if the feature already has at least as many slices
   // as proposed entries, do nothing further. Materialized slice files are
   // recorded on `slices`; their paths are recoverable by the caller via
   // the locate helpers if needed.
-  if (existingSlices.length >= proposed.length) {
+  if (startAt >= proposed.length) {
     const slicesInfo = existingSlices.slice(0, proposed.length).map((sid: string, i: number) => ({
       id: sid,
       path: null as string | null,
@@ -315,7 +418,7 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
     };
   }
 
-  const toCreate = proposed.slice(existingSlices.length);
+  const toCreate = proposed.slice(startAt);
   const newSlices: { id: string; path: string; title: string; points: number }[] = [];
 
   // A FEAT-level AC copy is only misleading when there are 2+ sibling
