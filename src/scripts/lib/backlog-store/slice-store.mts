@@ -33,34 +33,46 @@ import { allocateNextSliceId, SLICE_FILE_RE } from "./slice-id-allocator.mjs";
  * Accepts two authoring formats:
  * - `- [ ]` / `- [x]` checkbox bullets (normalized to unchecked)
  * - FEAT-277 inline-AC prose: `- GIVEN … WHEN … THEN …` or `- AC-N: …`
- *   bullets (optionally bold-prefixed)
+ *   bullets (optionally bold-prefixed). The `AC` marker accepts a hyphen,
+ *   a space, or nothing before the number (`AC-1`, `AC 1`, `AC1`) — an LLM
+ *   PM authors all three forms and the hyphen was never load-bearing
+ *   (runner-plugin#475).
  */
 function classifyAcceptanceCriteriaLine(line: string): string | null {
   if (/^- \[[ x]\]/.test(line)) {
     return line.replace(/^- \[x\]/i, "- [ ]");
   }
   const acText = line.match(/^-\s+(.*\S)\s*$/)?.[1];
-  if (acText && /^\*{0,2}(given\b|ac-\d+\b)/i.test(acText)) {
+  if (acText && /^\*{0,2}(given\b|ac[-\s]?\d+\b)/i.test(acText)) {
     return `- [ ] ${acText}`;
   }
   return null;
 }
 
 /**
- * Parses the `## Acceptance criteria` section from a FEAT body and returns
- * the criteria as unchecked checkbox lines. See {@link classifyAcceptanceCriteriaLine}
- * for the two accepted authoring formats. Stops at the next `##`-level
- * heading; a `### SN` per-slice subheading does not terminate the section.
- * See astragenie/runner-plugin#322, #370.
+ * Parses the `## Acceptance criteria` section from a FEAT body, returning
+ * both the criteria (as unchecked checkbox lines) and whether the heading
+ * itself was found. The `headingFound` flag lets callers distinguish "no
+ * heading at all" from "heading present, zero bullets recognized" so
+ * {@link AcceptanceCriteriaRequiredError} can point at the right problem
+ * (runner-plugin#475). See {@link classifyAcceptanceCriteriaLine} for the
+ * accepted authoring formats. Stops at the next `##`-level heading; a
+ * `### SN` per-slice subheading does not terminate the section. See
+ * astragenie/runner-plugin#322, #370.
  */
-export function extractAcceptanceCriteria(body: string): string[] {
-  if (!body) return [];
+function extractAcceptanceCriteriaDetailed(body: string): {
+  lines: string[];
+  headingFound: boolean;
+} {
+  if (!body) return { lines: [], headingFound: false };
   const lines = body.split("\n");
   let inSection = false;
+  let headingFound = false;
   const results: string[] = [];
   for (const line of lines) {
     if (/^##\s+acceptance criteria\b/i.test(line.trim())) {
       inSection = true;
+      headingFound = true;
       continue;
     }
     if (!inSection) continue;
@@ -68,7 +80,17 @@ export function extractAcceptanceCriteria(body: string): string[] {
     const normalized = classifyAcceptanceCriteriaLine(line);
     if (normalized) results.push(normalized);
   }
-  return results;
+  return { lines: results, headingFound };
+}
+
+/**
+ * Parses the `## Acceptance criteria` section from a FEAT body and returns
+ * the criteria as unchecked checkbox lines. Thin wrapper over
+ * {@link extractAcceptanceCriteriaDetailed} for callers that only need the
+ * bullets, not the heading-found flag.
+ */
+export function extractAcceptanceCriteria(body: string): string[] {
+  return extractAcceptanceCriteriaDetailed(body).lines;
 }
 
 /**
@@ -76,16 +98,36 @@ export function extractAcceptanceCriteria(body: string): string[] {
  * criteria. Placeholder AC auto-generation was removed — the PM owns AC
  * authoring, and a missing `## Acceptance criteria` section is a hard error,
  * not a template-filled stub.
+ *
+ * `headingFound` (runner-plugin#475) distinguishes two failure modes that
+ * used to share one misleading message: when the heading is genuinely
+ * absent (or typo'd), the guidance to check the heading is correct and
+ * stays. When the heading IS present but every bullet under it failed
+ * classification, telling the author to hunt for a typo'd heading sends
+ * them to the wrong place — the fix is in the bullet forms, not the
+ * heading — so that case gets its own message naming the accepted bullet
+ * forms instead.
  */
 export class AcceptanceCriteriaRequiredError extends Error {
-  constructor(public readonly featureId: string) {
+  constructor(
+    public readonly featureId: string,
+    public readonly headingFound: boolean = false
+  ) {
     super(
-      `${featureId} has no acceptance criteria — the PM must author at least one ` +
-        "testable bullet under a `## Acceptance criteria` heading (qualifier suffixes " +
-        "like `## Acceptance criteria (Given-When-Then)` are accepted; check for a typo'd " +
-        "heading first) before a slice can be scaffolded. " +
-        "Placeholder AC auto-generation was removed; run " +
-        `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
+      headingFound
+        ? `${featureId} has a \`## Acceptance criteria\` heading, but none of the bullets under ` +
+            "it were recognized as a testable criterion — the PM must author bullets in one of the " +
+            "accepted forms: `- AC-1: ...`, `- AC1: ...`, `- AC 1: ...`, " +
+            "`- GIVEN ... WHEN ... THEN ...`, or `- [ ] ...` / `- [x] ...` checkboxes (a plain " +
+            "`- some note` bullet does not count) before a slice can be scaffolded. " +
+            "Placeholder AC auto-generation was removed; run " +
+            `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
+        : `${featureId} has no acceptance criteria — the PM must author at least one ` +
+            "testable bullet under a `## Acceptance criteria` heading (qualifier suffixes " +
+            "like `## Acceptance criteria (Given-When-Then)` are accepted; check for a typo'd " +
+            "heading first) before a slice can be scaffolded. " +
+            "Placeholder AC auto-generation was removed; run " +
+            `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
     );
     this.name = "AcceptanceCriteriaRequiredError";
   }
@@ -97,8 +139,9 @@ export class AcceptanceCriteriaRequiredError extends Error {
  * move so a refuse leaves backlog state untouched (mirrors `assertSized`).
  */
 export function assertAcceptanceCriteria(featureId: string, body: string): void {
-  if (extractAcceptanceCriteria(body).length === 0) {
-    throw new AcceptanceCriteriaRequiredError(featureId);
+  const { lines, headingFound } = extractAcceptanceCriteriaDetailed(body);
+  if (lines.length === 0) {
+    throw new AcceptanceCriteriaRequiredError(featureId, headingFound);
   }
 }
 
@@ -199,11 +242,12 @@ function buildSliceMarkdown({
   // gate guarantees the FEAT body carries real ACs before we reach here, so
   // this only throws if a future caller bypasses that gate.
   const usingOwnAc = Array.isArray(acceptanceCriteria) && acceptanceCriteria.length > 0;
+  const featureAcDetail = usingOwnAc ? null : extractAcceptanceCriteriaDetailed(featureBody);
   const acLines = usingOwnAc
     ? acceptanceCriteria.map(normalizeAcBullet)
-    : extractAcceptanceCriteria(featureBody);
+    : (featureAcDetail?.lines ?? []);
   if (acLines.length === 0) {
-    throw new AcceptanceCriteriaRequiredError(featureId);
+    throw new AcceptanceCriteriaRequiredError(featureId, featureAcDetail?.headingFound ?? false);
   }
   const acSectionLines = !usingOwnAc && acWarning ? [acWarning, "", ...acLines] : acLines;
 

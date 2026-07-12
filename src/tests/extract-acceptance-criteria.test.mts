@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 
 import {
   extractAcceptanceCriteria,
-  AcceptanceCriteriaRequiredError
+  AcceptanceCriteriaRequiredError,
+  assertAcceptanceCriteria
 } from "../scripts/lib/slice-linker/feature-lifecycle.mjs";
 import { findFeatureById } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
@@ -178,6 +179,50 @@ test("extractAcceptanceCriteria collects bullets grouped under per-slice ### SN 
   ]);
 });
 
+test("extractAcceptanceCriteria accepts hyphenless/space-separated AC markers (#475)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- AC1: hyphenless form",
+    "- AC 1: space-separated form",
+    "- AC-1: hyphenated form (existing)",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] AC1: hyphenless form",
+    "- [ ] AC 1: space-separated form",
+    "- [ ] AC-1: hyphenated form (existing)"
+  ]);
+});
+
+test("extractAcceptanceCriteria accepts hyphenless AC markers with bold wrapping (#475)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- **AC1 — Root cause, not a bandage.** Fix the underlying issue.",
+    "- **AC 2 — Second criterion.** Some detail.",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] **AC1 — Root cause, not a bandage.** Fix the underlying issue.",
+    "- [ ] **AC 2 — Second criterion.** Some detail."
+  ]);
+});
+
+test("extractAcceptanceCriteria still rejects a plain non-AC bullet under the heading (#475 over-widen guard)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- just a note, not an acceptance criterion",
+    "- acquire more context before shipping",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, []);
+});
+
 test("extractAcceptanceCriteria mixes checkbox + prose bullets in one section", () => {
   const body = [
     "## Acceptance criteria",
@@ -192,6 +237,45 @@ test("extractAcceptanceCriteria mixes checkbox + prose bullets in one section", 
     "- [ ] AC-1: already checked",
     "- [ ] GIVEN a nudge, WHEN sent, THEN no fork."
   ]);
+});
+
+// --- AcceptanceCriteriaRequiredError message differentiation (#475) ---
+
+test("assertAcceptanceCriteria: heading absent produces the original typo'd-heading guidance", () => {
+  const body = ["## Goal", "", "No AC heading here at all."].join("\n");
+  assert.throws(
+    () => assertAcceptanceCriteria("FEAT-475", body),
+    (err: unknown) => {
+      assert.ok(err instanceof AcceptanceCriteriaRequiredError);
+      assert.equal(err.headingFound, false);
+      assert.match(err.message, /check for a typo'd.*heading first/);
+      return true;
+    }
+  );
+});
+
+test("assertAcceptanceCriteria: heading present but zero bullets classify produces the new distinct error (#475)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- **AC1 — Root cause, not a bandage.**",
+    ""
+  ].join("\n")
+    // Deliberately break the AC marker so nothing classifies, to isolate the
+    // "heading found, no valid bullets" path from the widened-parser path
+    // exercised elsewhere in this file.
+    .replace("AC1", "not a criterion");
+  assert.throws(
+    () => assertAcceptanceCriteria("FEAT-475", body),
+    (err: unknown) => {
+      assert.ok(err instanceof AcceptanceCriteriaRequiredError);
+      assert.equal(err.headingFound, true);
+      assert.doesNotMatch(err.message, /check for a typo'd.*heading first/);
+      assert.match(err.message, /none of the bullets under it were recognized/);
+      assert.match(err.message, /AC-1: \.\.\.`, `- AC1: \.\.\.`, `- AC 1: \.\.\./);
+      return true;
+    }
+  );
 });
 
 // --- Integration tests: sliceFromFeature scaffold population ---
