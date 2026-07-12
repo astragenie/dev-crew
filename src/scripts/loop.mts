@@ -7,15 +7,40 @@ import path from "node:path";
 // modules — see node-bun-guard.mjs header. No-ops under Bun; exits under Node.
 ensureBunRuntime(import.meta.url, process.argv.slice(2));
 
-const { clearFrontmatterCache } = await import("./lib/frontmatter-cache.mjs");
-const { resolveSkills } = await import("./lib/skill-resolver.mjs");
-const { parseArgs } = await import("./lib/cli-args.mjs");
-
 // CLI for the loop plugin. Mirrors scripts/crew.mjs argument-parsing
 // conventions (--repo, --, MSYS path normalization) so the two plugins behave
 // the same way at the command line. FLAG_SPEC + parseArgs live in
 // lib/cli-args.mts (side-effect-free, unlike this file — see that module's
 // header comment for why).
+//
+// `clearFrontmatterCache` / `resolveSkills` / `parseArgs` used to be loaded
+// via a module-scope top-level `await import(...)` here. That pushed every
+// binding declared below it (including the many `export`ed functions this
+// file's own tests statically import, e.g. parseArchitectOutput,
+// publishFeatureViaProvider) behind an async boundary. Bun 1.3.14 has a
+// confirmed ESM-evaluator bug where such bindings can be read before
+// initialization under `bun test --parallel`, even when the importer fully
+// `await`s a dynamic `import()` (oven-sh/bun#30634, fix in flight:
+// oven-sh/bun#30656). loadCliDeps() below loads the same three modules
+// lazily, from inside main() — the only place they're used — keeping this
+// module's top level synchronous end-to-end.
+let cliDepsPromise: Promise<{
+  clearFrontmatterCache: typeof import("./lib/frontmatter-cache.mjs").clearFrontmatterCache;
+  resolveSkills: typeof import("./lib/skill-resolver.mjs").resolveSkills;
+  parseArgs: typeof import("./lib/cli-args.mjs").parseArgs;
+}> | null = null;
+function loadCliDeps() {
+  cliDepsPromise ??= Promise.all([
+    import("./lib/frontmatter-cache.mjs"),
+    import("./lib/skill-resolver.mjs"),
+    import("./lib/cli-args.mjs")
+  ]).then(([frontmatterCache, skillResolver, cliArgs]) => ({
+    clearFrontmatterCache: frontmatterCache.clearFrontmatterCache,
+    resolveSkills: skillResolver.resolveSkills,
+    parseArgs: cliArgs.parseArgs
+  }));
+  return cliDepsPromise;
+}
 
 function normalizeMsysPath(value: string): string {
   if (!value || process.platform !== "win32") {
@@ -537,7 +562,10 @@ async function runArchitectSubcommand(
   };
 }
 
-function runResolveSkillsCommand(flags: Record<string, any>): void {
+function runResolveSkillsCommand(
+  flags: Record<string, any>,
+  resolveSkills: typeof import("./lib/skill-resolver.mjs").resolveSkills
+): void {
   const VALID_VARIANTS = ["fe", "be", "single", "pm", "researcher", "architect", "document-writer"];
   if (!flags.variant) {
     process.stderr.write(`error: --variant <${VALID_VARIANTS.join("|")}> required\n`);
@@ -646,6 +674,8 @@ async function main() {
     return;
   }
 
+  const { clearFrontmatterCache, resolveSkills, parseArgs } = await loadCliDeps();
+
   const { command, flags, positionals } = parseArgs(rawArgv);
   const repoPath = path.resolve(normalizeMsysPath(flags.repo));
 
@@ -655,7 +685,7 @@ async function main() {
   }
 
   if (command === "resolve-skills") {
-    runResolveSkillsCommand(flags);
+    runResolveSkillsCommand(flags, resolveSkills);
     clearFrontmatterCache();
     return;
   }

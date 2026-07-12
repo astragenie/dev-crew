@@ -29,8 +29,28 @@ import { ensureBunRuntime } from "../lib/node-bun-guard.mjs";
 // modules — see node-bun-guard.mjs header. No-ops under Bun; exits under Node.
 ensureBunRuntime(import.meta.url, process.argv.slice(2));
 
-const { readProfile, _internals: profilesInternals } = await import("../lib/env-profiles.mjs");
-const { createWebhookSender } = await import("../lib/webhook-sender.mjs");
+// Loaded lazily, inside the functions that need them, instead of via a
+// module-scope top-level `await import(...)`. ensureBunRuntime() above already
+// guarantees Bun by the time any function below actually runs, so front-loading
+// at module-evaluation time bought nothing — and it cost us this: a module-scope
+// top-level await pushes every binding declared below it (including the
+// test-injectable `_internals` export) behind an async boundary. Bun 1.3.14 has
+// a confirmed ESM-evaluator bug where such bindings can be read before
+// initialization under `bun test --parallel`, even when the importer fully
+// `await`s a dynamic `import()` (oven-sh/bun#30634, fix in flight:
+// oven-sh/bun#30656). Keeping this module's top level synchronous end-to-end
+// sidesteps the bug entirely.
+let envProfilesModPromise: Promise<typeof import("../lib/env-profiles.mjs")> | null = null;
+function loadEnvProfiles(): Promise<typeof import("../lib/env-profiles.mjs")> {
+  envProfilesModPromise ??= import("../lib/env-profiles.mjs");
+  return envProfilesModPromise;
+}
+
+let webhookSenderModPromise: Promise<typeof import("../lib/webhook-sender.mjs")> | null = null;
+function loadWebhookSender(): Promise<typeof import("../lib/webhook-sender.mjs")> {
+  webhookSenderModPromise ??= import("../lib/webhook-sender.mjs");
+  return webhookSenderModPromise;
+}
 
 // ─── Overridable internals (test injection) ──────────────────────────────────
 
@@ -273,6 +293,7 @@ async function fireHandshake(opts: {
     init?: RequestInit
   ) => Promise<Response>;
 
+  const { createWebhookSender } = await loadWebhookSender();
   const sender = createWebhookSender(
     { url, tenantId: opts.tenantId, appId: opts.appId, bearer: opts.bearer },
     { fetchFn }
@@ -308,6 +329,7 @@ async function resolveTarget(
     return { ingestUrl: flagUrl, tokensFile: `tokens.${resolvedEnv}.json` };
   }
 
+  const { readProfile, _internals: profilesInternals } = await loadEnvProfiles();
   const savedProfilesDir = profilesInternals.profilesDir;
   profilesInternals.profilesDir = _internals.profilesDir;
   let profile: Awaited<ReturnType<typeof readProfile>>;
