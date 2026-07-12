@@ -251,4 +251,44 @@ export class GithubProvider implements TaskStoreProvider {
     const { setupGithubSync } = await importGithubSyncModule("github-sync.mjs");
     return setupGithubSync(this.repoPath, options);
   }
+
+  /**
+   * Read-only advisory drift check between GitHub issues and the local
+   * backlog — see github-sync.mjs's checkSyncDrift for the contract. Never
+   * writes to the local backlog or the tracker (unlike syncPull/bootstrap,
+   * which patch/create local FEAT files). Soft-fails like every other method
+   * here: gh CLI absent -> warn + a well-shaped "unsupported" result, never
+   * a throw.
+   */
+  async checkDrift(repoPath: string): Promise<{
+    supported: boolean;
+    reason: string | null;
+    checked: number;
+    trackerOnly: Array<{ number: number | string; title: string }>;
+    localOnly: Array<{ id: string; title: string }>;
+    statusMismatches: Array<{
+      id: string;
+      number: number | string;
+      localStatus: string;
+      trackerState: string;
+    }>;
+    bodyDrift: Array<{ id: string; number: number | string; changes: string[] }>;
+  }> {
+    const empty = {
+      supported: false,
+      reason: "gh CLI not installed",
+      checked: 0,
+      trackerOnly: [],
+      localOnly: [],
+      statusMismatches: [],
+      bodyDrift: []
+    };
+    if (!(await this._isInstalled())) {
+      console.warn("[GithubProvider] gh CLI not found — skipping checkDrift");
+      return empty;
+    }
+    const { checkSyncDrift } = await importGithubSyncModule("github-sync.mjs");
+    const ghExec = await this._resolvedExec();
+    return checkSyncDrift(repoPath, { ghExec, config: this._enabledConfig() });
+  }
 }

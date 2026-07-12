@@ -2061,6 +2061,42 @@ async function runGithubSyncOrBootstrap(provider: any, repoPath: string, sub: st
   return sub === "sync" ? provider.syncPull(repoPath) : provider.bootstrap(repoPath);
 }
 
+// Advisory, read-only cross-check (Phase 4.5 of the tracker-provider plan) —
+// reports drift between the configured tracker and the local backlog without
+// ever writing to either side. Only GithubProvider implements a sync engine
+// today (Linear's syncPull is an intentional COND-C descope for v1); any
+// other resolved provider degrades to a clear "not supported" result instead
+// of throwing, matching runGithubStatus/runGithubPublish's existing
+// `instanceof GithubProvider` gate above.
+async function runGithubDrift(provider: any, GithubProvider: any, repoPath: string) {
+  console.log(`[task-store] provider: ${provider.constructor.name}`);
+  if (!(provider instanceof GithubProvider)) {
+    const reason = `drift check not supported for provider "${provider.constructor.name}"`;
+    console.log(`[task-store] ${reason} — no sync engine for this provider yet. No changes made.`);
+    return {
+      supported: false,
+      reason,
+      checked: 0,
+      trackerOnly: [],
+      localOnly: [],
+      statusMismatches: [],
+      bodyDrift: []
+    };
+  }
+
+  const report = await provider.checkDrift(repoPath);
+  if (!report.supported) {
+    console.log(`[task-store] drift check skipped — ${report.reason}`);
+    return report;
+  }
+  console.log(
+    `[task-store] drift: ${report.checked} linked, ${report.trackerOnly.length} tracker-only, ` +
+      `${report.localOnly.length} local-only, ${report.statusMismatches.length} status mismatches, ` +
+      `${report.bodyDrift.length} body diffs. Read-only — no local or tracker writes made.`
+  );
+  return report;
+}
+
 export async function runGithubSubcommand(
   repoPath: any,
   positionals: any,
@@ -2079,9 +2115,10 @@ export async function runGithubSubcommand(
   if (sub === "status") return runGithubStatus(provider, GithubProvider);
   if (sub === "sync" || sub === "bootstrap")
     return runGithubSyncOrBootstrap(provider, repoPath, sub);
+  if (sub === "drift") return runGithubDrift(provider, GithubProvider, repoPath);
 
   throw new Error(
-    "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap"
+    "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap | drift"
   );
 }
 

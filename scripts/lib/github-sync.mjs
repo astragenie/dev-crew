@@ -192,6 +192,130 @@ export async function syncPull(repoPath, { ghExec = defaultGhExec, config } = {}
 }
 
 /**
+ * Read-only advisory drift check between GitHub issues and the local backlog.
+ *
+ * Unlike syncPull (patches local FEAT bodies) and bootstrapFromGithub (creates
+ * local FEAT files), this function performs NO writes anywhere — it only reads
+ * (gh issue list, local FEAT files) and reports differences. Callers that want
+ * a two-way mirror should use syncPull/bootstrapFromGithub directly; this is
+ * the cheap advisory cross-check that runs before any write-capable sync is
+ * trusted (Phase 4.5 of the tracker-provider plan).
+ *
+ * @param {string} repoPath
+ * @param {object} options
+ * @param {function} options.ghExec - gh CLI executor (default: defaultGhExec)
+ * @param {object} options.config - resolved config (default: loaded from repoPath)
+ * @returns {Promise<{
+ *   supported: boolean,
+ *   reason: string|null,
+ *   checked: number,
+ *   trackerOnly: Array<{ number: number, title: string }>,
+ *   localOnly: Array<{ id: string, title: string }>,
+ *   statusMismatches: Array<{ id: string, number: number, localStatus: string, trackerState: string }>,
+ *   bodyDrift: Array<{ id: string, number: number, changes: string[] }>
+ * }>}
+ */
+export async function checkSyncDrift(repoPath, { ghExec = defaultGhExec, config } = {}) {
+  const empty = {
+    supported: true,
+    reason: null,
+    checked: 0,
+    trackerOnly: [],
+    localOnly: [],
+    statusMismatches: [],
+    bodyDrift: []
+  };
+  const resolved = await loadConfig(repoPath, config);
+  if (!isEnabled(resolved)) {
+    return { ...empty, reason: "github.enabled is false" };
+  }
+  const repo = detectRepo(resolved.github.repo, repoPath);
+  if (!isGhInstalled({ ghExec })) {
+    console.warn("[github-sync] gh CLI not found — skipping drift check.");
+    return { ...empty, reason: "gh CLI not installed" };
+  }
+
+  const feats = await listBacklog(repoPath, { config: resolved });
+  const localByIssue = new Map();
+  const localOnly = [];
+  for (const feat of feats) {
+    const issueNum = feat.frontmatter.github_issue;
+    if (issueNum) {
+      localByIssue.set(issueNum, feat);
+    } else {
+      localOnly.push({ id: feat.id, title: feat.frontmatter.title ?? feat.id });
+    }
+  }
+
+  let rawIssues;
+  try {
+    rawIssues = JSON.parse(
+      ghExec([
+        "issue",
+        "list",
+        "--repo",
+        repo,
+        "--state",
+        "all",
+        "--json",
+        "number,title,body,state",
+        "--limit",
+        "500"
+      ])
+    );
+  } catch (err) {
+    console.warn(`[github-sync] drift check: could not list issues — ${err.message ?? err}`);
+    return { ...empty, localOnly, reason: "issue list failed" };
+  }
+
+  const trackerOnly = [];
+  const statusMismatches = [];
+  const bodyDrift = [];
+  let checked = 0;
+
+  for (const issue of rawIssues) {
+    const feat = localByIssue.get(issue.number);
+    if (!feat) {
+      trackerOnly.push({ number: issue.number, title: issue.title });
+      continue;
+    }
+    checked++;
+
+    const localStatus = feat.frontmatter.status ?? "unknown";
+    const trackerState = issue.state ?? "unknown"; // "OPEN" | "CLOSED"
+    const expectedOpen = localStatus !== "done";
+    const actuallyOpen = String(trackerState).toUpperCase() === "OPEN";
+    if (expectedOpen !== actuallyOpen) {
+      statusMismatches.push({ id: feat.id, number: issue.number, localStatus, trackerState });
+    }
+
+    // Read-only diff — diffBody never writes; patchBody (which would) is
+    // intentionally never called from this function.
+    const localContent = await fs.readFile(feat.filePath, "utf8");
+    const { changed, changes } = diffBody(localContent, issue.body ?? "");
+    if (changed) {
+      bodyDrift.push({ id: feat.id, number: issue.number, changes });
+    }
+  }
+
+  console.log(
+    `[github-sync] drift check: ${checked} linked, ${trackerOnly.length} tracker-only, ` +
+      `${localOnly.length} local-only, ${statusMismatches.length} status mismatches, ` +
+      `${bodyDrift.length} body diffs (read-only — no files written)`
+  );
+
+  return {
+    supported: true,
+    reason: null,
+    checked,
+    trackerOnly,
+    localOnly,
+    statusMismatches,
+    bodyDrift
+  };
+}
+
+/**
  * Post a completion comment on the feature issue for a slice.
  * Closes the slice sub-issue if github_issue is set.
  *

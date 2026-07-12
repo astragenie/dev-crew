@@ -12,6 +12,7 @@ export function publishSlice(
   opts?: any
 ): Promise<any>;
 export function syncPull(repoPath: string, opts?: any): Promise<any>;
+export function checkSyncDrift(repoPath: string, opts?: any): Promise<any>;
 export function postSliceComment(...args: any[]): Promise<any>;
 export function updateIssueStatus(...args: any[]): Promise<any>;
 export function syncMilestones(repoPath: string, opts?: any): Promise<any>;
