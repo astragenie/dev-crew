@@ -489,16 +489,25 @@ async function runArchitectSubcommand(
   const { architectModel, editorModel } = resolveArchitectModels(config);
   const planResult = await runPlanPreflight(repoPath, sliceId, { config });
 
+  // null = routing disabled (loop.modelRouting.enabled: false) — dispatches
+  // must omit `model:` so each agent's own frontmatter (agents/*.md) governs.
+  const architectLabel = architectModel ?? "inherit (agent frontmatter — omit model:)";
+  const editorLabel = editorModel ?? "inherit (agent frontmatter — omit model:)";
+  const editorSentence =
+    editorModel === null
+      ? "Dispatch `crew:fullstack-dev` subagent for the editor phase WITHOUT a `model:` argument — model routing is disabled, so the agent's own `model:` frontmatter governs. After it returns, dispatch `crew:reviewer` (and `crew:verifier` if behavior changed) before closing the slice."
+      : `Dispatch \`crew:fullstack-dev\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`crew:reviewer\` (and \`crew:verifier\` if behavior changed) before closing the slice.`;
+
   const dispatchInstruction = [
     `## Two-Model Split Dispatch`,
     ``,
-    `**Architect Model (Research/Plan):** ${architectModel}`,
-    `**Editor Model (Implementation):** ${editorModel}`,
+    `**Architect Model (Research/Plan):** ${architectLabel}`,
+    `**Editor Model (Implementation):** ${editorLabel}`,
     ``,
     `The architect model has completed the codebase research pre-flight.`,
     `Plan artifact written to: ${planResult.planPath}`,
     ``,
-    `Dispatch \`crew:fullstack-dev\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`crew:reviewer\` (and \`crew:verifier\` if behavior changed) before closing the slice.`,
+    editorSentence,
     `The editor phase should reference the plan artifact to guide the implementation approach.`
   ].join("\n");
 

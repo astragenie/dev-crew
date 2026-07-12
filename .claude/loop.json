@@ -71,6 +71,7 @@
       ]
     },
     "modelRouting": {
+      "enabled": false,
       "default": "sonnet",
       "sliceStart": "opus",
       "architect": "opus",

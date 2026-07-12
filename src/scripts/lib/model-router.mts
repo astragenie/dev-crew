@@ -12,6 +12,24 @@ export const MODEL_PHASES = [
 
 const FALLBACK_MODEL = "opus";
 
+/**
+ * Config-level kill-switch: `loop.modelRouting.enabled: false` disables model
+ * routing for the repo without deleting the tier config. When disabled, the
+ * dispatch-surface resolvers (resolveWaveDispatchModel, resolveArchitectModels)
+ * return null — meaning "do NOT pass a model: argument at all", so the
+ * dispatched agent's own `model:` frontmatter (agents/*.md) governs instead
+ * of a routed or fallback tier. Absent block or absent `enabled` key →
+ * routing stays on (backward compatible).
+ *
+ * dev-team mirrors these semantics in scripts/lib/models/resolve-model.ts
+ * (isModelRoutingEnabledInConfig) — keep the two in sync.
+ */
+export function isModelRoutingEnabled(config: Record<string, unknown> | null): boolean {
+  const loop = config?.loop as Record<string, unknown> | undefined;
+  const routing = loop?.modelRouting as Record<string, unknown> | undefined;
+  return routing?.enabled !== false;
+}
+
 // FEAT-205: slice-shape-aware tier routing.
 //
 // classify-slice-shape.mts buckets a slice's changed-file set into one of
@@ -57,11 +75,16 @@ export function resolveShapeTier(
  * (trivial shapes route to the mid tier), falling back to the phase-based
  * "build" routing (the editor pass wave dispatch stands in for) when the
  * shape has no override. Pure function — no I/O.
+ *
+ * Returns null when routing is disabled (`loop.modelRouting.enabled: false`)
+ * — the caller must then OMIT the Agent-tool `model:` field so the agent's
+ * own `model:` frontmatter governs.
  */
 export function resolveWaveDispatchModel(
   shape: string,
   config: Record<string, unknown> | null
-): string {
+): string | null {
+  if (!isModelRoutingEnabled(config)) return null;
   return resolveShapeTier(shape, config) ?? resolveModel("build", config);
 }
 
@@ -86,12 +109,18 @@ export function resolveOrchestratorModel(config: Record<string, unknown> | null)
  * - editorModel:    `modelRouting.build` → `modelRouting.default` → opus (coding pass)
  *
  * Default split: architect=opus, editor=sonnet (when loop.json ships the standard preset).
+ *
+ * Both fields are null when routing is disabled (`loop.modelRouting.enabled:
+ * false`) — dispatches must then omit `model:` so agent frontmatter governs.
  */
 export function resolveArchitectModels(config: Record<string, unknown> | null): {
-  architectModel: string;
-  editorModel: string;
+  architectModel: string | null;
+  editorModel: string | null;
 } {
   const cfg = config ?? {};
+  if (!isModelRoutingEnabled(cfg)) {
+    return { architectModel: null, editorModel: null };
+  }
   return {
     architectModel: resolveModel("architect", cfg) || resolveModel("sliceStart", cfg),
     editorModel: resolveModel("build", cfg)

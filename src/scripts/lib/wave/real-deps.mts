@@ -141,6 +141,10 @@ export async function realPrepare(repoRoot: string, plan: WavePlan): Promise<Pre
     // fail-open on any reader error (never blocks wave dispatch).
     const agentBatch = await Promise.all(
       plan.items.map(async (item) => {
+        // null = routing disabled (loop.modelRouting.enabled: false) — omit
+        // the `model` field so the dispatched agent's own `model:` frontmatter
+        // (agents/*.md) governs instead of a routed tier.
+        const model = resolveWaveDispatchModel(item.shape ?? "none", config);
         const worktreePath = raw.cwdById[item.sliceId] ?? "";
         return {
           sliceId: item.sliceId,
@@ -155,7 +159,7 @@ export async function realPrepare(repoRoot: string, plan: WavePlan): Promise<Pre
             featureId: item.featureId,
             config
           }),
-          model: resolveWaveDispatchModel(item.shape ?? "none", config)
+          ...(model !== null ? { model } : {})
         };
       })
     );

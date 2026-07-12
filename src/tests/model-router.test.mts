@@ -7,7 +7,8 @@ import {
   resolveArchitectModels,
   resolveShapeTier,
   resolveWaveDispatchModel,
-  SHAPE_TIER_MAP
+  SHAPE_TIER_MAP,
+  isModelRoutingEnabled
 } from "../scripts/lib/model-router.mjs";
 import { buildDispatchInstruction } from "../scripts/lib/slice-linker.mjs";
 import { buildDispatchPrompt } from "../scripts/lib/wave/dispatch-prompt.mjs";
@@ -153,4 +154,42 @@ test("FEAT-205 regression: a docs-shaped slice fixture produces a dispatch with 
     !prompt.toLowerCase().includes("opus"),
     "wave dispatch prompt text must never carry a model hint — model is a structured field"
   );
+});
+
+// ── loop.modelRouting.enabled: false — routing kill-switch ──────────────────
+// Disabled routing must return null from the dispatch-surface resolvers so
+// callers OMIT the Agent-tool `model:` argument and the dispatched agent's
+// own `model:` frontmatter (agents/*.md) governs.
+
+const DISABLED_CONFIG = {
+  loop: {
+    modelRouting: {
+      enabled: false,
+      architect: "opus",
+      build: "sonnet",
+      default: "sonnet"
+    }
+  }
+};
+
+test("isModelRoutingEnabled: absent block / absent key → enabled (backward compatible)", () => {
+  assert.equal(isModelRoutingEnabled(null), true);
+  assert.equal(isModelRoutingEnabled({}), true);
+  assert.equal(isModelRoutingEnabled({ loop: {} }), true);
+  assert.equal(isModelRoutingEnabled({ loop: { modelRouting: { build: "sonnet" } } }), true);
+});
+
+test("isModelRoutingEnabled: enabled false → disabled", () => {
+  assert.equal(isModelRoutingEnabled(DISABLED_CONFIG), false);
+});
+
+test("resolveWaveDispatchModel: routing disabled → null (omit model:, frontmatter governs)", () => {
+  assert.equal(resolveWaveDispatchModel("none", DISABLED_CONFIG), null);
+  assert.equal(resolveWaveDispatchModel("doc-update", DISABLED_CONFIG), null);
+});
+
+test("resolveArchitectModels: routing disabled → both models null", () => {
+  const { architectModel, editorModel } = resolveArchitectModels(DISABLED_CONFIG);
+  assert.equal(architectModel, null);
+  assert.equal(editorModel, null);
 });

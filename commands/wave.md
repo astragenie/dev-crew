@@ -56,11 +56,16 @@ instructs:
 3. Return a last-line JSON marker:
    `{"slice":"<id>","status":"PASS"|"FAIL","artifacts":[...]}`.
 
-Each `agentBatch` entry also carries a resolved `model` field (FEAT-205,
-`resolveWaveDispatchModel` in `src/scripts/lib/model-router.mts`) — pass it
-into the tool call as `Agent(subagent_type: general-purpose, model: <model>)`.
+Each `agentBatch` entry MAY carry a resolved `model` field (FEAT-205,
+`resolveWaveDispatchModel` in `src/scripts/lib/model-router.mts`) — when
+present, pass it into the tool call as
+`Agent(subagent_type: general-purpose, model: <model>)`. **When the field is
+absent (model routing disabled via `loop.modelRouting.enabled: false`), OMIT
+the `model:` argument entirely** — the dispatched agent's own `model:`
+frontmatter (`agents/*.md`) then governs; do not substitute a model yourself.
 Model choice never lives inside the `prompt` string; it is a separate
-structured field on the batch entry. Resolution order per slice:
+structured field on the batch entry. Resolution order per slice (when routing
+is enabled):
 
 1. The slice's `classify-slice-shape.mts` shape (computed from its
    `touches_files` at pack time) looks up `SHAPE_TIER_MAP` — trivial shapes
