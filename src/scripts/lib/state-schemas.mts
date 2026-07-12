@@ -40,6 +40,15 @@ function checkStringArray(fm: Fm, key: string, issues: string[]): void {
   }
 }
 
+// runner#393 proposal 4: optional, non-negative token-budget estimate.
+function checkNonNegativeNumberIfPresent(fm: Fm, key: string, issues: string[]): void {
+  const v = fm[key];
+  if (v === undefined) return;
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) {
+    issues.push(`${key}: expected non-negative number, got ${JSON.stringify(v)}`);
+  }
+}
+
 export function validateFeat(fm: Fm): ValidationResult {
   const issues: string[] = [];
   if (typeof fm.id !== "string" || !FEAT_ID.test(fm.id)) {
@@ -78,6 +87,7 @@ export function validateSlice(fm: Fm): ValidationResult {
     issues.push(`requires_validation: expected boolean`);
   }
   if (fm.created !== undefined) checkIsoDate(fm, "created", issues);
+  checkNonNegativeNumberIfPresent(fm, "estimated_tokens", issues);
   checkVersion(fm, issues);
   return result(issues);
 }

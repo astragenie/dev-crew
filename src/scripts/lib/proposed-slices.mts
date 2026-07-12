@@ -6,6 +6,7 @@
 //     - id_suffix: -SLICE-1     # matches /^-SLICE-\d+$/
 //       title: Library + tests  # 1..100 chars
 //       points: 2               # Fibonacci value, but capped at 2 per entry (runner#393)
+//       estimated_tokens: 100000 # optional override; defaults from points (runner#393 proposal 4)
 //
 // Two distinct error paths the gate cares about:
 //   - parseProposedSlices  → InvalidProposedSlicesError (AC-7)
@@ -15,12 +16,20 @@
 // can stderr-print them and set process.exitCode=1 without inventing
 // wording.
 
-import { isEffortPoints, type EffortPoints } from "./pm-effort-mapper.mjs";
+import { isEffortPoints, estimateTokensForPoints, type EffortPoints } from "./pm-effort-mapper.mjs";
 
 export interface ProposedSlice {
   id_suffix: string;
   title: string;
   points: EffortPoints;
+  // runner#393 proposal 4: token-budget estimate for this slice. Always
+  // populated after parsing — either a caller-supplied override (a PM or
+  // architect explicitly flagging landmine/design-decision risk) or a
+  // deterministic default derived from `points` via
+  // pm-effort-mapper.mts::estimateTokensForPoints. Stored (not just the
+  // pass/fail verdict) so a human reading the FEAT/slice frontmatter can
+  // see WHY a decomposition was forced to split further.
+  estimated_tokens: number;
   // Optional per-slice acceptance criteria (astragenie/runner-plugin QW4).
   // When a PM decomposition supplies this, the materializer uses it verbatim
   // for that slice's AC section instead of copying the FEAT-level ACs into
@@ -37,6 +46,13 @@ const MAX_TITLE_LEN = 100;
 // shipped in #414 — 5 was still too coarse). Cap per-entry size so the
 // sum(points) coverage rule cannot be satisfied by one oversized slice.
 const MAX_SLICE_POINTS = 2;
+// runner#393 proposal 4: ~1 slice ≈ ≤200k builder tokens. A slice whose
+// estimated_tokens (explicit override, or the points-derived default)
+// exceeds this must be decomposed further — this is a second, independent
+// signal from the points cap above: a low-points slice that absorbs a
+// flagged landmine can still blow the token budget, which points alone
+// cannot see.
+export const TOKEN_SPLIT_THRESHOLD = 200_000;
 
 /** FEAT-168 AC-7 — parse failure on malformed `proposed_slices` frontmatter. */
 export class InvalidProposedSlicesError extends Error {
@@ -60,6 +76,38 @@ export class DecompositionRequiredError extends Error {
     );
     this.name = "DecompositionRequiredError";
   }
+}
+
+// runner#393 proposal 4: resolves + validates a single entry's estimated_tokens
+// (explicit override, or the points-derived default) and enforces the
+// ~200k auto-split threshold. Split out of validateOne to keep that
+// function's cognitive complexity under the repo's Biome cap.
+function resolveEstimatedTokens(
+  obj: Record<string, unknown>,
+  featureId: string,
+  index: number,
+  points: EffortPoints
+): number {
+  const raw = obj["estimated_tokens"];
+  let estimatedTokens: number;
+  if (raw === undefined || raw === null) {
+    estimatedTokens = estimateTokensForPoints(points);
+  } else {
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) {
+      throw new InvalidProposedSlicesError(
+        featureId,
+        `estimated_tokens in slice ${index} must be a non-negative number (got ${JSON.stringify(raw)})`
+      );
+    }
+    estimatedTokens = raw;
+  }
+  if (estimatedTokens > TOKEN_SPLIT_THRESHOLD) {
+    throw new InvalidProposedSlicesError(
+      featureId,
+      `estimated_tokens value in slice ${index} exceeds the ~200k auto-split threshold of ${TOKEN_SPLIT_THRESHOLD} (got ${estimatedTokens}) — oversized slices die mid-dispatch (runner#393); decompose further or isolate the flagged landmine into its own slice`
+    );
+  }
+  return estimatedTokens;
 }
 
 function validateOne(s: unknown, featureId: string, index: number): ProposedSlice {
@@ -101,6 +149,8 @@ function validateOne(s: unknown, featureId: string, index: number): ProposedSlic
     );
   }
 
+  const estimatedTokens = resolveEstimatedTokens(obj, featureId, index, points);
+
   const acRaw = obj["acceptance_criteria"];
   let acceptanceCriteria: string[] | undefined;
   if (acRaw !== undefined) {
@@ -121,6 +171,7 @@ function validateOne(s: unknown, featureId: string, index: number): ProposedSlic
     id_suffix: idSuffix,
     title,
     points,
+    estimated_tokens: estimatedTokens,
     ...(acceptanceCriteria ? { acceptance_criteria: acceptanceCriteria } : {})
   };
 }

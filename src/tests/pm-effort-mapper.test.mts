@@ -6,7 +6,10 @@ import assert from "node:assert/strict";
 import {
   mapEffortEstimateToPoints,
   isEffortPoints,
-  FIBONACCI_EFFORT_POINTS
+  FIBONACCI_EFFORT_POINTS,
+  estimateTokensForPoints,
+  TOKENS_BASE_OVERHEAD,
+  TOKENS_PER_EFFORT_POINT
 } from "../scripts/lib/pm-effort-mapper.mjs";
 
 test("band table — middle of each band maps to the documented point value", () => {
@@ -72,4 +75,30 @@ test("isEffortPoints recognises the allowed values and rejects others", () => {
 
 test("FIBONACCI_EFFORT_POINTS exports the exact set [1,2,3,5,8,13] in order", () => {
   assert.deepEqual([...FIBONACCI_EFFORT_POINTS], [1, 2, 3, 5, 8, 13]);
+});
+
+// runner#393: default token estimate per Fibonacci effort_points band.
+test("estimateTokensForPoints applies base overhead + linear per-point cost", () => {
+  for (const points of FIBONACCI_EFFORT_POINTS) {
+    assert.equal(
+      estimateTokensForPoints(points),
+      TOKENS_BASE_OVERHEAD + points * TOKENS_PER_EFFORT_POINT
+    );
+  }
+});
+
+test("estimateTokensForPoints at the runner#393 per-slice cap (2 points) stays under the 200k auto-split threshold", () => {
+  assert.ok(
+    estimateTokensForPoints(2) < 200_000,
+    "a slice at the current points cap should not trip the token auto-split threshold by default"
+  );
+});
+
+test("estimateTokensForPoints is monotonic in points", () => {
+  let prev = 0;
+  for (const points of FIBONACCI_EFFORT_POINTS) {
+    const tokens = estimateTokensForPoints(points);
+    assert.ok(tokens > prev, `${points} points must estimate more tokens than the previous band`);
+    prev = tokens;
+  }
 });

@@ -402,7 +402,8 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       id: sid,
       path: null as string | null,
       title: proposed[i]!.title,
-      points: proposed[i]!.points
+      points: proposed[i]!.points,
+      estimatedTokens: proposed[i]!.estimated_tokens
     }));
     return {
       slice: slicesInfo[0]!,
@@ -419,7 +420,13 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
   }
 
   const toCreate = proposed.slice(startAt);
-  const newSlices: { id: string; path: string; title: string; points: number }[] = [];
+  const newSlices: {
+    id: string;
+    path: string;
+    title: string;
+    points: number;
+    estimatedTokens: number;
+  }[] = [];
 
   // A FEAT-level AC copy is only misleading when there are 2+ sibling
   // slices to split scope across — a lone proposed_slices entry legitimately
@@ -450,6 +457,7 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       featureBody,
       title: item.title,
       effortPoints: item.points,
+      estimatedTokens: item.estimated_tokens,
       ...(ownAc ? { acceptanceCriteria: ownAc } : {}),
       ...(warnSharedAc
         ? {
@@ -464,7 +472,8 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       id: created.id,
       path: created.filePath,
       title: created.title,
-      points: item.points
+      points: item.points,
+      estimatedTokens: item.estimated_tokens
     });
   }
 

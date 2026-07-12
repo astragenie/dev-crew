@@ -66,6 +66,31 @@ test("validateSlice rejects bad id and non-FEAT feature link", () => {
   assert.ok(r.issues.some((i) => i.includes("feature")));
 });
 
+// runner#393 proposal 4: estimated_tokens is an optional non-negative number.
+test("validateSlice accepts a non-negative estimated_tokens", () => {
+  const r = validateSlice({
+    id: "SLICE-12",
+    status: "pending",
+    estimated_tokens: 100_000
+  });
+  assert.equal(r.ok, true, r.issues.join("; "));
+});
+
+test("validateSlice tolerates absent estimated_tokens", () => {
+  const r = validateSlice({ id: "SLICE-12", status: "pending" });
+  assert.equal(r.ok, true, r.issues.join("; "));
+});
+
+test("validateSlice rejects a negative or non-numeric estimated_tokens", () => {
+  const rNeg = validateSlice({ id: "SLICE-12", status: "pending", estimated_tokens: -1 });
+  assert.equal(rNeg.ok, false);
+  assert.ok(rNeg.issues.some((i) => i.includes("estimated_tokens")));
+
+  const rStr = validateSlice({ id: "SLICE-12", status: "pending", estimated_tokens: "lots" });
+  assert.equal(rStr.ok, false);
+  assert.ok(rStr.issues.some((i) => i.includes("estimated_tokens")));
+});
+
 test("validateGrade requires a slice link", () => {
   assert.equal(validateGrade({ slice: "SLICE-12" }).ok, true);
   assert.equal(validateGrade({}).ok, false);

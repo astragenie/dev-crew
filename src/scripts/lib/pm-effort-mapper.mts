@@ -69,3 +69,29 @@ export function isEffortPoints(n: unknown): n is EffortPoints {
     (FIBONACCI_EFFORT_POINTS as readonly number[]).includes(n)
   );
 }
+
+// runner#393 (proposal 4): default per-slice token estimate, keyed off
+// Fibonacci effort_points, used by proposed-slices.mts when a
+// proposed_slices entry omits an explicit estimated_tokens override.
+//
+// Calibrated against the mid-dispatch death evidence cited in runner#393:
+// three FEAT-312/FEAT-322 slices (each with effective scope of ~8 points
+// once absorbed landmines are counted) died at 268k-390k builder tokens.
+// Back-solving a fixed per-slice overhead (skill loads, initial file
+// reads, tool-call framing) against that range puts the marginal cost at
+// roughly 35-45k tokens per effort point:
+//   (268_000 - 20_000) / 8 ≈ 31k   (268k, FEAT-312 SLICE-197)
+//   (366_000 - 20_000) / 8 ≈ 43k   (366k, FEAT-322 bundle)
+// TOKENS_PER_EFFORT_POINT = 40_000 sits between the two observations.
+export const TOKENS_BASE_OVERHEAD = 20_000;
+export const TOKENS_PER_EFFORT_POINT = 40_000;
+
+/**
+ * Deterministic default token estimate for a given Fibonacci effort_points
+ * value. Callers that have a better signal (e.g. a PM/architect explicitly
+ * flagging landmines) may override this with their own estimated_tokens
+ * value — see proposed-slices.mts.
+ */
+export function estimateTokensForPoints(points: EffortPoints): number {
+  return TOKENS_BASE_OVERHEAD + points * TOKENS_PER_EFFORT_POINT;
+}

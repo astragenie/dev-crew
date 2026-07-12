@@ -41,7 +41,7 @@ Once resolved at dispatcher startup, roots are threaded through all command hand
 | `depends_on` | Array of `FEAT-NNN` strings | Yes (may be empty array) |
 | `slices` | Array of `SLICE-NN` strings | Yes (may be empty array) |
 | `schemaVersion` | Integer; only `1` accepted | No (absent ⇒ v1) |
-| `proposed_slices` | Array of `{id_suffix, title, points, acceptance_criteria?}` (see `proposed-slices.mts`) | No |
+| `proposed_slices` | Array of `{id_suffix, title, points, estimated_tokens?, acceptance_criteria?}` (see `proposed-slices.mts`) — `estimated_tokens` defaults from `points` via `pm-effort-mapper.mts::estimateTokensForPoints` when omitted, and any entry whose (explicit or defaulted) `estimated_tokens` exceeds the ~200k `TOKEN_SPLIT_THRESHOLD` is refused at parse time (runner#393 proposal 4) | No |
 | `proposed_slices_shipped` | Array of `id_suffix` strings (runner-plugin#392) — stamped by the git-anchored reconcile pass when merged-commit evidence shows a proposed slice was already shipped through a path that never ran `sliceFromFeature`. Durable audit trail; not schema-enforced. | No |
 | `proposed_slices_shipped_commits` | Array of commit SHAs, index-aligned with `proposed_slices_shipped` (runner-plugin#392) | No |
 
@@ -54,6 +54,8 @@ Once resolved at dispatcher startup, roots are threaded through all command hand
 | `feature` | FEAT-NNN string or null | No (null allowed) |
 | `requires_validation` | Boolean | No |
 | `created` | ISO-8601 date (YYYY-MM-DD) | No |
+| `effort_points` | Fibonacci value `1\|2\|3\|5\|8\|13`, propagated from the source `proposed_slices` entry (or the FEAT's own `effort_points` on the single-slice path) | No |
+| `estimated_tokens` | Non-negative number, propagated from the source `proposed_slices` entry's (explicit or points-derived default) `estimated_tokens` (runner#393 proposal 4) | No |
 | `schemaVersion` | Integer; only `1` accepted | No (absent ⇒ v1) |
 
 ### Grade Frontmatter

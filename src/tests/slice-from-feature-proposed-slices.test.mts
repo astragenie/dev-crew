@@ -63,9 +63,16 @@ test("sliceFromFeature creates all proposed slices atomically", async () => {
   assert.equal(updated.frontmatter.slices[0], out.slices[0].id);
   assert.equal(updated.frontmatter.slices[2], out.slices[2].id);
 
-  // Each slice file exists with the proposed title and effort_points.
+  // Each slice file exists with the proposed title, effort_points, and
+  // estimated_tokens (runner#393 proposal 4).
   for (let i = 0; i < 3; i += 1) {
-    const sl = out.slices[i] as { id: string; path: string; title: string; points: number };
+    const sl = out.slices[i] as {
+      id: string;
+      path: string;
+      title: string;
+      points: number;
+      estimatedTokens: number;
+    };
     const sliceContent = await fs.readFile(sl.path, "utf8");
     const { frontmatter } = parseFrontmatter(sliceContent);
     assert.equal(frontmatter.feature, feat.id);
@@ -74,7 +81,39 @@ test("sliceFromFeature creates all proposed slices atomically", async () => {
       sl.points,
       `slice ${sl.id} must carry effort_points from proposal`
     );
+    assert.equal(
+      frontmatter.estimated_tokens,
+      sl.estimatedTokens,
+      `slice ${sl.id} must carry estimated_tokens from proposal`
+    );
+    assert.equal(
+      frontmatter.estimated_tokens,
+      20_000 + sl.points * 40_000,
+      `slice ${sl.id} estimated_tokens must equal the points-derived default`
+    );
   }
+});
+
+// runner#393 proposal 4: an explicit estimated_tokens override above the
+// ~200k threshold must refuse materialization even though points alone is
+// within its own per-entry cap — the token estimator is a second signal a
+// points-only cap cannot see (e.g. a low-points slice absorbing a flagged
+// landmine).
+test("sliceFromFeature refuses when a proposed_slices entry's estimated_tokens exceeds the 200k auto-split threshold", async () => {
+  const repo = await tmpRepo("sfp-token-cap-");
+  const feat = await addFeature(repo, { title: "Landmine bearing", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 2,
+    proposed_slices: [
+      { id_suffix: "-SLICE-1", title: "OAuth callback", points: 1, estimated_tokens: 240_000 }
+    ]
+  });
+  await assert.rejects(
+    () => sliceFromFeature(repo, feat.id),
+    (err: Error) =>
+      err.name === "InvalidProposedSlicesError" &&
+      /estimated_tokens value in slice 0 exceeds the ~200k auto-split threshold/.test(err.message)
+  );
 });
 
 test("sliceFromFeature is idempotent on proposed_slices rerun (no duplicate slices)", async () => {

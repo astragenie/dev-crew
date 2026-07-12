@@ -15,8 +15,8 @@ const FEAT = "FEAT-999";
 
 test("AC-1: valid array returns the parsed ProposedSlice[]", () => {
   const raw = [
-    { id_suffix: "-SLICE-1", title: "Lib + tests", points: 2 },
-    { id_suffix: "-SLICE-2", title: "CLI + agent", points: 2 }
+    { id_suffix: "-SLICE-1", title: "Lib + tests", points: 2, estimated_tokens: 90_000 },
+    { id_suffix: "-SLICE-2", title: "CLI + agent", points: 2, estimated_tokens: 90_000 }
   ];
   const out = parseProposedSlices(raw, FEAT);
   assert.deepEqual(out, raw);
@@ -111,6 +111,58 @@ test("runner#393: points value of 1 is accepted", () => {
   const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 1 }];
   const out = parseProposedSlices(raw, FEAT);
   assert.equal(out!.length, 1);
+});
+
+// runner#393 slice 2: estimated_tokens field + ~200k auto-split heuristic.
+test("runner#393: estimated_tokens defaults from points when the entry omits it", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 2 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.estimated_tokens, 20_000 + 2 * 40_000);
+});
+
+test("runner#393: an explicit estimated_tokens override passes through when within the threshold", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 1, estimated_tokens: 150_000 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.estimated_tokens, 150_000);
+});
+
+test("runner#393: estimated_tokens above the 200k auto-split threshold throws even when points is within its own cap", () => {
+  // points=1 passes the per-entry points cap on its own, but a PM/architect
+  // flagging landmines can override estimated_tokens upward to force a split
+  // the points-only cap would miss.
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "landmine-heavy", points: 1, estimated_tokens: 250_000 }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError &&
+      /estimated_tokens value in slice 0 exceeds the ~200k auto-split threshold/.test(err.message)
+  );
+});
+
+test("runner#393: estimated_tokens exactly at the 200k threshold is accepted", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 1, estimated_tokens: 200_000 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.estimated_tokens, 200_000);
+});
+
+test("runner#393: non-numeric estimated_tokens throws with precise detail", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 1, estimated_tokens: "lots" }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /estimated_tokens in slice 0/.test(err.message)
+  );
+});
+
+test("runner#393: negative estimated_tokens throws", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "A", points: 1, estimated_tokens: -5 }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /estimated_tokens in slice 0/.test(err.message)
+  );
 });
 
 test("AC-1: sum(points) < effort_points throws (decomposition undersized)", () => {

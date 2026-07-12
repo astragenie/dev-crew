@@ -135,7 +135,7 @@ test("resolveMainRef prefers local main over a stale origin/main (no-push-from-l
 
   // And the reconcile scan actually sees the unpushed evidence.
   const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-7", [
-    { id_suffix: "-SLICE-1", title: "Local-only", points: 2 }
+    { id_suffix: "-SLICE-1", title: "Local-only", points: 2, estimated_tokens: 100_000 }
   ]);
   assert.equal(res.gitError, null);
   assert.deepEqual(
@@ -152,10 +152,10 @@ test("resolveMainRef returns null (fail-open) outside a git repo", async () => {
 // --- reconcileProposedSlicesAgainstGit ---------------------------------------
 
 const PROPOSED_3 = [
-  { id_suffix: "-SLICE-1", title: "Bridge", points: 2 },
-  { id_suffix: "-SLICE-2", title: "ACL", points: 2 },
-  { id_suffix: "-SLICE-3", title: "OAuth", points: 2 }
-] satisfies { id_suffix: string; title: string; points: 2 }[];
+  { id_suffix: "-SLICE-1", title: "Bridge", points: 2, estimated_tokens: 100_000 },
+  { id_suffix: "-SLICE-2", title: "ACL", points: 2, estimated_tokens: 100_000 },
+  { id_suffix: "-SLICE-3", title: "OAuth", points: 2, estimated_tokens: 100_000 }
+] satisfies { id_suffix: string; title: string; points: 2; estimated_tokens: number }[];
 
 test("reconcile finds shipped ordinals from FEAT+SLICE commit evidence", async () => {
   const repo = await tmpGitRepo("gac-hit-", [

@@ -154,6 +154,7 @@ function buildSliceMarkdown({
   featureFrontmatter,
   featureBody,
   effortPoints,
+  estimatedTokens,
   acceptanceCriteria,
   acWarning
 }: {
@@ -163,6 +164,7 @@ function buildSliceMarkdown({
   featureFrontmatter: Record<string, unknown>;
   featureBody: string;
   effortPoints?: number;
+  estimatedTokens?: number;
   acceptanceCriteria?: string[];
   acWarning?: string;
 }): string {
@@ -183,6 +185,12 @@ function buildSliceMarkdown({
   };
   if (typeof effortPoints === "number") {
     frontmatter.effort_points = effortPoints;
+  }
+  // runner#393 proposal 4: carries the estimated_tokens computed/overridden
+  // at proposed_slices parse time onto the materialized slice file, so a
+  // human reading the slice can see the token-budget signal that gated it.
+  if (typeof estimatedTokens === "number") {
+    frontmatter.estimated_tokens = estimatedTokens;
   }
   const propagatedTags = propagatedSurfaceStackTags(featureFrontmatter.tags);
   if (propagatedTags.length > 0) {
@@ -257,6 +265,7 @@ export interface CreateSliceOpts {
   featureBody: string;
   title?: string;
   effortPoints?: number;
+  estimatedTokens?: number;
   config?: Record<string, unknown> | null;
   // QW4: per-slice ACs from a proposed_slices entry's own acceptance_criteria
   // field, when the caller has one. Takes priority over featureBody's ACs.
@@ -293,6 +302,7 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     featureFrontmatter,
     featureBody,
     effortPoints,
+    estimatedTokens,
     acceptanceCriteria,
     acWarning,
     config = null
@@ -313,6 +323,7 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     featureFrontmatter,
     featureBody,
     ...(effortPoints !== undefined ? { effortPoints } : {}),
+    ...(estimatedTokens !== undefined ? { estimatedTokens } : {}),
     ...(acceptanceCriteria !== undefined ? { acceptanceCriteria } : {}),
     ...(acWarning !== undefined ? { acWarning } : {})
   });
