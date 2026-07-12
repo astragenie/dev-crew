@@ -2,7 +2,7 @@
 name: writing-claude-md
 tier: universal
 description: Use when adding or updating CLAUDE.md entries to keep them concise and useful.
-owner: sergeymilashico
+owner: astra
 last_reviewed: 2026-05-22
 triggers: ["CLAUDE.md", "@.claude/", "memory edit", "session memory"]
 ---

@@ -3,7 +3,7 @@ name: js-conventions
 tier: domain
 stack: javascript
 description: JavaScript / Node ESM conventions — module shape, SOLID idioms, error handling, lint rules. Use when touching *.mjs or *.js files.
-owner: sergeymilashico
+owner: astra
 last_reviewed: 2026-05-24
 triggers: ["*.mjs", "*.js", "node", "javascript", "eslint.config"]
 ---

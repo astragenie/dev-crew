@@ -102,6 +102,22 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
    on-disk file; any drift (backlog/grade counts, "next to slice" list,
    decisions, telemetry) fails CI. The pre-push hook still runs this
    check in warn-only mode (`--check-generated`) — CI is the hard gate.
+14. `bun ./src/scripts/validate-org-refs.mts` — stale-owner sweep (#474
+   follow-up): fails when the pre-transfer GitHub owner `sergeymilashico`
+   appears in AUTHORED surfaces (README, ADOPTION, `src/`, `docs/`,
+   `commands/`, `skills/`, `agents/` excl `3rdparty/`, `.claude-plugin/`).
+   The owner is now `astragenie` (repo paths) / `astra` (skill `owner:`
+   field); GitHub redirects the old path so stale refs still work, which is
+   why they rot undetected. Frozen history (CHANGELOG past entries,
+   `.claude/artifacts/**`, `.claude/logs/**`) is out of scope. The guard's
+   own source + test are named allowlist exceptions (they must name the
+   banned token).
+15. `bun ./src/scripts/validate-marketplace-sync.mts` — registry drift guard:
+   fetches `astragenie/astra-marketplace`'s `marketplace.json` and fails when
+   its `runner` entry version ≠ this repo's `plugin.json` (the registry sat
+   at 0.67.0 while 0.68/0.69/0.70 shipped — consumers got a stale version). An
+   UNREACHABLE registry degrades to a warning (exit 0) so a network blip never
+   blocks CI; a reachable-and-mismatched registry is a hard fail.
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
