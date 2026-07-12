@@ -14,13 +14,39 @@ import type {
 // modules — see node-bun-guard.mjs header. No-ops under Bun; exits under Node.
 ensureBunRuntime(import.meta.url, process.argv.slice(2));
 
-const { prepareDispatch, finalizeDispatch, augmentPrompt } = await import(
-  "./lib/hierarchical-dispatch.mjs"
-);
-const { writeDispatchMetrics, readDispatchMetrics, formatPartialChildrenNote } = await import(
-  "./lib/dispatch-metrics.mjs"
-);
-const { aggregateDispatchCost } = await import("./lib/dispatch-cost-aggregate.mjs");
+// Loaded lazily, from inside the cmd* handlers that use them, instead of via
+// a module-scope top-level `await import(...)`. A module-scope top-level
+// await pushes every binding declared below it behind an async boundary, and
+// Bun 1.3.14 has a confirmed ESM-evaluator bug where such bindings can be
+// read before initialization under `bun test --parallel`, even when the
+// importer fully `await`s a dynamic `import()` (oven-sh/bun#30634, fix in
+// flight: oven-sh/bun#30656). Nothing here is on a hot path — dispatch is
+// invoked once per CLI call — so lazy-loading costs nothing.
+let dispatchDepsPromise: Promise<{
+  prepareDispatch: typeof import("./lib/hierarchical-dispatch.mjs").prepareDispatch;
+  finalizeDispatch: typeof import("./lib/hierarchical-dispatch.mjs").finalizeDispatch;
+  augmentPrompt: typeof import("./lib/hierarchical-dispatch.mjs").augmentPrompt;
+  writeDispatchMetrics: typeof import("./lib/dispatch-metrics.mjs").writeDispatchMetrics;
+  readDispatchMetrics: typeof import("./lib/dispatch-metrics.mjs").readDispatchMetrics;
+  formatPartialChildrenNote: typeof import("./lib/dispatch-metrics.mjs").formatPartialChildrenNote;
+  aggregateDispatchCost: typeof import("./lib/dispatch-cost-aggregate.mjs").aggregateDispatchCost;
+}> | null = null;
+function loadDispatchDeps() {
+  dispatchDepsPromise ??= Promise.all([
+    import("./lib/hierarchical-dispatch.mjs"),
+    import("./lib/dispatch-metrics.mjs"),
+    import("./lib/dispatch-cost-aggregate.mjs")
+  ]).then(([hierarchicalDispatch, dispatchMetrics, dispatchCostAggregate]) => ({
+    prepareDispatch: hierarchicalDispatch.prepareDispatch,
+    finalizeDispatch: hierarchicalDispatch.finalizeDispatch,
+    augmentPrompt: hierarchicalDispatch.augmentPrompt,
+    writeDispatchMetrics: dispatchMetrics.writeDispatchMetrics,
+    readDispatchMetrics: dispatchMetrics.readDispatchMetrics,
+    formatPartialChildrenNote: dispatchMetrics.formatPartialChildrenNote,
+    aggregateDispatchCost: dispatchCostAggregate.aggregateDispatchCost
+  }));
+  return dispatchDepsPromise;
+}
 
 type ParsedArgs = {
   subcommand: "prepare" | "finalize" | "metrics" | "prune" | "help";
@@ -114,11 +140,12 @@ Subcommands:
 `);
 }
 
-function cmdPrepare(args: ParsedArgs): number {
+async function cmdPrepare(args: ParsedArgs): Promise<number> {
   if (!args.planPath || !args.parentBranch) {
     process.stderr.write("--plan and --parent-branch are required\n");
     return 1;
   }
+  const { augmentPrompt, prepareDispatch } = await loadDispatchDeps();
   const repo = args.repo ?? process.cwd();
   const plans = readPlanFile(args.planPath);
   if (args.dryRun) {
@@ -198,6 +225,7 @@ async function writeFinalizeMetrics(
   prepared: PreparedDispatch,
   results: DispatchResult[]
 ): Promise<void> {
+  const { aggregateDispatchCost, writeDispatchMetrics } = await loadDispatchDeps();
   const completedAt = new Date().toISOString();
   const allFailedOrBlocked = results.every((r) => r.status === "FAILED" || r.status === "BLOCKED");
   const startTimestamps = Object.values(prepared.startTimes);
@@ -255,6 +283,7 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
     process.stderr.write("--run-id, --parent-branch, --plan are required\n");
     return 1;
   }
+  const { finalizeDispatch } = await loadDispatchDeps();
   const repo = args.repo ?? process.cwd();
   const plans = readPlanFile(args.planPath);
   const { branchById, cwdById } = loadWorktreeLog(repo, args.runId);
@@ -280,11 +309,12 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
   return 0;
 }
 
-function cmdMetrics(args: ParsedArgs): number {
+async function cmdMetrics(args: ParsedArgs): Promise<number> {
   if (!args.runId) {
     process.stderr.write("--run-id is required\n");
     return 1;
   }
+  const { readDispatchMetrics, formatPartialChildrenNote } = await loadDispatchDeps();
   const repo = args.repo ?? process.cwd();
   const metrics = readDispatchMetrics(repo, args.runId);
   if (!metrics) {
@@ -364,13 +394,13 @@ const parsedArgs = parseArgs(process.argv.slice(2));
   try {
     switch (parsedArgs.subcommand) {
       case "prepare":
-        process.exitCode = cmdPrepare(parsedArgs);
+        process.exitCode = await cmdPrepare(parsedArgs);
         break;
       case "finalize":
         process.exitCode = await cmdFinalize(parsedArgs);
         break;
       case "metrics":
-        process.exitCode = cmdMetrics(parsedArgs);
+        process.exitCode = await cmdMetrics(parsedArgs);
         break;
       case "prune":
         process.exitCode = await cmdPrune(parsedArgs);
