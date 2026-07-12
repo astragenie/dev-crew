@@ -36,14 +36,20 @@ import { allocateNextSliceId, SLICE_FILE_RE } from "./slice-id-allocator.mjs";
  *   bullets (optionally bold-prefixed). The `AC` marker accepts a hyphen,
  *   a space, or nothing before the number (`AC-1`, `AC 1`, `AC1`) — an LLM
  *   PM authors all three forms and the hyphen was never load-bearing
- *   (runner-plugin#475).
+ *   (runner-plugin#475). A delimiter (`:`, `-`, or `—`) is required right
+ *   after the number: without it, "AC1" is doing double duty as a plain
+ *   English word start (e.g. "AC2000 legacy format", "AC42 is a system
+ *   code, not a test") and must NOT be promoted to a testable criterion —
+ *   the old hyphen-only form accidentally enforced this delimiter as a
+ *   side effect of requiring the hyphen; removing the hyphen requirement
+ *   without replacing the delimiter check reopened that hole.
  */
 function classifyAcceptanceCriteriaLine(line: string): string | null {
   if (/^- \[[ x]\]/.test(line)) {
     return line.replace(/^- \[x\]/i, "- [ ]");
   }
   const acText = line.match(/^-\s+(.*\S)\s*$/)?.[1];
-  if (acText && /^\*{0,2}(given\b|ac[-\s]?\d+\b)/i.test(acText)) {
+  if (acText && /^\*{0,2}(given\b|ac[-\s]?\d+\b\s*[:—-])/i.test(acText)) {
     return `- [ ] ${acText}`;
   }
   return null;

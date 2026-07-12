@@ -223,6 +223,24 @@ test("extractAcceptanceCriteria still rejects a plain non-AC bullet under the he
   assert.deepEqual(result, []);
 });
 
+test("extractAcceptanceCriteria rejects prose bullets starting with 'AC<digits>' but no delimiter after the number (#475 review follow-up)", () => {
+  // These start with the same "AC" + digits shape the widened marker
+  // matches, but the digits run straight into prose with no `:`/`-`/`—`
+  // delimiter — a real AC always has one, so these must stay rejected.
+  // Without the delimiter check, the widened regex would wrongly promote
+  // them to testable criteria.
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- AC2000 legacy format",
+    "- AC130 gunship reference",
+    "- AC42 is a system code, not a test",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, []);
+});
+
 test("extractAcceptanceCriteria mixes checkbox + prose bullets in one section", () => {
   const body = [
     "## Acceptance criteria",
