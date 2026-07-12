@@ -15,7 +15,7 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 ## Install
 
 ```
-/plugin marketplace add sergeymilashico/astra-marketplace
+/plugin marketplace add astragenie/astra-marketplace
 /plugin install crew@astra
 /plugin install loop@astra
 ```
@@ -27,7 +27,7 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 >
 > - Pre-v0.8.7: shipped via the `hero-crew` repo (paired releases).
 > - v0.8.7–v0.41.x: shipped from its own `loop` marketplace, decoupled.
-> - v0.41.0+: shipped from the central `sergeymilashico/astra-marketplace`
+> - v0.41.0+: shipped from the central `astragenie/astra-marketplace`
 >   alongside `crew` and `cortex`. Plugin code stays in
 >   [`astragenie/runner-plugin`](https://github.com/astragenie/runner-plugin); the
 >   marketplace registry is its own repo.

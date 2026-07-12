@@ -3,7 +3,7 @@
 //   .claude-plugin/plugin.json        — the plugin manifest
 //   package.json                      — the npm package
 // And, if present locally, .claude-plugin/marketplace.json (the marketplace
-// registry moved to sergeymilashico/astra-marketplace after 4a46687; this
+// registry moved to astragenie/astra-marketplace after 4a46687; this
 // script tolerates its absence).
 //
 // Usage:
@@ -70,7 +70,7 @@ async function main(): Promise<void> {
     await fs.writeFile(marketplacePath, JSON.stringify(marketplace, null, 2) + "\n", "utf8");
     console.log(`marketplace.json ${oldMarketplaceVersion} -> ${newVersion}`);
   } else {
-    console.log("marketplace.json: skipped (registry moved to sergeymilashico/astra-marketplace)");
+    console.log("marketplace.json: skipped (registry moved to astragenie/astra-marketplace)");
   }
 }
 

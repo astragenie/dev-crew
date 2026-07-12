@@ -108,7 +108,7 @@ function validateMarketplaceEntries(
   }
 }
 
-// marketplace.json moved to sergeymilashico/astra-marketplace (4a46687). When
+// marketplace.json moved to astragenie/astra-marketplace (4a46687). When
 // a local copy exists (mirror or transitional setup), enforce lockstep with
 // plugin.json. When absent, treat as authoritative-elsewhere and skip.
 function validateMarketplaceJson(
@@ -232,7 +232,7 @@ if (isMainEntry()) {
         console.log(`    - ${entry.name}@${entry.version}`);
       }
     } else {
-      console.log(`  marketplace.json (absent — registry at sergeymilashico/astra-marketplace)`);
+      console.log(`  marketplace.json (absent — registry at astragenie/astra-marketplace)`);
     }
   }
 }
