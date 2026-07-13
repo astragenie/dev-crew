@@ -27,6 +27,8 @@ import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "../paths.mjs";
 import { clearWorktreePathInState } from "../auto-merge.mjs";
 import { resolveSliceTitle } from "../slice-title.mjs";
 import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
+import { syncTrackerOnClose } from "./tracker-close-sync.mjs";
+import type { TrackerCloseSyncResult } from "./tracker-close-sync.mjs";
 
 function deriveBlockingGates(workflowState: Record<string, any> | null) {
   const gates = workflowState?.currentRun?.gates || {};
@@ -566,7 +568,8 @@ function buildCompleteResult({
   testAdequacyGate,
   reviewGate,
   builderEvidence,
-  autoMergeResult
+  autoMergeResult,
+  trackerSync
 }: {
   sliceId: string;
   sliceFile: string;
@@ -584,6 +587,7 @@ function buildCompleteResult({
   reviewGate?: any;
   builderEvidence: BuilderEvidence | null;
   autoMergeResult?: MergeResult | DryRunPlan | { skipped: true; reason: string } | null;
+  trackerSync?: TrackerCloseSyncResult | { error: string } | null;
 }) {
   const updatedConfidence = builderEvidence ? computePostBuilderConfidence(builderEvidence) : null;
   return {
@@ -602,6 +606,7 @@ function buildCompleteResult({
     updated_confidence: updatedConfidence?.confidence ?? null,
     updated_confidence_reason: updatedConfidence?.reason ?? null,
     autoMerge: autoMergeResult ?? null,
+    trackerSync: trackerSync ?? null,
     nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
 }
@@ -699,6 +704,25 @@ export async function completeSlice(
       resolved
     });
 
+  // runner#427: code-enforced tracker close — see tracker-close-sync.mts doc
+  // comment for the 125-instance drift evidence. bestEffort is defense in
+  // depth on top of syncTrackerOnClose's own internal soft-fail; neither
+  // layer may block or fail the close ceremony.
+  const trackerSync = await bestEffort(() =>
+    syncTrackerOnClose(repoPath, resolved, {
+      sliceId,
+      sliceFm,
+      featureId,
+      featureResult,
+      handoffPath: (handoff as Record<string, any> | null)?.handoffPath ?? null,
+      synthesisPath: (synthesis as Record<string, any> | null)?.synthesisPath ?? null,
+      costUsd:
+        typeof (costReport as Record<string, any> | null)?.totalUsd === "number"
+          ? (costReport as Record<string, any>).totalUsd
+          : null
+    })
+  );
+
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
   void recordSliceCompleteEvent(repoPath, sliceId, featureId);
   void writeDocWriterSkipAuditLog(repoPath);
@@ -728,7 +752,8 @@ export async function completeSlice(
     testAdequacyGate,
     reviewGate,
     builderEvidence,
-    autoMergeResult
+    autoMergeResult,
+    trackerSync
   });
 }
 
