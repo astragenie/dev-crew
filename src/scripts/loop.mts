@@ -2097,6 +2097,129 @@ async function runGithubDrift(provider: any, GithubProvider: any, repoPath: stri
   return report;
 }
 
+// Prints the reconcile plan summary — split out of runGithubReconcile purely
+// to keep that function's cognitive complexity within the repo's biome cap;
+// no behavior lives here beyond formatting.
+function logReconcilePlan(plan: any): void {
+  console.log(
+    `[task-store] reconcile plan: ${plan.close.length} to close, ${plan.publish.length} to publish, ` +
+      `${plan.skippedPublish.length} publish-skipped, ${plan.trackerOnly.length} tracker-only ` +
+      "(report-only, never touched)" +
+      (plan.otherStatusMismatches.length
+        ? `, ${plan.otherStatusMismatches.length} other-direction mismatch(es) (out of scope, not touched)`
+        : "")
+  );
+  for (const c of plan.close as any[]) {
+    console.log(
+      `  close        #${c.number}  ${c.id}${c.completedAt ? ` (done ${c.completedAt})` : ""}` +
+        (c.slices.length ? ` slices=${c.slices.join(",")}` : "")
+    );
+  }
+  for (const p of plan.publish as any[]) {
+    console.log(`  publish       ${p.id}  "${p.title}" (status=${p.status})`);
+  }
+  for (const s of plan.skippedPublish as any[]) {
+    console.log(`  skip-publish  ${s.id}  — ${s.reason}`);
+  }
+  if (plan.trackerOnly.length) {
+    const sample = (plan.trackerOnly as any[])
+      .slice(0, 5)
+      .map((t) => `#${t.number} ${t.title}`)
+      .join(" | ");
+    console.log(
+      `  tracker-only: ${plan.trackerOnly.length} issue(s), never acted on. Sample: ${sample}`
+    );
+  }
+}
+
+// Resolves the reconcile CLI flags into buildReconcilePlan's options shape.
+// Split out of runGithubReconcile alongside logReconcilePlan for the same
+// cognitive-complexity reason.
+function resolveReconcileOpts(flags: any) {
+  const limitRaw = Number(flags.limit ?? Number.NaN);
+  const limit = Number.isFinite(limitRaw) ? limitRaw : null;
+  return {
+    includeClose: !flags.noClose,
+    includePublish: !flags.noPublish,
+    limit,
+    apply: Boolean(flags.apply)
+  };
+}
+
+// `loop github reconcile` (runner#427) — the one-time (and re-runnable)
+// backlog cleanup for drift `checkSyncDrift` (#485) can detect but never
+// acts on. Reuses checkDrift as the sole detector (never reimplements drift
+// detection) and reuses TaskStoreProvider's closeSlice/postSliceComment/
+// publishFeature for every write — zero hand-rolled `gh` calls. Dry-run is
+// the default; --apply is required to write anything. See
+// tracker-reconcile.mts for the plan-building + apply logic.
+async function runGithubReconcile(
+  provider: any,
+  GithubProvider: any,
+  repoPath: string,
+  config: Record<string, any> | null,
+  flags: any
+) {
+  console.log(`[task-store] provider: ${provider.constructor.name}`);
+  const unsupported = {
+    supported: false,
+    reason: "",
+    applied: false,
+    close: [],
+    publish: [],
+    skippedPublish: [],
+    trackerOnly: [],
+    otherStatusMismatches: []
+  };
+  if (!(provider instanceof GithubProvider)) {
+    unsupported.reason = `reconcile not supported for provider "${provider.constructor.name}"`;
+    console.log(
+      `[task-store] ${unsupported.reason} — no sync engine for this provider yet. No changes made.`
+    );
+    return unsupported;
+  }
+
+  const report = await provider.checkDrift(repoPath);
+  if (!report.supported) {
+    unsupported.reason = report.reason;
+    console.log(`[task-store] reconcile skipped — ${report.reason}`);
+    return unsupported;
+  }
+
+  if (flags.dryRun && flags.apply) {
+    throw new Error("github reconcile: --dry-run and --apply are mutually exclusive.");
+  }
+
+  const { buildReconcilePlan, applyReconcilePlan } = await import(
+    "./lib/task-store/tracker-reconcile.mjs"
+  );
+  const { includeClose, includePublish, limit, apply } = resolveReconcileOpts(flags);
+
+  const plan = await buildReconcilePlan(repoPath, config, report, {
+    includeClose,
+    includePublish,
+    limit
+  });
+  logReconcilePlan(plan);
+
+  if (!apply) {
+    console.log(
+      "[task-store] dry-run (default) — no writes made. Re-run with --apply to execute this plan."
+    );
+    return { ...plan, applied: false };
+  }
+
+  const findMergedPr = (id: string) => provider.findMergedPrForId(id);
+  const result = await applyReconcilePlan(provider, plan, { findMergedPr });
+  const closedOk = result.closed.filter((r: any) => r.ok).length;
+  const publishedOk = result.published.filter((r: any) => r.ok).length;
+  console.log(
+    `[task-store] reconcile applied: closed ${closedOk}/${plan.close.length}, ` +
+      `published ${publishedOk}/${plan.publish.length}.`
+  );
+  return { ...plan, applied: true, result };
+}
+
 export async function runGithubSubcommand(
   repoPath: any,
   positionals: any,
@@ -2116,9 +2239,11 @@ export async function runGithubSubcommand(
   if (sub === "sync" || sub === "bootstrap")
     return runGithubSyncOrBootstrap(provider, repoPath, sub);
   if (sub === "drift") return runGithubDrift(provider, GithubProvider, repoPath);
+  if (sub === "reconcile")
+    return runGithubReconcile(provider, GithubProvider, repoPath, config, flags);
 
   throw new Error(
-    "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap | drift"
+    "github requires a subcommand: setup | publish | feat-publish | sync | status | bootstrap | drift | reconcile"
   );
 }
 

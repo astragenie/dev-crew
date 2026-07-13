@@ -291,4 +291,43 @@ export class GithubProvider implements TaskStoreProvider {
     const ghExec = await this._resolvedExec();
     return checkSyncDrift(repoPath, { ghExec, config: this._enabledConfig() });
   }
+
+  /**
+   * Best-effort search for a merged PR referencing the given local id (e.g.
+   * a FEAT id) — used by `loop github reconcile` (runner#427) to name the
+   * merged PR in a close-evidence comment "where resolvable" (per dispatch).
+   * Never throws: gh CLI absent, a search failure, or zero results all
+   * resolve to null so the caller can still post a comment without a PR
+   * link rather than skip the close entirely.
+   */
+  async findMergedPrForId(
+    id: string
+  ): Promise<{ number: number; url: string; title: string } | null> {
+    if (!(await this._isInstalled())) return null;
+    try {
+      const [repo, ghExec] = await Promise.all([this._repo(), this._resolvedExec()]);
+      const raw = ghExec([
+        "pr",
+        "list",
+        "--repo",
+        repo,
+        "--state",
+        "merged",
+        "--search",
+        id,
+        "--json",
+        "number,url,title",
+        "--limit",
+        "5"
+      ]);
+      const prs = JSON.parse(raw) as Array<{ number: number; url: string; title: string }>;
+      const match = prs.find((pr) => pr.title.includes(id)) ?? prs[0] ?? null;
+      return match ? { number: match.number, url: match.url, title: match.title } : null;
+    } catch (err: any) {
+      console.warn(
+        `[GithubProvider] findMergedPrForId(${id}) failed (non-fatal): ${err.message?.split("\n")[0] ?? err}`
+      );
+      return null;
+    }
+  }
 }
