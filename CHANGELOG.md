@@ -4,6 +4,35 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.73.0] — 2026-07-13 — tracker truth: auto-close on done, drift check, reconcile
+
+The tracker used to lie about what was finished. A drift check across this repo
+found **125 issues marked `done` locally but still `OPEN` in GitHub** — every one
+of them the same shape. Closing an issue depended on an agent remembering to do
+it, and agents forget. This release code-enforces the close and adds the two
+commands needed to see and repair the damage.
+
+- **Auto-close on done** (#427, `1939b77d`): `completeSlice()` now calls
+  `closeSlice()` + `postSliceComment()` through the configured `TaskStoreProvider`
+  when a slice or feature reaches `done`. Two-layer soft-fail — the tracker being
+  unreachable can never block a slice from closing locally.
+- **`loop github drift`** (#485, `25ef37b6`): read-only drift detector. Reports
+  linked / tracker-only / local-only / status-mismatch / body-diff counts. Proven
+  read-only — tests assert byte-and-mtime identity of every local file after a
+  drift-detecting run. Does **not** reuse `syncPull`/`bootstrap`, which write to
+  the local backlog despite looking like a read path.
+- **`loop github reconcile`** (#488, `4f45274a`): repairs accumulated drift.
+  Closes `done`-but-`OPEN` issues with an evidence comment, publishes unpublished
+  live FEATs, and **reports** tracker-only issues without touching them. Dry-run
+  by default; `--apply` to write, `--limit N` to close a handful and inspect first.
+  Backs off on 403/429 rate limits; closes before commenting so a retry can never
+  duplicate a comment.
+- **`fix(ci)`** (#486, `a3a2b706`): `main` was format-dirty, turning the format
+  gate RED on every open PR. Fixed.
+
+Local files remain the source of truth. The tracker is a published view of them —
+never the other way round.
+
 ## [v0.72.0] — 2026-07-12 — capture-at-close hook, AC-parser widening
 
 - **`hooks/capture-at-close.mjs`** (#394, `1a6d9592`): astramem ingest fires
