@@ -27,6 +27,8 @@ pm_dependency_depth: 0.30
 ac_clarity_status: passed
 needs_ac_rewrite: false
 triage_notes: "Re-scored 2026-06-13 (PHASE C, post-rewrite). FEAT-120 'near-duplicate' claim invalidated — FEAT-120 does not exist in any backlog directory. Rewritten AC (5 GWT + 6 edge cases) is genuinely additive scope. AC-005 fabrication-bypass gate directly addresses SLICE-81 grade evidence (reliability 0.45, validator caught builder fabrication twice). Risk raised to 0.70 — new cross-plugin halt-badges per SPEC-003 (docs/halt-badges.md registry) + schema additions to auto-dispatch.jsonl + new config keys. autonomous_safe=false: cross-plugin halt-badge contract needs human coordination; AC-005 confidence threshold (0.6) needs empirical calibration before it can be autonomous. Effort 0.65 → ~5 Fibonacci points (below FEAT-168 decomposition threshold of 8)."
+github_issue: 173
+github_url: https://github.com/astragenie/runner-plugin/issues/173
 ---
 # FEAT-092: Automated task output guardrails with retry
 

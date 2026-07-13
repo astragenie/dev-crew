@@ -15,6 +15,8 @@ needs_ux: false
 autonomous_safe: false
 pm_reviewed: null
 triage_notes: "Filed 2026-07-09 from the SDD-frameworks review. Adopts OpenSpec's one genuinely-missing pattern — a maintained specs/-as-source-of-truth capability tree + change-archive loop — into the runner/crew SDD pipeline. Deliberately NOT adopting the OpenSpec tool/CLI (would race crew/runner on workflow-state, per the crew:build-vs-loop conflict class in CLAUDE.md). Steal the pattern, not the harness."
+github_issue: 495
+github_url: https://github.com/astragenie/runner-plugin/issues/495
 ---
 ## Description
 

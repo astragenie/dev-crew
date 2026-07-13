@@ -12,6 +12,8 @@ derived_from: null
 autonomous_safe: null
 pm_reviewed: null
 triage_notes: "Filed 2026-07-10 from wave-2/wave-3 reviewer follow-ups (SLICE-152/153/156 reviews). Not yet PM-scored."
+github_issue: 505
+github_url: https://github.com/astragenie/runner-plugin/issues/505
 ---
 # FEAT-262: split backlog-store.mts + close reviewer test-gap follow-ups from tracker waves 2-3
 

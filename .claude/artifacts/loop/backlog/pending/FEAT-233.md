@@ -15,6 +15,8 @@ needs_ux: false
 autonomous_safe: false
 pm_reviewed: null
 triage_notes: "Debt from v0.64.0 architect design review (2026-07-08, findings on AbortSignal + timeout asymmetry). The MemoryProvider contract never specified AbortSignal/cancellation, so capped provider calls are ABANDONED not cancelled — astramem-plugin's un-unref'd 5s timers can hold a short-lived process's event loop open up to ~5s (KNOWN LIMIT on sendViaProvider, tracked upstream astramem-plugin#29). Separately, capture uses a hardcoded ~2s cap (CAP_MS) while recall uses a 5s configurable timeout — never reconciled as deliberate policy. Cross-plugin (upstream astramem-plugin change + local policy) -> needs_contract, NOT autonomous_safe."
+github_issue: 492
+github_url: https://github.com/astragenie/runner-plugin/issues/492
 ---
 # FEAT-233: memory transport reliability — AbortSignal cancellation + reconcile cap policy
 

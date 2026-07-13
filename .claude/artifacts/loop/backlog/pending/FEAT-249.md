@@ -9,6 +9,8 @@ updated: 2026-07-09
 depends_on: []
 slices: []
 derived_from: null
+github_issue: 500
+github_url: https://github.com/astragenie/runner-plugin/issues/500
 ---
 ## Description
 

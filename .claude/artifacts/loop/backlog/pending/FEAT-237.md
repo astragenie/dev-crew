@@ -15,6 +15,8 @@ needs_ux: false
 autonomous_safe: true
 pm_reviewed: null
 triage_notes: "Install-template command-name drift — same class as #371 (phantom crew:builder in installed rules), surfaced while fixing #370/#371. The install templates that /runner:install writes into consumer repos — templates/claude-md-hard-rules.md + templates/loop-rules.md — still reference removed/renamed command names: /runner:slice start|complete (real surface: /runner:start + /runner:close), /runner:slice from-feature, /runner:slice-from-feature, /runner:derive-slice, /runner:slice grade|grade-write (subsumed into /runner:close per v0.53). FEAT-236 SLICE-4 fixed the generated CLAUDE.md but NOT the templates — so /runner:install regenerates the drift back. Fix the templates to the real command surface, and extend the agent-ref/command validator to scan command-token refs in templates so this can't silently reappear. autonomous_safe: true (docs + validator)."
+github_issue: 494
+github_url: https://github.com/astragenie/runner-plugin/issues/494
 ---
 # FEAT-237: reconcile install-template command names + gate command refs
 

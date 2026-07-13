@@ -22,6 +22,8 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-09
 autonomous_safe: true
 triage_notes: "P3: smallest, lowest-risk item in the batch, but blocked by two other unbuilt FEATs in this same backlog (FEAT-242 and FEAT-245) — dependency_depth 0.5 and 'mostly glue' scope place it last in this batch's priority ordering, though it is not low-value: it is the piece that makes C1's cross-repo filing actually actionable."
+github_issue: 498
+github_url: https://github.com/astragenie/runner-plugin/issues/498
 ---
 ## Description
 

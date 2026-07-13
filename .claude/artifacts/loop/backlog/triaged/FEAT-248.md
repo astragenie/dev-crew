@@ -22,6 +22,8 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-07-09
 autonomous_safe: false
 triage_notes: "New single module + CLI subcommand, no existing pattern to extend (unlike FEAT-247's field-forwarding into an already-declared interface), technical_risk 0.6 (schema/data-shape band: synthetic events persist cross-repo in astrarunner's append-only event store, rollback needs targeted row cleanup not a plain git revert) triggers the mandatory pre-mortem; explicitly optional/convenience scope with a tolerable workaround (wait for live data) keeps customer_impact and priority below FEAT-247's -> P2, autonomousSafe false pending human review of partial-frontmatter and idempotency handling; effort 0.35 (3 points) calibrated against FEAT-204/205 single-dispatch analogs, no decomposition gate triggered; blocked on FEAT-247 shipping first (dependency_depth 0.3, single unresolved same-repo dependency, not yet reflected in FEAT-248.md's depends_on frontmatter)."
+github_issue: 499
+github_url: https://github.com/astragenie/runner-plugin/issues/499
 ---
 ## Description
 

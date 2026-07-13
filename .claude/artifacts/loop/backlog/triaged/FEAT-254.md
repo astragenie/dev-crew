@@ -22,6 +22,8 @@ triage_notes: "Three independently-testable finesse hooks reusing the proven PR 
 tags: [workflow, infra]
 needs_contract: false
 needs_ux: false
+github_issue: 502
+github_url: https://github.com/astragenie/runner-plugin/issues/502
 ---
 ## Description
 

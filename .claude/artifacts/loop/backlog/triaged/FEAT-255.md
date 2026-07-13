@@ -22,6 +22,8 @@ triage_notes: "Low-risk CLI+docs program closeout with a hard COND-E split -- in
 tags: [workflow, docs]
 needs_contract: false
 needs_ux: false
+github_issue: 503
+github_url: https://github.com/astragenie/runner-plugin/issues/503
 ---
 ## Description
 

@@ -15,6 +15,8 @@ needs_ux: false
 autonomous_safe: false
 pm_reviewed: null
 triage_notes: "Operator-requested 2026-07-06. Decommission presets as the skill source. Today the dispatcher injects a FROZEN per-stack skill list from preset.roles.*.skills / fe|be.skills; that list drifts (an upstream audit found this repo's presets reference crew skill IDs that no longer exist after crew's skills/domain reorg — csharp-pro/react-engineering/etc. gone → broken skill injection). FEAT-218 already demoted presets to install-time templates; this removes their SKILL role entirely and makes the dispatcher select the BEST-FIT skill set from the LIVE crew skill catalog based on the task (slice tags: stack/concern/surface), validated against what actually exists. Cross-plugin (reads crew's skill catalog) -> needs_contract, NOT autonomous_safe. Structural."
+github_issue: 491
+github_url: https://github.com/astragenie/runner-plugin/issues/491
 ---
 # FEAT-230: task-driven skill selection — decommission presets as the skill source
 

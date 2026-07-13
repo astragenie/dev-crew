@@ -15,6 +15,8 @@ needs_ux: false
 autonomous_safe: false
 pm_reviewed: null
 triage_notes: "Filed 2026-07-09 from a live 4-lane parallel-wave run (runner+memory hardening wave 1). Every one of 5 background lane agents finished its work correctly but 4/5 went idle WITHOUT delivering their report via SendMessage — orchestrator had to manually nudge each one. Recovery worked but is manual, and bare idle_notification pings polluted orchestrator context. Automate the report protocol + watchdog; keep orchestrator context flat."
+github_issue: 504
+github_url: https://github.com/astragenie/runner-plugin/issues/504
 ---
 ## Description
 

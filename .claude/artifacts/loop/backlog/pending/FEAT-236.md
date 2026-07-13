@@ -15,6 +15,8 @@ needs_ux: false
 autonomous_safe: true
 pm_reviewed: null
 triage_notes: "Runner-owned cleanups from #365 step #9 (findings B3/M7/M8) — UNBLOCKED, no external dependency. Bundles: (B3) a real bug — crew resolution probes a hardcoded absolute path C:/work/mega/hero-crew BEFORE the plugin cache (slice-linker/crew-bridge.mts:39), wrong on every other machine; (M8) 51 dead exports incl. 7 named in the 2026-06-15 audit still present; a zombie codemod-add-any.mts; (misc) CLAUDE.md self-contradiction on /runner:slice start|complete vs /runner:start + /runner:close; validate-imports.mts exists but isn't wired into CI. (M7 any-debt burndown — 272 `: any` / 470 Record<string,any> — is a stretch slice, tracked but not required for close.) autonomous_safe: true — mechanical, behavior-preserving; B3 has a clear correct fix."
+github_issue: 493
+github_url: https://github.com/astragenie/runner-plugin/issues/493
 ---
 # FEAT-236: repo cleanups — B3 hardcoded crew path, dead exports, CI wiring (#365 step 9)
 

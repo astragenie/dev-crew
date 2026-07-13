@@ -22,6 +22,8 @@ triage_notes: "CompositeProvider fan-out with the COND-B partial-failure warn di
 tags: [api-change, infra]
 needs_contract: true
 needs_ux: false
+github_issue: 501
+github_url: https://github.com/astragenie/runner-plugin/issues/501
 ---
 ## Description
 

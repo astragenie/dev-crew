@@ -22,6 +22,8 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-07-09
 autonomous_safe: true
 triage_notes: "P2: enables cross-repo watcher value (Track C) with a clear architect-mandated design (ISP-driven port separation), moderate effort (3 points), moderate technical_risk (0.4, one new module, no contract change) — solidly useful but secondary to shipping FEAT-242 first, consistent with the plan's own sequencing (B1 -> B1.5 gate -> C1 -> C3)."
+github_issue: 497
+github_url: https://github.com/astragenie/runner-plugin/issues/497
 ---
 ## Description
 
