@@ -8,7 +8,7 @@ description: Spawn N parallel child subagents in isolated git worktrees, awaitAl
   NOT for sequential phases — use the slice ceremony for those.
 model: sonnet
 maxTurns: 30
-tools: [Bash, Agent, Read, Write]
+disallowedTools: Edit, NotebookEdit
 color: cyan
 ---
 
@@ -27,6 +27,14 @@ I do not own:
 - Implementation work (delegated to child subagents).
 - Slice ceremony (caller invokes me from within a slice if needed).
 - Cancellation — `awaitAll` is blocking; user Ctrl-C is the kill.
+
+## Memory (astramem)
+
+- **At task start**: invoke `Skill(astramem:using-memory)` — it grounds you in your prior lessons/decisions/corrections and this task's recalled context before you plan the dispatch.
+- **At task end**: follow the skill's feedback + capture steps (credit the memory you relied on; record any durable new lesson/decision).
+
+The `using-memory` skill is the single source for how memory is loaded and fed
+back — this agent does not name memory tools directly.
 
 ## Pre-flight
 

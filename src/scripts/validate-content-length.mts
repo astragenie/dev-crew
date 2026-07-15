@@ -21,10 +21,13 @@ export const AGENT_SKIP_PATHS = ["agents/3rdparty/"];
 // Per-file cap overrides (repo-relative, forward-slash paths). For owned
 // agents whose contract density has deliberately outgrown the default cap —
 // pm.md carries the full output/decline/decomposition/AC-drafting contract
-// (FEAT-277 absorbed spec-writer) plus the issue #402 key-name contract.
+// (FEAT-277 absorbed spec-writer) plus the issue #402 key-name contract, plus
+// the astramem memory-recall block (all owned agents gained Skill/MCP tool
+// grants + a "Memory (astramem)" prompt block — see agents/architect.md for
+// the proof case that motivated the rollout).
 // Bump per file, never the global default.
 export const AGENT_LINE_OVERRIDES: Record<string, number> = {
-  "agents/pm.md": 325
+  "agents/pm.md": 335
 };
 
 async function walk(

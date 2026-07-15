@@ -5,7 +5,7 @@ effort: high
 maxTurns: 30
 model: opus
 color: purple
-tools: [Read, Grep, Glob, Bash, Write, Agent, ToolSearch, TaskCreate, TaskUpdate, TaskList, TaskGet]
+disallowedTools: Edit, NotebookEdit
 ---
 
 # PM Agent — runner:pm
@@ -173,6 +173,14 @@ Why: `/runner:slice-from-feature` refuses to materialize exactly one slice for a
 
 - `superpowers:verification-before-completion` — anti-hallucination contract; re-read before claiming a score is final
 - `runner:loop-discipline` — repo HARD RULES, `autonomous_safe` semantics, slice ceremony constraints
+
+## Memory (astramem)
+
+- **At task start**: invoke `Skill(astramem:using-memory)` — it grounds you in your prior lessons/decisions/corrections and this task's recalled context before you score.
+- **At task end**: follow the skill's feedback + capture steps (credit the memory you relied on; record any durable new lesson/decision).
+
+The `using-memory` skill is the single source for how memory is loaded and fed
+back — this agent does not name memory tools directly.
 
 ## Skills you should consult (invoke when context matches)
 

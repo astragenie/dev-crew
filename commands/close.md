@@ -26,7 +26,7 @@ runner:close SLICE-NN [--grade-yaml <path>] [--force-close] ...
 → slice-complete: move slice/feature files, write handoff + final-synthesis + cost-report
 → grade scaffold: create grade file template (or write from --grade-yaml if supplied)
 → slice-grade-write: validate scores, extract decisions, emit telemetry (when --grade-yaml supplied)
-→ astramem mirror: record every newly-allocated decision into cortex (see below)
+→ astramem mirror: record every newly-allocated decision into astramem (see below)
 → Returns { handoffPath, synthesisPath, costUsd, grades }
 ```
 
@@ -118,7 +118,7 @@ The gate is satisfied when **any** of these is true:
 ## Decision + lesson mirror to astramem (automatic — FEAT-217)
 
 The repo decision store (`.claude/artifacts/loop/decisions/DEC-*.md`) and
-astramem (cortex) are separate stores. As of FEAT-217 the mirror is
+astramem are separate stores. As of FEAT-217 the mirror is
 **code-enforced, not an agent step** — the closing agent does NOT call any
 astramem tool manually (doing so would double-write):
 
@@ -131,8 +131,12 @@ astramem tool manually (doing so would double-write):
 The sink is **opt-in and fail-silent**: it fires only when `memory.enabled` in
 `.claude/loop.json` is `on`/`always`/`true` or `auto` (auto = when the
 `astramem` CLI resolves); absent/`off` means no mirror. It never throws, never
-blocks the close, and caps each spawn at 2s. The cortex project id comes from
-`memory.project` (override) else the repo's `productName`.
+blocks the close, and caps each spawn at 2s. The astramem project id comes from
+`memory.project` (override) else the repo's `productName` — set one of these to
+**`runner-plugin`** so slice-close capture and slice-start recall share a project
+namespace (see CLAUDE.md § "Memory binding"). Note the id must reach astramem as
+a top-level `project` field, not `metadata.project` (the wire client drops the
+nested form).
 
 > Manual/one-off decisions authored OUTSIDE a close/learn flow (e.g. an
 > architect ADR written mid-slice, or a decision recorded by hand) are the only

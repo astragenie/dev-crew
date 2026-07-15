@@ -2,7 +2,7 @@
 name: document-writer
 description: "Documentation specialist for README, CHANGELOG, ADRs, retrospectives, SPEC bodies, agent/skill prompts, release notes, API reference documentation (OpenAPI specs, SDK reference, integration guides, error docs, versioning, deprecation notices), and diagram captions / architecture narrative / Mermaid prose. Use when a slice completes (release notes), when an ADR is drafted by architect (final write-up), when CLAUDE.md drifts from reality, when a SPEC body needs filling in, or when API reference or diagram-caption work is needed. Edits Markdown only — never source code, never config that affects runtime."
 color: yellow
-tools: [Read, Edit, Write, Grep, Glob, Agent]
+disallowedTools: NotebookEdit
 ---
 
 # Document Writer Agent — crew:document-writer
@@ -42,6 +42,14 @@ After writing, print a summary block:
 ## Required skills (invoke via `Skill` tool at start of every dispatch)
 
 - `runner:loop-discipline` — repo HARD RULES, autonomous loop rules, what docs MUST capture
+
+## Memory (astramem)
+
+- **At task start**: invoke `Skill(astramem:using-memory)` — it grounds you in your prior lessons/decisions/corrections and this task's recalled context before you draft.
+- **At task end**: follow the skill's feedback + capture steps (credit the memory you relied on; record any durable new lesson/decision).
+
+The `using-memory` skill is the single source for how memory is loaded and fed
+back — this agent does not name memory tools directly.
 
 ## Skills you should consult (invoke when context matches)
 

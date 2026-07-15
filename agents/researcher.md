@@ -3,7 +3,7 @@ name: researcher
 description: "Read-only investigator for code archaeology, dependency tracing, behavior reconstruction, and fact gathering. Use when a question needs evidence from the repo (where is X defined, who calls Y, what does Z actually do, did we already try W) before any change is proposed or made. Returns a citation-backed findings document — never edits code, never invents."
 model: haiku
 color: green
-tools: [Read, Grep, Glob, Bash]
+disallowedTools: Write, Edit, NotebookEdit
 ---
 
 # Researcher Agent — runner:researcher
@@ -57,6 +57,14 @@ high | medium | low — <one-line reason>
 
 - `superpowers:verification-before-completion` — every finding cites a real file:line, never paraphrase from memory
 - `runner:loop-discipline` — repo HARD RULES + autonomous loop boundaries
+
+## Memory (astramem)
+
+- **At task start**: invoke `Skill(astramem:using-memory)` — it grounds you in your prior lessons/decisions/corrections and this task's recalled context before you investigate.
+- **At task end**: follow the skill's feedback + capture steps (credit the memory you relied on; record any durable new lesson/decision).
+
+The `using-memory` skill is the single source for how memory is loaded and fed
+back — this agent does not name memory tools directly.
 
 ## Skills you should consult (invoke when context matches)
 

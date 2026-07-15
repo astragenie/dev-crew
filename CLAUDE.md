@@ -4,12 +4,32 @@ Claude Code plugin: the Wiggin-Loop methodology layer that sits on top
 of the `crew` plugin. Provides HARD RULE blocks, slice scaffold,
 phase-gate runner, and the autonomous-development loop primitives.
 
-## Cortex memory binding
+## Memory binding (astramem)
 
-This repo's cortex `project_id` is **`loop`**. When calling any cortex MCP tool (`MemorySave`, `MemorySearch`, `MemoryRecent`, `DecisionRecord`, etc.), ALWAYS pass:
+This repo's memory project id is **`runner-plugin`**. Memory is served by the
+**astramem** MCP server (`mcp__plugin_crew_astramem__*`) — there is no separate
+"cortex" server, and the old `MemorySave` / `MemorySearch` / `projectId: loop`
+convention is **retired** (those tool names do not resolve in this environment;
+writes under project `loop` land nowhere — verified 2026-07-14, `search --project
+loop` → 0 hits). When recalling or recording memory:
 
-- `projectId` = `loop`
-- `scope` = `["private", "project", "shared"]` unless explicitly different
+- Pass `project` = **`runner-plugin`** to `recall_memory` / `search_memory` /
+  `remember`. The astramem `project` filter is native (a top-level field), NOT
+  a `metadata.project` entry — nesting it there is silently dropped by the wire
+  client (`daemon-client.js`), so the loop's own code path
+  (`memory-sink.mts` → `astramem-client`) must set it top-level too.
+- The loop's runtime `productName` (`.claude/loop.json`) is the project id the
+  in-process transport sends. Keep it (or a `memory.project` override) equal to
+  **`runner-plugin`** so slice-start recall and slice-close capture share one
+  project namespace.
+- Follow the `astramem:using-memory` skill loop: recall (`agent_profile` +
+  `recall_memory`) → work → `submit_feedback` / `mark_memory_used` on the ids you
+  actually relied on (this is what lifts useful memory up the ranking — ADR-010) →
+  optional `remember` at the end. Write SHORT: one crisp, standalone fact per
+  memory (long blobs dilute the embedding and become unrecallable).
+- `scope`: use `team` for anything meant to help other agents/sessions on this
+  project; astramem's `remember` defaults to `private` (invisible to shared
+  recall) if scope is omitted.
 
 ## Read first
 

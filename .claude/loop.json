@@ -2,7 +2,17 @@
   "preset": "typescript-plugin-dev",
   "schemaVersion": 1,
   "memory": {
-    "enabled": "auto"
+    "enabled": true,
+    "project": "runner-plugin",
+    "profile": {
+      "enabled": true,
+      "topLessons": 10,
+      "timeoutMs": 20000
+    },
+    "feedback": {
+      "enabled": true,
+      "timeoutMs": 20000
+    }
   },
   "projectType": "claude-plugin",
   "split": false,

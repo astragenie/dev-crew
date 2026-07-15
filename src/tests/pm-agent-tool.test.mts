@@ -14,22 +14,36 @@ async function readPm(): Promise<{ frontmatter: Record<string, any>; body: strin
   return parseFrontmatter(raw);
 }
 
-test("agents/pm.md frontmatter tools list includes Agent", async () => {
+// Denylist migration: cherry-picking Skill/ToolSearch/MCP tool names into an
+// explicit `tools:` allowlist does not work — the harness silently drops
+// those special tools on dispatch. The working pattern (proven by
+// crew:reviewer, then agents/architect.md) is a denylist: no `tools:`
+// allowlist at all, plus `disallowedTools:` for what the agent must never
+// do. Agent + ToolSearch (and Skill + MCP) then inherit automatically.
+
+test("agents/pm.md frontmatter declares no tools allowlist (denylist pattern)", async () => {
   const { frontmatter } = await readPm();
-  assert.ok(Array.isArray(frontmatter.tools), "tools must be a YAML list");
-  assert.ok(
-    frontmatter.tools.includes("Agent"),
-    `tools must include "Agent" (got ${JSON.stringify(frontmatter.tools)})`
+  assert.equal(
+    frontmatter.tools,
+    undefined,
+    `agents/pm.md must not declare a "tools:" allowlist — Agent/ToolSearch/Skill/MCP tools must inherit via the denylist pattern instead (got ${JSON.stringify(frontmatter.tools)})`
   );
 });
 
 // FEAT-198 / SLICE-113 — ToolSearch grant so PM can load the deferred Agent.
+// Superseded by the denylist migration: Agent/ToolSearch now inherit by
+// default (no allowlist above) — this test asserts disallowedTools doesn't
+// claw either of them back.
 
-test("agents/pm.md frontmatter tools list includes ToolSearch (FEAT-198)", async () => {
+test("agents/pm.md disallowedTools does not deny Agent or ToolSearch (FEAT-198)", async () => {
   const { frontmatter } = await readPm();
+  const denied =
+    typeof frontmatter.disallowedTools === "string"
+      ? frontmatter.disallowedTools.split(",").map((s: string) => s.trim())
+      : [];
   assert.ok(
-    frontmatter.tools.includes("ToolSearch"),
-    `tools must include "ToolSearch" so PM can load deferred Agent (got ${JSON.stringify(frontmatter.tools)})`
+    !denied.includes("Agent") && !denied.includes("ToolSearch"),
+    `disallowedTools must not deny Agent or ToolSearch, both must inherit (got ${JSON.stringify(frontmatter.disallowedTools)})`
   );
 });
 

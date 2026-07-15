@@ -78,12 +78,18 @@ test("agents/pm.md Injection defense section instructs scoring is unaffected by 
 
 // AC-1: PM's tool grants are reconciled with its documented Boundaries — no
 // unexplained gap between what's granted and what's documented.
-test("agents/pm.md frontmatter drops Edit from tool grants (FEAT-213 AC-1)", async () => {
+// Denylist migration (see pm-agent-tool.test.mts): pm.md now carries no
+// `tools:` allowlist at all — the Edit exclusion lives in `disallowedTools`
+// instead of an absence from a positive grant list.
+test("agents/pm.md frontmatter denies Edit via disallowedTools (FEAT-213 AC-1)", async () => {
   const { frontmatter } = await readAgent("agents/pm.md");
-  assert.ok(Array.isArray(frontmatter.tools), "tools must be a YAML list");
+  const denied =
+    typeof frontmatter.disallowedTools === "string"
+      ? frontmatter.disallowedTools.split(",").map((s: string) => s.trim())
+      : [];
   assert.ok(
-    !frontmatter.tools.includes("Edit"),
-    `agents/pm.md must not grant Edit (got ${JSON.stringify(frontmatter.tools)})`
+    denied.includes("Edit"),
+    `agents/pm.md disallowedTools must deny Edit (got ${JSON.stringify(frontmatter.disallowedTools)})`
   );
 });
 
@@ -92,14 +98,18 @@ test("agents/pm.md Boundaries documents the narrow Write case matching its grant
   const boundaries = body.match(/##\s*Boundaries[\s\S]*?(?=\n##\s|$)/i)?.[0] ?? "";
   assert.ok(boundaries.length > 0, "agents/pm.md must contain a Boundaries section");
 
-  if (frontmatter.tools.includes("Write")) {
+  const denied =
+    typeof frontmatter.disallowedTools === "string"
+      ? frontmatter.disallowedTools.split(",").map((s: string) => s.trim())
+      : [];
+  if (!denied.includes("Write")) {
     assert.match(
       boundaries,
       /pm-reviews/,
       "Boundaries must name the pm-reviews artifact as the narrow case that justifies the Write grant"
     );
   } else {
-    // If Write were also dropped, Boundaries must not still claim a Write case.
+    // If Write were also denied, Boundaries must not still claim a Write case.
     assert.doesNotMatch(boundaries, /Write is granted/i);
   }
 });
