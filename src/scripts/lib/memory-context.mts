@@ -39,7 +39,7 @@ import path from "node:path";
 // dispatch, slice start) crashed with ENOENT, and `memory.enabled = "never"`
 // could not bypass it. `import type` is erased at compile time and never
 // triggers runtime resolution, so the RecallHit type import is safe to keep.
-import type { RecallHit } from "@astragenie/astramem-client";
+import type { AgentProfileResponse, RecallHit } from "@astragenie/astramem-client";
 import { findRelevantDecisions } from "./decisions-store.mjs";
 import { rankLearnings } from "./learnings-ranker.mjs";
 import { recentLessons } from "./lessons-feed.mjs";
@@ -86,6 +86,37 @@ function isMemoryEnabled(config: Record<string, any> | null | undefined): boolea
  * agent-tagged history exists would return nothing (#309). */
 function scopeByAgentEnabled(config: Record<string, any> | null | undefined): boolean {
   return config?.memory?.recall?.scopeByAgent === true;
+}
+
+/** Opt-in gate for agent-profile injection (`memory.profile.enabled`). Default
+ * off — mirrors dev-team's inject-profile gate and the `scopeByAgent`/#309
+ * caution (the profile is agent-scoped; loading it before an agent has a
+ * warm usefulness signal ranks by importance, not usefulness). */
+function profileEnabled(config: Record<string, any> | null | undefined): boolean {
+  return config?.memory?.profile?.enabled === true;
+}
+
+/** Convert an agent-profile receipt into weighted context lines. Corrections
+ * lead (highest weight → rendered first), then recent decisions, then top
+ * lessons — the deterministic "what this agent got wrong / decided / learned"
+ * ordering. Weights sit ABOVE the recall band (recallToLines uses <=100) so
+ * the agent's own track record ranks ahead of task-scoped semantic recall. */
+function profileToLines(profile: AgentProfileResponse, maxLessons: number): ContextLine[] {
+  const lines: ContextLine[] = [];
+  for (const c of profile.corrections) {
+    const summary = String(c.text ?? "").trim();
+    if (summary)
+      lines.push({ kind: `correction:${c.action}`, summary, source: "profile", weight: 300 });
+  }
+  for (const d of profile.recent_decisions) {
+    const summary = String(d.text ?? "").trim();
+    if (summary) lines.push({ kind: "decision", summary, source: "profile", weight: 200 });
+  }
+  profile.top_lessons.slice(0, maxLessons).forEach((l, idx) => {
+    const summary = String(l.text ?? "").trim();
+    if (summary) lines.push({ kind: "lesson", summary, source: "profile", weight: 150 - idx });
+  });
+  return lines;
 }
 
 /** Runs fn, swallowing any error/rejection and returning fallback instead. Never throws. */
@@ -264,41 +295,58 @@ export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promi
   const tokenCap = opts.tokenCap ?? DEFAULT_TOKEN_CAP;
   const tags = opts.tags ?? [];
 
-  const [learningsEntries, lessonsResult, decisions, recallResults] = await Promise.all([
-    safe(() => readLearningsEntries(repoPath), [] as any[]),
-    safe(() => recentLessons(repoPath, { limit: k, config }), {
-      count: 0,
-      items: [] as Record<string, any>[],
-      digest: ""
-    }),
-    safe(() => findRelevantDecisions(repoPath, tags, config), [] as Record<string, any>[]),
-    safe(async () => {
-      // FEAT-238: resolve the shared client lazily. This only runs when memory
-      // is enabled (the isMemoryEnabled early-return above guards it), and any
-      // resolution failure (package absent from the plugin cache) is swallowed
-      // by the enclosing safe() -> returns [] rather than throwing at load.
-      const { recallSilent } = await import("@astragenie/astramem-client");
-      const featId = opts.query || opts.agentType || "context";
-      const sliceId = opts.agentType || "context";
-      const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
-      const response = await recallSilent(
-        {
-          query: buildAstramemQuery(featId, sliceId, tags),
-          k,
-          ...(opts.project !== undefined ? { project: opts.project } : {}),
-          // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent). astramem
-          // treats --agent as a HARD filter, so enabling it before enough
-          // agent-tagged history exists would starve recall of untagged memories
-          // (#309). Off by default → unscoped by role.
-          ...(scopeByAgentEnabled(config) && opts.agentType ? { agent: opts.agentType } : {})
-        },
-        { capMs: timeoutMs }
-      );
-      return response?.hits ?? [];
-    }, [] as RecallHit[])
-  ]);
+  const [learningsEntries, lessonsResult, decisions, profileLines, recallResults] =
+    await Promise.all([
+      safe(() => readLearningsEntries(repoPath), [] as any[]),
+      safe(() => recentLessons(repoPath, { limit: k, config }), {
+        count: 0,
+        items: [] as Record<string, any>[],
+        digest: ""
+      }),
+      safe(() => findRelevantDecisions(repoPath, tags, config), [] as Record<string, any>[]),
+      // Agent-profile injection (opt-in via memory.profile.enabled). Reads the
+      // agent's ranked track record (corrections/decisions/lessons) from the
+      // daemon via astramem-client's fail-silent profileSilent — same lazy-import
+      // + safe() fail-open discipline as the recall reader above. Resolves to []
+      // when disabled, agentless, unpaired, cold agent, or on any failure.
+      safe(async () => {
+        if (!profileEnabled(config) || !opts.agentType) return [] as ContextLine[];
+        const { profileSilent } = await import("@astragenie/astramem-client");
+        const timeoutMs: number =
+          config?.memory?.profile?.timeoutMs ?? config?.memory?.recall?.timeoutMs ?? 5000;
+        const profile = await profileSilent(opts.agentType, { capMs: timeoutMs });
+        if (!profile) return [] as ContextLine[];
+        const maxLessons: number = config?.memory?.profile?.topLessons ?? 10;
+        return profileToLines(profile, maxLessons);
+      }, [] as ContextLine[]),
+      safe(async () => {
+        // FEAT-238: resolve the shared client lazily. This only runs when memory
+        // is enabled (the isMemoryEnabled early-return above guards it), and any
+        // resolution failure (package absent from the plugin cache) is swallowed
+        // by the enclosing safe() -> returns [] rather than throwing at load.
+        const { recallSilent } = await import("@astragenie/astramem-client");
+        const featId = opts.query || opts.agentType || "context";
+        const sliceId = opts.agentType || "context";
+        const timeoutMs: number = config?.memory?.recall?.timeoutMs ?? 5000;
+        const response = await recallSilent(
+          {
+            query: buildAstramemQuery(featId, sliceId, tags),
+            k,
+            ...(opts.project !== undefined ? { project: opts.project } : {}),
+            // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent). astramem
+            // treats --agent as a HARD filter, so enabling it before enough
+            // agent-tagged history exists would starve recall of untagged memories
+            // (#309). Off by default → unscoped by role.
+            ...(scopeByAgentEnabled(config) && opts.agentType ? { agent: opts.agentType } : {})
+          },
+          { capMs: timeoutMs }
+        );
+        return response?.hits ?? [];
+      }, [] as RecallHit[])
+    ]);
 
   const combined: ContextLine[] = [
+    ...profileLines,
     ...safeLines(() => learningsToLines(learningsEntries, opts.query)),
     ...safeLines(() => lessonsToLines(lessonsResult.items)),
     ...safeLines(() => decisionsToLines(decisions)),
