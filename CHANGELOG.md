@@ -4,6 +4,26 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.75.0] — 2026-07-15 — agent-profile feedback → slice-close
+
+Closes the **load → use → feedback** loop on the autonomous path (#510).
+v0.74.0 loaded each agent's ranked track record at dispatch; this credits the
+memory that rode along a successful slice so the daemon's usefulness ranking
+learns from outcomes.
+
+- **`profile-feedback.mts`** — records which profile atom ids were injected into
+  a slice's dispatch(es) (per-slice sidecar under
+  `.claude/state/loop/injected-atoms/`), then on a clean gate PASS at
+  `completeSlice` credits each via astramem-client `feedbackSilent`
+  (`POST /memory/:id/used`).
+- **Opt-in** (`memory.feedback.enabled`, default off) and fully **fail-silent** —
+  a blocked/failed gate, cold slice, or unreachable daemon credits nothing and
+  never blocks the close ceremony.
+- `buildMemoryContext` captures injected ids when a `sliceId` is supplied
+  (`profileAtomIds` mirrors `profileToLines` exactly: injected == rendered);
+  dispatch call sites (post-builder fanout, wave dispatch) thread `sliceId`
+  through. 7 new tests.
+
 ## [v0.74.0] — 2026-07-15 — agent-profile injection at dispatch
 
 Mirrors dev-team #235 onto the runner dispatch surface: `buildMemoryContext`
