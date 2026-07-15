@@ -112,6 +112,7 @@ async function reviewerPrompt(
     repoPath,
     agentType: "reviewer",
     query: sliceId,
+    sliceId,
     config
   });
   return memoryBlock ? `${memoryBlock}\n\n${prompt}` : prompt;

@@ -43,6 +43,10 @@ import type { AgentProfileResponse, RecallHit } from "@astragenie/astramem-clien
 import { findRelevantDecisions } from "./decisions-store.mjs";
 import { rankLearnings } from "./learnings-ranker.mjs";
 import { recentLessons } from "./lessons-feed.mjs";
+// Static import is safe: profile-feedback's sidecar writer touches only
+// node:fs — it never imports @astragenie/astramem-client, so it cannot
+// re-introduce the module-load ENOENT the dynamic profileSilent import avoids.
+import { writeInjectedAtoms } from "./profile-feedback.mjs";
 
 export interface BuildMemoryContextOptions {
   repoPath: string;
@@ -53,6 +57,9 @@ export interface BuildMemoryContextOptions {
   tokenCap?: number;
   project?: string;
   config?: Record<string, any> | null;
+  /** When set, profile-injected atom ids are recorded to a per-slice sidecar
+   *  so slice-close can credit them on a gate PASS (memory.feedback.enabled). */
+  sliceId?: string;
 }
 
 interface ContextLine {
@@ -117,6 +124,23 @@ function profileToLines(profile: AgentProfileResponse, maxLessons: number): Cont
     if (summary) lines.push({ kind: "lesson", summary, source: "profile", weight: 150 - idx });
   });
   return lines;
+}
+
+/** Atom ids of exactly what profileToLines injects, in the same order and
+ * under the same text-non-empty filter and top-N lesson cap — so the recorded
+ * "injected" set equals the rendered set, keeping close-time feedback honest. */
+function profileAtomIds(profile: AgentProfileResponse, maxLessons: number): string[] {
+  const ids: string[] = [];
+  for (const c of profile.corrections) {
+    if (c.id && String(c.text ?? "").trim()) ids.push(c.id);
+  }
+  for (const d of profile.recent_decisions) {
+    if (d.id && String(d.text ?? "").trim()) ids.push(d.id);
+  }
+  profile.top_lessons.slice(0, maxLessons).forEach((l) => {
+    if (l.id && String(l.text ?? "").trim()) ids.push(l.id);
+  });
+  return ids;
 }
 
 /** Runs fn, swallowing any error/rejection and returning fallback instead. Never throws. */
@@ -317,6 +341,16 @@ export async function buildMemoryContext(opts: BuildMemoryContextOptions): Promi
         const profile = await profileSilent(opts.agentType, { capMs: timeoutMs });
         if (!profile) return [] as ContextLine[];
         const maxLessons: number = config?.memory?.profile?.topLessons ?? 10;
+        // Record the injected atom ids so slice-close feedback can credit them
+        // on a gate PASS. Fire-and-forget + fail-silent; only when a sliceId is
+        // supplied (the dispatch call sites pass it; ad-hoc callers may not).
+        if (opts.sliceId) {
+          await writeInjectedAtoms(
+            opts.repoPath,
+            opts.sliceId,
+            profileAtomIds(profile, maxLessons)
+          );
+        }
         return profileToLines(profile, maxLessons);
       }, [] as ContextLine[]),
       safe(async () => {

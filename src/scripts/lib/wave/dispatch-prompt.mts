@@ -72,6 +72,7 @@ export async function buildDispatchPromptWithMemory(
     repoPath: opts.repoPath,
     agentType: "builder",
     query: opts.featureId || opts.sliceId,
+    sliceId: opts.sliceId,
     config: opts.config ?? null
   });
   return memoryBlock ? `${memoryBlock}\n\n${basePrompt}` : basePrompt;

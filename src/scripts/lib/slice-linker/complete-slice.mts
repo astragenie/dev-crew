@@ -29,6 +29,7 @@ import { resolveSliceTitle } from "../slice-title.mjs";
 import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
 import { syncTrackerOnClose } from "./tracker-close-sync.mjs";
 import type { TrackerCloseSyncResult } from "./tracker-close-sync.mjs";
+import { submitSliceProfileFeedback } from "../profile-feedback.mjs";
 
 function deriveBlockingGates(workflowState: Record<string, any> | null) {
   const gates = workflowState?.currentRun?.gates || {};
@@ -724,6 +725,18 @@ export async function completeSlice(
   );
 
   await recordCompleteTrajectory(repoPath, sliceId, featureId, featureResult, validationGate);
+  // Profile-feedback (opt-in memory.feedback.enabled): on a clean gate pass,
+  // credit the agent-profile atoms injected into this slice's dispatch(es) so
+  // the daemon learns which memories rode along a successful slice. Fully
+  // fail-silent + non-blocking — a failed/blocked gate credits nothing, and
+  // any error can never affect the close outcome.
+  const gatesPassed =
+    !blockingGates.blocked &&
+    !blockingGates.escalated &&
+    validationGate?.satisfied !== false &&
+    reviewGate?.satisfied !== false &&
+    testAdequacyGate?.satisfied !== false;
+  void submitSliceProfileFeedback({ repoPath, sliceId, passed: gatesPassed, config: resolved });
   void recordSliceCompleteEvent(repoPath, sliceId, featureId);
   void writeDocWriterSkipAuditLog(repoPath);
   await recordSerialReviewerWarning(repoPath, sliceId, resolved);
