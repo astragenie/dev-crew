@@ -4,6 +4,23 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.76.0] — 2026-07-15 — owned agents wired to astramem via `astramem:using-memory` skill
+
+Switches the owned-agent memory path from a bespoke MCP-name reference to the
+registered `astramem:using-memory` skill (#513). Agent frontmatter now cites
+the skill only — no hardcoded MCP tool names — and tool config uses a
+denylist so agents inherit `Skill` + MCP access instead of an enumerated
+allowlist that drifts. Touches `agents/architect.md`,
+`agents/document-writer.md`, `agents/hierarchical-dispatcher.md`,
+`agents/market-researcher.md`, `agents/pm.md`, `agents/researcher.md`, and
+`commands/close.md`.
+
+- Fixes stale `cortex` → `astramem` references left over from the pre-rename
+  docs.
+- Recall through this path is still gated on astramem-local daemon fixes
+  (astramem-local#341, #343, #347) — the skill wiring is in place, but live
+  recall won't return results until those land upstream.
+
 ## [v0.75.0] — 2026-07-15 — agent-profile feedback → slice-close
 
 Closes the **load → use → feedback** loop on the autonomous path (#510).
