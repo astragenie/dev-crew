@@ -4,6 +4,13 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.74.0] — 2026-07-15 — agent-profile injection at dispatch
+
+Mirrors dev-team #235 onto the runner dispatch surface: `buildMemoryContext`
+now injects the agent's ranked astramem profile (corrections → decisions →
+lessons, weighted to lead task recall) via astramem-client 0.3.0's
+`profileSilent`. Opt-in (`memory.profile.enabled`, default off); fail-open.
+
 ## [v0.73.0] — 2026-07-13 — tracker truth: auto-close on done, drift check, reconcile
 
 The tracker used to lie about what was finished. A drift check across this repo
