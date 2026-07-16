@@ -539,13 +539,21 @@ async function emitSliceCloseMemory(
   try {
     const loopJsonPath = path.join(repoPath, ".claude", "loop.json");
     let memoryEnabled: string = "auto";
+    // FEAT-263 follow-up: project attribution threaded into the GEPA payload
+    // below — same precedence memory-sink.mts's readMemoryConfig documents
+    // (explicit memory.project override wins, else productName).
+    let projectId: string | undefined;
     try {
       const raw = await fs.readFile(loopJsonPath, "utf8");
       const parsed = JSON.parse(raw);
       const configuredMode = parsed?.memory?.enabled;
       if (configuredMode === "never") memoryEnabled = "never";
+      const explicitProject =
+        typeof parsed?.memory?.project === "string" ? parsed.memory.project : undefined;
+      const productName = typeof parsed?.productName === "string" ? parsed.productName : undefined;
+      projectId = explicitProject ?? productName;
     } catch {
-      // Missing or unparseable loop.json — default auto.
+      // Missing or unparseable loop.json — default auto, no project.
     }
     if (memoryEnabled === "never") return;
 
@@ -577,7 +585,11 @@ async function emitSliceCloseMemory(
         changed_files: extractChangedFiles(frontmatter),
         decisions: gradeEvent.decisions.map((d) => d.id)
       },
-      prompt_version: promptVersion
+      prompt_version: promptVersion,
+      // FEAT-263 follow-up: attribute this hook-independent capture the same
+      // way the sibling recordDecision/recordNote calls in this module do.
+      ...(projectId ? { project: projectId } : {}),
+      agent: GRADE_AGENT_TYPE
     });
   } catch {
     // Fail-silent: memory bridge must never affect the grade-write path.

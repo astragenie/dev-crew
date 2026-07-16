@@ -137,6 +137,36 @@ test("validateSnapshotFreshness ignores the volatile Dispatch lifecycle section"
   );
 });
 
+// FEAT-263 Phase 3d: the "Memory usefulness (7d)" bullet reads the LIVE
+// astramem daemon — served/used counts move hourly and a CI checkout has no
+// daemon ("n/a"), so the gate must ignore that line by the same DEC-063
+// rationale. Reproduces the PR #518 CI failure where a snapshot committed
+// with live numbers failed against a daemon-less regeneration.
+test("validateSnapshotFreshness ignores the volatile Memory usefulness line", async () => {
+  const repo = await tmpRepo("al-freshness-usefulness-");
+  await addTriaged(repo, "Live feature");
+  const snap = await writeMemorySnapshot(repo);
+
+  const fresh = await fs.readFile(snap.artifactPath, "utf8");
+  const injected = fresh.includes("- Memory usefulness (7d):")
+    ? fresh.replace(
+        /- Memory usefulness \(7d\):.*$/m,
+        "- Memory usefulness (7d): served=862 used=14 rate=1.6%"
+      )
+    : fresh.replace(
+        "## How to use this file",
+        "- Memory usefulness (7d): served=862 used=14 rate=1.6%\n\n## How to use this file"
+      );
+  await fs.writeFile(snap.artifactPath, injected);
+
+  const result = await validateSnapshotFreshness(repo);
+  assert.equal(
+    result.ok,
+    true,
+    `memory-usefulness drift must not fail the gate: ${result.errors.join("; ")}`
+  );
+});
+
 test("validateSnapshotFreshness fails when loop-snapshot.md does not exist", async () => {
   const repo = await tmpRepo("al-freshness-missing-");
   const result = await validateSnapshotFreshness(repo);

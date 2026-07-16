@@ -1621,6 +1621,9 @@ const SLICE_HANDLERS = {
       noMerge: Boolean(flags.noMerge),
       dryRun: Boolean(flags.dryRun),
       skipSimplify: Boolean(flags.skipSimplify),
+      learningsPath: flags.learnings || null,
+      learningsAgent: flags.learningsAgent || null,
+      memoriesUsedPath: flags.memoriesUsed || null,
       config: opts.config
     });
     const { logEvent } = await import("./lib/telemetry.mjs");
@@ -1658,6 +1661,10 @@ const SLICE_HANDLERS = {
       noMerge: Boolean(flags.noMerge),
       dryRun: Boolean(flags.dryRun),
       skipSimplify: Boolean(flags.skipSimplify),
+      // FEAT-263 T2 / Phase 3b:
+      learningsPath: flags.learnings || null,
+      learningsAgent: flags.learningsAgent || null,
+      memoriesUsedPath: flags.memoriesUsed || null,
       config: opts.config
     });
     const { logEvent } = await import("./lib/telemetry.mjs");

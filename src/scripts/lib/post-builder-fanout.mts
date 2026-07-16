@@ -104,6 +104,13 @@ async function reviewerPrompt(
     notCheckedHint,
     'Pass them via `crew write-review-result --not-checked "<item-a>,<item-b>"`.',
     "",
+    '## Durable findings (max 3, "none" is legal)',
+    "Transferable lessons only — a bug CLASS to watch for next time, a contract truth discovered, or decision rationale. Never run-state.",
+    'Bad: "tsc was clean." Good: "Provider adapters here swallow timeout errors on bare catch — check for that shape in any new provider.mts."',
+    "",
+    "## Run evidence (ephemeral)",
+    "Gate outputs, timings, file lists, verdict mechanics — everything else about this run.",
+    "",
     "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
     "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."
   ].join("\n");

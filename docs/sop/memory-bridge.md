@@ -250,3 +250,114 @@ carry their own single-layer AbortController bound from that package's
 In require mode, each test appends one JSONL line to
 `.claude/artifacts/loop/memory-e2e/<run-timestamp>-smoke.jsonl` (created on
 first write). Skip mode writes nothing.
+
+## Structured learnings + outcome-weighted credit at close (FEAT-263 T2 / Phase 3b)
+
+`src/scripts/lib/slice-linker/close-memory-capture.mts` adds two optional,
+ceremony-neutral inputs to `runner:close` (`completeSlice`/`closeSlice`),
+threaded through the CLI as `--learnings <file.json>`,
+`--learnings-agent <agentType>`, and `--memories-used <file.json>`. Both
+fire as `void`-called fire-and-forget calls alongside the existing
+`submitSliceProfileFeedback` touchpoint in `completeSlice` — additive only,
+never a new gate, never able to block or fail the close.
+
+### `--learnings <file.json>` — structured learnings capture
+
+A JSON array (max `MAX_LEARNINGS` = 3) of `{ type: "lesson"|"decision"|"fact",
+text: string, why?: string }`. Validated defensively:
+
+- Missing file, unparseable JSON, or a non-array body -> skip silently
+  (`{ recorded: 0, skipped: 0, results: [] }`), no exception.
+- Individual malformed entries (unrecognized `type`, empty/non-string
+  `text`) are skipped rather than rejecting the whole file.
+- More than 3 valid entries -> silently capped to the first 3 (enforcement,
+  not a validation failure).
+
+Each valid entry writes through `memory-sink.mts`'s existing `recordMemory()`
+core — the same function `recordDecision`/`recordLesson`/`recordNote` call —
+so it inherits project/agent/scope:team tagging and the noise guard
+(PRs #515/#517) automatically. `type` maps onto the sink's closed
+`MemoryKind` wire vocabulary as `lesson -> lesson`, `decision -> decision`,
+`fact -> note` (facts have no dedicated wire kind; "note" is the closest
+existing bucket — the same treatment `memory-gepa.mts`'s `GEPA_KIND_MAP`
+gives purely-informational events). This fires regardless of the slice's
+gate/grade outcome: a lesson captured from a FAIL slice is still worth
+keeping.
+
+Producing-agent attribution: an explicit `--learnings-agent <agentType>`
+wins; otherwise `deriveDefaultLearningsAgent()` derives it from the slice's
+own frontmatter `tags` via the same `pickBuilderVariant()` dispatch.mts
+already uses at dispatch time (`surface:api` -> `crew:backend-dev`,
+`surface:ui` -> `crew:frontend-dev`, both -> `crew:fullstack-dev`). The
+`"unknown"` variant (no tag signal) resolves to `null` (omitted) rather than
+guessing fullstack — dispatch.mts treats "unknown" as a safe dispatch
+fallback, not a confirmed attribution signal, so defaulting learnings
+attribution off it would misattribute.
+
+### `--memories-used <file.json>` — outcome-weighted batch credit
+
+A JSON array of memory id strings. Credited via the shared
+`@astragenie/astramem-client` `feedbackSilent()` seam (never a hand-rolled
+HTTP call, never a per-call CLI spawn — astramem-local#343) under **one**
+shared wallclock budget for the whole batch
+(`DEFAULT_CREDIT_BATCH_CAP_MS` = 5000ms, overridable via
+`memory.creditBatchCapMs`) — the budget is not re-granted per id, so an
+unresponsive daemon can never make the batch's cost grow with id count.
+
+Outcome-weighted: crediting is **skipped entirely** when the slice's gate
+outcome is not a clean PASS (the same `gatesPassed` signal
+`submitSliceProfileFeedback` already uses) — memories that steered a FAIL
+must never be reinforced. This is a hard skip in v1, not a down-weight.
+Respects the `memory.enabled: "never"` kill switch via
+`memory-sink.mts`'s `readMemoryConfig` (consumed, not modified).
+
+**Gate note for operators (review finding, 2026-07-16):** Phase 3b credit is
+gated ONLY by the broad `memory.enabled` kill switch — it does **not** check
+`memory.feedback.enabled`, the separate flag `profile-feedback.mts`'s
+`submitSliceProfileFeedback` uses to gate its own (default-OFF) auto-credit
+of agent-profile atoms injected into a dispatch. The two are deliberately
+different trust surfaces: `memory.feedback.enabled` gates crediting atoms the
+system silently attached to a prompt, while `--memories-used` is an explicit,
+orchestrator-supplied id list the operator/orchestrator chose to submit — an
+affirmative act that doesn't need the same extra opt-in. Concretely: setting
+`memory.feedback.enabled: false` turns off `submitSliceProfileFeedback`'s
+auto-credit but does **not** turn off `--memories-used` batch credit; only
+`memory.enabled: "never"`/`"off"` disables both.
+
+### agentType/project threading in `memory-gepa.mts` (FEAT-263 follow-up)
+
+`GepaPayload` gains optional `project`/`agent` fields (additive — existing
+callers that never set them see identical wire payloads to before).
+`emitGepaEvent()` sends them both top-level on the `ProviderIngestPayload`
+and mirrored into `metadata`, matching `memory-sink.mts`'s
+CANARY-REVIEWER-8801 tagging convention. `grade-writer.mts`'s
+`emitSliceCloseMemory` (the `slice_close` GEPA emission) is the first
+caller to populate them: `project` from the same `memory.project` /
+`productName` precedence documented above, `agent` from the module's
+existing `GRADE_AGENT_TYPE` ("crew:builder") constant already used for the
+sibling `recordDecision`/`recordNote` calls in that file — reusing the
+established static tag rather than introducing a second attribution
+mechanism. Other `emitGepaEvent` call sites (`phase-gate.mts`,
+`phase-gate/parallel-orchestrator.mts`, `slice-linker/start-slice.mts`) are
+unchanged by this FEAT — threading project/agent through them is
+follow-up work for whichever agent owns those files.
+
+### "Memory usefulness (7d)" snapshot telemetry (FEAT-263 Phase 3d)
+
+`src/scripts/lib/memory-usefulness.mts` exports `fetchMemoryUsefulness()`, a
+bounded (`DEFAULT_USEFULNESS_FETCH_CAP_MS` = 2000ms, double-bounded via an
+outer `Promise.race` the same way `astramem-e2e-preflight.mts`'s
+`boundedFetch()` is), fail-silent read of the daemon's `/health` endpoint's
+`usefulness: { served_7d, used_7d, rate_7d }` block (via
+`@astragenie/astramem-client`'s `resolveDaemonClient()`). `memory-snapshot.mts`
+renders one bullet under "## Loop telemetry":
+
+```
+- Memory usefulness (7d): served=634 used=5 rate=0.8%
+```
+
+or `- Memory usefulness (7d): n/a` when memory is disabled
+(`memory.enabled: "never"`/off), no daemon is reachable, or the call
+exceeds its bound — unlike the neighboring "Pause rate" bullet (which is
+omitted entirely with no data), this line always renders so the metric's
+absence is visible, not silently missing.

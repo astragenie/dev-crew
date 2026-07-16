@@ -322,3 +322,48 @@ test("generateSnapshotContent matches writeMemorySnapshot output", async () => {
   const onDisk = await fs.readFile(snapshot.artifactPath, "utf8");
   assert.equal(generated, onDisk, "generateSnapshotContent must match written file");
 });
+
+// ---------------------------------------------------------------------------
+// FEAT-263 Phase 3d: "Memory usefulness (7d)" telemetry bullet
+// ---------------------------------------------------------------------------
+
+test("writeMemorySnapshot renders 'Memory usefulness (7d): n/a' when memory is unconfigured", async () => {
+  const repo = await tmpRepo("al-snapshot-memusefulness-off-");
+  await addFeature(repo, { title: "Test" });
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+  assert.ok(content.includes("- Memory usefulness (7d): n/a"));
+});
+
+test("writeMemorySnapshot renders served/used/rate when the daemon health call succeeds", async () => {
+  const repo = await tmpRepo("al-snapshot-memusefulness-ok-");
+  await addFeature(repo, { title: "Test" });
+
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          version: "1.0.0",
+          wire_versions_supported: ["v1.0"],
+          contract_schema_version: "v1",
+          schema_version: 1,
+          security: { redaction: true, encryption: true },
+          usefulness: { served_7d: 634, used_7d: 5, rate_7d: 0.0079 },
+          status: "ok"
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as unknown as typeof fetch;
+
+    const snapshot = await writeMemorySnapshot(repo, { config: { memory: { enabled: "on" } } });
+    const content = await fs.readFile(snapshot.artifactPath, "utf8");
+    assert.ok(
+      content.includes("- Memory usefulness (7d): served=634 used=5 rate=0.8%"),
+      `expected the usefulness line, got: ${content.slice(content.indexOf("## Loop telemetry"))}`
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

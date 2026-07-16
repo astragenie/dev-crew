@@ -53,15 +53,42 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice close \
   --repo "$PWD" \
   --id SLICE-NN \
   [--keep-feature-open] \
-  [--skip-validation-check "<reason>"]
+  [--skip-validation-check "<reason>"] \
+  [--learnings <path-to-learnings.json>] \
+  [--learnings-agent <agentType>] \
+  [--memories-used <path-to-ids.json>]
 
 # Full single-shot path (autonomous_safe features only)
 bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice close \
   --repo "$PWD" \
   --id SLICE-NN \
   --grade-yaml <path-to-grade.yaml> \
-  [--force-close]
+  [--force-close] \
+  [--learnings <path-to-learnings.json>] \
+  [--learnings-agent <agentType>] \
+  [--memories-used <path-to-ids.json>]
 ```
+
+### Structured learnings + memory credit (FEAT-263 T2 / Phase 3b, optional)
+
+Two additive, fail-silent inputs — never a new gate, never able to block
+the close. Full contract: `docs/sop/memory-bridge.md` § "Structured
+learnings + outcome-weighted credit at close".
+
+- **`--learnings <file.json>`** — a JSON array (max 3) of
+  `{ type: "lesson"|"decision"|"fact", text: string, why?: string }`
+  captured through the existing memory-sink at close, regardless of the
+  slice's PASS/FAIL outcome. `--learnings-agent <agentType>` optionally
+  overrides the producing-agent attribution (default: derived from the
+  slice's own dispatch tags, else omitted).
+- **`--memories-used <file.json>`** — a JSON array of memory ids to credit
+  (`POST /memory/:id/used` via `feedbackSilent`), batched under one shared
+  wallclock budget. Outcome-weighted: skipped entirely when the slice did
+  not close with a clean gate PASS, so memories that steered a FAIL are
+  never reinforced.
+
+Both respect `memory.enabled: "never"` in `.claude/loop.json` as a full
+kill switch, matching every other memory touchpoint in this repo.
 
 ## Pre-flight: verification-before-completion
 

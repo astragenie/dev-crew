@@ -73,6 +73,7 @@ jobs:
         bun ./src/scripts/validate-event-schemas.mts
         bun ./src/scripts/validate-decline-citations.mts --repo .
         bun ./src/scripts/validate-agent-refs.mts
+        bun ./src/scripts/validate-dispatch-markers.mts
         bun ./src/scripts/validate-imports.mts
         bun ./src/scripts/validate-backlog-writes.mts
         bun ./src/scripts/validate-slice-touches-files.mts

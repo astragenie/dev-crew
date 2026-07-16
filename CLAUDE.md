@@ -138,6 +138,10 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
    at 0.67.0 while 0.68/0.69/0.70 shipped — consumers got a stale version). An
    UNREACHABLE registry degrades to a warning (exit 0) so a network blip never
    blocks CI; a reachable-and-mismatched registry is a hard fail.
+16. `bun ./src/scripts/validate-dispatch-markers.mts` — checks that the
+   `<task-scoped>` order-block marker (FEAT-263 T1/T5, dispatch.mts +
+   start-slice.mts) is balanced, non-nested, and that every FORBIDDEN/GATES/
+   RETURN/ECHO order-block keyword stays confined inside a marked region.
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
@@ -513,6 +517,12 @@ This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`
 - **Slice start/close ceremony.** Every slice MUST use `/runner:start` and `/runner:close`.
 - **Dispatch discipline.** Hand `dispatchInstruction` to a crew builder subagent — `crew:fullstack-dev` (or the stack-specific `crew:backend-dev` / `crew:frontend-dev`), or generic `claude` (implementation only; there is no agent literally named `crew:builder`); parent loop dispatches `crew:reviewer` then `crew:validator` after; never implement inline except trivial single-line fixups.
 - **Auto-continue.** After ceremony, promote next item without asking.
+- **Ad-hoc dispatch marker (FEAT-263 T6).** When composing an ad-hoc `Agent()`
+  dispatch prompt (outside the templated ceremony), wrap task-scoped orders
+  (forbidden items, gates, return format) in a `<task-scoped>`…`</task-scoped>`
+  block and never quote that block's content back in reports — measured
+  evidence shows ad-hoc prompts, not templates, produce ~all instruction-echo
+  memory chaff (see astramem-local#374 E3).
 
 First action when starting the runner: read `.claude/loop/rules.md` → `docs/ai-loop/00-entry/MASTER_PROMPT.md` → `docs/ai-loop/backlog/approved-slices.md`.
 

@@ -613,6 +613,12 @@ export async function startSlice(
   });
 
   // Prepend recall block to dispatch instruction when present (non-empty).
+  // NOT wrapped in <task-scoped> — formatRecallBlockV1's output is the
+  // frozen recall-injection-v1 contract (dev-team
+  // docs/contracts/recall-injection-v1.md), asserted byte-for-byte by
+  // src/tests/start-slice-recall-v1.test.mts. Changing its leading bytes is
+  // a cross-plugin breaking change, out of scope for T5 (FEAT-263 plan v2
+  // names "the learnings digest" specifically, not the recall block).
   if (recallBlock && typeof result.dispatchInstruction === "string") {
     result.dispatchInstruction = `${recallBlock}\n\n${result.dispatchInstruction}`;
   }
@@ -620,8 +626,16 @@ export async function startSlice(
   // FEAT-219 AC-7: splice the already-computed learningsDigest into
   // dispatchInstruction, mirroring the recallBlock splice above. Additive +
   // fail-safe — an empty/null digest is a strict no-op (byte-identical).
-  if (learningsDigest && typeof result.dispatchInstruction === "string") {
-    result.dispatchInstruction = `${learningsDigest}\n\n${result.dispatchInstruction}`;
+  // T5 (FEAT-263 plan v2, architect finding 9): wrapped in <task-scoped> —
+  // this digest re-presents already-durable lessons into a fresh transcript,
+  // and left unmarked the session-transcript distiller re-mints them as
+  // near-duplicate atoms (the #371 rephrase class). See
+  // wrapLearningsDigestTaskScoped's docstring for why this reuses the same
+  // marker as dispatch.mts's order-block rather than a dedicated
+  // <recalled-memory> sub-marker.
+  const wrappedLearningsDigest = wrapLearningsDigestTaskScoped(learningsDigest);
+  if (wrappedLearningsDigest && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${wrappedLearningsDigest}\n\n${result.dispatchInstruction}`;
   }
 
   // ARCHITECT GATE: prepend last so it's the most prominent block — the
@@ -970,6 +984,31 @@ async function recordSliceStartEvent(
       `[slice-events] start-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
     );
   }
+}
+
+// FEAT-263 T5 (plan v2, architect finding 9): wrap the recentLearnings()
+// digest in the same <task-scoped> marker dispatch.mts's order-blocks use,
+// so a fresh transcript that re-presents already-durable lessons doesn't get
+// re-minted as new near-duplicate atoms by the session-transcript distiller
+// (the #371 rephrase class) once upstream astramem-local#374's E3 lands a
+// skip-marked-regions extractor pass.
+//
+// Deliberately reuses <task-scoped> rather than a dedicated
+// <recalled-memory> sub-marker: today the marker's only defined meaning is
+// "skip — not durable/new" (E3 hasn't shipped the extractor-side skip logic
+// yet), so a single non-nested marker vocabulary keeps
+// validate-dispatch-markers.mts's balanced/non-nested invariant trivial to
+// check across both producers (dispatch.mts's order-blocks and this digest
+// wrap) instead of teaching it a second marker grammar for one field. The
+// astramem recall block (formatRecallBlockV1, above the splice site in
+// startSlice) is deliberately NOT wrapped here — its format is the frozen
+// recall-injection-v1 cross-plugin contract, out of scope for this slice.
+//
+// Exported so validate-dispatch-markers.mts can exercise it directly with
+// fixture input, mirroring how it imports dispatch.mts's builders.
+export function wrapLearningsDigestTaskScoped(learningsDigest: string | null): string {
+  if (!learningsDigest) return "";
+  return ["<task-scoped>", learningsDigest, "</task-scoped>"].join("\n");
 }
 
 // FEAT-188 S3b: astramem RecallHit kinds this hook will label a block line

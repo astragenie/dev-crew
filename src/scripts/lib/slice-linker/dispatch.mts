@@ -10,14 +10,70 @@ interface DispatchLimits {
   preferInlineFor?: string[];
 }
 
-function buildBudgetLine(dispatchLimits: DispatchLimits | null) {
+// Plain sentence (no blockquote/markdown formatting) — callers assemble it
+// into a task-scoped GATES order line via formatTaskScopedPlain/Quote below.
+// FEAT-263 T1: previously returned a pre-formatted "\n\n> **Dispatch
+// budget...**" fragment; that formatting now lives at the call site so the
+// order can be labeled and confined inside <task-scoped>.
+function buildBudgetLine(dispatchLimits: DispatchLimits | null): string {
   if (!dispatchLimits) return "";
   const preferInline = (dispatchLimits.preferInlineFor || []).join(", ");
   return (
-    `\n\n> **Dispatch budget (hard limit):** max ${dispatchLimits.maxSubagentsPerSlice} subagents this slice. ` +
+    `Dispatch budget (hard limit): max ${dispatchLimits.maxSubagentsPerSlice} subagents this slice. ` +
     `Prefer inline (no subagent dispatch) for: ${preferInline}. ` +
     `Bundle review + validation into one pass when scope is small.`
   );
+}
+
+// ---------------------------------------------------------------------------
+// FEAT-263 T1: <task-scoped> order-block marker.
+//
+// Dispatch headers used to mix objective prose with hard orders (forbidden
+// dispatches, return instructions, budget gates) in one continuous paragraph.
+// Per the dual-reviewed extraction-quality plan (T1, architect finding 9's
+// companion echo rule = finding 2), every rewritten template now separates
+// objective/context prose from ALL task-scoped orders, which are wrapped in a
+// single, non-nested <task-scoped>...</task-scoped> region per prompt. This
+// is groundwork only — until upstream astramem-local#374's E3 teaches the
+// session-transcript extractor to skip marked regions, the marker has zero
+// chaff effect on its own (plan T1's explicit framing). Ad-hoc / 3rdparty /
+// user-authored dispatches never carry this marker — known, accepted partial
+// coverage (plan T1). validate-dispatch-markers.mts enforces that every
+// order-block keyword below appears only inside a marked region.
+//
+// Keep this list in sync with every FORBIDDEN:/GATES:/RETURN:/ECHO: label
+// actually emitted below — validate-dispatch-markers.mts imports this array
+// directly rather than hardcoding its own copy, so a new label only needs to
+// be added here once.
+export const TASK_SCOPED_ORDER_KEYWORDS = ["FORBIDDEN", "GATES", "RETURN", "ECHO"] as const;
+
+// Companion echo rule (arch finding 2): the echo evidence proves agents
+// re-quote dispatch bullets into their own handoff/report output, which a
+// marker at the origin chunk cannot stop by itself — every rewritten
+// template therefore also carries this explicit instruction, with a negative
+// example (not just a positive one), so it appears the same way everywhere.
+// NOTE: deliberately does not spell out the literal "<task-scoped>" /
+// "</task-scoped>" strings in this prose — doing so would embed a spurious
+// marker-shaped substring INSIDE the marked region itself and trip
+// validate-dispatch-markers.mts's balance scan (found via that gate).
+// "this task-scoped block" reads identically to a human/agent without the
+// literal tag text.
+const ECHO_RULE_LINES = [
+  `ECHO: Never quote this task-scoped block back into your handoff or report — restating a FORBIDDEN/GATES/RETURN bullet "for completeness" leaks task-scoped orders into durable memory/handoff text.`,
+  `  Bad:  "Handoff note: FORBIDDEN — did not dispatch crew:reviewer, for completeness."`,
+  `  Good: "Reviewer/verifier dispatch left to the parent loop per slice-build orchestration."`
+];
+
+/** Wrap order lines (already labeled FORBIDDEN:/GATES:/RETURN:) in a <task-scoped> marker, one order per line, no quote prefix. Used for plain (non-blockquoted) prose regions. */
+function formatTaskScopedPlain(orderLines: string[]): string {
+  return ["<task-scoped>", ...orderLines, ...ECHO_RULE_LINES, "</task-scoped>"].join("\n");
+}
+
+/** Same as formatTaskScopedPlain but every line is blockquoted ("> ...") so the marker sits inside a Markdown blockquote prompt (the "> Implement ..." style dispatch bodies). */
+function formatTaskScopedQuote(orderLines: string[]): string {
+  return ["<task-scoped>", ...orderLines, ...ECHO_RULE_LINES, "</task-scoped>"]
+    .map((line) => `> ${line}`)
+    .join("\n");
 }
 
 function appendContextBlock(
@@ -234,20 +290,36 @@ function buildParallelFeBeInstruction(
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
-  const closeTail = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`;
+  const returnLine = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`;
+  const perAgentOrders = [
+    `FORBIDDEN: Do NOT dispatch crew:reviewer or crew:verifier yourself.`,
+    `RETURN: ${returnLine}`,
+    ...(suffix ? [`GATES: ${suffix}`] : [])
+  ];
+  const perAgentTaskScoped = formatTaskScopedQuote(perAgentOrders);
+  const topOrders = [
+    `FORBIDDEN: Never use caveman:* agents for slice work.`,
+    `GATES: The parent loop drives crew:reviewer and crew:verifier AFTER both subagents return.`
+  ];
   return [
     `PARALLEL DISPATCH — issue ONE Agent message with TWO parallel tool calls:`,
     "",
     `  1. crew:frontend-dev with the **Frontend prompt** below.`,
     `  2. crew:backend-dev with the **Backend prompt** below.`,
     "",
-    `Both subagents own their respective slice surface. The parent loop drives crew:reviewer and crew:verifier AFTER both return. Never use caveman:* agents for slice work.`,
+    `Both subagents own their respective slice surface.`,
+    "",
+    formatTaskScopedPlain(topOrders),
     "",
     `**Frontend prompt** (for crew:frontend-dev):`,
-    `> Implement the frontend portion of ${title}.${sliceRef}${goalLine} You own implementation of the frontend surface only. Do NOT dispatch crew:reviewer or crew:verifier yourself. ${closeTail}`,
+    `> Implement the frontend portion of ${title}.${sliceRef}${goalLine} You own implementation of the frontend surface only.`,
+    `>`,
+    perAgentTaskScoped,
     "",
     `**Backend prompt** (for crew:backend-dev):`,
-    `> Implement the backend portion of ${title}.${sliceRef}${goalLine} You own implementation of the backend surface only. Do NOT dispatch crew:reviewer or crew:verifier yourself. ${closeTail}`
+    `> Implement the backend portion of ${title}.${sliceRef}${goalLine} You own implementation of the backend surface only.`,
+    `>`,
+    perAgentTaskScoped
   ].join("\n");
 }
 
@@ -290,7 +362,7 @@ export function buildDispatchInstruction({
   // Default path: slice-build — tag-driven dispatch with optional architect pre-flight.
   const variant: BuilderVariant = pickBuilderVariant(extractTags(sliceContent), loopConfig);
   const preflight = needsContractPreflight(sliceContent, repoPath, sliceId)
-    ? buildArchitectPreflight(sliceId, title, rel) + "\n---\n\n"
+    ? `${buildArchitectPreflight(sliceId, title, rel)}\n---\n\n`
     : "";
 
   let header: string;
@@ -301,10 +373,18 @@ export function buildDispatchInstruction({
     const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
     const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
     const suffix = buildBudgetLine(dispatchLimits);
+    const objective = `Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path.`;
+    const orders = [
+      `FORBIDDEN: Do NOT dispatch crew:reviewer or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol.`,
+      `RETURN: When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`,
+      ...(suffix ? [`GATES: ${suffix}`] : [])
+    ];
     header = [
       `Dispatch ${agentName} subagent with this prompt:`,
       "",
-      `> Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path. Do NOT dispatch crew:reviewer or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.${suffix}`
+      `> ${objective}`,
+      `>`,
+      formatTaskScopedQuote(orders)
     ].join("\n");
   }
   const lines = [preflight + header];

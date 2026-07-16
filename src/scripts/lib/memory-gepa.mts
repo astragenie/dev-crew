@@ -28,6 +28,14 @@
 // file-store), never astramem, so recall fidelity through astramem was never
 // required here. Do not "fix" recall later expecting these fields to
 // reappear — that round trip does not exist.
+//
+// FEAT-263 follow-up (docs/sop/memory-bridge.md): GepaPayload gains optional
+// `project`/`agent` fields so hook-independent (non-memory-sink) captures can
+// attribute per-role too. Mirrors memory-sink.mts's CANARY-REVIEWER-8801
+// tagging convention — sent both top-level (what a provider reading flat
+// request fields sees) and mirrored into metadata (back-compat for providers
+// that only read metadata). Additive only: existing callers that never set
+// these fields see identical wire payloads to before this change.
 
 import { randomUUID } from "node:crypto";
 
@@ -68,6 +76,13 @@ export interface GepaPayload {
     status: "PASS" | "FAIL";
     evidence_file_line?: string;
   }>;
+  // ---------------------------------------------------------------------------
+  // FEAT-263 follow-up: optional project/agent attribution (see file header).
+  // ---------------------------------------------------------------------------
+  /** Astramem project tag (e.g. loop.json's memory.project / productName). */
+  project?: string;
+  /** Producing-agent role tag (e.g. "crew:builder", "crew:fullstack-dev"). */
+  agent?: string;
 }
 
 /**
@@ -132,7 +147,9 @@ export function buildGepaMetadata(payload: GepaPayload): Record<string, unknown>
     source: payload.source,
     prompt_version: payload.prompt_version,
     input: summarizeStructured(payload.input),
-    output: summarizeStructured(payload.output)
+    output: summarizeStructured(payload.output),
+    ...(payload.project ? { project: sanitizeArg(payload.project) } : {}),
+    ...(payload.agent ? { agent: sanitizeArg(payload.agent) } : {})
   };
 }
 
@@ -149,7 +166,9 @@ export async function emitGepaEvent(payload: GepaPayload, capMs?: number): Promi
         id: randomUUID(),
         type: GEPA_KIND_MAP[payload.event],
         text: sanitizeContent(payload.feedback),
-        metadata: buildGepaMetadata(payload)
+        metadata: buildGepaMetadata(payload),
+        ...(payload.project ? { project: sanitizeArg(payload.project) } : {}),
+        ...(payload.agent ? { agent: sanitizeArg(payload.agent) } : {})
       },
       capMs ?? DEFAULT_MEMORY_CAP_MS
     );

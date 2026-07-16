@@ -108,7 +108,12 @@ export const FLAG_SPEC = {
   "--spent-usd": { key: "spent-usd" },
   // backlog slice-renumber (FEAT-257 SLICE-B / DEC-079)
   "--from": { key: "from" },
-  "--to": { key: "to" }
+  "--to": { key: "to" },
+  // FEAT-263 T2 / Phase 3b: structured learnings + outcome-weighted credit
+  // at slice close (see slice-linker/close-memory-capture.mjs)
+  "--learnings": { key: "learnings" },
+  "--learnings-agent": { key: "learningsAgent" },
+  "--memories-used": { key: "memoriesUsed" }
 };
 
 export function parseArgs(argv: string[]) {
@@ -193,7 +198,10 @@ export function parseArgs(argv: string[]) {
     "risk-flags": null,
     "spent-usd": null,
     from: null,
-    to: null
+    to: null,
+    learnings: null,
+    learningsAgent: null,
+    memoriesUsed: null
   };
   const positionals: any[] = [];
 

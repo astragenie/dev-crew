@@ -164,3 +164,61 @@ test("respects an explicit capMs override instead of the DEFAULT_MEMORY_CAP_MS d
   const elapsed = Date.now() - start;
   assert.ok(elapsed < 1500, `expected the explicit 300ms cap to apply, took ${elapsed}ms`);
 });
+
+// ---------------------------------------------------------------------------
+// FEAT-263 follow-up: optional project/agent attribution (docs/sop/memory-bridge.md)
+// ---------------------------------------------------------------------------
+
+test("buildGepaMetadata mirrors project/agent into metadata when present", () => {
+  const payload: GepaPayload = {
+    ...makePayload(),
+    project: "runner-plugin",
+    agent: "crew:builder"
+  };
+  const metadata = buildGepaMetadata(payload);
+  assert.equal(metadata["project"], "runner-plugin");
+  assert.equal(metadata["agent"], "crew:builder");
+});
+
+test("buildGepaMetadata omits project/agent keys when absent (no regression for existing callers)", () => {
+  const metadata = buildGepaMetadata(makePayload());
+  assert.ok(!("project" in metadata));
+  assert.ok(!("agent" in metadata));
+});
+
+test("emitGepaEvent sends project/agent as top-level wire fields, mirrored in metadata", async () => {
+  const seen: Array<Record<string, unknown>> = [];
+  _setWireProvider({
+    remember: async (req) => {
+      seen.push(req as unknown as Record<string, unknown>);
+    },
+    recall: async () => ({ hits: [] }),
+    health: async () => ({ ok: true })
+  });
+
+  await emitGepaEvent({ ...makePayload(), project: "runner-plugin", agent: "crew:fullstack-dev" });
+
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0]!["project"], "runner-plugin");
+  assert.equal(seen[0]!["agent"], "crew:fullstack-dev");
+  const meta = seen[0]!["metadata"] as Record<string, unknown>;
+  assert.equal(meta["project"], "runner-plugin");
+  assert.equal(meta["agent"], "crew:fullstack-dev");
+});
+
+test("emitGepaEvent omits project/agent top-level fields when absent", async () => {
+  const seen: Array<Record<string, unknown>> = [];
+  _setWireProvider({
+    remember: async (req) => {
+      seen.push(req as unknown as Record<string, unknown>);
+    },
+    recall: async () => ({ hits: [] }),
+    health: async () => ({ ok: true })
+  });
+
+  await emitGepaEvent(makePayload());
+
+  assert.equal(seen.length, 1);
+  assert.ok(!("project" in seen[0]!));
+  assert.ok(!("agent" in seen[0]!));
+});

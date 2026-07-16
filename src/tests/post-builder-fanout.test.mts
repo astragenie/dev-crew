@@ -173,6 +173,49 @@ test("both reviewer prompts include the '## Not checked' required section with t
   }
 });
 
+// T3 (wave plan 20260716T133000Z, plan-extraction-quality-templates-validity
+// v2): reviewer prompts must split required output into a durable-findings
+// section (transferable lessons, capped, "none" legal) and a run-evidence
+// section (gate outputs/timings/mechanics — everything ephemeral). Pins
+// presence + a negative/positive example pairing for both Reviewer A and
+// Reviewer B, across the default two-reviewer ladder and each single-entry
+// ladder.
+test("reviewer prompts include '## Durable findings' and '## Run evidence (ephemeral)' sections for both roles and both ladder configs", async () => {
+  const repo = await makeRepo();
+  try {
+    const ladderConfigs: Array<Record<string, any> | undefined> = [
+      undefined,
+      { config: { reviewers: { ladder: ["A"] } } },
+      { config: { reviewers: { ladder: ["B"] } } }
+    ];
+
+    for (const opts of ladderConfigs) {
+      const out = opts
+        ? await buildPostBuilderFanout(repo, "SLICE-99", opts)
+        : await buildPostBuilderFanout(repo, "SLICE-99");
+
+      assert.ok(out.tasks.length > 0, "expected at least one reviewer task");
+      for (const task of out.tasks) {
+        assert.ok(task.prompt.includes('## Durable findings (max 3, "none" is legal)'));
+        assert.ok(task.prompt.includes('Bad: "tsc was clean."'));
+        assert.ok(task.prompt.includes("## Run evidence (ephemeral)"));
+        assert.ok(task.prompt.includes("Gate outputs, timings, file lists, verdict mechanics"));
+
+        // Ordering: Not checked -> Durable findings -> Run evidence -> handoff.
+        const idxNotChecked = task.prompt.indexOf("## Not checked");
+        const idxDurable = task.prompt.indexOf("## Durable findings");
+        const idxRunEvidence = task.prompt.indexOf("## Run evidence");
+        const idxHandoff = task.prompt.indexOf("Read the builder handoff");
+        assert.ok(
+          idxNotChecked < idxDurable && idxDurable < idxRunEvidence && idxRunEvidence < idxHandoff
+        );
+      }
+    }
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
 test("aggregation rules match contract", async () => {
   const repo = await makeRepo();
   try {
@@ -220,6 +263,13 @@ test("FEAT-219 golden: memory off/absent is byte-identical; memory on prepends w
       "List at least 2 things you deliberately did NOT cover in this review pass.",
       "e.g. performance characteristics, cross-platform behavior beyond the CI environment, interaction with concurrent slice changes on other branches — anything outside correctness/regressions/AC coverage.",
       'Pass them via `crew write-review-result --not-checked "<item-a>,<item-b>"`.',
+      "",
+      '## Durable findings (max 3, "none" is legal)',
+      "Transferable lessons only — a bug CLASS to watch for next time, a contract truth discovered, or decision rationale. Never run-state.",
+      'Bad: "tsc was clean." Good: "Provider adapters here swallow timeout errors on bare catch — check for that shape in any new provider.mts."',
+      "",
+      "## Run evidence (ephemeral)",
+      "Gate outputs, timings, file lists, verdict mechanics — everything else about this run.",
       "",
       "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
       "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."

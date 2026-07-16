@@ -42,6 +42,11 @@ function stripVolatileSections(text: string): string {
   const out: string[] = [];
   let skipping = false;
   for (const line of text.split("\n")) {
+    // FEAT-263 Phase 3d: the "Memory usefulness (7d)" bullet reads the LIVE
+    // astramem daemon (/health) — served/used counts move hourly and a CI
+    // checkout has no daemon at all ("n/a"), so it is volatile by the same
+    // DEC-063 rationale as the Dispatch lifecycle section below.
+    if (line.startsWith("- Memory usefulness (7d):")) continue;
     if (line === "## Dispatch lifecycle") {
       skipping = true;
       continue;

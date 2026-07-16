@@ -30,6 +30,11 @@ import type { MergeResult, DryRunPlan } from "../auto-merge.mjs";
 import { syncTrackerOnClose } from "./tracker-close-sync.mjs";
 import type { TrackerCloseSyncResult } from "./tracker-close-sync.mjs";
 import { submitSliceProfileFeedback } from "../profile-feedback.mjs";
+import {
+  captureStructuredLearnings,
+  deriveDefaultLearningsAgent,
+  submitCloseMemoryCredit
+} from "./close-memory-capture.mjs";
 
 function deriveBlockingGates(workflowState: Record<string, any> | null) {
   const gates = workflowState?.currentRun?.gates || {};
@@ -628,7 +633,12 @@ export async function completeSlice(
     builderEvidence = null as BuilderEvidence | null,
     noMerge = false,
     dryRun = false,
-    skipSimplify = false
+    skipSimplify = false,
+    // FEAT-263 T2 / Phase 3b: structured learnings capture + outcome-weighted
+    // batch credit at close (see close-memory-capture.mjs doc header).
+    learningsPath = null as string | null,
+    learningsAgent = null as string | null,
+    memoriesUsedPath = null as string | null
   } = opts;
 
   warnDeprecatedDocWriter(noDocWriter);
@@ -737,6 +747,24 @@ export async function completeSlice(
     reviewGate?.satisfied !== false &&
     testAdequacyGate?.satisfied !== false;
   void submitSliceProfileFeedback({ repoPath, sliceId, passed: gatesPassed, config: resolved });
+  // FEAT-263 T2/3b (review fix): structured learnings fire regardless of gate
+  // outcome — an insight from a FAIL is still worth keeping. Credit reuses
+  // the same gatesPassed signal as the profile-feedback credit above so a
+  // FAIL never reinforces the memories that rode along it. Both outcomes are
+  // AWAITED (not fire-and-forget like the sibling calls above) specifically
+  // so the trajectory line below is guaranteed to be buffered before the CLI
+  // layer's flushTrajectory call runs — each underlying call is already
+  // internally bounded/fail-silent (recordMemory's per-entry cap, the
+  // shared credit-batch deadline), so awaiting only adds a small, capped
+  // delay, never an indefinite hang, and never a new failure path.
+  await recordMemoryCaptureTrajectory(repoPath, sliceId, {
+    featureId,
+    learningsPath,
+    learningsAgent: learningsAgent ?? deriveDefaultLearningsAgent(sliceFm, resolved),
+    memoriesUsedPath,
+    gatesPassed,
+    resolvedConfig: resolved
+  });
   void recordSliceCompleteEvent(repoPath, sliceId, featureId);
   void writeDocWriterSkipAuditLog(repoPath);
   await recordSerialReviewerWarning(repoPath, sliceId, resolved);
@@ -884,6 +912,56 @@ async function recordCompleteTrajectory(
       featureId: featureId ?? null,
       featureMovedTo: featureResult?.to ?? null,
       validationSatisfied: validationGate?.satisfied ?? null
+    });
+  } catch {
+    // best-effort — never blocks slice complete
+  }
+}
+
+// FEAT-263 T2/3b review fix (MEDIUM-HIGH finding): runs both memory
+// touchpoints and appends ONE "memory_capture" trajectory step recording
+// their outcomes — before this fix both results were void-discarded, so an
+// operator had no way to tell after the fact whether a --learnings entry was
+// noise-guarded or whether --memories-used credit was skipped for
+// outcome-fail/disabled/empty. Sibling to recordCompleteTrajectory above,
+// same fail-silent/append-only contract: any error here is swallowed and can
+// never affect the close outcome or the slice trajectory's other steps.
+async function recordMemoryCaptureTrajectory(
+  repoPath: string,
+  sliceId: string,
+  opts: {
+    featureId: string | null;
+    learningsPath: string | null;
+    learningsAgent: string | null;
+    memoriesUsedPath: string | null;
+    gatesPassed: boolean;
+    resolvedConfig: Record<string, any> | null;
+  }
+): Promise<void> {
+  try {
+    const [learningsResult, creditResult] = await Promise.all([
+      captureStructuredLearnings({
+        repoPath,
+        sliceId,
+        featureId: opts.featureId,
+        learningsPath: opts.learningsPath,
+        agentType: opts.learningsAgent,
+        resolvedConfig: opts.resolvedConfig
+      }),
+      submitCloseMemoryCredit({
+        repoPath,
+        sliceId,
+        memoriesUsedPath: opts.memoriesUsedPath,
+        passed: opts.gatesPassed,
+        resolvedConfig: opts.resolvedConfig
+      })
+    ]);
+    const { recordStep } = await import("../trajectory-writer.mjs");
+    await recordStep(repoPath, sliceId, "memory_capture", {
+      learningsRecorded: learningsResult.recorded,
+      learningsSkipped: learningsResult.skipped,
+      creditedCount: creditResult.credited.length,
+      creditSkippedReason: creditResult.skippedReason ?? null
     });
   } catch {
     // best-effort — never blocks slice complete

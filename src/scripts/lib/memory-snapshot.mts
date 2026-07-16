@@ -10,6 +10,7 @@ import { getIterationStatus } from "./loop-iteration.mjs";
 import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
 import type { DispatchTreeSnapshot } from "./dispatch-tree-snapshot.mjs";
 import { summarizePauseRate, type PauseRateSummary } from "./pause-telemetry.mjs";
+import { fetchMemoryUsefulness, type MemoryUsefulnessSummary } from "./memory-usefulness.mjs";
 
 // FEAT-212: window size for the "Pause rate (last N dispatches)" bullet in
 // the Loop telemetry section. Mirrors the cost-trajectory default window
@@ -243,6 +244,15 @@ function renderDecisions(recentDecisions: Record<string, any>[]) {
   return out;
 }
 
+/** Renders the FEAT-263 Phase 3d "Memory usefulness (7d)" telemetry bullet.
+ * Always renders (unlike Pause rate's conditional omission) — a `null`
+ * summary (disabled/unreachable daemon) prints "n/a" per the FEAT contract. */
+function formatMemoryUsefulnessLine(summary: MemoryUsefulnessSummary | null): string {
+  if (!summary) return "- Memory usefulness (7d): n/a";
+  const rateStr = summary.rate === null ? "n/a" : `${(summary.rate * 100).toFixed(1)}%`;
+  return `- Memory usefulness (7d): served=${summary.served} used=${summary.used} rate=${rateStr}`;
+}
+
 function renderLoopTelemetry(
   iterationStatus: Record<string, any> | null,
   costTrajectory: {
@@ -250,7 +260,8 @@ function renderLoopTelemetry(
     count: number;
     lastCostAdvisorVerdict: string | null;
   },
-  pauseSummary: PauseRateSummary
+  pauseSummary: PauseRateSummary,
+  memoryUsefulness: MemoryUsefulnessSummary | null
 ) {
   const out = ["## Loop telemetry", ""];
 
@@ -281,6 +292,8 @@ function renderLoopTelemetry(
       `- Pause rate (last ${pauseSummary.dispatches} dispatches): ${(pauseSummary.pauseRate * 100).toFixed(1)}%`
     );
   }
+
+  out.push(formatMemoryUsefulnessLine(memoryUsefulness));
 
   out.push("");
   return out;
@@ -334,6 +347,7 @@ async function collectSnapshotData(
   costReportUSDValues: number[];
   dispatchTree: DispatchTreeSnapshot;
   pauseSummary: PauseRateSummary;
+  memoryUsefulness: MemoryUsefulnessSummary | null;
 }> {
   const { readDispatchTreeSnapshot } = await import("./dispatch-tree-snapshot.mjs");
   const [
@@ -344,7 +358,8 @@ async function collectSnapshotData(
     iterationStatus,
     costReportUSDValues,
     dispatchTree,
-    pauseSummary
+    pauseSummary,
+    memoryUsefulness
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
@@ -357,7 +372,8 @@ async function collectSnapshotData(
       worktreeCount: 0,
       oldestRunAgeDays: null
     })),
-    summarizePauseRate(repoPath, PAUSE_RATE_WINDOW)
+    summarizePauseRate(repoPath, PAUSE_RATE_WINDOW),
+    fetchMemoryUsefulness(repoPath, config)
   ]);
   return {
     backlog,
@@ -367,7 +383,8 @@ async function collectSnapshotData(
     iterationStatus,
     costReportUSDValues,
     dispatchTree,
-    pauseSummary
+    pauseSummary,
+    memoryUsefulness
   };
 }
 
@@ -384,7 +401,8 @@ function buildSnapshotLines(
     iterationStatus,
     costReportUSDValues,
     dispatchTree,
-    pauseSummary
+    pauseSummary,
+    memoryUsefulness
   } = data;
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
   // Exclude deferred items from "next to slice" — mirrors the auto walker's
@@ -421,7 +439,7 @@ function buildSnapshotLines(
     ...renderSpecs(specs, specsByStatus),
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
-    ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary),
+    ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary, memoryUsefulness),
     ...renderDispatchLifecycle(dispatchTree, pruneStaleAfterDays),
     ...renderUsageFooter()
   ];

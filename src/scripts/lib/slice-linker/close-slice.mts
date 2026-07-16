@@ -68,6 +68,11 @@ export interface CloseSliceOpts {
   noMerge?: boolean | undefined;
   dryRun?: boolean | undefined;
   skipSimplify?: boolean | undefined;
+  // FEAT-263 T2 / Phase 3b: passed straight through to completeSlice — see
+  // close-memory-capture.mjs doc header for the capture/credit contract.
+  learningsPath?: string | null | undefined;
+  learningsAgent?: string | null | undefined;
+  memoriesUsedPath?: string | null | undefined;
 }
 
 export interface CloseSliceGrades {
@@ -98,6 +103,22 @@ export interface CloseSliceResult {
   costUsd: number;
   /** Grade-related output — always defined; scaffoldOnly when no grade YAML supplied. */
   grades: CloseSliceGrades;
+}
+
+/** Normalizes the FEAT-263 T2/Phase 3b passthrough opts for completeSlice.
+ * Extracted to its own (low-complexity) function so closeSlice's own
+ * cognitive-complexity budget isn't spent on these three nullish-coalesce
+ * fallbacks. */
+function resolveMemoryCaptureOpts(opts: CloseSliceOpts): {
+  learningsPath: string | null;
+  learningsAgent: string | null;
+  memoriesUsedPath: string | null;
+} {
+  return {
+    learningsPath: opts.learningsPath ?? null,
+    learningsAgent: opts.learningsAgent ?? null,
+    memoriesUsedPath: opts.memoriesUsedPath ?? null
+  };
 }
 
 export async function closeSlice(
@@ -162,7 +183,8 @@ export async function closeSlice(
     noDocWriter: opts.noDocWriter,
     noMerge: opts.noMerge,
     dryRun: opts.dryRun,
-    skipSimplify: opts.skipSimplify
+    skipSimplify: opts.skipSimplify,
+    ...resolveMemoryCaptureOpts(opts)
   });
 
   // completeSlice moves the slice file from pending/ → completed/. The
