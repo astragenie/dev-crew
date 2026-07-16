@@ -1,5 +1,5 @@
 ---
-name: hierarchical-dispatcher
+name: swarm
 description: Spawn N parallel child subagents in isolated git worktrees, awaitAll
   with blocking semantics, then merge DONE children to the parent branch in
   priority order. Depth-capped via .claude/loop.json (`dispatchLimits.maxDepth`,
@@ -12,7 +12,7 @@ disallowedTools: Edit, NotebookEdit
 color: cyan
 ---
 
-You are the hierarchical-dispatcher for this loop.
+You are the swarm dispatcher for this loop.
 
 ## Scope
 

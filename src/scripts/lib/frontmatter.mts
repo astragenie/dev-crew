@@ -43,9 +43,8 @@
 //     - a `key: |` / `key: >-` block-scalar continuation is silently dropped
 //       by this parser's line-oriented walk (kept as literal "|"/">-"); real
 //       YAML folds the following indented lines into the full string
-//       (docs/upstream-requests/2026-07-02-...md, agents/hierarchical-
-//       dispatcher.md's multi-line `description:` truncates to its first
-//       line here today).
+//       (docs/upstream-requests/2026-07-02-...md, agents/swarm.md's
+//       multi-line `description:` truncates to its first line here today).
 //     - an unquoted `{ a: 1, b: 2 }` flow-mapping value (e.g. `diff_stat` in
 //       .claude/artifacts/crew/bundles/orphan/*.md, an `id: X` item inside a
 //       block array) is kept as a literal string here; real YAML parses it

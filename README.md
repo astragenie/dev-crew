@@ -147,7 +147,7 @@ More templates ship as new repo types surface. See `scripts/presets/` to author 
   dispatch primitive (FEAT-020 SLICE-1); barrel re-export of nine
   `dispatch-*.mjs` modules
 
-## Hierarchical dispatch (`runner:hierarchical-dispatcher`, FEAT-020 SLICE-1)
+## Hierarchical dispatch (`runner:swarm`, FEAT-020 SLICE-1)
 
 A parent agent can spawn N parallel child subagents in isolated git worktrees,
 block on `awaitAll`, then merge DONE children to the parent branch in priority
@@ -184,7 +184,7 @@ bun src/scripts/loop.mts dispatch finalize \
   --run-id <id> --parent-branch slice/SLICE-90 --plan plan.json [--repo .] [--depth 0]
 ```
 
-In production, the `runner:hierarchical-dispatcher` agent runs `prepare`, invokes
+In production, the `runner:swarm` agent runs `prepare`, invokes
 the Agent tool with the returned batch in **one message**, then runs `finalize`.
 
 ### Telemetry artifacts

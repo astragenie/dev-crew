@@ -441,6 +441,14 @@ bare frontmatter `name:` field:
   repo questions go there, market questions come here.
 - `runner:document-writer` — Markdown-only docs (README, CHANGELOG, ADR,
   retros, release notes, agent / skill prompts). Will NOT edit source.
+- `runner:swarm` (formerly `runner:hierarchical-dispatcher`, renamed v0.77) —
+  spawns N parallel child subagents in isolated git worktrees, `awaitAll`
+  with blocking semantics, then merges DONE children to the parent branch in
+  priority order. Depth-capped via `.claude/loop.json`
+  (`dispatchLimits.maxDepth`, default 3). Use for one slice needing N
+  parallel children (e.g. FE+BE+tests), recursive FEAT decomposition, or
+  fan-out review across dimensions. See `README.md` § "Hierarchical
+  dispatch" for the config/CLI contract.
 - `runner:spec-writer` — **retired in v0.53**; there is no dispatchable
   `runner:spec-writer` agent anymore (no `agents/spec-writer.md` on disk).
   Its two-level spec drafting — formal SPEC documents (10-section,
