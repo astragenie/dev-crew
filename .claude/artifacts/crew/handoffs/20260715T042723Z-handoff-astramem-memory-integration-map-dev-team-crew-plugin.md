@@ -1,0 +1,40 @@
+# Task Handoff: astramem/memory integration map — dev-team (crew) plugin
+
+- Created: 2026-07-15T04:27:23.410Z
+- From: researcher
+- To: dispatcher
+- Objective: astramem is a separate, independently-versioned plugin — dev-team wires it via a skill (memory-keeper) and a code-driven recall-injection helper at 4 dispatch sites; coverage is deliberately narrow (builder-mindset stack + document-writer close), not universal across all agent roles.
+- Allowed Scope:
+  - Repo C:\work\mega\dev-team (crew/dev-team plugin) — grep for astramem/memory/cortex/recall/remember terms across agents/
+  - commands/
+  - skills/
+  - docs/
+  - .mcp.json
+  - plugin.json; read memory-keeper SKILL.md
+  - recall-injection-v1 contract
+  - inject-recall.ts header
+  - loop.json memory block; confirmed astramem plugin location/independence from cache dir. Read-only
+  - no edits.
+- Forbidden Scope: -
+- Deliverable: Structured findings doc (inlined in final reply) with file:line citations covering: (1) which files reference memory terms, (2) verbatim recall/save instruction blocks per agent/command, (3) recall-at-start vs save-at-end split + query/payload shape + projectId convention, (4) MCP wiring (astramem is NOT declared in dev-team's own .mcp.json/plugin.json - it ships as its own plugin at ~/.claude/plugins/cache/astra/astramem, versions 0.5.4-0.7.0), (5) the memory-keeper skill's guidance quoted in full, (6) consistency assessment: builder-stack agents + document-writer are wired, but reviewer/verifier/architect/researcher/pm/uxdesigner/qa-expert/performance-engineer/release-engineer/integrator/dev-lite have zero memory-keeper or astramem references - coverage is ad hoc, not uniform.
+- Changed Files:
+  - C:\work\mega\dev-team\skills\universal\memory-keeper\SKILL.md
+  - C:\work\mega\dev-team\skills\universal\builder-mindset\SKILL.md (lines 80
+  - 110-114)
+  - C:\work\mega\dev-team\agents\document-writer.md (lines 127-140
+  - 167)
+  - C:\work\mega\dev-team\agents\backend-dev.md:56
+  - C:\work\mega\dev-team\agents\frontend-dev.md:58
+  - C:\work\mega\dev-team\agents\fullstack-dev.md:80
+  - C:\work\mega\dev-team\commands\build.md:161-163
+  - C:\work\mega\dev-team\commands\fix.md:173
+  - C:\work\mega\dev-team\commands\ship.md:97
+  - C:\work\mega\dev-team\commands\orchestrate-slice.md:219
+  - C:\work\mega\dev-team\docs\contracts\recall-injection-v1.md
+  - C:\work\mega\dev-team\scripts\lib\memory\inject-recall.ts:1-80
+  - C:\work\mega\dev-team\.claude\loop.json:103-121
+  - C:\work\mega\dev-team\.mcp.json
+- Confidence: high
+- Risks: Did not read docs/architecture/memory-and-communication.md, docs/research/2026-07-06-memory-bridge-reconciliation.md, or docs/superpowers/specs/2026-07-04-memory-provider-plan.md in full (found via grep but not opened) - these likely contain fuller design rationale/history behind the recall-injection split; did not check runner-plugin's own recall-injector.mts side of the bridge (out of scope, dev-team-only ask).
+- Suggested Next Handoff: none - findings returned inline to dispatcher
+

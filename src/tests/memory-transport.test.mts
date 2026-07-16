@@ -165,6 +165,9 @@ describe("recordMemory — provider-first transport", () => {
     expect(seen[0]?.type).toBe("lesson");
     expect(seen[0]?.text).toBe("worktree cwd bites again");
     expect(seen[0]?.metadata).toEqual({ project: "test-proj", agent: "crew:builder" });
+    // CANARY-REVIEWER-8801: same tags also delivered as top-level fields.
+    expect(seen[0]?.project).toBe("test-proj");
+    expect(seen[0]?.agent).toBe("crew:builder");
     expect(typeof seen[0]?.id).toBe("string");
     expect(seen[0]?.id.length).toBeGreaterThan(0);
   });

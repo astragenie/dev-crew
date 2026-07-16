@@ -30,6 +30,18 @@ export interface ProviderIngestPayload {
   importance?: number | undefined;
   confidence?: number | undefined;
   metadata?: Record<string, unknown> | undefined;
+  /** Top-level project tag (CANARY-REVIEWER-8801). The installed
+   * @astragenie/astramem-client's `IngestPayload` type (types.ts) has no
+   * top-level project/agent — only its `RecallRequest`/`RecallFilters` and
+   * the daemon's own `RememberRequest` (daemon-types.ts) declare them
+   * top-level. This is a local widening, not an upstream type: `calls.js`'s
+   * `rememberSilent` forwards the payload object to `provider.remember()`
+   * untouched (no field stripping), so a provider that reads flat request
+   * fields rather than `metadata` can see this. Sent alongside the
+   * `metadata.project` copy for back-compat (memory-sink.mts). */
+  project?: string | undefined;
+  /** Top-level producing-agent tag; see `project` above. */
+  agent?: string | undefined;
 }
 
 /** Minimal structural view of astramem's MemoryProvider — only the surface

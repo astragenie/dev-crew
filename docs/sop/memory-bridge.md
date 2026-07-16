@@ -2,10 +2,19 @@
 
 ## What it is
 
-`src/scripts/lib/memory-bridge.mts` is a fire-and-forget shim that shells out
-to the `astramem` CLI (provided by `memory-plugin`) to emit GEPA-shaped JSON
-payloads after key loop lifecycle events. Runner has zero knowledge of providers,
-auth, or bearer tokens — all of that lives in `memory-plugin`.
+**`src/scripts/lib/memory-bridge.mts` no longer exists.** It was retired by
+FEAT-235 (Decision 1) and its CLI-spawn `emit()`/`buildRememberArgs()` were
+deleted outright — the discovery chain they hand-rolled is a verified strict
+subset of `@astragenie/astramem-client`'s `resolveWireProvider()` (see
+DEC-072). GEPA-shaped trainset capture now lives in
+`src/scripts/lib/memory-gepa.mts` (`emitGepaEvent` / `buildGepaMetadata`),
+which sends through the same in-process `MemoryProvider` transport as
+`memory-sink.mts` (`sendViaProvider`) — **no CLI subprocess, no `astramem`
+binary spawn, no `--type`/`--content`/`--metadata` argv**. This section
+historically described the CLI-spawn wire contract; it is corrected below to
+describe the current provider-only path. Runner has zero knowledge of
+providers, auth, or bearer tokens — all of that lives in the installed
+astramem plugin.
 
 ## When it fires
 
@@ -38,20 +47,31 @@ This is the in-process trainset shape kept for the local JSONL store
 crosses the wire to astramem is a narrower `remember` mapping — see
 "Wire contract to astramem" below.
 
-## Wire contract to astramem (FEAT-223 / DEC-067)
+## Wire contract to astramem (FEAT-223 / DEC-067; provider path since FEAT-235)
 
-`emit()` persists a GEPA payload through the real `astramem remember`
-subcommand (`buildRememberArgs()` in memory-bridge.mts):
+`emitGepaEvent()` (`memory-gepa.mts`) sends a GEPA payload through
+`sendViaProvider()` (`memory-transport.mts`) — the same in-process
+`MemoryProvider.remember()` call `memory-sink.mts` uses, not a CLI
+subcommand:
 
-| astramem flag | Source |
+| `ProviderIngestPayload` field | Source |
 |---|---|
-| `--type` | `payload.event` (free string; `remember` does not validate or coerce it — this is a different vocabulary from memory-sink.mts's closed `MemoryKind` enum, they simply coexist on the same flag) |
-| `--content` | `payload.feedback`, sanitized + length-capped |
-| `--metadata` | bounded JSON: `{ sliceId, featId, score, phase, source, prompt_version, input, output }` — `input`/`output` are recursively summarized (string/array/key/depth caps) so an arbitrarily large caller object can never blow up the argv size |
+| `type` | `GEPA_KIND_MAP[payload.event]` — mapped onto memory-sink.mts's closed `MemoryKind` enum (`decision`\|`lesson`\|`note`\|`failure`), not the free `payload.event` string (FEAT-235/DEC-072 fixed a prior mismatch here) |
+| `text` | `payload.feedback`, sanitized + length-capped |
+| `metadata` | bounded JSON via `buildGepaMetadata()`: `{ sliceId, featId, score, phase, source, prompt_version, input, output }` — `input`/`output` are recursively summarized (string/array/key/depth caps) so an arbitrarily large caller object can never blow up the payload |
 
-No `--project` and no `--agent`: `GepaPayload` carries neither field.
+`GepaPayload` still carries no `project`/`agent` fields today, so
+`emitGepaEvent()` does not tag GEPA events by project/agent — unlike
+`memory-sink.mts::recordMemory`, which as of this fix (CANARY-REVIEWER-8801)
+sends `project`/`agent` as **top-level** `ProviderIngestPayload` fields (in
+addition to the `metadata.project`/`metadata.agent` copy kept for
+back-compat) — mirroring the top-level `project`/`agent` vocabulary
+`@astragenie/astramem-client`'s `RecallRequest`/daemon `RememberRequest`
+types already use for reads. Threading `project`/`agent` through
+`GepaPayload`/`emitGepaEvent()` the same way is tracked as follow-up work,
+not yet done.
 
-**`--metadata` is write-only.** astramem's `RecallHitSchema` has no
+**`metadata` is write-only.** astramem's `RecallHitSchema` has no
 `metadata` field and its response schema is non-strict, so anything placed
 there is silently stripped on the way back out via `recall` — for every
 consumer, not just this one. Do not design around round-tripping GEPA
@@ -64,27 +84,24 @@ first place; it reads the local JSONL store shown above.
 `~/.astramemory/ingest.log` (append-only, rotates at 10 MB). Runner never
 writes memory logs directly.
 
-## CLI resolution state
+## Provider resolution state (post-FEAT-235)
 
-`astramem` is live (observed at plugin v0.6.0; astramem/#324). `resolveCli()`
-returns `null` only when neither `$CLAUDE_PLUGIN_ROOT_MEMORY/bin/astramem` nor
-a PATH entry is found — in that case `emit()` skips immediately without
-network activity or log noise. In real dispatch environments where the
-astramem plugin is installed, the PATH probe finds the plugin's own
-`bin/astramem` and this gate is no longer the blocker it once was.
-
-`emit()` persists through the real `remember` subcommand (see "Wire contract
-to astramem" above) — the `#324` gap where `spawnIngest()` invoked a
-nonexistent `ingest` subcommand is fixed as of FEAT-223/DEC-067.
-`recallPrior()` was never affected; its `recall` invocation already matched
-the real CLI contract. See
+`resolveWireProvider()` (`@astragenie/astramem-client`) tries, in order: an
+injected test provider, the astramem-plugin dep-mode selector, the
+dep-mode local/saas provider probe, then runtime plugin-root discovery
+(`CLAUDE_PLUGIN_ROOT_MEMORY` env or an `astramem` binary found on `PATH`).
+It returns `null` only when every strategy fails — in that case
+`sendViaProvider()`/`recallSilent()` skip immediately without network
+activity or log noise (`no-cli` reason in `RecordResult`, a legacy name kept
+for back-compat since the old CLI-spawn era). See
 `docs/research/2026-07-06-memory-bridge-astramem-v6-findings.md` for the
-original investigation.
+original (now historical) CLI-era investigation.
 
 ## Off-switch
 
 Set `memory.enabled: "never"` in `.claude/loop.json` to disable all
-memory-bridge emission permanently:
+memory capture (`memory-sink.mts`) and GEPA emission (`memory-gepa.mts`)
+permanently:
 
 ```json
 {
@@ -92,8 +109,8 @@ memory-bridge emission permanently:
 }
 ```
 
-Default is `"auto"` (emit when CLI present). The flag is read fresh on every
-emit call from `loop.json` — no restart required.
+Default is `"auto"` (send when a provider resolves). The flag is read fresh
+on every call from `loop.json` — no restart required.
 
 ## Recall config (runner-plugin#291)
 
@@ -118,15 +135,67 @@ inside `memory`. Default: enabled with `k=5` and `timeoutMs=5000`.
 - `k` — number of memories to retrieve from astramem.
 - `timeoutMs` — wallclock cap for the astramem recall call (AbortSignal kill).
 
-The recall hook is dormant when `astramem` CLI is absent. When hits > 0, a
+The recall hook is dormant when no astramem provider resolves (same
+`resolveWireProvider()` chain as capture, above). When hits > 0, a
 `recall_used` trainset event is emitted fire-and-forget for A/B comparison.
 
 ## Failure contract
 
-`emit()` is guaranteed to:
+`sendViaProvider()` / `recallSilent()` (and therefore `recordMemory()` /
+`emitGepaEvent()` / the recall hook, all built on top of them) are
+guaranteed to:
 - Never throw.
-- Resolve within 2 seconds wallclock (Promise.race + 2 s timeout).
-- Swallow ALL errors: ENOENT, network failure, non-zero exit, malformed JSON.
+- Resolve within their wallclock cap (`DEFAULT_MEMORY_CAP_MS` = 2 s for
+  capture, `DEFAULT_RECALL_CAP_MS` = 5 s for recall, or a `memory.capMs` /
+  `memory.recall.timeoutMs` override — DEC-071).
+- Swallow ALL errors: no provider resolved, network failure, provider
+  rejection, malformed input.
 
-Grade writes and phase-gate results are completely unaffected by memory-bridge
-errors.
+Grade writes and phase-gate results are completely unaffected by memory
+capture errors.
+
+## Memory e2e daemon preflight (SLICE-160 / FEAT-263, runner-plugin#514)
+
+The memory e2e test suite talks to a real **astramem-local daemon** on
+`127.0.0.1:7777` — a separate concern from the fail-silent runtime transport
+documented above. `src/scripts/lib/astramem-e2e-preflight.mts` exports
+`preflightAstramemDaemon()`, a fast bounded HTTP health check the e2e suite
+runs before exercising any real MCP tool call, so a missing or hung daemon
+fails fast with an actionable message instead of an opaque `ECONNREFUSED` or
+a multi-minute hang (this regression-guards a live incident where an
+astramem MCP call hung 300s with no response).
+
+### Daemon dependency
+
+The e2e suite requires the daemon listening on `127.0.0.1:7777` (or
+whatever `MEMORY_API_URL` points at). Start it with one of:
+
+```sh
+node dist/cli/index.js reinstall      # first-time setup
+node dist/cli/index.js serve --port 7777   # daemon already installed
+```
+
+`preflightAstramemDaemon()` GETs `${MEMORY_API_URL || 'http://127.0.0.1:7777'}/health`
+under a ~2000ms bounded timeout (`AbortSignal.timeout`-style, plus a hard
+`Promise.race` fallback so a misbehaving connection can never stall the
+caller past the bound). A response is treated as healthy only when its
+`status` field is one of `ok`, `starting`, or `degraded`; anything else
+(unreachable, non-2xx, unparseable body, or an unrecognized status) fails
+with the same actionable start-command message above.
+
+Note: `memory-doctor.mts::probeMemory()` (CLI-based, `astramem doctor
+--json`) is a different diagnostic and does **not** report true daemon
+reachability — its payload shape has no field for that (see the module's
+own header comment). `astramem-e2e-preflight.mts` is complementary, not a
+replacement.
+
+### `ASTRAMEM_E2E` toggle
+
+The memory e2e suite is opt-in, controlled by `ASTRAMEM_E2E`:
+
+| Value | Resolved mode | Behavior |
+|---|---|---|
+| unset, `0`, `false`, `skip` (default) | `skip` | Preflight and every memory-dependent test are skipped; no network request is made. |
+| `1`, `true`, `require` (case-insensitive) | `require` | Preflight runs; on failure the suite fails loudly (non-zero exit / failing test) rather than skipping. |
+
+Resolve via `astramemE2eMode(env)` from the same module.

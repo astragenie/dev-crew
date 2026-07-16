@@ -26,6 +26,8 @@ interface CapturedCall {
   id: string;
   type: string;
   text: string;
+  project?: string;
+  agent?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -264,6 +266,37 @@ describe("recordMemory delivery (capturing fake provider)", () => {
     await recordNote(repoDir, { text: "note without project" });
     expect(calls).toHaveLength(1);
     expect(calls[0]?.metadata?.["project"]).toBeUndefined();
+  });
+
+  test("CANARY-REVIEWER-8801: project/agent are also delivered as top-level payload fields", async () => {
+    repoDir = await writeRepo({ enabled: "on", project: "loop" });
+    const calls = installCapturingProvider();
+
+    await recordDecision(repoDir, {
+      id: "DEC-080",
+      title: "top-level tagging",
+      agentType: "crew:reviewer"
+    });
+
+    expect(calls).toHaveLength(1);
+    const call = calls[0]!;
+    // Top level: what a provider reading flat request fields (not metadata) sees.
+    expect(call.project).toBe("loop");
+    expect(call.agent).toBe("crew:reviewer");
+    // metadata copy stays intact — back-compat with providers that only read metadata.
+    expect(call.metadata?.["project"]).toBe("loop");
+    expect(call.metadata?.["agent"]).toBe("crew:reviewer");
+  });
+
+  test("no top-level project/agent keys when both are absent", async () => {
+    repoDir = await writeRepo({ enabled: "on" }); // no project configured
+    const calls = installCapturingProvider();
+
+    await recordNote(repoDir, { text: "untagged note" });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.project).toBeUndefined();
+    expect(calls[0]?.agent).toBeUndefined();
   });
 });
 

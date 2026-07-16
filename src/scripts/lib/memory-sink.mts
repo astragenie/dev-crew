@@ -137,8 +137,12 @@ export async function recordMemory(
     const agent = opts.agentType ? sanitizeArg(opts.agentType) : "";
 
     // Primary transport (S1b / dev-team#172): in-process MemoryProvider via
-    // the installed astramem plugin. project/agent fold into metadata — the
-    // same shape the plugin's own `remember` CLI persists them under.
+    // the installed astramem plugin. project/agent are sent as TOP-LEVEL
+    // payload fields (CANARY-REVIEWER-8801) — mirroring the top-level
+    // project/agent vocabulary astramem-client's RecallRequest/RememberRequest
+    // already use for reads, so a provider that filters on flat request
+    // fields (not just metadata) can see the tag. The metadata copy is kept
+    // alongside for back-compat with providers that only read metadata.
     const metadata: Record<string, unknown> = {};
     if (project) metadata["project"] = project;
     if (agent) metadata["agent"] = agent;
@@ -147,6 +151,8 @@ export async function recordMemory(
         id: randomUUID(),
         type: opts.kind,
         text: content,
+        ...(project ? { project } : {}),
+        ...(agent ? { agent } : {}),
         ...(Object.keys(metadata).length > 0 ? { metadata } : {})
       },
       deadline - Date.now()
