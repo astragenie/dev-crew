@@ -27,8 +27,19 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { isNoiseContent } from "./memory-noise-guard.mjs";
 import { sanitizeArg, sanitizeContent } from "./memory-sanitize.mjs";
-import { DEFAULT_MEMORY_CAP_MS, sendViaProvider } from "./memory-transport.mjs";
+import {
+  DEFAULT_MEMORY_CAP_MS,
+  type ProviderIngestPayload,
+  sendViaProvider
+} from "./memory-transport.mjs";
+
+/** Visibility tag sent top-level to astramem (astramem-local ADR-009, per its remember contract: team/org insert
+ * directly). Astramem's own `remember` defaults to `"private"`, invisible
+ * to shared/team recall — the loop's purpose is cross-agent lessons, so
+ * this sink defaults to `"team"` unless overridden. */
+export type MemoryScope = "private" | "team" | "org";
 
 export type MemoryKind = "decision" | "lesson" | "note" | "failure";
 
@@ -46,11 +57,16 @@ export interface MemoryConfig {
    * or not a positive number — this is the single documented policy shared
    * with recall's `memory.recall.timeoutMs` (see start-slice.mts). */
   capMs?: number | undefined;
+  /** Optional override (`memory.scope`) for the default visibility tag
+   * (`"team"`, see `MemoryScope`). Always a valid member of the union when
+   * set by `readMemoryConfig` — an unrecognized config value falls back to
+   * `"team"` there, never surfaces as an invalid string here. */
+  scope?: MemoryScope | undefined;
 }
 
 export interface RecordResult {
   recorded: boolean;
-  reason?: "disabled" | "no-cli" | "empty" | "ok" | "error";
+  reason?: "disabled" | "no-cli" | "empty" | "ok" | "error" | "noise";
 }
 
 /**
@@ -89,7 +105,12 @@ export async function readMemoryConfig(
     typeof memObj.capMs === "number" && Number.isFinite(memObj.capMs) && memObj.capMs > 0
       ? memObj.capMs
       : undefined;
-  return { mode: normalizeMode(enabled), project: explicitProject ?? productName, capMs };
+  return {
+    mode: normalizeMode(enabled),
+    project: explicitProject ?? productName,
+    capMs,
+    scope: normalizeScope(memObj.scope)
+  };
 }
 
 function normalizeMode(enabled: unknown): "off" | "on" | "auto" {
@@ -101,6 +122,35 @@ function normalizeMode(enabled: unknown): "off" | "on" | "auto" {
   }
   // false, "off"/"never"/"disabled", absent, or any unknown value -> OFF (opt-in).
   return "off";
+}
+
+/** Normalize a `memory.scope` value (config or per-call override) against
+ * the 3-value union, falling back to the `"team"` default on anything else
+ * (absent, wrong type, unrecognized string) — never propagates an invalid
+ * scope to the provider. */
+function normalizeScope(scope: unknown): MemoryScope {
+  return scope === "private" || scope === "team" || scope === "org" ? scope : "team";
+}
+
+/** Assemble the wire payload's tag fields (project/agent/scope) — extracted
+ * from `recordMemory` to keep its cognitive complexity under the repo cap.
+ * project/agent are sent both top-level (CANARY-REVIEWER-8801) and mirrored
+ * into `metadata` for back-compat; scope is top-level only (astramem-local ADR-009:
+ * astramem inserts team/org directly, no metadata mirror needed). */
+function buildTagFields(
+  project: string,
+  agent: string,
+  scope: MemoryScope
+): Pick<ProviderIngestPayload, "project" | "agent" | "scope" | "metadata"> {
+  const metadata: Record<string, unknown> = {};
+  if (project) metadata.project = project;
+  if (agent) metadata.agent = agent;
+  return {
+    scope,
+    ...(project ? { project } : {}),
+    ...(agent ? { agent } : {}),
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {})
+  };
 }
 
 /**
@@ -116,12 +166,19 @@ export async function recordMemory(
     /** Producing agent role (astramem --agent). Persisted for agent-scoped
      * recall (#309). Omitted from argv when absent. */
     agentType?: AgentType | undefined;
+    /** Per-call visibility override; wins over `config`/`memory.scope`. */
+    scope?: MemoryScope | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
   try {
     const content = sanitizeContent(opts.content ?? "");
     if (!content) return { recorded: false, reason: "empty" };
+
+    // Meta-noise guard (Phase 3a, sink-level; astramem-local#371 tracks the
+    // daemon-side equivalent): reject content that is noise ABOUT the
+    // memory/tooling surface itself before it ever reaches the provider.
+    if (isNoiseContent(content)) return { recorded: false, reason: "noise" };
 
     const cfg = opts.config ?? (await readMemoryConfig(repoPath));
     if (cfg.mode === "off") return { recorded: false, reason: "disabled" };
@@ -135,25 +192,17 @@ export async function recordMemory(
     const rawProject = opts.project ?? cfg.project;
     const project = rawProject ? sanitizeArg(rawProject) : "";
     const agent = opts.agentType ? sanitizeArg(opts.agentType) : "";
+    const scope = normalizeScope(opts.scope ?? cfg.scope);
 
     // Primary transport (S1b / dev-team#172): in-process MemoryProvider via
-    // the installed astramem plugin. project/agent are sent as TOP-LEVEL
-    // payload fields (CANARY-REVIEWER-8801) — mirroring the top-level
-    // project/agent vocabulary astramem-client's RecallRequest/RememberRequest
-    // already use for reads, so a provider that filters on flat request
-    // fields (not just metadata) can see the tag. The metadata copy is kept
-    // alongside for back-compat with providers that only read metadata.
-    const metadata: Record<string, unknown> = {};
-    if (project) metadata["project"] = project;
-    if (agent) metadata["agent"] = agent;
+    // the installed astramem plugin. See buildTagFields for the
+    // top-level-vs-metadata tagging rationale (CANARY-REVIEWER-8801 / astramem-local ADR-009).
     const sent = await sendViaProvider(
       {
         id: randomUUID(),
         type: opts.kind,
         text: content,
-        ...(project ? { project } : {}),
-        ...(agent ? { agent } : {}),
-        ...(Object.keys(metadata).length > 0 ? { metadata } : {})
+        ...buildTagFields(project, agent, scope)
       },
       deadline - Date.now()
     );
@@ -184,6 +233,7 @@ export function recordDecision(
     sliceId?: string | undefined;
     project?: string | undefined;
     agentType?: AgentType | undefined;
+    scope?: MemoryScope | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -193,6 +243,7 @@ export function recordDecision(
     content: `${d.id}: ${d.title}${rationale}${traceTag(d.featureId, d.sliceId)}`,
     project: d.project,
     agentType: d.agentType,
+    scope: d.scope,
     config: d.config
   });
 }
@@ -206,6 +257,7 @@ export function recordLesson(
     sliceId?: string | undefined;
     project?: string | undefined;
     agentType?: AgentType | undefined;
+    scope?: MemoryScope | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -214,6 +266,7 @@ export function recordLesson(
     content: `${l.lesson}${traceTag(l.featureId, l.sliceId)}`,
     project: l.project,
     agentType: l.agentType,
+    scope: l.scope,
     config: l.config
   });
 }
@@ -225,6 +278,7 @@ export function recordNote(
     text: string;
     project?: string | undefined;
     agentType?: AgentType | undefined;
+    scope?: MemoryScope | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -233,6 +287,7 @@ export function recordNote(
     content: n.text,
     project: n.project,
     agentType: n.agentType,
+    scope: n.scope,
     config: n.config
   });
 }
@@ -248,6 +303,7 @@ export function recordFailure(
     sliceId?: string | undefined;
     project?: string | undefined;
     agentType?: AgentType | undefined;
+    scope?: MemoryScope | undefined;
     config?: MemoryConfig | undefined;
   }
 ): Promise<RecordResult> {
@@ -256,6 +312,7 @@ export function recordFailure(
     content: `${f.summary}${traceTag(f.featureId, f.sliceId)}`,
     project: f.project,
     agentType: f.agentType,
+    scope: f.scope,
     config: f.config
   });
 }

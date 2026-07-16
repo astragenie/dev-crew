@@ -170,6 +170,63 @@ describe("recordMemory — provider-first transport", () => {
     expect(seen[0]?.agent).toBe("crew:builder");
     expect(typeof seen[0]?.id).toBe("string");
     expect(seen[0]?.id.length).toBeGreaterThan(0);
+    // Phase 3a: scope defaults to "team" (tmpRepo's loop.json sets no
+    // memory.scope) — astramem's own default ("private") is invisible to
+    // shared/team recall, which defeats the loop's cross-agent purpose.
+    expect(seen[0]?.scope).toBe("team");
+  });
+
+  test("Phase 3a: memory.scope config is delivered top-level, overriding the team default", async () => {
+    await fs.writeFile(
+      path.join(tmpRepo, ".claude", "loop.json"),
+      JSON.stringify({ memory: { enabled: "on", project: "test-proj", scope: "org" } })
+    );
+    const seen: ProviderIngestPayload[] = [];
+    _setProvider({
+      remember: async (req) => {
+        seen.push(req);
+      }
+    });
+
+    await recordMemory(tmpRepo, { kind: "note", content: "org-scoped note" });
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.scope).toBe("org");
+  });
+
+  test("Phase 3a: an unrecognized memory.scope config falls back to team", async () => {
+    await fs.writeFile(
+      path.join(tmpRepo, ".claude", "loop.json"),
+      JSON.stringify({ memory: { enabled: "on", project: "test-proj", scope: "shared" } })
+    );
+    const seen: ProviderIngestPayload[] = [];
+    _setProvider({
+      remember: async (req) => {
+        seen.push(req);
+      }
+    });
+
+    await recordMemory(tmpRepo, { kind: "note", content: "fallback-scoped note" });
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.scope).toBe("team");
+  });
+
+  test("Phase 3a: noise-classified content never reaches the provider", async () => {
+    let called = 0;
+    _setProvider({
+      remember: async () => {
+        called++;
+      }
+    });
+
+    const result = await recordMemory(tmpRepo, {
+      kind: "note",
+      content: "bunx tsc --project tsconfig.json --noEmit"
+    });
+
+    expect(result).toEqual({ recorded: false, reason: "noise" });
+    expect(called).toBe(0);
   });
 
   test("degrades to no-cli (not throw) when provider absent and CLI unresolvable", async () => {

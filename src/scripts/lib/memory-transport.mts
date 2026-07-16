@@ -42,6 +42,14 @@ export interface ProviderIngestPayload {
   project?: string | undefined;
   /** Top-level producing-agent tag; see `project` above. */
   agent?: string | undefined;
+  /** Top-level visibility tag (Phase 3a, astramem-local ADR-009: the daemon inserts `team`/`org`
+   * directly rather than gating them behind a promotion step). Same local-widening
+   * rationale as `project`/`agent` above — the installed astramem-client's
+   * `IngestPayload` has no top-level `scope`, but the daemon's `remember` request
+   * shape accepts one and `calls.js` forwards the payload untouched. Sent by
+   * memory-sink.mts, defaulted there to `"team"` since astramem's own default
+   * (`"private"`) is invisible to shared/cross-agent recall. */
+  scope?: "private" | "team" | "org" | undefined;
 }
 
 /** Minimal structural view of astramem's MemoryProvider — only the surface

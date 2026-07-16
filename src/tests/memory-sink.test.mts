@@ -28,6 +28,7 @@ interface CapturedCall {
   text: string;
   project?: string;
   agent?: string;
+  scope?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -133,6 +134,28 @@ describe("readMemoryConfig", () => {
       const cfg = await readMemoryConfig(repoDir);
       expect(cfg.mode).toBe(expected);
       expect(cfg.project).toBe("loop");
+    });
+  }
+
+  test("Phase 3a: memory.scope is absent -> defaults to team", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const cfg = await readMemoryConfig(repoDir);
+    expect(cfg.scope).toBe("team");
+  });
+
+  const scopeCases: Array<[unknown, "private" | "team" | "org"]> = [
+    ["private", "private"],
+    ["team", "team"],
+    ["org", "org"],
+    ["public", "team"], // unrecognized -> fall back to team
+    [123, "team"], // wrong type -> fall back to team
+    [undefined, "team"] // absent -> fall back to team
+  ];
+  for (const [scope, expected] of scopeCases) {
+    test(`Phase 3a: memory.scope=${JSON.stringify(scope)} normalizes to ${expected}`, async () => {
+      repoDir = await writeRepo({ enabled: "on", scope });
+      const cfg = await readMemoryConfig(repoDir);
+      expect(cfg.scope).toBe(expected);
     });
   }
 });
@@ -297,6 +320,170 @@ describe("recordMemory delivery (capturing fake provider)", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.project).toBeUndefined();
     expect(calls[0]?.agent).toBeUndefined();
+  });
+
+  test("Phase 3a: scope defaults to team when unconfigured", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    await recordNote(repoDir, { text: "default scope note" });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.scope).toBe("team");
+  });
+
+  test("Phase 3a: memory.scope config overrides the team default", async () => {
+    repoDir = await writeRepo({ enabled: "on", scope: "private" });
+    const calls = installCapturingProvider();
+
+    await recordNote(repoDir, { text: "private-scope note" });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.scope).toBe("private");
+  });
+
+  test("Phase 3a: per-call opts.scope overrides memory.scope config", async () => {
+    repoDir = await writeRepo({ enabled: "on", scope: "private" });
+    const calls = installCapturingProvider();
+
+    await recordNote(repoDir, { text: "org-scope note", scope: "org" });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.scope).toBe("org");
+  });
+
+  test("Phase 3a: an invalid memory.scope config falls back to team", async () => {
+    repoDir = await writeRepo({ enabled: "on", scope: "public" });
+    const calls = installCapturingProvider();
+
+    await recordNote(repoDir, { text: "fallback-scope note" });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.scope).toBe("team");
+  });
+});
+
+describe("recordMemory noise guard (Phase 3a)", () => {
+  test("query-echo exemplar is rejected with reason noise", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "recall_memory returned 3 hits for query 'project scope defaults'"
+    });
+
+    expect(res).toEqual({ recorded: false, reason: "noise" });
+    expect(calls).toHaveLength(0);
+  });
+
+  test("query-echo near-miss (a real lesson mentioning recall_memory) is recorded", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordLesson(repoDir, {
+      lesson: "recall_memory must be called with project top-level or hits are lost"
+    });
+
+    expect(res.recorded).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toContain("recall_memory must be called");
+  });
+
+  test("capability-boilerplate exemplar is rejected with reason noise", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "I cannot access the underlying provider configuration directly"
+    });
+
+    expect(res).toEqual({ recorded: false, reason: "noise" });
+    expect(calls).toHaveLength(0);
+  });
+
+  test("capability-boilerplate near-miss (third-person, not the model) is recorded", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "Users cannot access the dashboard without an invite -- document this in the FAQ"
+    });
+
+    expect(res.recorded).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
+  test("training-data-boilerplate exemplar is rejected with reason noise", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "This summary is based on training data and may be incomplete"
+    });
+
+    expect(res).toEqual({ recorded: false, reason: "noise" });
+    expect(calls).toHaveLength(0);
+  });
+
+  test("training-data-boilerplate near-miss (a real lesson about training cutoff) is recorded", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "The model's training data cutoff means recent APIs may be missing -- verify before use"
+    });
+
+    expect(res.recorded).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
+  test("bare shell one-liner exemplar is rejected with reason noise", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "bun test src/tests/ --parallel --timeout 60000"
+    });
+
+    expect(res).toEqual({ recorded: false, reason: "noise" });
+    expect(calls).toHaveLength(0);
+  });
+
+  test("bare shell one-liner near-miss (command wrapped in prose) is recorded", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordLesson(repoDir, {
+      lesson:
+        "Run `bun test src/tests/ --parallel --timeout 60000` before every commit to catch regressions early"
+    });
+
+    expect(res.recorded).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
+  test("bare shell one-liner near-miss (prose that opens with a tool name) is recorded", async () => {
+    repoDir = await writeRepo({ enabled: "on" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "Git commits should follow the conventional commit format"
+    });
+
+    expect(res.recorded).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
+  test("noise guard runs even when memory is disabled (no provider call either way)", async () => {
+    repoDir = await writeRepo({ enabled: "off" });
+    const calls = installCapturingProvider();
+
+    const res = await recordNote(repoDir, {
+      text: "bun test src/tests/ --parallel --timeout 60000"
+    });
+
+    expect(res).toEqual({ recorded: false, reason: "noise" });
+    expect(calls).toHaveLength(0);
   });
 });
 
