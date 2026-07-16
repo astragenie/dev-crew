@@ -1,0 +1,4 @@
+{"ts":"2026-07-16T14:20:37.115Z","test":"T1_health","samples_ms":[1,0,1,0,1],"min_ms":0,"pass":true,"warn":false}
+{"ts":"2026-07-16T14:20:37.977Z","test":"T2_remember_roundtrip","write_ms":78,"retrieve_ms":782,"atom_id":"65c04c71-59c2-4fa3-96e8-431c956985fe","pass":true}
+{"ts":"2026-07-16T14:21:03.961Z","test":"T5_feedback_loop","before":0.5,"after":0.6666666666666666,"pass":true}
+{"ts":"2026-07-16T14:21:04.284Z","test":"T6_hang_guard","elapsed_ms":313,"pass":true}
