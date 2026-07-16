@@ -1,0 +1,6 @@
+{"ts":"2026-07-16T10:15:46.708Z","test":"T1_health","samples_ms":[1,0,1,0,0],"min_ms":0,"pass":true,"warn":false}
+{"ts":"2026-07-16T10:15:47.643Z","test":"T2_remember_roundtrip","write_ms":293,"retrieve_ms":642,"atom_id":"9c002101-9188-4ef6-be29-2d7d0a8e1557","pass":true}
+{"ts":"2026-07-16T10:15:53.655Z","test":"T3_recall_latency","samples_ms":[596,591,608,596,616,618,606,591,590,598],"p50_ms":596,"p95_ms":618,"pass":true,"warn":false}
+{"ts":"2026-07-16T10:15:53.677Z","test":"T4_profile_attribution","ms":21,"pass":true,"warn":false,"via":"profile"}
+{"ts":"2026-07-16T10:15:54.202Z","test":"T5_feedback_loop","before":0.5,"after":0.6666666666666666,"pass":true}
+{"ts":"2026-07-16T10:15:54.528Z","test":"T6_hang_guard","elapsed_ms":318,"pass":true}

@@ -1,0 +1,2 @@
+{"ts":"2026-07-16T10:22:59.937Z","test":"T1_health","samples_ms":[1,0,0,1,0],"min_ms":0,"pass":true,"warn":false}
+{"ts":"2026-07-16T10:23:21.022Z","test":"T6_hang_guard","elapsed_ms":313,"pass":true}

@@ -182,6 +182,64 @@ test("preflightAstramemDaemon honors MEMORY_API_URL when set", async () => {
 });
 
 // -----------------------------------------------------------------------
+// FEAT-263 Phase 2: strict mode (embed.ok required, degraded rejected)
+// -----------------------------------------------------------------------
+
+test("preflightAstramemDaemon strict mode rejects degraded status even when reachable", async () => {
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: "degraded", embed: { ok: false } })
+  });
+
+  const result = await preflightAstramemDaemon({ fetchImpl, strict: true });
+
+  assert.equal(result.reachable, true);
+  assert.equal(result.ok, false);
+  assert.match(result.message, /strict mode requires status "ok" and embed\.ok true/);
+});
+
+test("preflightAstramemDaemon strict mode rejects status ok when embed.ok is false", async () => {
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: "ok", embed: { ok: false } })
+  });
+
+  const result = await preflightAstramemDaemon({ fetchImpl, strict: true });
+
+  assert.equal(result.ok, false);
+  assert.match(result.message, /embed\.ok=false/);
+});
+
+test("preflightAstramemDaemon strict mode accepts status ok with embed.ok true", async () => {
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: "ok", embed: { ok: true } })
+  });
+
+  const result = await preflightAstramemDaemon({ fetchImpl, strict: true });
+
+  assert.equal(result.reachable, true);
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "ok");
+});
+
+test("preflightAstramemDaemon strict mode is backwards-compatible: default (non-strict) still accepts degraded", async () => {
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: "degraded", embed: { ok: false } })
+  });
+
+  const result = await preflightAstramemDaemon({ fetchImpl });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "degraded");
+});
+
+// -----------------------------------------------------------------------
 // AC-4 / AC-5: ASTRAMEM_E2E mode resolution
 // -----------------------------------------------------------------------
 

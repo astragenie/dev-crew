@@ -199,3 +199,54 @@ The memory e2e suite is opt-in, controlled by `ASTRAMEM_E2E`:
 | `1`, `true`, `require` (case-insensitive) | `require` | Preflight runs; on failure the suite fails loudly (non-zero exit / failing test) rather than skipping. |
 
 Resolve via `astramemE2eMode(env)` from the same module.
+
+### Strict mode (FEAT-263 Phase 2)
+
+`preflightAstramemDaemon({ strict: true })` additionally requires
+`embed.ok === true` AND `status === "ok"` — the default (`strict: false` /
+omitted) still accepts `degraded` (embed down) as healthy, since FTS-only
+recall keeps working without a live embedder, but a semantic-recall test run
+against a degraded embedder is meaningless. Backwards-compatible: omitting
+`strict` preserves the original permissive behavior exactly.
+
+### The e2e smoke suite (`src/tests/astramem-e2e.test.mts`)
+
+Codifies the T1–T6 smoke battery from
+`.claude/artifacts/crew/runs/20260716T000000Z-plan-memory-e2e-smoke-timings.md`
+as a repeatable, `ASTRAMEM_E2E`-gated suite:
+
+| # | Test | What it proves |
+|---|---|---|
+| T1 | `/health` × 5 | daemon reachable, `status: ok`, min latency budget |
+| T2 | `recordMemory()` → project-filtered `/recall` | write path tags `project`/`agent`; a fresh atom is findable within ~10s (polled, not single-shot) |
+| T3 | 10× semantic `/recall`, k=15 | p50/p95 latency budget |
+| T4 | `profileSilent()` (`GET /agents/:agent/profile`) | the T2 canary attributes to `runner:researcher`, with an agent-filtered-recall fallback |
+| T5 | `feedbackSilent()` (`POST /memory/:id/used`) | usefulness moves off 0.5 for the credited atom |
+| T6 | `boundedFetch()` against a connection that accepts but never responds | the suite's own wire calls can never hang past their bound (regression guard for the 300s-hang incident, astramem-local#347) |
+
+Run it against a live daemon with:
+
+```sh
+ASTRAMEM_E2E=1 CLAUDE_PLUGIN_ROOT_MEMORY=/path/to/plugins/cache/astra/astramem/<version> \
+  bun test src/tests/astramem-e2e.test.mts
+```
+
+`CLAUDE_PLUGIN_ROOT_MEMORY` is required for T2: `recordMemory()`
+(`memory-sink.mts`) only resolves a real provider through that env-pinned
+plugin-root path in a test process — the PATH-probe fallback is disabled
+repo-wide for every test run (`_test-env-guard.mts` sets
+`ASTRAMEM_DISABLE_PATH_PROBE=1`), by design, so a test run can never
+silently fall back to a real globally-installed CLI. Without it, T2 fails
+loudly in require mode rather than reporting a false pass.
+
+Every real wire call the suite makes directly (T1/T2/T3/T4-fallback/T6)
+goes through the shared `boundedFetch()` helper
+(`src/scripts/lib/bounded-fetch.mts`) — the same AbortSignal-plus-hard-
+`Promise.race` dual bound as `preflightAstramemDaemon()`. T4/T5 additionally
+use `@astragenie/astramem-client`'s `profileSilent`/`feedbackSilent`, which
+carry their own single-layer AbortController bound from that package's
+`AstramemDaemonClient`.
+
+In require mode, each test appends one JSONL line to
+`.claude/artifacts/loop/memory-e2e/<run-timestamp>-smoke.jsonl` (created on
+first write). Skip mode writes nothing.

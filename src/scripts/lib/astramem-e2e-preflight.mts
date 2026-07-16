@@ -30,6 +30,16 @@ export interface PreflightOptions {
   url?: string;
   /** Bounded wallclock cap in ms. Default 2000, per AbortSignal.timeout(2000) in the AC text. */
   timeoutMs?: number;
+  /**
+   * Opt-in stricter health bar (FEAT-263 Phase 2): additionally requires
+   * `embed.ok === true` AND `status === "ok"`. Default (`false`) preserves
+   * the original behavior — `degraded` (embed down) still counts as
+   * reachable/healthy, since FTS-only recall keeps working without a live
+   * embedder. Semantic-recall-dependent tests are meaningless under a dead
+   * embedder, so those callers should opt into `strict: true` instead of
+   * relying on the permissive default.
+   */
+  strict?: boolean;
 }
 
 export interface PreflightResult {
@@ -69,11 +79,23 @@ function extractStatus(body: unknown): string | null {
   return typeof status === "string" ? status : null;
 }
 
-async function readHealthResponse(response: {
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-}): Promise<PreflightResult> {
+/** Extract `embed.ok` out of an arbitrary /health JSON body, or null when absent/malformed. */
+function extractEmbedOk(body: unknown): boolean | null {
+  if (body === null || typeof body !== "object") return null;
+  const embed = (body as Record<string, unknown>).embed;
+  if (embed === null || typeof embed !== "object") return null;
+  const ok = (embed as Record<string, unknown>).ok;
+  return typeof ok === "boolean" ? ok : null;
+}
+
+async function readHealthResponse(
+  response: {
+    ok: boolean;
+    status: number;
+    json: () => Promise<unknown>;
+  },
+  strict: boolean
+): Promise<PreflightResult> {
   if (!response.ok) {
     return {
       reachable: false,
@@ -97,6 +119,20 @@ async function readHealthResponse(response: {
 
   const status = extractStatus(body);
   if (status !== null && ACCEPTED_STATUSES.has(status)) {
+    if (strict) {
+      const embedOk = extractEmbedOk(body);
+      if (status !== "ok" || embedOk !== true) {
+        return {
+          reachable: true,
+          status,
+          ok: false,
+          message: actionableMessage(
+            `strict mode requires status "ok" and embed.ok true ` +
+              `(got status="${status}", embed.ok=${embedOk === null ? "<missing>" : embedOk})`
+          )
+        };
+      }
+    }
     return {
       reachable: true,
       status,
@@ -128,6 +164,7 @@ export async function preflightAstramemDaemon(
 ): Promise<PreflightResult> {
   const url = resolveUrl(opts);
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const strict = opts.strict ?? false;
   const fetchImpl = opts.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
 
   const controller = new AbortController();
@@ -148,7 +185,7 @@ export async function preflightAstramemDaemon(
       fetchImpl(url, { signal: controller.signal }),
       hardTimeout
     ]);
-    return await readHealthResponse(response);
+    return await readHealthResponse(response, strict);
   } catch (err) {
     return {
       reachable: false,
