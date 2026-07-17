@@ -64,7 +64,7 @@ jobs:
   fast-gate:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@main
+    uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@v1
     with:
       install-cmd: bun install --frozen-lockfile
       validators: |
