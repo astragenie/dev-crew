@@ -29,6 +29,19 @@ function avg(values: unknown[]) {
   return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(3));
 }
 
+// Median is the headline cost statistic: the emitter can re-report one
+// runaway wide-window session many times (dev-team#178 — observed 7 near-
+// identical ~$3.2k reports poisoning the mean ~40x), and a median survives
+// that where a mean does not.
+function median(values: unknown[]) {
+  const nums = values.filter((v): v is number => typeof v === "number").sort((a, b) => a - b);
+  if (nums.length === 0) return null;
+  const mid = Math.floor(nums.length / 2);
+  const m =
+    nums.length % 2 === 1 ? (nums[mid] ?? 0) : ((nums[mid - 1] ?? 0) + (nums[mid] ?? 0)) / 2;
+  return Number(m.toFixed(3));
+}
+
 // Parse frontmatter from markdown to extract metadata.
 function parseFrontmatter(text: string) {
   if (!text.startsWith("---")) return { fm: null, body: text };
@@ -108,6 +121,12 @@ function resolveCostReportUsd(entry: CostReportEntry, presentNames: Set<string>)
   const { name, fm } = entry;
   if (typeof fm.usd !== "number") return null;
 
+  // Aggregate rollups (`crew cost-slice --aggregate`) sum multiple source
+  // projects/sessions — counting one alongside the per-slice reports it
+  // subsumes double-counts every dollar. Slice-scoped reports only. The
+  // local parseFrontmatter keeps booleans as strings, so match both.
+  if (fm.aggregate_all === true || fm.aggregate_all === "true") return null;
+
   const sharedWith = typeof fm.shared_with === "string" ? fm.shared_with : null;
   if (!sharedWith) return fm.usd;
 
@@ -125,18 +144,39 @@ function resolveCostReportUsd(entry: CostReportEntry, presentNames: Set<string>)
   return fm.usd;
 }
 
+// One slice = one cost. The emitter can re-report the same slice many times
+// with a stale/wide window (dev-team#178 — observed: one slice reported 5x at
+// ~$3.2k minutes apart, making the poison cluster HALF the trajectory window
+// so even a median read ~$1.6k). Files iterate newest-first, so the first
+// report seen per slice key wins and older re-reports are dropped. Reports
+// with no identifiable slice key are never deduped.
+function sliceKeyOf(fm: Record<string, any>): string | null {
+  if (typeof fm.slice === "string" && fm.slice) return `slice:${fm.slice}`;
+  if (typeof fm.feature === "string" && typeof fm.run_title === "string" && fm.run_title) {
+    return `run:${fm.feature}|${fm.run_title}`;
+  }
+  return null;
+}
+
 // Load cost report USD values from the most recent cost reports. Returns
 // an array of USD values for cost trajectory calculation, deduped per
-// FEAT-204 (see resolveCostReportUsd for the dedup contract).
+// FEAT-204 (see resolveCostReportUsd) and per-slice (see sliceKeyOf).
 export async function loadCostReportUSDValues(repoPath: string, limit = 20): Promise<number[]> {
   const files = await listCostReportFiles(repoPath, limit);
   const loaded = await loadCostReportEntries(files);
   const presentNames = new Set(loaded.map((entry) => entry.name));
 
   const usdValues: number[] = [];
+  const seenSliceKeys = new Set<string>();
   for (const entry of loaded) {
     const usd = resolveCostReportUsd(entry, presentNames);
-    if (usd !== null) usdValues.push(usd);
+    if (usd === null) continue;
+    const key = sliceKeyOf(entry.fm);
+    if (key !== null) {
+      if (seenSliceKeys.has(key)) continue;
+      seenSliceKeys.add(key);
+    }
+    usdValues.push(usd);
   }
   return usdValues;
 }
@@ -257,6 +297,7 @@ function renderLoopTelemetry(
   iterationStatus: Record<string, any> | null,
   costTrajectory: {
     avgUSD: number | null;
+    medianUSD: number | null;
     count: number;
     lastCostAdvisorVerdict: string | null;
   },
@@ -270,11 +311,14 @@ function renderLoopTelemetry(
 
   out.push(`- Iteration count: ${iterCount} / ${iterCap}`);
 
-  if (costTrajectory.avgUSD === null) {
+  if (costTrajectory.avgUSD === null || costTrajectory.medianUSD === null) {
     out.push("- In-window cost trajectory: n/a");
   } else {
+    // "per cost-report" not "per iteration": one report = one slice-close
+    // `crew cost-slice` session scan (session-deduped per FEAT-204), NOT one
+    // loop iteration. Median is the headline — see median() for why.
     out.push(
-      `- In-window cost trajectory: $${costTrajectory.avgUSD.toFixed(3)} per iteration (${costTrajectory.count} reports)`
+      `- In-window cost trajectory: median $${costTrajectory.medianUSD.toFixed(3)} / mean $${costTrajectory.avgUSD.toFixed(3)} per cost-report (${costTrajectory.count} slice-close session scans)`
     );
   }
 
@@ -428,6 +472,7 @@ function buildSnapshotLines(
   const recentDecisions = decisions.slice(-5);
   const costTrajectory = {
     avgUSD: avg(costReportUSDValues),
+    medianUSD: median(costReportUSDValues),
     count: costReportUSDValues.length,
     lastCostAdvisorVerdict: null as string | null
   };

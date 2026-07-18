@@ -13,7 +13,12 @@ async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-async function writeCostReport(repo: string, sliceId: string, usdValue: number) {
+async function writeCostReport(
+  repo: string,
+  sliceId: string,
+  usdValue: number,
+  opts: { aggregate_all?: boolean } = {}
+) {
   const dir = path.join(repo, ".claude/artifacts/crew/cost");
   await fs.mkdir(dir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";
@@ -22,7 +27,7 @@ async function writeCostReport(repo: string, sliceId: string, usdValue: number) 
   const content = `---
 kind: cost-report
 slice: ${sliceId}
-usd: ${usdValue}
+usd: ${usdValue}${opts.aggregate_all ? "\naggregate_all: true" : ""}
 created_at: 2026-05-22T12:00:00Z
 ---
 
@@ -82,7 +87,7 @@ test("writeMemorySnapshot reports actual iteration count and cap when loop has r
   );
 });
 
-test("writeMemorySnapshot includes per-iteration avg USD when cost reports exist", async () => {
+test("writeMemorySnapshot includes per-cost-report median/mean USD when cost reports exist", async () => {
   const repo = await tmpRepo("al-snapshot-cost-reports-");
   // Create minimal backlog
   await addFeature(repo, { title: "Test" });
@@ -101,11 +106,55 @@ test("writeMemorySnapshot includes per-iteration avg USD when cost reports exist
   const snapshot = await writeMemorySnapshot(repo);
   const content = await fs.readFile(snapshot.artifactPath, "utf8");
 
-  // Average should be (10.5 + 15.0 + 20.5) / 3 = 15.333
+  // Median of (10.5, 15.0, 20.5) = 15.0; mean = 15.333
   assert.ok(
-    content.includes("$15.333 per iteration (3 reports)"),
-    "should report per-iteration average USD"
+    content.includes("median $15.000 / mean $15.333 per cost-report (3 slice-close session scans)"),
+    "should report per-cost-report median and mean USD"
   );
+});
+
+test("cost trajectory excludes aggregate_all rollup reports and survives wide-window outliers via median", async () => {
+  const repo = await tmpRepo("al-snapshot-cost-agg-");
+  await addFeature(repo, { title: "Test" });
+
+  await writeCostReport(repo, "SLICE-01", 10.0);
+  await writeCostReport(repo, "SLICE-02", 3200.0); // dev-team#178-style wide-window outlier
+  await writeCostReport(repo, "SLICE-03", 14.0);
+  // Aggregate rollup must not count at all (double-counts its sources).
+  await writeCostReport(repo, "SLICE-04", 999.0, { aggregate_all: true });
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  // 3 counted reports (aggregate excluded); median 14.0 unaffected by the outlier.
+  assert.ok(
+    content.includes(
+      "median $14.000 / mean $1074.667 per cost-report (3 slice-close session scans)"
+    ),
+    `aggregate excluded + median robust; got: ${content.match(/In-window cost trajectory:.*/)?.[0]}`
+  );
+});
+
+test("same-slice re-reports collapse to the newest report (dev-team#178 wide-window repeats)", async () => {
+  const repo = await tmpRepo("al-snapshot-cost-slicededup-");
+  await addFeature(repo, { title: "Test" });
+
+  // Same slice reported 3x (emitter re-scan bug); distinct sibling once.
+  await writeCostReport(repo, "SLICE-99", 3200.0);
+  await writeCostReport(repo, "SLICE-99", 3210.0);
+  await writeCostReport(repo, "SLICE-99", 3220.0);
+  await writeCostReport(repo, "SLICE-07", 12.0);
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  // 2 counted: newest SLICE-99 report + SLICE-07. Newest-first file order means
+  // one of the SLICE-99 values survives (same-second timestamps make which one
+  // ordering-dependent); assert the shape: exactly 2 scans, mean ≈ (32xx+12)/2.
+  const line = content.match(/In-window cost trajectory:.*/)?.[0] ?? "";
+  assert.ok(line.includes("(2 slice-close session scans)"), `expected 2 scans; got: ${line}`);
+  const mean = Number(line.match(/mean \$([\d.]+)/)?.[1]);
+  assert.ok(mean > 1600 && mean < 1620, `mean should be ~(3200..3220+12)/2; got: ${line}`);
 });
 
 test("writeMemorySnapshot snapshot remains valid with mixed empty and full state", async () => {
@@ -224,9 +273,9 @@ test("writeMemorySnapshot parses cost report USD values correctly", async () => 
   const snapshot = await writeMemorySnapshot(repo);
   const content = await fs.readFile(snapshot.artifactPath, "utf8");
 
-  // Average should be (5.75 + 10.25) / 2 = 8.0, formatted as 8.000
+  // Median = mean = (5.75 + 10.25) / 2 = 8.0, formatted as 8.000
   assert.ok(
-    content.includes("$8.000 per iteration (2 reports)"),
+    content.includes("median $8.000 / mean $8.000 per cost-report (2 slice-close session scans)"),
     "should correctly parse and average USD values"
   );
 });

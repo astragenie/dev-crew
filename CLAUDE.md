@@ -142,6 +142,13 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
    `<task-scoped>` order-block marker (FEAT-263 T1/T5, dispatch.mts +
    start-slice.mts) is balanced, non-nested, and that every FORBIDDEN/GATES/
    RETURN/ECHO order-block keyword stays confined inside a marked region.
+17. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config
+   drift guard (improvement plan 2026-07-18, W0.2): fails when
+   `.claude/loop.json` has memory enabled but the feedback shape lags the
+   current contract (e.g. `memory.feedback.creditLoop` absent — the exact
+   gap behind the 1.6% usefulness finding in runner-plugin#525). Memory
+   disabled/absent passes; an explicit `enabled: false` on a key passes
+   (choice, not drift).
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.

@@ -80,6 +80,7 @@ jobs:
         bun ./src/scripts/validate-snapshot-freshness.mts
         bun ./src/scripts/validate-org-refs.mts
         bun ./src/scripts/validate-marketplace-sync.mts
+        bun ./src/scripts/validate-memory-config.mts
         bun ./src/scripts/generate-metrics-band.mts --check
       bun-commands: |
         bunx tsc --project tsconfig.json --noEmit
