@@ -12,6 +12,43 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 (>= v0.57.0) for artifact writers — loop emits Crew
 `validation-result` artifacts through `crew write-validation-result`.
 
+<!-- demo-recording: pending W4.1 asciinema asset -->
+
+<!-- metrics-band:start -->
+_Dogfood metrics — generated 2026-07-18. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
+
+| Metric | Value |
+|---|---|
+| FEATs shipped (done) | 179 |
+| Slices closed, last 90 days | 139 |
+| Grade average, last 5 slice closes | 0.862 (n=135 total) |
+| median per slice-close session scan | $140.161 (mean $1524.561, +987.7% divergence) |
+| Halt badges documented | 15 |
+| CI gates enforced | 16 |
+
+Sources:
+- FEATs shipped / slices closed: `.claude/artifacts/loop/backlog/done/*.md` frontmatter (`completed_at`, `slices`).
+- Grade average: `.claude/artifacts/loop/grades/*.md` — composite of the last 5 grade files.
+- Cost scan: `.claude/artifacts/crew/cost/*-cost-report-*.md` `usd` field, last 20 reports (`loadCostReportUSDValues`).
+- Halt badges: `docs/halt-badges.md` registry (every per-badge `### ` section + wave-mode badges table).
+- CI gates: `CLAUDE.md` § "CI gates" numbered list.
+<!-- metrics-band:end -->
+
+## How this compares
+
+Positioning we can back with an artifact, not a slogan — every claim below
+either cites a file in this repo or a specific PR/issue. Compared against
+"generic agent platforms" as a category, not any named product.
+
+| Dimension | Loop (this repo) | Generic agent platforms |
+| --- | --- | --- |
+| Halt/stop enforcement | Documented halt badges (see metrics band above; `docs/halt-badges.md`), each with an explicit `Fires when` condition wired into either the walker's `stop-conditions.mts` snapshot or the close-time gate pre-flight, and fanned out as `halt_badge` / `halt_badge.resolved` webhook events — not just prose guidance. | Typically prose-only "best practices" or a single generic stop condition, with no cross-plugin fan-out contract to verify a badge actually fired. |
+| Prompt optimization | One fully auditable live promotion: GEPA judge trial `c948e52c`, `aiplugin-dev` 1.2.3→1.2.4 (CHANGELOG-traceable). Default candidate generation is synthetic string mutation — real LLM reflection only runs behind an explicit flag, and that distinction is documented rather than blurred. | Often marketed as "self-improving" or "reflective" with no public trial artifact a reader can open and verify. |
+| CI enforcement | CI gates enforced (see metrics band above; `CLAUDE.md` § "CI gates"), several traced directly to a production incident retro — e.g. phantom-agent dispatch (#371), stale pre-transfer owner refs (#474), worktree-hang quarantine (#355). | Gate counts, when published, are rarely tied to a named incident a reader can look up. |
+| Cost reporting | Median per slice-close session scan reported alongside the mean with a divergence flag, so a skewed average can't hide behind a single headline number (see metrics band above). | Cost claims are usually a single average, or omitted entirely. |
+
+_Comparison reflects publicly documented positioning of the category; capabilities change over time._
+
 ## Install
 
 These are three separate commands — paste one at a time into the Claude

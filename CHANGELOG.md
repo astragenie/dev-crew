@@ -27,6 +27,36 @@ shipped under the name `loop`.
   `qaGradeGate` halt-badge, registered in `docs/halt-badges.md` under a new
   "Close-time gate badges" section. Source:
   `src/scripts/lib/slice-linker/close-slice.mts::checkQaGradeGate`.
+- `src/scripts/generate-metrics-band.mts` — README "dogfood metrics" band
+  generator (W4.2, improvement plan
+  `docs/superpowers/plans/2026-07-18-improvement-plan-audit-wave.md`, audit
+  #525 §6 items 5+7). Renders a markdown block between
+  `<!-- metrics-band:start -->` / `<!-- metrics-band:end -->` markers in
+  README.md: done-FEAT count, slices closed in the last 90 days (backlog
+  `done/` frontmatter `completed_at` + `slices`), grade average over the last
+  5 grade files, median per-cost-report USD (imports the exported
+  `loadCostReportUSDValues` from `memory-snapshot.mts`, labeled exactly
+  "median per slice-close session scan" with a mean-divergence flag), halt
+  badge count (`docs/halt-badges.md` registry), and CI gate count
+  (`CLAUDE.md` § "CI gates" numbered list) — every number traces to an
+  on-disk artifact, none invented. Freshness checking is folded into the same
+  file via `--check` (no separate `validate-metrics-band.mts`) rather than
+  split into two files — mirrors `validate-snapshot-freshness.mts`'s
+  regenerate-and-diff approach, anchored to the band's own recorded
+  generated-date so a later calendar day never false-positives on pure date
+  rollover. Wired into CI's fast-gate validators list
+  (`.github/workflows/ci.yml`).
+- README.md: dogfood metrics band inserted after the intro (real numbers as
+  of 2026-07-18: 179 done FEATs, 139 slices closed in the last 90 days, 0.862
+  average grade, 15 halt badges, 16 CI gates), a demo-recording placeholder
+  comment (`<!-- demo-recording: pending W4.1 asciinema asset -->`, asset
+  itself is separate work per W4.1), and a "How this compares" honest
+  comparison table (us vs "generic agent platforms" as a category, no
+  competitor named negatively) covering enforcement-backed halt badges, the
+  one auditable GEPA prompt-optimization promotion (trial `c948e52c`,
+  `aiplugin-dev` 1.2.3→1.2.4), incident-traced CI gates, and measured-cost
+  honesty (median-with-mean-divergence instead of a single average) — ends
+  with an otta-style hedge footnote.
 
 ## [v0.76.0] — 2026-07-15 — owned agents wired to astramem via `astramem:using-memory` skill
 
