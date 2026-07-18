@@ -299,9 +299,6 @@ this repo. Plugin code stays in this repo
 push if the registry's pinned version drifts from `.claude-plugin/plugin.json`
 here.
 
-For independent/local install, this repo also ships its own
-`.claude-plugin/marketplace.json` as `astra`.
-
 ## Hard dependency on `crew`
 
 The phase-gate runner writes its validation artifact through

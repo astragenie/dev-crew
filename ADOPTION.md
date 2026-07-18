@@ -106,6 +106,14 @@ Edit `.claude/loop.json` and populate the repo-specific fields:
   `stack.aspireBoot`, `stack.healthchecks` — the phase-gate suite (each
   stage is a `{cmd, args, cwd?}` triple; set a stage to `null` to disable it)
 
+Optional: set `loop.qa_gate: "pre-build"` to enable the pre-build QA gate
+(independent test-plan authoring before the builder runs, plus a
+`test_confidence >= 0.80` close gate). Note the close-refusal enforcement
+has a deliberate 3-close warm-up on a fresh repo — the first 3 failing
+closes warn and surface a `qaGradeGate` halt badge without blocking, and
+only the 4th onward refuses the close (see `docs/halt-badges.md`). Don't
+mistake the warn-only window for the gate being inert.
+
 Then re-run install (omit `--preset` — it's read from the existing config)
 to regenerate `MASTER_PROMPT.md` from the updated config:
 

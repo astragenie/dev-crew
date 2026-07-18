@@ -34,7 +34,7 @@ Workflow:
    ```
 3. Read the returned JSON. If `status` is `PASS`, append the entry in
    `<backlogPath>/completed-slices.md` for the closing slice with a link to
-   the new phase-gate artifact, then `/runner:next-slice`.
+   the new phase-gate artifact, then `/runner:start` for the next slice.
 4. If `status` is `FAIL`, do NOT proceed to the next phase. Read the artifact
    under `<phaseGateArtifactDir>/` to see which stage failed and the
    stdout/stderr tail. Fix the failure, then re-run the gate.
