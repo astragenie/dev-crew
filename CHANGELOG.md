@@ -16,6 +16,17 @@ shipped under the name `loop`.
   unknown string, wrong type) resolves `"post-build"` — today's behavior,
   preserved as the back-compat default. No preset interaction (DEC-069).
   Ceremony wiring that consumes this reader is SLICE-3, a later wave.
+- `test_confidence` grade gate at slice close (FEAT-264 SLICE-5, AC-5,
+  #527). `runner:close --grade-yaml` now blocks (via the existing
+  `GATE_FAILED_AT_CLOSE` failures array, 3-close warm-up, and halt-badge
+  fan-out) when the incoming grade's `test_confidence` score is below
+  `0.80` — but only when the owning repo has opted into
+  `loop.qa_gate: "pre-build"`; `"off"` / absent (default `"post-build"`)
+  behave exactly as before. A missing `test_confidence` key is treated as
+  unknown, not failing (logs a warning instead of blocking). Adds the new
+  `qaGradeGate` halt-badge, registered in `docs/halt-badges.md` under a new
+  "Close-time gate badges" section. Source:
+  `src/scripts/lib/slice-linker/close-slice.mts::checkQaGradeGate`.
 
 ## [v0.76.0] — 2026-07-15 — owned agents wired to astramem via `astramem:using-memory` skill
 

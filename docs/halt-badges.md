@@ -353,6 +353,54 @@ This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` ret
 
 ---
 
+## Close-time gate badges
+
+Unlike the `snapshot.*` registry above, these badges are NOT produced by the
+`stop-conditions.mts` walker snapshot — they fan out directly from the
+single-shot `runner:close --grade-yaml` pre-flight
+(`assertCloseGatesSatisfied` in `src/scripts/lib/slice-linker/close-slice.mts`)
+at the moment a close is refused. Both share the same
+`GATE_FAILED_AT_CLOSE` error code, 3-close warm-up, and fan-out envelope
+mechanism described above; `qaGradeGate` fans out as an ADDITIONAL,
+more specific envelope alongside the generic `gateFailedAtClose` envelope
+whenever it is the qa-grade check specifically that failed.
+
+### `qaGradeGate`
+
+**Shape:**
+
+```ts
+{
+  sliceId: string;
+  testConfidence: number;   // the incoming --grade-yaml's test_confidence score that tripped the gate
+  threshold: number;        // 0.80 (TEST_CONFIDENCE_CLOSE_GATE_THRESHOLD)
+  enforced: boolean;        // false during the shared 3-close close-refusal warm-up, true after
+  ts: string;               // ISO-8601
+}
+```
+
+**Meaning:** the incoming `--grade-yaml`'s `test_confidence` dimension scored
+below the configured bar while the owning repo has opted into
+`loop.qa_gate: "pre-build"` (FEAT-264) — independent test authority is
+treated as a close-blocking quality gate, not just an FYI grade dimension.
+
+**Fires when:** `resolveQaGateMode(config) === "pre-build"` (`src/scripts/lib/qa-gate-config.mts`)
+AND the `--grade-yaml` file's `test_confidence` score is present and
+`< 0.80`. Config-scoped: stays silent when `qa_gate` is `"off"` or absent
+(default resolves to `"post-build"`), per AC-2/AC-6 back-compat. A missing
+`test_confidence` key does NOT fire — absent is not treated as failing, and
+only logs a `[closeSlice] qa-grade-gate: ... missing` warning instead.
+Default threshold: `0.80`.
+
+**Suggested operator action:** raise `test_confidence` (more test coverage /
+a stronger test-plan) before re-closing, or `--force-close` (audited —
+records `force_closed_reason` on the slice + a `slice_force_closed` event,
+same as the generic `gateFailedAtClose` override path).
+
+**Origin:** FEAT-264 / SLICE-5 (#527, AC-5). Source: `src/scripts/lib/slice-linker/close-slice.mts::checkQaGradeGate` (invoked from `assertCloseGatesSatisfied`). Config gate: `src/scripts/lib/qa-gate-config.mts::resolveQaGateMode`.
+
+---
+
 ## Wave-mode badges
 
 | Badge | Severity | Description |

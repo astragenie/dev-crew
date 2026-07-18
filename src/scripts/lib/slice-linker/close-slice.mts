@@ -31,6 +31,8 @@ import { resolveConfig } from "../config-resolver.mjs";
 import { findFeatureById } from "../backlog-writer.mjs";
 import { bust as bustCache } from "../cache.mjs";
 import { isFeatureEnabled } from "../features-service.mjs";
+import { resolveQaGateMode } from "../qa-gate-config.mjs";
+import { parseScoresFromBody } from "../grade-parser.mjs";
 
 // ---------------------------------------------------------------------------
 // Pre-flight: verification-before-completion (FEAT-277 / AC-9)
@@ -172,7 +174,13 @@ export async function closeSlice(
   // completeSlice); warn-mode for the first 3 gate-evaluated closes after
   // landing (persisted counter) per the plan's rollout.
   if (gradeYamlPath && !opts.forceClose && isFeatureEnabled("close-refusal", config)) {
-    await assertCloseGatesSatisfied(repoPath, sliceId, config, opts.skipValidationCheck ?? null);
+    await assertCloseGatesSatisfied(
+      repoPath,
+      sliceId,
+      config,
+      opts.skipValidationCheck ?? null,
+      gradeYamlPath
+    );
   }
 
   const complete = await completeSlice(repoPath, sliceId, {
@@ -289,6 +297,71 @@ async function assertAutonomousSafe(
 const WARMUP_STATE_REL = ".claude/state/loop/close-refusal-state.json";
 const WARMUP_CLOSES = 3;
 
+// FEAT-264 SLICE-5 (AC-5): a test_confidence grade score below this value
+// blocks runner:close via GATE_FAILED_AT_CLOSE — but only when the owning
+// repo has opted in via `loop.qa_gate: "pre-build"` (config-scoped; see
+// qa-gate-config.mts). Matches the same 0.80 bar the FEAT text and the
+// existing grade-trend halt-badge (loop.gradeTrendThreshold) both use.
+const TEST_CONFIDENCE_CLOSE_GATE_THRESHOLD = 0.8;
+
+// Extracts the `test_confidence` score from a raw --grade-yaml file's
+// content. The gate check runs BEFORE completeSlice/normalizeGradeYaml, so
+// the file may be in either shape normalizeGradeYaml understands (see
+// grade-yaml-normalizer.mjs doc header): a populated `## Scores` markdown
+// body (checked first), or a pure-YAML `scores:` frontmatter map (fallback).
+// Returns null when the key is absent from both shapes — callers must treat
+// that as "unknown", not "failing" (architect C.4 / this slice's AC-5).
+export function extractTestConfidenceFromGradeYaml(content: string): number | null {
+  const { frontmatter, body } = parseFrontmatter(content);
+  const bodyScores = parseScoresFromBody(body);
+  if (typeof bodyScores.test_confidence === "number") return bodyScores.test_confidence;
+
+  const fmScores = frontmatter?.scores;
+  if (fmScores && typeof fmScores === "object" && !Array.isArray(fmScores)) {
+    const v = (fmScores as Record<string, unknown>).test_confidence;
+    if (typeof v === "number") return v;
+  }
+  return null;
+}
+
+// FEAT-264 SLICE-5 (AC-5): config-scoped test_confidence close gate. Reads
+// the INCOMING --grade-yaml file directly (this check runs before
+// completeSlice moves/normalizes it — architect C.4) and returns a failure
+// descriptor only when `loop.qa_gate` is `"pre-build"` AND test_confidence
+// is present and below TEST_CONFIDENCE_CLOSE_GATE_THRESHOLD. A missing
+// test_confidence key is NOT treated as a failure (absent ≠ failing) — it
+// only logs a warning, so an ungraded dimension never silently blocks close.
+export async function checkQaGradeGate(
+  gradeYamlPath: string | null,
+  config: Record<string, any> | null
+): Promise<{ failure: string; testConfidence: number } | null> {
+  if (!gradeYamlPath || resolveQaGateMode(config) !== "pre-build") return null;
+
+  let rawGradeYaml: string;
+  try {
+    rawGradeYaml = await fs.readFile(gradeYamlPath, "utf8");
+  } catch {
+    return null; // unreadable — nothing to gate on, existing pre-flights already cover file presence
+  }
+
+  const testConfidence = extractTestConfidenceFromGradeYaml(rawGradeYaml);
+  if (testConfidence === null) {
+    console.warn(
+      "[closeSlice] qa-grade-gate: test_confidence missing from --grade-yaml; " +
+        "not blocking close (absent is not treated as failing, qa_gate: pre-build)."
+    );
+    return null;
+  }
+  if (testConfidence >= TEST_CONFIDENCE_CLOSE_GATE_THRESHOLD) return null;
+
+  return {
+    testConfidence,
+    failure:
+      `qa-grade-gate: test_confidence ${testConfidence} < ${TEST_CONFIDENCE_CLOSE_GATE_THRESHOLD} ` +
+      "(qa_gate: pre-build)"
+  };
+}
+
 // Reads + increments the persisted gate-evaluated-close counter. Returns the
 // count BEFORE this close (0-based): counts 0..2 are the warn-mode warm-up.
 async function bumpCloseRefusalCounter(repoPath: string): Promise<number> {
@@ -322,7 +395,8 @@ async function assertCloseGatesSatisfied(
   repoPath: string,
   sliceId: string,
   config: Record<string, any> | null,
-  skipValidationCheck: string | null
+  skipValidationCheck: string | null,
+  gradeYamlPath: string | null = null
 ): Promise<void> {
   const slicesRoot = resolveSlicesRoot(repoPath, config);
   const slicePath = await locateSliceFile(slicesRoot, sliceId);
@@ -343,9 +417,14 @@ async function assertCloseGatesSatisfied(
   const failures: string[] = [];
   if (!reviewGate.satisfied) failures.push(`review-gate: ${reviewGate.reason}`);
   if (!validationGate.satisfied) failures.push(`validation-gate: ${validationGate.reason}`);
+
+  const qaGradeGate = await checkQaGradeGate(gradeYamlPath, config);
+  if (qaGradeGate) failures.push(qaGradeGate.failure);
+
   if (failures.length === 0) return;
 
   const priorCloses = await bumpCloseRefusalCounter(repoPath);
+  const enforced = priorCloses >= WARMUP_CLOSES;
 
   try {
     const { fanoutEnvelope } = await import("../webhook-fanout.mjs");
@@ -353,9 +432,19 @@ async function assertCloseGatesSatisfied(
       kind: "gateFailedAtClose",
       sliceId,
       failures,
-      enforced: priorCloses >= WARMUP_CLOSES,
+      enforced,
       ts: new Date().toISOString()
     });
+    if (qaGradeGate) {
+      await fanoutEnvelope(repoPath, "halt-badge", {
+        kind: "qaGradeGate",
+        sliceId,
+        testConfidence: qaGradeGate.testConfidence,
+        threshold: TEST_CONFIDENCE_CLOSE_GATE_THRESHOLD,
+        enforced,
+        ts: new Date().toISOString()
+      });
+    }
   } catch {
     // fan-out optional — silent
   }
