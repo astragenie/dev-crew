@@ -1,5 +1,5 @@
 ---
-id: FEAT-263
+id: FEAT-264
 status: triaged
 priority: P1
 category: methodology
@@ -41,7 +41,11 @@ triage_notes: "P1 (impact 0.75 >= 0.7 AND alignment 0.8 >= 0.6, computeComposite
 github_issue: 527
 github_url: https://github.com/astragenie/runner-plugin/issues/527
 ---
-# FEAT-263: pre-build QA gate — independent test authority before builder dispatch
+# FEAT-264: pre-build QA gate — independent test authority before builder dispatch
+
+> Renumbered from FEAT-263 on 2026-07-18: the id was already consumed by the shipped
+> dispatch-marker feature (`done/FEAT-263.md`, cited in CLAUDE.md as FEAT-263 T1/T5/T6).
+> Collision class tracked by DEC-079. GitHub mirror: issue #527.
 
 ## Problem
 
@@ -95,7 +99,7 @@ d) **Grade gate:** testability dimension < 0.80 fails the slice (currently
   `.claude/loop.json` has no `qa_gate` key (the current state confirmed in
   this repo and, per the kb audit, all 23 adopter repos), When a slice
   starts via `runner:start`/the orchestration path, Then ceremony behavior
-  is unchanged from pre-FEAT-263 behavior — no pre-build qa-expert dispatch,
+  is unchanged from pre-FEAT-264 behavior — no pre-build qa-expert dispatch,
   no test-plan artifact required — evidenced by a regression test asserting
   slice-start ceremony output is identical with and without this FEAT's code
   when `qa_gate` is absent.
