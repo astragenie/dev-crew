@@ -157,7 +157,7 @@ A prompt-pack, not a memory system: 95 files of markdown skills + an Obsidian-st
 | Evidence of adoption | 1.6% usefulness where measured (rollout gap) | self-reported "120+ braindumps" (unverified) | neither proven |
 | Positioning & packaging | none | strong README, marketplace listings, lineage branding | COG |
 
-Verdict: astramem is the better system; COG is the better *product package* and carries 4–5 directly portable disciplines (see steal list #6, #7, #9).
+Verdict: astramem is the better system; COG is the better *product package*. Its portable ideas are discipline patterns (hygiene sweep, mutation post-condition, Compiled-Truth/Timeline), not features — evaluated and excluded from the adoption list per operator review (2026-07-18): prompt patterns we would rebuild from scratch, with only the hygiene sweep carrying clear product impact, revisitable if memory-drift pain grows.
 
 ### crew + loop + GEPA vs otta
 
@@ -174,7 +174,7 @@ Verdict: otta at 3.5 weeks old built the storefront we haven't built in 3.5 mont
 
 ---
 
-## 6. Prioritized adoption list (top 10)
+## 6. Prioritized adoption list (top 7 — all from otta)
 
 | # | Item | Source (evidence) | Verdict | Fit | Lands in | Effort | Impact | Risk |
 |---|---|---|---|---|---|---|---|---|
@@ -183,15 +183,13 @@ Verdict: otta at 3.5 weeks old built the storefront we haven't built in 3.5 mont
 | 3 | **Install wizard UX: readiness score + throwaway-dir live demo + write-summary confirmation** | otta-plugin@10756ef5:commands/setup.md:21-346 (observed live too) | Adapt | `/runner:install` and `/crew:init` write many files with no preview and no "it works" moment | runner-plugin + dev-team | M | High (first-impression conversion) | Low |
 | 4 | **Docs truth pass + inline failure-mode install copy** — fix ADOPTION.md, README test/CLI sections, skill counts; add otta-style "these are three separate commands" warnings at point of failure | otta.build live (2026-07-18, otta-install.png); our defects: ADOPTION.md:1-161, dev-team README.md:40/313 | Copy the pattern | Our onboarding docs actively fail strangers today | both repos | S | High | None |
 | 5 | **Dogfood metrics band as social proof** — publish our own 90-day delivery record (grades, slices closed, halt-badge saves, DORA when watcher lands) | otta.build landing (otta-landing.png): "457 merged PRs · 7 min median PR cycle" | Adapt | We already collect richer telemetry than otta shows; DORA two-track plan already approved (2026-07-07) | runner-plugin README + future landing | M | High | Med — numbers must survive the §4.2 cost-unit fix first |
-| 6 | **Memory-hygiene trust sweep** — scheduled skill: re-verify environment-dependent memory claims with cheap checks, stamp `last_verified`/confidence, propose (never auto-apply) archival, report drift trend | cog-second-brain@dfbf9e9d:.claude/skills/memory-hygiene/SKILL.md:32-84 | Adapt | astramem has consolidation but no re-verification-against-live-environment pass; directly complements usefulness ranking | astramem-local (+ skill in dev-team) | M | Med-High | Low — propose-only |
-| 7 | **Mutation post-condition rule** — any state-mutating operation re-observes the artifact before reporting success | cog-second-brain@dfbf9e9d:CLAUDE.md:110-119 | Copy | Generalizes our verification-before-completion skill to every write path; cheap constitution addition | dev-team constitution/skills | S | Med | None |
-| 8 | **Animated pipeline demo asset** — scripted terminal showing a real slice run with live cost/latency badge; embed in README (GIF) now, landing page later | otta.build hero (otta-demo.png): `$0.01 · 3s · LIVE` | Adapt | Our zero-visuals gap; wave/swarm runs are genuinely more impressive than otta's fake demo — we can record a real one | runner-plugin + dev-team READMEs | M | High | Low |
-| 9 | **Compiled Truth + append-only Timeline entity pattern** — current-best-understanding layer updated in place, history layer never rewritten; plus tiered enrichment (1 mention→stub, 8+→full) | cog-second-brain@dfbf9e9d:05-knowledge/people/README.md:19-49 | Adapt | Candidate shape for astramem entity records; tiering informs remember/promote heuristics (don't over-invest in once-seen facts) | astramem-local | M | Med | Med — schema work |
-| 10 | **Honest comparison table with hedge footnote + README-as-docs consolidation** | otta.build landing ("Comparison reflects publicly documented positioning…"); otta README structure | Adapt | We have real differentiation to state (real GEPA vs claimed; 14 halt badges vs none) and no page stating it | runner-plugin README/landing | S-M | Med | Low — keep the hedge, avoid takedown tone |
+| 6 | **Animated pipeline demo asset** — scripted terminal showing a real slice run with live cost/latency badge; embed in README (GIF) now, landing page later | otta.build hero (otta-demo.png): `$0.01 · 3s · LIVE` | Adapt | Our zero-visuals gap; wave/swarm runs are genuinely more impressive than otta's fake demo — we can record a real one | runner-plugin + dev-team READMEs | M | High | Low |
+| 7 | **Honest comparison table with hedge footnote + README-as-docs consolidation** | otta.build landing ("Comparison reflects publicly documented positioning…"); otta README structure | Adapt | We have real differentiation to state (real GEPA vs claimed; 14 halt badges vs none) and no page stating it | runner-plugin README/landing | S-M | Med | Low — keep the hedge, avoid takedown tone |
 
 **Explicitly rejected from stealing:**
 - **Waitlist-gating everything (otta)** — their weakest conversion move; our plugin is installable today, keep it self-serve.
-- **COG's grep-as-recall architecture** — regression vs astramem; portability is the steal-worthy part, not the retrieval model.
+- **COG's grep-as-recall architecture** — regression vs astramem; portability is the interesting part, not the retrieval model.
+- **COG discipline patterns (memory-hygiene sweep, mutation post-condition rule, Compiled-Truth/Timeline entity pattern)** — dropped per operator review 2026-07-18: prompt patterns, not features; would be built from scratch anyway. Hygiene sweep is the only one with clear product impact — revisit if memory-drift pain grows.
 - **otta's claim-first marketing ("GEPA flywheel" with no code)** — the single clearest lesson in this audit is to *never* let our copy outrun our defaults; we already have the inverse problem and should fix positioning by shipping honest numbers, not by matching their vapor.
 
 ---
@@ -233,15 +231,6 @@ Verdict: otta at 3.5 weeks old built the storefront we haven't built in 3.5 mont
 - **AC:** README shows a real recorded run (asset checked in or linked); metrics band regenerates from artifacts via script (CI-checked freshness like the snapshot); every number in the band traces to an artifact.
 - **Exclusions:** paid site, pricing page, hosted anything. **Dependency:** resolve the cost-unit ambiguity (§4.2) before publishing any cost figure.
 - **Evidence:** otta.build landing (otta-landing.png, otta-demo.png); runner researcher marketing findings.
-
-### FEAT draft E — astramem memory-hygiene sweep (COG port)
-- **Target repo:** astramem-local (+ dev-team skill)
-- **Problem:** No periodic re-verification of environment-dependent memory claims; drifted memories (dead paths, renamed flags, stale versions) stay confidently ranked until a human notices — this audit's own recall instructions carry a "verify it still exists" caveat precisely because of this gap.
-- **Value:** Confidence/`last_verified` metadata reflects the live environment; recall quality rises without new capture work; complements (not replaces) usefulness ranking.
-- **Scope:** Scheduled sweep that classifies memories as environment-dependent vs judgment, re-verifies the former via cheap checks (paths, URLs, ids), stamps `last_verified` + adjusted confidence, and *proposes* archival for drifted entries through the existing consolidation-proposal queue (propose-only, reversible, consistent with ADR-004).
-- **AC:** Given a memory citing a deleted file path, When the sweep runs, Then a downgrade/archival proposal appears in `list_consolidation_proposals` with the failed check as evidence, and nothing is auto-deleted. Sweep report shows drift-trend delta vs previous run.
-- **Exclusions:** auto-archival; judgment/preference memory scoring.
-- **Evidence:** cog-second-brain@dfbf9e9d:.claude/skills/memory-hygiene/SKILL.md:32-84; astramem researcher weakness #5.
 
 ---
 
