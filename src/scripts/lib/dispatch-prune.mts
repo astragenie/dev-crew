@@ -7,6 +7,16 @@
 // In-flight guard: a runId is considered open (and therefore skipped) when
 // `summary.md` is absent OR `trace.jsonl` was modified within the last 5min.
 //
+// Age override (#531): a run that dies before `dispatch finalize` never gets
+// a summary.md, so the guard above would otherwise classify it as in-flight
+// forever — unreapable by this exact tool, even when its worktree is long
+// gone. A run older than `IN_FLIGHT_AGE_OVERRIDE_MULTIPLIER` x the prune
+// threshold (default 3x, ~21d at the 7d default) is therefore treated as
+// stale even without summary.md, UNLESS trace.jsonl shows genuinely recent
+// activity (modified within the 5min IN_FLIGHT_WINDOW_MS) — a 5-minute
+// in-flight window and a 21-day-old "open" run cannot both be true, so if
+// the trace really is that fresh the run is not dead, override or no.
+//
 // Age computation: extracted from the runId string when it parses as an ISO
 // date prefix (e.g. `2026-07-01T...`); falls back to directory mtime.
 
@@ -44,6 +54,10 @@ export interface PruneStaleOptions {
 
 const IN_FLIGHT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
+// A run missing summary.md is force-reaped once it is this many multiples of
+// `olderThanDays` old (see "Age override" note above).
+const IN_FLIGHT_AGE_OVERRIDE_MULTIPLIER = 3;
+
 function dispatchRoot(repoRoot: string): string {
   return path.join(repoRoot, ".claude", "artifacts", "loop", "dispatch");
 }
@@ -77,26 +91,53 @@ function runIdAgeDays(runId: string, dirPath: string, nowMs: number): number {
   }
 }
 
+interface InFlightVerdict {
+  inFlight: boolean;
+  /** True when the summary-less run was force-reaped by the age override. */
+  overrideFired: boolean;
+}
+
 /**
  * Determine if a runId directory represents an in-flight (open) run.
  *
  * A run is open when:
  *   - summary.md is missing, OR
  *   - trace.jsonl was modified within the last 5 minutes.
+ *
+ * Age override (#531): when summary.md is missing AND `ageDays` has reached
+ * `overrideAfterDays`, the run is treated as stale instead of perpetually
+ * open — UNLESS trace.jsonl was genuinely modified within the last 5 minutes,
+ * in which case something is still actively writing to it and the run is
+ * left alone regardless of its nominal age.
  */
-async function isInFlight(runDir: string, nowMs: number): Promise<boolean> {
+async function isInFlight(
+  runDir: string,
+  nowMs: number,
+  ageDays: number,
+  overrideAfterDays: number
+): Promise<InFlightVerdict> {
   const summaryPath = path.join(runDir, "summary.md");
-  if (!existsSync(summaryPath)) return true;
+  const missingSummary = !existsSync(summaryPath);
 
   const tracePath = path.join(runDir, "trace.jsonl");
-  if (!existsSync(tracePath)) return false;
-
-  try {
-    const s = await fs.stat(tracePath);
-    return nowMs - s.mtimeMs < IN_FLIGHT_WINDOW_MS;
-  } catch {
-    return false;
+  let traceRecentlyModified = false;
+  if (existsSync(tracePath)) {
+    try {
+      const s = await fs.stat(tracePath);
+      traceRecentlyModified = nowMs - s.mtimeMs < IN_FLIGHT_WINDOW_MS;
+    } catch {
+      traceRecentlyModified = false;
+    }
   }
+
+  if (!missingSummary) {
+    return { inFlight: traceRecentlyModified, overrideFired: false };
+  }
+
+  if (ageDays >= overrideAfterDays && !traceRecentlyModified) {
+    return { inFlight: false, overrideFired: true };
+  }
+  return { inFlight: true, overrideFired: false };
 }
 
 /**
@@ -154,6 +195,7 @@ export async function listStaleRunIds(
   }
 
   const nowMs = Date.now();
+  const overrideAfterDays = olderThanDays * IN_FLIGHT_AGE_OVERRIDE_MULTIPLIER;
   const results: StaleRunEntry[] = [];
 
   for (const name of entries) {
@@ -170,8 +212,15 @@ export async function listStaleRunIds(
     const ageDays = runIdAgeDays(name, runDir, nowMs);
     if (ageDays < olderThanDays) continue;
 
-    const open = await isInFlight(runDir, nowMs);
-    if (open) continue;
+    const { inFlight, overrideFired } = await isInFlight(runDir, nowMs, ageDays, overrideAfterDays);
+    if (overrideFired) {
+      console.warn(
+        `[dispatch-prune] age-override forced reap: ${name} has no summary.md but is ` +
+          `${ageDays.toFixed(1)}d old (>= ${overrideAfterDays}d override threshold) — ` +
+          "treating as stale, not in-flight"
+      );
+    }
+    if (inFlight) continue;
 
     const { worktreePaths, branches } = readWorktreesFromLog(runDir);
     results.push({

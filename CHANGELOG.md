@@ -6,6 +6,19 @@ shipped under the name `loop`.
 
 ## Unreleased
 
+### Fixed
+
+- `dispatch prune` age-override for summary-less runs (#531): a run that
+  dies before `dispatch finalize` never gets a `summary.md`, so the
+  in-flight guard (`isInFlight` in `src/scripts/lib/dispatch-prune.mts`)
+  classified it as open forever — unreapable by the exact tool the loop
+  snapshot's own hint recommends. A summary-less run now force-reaps once
+  it is 3x the prune threshold old (~21d at the 7d default), unless
+  `trace.jsonl` shows genuinely recent activity (<5min), in which case it
+  is left alone. A distinct `[dispatch-prune] age-override forced reap: …`
+  log line fires when the override kicks in so operators can see forced
+  reaps.
+
 ### Added
 
 - `src/scripts/lib/qa-gate-config.mts` — `resolveQaGateMode(config)` reader

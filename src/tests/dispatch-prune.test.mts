@@ -166,7 +166,8 @@ test("listStaleRunIds: skips in-flight runId (trace.jsonl modified <5min ago)", 
   const dispDir = path.join(repo, ".claude", "artifacts", "loop", "dispatch");
   fs.mkdirSync(dispDir, { recursive: true });
 
-  // Old runId but trace.jsonl touched just now — should be skipped
+  // Old runId (well past the 3x age-override threshold too) but trace.jsonl
+  // touched just now — genuinely recent activity beats the age override.
   const oldRunId = "2026-06-01T08-00-00-000Z-eee555";
   const runDir = makeRunDir(dispDir, oldRunId, {
     hasSummary: false, // missing summary = open
@@ -176,6 +177,74 @@ test("listStaleRunIds: skips in-flight runId (trace.jsonl modified <5min ago)", 
 
   const stale = await listStaleRunIds(repo, 7);
   assert.equal(stale.length, 0, "in-flight runId not included in stale list");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #531 (a): summary-less run YOUNGER than the 3x age-override threshold is
+// still treated as in-flight (kept) — the override must not fire early.
+// ─────────────────────────────────────────────────────────────────────────────
+test("listStaleRunIds: summary-less run younger than 3x override threshold is kept", async () => {
+  const repo = tmpDir();
+  const dispDir = path.join(repo, ".claude", "artifacts", "loop", "dispatch");
+  fs.mkdirSync(dispDir, { recursive: true });
+
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+  // 10 days old: past the 7d prune threshold, but well short of the 21d
+  // (3x) age-override threshold. No summary.md, no trace.jsonl at all.
+  const runId = new Date(Date.now() - 10 * MS_PER_DAY).toISOString().replace(/[:.]/g, "-");
+  const runDir = makeRunDir(dispDir, runId, { hasSummary: false });
+  assert.ok(fs.existsSync(runDir), "runDir exists");
+
+  const stale = await listStaleRunIds(repo, 7);
+  assert.equal(
+    stale.length,
+    0,
+    "summary-less run under the override threshold stays in-flight, not reaped"
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #531 (b): summary-less run OLDER than the 3x age-override threshold is
+// force-reaped — this is the bug from the issue (runs that die pre-finalize
+// were unreapable forever). A distinct console.warn line fires when the
+// override kicks in.
+// ─────────────────────────────────────────────────────────────────────────────
+test("listStaleRunIds + pruneStale: summary-less run older than 3x override threshold is reaped", async () => {
+  const repo = tmpDir();
+  const dispDir = path.join(repo, ".claude", "artifacts", "loop", "dispatch");
+  fs.mkdirSync(dispDir, { recursive: true });
+
+  // 25 days old: past both the 7d prune threshold and the 21d (3x) override
+  // threshold. No summary.md, no trace.jsonl — a run that died pre-finalize.
+  const staleRunId = "2026-06-01T08-00-00-000Z-fff666";
+  const runDir = makeRunDir(dispDir, staleRunId, { hasSummary: false });
+  assert.ok(fs.existsSync(runDir), "runDir exists before prune");
+
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map(String).join(" "));
+  };
+
+  let stale: Awaited<ReturnType<typeof listStaleRunIds>>;
+  try {
+    stale = await listStaleRunIds(repo, 7);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(stale.length, 1, "age-override forces the summary-less run into the stale list");
+  assert.equal(stale[0].runId, staleRunId);
+  assert.ok(
+    warnings.some((w) => w.includes("age-override") && w.includes(staleRunId)),
+    "a distinct age-override log line was emitted"
+  );
+
+  const result = await pruneStale(repo, { olderThanDays: 7, dryRun: false });
+  assert.equal(result.pruned, 1, "1 runId pruned via age override");
+  assert.equal(result.failed, 0);
+  assert.ok(!fs.existsSync(runDir), "runId dir removed despite missing summary.md");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
