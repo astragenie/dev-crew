@@ -1,0 +1,10 @@
+{
+  "features": {
+    "gate-guard": {
+      "enabled": true
+    },
+    "artifact-lock": {
+      "enabled": true
+    }
+  }
+}
