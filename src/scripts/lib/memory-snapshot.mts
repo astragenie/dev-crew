@@ -11,6 +11,10 @@ import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
 import type { DispatchTreeSnapshot } from "./dispatch-tree-snapshot.mjs";
 import { summarizePauseRate, type PauseRateSummary } from "./pause-telemetry.mjs";
 import { fetchMemoryUsefulness, type MemoryUsefulnessSummary } from "./memory-usefulness.mjs";
+import {
+  readHookEnforcementSummary,
+  type HookEnforcementSummary
+} from "./hook-enforcement-snapshot.mjs";
 
 // FEAT-212: window size for the "Pause rate (last N dispatches)" bullet in
 // the Loop telemetry section. Mirrors the cost-trajectory default window
@@ -343,6 +347,24 @@ function renderLoopTelemetry(
   return out;
 }
 
+// FEAT-265: renders the dev-team gate-guard/artifact-lock hook enforcement
+// counts (dev-team#257 AC leftover). Omitted entirely when
+// readHookEnforcementSummary returns null (events.jsonl absent, unreadable,
+// or has zero recognized gate-guard:*/artifact-lock:* lines) -- mirrors the
+// renderInFlight / renderDispatchLifecycle optional-section pattern above.
+export function renderHookEnforcement(summary: HookEnforcementSummary | null): string[] {
+  if (!summary) return [];
+  const { gateGuard, artifactLock, lastEventAt } = summary;
+  return [
+    "## Hook enforcement",
+    "",
+    `- gate-guard: warn=${gateGuard.warn} block=${gateGuard.block} other=${gateGuard.other}`,
+    `- artifact-lock: warn=${artifactLock.warn} block=${artifactLock.block} other=${artifactLock.other}`,
+    `- Last event: ${lastEventAt ?? "n/a"}`,
+    ""
+  ];
+}
+
 function renderUsageFooter() {
   return [
     "## How to use this file",
@@ -392,6 +414,7 @@ async function collectSnapshotData(
   dispatchTree: DispatchTreeSnapshot;
   pauseSummary: PauseRateSummary;
   memoryUsefulness: MemoryUsefulnessSummary | null;
+  hookEnforcement: HookEnforcementSummary | null;
 }> {
   const { readDispatchTreeSnapshot } = await import("./dispatch-tree-snapshot.mjs");
   const [
@@ -403,7 +426,8 @@ async function collectSnapshotData(
     costReportUSDValues,
     dispatchTree,
     pauseSummary,
-    memoryUsefulness
+    memoryUsefulness,
+    hookEnforcement
   ] = await Promise.all([
     listBacklog(repoPath, { config }),
     listSpecs(repoPath, { config }),
@@ -417,7 +441,8 @@ async function collectSnapshotData(
       oldestRunAgeDays: null
     })),
     summarizePauseRate(repoPath, PAUSE_RATE_WINDOW),
-    fetchMemoryUsefulness(repoPath, config)
+    fetchMemoryUsefulness(repoPath, config),
+    readHookEnforcementSummary(repoPath)
   ]);
   return {
     backlog,
@@ -428,7 +453,8 @@ async function collectSnapshotData(
     costReportUSDValues,
     dispatchTree,
     pauseSummary,
-    memoryUsefulness
+    memoryUsefulness,
+    hookEnforcement
   };
 }
 
@@ -446,7 +472,8 @@ function buildSnapshotLines(
     costReportUSDValues,
     dispatchTree,
     pauseSummary,
-    memoryUsefulness
+    memoryUsefulness,
+    hookEnforcement
   } = data;
   const inFlight = filterBacklog(backlog, { status: "in-progress" });
   // Exclude deferred items from "next to slice" — mirrors the auto walker's
@@ -485,6 +512,7 @@ function buildSnapshotLines(
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
     ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary, memoryUsefulness),
+    ...renderHookEnforcement(hookEnforcement),
     ...renderDispatchLifecycle(dispatchTree, pruneStaleAfterDays),
     ...renderUsageFooter()
   ];
@@ -521,7 +549,12 @@ export async function writeMemorySnapshot(
       decisions: data.decisions.length,
       costReports: data.costReportUSDValues.length
     },
-    dispatchTree: data.dispatchTree
+    dispatchTree: data.dispatchTree,
+    // FEAT-265: structured hook-enforcement summary alongside counts/
+    // dispatchTree so dashboards can read gate-guard/artifact-lock warn vs
+    // block volume without parsing the rendered markdown. Same shape as the
+    // `## Hook enforcement` section above; null when no events recorded.
+    hookEnforcement: data.hookEnforcement
   };
 }
 

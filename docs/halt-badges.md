@@ -440,6 +440,66 @@ Consumed by: `loop-snapshot.md` Wave telemetry block; dashboards reading `snapsh
 
 ---
 
+## Hook enforcement telemetry
+
+Unlike the `snapshot.*` registry above, this is a **counts-only, non-halting**
+signal — it never sets `shouldStop` and is not wired into the
+`stop-conditions.mts` webhook fanout (`HALT_BADGE_FIELDS`), since a cumulative
+counter has no natural open/resolved transition for that fanout's semantics.
+It surfaces dev-team's SubagentStop `gate-guard` hook and PreToolUse
+`artifact-lock` hook enforcement activity (dev-team#257, landed in dev-team
+PR #262) in the loop snapshot so operators can see warn-vs-block volume
+without grepping `.claude/logs/events.jsonl` directly. Modeled on the
+Wave-mode badges precedent above (informational counters, not fire/resolve
+badges).
+
+**Source:** dev-team hooks `hooks/subagent-gate-guard.ts` (SubagentStop) and
+`hooks/pre-tool-use-artifact-lock.ts` (PreToolUse Write|Edit) —
+`hooks/lib/subagent-gate-guard.ts::logEvent` and
+`hooks/lib/pre-tool-use-artifact-lock.ts::logEvent` each append one JSON line
+per enforcement decision to `<repo-cwd>/.claude/logs/events.jsonl`:
+`{ ts, event, session_id, detail }`, with `event` one of
+`gate-guard:{warned-red-gate,blocked-red-gate,no-message,internal-error}` or
+`artifact-lock:{warned,denied,internal-error}`.
+
+**Reader:** `src/scripts/lib/hook-enforcement-snapshot.mts::readHookEnforcementSummary`
+— tail-safe: missing `events.jsonl`, or a file with zero recognized
+`gate-guard:*`/`artifact-lock:*` lines, resolves to `null` (section omitted
+entirely); a malformed individual line is skipped, never fatal. Reports
+lifetime totals plus the most recent event timestamp — `events.jsonl` is a
+flat append-log with no per-entry file boundary like the cost-report
+directory, so there is no existing windowing idiom to reuse (FEAT-265 scope).
+
+**Rendered as:** the `## Hook enforcement` block in
+`.claude/artifacts/loop/loop-snapshot.md`
+(`src/scripts/lib/memory-snapshot.mts::renderHookEnforcement`), omitted when
+the reader returns `null`. Also exposed as the `hookEnforcement` field on the
+structured object returned by `bun src/scripts/loop.mts snapshot-memory`,
+alongside `counts` / `dispatchTree`, so dashboards can read the same warn/
+block counts without parsing markdown.
+
+**Shape:**
+
+```ts
+{
+  gateGuard: { warn: number; block: number; other: number; total: number };
+  artifactLock: { warn: number; block: number; other: number; total: number };
+  totalEvents: number;
+  lastEventAt: string | null; // ISO-8601 of the most recent counted event
+}
+```
+
+`warn`/`block` map to the hooks' own warn-first rollout terminology
+(`gate-guard:warned-red-gate`/`artifact-lock:warned` vs.
+`gate-guard:blocked-red-gate`/`artifact-lock:denied`); `other` buckets the
+fail-open diagnostic codes (`no-message`, `internal-error`) that don't
+represent an actual warn or block decision.
+
+**Origin:** FEAT-265 (dev-team#257 AC leftover — this is the surfacing piece;
+the enforcement hooks themselves shipped in dev-team PR #262).
+
+---
+
 ## How to add a new halt-badge
 
 When a future FEAT introduces a new halt condition that emits to `snapshot.*`, the FEAT's slice MUST update this registry in the same slice. Don't ship the halt field without documenting it here.
