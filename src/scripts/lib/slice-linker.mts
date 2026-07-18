@@ -23,4 +23,5 @@ export {
 } from "./slice-linker/dispatch.mjs";
 export type { OrchestratorMode, BuilderVariant } from "./slice-linker/dispatch.mjs";
 export { renderIdentification } from "./slice-linker/agent-report-writer.mjs";
+export { writeArtifactLock, removeArtifactLock } from "./slice-linker/artifact-lock-writer.mjs";
 export { checkpointCommit } from "./checkpoint-commit.mjs";

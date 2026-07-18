@@ -22,7 +22,8 @@ export type SliceEventType =
   | "shape_classified"
   | "phase_gate_mode_detected"
   | "slice_force_closed"
-  | "slice_renumber";
+  | "slice_renumber"
+  | "qa_gate_artifact_written";
 
 export interface SliceEventBase {
   type: SliceEventType;
@@ -138,6 +139,22 @@ export interface SliceRenumberedEvent extends SliceEventBase {
   fromId: string;
 }
 
+/**
+ * FEAT-264 SLICE-3 (AC-3, #527): pre-build QA-gate test-plan artifact write
+ * seam. `runner:start` never calls `Agent()` itself (architect C.7), so the
+ * actual `crew:qa-expert` write happens out-of-process — this event is a
+ * ready-made emission point for whichever caller observes the artifact
+ * landing (`qa-gate-preflight.mts::emitQaGateArtifactWritten`), not yet
+ * wired into the in-process `startSlice` flow. AC-3's ordering requirement
+ * (test-plan-write timestamp < `workflow_state_changed`:building timestamp)
+ * is evidenced against this event on the same per-slice
+ * `trajectories/<sliceId>-events.jsonl` stream.
+ */
+export interface QaGateArtifactWrittenEvent extends SliceEventBase {
+  type: "qa_gate_artifact_written";
+  artifactPath: string;
+}
+
 export type SliceEvent =
   | WorkflowStateChangedEvent
   | GateTransitionEvent
@@ -148,7 +165,8 @@ export type SliceEvent =
   | ShapeClassifiedEvent
   | PhaseGateModeDetectedEvent
   | SliceForceClosedEvent
-  | SliceRenumberedEvent;
+  | SliceRenumberedEvent
+  | QaGateArtifactWrittenEvent;
 
 /** Absolute path to the events file for a slice. */
 export function eventsPath(repoRoot: string, sliceId: string): string {

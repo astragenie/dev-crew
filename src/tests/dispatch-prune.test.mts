@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { listStaleRunIds, pruneRunId, pruneStale } from "../scripts/lib/dispatch-prune.mjs";
+import { writeArtifactLock } from "../scripts/lib/slice-linker/artifact-lock-writer.mjs";
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "loop-prune-test-"));
@@ -175,4 +176,43 @@ test("listStaleRunIds: skips in-flight runId (trace.jsonl modified <5min ago)", 
 
   const stale = await listStaleRunIds(repo, 7);
   assert.equal(stale.length, 0, "in-flight runId not included in stale list");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEAT-264 SLICE-4 (AC-4): pruneRunId releases a goalpost-lock held by a
+// reaped run's childIds (best-effort — the lock's own 48h TTL is the
+// backstop regardless).
+// ─────────────────────────────────────────────────────────────────────────────
+test("pruneRunId: releases artifact locks held by the run's childIds", async () => {
+  const repo = tmpDir();
+  const dispDir = path.join(repo, ".claude", "artifacts", "loop", "dispatch");
+  const staleRunId = "2026-06-01T08-00-00-000Z-fff666";
+  const runDir = path.join(dispDir, staleRunId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "summary.md"), "# done\n");
+  fs.writeFileSync(
+    path.join(runDir, "worktrees.jsonl"),
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      childId: "SLICE-901",
+      branch: "nonexistent-branch-lock",
+      path: path.join(repo, "does-not-exist-lock"),
+      depth: 0
+    }) + "\n"
+  );
+
+  await writeArtifactLock(repo, "SLICE-901", ["a.md"], "qa-gate");
+  const lockPath = path.join(repo, ".claude", "state", "loop", "artifact-locks", "SLICE-901.json");
+  assert.ok(fs.existsSync(lockPath), "lock file exists before prune");
+
+  const { execSync } = await import("node:child_process");
+  execSync("git init -q -b main", { cwd: repo });
+  execSync('git config user.email "t@t.com"', { cwd: repo });
+  execSync('git config user.name "T"', { cwd: repo });
+  fs.writeFileSync(path.join(repo, "README.md"), "x");
+  execSync("git add . && git commit -q -m init", { cwd: repo });
+
+  await pruneRunId(repo, staleRunId);
+
+  assert.ok(!fs.existsSync(lockPath), "lock file removed as part of the reap");
 });

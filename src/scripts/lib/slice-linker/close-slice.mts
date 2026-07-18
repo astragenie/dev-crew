@@ -33,6 +33,7 @@ import { bust as bustCache } from "../cache.mjs";
 import { isFeatureEnabled } from "../features-service.mjs";
 import { resolveQaGateMode } from "../qa-gate-config.mjs";
 import { parseScoresFromBody } from "../grade-parser.mjs";
+import { removeArtifactLock } from "./artifact-lock-writer.mjs";
 
 // ---------------------------------------------------------------------------
 // Pre-flight: verification-before-completion (FEAT-277 / AC-9)
@@ -194,6 +195,10 @@ export async function closeSlice(
     skipSimplify: opts.skipSimplify,
     ...resolveMemoryCaptureOpts(opts)
   });
+
+  // FEAT-264 SLICE-4 (AC-4): release the goalpost-lock (if any) for this
+  // slice now that it is closing — fail-soft, never throws (artifact-lock-writer.mjs).
+  await removeArtifactLock(repoPath, sliceId);
 
   // completeSlice moves the slice file from pending/ → completed/. The
   // locateSliceFile cache (in ../cache.mjs) still returns the pre-move

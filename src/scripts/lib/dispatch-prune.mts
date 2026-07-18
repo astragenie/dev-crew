@@ -14,6 +14,7 @@ import fs from "node:fs/promises";
 import { existsSync, statSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { runGit } from "./run-git.mjs";
+import { removeArtifactLock } from "./slice-linker.mjs";
 
 export interface StaleRunEntry {
   runId: string;
@@ -100,21 +101,27 @@ async function isInFlight(runDir: string, nowMs: number): Promise<boolean> {
 
 /**
  * Count worktrees registered for a runId by reading worktrees.jsonl.
- * Also returns branch names found in that log.
+ * Also returns branch names and childIds found in that log. childId
+ * (dispatch.mts's per-plan id, e.g. a sliceId for slice-scoped fan-out) is
+ * the closest available handle to a sliceId at reap time — used only to
+ * best-effort release a FEAT-264 SLICE-4 goalpost-lock a child may hold;
+ * see pruneRunId.
  */
 function readWorktreesFromLog(runDir: string): {
   worktreePaths: string[];
   branches: string[];
+  childIds: string[];
 } {
   const logPath = path.join(runDir, "worktrees.jsonl");
   const worktreePaths: string[] = [];
   const branches: string[] = [];
-  if (!existsSync(logPath)) return { worktreePaths, branches };
+  const childIds: string[] = [];
+  if (!existsSync(logPath)) return { worktreePaths, branches, childIds };
   let raw: string;
   try {
     raw = readFileSync(logPath, "utf8");
   } catch {
-    return { worktreePaths, branches };
+    return { worktreePaths, branches, childIds };
   }
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
@@ -123,11 +130,12 @@ function readWorktreesFromLog(runDir: string): {
       const entry = JSON.parse(trimmed);
       if (typeof entry.path === "string") worktreePaths.push(entry.path);
       if (typeof entry.branch === "string") branches.push(entry.branch);
+      if (typeof entry.childId === "string") childIds.push(entry.childId);
     } catch {
       // skip malformed lines
     }
   }
-  return { worktreePaths, branches };
+  return { worktreePaths, branches, childIds };
 }
 
 /**
@@ -189,7 +197,13 @@ export async function pruneRunId(repoRoot: string, runId: string): Promise<Prune
   let branchesRemoved = 0;
   let dirRemoved = false;
 
-  const { worktreePaths, branches } = readWorktreesFromLog(runDir);
+  const { worktreePaths, branches, childIds } = readWorktreesFromLog(runDir);
+
+  // FEAT-264 SLICE-4 (AC-4): best-effort release any goalpost-lock a child
+  // dispatch may still hold — fail-soft, never throws
+  // (slice-linker/artifact-lock-writer.mjs); the lock's own 48h TTL is the
+  // backstop if childId here isn't actually a sliceId or holds no lock.
+  for (const childId of childIds) await removeArtifactLock(repoRoot, childId);
 
   // Remove worktrees first
   for (const wt of worktreePaths) {

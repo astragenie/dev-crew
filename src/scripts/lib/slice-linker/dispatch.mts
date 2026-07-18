@@ -4,6 +4,7 @@ import path from "node:path";
 import { parseFrontmatter } from "../frontmatter.mjs";
 import { locateSliceFile, backlogRoot as resolveBacklogRoot } from "../paths.mjs";
 import { isFeatureEnabled } from "../features-service.mjs";
+import { needsQaGatePreflight, buildQaGatePreflight } from "./qa-gate-preflight.mjs";
 
 interface DispatchLimits {
   maxSubagentsPerSlice: number;
@@ -359,11 +360,19 @@ export function buildDispatchInstruction({
     return buildOrchestrateSliceInstruction(sliceId);
   }
 
-  // Default path: slice-build — tag-driven dispatch with optional architect pre-flight.
+  // Default path: slice-build — tag-driven dispatch with optional architect
+  // pre-flight, then an optional QA-gate pre-flight (FEAT-264 SLICE-3, AC-3,
+  // #527). Composable, not exclusive, and ordered: architect FIRST (decides
+  // contract shapes), QA gate SECOND (drafts tests from the FEAT's
+  // Given-When-Then ACs, context-isolated from the diff), builder LAST.
   const variant: BuilderVariant = pickBuilderVariant(extractTags(sliceContent), loopConfig);
-  const preflight = needsContractPreflight(sliceContent, repoPath, sliceId)
+  const architectPreflight = needsContractPreflight(sliceContent, repoPath, sliceId)
     ? `${buildArchitectPreflight(sliceId, title, rel)}\n---\n\n`
     : "";
+  const qaGatePreflight = needsQaGatePreflight(sliceContent, repoPath, sliceId, loopConfig)
+    ? `${buildQaGatePreflight(sliceId, title, featurePath)}\n---\n\n`
+    : "";
+  const preflight = architectPreflight + qaGatePreflight;
 
   let header: string;
   if (variant === "parallel-fe-be") {

@@ -16,6 +16,27 @@ shipped under the name `loop`.
   unknown string, wrong type) resolves `"post-build"` — today's behavior,
   preserved as the back-compat default. No preset interaction (DEC-069).
   Ceremony wiring that consumes this reader is SLICE-3, a later wave.
+- `src/scripts/lib/slice-linker/qa-gate-preflight.mts` — pre-build
+  context-isolated `crew:qa-expert` test-plan dispatch (FEAT-264 SLICE-3,
+  AC-3, #527). Mirrors the ARCHITECT PRE-FLIGHT pattern
+  (`dispatch.mts::needsContractPreflight` / `buildArchitectPreflight`):
+  when `loop.qa_gate` resolves to `"pre-build"` and no `kind: test-plan`
+  artifact exists yet for the slice, `buildDispatchInstruction` prepends a
+  QA GATE PRE-FLIGHT block — dispatched AFTER the architect pre-flight when
+  both apply — that hands `crew:qa-expert` only the FEAT's Given-When-Then
+  ACs, test framework/layout conventions, and `.claude/loop.json` stack
+  identity (excludes the diff/implementation entirely), then
+  `crew:test-automator` implements the failing tests red-first
+  (dev-team#258). `loop.qa_gate` absent/`"off"`/`"post-build"` is a strict
+  byte-identical no-op (AC-2/AC-6 regression-tested).
+  `validation-gate.mts::findValidationArtifacts` now excludes
+  `kind: test-plan` artifacts so a pre-build plan can neither satisfy nor
+  fail the close-time validation gate (architect C.2). Adds the
+  `qa_gate_artifact_written` slice-event type + emitter
+  (`emitQaGateArtifactWritten`, mirrors `shape-event-emitter.mts`) as an
+  ordering-evidence seam for AC-3 — not yet wired into `startSlice` itself,
+  since the real `crew:qa-expert` write happens out-of-process (architect
+  C.7).
 - `test_confidence` grade gate at slice close (FEAT-264 SLICE-5, AC-5,
   #527). `runner:close --grade-yaml` now blocks (via the existing
   `GATE_FAILED_AT_CLOSE` failures array, 3-close warm-up, and halt-badge
@@ -57,6 +78,32 @@ shipped under the name `loop`.
   `aiplugin-dev` 1.2.3→1.2.4), incident-traced CI gates, and measured-cost
   honesty (median-with-mean-divergence instead of a single average) — ends
   with an otta-style hedge footnote.
+- `src/scripts/lib/slice-linker/artifact-lock-writer.mts` — writer side of
+  the cross-plugin artifact-lock contract (FEAT-264 SLICE-4, AC-4, #527;
+  `docs/upstream-requests/2026-07-18-crew-artifact-lock-hook-contract.md`,
+  option A). `writeArtifactLock(repoPath, sliceId, lockedPaths, lockedBy)`
+  writes `.claude/state/loop/artifact-locks/<sliceId>.json`
+  (`lockedPaths` normalized to repo-relative, forward-slash paths;
+  `expiresAt` = `createdAt` + 48h); `removeArtifactLock(repoPath, sliceId)`
+  is idempotent. Schema mirrors dev-team#262's consumer hook
+  (`hooks/lib/pre-tool-use-artifact-lock.ts`, still open as of this writing)
+  field-for-field. Fail-soft by design: a lock is a mechanical-enforcement
+  enhancement layered on top of the ceremony's own prompt-level FORBIDDEN
+  order (FEAT-264's own pre-mortem risk 1), not a correctness dependency —
+  write/remove errors log a warning and never throw.
+- `qa-gate-preflight.mts::buildQaGatePreflight` gains the AC-4 red/green +
+  goalpost-lock sequence: the builder's "make these tests pass" segment now
+  carries its own `<task-scoped>` FORBIDDEN order against editing the
+  test-plan artifact (referenced via the `qa_gate_artifact` frontmatter
+  pointer — its literal path isn't known until crew:qa-expert has run).
+  `emitQaGateArtifactWritten` — the seam invoked once that path IS known —
+  now also calls `writeArtifactLock` so dev-team#262's PreToolUse hook can
+  mechanically deny the edit once that hook's own warn-first flag flips to
+  block. `close-slice.mts::closeSlice` and `dispatch-prune.mts::pruneRunId`
+  each call `removeArtifactLock` (close: by `sliceId`; prune: by every
+  reaped run's `childId`, best-effort) so a closed/reaped slice releases
+  its lock; the writer-side 48h TTL is the backstop when a removal call is
+  missed.
 
 ## [v0.76.0] — 2026-07-15 — owned agents wired to astramem via `astramem:using-memory` skill
 

@@ -4,6 +4,7 @@ import path from "node:path";
 import { readCrewWorkflowState } from "./crew-workflow-reader.mjs";
 import { readNewestArtifactVerdict } from "./artifact-verdict.mjs";
 import { pathExists } from "./paths.mjs";
+import { parseFrontmatter } from "./frontmatter.mjs";
 
 const DEFAULT_VALIDATION_DIR = path.join(".claude", "artifacts", "crew", "validations");
 
@@ -67,6 +68,26 @@ function extractSliceNumberTokens(text: string): Set<string> {
 }
 
 /**
+ * FEAT-264 SLICE-3 (AC-3, architect C.2): `kind: test-plan` artifacts are
+ * pre-build QA-gate plans (qa-gate-preflight.mts), not close-time validation
+ * evidence — a lone test-plan artifact must neither satisfy nor fail the
+ * validation gate, so it is excluded here rather than left to fall through
+ * on a missing `decision:` key (which would grandfather it as a legacy
+ * "satisfied" artifact — the exact bug this exclusion prevents).
+ * @param {string} filePath
+ * @returns {Promise<boolean>}
+ */
+async function isTestPlanArtifact(filePath: string): Promise<boolean> {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    const { frontmatter } = parseFrontmatter(raw);
+    return frontmatter?.kind === "test-plan";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * @param {string} repoPath
  * @param {string} sliceId
  * @returns {Promise<string[]>}
@@ -91,7 +112,12 @@ async function findValidationArtifacts(repoPath: string, sliceId: string) {
       matches.push(path.join(dir, entry));
     }
   }
-  return matches;
+  const kept: string[] = [];
+  for (const match of matches) {
+    if (await isTestPlanArtifact(match)) continue;
+    kept.push(match);
+  }
+  return kept;
 }
 
 // Synonyms a validator sometimes writes in place of the canonical

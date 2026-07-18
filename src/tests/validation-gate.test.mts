@@ -239,3 +239,53 @@ test("deriveValidationGate: SLICE-15 does NOT match the combined slice-157-158 a
   const result = await deriveValidationGate(repo, "SLICE-15");
   assert.equal(result.satisfied, false);
 });
+
+// FEAT-264 SLICE-3 (AC-3, architect C.2): a `kind: test-plan` artifact is a
+// pre-build QA-gate plan (qa-gate-preflight.mts), not close-time validation
+// evidence — it must land in the same scan directory as real validation
+// artifacts (.claude/artifacts/crew/validations/) yet neither satisfy nor
+// fail the close-time gate on its own.
+test("deriveValidationGate: a lone kind:test-plan artifact does NOT satisfy the gate", async () => {
+  const repo = await tmpRepo("al-vgate-testplan-alone-");
+  await writeValidationsArtifact(
+    repo,
+    "20260718T000000Z-test-plan-slice-01.md",
+    "---\nkind: test-plan\nslice: SLICE-01\n---\n# test plan\n"
+  );
+  const result = await deriveValidationGate(repo, "SLICE-01");
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
+  assert.deepEqual(result.evidence, []);
+});
+
+// A test-plan artifact must not "fail" the gate either — even one carrying a
+// stray decision-shaped key, since kind:test-plan takes precedence over
+// whatever else the file happens to contain.
+test("deriveValidationGate: a kind:test-plan artifact with a decision key still does not drive the gate", async () => {
+  const repo = await tmpRepo("al-vgate-testplan-decision-");
+  await writeValidationsArtifact(
+    repo,
+    "20260718T000000Z-test-plan-slice-01.md",
+    "---\nkind: test-plan\ndecision: fail\n---\n# test plan\n"
+  );
+  const result = await deriveValidationGate(repo, "SLICE-01");
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
+});
+
+// A real validation artifact alongside an unrelated test-plan artifact must
+// still satisfy normally — the exclusion only removes test-plan files from
+// consideration, it doesn't disturb the rest of the scan.
+test("deriveValidationGate: a real validation artifact still satisfies alongside a co-located test-plan artifact", async () => {
+  const repo = await tmpRepo("al-vgate-testplan-coexist-");
+  await writeValidationsArtifact(
+    repo,
+    "20260718T000000Z-test-plan-slice-01.md",
+    "---\nkind: test-plan\n---\n# test plan\n"
+  );
+  await writeValidationArtifactWithDecision(repo, "SLICE-01", "pass");
+  const result = await deriveValidationGate(repo, "SLICE-01");
+  assert.equal(result.satisfied, true);
+  assert.match(result.reason, /validation artifact decision: pass/);
+  assert.equal(result.evidence.length, 1);
+});
