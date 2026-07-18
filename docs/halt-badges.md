@@ -365,6 +365,31 @@ mechanism described above; `qaGradeGate` fans out as an ADDITIONAL,
 more specific envelope alongside the generic `gateFailedAtClose` envelope
 whenever it is the qa-grade check specifically that failed.
 
+### `gateFailedAtClose`
+
+**Shape:**
+
+```ts
+{
+  sliceId: string;
+  failures: string[]; // one entry per unsatisfied gate, e.g. "review-gate: <reason>", "validation-gate: <reason>", or a qa-grade-gate failure string
+  enforced: boolean;  // false during the shared 3-close warm-up, true after
+  ts: string;         // ISO-8601
+}
+```
+
+**Meaning:** the single-shot `runner:close --grade-yaml` pre-flight refused (or, during warm-up, would have refused) to close the slice because the review gate and/or the validation gate — and/or the `qaGradeGate` check documented below — was not satisfied at the moment of close.
+
+**Fires when:** `assertCloseGatesSatisfied` (`src/scripts/lib/slice-linker/close-slice.mts`) finds at least one of `deriveReviewGate` (`src/scripts/lib/review-gate.mts`), `deriveValidationGate` (`src/scripts/lib/validation-gate.mts`), or `checkQaGradeGate` unsatisfied. Runs only on the `--grade-yaml` single-shot close path (`gradeYamlPath && !opts.forceClose`) AND only when the `close-refusal` feature flag is enabled (`src/scripts/lib/features-service.mts`, default `true` since v0.61.0) — the multi-step scaffold-only path (no `--grade-yaml`) is not gated here. An explicit `--skip-validation-check <reason>` counts the validation gate as satisfied (recorded as an auditable `validation_skipped` badge downstream), so only the review gate or qa-grade gate can still trip the badge in that case.
+
+**Warm-up semantics:** the first `WARMUP_CLOSES` (3) gate-evaluated closes for a repo are warn-mode — the envelope still fans out with `enforced: false`, but `closeSlice` logs a warning and lets the close proceed. From the 4th gate-evaluated close onward, `enforced: true` and `closeSlice` throws an error with `code: "GATE_FAILED_AT_CLOSE"` and `gateFailures` set to the same `failures` array, refusing the close. The counter (`gateEvaluatedCloses`) persists at `.claude/state/loop/close-refusal-state.json` and increments on every gate-evaluated close attempt, whether it passes or fails.
+
+**Suggested operator action:** fix the underlying review/validation gate (or the qa-grade dimension, see below) and re-run `runner:close`, supply an explicit `--skip-validation-check` reason, or use `--force-close` (audited — records `force_closed_reason` on the slice plus a `slice_force_closed` event).
+
+**Origin:** P1.4 close-refusal hardening (v0.61.0). Source: `src/scripts/lib/slice-linker/close-slice.mts::assertCloseGatesSatisfied`. Feature flag: `src/scripts/lib/features-service.mts` (`close-refusal`). Tests: `src/tests/close-refusal.test.mts`.
+
+---
+
 ### `qaGradeGate`
 
 **Shape:**
