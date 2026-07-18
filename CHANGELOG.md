@@ -4,6 +4,19 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## Unreleased
+
+### Added
+
+- `src/scripts/lib/qa-gate-config.mts` — `resolveQaGateMode(config)` reader
+  for a new `loop.qa_gate` config key (FEAT-264 SLICE-2, AC-2/AC-6, #527).
+  Mirrors the `orchestratorMode` idiom in
+  `slice-linker/start-slice.mts`: explicit `"pre-build"` / `"off"` pass
+  through, everything else (absent key, absent `loop` block, null config,
+  unknown string, wrong type) resolves `"post-build"` — today's behavior,
+  preserved as the back-compat default. No preset interaction (DEC-069).
+  Ceremony wiring that consumes this reader is SLICE-3, a later wave.
+
 ## [v0.76.0] — 2026-07-15 — owned agents wired to astramem via `astramem:using-memory` skill
 
 Switches the owned-agent memory path from a bespoke MCP-name reference to the
