@@ -2010,6 +2010,12 @@ string`; all template tokens must be threaded through `buildTokens`.
 
 ### Added
 
+- PM (`agents/pm.md`) now emits Given-When-Then acceptance criteria inline
+  for **every** triaged FEAT, regardless of computed `compositePriority` —
+  drops the former P0/P1-only (or `--deep`/`--spec`) gate condition
+  (FEAT-264 SLICE-1, AC-1). `--spec` mode is unchanged: it still emits a
+  full SPEC body instead of FEAT-format ACs. See `agents/pm.md` §
+  "AC drafting scope (FEAT-264 — priority gate removed)".
 - Add `multidim` reviewer-ladder preset (FEAT-079, SLICE-82): 3 narrow
   dimensions (correctness / test-coverage / conventions) with
   scope-fence + hard tool budget per prompt. Default ladder unchanged.
