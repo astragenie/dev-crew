@@ -4,9 +4,43 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
-## Unreleased
+## [v0.77.0] — 2026-07-18 — pre-build QA gate, hook-enforcement telemetry, honest cost metrics
+
+### Added
+
+- FEAT-265 hook-enforcement telemetry (#544):
+  `src/scripts/lib/hook-enforcement-snapshot.mts::readHookEnforcementSummary`
+  tail-safe-reads a consumer repo's `.claude/logs/events.jsonl` (written by
+  crew v0.67.0's gate-guard / artifact-lock hooks) and surfaces warn/block
+  counts as a "## Hook enforcement" snapshot section plus a structured
+  `hookEnforcement` field. Counts-only, non-halting — deliberately not in
+  the `stop-conditions.mts` fire/resolve fanout. New
+  `docs/halt-badges.md` "Hook enforcement telemetry" registry section.
+- `validate-imports` parity for FEAT-264 slice-linker sub-modules (#543):
+  `qa-gate-preflight.mts` + `artifact-lock-writer.mts` added to
+  `blockedPatterns` (explicit list, not a glob); validator refactored to
+  the exported `validateImports(repoRoot)` + `isMainEntry()` shape with a
+  5-test regression suite.
+- `src/scripts/validate-memory-config.mts` (CI gate #17): fails when
+  `.claude/loop.json` has memory enabled but the feedback shape lags the
+  current contract (e.g. `memory.feedback.creditLoop` absent — the exact
+  gap behind the 1.6% memory-usefulness finding); explicit
+  `enabled: false` passes. `creditLoop {enabled: true, k: 5}` enabled in
+  this repo's own config.
+- `docs/halt-badges.md`: dedicated `gateFailedAtClose` registry section
+  (#543) — shape, 3-close warm-up mechanics, close-refusal counter path,
+  feature-flag gating.
 
 ### Fixed
+
+- Honest cost telemetry (#530/#539): `aggregate_all` wide-window
+  cost-reports excluded (boolean or string "true"), same-slice re-reports
+  deduped newest-wins, and the snapshot cost line now leads with the
+  median ($31.99/scan) instead of a re-report-poisoned mean.
+- Onboarding truth pass (#532/#542): ADOPTION.md rewritten against a fresh
+  clone; stale marketplace.json claim, dead `/runner:next-slice` ref, and
+  pre-Bun preset descriptions corrected; qa-gate warm-up documented in
+  Step 5.
 
 - `dispatch prune` age-override for summary-less runs (#531): a run that
   dies before `dispatch finalize` never gets a `summary.md`, so the
