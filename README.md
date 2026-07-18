@@ -9,10 +9,13 @@ layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
 safe phase-gate runner.
 
 Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
-(>= v0.3.3) for artifact writers — loop emits Crew
+(>= v0.57.0) for artifact writers — loop emits Crew
 `validation-result` artifacts through `crew write-validation-result`.
 
 ## Install
+
+These are three separate commands — paste one at a time into the Claude
+Code prompt and let each finish before pasting the next:
 
 ```
 /plugin marketplace add astragenie/astra-marketplace
@@ -20,7 +23,8 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 /plugin install loop@astra
 ```
 
-`crew` must be installed first. Minimum compatible release: `v0.3.3`. See
+`crew` must be installed first. Minimum compatible release: `v0.57.0`
+(`src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`). See
 [ADOPTION.md](ADOPTION.md) for new-repo onboarding.
 
 > **Marketplace history:**
@@ -38,11 +42,14 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
   Cross-Slice Continuation, Phase Completion Gate) inside a marker-bracketed
   `<!-- runner:start -->` block. Re-installing replaces the block in
   place; user content outside it is preserved.
-- Writes plugin-owned loop-control docs under `docs/architecture/ai-loop/`:
-  `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`,
-  `MASTER_PROMPT.md`, `SLICE_TEMPLATE.md`. Always overwritten on re-install —
-  customization lives in `.claude/loop.json`, not in these files.
-- Scaffolds the backlog at `docs/architecture/ai-loop/backlog/`
+- Writes plugin-owned loop-control docs under `<aiLoopRoot>/01-loop-control/`:
+  `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`, plus
+  `<aiLoopRoot>/00-entry/MASTER_PROMPT.md` and `SLICE_TEMPLATE.md`. Always
+  overwritten on re-install — customization lives in `.claude/loop.json`, not
+  in these files. `aiLoopRoot` is a config path (see Configuration below);
+  the built-in presets default it to `.claude/artifacts/loop/ai-loop`, not a
+  `docs/` path.
+- Scaffolds the backlog at `<backlogPath>/`
   (`approved-slices.md`, `completed-slices.md`, `product-backlog.md`) — only
   written if missing.
 - Ships a phase-gate runner that executes `{cmd, args, cwd}` triples via
@@ -67,13 +74,16 @@ regenerate `MASTER_PROMPT.md` from the updated config.
 Once configured:
 
 ```bash
-/runner:status              # health check
-/runner:start               # first action for a new session
-/runner:next-slice          # pick highest-priority PENDING slice
-/runner:derive-slice        # derive a slice from product-backlog
+/runner:status          # health check
+/runner:start           # no args: auto-picks the highest-priority triaged FEAT
+/runner:start FEAT-NNN  # start a specific FEAT (creates the slice file)
 /runner:phase-gate --phase 4 --note "ingestion phase close"
-/runner:list-presets        # see built-in presets
+/runner:list-presets    # see built-in presets
 ```
+
+`/runner:start` subsumes the older `next-slice` / `derive-slice` /
+`slice-from-feature` commands — those no longer exist as standalone slash
+commands.
 
 ## Configuration
 
@@ -83,9 +93,9 @@ Once configured:
 {
   "preset": "dotnet-python",
   "loop": {
-    "aiLoopRoot": "docs/architecture/ai-loop",
-    "backlogPath": "docs/architecture/ai-loop/backlog",
-    "slicesRoot": "docs/architecture/ai-loop/slices",
+    "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
+    "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
+    "slicesRoot": ".claude/artifacts/loop/ai-loop/slices",
     "phaseGateArtifactDir": ".claude/artifacts/crew/validations"
   },
   "stack": {
@@ -132,20 +142,22 @@ More templates ship as new repo types surface. See `scripts/presets/` to author 
 
 ## Plugin architecture
 
-- `scripts/loop.mjs` — CLI entry
-- `scripts/lib/loop-installer.mjs` — template render + marker-block merge +
-  scaffold writer
-- `scripts/lib/phase-gate.mjs` — `execFile`-only runner + markdown report
-- `scripts/lib/adhoc-migrator.mjs` — detects + migrates pre-plugin HARD RULE
-  blocks
-- `scripts/lib/config-resolver.mjs` — reads `.claude/loop.json` at runtime
+Runtime is Bun; source `.mts` files run directly — there is no emitted
+`scripts/*.mjs` tree.
+
+- `src/scripts/loop.mts` — CLI entry
+- `src/scripts/lib/loop-installer.mts` (+ `loop-installer-scaffold.mts`,
+  `loop-installer-tokens.mts`) — template render + marker-block merge +
+  scaffold writer + ad-hoc HARD RULE block migration
+- `src/scripts/lib/phase-gate.mts` — `execFile`-only runner + markdown report
+- `src/scripts/lib/config-resolver.mts` — reads `.claude/loop.json` at runtime
   (no preset merge post-install); merges a named preset template only when
   the installer scaffolds a fresh config
-- `scripts/lib/plugin-identity.mjs` — marketplace/plugin name discovery,
+- `src/scripts/lib/plugin-identity.mts` — marketplace/plugin name discovery,
   reused from the crew plugin's pattern
-- `scripts/lib/hierarchical-dispatch.mjs` — hierarchical parallel subagent
-  dispatch primitive (FEAT-020 SLICE-1); barrel re-export of nine
-  `dispatch-*.mjs` modules
+- `src/scripts/lib/hierarchical-dispatch.mts` — hierarchical parallel subagent
+  dispatch primitive (FEAT-020 SLICE-1); barrel re-export of the
+  `dispatch-*.mts` modules
 
 ## Hierarchical dispatch (`runner:swarm`, FEAT-020 SLICE-1)
 
@@ -232,19 +244,25 @@ rationale.
 ## Tests
 
 ```bash
-node --test tests/*.test.mjs
+bun test src/tests/ --parallel --timeout 60000
 ```
 
-22 tests across 4 suites. Tests that require the `crew` CLI in the Claude
-Code plugin cache skip cleanly when crew is not installed.
+(also `bun run test`). ~300 test files under `src/tests/`. Tests that
+require the `crew` CLI in the Claude Code plugin cache skip cleanly when
+crew is not installed.
 
 ## Marketplace
 
-Registered as a second plugin in the `astra` marketplace
-(`hero-crew/.claude-plugin/marketplace.json`). A single `astra` install
-picks up both `crew` and `loop`.
+Shipped from the central `astragenie/astra-marketplace` registry alongside
+`crew` and `cortex` (see "Marketplace history" above) — that registry's
+`marketplace.json` is the source of truth for the published `loop` entry, not
+this repo. Plugin code stays in this repo
+([`astragenie/runner-plugin`](https://github.com/astragenie/runner-plugin)).
+`bun ./src/scripts/validate-marketplace-sync.mts` is a CI gate that fails a
+push if the registry's pinned version drifts from `.claude-plugin/plugin.json`
+here.
 
-For independent install, this repo also ships its own
+For independent/local install, this repo also ships its own
 `.claude-plugin/marketplace.json` as `astra`.
 
 ## Hard dependency on `crew`
@@ -269,15 +287,14 @@ loop CLI commands.
 See `ADOPTION.md` for a step-by-step adoption checklist when bringing the
 plugin into an existing repo.
 
-## Memory integration (optional)
+## Memory integration
 
-Runner ships a fire-and-forget memory bridge (`src/scripts/lib/memory-bridge.mts`)
-that emits GEPA-shaped JSON payloads to the `astramem` CLI after each
-`runner:close` (grade write) and on `runner:phase-gate` FAIL events.
+Runner is live-wired to the **astramem** MCP server (no longer a dormant
+CLI-spawn bridge — `src/scripts/lib/memory-bridge.mts` was retired by
+FEAT-235). GEPA-shaped events flow in-process through
+`src/scripts/lib/memory-gepa.mts` / `memory-sink.mts` on slice start,
+`runner:close` (grade write), and `runner:phase-gate` FAIL — recall on slice
+start, remember on close.
 
-The bridge is **dormant until `memory-plugin` v0.4 ships `astramem`** — there
-is no observable effect when the CLI is absent.
-
-See [memory-plugin issue #8](https://github.com/astragenie/memory-plugin/issues/8)
-for the CLI contract and `docs/sop/memory-bridge.md` for the full SOP including
-the off-switch (`loop.memory.enabled: "never"` in `.claude/loop.json`).
+Set `memory.enabled: "never"` in `.claude/loop.json` to disable both recall
+and emit. See `docs/sop/memory-bridge.md` for the full wire contract.
