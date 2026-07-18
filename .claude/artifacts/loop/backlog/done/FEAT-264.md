@@ -1,13 +1,13 @@
 ---
 id: FEAT-264
-status: triaged
+status: done
 priority: P1
 category: methodology
 target_release: null
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 depends_on: []
-slices: []
+slices: [SLICE-1, SLICE-2, SLICE-3, SLICE-4, SLICE-5]
 derived_from: null
 tags: [methodology, workflow, qa]
 needs_contract: true
@@ -20,6 +20,9 @@ pm_dependency_depth: 0.15
 pm_composite_priority: P1
 pm_autonomous_safe: false
 pm_reviewed: 2026-07-17
+started_at: 2026-07-18
+completed_at: 2026-07-18
+slices_complete: [SLICE-1, SLICE-2, SLICE-3, SLICE-4, SLICE-5]
 autonomous_safe: false
 proposed_slices:
   - id_suffix: -SLICE-1

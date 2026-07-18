@@ -149,6 +149,11 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
    gap behind the 1.6% usefulness finding in runner-plugin#525). Memory
    disabled/absent passes; an explicit `enabled: false` on a key passes
    (choice, not drift).
+18. `bun ./src/scripts/generate-metrics-band.mts --check` — README metrics-band
+   freshness gate (W4): regenerates the dogfood metrics band in-memory from
+   repo artifacts and fails on drift against the committed README, same
+   pattern as the snapshot-freshness gate. Regenerate with `--write` after
+   material state changes (FEAT close, grade, cost report).
 
 Pre-push hook (`src/scripts/pre-push-validate.mts`, run via Bun) runs
 manifest + content-length + format-check locally before any `git push`.
