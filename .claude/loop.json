@@ -11,7 +11,11 @@
     },
     "feedback": {
       "enabled": true,
-      "timeoutMs": 20000
+      "timeoutMs": 20000,
+      "creditLoop": {
+        "enabled": true,
+        "k": 5
+      }
     }
   },
   "projectType": "claude-plugin",

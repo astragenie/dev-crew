@@ -23,7 +23,14 @@ Ordered so each workstream's output de-risks the next.
 | W5 | GEPA honesty pass | audit §4.3 | M | "Reflective evolution" false by default; broken provenance |
 
 Dependency spine: **W0 → W1 → W2** (hooks make FEAT-264's SLICE-4 goalpost-lock
-mechanical); **W3 → W4** (don't market onboarding that fails); **W5** independent.
+mechanical — file W1 as a FEAT first and add it to FEAT-264's `depends_on` so the
+walker sees the dependency, per architect-review OBJ-1); **W0.6 + W3 → W4** (don't
+market onboarding that fails, and no cost numbers before the unit is resolved);
+**W5** independent except W5.1 (provenance fix) gates W4.3's GEPA claims.
+
+> Reviewed 2026-07-18: architect (contract sketch, gaps C.1–C.7) +
+> architect-reviewer (**approved_with_notes**, OBJ-1..8) + QA-capability researcher
+> (agent upgrades required). Full record: runner-plugin#527 comments.
 
 ---
 
@@ -51,7 +58,14 @@ mechanical); **W3 → W4** (don't market onboarding that fails); **W5** independ
 
 ## W1 — Enforcement hooks (otta port; file as FEAT via /runner:intake)
 
-Port the two hook patterns from `otta-plugin@10756ef5` into crew (dev-team), loop consumes:
+Port two otta patterns into crew (dev-team) plus one of our own extension, loop
+consumes. (Citation honesty per review OBJ-4: only the SubagentStop guard and
+repair-dedup are otta-sourced; the PreToolUse artifact-lock is our extension of the
+same idea, no otta counterpart.) Positive precedent: cross-plugin config reads
+already work — `dev-team/hooks/pre-tool-use-model-enforce.ts:41` reads the consumer
+repo's `.claude/loop.json`; only dispatch-scoped lock state is new plumbing (who
+writes/clears per-slice locks, orphan handling — needs the wire-contract
+upstream-request before FEAT-264 SLICE-4 starts, architect C.1 / review OBJ-3).
 
 - **SubagentStop gate-guard** (`hooks/subagent-gate-guard.sh:1-64` analog): builder
   subagent cannot report done while its gate state is red — exit-2 block with the gate's
@@ -65,7 +79,9 @@ Port the two hook patterns from `otta-plugin@10756ef5` into crew (dev-team), loo
   attempt budget.
 
 *AC: hook blocks a fixture builder finishing past a red phase-gate; lock denies a fixture
-edit to a locked path; dedup helper unit-tested and adopted by ≥1 existing retry loop.
+edit to a locked path; dedup helper unit-tested and adopted by ≥1 existing retry loop;
+**the gate-guard block registers as a halt badge in `docs/halt-badges.md` in the same
+slice** (registry checklist requirement — review OBJ-6).
 Success metric: dispatch pause rate trend down from 66.7% over the next 15 dispatches.*
 
 ## W2 — Pre-build QA gate (FEAT-264, triaged P1, `autonomous_safe: false`)
@@ -74,7 +90,16 @@ Already decomposed into 5 slices (ACs 1–6 in `triaged/FEAT-264.md`). Plan-leve
 
 - **Sequence SLICE-4 after W1** — goalpost-lock enforcement consumes the PreToolUse
   artifact-lock + SubagentStop guard instead of fragile tool-trace assertions (posted as
-  hardening comment on #527). Slices 1–3 and 5 need not wait.
+  hardening comment on #527). Slices 1–3 and 5 need not wait. Encode this: file W1's
+  FEAT first, put its id in FEAT-264 `depends_on` (currently `[]` — prose-only
+  dependency is invisible to the walker, review OBJ-1).
+- **Pre-slice-1 amendments required** (architect C.2/C.3/C.5/C.7 + review OBJ-7/OBJ-8 +
+  researcher findings, consolidated on #527): AC-3 in-bounds allowlist; `kind: test-plan`
+  frontmatter + validation-gate exclusion; AC-5 retarget to `test_confidence` (or DEC for
+  an 8th dimension); replace "FIX badge" with `GATE_FAILED_AT_CLOSE` + halt-badges row;
+  settle AC-3 ordering proxy; deterministic artifact naming or frontmatter-recorded path;
+  dev-team agent prep (qa-expert implementation-blind mode, test-automator red-first
+  exception) as SLICE-0 or folded into SLICE-3.
 - SLICE-1 (PM emits ACs for every FEAT) also closes #490's dead-end (P2/P3 triage skips
   AC drafting → `slice start` hard-fails) — cross-link on close.
 - Pilot on `memory` repo per the FEAT's rollout note; default stays off (AC-2/AC-6

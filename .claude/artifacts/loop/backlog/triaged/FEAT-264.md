@@ -46,6 +46,13 @@ github_url: https://github.com/astragenie/runner-plugin/issues/527
 > Renumbered from FEAT-263 on 2026-07-18: the id was already consumed by the shipped
 > dispatch-marker feature (`done/FEAT-263.md`, cited in CLAUDE.md as FEAT-263 T1/T5/T6).
 > Collision class tracked by DEC-079. GitHub mirror: issue #527.
+>
+> **Design-reviewed 2026-07-18** (architect contract + architect-reviewer
+> `approved_with_notes` + QA-capability research; full record in #527 comments).
+> ACs below amended accordingly; this satisfies `needs_contract: true` for slice 1.
+> **SLICE-4 is externally blocked on dev-team#257** (PreToolUse artifact-lock +
+> SubagentStop gate-guard) — `depends_on` cannot express cross-repo deps, so this
+> note is the authoritative blocker record. SLICE-0/1/2/3/5 are unblocked.
 
 ## Problem
 
@@ -73,17 +80,37 @@ a) **runner:pm** emits Given-When-Then ACs for **every** triaged FEAT (drop the
    P0/P1-only condition).
 b) **Slice ceremony** (`runner:start` / orchestration path) inserts, between
    slice creation and builder dispatch: context-isolated `crew:qa-expert`
-   dispatch that reads FEAT ACs only and writes
-   `.claude/artifacts/crew/validations/<slice>-test-plan.md`; then
-   `crew:test-automator` implements failing tests from the plan (red); builder
-   is dispatched with "make these tests pass" (green). Builder never edits the
-   test plan; the `/crew:ship` qa-expert pass validates against the SAME plan
-   (no goalpost-moving).
+   dispatch that reads FEAT ACs only and writes a test-plan artifact under
+   `.claude/artifacts/crew/validations/` carrying `kind: test-plan` frontmatter,
+   with its path recorded in slice frontmatter (deterministic naming or the
+   existing timestamp-prefixed writer + frontmatter pointer — builder's choice,
+   the frontmatter pointer is the contract); then `crew:test-automator`
+   implements failing tests from the plan (red); builder is dispatched with
+   "make these tests pass" (green). Builder never edits the test plan; the
+   `/crew:ship` qa-expert pass validates against the SAME plan (no
+   goalpost-moving). Architect contract: implement as a `qa-gate-preflight.mts`
+   module mirroring the ARCHITECT PRE-FLIGHT pattern in
+   `dispatch.mts:326-395` (composable with the contract pre-flight).
+   **`deriveValidationGate` MUST exclude `kind: test-plan` artifacts** — they
+   land in its scan directory (`validation-gate.mts:8,74-95`) and would
+   otherwise satisfy/fail the close-time validation gate (architect C.2).
 c) **Config:** new `loop.qa_gate` key in `loop.json` schema
    (`"pre-build" | "post-build" | "off"`, default preserves current behavior)
-   so wave/auto modes enforce (b) per repo.
-d) **Grade gate:** testability dimension < 0.80 fails the slice (currently
-   recorded but never gating) — behind the same config key.
+   so wave/auto modes enforce (b) per repo. Plain `loop.*` key read via the
+   `orchestratorMode` idiom (`start-slice.mts:133-139`); no preset
+   interaction (DEC-069 clean).
+d) **Grade gate:** `test_confidence` dimension < 0.80 fails the slice —
+   behind the same config key. (Amended from "testability": that dimension
+   has never existed in `SCORE_DIMENSIONS` (`grade-parser.mts:18-26`);
+   `test_confidence` is the live scored field — architect C.3. Widening to an
+   8th dimension is explicitly out of scope unless a DEC says otherwise.)
+e) **Agent prep (dev-team, SLICE-0):** `agents/qa-expert.md` gains an
+   implementation-blind pre-build mode (its current prompt requires receiving
+   test IDs from implementers, `qa-expert.md:94` — opposite of AC-3);
+   `agents/test-automator.md` gains a red-first/TDD-seed exception to its
+   green-run self-verify gate (`test-automator.md:127`), which currently
+   deadlocks against its no-runtime-edits rule. Per QA-capability research
+   on #527.
 
 ## Acceptance criteria (Given-When-Then)
 
@@ -107,13 +134,22 @@ d) **Grade gate:** testability dimension < 0.80 fails the slice (currently
   requirement): Given `loop.qa_gate: "pre-build"` is set in
   `.claude/loop.json`, When a slice is created via the orchestration path
   and reaches the point immediately before builder dispatch, Then a
-  context-isolated `crew:qa-expert` dispatch runs that receives only the
-  FEAT's Given-When-Then ACs (not the diff, not implementation code) and
-  writes `.claude/artifacts/crew/validations/<slice-id>-test-plan.md` before
-  any builder-dispatch event is recorded in `events.jsonl` — evidenced by an
-  event-ordering test (test-plan-write timestamp < builder-dispatch
-  timestamp) and a fixture asserting the qa-expert prompt payload excludes
-  diff/implementation content.
+  context-isolated `crew:qa-expert` dispatch runs whose prompt payload
+  contains ONLY: the FEAT's Given-When-Then ACs, the repo's test framework +
+  file-layout conventions, and stack identity from `.claude/loop.json` — an
+  explicit in-bounds allowlist (review OBJ-7: isolation without this
+  produces isolated-but-useless plans) — and EXCLUDES the diff and all
+  implementation code; the dispatch writes the `kind: test-plan` artifact
+  (path per scope (b)) before the slice's `workflow_state_changed:building`
+  event is recorded in
+  `.claude/artifacts/loop/trajectories/<sliceId>-events.jsonl` — evidenced
+  by an event-ordering test (test-plan-write timestamp < building-transition
+  timestamp; NB there is no repo-global `events.jsonl`, and `runner:start`
+  never calls `Agent()` itself, so the building transition is the strongest
+  in-process ordering proxy — architect C.7; a true builder-dispatch event
+  would require a new post-dispatch CLI touchpoint, out of scope) and a
+  fixture asserting the qa-expert prompt payload matches the allowlist and
+  excludes diff/implementation content.
 - AC-4 (red/green + goalpost-lock — no moving the target): Given the
   test-plan artifact from AC-3 exists, When `crew:test-automator` implements
   the failing tests from the plan and the builder is subsequently dispatched
@@ -121,15 +157,28 @@ d) **Grade gate:** testability dimension < 0.80 fails the slice (currently
   no Write/Edit call targeting the test-plan artifact path, and the
   `/crew:ship` qa-expert validation pass references that SAME artifact path
   rather than generating a new one — evidenced by a test asserting the
-  builder prompt explicitly forbids editing the plan path, and a fixture
+  builder prompt explicitly forbids editing the plan path, a fixture
   asserting `/crew:ship`'s qa-expert invocation reuses the stored artifact
-  path from slice frontmatter/state.
-- AC-5 (grade gate, config-scoped — failure path): Given a slice grade with
-  `testability < 0.80` and the owning repo's `loop.qa_gate` is
-  `"pre-build"`, When `runner:close` runs, Then the close is blocked with a
-  FIX badge instead of completing — evidenced by a test asserting
-  `runner:close` emits the FIX badge for a fixture grade with
-  `testability: 0.75` under `qa_gate: "pre-build"`, AND a companion test
+  path from slice frontmatter/state, AND (mechanical enforcement) the
+  dev-team#257 PreToolUse artifact-lock denying builder Write/Edit on the
+  locked plan path — the prompt-forbid + trace assertion alone is the
+  fragile fallback this AC's own pre-mortem flags; SLICE-4 does not start
+  until dev-team#257's lock piece and the cross-plugin wire contract
+  (`docs/upstream-requests/2026-07-18-crew-artifact-lock-hook-contract.md`)
+  exist.
+- AC-5 (grade gate, config-scoped — failure path): Given an incoming
+  `--grade-yaml` with `test_confidence < 0.80` and the owning repo's
+  `loop.qa_gate` is `"pre-build"`, When `runner:close` runs, Then the close
+  is blocked via the existing `GATE_FAILED_AT_CLOSE` machinery — a new
+  failures-array entry in `assertCloseGatesSatisfied`
+  (`close-slice.mts:321-378`), preserving its 3-close warm-up and
+  halt-badge fan-out, with the new badge `kind` registered in
+  `docs/halt-badges.md` per that doc's checklist (amends the undefined "FIX
+  badge" wording — architect C.5 / review OBJ-8). NB: the check parses the
+  incoming `--grade-yaml` directly since gate checks run before the grade is
+  persisted (`close-slice.mts:174-188` vs `:196-234` — architect C.4).
+  Evidenced by a test asserting close blocks for a fixture grade with
+  `test_confidence: 0.75` under `qa_gate: "pre-build"`, AND a companion test
   asserting the SAME fixture grade does NOT block close when `qa_gate` is
   `"off"` or absent (distinguishes config-gated enforcement from
   unconditional enforcement).
@@ -150,11 +199,18 @@ and the goalpost-lock enforcement (AC-4) are independent design-sensitive
 landmines, not mechanical repetition, and must not be absorbed into a
 "happy path" slice.
 
+- SLICE-0 (dev-team, external): qa-expert implementation-blind mode +
+  test-automator red-first exception (scope (e)) — prerequisite for SLICE-3/4
+  quality, tracked in dev-team, not counted in this repo's points
 - SLICE-1: PM emits ACs for every triaged FEAT, drop P0/P1-only gate (1 pt) — AC-1
 - SLICE-2: `loop.qa_gate` schema key + validator + back-compat default (2 pts) — AC-2, AC-6
-- SLICE-3: Pre-build context-isolated qa-expert test-plan dispatch (2 pts, landmine) — AC-3
-- SLICE-4: test-automator red/green wiring + goalpost-lock enforcement (2 pts, landmine) — AC-4
-- SLICE-5: Grade gate — testability < 0.80 blocks runner:close, config-scoped (2 pts) — AC-5
+- SLICE-3: Pre-build context-isolated qa-expert test-plan dispatch via
+  `qa-gate-preflight.mts` + validation-gate exclusion (2 pts, landmine) — AC-3
+- SLICE-4: test-automator red/green wiring + goalpost-lock enforcement
+  (2 pts, landmine; **externally blocked on dev-team#257** + wire-contract
+  upstream-request) — AC-4
+- SLICE-5: Grade gate — `test_confidence` < 0.80 blocks runner:close via
+  `GATE_FAILED_AT_CLOSE` + halt-badges registry row, config-scoped (2 pts) — AC-5
 
 ## Risks (pre-mortem — mandatory: technical_risk 0.6 and priority P1)
 
