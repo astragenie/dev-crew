@@ -49,7 +49,7 @@ function loadDispatchDeps() {
 }
 
 type ParsedArgs = {
-  subcommand: "prepare" | "finalize" | "metrics" | "prune" | "help";
+  subcommand: "prepare" | "finalize" | "recover" | "metrics" | "prune" | "help";
   planPath?: string;
   parentBranch?: string;
   repo?: string;
@@ -59,6 +59,7 @@ type ParsedArgs = {
   runId?: string;
   configPath?: string;
   pr?: boolean;
+  execute?: boolean;
   olderThanDays?: number;
   baseRef?: string;
 };
@@ -101,6 +102,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (flag === "--dry-run") args.dryRun = true;
     else if (flag === "--json") args.json = true;
     else if (flag === "--pr") args.pr = true;
+    else if (flag === "--execute") args.execute = true;
     else if (flag === "--help" || flag === "-h") args.subcommand = "help";
   }
   return args;
@@ -121,6 +123,7 @@ function printHelp(): void {
   process.stdout.write(`Usage:
   bun src/scripts/dispatch.mts prepare --plan <path|-> --parent-branch <name> [--repo <path>] [--depth N] [--dry-run] [--json] [--base <ref>]
   bun src/scripts/dispatch.mts finalize --run-id <id> --parent-branch <name> --plan <path|-> [--repo <path>] [--depth N] [--pr]
+  bun src/scripts/dispatch.mts recover --run-id <id> --parent-branch <name> [--repo <path>] [--execute] [--json]
   bun src/scripts/dispatch.mts metrics --run-id <id> [--repo <path>]
   bun src/scripts/dispatch.mts prune [--dry-run] [--older-than-days N] [--repo <path>]
 
@@ -132,6 +135,11 @@ Subcommands:
   finalize  After the caller has invoked the Agent batch, aggregate results,
             merge children to parent branch, write summary.md.
             --pr  Also push each DONE child branch and open a GitHub PR via gh CLI.
+  recover   Re-drive finalize for an INTERRUPTED run: read its worktrees.jsonl
+            + result markers, merge DONE children, preserve children that have
+            work but no DONE marker. DRY-RUN by default (previews the plan +
+            writes a dry-run summary, no git side effects); pass --execute to
+            apply the merges. Reconstructs plans from the run log — no --plan.
   metrics   Read and print the dispatch-metrics.json for a completed run.
   prune     List and remove stale closed runId directories, their worktrees,
             and their branches. --dry-run lists candidates without touching disk.
@@ -309,6 +317,35 @@ async function cmdFinalize(args: ParsedArgs): Promise<number> {
   return 0;
 }
 
+async function cmdRecover(args: ParsedArgs): Promise<number> {
+  if (!args.runId || !args.parentBranch) {
+    process.stderr.write("--run-id and --parent-branch are required\n");
+    return 1;
+  }
+  const { recoverRun } = await import("./lib/dispatch-recover.mjs");
+  const repo = args.repo ?? process.cwd();
+  let outcome: Awaited<ReturnType<typeof recoverRun>>;
+  try {
+    outcome = recoverRun(repo, args.runId, args.parentBranch, { execute: args.execute === true });
+  } catch (err) {
+    // AC-5: missing run log (or any recover error) → non-zero, no side effect.
+    process.stderr.write(`[dispatch-recover] ${(err as Error).message}\n`);
+    return 1;
+  }
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify(outcome, null, 2)}\n`);
+  } else {
+    const mode = outcome.executed ? "EXECUTED" : "DRY RUN (pass --execute to apply)";
+    const lines = outcome.children.map((c) => `  ${c.id}: ${c.status} → ${c.action} (${c.reason})`);
+    process.stdout.write(
+      `Recover run ${outcome.runId} on \`${outcome.parentBranch}\` — ${mode}\n` +
+        `${lines.join("\n")}\n` +
+        `Summary: ${outcome.summaryPath}\n`
+    );
+  }
+  return 0;
+}
+
 async function cmdMetrics(args: ParsedArgs): Promise<number> {
   if (!args.runId) {
     process.stderr.write("--run-id is required\n");
@@ -398,6 +435,9 @@ const parsedArgs = parseArgs(process.argv.slice(2));
         break;
       case "finalize":
         process.exitCode = await cmdFinalize(parsedArgs);
+        break;
+      case "recover":
+        process.exitCode = await cmdRecover(parsedArgs);
         break;
       case "metrics":
         process.exitCode = await cmdMetrics(parsedArgs);

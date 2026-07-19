@@ -29,6 +29,29 @@ Wave-mode crash recovery + worktree placement hardening. Two defects surfaced by
 Created via free-text intake (`/runner:intake "<text>"`). Priority is
 unset — this FEAT has not been scored yet. Run `/runner:triage`
 (PM scoring + `backlog pm-apply`) to score it before slicing.
+## Progress
+
+- **SLICE-1 (AC-1, AC-2) — DONE** (commit cbf659ac, reviewer PASS). Extracted
+  pure `childWorktreePath(repoRoot, childId, depth)` in `dispatch-worktree.mts`
+  that `path.resolve()`s repoRoot first; 2 regression tests pin the collapsed
+  `.-*` shape. Full suite 3071 pass.
+- **Deferred follow-up (from SLICE-1 review):** `worktree-manager.mts:99`
+  (`resolveWorktreeConfig` default-sibling) has the same unresolved-repoPath
+  collapse pattern. Safe today (sole caller passes an already-resolved path,
+  `loop.mts:680`). A naive `path.resolve` there was attempted and REVERTED —
+  it broke 24 tests in the parallel suite because consumer tests pass a
+  relative repoPath and rely on isolation; resolving it against the real cwd
+  makes them collide in the real `../runner-plugin-worktrees/`. Real fix must
+  be caller-side or test-aware, not a blind resolve. Own slice.
+- **SLICE-2 (AC-3..AC-6) — DONE** (commits 34c0cfb9 + f5507f4e, reviewer
+  approved_with_notes; HIGH parent-branch-mismatch guard + MEDIUM test-coverage
+  findings both fixed). `dispatch recover --run-id <id> --parent-branch <name>`:
+  DRY-RUN default, `--execute` to merge; reconstructs plans from worktrees.jsonl;
+  merges DONE, preserves no-marker-with-work children, guards against a
+  mismatched parent branch. 8 tests. All 6 ACs met.
+- **PR #549** (branch feat/267-wave-worktree-hardening) — awaiting CI + merge.
+  Move this FEAT triaged→done on merge.
+
 ## Acceptance criteria (Given-When-Then)
 
 - AC-1: Given a wave dispatch running with repoRoot resolved to an absolute path, When createChildWorktree (src/scripts/lib/dispatch-worktree.mts) computes the child worktree path for childId="feat267" depth=0, Then the resulting worktreePath is a sibling directory <dirname(repoRoot)>\runner-plugin-feat267-0 outside the repo tree, and git status --porcelain shows no untracked entry for it.

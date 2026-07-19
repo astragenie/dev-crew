@@ -7,6 +7,7 @@ import { execSync } from "node:child_process";
 import { initRepo } from "./dispatch-test-helpers.mjs";
 import {
   createChildWorktree,
+  childWorktreePath,
   removeChildWorktree,
   preflightGitClean,
   inventoryWorkerBranch,
@@ -54,6 +55,36 @@ test("createChildWorktree: writes worktrees.jsonl entry", () => {
   const entry = JSON.parse(log.trim());
   assert.equal(entry.childId, "BE");
   assert.equal(entry.depth, 0);
+});
+
+// FEAT-267 SLICE-1 (AC-1/AC-2): child worktrees must land in a sibling dir
+// OUTSIDE the repo tree, and a relative repoRoot of "." must not collapse to
+// the in-repo `.-<childId>-<depth>` shape that stranded worktrees in git
+// status during the 2026-07-19 interrupted wave-0.
+
+test("childWorktreePath: absolute repoRoot resolves to a sibling dir outside the repo", () => {
+  const repoRoot = path.resolve("/tmp/some/runner-plugin");
+  const p = childWorktreePath(repoRoot, "feat267", 0);
+  assert.equal(p, path.join(path.dirname(repoRoot), "runner-plugin-feat267-0"));
+  // sibling, not nested under the repo
+  assert.ok(!p.startsWith(repoRoot + path.sep), "must not be inside the repo tree");
+});
+
+test("childWorktreePath: relative '.' repoRoot resolves to an absolute sibling, NOT an in-repo .-<id>-<depth> dir (FEAT-267 regression)", () => {
+  const p = childWorktreePath(".", "feat267", 0);
+  const expectedName = `${path.basename(path.resolve("."))}-feat267-0`;
+  assert.ok(path.isAbsolute(p), "path must be resolved to absolute");
+  assert.equal(path.basename(p), expectedName);
+  // the exact reported defect: the collapsed ".-feat267-0" in-repo shape
+  assert.ok(
+    !path.basename(p).startsWith(".-"),
+    "must not produce the collapsed .-<childId>-<depth> in-repo directory"
+  );
+  assert.equal(
+    path.resolve(path.dirname(p)),
+    path.resolve(path.dirname(path.resolve("."))),
+    "sibling of the repo, one level up from cwd"
+  );
 });
 
 test("removeChildWorktree: prunes worktree + deletes branch", () => {

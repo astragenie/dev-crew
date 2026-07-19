@@ -127,6 +127,17 @@ export function preflightGitClean(repoRoot: string, parentBranch: string): void 
   execFileSync("git", ["worktree", "prune"], { cwd: repoRoot });
 }
 
+// Compute the sibling worktree directory for a dispatch child. The repoRoot is
+// resolved to an absolute path FIRST (FEAT-267 AC-2): a relative repoRoot of
+// "." would otherwise collapse `path.basename(".")`/`path.dirname(".")` to "."
+// and yield an in-repo `.-<childId>-<depth>` directory that pollutes git status
+// (the exact defect that stranded worktrees in the 2026-07-19 interrupted wave).
+export function childWorktreePath(repoRoot: string, childId: string, depth: number): string {
+  const absRepoRoot = path.resolve(repoRoot);
+  const baseName = path.basename(absRepoRoot);
+  return path.join(path.dirname(absRepoRoot), `${baseName}-${childId}-${depth}`);
+}
+
 export function createChildWorktree(args: SpawnArgs): {
   worktreePath: string;
   branch: string;
@@ -137,8 +148,7 @@ export function createChildWorktree(args: SpawnArgs): {
   validateBranchName(childBranch);
   const resolvedBase = resolveDispatchBase(repoRoot, baseRef);
   assertSliceExistsAtBase(repoRoot, resolvedBase, childId);
-  const baseName = path.basename(repoRoot);
-  const worktreePath = path.join(path.dirname(repoRoot), `${baseName}-${childId}-${depth}`);
+  const worktreePath = childWorktreePath(repoRoot, childId, depth);
   try {
     execFileSync("git", ["worktree", "add", worktreePath, resolvedBase, "-b", childBranch], {
       cwd: repoRoot,
