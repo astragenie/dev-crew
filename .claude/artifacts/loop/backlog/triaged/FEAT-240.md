@@ -1,20 +1,27 @@
 ---
 id: FEAT-240
-status: pending
-priority: P2
+status: triaged
+priority: P3
 category: maintenance
 target_release: null
 created: 2026-07-08
-updated: 2026-07-08
+updated: 2026-07-19
 depends_on: []
 slices: []
 derived_from: null
-tags: [area:memory, concern:version-compat, area:astramem-client]
+tags: [be]
 needs_contract: false
 needs_ux: false
 autonomous_safe: true
-pm_reviewed: null
-triage_notes: "Filed 2026-07-08 from the plugins-common stabilization milestone (companion to plugins-common FEAT-003, closed there as no-in-repo-deliverable). runner-plugin's astramem-client consumption is the residual of that milestone's candidate #3."
+pm_reviewed: 2026-07-19
+triage_notes: "P3: very low customer_impact (pure internal bookkeeping) and low remaining effort after verifying 2 of 3 ACs are already substantively satisfied in the current codebase; technical_risk stays low (0.0-0.2 band) since remaining work is a version-pin-style check plus documentation, no code path change."
+pm_customer_impact: 0.15
+pm_effort_estimate: 0.15
+pm_strategic_alignment: 0.3
+pm_technical_risk: 0.15
+pm_dependency_depth: 0.05
+pm_composite_priority: P3
+pm_autonomous_safe: true
 ---
 ## Description
 

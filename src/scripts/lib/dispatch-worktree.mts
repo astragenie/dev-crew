@@ -90,6 +90,16 @@ export function assertSliceExistsAtBase(repoRoot: string, baseRef: string, child
   );
 }
 
+// FEAT-249 — loop-owned artifact paths preflightGitClean must not self-block
+// on. `wave run` (src/scripts/lib/wave/runner.mts) appends wave_started /
+// plan_built telemetry to `.claude/artifacts/loop/waves/<waveId>/events.jsonl`
+// BEFORE calling dispatch prepare (which reaches this check), so the wave's
+// own crash-forensics write was tripping its own dirty-tree gate. Scoped to
+// `.claude/artifacts/loop/` generally (not just waves/) since other
+// loop-owned artifacts (dispatch trace/summary) share the same "write before
+// the dirty check can see it" shape.
+const LOOP_ARTIFACT_ALLOWLIST_PREFIX = ".claude/artifacts/loop/";
+
 export function preflightGitClean(repoRoot: string, parentBranch: string): void {
   try {
     execFileSync("git", ["rev-parse", "--verify", parentBranch], {
@@ -99,9 +109,18 @@ export function preflightGitClean(repoRoot: string, parentBranch: string): void 
   } catch {
     throw new DispatchWorktreeError(`parentBranch not found: ${parentBranch}`);
   }
-  const status = execFileSync("git", ["status", "--porcelain"], {
-    cwd: repoRoot
-  }).toString();
+  // Exclude the loop-artifact allowlist via git's own pathspec magic rather
+  // than post-filtering `--porcelain` lines textually: when an entire new
+  // directory is untracked, git collapses it to one line for that directory
+  // (e.g. `?? .claude/`) instead of listing files inside it, which a
+  // line-prefix filter would miss. The `:(exclude)` pathspec makes git itself
+  // compute status as if the excluded tree didn't exist, so collapsing can
+  // never smuggle a non-allowlisted change past the check.
+  const status = execFileSync(
+    "git",
+    ["status", "--porcelain", "--", ".", `:(exclude)${LOOP_ARTIFACT_ALLOWLIST_PREFIX}**`],
+    { cwd: repoRoot }
+  ).toString();
   if (status.trim().length > 0) {
     throw new DispatchWorktreeError(`working tree dirty on ${parentBranch}`);
   }

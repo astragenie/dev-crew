@@ -95,6 +95,100 @@ test("preflightGitClean: clean tree on existing branch passes", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// FEAT-249 — wave-run self-blocking dirty-tree fix
+// ──────────────────────────────────────────────────────────────────────────
+
+test("preflightGitClean: untracked wave artifact under .claude/artifacts/loop/ does not block", () => {
+  const repo = initRepo();
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop/waves/wave-1"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, ".claude/artifacts/loop/waves/wave-1/events.jsonl"),
+    '{"type":"wave_started"}\n'
+  );
+  assert.doesNotThrow(
+    () => preflightGitClean(repo, "main"),
+    "the wave runner's own plan artifact write must not self-block dispatch prepare"
+  );
+});
+
+test("preflightGitClean: a non-artifact dirty file still throws even alongside a loop artifact", () => {
+  const repo = initRepo();
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop/waves/wave-1"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, ".claude/artifacts/loop/waves/wave-1/events.jsonl"),
+    '{"type":"wave_started"}\n'
+  );
+  fs.writeFileSync(path.join(repo, "unrelated-dirty.txt"), "x");
+  assert.throws(
+    () => preflightGitClean(repo, "main"),
+    (e) => e.name === "DispatchWorktreeError" && /dirty/i.test(e.message)
+  );
+});
+
+// The two tests above use a bare initRepo() fixture with no committed
+// .gitignore at all, so they can't distinguish "the allowlist makes this
+// pass" from "there happened to be nothing around to mask it". These two
+// commit a real, tracked .gitignore first (mirroring this repo's own
+// tracked .gitignore, now that the `.claude/artifacts/loop/waves/` masking
+// entry has been removed per FEAT-249's completion clause) to prove the
+// wave artifact is genuinely unmasked — visible in plain `git status
+// --porcelain` — and that preflightGitClean passes because of the pathspec
+// allowlist, not because gitignore hid the artifact from git entirely.
+
+test("preflightGitClean: with a real tracked .gitignore (no waves/ masking), a dirty wave artifact still passes via the allowlist", () => {
+  const repo = initRepo();
+  fs.writeFileSync(path.join(repo, ".gitignore"), "node_modules/\ndist/\n");
+  // Track something else under .claude/ first (mirroring this repo's real
+  // tree, which has plenty of committed .claude/ content), so plain `git
+  // status --porcelain` doesn't collapse the WHOLE .claude/ tree to one
+  // opaque `?? .claude/` line below.
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop"), { recursive: true });
+  fs.writeFileSync(path.join(repo, ".claude/artifacts/loop/.gitkeep"), "");
+  execSync('git add . && git commit -qm "add gitignore + loop artifacts root"', { cwd: repo });
+
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop/waves/wave-1"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, ".claude/artifacts/loop/waves/wave-1/events.jsonl"),
+    '{"type":"wave_started"}\n'
+  );
+
+  // Every wave run creates a brand-new `waves/<waveId>/` directory, so git
+  // still collapses THAT (now-untracked) subtree to one `?? .claude/…/waves/`
+  // line — matching production exactly (this is the shape a live wave run
+  // hits, not a test-only artifact). What matters for the "not gitignore
+  // masked" proof is that the line appears at all: an ignored path is
+  // invisible to plain `git status --porcelain` with no trace whatsoever.
+  const rawStatus = execSync("git status --porcelain", { cwd: repo })
+    .toString()
+    .replace(/\\/g, "/");
+  assert.match(
+    rawStatus,
+    /\.claude\/artifacts\/loop\/waves/,
+    "artifact path must show up as dirty in plain git status — proves gitignore isn't what's hiding it"
+  );
+
+  assert.doesNotThrow(() => preflightGitClean(repo, "main"));
+});
+
+test("preflightGitClean: with a real tracked .gitignore present, an unrelated dirty file alongside a wave artifact still blocks", () => {
+  const repo = initRepo();
+  fs.writeFileSync(path.join(repo, ".gitignore"), "node_modules/\ndist/\n");
+  execSync('git add . && git commit -qm "add gitignore"', { cwd: repo });
+
+  fs.mkdirSync(path.join(repo, ".claude/artifacts/loop/waves/wave-1"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, ".claude/artifacts/loop/waves/wave-1/events.jsonl"),
+    '{"type":"wave_started"}\n'
+  );
+  fs.writeFileSync(path.join(repo, "unrelated-dirty.txt"), "x");
+
+  assert.throws(
+    () => preflightGitClean(repo, "main"),
+    (e) => e.name === "DispatchWorktreeError" && /dirty/i.test(e.message)
+  );
+});
+
+// ──────────────────────────────────────────────────────────────────────────
 // FEAT-202 SLICE-A — inventoryWorkerBranch + helpers
 // ──────────────────────────────────────────────────────────────────────────
 

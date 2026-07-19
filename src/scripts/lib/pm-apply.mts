@@ -60,24 +60,6 @@ const RESCOPE_WRITABLE_STATES = new Set(["pending", "triaged", "in-progress"]);
 const AC_HEADING_RE = /^##\s+Acceptance criteria/im;
 const SLICES_HEADING_RE = /^##\s+Proposed slices/im;
 
-export interface PmApplyEntryInput {
-  featureId?: unknown;
-  /** Documented alias for `featureId` (issue #402 live-drift tolerance). */
-  featId?: unknown;
-  /** Documented alias for `proposedSlices` (issue #402 live-drift tolerance). */
-  proposed_slices?: unknown;
-  scores?: unknown;
-  compositePriority?: unknown;
-  autonomousSafe?: unknown;
-  demandEvidence?: unknown;
-  scopeNotes?: unknown;
-  risks?: unknown;
-  reasoning?: unknown;
-  acs?: unknown;
-  proposedSlices?: unknown;
-  declined_per?: unknown;
-}
-
 export interface PmApplyFailure {
   index: number;
   featureId: string | null;
@@ -576,14 +558,6 @@ export async function applyPmResults(
 // `writePmReviewArtifact` (both already part of the pm-apply funnel used
 // by `commitEntry` above). No second writer touches FEAT frontmatter/body.
 // ---------------------------------------------------------------------
-
-export interface PmRescopeEntryInput {
-  featureId?: unknown;
-  objections?: unknown;
-  acs?: unknown;
-  scopeNotes?: unknown;
-  reasoning?: unknown;
-}
 
 export interface PmRescopeApplied {
   featureId: string;

@@ -1,72 +1,13 @@
 import { execFile as execFileCb } from "node:child_process";
-import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFileCb);
-
-// Single source of truth for the plugin and marketplace name. Mirrors the
-// pattern from the crew plugin so generated hook scripts and bridge templates
-// pull the identity from the manifests instead of hardcoding strings.
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-// Support two execution layouts:
-// 1. Emitted (scripts/ tree): scripts/lib/ → repo root
-// 2. Direct (src/ tree): src/scripts/lib/ → repo root (fallback)
-let pluginRoot = path.resolve(scriptDir, "..", "..");
-if (!existsSync(path.join(pluginRoot, ".claude-plugin"))) {
-  pluginRoot = path.resolve(scriptDir, "..", "..", "..");
-}
-
-let cached: any = null;
 
 async function readJson(filePath: string) {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw);
-}
-
-export async function getPluginIdentity() {
-  if (cached) {
-    return cached;
-  }
-
-  const marketplaceManifestPath = path.join(pluginRoot, ".claude-plugin", "marketplace.json");
-  const pluginManifestPath = path.join(pluginRoot, ".claude-plugin", "plugin.json");
-
-  const [marketplace, plugin] = await Promise.all([
-    readJson(marketplaceManifestPath),
-    readJson(pluginManifestPath)
-  ]);
-
-  if (!marketplace?.name) {
-    throw new Error(`Missing "name" field in ${marketplaceManifestPath}`);
-  }
-  if (!plugin?.name) {
-    throw new Error(`Missing "name" field in ${pluginManifestPath}`);
-  }
-
-  cached = {
-    marketplaceName: marketplace.name,
-    pluginName: plugin.name,
-    pluginVersion: plugin.version || null,
-    pluginRoot
-  };
-  return cached;
-}
-
-// Returns the bash glob pattern used to locate the crew CLI inside Claude
-// Code's plugin cache. The crew plugin lives in the `astra` marketplace
-// (renamed from `crew-dev` in v0.3.0), which we hardcode here because we
-// depend on it. If the user installs crew via a different marketplace,
-// override CREW_MARKETPLACE_NAME in the environment.
-// After the crew Bun migration (>=0.31.0) the entry point is crew.ts; older
-// releases ship crew.mjs. The glob covers both.
-export function getCrewCliCacheGlob() {
-  const marketplaceName = process.env.CREW_MARKETPLACE_NAME || "astra";
-  const pluginName = "crew";
-  return `$HOME/.claude/plugins/cache/${marketplaceName}/${pluginName}/*/scripts/crew.{ts,mjs}`;
 }
 
 // crew entry-point filenames in resolution order. crew.ts ships in the Bun-
@@ -139,12 +80,6 @@ export function crewCliRuntime(crewCliPath: string): "bun" | "node" {
 // reviewers to pass a flag the CLI rejects.
 export const MIN_CREW_VERSION = "0.57.0";
 
-// Minimum crew version that ships /crew:orchestrate-slice.
-// v0.11.0 first shipped commands/orchestrate-slice.md; v0.10.0 shipped only the
-// UX-validation gate. When installed crew meets this threshold, slice-start emits
-// the orchestrate command instead of the legacy crew:fullstack-dev dispatch.
-export const ORCHESTRATE_SLICE_MIN_CREW_VERSION = "0.11.0";
-
 // Read the crew plugin's version from the plugin.json next to a crew CLI path.
 // Returns null if the manifest is missing or unreadable.
 export async function getCrewVersion(crewCliPath: string | null) {
@@ -181,17 +116,6 @@ export function compareSemver(a: string | null, b: string | null) {
   return 0;
 }
 
-// Returns true when the installed crew version supports /crew:orchestrate-slice.
-// Pass versionOverride in tests to avoid filesystem reads.
-export async function checkOrchestrateSliceSupport(
-  versionOverride?: string | null
-): Promise<boolean> {
-  const version =
-    versionOverride !== undefined ? versionOverride : await getCrewVersion(await findCrewCli());
-  if (!version) return false;
-  return compareSemver(version, ORCHESTRATE_SLICE_MIN_CREW_VERSION) >= 0;
-}
-
 // Minimum Bun version the plugin runs under. Set to the version verified
 // green in the Phase-A compat probe; bump only with a CHANGELOG note.
 export const MIN_BUN_VERSION = "1.3.14";
@@ -214,9 +138,4 @@ export async function checkBunVersion(versionOverride?: string | null) {
     version,
     required: MIN_BUN_VERSION
   };
-}
-
-// Test-only helper.
-export function _resetCacheForTests() {
-  cached = null;
 }

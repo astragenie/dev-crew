@@ -15,11 +15,11 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 <!-- demo-recording: pending W4.1 asciinema asset -->
 
 <!-- metrics-band:start -->
-_Dogfood metrics — generated 2026-07-18. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
+_Dogfood metrics — generated 2026-07-19. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
 
 | Metric | Value |
 |---|---|
-| FEATs shipped (done) | 181 |
+| FEATs shipped (done) | 184 |
 | Slices closed, last 90 days | 144 |
 | Grade average, last 5 slice closes | 0.862 (n=136 total) |
 | median per slice-close session scan | $31.986 (mean $936.110, +2826.7% divergence) |
@@ -46,8 +46,9 @@ either cites a file in this repo or a specific PR/issue. Compared against
 | Prompt optimization | One fully auditable live promotion: GEPA judge trial `c948e52c`, `aiplugin-dev` 1.2.3→1.2.4 (CHANGELOG-traceable). Default candidate generation is synthetic string mutation — real LLM reflection only runs behind an explicit flag, and that distinction is documented rather than blurred. | Often marketed as "self-improving" or "reflective" with no public trial artifact a reader can open and verify. |
 | CI enforcement | CI gates enforced (see metrics band above; `CLAUDE.md` § "CI gates"), several traced directly to a production incident retro — e.g. phantom-agent dispatch (#371), stale pre-transfer owner refs (#474), worktree-hang quarantine (#355). | Gate counts, when published, are rarely tied to a named incident a reader can look up. |
 | Cost reporting | Median per slice-close session scan reported alongside the mean with a divergence flag, so a skewed average can't hide behind a single headline number (see metrics band above). | Cost claims are usually a single average, or omitted entirely. |
+| Access | `/plugin install loop@astra` — self-serve, no waitlist, on any tier. | Some competing "self-learning" agent platforms gate every pricing tier, including free, behind a waitlist. |
 
-_Comparison reflects publicly documented positioning of the category; capabilities change over time._
+_Comparison reflects publicly documented positioning as of 2026-07-18._
 
 ## Install
 

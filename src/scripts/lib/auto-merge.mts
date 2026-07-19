@@ -152,13 +152,6 @@ export class MergeError extends Error {
 // Commit-message template
 // ---------------------------------------------------------------------------
 
-/** Module constant: the template used to render squash-merge commit messages. */
-export const AUTO_MERGE_COMMIT_TEMPLATE = `<sliceTitle> (<sliceId>)
-
-<closesLine><gradeAvg>. <decisionList>.
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`;
-
 /**
  * Render the squash-merge commit message from AutoMergeOptions.
  * Throws when sliceTitle or sliceId are empty (REQUIRED fields).

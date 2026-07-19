@@ -1,16 +1,29 @@
 ---
 id: FEAT-249
-status: pending
-priority: null
+status: done
+priority: P1
 category: feature
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-19
 depends_on: []
 slices: []
 derived_from: null
 github_issue: 500
-github_url: https://github.com/astragenie/runner-plugin/issues/500
+github_url: "https://github.com/astragenie/runner-plugin/issues/500"
+pm_customer_impact: 0.7
+pm_effort_estimate: 0.25
+pm_strategic_alignment: 0.5
+pm_technical_risk: 0.35
+pm_dependency_depth: 0.05
+pm_composite_priority: P1
+pm_autonomous_safe: true
+pm_reviewed: 2026-07-19
+autonomous_safe: true
+triage_notes: "P1: high customer_impact (blocks every run of an entire opt-in loop mode, twice-reproduced, workaround already required) combined with low effort (bounded, reporter-scoped) justifies prioritizing ahead of the P2 hygiene items in this batch. technical_risk 0.35 (0.3-0.5 band: touches the dispatch preflight gate, a HARD-RULE-adjacent path per CLAUDE.md, but is a known-pattern reorder/allowlist fix in 1-2 files with clean git-revert rollback) — pre-mortem completed above as required for P1 regardless of the risk band."
+tags: [be]
+needs_contract: false
+needs_ux: false
 ---
 ## Description
 

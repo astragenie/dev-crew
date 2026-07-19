@@ -1,0 +1,261 @@
+[
+  {
+    "featureId": "FEAT-236",
+    "scores": {
+      "customer_impact": 0.25,
+      "effort_estimate": 0.2,
+      "strategic_alignment": 0.35,
+      "technical_risk": 0.15,
+      "dependency_depth": 0.05
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Internal audit only, not end-user demand. triage_notes: \"Runner-owned cleanups from #365 step #9 (findings B3/M7/M8) ... UNBLOCKED, no external dependency.\" No user/persona quote exists.",
+    "scopeNotes": "MAJOR RESCOPE FINDING (mirrors the SLICE-95 'already mostly shipped' lesson from the required lessons digest): 3 of 4 non-stretch sub-slices are already shipped and verified live in this repo: (1) SLICE-1/B3 — src/scripts/lib/slice-linker/crew-bridge.mts:24-30 already has the fix with an inline comment explicitly citing 'FEAT-236 B3' and explaining the hardcoded author-path was removed; (2) SLICE-3/CI wiring — `.github/workflows/ci.yml:77` already runs `bun ./src/scripts/validate-imports.mts`, and CLAUDE.md's own CI-gates list (item 9) documents it as a gate; (3) SLICE-4/doc drift — grepped CLAUDE.md for '/runner:slice start' and '/runner:slice complete', zero hits, and codemod-add-any.mts is confirmed absent from src/ (zombie file already deleted). Only SLICE-2 (dead-export cleanup, ~51 exports minus what may already be gone) and the explicitly-deferred SLICE-5 (M7 any-debt, not required for close) remain live scope. Recommend the FEAT body be edited to drop SLICE-1/3/4 before slicing (researcher grep pass first to get a current dead-export count). No weak grade dimension is active (last-5 averages all >=0.80 per loop-snapshot.md; observability lowest at 0.82), so no mandatory weak-dimension AC. Effort calibration: no clean single-slice cost analog for a pure dead-export sweep; nearest comparable mechanical/CI slice is SLICE-159 (FEAT-257, $140/52min, single-purpose) — this FEAT's now-shrunk scope should land well under that.",
+    "risks": [
+      "Dead-export deletion must be grep-verified per-symbol before removal (a dynamic-import or string-literal consumer would not show up in a naive import grep) — mirrors the FEAT's own stated risk.",
+      "Because B3/SLICE-3/SLICE-4 are already shipped, dispatching a builder against the FEAT's current unedited body risks wasted/duplicate work or a confused reviewer diffing against code that's already correct."
+    ],
+    "reasoning": "P2/low risk (0.0-0.2 band: known repo pattern, few files, git-revert-clean) mechanical cleanup; effort scored low because 3 of 4 sub-slices are independently verified already-shipped, leaving only a small dead-export sweep. No cost analog found for the shrunk scope (noted in scopeNotes).",
+    "acceptanceCriteria": [
+      "AC-1: Given the 2026-06-15 dead-export audit list and current repo state, when a researcher greps each flagged symbol for consumers, then only true zero-consumer exports are marked for removal (B3 hardcoded-path fix, CI validate-imports wiring, and the CLAUDE.md ceremony-command wording are already shipped — verified via src/scripts/lib/slice-linker/crew-bridge.mts:24-30, .github/workflows/ci.yml:77, and a CLAUDE.md grep with zero '/runner:slice start|complete' hits).",
+      "AC-2: Given the confirmed-dead exports (codemod-add-any.mts already absent), when removal lands, then `bun test src/tests/ --parallel --timeout 60000` and `bunx tsc --project tsconfig.json --noEmit` are green and grep shows zero remaining references to each removed symbol.",
+      "AC-3: Given the removal is complete, when `bunx biome lint src/` and `bunx biome format src/` run, then both exit 0 with no new lint suppressions added to paper over a removed export's absence.",
+      "AC-4: Given the M7 any-debt burndown is explicitly out of scope, when the FEAT closes, then the close artifact records M7 as a deferred stretch item, not a blocking AC."
+    ],
+    "touchesFiles": [
+      "src/scripts/lib/slice-linker/crew-bridge.mts",
+      "src/scripts/validate-imports.mts",
+      ".github/workflows/ci.yml",
+      "CLAUDE.md"
+    ]
+  },
+  {
+    "featureId": "FEAT-237",
+    "scores": {
+      "customer_impact": 0.55,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.5,
+      "technical_risk": 0.4,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Same defect class as GitHub #371, which the FEAT body itself describes as 'HIGH customer-facing' (phantom crew:builder shipped in installed loop rules). Direct quote: 'FEAT-236 SLICE-4 fixed the generated CLAUDE.md, but the templates are the install-time SOURCE — the next /runner:install ... regenerates the drift right back.' This is real installed-consumer-repo breakage evidence, not a hypothetical.",
+    "scopeNotes": "Depends conceptually on FEAT-236 (whose SLICE-4 already fixed the *generated* CLAUDE.md, per FEAT-236 verification above) but is independently scoped — its own `depends_on: []` is correct since the template source files are untouched by FEAT-236. No weak grade dimension is active (all last-5 averages >=0.80). Effort calibration: no clean single-slice cost analog for 'extend an existing regex-based validator with a negated/historical-context heuristic'; nearest structural precedent is validate-agent-refs.mts's own existing 'proximity-bounded dispatch-context heuristic' (cited in the FEAT's own Risks section) which this FEAT is asked to mirror, not invent from scratch — reduces novelty vs a from-scratch detector.",
+    "risks": [
+      "The validator must allow legitimately historical/negated mentions (e.g. CLAUDE.md's own 'Backlog discipline' section narrating removed commands) — a naive blanket regex will false-positive on the very repo file that documents the removal, which would itself need an exemption or the CI gate breaks on its own source.",
+      "Templates are consumed by every downstream repo running `/runner:install`; a residual stale command reference here reproduces the #371 customer-facing failure class on next install/refresh."
+    ],
+    "reasoning": "P2, technical_risk 0.4 (0.3-0.5 band: new detection pattern within one existing module, no contract change, clean rollback) — extending validate-agent-refs.mts's existing heuristic rather than building a new validator from scratch keeps risk mid-band, not high.",
+    "acceptanceCriteria": [
+      "AC-1: Given templates/claude-md-hard-rules.md and templates/loop-rules.md, when read, then every `/runner:<cmd>` reference resolves to a real command under `commands/<cmd>.md` or is explicitly framed as a removed/historical command (no live instruction to run a non-existent command).",
+      "AC-2: Given `/runner:install` runs against a fresh repo, when it writes the HARD-RULES block, then the generated CLAUDE.md contains no phantom command — fix is at the template source, not the generated output.",
+      "AC-3: Given a stale `/runner:<cmd>` dispatch instruction is added to a template or doc, when `src/scripts/validate-agent-refs.mts` (or a sibling check) runs in CI, then it fails and names the offending file:line, while a documented historical mention in a 'these were removed' context does not false-positive.",
+      "AC-4: `bun ./src/scripts/validate-agent-refs.mts`, full test suite, `bunx tsc --noEmit`, `bunx biome lint src/`, and `bun ./src/scripts/validate-snapshot-freshness.mts` are all green."
+    ],
+    "touchesFiles": [
+      "templates/claude-md-hard-rules.md",
+      "templates/loop-rules.md",
+      "src/scripts/validate-agent-refs.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-240",
+    "scores": {
+      "customer_impact": 0.15,
+      "effort_estimate": 0.15,
+      "strategic_alignment": 0.3,
+      "technical_risk": 0.15,
+      "dependency_depth": 0.05
+    },
+    "compositePriority": "P3",
+    "autonomousSafe": true,
+    "demandEvidence": "none — internal stabilization-milestone residual, not user-facing. triage_notes: \"companion to plugins-common FEAT-003, closed there as no-in-repo-deliverable\" — an internal cross-repo bookkeeping item.",
+    "scopeNotes": "MAJOR RESCOPE FINDING: verified `package.json:29` already pins `@astragenie/astramem-client` at `^0.3.0` — already past the `0.2.0` this FEAT asks for (filed 2026-07-08, 11 days stale as of 2026-07-19), though it's a caret range, not the 'exact-pin convention' the FEAT itself calls for, so AC-1 is not fully satisfied on pin *style*. AC-3 (no CLI-spawn memory paths) also appears already satisfied: the only remaining `spawn(...)` call found (src/scripts/lib/astramem-cli-resolver.mts:85) is a binary-discovery `which astramem` probe with an inline comment confirming 'Every capture/recall hot path was migrated' off spawn — not a memory-write fallback. AC-2 (a DEC recording the AstramemDaemonClient adopt-vs-defer decision) is the one item confirmed still open: DEC-072 and DEC-073 exist and reference astramem-client, but cover CLI-spawn retirement and dynamic-gate optional-dep imports respectively — neither is the DaemonClient REST-surface adopt-vs-defer decision this FEAT asks for, even though src/scripts/lib/bounded-fetch.mts already references AstramemDaemonClient in a comment, suggesting the decision was made informally but never written down. Downgraded from P2 to P3 given the shrunk remaining scope is essentially 'write one DEC + confirm pin style.' No weak grade dimension active.",
+    "risks": [
+      "Writing the DEC after the fact (decision already implicitly made in code) risks the DEC becoming a rubber-stamp rather than a real design record — the DEC author should re-verify the reasoning still holds at 0.3.0, not just describe what already happened."
+    ],
+    "reasoning": "P3: very low customer_impact (pure internal bookkeeping) and low remaining effort after verifying 2 of 3 ACs are already substantively satisfied in the current codebase; technical_risk stays low (0.0-0.2 band) since remaining work is a version-pin-style check plus documentation, no code path change.",
+    "acceptanceCriteria": [
+      "AC-1: Given package.json currently pins `@astragenie/astramem-client` at `^0.3.0` (a caret range, already ahead of the 0.2.0 originally requested), when the pin-convention check runs, then the pin matches the repo's exact-pin convention or the FEAT explicitly records why a caret range is intentionally kept.",
+      "AC-2: Given the AstramemDaemonClient REST surface referenced informally in src/scripts/lib/bounded-fetch.mts, when the adopt-vs-defer decision is finalized, then a new DEC file under .claude/artifacts/loop/decisions/ records the decision with rationale, distinct from DEC-072 (CLI-spawn retirement) and DEC-073 (dynamic-gate imports).",
+      "AC-3: Given DEC-072's CLI-spawn retirement, when `grep -rn spawn src/scripts/lib/` is run, then the only remaining spawn call (astramem-cli-resolver.mts, binary-discovery `which` probe) is confirmed not a memory-write fallback path.",
+      "AC-4: Given any pin change, when `bun install` then `bun test src/tests/ --parallel --timeout 60000` run, then memory-related tests (memory-sink, memory-doctor, bounded-fetch) are green."
+    ],
+    "touchesFiles": [
+      "package.json",
+      ".claude/artifacts/loop/decisions"
+    ]
+  },
+  {
+    "featureId": "FEAT-241",
+    "scores": {
+      "customer_impact": 0.35,
+      "effort_estimate": 0.75,
+      "strategic_alignment": 0.65,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.15
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "none (internal methodology comparison, not a user/persona request). Body: \"Filed 2026-07-09 from the SDD-frameworks review... adopts OpenSpec's one genuinely-missing pattern.\" This is an internal tooling-parity argument against OpenSpec/Spec Kit/Kiro/Tessl, not external customer demand.",
+    "scopeNotes": "needs_contract: true is correctly set — this FEAT defines a new artifact schema (specs/ capability tree) and a reconciliation algorithm that becomes load-bearing for architect-gate and spec-status going forward; it should go through the pre-slice-1 ARCHITECT GATE (arch_status fields) before slice-1, not straight to a builder. Effort calibration: no comparable single-slice cost analog exists for a new cross-cutting artifact system touching close-ceremony + spec-status + contracts reconciliation; the loop-snapshot's own cost trajectory (median $31.99/mean $936.11 per cost-report, high variance) offers no clean single-feature signal either, so this is scored from the rubric table alone ('no cost analog', per Framework 5). No weak grade dimension is currently active (all last-5 averages >=0.80), so no mandatory weak-dimension AC beyond what's already in AC-2/AC-4 (idempotency, no-clobber).",
+    "risks": [
+      "Two-weeks-later failure mode: the change-archive reconciliation algorithm mis-merges an architect-feature contract into an overlapping specs/ capability section (ambiguous merge semantics), silently corrupting the one artifact this FEAT explicitly bills as the new 'source of truth' — a reviewer would need to specifically re-close the same FEAT twice to catch it.",
+      "Rollback is NOT a clean git revert: specs/ becomes a durable, consumed artifact (spec-status --drift baseline, architect-gate baseline) — reverting the reconciliation code alone leaves stale or partially-merged specs/ content behind, requiring a regeneration/hand-repair pass, i.e. migration-class rollback.",
+      "Coverage gap an existing test would NOT catch: nothing today exercises 're-close the same FEAT twice' idempotency or 'two FEATs reconciling into the same specs/ section' concurrency/no-clobber behavior — exactly the gap AC-2 and AC-4 are meant to close, and the slice's own tests must be the first to exercise it.",
+      "Cascade note: the reconciliation step is wired into the slice/FEAT close ceremony, a dispatch-critical path per CLAUDE.md's autonomous-loop rules — a bug there can block or corrupt every subsequent close in a marathon run until reverted, not just this one FEAT's outcome."
+    ],
+    "reasoning": "P2 despite low customer_impact because strategic_alignment is high (this is core SDD-methodology tooling, the product's own mission) and technical_risk lands in the 0.6-0.8 band (cross-module reach: close-ceremony + spec-status + contracts reconciliation; new artifact-system pattern; no schema/DB change but a data-shape reorganization of derived-vs-authored truth) — pre-mortem required and completed above per the >=0.6 technical_risk trigger. effort_estimate 0.75 maps (via the assumed pm-effort-mapper Fibonacci banding: 0.71-0.85 -> 13 points) to effort_points=13, triggering the decomposition gate — decomposed below with landmines (reconciliation algorithm, drift-diff algorithm) isolated into their own slices per runner#393 rule (a), and no >2-point entries per the tightened cap.",
+    "acceptanceCriteria": [
+      "AC-1: Given a repo with the loop installed, when specs/ scaffolding is initialized, then a documented .claude/specs/ tree exists with a schema/README defining one-capability-per-file.",
+      "AC-2: Given a FEAT reaches slice-close, when the close ceremony runs, then its architect-feature contract is reconciled into the relevant specs/ file (additive merge; no clobber), and the reconciliation is idempotent on re-close (a second close of the same FEAT does not duplicate or corrupt the section).",
+      "AC-3: Given authored specs/ and derived (done-FEAT) truth, when `spec-status --drift` runs, then it reports capabilities present in one but not the other.",
+      "AC-4: Given the change-archive step, when it runs against two different FEATs whose contracts touch the same specs/ file, then neither run overwrites the other's unrelated section (reusing the cross-producer clobber-guard pattern already built for designs/<FEAT>-contracts.*)."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "specs/ tree scaffold + one-capability-per-file schema/README", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Change-archive reconciliation core algorithm (additive merge, idempotency)", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "Wire reconciliation into slice/FEAT close ceremony", "points": 2 },
+      { "id_suffix": "-SLICE-4", "title": "spec-status --drift diff mode (authored vs derived)", "points": 2 },
+      { "id_suffix": "-SLICE-5", "title": "Idempotency + re-close regression tests (AC-2)", "points": 2 },
+      { "id_suffix": "-SLICE-6", "title": "No-clobber concurrent-reconciliation tests (AC-4) + drift tests (AC-3)", "points": 2 },
+      { "id_suffix": "-SLICE-7", "title": "specs/ rollout docs + spec-status CLI flag docs", "points": 1 }
+    ],
+    "touchesFiles": [
+      ".claude/specs",
+      "src/scripts/loop.mts",
+      "src/scripts/lib/slice-linker/complete-slice.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-249",
+    "scores": {
+      "customer_impact": 0.7,
+      "effort_estimate": 0.25,
+      "strategic_alignment": 0.5,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.05
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Direct reproduced operational evidence, quoted from body: \"every wave run fails with 'working tree dirty on main' caused by its own artifact write. Reproduced 2026-07-09 twice (wave 2026-07-09T20-22-47, 2026-07-09T20-23-51).\" A workaround (.gitignore) already had to ship to keep wave mode usable at all.",
+    "scopeNotes": "Category is mislabeled 'feature' in frontmatter but this is a bug (self-inflicted 100%-reproducible failure of an opt-in loop capability, wave mode). Reporter already enumerated 3 concrete fix options with an explicit recommendation ('(a) unless artifact needed for crash forensics ... then (b)'), which sharply bounds scope and effort. Effort calibration: nearest analog is SLICE-159 (FEAT-257, $140/52min, single-purpose reliability fix) — this is comparably small (single preflight-ordering change + .gitignore workaround removal), effort 0.25 is consistent with that analog. No weak grade dimension is currently active.",
+    "risks": [
+      "Two-weeks-later failure mode: option (a) (write plan artifact after preflight) could silently lose crash-forensics data if a wave crashes between preflight and plan-write on a retry path — a reviewer not specifically exercising a mid-wave-crash scenario would not catch this; the reporter's own conditional ('unless artifact needed for crash forensics before prepare; then (b)') is exactly the judgment call the builder must make correctly.",
+      "Rollback is two-part, not a single clean revert: reverting the preflight-ordering code fix without also re-adding the .gitignore entry for .claude/artifacts/loop/waves/ reintroduces the original self-blocking failure immediately.",
+      "Coverage gap an existing test would NOT catch: no current test exercises `wave run` end-to-end against a real preflightGitClean call with a pre-existing loop-owned artifact directory present — a unit test of preflightGitClean in isolation would not catch this self-blocking interaction, since it's an integration-level ordering bug between the wave-plan writer and the dispatch preflight gate."
+    ],
+    "reasoning": "P1: high customer_impact (blocks every run of an entire opt-in loop mode, twice-reproduced, workaround already required) combined with low effort (bounded, reporter-scoped) justifies prioritizing ahead of the P2 hygiene items in this batch. technical_risk 0.35 (0.3-0.5 band: touches the dispatch preflight gate, a HARD-RULE-adjacent path per CLAUDE.md, but is a known-pattern reorder/allowlist fix in 1-2 files with clean git-revert rollback) — pre-mortem completed above as required for P1 regardless of the risk band.",
+    "acceptanceCriteria": [
+      "AC-1: Given `wave run` writes its plan artifact under .claude/artifacts/loop/waves/<waveId>/, when dispatch-worktree.mts's preflightGitClean runs, then the wave's own artifact write no longer causes a 'working tree dirty on main' rejection (fix via write-after-preflight, a loop-owned-path allowlist, or an untracked-only preflight check — builder picks per the reporter's documented tradeoff).",
+      "AC-2: Given a wave crashes between plan-write and prepare, when crash forensics are needed, then the chosen fix does not silently discard the forensic artifact (if option (a) is chosen, an explicit test proves the crash-window artifact is not lost, or option (b)/(c) is used instead).",
+      "AC-3: Given the fix lands, when the .claude/artifacts/loop/waves/ .gitignore workaround is removed, then wave plan artifacts commit normally again and a fresh `wave run` on a clean tree succeeds without the dirty-tree rejection.",
+      "AC-4: Given the fix, when `bun test src/tests/wave/ src/tests/dispatch-worktree.test.mts --timeout 60000` runs, then it is green, including a new regression test that reproduces the original self-blocking failure and proves it no longer occurs."
+    ],
+    "touchesFiles": [
+      "src/scripts/lib/dispatch-worktree.mts",
+      "src/scripts/lib/wave/runner.mts",
+      ".gitignore"
+    ]
+  },
+  {
+    "featureId": "FEAT-259",
+    "scores": {
+      "customer_impact": 0.55,
+      "effort_estimate": 0.65,
+      "strategic_alignment": 0.55,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.15
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "Direct operational evidence from a live dogfood run, quoted from body: \"Observed failure pattern (2026-07-09 wave run, 5 dispatched lane agents + 5 reviewers): agents complete their task ... then emit idle_notification ... Orchestrator sees idle-without-report, must nudge ... ~8 noise messages in one wave.\" Also cites a prior recorded lesson (dev-team#162 / feedback_agent_dispatch_lessons) that this FEAT converts from memory prose into an enforced mechanism.",
+    "scopeNotes": "Recovery already 'works reliably' per the body (manual nudge, ~1 message cost) — this is operational hygiene/cost-reduction, not a hard blocker, which keeps customer_impact at moderate rather than high. Effort calibration: no clean single-slice cost analog for a 4-mechanism cross-cutting change (hook + templates + watchdog + context hygiene); scored from the rubric table alone. No weak grade dimension currently active (nearest-relevant, observability, sits at 0.82, above the 0.80 threshold) but SLICE-3 (mandatory final-act template line) doubles as an observability-adjacent AC regardless since it makes agent reporting behavior legible/auditable.",
+    "risks": [
+      "Two-weeks-later failure mode: the SubagentStop report-gate hook's 'was this agent dispatched with a report-back contract' detection produces a false positive on an interactive/local (non-dispatched) agent, blocking a normal session-ending stop for a user with no dispatch context at all — exactly the failure AC2 is meant to prevent, and the highest-likelihood real-world review failure given hook heuristics are inherently approximate.",
+      "Rollback is NOT a clean single-repo git revert: the SubagentStop hook ships via the plugin's hooks/*.mjs + settings wiring, installed into every consumer repo on next `/runner:install` or plugin refresh — a bad version needs a plugin re-release and consumer re-install to fully clear everywhere it's already landed, i.e. cross-plugin coordination, not just `git revert`.",
+      "Coverage gap an existing test would NOT catch: nothing today simulates a SubagentStop event firing for an agent that was NOT dispatched with a report-back contract (a plain interactive session) — AC2's no-false-positive guarantee is entirely new test surface.",
+      "Cascade note: the SubagentStop hook sits on a halt-adjacent path that can block agent termination across every dispatch in the plugin ecosystem (not just this repo) — a bug here cascades globally, not locally, until the plugin is patched and reinstalled."
+    ],
+    "reasoning": "P2: real, evidenced operational pain but with an already-working manual mitigation keeps it below P1; technical_risk 0.65 (0.6-0.8 band: cross-module reach across hooks/templates/dispatch-loop, new blocking-hook pattern with high blast radius, though reversible in principle) triggers the mandatory pre-mortem, completed above. effort_estimate 0.65 maps (0.56-0.7 -> 8 points per the assumed banding) to effort_points=8, triggering the decomposition gate — decomposed below with the two design-sensitive landmines (report-gate detection heuristic; watchdog nudge/fresh-mtime guard) isolated into their own slices per runner#393 rule (a), and the template-line edit kept as one mechanical batch slice per rule (b).",
+    "acceptanceCriteria": [
+      "AC-1: Given a dispatched agent with a report-back contract that attempts to stop without having called SendMessage(to: main), when SubagentStop fires, then the stop is blocked with the corrective reason, and the agent's subsequent SendMessage+stop succeeds.",
+      "AC-2: Given an agent without a report-back contract (interactive/local), when it stops, then the hook approves with no false-positive blocking.",
+      "AC-3: Plugin-generated dispatch agent templates contain the mandatory final-act line ('Your final plain text is not visible to the orchestrator...'), grep-verifiable in the generated .md files.",
+      "AC-4: Given idle-without-report, when the watchdog fires, then it auto-nudges exactly once; a second silent idle marks the lane report_missing and the orchestrator proceeds from worktree evidence (git log + artifacts), and a worktree with mtimes fresher than N minutes is never nudged.",
+      "AC-5: Given the structured receipt schema ({status, items[], commit_shas[], evidence_path, deviations[]}, target <=15 lines) is adopted, when an agent reports and then emits idle_notification, then the redundant idle ping is suppressed and never injected into orchestrator context."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "SubagentStop report-gate hook (report-back-contract detection)", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Structured receipt schema definition + docs", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "Mandatory final-act line across all dispatch agent templates (batch)", "points": 1 },
+      { "id_suffix": "-SLICE-4", "title": "Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard)", "points": 2 },
+      { "id_suffix": "-SLICE-5", "title": "Idle-ping suppression + context-budget wiring into dispatch loop", "points": 1 }
+    ],
+    "touchesFiles": [
+      "hooks",
+      "src/scripts/lib/auto-dispatch.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-262",
+    "scores": {
+      "customer_impact": 0.25,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.35,
+      "technical_risk": 0.45,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Real reviewer finding, not end-user demand. Body: \"past the repo's 'one responsibility per module; split at ~400 lines' convention (typescript-reviewer MEDIUM finding on PR #441)\" plus accumulated MINOR findings from PRs #441/#443/#444 reviews.",
+    "scopeNotes": "backlog-store.mts is DEC-076's sole sanctioned BacklogStore writer AND is named in CLAUDE.md's CI-gates list (item 10, validate-backlog-writes.mts) as an explicit allowlist target — the split must preserve that gate's literal-name matching or the CI guard silently stops covering the split-out files. This repo already has a precedent for the exact split pattern proposed (slice-linker's own barrel-module split), which keeps technical_risk in the 0.3-0.5 band rather than higher despite backlog-store.mts's criticality. No weak grade dimension currently active. Effort calibration: no exact single-slice analog found in the last 5 aggregate cost reports for a 'split one ~700-line module + close 4 accumulated reviewer follow-ups' shape; scored from the rubric table.",
+    "risks": [
+      "validate-backlog-writes.mts matches literal call-site variable names (a documented precision-over-recall tradeoff per the FEAT body) — if the split renames or re-exports functions through a barrel in a way that changes the call-site variable shape, the CI gate could silently stop flagging bypasses even though nothing else looks broken.",
+      "persistPivotAt (wave/failure-pivot.mts) calling moveSlice unconditionally is flagged as carried-forward reviewer debt from PR #441/#444 — if the split touches moveSlice's signature or location without also re-adding the noted source-state guard, this FEAT would silently perpetuate a known-open correctness gap rather than closing it."
+    ],
+    "reasoning": "P2: low customer_impact (pure internal hygiene/reviewer-debt closeout) but technical_risk sits at the upper edge of the 0.3-0.5 band (0.45) because the target module is the sole-writer, CI-gate-allowlisted backlog surface — mitigated by an existing in-repo split precedent (slice-linker) that keeps this from crossing into the 0.6+ band.",
+    "acceptanceCriteria": [
+      "AC-1: Given backlog-store.mts at ~719 lines with two responsibilities (feature-lifecycle CRUD, slice-lifecycle CRUD + AC-parsing), when split, then it becomes backlog-store-feature.mts / backlog-store-slice.mts behind a barrel (backlog-store.mts re-exporting both), mirroring the slice-linker barrel pattern.",
+      "AC-2: Given the split, when `bun ./src/scripts/validate-backlog-writes.mts` and `bun ./src/scripts/validate-imports.mts` run, then both remain green with no new allowlist bypass introduced by the module reorganization.",
+      "AC-3: Given LinearProvider's noted test gaps, when this FEAT closes, then `updateStatus`'s zero-workflow-states-found branch has a dedicated test, and `postSliceComment`/`closeSlice` each have a success-path unit test.",
+      "AC-4: Given persistPivotAt's unconditional moveSlice call (PR #441/#444 reviewer debt), when the split lands, then either the source-state guard is added or the FEAT explicitly defers it with a follow-up reference (not silently dropped).",
+      "AC-5: Full suite green (`bun test src/tests/ --parallel --timeout 60000`), `bunx tsc --noEmit`, `bunx biome lint src/`, `bunx biome format src/` all clean."
+    ],
+    "touchesFiles": [
+      "src/scripts/lib/backlog-store.mts",
+      "src/scripts/lib/wave/failure-pivot.mts",
+      "src/scripts/validate-backlog-writes.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-266",
+    "scores": {
+      "customer_impact": 0.4,
+      "effort_estimate": 0.25,
+      "strategic_alignment": 0.3,
+      "technical_risk": 0.1,
+      "dependency_depth": 0.05
+    },
+    "compositePriority": "P3",
+    "autonomousSafe": true,
+    "demandEvidence": "Cites a specific internal competitive-audit finding: \"Source evidence: docs/research/2026-07-18-competitive-audit.md §6 item 7 + §8 appendix.\" This matches the persisted memory note 'Competitive audit 2026-07-18' (report in docs/research/) — a real, existing audit artifact, not fabricated demand, though it is still an internal recommendation rather than an external user request.",
+    "scopeNotes": "Explicitly single-file scope (README.md only) with an explicit CI-gate carve-out (must not touch the auto-generated dogfood metrics band checked by `generate-metrics-band --check`). This is document-writer-owned work per CLAUDE.md's owned-agents list ('runner:document-writer ... Edits Markdown only'), not a builder dispatch. No weak grade dimension active. Effort calibration: no cost analog needed for a single-file docs edit at this scope; scored directly from the rubric table.",
+    "risks": [
+      "The hedge-footnote requirement ('Comparison reflects publicly documented positioning as of <date>') is a hard constraint against takedown tone — a builder without editorial judgment could overstate a claim (e.g. 'real GEPA vs claimed') in a way that reads as a competitor attack rather than honest positioning, which is the exact failure mode the audit finding is trying to avoid.",
+      "Accidentally touching or reflowing the auto-generated dogfood metrics band section would fail the `generate-metrics-band --check` CI gate — the edit must be scoped around that section, not through it."
+    ],
+    "reasoning": "P3: low-effort, low-risk (0.0-0.2 band: single doc file, trivially git-revertible), moderate-but-not-critical customer_impact since this is external positioning/credibility rather than product function — sits below the P2 items in this batch which carry either a reproduced bug (FEAT-249, P1) or real reviewer/consumer-facing findings (FEAT-237, FEAT-262).",
+    "acceptanceCriteria": [
+      "AC-1: Given docs/research/2026-07-18-competitive-audit.md §6 item 7 and §8 appendix, when the README comparison table is added, then it states runner-plugin's real differentiation (real GEPA vs claimed, 14 halt badges vs none, honest cost median, installable-today vs waitlist) with a citation back to the audit.",
+      "AC-2: Given the comparison table, when read, then it carries the otta-style hedge footnote ('Comparison reflects publicly documented positioning as of <date>') and avoids takedown tone (no competitor named in a disparaging framing beyond factual, sourced claims).",
+      "AC-3: Given the README-as-docs consolidation pass, when the surrounding sections are edited, then the auto-generated dogfood metrics band section is untouched (verified by `bun ./src/scripts/generate-metrics-band.mts --check` passing with zero diff).",
+      "AC-4: Given the edit is complete, when `bun ./src/scripts/validate-snapshot-freshness.mts` and the standard doc-touching CI gates run, then they are green."
+    ],
+    "touchesFiles": [
+      "README.md"
+    ]
+  }
+]

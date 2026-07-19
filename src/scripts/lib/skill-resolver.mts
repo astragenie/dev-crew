@@ -26,7 +26,8 @@ export interface ResolveArgs {
   variant: Variant;
 }
 
-export function isRoleVariant(v: Variant): v is RoleName {
+// Internal only — no external importer as of the FEAT-236 dead-export sweep.
+function isRoleVariant(v: Variant): v is RoleName {
   return (VALID_ROLES as ReadonlyArray<string>).includes(v);
 }
 

@@ -620,8 +620,6 @@ export const HALT_BADGE_FIELDS = [
   "stuckDetected"
 ] as const;
 
-export type HaltBadgeField = (typeof HALT_BADGE_FIELDS)[number];
-
 /**
  * Halt-events v1 contract schema version (issue #297). BE tolerates absence
  * (defaults to "1.0.0" on ingest) so this is safe to bump independently of

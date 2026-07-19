@@ -37,13 +37,15 @@ export function renderTemplate(template: string, tokens: Record<string, unknown>
 }
 
 // Resolves a loop path token: prefer config.loop override, fall back to PATH_DEFAULTS.
-export function resolveLoopPath(config: Record<string, unknown>, key: string): string {
+// Internal only — no external importer as of the FEAT-236 dead-export sweep.
+function resolveLoopPath(config: Record<string, unknown>, key: string): string {
   const loopOverrides = config.loop as Record<string, string> | undefined;
   return (loopOverrides && loopOverrides[key]) || PATH_DEFAULTS[key as keyof typeof PATH_DEFAULTS];
 }
 
 // Builds the numbered mandatory-docs list embedded in the CLAUDE.md block.
-export function buildMandatoryDocsList(config: Record<string, any>, aiLoopRoot: string): string {
+// Internal only — no external importer as of the FEAT-236 dead-export sweep.
+function buildMandatoryDocsList(config: Record<string, any>, aiLoopRoot: string): string {
   const repoDocs = (config.mandatoryDocs || []).map((doc: string) => `\`${doc}\``);
   const loopControlDocs = [
     `\`${aiLoopRoot}/01-loop-control/WIGGIN_LOOP.md\``,

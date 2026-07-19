@@ -11,6 +11,3 @@ dist/
 
 # Stray astramem --help dump (accidental redirect); never a real artifact
 Implement
-
-# wave-run writes plan artifacts BEFORE its own worktree dirty-check (self-blocking) — ignore until dispatch preflight is fixed, see FEAT filed 2026-07-09
-.claude/artifacts/loop/waves/

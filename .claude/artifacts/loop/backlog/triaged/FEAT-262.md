@@ -1,19 +1,29 @@
 ---
 id: FEAT-262
-status: pending
-priority: null
+status: triaged
+priority: P2
 category: tooling
 target_release: null
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-19
 depends_on: []
 slices: []
 derived_from: null
-autonomous_safe: null
-pm_reviewed: null
-triage_notes: "Filed 2026-07-10 from wave-2/wave-3 reviewer follow-ups (SLICE-152/153/156 reviews). Not yet PM-scored."
+autonomous_safe: true
+pm_reviewed: 2026-07-19
+triage_notes: "P2: low customer_impact (pure internal hygiene/reviewer-debt closeout) but technical_risk sits at the upper edge of the 0.3-0.5 band (0.45) because the target module is the sole-writer, CI-gate-allowlisted backlog surface — mitigated by an existing in-repo split precedent (slice-linker) that keeps this from crossing into the 0.6+ band."
 github_issue: 505
-github_url: https://github.com/astragenie/runner-plugin/issues/505
+github_url: "https://github.com/astragenie/runner-plugin/issues/505"
+pm_customer_impact: 0.25
+pm_effort_estimate: 0.45
+pm_strategic_alignment: 0.35
+pm_technical_risk: 0.45
+pm_dependency_depth: 0.1
+pm_composite_priority: P2
+pm_autonomous_safe: true
+tags: [be]
+needs_contract: false
+needs_ux: false
 ---
 # FEAT-262: split backlog-store.mts + close reviewer test-gap follow-ups from tracker waves 2-3
 

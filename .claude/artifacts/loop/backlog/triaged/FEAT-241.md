@@ -1,22 +1,58 @@
 ---
 id: FEAT-241
-status: pending
+status: triaged
 priority: P2
 category: enhancement
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-19
 depends_on: []
 slices: []
 derived_from: null
-tags: [area:loop, area:harness, concern:sdd, concern:spec-truth]
+tags: [be]
 needs_contract: true
 needs_ux: false
 autonomous_safe: false
-pm_reviewed: null
-triage_notes: "Filed 2026-07-09 from the SDD-frameworks review. Adopts OpenSpec's one genuinely-missing pattern — a maintained specs/-as-source-of-truth capability tree + change-archive loop — into the runner/crew SDD pipeline. Deliberately NOT adopting the OpenSpec tool/CLI (would race crew/runner on workflow-state, per the crew:build-vs-loop conflict class in CLAUDE.md). Steal the pattern, not the harness."
+pm_reviewed: 2026-07-19
+triage_notes: "P2 despite low customer_impact because strategic_alignment is high (this is core SDD-methodology tooling, the product's own mission) and technical_risk lands in the 0.6-0.8 band (cross-module reach: close-ceremony + spec-status + contracts reconciliation; new artifact-system pattern; no schema/DB change but a data-shape reorganization of derived-vs-authored truth) — pre-mortem required and completed above per the >=0.6 technical_risk trigger. effort_estimate 0.75 maps (via the assumed pm-effort-mapper Fibonacci banding: 0.71-0.85 -> 13 points) to effort_points=13, triggering the decomposition gate — decomposed below with landmines (reconciliation algorithm, drift-diff algorithm) isolated into their own slices per runner#393 rule (a), and no >2-point entries per the tightened cap."
 github_issue: 495
-github_url: https://github.com/astragenie/runner-plugin/issues/495
+github_url: "https://github.com/astragenie/runner-plugin/issues/495"
+pm_customer_impact: 0.35
+pm_effort_estimate: 0.75
+pm_strategic_alignment: 0.65
+pm_technical_risk: 0.65
+pm_dependency_depth: 0.15
+pm_composite_priority: P2
+pm_autonomous_safe: false
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: specs/ tree scaffold + one-capability-per-file schema/README
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-2
+    title: "Change-archive reconciliation core algorithm (additive merge, idempotency)"
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-3
+    title: Wire reconciliation into slice/FEAT close ceremony
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-4
+    title: spec-status --drift diff mode (authored vs derived)
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-5
+    title: Idempotency + re-close regression tests (AC-2)
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-6
+    title: No-clobber concurrent-reconciliation tests (AC-4) + drift tests (AC-3)
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-7
+    title: specs/ rollout docs + spec-status CLI flag docs
+    points: 1
+    estimated_tokens: 60000
 ---
 ## Description
 
@@ -75,3 +111,13 @@ Complements the arch-gate epic (this branch): the gate enforces "align on design
 this FEAT gives that alignment a durable place to accumulate. Contract-artifact reconciliation
 should reuse the `.openapi.yaml`-keyed idempotency + `.md`-clobber guards already built for
 `designs/<FEAT>-contracts.*`.
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: specs/ tree scaffold + one-capability-per-file schema/README (2 pts)
+- SLICE-2: Change-archive reconciliation core algorithm (additive merge, idempotency) (2 pts)
+- SLICE-3: Wire reconciliation into slice/FEAT close ceremony (2 pts)
+- SLICE-4: spec-status --drift diff mode (authored vs derived) (2 pts)
+- SLICE-5: Idempotency + re-close regression tests (AC-2) (2 pts)
+- SLICE-6: No-clobber concurrent-reconciliation tests (AC-4) + drift tests (AC-3) (2 pts)
+- SLICE-7: specs/ rollout docs + spec-status CLI flag docs (1 pts)

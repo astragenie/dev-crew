@@ -1,22 +1,50 @@
 ---
 id: FEAT-259
-status: pending
+status: triaged
 priority: P2
 category: enhancement
 target_release: null
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-19
 depends_on: []
 slices: []
 derived_from: null
-tags: [area:harness, area:dispatch, concern:orchestration, concern:context-budget]
-needs_contract: false
+tags: [be]
+needs_contract: true
 needs_ux: false
 autonomous_safe: false
-pm_reviewed: null
-triage_notes: "Filed 2026-07-09 from a live 4-lane parallel-wave run (runner+memory hardening wave 1). Every one of 5 background lane agents finished its work correctly but 4/5 went idle WITHOUT delivering their report via SendMessage — orchestrator had to manually nudge each one. Recovery worked but is manual, and bare idle_notification pings polluted orchestrator context. Automate the report protocol + watchdog; keep orchestrator context flat."
+pm_reviewed: 2026-07-19
+triage_notes: "P2: real, evidenced operational pain but with an already-working manual mitigation keeps it below P1; technical_risk 0.65 (0.6-0.8 band: cross-module reach across hooks/templates/dispatch-loop, new blocking-hook pattern with high blast radius, though reversible in principle) triggers the mandatory pre-mortem, completed above. effort_estimate 0.65 maps (0.56-0.7 -> 8 points per the assumed banding) to effort_points=8, triggering the decomposition gate — decomposed below with the two design-sensitive landmines (report-gate detection heuristic; watchdog nudge/fresh-mtime guard) isolated into their own slices per runner#393 rule (a), and the template-line edit kept as one mechanical batch slice per rule (b)."
 github_issue: 504
-github_url: https://github.com/astragenie/runner-plugin/issues/504
+github_url: "https://github.com/astragenie/runner-plugin/issues/504"
+pm_customer_impact: 0.55
+pm_effort_estimate: 0.65
+pm_strategic_alignment: 0.55
+pm_technical_risk: 0.65
+pm_dependency_depth: 0.15
+pm_composite_priority: P2
+pm_autonomous_safe: false
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: SubagentStop report-gate hook (report-back-contract detection)
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-2
+    title: Structured receipt schema definition + docs
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-3
+    title: Mandatory final-act line across all dispatch agent templates (batch)
+    points: 1
+    estimated_tokens: 60000
+  - id_suffix: -SLICE-4
+    title: Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard)
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-5
+    title: Idle-ping suppression + context-budget wiring into dispatch loop
+    points: 1
+    estimated_tokens: 60000
 ---
 ## Description
 
@@ -82,3 +110,11 @@ but only as memory prose, not as harness mechanism.
 - No respawn-with-fresh-context flows (resume-not-respawn is the point).
 - No changes to crew review/validation gates.
 - Not adopting any external orchestration framework.
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: SubagentStop report-gate hook (report-back-contract detection) (2 pts)
+- SLICE-2: Structured receipt schema definition + docs (2 pts)
+- SLICE-3: Mandatory final-act line across all dispatch agent templates (batch) (1 pts)
+- SLICE-4: Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard) (2 pts)
+- SLICE-5: Idle-ping suppression + context-budget wiring into dispatch loop (1 pts)

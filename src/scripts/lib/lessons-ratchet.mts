@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { gradesRoot } from "./paths.mjs";
 import { pathExists } from "./paths.mjs";
 
 // Feeds repeated grade lessons to the operator for promotion consideration.
@@ -127,15 +126,4 @@ export async function scanGradeLessons(
   singleton.sort((a, b) => a.slug.localeCompare(b.slug));
 
   return { repeated, singleton, scannedCount: gradeFiles.length };
-}
-
-/**
- * Convenience wrapper: resolves gradesDir from repoPath and delegates to scanGradeLessons.
- */
-export async function scanGradeLessonsFromRepo(
-  repoPath: string,
-  opts?: { maxGrades?: number; minRepeats?: number }
-): Promise<RatchetResult> {
-  const dir = gradesRoot(repoPath, null);
-  return scanGradeLessons(dir, opts);
 }

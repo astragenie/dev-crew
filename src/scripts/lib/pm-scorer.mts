@@ -101,30 +101,6 @@ export function computeAutonomousSafe(
 }
 
 /**
- * Compute a weighted composite score (0.0-1.0) from PM dimension scores.
- *
- * Weights and inversion:
- *   customer_impact    0.35  (higher = better, positive)
- *   strategic_alignment 0.30  (higher = better, positive)
- *   effort_estimate    0.20  (higher = worse,   inverted)
- *   technical_risk     0.10  (higher = worse,   inverted)
- *   dependency_depth   0.05  (higher = worse,   inverted)
- *
- * Returns null when any required dimension is missing or non-numeric.
- */
-export function computeWeightedCompositeScore(scores: Record<string, unknown>): number | null {
-  const impact = Number(scores.customer_impact);
-  const effort = Number(scores.effort_estimate);
-  const alignment = Number(scores.strategic_alignment);
-  const risk = Number(scores.technical_risk);
-  const dep = Number(scores.dependency_depth);
-  if ([impact, effort, alignment, risk, dep].some(Number.isNaN)) return null;
-  const raw =
-    impact * 0.35 + alignment * 0.3 + (1 - effort) * 0.2 + (1 - risk) * 0.1 + (1 - dep) * 0.05;
-  return Math.round(Math.min(Math.max(raw, 0), 1) * 1e10) / 1e10;
-}
-
-/**
  * Compute the arithmetic mean of all PM dimensions that are present
  * and numeric in `scores`.
  *

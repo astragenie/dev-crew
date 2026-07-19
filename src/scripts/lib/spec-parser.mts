@@ -11,7 +11,6 @@ export const specRoot = specsRoot;
 const SPEC_FILE_RE = /^SPEC-(\d+)(?:-.*)?\.md$/;
 
 export const SPEC_TYPES = ["prd", "user-journey", "sre", "research", "adr", "other"];
-export const SPEC_STATUSES = ["draft", "approved", "decomposed", "satisfied", "archived"];
 
 async function readSpec(filePath: string) {
   const filename = path.basename(filePath);

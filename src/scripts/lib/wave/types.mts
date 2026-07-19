@@ -103,13 +103,3 @@ export type WaveConfig = {
   subagentType: string;
   artifactsRoot: string;
 };
-
-export type WaveHaltReason =
-  | "backlog_exhausted"
-  | "post_merge_red"
-  | "dirty_main"
-  | "max_iterations"
-  | "max_waves"
-  | "stop_check_fired"
-  | "escalation_threshold_hit"
-  | "marathon_checkpoint_required";

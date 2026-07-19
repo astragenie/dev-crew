@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { WaveResult } from "./types.mjs";
-import { appendWaveIndexEntry, type WaveIndexEntry } from "./index-sync.mjs";
+import { appendWaveIndexEntry } from "./index-sync.mjs";
 
 function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
@@ -20,8 +20,6 @@ export function writeWaveArtifacts(
     writeFileSync(join(baseDir, `${wr.sliceId}-marker.json`), JSON.stringify(wr, null, 2), "utf8");
   }
 }
-
-export type IndexEntry = WaveIndexEntry;
 
 /**
  * Append a rolling index entry for the completed wave and trigger

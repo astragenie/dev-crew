@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
-import { pathExists, ensureDir } from "./paths.mjs";
+import { pathExists } from "./paths.mjs";
 
 // Stores operator-promoted grade lessons as durable planning rules.
 // Used by FEAT-179 to inject decay-ranked learnings at slice-start time.
@@ -18,28 +18,6 @@ const RULES_DIR_REL = path.join(".claude", "artifacts", "loop", "planning-rules"
 
 function rulesDir(repoPath: string): string {
   return path.join(repoPath, RULES_DIR_REL);
-}
-
-/**
- * Write a planning rule to .claude/artifacts/loop/planning-rules/<slug>.md.
- * Returns the absolute path written.
- */
-export async function writeRule(repoPath: string, rule: PlanningRule): Promise<string> {
-  const dir = rulesDir(repoPath);
-  await ensureDir(dir);
-  const filePath = path.join(dir, `${rule.slug}.md`);
-  const content = [
-    "---",
-    `slug: ${rule.slug}`,
-    `promotedAt: "${rule.promotedAt}"`,
-    `source: ${rule.source}`,
-    "---",
-    "",
-    rule.text,
-    ""
-  ].join("\n");
-  await fs.writeFile(filePath, content, "utf8");
-  return filePath;
 }
 
 /**
