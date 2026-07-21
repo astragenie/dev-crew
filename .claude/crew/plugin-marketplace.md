@@ -1,13 +1,28 @@
-# Plugin Marketplace — loop
+# Plugin Marketplace — runner-plugin (marketplace slug `loop`)
+
+<!-- Corrected 2026-07-21 (agentic-setup audit): this file previously cited
+the pre-transfer `sergeymilashico/loop` + `sergeymilashico/hero-crew` repos
+and a standalone `loop` marketplace. Both plugins now ship from the single
+central `astragenie/astra-marketplace` registry (ADR-013, 2026-06-16) —
+plugin *code* still lives in separate repos, but there is no more
+per-plugin marketplace repo. See README.md "Marketplace history" for the
+full timeline. Note: `.claude/crew/` is not in `validate-org-refs.mts`'s
+scan targets, so this drift evaded CI — see `docs/ci-gates.md` gate 14. -->
 
 ## Sources
 
-The `loop` plugin ships from this repo. The `crew` plugin ships from a separate repo.
+Plugin code and the marketplace registry are separate repos. The `loop`
+plugin (this repo, GitHub `astragenie/runner-plugin`) and the `crew` plugin
+(GitHub `astragenie/dev-team`) both publish through one registry.
 
-| Plugin | Marketplace | GitHub Repo |
-|--------|-------------|-------------|
-| `loop` | `loop` | `sergeymilashico/loop` |
-| `crew` | `astra` | `sergeymilashico/hero-crew` |
+| Plugin | Marketplace slug | Plugin code repo |
+|--------|-------------------|-------------------|
+| `loop` (plugin id `runner`) | `astra` | `astragenie/runner-plugin` |
+| `crew` | `astra` | `astragenie/dev-team` |
+
+Registry source of truth: `astragenie/astra-marketplace`'s `marketplace.json`
+(`bun ./src/scripts/validate-marketplace-sync.mts` is the CI gate keeping
+this repo's `.claude-plugin/plugin.json` version in sync with it).
 
 ## IMPORTANT: Never create local marketplaces
 
@@ -18,29 +33,33 @@ Use `"source": "github"` in `known_marketplaces.json`.
 
 - `~/.claude/plugins/known_marketplaces.json` — marketplace registrations
 - `~/.claude/plugins/installed_plugins.json` — installed plugin versions
-- `~/.claude/plugins/marketplaces/loop/` — GitHub clone of this repo
-- `~/.claude/plugins/marketplaces/astra/` — GitHub clone of crew repo
+- `~/.claude/plugins/marketplaces/astra/` — GitHub clone of
+  `astragenie/astra-marketplace`
 - `~/.claude/plugins/MARKETPLACE-SETUP.md` — full re-registration runbook
 
 ## Re-register from scratch
 
 ```bash
-git clone --depth 1 https://github.com/sergeymilashico/loop \
-  ~/.claude/plugins/marketplaces/loop
-git clone --depth 1 https://github.com/sergeymilashico/hero-crew \
+git clone --depth 1 https://github.com/astragenie/astra-marketplace \
   ~/.claude/plugins/marketplaces/astra
 ```
 
 Add to `known_marketplaces.json`:
 ```json
-"loop":  { "source": { "source": "github", "repo": "sergeymilashico/loop" },
-           "installLocation": "~/.claude/plugins/marketplaces/loop" },
-"astra": { "source": { "source": "github", "repo": "sergeymilashico/hero-crew" },
+"astra": { "source": { "source": "github", "repo": "astragenie/astra-marketplace" },
            "installLocation": "~/.claude/plugins/marketplaces/astra" }
+```
+
+Then install both plugins from that one marketplace:
+
+```
+/plugin marketplace add astragenie/astra-marketplace
+/plugin install crew@astra
+/plugin install loop@astra
 ```
 
 Add to `installed_plugins.json`:
 ```json
-"loop@loop":  [{ "scope": "user", "installPath": "~/.claude/plugins/cache/astra/loop/<ver>",  "version": "<ver>" }],
+"loop@astra": [{ "scope": "user", "installPath": "~/.claude/plugins/cache/astra/loop/<ver>", "version": "<ver>" }],
 "crew@astra": [{ "scope": "user", "installPath": "~/.claude/plugins/cache/astra/crew/<ver>", "version": "<ver>" }]
 ```
