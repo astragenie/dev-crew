@@ -1,7 +1,7 @@
 ---
 id: SLICE-177
 title: "Docs: per-repo project-id convention + rollout note"
-status: pending
+status: completed
 feature: FEAT-274
 phase: null
 priority: P1
@@ -12,6 +12,7 @@ created: 2026-08-02
 updated: 2026-08-02
 effort_points: 1
 estimated_tokens: 60000
+completed_at: 2026-08-02
 ---
 # SLICE-177: Docs: per-repo project-id convention + rollout note
 
