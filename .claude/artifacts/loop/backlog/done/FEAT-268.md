@@ -109,10 +109,8 @@ entry asking crew to add a native field would let loop drop that
 substitute. As of 2026-08-02 no such file exists under
 `docs/upstream-requests/`.
 
-This ask is **distinct** from the upstream-request being filed under
-FEAT-273/SLICE-175 (`docs/research/2026-08-02-citylive-zero-cost-telemetry.md`),
-which covers crew's session-cost scanner's `sourceProject`
-slugification/auto-detect-bypass bug for citylive-shaped configs — an
-unrelated crew-side defect. The two should not be conflated into one
-upstream-request file; this session-id-field ask remains unfiled and is
-recorded here as a pointer for whoever picks it up next.
+Update 2026-08-02 (post-SLICE-175 merge): the ask is now FILED. SLICE-175
+(FEAT-273) bundled it as ask (2) in
+`docs/upstream-requests/2026-08-02-crew-session-scanner-source-project-slugify.md`,
+as a clearly separated second H2 alongside the scanner-slugify ask — the
+two remain distinct requests, just co-located in one crew-bound document.
