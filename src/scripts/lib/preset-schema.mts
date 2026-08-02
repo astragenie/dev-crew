@@ -50,6 +50,21 @@ export interface PresetV1 {
     strictParallel?: boolean;
     serialTimingThresholdMs?: number;
   };
+  // FEAT-271 / SLICE-167: opt-in trimmed-ladder override, applied by
+  // `/runner:install --light` (SLICE-168) on top of the base preset above.
+  // Install-time template data only -- resolveConfig never reads this at
+  // runtime (DEC-069); the installer deep-merges it into the written
+  // .claude/loop.json when the light flag is passed, and otherwise ignores
+  // it entirely (AC-2 backward compatibility).
+  light?: {
+    description?: string;
+    reviewers: {
+      ladder: Array<"A" | "B">;
+      strictParallel?: boolean;
+      serialTimingThresholdMs?: number;
+    };
+    loop?: { validation?: { satisfiedByReview?: boolean } };
+  };
   mandatoryDocs?: string[];
   productName?: string;
   productDescription?: string;
@@ -99,6 +114,9 @@ function validateStackDrivenFields(obj: Record<string, unknown>): void {
   }
   if (obj.reviewers !== undefined) {
     validateReviewers(obj.reviewers);
+  }
+  if (obj.light !== undefined) {
+    validateLight(obj.light);
   }
   if (obj.mandatoryDocs !== undefined && !isStringArray(obj.mandatoryDocs)) {
     throw new SchemaError("preset.mandatoryDocs must be a string array");
@@ -158,6 +176,36 @@ function validateReviewers(reviewers: unknown): void {
   }
   if (!reviewers.ladder.every((r: unknown) => r === "A" || r === "B")) {
     throw new SchemaError('preset.reviewers.ladder entries must be "A" or "B"');
+  }
+}
+
+function validateLight(light: unknown): void {
+  if (!isPlainRecord(light)) {
+    throw new SchemaError("preset.light must be an object");
+  }
+  if (light.description !== undefined && typeof light.description !== "string") {
+    throw new SchemaError("preset.light.description must be a string");
+  }
+  if (light.reviewers === undefined) {
+    throw new SchemaError("preset.light.reviewers is required");
+  }
+  validateReviewers(light.reviewers);
+  validateLightLoop(light.loop);
+}
+
+function validateLightLoop(loop: unknown): void {
+  if (loop === undefined) {
+    return;
+  }
+  if (!isPlainRecord(loop)) {
+    throw new SchemaError("preset.light.loop must be an object");
+  }
+  const validation = loop.validation;
+  if (validation === undefined) {
+    return;
+  }
+  if (!isPlainRecord(validation) || typeof validation.satisfiedByReview !== "boolean") {
+    throw new SchemaError("preset.light.loop.validation.satisfiedByReview must be a boolean");
   }
 }
 

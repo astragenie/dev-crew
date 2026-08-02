@@ -219,3 +219,53 @@ test("validatePreset rejects a non-string-array mandatoryDocs", () => {
 test("validatePreset rejects a non-string productName", () => {
   assert.throws(() => validatePreset(baseFixture({ productName: 42 })), SchemaError);
 });
+
+// FEAT-271 / SLICE-167: opt-in trimmed-ladder override block.
+
+test("validatePreset accepts a preset carrying a light block", () => {
+  const preset = baseFixture({
+    light: {
+      description: "trimmed ladder",
+      reviewers: { ladder: ["A"] },
+      loop: { validation: { satisfiedByReview: true } }
+    }
+  });
+  const out = validatePreset(preset);
+  assert.deepEqual(out.light?.reviewers.ladder, ["A"]);
+  assert.equal(out.light?.loop?.validation?.satisfiedByReview, true);
+});
+
+test("validatePreset accepts a light block with no loop override", () => {
+  const preset = baseFixture({ light: { reviewers: { ladder: ["A"] } } });
+  validatePreset(preset);
+});
+
+test("validatePreset rejects a light block missing reviewers", () => {
+  assert.throws(() => validatePreset(baseFixture({ light: { description: "x" } })), SchemaError);
+});
+
+test("validatePreset rejects a light.reviewers.ladder with an invalid entry", () => {
+  assert.throws(
+    () => validatePreset(baseFixture({ light: { reviewers: { ladder: ["A", "Z"] } } })),
+    SchemaError
+  );
+});
+
+test("validatePreset rejects a non-boolean light.loop.validation.satisfiedByReview", () => {
+  assert.throws(
+    () =>
+      validatePreset(
+        baseFixture({
+          light: { reviewers: { ladder: ["A"] }, loop: { validation: { satisfiedByReview: "yes" } } }
+        })
+      ),
+    SchemaError
+  );
+});
+
+test("validatePreset rejects a non-string light.description", () => {
+  assert.throws(
+    () => validatePreset(baseFixture({ light: { description: 1, reviewers: { ladder: ["A"] } } })),
+    SchemaError
+  );
+});

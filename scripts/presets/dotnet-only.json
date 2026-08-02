@@ -33,6 +33,11 @@
     "healthchecks": []
   },
   "reviewers": { "ladder": ["A", "B"] },
+  "light": {
+    "description": "FEAT-271: trimmed reviewer ladder for repos with a CI test gate -- single Reviewer A, behavior/test validation delegated to CI via loop.validation.satisfiedByReview. Applied by `/runner:install --light` on top of the base reviewers block above; do not enable on a repo with no CI test gate (keep the two-reviewer ladder there -- see ADOPTION.md).",
+    "reviewers": { "ladder": ["A"] },
+    "loop": { "validation": { "satisfiedByReview": true } }
+  },
   "mandatoryDocs": [
     "README.md"
   ],
