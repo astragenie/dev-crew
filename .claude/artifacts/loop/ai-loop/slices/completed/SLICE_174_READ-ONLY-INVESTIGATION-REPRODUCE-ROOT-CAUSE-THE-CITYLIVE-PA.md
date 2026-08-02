@@ -1,7 +1,7 @@
 ---
 id: SLICE-174
 title: "Read-only investigation: reproduce + root-cause the citylive path mismatch"
-status: pending
+status: completed
 feature: FEAT-273
 phase: null
 priority: P2
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 580
 github_url: "https://github.com/astragenie/runner-plugin/issues/580"
+completed_at: 2026-08-02
 ---
 # SLICE-174: Read-only investigation: reproduce + root-cause the citylive path mismatch
 
