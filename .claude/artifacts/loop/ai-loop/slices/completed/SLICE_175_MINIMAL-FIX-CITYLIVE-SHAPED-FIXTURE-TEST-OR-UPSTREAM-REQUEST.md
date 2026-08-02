@@ -1,7 +1,7 @@
 ---
 id: SLICE-175
 title: Minimal fix + citylive-shaped fixture test (or upstream-request if crew-side)
-status: pending
+status: completed
 feature: FEAT-273
 phase: null
 priority: P2
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 582
 github_url: "https://github.com/astragenie/runner-plugin/issues/582"
+completed_at: 2026-08-02
 ---
 # SLICE-175: Minimal fix + citylive-shaped fixture test (or upstream-request if crew-side)
 

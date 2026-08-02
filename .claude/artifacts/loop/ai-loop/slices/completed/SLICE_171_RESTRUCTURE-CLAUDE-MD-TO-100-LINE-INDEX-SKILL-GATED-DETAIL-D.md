@@ -1,7 +1,7 @@
 ---
 id: SLICE-171
 title: Restructure CLAUDE.md to <100-line index + skill-gated detail docs
-status: pending
+status: completed
 feature: FEAT-272
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 574
 github_url: "https://github.com/astragenie/runner-plugin/issues/574"
+completed_at: 2026-08-02
 ---
 # SLICE-171: Restructure CLAUDE.md to <100-line index + skill-gated detail docs
 
@@ -69,3 +70,18 @@ remaining work as a light trim, not a full restructure.
 
 - Reviewer A: ...
 - Reviewer B: ...
+
+
+## Close-out: superseded by upstream PR #552 (2026-08-02)
+
+Disposition per the SLICE-170 baseline spike (docs/research/2026-08-02-context-diet-baseline.md,
+lite-review PASS): commit 089194a8 / PR #552 already restructured CLAUDE.md
+553 lines/30.4KB -> 278 lines/13.7KB (-54% bytes) via the four-altitude split
+this slice was scoped to build. Of the remaining 278 lines, ~200 are
+machine-load-bearing (18-item CI-gate list counted by generate-metrics-band,
+11 clause-id markers used by validate-decline-citations, installer-owned HARD
+RULES block) — the residual <100-line AC is unreachable without breaking live
+contracts, and the total auto-loaded doc chain is already down to ~21.6KB
+(~5.4k tokens), which the spike showed is NOT the per-message burn driver.
+Residual trim value (~3KB) is below its contract-risk cost. Closed as
+superseded; no code/doc change made by this slice.
