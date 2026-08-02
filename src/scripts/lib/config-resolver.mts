@@ -91,7 +91,13 @@ function isPlainObject(value: unknown) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
+// Sibling of `../deep-merge.mts` — that one is the crew/cost-setup style
+// merge (arrays concat-and-dedup unless the override wraps a `$replace`
+// marker), this one is the preset/config-resolver style merge (arrays are
+// always fully replaced by the override, never concatenated). Same name,
+// deliberately different semantics for a different caller — do not
+// consolidate them without re-checking every call site's expectations.
+export function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
   if (!isPlainObject(overrides)) {
     return (overrides === undefined ? base : overrides) as Record<string, unknown>;
   }
@@ -152,4 +158,102 @@ export async function writeConfigIfMissing(repoPath: string, config: unknown) {
 
 export function configPath(repoPath: string) {
   return path.join(repoPath, CONFIG_FILENAME);
+}
+
+// FEAT-271 / SLICE-168: `/runner:install --light` support. The preset's
+// opt-in `light` block (SLICE-167 — reviewers.ladder trimmed to ["A"] +
+// loop.validation.satisfiedByReview: true) is install-time template data
+// only (DEC-069); this deep-merges it over the resolved config's `reviewers`
+// and `loop` fields so loop-installer.mts can inline the trimmed ladder into
+// .claude/loop.json when the flag is passed. Returns a new object — does not
+// mutate `config`. Throws if the resolved config has no `light` block (e.g. a
+// hand-authored preset that predates FEAT-271) so a mistaken `--light` on an
+// unsupported preset fails loudly instead of silently no-op'ing.
+export function applyLightLadder(config: Record<string, unknown>): Record<string, unknown> {
+  const light = config.light as { reviewers?: unknown; loop?: Record<string, unknown> } | undefined;
+  if (!light) {
+    throw new Error(
+      "--light requested but the resolved preset has no `light` block defined " +
+        "(see scripts/presets/*.json for the expected shape)."
+    );
+  }
+  const merged = { ...config };
+  if (light.reviewers !== undefined) {
+    merged.reviewers = deepMerge(config.reviewers, light.reviewers);
+  }
+  if (light.loop !== undefined) {
+    merged.loop = deepMerge(config.loop, light.loop);
+  }
+  return merged;
+}
+
+type LightBlock = { reviewers?: unknown; loop?: Record<string, unknown> };
+
+// FEAT-271 / SLICE-168 (HIGH fix, 2026-08-02 review): the light-ladder
+// fields, mirrored verbatim from every shipped preset's `light` block (see
+// scripts/presets/*.json — the block is identical across all six). Used by
+// `retrofitLightLadder` below as the last-resort source when an
+// already-installed repo's persisted `preset` name can't be resolved back to
+// a template file on disk (renamed/removed preset since install, or the repo
+// was never scaffolded with an explicit preset name at all). A constant is
+// an honest fallback here specifically because the block is identical across
+// every preset today — this is not a guess at what an unknown preset wants.
+export const DEFAULT_LIGHT_LADDER: LightBlock = {
+  reviewers: { ladder: ["A"] },
+  loop: { validation: { satisfiedByReview: true } }
+};
+
+async function resolveLightBlockForRetrofit(presetName: string | null): Promise<LightBlock> {
+  if (presetName) {
+    try {
+      const preset = await loadPreset(presetName);
+      if (isPlainObject(preset?.light)) {
+        return preset.light as LightBlock;
+      }
+    } catch {
+      // Preset name unresolved (renamed/removed since install) — fall
+      // through to the constant below rather than failing the retrofit.
+    }
+  }
+  return DEFAULT_LIGHT_LADDER;
+}
+
+// FEAT-271 / SLICE-168 (HIGH fix): retrofits an ALREADY-installed repo's
+// .claude/loop.json in place. `installLoop`'s normal config write
+// (`writeConfigIfMissing`) only ever writes a brand-new file — for a repo
+// that installed before `--light` existed, that means the flag would
+// silently never reach disk, defeating FEAT-271's actual point (retrofitting
+// the fleet's already-installed repos, not just seeding new ones). This
+// bypasses that existence gate for exactly the two light-ladder fields
+// (`reviewers`, `loop.validation`), leaving every other persisted key
+// byte-stable — same read-modify-write-if-changed discipline as
+// memory-setup.mts's runMemorySetup. Deliberately independent of
+// `resolveConfig`'s preset-merge branch: it reads the light block from the
+// persisted config's own `preset` name (or an explicit override), so
+// `--light` alone — with no `--preset` on the refresh call — still works.
+export async function retrofitLightLadder(
+  repoPath: string,
+  options: { presetOverride?: string | null } = {}
+): Promise<{ configPath: string; written: boolean }> {
+  const cfgPath = configPath(repoPath);
+  const raw = await fsPromises.readFile(cfgPath, "utf8");
+  const existing = JSON.parse(raw) as Record<string, unknown>;
+  const presetName =
+    options.presetOverride || (typeof existing.preset === "string" ? existing.preset : null);
+  const light = await resolveLightBlockForRetrofit(presetName);
+
+  const next: Record<string, unknown> = { ...existing };
+  if (light.reviewers !== undefined) {
+    next.reviewers = deepMerge(existing.reviewers, light.reviewers);
+  }
+  if (light.loop !== undefined) {
+    next.loop = deepMerge(existing.loop, light.loop);
+  }
+
+  const nextSerialized = `${JSON.stringify(next, null, 2)}\n`;
+  if (nextSerialized === raw) {
+    return { configPath: cfgPath, written: false };
+  }
+  await fsPromises.writeFile(cfgPath, nextSerialized);
+  return { configPath: cfgPath, written: true };
 }

@@ -12,6 +12,9 @@ export const FLAG_SPEC = {
   "-h": { key: "help", boolean: true },
   "--repo": { key: "repo" },
   "--preset": { key: "preset" },
+  // install (FEAT-271 / SLICE-168): trim to the preset's opt-in `light`
+  // reviewer ladder (reviewers.ladder: ["A"] + loop.validation.satisfiedByReview)
+  "--light": { key: "light", boolean: true },
   "--variant": { key: "variant" },
   "--override": { key: "override" },
   "--strict": { key: "strict", boolean: true },
@@ -121,6 +124,7 @@ export function parseArgs(argv: string[]) {
   const flags: Record<string, any> = {
     repo: process.cwd(),
     preset: null,
+    light: false,
     variant: null,
     override: null,
     strict: false,
