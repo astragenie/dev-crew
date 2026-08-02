@@ -25,21 +25,29 @@ Fix cost-report scan window never resetting: Window Start stays frozen for days 
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- Determine whether the frozen cost-report scan window originates
+  loop-side (`crew-bridge.mts` invocation args) or crew-side (cost-slice
+  scan), with file:line evidence.
+- Reproduce the frozen-window symptom against real on-disk cost-report
+  artifacts (not just theoretical code reading).
+- Write a spike artifact stating the root cause and scoping guidance for
+  SLICE-162/163/164.
 
 ## Out of scope
 
-- bullet 1
+- Implementing the fix (SLICE-162).
+- Writing the regression test (SLICE-163).
+- Filing an upstream request (only applies if the conclusion is
+  crew-side; this spike concluded loop-side — see spike artifact).
 
 ## Acceptance criteria
 
 > WARNING: ACs copied from FEAT-268 and shared across 4 sibling slices — scope per-slice before close
 
-- [ ] AC-1: Given two consecutive `crew cost-slice` invocations against the same crew session issued a day apart, When each writes a cost report, Then the second report's Window Start advances past the first report's Window End (not frozen).
-- [ ] AC-2: Given the root-cause investigation, When it concludes the bug is crew-side, Then a new file lands under docs/upstream-requests/ describing the reproduction and the exact scan-window behavior expected.
-- [ ] AC-3: Given a cost report is written, When frontmatter is inspected, Then it carries the originating crew session/transcript id so dedup can corroborate reports by id rather than token-count equality alone.
-- [ ] AC-4: Given the FEAT-204 dedup fingerprint, When this fix lands, Then it is NOT loosened to a tolerance band -- the existing exact-match dedup behavior in resolveCostReportUsd/sliceKeyOf is preserved and asserted by a regression test.
+- [x] AC-1: Given two consecutive `crew cost-slice` invocations against the same crew session issued a day apart, When each writes a cost report, Then the second report's Window Start advances past the first report's Window End (not frozen). **Spike scope**: reproduced and root-caused (loop never passes `--started-at`, so crew falls back to a `currentRun.startedAt` that's only rotated at slice start); actual behavior fix is SLICE-162's deliverable.
+- [x] AC-2: Given the root-cause investigation, When it concludes the bug is crew-side, Then a new file lands under docs/upstream-requests/ describing the reproduction and the exact scan-window behavior expected. **N/A for this slice** — investigation concluded loop-side, so the upstream-request file is not created (condition not met). See "AC-2 disposition" in the spike artifact.
+- [ ] AC-3: Given a cost report is written, When frontmatter is inspected, Then it carries the originating crew session/transcript id so dedup can corroborate reports by id rather than token-count equality alone. **Deferred to SLICE-162** — scoping notes in the spike artifact.
+- [ ] AC-4: Given the FEAT-204 dedup fingerprint, When this fix lands, Then it is NOT loosened to a tolerance band -- the existing exact-match dedup behavior in resolveCostReportUsd/sliceKeyOf is preserved and asserted by a regression test. **Deferred to SLICE-163** — location confirmed (`src/scripts/lib/memory-snapshot.mts:124,157`) for that slice's regression test.
 
 ## Done When
 
