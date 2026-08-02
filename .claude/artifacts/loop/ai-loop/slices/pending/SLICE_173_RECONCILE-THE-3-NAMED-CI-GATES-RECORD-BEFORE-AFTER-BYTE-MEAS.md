@@ -23,6 +23,22 @@ Implements FEAT-272. See [feature file](../../../backlog/in-progress/FEAT-272.md
 
 Context diet for runner-plugin injected context. Audit 2026-08-02: ~203k tokens of static context reinjected per assistant message (live sample FEAT-263 SLICE-160: 16.26M cache-read / 80 msgs vs 150 raw input tokens); CLAUDE.md is 29.7KB (553 lines), .claude/loop/rules.md 19.9KB, plus embedded loop-snapshot — a flat tax on every message, ~97% of USD is Opus cache reads. Fleet clean-data tok/msg trend 116k (May) to 282k (Jul). Scope: restructure CLAUDE.md to a <100-line always-on index with detail sections moved to skill-gated docs (skills or docs/ files referenced on demand); trim rules.md similarly; cap loop-snapshot embed to counts/deltas (no full prose lists). MUST keep CI gates green: validate-snapshot-freshness, generate-metrics-band --check, validate-org-refs. Measure before/after bytes in the FEAT notes.
 
+## Baseline spike note (SLICE-170, 2026-08-02)
+
+All three named gates (validate-snapshot-freshness, generate-metrics-band
+--check, validate-org-refs) were live-tested against current HEAD — all
+three currently fail, but none of the failures trace to the CLAUDE.md
+restructure (org-refs fails on an unrelated docs file; snapshot-freshness /
+metrics-band fail on ordinary backlog drift from concurrent wave-mode
+slices). Full detail + evidence: `docs/research/2026-08-02-context-diet-baseline.md`
+§4-5. **Recommend re-scoping down substantially**: before/after byte counts
+are already captured in FEAT-272's notes and the research doc, so this
+slice doesn't need to re-derive them. What remains is a routine
+regen-and-verify pass (`snapshot-memory` + `generate-metrics-band --write`)
+at whichever slice closes last in this FEAT, plus an optional (out-of-scope
+judgment call) fix for the one unrelated org-refs citation. Consider folding
+this into SLICE-172's close rather than running it as a standalone slice.
+
 ## In scope
 
 - bullet 1

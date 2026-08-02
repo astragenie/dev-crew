@@ -23,6 +23,21 @@ Implements FEAT-272. See [feature file](../../../backlog/in-progress/FEAT-272.md
 
 Context diet for runner-plugin injected context. Audit 2026-08-02: ~203k tokens of static context reinjected per assistant message (live sample FEAT-263 SLICE-160: 16.26M cache-read / 80 msgs vs 150 raw input tokens); CLAUDE.md is 29.7KB (553 lines), .claude/loop/rules.md 19.9KB, plus embedded loop-snapshot — a flat tax on every message, ~97% of USD is Opus cache reads. Fleet clean-data tok/msg trend 116k (May) to 282k (Jul). Scope: restructure CLAUDE.md to a <100-line always-on index with detail sections moved to skill-gated docs (skills or docs/ files referenced on demand); trim rules.md similarly; cap loop-snapshot embed to counts/deltas (no full prose lists). MUST keep CI gates green: validate-snapshot-freshness, generate-metrics-band --check, validate-org-refs. Measure before/after bytes in the FEAT notes.
 
+## Baseline spike note (SLICE-170, 2026-08-02)
+
+An unrelated restructure (commit `089194a8`, PR #552) already landed the
+index+delegate mechanism this slice was scoped to build — CLAUDE.md is
+already 278 lines / 14,017 bytes (down from 553/30,447), split into
+`AGENTS.md` + `docs/memory.md` + `docs/ci-gates.md`. **Recommend re-scoping
+before starting**: read `docs/research/2026-08-02-context-diet-baseline.md`
+§5 first. The literal "<100 lines" AC-1 bar is not yet met and 3
+machine-load-bearing contracts (CI-gate numbered-list count, clause-id
+markers, installer-owned runner:start block) occupy most of the remaining
+278 lines — further compression risks breaking those. Suggested revised
+target: relax AC-1 to a documented line budget (e.g. <150 lines with the
+remainder itemized as contract lines) rather than a hard <100, and size the
+remaining work as a light trim, not a full restructure.
+
 ## In scope
 
 - bullet 1
