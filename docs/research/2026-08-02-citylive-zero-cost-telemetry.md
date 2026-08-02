@@ -77,7 +77,7 @@ read, per the investigation's scope) contains no entry matching
 `C--work-mega-AstraGenie-CityLive` — the correctly-slugified form of what
 the repo's absolute path must have been at the time
 (`C:\work\mega\AstraGenie.CityLive`, matching the git remote
-`sergeymilashico/AstraGenie.CityLive.git` — confirmed via
+`astragenie/AstraGenie.CityLive.git (pre-transfer remote recorded as historical evidence)` — confirmed via
 `git remote -v` in the current `C:\work\mega\citylive` checkout, which is
 the same repository post-rename: `citylive`'s on-disk directory has a
 `CreationTime` of 2026-05-14, well before the 2026-05-24 report dates,

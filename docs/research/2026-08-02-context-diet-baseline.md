@@ -136,7 +136,7 @@ all three against current HEAD:
 
 | Gate | Result | Cause |
 |---|---|---|
-| `validate-org-refs.mts` | **FAIL** | One stale `sergeymilashico` reference in `docs/research/2026-08-02-citylive-zero-cost-telemetry.md:80` — last touched by an unrelated commit (`66e998cc`), not by the CLAUDE.md restructure or anything in this FEAT's scope. |
+| `validate-org-refs.mts` | **FAIL** | One stale pre-transfer-owner reference in `docs/research/2026-08-02-citylive-zero-cost-telemetry.md:80` — last touched by an unrelated commit (`66e998cc`), not by the CLAUDE.md restructure or anything in this FEAT's scope. |
 | `validate-snapshot-freshness.mts` | **FAIL** | `loop-snapshot.md` is stale relative to current backlog state — expected, since 10 backlog-touching commits have landed since `089194a8` (this is the wave-mode run in progress). Standard "regen after backlog changes" drift, same pattern already documented in this session's memory as routine. |
 | `generate-metrics-band.mts --check` | **FAIL** | README metrics band stale for the same reason (backlog/grade counts moved since `089194a8`). |
 | `validate-content-length.mts` (bonus, not one of the 3 named gates but cheap to run) | **PASS** | agents/skills within caps. |
