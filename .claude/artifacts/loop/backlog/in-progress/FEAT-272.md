@@ -66,3 +66,45 @@ unset — this FEAT has not been scored yet. Run `/runner:triage`
 - SLICE-2: Restructure CLAUDE.md to <100-line index + skill-gated detail docs (2 pts)
 - SLICE-3: Trim .claude/loop/rules.md similarly (2 pts)
 - SLICE-4: Reconcile the 3 named CI gates + record before/after byte measurements (2 pts)
+
+## Baseline spike notes (SLICE-170, 2026-08-02)
+
+Full detail: `docs/research/2026-08-02-context-diet-baseline.md`. Summary:
+
+- **An unrelated restructure (commit `089194a8`, PR #552) already landed
+  before this FEAT started work**, cutting `CLAUDE.md` from 553 lines /
+  30,447 bytes (29.7KB) to 278 lines / 14,017 bytes (13.7KB) via a
+  four-altitude split (`AGENTS.md` / `CLAUDE.md` / `docs/memory.md` /
+  `docs/ci-gates.md`). This is materially the mechanism SLICE-171 was
+  scoped to build.
+- **`.claude/loop/rules.md` is untouched** — byte-identical before/after
+  #552 (248 lines / 20,393 bytes both times). SLICE-172's scope is fully
+  open, zero work done yet.
+- Before/after byte counts (AC-4):
+  | File | Before | After | Delta |
+  |---|---|---|---|
+  | CLAUDE.md | 553 lines / 30,447 B | 278 lines / 14,017 B | -49.7% lines / -54.0% bytes |
+  | .claude/loop/rules.md | 248 lines / 20,393 B | 248 lines / 20,393 B (unchanged) | 0% |
+  | AGENTS.md (new) | n/a | 89 lines / 4,734 B | new, auto-`@`-included |
+  | Net CLAUDE.md-chain auto-load (CLAUDE.md+AGENTS.md+snapshot) | ~33.3KB | ~21.6KB | ~-35% |
+- The three named CI gates (validate-snapshot-freshness, generate-metrics-band
+  --check, validate-org-refs) were live-tested against current HEAD: **all
+  three currently fail**, but none of the failures trace to the CLAUDE.md
+  restructure — org-refs fails on an unrelated docs file; snapshot-freshness
+  and metrics-band fail on ordinary backlog drift from concurrent wave-mode
+  slices landed since #552. The restructure commit's own message states its
+  full validator + test suite passed both before and after.
+- **Reconciled 203k-tokens/message figure**: the entire CLAUDE.md-chain
+  auto-load (~21.6KB, ~5.4k tokens at a 4-char/token estimate) is roughly two
+  orders of magnitude below the FEAT's cited ~203k tokens/message. The
+  dominant contributor to that figure is almost certainly the Claude Code
+  tool/skill manifest (every installed plugin's skills + every MCP server's
+  tool schemas) and conversation-history growth — neither is addressable by
+  trimming this repo's docs. Recommend treating this as a flag for the
+  cost-hygiene program rather than expanding this FEAT's scope.
+- **Revised per-slice recommendation**: SLICE-171 — re-scope (mechanism
+  shipped, hard "<100 lines" target should relax to account for 3
+  machine-load-bearing contracts that can't move); SLICE-172 — keep as
+  scoped (fully open, real remaining work); SLICE-173 — re-scope down
+  sharply (mostly a routine regen-and-verify pass, byte counts already
+  captured above; fold into SLICE-172's close rather than run standalone).

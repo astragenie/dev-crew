@@ -23,6 +23,23 @@ Implements FEAT-272. See [feature file](../../../backlog/in-progress/FEAT-272.md
 
 Context diet for runner-plugin injected context. Audit 2026-08-02: ~203k tokens of static context reinjected per assistant message (live sample FEAT-263 SLICE-160: 16.26M cache-read / 80 msgs vs 150 raw input tokens); CLAUDE.md is 29.7KB (553 lines), .claude/loop/rules.md 19.9KB, plus embedded loop-snapshot — a flat tax on every message, ~97% of USD is Opus cache reads. Fleet clean-data tok/msg trend 116k (May) to 282k (Jul). Scope: restructure CLAUDE.md to a <100-line always-on index with detail sections moved to skill-gated docs (skills or docs/ files referenced on demand); trim rules.md similarly; cap loop-snapshot embed to counts/deltas (no full prose lists). MUST keep CI gates green: validate-snapshot-freshness, generate-metrics-band --check, validate-org-refs. Measure before/after bytes in the FEAT notes.
 
+## Baseline spike note (SLICE-170, 2026-08-02)
+
+Confirmed via git history: `.claude/loop/rules.md` is byte-identical before
+and after the CLAUDE.md restructure (commit `089194a8`) — 248 lines /
+20,393 bytes, zero work done here yet. **This slice remains fully in scope,
+not superseded.** Full context: `docs/research/2026-08-02-context-diet-baseline.md`
+§5. Apply the same index+delegate pattern already proven on CLAUDE.md: move
+verbose rationale/tables/code-block examples (Auto Mode gating table,
+Worktree Parallelism setup steps, Review Dispatch Budget examples) to a new
+`docs/*.md` detail file, leave crisp imperative HARD RULE statements in
+`rules.md` itself. Bonus finding to fold in while touching this file:
+`rules.md`'s "First Action" / "Cross-Slice Continuation" sections still cite
+stale pre-migration paths (`docs/ai-loop/`, `docs/backlog/pending/`) that
+`docs/memory.md`'s "Known path drift" section already flags as unfixed,
+installer-owned drift — fix it here or explicitly carry the note forward,
+don't silently re-ship stale paths in the trimmed version.
+
 ## In scope
 
 - bullet 1
