@@ -9,6 +9,8 @@ import {
   listPresets,
   writeConfigIfMissing,
   applyLightLadder,
+  retrofitLightLadder,
+  DEFAULT_LIGHT_LADDER,
   CONFIG_FILENAME
 } from "../scripts/lib/config-resolver.mjs";
 
@@ -145,6 +147,60 @@ test("applyLightLadder merges the preset's light block over reviewers and loop.v
 
 test("applyLightLadder throws when the resolved config has no light block", () => {
   assert.throws(() => applyLightLadder({ reviewers: { ladder: ["A", "B"] } }), /no `light` block/);
+});
+
+// FEAT-271 / SLICE-168 (HIGH fix): retrofitLightLadder is the read-modify-write
+// path an already-installed repo takes, independent of resolveConfig's
+// preset-merge branch — it must work with no --preset on the refresh call.
+test("retrofitLightLadder resolves the light block from the persisted preset name", async () => {
+  const repo = await tmpRepo("al-retrofit-preset-");
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  const seeded = (await resolveConfig(repo, { preset: "dotnet-python" })) as Record<string, any>;
+  await fs.writeFile(path.join(repo, CONFIG_FILENAME), `${JSON.stringify(seeded, null, 2)}\n`);
+
+  const result = await retrofitLightLadder(repo);
+  assert.equal(result.written, true);
+  const onDisk = JSON.parse(await fs.readFile(path.join(repo, CONFIG_FILENAME), "utf8"));
+  assert.deepEqual(onDisk.reviewers.ladder, ["A"]);
+  assert.equal(onDisk.loop.validation.satisfiedByReview, true);
+  assert.equal(onDisk.productName, seeded.productName, "unrelated fields must survive untouched");
+});
+
+test("retrofitLightLadder falls back to the shared constant when the preset name is unresolvable", async () => {
+  const repo = await tmpRepo("al-retrofit-fallback-");
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  // Hand-authored config: no `preset` field at all (never scaffolded via a
+  // named template) — retrofitLightLadder must not throw, it must fall back.
+  await fs.writeFile(
+    path.join(repo, CONFIG_FILENAME),
+    `${JSON.stringify({ reviewers: { ladder: ["A", "B"] }, loop: { aiLoopRoot: "x" } }, null, 2)}\n`
+  );
+
+  const result = await retrofitLightLadder(repo);
+  assert.equal(result.written, true);
+  const onDisk = JSON.parse(await fs.readFile(path.join(repo, CONFIG_FILENAME), "utf8"));
+  const defaultLadder = DEFAULT_LIGHT_LADDER as Record<string, any>;
+  assert.deepEqual(onDisk.reviewers.ladder, defaultLadder.reviewers.ladder);
+  assert.equal(
+    onDisk.loop.validation.satisfiedByReview,
+    defaultLadder.loop.validation.satisfiedByReview
+  );
+  assert.equal(onDisk.loop.aiLoopRoot, "x", "unrelated loop field must survive untouched");
+});
+
+test("retrofitLightLadder is a no-op the second time (byte-identical)", async () => {
+  const repo = await tmpRepo("al-retrofit-idempotent-");
+  await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
+  const seeded = (await resolveConfig(repo, { preset: "dotnet-python" })) as Record<string, any>;
+  await fs.writeFile(path.join(repo, CONFIG_FILENAME), `${JSON.stringify(seeded, null, 2)}\n`);
+
+  await retrofitLightLadder(repo);
+  const afterFirst = await fs.readFile(path.join(repo, CONFIG_FILENAME), "utf8");
+  const second = await retrofitLightLadder(repo);
+  const afterSecond = await fs.readFile(path.join(repo, CONFIG_FILENAME), "utf8");
+
+  assert.equal(second.written, false);
+  assert.equal(afterFirst, afterSecond);
 });
 
 test("default config includes intake budgets", async () => {

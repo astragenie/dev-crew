@@ -5,7 +5,8 @@ import {
   resolveConfig,
   writeConfigIfMissing,
   configPath,
-  applyLightLadder
+  applyLightLadder,
+  retrofitLightLadder
 } from "./config-resolver.mjs";
 import {
   findCrewCli,
@@ -32,6 +33,43 @@ import {
 
 export { buildContextRulesList } from "./loop-installer-tokens.mjs";
 export { MARKER_START, MARKER_END } from "./loop-installer-scaffold.mjs";
+
+// FEAT-271 / SLICE-168 (HIGH fix, 2026-08-02 review): --light against an
+// ALREADY-installed repo is a retrofit, not a fresh scaffold, and needs a
+// separate path. resolveConfig's non-preset "read .claude/loop.json as-is"
+// runtime path never carries a preset's `light` block (so applyLightLadder
+// would hard-throw whenever --preset is omitted on a refresh) — and even
+// when --preset IS supplied, writeConfigIfMissing further down silently
+// no-ops once the file exists, so the merged ladder never reaches disk
+// either way. retrofitLightLadder bypasses that existence gate for just the
+// light-ladder fields, independently of options.preset, so `--light` alone
+// retrofits an already-installed repo as FEAT-271 intends. Extracted out of
+// installLoop to keep that function's cognitive complexity under the
+// biome-enforced cap.
+async function applyLightFlag(
+  repoPath: string,
+  options: Record<string, any>,
+  config: Record<string, any>,
+  hasExistingConfig: boolean,
+  writes: any[]
+): Promise<Record<string, any>> {
+  if (!options.light) {
+    return config;
+  }
+  if (!hasExistingConfig) {
+    // Fresh scaffold: merge the preset's light block into the in-memory
+    // config before it is written below. Absent the flag, behavior is
+    // byte-identical to today (AC-2).
+    return applyLightLadder(config);
+  }
+  const retrofit = await retrofitLightLadder(repoPath, {
+    presetOverride: options.preset ?? null
+  });
+  if (retrofit.written) {
+    writes.push(path.relative(repoPath, retrofit.configPath));
+  }
+  return config;
+}
 
 export async function installLoop(
   repoPath: string,
@@ -84,7 +122,8 @@ export async function installLoop(
   // install with no existing .claude/loop.json MUST name a template
   // explicitly. Re-installing an already-configured repo may omit --preset;
   // resolveConfig then reads the existing (already self-contained) config.
-  if (!options.preset && !(await pathExists(configPath(repoPath)))) {
+  const hasExistingConfig = await pathExists(configPath(repoPath));
+  if (!options.preset && !hasExistingConfig) {
     throw new Error(
       "No --preset given and no existing .claude/loop.json found. " +
         "Run `/runner:install --preset <name>` to scaffold one (see `/runner:list-presets` for options)."
@@ -92,14 +131,7 @@ export async function installLoop(
   }
 
   let config = await resolveConfig(repoPath, { preset: options.preset });
-  // FEAT-271 / SLICE-168: --light merges the preset's opt-in `light` block
-  // (SLICE-167) over `reviewers` / `loop.validation` before the config is
-  // inlined below. Absent the flag, behavior is byte-identical to today
-  // (AC-2) — `config.light` is read here and nowhere else at install time,
-  // and it is never part of the fields written to .claude/loop.json.
-  if (options.light) {
-    config = applyLightLadder(config);
-  }
+  config = await applyLightFlag(repoPath, options, config, hasExistingConfig, writes);
   const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
   const tokens = buildTokens(config, { skillActivationBlock });
 

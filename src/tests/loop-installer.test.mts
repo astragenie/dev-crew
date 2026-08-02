@@ -380,6 +380,76 @@ test("installLoop --light is idempotent across repeated runs (AC-4)", async () =
   assert.equal(cfg.loop.validation.satisfiedByReview, true);
 });
 
+// FEAT-271 / SLICE-168 HIGH fix (2026-08-02 review): --light must retrofit
+// an ALREADY-installed repo, not just seed a fresh one — that's the entire
+// point of FEAT-271 (13/15 fleet repos are already installed with the full
+// ladder). Prior to this fix, `--light` with no `--preset` on an existing
+// install hard-threw, and `--light` WITH `--preset` on an existing install
+// silently computed the merge in memory but never wrote it (writeConfigIfMissing
+// no-ops once the file exists).
+test("installLoop --light retrofits an already-installed repo with no --preset on the refresh call", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-light-retrofit-no-preset-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
+
+  const cfgPath = path.join(repo, ".claude", "loop.json");
+  const seeded = JSON.parse(await fs.readFile(cfgPath, "utf8"));
+  assert.deepEqual(seeded.reviewers.ladder, ["A", "B"], "sanity: fresh install is the full ladder");
+
+  // Simulate operator customizations that must survive the retrofit untouched.
+  seeded.productName = "Custom Fleet Repo";
+  seeded.loop.customFleetFlag = "keep-me";
+  await fs.writeFile(cfgPath, `${JSON.stringify(seeded, null, 2)}\n`);
+
+  // No --preset here — this is the exact shape of a fleet-wide retrofit call.
+  const result = await installLoop(repo, { migrateAdhoc: false, light: true });
+  assert.ok(
+    result.writes.some((w: string) => w.replace(/\\/g, "/").endsWith(".claude/loop.json")),
+    "retrofit write must be reported in the writes list"
+  );
+
+  const afterFirst = JSON.parse(await fs.readFile(cfgPath, "utf8"));
+  assert.deepEqual(afterFirst.reviewers.ladder, ["A"]);
+  assert.equal(afterFirst.loop.validation.satisfiedByReview, true);
+  assert.equal(afterFirst.productName, "Custom Fleet Repo", "custom top-level key must survive");
+  assert.equal(afterFirst.loop.customFleetFlag, "keep-me", "custom nested loop key must survive");
+  assert.ok(
+    Array.isArray(afterFirst.stack.build) && afterFirst.stack.build.length > 0,
+    "unrelated preset-derived fields must stay byte-stable"
+  );
+
+  const afterFirstRaw = await fs.readFile(cfgPath, "utf8");
+  await installLoop(repo, { migrateAdhoc: false, light: true });
+  const afterSecondRaw = await fs.readFile(cfgPath, "utf8");
+  assert.equal(
+    afterFirstRaw,
+    afterSecondRaw,
+    "second no-preset retrofit run must be a byte-identical no-op"
+  );
+});
+
+test("installLoop --light retrofits an already-installed repo when --preset is also given", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-light-retrofit-with-preset-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
+
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python", light: true });
+  const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
+  assert.deepEqual(cfg.reviewers.ladder, ["A"]);
+  assert.equal(cfg.loop.validation.satisfiedByReview, true);
+});
+
+test("installLoop without --light on an already-installed repo leaves the config untouched", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-no-light-existing-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
+  const before = await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8");
+
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
+  const after = await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8");
+  assert.equal(before, after, "re-install without --light must not touch the reviewers ladder");
+});
+
 test("reportStatus reflects install state", async () => {
   if (!crewAvailable) return;
   const repo = await initGitRepo("al-status-");
