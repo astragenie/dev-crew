@@ -57,3 +57,27 @@ unset — this FEAT has not been scored yet. Run `/runner:triage`
 
 - SLICE-1: Read-only investigation: reproduce + root-cause the citylive path mismatch (2 pts)
 - SLICE-2: Minimal fix + citylive-shaped fixture test (or upstream-request if crew-side) (2 pts)
+
+## SLICE-175 closeout note
+
+SLICE-175 (this FEAT's SLICE-2) shipped the loop-side fix — `config.loop.costProject`
+and `costProjectAliases` are now normalized through the same slugify regex
+crew's own `slugifyRepoPath` uses, before being passed to
+`--source-project` (`src/scripts/lib/slice-linker/crew-bridge.mts`) — plus
+fixture tests (`src/tests/cost-project-slugify.test.mts`) proving an
+unslugified value (the citylive-shaped case) is corrected and an
+already-slugified value is unchanged (no regression, AC-4).
+
+It also filed
+`docs/upstream-requests/2026-08-02-crew-session-scanner-source-project-slugify.md`,
+which bundles two crew-side asks: (1) the defense-in-depth counterpart of
+this fix — normalize or auto-detect-recover from an explicit
+`sourceProject` in crew's own scanner, so callers other than loop are
+covered too; and (2) a native `session_id`/transcript-id field in
+cost-report frontmatter. Ask (2) is the crew-side follow-up FEAT-268's
+SLICE-164 was scoped to file — SLICE-161's spike
+(`docs/research/2026-08-02-cost-window-freeze-root-cause-spike.md`) found
+the window-freeze bug itself was loop-side (no upstream ask needed there),
+but flagged the session_id gap as separate, still-open scoping information.
+Filing it here satisfies that open item; SLICE-164 does not need to file
+its own separate upstream-request doc for it.
