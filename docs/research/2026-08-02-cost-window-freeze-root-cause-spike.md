@@ -118,7 +118,7 @@ close-without-fresh-start flow this mechanism predicts.
 prefers an explicit `flags.startedAt` (`--started-at`) and only falls back
 to `run?.startedAt` when the caller doesn't supply one. Crew's CLI help
 text even documents the flag
-(`scripts/crew.ts:445`: `cost-slice ... [--started-at <iso>] ...`) and its
+(`scripts/crew.ts:441-442`: `cost-slice ... [--started-at <iso>] ...`) and its
 flag parser recognizes it (`scripts/crew.ts:116`:
 `"--started-at": { key: "startedAt" }`). Loop simply never uses it.
 
