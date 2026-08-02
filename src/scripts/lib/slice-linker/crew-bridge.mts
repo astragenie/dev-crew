@@ -16,8 +16,14 @@ import { crewCliRuntime } from "../plugin-identity.mjs";
 import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
 import { gitTextOrThrow } from "../run-git.mjs";
+import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
 import { renderIdentification } from "./agent-report-writer.mjs";
 import { dedupeCostReportsInDir } from "./cost-report-dedup.mjs";
+import {
+  resolveCostScanWindow,
+  resolveCostReportSessionId,
+  writeCostScanCursor
+} from "./cost-scan-cursor.mjs";
 
 const execFile = promisify(_execFile);
 
@@ -232,7 +238,17 @@ export async function tryWriteCostReport(
 
   const mode = await detectCostMode(repoPath, config);
   const runTitle = buildArtifactTitle({ featureId, phase, sliceId });
+  const workflowState = await readCrewWorkflowState(repoPath);
+  // SLICE-162: resolve this slice's OWN scan window (persisted cursor,
+  // falling back to currentRun.startedAt only on the slice's first-ever
+  // scan) instead of always relying on crew's shared currentRun fallback
+  // — see cost-scan-cursor.mjs for the full root-cause rationale.
+  const window = await resolveCostScanWindow(repoPath, sliceId, workflowState);
   const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
+  pushOptionalFlags(reportArgs, [
+    ["--started-at", window.startedAt],
+    ["--completed-at", window.completedAt]
+  ]);
   if (mode === "scoped") {
     const project = config?.loop?.costProject ?? repoPath.replace(/[^A-Za-z0-9]/g, "-");
     const aliases = config?.loop?.costProjectAliases;
@@ -242,6 +258,21 @@ export async function tryWriteCostReport(
   }
   appendFeaturePhaseArgs(reportArgs, featureId, phase);
   const report = await runCrew(reportArgs);
+
+  // Only advance the cursor when crew's CLI actually ran (no execFile
+  // error) — a failed invocation leaves the window untouched so the next
+  // attempt retries the same, still-valid span instead of silently
+  // skipping it.
+  if (sliceId && !report?.error) {
+    await writeCostScanCursor(repoPath, sliceId, window.completedAt);
+  }
+
+  // AC-3: stamp the originating crew session/transcript id into the
+  // written report's frontmatter — crew's own artifact writer has no
+  // field for this today (see the root-cause spike), so this is a
+  // best-effort loop-side post-write patch, not a dedup-fingerprint
+  // change (resolveCostReportUsd/sliceKeyOf never read this field).
+  await stampCostReportSessionId(report, resolveCostReportSessionId(workflowState));
 
   // FEAT-204: sweep the cost-report directory for shared-session
   // duplicates left by this (or a sibling wave FEAT's) invocation and
@@ -275,6 +306,43 @@ export async function tryWriteCostReport(
   }
 
   return { ...report, advise, costMode: mode, dedup };
+}
+
+// Collects every report file path a `crew cost-slice` JSON return can carry.
+// The CLI's return shape varies: a plain slice report returns `{ path, ... }`
+// at the top level; an aggregate-mode call that found multiple sources
+// returns `{ slice: {...}, aggregate: {...} }`, each with their own `path`.
+// Exported for direct unit coverage (SLICE-162).
+export function collectCostReportPaths(report: Record<string, any> | null | undefined): string[] {
+  if (!report) return [];
+  const paths: string[] = [];
+  if (typeof report.path === "string") paths.push(report.path);
+  if (typeof report.slice?.path === "string") paths.push(report.slice.path);
+  if (typeof report.aggregate?.path === "string") paths.push(report.aggregate.path);
+  return paths;
+}
+
+// Best-effort post-write patch: adds `session_id` to a just-written cost
+// report's frontmatter without disturbing any other field (in particular
+// `slice` / `usd`, which resolveCostReportUsd/sliceKeyOf in
+// memory-snapshot.mts key their dedup on — AC-4 requires those untouched).
+// A stamp failure never blocks the cost-report/advise flow.
+export async function stampCostReportSessionId(
+  report: Record<string, any> | null | undefined,
+  sessionId: string | null
+): Promise<void> {
+  if (!sessionId) return;
+  const paths = collectCostReportPaths(report);
+  if (paths.length === 0) return;
+  const { mergeFrontmatter } = await import("../frontmatter.mjs");
+  for (const reportPath of paths) {
+    try {
+      const raw = await fs.readFile(reportPath, "utf8");
+      await fs.writeFile(reportPath, mergeFrontmatter(raw, { session_id: sessionId }));
+    } catch {
+      // best-effort — never blocks the cost-report/advise flow
+    }
+  }
 }
 
 // Resolves the cost-report directory used by `crew cost-slice` writes and
