@@ -92,6 +92,12 @@ const COMMANDS = {
     const overrides = parseCostOverrides(overridesRaw);
     return runCostSetup(repoPath, overrides);
   },
+  "memory-setup": async ({ repoPath, flags }: CmdCtx) => {
+    const { parseMemoryOverrides, runMemorySetup } = await import("./lib/memory-setup.mjs");
+    const overridesRaw = typeof flags.features === "string" ? flags.features : null;
+    const overrides = parseMemoryOverrides(overridesRaw);
+    return runMemorySetup(repoPath, overrides);
+  },
   "phase-gate": async ({ repoPath, flags, config }: CmdCtx) => {
     const { runPhaseGate } = await import("./lib/phase-gate.mjs");
     return runPhaseGate(repoPath, {
