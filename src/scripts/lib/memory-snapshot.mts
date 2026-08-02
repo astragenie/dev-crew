@@ -162,17 +162,33 @@ function sliceKeyOf(fm: Record<string, any>): string | null {
   return null;
 }
 
-// Load cost report USD values from the most recent cost reports. Returns
-// an array of USD values for cost trajectory calculation, deduped per
-// FEAT-204 (see resolveCostReportUsd) and per-slice (see sliceKeyOf).
-export async function loadCostReportUSDValues(repoPath: string, limit = 20): Promise<number[]> {
+// FEAT-269: read-only mirror of the aggregate_all check already inside
+// resolveCostReportUsd (above, untouched) -- used only to COUNT exclusions
+// for display below, never to decide them. The local parseFrontmatter keeps
+// booleans as strings, so match both.
+function isAggregateAllReport(fm: Record<string, any>): boolean {
+  return fm.aggregate_all === true || fm.aggregate_all === "true";
+}
+
+// FEAT-269: like loadCostReportUSDValues, but also reports how many
+// aggregate_all rollup reports were excluded from the trajectory in this
+// window. Fleet audit 2026-08-02 found aggregate reports mixed unmarked into
+// per-repo cost stats (runner 142/313, dev-team 81/218); resolveCostReportUsd
+// already excludes them from the values array (unchanged) -- this adds a
+// parallel count of that same exclusion for display, not a second filter.
+async function loadCostReportStats(
+  repoPath: string,
+  limit = 20
+): Promise<{ values: number[]; aggregateExcludedCount: number }> {
   const files = await listCostReportFiles(repoPath, limit);
   const loaded = await loadCostReportEntries(files);
   const presentNames = new Set(loaded.map((entry) => entry.name));
 
   const usdValues: number[] = [];
+  let aggregateExcludedCount = 0;
   const seenSliceKeys = new Set<string>();
   for (const entry of loaded) {
+    if (isAggregateAllReport(entry.fm)) aggregateExcludedCount += 1;
     const usd = resolveCostReportUsd(entry, presentNames);
     if (usd === null) continue;
     const key = sliceKeyOf(entry.fm);
@@ -182,7 +198,15 @@ export async function loadCostReportUSDValues(repoPath: string, limit = 20): Pro
     }
     usdValues.push(usd);
   }
-  return usdValues;
+  return { values: usdValues, aggregateExcludedCount };
+}
+
+// Load cost report USD values from the most recent cost reports. Returns
+// an array of USD values for cost trajectory calculation, deduped per
+// FEAT-204 (see resolveCostReportUsd) and per-slice (see sliceKeyOf).
+export async function loadCostReportUSDValues(repoPath: string, limit = 20): Promise<number[]> {
+  const { values } = await loadCostReportStats(repoPath, limit);
+  return values;
 }
 
 const AUTO_GENERATED_HEADER =
@@ -306,7 +330,8 @@ function renderLoopTelemetry(
     lastCostAdvisorVerdict: string | null;
   },
   pauseSummary: PauseRateSummary,
-  memoryUsefulness: MemoryUsefulnessSummary | null
+  memoryUsefulness: MemoryUsefulnessSummary | null,
+  aggregateExcludedCount: number
 ) {
   const out = ["## Loop telemetry", ""];
 
@@ -324,6 +349,17 @@ function renderLoopTelemetry(
     out.push(
       `- In-window cost trajectory: median $${costTrajectory.medianUSD.toFixed(3)} / mean $${costTrajectory.avgUSD.toFixed(3)} per cost-report (${costTrajectory.count} slice-close session scans)`
     );
+  }
+
+  // FEAT-269: fleet audit 2026-08-02 found aggregate_all rollup reports mixed
+  // unmarked into per-repo cost stats, skewing the mean far from the median
+  // (one $32,101 fleet-wide aggregate was mistaken for a single slice
+  // report). resolveCostReportUsd already excludes these from the trajectory
+  // above; this surfaces how many were excluded so operators can see when
+  // aggregates dominate the corpus. Omitted at 0 (AC-2), mirroring the Pause
+  // rate bullet's optional-section pattern below.
+  if (aggregateExcludedCount > 0) {
+    out.push(`- Aggregate reports excluded from cost trajectory: ${aggregateExcludedCount}`);
   }
 
   if (costTrajectory.lastCostAdvisorVerdict === null) {
@@ -411,6 +447,7 @@ async function collectSnapshotData(
   decisions: Record<string, any>[];
   iterationStatus: Record<string, any> | null;
   costReportUSDValues: number[];
+  aggregateExcludedCount: number;
   dispatchTree: DispatchTreeSnapshot;
   pauseSummary: PauseRateSummary;
   memoryUsefulness: MemoryUsefulnessSummary | null;
@@ -423,7 +460,7 @@ async function collectSnapshotData(
     grades,
     decisions,
     iterationStatus,
-    costReportUSDValues,
+    costReportStats,
     dispatchTree,
     pauseSummary,
     memoryUsefulness,
@@ -434,7 +471,7 @@ async function collectSnapshotData(
     listGrades(repoPath, { config }),
     listDecisions(repoPath, { config }),
     getIterationStatus(repoPath),
-    loadCostReportUSDValues(repoPath),
+    loadCostReportStats(repoPath),
     readDispatchTreeSnapshot(repoPath).catch(() => ({
       openRunIds: [],
       worktreeCount: 0,
@@ -450,7 +487,8 @@ async function collectSnapshotData(
     grades,
     decisions,
     iterationStatus,
-    costReportUSDValues,
+    costReportUSDValues: costReportStats.values,
+    aggregateExcludedCount: costReportStats.aggregateExcludedCount,
     dispatchTree,
     pauseSummary,
     memoryUsefulness,
@@ -470,6 +508,7 @@ function buildSnapshotLines(
     decisions,
     iterationStatus,
     costReportUSDValues,
+    aggregateExcludedCount,
     dispatchTree,
     pauseSummary,
     memoryUsefulness,
@@ -511,7 +550,13 @@ function buildSnapshotLines(
     ...renderSpecs(specs, specsByStatus),
     ...renderGradeSignal(grades, recentScoreAverages),
     ...renderDecisions(recentDecisions),
-    ...renderLoopTelemetry(iterationStatus, costTrajectory, pauseSummary, memoryUsefulness),
+    ...renderLoopTelemetry(
+      iterationStatus,
+      costTrajectory,
+      pauseSummary,
+      memoryUsefulness,
+      aggregateExcludedCount
+    ),
     ...renderHookEnforcement(hookEnforcement),
     ...renderDispatchLifecycle(dispatchTree, pruneStaleAfterDays),
     ...renderUsageFooter()

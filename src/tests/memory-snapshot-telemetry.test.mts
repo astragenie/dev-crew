@@ -133,6 +133,35 @@ test("cost trajectory excludes aggregate_all rollup reports and survives wide-wi
     ),
     `aggregate excluded + median robust; got: ${content.match(/In-window cost trajectory:.*/)?.[0]}`
   );
+
+  // FEAT-269 AC-1/AC-3: the excluded aggregate is also surfaced as its own
+  // count, matching the single aggregate_all fixture written above.
+  assert.ok(
+    content.includes("Aggregate reports excluded from cost trajectory: 1"),
+    `expected aggregate-excluded count line; got: ${content.match(/Aggregate reports excluded.*/)?.[0]}`
+  );
+});
+
+// FEAT-269 AC-2: zero aggregate reports in the window -- the count line is
+// omitted entirely and the existing trajectory line is unaffected.
+test("aggregate-excluded count line is omitted when no aggregate_all reports exist", async () => {
+  const repo = await tmpRepo("al-snapshot-cost-noagg-");
+  await addFeature(repo, { title: "Test" });
+
+  await writeCostReport(repo, "SLICE-01", 10.5);
+  await writeCostReport(repo, "SLICE-02", 15.0);
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  assert.ok(
+    !content.includes("Aggregate reports excluded"),
+    "aggregate-excluded line must be omitted when zero aggregate reports are present"
+  );
+  assert.ok(
+    content.includes("median $12.750 / mean $12.750 per cost-report (2 slice-close session scans)"),
+    "existing trajectory output must be unaffected"
+  );
 });
 
 test("same-slice re-reports collapse to the newest report (dev-team#178 wide-window repeats)", async () => {
