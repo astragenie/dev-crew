@@ -205,6 +205,18 @@ async function runCrew(args: string[]) {
   }
 }
 
+// Normalizes a human-readable project name or repo path into the slug form
+// crew's session scanner expects under ~/.claude/projects/<slug>/ — same
+// regex crew's own slugifyRepoPath uses (session-cost.ts). Idempotent: a
+// dash already matches [^A-Za-z0-9] and maps to itself, so an
+// already-slugified value passes through unchanged (SLICE-175 root-cause
+// spike: docs/research/2026-08-02-citylive-zero-cost-telemetry.md — an
+// unslugified config.loop.costProject bypasses crew's auto-detect fallback
+// and silently zeroes the cost report).
+function slugifyProjectSlug(value: string): string {
+  return value.replace(/[^A-Za-z0-9]/g, "-");
+}
+
 // Appends --source-project flags for the primary project and any aliases
 // declared in config.loop.costProjectAliases. The crew CLI 0.9.0 parser
 // uses last-one-wins when multiple --source-project flags are passed, so
@@ -250,8 +262,13 @@ export async function tryWriteCostReport(
     ["--completed-at", window.completedAt]
   ]);
   if (mode === "scoped") {
-    const project = config?.loop?.costProject ?? repoPath.replace(/[^A-Za-z0-9]/g, "-");
-    const aliases = config?.loop?.costProjectAliases;
+    const project = slugifyProjectSlug(config?.loop?.costProject ?? repoPath);
+    const rawAliases = config?.loop?.costProjectAliases;
+    const aliases = Array.isArray(rawAliases)
+      ? rawAliases.map((alias: unknown) =>
+          typeof alias === "string" ? slugifyProjectSlug(alias) : alias
+        )
+      : rawAliases;
     appendSourceProjectArgs(reportArgs, project, aliases);
   } else {
     reportArgs.push("--aggregate-all");
