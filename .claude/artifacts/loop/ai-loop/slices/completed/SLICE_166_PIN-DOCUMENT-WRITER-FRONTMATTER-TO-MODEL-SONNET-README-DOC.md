@@ -1,7 +1,7 @@
 ---
 id: SLICE-166
 title: "Pin document-writer frontmatter to model: sonnet + README doc"
-status: pending
+status: completed
 feature: FEAT-270
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 1
 estimated_tokens: 60000
 github_issue: 564
 github_url: "https://github.com/astragenie/runner-plugin/issues/564"
+completed_at: 2026-08-02
 ---
 # SLICE-166: Pin document-writer frontmatter to model: sonnet + README doc
 
