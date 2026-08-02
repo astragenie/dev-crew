@@ -95,7 +95,7 @@ Full detail: `docs/research/2026-08-02-context-diet-baseline.md`. Summary:
 Trimmed `.claude/loop/rules.md` using the same index+delegate pattern PR
 #552 proved on `CLAUDE.md`: all 11 HARD RULE headings preserved verbatim
 (including the 3 that a test asserts by substring match), verbose
-tables/examples/setup-steps moved to a new `docs/loop/rules-reference.md`
+tables/examples/setup-steps moved to a new `.claude/loop/rules-reference.md`
 counterpart that rules.md links to. Net: 248→116 lines / 20,393→11,464 bytes
 (-53.2%/-43.8%) for the file every loop session reads near-immediately per
 its own "First Action" rule; the reference file is read on demand only.

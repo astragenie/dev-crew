@@ -52,6 +52,10 @@ continues to report `iterationCount`/`iterationCap`/`crewBlocked` in
 not the _telemetry_. The config key stays `marathonMode` for back-compat —
 the concept is "auto mode."
 
+The walker's `requiresApprovalGate` flag and
+`start-slice.mts::computeApprovalGate` already honor this — auto mode is
+enforced in code, not only in prose.
+
 ## Orchestrator Model Gate — exact stop text
 
 When `orchestratorModel` (returned by `/runner:start`) is non-null and
