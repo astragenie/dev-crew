@@ -35,7 +35,7 @@
   },
   "reviewers": { "ladder": ["A", "B"] },
   "light": {
-    "description": "FEAT-271: trimmed reviewer ladder for repos with a CI test gate -- single Reviewer A, behavior/test validation delegated to CI via loop.validation.satisfiedByReview. Applied by `/runner:install --light` on top of the base reviewers block above; do not enable on a repo with no CI test gate (keep the two-reviewer ladder there -- guidance lands with the install flag (FEAT-271 SLICE-168/169)",
+    "description": "FEAT-271: trimmed reviewer ladder for repos with a CI test gate -- single Reviewer A, behavior/test validation delegated to CI via loop.validation.satisfiedByReview. Applied by `/runner:install --light` on top of the base reviewers block above; do not enable on a repo with no CI test gate (keep the two-reviewer ladder there) -- see ADOPTION.md § Light reviewer ladder rollout for when to trim, when not to, and how to revert.",
     "reviewers": { "ladder": ["A"] },
     "loop": { "validation": { "satisfiedByReview": true } }
   },
