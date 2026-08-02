@@ -91,7 +91,7 @@ function isPlainObject(value: unknown) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
+export function deepMerge(base: unknown, overrides: unknown): Record<string, unknown> {
   if (!isPlainObject(overrides)) {
     return (overrides === undefined ? base : overrides) as Record<string, unknown>;
   }
@@ -152,4 +152,31 @@ export async function writeConfigIfMissing(repoPath: string, config: unknown) {
 
 export function configPath(repoPath: string) {
   return path.join(repoPath, CONFIG_FILENAME);
+}
+
+// FEAT-271 / SLICE-168: `/runner:install --light` support. The preset's
+// opt-in `light` block (SLICE-167 — reviewers.ladder trimmed to ["A"] +
+// loop.validation.satisfiedByReview: true) is install-time template data
+// only (DEC-069); this deep-merges it over the resolved config's `reviewers`
+// and `loop` fields so loop-installer.mts can inline the trimmed ladder into
+// .claude/loop.json when the flag is passed. Returns a new object — does not
+// mutate `config`. Throws if the resolved config has no `light` block (e.g. a
+// hand-authored preset that predates FEAT-271) so a mistaken `--light` on an
+// unsupported preset fails loudly instead of silently no-op'ing.
+export function applyLightLadder(config: Record<string, unknown>): Record<string, unknown> {
+  const light = config.light as { reviewers?: unknown; loop?: Record<string, unknown> } | undefined;
+  if (!light) {
+    throw new Error(
+      "--light requested but the resolved preset has no `light` block defined " +
+        "(see scripts/presets/*.json for the expected shape)."
+    );
+  }
+  const merged = { ...config };
+  if (light.reviewers !== undefined) {
+    merged.reviewers = deepMerge(config.reviewers, light.reviewers);
+  }
+  if (light.loop !== undefined) {
+    merged.loop = deepMerge(config.loop, light.loop);
+  }
+  return merged;
 }

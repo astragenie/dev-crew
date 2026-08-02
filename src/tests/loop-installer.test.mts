@@ -339,6 +339,47 @@ test("buildContextRulesList output contains in_scope_globs instruction prose", (
   assert.ok(result.includes("in_scope_globs"), "instruction mentions in_scope_globs");
 });
 
+// FEAT-271 / SLICE-168: --light selection flag.
+test("installLoop --light seeds the trimmed reviewer ladder + satisfiedByReview (AC-1)", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-light-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python", light: true });
+
+  const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
+  assert.deepEqual(cfg.reviewers.ladder, ["A"]);
+  assert.equal(cfg.loop.validation.satisfiedByReview, true);
+  // The preset's authoring-only `light` block itself is never persisted.
+  assert.equal(cfg.light, undefined);
+});
+
+test("installLoop without --light keeps the default two-reviewer ladder (AC-2, backward compat)", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-no-light-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
+
+  const cfg = JSON.parse(await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8"));
+  assert.deepEqual(cfg.reviewers.ladder, ["A", "B"]);
+  assert.equal(cfg.loop.validation, undefined);
+});
+
+test("installLoop --light is idempotent across repeated runs (AC-4)", async () => {
+  if (!crewAvailable) return;
+  const repo = await initGitRepo("al-install-light-idempotent-");
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python", light: true });
+  const afterFirst = await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8");
+
+  // Re-running (with or without --light) must not duplicate or corrupt the
+  // reviewers block — writeConfigIfMissing skips the write once the file
+  // exists, so the second run is a byte-identical no-op either way.
+  await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python", light: true });
+  const afterSecond = await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8");
+  assert.equal(afterFirst, afterSecond, "second --light run must not rewrite the config");
+
+  const cfg = JSON.parse(afterSecond);
+  assert.deepEqual(cfg.reviewers.ladder, ["A"]);
+  assert.equal(cfg.loop.validation.satisfiedByReview, true);
+});
+
 test("reportStatus reflects install state", async () => {
   if (!crewAvailable) return;
   const repo = await initGitRepo("al-status-");

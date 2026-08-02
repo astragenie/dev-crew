@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { resolveConfig, writeConfigIfMissing, configPath } from "./config-resolver.mjs";
+import {
+  resolveConfig,
+  writeConfigIfMissing,
+  configPath,
+  applyLightLadder
+} from "./config-resolver.mjs";
 import {
   findCrewCli,
   getCrewVersion,
@@ -86,7 +91,15 @@ export async function installLoop(
     );
   }
 
-  const config = await resolveConfig(repoPath, { preset: options.preset });
+  let config = await resolveConfig(repoPath, { preset: options.preset });
+  // FEAT-271 / SLICE-168: --light merges the preset's opt-in `light` block
+  // (SLICE-167) over `reviewers` / `loop.validation` before the config is
+  // inlined below. Absent the flag, behavior is byte-identical to today
+  // (AC-2) — `config.light` is read here and nowhere else at install time,
+  // and it is never part of the fields written to .claude/loop.json.
+  if (options.light) {
+    config = applyLightLadder(config);
+  }
   const skillActivationBlock = await buildSkillActivationBlock(path.join(repoPath, "skills"));
   const tokens = buildTokens(config, { skillActivationBlock });
 

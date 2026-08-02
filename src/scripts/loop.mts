@@ -65,7 +65,7 @@ function usage() {
     "loop CLI",
     "",
     "Usage:",
-    "  bun src/scripts/loop.mts install --repo <path> [--preset <name>]",
+    "  bun src/scripts/loop.mts install --repo <path> [--preset <name>] [--light]",
     "  bun src/scripts/loop.mts phase-gate --repo <path> [--phase <N>] [--note <text>]",
     "  bun src/scripts/loop.mts status --repo <path>",
     "  bun src/scripts/loop.mts list-presets",
@@ -84,7 +84,7 @@ function usage() {
 const COMMANDS = {
   install: async ({ repoPath, flags }: CmdCtx) => {
     const { installLoop } = await import("./lib/loop-installer.mjs");
-    return installLoop(repoPath, { preset: flags.preset });
+    return installLoop(repoPath, { preset: flags.preset, light: Boolean(flags.light) });
   },
   "cost-setup": async ({ repoPath, flags }: CmdCtx) => {
     const { parseCostOverrides, runCostSetup } = await import("./lib/cost-setup.mjs");

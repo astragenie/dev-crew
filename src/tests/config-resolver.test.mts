@@ -8,6 +8,7 @@ import {
   resolveConfig,
   listPresets,
   writeConfigIfMissing,
+  applyLightLadder,
   CONFIG_FILENAME
 } from "../scripts/lib/config-resolver.mjs";
 
@@ -124,6 +125,26 @@ test("writeConfigIfMissing writes new config when missing", async () => {
   assert.equal(result.written, true);
   const parsed = JSON.parse(await fs.readFile(path.join(repo, CONFIG_FILENAME), "utf8"));
   assert.equal(parsed.productName, "Fresh");
+});
+
+// FEAT-271 / SLICE-168: applyLightLadder is the merge step `/runner:install
+// --light` applies on top of resolveConfig's output, before the config is
+// inlined into .claude/loop.json.
+test("applyLightLadder merges the preset's light block over reviewers and loop.validation", async () => {
+  const repo = await tmpRepo("al-light-merge-");
+  const config = (await resolveConfig(repo, { preset: "dotnet-python" })) as Record<string, any>;
+  assert.deepEqual(config.reviewers.ladder, ["A", "B"], "preset default is unchanged before merge");
+
+  const lightened = applyLightLadder(config) as Record<string, any>;
+  assert.deepEqual(lightened.reviewers.ladder, ["A"]);
+  assert.equal(lightened.loop.validation.satisfiedByReview, true);
+  // Original config object must be untouched (installLoop decides whether to
+  // apply the merge; applyLightLadder itself must not have side effects).
+  assert.deepEqual(config.reviewers.ladder, ["A", "B"]);
+});
+
+test("applyLightLadder throws when the resolved config has no light block", () => {
+  assert.throws(() => applyLightLadder({ reviewers: { ladder: ["A", "B"] } }), /no `light` block/);
 });
 
 test("default config includes intake budgets", async () => {
