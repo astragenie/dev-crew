@@ -1,7 +1,7 @@
 ---
 id: SLICE-170
 title: Baseline measurement + restructure plan (isolate the design-sensitive index shape as its own slice)
-status: pending
+status: completed
 feature: FEAT-272
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 572
 github_url: "https://github.com/astragenie/runner-plugin/issues/572"
+completed_at: 2026-08-02
 ---
 # SLICE-170: Baseline measurement + restructure plan (isolate the design-sensitive index shape as its own slice)
 
