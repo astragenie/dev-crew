@@ -34,10 +34,10 @@ Pin runner:document-writer dispatches to Sonnet tier (user-approved 2026-08-02).
 
 ## Acceptance criteria
 
-- [ ] AC-1: Given agents/document-writer.md's frontmatter, When this FEAT lands, Then it includes a model: sonnet field mirroring the existing model: opus pattern already used in agents/pm.md.
-- [ ] AC-2: Given a document-writer dispatch after the change, When the agent runs, Then it executes on the Sonnet tier (verified via a sampled cost report's Model Mix section showing a non-Opus model for that dispatch).
-- [ ] AC-3: Given the builder/reviewer role agents, When this FEAT lands, Then their frontmatter model: fields (or absence thereof) are left unchanged -- no broader tier move.
-- [ ] AC-4: Given the new config knob, When README.md is updated, Then it documents the document-writer model pin and how to override it, matching the FEAT's 'Document the config knob in README' requirement.
+- [x] AC-1: Given agents/document-writer.md's frontmatter, When this FEAT lands, Then it includes a model: sonnet field mirroring the existing model: opus pattern already used in agents/pm.md.
+- [ ] AC-2: Given a document-writer dispatch after the change, When the agent runs, Then it executes on the Sonnet tier (verified via a sampled cost report's Model Mix section showing a non-Opus model for that dispatch). NOT YET VERIFIABLE at build time -- needs a live document-writer dispatch post-merge and a subsequent cost-report sample; leaving unchecked for the validator/close step.
+- [x] AC-3: Given the builder/reviewer role agents, When this FEAT lands, Then their frontmatter model: fields (or absence thereof) are left unchanged -- no broader tier move. Verified: `git diff --stat agents/` shows only agents/document-writer.md touched (1 insertion).
+- [x] AC-4: Given the new config knob, When README.md is updated, Then it documents the document-writer model pin and how to override it, matching the FEAT's 'Document the config knob in README' requirement. Added README.md "Agent model tiers" section documenting the pin, rationale, and the direct-frontmatter-edit override path (no preset.roles.*.model plumbing per PM scope).
 
 ## Done When
 

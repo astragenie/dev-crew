@@ -159,6 +159,25 @@ Every stage is a `{cmd, args, cwd?}` triple — the argv array is what makes
 phase-gate injection-safe. Set any stage to `null` to disable it. `aspireBoot`
 is auto-skipped if `healthchecks` is empty (otherwise it would hang).
 
+## Agent model tiers
+
+Most owned agents run on the harness default model. A few are pinned to a
+specific tier via the `model:` field in the agent's own frontmatter
+(`agents/<name>.md`) — no `.claude/loop.json` plumbing involved:
+
+| Agent | Pinned model | Why |
+| --- | --- | --- |
+| `runner:pm` | `opus` | Five-dimension scoring + inline AC/SPEC drafting benefits from the strongest tier. |
+| `runner:researcher` / `runner:market-researcher` | `haiku` | Read-only lookups, cheapest tier suffices. |
+| `runner:swarm` | `sonnet` | Dispatch orchestration, not deep reasoning. |
+| `runner:document-writer` | `sonnet` | Markdown drafting (FEAT-270, 2026-08-02): a fleet cost audit found Opus at 87-100% of USD spend in most repos, while repos running non-Opus tiers landed noticeably cheaper per slice at comparable context size. Documentation work doesn't need Opus-tier reasoning, so `document-writer` is pinned to Sonnet. |
+
+To use a different tier for an agent, edit that agent's `model:` frontmatter
+field directly — there is no config-level override for individual roles yet
+(a `preset.roles.<role>.model` knob was considered for this FEAT and
+explicitly deferred; broader tier moves for other roles, like builder or
+reviewer, need an eval gate before they're considered).
+
 ## Built-in presets
 
 Presets are **install-time templates only** (FEAT-218 Phase 2 / DEC-069):
