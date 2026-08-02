@@ -256,7 +256,10 @@ test("validatePreset rejects a non-boolean light.loop.validation.satisfiedByRevi
     () =>
       validatePreset(
         baseFixture({
-          light: { reviewers: { ladder: ["A"] }, loop: { validation: { satisfiedByReview: "yes" } } }
+          light: {
+            reviewers: { ladder: ["A"] },
+            loop: { validation: { satisfiedByReview: "yes" } }
+          }
         })
       ),
     SchemaError
