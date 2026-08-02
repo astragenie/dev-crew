@@ -1,7 +1,7 @@
 ---
 id: SLICE-167
 title: "Add light reviewers.ladder block across all 6 preset templates (batch, mechanical)"
-status: pending
+status: completed
 feature: FEAT-271
 phase: null
 priority: P2
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 566
 github_url: "https://github.com/astragenie/runner-plugin/issues/566"
+completed_at: 2026-08-02
 ---
 # SLICE-167: Add light reviewers.ladder block across all 6 preset templates (batch, mechanical)
 
