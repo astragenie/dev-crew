@@ -83,10 +83,39 @@ export function assertSliceExistsAtBase(repoRoot: string, baseRef: string, child
       // not at this candidate path — try the next status dir
     }
   }
+  // SLICE ids don't live under backlog/<status>/ — slice files are written to
+  // ai-loop/slices/<status>/ with a title-suffixed underscore name
+  // (SLICE_161_SOME-TITLE.md), so exact-path cat-file probes can never hit.
+  // List each slice status dir at the base ref and prefix-match instead.
+  const sliceDirs = ["pending", "in-progress", "completed", "done"].map(
+    (dir) => `.claude/artifacts/loop/ai-loop/slices/${dir}`
+  );
+  const underscoreId = idPrefix.replace(/-/g, "_");
+  for (const dir of sliceDirs) {
+    let listing: string;
+    try {
+      listing = execFileSync("git", ["ls-tree", "--name-only", `${baseRef}:${dir}`], {
+        cwd: repoRoot,
+        stdio: ["ignore", "pipe", "pipe"]
+      }).toString();
+    } catch {
+      continue; // dir absent at this base — try the next status dir
+    }
+    const hit = listing
+      .split("\n")
+      .some(
+        (name) =>
+          name === `${idPrefix}.md` ||
+          name.startsWith(`${underscoreId}_`) ||
+          name.startsWith(`${idPrefix}_`)
+      );
+    if (hit) return;
+  }
   throw new DispatchWorktreeError(
     `stale dispatch base: "${idPrefix}" not found at base ${baseRef} in any of ` +
-      `${candidates.join(", ")}. The base ref is likely stale (missing recent backlog ` +
-      "commits) — refresh it (fetch/pull) or pass an explicit base ref that contains this id."
+      `${candidates.join(", ")} or the ai-loop/slices status dirs. The base ref is ` +
+      "likely stale (missing recent backlog commits) — refresh it (fetch/pull) or " +
+      "pass an explicit base ref that contains this id."
   );
 }
 
