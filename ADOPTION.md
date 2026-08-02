@@ -278,8 +278,10 @@ exactly as it did before this flag existed.
 only ever *merges the light block in* when `--light` is passed — it never
 removes an existing `reviewers` / `loop.validation` setting. Re-running
 with `--preset <name>` but no `--light` doesn't revert it either: the
-value already on disk wins over the preset's default during the merge, so
-a previously-trimmed `reviewers.ladder` survives untouched. There is no
+installer only ever writes `.claude/loop.json` when the file doesn't exist
+yet — the refresh computes a merge in memory but never persists it, so the
+on-disk file (including a previously-trimmed `reviewers.ladder`) is left
+completely untouched. There is no
 `--unlight` / `--no-light` flag.
 
 The only way back to the full two-reviewer ladder today is a manual edit

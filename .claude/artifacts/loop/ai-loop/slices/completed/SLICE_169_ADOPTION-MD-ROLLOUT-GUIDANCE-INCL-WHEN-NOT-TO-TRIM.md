@@ -1,7 +1,7 @@
 ---
 id: SLICE-169
 title: ADOPTION.md rollout guidance incl. when NOT to trim
-status: pending
+status: completed
 feature: FEAT-271
 phase: null
 priority: P2
@@ -14,6 +14,7 @@ effort_points: 1
 estimated_tokens: 60000
 github_issue: 570
 github_url: "https://github.com/astragenie/runner-plugin/issues/570"
+completed_at: 2026-08-02
 ---
 # SLICE-169: ADOPTION.md rollout guidance incl. when NOT to trim
 
