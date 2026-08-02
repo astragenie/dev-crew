@@ -65,7 +65,7 @@ identical `source_project: AstraGenie.CityLive` / `Auto-detected: no` /
 `Aggregate All: no` triple (grep across the directory confirms this is not
 a one-off). The single 12th file in that directory
 (`20260524T174803Z-cost-report-cost-feat001-slice01-msw-mock-layer.md`) is
-the separate `cost-report-aggregate` artifact kind, which legitimately
+an aggregate report (same `kind: cost-report`, discriminated by `aggregate_all: true` + `source_project: aggregate`), which legitimately
 shows `source_project: aggregate` (the literal sentinel `resolveScanSources`
 returns for aggregate-mode scans) and is not part of this bug.
 
