@@ -1,7 +1,7 @@
 ---
 id: SLICE-176
 title: Memory-config idempotent seeding subcommand (mirror cost-setup pattern)
-status: pending
+status: completed
 feature: FEAT-274
 phase: null
 priority: P1
@@ -12,6 +12,7 @@ created: 2026-08-02
 updated: 2026-08-02
 effort_points: 2
 estimated_tokens: 100000
+completed_at: 2026-08-02
 ---
 # SLICE-176: Memory-config idempotent seeding subcommand (mirror cost-setup pattern)
 

@@ -35,6 +35,7 @@ started_at: 2026-08-02
 github_issue: 583
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/583"
+slices_complete: [SLICE-176]
 ---
 ## Description
 
