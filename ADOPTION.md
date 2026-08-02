@@ -190,6 +190,106 @@ triaged FEAT and returns a `dispatchInstruction`; `/runner:start FEAT-NNN`
 opens a specific one. `/runner:close` runs the atomic close ceremony.
 See `README.md` § "Quickstart" for the full day-to-day command list.
 
+## Light reviewer ladder rollout
+
+`/runner:install --light` trims the default two-reviewer ladder down to a
+single reviewer (Reviewer A) and delegates behavior/test validation to your
+CI pipeline, by seeding two keys in `.claude/loop.json`:
+
+- `reviewers.ladder: ["A"]` (default: `["A", "B"]`)
+- `loop.validation.satisfiedByReview: true` (default: absent, treated as `false`)
+
+This is the same configuration this repo (`runner-plugin`) and `dev-team`
+already run day-to-day. A 2026-08-02 fleet audit found 13 of 15 consumer
+repos still on the full `["A", "B"]` ladder with no `satisfiedByReview` —
+every slice paying for a builder plus two reviewers plus an independent
+validator at full context (one repo, astra-render, measured at a 7
+dispatches/slice median, 397k tokens/message, 100% Opus). `--light` exists
+so other repos can opt into that cheaper, already-proven configuration
+deliberately, instead of copying `.claude/loop.json` by hand.
+
+### When to trim
+
+Trim when the repo has a **real CI test gate** — a CI job that runs the
+actual test suite and blocks merge on failure, not just a lint/format
+check. `loop.validation.satisfiedByReview: true` retires the dedicated
+close-time validator dispatch and treats an evidenced reviewer-approval
+badge as sufficient to satisfy the validation gate; CI becomes the thing
+that actually proves behavior still works. If that CI gate exists and is
+trustworthy, the second reviewer and the separate validator are largely
+redundant with what CI already checks on every push.
+
+### When NOT to trim
+
+Keep the full `["A", "B"]` ladder — do not pass `--light` — when:
+
+- **There is no CI test gate.** Nothing else in the pipeline verifies
+  behavior, so `satisfiedByReview` would mean nothing independently
+  checks that the slice actually works. No CI gate means keeping the
+  two-reviewer ladder, full stop.
+- **The work is high-risk or creative** — novel design surfaces,
+  security-sensitive code, or anything where a second reviewer's
+  independent judgment (not just "tests passed") is part of what you're
+  paying for, even alongside solid CI.
+- **The repo wants independent validation as policy** — e.g. regulated
+  environments, or teams that deliberately want a validator artifact kept
+  separate from reviewer sign-off, regardless of CI maturity.
+
+### How to apply
+
+- **Fresh install** (no `.claude/loop.json` yet — `--preset` is required
+  on a first install either way):
+
+  ```
+  /runner:install --preset <name> --light
+  ```
+
+  The chosen preset's opt-in `light` block is merged over `reviewers` and
+  `loop.validation` before the one-time `.claude/loop.json` scaffold write.
+
+- **Already-installed repo** (the common case — most of the fleet
+  installed before this flag existed):
+
+  ```
+  /runner:install --light
+  ```
+
+  No `--preset` needed. The installer reads the existing
+  `.claude/loop.json` and rewrites only the `reviewers` and
+  `loop.validation` keys in place — every other persisted key (hand-edited
+  `productName`, `stack` overrides, etc.) is left byte-stable. It sources
+  the trimmed values from the repo's own persisted `preset` name; if that
+  name isn't resolvable (renamed/removed template, or a hand-authored
+  config with no `preset` field at all), it falls back to the same fixed
+  values every shipped preset carries (`reviewers.ladder: ["A"]`,
+  `loop.validation.satisfiedByReview: true`). Safe to re-run: a repo
+  already on the light ladder gets a byte-identical no-op.
+
+  Verify by inspecting `.claude/loop.json` directly — `reviewers.ladder`
+  should read `["A"]` and `loop.validation.satisfiedByReview` should read
+  `true`.
+
+Omitting `--light` entirely is fully backward compatible: install behaves
+exactly as it did before this flag existed.
+
+### How to revert
+
+**Re-running install without `--light` does NOT revert the trim.** Install
+only ever *merges the light block in* when `--light` is passed — it never
+removes an existing `reviewers` / `loop.validation` setting. Re-running
+with `--preset <name>` but no `--light` doesn't revert it either: the
+value already on disk wins over the preset's default during the merge, so
+a previously-trimmed `reviewers.ladder` survives untouched. There is no
+`--unlight` / `--no-light` flag.
+
+The only way back to the full two-reviewer ladder today is a manual edit
+of `.claude/loop.json`:
+
+1. Set `reviewers.ladder` back to `["A", "B"]`.
+2. Remove `loop.validation.satisfiedByReview`, or set it to `false` (the
+   validation gate checks for `=== true` specifically, so either has the
+   same effect).
+
 ## Rollback
 
 If something is wrong:
