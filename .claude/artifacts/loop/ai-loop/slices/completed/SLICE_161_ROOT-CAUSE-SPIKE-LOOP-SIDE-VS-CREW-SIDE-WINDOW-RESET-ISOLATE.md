@@ -1,7 +1,7 @@
 ---
 id: SLICE-161
 title: "Root-cause spike: loop-side vs crew-side window reset (isolated landmine)"
-status: pending
+status: completed
 feature: FEAT-268
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 554
 github_url: "https://github.com/astragenie/runner-plugin/issues/554"
+completed_at: 2026-08-02
 ---
 # SLICE-161: Root-cause spike: loop-side vs crew-side window reset (isolated landmine)
 

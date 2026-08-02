@@ -1,0 +1,4 @@
+{"type":"wave_started","waveId":"2026-08-02T15-04-22-251Z","timestamp":"2026-08-02T15:04:22.392Z"}
+{"type":"plan_built","waveId":"2026-08-02T15-04-22-251Z","timestamp":"2026-08-02T15:04:22.393Z","size":1,"rejectedCount":0}
+{"type":"wave_member_slice","waveId":"2026-08-02T15-04-22-251Z","sliceId":"SLICE-161","position":0,"timestamp":"2026-08-02T15:04:22.394Z"}
+{"type":"wave_dispatched","waveId":"2026-08-02T15-04-22-251Z","timestamp":"2026-08-02T15:04:27.142Z","runId":"2026-08-02T15-04-22-564Z-66ec2f","sliceIds":["SLICE-161"]}
