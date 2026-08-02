@@ -18,6 +18,6 @@
     "status": "skipped"
   },
   "failurePivots": [],
-  "durationMs": 59,
+  "durationMs": 47,
   "haltReason": "dirty_main"
 }

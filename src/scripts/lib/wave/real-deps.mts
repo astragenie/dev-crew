@@ -35,7 +35,20 @@ function tmpPlanFile(plan: WavePlan): string {
 
 export async function realGitStatus(repoRoot: string): Promise<GitStatus> {
   try {
-    const r = await runGit(["-C", repoRoot, "status", "--porcelain"]);
+    // FEAT-249 shape: the wave runner writes its own telemetry under
+    // .claude/artifacts/loop/ (waves/<id>/events.jsonl, index.json) before this
+    // check runs, so a raw porcelain status self-blocks every wave after the
+    // first. Exclude the loop-owned artifact tree exactly like
+    // dispatch-worktree.mts::preflightGitClean does.
+    const r = await runGit([
+      "-C",
+      repoRoot,
+      "status",
+      "--porcelain",
+      "--",
+      ".",
+      ":(exclude).claude/artifacts/loop/**"
+    ]);
     return { clean: r.ok && r.stdout.trim() === "" };
   } catch {
     // Spawn failure (e.g. git binary missing) — matches spawnSync's non-throwing

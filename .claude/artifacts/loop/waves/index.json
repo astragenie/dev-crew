@@ -7,6 +7,14 @@
       "failCount": 0,
       "postMergeTest": "skipped",
       "durationMs": 59
+    },
+    {
+      "waveId": "n/a",
+      "size": 0,
+      "passCount": 0,
+      "failCount": 0,
+      "postMergeTest": "skipped",
+      "durationMs": 47
     }
   ]
 }
