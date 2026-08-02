@@ -1,7 +1,7 @@
 ---
 id: SLICE-163
 title: "Regression test: repeated same-session scan advances window"
-status: pending
+status: completed
 feature: FEAT-268
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 558
 github_url: "https://github.com/astragenie/runner-plugin/issues/558"
+completed_at: 2026-08-02
 ---
 # SLICE-163: Regression test: repeated same-session scan advances window
 
