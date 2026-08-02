@@ -1,7 +1,7 @@
 ---
 id: SLICE-168
 title: "/runner:install light-ladder selection flag + idempotent write"
-status: pending
+status: completed
 feature: FEAT-271
 phase: null
 priority: P2
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 568
 github_url: "https://github.com/astragenie/runner-plugin/issues/568"
+completed_at: 2026-08-02
 ---
 # SLICE-168: /runner:install light-ladder selection flag + idempotent write
 
