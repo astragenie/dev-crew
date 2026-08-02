@@ -75,7 +75,8 @@ back — this agent does not name memory tools directly.
 - `3rdparty/research-coordinator` — when investigation spans 3+ distinct subsystems and benefits from parallel sub-research
 - `3rdparty/fact-checker` — when a stakeholder quote or external claim must be verified before being trusted
 - `3rdparty/context-manager` — when the question crosses session boundaries and needs prior workflow state
-- `3rdparty/code-reviewer` — when "is this safe" is part of the question and a second opinion adds value
+- `crew:reviewer` — when "is this safe" is part of the question and a second opinion adds value
+- `skills/workflow/critical-thinking/` — before reporting findings, to mark unverified premises rather than letting them pass as silent facts
 
 ## Anti-hallucination rules
 

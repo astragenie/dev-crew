@@ -91,7 +91,8 @@ block. Brainstorming is for interactive `/crew:design` sessions only.
 
 ## Sub-agents you may dispatch
 
-- `3rdparty/task-decomposition-expert` — when slice decomposition is non-obvious
+- `skills/pm-decompose/` — when slice decomposition is non-obvious
+- `skills/workflow/critical-thinking/` — before committing to a design, to pressure-test its load-bearing assumptions
 - `3rdparty/diagram-architect` — when ASCII / Mermaid / PlantUML diagram clarifies shape
 - `3rdparty/research-coordinator` — when design depends on prior art across multiple subsystems
 - `3rdparty/context-manager` — when design crosses session boundaries and needs prior state

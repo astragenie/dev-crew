@@ -193,7 +193,8 @@ back — this agent does not name memory tools directly.
 **Dispatch discipline**: PM no longer dispatches inline `Agent` calls in v0.53 — AC drafting is absorbed by PM itself (see "Inline AC + SPEC drafting" below). All sub-agents listed below are PM recommendations — operator dispatches them, PM does not.
 
 - `3rdparty/fact-checker` — verify any stakeholder quote or external demand claim before scoring `customer_impact` above 0.5
-- `3rdparty/task-decomposition-expert` — when FEAT looks like an epic (touches 5+ modules, multiple acceptance criteria), recommend SPEC split before scoring effort
+- `skills/pm-decompose/` — when FEAT looks like an epic (touches 5+ modules, multiple acceptance criteria), recommend SPEC split before scoring effort
+- `skills/workflow/critical-thinking/` — before scoring, to challenge whether the stated problem is the real one and whether constraints are real or cargo-culted
 - `3rdparty/research-coordinator` — when `depends_on` graph spans 3+ distinct subsystems and parallel sub-research clarifies dependency depth
 - `3rdparty/context-manager` — when prior-session triage rationale or superseded decisions matter for this score
 - `crew:3rdparty:critical-thinking` — before finalizing any P0/P1 or `needs-review` score: one-question-at-a-time assumption challenge against the demand evidence and the pre-mortem answers; revise scores it dents
