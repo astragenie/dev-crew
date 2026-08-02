@@ -352,3 +352,50 @@ start, remember on close.
 
 Set `memory.enabled: "never"` in `.claude/loop.json` to disable both recall
 and emit. See `docs/sop/memory-bridge.md` for the full wire contract.
+
+### Per-repo project id convention
+
+`memory.project` in `.claude/loop.json` is the astramem project namespace —
+it scopes every `recall_memory`/`remember` call so one repo's slice history
+never bleeds into another's. The convention: **set it to the repo's own
+checkout directory name.** This repo is the worked example — its own
+`.claude/loop.json` sets `memory.project: "runner-plugin"`, matching the
+`runner-plugin` directory, and `CLAUDE.md`'s "Memory binding (astramem)"
+section spells out why that value has to stay in sync with whatever the
+loop's runtime sends (an explicit `memory.project` always wins over the
+`productName` fallback `grade-writer.mts`/`memory-sink.mts` fall back to
+when no override is set — see `docs/sop/memory-bridge.md`).
+
+Seed (or migrate) a repo onto this convention with the idempotent
+`memory-setup` subcommand (`commands/memory-setup.md`, mirrors
+`runner:cost-setup`'s pattern): it defaults `memory.project` to the repo
+directory's basename whenever nothing is already set, and never touches an
+existing value — including an explicit `enabled: false` opt-out.
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" memory-setup --repo "$PWD"
+```
+
+The same command also writes `memory.enabled`, `memory.profile.topLessons`,
+and `memory.feedback.creditLoop.{enabled,k}` to match the shape
+`validate-memory-config.mts` checks for — override any field inline with
+`--features "project=my-repo,topLessons=15,creditLoopK=7"`.
+
+### Fleet rollout (FEAT-274)
+
+As of 2026-08-02, 13 of the 15 repos in the fleet ship with no `memory`
+block in `.claude/loop.json` at all — no recall, no creditLoop, agents
+re-learn everything per session. That gap is the root cause behind the
+1.6% usefulness finding in runner-plugin#525 (creditLoop is proven out in
+`dev-team` and in this repo already). Bringing an unseeded repo onto the
+convention is one command, run from inside that repo, plus a check:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" memory-setup --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/validate-memory-config.mts"
+```
+
+The second command is this repo's own CI gate (`bun
+./src/scripts/validate-memory-config.mts`, CI gate #17 — see
+`docs/ci-gates.md`); invoking it via `${CLAUDE_PLUGIN_ROOT}` from another
+repo validates that repo's own `.claude/loop.json` the same way.

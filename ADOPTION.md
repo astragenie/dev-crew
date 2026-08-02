@@ -106,6 +106,18 @@ Edit `.claude/loop.json` and populate the repo-specific fields:
   `stack.aspireBoot`, `stack.healthchecks` — the phase-gate suite (each
   stage is a `{cmd, args, cwd?}` triple; set a stage to `null` to disable it)
 
+Optional but recommended: seed the memory config block with the idempotent
+`memory-setup` subcommand. It sets `memory.project` to this repo's own
+directory name — the per-repo project-id convention every repo should
+follow so astramem recall/capture never collides across repos — plus the
+`memory.feedback.creditLoop` shape the `validate-memory-config.mts` gate
+expects. See README.md's "Memory integration" section for the full
+contract; safe to re-run against an already-configured repo.
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" memory-setup --repo "$PWD"
+```
+
 Optional: set `loop.qa_gate: "pre-build"` to enable the pre-build QA gate
 (independent test-plan authoring before the builder runs, plus a
 `test_confidence >= 0.80` close gate). Note the close-refusal enforcement
