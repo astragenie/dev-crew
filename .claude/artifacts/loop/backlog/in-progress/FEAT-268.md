@@ -67,3 +67,51 @@ unset — this FEAT has not been scored yet. Run `/runner:triage`
 - SLICE-2: Fix + stamp session/transcript id into report frontmatter (2 pts)
 - SLICE-3: Regression test: repeated same-session scan advances window (2 pts)
 - SLICE-4: Upstream-request (if crew-side) + docs (2 pts)
+
+## Resolution (SLICE-164 close-out, 2026-08-02)
+
+The full chain across all four sibling slices:
+
+- **SLICE-161 (spike)** — root-caused the frozen `Window Start` to
+  loop-side code, not crew: `tryWriteCostReport`
+  (`src/scripts/lib/slice-linker/crew-bridge.mts`) never passed
+  `--started-at`/`--completed-at` to `crew cost-slice`, so crew fell back
+  to `workflow-state.currentRun.startedAt` — a value shared across the
+  whole repo that only rotates when `crew write-run-brief` runs at slice
+  **start**, never at close. Crew's own scan/rotation logic was confirmed
+  correct in both the `dev-team` source checkout and the installed
+  `crew@0.67.0` plugin cache. Full evidence trail:
+  `docs/research/2026-08-02-cost-window-freeze-root-cause-spike.md`.
+- **SLICE-162 (fix)** — landed a per-slice cost-scan cursor
+  (`src/scripts/lib/slice-linker/cost-scan-cursor.mts`) independent of
+  `currentRun`: each slice persists its own last-scanned window end and
+  resumes from it on the next close, regardless of whether a fresh start
+  ceremony ran in between (fixes AC-1). Also stamps a session/transcript
+  id (`resolveCostReportSessionId`) via the `CLAUDE_SESSION_ID` env var,
+  falling back to `workflow-state.currentRun.sessionId` (fixes AC-3) —
+  as a **loop-side substitute**, since crew's own cost-report frontmatter
+  carries no native session/transcript field.
+- **SLICE-163 (regression test)** — dedicated suite asserting two
+  consecutive scans against the same slice advance the window rather than
+  re-reading the frozen value, plus a pinning test confirming
+  `resolveCostReportUsd`/`sliceKeyOf` dedup is untouched — no
+  tolerance-band loosening (fixes/asserts AC-4).
+- **SLICE-164 (this slice, docs close-out)** — AC-2's "if crew-side"
+  branch is moot: the window-freeze bug was conclusively loop-side, so no
+  upstream-request file is required for it.
+
+**Open nice-to-have (not filed as of this close-out)**: crew's cost-report
+frontmatter (`scripts/lib/cost-hygiene/render-frontmatter.ts`, dev-team)
+has no native session/transcript field; SLICE-162 worked around this with
+the loop-side substitute above. A dedicated `docs/upstream-requests/`
+entry asking crew to add a native field would let loop drop that
+substitute. As of 2026-08-02 no such file exists under
+`docs/upstream-requests/`.
+
+This ask is **distinct** from the upstream-request being filed under
+FEAT-273/SLICE-175 (`docs/research/2026-08-02-citylive-zero-cost-telemetry.md`),
+which covers crew's session-cost scanner's `sourceProject`
+slugification/auto-detect-bypass bug for citylive-shaped configs — an
+unrelated crew-side defect. The two should not be conflated into one
+upstream-request file; this session-id-field ask remains unfiled and is
+recorded here as a pointer for whoever picks it up next.
