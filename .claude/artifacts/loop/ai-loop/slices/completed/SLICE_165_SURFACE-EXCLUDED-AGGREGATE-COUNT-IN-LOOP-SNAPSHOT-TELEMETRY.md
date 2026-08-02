@@ -1,7 +1,7 @@
 ---
 id: SLICE-165
 title: Surface excluded-aggregate count in loop-snapshot telemetry
-status: pending
+status: completed
 feature: FEAT-269
 phase: null
 priority: P3
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 562
 github_url: "https://github.com/astragenie/runner-plugin/issues/562"
+completed_at: 2026-08-02
 ---
 # SLICE-165: Surface excluded-aggregate count in loop-snapshot telemetry
 
