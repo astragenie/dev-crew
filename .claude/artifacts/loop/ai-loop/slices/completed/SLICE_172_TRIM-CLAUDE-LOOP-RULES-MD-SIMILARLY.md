@@ -1,7 +1,7 @@
 ---
 id: SLICE-172
 title: Trim .claude/loop/rules.md similarly
-status: pending
+status: completed
 feature: FEAT-272
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 576
 github_url: "https://github.com/astragenie/runner-plugin/issues/576"
+completed_at: 2026-08-02
 ---
 # SLICE-172: Trim .claude/loop/rules.md similarly
 
