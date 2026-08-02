@@ -1,7 +1,7 @@
 ---
 id: SLICE-164
 title: Upstream-request (if crew-side) + docs
-status: pending
+status: completed
 feature: FEAT-268
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 560
 github_url: "https://github.com/astragenie/runner-plugin/issues/560"
+completed_at: 2026-08-02
 ---
 # SLICE-164: Upstream-request (if crew-side) + docs
 
