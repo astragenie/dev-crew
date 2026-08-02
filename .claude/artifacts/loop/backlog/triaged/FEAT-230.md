@@ -1,11 +1,11 @@
 ---
 id: FEAT-230
-status: pending
+status: triaged
 priority: P1
 category: architecture
 target_release: null
 created: 2026-07-06
-updated: 2026-07-06
+updated: 2026-08-02
 depends_on: [FEAT-218]
 slices: []
 derived_from: null
@@ -13,10 +13,38 @@ tags: [architecture, backend, dispatch, cross-plugin, skills]
 needs_contract: true
 needs_ux: false
 autonomous_safe: false
-pm_reviewed: null
-triage_notes: "Operator-requested 2026-07-06. Decommission presets as the skill source. Today the dispatcher injects a FROZEN per-stack skill list from preset.roles.*.skills / fe|be.skills; that list drifts (an upstream audit found this repo's presets reference crew skill IDs that no longer exist after crew's skills/domain reorg — csharp-pro/react-engineering/etc. gone → broken skill injection). FEAT-218 already demoted presets to install-time templates; this removes their SKILL role entirely and makes the dispatcher select the BEST-FIT skill set from the LIVE crew skill catalog based on the task (slice tags: stack/concern/surface), validated against what actually exists. Cross-plugin (reads crew's skill catalog) -> needs_contract, NOT autonomous_safe. Structural."
+pm_reviewed: 2026-08-02
+triage_notes: "P1: real, evidenced fleet-wide skill-injection breakage with a contract already landed and de-risked into 5 slices; technical_risk lands in the 0.9-1.0 band per the rubric (public/cross-plugin contract change -- crew's orchestrate-slice consumer) since two plugins' output contracts must stay compatible or be jointly updated."
 github_issue: 491
-github_url: https://github.com/astragenie/runner-plugin/issues/491
+github_url: "https://github.com/astragenie/runner-plugin/issues/491"
+pm_customer_impact: 0.6
+pm_effort_estimate: 0.7
+pm_strategic_alignment: 0.75
+pm_technical_risk: 0.9
+pm_dependency_depth: 0.6
+pm_composite_priority: P1
+pm_autonomous_safe: false
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: Live crew skill catalog enumerator
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-2
+    title: Task-signal to skill mapping/matcher table
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-3
+    title: resolve-skills CLI --slice/--tags integration + pickBlock fallback
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-4
+    title: Cross-plugin docs + upstream-request amendment
+    points: 1
+    estimated_tokens: 60000
+  - id_suffix: -SLICE-5
+    title: CI fixture-snapshot gate + DEC-071 write-up
+    points: 2
+    estimated_tokens: 100000
 ---
 # FEAT-230: task-driven skill selection — decommission presets as the skill source
 
@@ -155,3 +183,11 @@ ever returns real catalog entries.
 - `loop.crewRepoPath` + DEC-068 (live crew-repo access, skip-path posture).
 - `docs/upstream-requests/2026-07-06-crew-orchestrate-slice-preset-path.md` (slice-D — crew-side consumer).
 - Evidence: upstream-request audit 2026-07-06 (dead skill IDs in this repo's presets).
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: Live crew skill catalog enumerator (2 pts)
+- SLICE-2: Task-signal to skill mapping/matcher table (2 pts)
+- SLICE-3: resolve-skills CLI --slice/--tags integration + pickBlock fallback (2 pts)
+- SLICE-4: Cross-plugin docs + upstream-request amendment (1 pts)
+- SLICE-5: CI fixture-snapshot gate + DEC-071 write-up (2 pts)

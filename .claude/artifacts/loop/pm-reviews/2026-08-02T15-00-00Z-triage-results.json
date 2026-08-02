@@ -1,0 +1,335 @@
+[
+  {
+    "featureId": "FEAT-230",
+    "scores": {
+      "customer_impact": 0.6,
+      "effort_estimate": 0.7,
+      "strategic_alignment": 0.75,
+      "technical_risk": 0.9,
+      "dependency_depth": 0.6
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "Operator-requested 2026-07-06 (triage_notes) + upstream-request audit found this repo's presets (dotnet-only.json etc.) reference dead crew skill IDs (csharp-pro, react-engineering, ...) after crew's skills/domain reorg. Confirmed still true today: grepping scripts/presets/*.json shows no model/skill validation exists. The architect's 2026-07-08 contract artifact independently verified the drift live against dev-team/skills/domain/*.",
+    "scopeNotes": "Architect contract already landed 2026-07-08 (.claude/artifacts/crew/runs/2026-07-08-feat230-task-driven-skill-selection-contract.md) with 5 decisions and a 5-slice breakdown -- materially de-risks scoring vs a blank-slate FEAT. Present-day finding in that contract: this repo's own default slice-build dispatch path never calls resolve-skills (no crewRepoPath configured), so the real integration point is the CLI/resolver core + crew's external orchestrate-slice.md consumer, not an in-repo call site -- confirms cross-plugin classification. No weak grade dimension this cycle (all 5-grade averages >= 0.80 per loop-snapshot.md). No clean single-slice cost analog found in the 5 most recent cost-report files sampled (.claude/artifacts/crew/cost/*) -- all were fleet-wide aggregates, not comparable single-FEAT slices; 'no cost analog' per Framework 5 fallback.",
+    "risks": [
+      "Pre-mortem 1 (review/validation failure two weeks out): most likely cause is the live-catalog enumeration (Decision 1, enumerate <crewRepoPath>/skills/domain/** at resolve time) silently returns zero or a stale list when loop.crewRepoPath is misconfigured or crew's repo layout shifts again -- mirroring the exact drift this FEAT exists to fix.",
+      "Pre-mortem 2 (rollback if merged and broken): a pure loop-side revert (git revert) is sufficient IF the CLI --slice/--tags flag stays additive per DEC-069 'demote don't delete' (old pickBlock path kept as fallback); rollback becomes cross-plugin coordination only if crew's orchestrate-slice.md was jointly updated to consume the new resolver output shape.",
+      "Pre-mortem 3 (coverage gap): no existing test asserts a resolved skill ID is validated against a LIVE (not fixture-frozen) crew catalog snapshot -- the CI fixture-snapshot regression guard proposed in Decision 4 catches drift in the mapping table but not a genuinely stale live-catalog read at resolve time.",
+      "Cross-plugin timing risk already flagged in the FEAT body: crew's orchestrate-slice still hardcodes a preset path (slice-D of the FEAT-218 upstream-request, still open) -- this resolver's output must not break that consumer mid-migration."
+    ],
+    "reasoning": "P1: real, evidenced fleet-wide skill-injection breakage with a contract already landed and de-risked into 5 slices; technical_risk lands in the 0.9-1.0 band per the rubric (public/cross-plugin contract change -- crew's orchestrate-slice consumer) since two plugins' output contracts must stay compatible or be jointly updated.",
+    "acs": [
+      "AC-1: Given a slice tagged stack:csharp + concern:security, When the dispatcher resolves skills via the new resolver, Then it returns only skill IDs present in the live crew catalog (no csharp-pro/react-engineering-style dead IDs).",
+      "AC-2: Given a task signal with no matching live skill, When resolving, Then the resolver logs \"no matching skill for <signal>\" and injects nothing for it rather than a fabricated ID.",
+      "AC-3: Given a repo with legacy presets on disk, When the dispatcher resolves skills, Then a repo-wide grep proves preset.roles.*.skills / fe|be.skills are not read anywhere in the dispatch path.",
+      "AC-4: Given the resolver output, When a builder is dispatched, Then the payload's skill block still validates against crew's orchestrate-slice consumer contract (or a jointly-updated contract is recorded in a DEC).",
+      "AC-5: Given a resolved skill ID that is absent from the live catalog at CI time, When the validation gate runs, Then it fails with a clear message naming the missing ID."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Live crew skill catalog enumerator", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Task-signal to skill mapping/matcher table", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "resolve-skills CLI --slice/--tags integration + pickBlock fallback", "points": 2 },
+      { "id_suffix": "-SLICE-4", "title": "Cross-plugin docs + upstream-request amendment", "points": 1 },
+      { "id_suffix": "-SLICE-5", "title": "CI fixture-snapshot gate + DEC-071 write-up", "points": 2 }
+    ],
+    "touches_files": [
+      "src/scripts/lib/skill-resolver.mts",
+      "src/scripts/loop.mts",
+      "docs/upstream-requests/2026-07-06-crew-orchestrate-slice-preset-path.md",
+      ".claude/artifacts/loop/decisions/",
+      "src/tests/skill-resolver.test.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-233",
+    "scores": {
+      "customer_impact": 0.45,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.45,
+      "technical_risk": 0.4,
+      "dependency_depth": 0.5
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "v0.64.0 architect design review (.claude/artifacts/crew/reviews/20260708T081707Z-...design...md per triage_notes) flagged the gap directly; confirmed live in src/scripts/lib/memory-transport.mts: DEFAULT_MEMORY_CAP_MS=2000 (capture) vs DEFAULT_RECALL_CAP_MS=5000 (recall), with an explicit 'KNOWN LIMIT' comment block already documenting the un-unref'd upstream timer risk and naming docs/upstream-requests/2026-07-08-astramem-plugin-abortsignal-cancellation.md as the tracked ask.",
+    "scopeNotes": "AC-1 (the actual cancellation fix) is hard-blocked on upstream astramem-plugin#29 shipping AbortSignal support -- the FEAT's own AC-2 acknowledges this and scopes the near-term deliverable to a local seam + refreshed upstream-request, not the full fix. That materially lowers effort/risk for what's actually actionable now vs the FEAT title's framing. No weak grade dimension this cycle. No clean cost analog located (sampled cost-report files were all fleet aggregates); 'no cost analog'.",
+    "risks": [
+      "Do NOT reimplement the retired in-process HTTP client to work around the timer (explicitly forbidden by dev-team#172 per the FEAT body) -- flagging since 'wire the signal' work sometimes tempts a local socket-level workaround.",
+      "Reconciling capture (2000ms) vs recall (5000ms) into 'one documented policy' is a judgment call (shared default vs justified per-path override) -- not mechanical, which is why autonomousSafe stays false even though effort is low.",
+      "If astramem-plugin#29 ships mid-slice with a different signal shape than assumed, the local seam slice may need rework -- sequence the seam behind a quick upstream-issue status check."
+    ],
+    "reasoning": "P2: real but non-urgent reliability debt (a short-lived CLI process's event loop held open up to ~5s post-return) with the risky, contract-changing half of the work explicitly deferred to an unshipped upstream dependency; technical_risk banded at 0.3-0.5 (new pattern, no schema change, clean rollback) for the realistically-scoped local-seam-and-cap-policy work.",
+    "acs": [
+      "AC-1: Given astramem-plugin#29 has not yet shipped AbortSignal support, When this FEAT is picked, Then the local side lands a signal-ready seam (an optional signal?: AbortSignal parameter threaded through sendViaProvider) without reimplementing the retired in-process HTTP client (dev-team#172).",
+      "AC-2: Given astramem-plugin#29 ships AbortSignal support later, When sendViaProvider/recall consume it, Then the losing call is actually cancelled and the KNOWN LIMIT comment block in memory-transport.mts can be deleted.",
+      "AC-3: Given the current CAP_MS=2000 (capture) vs timeoutMs=5000 (recall) asymmetry, When reconciled, Then a DEC-* records either a shared default or an explicit per-path override with a stated rationale, referenced from docs/halt-badges.md or an inline code comment.",
+      "AC-4: Given the updated upstream-request doc, When astramem-plugin#29's status is checked, Then docs/upstream-requests/2026-07-08-astramem-plugin-abortsignal-cancellation.md reflects the current shipped/unshipped status accurately."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Local AbortSignal-ready seam in memory-transport.mts", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Reconcile capture/recall cap policy + DEC", "points": 1 }
+    ],
+    "touches_files": [
+      "src/scripts/lib/memory-transport.mts",
+      "src/scripts/lib/slice-linker/start-slice.mts",
+      "docs/upstream-requests/2026-07-08-astramem-plugin-abortsignal-cancellation.md",
+      "docs/halt-badges.md",
+      ".claude/artifacts/loop/decisions/"
+    ]
+  },
+  {
+    "featureId": "FEAT-268",
+    "scores": {
+      "customer_impact": 0.7,
+      "effort_estimate": 0.6,
+      "strategic_alignment": 0.65,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.5
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "2026-08-02 fleet cost audit evidence embedded in the FEAT body: five FEAT-250/SLICE-153 cost reports all share Window Start 2026-07-03 with monotonically growing totals (1.823B-1.831B tokens, ~$3,233 each) -- cumulative re-reports of the same spend. Confirmed the invocation site: src/scripts/lib/slice-linker/crew-bridge.mts:235 calls the external `crew cost-slice --repo <repoPath> --run-title <runTitle>` with no window/since argument at all, so if the scan window itself doesn't reset, the bug is very likely in crew's own cost-slice scan, not in this repo's invocation.",
+    "scopeNotes": "The FEAT's own instruction not to loosen the FEAT-204 dedup fingerprint is correct and should stay a hard constraint -- src/scripts/lib/memory-snapshot.mts already relies on tight fingerprinting (sliceKeyOf, resolveCostReportUsd) to survive exactly this class of repeated-report poisoning; loosening it to a tolerance band would merge distinct cumulative snapshots per the FEAT's own adversarial-review note. No weak grade dimension this cycle. No single-slice cost analog found in sampled reports (all recent samples were fleet aggregates) -- 'no cost analog', though that absence is itself evidence for how pervasive the aggregate/window contamination is in the historical corpus.",
+    "risks": [
+      "Pre-mortem 1: most likely review/validation failure is landing a loop-side 'fix' (e.g. a client-side heuristic that discards old-window reports) that masks the symptom without addressing a crew-side scan bug, so the underlying re-scan behavior keeps recurring for any consumer that doesn't apply the same heuristic.",
+      "Pre-mortem 2: rollback is a clean git revert if the fix stays confined to loop-side dedup/observability; if crew-side, rollback requires cross-plugin coordination (crew's cost-slice scan) and re-verifying no other loop consumer (memory-snapshot median/mean, slice-cost-ceiling, cost-alert-loader) regresses.",
+      "Pre-mortem 3: no existing test asserts that repeated `crew cost-slice` invocations against the SAME session over multiple days produce an ADVANCING window rather than re-scanning a frozen start -- cost-report-dedup.test.mts covers wave-mode shared-session dedup and memory-snapshot-telemetry.test.mts covers aggregate_all exclusion, but neither exercises a frozen-Window-Start regression.",
+      "Injecting an upstream-request without first confirming loop-side innocence risks misdirecting crew maintainers -- the investigation step must produce concrete before/after evidence (e.g. two cost-slice invocations a day apart against the same session) before filing."
+    ],
+    "reasoning": "P1: demonstrated, actively-corrupting-telemetry bug (loop-snapshot's own cost-trajectory line feeds cost-alert/cost-ceiling gates) with real audit evidence, but capped below P0 since there's no active incident/outage -- this is degraded observability accuracy, not a broken build. technical_risk banded 0.6-0.8 (cross-module reach into an external plugin's scan logic, root cause location unconfirmed).",
+    "acs": [
+      "AC-1: Given two consecutive `crew cost-slice` invocations against the same crew session issued a day apart, When each writes a cost report, Then the second report's Window Start advances past the first report's Window End (not frozen).",
+      "AC-2: Given the root-cause investigation, When it concludes the bug is crew-side, Then a new file lands under docs/upstream-requests/ describing the reproduction and the exact scan-window behavior expected.",
+      "AC-3: Given a cost report is written, When frontmatter is inspected, Then it carries the originating crew session/transcript id so dedup can corroborate reports by id rather than token-count equality alone.",
+      "AC-4: Given the FEAT-204 dedup fingerprint, When this fix lands, Then it is NOT loosened to a tolerance band -- the existing exact-match dedup behavior in resolveCostReportUsd/sliceKeyOf is preserved and asserted by a regression test."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Root-cause spike: loop-side vs crew-side window reset (isolated landmine)", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Fix + stamp session/transcript id into report frontmatter", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "Regression test: repeated same-session scan advances window", "points": 2 },
+      { "id_suffix": "-SLICE-4", "title": "Upstream-request (if crew-side) + docs", "points": 2 }
+    ],
+    "touches_files": [
+      "src/scripts/lib/slice-linker/crew-bridge.mts",
+      "src/scripts/lib/slice-linker/cost-report-dedup.mts",
+      "docs/upstream-requests/",
+      "src/tests/cost-report-dedup.test.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-269",
+    "scores": {
+      "customer_impact": 0.25,
+      "effort_estimate": 0.15,
+      "strategic_alignment": 0.25,
+      "technical_risk": 0.1,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P3",
+    "autonomousSafe": true,
+    "demandEvidence": "2026-08-02 fleet audit cites concrete unmarked-aggregate contamination counts (runner 142/313, dev-team 81/218, authentic 64/67) and a specific $32,101 fleet aggregate mistaken for a single dev-team slice report.",
+    "scopeNotes": "IMPORTANT SCOPE-CHALLENGE FINDING (Framework 2, Overlap check): the core ask is already shipped in THIS repo. src/scripts/lib/memory-snapshot.mts:132 (resolveCostReportUsd) already excludes fm.aggregate_all === true || fm.aggregate_all === \"true\" from the cost trajectory -- landed in commit f60fe60d2 on 2026-07-18 (git blame confirms). A mixed-corpus regression test already exists and passes: src/tests/memory-snapshot-telemetry.test.mts:116, literally titled 'cost trajectory excludes aggregate_all rollup reports and survives wide-window outliers via median', which writes a synthetic aggregate_all report alongside normal ones and asserts it's excluded (lines 116-134). This satisfies the FEAT's own 'add a test with a mixed corpus' ask verbatim. The ONLY gap I could not find already implemented: the snapshot does not currently report the aggregate count separately (no such output line exists in memory-snapshot.mts's renderLoopTelemetry section) -- that is the sole remaining deliverable. Recommend re-scoping the FEAT body/title before slicing to reflect this much narrower remaining surface; other fleet repos (dev-team, authentic) may still lack this filter in their OWN loader, but that is out of this repo's scope to fix. No weak grade dimension this cycle.",
+    "risks": [
+      "Low risk of wasted effort if the builder isn't told about the existing filter/test and re-derives it from scratch instead of just adding the one missing 'aggregate count' line -- flagging explicitly so the dispatch prompt points at memory-snapshot.mts:113-149 and the existing test as the starting point.",
+      "The still-unexplained mean/median skew in the CURRENT committed loop-snapshot.md ($31.986 median vs $936.110 mean) despite the aggregate_all filter being live since 2026-07-18 suggests either an un-tagged aggregate-shaped report still counted as normal, or the skew is genuinely just wide-window variance the median already handles correctly by design -- worth a one-line sanity check before assuming this FEAT's job is 100% done."
+    ],
+    "reasoning": "P3: mostly already implemented (filter + mixed-corpus test both landed 2026-07-18) -- only the 'report aggregate count separately' line remains, a trivial single-file addition; technical_risk at 0.1 (known pattern, 1 file, trivially reverted).",
+    "acs": [
+      "AC-1: Given a cost-report corpus containing both normal and aggregate_all: true reports, When the loop snapshot renders the telemetry section, Then it additionally reports the count of aggregate reports excluded from the trajectory (e.g. \"N aggregate reports excluded\").",
+      "AC-2: Given zero aggregate reports in the window, When rendered, Then the aggregate-count line is omitted or shows 0 without changing existing trajectory output.",
+      "AC-3: Given the existing test at src/tests/memory-snapshot-telemetry.test.mts:116, When extended, Then it asserts the new aggregate-count line's value matches the number of aggregate_all: true fixtures written.",
+      "AC-4: Given the existing aggregate_all exclusion in resolveCostReportUsd (memory-snapshot.mts:132), When this FEAT is picked, Then the builder does not re-implement it -- only adds the count-surfacing output."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Surface excluded-aggregate count in loop-snapshot telemetry", "points": 2 }
+    ],
+    "touches_files": [
+      "src/scripts/lib/memory-snapshot.mts",
+      "src/tests/memory-snapshot-telemetry.test.mts"
+    ]
+  },
+  {
+    "featureId": "FEAT-270",
+    "scores": {
+      "customer_impact": 0.7,
+      "effort_estimate": 0.2,
+      "strategic_alignment": 0.55,
+      "technical_risk": 0.15,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT body cites a real fleet A/B: astramem-local/astramemory-local at 0% Opus usage run $11/slice vs $35-69/slice on Opus-tier repos at the same ~350k tok/msg context, and states the change is already 'user-approved 2026-08-02'.",
+    "scopeNotes": "Confirmed agents/document-writer.md currently has NO model: field in frontmatter (only name/description/color/disallowedTools) -- so today it inherits whatever the dispatching context uses (Opus-heavy per the audit). agents/pm.md already sets model: opus as a precedent for the exact frontmatter field this FEAT needs to add (just a different value). No existing roles.*.model key exists anywhere in scripts/presets/*.json (grepped all 6 presets, zero hits) -- the preset-schema half of the ask ('and/or preset roles.documentWriter.model') is genuinely new plumbing; the FEAT's own wording ('and/or') allows scoping to the frontmatter-only path for a materially smaller, still-complete slice. No weak grade dimension this cycle. No cost analog for this specific role-pin found in sampled reports, but the FEAT's own cited A/B (astramem-local $11 vs $35-69) IS itself the effort-calibration evidence Framework 5 asks for.",
+    "risks": [
+      "Scope creep risk: doing both the frontmatter field AND the preset-schema roles.documentWriter.model plumbing in one slice roughly doubles effort for marginal benefit today (no consumer currently reads roles.*.model) -- recommend frontmatter-only for this FEAT, defer preset-schema wiring until a second role needs it.",
+      "The FEAT explicitly fences off broader tier moves ('keep builder/reviewer tiers unchanged... broader tier moves need an eval gate first') -- must not let this slice creep into re-tiering any other agent."
+    ],
+    "reasoning": "P1: quantified, user-approved cost win (up to ~3-6x per-slice cost delta in the cited A/B) with trivial effort and risk (one frontmatter field, existing precedent in pm.md) -- strong quick-win candidate.",
+    "acs": [
+      "AC-1: Given agents/document-writer.md's frontmatter, When this FEAT lands, Then it includes a model: sonnet field mirroring the existing model: opus pattern already used in agents/pm.md.",
+      "AC-2: Given a document-writer dispatch after the change, When the agent runs, Then it executes on the Sonnet tier (verified via a sampled cost report's Model Mix section showing a non-Opus model for that dispatch).",
+      "AC-3: Given the builder/reviewer role agents, When this FEAT lands, Then their frontmatter model: fields (or absence thereof) are left unchanged -- no broader tier move.",
+      "AC-4: Given the new config knob, When README.md is updated, Then it documents the document-writer model pin and how to override it, matching the FEAT's 'Document the config knob in README' requirement."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Pin document-writer frontmatter to model: sonnet + README doc", "points": 1 }
+    ],
+    "touches_files": [
+      "agents/document-writer.md",
+      "README.md"
+    ]
+  },
+  {
+    "featureId": "FEAT-271",
+    "scores": {
+      "customer_impact": 0.55,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.5,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.3
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "2026-08-02 fleet audit: 13/15 consumer repos run the full ['A','B'] ladder with no validation.satisfiedByReview; astra-render cited at 7 dispatches/slice median, 397k tok/msg, 100% Opus. Only dev-team and THIS repo run the trimmed ['A'] + satisfiedByReview:true config -- confirmed live in this repo's own .claude/loop.json (reviewers.ladder: [\"A\"]).",
+    "scopeNotes": "Confirmed all 6 existing preset templates (scripts/presets/*.json) currently hardcode \"reviewers\": { \"ladder\": [\"A\", \"B\"] } (grepped all 6, zero variance) -- there is no 'light' variant today. Confirmed commands/install.md's --preset flag already exists and is required on first install (so the FEAT's phrasing 'if absent' is only conditionally true -- the base --preset flag exists, but a way to select a LIGHT ladder variant on top of a stack preset does not). No existing --ladder/--light flag found in the installer. This is genuinely net-new, bounded work: batch-edit 6 preset files (mechanical, uniform pattern per runner#393 decomposition policy (b)) plus one design-judgment piece (the 'when NOT to trim' ADOPTION.md guidance, kept as a separate slice since it's prose/judgment, not mechanical). No weak grade dimension this cycle. No direct cost analog; the FEAT's own cited waste (7 dispatches/slice vs this repo's known-good lighter config) is itself the effort/impact evidence.",
+    "risks": [
+      "Sequencing overlap with FEAT-274: both touch install-time preset seeding / install.md and could conflict if built in the same wave by different agents -- recommend sequencing them, not parallelizing, or explicitly partitioning which files each owns.",
+      "The 'when NOT to trim (no CI gate = keep two reviewers)' guidance is a judgment call, not a mechanical rule -- must be written as explicit, reviewable prose in ADOPTION.md rather than an automated heuristic, to avoid silently trimming reviewers for a repo that isn't actually safe for it."
+    ],
+    "reasoning": "P2: real, evidenced fleet-wide review-ladder waste with a working reference implementation already proven in this repo + dev-team, but genuinely net-new plumbing (no existing light-ladder flag) keeps it out of P1's 'trivial effort' bar.",
+    "acs": [
+      "AC-1: Given a consumer repo with CI test gates configured, When it installs with a 'light' ladder option, Then .claude/loop.json is seeded with reviewers.ladder: [\"A\"] and validation.satisfiedByReview: true.",
+      "AC-2: Given a repo installing without the light flag, When installed, Then behavior is unchanged (defaults to the existing [\"A\",\"B\"] full ladder) -- backward compatible.",
+      "AC-3: Given a repo with NO CI test gate, When ADOPTION.md rollout guidance is followed, Then it explicitly instructs keeping the two-reviewer ladder rather than trimming.",
+      "AC-4: Given /runner:install --preset <stack> with the light option, When run twice (idempotent), Then the second run does not duplicate or corrupt the reviewers block."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Add light reviewers.ladder block across all 6 preset templates (batch, mechanical)", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "/runner:install light-ladder selection flag + idempotent write", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "ADOPTION.md rollout guidance incl. when NOT to trim", "points": 1 }
+    ],
+    "touches_files": [
+      "scripts/presets/dotnet-only.json",
+      "scripts/presets/dotnet-python.json",
+      "scripts/presets/dotnet-react.json",
+      "scripts/presets/dotnet-typescript-vue.json",
+      "scripts/presets/typescript-plugin-dev.json",
+      "scripts/presets/typescript-service.json",
+      "src/scripts/lib/loop-installer.mts",
+      "commands/install.md",
+      "ADOPTION.md"
+    ]
+  },
+  {
+    "featureId": "FEAT-272",
+    "scores": {
+      "customer_impact": 0.75,
+      "effort_estimate": 0.65,
+      "strategic_alignment": 0.7,
+      "technical_risk": 0.7,
+      "dependency_depth": 0.4
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "Live-sample evidence in the FEAT body (FEAT-263/SLICE-160: 16.26M cache-read tokens / 80 msgs vs 150 raw input tokens) plus a fleet trend (116k -> 282k tok/msg, May-Jul). Independently confirmed the static-doc sizes cited: wc shows CLAUDE.md at 553 lines / 30,447 bytes and .claude/loop/rules.md at 248 lines / 20,393 bytes -- both match the FEAT's '29.7KB/553 lines' and '19.9KB' claims almost exactly.",
+    "scopeNotes": "Same 2026-08-02 audit wave as FEAT-268/269/270/271/274 but the highest-blast-radius item: CLAUDE.md is the first-read document for every agent and session (per its own '## Read first' section) and is grepped/relied upon by multiple CI gates named in the FEAT (validate-snapshot-freshness.mts, generate-metrics-band.mts --check, validate-org-refs.mts) plus others not named (validate-agent-refs.mts, validate-dispatch-markers.mts also scan docs). No weak grade dimension this cycle to target with an AC, so I added a bespoke structural-completeness AC below since the real risk here isn't a graded dimension -- it's silently dropping a HARD RULE block that other automation depends on always being in context.",
+    "risks": [
+      "Pre-mortem 1: most likely review/validation failure is the restructured CLAUDE.md silently burying or dropping one of the three HARD RULE blocks (Autonomous Loop / Cross-Slice Continuation / Phase Completion Gate) behind a skill-gated doc that agents don't reliably load, causing a loop-discipline regression the 3 named CI gates would NOT catch (they check byte/format drift, not semantic completeness).",
+      "Pre-mortem 2: rollback is a clean git revert if confined to CLAUDE.md/rules.md content -- but if generate-metrics-band.mts or validate-snapshot-freshness.mts were ALSO edited to match a new doc shape, reverting the docs without reverting the generators in lockstep re-breaks the gates against the old format.",
+      "Pre-mortem 3 (coverage gap): no existing test asserts that a fresh-session agent reading the TRIMMED always-on index still discovers and follows the Autonomous Loop hard rule -- this is a behavioral property no current CI gate checks.",
+      "Multi-gate coordination risk: the three named CI gates (snapshot-freshness, metrics-band, org-refs) must all stay green simultaneously through the restructure, a real coupling constraint even though none individually is a schema change."
+    ],
+    "reasoning": "P1: quantified, severe, worsening-trend cost problem (~97% of USD is Opus cache reads per the FEAT) directly tied to the loop's own operating cost, high strategic alignment with the active cost-hygiene program -- capped at P1 rather than P0 since it's efficiency debt, not an active break, but technical_risk lands at 0.6-0.8 (cross-cutting reach into every agent's always-on context plus 3 coupled CI gates).",
+    "acs": [
+      "AC-1: Given the restructured CLAUDE.md, When measured, Then it is under 100 lines and the moved detail sections are reachable via named skill-gated docs or docs/ files referenced on demand.",
+      "AC-2: Given the three named CI gates (validate-snapshot-freshness, generate-metrics-band --check, validate-org-refs), When run against the restructured docs, Then all three pass unchanged (or are updated in lockstep with a note in the FEAT closing notes).",
+      "AC-3: Given a fresh session with no prior context, When an agent reads the trimmed CLAUDE.md index, Then it can still locate and state the Autonomous Loop / Cross-Slice Continuation / Phase Completion Gate HARD RULE blocks (asserted by an explicit manual or scripted check, since no current CI gate covers this).",
+      "AC-4: Given the FEAT's own requirement, When the slice closes, Then before/after byte counts for CLAUDE.md and rules.md are recorded in the FEAT notes."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Baseline measurement + restructure plan (isolate the design-sensitive index shape as its own slice)", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Restructure CLAUDE.md to <100-line index + skill-gated detail docs", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "Trim .claude/loop/rules.md similarly", "points": 2 },
+      { "id_suffix": "-SLICE-4", "title": "Reconcile the 3 named CI gates + record before/after byte measurements", "points": 2 }
+    ],
+    "touches_files": [
+      "CLAUDE.md",
+      ".claude/loop/rules.md",
+      "src/scripts/generate-metrics-band.mts",
+      "src/scripts/validate-snapshot-freshness.mts",
+      "src/scripts/validate-org-refs.mts",
+      "docs/loop/"
+    ]
+  },
+  {
+    "featureId": "FEAT-273",
+    "scores": {
+      "customer_impact": 0.45,
+      "effort_estimate": 0.5,
+      "strategic_alignment": 0.45,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.5
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "FEAT body: all 11 clean cost reports for the 'citylive' repo show usd $0.00, cache_hit 0%, no Model Mix section -- total telemetry blindness for that one consumer repo, hypothesized as a source_project path/project-key mismatch.",
+    "scopeNotes": "Confirmed source_project is read (not written) inside this repo -- src/scripts/lib/slice-linker/cost-report-dedup.mts:49 reads fm.source_project for dedup fingerprinting, but the field's VALUE is produced by the external crew cost-slice scan (same command invoked from crew-bridge.mts:235 with no path override), so root cause is very likely crew-side, same shape as FEAT-268/233's cross-plugin uncertainty. The FEAT is explicitly and correctly scoped as investigation-first (researcher, read-only) before any fix -- this bounds risk of a premature/wrong fix. No weak grade dimension this cycle. No cost analog (the whole point is citylive's reports show $0 -- there's no comparable priced analog to calibrate against).",
+    "risks": [
+      "Pre-mortem 1: most likely failure is a 'minimal fix' that patches citylive's specific path-mismatch shape without generalizing, so the NEXT consumer repo with a different non-standard path convention still gets $0.00 reports.",
+      "Pre-mortem 2: rollback is a clean revert if the fix stays loop-side (path-matching/normalization logic); if the real root cause is crew's cost-slice scan itself, rollback requires the same cross-plugin coordination as FEAT-268.",
+      "Pre-mortem 3 (coverage gap): no existing fixture exercises a non-standard project-dir-to-repo mapping -- the FEAT's own acceptance criterion (a citylive-shaped fixture produces a non-zero report) is exactly the fix for this gap."
+    ],
+    "reasoning": "P2: real but narrow-impact (one consumer repo demonstrated, not proven fleet-wide beyond citylive), correctly bounded as read-only-investigation-first which caps downside risk; technical_risk at 0.6-0.8 given the likely cross-plugin fix location and unconfirmed root cause (an actual spike, not routine work).",
+    "acs": [
+      "AC-1: Given the citylive repo's transcript/project directory layout, When the researcher reproduces the bug, Then the investigation identifies the exact mismatch (repo dir name vs Claude-projects-dir key, or an equivalent concrete cause) with file:line evidence.",
+      "AC-2: Given a citylive-shaped test fixture (non-standard project-dir-to-repo mapping), When the cost scan runs against it, Then it produces a non-zero-usd report (the FEAT's own stated acceptance test).",
+      "AC-3: Given the root cause is confirmed crew-side, When this FEAT closes, Then a docs/upstream-requests/ entry describes the reproduction and expected fix, rather than attempting an unverifiable loop-side patch.",
+      "AC-4: Given the fix (if loop-side) lands, When applied to a repo with a STANDARD path convention, Then existing non-zero cost reports for that repo are unaffected (no regression for the common case)."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Read-only investigation: reproduce + root-cause the citylive path mismatch", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Minimal fix + citylive-shaped fixture test (or upstream-request if crew-side)", "points": 2 }
+    ],
+    "touches_files": [
+      "docs/research/",
+      "src/scripts/lib/slice-linker/crew-bridge.mts",
+      "src/tests/"
+    ]
+  },
+  {
+    "featureId": "FEAT-274",
+    "scores": {
+      "customer_impact": 0.75,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.75,
+      "technical_risk": 0.2,
+      "dependency_depth": 0.15
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT body directly cites the 1.6% usefulness finding (runner-plugin#525) as caused by this exact rollout gap (13/15 fleet repos with no memory block); confirmed this repo's OWN .claude/loop.json already carries the target shape -- memory.enabled:true, memory.project:\"runner-plugin\", memory.profile.topLessons:10, memory.feedback.creditLoop.enabled:true with k:5 -- living proof the config works, matching the prior 2026-07-18 competitive audit's #1 finding that creditLoop absence was the root cause.",
+    "scopeNotes": "Confirmed runner:cost-setup already exists ('Seed or migrate the cost config block in .claude/loop.json. Idempotent.') as the exact analog pattern this FEAT asks to mirror -- strong Framework-5 effort-calibration evidence: a near-identical idempotent config-seeding command already shipped, so this is low-novelty, well-trodden-pattern work. Confirmed src/scripts/validate-memory-config.mts already defines the exact contract this seeding must satisfy (keyPath checks for memory.feedback.enabled, memory.feedback.creditLoop.enabled) -- the CI gate to validate against already exists and will catch drift immediately. No weak grade dimension this cycle.",
+    "risks": [
+      "Per-repo project-id convention must be chosen carefully (repo-name-derived) to avoid collisions across the fleet -- this repo's own convention (project: \"runner-plugin\" matching the repo dir name) is the pattern to replicate, per this repo's own CLAUDE.md memory-binding section.",
+      "Config-only as stated -- must resist scope creep into daemon/astramem-server changes, which the FEAT explicitly excludes."
+    ],
+    "reasoning": "P1: high-evidence customer impact directly tied to a previously diagnosed root cause (the 1.6% usefulness finding), low effort (config-only, mirrors the already-shipped cost-setup pattern), low risk (validated against an existing CI gate) -- a strong, low-risk quick win.",
+    "acs": [
+      "AC-1: Given a consumer repo with no memory block in .claude/loop.json, When the new seeding subcommand runs, Then it writes memory.enabled, memory.project (derived from repo name), memory.profile.topLessons, and memory.feedback.creditLoop.enabled with k:5, matching the shape validate-memory-config.mts checks for.",
+      "AC-2: Given a repo that already has a memory block, When the seeding subcommand runs again, Then it is idempotent -- no duplicate keys, no clobbering of existing custom values (mirroring runner:cost-setup's idempotent-migrate behavior).",
+      "AC-3: Given the seeded config, When bun ./src/scripts/validate-memory-config.mts runs against it, Then the gate passes (no drift flagged).",
+      "AC-4: Given the per-repo project-id convention, When documented, Then README.md (or ADOPTION.md) states the naming rule so future repos don't collide."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Memory-config idempotent seeding subcommand (mirror cost-setup pattern)", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Docs: per-repo project-id convention + rollout note", "points": 1 }
+    ],
+    "touches_files": [
+      "src/scripts/lib/loop-installer.mts",
+      "commands/",
+      "README.md"
+    ]
+  }
+]

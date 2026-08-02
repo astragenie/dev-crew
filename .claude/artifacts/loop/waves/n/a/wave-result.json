@@ -1,0 +1,23 @@
+{
+  "waveId": "n/a",
+  "plan": {
+    "waveId": "n/a",
+    "size": 0,
+    "items": [],
+    "rejected": [],
+    "config": {
+      "waveSize": 0,
+      "sliceCommand": ""
+    }
+  },
+  "worktreeResults": [],
+  "mergedBranches": [],
+  "failedBranches": [],
+  "postMergeTest": {
+    "ran": false,
+    "status": "skipped"
+  },
+  "failurePivots": [],
+  "durationMs": 59,
+  "haltReason": "dirty_main"
+}

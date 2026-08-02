@@ -1,22 +1,38 @@
 ---
 id: FEAT-233
-status: pending
+status: triaged
 priority: P2
 category: architecture
 target_release: null
 created: 2026-07-08
-updated: 2026-07-08
+updated: 2026-08-02
 depends_on: [FEAT-188]
 slices: []
 derived_from: null
-tags: [concern:memory, concern:reliability, surface:plugin, stack:typescript, cross-plugin]
+tags: ["concern:memory", "concern:reliability", "surface:plugin", "stack:typescript", cross-plugin]
 needs_contract: true
 needs_ux: false
 autonomous_safe: false
-pm_reviewed: null
-triage_notes: "Debt from v0.64.0 architect design review (2026-07-08, findings on AbortSignal + timeout asymmetry). The MemoryProvider contract never specified AbortSignal/cancellation, so capped provider calls are ABANDONED not cancelled — astramem-plugin's un-unref'd 5s timers can hold a short-lived process's event loop open up to ~5s (KNOWN LIMIT on sendViaProvider, tracked upstream astramem-plugin#29). Separately, capture uses a hardcoded ~2s cap (CAP_MS) while recall uses a 5s configurable timeout — never reconciled as deliberate policy. Cross-plugin (upstream astramem-plugin change + local policy) -> needs_contract, NOT autonomous_safe."
+pm_reviewed: 2026-08-02
+triage_notes: "P2: real but non-urgent reliability debt (a short-lived CLI process's event loop held open up to ~5s post-return) with the risky, contract-changing half of the work explicitly deferred to an unshipped upstream dependency; technical_risk banded at 0.3-0.5 (new pattern, no schema change, clean rollback) for the realistically-scoped local-seam-and-cap-policy work."
 github_issue: 492
-github_url: https://github.com/astragenie/runner-plugin/issues/492
+github_url: "https://github.com/astragenie/runner-plugin/issues/492"
+pm_customer_impact: 0.45
+pm_effort_estimate: 0.35
+pm_strategic_alignment: 0.45
+pm_technical_risk: 0.4
+pm_dependency_depth: 0.5
+pm_composite_priority: P2
+pm_autonomous_safe: false
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: Local AbortSignal-ready seam in memory-transport.mts
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-2
+    title: Reconcile capture/recall cap policy + DEC
+    points: 1
+    estimated_tokens: 60000
 ---
 # FEAT-233: memory transport reliability — AbortSignal cancellation + reconcile cap policy
 
@@ -74,3 +90,8 @@ capture/recall cap into one documented policy.
 - `src/scripts/lib/slice-linker/start-slice.mts` (recall `timeoutMs` cap).
 - Upstream: `astramem-plugin#29` (AbortSignal / unref'd timers).
 - `docs/contracts/recall-injection-v1.md` + FEAT-188 (dev-team).
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: Local AbortSignal-ready seam in memory-transport.mts (2 pts)
+- SLICE-2: Reconcile capture/recall cap policy + DEC (1 pts)
