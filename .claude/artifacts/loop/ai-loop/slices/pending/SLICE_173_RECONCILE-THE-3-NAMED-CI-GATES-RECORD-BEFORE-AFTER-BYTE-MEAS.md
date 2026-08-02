@@ -39,6 +39,30 @@ at whichever slice closes last in this FEAT, plus an optional (out-of-scope
 judgment call) fix for the one unrelated org-refs citation. Consider folding
 this into SLICE-172's close rather than running it as a standalone slice.
 
+## Re-scope decision — folded into SLICE-172 (2026-08-02)
+
+- [x] Folded into SLICE-172's close per this slice's own baseline-spike
+  note above and `docs/research/2026-08-02-context-diet-baseline.md` §5.
+  No standalone build for SLICE-173 — its remaining (non-moot) work was
+  absorbed as follows:
+  - **Gate reconciliation (AC-2)**: already established as moot before
+    this slice started — all three named gates (`validate-snapshot-freshness`,
+    `generate-metrics-band --check`, `validate-org-refs`) fail for reasons
+    unrelated to the CLAUDE.md restructure (ordinary backlog drift /
+    an unrelated docs file's org-ref), per SLICE-170's live test. Nothing
+    for SLICE-172 to reconcile against its own rules.md trim — none of
+    those three gates read `.claude/loop/rules.md`.
+  - **Byte counts (AC-4)**: recorded in FEAT-272's "SLICE-172 close notes"
+    section, including the actual post-trim rules.md numbers (this
+    slice's own note above only had the pre-trim/unchanged baseline).
+  - **Routine regen-and-verify pass**: not run as part of this fold-in —
+    `snapshot-memory` / `generate-metrics-band --write` touch backlog/grade
+    state this slice doesn't own; left for whichever slice actually closes
+    last in FEAT-272, per this slice's own original recommendation.
+  - **Unrelated org-refs citation drift**: left untouched, per this
+    slice's own note that it's an out-of-scope judgment call for the
+    operator/PM, not this FEAT.
+
 ## In scope
 
 - bullet 1

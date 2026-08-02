@@ -170,6 +170,26 @@ test("installLoop writes marker block, loop-control files, backlog scaffold, con
   assert.ok(rulesMd.includes("Autonomous Loop Instruction — HARD RULE"));
   assert.ok(rulesMd.includes("Cross-Slice Continuation — HARD RULE"));
   assert.ok(rulesMd.includes("Phase Completion Gate — HARD RULE"));
+  // SLICE-172: rules.md must stay a trimmed index — no unrendered {{token}}
+  // left over (regression for the dotted {{dispatchLimits.maxSubagentsPerSlice}}
+  // bug — renderTemplate's substitution regex never matched dotted names) and
+  // no accidental line-count regression back toward the pre-trim 248 lines.
+  assert.ok(!/\{\{[^}]+\}\}/.test(rulesMd), "rules.md must have no unrendered {{token}} left");
+  assert.ok(
+    rulesMd.split("\n").length < 150,
+    "rules.md should stay a trimmed index, not regrow toward the pre-SLICE-172 248 lines"
+  );
+
+  // SLICE-172: verbose detail moved out of rules.md must still reach every
+  // consumer via a sibling installed file, not just live in this repo's own
+  // docs/ (which a separate installed repo could never read).
+  const rulesRefPath = path.join(repo, ".claude", "loop", "rules-reference.md");
+  const rulesRefMd = await fs.readFile(rulesRefPath, "utf8");
+  assert.ok(rulesRefMd.length > 0, "rules-reference.md must be written on install");
+  assert.ok(
+    !/\{\{[^}]+\}\}/.test(rulesRefMd),
+    "rules-reference.md must have no unrendered {{token}} left"
+  );
 
   const loopRoot = path.join(repo, ".claude", "artifacts", "loop", "ai-loop");
   for (const rel of [

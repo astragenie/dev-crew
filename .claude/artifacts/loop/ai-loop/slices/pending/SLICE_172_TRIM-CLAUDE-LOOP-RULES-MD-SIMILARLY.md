@@ -42,21 +42,48 @@ don't silently re-ship stale paths in the trimmed version.
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- Trim `.claude/loop/rules.md` (installed copy) using the index+delegate
+  pattern: keep all HARD RULE headings + crisp imperatives, move verbose
+  tables/examples/setup-steps to a new `.claude/loop/rules-reference.md`.
+- Trim + reconcile `templates/loop-rules.md` (the actual `/runner:install`
+  source per `writeLoopRules`) to the same shape, since it had diverged
+  from the installed copy independent of this slice's own trim — see
+  FEAT-272's "SLICE-172 close notes" for the divergence detail.
+- Add the new `templates/loop-rules-reference.md` sibling template +
+  `writeLoopRulesReference()` scaffold wiring so the moved detail reaches
+  every consumer repo via `/runner:install`, not just this one.
+- Fix the stale `docs/ai-loop/` / `docs/backlog/pending/` path drift and
+  the dangling `commands/stop-check.md` reference in "First Action" /
+  "Cross-Slice Continuation" / "Auto Mode No-Approval", verifying every
+  corrected path resolves on disk (backfilling this repo's own
+  `.claude/artifacts/loop/ai-loop/{00-entry,01-loop-control,backlog}/`
+  where the migration had never actually landed).
+- Fix the `{{dispatchLimits.maxSubagentsPerSlice}}` token bug discovered
+  while trimming Dispatch Discipline (dotted token names never render).
+- Record SLICE-172/rules.md before/after byte counts in FEAT-272 (AC-4)
+  and fold SLICE-173's residual into this slice's close.
 
 ## Out of scope
 
-- bullet 1
+- `CLAUDE.md` itself and `AGENTS.md` — SLICE-171's call, deferred; not
+  touched by this slice.
+- A full command-surface audit of every `/loop:`/`/runner:` reference in
+  the wider loop-control doc tree (`01-loop-control/*.md`,
+  `02-acceptance-gates/`, `05-review-rubrics/`) — out of scope beyond what
+  rules.md itself directly references.
+- The unrelated `validate-org-refs` citation drift and the routine
+  `snapshot-memory`/`generate-metrics-band --write` regen pass — both
+  explicitly deferred by SLICE-173's own fold-in note to whichever slice
+  closes last in FEAT-272.
 
 ## Acceptance criteria
 
-> WARNING: ACs copied from FEAT-272 and shared across 4 sibling slices — scope per-slice before close
+> WARNING: ACs copied from FEAT-272 and shared across 4 sibling slices — scope per-slice before close. Scoped for SLICE-172 specifically:
 
-- [ ] AC-1: Given the restructured CLAUDE.md, When measured, Then it is under 100 lines and the moved detail sections are reachable via named skill-gated docs or docs/ files referenced on demand.
-- [ ] AC-2: Given the three named CI gates (validate-snapshot-freshness, generate-metrics-band --check, validate-org-refs), When run against the restructured docs, Then all three pass unchanged (or are updated in lockstep with a note in the FEAT closing notes).
-- [ ] AC-3: Given a fresh session with no prior context, When an agent reads the trimmed CLAUDE.md index, Then it can still locate and state the Autonomous Loop / Cross-Slice Continuation / Phase Completion Gate HARD RULE blocks (asserted by an explicit manual or scripted check, since no current CI gate covers this).
-- [ ] AC-4: Given the FEAT's own requirement, When the slice closes, Then before/after byte counts for CLAUDE.md and rules.md are recorded in the FEAT notes.
+- [ ] AC-1: **Not this slice's scope** — about `CLAUDE.md` (<100 lines), which is SLICE-171's target file, untouched here.
+- [x] AC-2: Given the three named CI gates (validate-snapshot-freshness, generate-metrics-band --check, validate-org-refs), When run against the restructured docs, Then all three pass unchanged (or are updated in lockstep with a note in the FEAT closing notes). **Scoped to rules.md's own trim**: none of the three gates read `.claude/loop/rules.md` or `templates/loop-rules.md`, so this slice's changes cannot regress them (confirmed unrelated pre-existing failures per SLICE-170's spike, re-confirmed unchanged by this slice's own gate run — see close evidence).
+- [ ] AC-3: **Not this slice's scope** — about the trimmed `CLAUDE.md` index locating the three HARD RULE blocks, which is SLICE-171's target file.
+- [x] AC-4: Given the FEAT's own requirement, When the slice closes, Then before/after byte counts for CLAUDE.md and rules.md are recorded in the FEAT notes. **rules.md's numbers recorded by this slice** in FEAT-272's "SLICE-172 close notes" (CLAUDE.md's own numbers were already recorded by SLICE-170/171).
 
 ## Done When
 
