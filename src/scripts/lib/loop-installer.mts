@@ -20,6 +20,7 @@ import {
   writeDecisionsScaffold,
   writeLoopControlFiles,
   writeLoopRules,
+  writeLoopRulesReference,
   updateClaudeMd,
   MARKER_START,
   MARKER_END
@@ -92,6 +93,7 @@ export async function installLoop(
 
   await updateClaudeMd(repoPath, tokens, writes);
   await writeLoopRules(repoPath, tokens, writes);
+  await writeLoopRulesReference(repoPath, tokens, writes);
   await writeLoopControlFiles(repoPath, tokens, writes);
   await writeBacklogScaffold(repoPath, tokens, writes);
   await writeBacklogStateMachine(repoPath, config, writes);

@@ -88,6 +88,26 @@ export async function writeLoopRules(
   }
 }
 
+// Sibling of rules.md (SLICE-172): the verbose tables/examples/setup-step
+// detail trimmed out of rules.md so it stays a crisp HARD RULE index. Same
+// always-overwrite semantics as writeLoopRules — this is plugin-owned
+// reference material, not user content.
+export async function writeLoopRulesReference(
+  repoPath: string,
+  tokens: Record<string, string>,
+  writes: string[]
+): Promise<void> {
+  const tpl = await readTemplate("loop-rules-reference.md");
+  const contents = renderTemplate(tpl, tokens);
+  const target = path.join(repoPath, ".claude", "loop", "rules-reference.md");
+  await ensureDir(path.dirname(target));
+  const existing = await fs.readFile(target, "utf8").catch((): null => null);
+  if (existing !== contents) {
+    await fs.writeFile(target, contents);
+    writes.push(path.relative(repoPath, target));
+  }
+}
+
 // Always overwrite plugin-owned loop-control files so version upgrades land
 // cleanly. User customization belongs in .claude/loop.json, not in
 // these files.

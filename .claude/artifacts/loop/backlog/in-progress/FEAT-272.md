@@ -85,9 +85,82 @@ Full detail: `docs/research/2026-08-02-context-diet-baseline.md`. Summary:
   | File | Before | After | Delta |
   |---|---|---|---|
   | CLAUDE.md | 553 lines / 30,447 B | 278 lines / 14,017 B | -49.7% lines / -54.0% bytes |
-  | .claude/loop/rules.md | 248 lines / 20,393 B | 248 lines / 20,393 B (unchanged) | 0% |
+  | .claude/loop/rules.md | 248 lines / 20,393 B | 116 lines / 11,464 B | -53.2% lines / -43.8% bytes |
+  | .claude/loop/rules-reference.md (new, SLICE-172) | n/a | 126 lines / 5,800 B | new sibling file, on-demand only (not auto-read) |
   | AGENTS.md (new) | n/a | 89 lines / 4,734 B | new, auto-`@`-included |
   | Net CLAUDE.md-chain auto-load (CLAUDE.md+AGENTS.md+snapshot) | ~33.3KB | ~21.6KB | ~-35% |
+
+## SLICE-172 close notes (2026-08-02)
+
+Trimmed `.claude/loop/rules.md` using the same index+delegate pattern PR
+#552 proved on `CLAUDE.md`: all 11 HARD RULE headings preserved verbatim
+(including the 3 that a test asserts by substring match), verbose
+tables/examples/setup-steps moved to a new `docs/loop/rules-reference.md`
+counterpart that rules.md links to. Net: 248→116 lines / 20,393→11,464 bytes
+(-53.2%/-43.8%) for the file every loop session reads near-immediately per
+its own "First Action" rule; the reference file is read on demand only.
+
+**Installer-template findings (per dispatch CAUTION — rules.md is
+installer-shipped, not hand-authored):**
+
+- `templates/loop-rules.md` (the actual `/runner:install` source —
+  confirmed via `writeLoopRules` in `loop-installer-scaffold.mts`) had
+  **diverged from the installed copy**, not merely gone stale: it was
+  missing 3 HARD RULE sections the installed file had gained via direct
+  edits over time (Auto Mode No-Approval, Orchestrator Model Gate, Review
+  Dispatch Budget) while itself carrying one section the installed copy
+  lacked (Tool Discipline). Trimming only the installed file would have
+  left the template's next `/runner:install` run silently reintroducing
+  the old 248-line shape with none of this repo's later HARD RULE
+  additions — so the template was rewritten to the same trimmed,
+  reconciled shape (superset of both), and this repo's own installed
+  copy was regenerated from it (byte-for-byte, via the real
+  `buildTokens`/`renderTemplate` pipeline) rather than hand-patched, so a
+  future no-op `/runner:install` produces no diff.
+- Added a new sibling template `templates/loop-rules-reference.md` +
+  `writeLoopRulesReference()` scaffold function (installed to
+  `.claude/loop/rules-reference.md`) so the moved detail actually reaches
+  every consumer repo, not just this one — a plain `docs/*.md` file in
+  this repo alone would not have been reachable from an installed
+  consumer.
+- Found and fixed a live bug while touching Dispatch Discipline: the
+  template's `{{dispatchLimits.maxSubagentsPerSlice}}` token was never
+  substitutable — `renderTemplate`'s token regex doesn't match dots — so
+  every fresh install has been shipping that placeholder unrendered
+  since it was introduced. Added a flat `maxSubagentsPerSlice` token to
+  `buildTokens()` (`loop-installer-tokens.mts`) reading
+  `config.loop.dispatchLimits.maxSubagentsPerSlice` (default 3).
+- Fixed the flagged stale-path drift in "First Action" / "Cross-Slice
+  Continuation" (`docs/ai-loop/`, `docs/backlog/pending/` → the
+  `{{aiLoopRoot}}`/`{{backlogRoot}}`/`{{specsRoot}}` tokens, which already
+  resolve correctly to `.claude/artifacts/loop/...` for this repo) and a
+  second dangling reference in the same section (`commands/stop-check.md`,
+  which doesn't exist) → `{{aiLoopRoot}}/01-loop-control/STOP_CONDITIONS.md`.
+  All corrected paths verified to exist on disk (see next finding for the
+  one gap that required a fix, not just verification).
+- **Discovered this repo's own dogfood install was incomplete**: `.claude/loop.json`'s
+  `aiLoopRoot` has pointed at `.claude/artifacts/loop/ai-loop` since the
+  2026-07-21 migration docs/memory.md already documented, but only its
+  `slices/` subdirectory had ever been populated there — `00-entry/`,
+  `01-loop-control/`, and `backlog/` still only existed at the legacy
+  `docs/ai-loop/` path this repo's own audit had already flagged as dead.
+  Confirmed safe to backfill (not an overwrite of curated content):
+  `docs/ai-loop/00-entry/MASTER_PROMPT.md` was still literal unrendered
+  "Untitled product" boilerplate, and `docs/ai-loop/01-loop-control/{WIGGIN_LOOP,STOP_CONDITIONS}.md`
+  hardcoded a stale `docs/ai-loop/*` path the templates had already moved
+  past. Backfilled via the real `writeLoopControlFiles`/`writeBacklogScaffold`
+  functions (not hand-copied) so the newly-corrected rules.md
+  cross-references resolve to real, current content instead of continuing
+  to point at nothing. `docs/ai-loop/` and `docs/backlog/` remain
+  untouched, stale, delete-candidates per the existing audit note in
+  `docs/memory.md` — still an operator call, out of scope here.
+
+**SLICE-173 folded in** (per the SLICE-170 baseline spike's re-scope
+recommendation, §5): all three named CI gates were already confirmed
+unrelated to the CLAUDE.md restructure before this slice started, and the
+byte-count table above is this slice's own AC-4 evidence. See
+`SLICE_173_RECONCILE-THE-3-NAMED-CI-GATES-RECORD-BEFORE-AFTER-BYTE-MEAS.md`
+for the fold-in note left on that file.
 - The three named CI gates (validate-snapshot-freshness, generate-metrics-band
   --check, validate-org-refs) were live-tested against current HEAD: **all
   three currently fail**, but none of the failures trace to the CLAUDE.md

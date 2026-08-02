@@ -224,6 +224,14 @@ export function buildTokens(
   extras?: { skillActivationBlock?: string; rulesBlock?: string }
 ): Record<string, string> {
   const aiLoopRoot = resolveLoopPath(config, "aiLoopRoot");
+  // dispatchLimits is a nested config block (config.loop.dispatchLimits), so it
+  // can't be a plain {{dispatchLimits.maxSubagentsPerSlice}} token — renderTemplate's
+  // substitution regex only matches dot-free names. Flatten the one field
+  // templates/loop-rules.md actually needs. Fixes a latent bug where that dotted
+  // token was never substituted (SLICE-172): every fresh install shipped the
+  // literal, unrendered `{{dispatchLimits.maxSubagentsPerSlice}}` string.
+  const loopConfig = config.loop as Record<string, any> | undefined;
+  const maxSubagentsPerSlice = String(loopConfig?.dispatchLimits?.maxSubagentsPerSlice ?? 3);
   return {
     aiLoopRoot,
     backlogPath: resolveLoopPath(config, "backlogPath"),
@@ -233,6 +241,7 @@ export function buildTokens(
     gradesRoot: resolveLoopPath(config, "gradesRoot"),
     decisionsRoot: resolveLoopPath(config, "decisionsRoot"),
     phaseGateArtifactDir: resolveLoopPath(config, "phaseGateArtifactDir"),
+    maxSubagentsPerSlice,
     productName: config.productName || "Untitled product",
     productDescription: config.productDescription || "",
     stackDescription: config.stackDescription || "",
