@@ -4,6 +4,97 @@ All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`.
 
+## [v0.78.0] — 2026-08-02 — cost-scan window fix, light reviewer ladder, memory-setup seeding
+
+A fleet cost audit (2026-08-02) surfaced a frozen cost-report scan window and
+zero-cost readings on citylive-shaped repos; this release fixes the loop-side
+root causes and ships three fleet-adoption features that came out of the same
+audit wave (SLICE-161 through SLICE-177).
+
+### Fixed
+
+- FEAT-268 cost-report scan window never reset (root-cause spike:
+  `docs/research/2026-08-02-cost-window-freeze-root-cause-spike.md`,
+  `c708f36a`/`f8bbbfec`): `tryWriteCostReport`
+  (`src/scripts/lib/slice-linker/crew-bridge.mts`) passed no
+  `--started-at`/`--completed-at` to crew's session scanner, so crew fell
+  back to the shared `workflow-state.currentRun.startedAt`, which only
+  rotates at slice start — a long-running repo's `Window Start` froze for
+  days while reports kept re-reporting the same cumulative window. Fixed by
+  a new per-slice cursor, `src/scripts/lib/slice-linker/cost-scan-cursor.mts`
+  (`.claude/artifacts/loop/cost-scan-cursors/`, advances only on a
+  successful scan), threaded into the `--started-at`/`--completed-at`
+  flags, plus a post-write `session_id` frontmatter stamp since crew has no
+  native session field yet (`1c00a8cf`). Dedicated regression suite:
+  `src/tests/cost-scan-window-regression.test.mts` (`175b0bc9`). The
+  FEAT-204 dedup fingerprint was deliberately **not** loosened alongside
+  this fix — a tolerance band there would merge distinct cumulative
+  snapshots and undercount real spend, the opposite of the problem being
+  fixed.
+- FEAT-273 citylive-shaped repos reporting $0 cost (`6b8dbe2f`):
+  `config.loop.costProject` was passed to crew's session scanner
+  unslugified, so a project id with spaces/mixed case never matched crew's
+  slugified session records. Normalized through a shared helper before the
+  `--source-project` call; upstream ask filed at
+  `docs/upstream-requests/2026-08-02-crew-session-scanner-source-project-slugify.md`
+  (also carries the crew-side native `session_id` field ask).
+- Wave-infra fixes found during the audit wave, no FEAT filed:
+  `assertSliceExistsAtBase` (`src/scripts/lib/dispatch-worktree.mts`) only
+  ever probed `backlog/<status>/<ID>.md`, but SLICE files live at
+  `ai-loop/slices/<status>/SLICE_NNN_TITLE.md` — every SLICE dispatch was
+  failing the FEAT-261 stale-base guard with "stale dispatch base"
+  (`3eb9988e`). And `wave/real-deps.mts::realGitStatus` used a raw
+  porcelain status that counted the wave runner's own telemetry writes as
+  uncommitted changes, tripping its `dirty_main` halt on every run after
+  the first (`0bda7e50`).
+
+### Added
+
+- FEAT-269 snapshot telemetry now reports how many `aggregate_all` rollup
+  reports were excluded from the cost trajectory (`memory-snapshot.mts`,
+  `6db9000c`) — the fleet audit found these wide-window reports mixed into
+  per-slice trajectories on some repos; the line is omitted at zero.
+- FEAT-270 `agents/document-writer.md` pinned to `model: sonnet`
+  (`220baec4`): the same audit found Opus at 87-100% of USD spend on most
+  repos, with no reasoning-quality need for Opus tier on Markdown drafting.
+  New README "Agent model tiers" section documents every pinned agent.
+- FEAT-271 light reviewer ladder (`374cdb6e`, `731b838d`, `eed6f727`): an
+  opt-in `light` block added to all 6 `scripts/presets/*.json` templates
+  plus `preset-schema.mts` validation, and a new `/runner:install --light`
+  flag that seeds `reviewers.ladder: ["A"]` +
+  `loop.validation.satisfiedByReview: true`. Applies on fresh installs and
+  retrofits an already-installed repo in place (read-modify-write,
+  idempotent, touches only `reviewers`/`loop.validation`). ADOPTION.md
+  gains a "Light reviewer ladder rollout" section covering when it's safe
+  to trim (repo needs a CI test gate).
+- FEAT-272 `.claude/loop/rules.md` trimmed 248 → 116 lines, with the
+  detail moved to a new `.claude/loop/rules-reference.md`; both render from
+  `templates/loop-rules.md` / `templates/loop-rules-reference.md`
+  (`9149564b`). Found two pre-existing bugs en route: the installer
+  template had drifted from the installed file (missing 3 HARD RULE
+  sections — the next `/runner:install` would have regressed every
+  consumer), and `{{dispatchLimits.maxSubagentsPerSlice}}` never
+  substituted because `renderTemplate`'s placeholder regex rejected
+  dotted names, so every fresh install shipped the literal placeholder
+  string. Both fixed in the same slice.
+- FEAT-274 `memory-setup` subcommand + `commands/memory-setup.md`
+  (`877fd5b0`): idempotently seeds the `memory` block (including
+  `feedback.creditLoop: {enabled: true, k: 5}`) into a repo's
+  `.claude/loop.json`, satisfying the `validate-memory-config` CI gate.
+  README/ADOPTION document the per-repo memory `project` id convention.
+
+### Changed
+
+- Dropped two `agents/3rdparty/` agents whose capability is already
+  covered elsewhere (#551): `task-decomposition-expert` (→
+  `skills/pm-decompose/`) and `code-reviewer` (→ `crew:reviewer` +
+  `skills/workflow/review-gates/`). Added
+  `skills/workflow/critical-thinking/`, wired into `architect`, `pm`, and
+  `researcher`, replacing the dispatchable `critical-thinking` agent —
+  which asked one question and waited for a human who isn't there in an
+  autonomous loop — with an autonomous mode that interrogates its own
+  assumptions instead.
+
 ## [v0.77.0] — 2026-07-18 — pre-build QA gate, hook-enforcement telemetry, honest cost metrics
 
 ### Added
