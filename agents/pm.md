@@ -36,11 +36,13 @@ For each FEAT you review, produce a JSON block:
   "scopeNotes": "string",
   "risks": ["string"],
   "reasoning": "one-line summary",
-  "proposedSlices": [{ "id_suffix": "-SLICE-1", "title": "string", "points": 5 }]
+  "proposedSlices": [{ "id_suffix": "-SLICE-1", "title": "string", "points": 5, "touches_files": ["src/scripts/lib/example.mts"] }]
 }
 ```
 
 Key names are load-bearing — `pm-apply` reads exactly `featureId` and `proposedSlices` (the drift aliases `featId` / `proposed_slices` are tolerated; a bare `id` is rejected). Schema-optional keys: `acs` (array of Given-When-Then strings — REQUIRED in practice for every triaged FEAT per FEAT-264, see "AC drafting scope" below), `proposedSlices` (only when the decomposition gate demands it), `declined_per` (REQUIRED on P4).
+
+`proposedSlices[].touches_files` (FEAT-276 AC-4) is also schema-optional and conservative-only: set it ONLY when you already know, from files you actually read this session, the specific repo-relative path(s) that slice will touch (e.g. you read the module you're proposing to extend). Never guess a plausible-sounding path from the title alone — a wrong path is worse than none, since the wave planner uses it to detect (or miss) real file conflicts between parallel slices. When unsure, omit the field entirely; it is never required.
 
 ## Scoring dimensions (0.0 to 1.0, higher = more)
 

@@ -124,6 +124,46 @@ describe("createSlice", () => {
     expect(frontmatter.tags).toEqual(["surface:api", "stack:node"]);
   });
 
+  // FEAT-276 AC-4: declared touches_files, when the caller resolves one, is
+  // written to the new slice's frontmatter at creation time.
+  test("writes touches_files frontmatter when the caller passes a resolved touchesFiles list", async () => {
+    const repo = await tmpRepo("bss-create-touches-");
+    const feat = await seedFeature(repo);
+
+    const created = await createSlice({
+      repoPath: repo,
+      featureId: "FEAT-001",
+      featureFilePath: feat.filePath,
+      featureFrontmatter: feat.frontmatter,
+      featureBody: feat.body,
+      touchesFiles: ["src/scripts/lib/example.mts", "src/tests/example.test.mts"]
+    });
+
+    const { frontmatter } = parseFrontmatter(await fs.readFile(created.filePath, "utf8"));
+    expect(frontmatter.touches_files).toEqual([
+      "src/scripts/lib/example.mts",
+      "src/tests/example.test.mts"
+    ]);
+  });
+
+  // FEAT-276 AC-4: no touchesFiles resolved by the caller — the field must
+  // stay absent (never a fabricated empty array), matching today's default.
+  test("omits touches_files frontmatter when the caller resolves nothing", async () => {
+    const repo = await tmpRepo("bss-create-no-touches-");
+    const feat = await seedFeature(repo);
+
+    const created = await createSlice({
+      repoPath: repo,
+      featureId: "FEAT-001",
+      featureFilePath: feat.filePath,
+      featureFrontmatter: feat.frontmatter,
+      featureBody: feat.body
+    });
+
+    const { frontmatter } = parseFrontmatter(await fs.readFile(created.filePath, "utf8"));
+    expect(frontmatter.touches_files).toBeUndefined();
+  });
+
   // QW4: per-slice ACs from proposed_slices, and the shared-copy warning.
   test("uses acceptanceCriteria verbatim (normalized to checkbox bullets) instead of the FEAT body's ACs when given", async () => {
     const repo = await tmpRepo("bss-create-own-ac-");

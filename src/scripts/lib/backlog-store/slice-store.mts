@@ -196,6 +196,49 @@ function normalizeAcBullet(raw: string): string {
   return `- [ ] ${text}`;
 }
 
+// Applies the simple, independent optional frontmatter fields (each a
+// one-line presence check, no cross-field logic) — extracted from
+// buildSliceMarkdown purely to keep its cognitive complexity under the
+// Biome cap; no behavior change from having them inline.
+function applyOptionalFrontmatterFields(
+  frontmatter: Record<string, unknown>,
+  {
+    effortPoints,
+    estimatedTokens,
+    featureFrontmatter,
+    touchesFiles
+  }: {
+    effortPoints: number | undefined;
+    estimatedTokens: number | undefined;
+    featureFrontmatter: Record<string, unknown>;
+    touchesFiles: string[] | undefined;
+  }
+): void {
+  if (typeof effortPoints === "number") {
+    frontmatter.effort_points = effortPoints;
+  }
+  // runner#393 proposal 4: carries the estimated_tokens computed/overridden
+  // at proposed_slices parse time onto the materialized slice file, so a
+  // human reading the slice can see the token-budget signal that gated it.
+  if (typeof estimatedTokens === "number") {
+    frontmatter.estimated_tokens = estimatedTokens;
+  }
+  const propagatedTags = propagatedSurfaceStackTags(featureFrontmatter.tags);
+  if (propagatedTags.length > 0) {
+    frontmatter.tags = propagatedTags;
+  }
+  // FEAT-276 AC-4: declare touches_files at creation time when the caller
+  // resolved a real value (FEAT-level touches_files for the single-slice
+  // path, or a proposed_slices entry's own touches_files for the multi-slice
+  // path) — see feature-lifecycle.mts's two call sites for the precedence
+  // rules. Never fabricated here; an absent/empty value is a silent no-op,
+  // same as today (falls through to the wave planner's inferred/missing
+  // tiers in touches-files.mts).
+  if (Array.isArray(touchesFiles) && touchesFiles.length > 0) {
+    frontmatter.touches_files = touchesFiles;
+  }
+}
+
 function buildSliceMarkdown({
   id,
   title,
@@ -205,7 +248,8 @@ function buildSliceMarkdown({
   effortPoints,
   estimatedTokens,
   acceptanceCriteria,
-  acWarning
+  acWarning,
+  touchesFiles
 }: {
   id: string;
   title: string;
@@ -216,6 +260,7 @@ function buildSliceMarkdown({
   estimatedTokens?: number;
   acceptanceCriteria?: string[];
   acWarning?: string;
+  touchesFiles?: string[];
 }): string {
   const today = nowIsoDate();
   const safeTitle = clampSliceTitle(title);
@@ -232,19 +277,12 @@ function buildSliceMarkdown({
     created: today,
     updated: today
   };
-  if (typeof effortPoints === "number") {
-    frontmatter.effort_points = effortPoints;
-  }
-  // runner#393 proposal 4: carries the estimated_tokens computed/overridden
-  // at proposed_slices parse time onto the materialized slice file, so a
-  // human reading the slice can see the token-budget signal that gated it.
-  if (typeof estimatedTokens === "number") {
-    frontmatter.estimated_tokens = estimatedTokens;
-  }
-  const propagatedTags = propagatedSurfaceStackTags(featureFrontmatter.tags);
-  if (propagatedTags.length > 0) {
-    frontmatter.tags = propagatedTags;
-  }
+  applyOptionalFrontmatterFields(frontmatter, {
+    effortPoints,
+    estimatedTokens,
+    featureFrontmatter,
+    touchesFiles
+  });
   const featureDescriptionLine = (featureBody || "")
     .split(/\n+/)
     .find((line) => line && !line.startsWith("#") && !line.startsWith("---"));
@@ -324,6 +362,11 @@ export interface CreateSliceOpts {
   // is absent and the caller (materializeProposedSlices) determined this
   // slice's ACs are copied from the FEAT and shared across sibling slices.
   acWarning?: string;
+  // FEAT-276 AC-4: already-resolved declared touch surface for this slice —
+  // caller decides the source (FEAT-level `touches_files` for a single-slice
+  // FEAT, or one proposed_slices entry's own `touches_files` for a sibling
+  // slice). createSlice performs no inference of its own.
+  touchesFiles?: string[];
 }
 
 export interface CreateSliceResult {
@@ -355,6 +398,7 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     estimatedTokens,
     acceptanceCriteria,
     acWarning,
+    touchesFiles,
     config = null
   } = opts;
   const slicesRootDir = slicesRoot(repoPath, config);
@@ -375,7 +419,8 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     ...(effortPoints !== undefined ? { effortPoints } : {}),
     ...(estimatedTokens !== undefined ? { estimatedTokens } : {}),
     ...(acceptanceCriteria !== undefined ? { acceptanceCriteria } : {}),
-    ...(acWarning !== undefined ? { acWarning } : {})
+    ...(acWarning !== undefined ? { acWarning } : {}),
+    ...(touchesFiles !== undefined ? { touchesFiles } : {})
   });
   await fs.writeFile(filePath, content);
   return { id, filePath, title };

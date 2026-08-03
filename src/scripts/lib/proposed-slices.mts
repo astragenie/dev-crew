@@ -37,6 +37,16 @@ export interface ProposedSlice {
   // existed — callers fall back to FEAT-level ACs (with a shared-copy
   // warning for multi-slice FEATs).
   acceptance_criteria?: string[];
+  // FEAT-276 AC-4: optional per-slice declared touch surface. Only present
+  // when the PM/architect authoring the decomposition already knows which
+  // repo-relative paths this specific slice will touch — never inferred or
+  // guessed here. Deliberately NOT defaulted from the FEAT-level
+  // `touches_files` field the way `acceptance_criteria` falls back to
+  // FEAT-level ACs: unlike ACs (where "shared across siblings" is a
+  // visible, human-reviewable warning), silently stamping the whole FEAT's
+  // file list onto every sibling slice would make the wave planner see
+  // false conflicts between slices that never touch the same file.
+  touches_files?: string[];
 }
 
 const ID_SUFFIX_RE = /^-SLICE-\d+$/;
@@ -167,13 +177,52 @@ function validateOne(s: unknown, featureId: string, index: number): ProposedSlic
     acceptanceCriteria = acRaw as string[];
   }
 
+  const touchesFiles = resolveTouchesFiles(obj, featureId, index);
+
   return {
     id_suffix: idSuffix,
     title,
     points,
     estimated_tokens: estimatedTokens,
-    ...(acceptanceCriteria ? { acceptance_criteria: acceptanceCriteria } : {})
+    ...(acceptanceCriteria ? { acceptance_criteria: acceptanceCriteria } : {}),
+    ...(touchesFiles ? { touches_files: touchesFiles } : {})
   };
+}
+
+// FEAT-276 AC-4: optional per-slice `touches_files` on a `proposed_slices`
+// entry. Conservative by construction — this only shape-validates an
+// already-authored value (mirrors acceptance_criteria's validation); it
+// never infers or fabricates a path. Absolute paths and `..` traversal are
+// rejected here (cheap, fails fast at PM-apply time with a precise message)
+// — the deeper "does the parent directory plausibly exist" check stays in
+// `validate-slice-touches-files.mts`, which runs against the real repo tree
+// and applies uniformly regardless of which writer declared the paths.
+function resolveTouchesFiles(
+  obj: Record<string, unknown>,
+  featureId: string,
+  index: number
+): string[] | undefined {
+  const raw = obj["touches_files"];
+  if (raw === undefined) return undefined;
+  const isShapeValid =
+    Array.isArray(raw) &&
+    raw.length > 0 &&
+    raw.every((x) => typeof x === "string" && x.trim().length > 0);
+  if (!isShapeValid) {
+    throw new InvalidProposedSlicesError(
+      featureId,
+      `touches_files in slice ${index} must be a non-empty array of non-empty strings (got ${JSON.stringify(raw)})`
+    );
+  }
+  const paths = raw as string[];
+  const bad = paths.find((p) => p.startsWith("/") || /^[A-Za-z]:[\\/]/.test(p) || p.includes(".."));
+  if (bad !== undefined) {
+    throw new InvalidProposedSlicesError(
+      featureId,
+      `touches_files in slice ${index} must be repo-relative paths (got ${JSON.stringify(bad)})`
+    );
+  }
+  return paths;
 }
 
 /**
