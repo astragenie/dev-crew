@@ -1,13 +1,13 @@
 ---
 id: FEAT-230
-status: triaged
+status: in-progress
 priority: P1
 category: architecture
 target_release: null
 created: 2026-07-06
-updated: 2026-08-02
+updated: 2026-08-04
 depends_on: [FEAT-218]
-slices: []
+slices: [SLICE-195, SLICE-196, SLICE-197, SLICE-198, SLICE-199]
 derived_from: null
 tags: [architecture, backend, dispatch, cross-plugin, skills]
 needs_contract: true
@@ -45,6 +45,8 @@ proposed_slices:
     title: CI fixture-snapshot gate + DEC-071 write-up
     points: 2
     estimated_tokens: 100000
+started_at: 2026-08-04
+slices_complete: [SLICE-195]
 ---
 # FEAT-230: task-driven skill selection — decommission presets as the skill source
 
@@ -191,3 +193,60 @@ ever returns real catalog entries.
 - SLICE-3: resolve-skills CLI --slice/--tags integration + pickBlock fallback (2 pts)
 - SLICE-4: Cross-plugin docs + upstream-request amendment (1 pts)
 - SLICE-5: CI fixture-snapshot gate + DEC-071 write-up (2 pts)
+
+## Corrected drift measurement (2026-08-04) — flat listing undercounts the catalog
+
+An earlier measurement in this session reported "13 live skills, 7 dead IDs".
+**That was wrong**, and the error is instructive because it is the same
+mistake the FEAT exists to fix.
+
+The figure came from a flat `ls` of top-level `skills/domain/` directories.
+crew's catalog is nested, and Decision 1 specifies a *recursive* walk with
+`SKILL.md` as the marker. Enumerating properly (SLICE-195's enumerator, and
+independently via `find ../dev-team/skills/domain -name SKILL.md`):
+
+- **36 skills live**, not 13.
+- **4 IDs genuinely dead**: `a11y-advisory`, `csharp-pro`,
+  `frontend-advisory`, `vue-engineering`.
+- **3 IDs previously called dead are live but nested**:
+  `backend-advisory` (`architecture/backend-advisory`),
+  `database-architecture` (`backend/database-architecture`),
+  `react-engineering` (`ui/react-engineering`).
+
+This strengthens the FEAT rather than weakening it. A flat lookup against a
+nested catalog reports live skills as missing — which is precisely the
+failure mode the preset drift produces, reproduced here by an operator doing
+the check by hand. Resolving by basename regardless of nesting depth, as the
+enumerator does, fixes both the original dead-ID problem and this
+false-negative variant.
+
+Still true and unchanged: `frontend-advisory` is genuinely dead AND declared
+in this repo's own `.claude/loop.json`, so the drift is live here.
+
+## Carried forward from SLICE-195 review: basename-collision guard
+
+The catalog is keyed by skill basename (`out.set(entry.name, ...)`,
+`skill-catalog.mts:105`). Two skills anywhere in the tree sharing a basename
+would silently overwrite each other — no log, no error, last write wins.
+
+Measured today: crew's real tree has **36 skills, 36 unique basenames**, so
+this is latent, not live. Correctly out of scope for SLICE-195, which
+implements Decision 1 only.
+
+It should be caught by SLICE-196 (the mapping/matcher table) or SLICE-199
+(the CI fixture-snapshot gate), whichever lands first. Recommended shape: log
+a warning when `out.has(name)` is already true before overwriting, rather
+than failing — a duplicate basename upstream in crew is not this repo's error
+to block on, but it must not vanish silently.
+
+The reason this matters more than an ordinary edge case: a silent overwrite
+inside a catalog whose entire purpose is preventing silent skill-injection
+failures would reproduce the FEAT's own defect one layer down. The same
+observation applies to the flat-vs-nested lookup error recorded above.
+
+Also noted by review, non-blocking: SLICE-195's fixtures cover 1-level
+nesting only, while crew's real tree has 2-level nests
+(`backend/dotnet/aspnetcore-patterns`, `csharp-conventions`,
+`ef-core-patterns`). The reviewer verified those resolve correctly against
+the real checkout, but a 2-level fixture would be worth adding when SLICE-199
+builds its snapshot gate.
