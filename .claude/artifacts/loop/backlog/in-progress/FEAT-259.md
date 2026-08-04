@@ -1,13 +1,13 @@
 ---
 id: FEAT-259
-status: triaged
+status: in-progress
 priority: P1
 category: enhancement
 target_release: null
 created: 2026-07-09
-updated: 2026-08-03
+updated: 2026-08-04
 depends_on: []
-slices: []
+slices: [SLICE-187, SLICE-183, SLICE-184, SLICE-185, SLICE-186]
 derived_from: null
 tags: [be]
 needs_contract: true
@@ -45,6 +45,9 @@ proposed_slices:
     title: Idle-ping suppression + context-budget wiring into dispatch loop
     points: 1
     estimated_tokens: 60000
+proposed_slices_shipped: []
+proposed_slices_shipped_commits: []
+started_at: 2026-08-04
 ---
 ## Description
 
