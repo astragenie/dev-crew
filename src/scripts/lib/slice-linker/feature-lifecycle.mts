@@ -18,7 +18,10 @@ import { gitTextOrThrow } from "../run-git.mjs";
 import {
   reconcileProposedSlicesAgainstGit,
   planReconcileAction,
-  SliceAlreadyShippedError
+  SliceAlreadyShippedError,
+  type TextOnlyMatchEvidence,
+  type TextOnlyMatchReason,
+  type ShippedOrdinalEvidence
 } from "./git-anchored-completion.mjs";
 
 // Re-exported so CLI handlers (loop.mts) can catch it alongside
@@ -134,6 +137,70 @@ async function classifySlice({
   return null;
 }
 
+// FEAT-284 SLICE-190: human-readable form of each TextOnlyMatchReason, for
+// the operator-facing warning lines below — see TextOnlyMatchReason's own
+// doc comment in git-anchored-completion.mts for what each discriminator
+// actually checked.
+const TEXT_ONLY_REASON_LABEL: Record<TextOnlyMatchReason, string> = {
+  "token-pair-in-body-only":
+    "the FEAT/SLICE reference appears only in the commit body, not its subject",
+  "no-diff-evidence": "the commit changed no files",
+  "no-touches-files-overlap":
+    "the commit's changed files don't overlap this slice's declared touches_files",
+  "non-implementing-paths-only":
+    "the commit only touched non-implementing paths (docs/backlog artifacts)"
+};
+
+// FEAT-284 AC-3: git-anchored-completion.mts is a pure evaluator (see its
+// module doc comment) — it hands back `textOnlyMatches` but never prints
+// anything itself. This is the one caller that both makes the reconcile
+// decision and has an operator watching (runner:start / slice from-feature),
+// so it owns surfacing the two situations a reconcile pass can produce:
+//
+//   - demoted: a commit's text matched a proposed slice's FEAT-id/SLICE-
+//     ordinal pair, but the diff didn't corroborate it (or the pair was
+//     body-only) — the slice is treated as unshipped and will be
+//     (re)materialized. This is what the FEAT-284 incident's repair
+//     (`c2e77fe7`) and SLICE-188's own fixture commit (`3bd6ab95`) look like
+//     under the corrected matcher: real evidence the check saw and declined
+//     to act on, which is silent unless printed here.
+//   - skipped: a contiguous shipped prefix is advancing the start index —
+//     these proposed slices are being treated as already shipped and will
+//     NOT be materialized. This is the exact path that silently dropped
+//     FEAT-259's SLICE-1 via commit `71604bb4`; it must announce itself even
+//     though it's the success path, not just on failure.
+//
+// No-op (prints nothing) when the respective list is empty — a clean
+// reconcile pass must stay silent, not emit "0 warnings" noise.
+function logDemotedMatches(featureId: string, textOnlyMatches: TextOnlyMatchEvidence[]): void {
+  if (textOnlyMatches.length === 0) return;
+  console.warn(
+    `[git-anchored-completion] ${featureId}: ${textOnlyMatches.length} proposed slice(s) ` +
+      "demoted to a warning — text matched but not corroborated as shipped:"
+  );
+  for (const m of textOnlyMatches) {
+    console.warn(
+      `  - ordinal ${m.ordinal} (${m.idSuffix} "${m.title}") — commit ${m.commitSha.slice(0, 7)} ` +
+        `"${m.commitSubject}": ${TEXT_ONLY_REASON_LABEL[m.reason]}. Treating as unshipped; ` +
+        "will be materialized."
+    );
+  }
+}
+
+function logSkippedShipped(featureId: string, skipped: ShippedOrdinalEvidence[]): void {
+  if (skipped.length === 0) return;
+  console.warn(
+    `[git-anchored-completion] ${featureId}: ${skipped.length} proposed slice(s) skipped as ` +
+      "already-shipped (start index advances past them):"
+  );
+  for (const s of skipped) {
+    console.warn(
+      `  - ordinal ${s.ordinal} (${s.idSuffix} "${s.title}") — matched commit ` +
+        `${s.commitSha.slice(0, 7)} "${s.commitSubject}"`
+    );
+  }
+}
+
 // runner-plugin#392: run the git-anchored reconcile pass for a FEAT's
 // proposed_slices decomposition and translate the verdict into a
 // materializeProposedSlices `startIndex` override.
@@ -171,15 +238,29 @@ async function reconcileProposedSlicesStartIndex(
     );
     return undefined;
   }
+  // FEAT-284 AC-3: a demoted match is worth surfacing regardless of what the
+  // reconcile action below turns out to be — it's evidence the check saw and
+  // declined to act on, independent of whether any ordinal ends up skipped.
+  logDemotedMatches(featureId, reconcile.textOnlyMatches);
+
   if (reconcile.shipped.length === 0) return undefined;
 
   const action = planReconcileAction(proposed.length, existingCount, reconcile.shipped);
   if (action.kind === "refuse") {
+    // SliceAlreadyShippedError's own message already lists each shipped
+    // ordinal/commit — no separate skip line needed for a refuse.
     throw new SliceAlreadyShippedError(featureId, reconcile.shipped, action.reason);
   }
   if (action.kind === "proceed") return undefined;
 
-  // action.kind === "advance" — durably stamp the evidence before returning
+  // action.kind === "advance": every entry in reconcile.shipped is part of
+  // the contiguous prefix being skipped (planReconcileAction already refused
+  // above if any shipped ordinal fell outside it) — this is the silent-drop
+  // path from the FEAT-284 incident, so it must announce itself even though
+  // it's succeeding, not failing.
+  logSkippedShipped(featureId, reconcile.shipped);
+
+  // Durably stamp the evidence before returning
   // the override, so the finding survives a fresh checkout / worktree even
   // if the caller's subsequent materialize step never runs. The stamp is an
   // audit trail, not a gate: an fs failure here must not block the start

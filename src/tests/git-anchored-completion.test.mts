@@ -501,3 +501,126 @@ test("sliceFromFeature refuses a fully-shipped FEAT and leaves backlog state unt
   assert.equal(after.state, "pending");
   assert.deepEqual(after.frontmatter.slices ?? [], []);
 });
+
+// --- FEAT-284 SLICE-190: operator-visible skip/downgrade lines ---------------
+//
+// git-anchored-completion.mts stays a pure evaluator (no console output of
+// its own) — reconcileProposedSlicesStartIndex in feature-lifecycle.mts is
+// the one caller that both makes the reconcile decision and has an operator
+// watching, so these tests exercise it via sliceFromFeature, the same public
+// entry point runner:start uses.
+
+async function withCapturedWarnings<T>(
+  fn: () => Promise<T>
+): Promise<{ result: T; warnings: string[] }> {
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (msg: unknown) => {
+    warnings.push(String(msg));
+  };
+  try {
+    const result = await fn();
+    return { result, warnings };
+  } finally {
+    console.warn = originalWarn;
+  }
+}
+
+test("sliceFromFeature prints a demoted-match warning naming ordinal, title, and commit sha (AC-3)", async () => {
+  const repo = await tmpGitRepo("gac-warn-demote-", ["chore: init"]);
+  const feat = await addFeature(repo, { title: "Demote warning", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 2,
+    proposed_slices: [
+      { id_suffix: "-SLICE-1", title: "Design", points: 2, estimated_tokens: 100_000 }
+    ]
+  });
+  // FEAT-284 AC-7 shape: token pair only in the body (never the subject),
+  // with a real file change — demoted, not shipped.
+  await commitFixture(
+    repo,
+    "test(SLICE-188): rebuild git-anchored-completion fixtures",
+    { "src/tests/some-other-suite.test.mts": "test('x', () => {});\n" },
+    `mentions ${feat.id}'s SLICE-1 only in prose here, never in the subject`
+  );
+
+  const { result: out, warnings } = await withCapturedWarnings(() =>
+    sliceFromFeature(repo, feat.id)
+  );
+
+  // Demoted, not shipped — the slice still materializes normally.
+  assert.equal(out.slices.length, 1);
+
+  const demoteLines = warnings.filter((w) => w.includes("demoted"));
+  assert.ok(
+    demoteLines.length > 0,
+    `expected a demoted-match warning, got: ${JSON.stringify(warnings)}`
+  );
+  const detailLine = warnings.find((w) => w.includes("-SLICE-1"));
+  assert.ok(detailLine, `expected a detail line naming -SLICE-1, got: ${JSON.stringify(warnings)}`);
+  assert.match(detailLine!, /ordinal 1/);
+  assert.match(detailLine!, /"Design"/);
+  assert.match(detailLine!, /token-pair-in-body-only|body, not its subject/);
+});
+
+test("sliceFromFeature prints a skipped-shipped warning naming ordinal, title, and commit sha when the start index advances (AC-3)", async () => {
+  const repo = await tmpGitRepo("gac-warn-skip-", ["chore: init"]);
+  const feat = await addFeature(repo, { title: "Skip warning", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 6,
+    proposed_slices: PROPOSED_3
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-1 — bridge shipped`, {
+    "src/scripts/lib/bridge.mts": "export const bridge = 1;\n"
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-2 — ACL shipped`, {
+    "src/scripts/lib/acl.mts": "export const acl = 1;\n"
+  });
+
+  const { result: out, warnings } = await withCapturedWarnings(() =>
+    sliceFromFeature(repo, feat.id)
+  );
+
+  assert.equal(out.slices.length, 1, "must scaffold only the first unshipped slice (OAuth)");
+  assert.equal(out.slices[0].title, "OAuth");
+
+  const skipHeader = warnings.find((w) => w.includes("skipped as"));
+  assert.ok(skipHeader, `expected a skipped-shipped header, got: ${JSON.stringify(warnings)}`);
+  const ordinal1 = warnings.find((w) => w.includes("-SLICE-1"));
+  const ordinal2 = warnings.find((w) => w.includes("-SLICE-2"));
+  assert.ok(ordinal1, `expected a line naming -SLICE-1, got: ${JSON.stringify(warnings)}`);
+  assert.ok(ordinal2, `expected a line naming -SLICE-2, got: ${JSON.stringify(warnings)}`);
+  assert.match(ordinal1!, /ordinal 1/);
+  assert.match(ordinal1!, /"Bridge"/);
+  assert.match(ordinal1!, /[0-9a-f]{7}/);
+  assert.match(ordinal2!, /ordinal 2/);
+  assert.match(ordinal2!, /"ACL"/);
+});
+
+test("sliceFromFeature prints nothing when no proposed slice is demoted or skipped (AC-3, no noise)", async () => {
+  const repo = await tmpGitRepo("gac-warn-silent-", [
+    "feat: FEAT-999 SLICE-1 — other feature's slice",
+    "chore: unrelated"
+  ]);
+  const feat = await addFeature(repo, { title: "Clean run", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 4,
+    proposed_slices: PROPOSED_3.slice(0, 2)
+  });
+
+  const { result: out, warnings } = await withCapturedWarnings(() =>
+    sliceFromFeature(repo, feat.id)
+  );
+
+  assert.equal(
+    out.slices.length,
+    2,
+    "no shipped evidence — both proposed slices scaffold normally"
+  );
+  const reconcileWarnings = warnings.filter((w) => w.includes("[git-anchored-completion]"));
+  assert.deepEqual(
+    reconcileWarnings,
+    [],
+    `expected no git-anchored-completion warnings, got: ${JSON.stringify(reconcileWarnings)}`
+  );
+});
