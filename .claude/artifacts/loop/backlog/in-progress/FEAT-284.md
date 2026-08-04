@@ -100,6 +100,39 @@ hides the gap.
 - AC-5: Given an operator needs to repair a gapped FEAT by hand, When they invoke the new CLI escape hatch targeting a specific id_suffix, Then that exact proposed slice is materialized regardless of index position, without requiring direct BacklogStore API calls (the actual repair path used in the FEAT-284 live repro).
 - AC-6: Given a proposed slice that declares NO `touches_files` (the live FEAT-259 repro shape — none of its five proposed entries declared any), When a matching candidate commit changed only non-implementing paths such as `docs/**` and `.claude/artifacts/**`, Then the match is downgraded to a text-only warning rather than recorded as shipped evidence. Both real offending commits are filtered by this rule and neither is filtered by AC-1 or AC-2: `71604bb4` touched only `docs/research/**` plus backlog frontmatter, and `c2e77fe7` touched only backlog artifacts. Asserted against the existing docs-only fixture at `src/tests/git-anchored-completion.test.mts:263-282`, whose expectation inverts from shipped==[1] to shipped==[].
 
+- AC-7: Given a candidate commit whose FEAT-id/SLICE-ordinal token pair appears ONLY in the commit body and not in its subject, When reconcileProposedSlicesAgainstGit evaluates it, Then it is not recorded as shipped evidence (at most a text-only warning). Given a commit carrying the pair in its SUBJECT in the established convention (`feat(connectors): FEAT-312 SLICE-1 — bridge`), Then it still qualifies as evidence as today.
+
+### Why AC-7 exists — AC-6 does not catch the third offender
+
+Measured on live repo data 2026-08-04. The FEAT-259 false positive migrated
+across three separate commits in a single day, the citation walking forward
+to whichever commit most recently *discussed* the incident:
+
+| commit | what it actually was | pair in subject | pair in body |
+|---|---|---|---|
+| `71604bb4` | research spike (docs only) | 0 | 1 |
+| `c2e77fe7` | the repair commit (backlog only) | 0 | 2 |
+| `3bd6ab95` | SLICE-188 test fixtures (`src/tests/**`) | 0 | 1 |
+
+`3bd6ab95` defeats AC-1 (it changed files), AC-2 (FEAT-259's proposed slices
+declare no `touches_files`) and AC-6 (it changed `src/tests/**`, not
+`docs/**` or `.claude/artifacts/**`). Diff corroboration alone therefore does
+not close the live repro.
+
+The subject/body split does: all three false positives carry the token pair
+exclusively in the body, none in the subject, while the genuine-evidence
+convention already in use — and already encoded in the existing fixtures —
+puts it in the subject. This is a cheaper and sharper discriminator than path
+heuristics, because it keys on how humans actually write slice commits rather
+than guessing which paths count as implementation.
+
+AC-6 is still worth keeping: it independently kills the docs-only class, and
+the two rules together degrade gracefully if either is bypassed.
+
+Do NOT instead widen AC-6's non-implementing path set to include
+`src/tests/**`. That would make test-only slices — SLICE-188 itself is one —
+permanently undetectable, for a reason unrelated to the real discriminator.
+
 ### Note on AC-6's false-negative direction (deliberate)
 
 AC-6 makes a genuinely docs-only slice — FEAT-259's own `-SLICE-2` (receipt
@@ -156,3 +189,42 @@ Two consequences for the fix:
   A stamp written by the old text-only matcher carries no evidence that its
   cited commit did anything, so migration should re-evaluate each stamped
   entry under the new rules instead of carrying it forward.
+
+## Measured cost of AC-7, and a refinement that must NOT be adopted
+
+Measured against this repo's last 600 commits on 2026-08-04, after SLICE-189
+landed.
+
+| token-pair location | commits | of which squash-merges |
+|---|---|---|
+| subject (still detected) | 118 | 12 |
+| body only (now undetected) | 29 | 11 |
+| neither | 453 | — |
+
+So AC-7 makes roughly 20% of previously-matching commits invisible to the
+check, and at least one is genuine shipped evidence: `859be561`
+"FEAT-267: wave worktree-placement fix + crash-recovery CLI (#549)", whose
+subject carries the FEAT id while the SLICE token sits in the squash body.
+This repo squash-merges, and GitHub composes the squash subject from the PR
+title, so this shape recurs.
+
+**The obvious refinement is a trap.** Loosening the rule to "the FEAT id OR a
+SLICE token appears in the subject" recovers 20 of the 29 — but among the
+recovered are all three original false positives:
+
+- `3bd6ab95` `test(SLICE-188): rebuild git-anchored-completion fixtures...`
+- `c2e77fe7` `chore(backlog): slice FEAT-259; repair git-anchored false-positive...`
+- `71604bb4` `docs(research): architect classification for FEAT-281/282/283...`
+
+Each carries *a* FEAT or SLICE token in its subject — just not the pair that
+its body prose mentions. Under the loose rule `test(SLICE-188): ...` becomes
+evidence for FEAT-259's SLICE-1 again, reinstating the exact defect this FEAT
+exists to remove. Strict subject-pair matching is load-bearing; do not relax
+it to a single-token subject anchor.
+
+**Consequence for SLICE-190.** The residual false-negative rate is high
+enough that the operator-visible warning is not polish — it is the safety net
+that makes AC-7's trade acceptable. Every `textOnlyMatches` entry is a case
+where the check saw prose evidence and declined to act on it; a human needs
+to see those lines to catch the `859be561` shape. SLICE-190 should be treated
+as required to complete AC-7, not as an independent nicety.

@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-189","timestamp":"2026-08-04T18:55:26.147Z","featureId":"FEAT-284","title":"SLICE-189: Require diff-level file-change evidence before recording a slice as git-shipped","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260804T185525Z-plan-SLICE-189.md","requiresApprovalGate":false}
