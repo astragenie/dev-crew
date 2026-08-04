@@ -1,7 +1,7 @@
 ---
 id: SLICE-188
 title: "Rebuild git-anchored-completion test fixtures with real file-touching commits, not --allow-empty"
-status: pending
+status: completed
 feature: FEAT-284
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 600
 github_url: "https://github.com/astragenie/runner-plugin/issues/600"
+completed_at: 2026-08-04
 ---
 # SLICE-188: Rebuild git-anchored-completion test fixtures with real file-touching commits, not --allow-empty
 

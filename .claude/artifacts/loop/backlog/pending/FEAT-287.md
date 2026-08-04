@@ -29,3 +29,30 @@ Related: FEAT-285 (the duplicate-parent-issue symptom), FEAT-281 (the gates-that
 Created via free-text intake (`/runner:intake "<text>"`). Priority is
 unset — this FEAT has not been scored yet. Run `/runner:triage`
 (PM scoring + `backlog pm-apply`) to score it before slicing.
+
+## Confirmed live, and structurally hidden from static analysis
+
+The unscanned tree is not dead legacy code. `src/scripts/lib/github-sync-loader.mts`
+exists specifically to bridge to it: `importGithubSync(rel)` resolves
+`<repoRoot>/scripts/lib/<rel>` and imports it through a computed
+`pathToFileURL(candidate).href`. Its own header explains why — these modules
+are hand-authored `.mjs` with no `.mts` source, and after the Bun migration
+there is no emitted tree, so a plain relative import from `src/scripts/lib/`
+would not resolve. Every `github publish` path runs through this loader.
+
+That makes the blind spot worse in two compounding ways:
+
+1. The module is live on a routine code path, not a dormant script someone
+   forgot to delete. Its raw FEAT/SLICE writes execute in normal operation.
+2. Because the import target is a computed URL rather than a literal
+   specifier, the tree is invisible to static resolution as well as to
+   `validate-backlog-writes`' hardcoded scan root. Two independent mechanisms
+   would each have to be taught about it.
+
+Direct consequence for FEAT-281's design: its proposed unwired-export
+validator must treat `importGithubSync` as a call edge, or it will conclude
+that everything under `scripts/lib/` has no callers and either flag the whole
+tree or (if the allowlist swallows it) silently exempt a live surface. The
+same loader indirection that hides these writers from the sole-writer gate
+will hide them from the wiring gate. Worth designing the two together rather
+than sequentially.

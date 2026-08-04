@@ -48,6 +48,7 @@ started_at: 2026-08-04
 github_issue: 609
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/609"
+slices_complete: [SLICE-188]
 ---
 ## Description
 
@@ -92,11 +93,29 @@ hides the gap.
 
 ## Acceptance criteria (Given-When-Then)
 
-- AC-1: Given a candidate commit whose subject/body matches a proposed slice's FEAT-id/SLICE-ordinal token pair, When reconcileProposedSlicesAgainstGit evaluates it, Then the commit is only recorded as shipped evidence if it actually changed at least one file — a docs-only or --allow-empty commit (reproducing 71604bb4) must never produce shipped evidence, verified by a NEW fixture that creates a real file-touching commit alongside the existing empty-commit case in the same test.
+- AC-1: Given a candidate commit whose subject/body matches a proposed slice's FEAT-id/SLICE-ordinal token pair, When reconcileProposedSlicesAgainstGit evaluates it, Then the commit is only recorded as shipped evidence if it actually changed at least one file — an `--allow-empty` commit must never produce shipped evidence, verified by a NEW fixture that creates a real file-touching commit alongside the existing empty-commit case in the same test. (Corrected 2026-08-04: this clause originally also claimed to exclude docs-only commits, which the "changed ≥1 file" rule does not do — a docs-only commit changes a file. That case is AC-6.)
 - AC-2: Given a proposed slice declares touches_files, When a diff-corroborated candidate commit's changed paths share zero overlap with that list, Then the match is downgraded to a text-only warning and reported to the operator rather than recorded as shipped evidence that advances the start index.
 - AC-3: Given any proposed slice is skipped or downgraded during a reconcile pass, When runner:start / slice from-feature runs, Then an explicit operator-visible line is printed naming the ordinal, the slice title, and the matched commit sha, so the FEAT-284 repro (SLICE-1 dropped via commit 71604bb4) surfaces a visible warning instead of silence.
 - AC-4: Given a FEAT whose proposed_slices had ordinal 1 skipped while ordinals 2-5 are already materialized (the live FEAT-259 state), When slice from-feature is re-run, Then it materializes the missing ordinal 1 and does not create a duplicate of any already-materialized ordinal — a regression test must reproduce the observed duplicate -SLICE-5 + redundant GitHub issue and assert it no longer occurs.
 - AC-5: Given an operator needs to repair a gapped FEAT by hand, When they invoke the new CLI escape hatch targeting a specific id_suffix, Then that exact proposed slice is materialized regardless of index position, without requiring direct BacklogStore API calls (the actual repair path used in the FEAT-284 live repro).
+- AC-6: Given a proposed slice that declares NO `touches_files` (the live FEAT-259 repro shape — none of its five proposed entries declared any), When a matching candidate commit changed only non-implementing paths such as `docs/**` and `.claude/artifacts/**`, Then the match is downgraded to a text-only warning rather than recorded as shipped evidence. Both real offending commits are filtered by this rule and neither is filtered by AC-1 or AC-2: `71604bb4` touched only `docs/research/**` plus backlog frontmatter, and `c2e77fe7` touched only backlog artifacts. Asserted against the existing docs-only fixture at `src/tests/git-anchored-completion.test.mts:263-282`, whose expectation inverts from shipped==[1] to shipped==[].
+
+### Note on AC-6's false-negative direction (deliberate)
+
+AC-6 makes a genuinely docs-only slice — FEAT-259's own `-SLICE-2` (receipt
+schema + docs) and `-SLICE-3` (final-act line across `.md` templates) are
+real examples — undetectable as shipped by this check. That is the correct
+trade, and it follows the module's existing stated contract: "Absence of a
+match is NOT proof a slice is unshipped; it only means this check found no
+evidence, so callers must treat 'not shipped' as the default, fail-open
+outcome."
+
+The two error directions are not symmetric. A false negative re-materializes
+a slice that already shipped — visible immediately, cheap to discard. A false
+positive silently drops planned work and stamps durable frontmatter asserting
+it was done — which is the entire incident this FEAT exists to prevent, and
+which went unnoticed until someone happened to count the materialized slices.
+Bias the check toward re-doing work over silently skipping it.
 
 ## Proposed slices (PM decomposition)
 
