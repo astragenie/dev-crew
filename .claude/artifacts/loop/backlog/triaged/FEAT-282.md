@@ -28,6 +28,9 @@ proposed_slices:
     title: Wire learnings validator into CI/pre-push and renumber CLAUDE.md gate list
     points: 1
     estimated_tokens: 60000
+tags: [infra, workflow]
+needs_contract: false
+needs_ux: false
 ---
 ## Description
 

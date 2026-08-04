@@ -32,6 +32,9 @@ proposed_slices:
     title: Bound the legacy grandfather clause by date/marker cutoff for frontmatter-less artifacts
     points: 2
     estimated_tokens: 100000
+tags: [be, workflow]
+needs_contract: true
+needs_ux: false
 ---
 ## Description
 

@@ -32,6 +32,9 @@ proposed_slices:
     title: "Warn-tier CLI wiring and report output (no CI hard-fail, no gate-list renumber yet)"
     points: 2
     estimated_tokens: 100000
+tags: [architecture, infra, backend]
+needs_contract: true
+needs_ux: false
 ---
 ## Description
 
