@@ -56,6 +56,20 @@ type ClassifyResult = {
   needs_ux: boolean | null;
 };
 
+// FEAT-276 AC-4: normalizes a FEAT's raw frontmatter `touches_files` value
+// (only meaningful for the single-slice path, where the lone materialized
+// slice IS the whole FEAT's scope — a 1:1 mapping, unlike the multi-slice
+// path where the FEAT-level list would over-declare every sibling slice and
+// create false wave-planner conflicts). Mirrors the shape guard already
+// applied to `proposed_slices[].touches_files` in proposed-slices.mts, kept
+// local here since it operates on unknown FEAT frontmatter, not a typed
+// ProposedSlice.
+function normalizeFeatureTouchesFiles(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const paths = raw.filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+  return paths.length > 0 ? paths : undefined;
+}
+
 function featureHasTags(fm: Record<string, unknown>): boolean {
   if (Array.isArray(fm.tags)) return fm.tags.length > 0;
   return fm.tags != null && fm.tags !== "";
@@ -321,13 +335,15 @@ async function materializeSingleSlice(opts: MaterializeSingleOpts) {
   // Title defaults to the feature body's H1 line when not supplied —
   // createSlice's own derivation, identical to what this call site computed
   // inline before the FEAT-250 SLICE-3 consolidation.
+  const touchesFiles = normalizeFeatureTouchesFiles(featureFM.touches_files);
   const created = await createSlice({
     repoPath,
     featureId,
     featureFilePath,
     featureFrontmatter: featureFM,
     featureBody,
-    config
+    config,
+    ...(touchesFiles ? { touchesFiles } : {})
   });
 
   const classifyResult = await classifySlice({
@@ -376,6 +392,36 @@ interface MaterializeMultiOpts {
   // below so it can only ever skip forward, never re-materialize something
   // already tracked.
   startIndex?: number;
+}
+
+// Resolves the optional createSlice() extras for one proposed_slices entry
+// — extracted from materializeProposedSlices's per-item loop purely to keep
+// that function's cognitive complexity under the Biome cap; no behavior
+// change from having these three conditional spreads inline.
+function resolveProposedSliceCreateExtras(
+  item: ProposedSlice,
+  ownAc: string[] | undefined,
+  warnSharedAc: boolean,
+  featureId: string,
+  siblingCount: number
+): { acceptanceCriteria?: string[]; acWarning?: string; touchesFiles?: string[] } {
+  return {
+    ...(ownAc ? { acceptanceCriteria: ownAc } : {}),
+    ...(warnSharedAc
+      ? {
+          acWarning:
+            `> WARNING: ACs copied from ${featureId} and shared across ${siblingCount} ` +
+            "sibling slices — scope per-slice before close"
+        }
+      : {}),
+    // FEAT-276 AC-4: per-slice touches_files, when this proposal entry
+    // declared its own — never falls back to the FEAT-level list (see
+    // normalizeFeatureTouchesFiles's docstring for why that would be unsafe
+    // across siblings).
+    ...(item.touches_files && item.touches_files.length > 0
+      ? { touchesFiles: item.touches_files }
+      : {})
+  };
 }
 
 async function materializeProposedSlices(opts: MaterializeMultiOpts) {
@@ -458,14 +504,7 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       title: item.title,
       effortPoints: item.points,
       estimatedTokens: item.estimated_tokens,
-      ...(ownAc ? { acceptanceCriteria: ownAc } : {}),
-      ...(warnSharedAc
-        ? {
-            acWarning:
-              `> WARNING: ACs copied from ${featureId} and shared across ${proposed.length} ` +
-              "sibling slices — scope per-slice before close"
-          }
-        : {}),
+      ...resolveProposedSliceCreateExtras(item, ownAc, warnSharedAc, featureId, proposed.length),
       config
     });
     newSlices.push({

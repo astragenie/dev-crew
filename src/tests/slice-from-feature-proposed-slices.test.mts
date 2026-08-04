@@ -284,6 +284,63 @@ test("QW4: a single-entry proposed_slices array does not trigger the shared-copy
   );
 });
 
+// FEAT-276 AC-4: a proposed_slices entry's own touches_files declares that
+// slice's frontmatter directly, and must NOT leak onto a sibling slice that
+// declared no touches_files of its own (that would falsely tell the wave
+// planner the sibling conflicts on files it never touches).
+test("FEAT-276: a proposed_slices entry with its own touches_files declares only that slice's frontmatter", async () => {
+  const repo = await tmpRepo("sfp-touches-");
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 4,
+    proposed_slices: [
+      {
+        id_suffix: "-SLICE-1",
+        title: "First",
+        points: 2,
+        touches_files: ["src/scripts/lib/first.mts"]
+      },
+      { id_suffix: "-SLICE-2", title: "Second", points: 2 }
+    ]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 2);
+
+  const firstContent = await fs.readFile((out.slices[0] as { path: string }).path, "utf8");
+  const { frontmatter: firstFm } = parseFrontmatter(firstContent);
+  assert.deepEqual(firstFm.touches_files, ["src/scripts/lib/first.mts"]);
+
+  const secondContent = await fs.readFile((out.slices[1] as { path: string }).path, "utf8");
+  const { frontmatter: secondFm } = parseFrontmatter(secondContent);
+  assert.equal(
+    secondFm.touches_files,
+    undefined,
+    "a sibling with no declared touches_files must not inherit the other slice's paths"
+  );
+});
+
+// FEAT-276 AC-4: single-slice path — the lone materialized slice IS the
+// whole FEAT's scope, so a FEAT-level touches_files is safe to propagate
+// 1:1 (unlike the multi-slice case above).
+test("FEAT-276: single-slice path propagates FEAT-level touches_files to the sole materialized slice", async () => {
+  const repo = await tmpRepo("sfp-touches-single-");
+  const feat = await addFeature(repo, { title: "Small work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 5,
+    touches_files: ["src/scripts/lib/small.mts", "src/tests/small.test.mts"]
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 1);
+  const content = await fs.readFile((out.slices[0] as { path: string }).path, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  assert.deepEqual(frontmatter.touches_files, [
+    "src/scripts/lib/small.mts",
+    "src/tests/small.test.mts"
+  ]);
+});
+
 test("from-feature CLI on malformed proposed_slices writes audit + exits 1", async () => {
   const repo = await tmpRepo("sfp-malformed-cli-");
   const feat = await addFeature(repo, { title: "Bad sized" });

@@ -274,6 +274,64 @@ test("QW4: acceptance_criteria with a blank-string entry throws", () => {
   );
 });
 
+// FEAT-276 AC-4: optional per-slice touches_files field.
+test("FEAT-276: touches_files present and valid is parsed through verbatim", () => {
+  const raw = [
+    {
+      id_suffix: "-SLICE-1",
+      title: "Auth",
+      points: 2,
+      touches_files: ["src/scripts/lib/auth.mts", "src/tests/auth.test.mts"]
+    }
+  ];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.deepEqual(out![0]!.touches_files, ["src/scripts/lib/auth.mts", "src/tests/auth.test.mts"]);
+});
+
+test("FEAT-276: touches_files is optional — absent entries parse fine", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 2 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.touches_files, undefined);
+});
+
+test("FEAT-276: touches_files that is not an array throws", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 2, touches_files: "not an array" }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /touches_files in slice 0/.test(err.message)
+  );
+});
+
+test("FEAT-276: empty touches_files array throws", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 2, touches_files: [] }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /touches_files in slice 0/.test(err.message)
+  );
+});
+
+test("FEAT-276: an absolute touches_files path throws", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "Auth", points: 2, touches_files: ["/etc/passwd"] }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /repo-relative paths/.test(err.message)
+  );
+});
+
+test("FEAT-276: a touches_files path with parent traversal throws", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "Auth", points: 2, touches_files: ["../outside/file.mts"] }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /repo-relative paths/.test(err.message)
+  );
+});
+
 test("AC-2: threshold is configurable via 4th arg", () => {
   assert.throws(
     () => assertSized(FEAT, 5, undefined, 5),
