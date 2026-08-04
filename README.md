@@ -15,14 +15,14 @@ Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
 <!-- demo-recording: pending W4.1 asciinema asset -->
 
 <!-- metrics-band:start -->
-_Dogfood metrics — generated 2026-08-02. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
+_Dogfood metrics — generated 2026-08-04. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
 
 | Metric | Value |
 |---|---|
-| FEATs shipped (done) | 192 |
-| Slices closed, last 90 days | 161 |
+| FEATs shipped (done) | 194 |
+| Slices closed, last 90 days | 166 |
 | Grade average, last 5 slice closes | 0.862 (n=151 total) |
-| median per slice-close session scan | $469.222 (mean $425.204, -9.4% divergence) |
+| median per slice-close session scan | $474.205 (mean $347.010, -26.8% divergence) |
 | Halt badges documented | 16 |
 | CI gates enforced | 18 |
 

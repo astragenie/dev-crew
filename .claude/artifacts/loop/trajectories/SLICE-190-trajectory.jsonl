@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-190","timestamp":"2026-08-04T19:29:29.976Z","featureId":"FEAT-284","title":"SLICE-190: Downgrade text-only matches to warnings; emit operator-visible skip/downgrade lines","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260804T192929Z-plan-SLICE-190.md","requiresApprovalGate":false}
