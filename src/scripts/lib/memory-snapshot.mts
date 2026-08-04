@@ -20,6 +20,7 @@ import {
   readHookEnforcementSummary,
   type HookEnforcementSummary
 } from "./hook-enforcement-snapshot.mjs";
+import type { WaveIndexEntry } from "./wave/index-sync.mjs";
 
 // FEAT-212: window size for the "Pause rate (last N dispatches)" bullet in
 // the Loop telemetry section. Mirrors the cost-trajectory default window
@@ -531,6 +532,7 @@ async function collectSnapshotData(
 }
 
 function buildSnapshotLines(
+  repoPath: string,
   data: Awaited<ReturnType<typeof collectSnapshotData>>,
   today: string,
   pruneStaleAfterDays = 7
@@ -577,6 +579,7 @@ function buildSnapshotLines(
     count: costReportUSDValues.length,
     lastCostAdvisorVerdict: null as string | null
   };
+  const waveTelemetry = renderWaveTelemetry(repoPath);
   return [
     ...renderSnapshotHeader(today),
     ...renderBacklogState(backlog, inFlight),
@@ -595,6 +598,13 @@ function buildSnapshotLines(
     ),
     ...renderHookEnforcement(hookEnforcement),
     ...renderDispatchLifecycle(dispatchTree, pruneStaleAfterDays),
+    // SLICE-182 (FEAT-276 AC-5): wires the previously-unwired
+    // renderWaveTelemetry() into the actual snapshot output -- it existed
+    // and was tested (snapshot-wave-telemetry.test.mts) but nothing called
+    // it, so packing width was invisible in the artifact operators
+    // actually read. Single string element (may embed its own newlines);
+    // omitted entirely (no blank-line artifact) when no wave has run yet.
+    ...(waveTelemetry ? [waveTelemetry] : []),
     ...renderUsageFooter()
   ];
 }
@@ -606,7 +616,7 @@ export async function generateSnapshotContent(
   const data = await collectSnapshotData(repoPath, config);
   const date = today ?? new Date().toISOString().slice(0, 10);
   const pruneStaleAfterDays = config?.loop?.dispatch?.pruneStaleAfterDays ?? 7;
-  return buildSnapshotLines(data, date, pruneStaleAfterDays).join("\n");
+  return buildSnapshotLines(repoPath, data, date, pruneStaleAfterDays).join("\n");
 }
 
 export async function writeMemorySnapshot(
@@ -616,7 +626,7 @@ export async function writeMemorySnapshot(
   const data = await collectSnapshotData(repoPath, config);
   const today = new Date().toISOString().slice(0, 10);
   const pruneStaleAfterDays = config?.loop?.dispatch?.pruneStaleAfterDays ?? 7;
-  const lines = buildSnapshotLines(data, today, pruneStaleAfterDays);
+  const lines = buildSnapshotLines(repoPath, data, today, pruneStaleAfterDays);
 
   const target = resolveSnapshotPath(repoPath, config);
   await fs.mkdir(path.dirname(target), { recursive: true });
@@ -639,15 +649,17 @@ export async function writeMemorySnapshot(
   };
 }
 
-type WaveIndexEntry = {
-  waveId: string;
-  size: number;
-  passCount: number;
-  failCount: number;
-  postMergeTest: "PASS" | "FAIL" | "skipped";
-  durationMs: number;
-};
-
+/**
+ * Renders the last wave's achieved-vs-requested packing width and a
+ * per-category rejection breakdown (SLICE-182, FEAT-276 AC-5), plus the
+ * pre-existing recent PASS-rate summary. Purely reads the entries
+ * `updateIndex()` (wave/artifacts.mts) already writes -- no recomputation.
+ *
+ * `waveSize` / `rejected*` are optional on WaveIndexEntry because entries
+ * written before this field existed lack them; those older rows fall back
+ * to the pre-existing `size=N` form and omit the rejections line entirely
+ * rather than fabricating a denominator or a zero that isn't measured.
+ */
 export function renderWaveTelemetry(repoRoot: string): string {
   const indexPath = path.join(repoRoot, ".claude/artifacts/loop/waves/index.json");
   if (!existsSync(indexPath)) return "";
@@ -662,12 +674,37 @@ export function renderWaveTelemetry(repoRoot: string): string {
   const sumSize = last10.reduce((s, e) => s + e.size, 0);
   const passRate = sumPass / Math.max(1, sumSize);
 
-  return [
-    "",
+  const widthText =
+    last.waveSize === undefined ? `size=${last.size}` : `packed ${last.size}/${last.waveSize}`;
+
+  const lines = [
     "## Wave telemetry",
     "",
-    `- Last wave: ${last.waveId} (size=${last.size}, PASS=${last.passCount}, FAIL=${last.failCount})`,
-    `- Recent ${last10.length} waves: avg PASS rate ${passRate.toFixed(2)}`,
-    ""
-  ].join("\n");
+    `- Last wave: ${last.waveId} (${widthText}, PASS=${last.passCount}, FAIL=${last.failCount})`,
+    `- Recent ${last10.length} waves: avg PASS rate ${passRate.toFixed(2)}`
+  ];
+
+  // Rejection-reason breakdown for the last wave, aggregated by category
+  // (conflict vs missing-confidence vs other/pre-flight) per
+  // rejection-category.mts, rather than dumping raw reason strings.
+  // Note: FEAT-278 (out of scope here) means packWave's capacity cutoff can
+  // drop candidates without recording them here, so this total is a lower
+  // bound on "not packed", not a full accounting of the ranked list.
+  if (
+    last.rejectedConflict !== undefined ||
+    last.rejectedMissingConfidence !== undefined ||
+    last.rejectedOther !== undefined
+  ) {
+    const conflict = last.rejectedConflict ?? 0;
+    const missing = last.rejectedMissingConfidence ?? 0;
+    const other = last.rejectedOther ?? 0;
+    const total = conflict + missing + other;
+    const otherPart = other > 0 ? `, other=${other}` : "";
+    lines.push(
+      `- Last wave rejections: ${total} (conflict=${conflict}, missing-confidence=${missing}${otherPart})`
+    );
+  }
+
+  lines.push("");
+  return lines.join("\n");
 }

@@ -36,6 +36,15 @@ export interface PlanBuiltEvent extends WaveEventBase {
   type: "plan_built";
   size: number;
   rejectedCount: number;
+  // SLICE-182 (FEAT-276 AC-5): requested capacity + rejection-reason
+  // breakdown alongside the pre-existing size/rejectedCount, so a
+  // solo-packed wave ("packed 1/4") is distinguishable from a genuinely
+  // width-1 wave ("packed 1/1") in the event stream too. Optional --
+  // events recorded before this field existed omit it.
+  waveSize?: number;
+  rejectedConflict?: number;
+  rejectedMissingConfidence?: number;
+  rejectedOther?: number;
 }
 
 export interface WaveDispatchedEvent extends WaveEventBase {
