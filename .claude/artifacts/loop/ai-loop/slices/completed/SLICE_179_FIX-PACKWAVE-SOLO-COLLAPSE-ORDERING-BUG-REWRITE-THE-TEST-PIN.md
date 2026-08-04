@@ -1,7 +1,7 @@
 ---
 id: SLICE-179
 title: Fix packWave solo-collapse ordering bug + rewrite the test pinning it
-status: pending
+status: completed
 feature: FEAT-276
 phase: null
 priority: P1
@@ -9,11 +9,12 @@ target_release: null
 requires_validation: true
 risk: medium
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 effort_points: 2
 estimated_tokens: 100000
 github_issue: 587
 github_url: "https://github.com/astragenie/runner-plugin/issues/587"
+completed_at: 2026-08-04
 ---
 # SLICE-179: Fix packWave solo-collapse ordering bug + rewrite the test pinning it
 

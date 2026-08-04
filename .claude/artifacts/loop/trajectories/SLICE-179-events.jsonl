@@ -1,2 +1,8 @@
 {"type":"shape_classified","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-03T18:58:28.897Z","shape":"none","rationale":"no files","inlinePathUsed":false,"ts":"2026-08-03T18:58:28.897Z"}
 {"type":"workflow_state_changed","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-03T18:58:29.025Z","from":null,"to":"building","ts":"2026-08-03T18:58:29.025Z"}
+{"type":"gate_transition","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-04T15:58:20.137Z","gate":"review","from":null,"to":"passed","ts":"2026-08-04T15:58:20.137Z"}
+{"type":"gate_transition","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-04T15:58:20.137Z","gate":"blocked","from":null,"to":"passed","ts":"2026-08-04T15:58:20.137Z"}
+{"type":"gate_transition","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-04T15:58:20.137Z","gate":"validation","from":null,"to":"passed","ts":"2026-08-04T15:58:20.137Z"}
+{"type":"gate_transition","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-04T15:58:20.137Z","gate":"test-adequacy","from":null,"to":"passed","ts":"2026-08-04T15:58:20.137Z"}
+{"type":"gate_transition","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-04T15:58:20.137Z","gate":"simplify","from":null,"to":"passed","ts":"2026-08-04T15:58:20.137Z"}
+{"type":"workflow_state_changed","sliceId":"SLICE-179","featureId":"FEAT-276","timestamp":"2026-08-04T15:58:26.144Z","from":"building","to":"done","ts":"2026-08-04T15:58:26.144Z"}

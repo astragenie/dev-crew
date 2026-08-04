@@ -3,7 +3,7 @@ slice: SLICE-178
 feature: FEAT-275
 kind: review-result
 status: completed
-decision: FAIL
+decision: rejected
 reviewer: independent (crew:reviewer, dispatched by team-lead)
 date: 2026-08-03
 ---

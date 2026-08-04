@@ -1,7 +1,7 @@
 ---
 id: SLICE-182
 title: "Wave telemetry: packing width + per-rejection reason (conflict vs missing)"
-status: pending
+status: completed
 feature: FEAT-276
 phase: null
 priority: P1
@@ -9,11 +9,12 @@ target_release: null
 requires_validation: true
 risk: medium
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 effort_points: 2
 estimated_tokens: 100000
 github_issue: 593
 github_url: "https://github.com/astragenie/runner-plugin/issues/593"
+completed_at: 2026-08-04
 ---
 # SLICE-182: Wave telemetry: packing width + per-rejection reason (conflict vs missing)
 

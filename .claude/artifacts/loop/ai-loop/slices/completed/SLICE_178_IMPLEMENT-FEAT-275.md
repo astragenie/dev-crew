@@ -1,7 +1,7 @@
 ---
 id: SLICE-178
 title: Implement FEAT-275
-status: pending
+status: completed
 feature: FEAT-275
 phase: null
 priority: P2
@@ -9,9 +9,11 @@ target_release: null
 requires_validation: true
 risk: medium
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 github_issue: 585
 github_url: "https://github.com/astragenie/runner-plugin/issues/585"
+completed_at: 2026-08-04
+badges: [serial-reviewer-warning]
 ---
 # SLICE-178: Implement FEAT-275
 
