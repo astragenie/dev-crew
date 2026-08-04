@@ -31,9 +31,41 @@ export interface ShippedOrdinalEvidence {
   commitSubject: string;
 }
 
+// Why a text match was NOT accepted as shipped evidence (FEAT-284
+// AC-1/AC-2/AC-6/AC-7) — carried on `textOnlyMatches` so a downstream caller
+// (SLICE-190) can print an operator-visible skip/downgrade line without this
+// module owning any console output itself.
+export type TextOnlyMatchReason =
+  | "token-pair-in-body-only" // AC-7: the FEAT-id/SLICE-ordinal pair appears
+  // only when subject+body are concatenated, never within the subject alone
+  // — the established genuine-evidence convention puts it in the subject
+  // (e.g. `feat(connectors): FEAT-312 SLICE-1 — bridge`). Checked before, and
+  // instead of, diff corroboration — a body-only mention never qualifies
+  // regardless of what the commit's diff touched.
+  | "no-diff-evidence" // commit changed zero files (--allow-empty, or the
+  // diff lookup itself failed — fail-open, treated identically to "no
+  // evidence" per this module's contract)
+  | "no-touches-files-overlap" // slice declares touches_files; changed paths
+  // share zero overlap with it (AC-2)
+  | "non-implementing-paths-only"; // slice declares no touches_files; every
+// changed path falls under NON_IMPLEMENTING_PATH_PREFIXES (AC-6)
+
+export interface TextOnlyMatchEvidence {
+  ordinal: number;
+  idSuffix: string;
+  title: string;
+  commitSha: string;
+  commitSubject: string;
+  reason: TextOnlyMatchReason;
+}
+
 export interface GitAnchorReconcileResult {
   ref: string | null;
   shipped: ShippedOrdinalEvidence[];
+  // Proposed slices whose FEAT-id/SLICE-ordinal text matched a commit, but
+  // whose diff did not corroborate it — never folded into `shipped`. Distinct
+  // from a slice with no text match at all, which appears in neither array.
+  textOnlyMatches: TextOnlyMatchEvidence[];
   // Non-null on any failure to resolve a ref or run git — callers must
   // fail-open (treat as "no evidence") rather than block on this.
   gitError: string | null;
@@ -54,6 +86,31 @@ const GIT_TIMEOUT_MS = 15_000;
 // Field/record separators unlikely to appear in commit subjects/bodies.
 const FIELD_SEP = "";
 const RECORD_SEP = "";
+
+// FEAT-284 AC-6: repo-relative path prefixes that never count, by themselves,
+// as evidence a slice was IMPLEMENTED — planning notes, research docs, and
+// backlog/artifact bookkeeping commonly get touched by commits that merely
+// *discuss* a slice (the live 71604bb4 / c2e77fe7 repro: both touched only
+// paths under this list). When a proposed slice declares no `touches_files`
+// to check overlap against instead, a matched commit whose changed paths are
+// ALL covered by this list is downgraded to a text-only match. This is a
+// named, documented policy specifically so a future reader can see and
+// revise it, not an inline literal buried in the matcher.
+//
+// Deliberately does NOT include `src/tests/`: a third live false positive
+// (SLICE-188's own fixture commit, 3bd6ab95 — see FEAT-284 AC-7) touched only
+// a test file while quoting "FEAT-259's SLICE-1" in its body, which would
+// tempt widening this list to cover it. Don't — that would make a genuinely
+// test-only slice (SLICE-188 itself is one) permanently undetectable as
+// shipped, for a reason unrelated to what actually distinguishes it. AC-7's
+// subject-vs-body check below is the correct, narrower discriminator: all
+// three real offenders carry the token pair only in the commit body, never
+// the subject.
+const NON_IMPLEMENTING_PATH_PREFIXES = ["docs/", ".claude/artifacts/"];
+
+function isNonImplementingPath(changedPath: string): boolean {
+  return NON_IMPLEMENTING_PATH_PREFIXES.some((prefix) => changedPath.startsWith(prefix));
+}
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -125,12 +182,79 @@ async function fetchCandidateCommits(
     .filter((r) => r.sha.length > 0);
 }
 
+/** Fetch the set of repo-relative paths a commit changed. Returns null on any
+ * git-level failure (fail-open signal for the caller — treated identically to
+ * "changed nothing" by `evaluateDiffCorroboration`, never a crash). An
+ * `--allow-empty` commit resolves to `[]`, not null. */
+async function fetchChangedFiles(repoPath: string, sha: string): Promise<string[] | null> {
+  const raw = await gitText(["show", "--no-color", "--format=", "--name-only", sha], {
+    cwd: repoPath,
+    timeoutMs: GIT_TIMEOUT_MS,
+    maxBuffer: 4 * 1024 * 1024
+  });
+  if (raw === null) return null;
+  if (raw.length === 0) return [];
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+// Not a discriminated union on purpose: tsconfig.test.json runs with
+// `strict`/`strictNullChecks` off (FEAT-259-adjacent codegen constraint), and
+// tsc 7's control-flow narrowing of an `{ ok: true } | { ok: false; reason }`
+// union does not hold under that combination — `reason` stays reachable in
+// the `ok: true` arm as far as the checker is concerned. `reason` is always
+// non-null exactly when `ok` is false (enforced below), so callers read it
+// with a `!` assertion in the `ok === false` branch instead of relying on
+// narrowing.
+interface DiffCorroboration {
+  ok: boolean;
+  reason: TextOnlyMatchReason | null;
+}
+
+/** FEAT-284 AC-1/AC-2/AC-6: decide whether a text-matched commit's diff
+ * actually corroborates the match. `changedFiles` is the result of
+ * `fetchChangedFiles` (null = lookup failed, fail-open). */
+function evaluateDiffCorroboration(
+  changedFiles: string[] | null,
+  touchesFiles: string[] | undefined
+): DiffCorroboration {
+  if (changedFiles === null || changedFiles.length === 0) {
+    // AC-1: no file changes (or the diff lookup itself failed) — fail-open,
+    // never crash, never treat as shipped evidence either way.
+    return { ok: false, reason: "no-diff-evidence" };
+  }
+  if (touchesFiles && touchesFiles.length > 0) {
+    // AC-2: slice declares its implementation surface — require overlap.
+    const overlaps = changedFiles.some((f) => touchesFiles.includes(f));
+    return overlaps
+      ? { ok: true, reason: null }
+      : { ok: false, reason: "no-touches-files-overlap" };
+  }
+  // AC-6: no declared touches_files — require at least one changed path
+  // outside the non-implementing prefix list (docs/artifacts bookkeeping).
+  const allNonImplementing = changedFiles.every(isNonImplementingPath);
+  return allNonImplementing
+    ? { ok: false, reason: "non-implementing-paths-only" }
+    : { ok: true, reason: null };
+}
+
 /**
  * Cross-check a FEAT's proposed_slices against merged commit history.
  * Fail-open by contract: any git-level failure (unresolvable ref, spawn
- * error, exception) returns `gitError` set and an empty `shipped[]` — callers
- * must proceed as though nothing is shipped rather than block a legitimate
- * slice start on a git hiccup.
+ * error, exception) returns `gitError` set and empty `shipped[]`/
+ * `textOnlyMatches[]` — callers must proceed as though nothing is shipped
+ * rather than block a legitimate slice start on a git hiccup.
+ *
+ * A commit whose subject/body mentions a proposed slice's FEAT-id/SLICE-
+ * ordinal token pair is no longer sufficient on its own (FEAT-284): the pair
+ * must appear in the commit SUBJECT itself (AC-7 — a body-only mention is
+ * never evidence, no matter what the commit touched), and the match is only
+ * promoted to `shipped` evidence if the commit's diff also corroborates it
+ * (see `evaluateDiffCorroboration`). A text match that fails either check is
+ * recorded on `textOnlyMatches` instead of being silently dropped, so a
+ * caller can surface it as a warning.
  */
 export async function reconcileProposedSlicesAgainstGit(
   repoPath: string,
@@ -141,15 +265,26 @@ export async function reconcileProposedSlicesAgainstGit(
   try {
     const ref = await resolveMainRef(repoPath, config);
     if (!ref) {
-      return { ref: null, shipped: [], gitError: "no resolvable main ref (fail-open)" };
+      return {
+        ref: null,
+        shipped: [],
+        textOnlyMatches: [],
+        gitError: "no resolvable main ref (fail-open)"
+      };
     }
     const commits = await fetchCandidateCommits(repoPath, ref, featureId);
     if (commits === null) {
-      return { ref, shipped: [], gitError: `git log failed against ${ref} (fail-open)` };
+      return {
+        ref,
+        shipped: [],
+        textOnlyMatches: [],
+        gitError: `git log failed against ${ref} (fail-open)`
+      };
     }
 
     const featTok = escapeRegExp(featureId);
     const shipped: ShippedOrdinalEvidence[] = [];
+    const textOnlyMatches: TextOnlyMatchEvidence[] = [];
     for (let i = 0; i < proposed.length; i += 1) {
       const slice = proposed[i]!;
       const ordinal = ordinalFromIdSuffix(slice.id_suffix) ?? i + 1;
@@ -159,23 +294,43 @@ export async function reconcileProposedSlicesAgainstGit(
         "i"
       );
       const hit = commits.find((c) => pattern.test(`${c.subject} ${c.body}`));
-      if (hit) {
-        shipped.push({
-          ordinal,
-          idSuffix: slice.id_suffix,
-          title: slice.title,
-          commitSha: hit.sha,
-          commitSubject: hit.subject
-        });
+      if (!hit) continue;
+
+      const record = {
+        ordinal,
+        idSuffix: slice.id_suffix,
+        title: slice.title,
+        commitSha: hit.sha,
+        commitSubject: hit.subject
+      };
+
+      // AC-7: the token pair must appear in the SUBJECT alone, not merely
+      // once subject and body are concatenated. All three live false
+      // positives (71604bb4, c2e77fe7, 3bd6ab95) carry the pair only in the
+      // body; the established genuine-evidence convention puts it in the
+      // subject. A body-only mention never qualifies, regardless of diff —
+      // checked before, and instead of, diff corroboration.
+      if (!pattern.test(hit.subject)) {
+        textOnlyMatches.push({ ...record, reason: "token-pair-in-body-only" });
+        continue;
+      }
+
+      const changedFiles = await fetchChangedFiles(repoPath, hit.sha);
+      const corroboration = evaluateDiffCorroboration(changedFiles, slice.touches_files);
+      if (corroboration.ok) {
+        shipped.push(record);
+      } else {
+        textOnlyMatches.push({ ...record, reason: corroboration.reason! });
       }
     }
-    return { ref, shipped, gitError: null };
+    return { ref, shipped, textOnlyMatches, gitError: null };
   } catch (err: unknown) {
     // Belt-and-braces: gitText/gitOk already swallow their own failures, but
     // a malformed config or regex construction should still fail open.
     return {
       ref: null,
       shipped: [],
+      textOnlyMatches: [],
       gitError: `reconcile threw: ${err instanceof Error ? err.message : String(err)}`
     };
   }

@@ -62,10 +62,15 @@ type FixtureFiles = Record<string, string>;
 interface CommitSpec {
   subject: string;
   files?: FixtureFiles;
+  // FEAT-284 AC-7: a separate paragraph from `subject`, distinct commit
+  // trailer text — needed to fixture the "token pair only when subject+body
+  // are concatenated" shape (the live 3bd6ab95 recurrence: subject mentions
+  // only its own slice, body separately narrates a different FEAT/SLICE).
+  body?: string;
 }
 
 /** A fixture commit input: a bare subject (empty commit, existing call-site
- * shape) or a { subject, files } spec for a real file-touching commit. */
+ * shape) or a { subject, files, body } spec for a real file-touching commit. */
 type CommitInput = string | CommitSpec;
 
 async function writeFixtureFiles(repo: string, files: FixtureFiles): Promise<void> {
@@ -76,18 +81,25 @@ async function writeFixtureFiles(repo: string, files: FixtureFiles): Promise<voi
   }
 }
 
-/** Commit `subject` in `repo`. With `files` given and non-empty, writes +
- * stages those paths first (a real file-touching commit); otherwise commits
- * `--allow-empty` (the accidental/no-op-diff shape the FEAT-284 repro
- * exploited). Exported-in-file so both `tmpGitRepo` and standalone
- * mid-sequence commits (e.g. after `addFeature`) can produce either shape. */
-async function commitFixture(repo: string, subject: string, files?: FixtureFiles): Promise<void> {
+/** Commit `subject` (+ optional separate `body` paragraph) in `repo`. With
+ * `files` given and non-empty, writes + stages those paths first (a real
+ * file-touching commit); otherwise commits `--allow-empty` (the
+ * accidental/no-op-diff shape the FEAT-284 repro exploited). Exported-in-file
+ * so both `tmpGitRepo` and standalone mid-sequence commits (e.g. after
+ * `addFeature`) can produce either shape. */
+async function commitFixture(
+  repo: string,
+  subject: string,
+  files?: FixtureFiles,
+  body?: string
+): Promise<void> {
+  const messageArgs = body ? ["-m", subject, "-m", body] : ["-m", subject];
   if (files && Object.keys(files).length > 0) {
     await writeFixtureFiles(repo, files);
     git(repo, "add", "-A");
-    git(repo, "commit", "-m", subject);
+    git(repo, "commit", ...messageArgs);
   } else {
-    git(repo, "commit", "--allow-empty", "-m", subject);
+    git(repo, "commit", "--allow-empty", ...messageArgs);
   }
 }
 
@@ -100,9 +112,18 @@ async function tmpGitRepo(prefix: string, commits: CommitInput[]): Promise<strin
   git(repo, "init", "-b", "main");
   git(repo, "config", "user.email", "test@example.com");
   git(repo, "config", "user.name", "Test");
+  // Commit the scaffold's own .claude/loop.json first so it's already
+  // tracked before any fixture commit below. Otherwise it sits untracked
+  // and the first `files`-bearing commit's `git add -A` (in commitFixture)
+  // sweeps it in as an unintended extra changed path — invisible to fixtures
+  // that only assert "shipped" (an extra path doesn't change that verdict),
+  // but corrupting to FEAT-284 AC-6 fixtures that assert changed paths are
+  // ALL non-implementing.
+  git(repo, "add", ".claude/loop.json");
+  git(repo, "commit", "-m", "chore: scaffold fixture repo");
   for (const entry of commits) {
     const spec: CommitSpec = typeof entry === "string" ? { subject: entry } : entry;
-    await commitFixture(repo, spec.subject, spec.files);
+    await commitFixture(repo, spec.subject, spec.files, spec.body);
   }
   return repo;
 }
@@ -171,9 +192,13 @@ test("resolveMainRef prefers local main over a stale origin/main (no-push-from-l
     encoding: "utf8"
   }).stdout.trim();
   // Simulate the loop's default posture: slice merged locally, never pushed —
-  // origin/main is a stale remote-tracking ref behind local main.
+  // origin/main is a stale remote-tracking ref behind local main. Real file
+  // change (not --allow-empty) so FEAT-284 AC-1's diff-corroboration
+  // requirement doesn't strip this fixture's shipped evidence.
   git(repo, "update-ref", "refs/remotes/origin/main", staleSha);
-  git(repo, "commit", "--allow-empty", "-m", "feat: FEAT-7 SLICE-1 — merged locally, unpushed");
+  await commitFixture(repo, "feat: FEAT-7 SLICE-1 — merged locally, unpushed", {
+    "src/scripts/lib/local-only.mts": "export const localOnly = 1;\n"
+  });
 
   assert.equal(await resolveMainRef(repo, null), "main");
 
@@ -202,9 +227,18 @@ const PROPOSED_3 = [
 ] satisfies { id_suffix: string; title: string; points: 2; estimated_tokens: number }[];
 
 test("reconcile finds shipped ordinals from FEAT+SLICE commit evidence", async () => {
+  // Real file changes on the two matching commits — FEAT-284 AC-1 requires
+  // diff corroboration, so an --allow-empty commit here would no longer
+  // count regardless of how well its text matches.
   const repo = await tmpGitRepo("gac-hit-", [
-    "feat(connectors): FEAT-312 SLICE-1 — bridge",
-    "feat(connectors): SLICE-2 lands FEAT-312 ACL",
+    {
+      subject: "feat(connectors): FEAT-312 SLICE-1 — bridge",
+      files: { "src/scripts/lib/bridge.mts": "export const bridge = 1;\n" }
+    },
+    {
+      subject: "feat(connectors): SLICE-2 lands FEAT-312 ACL",
+      files: { "src/scripts/lib/acl.mts": "export const acl = 1;\n" }
+    },
     "chore: unrelated"
   ]);
   const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-312", PROPOSED_3);
@@ -235,17 +269,14 @@ test("reconcile fails open with gitError outside a git repo", async () => {
 
 // --- diff-shape fixtures (FEAT-284) ------------------------------------------
 //
-// The matcher above (reconcileProposedSlicesAgainstGit) only ever inspects
-// commit subject/body text — it never looks at what a commit actually
-// changed. Every fixture commit prior to this section was `--allow-empty`,
-// so the suite could not distinguish a commit that *implements* a slice from
-// one that merely *mentions* it (see FEAT-284's live repro against commit
-// 71604bb4). These fixtures give that distinction a shape the next slice
-// (SLICE-189, diff-level corroboration) can assert against.
+// reconcileProposedSlicesAgainstGit used to treat a subject/body text match
+// alone as shipped evidence — it never looked at what a commit actually
+// changed. SLICE-188 rebuilt the fixtures below with real file-touching
+// commits (see the live repro against commit 71604bb4); SLICE-189 (this
+// slice) adds the diff-corroboration check itself (AC-1/AC-2/AC-6) and these
+// tests assert its corrected behavior.
 
-test("KNOWN DEFECT (FEAT-284): an --allow-empty commit that only mentions FEAT+SLICE tokens counts as shipped evidence", async () => {
-  // Characterizes current behavior. SLICE-189 (diff corroboration) is
-  // expected to invert this assertion — an empty commit must never count.
+test("FEAT-284 AC-1: an --allow-empty commit that only mentions FEAT+SLICE tokens does NOT count as shipped evidence", async () => {
   const repo = await tmpGitRepo("gac-empty-evidence-", [
     { subject: "feat: FEAT-500 SLICE-1 — allow-empty, touches nothing" }
   ]);
@@ -253,17 +284,17 @@ test("KNOWN DEFECT (FEAT-284): an --allow-empty commit that only mentions FEAT+S
     { id_suffix: "-SLICE-1", title: "Empty", points: 2, estimated_tokens: 100_000 }
   ]);
   assert.equal(res.gitError, null);
-  assert.deepEqual(
-    res.shipped.map((s) => s.ordinal),
-    [1],
-    "KNOWN DEFECT: empty commit counted as shipped evidence — see FEAT-284 / SLICE-189"
-  );
+  assert.deepEqual(res.shipped, []);
+  assert.equal(res.textOnlyMatches.length, 1);
+  assert.equal(res.textOnlyMatches[0]!.reason, "no-diff-evidence");
 });
 
-test("KNOWN DEFECT (FEAT-284): a docs-only commit that mentions FEAT+SLICE tokens counts as shipped evidence (the 71604bb4 repro shape)", async () => {
-  // Characterizes current behavior. This is the exact shape of the live
-  // 71604bb4 repro: a docs-only commit whose body prose incidentally
-  // mentions both tokens. SLICE-189 is expected to invert this assertion.
+test("FEAT-284 AC-6: a docs-only commit that mentions FEAT+SLICE tokens does NOT count as shipped evidence (the 71604bb4 repro shape)", async () => {
+  // This is the exact shape of the live 71604bb4 repro: a docs-only commit
+  // whose body prose incidentally mentions both tokens, and the proposed
+  // slice declares no touches_files (matching all five of FEAT-259's real
+  // entries) — so AC-6's non-implementing-path rule is what has to catch it,
+  // not AC-1 or AC-2.
   const repo = await tmpGitRepo("gac-docs-evidence-", [
     {
       subject: "docs: run before committing FEAT-259's SLICE-1 to a design",
@@ -274,11 +305,38 @@ test("KNOWN DEFECT (FEAT-284): a docs-only commit that mentions FEAT+SLICE token
     { id_suffix: "-SLICE-1", title: "Design", points: 2, estimated_tokens: 100_000 }
   ]);
   assert.equal(res.gitError, null);
-  assert.deepEqual(
-    res.shipped.map((s) => s.ordinal),
-    [1],
-    "KNOWN DEFECT: docs-only commit counted as shipped evidence — this is the 71604bb4 live repro"
-  );
+  assert.deepEqual(res.shipped, []);
+  assert.equal(res.textOnlyMatches.length, 1);
+  assert.equal(res.textOnlyMatches[0]!.reason, "non-implementing-paths-only");
+});
+
+test("FEAT-284 AC-7: a token pair mentioned only in the commit BODY does NOT count as shipped evidence, even with real file changes (live SLICE-188/3bd6ab95 recurrence)", async () => {
+  // Found live, not authored as a fixture: SLICE-188's own commit rebuilding
+  // this test suite has a SUBJECT that mentions only "SLICE-188" (an
+  // unrelated ordinal, its own slice) and a BODY that separately quotes
+  // "FEAT-259's SLICE-1" as repro narration — while genuinely touching a
+  // real src/tests/ file. That combination defeated AC-1 (real diff), AC-2
+  // (FEAT-259's proposed slices declare no touches_files) and AC-6 (the
+  // changed path isn't docs/artifacts) as first implemented, re-triggering
+  // the exact silent-shipped-evidence defect FEAT-284 exists to kill —
+  // discovered during this slice's own live FEAT-259 verification. AC-7's
+  // subject-only check is what actually closes it: the pair appears only
+  // once subject+body are concatenated, never within the subject alone.
+  const repo = await tmpGitRepo("gac-body-only-evidence-", [
+    {
+      subject:
+        "test(SLICE-188): rebuild git-anchored-completion fixtures with real file-touching commits",
+      files: { "src/tests/some-other-suite.test.mts": "test('x', () => {});\n" },
+      body: "tmpGitRepo's --allow-empty-only fixture helper made it structurally impossible for the suite to distinguish a commit that implements a slice from one that merely mentions it in prose — the exact gap that let commit 71604bb4 silently drop FEAT-259's SLICE-1."
+    }
+  ]);
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-259", [
+    { id_suffix: "-SLICE-1", title: "Design", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(res.shipped, []);
+  assert.equal(res.textOnlyMatches.length, 1);
+  assert.equal(res.textOnlyMatches[0]!.reason, "token-pair-in-body-only");
 });
 
 test("reconcile finds genuine shipped evidence from a commit that changes real source paths", async () => {
@@ -299,12 +357,7 @@ test("reconcile finds genuine shipped evidence from a commit that changes real s
   assert.match(res.shipped[0]!.commitSha, /^[0-9a-f]{40}$/);
 });
 
-test("reconcile fixture: a candidate commit's changed paths can overlap a proposed slice's declared touches_files", async () => {
-  // SLICE-189's AC-2 downgrades a match whose changed paths share zero
-  // overlap with the slice's declared touches_files to a warning. This
-  // fixture pins the "overlap" half of that contrast; the matcher today
-  // does not consult touches_files at all, so both this and the sibling
-  // no-overlap fixture below currently produce identical (shipped) results.
+test("FEAT-284 AC-2: a candidate commit's changed paths overlapping a proposed slice's declared touches_files counts as shipped", async () => {
   const repo = await tmpGitRepo("gac-touches-overlap-", [
     {
       subject: "feat: FEAT-502 SLICE-1 — implement connector",
@@ -326,13 +379,13 @@ test("reconcile fixture: a candidate commit's changed paths can overlap a propos
     res.shipped.map((s) => s.ordinal),
     [1]
   );
+  assert.deepEqual(res.textOnlyMatches, []);
 });
 
-test("reconcile fixture: a candidate commit's changed paths can share zero overlap with a proposed slice's declared touches_files", async () => {
+test("FEAT-284 AC-2: a candidate commit's changed paths sharing zero overlap with declared touches_files is downgraded, not shipped", async () => {
   // Contrast case for the fixture above — real file changes, but to a path
   // outside the slice's declared touch surface (docs, not the connector
-  // module). Today's matcher still records this as shipped (text-only
-  // match); SLICE-189/AC-2 is expected to downgrade it to a warning instead.
+  // module).
   const repo = await tmpGitRepo("gac-touches-no-overlap-", [
     {
       subject: "feat: FEAT-503 SLICE-1 — implement connector",
@@ -350,11 +403,43 @@ test("reconcile fixture: a candidate commit's changed paths can share zero overl
   ];
   const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-503", proposed);
   assert.equal(res.gitError, null);
-  assert.deepEqual(
-    res.shipped.map((s) => s.ordinal),
-    [1],
-    "current matcher ignores touches_files entirely — see FEAT-284 / SLICE-189 AC-2"
+  assert.deepEqual(res.shipped, []);
+  assert.equal(res.textOnlyMatches.length, 1);
+  assert.equal(res.textOnlyMatches[0]!.reason, "no-touches-files-overlap");
+});
+
+test("FEAT-284: fail-open when git cannot resolve a matched commit's diff", async () => {
+  // The commit-log pre-filter succeeds (the commit object itself is intact,
+  // so `git log --grep` can read its message fine) but the diff lookup for
+  // that exact commit is made to fail by deleting its TREE object — `git
+  // show --name-only` needs the tree to compute which paths changed and
+  // errors without it, while `git log --grep` never touches the tree. The
+  // reconciler must treat this as "no evidence", never crash, never mark the
+  // slice shipped.
+  const repo = await tmpGitRepo("gac-diff-lookup-fails-", [
+    {
+      subject: "feat: FEAT-504 SLICE-1 — implement thing",
+      files: { "src/scripts/lib/thing.mts": "export const thing = 1;\n" }
+    }
+  ]);
+  const treeSha = spawnSync("git", ["rev-parse", "HEAD^{tree}"], {
+    cwd: repo,
+    encoding: "utf8"
+  }).stdout.trim();
+  const treeObjectPath = path.join(repo, ".git", "objects", treeSha.slice(0, 2), treeSha.slice(2));
+  await fs.rm(treeObjectPath, { force: true });
+
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-504", [
+    { id_suffix: "-SLICE-1", title: "Thing", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.equal(
+    res.gitError,
+    null,
+    "outer reconcile must not surface the inner diff-lookup failure as gitError"
   );
+  assert.deepEqual(res.shipped, []);
+  assert.equal(res.textOnlyMatches.length, 1);
+  assert.equal(res.textOnlyMatches[0]!.reason, "no-diff-evidence");
 });
 
 // --- end-to-end acceptance (issue #392) --------------------------------------
@@ -366,8 +451,14 @@ test("sliceFromFeature skips shipped prefix: scaffolds SLICE-3 when 1/2 are merg
     effort_points: 6,
     proposed_slices: PROPOSED_3
   });
-  git(repo, "commit", "--allow-empty", "-m", `feat: ${feat.id} SLICE-1 — bridge shipped`);
-  git(repo, "commit", "--allow-empty", "-m", `feat: ${feat.id} SLICE-2 — ACL shipped`);
+  // Real file changes — FEAT-284 AC-1 requires diff corroboration, so an
+  // --allow-empty commit would no longer register as shipped evidence.
+  await commitFixture(repo, `feat: ${feat.id} SLICE-1 — bridge shipped`, {
+    "src/scripts/lib/bridge.mts": "export const bridge = 1;\n"
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-2 — ACL shipped`, {
+    "src/scripts/lib/acl.mts": "export const acl = 1;\n"
+  });
 
   const out = await sliceFromFeature(repo, feat.id);
   assert.equal(out.slices.length, 1, "must scaffold only the first unshipped slice");
@@ -386,8 +477,14 @@ test("sliceFromFeature refuses a fully-shipped FEAT and leaves backlog state unt
     effort_points: 4,
     proposed_slices: PROPOSED_3.slice(0, 2)
   });
-  git(repo, "commit", "--allow-empty", "-m", `feat: ${feat.id} SLICE-1 — bridge`);
-  git(repo, "commit", "--allow-empty", "-m", `feat: ${feat.id} SLICE-2 — ACL`);
+  // Real file changes — see the sibling test above for why --allow-empty no
+  // longer registers as shipped evidence under FEAT-284 AC-1.
+  await commitFixture(repo, `feat: ${feat.id} SLICE-1 — bridge`, {
+    "src/scripts/lib/bridge.mts": "export const bridge = 1;\n"
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-2 — ACL`, {
+    "src/scripts/lib/acl.mts": "export const acl = 1;\n"
+  });
 
   await assert.rejects(
     () => sliceFromFeature(repo, feat.id),
