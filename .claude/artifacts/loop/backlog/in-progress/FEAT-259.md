@@ -48,7 +48,7 @@ proposed_slices:
 proposed_slices_shipped: []
 proposed_slices_shipped_commits: []
 started_at: 2026-08-04
-slices_complete: [SLICE-187]
+slices_complete: [SLICE-187, SLICE-184]
 ---
 ## Description
 
@@ -203,3 +203,52 @@ and therefore fails toward approve, just uninstrumented. And a nudge that the
 agent ignores is silently approved on the second stop with no telemetry that
 the nudge failed; that observability gap is FEAT-275's territory, not this
 slice's.
+
+## Measured: SLICE-184 and SLICE-187 are NOT coupled (2026-08-04)
+
+builder-184 flagged honestly that it had not verified whether an owned
+agent's `.md` content reaches the transcript first turn that
+`hooks/report-gate.mjs` scans. Measured directly.
+
+Dispatched `runner:researcher` with a prompt containing no mention of
+SendMessage or main, then inspected its real subagent transcript:
+
+```
+agent-aprobe-firstturn-....jsonl
+   first-turn bytes       : 677
+   contains canonical line: false
+   trips report-gate regex: false
+```
+
+For contrast, first turns of agents dispatched earlier today DO contain the
+canonical line and DO trip the regex — but only because the operator's own
+ad-hoc brief quoted it, not because the agent definition was folded in.
+
+**Conclusion: agent-definition content does not reach the scanned first
+turn.** SLICE-184's final-act line lives in the system prompt; the first user
+turn carries only the caller's prompt text.
+
+Two consequences, both of which correct earlier assumptions in this FEAT:
+
+1. **SLICE-184 does not make the six owned agents contract-bearing under
+   SLICE-187's hook.** builder-184 reasoned all six "become contract-bearing
+   if their template content reaches the scanned transcript" — it does not,
+   so they do not. The two slices are independent, not reinforcing.
+
+2. **SLICE-187's AC1 coverage is narrower than it appears.** The hook can
+   only detect a report-back contract that the *caller* wrote into the
+   dispatch prompt. It therefore policies exactly the dispatches that already
+   carry the instruction, and is blind to any dispatch relying on the agent
+   definition to supply it — a false negative in the population most likely
+   to need it, since a caller who remembered to write the instruction is also
+   the caller least likely to be ignored.
+
+This does not invalidate either slice. SLICE-184 still fixes the real gap it
+targeted (no owned agent mentioned the delivery mechanism at all), and
+SLICE-187 still blocks correctly on the contracts it can see. But the
+combined effect is smaller than the two slices' ACs imply read together, and
+closing FEAT-259 on AC1+AC3 alone would overstate coverage.
+
+Worth considering for SLICE-185's watchdog scope: the watchdog observes from
+the orchestrator side and does not depend on prompt text at all, so it is the
+mechanism that actually covers the population these two miss.

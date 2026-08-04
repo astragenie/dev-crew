@@ -1,7 +1,7 @@
 ---
 id: SLICE-184
 title: Mandatory final-act line across all dispatch agent templates (batch)
-status: pending
+status: completed
 feature: FEAT-259
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 1
 estimated_tokens: 60000
 github_issue: 595
 github_url: "https://github.com/astragenie/runner-plugin/issues/595"
+completed_at: 2026-08-04
 ---
 # SLICE-184: Mandatory final-act line across all dispatch agent templates (batch)
 
