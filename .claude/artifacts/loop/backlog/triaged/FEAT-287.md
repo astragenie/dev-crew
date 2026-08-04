@@ -1,7 +1,7 @@
 ---
 id: FEAT-287
-status: pending
-priority: null
+status: triaged
+priority: P1
 category: feature
 target_release: null
 created: 2026-08-04
@@ -9,6 +9,29 @@ updated: 2026-08-04
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.65
+pm_effort_estimate: 0.55
+pm_strategic_alignment: 0.8
+pm_technical_risk: 0.5
+pm_dependency_depth: 0.25
+pm_composite_priority: P1
+pm_autonomous_safe: false
+pm_reviewed: 2026-08-04
+autonomous_safe: false
+triage_notes: "This is the same defect class as FEAT-281 (P1: tested/gated-but-not-actually-covered) one level up, and arguably worse in one respect: FEAT-281's gap was passive (a function nobody called), while this gate actively prints 'OK — no raw backlog-state writers outside BacklogStore/allowlist' on every run while a live writer bypasses it and has already produced a confirmed external-facing bug (FEAT-285's six duplicate GitHub issues). That combination — false assurance plus a demonstrated live consequence — puts customer_impact and strategic_alignment above FEAT-285 (P2, the symptom) and FEAT-282 (P2, an orphan validator nobody currently relies on and that blocks nothing), but effort and risk are real and multi-file (porting a live external-side-effecting write path, not just widening a scan glob), which is why this sits at P1 alongside FEAT-281 rather than climbing to P0: like FEAT-283, this touches gate-adjacent/live-external-effect code, so autonomous_safe is false pending human sign-off on the port-vs-allowlist calls for the two secondary writers."
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: Extend backlog-write scan to scripts/ tree + .mjs files; add scanner-reach test
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-2
+    title: Port github-sync.mjs raw FEAT/SLICE fs.writeFile calls to BacklogStore
+    points: 2
+    estimated_tokens: 100000
+  - id_suffix: -SLICE-3
+    title: "Triage setup-github-sync.mjs + competitor-audit/aggregate.mjs writes: port or allowlist"
+    points: 1
+    estimated_tokens: 60000
 ---
 ## Description
 
@@ -56,3 +79,18 @@ tree or (if the allowlist swallows it) silently exempt a live surface. The
 same loader indirection that hides these writers from the sole-writer gate
 will hide them from the wiring gate. Worth designing the two together rather
 than sequentially.
+
+## Acceptance criteria (Given-When-Then)
+
+- Given validate-backlog-writes.mts's scanner, when it runs, then it walks both src/scripts and the top-level scripts/ tree (no single hardcoded SCAN_ROOT), covering .mjs files as well as .mts.
+- Given scripts/lib/github-sync.mjs's raw fs.writeFile calls against FEAT paths (lines 82, 92, 184) and SLICE paths (lines 115, 121), when the scanner runs pre-fix, then it flags them; post-fix, they are ported to BacklogStore's updateFeatureFrontmatter/updateSliceFrontmatter so they trigger the same cache-bust as every other sanctioned writer.
+- Given scripts/setup-github-sync.mjs and scripts/competitor-audit/aggregate.mjs's fs.writeFile calls, when triaged, then each is either ported to BacklogStore or added to ALLOWLIST with a written justification in the existing DEC-076 style.
+- Given src/scripts/lib/github-sync-loader.mts's importGithubSync resolves a computed file:// URL rather than a literal specifier, when any paired static-analysis gate (e.g. FEAT-281's unwired-export validator) evaluates call edges into scripts/lib/, then importGithubSync counts as a real caller, not a dead/unreferenced tree.
+- Given a new test asserting the scanner's reach, when a file is added under scripts/ (not src/scripts/) containing a disallowed raw write, then validate-backlog-writes.mts fails and names that file.
+- Given github-sync.mjs's writes are ported to BacklogStore, when a slice-from-feature run publishes N sibling slices for one FEAT, then listBacklog()'s memoized cache is correctly busted by every write, so the FEAT-285 duplicate-parent-issue regression does not recur.
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: Extend backlog-write scan to scripts/ tree + .mjs files; add scanner-reach test (2 pts)
+- SLICE-2: Port github-sync.mjs raw FEAT/SLICE fs.writeFile calls to BacklogStore (2 pts)
+- SLICE-3: Triage setup-github-sync.mjs + competitor-audit/aggregate.mjs writes: port or allowlist (1 pts)
