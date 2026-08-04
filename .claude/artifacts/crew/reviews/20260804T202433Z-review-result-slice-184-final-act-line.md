@@ -106,6 +106,54 @@ agents specially, and it doesn't need to — the hook was never designed to
 read agent-definition files. Say this plainly to avoid the team assuming
 SLICE-184 tightened SLICE-187's coverage; it didn't, and doesn't need to.
 
+**Independent verification, not taken on the lead's report alone.** The
+lead supplied a probe result reaching the same conclusion; I re-derived it
+from a separate source before folding it in — a `runner:researcher`
+subagent transcript from an earlier session
+(`C--work-mega-runner-plugin/80908d95-99e0-4673-bff0-aff1c76ffe47/
+subagents/agent-a2d177a52128e1f6e.jsonl`, unrelated to today's probes):
+
+- The transcript's line `type` values are `{'user': 66, 'assistant': 102}`
+  — **no `system`-typed line exists at all.** Whatever the runtime does
+  with the `runner:researcher` agent-definition content (i.e.
+  `agents/researcher.md`) to seed that subagent, it is not written into
+  this JSONL as any turn `report-gate.mjs` could parse — not as `user`,
+  not under any other type.
+- The transcript's first `user`-role turn is 2292 chars beginning "Read-only
+  investigation in repo C:\work\mega\runner-plugin. Goal: map the COMPLETE
+  read-side / feed-forward memory path..." — the dispatcher's task prompt,
+  not agent-definition boilerplate.
+- Cross-checked the contrast claim too: I ran `REPORT_BACK_CONTRACT_RE`
+  (copied verbatim from `hooks/report-gate.mjs:97`) against the first user
+  turn of today's `agent-abuilder-184-*`, `agent-areviewer-184-*`, and
+  `agent-areviewer-187-*` transcripts (all dispatched today, all touching
+  SLICE-184/187 work) — all three trip the regex, and in each case the
+  match is inside the dispatcher's own ad-hoc prompt text, not anything
+  from `agents/*.md`.
+
+Both checks are from transcripts I read directly, independent of the
+lead's probe. They agree with the lead's finding and with my reading of
+`report-gate.mjs`'s own header comment (section above): **confirmed, not
+just accepted.**
+
+**On the lead's two follow-on points — I agree with both:**
+
+1. SLICE-184 does not make the six owned agents contract-bearing under
+   SLICE-187's regex. Independent, not reinforcing — as stated above.
+2. SLICE-187's AC1 coverage is narrower than its own text implies: the
+   hook can only ever see a report-back contract that the *calling*
+   prompt wrote in; it has no visibility into instructions that live
+   solely in the callee's agent-definition file. Concretely, if some
+   future dispatch path invoked one of these six agents with a
+   contract-free ad-hoc prompt (relying on the agent's own "Final act"
+   line to carry the obligation), the hook would silently approve that
+   stop even though the agent-level instruction was violated — AC1 as
+   written ("Given a dispatched agent with a report-back contract...")
+   reads as if the agent's own definition could establish that contract,
+   but only the dispatch prompt can. Worth an explicit line in FEAT-259
+   (the lead notes it's already recorded there) so closing on AC1+AC3
+   alone isn't read as full coverage.
+
 ## 5. swarm.md's extra clause
 
 The appended sentence — distinguishing "reporting to your caller" from
@@ -130,9 +178,14 @@ grep for the canonical string still matches uniformly across all six.
 
 `approved_with_notes` — the slice does what AC3 requires, is correctly
 scoped to docs only, passes the content-length gate, and the wording is
-evidence-aligned. Two notes carried forward, neither blocking: (a) pm.md
+evidence-aligned. Three notes carried forward, none blocking: (a) pm.md
 now has zero headroom against its override cap and this is the second
 time that's happened — worth a backlog follow-up on de-duplicating its
 contract content; (b) the team should not read SLICE-184 as having
 tightened SLICE-187's report-gate coverage — the two mechanisms are
-independent, per the determination in section 4.
+independent, confirmed both by `report-gate.mjs`'s own header comment and
+by direct inspection of a `runner:researcher` transcript (section 4); (c)
+SLICE-187's AC1 wording overstates its own coverage — the hook can only
+ever see contracts the *dispatcher's* prompt wrote in, never one carried
+solely by the callee's agent-definition file — so FEAT-259 should not be
+closed on AC1+AC3 alone without noting that gap explicitly.
