@@ -1,6 +1,9 @@
 // src/scripts/lib/wave/planner.mts
 // Greedy wave packer: given ranked slice candidates, fills up to waveSize
-// slots whose touches_files don't conflict. Missing-confidence slices run solo.
+// slots whose touches_files don't conflict. Missing-confidence candidates
+// never block later well-specified candidates from packing (FEAT-276/
+// SLICE-179) -- they're deferred and only granted a solo slot as a last
+// resort, when nothing else in the ranked list could be packed at all.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -36,20 +39,16 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
   const picked: SliceCandidate[] = [];
   const rejected: WaveRejection[] = [];
   const pickedPaths = new PathSet();
+  const missingQueue: SliceCandidate[] = [];
 
   for (const cand of ranked) {
     if (picked.length >= opts.waveSize) break;
 
     if (cand.touches.confidence === "missing") {
-      if (picked.length === 0) {
-        // Solo dispatch: collapse wave to this one candidate.
-        picked.push(cand);
-        break;
-      }
-      rejected.push({
-        sliceId: cand.sliceId,
-        reason: "missing_touches_files_solo_only"
-      });
+      // Defer: ranking position must never decide whether a missing-
+      // confidence candidate poisons the whole pack. Resolved after the
+      // full ranked list has been considered (see below).
+      missingQueue.push(cand);
       continue;
     }
 
@@ -64,6 +63,22 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
 
     picked.push(cand);
     pickedPaths.addAll(cand.touches.paths);
+  }
+
+  if (picked.length === 0 && missingQueue.length > 0) {
+    // Nothing well-specified could be packed at all -- dispatch the
+    // top-ranked missing-confidence candidate solo rather than starving
+    // the wave forever. Any other missing-confidence candidates still
+    // lose their slot, but with a visible reason rather than silently.
+    const [solo, ...rest] = missingQueue as [SliceCandidate, ...SliceCandidate[]];
+    picked.push(solo);
+    for (const cand of rest) {
+      rejected.push({ sliceId: cand.sliceId, reason: "missing_touches_files_solo_only" });
+    }
+  } else {
+    for (const cand of missingQueue) {
+      rejected.push({ sliceId: cand.sliceId, reason: "missing_touches_files_solo_only" });
+    }
   }
 
   const items: WavePlanItem[] = picked.map((c) => ({

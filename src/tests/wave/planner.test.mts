@@ -58,12 +58,27 @@ describe("packWave", () => {
     expect(p.rejected[0]!.reason).toContain("conflict");
   });
 
-  test("missing touches_files dispatched solo when picked is empty", () => {
+  // FEAT-276/SLICE-179: a leading missing-confidence candidate must never
+  // collapse the whole wave. Ranking position is not a verdict -- S2 is
+  // clean and non-conflicting, so it must still be packed, and S1 must be
+  // visibly rejected (not silently dropped) rather than solo-dispatched.
+  test("leading missing-confidence candidate does not poison later clean candidates", () => {
     const ranked = [cand("S1", []), cand("S2", ["src/b.mts"])];
     const p = packWave(ranked, opts);
     expect(p.size).toBe(1);
+    expect(p.items[0]!.sliceId).toBe("S2");
+    expect(p.rejected.find((r) => r.sliceId === "S1")?.reason).toContain("missing");
+  });
+
+  // Genuine solo-only case: when NO candidate in the ranked list has usable
+  // touches_files, the top-ranked missing-confidence candidate must still be
+  // dispatched solo -- otherwise it would starve forever and never run.
+  test("missing-confidence candidate dispatched solo when no clean candidate exists", () => {
+    const ranked = [cand("S1", []), cand("S2", [])];
+    const p = packWave(ranked, opts);
+    expect(p.size).toBe(1);
     expect(p.items[0]!.sliceId).toBe("S1");
-    expect(p.rejected.find((r) => r.sliceId === "S2")).toBeUndefined();
+    expect(p.rejected.find((r) => r.sliceId === "S2")?.reason).toContain("missing");
   });
 
   test("missing touches_files rejected when picked is non-empty", () => {
