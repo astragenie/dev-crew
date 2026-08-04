@@ -48,7 +48,7 @@ proposed_slices:
 proposed_slices_shipped: []
 proposed_slices_shipped_commits: []
 started_at: 2026-08-04
-slices_complete: [SLICE-187, SLICE-184]
+slices_complete: [SLICE-187, SLICE-184, SLICE-185]
 ---
 ## Description
 
@@ -252,3 +252,43 @@ closing FEAT-259 on AC1+AC3 alone would overstate coverage.
 Worth considering for SLICE-185's watchdog scope: the watchdog observes from
 the orchestrator side and does not depend on prompt text at all, so it is the
 mechanism that actually covers the population these two miss.
+
+## SLICE-185 shipped UNWIRED — deliberately, and what must happen before wiring
+
+The watchdog decision logic (`src/scripts/lib/orchestrator-watchdog.mts`)
+ships as a pure, tested function with **zero production callers**. That is
+the FEAT-281 "tested but never wired" signature, and it is intentional here
+rather than accidental — the distinction being that it is disclosed in the
+module header and in this FEAT, not discovered later by someone counting
+call sites.
+
+The no-execution-point claim was verified independently by review, not taken
+on the builder's word: `dispatch.mts` (543 lines) is pure prompt-string
+assembly with no Monitor or idle handling; `dispatch-prune.mts` runs its own
+mtime-staleness CLI check with no live-session observation; none of the 13
+files under `wave/` reference Monitor, idle_notification or SendMessage; and
+`hooks/report-gate.mjs` runs as a detached process with no Monitor/TaskList
+handle. **Nothing scriptable in this repo can observe a subagent's live
+idle/stop state today.** The only observer is the interactive orchestrator
+turn itself.
+
+So FEAT-259's decisive mechanism exists and is correct, but cannot run.
+Closing this FEAT on AC1/AC3/AC4 satisfied would overstate what shipped:
+AC1's hook only sees contracts the dispatcher wrote into the prompt, AC3's
+final-act line does not feed that hook, and AC4's watchdog has no caller.
+The three ship real value and none of them closes the loop alone.
+
+**Required before wiring** (from review, and blocking):
+
+`parseChangedPaths` uses a fixed `slice(3)` offset and does not handle git's
+quoted paths (spaces or special characters) or rename-arrow remainders
+(`old -> new`). Both are disclosed as accepted gaps in code comments. If the
+sole uncommitted change in a tick is to such a path, its mtime is dropped and
+freshness falls back to last-commit-time or directory mtime — which could
+misclassify a genuinely *running* agent as `stopped_uncommitted`. That is not
+a HARD GUARD defeat and cannot fire today with no caller, but it becomes a
+live risk the moment this is wired: the whole point of the guard is that a
+running builder is never nudged, because nudging one forks execution
+(dev-team#162).
+
+Harden the path parsing before adding any execution point.

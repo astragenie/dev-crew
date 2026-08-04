@@ -1,7 +1,7 @@
 ---
 id: SLICE-185
 title: Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard)
-status: pending
+status: completed
 feature: FEAT-259
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 120000
 github_issue: 596
 github_url: "https://github.com/astragenie/runner-plugin/issues/596"
+completed_at: 2026-08-04
 ---
 # SLICE-185: Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard)
 
