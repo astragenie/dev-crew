@@ -55,3 +55,50 @@ unset — this FEAT has not been scored yet. Run `/runner:triage`
 ## Proposed slices (PM decomposition)
 
 - SLICE-1: Raise test timeout override; poll for fake-cli-calls.jsonl instead of single-shot read (1 pts)
+
+## Second affected file, higher failure rate (2026-08-04, same day)
+
+`src/tests/guard-feat-dispatch-hook.test.mts` exhibits the same defect and
+fails harder than the originally-reported file.
+
+Observed on CI run 30950092126 (commit `cd74bd2e`): two tests timed out at
+exactly 60000ms each —
+
+  - "guard-feat-dispatch: warn-only (exit 0) when
+    features.dispatch-guard-block.enabled=false"
+  - "guard-feat-dispatch: explicit enabled=true behaves like default (blocks)"
+
+Both are timeouts on `spawnSync(process.execPath, [hookPath])`
+(`runHook`, line 47), not assertion failures. Locally the file passes 15/15
+in about one second, three consecutive runs.
+
+**Failure rate is worse than capture-at-close's.** The `slow-tests` job
+already retries on hang/failure and **both attempts failed**; a manual re-run
+of the identical commit then passed. Two failures and one pass on unchanged
+code, versus roughly one in four for `capture-at-close-hook.test.mts`.
+
+Ruled out as causes, so the fix does not chase them:
+
+- **The feature-flag read.** These two are the only tests in the file that
+  write a `features` block to `.claude/loop.json`, which is a suggestive
+  correlation — but `isFeatureEnabledLite` (`hooks/feature-flag-lite.mjs:33`)
+  is a synchronous `readFileSync` plus `JSON.parse` wrapped in a catch. It
+  cannot block for 60 seconds. The correlation is likely that these two take
+  the slightly longer path and so are the first to exceed the budget under
+  contention, not that the flag read hangs.
+- **A SLICE-195 regression.** The failure appeared on the first push
+  containing SLICE-195 while the prior commit (`a1088b72`) was green, which
+  looked causal. It is not: the re-run of the same commit passed with no
+  changes. SLICE-195 added six tests that build real temp directory trees,
+  which plausibly raised parallel I/O contention enough to tip an already
+  fragile spawn test — a trigger, not a cause.
+
+This strengthens the FEAT's scope rather than changing it: the fix should be
+applied to the shared pattern (spawn-based hook tests racing a wall-clock
+budget under `--parallel`), not to one file. Both affected files spawn a node
+process per test and assert on its output within a fixed window.
+
+Worth stating plainly, because it is the actual risk: this failure mode
+trains reviewers to re-run red CI without reading it. That habit is more
+expensive than either flake, and it is what turns a green signal into no
+signal at all — the theme running through FEAT-281, FEAT-287 and FEAT-284.
