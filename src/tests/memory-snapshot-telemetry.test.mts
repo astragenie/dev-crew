@@ -384,8 +384,66 @@ test("writeMemorySnapshot renders Pause rate bullet once dispatch outcomes exist
   const content = await fs.readFile(snapshot.artifactPath, "utf8");
 
   assert.ok(
-    content.includes("Pause rate (last 4 dispatches): 25.0%"),
+    content.includes("Pause rate (reviewer/validator + wave dispatches, last 4): 25.0%"),
     "should render the pause rate bullet with the correct window count and percentage"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// FEAT-275 / SLICE-178 — Pause rate staleness guard
+// ---------------------------------------------------------------------------
+
+test("writeMemorySnapshot renders 'no data (stale, ...)' when the newest pause record predates the staleness window", async () => {
+  const repo = await tmpRepo("al-snapshot-pause-stale-");
+  await addFeature(repo, { title: "Test" });
+
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "paused",
+    ts: "2026-07-02T18:34:00.000Z"
+  });
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "completed",
+    ts: "2026-07-02T18:30:00.000Z"
+  });
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  assert.ok(
+    content.includes(
+      "Pause rate (reviewer/validator + wave dispatches, last 2): no data (stale, last record: 2026-07-02)"
+    ),
+    `expected the stale no-data bullet, got: ${content.match(/Pause rate.*/)?.[0]}`
+  );
+  assert.ok(
+    !content.includes("50.0%"),
+    "must not render a numeric rate alongside the stale-record date"
+  );
+});
+
+test("writeMemorySnapshot renders the numeric Pause rate when a fresh dispatch record exists even alongside older ones", async () => {
+  const repo = await tmpRepo("al-snapshot-pause-fresh-mix-");
+  await addFeature(repo, { title: "Test" });
+
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "paused",
+    ts: "2026-07-02T18:34:00.000Z"
+  });
+  // Fresh record recorded "now" (default ts) keeps the window live.
+  await recordDispatchOutcome(repo, {
+    agentRole: "crew:fullstack-dev",
+    outcome: "completed"
+  });
+
+  const snapshot = await writeMemorySnapshot(repo);
+  const content = await fs.readFile(snapshot.artifactPath, "utf8");
+
+  assert.ok(
+    content.includes("Pause rate (reviewer/validator + wave dispatches, last 2): 50.0%"),
+    `expected the numeric rate since a fresh record exists, got: ${content.match(/Pause rate.*/)?.[0]}`
   );
 });
 

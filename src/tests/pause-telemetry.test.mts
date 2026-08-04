@@ -8,7 +8,10 @@ import {
   recordPauseEvent,
   recordDispatchOutcome,
   summarizePauseRate,
-  pauseEventsPath
+  pauseEventsPath,
+  evaluatePauseTelemetryStaleness,
+  resolvePauseTelemetryStaleAfterDays,
+  DEFAULT_PAUSE_TELEMETRY_STALE_AFTER_DAYS
 } from "../scripts/lib/pause-telemetry.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
@@ -212,4 +215,105 @@ test("summarizePauseRate ignores malformed JSON lines instead of throwing", asyn
   const summary = await summarizePauseRate(repo);
   assert.equal(summary.dispatches, 2);
   assert.equal(summary.pauses, 1);
+});
+
+// ---------------------------------------------------------------------------
+// FEAT-275 / SLICE-178 — evaluatePauseTelemetryStaleness
+// ---------------------------------------------------------------------------
+
+test("resolvePauseTelemetryStaleAfterDays falls back to the default when unset", () => {
+  assert.equal(resolvePauseTelemetryStaleAfterDays(null), DEFAULT_PAUSE_TELEMETRY_STALE_AFTER_DAYS);
+  assert.equal(
+    resolvePauseTelemetryStaleAfterDays({ loop: {} }),
+    DEFAULT_PAUSE_TELEMETRY_STALE_AFTER_DAYS
+  );
+  assert.equal(
+    resolvePauseTelemetryStaleAfterDays({ loop: { pauseTelemetryStaleAfterDays: 0 } }),
+    DEFAULT_PAUSE_TELEMETRY_STALE_AFTER_DAYS
+  );
+});
+
+test("resolvePauseTelemetryStaleAfterDays honors a valid configured override", () => {
+  assert.equal(
+    resolvePauseTelemetryStaleAfterDays({ loop: { pauseTelemetryStaleAfterDays: 2 } }),
+    2
+  );
+});
+
+test("evaluatePauseTelemetryStaleness is tail-safe for a missing file — stale with no newestTs", async () => {
+  const repo = await tmpRepo("pt-stale-missing-");
+  const result = await evaluatePauseTelemetryStaleness(repo, null);
+  assert.deepEqual(result, { stale: true, newestTs: null, thresholdDays: 7 });
+});
+
+test("evaluatePauseTelemetryStaleness is tail-safe for malformed lines — never throws", async () => {
+  const repo = await tmpRepo("pt-stale-malformed-");
+  await fs.mkdir(path.dirname(pauseEventsPath(repo)), { recursive: true });
+  await fs.writeFile(pauseEventsPath(repo), "{ not json\nalso not json\n");
+  const result = await evaluatePauseTelemetryStaleness(repo, null);
+  assert.equal(result.stale, true);
+  assert.equal(result.newestTs, null);
+});
+
+test("evaluatePauseTelemetryStaleness reports fresh (not stale) for a just-recorded dispatch", async () => {
+  const repo = await tmpRepo("pt-stale-fresh-");
+  await recordDispatchOutcome(repo, { agentRole: "a", outcome: "completed" });
+  const result = await evaluatePauseTelemetryStaleness(repo, null);
+  assert.equal(result.stale, false);
+  assert.ok(result.newestTs);
+});
+
+test("evaluatePauseTelemetryStaleness reports stale when the newest record predates the threshold", async () => {
+  const repo = await tmpRepo("pt-stale-old-");
+  await recordDispatchOutcome(repo, {
+    agentRole: "a",
+    outcome: "completed",
+    ts: "2026-06-01T00:00:00.000Z"
+  });
+  const now = Date.parse("2026-08-01T00:00:00.000Z");
+  const result = await evaluatePauseTelemetryStaleness(repo, null, now);
+  assert.equal(result.stale, true);
+  assert.equal(result.newestTs, "2026-06-01T00:00:00.000Z");
+  assert.equal(result.thresholdDays, 7);
+});
+
+test("evaluatePauseTelemetryStaleness picks the newest ts across mixed record kinds", async () => {
+  const repo = await tmpRepo("pt-stale-newest-");
+  await recordDispatchOutcome(repo, {
+    agentRole: "a",
+    outcome: "completed",
+    ts: "2026-07-01T00:00:00.000Z"
+  });
+  await recordPauseEvent(repo, {
+    agentRole: "a",
+    kind: "pause",
+    detection: "no_artifact",
+    ts: "2026-07-15T00:00:00.000Z"
+  });
+  const now = Date.parse("2026-07-16T00:00:00.000Z");
+  const result = await evaluatePauseTelemetryStaleness(repo, null, now);
+  assert.equal(result.newestTs, "2026-07-15T00:00:00.000Z");
+  assert.equal(result.stale, false);
+});
+
+test("evaluatePauseTelemetryStaleness honors a configured staleAfterDays override", async () => {
+  const repo = await tmpRepo("pt-stale-override-");
+  await recordDispatchOutcome(repo, {
+    agentRole: "a",
+    outcome: "completed",
+    ts: "2026-07-30T00:00:00.000Z"
+  });
+  const now = Date.parse("2026-08-01T00:00:00.000Z"); // 2 days old
+  const strict = await evaluatePauseTelemetryStaleness(
+    repo,
+    { loop: { pauseTelemetryStaleAfterDays: 1 } },
+    now
+  );
+  assert.equal(strict.stale, true);
+  const lenient = await evaluatePauseTelemetryStaleness(
+    repo,
+    { loop: { pauseTelemetryStaleAfterDays: 3 } },
+    now
+  );
+  assert.equal(lenient.stale, false);
 });

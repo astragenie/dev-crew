@@ -9,7 +9,12 @@ import { listDecisions } from "./decisions-store.mjs";
 import { getIterationStatus } from "./loop-iteration.mjs";
 import { snapshotPath as resolveSnapshotPath } from "./paths.mjs";
 import type { DispatchTreeSnapshot } from "./dispatch-tree-snapshot.mjs";
-import { summarizePauseRate, type PauseRateSummary } from "./pause-telemetry.mjs";
+import {
+  summarizePauseRate,
+  evaluatePauseTelemetryStaleness,
+  type PauseRateSummary,
+  type PauseTelemetryStaleness
+} from "./pause-telemetry.mjs";
 import { fetchMemoryUsefulness, type MemoryUsefulnessSummary } from "./memory-usefulness.mjs";
 import {
   readHookEnforcementSummary,
@@ -330,6 +335,7 @@ function renderLoopTelemetry(
     lastCostAdvisorVerdict: string | null;
   },
   pauseSummary: PauseRateSummary,
+  pauseStaleness: PauseTelemetryStaleness,
   memoryUsefulness: MemoryUsefulnessSummary | null,
   aggregateExcludedCount: number
 ) {
@@ -371,10 +377,34 @@ function renderLoopTelemetry(
   // FEAT-212: omit entirely when no dispatch-outcome telemetry has been
   // recorded yet (pause-events.jsonl absent or empty) -- never render a
   // misleading "0%" for a rate with no denominator, and never error.
+  // FEAT-275: when data DOES exist but the newest record predates the
+  // staleness window, render "no data (stale, ...)" instead of the numeric
+  // rate -- a month-stale percentage is worse than no number at all, since
+  // it reads as live (this bullet is `@`-included into every session via
+  // CLAUDE.md -> loop-snapshot.md).
+  //
+  // Post-review (finding #2): the bullet's label names its actual
+  // population -- reviewer/validator close-gate outcomes plus wave-mode
+  // worktree outcomes -- rather than implying fleet-wide coverage. Default
+  // (non-wave) orchestrator-mode BUILDER dispatches are NOT represented here
+  // (docs/sop/specialist-pause-handling.md's own reproduction table shows
+  // that is the dominant, still-open pause case; closing it needs a
+  // real-time signal -- a SubagentStop report-gate hook, FEAT-259 slice 1,
+  // not built yet -- not a retroactive gate read). A confident-looking
+  // number sourced from a narrower population than the reader assumes is
+  // worse than the honest "stale" state it replaces, so the label says so.
+  const PAUSE_RATE_LABEL = "Pause rate (reviewer/validator + wave dispatches";
   if (pauseSummary.dispatches > 0) {
-    out.push(
-      `- Pause rate (last ${pauseSummary.dispatches} dispatches): ${(pauseSummary.pauseRate * 100).toFixed(1)}%`
-    );
+    if (pauseStaleness.stale) {
+      const lastRecord = pauseStaleness.newestTs ? pauseStaleness.newestTs.slice(0, 10) : "unknown";
+      out.push(
+        `- ${PAUSE_RATE_LABEL}, last ${pauseSummary.dispatches}): no data (stale, last record: ${lastRecord})`
+      );
+    } else {
+      out.push(
+        `- ${PAUSE_RATE_LABEL}, last ${pauseSummary.dispatches}): ${(pauseSummary.pauseRate * 100).toFixed(1)}%`
+      );
+    }
   }
 
   out.push(formatMemoryUsefulnessLine(memoryUsefulness));
@@ -450,6 +480,7 @@ async function collectSnapshotData(
   aggregateExcludedCount: number;
   dispatchTree: DispatchTreeSnapshot;
   pauseSummary: PauseRateSummary;
+  pauseStaleness: PauseTelemetryStaleness;
   memoryUsefulness: MemoryUsefulnessSummary | null;
   hookEnforcement: HookEnforcementSummary | null;
 }> {
@@ -463,6 +494,7 @@ async function collectSnapshotData(
     costReportStats,
     dispatchTree,
     pauseSummary,
+    pauseStaleness,
     memoryUsefulness,
     hookEnforcement
   ] = await Promise.all([
@@ -478,6 +510,7 @@ async function collectSnapshotData(
       oldestRunAgeDays: null
     })),
     summarizePauseRate(repoPath, PAUSE_RATE_WINDOW),
+    evaluatePauseTelemetryStaleness(repoPath, config),
     fetchMemoryUsefulness(repoPath, config),
     readHookEnforcementSummary(repoPath)
   ]);
@@ -491,6 +524,7 @@ async function collectSnapshotData(
     aggregateExcludedCount: costReportStats.aggregateExcludedCount,
     dispatchTree,
     pauseSummary,
+    pauseStaleness,
     memoryUsefulness,
     hookEnforcement
   };
@@ -511,6 +545,7 @@ function buildSnapshotLines(
     aggregateExcludedCount,
     dispatchTree,
     pauseSummary,
+    pauseStaleness,
     memoryUsefulness,
     hookEnforcement
   } = data;
@@ -554,6 +589,7 @@ function buildSnapshotLines(
       iterationStatus,
       costTrajectory,
       pauseSummary,
+      pauseStaleness,
       memoryUsefulness,
       aggregateExcludedCount
     ),

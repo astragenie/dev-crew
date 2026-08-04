@@ -34,6 +34,7 @@ import { isFeatureEnabled } from "../features-service.mjs";
 import { resolveQaGateMode } from "../qa-gate-config.mjs";
 import { parseScoresFromBody } from "../grade-parser.mjs";
 import { removeArtifactLock } from "./artifact-lock-writer.mjs";
+import { recordCloseDispatchTelemetry } from "./close-dispatch-telemetry.mjs";
 
 // ---------------------------------------------------------------------------
 // Pre-flight: verification-before-completion (FEAT-277 / AC-9)
@@ -124,6 +125,25 @@ function resolveMemoryCaptureOpts(opts: CloseSliceOpts): {
   };
 }
 
+// FEAT-275 / SLICE-178: extracted from closeSlice to keep its own cognitive
+// complexity under the repo cap — scaffold-only closes (no gradeYamlPath)
+// are not a completion claim, so telemetry recording is skipped for them,
+// matching the pre-flight gating above.
+async function recordCloseTelemetryIfCompletionClaim(
+  repoPath: string,
+  sliceId: string,
+  slicesRoot: string,
+  gradeYamlPath: string | null,
+  config: Record<string, any> | null
+): Promise<void> {
+  if (!gradeYamlPath) return;
+  const slicePath = await locateSliceFile(slicesRoot, sliceId);
+  const sliceFm = slicePath
+    ? parseFrontmatter(await fs.readFile(slicePath, "utf8").catch(() => "")).frontmatter
+    : null;
+  await recordCloseDispatchTelemetry(repoPath, sliceId, config, sliceFm);
+}
+
 export async function closeSlice(
   repoPath: string,
   sliceId: string,
@@ -205,6 +225,13 @@ export async function closeSlice(
   // pending/ path; invalidate it so createGradeFile finds the new path.
   const slicesRoot = resolveSlicesRoot(repoPath, config);
   bustCache(`locateSlice:${slicesRoot}:${sliceId}`);
+
+  // FEAT-275 / SLICE-178: single-shot close is the actual "specialist
+  // dispatch completes" moment for the reviewer/validator roles — record
+  // pause telemetry from the same gate derivation the close ceremony
+  // already computes elsewhere (see close-dispatch-telemetry.mjs doc
+  // header for why dispatch.mts itself cannot be this signal's source).
+  await recordCloseTelemetryIfCompletionClaim(repoPath, sliceId, slicesRoot, gradeYamlPath, config);
 
   const gradeScaffold = await createGradeFile(repoPath, sliceId, { config });
 

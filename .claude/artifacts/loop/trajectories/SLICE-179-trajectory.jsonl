@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-179","timestamp":"2026-08-03T18:58:29.023Z","featureId":"FEAT-276","title":"SLICE-179: Fix packWave solo-collapse ordering bug + rewrite the test pinning it","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260803T185828Z-plan-SLICE-179.md","requiresApprovalGate":false}

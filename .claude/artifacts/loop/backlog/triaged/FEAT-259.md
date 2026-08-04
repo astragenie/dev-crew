@@ -1,11 +1,11 @@
 ---
 id: FEAT-259
 status: triaged
-priority: P2
+priority: P1
 category: enhancement
 target_release: null
 created: 2026-07-09
-updated: 2026-07-19
+updated: 2026-08-03
 depends_on: []
 slices: []
 derived_from: null
@@ -13,22 +13,22 @@ tags: [be]
 needs_contract: true
 needs_ux: false
 autonomous_safe: false
-pm_reviewed: 2026-07-19
-triage_notes: "P2: real, evidenced operational pain but with an already-working manual mitigation keeps it below P1; technical_risk 0.65 (0.6-0.8 band: cross-module reach across hooks/templates/dispatch-loop, new blocking-hook pattern with high blast radius, though reversible in principle) triggers the mandatory pre-mortem, completed above. effort_estimate 0.65 maps (0.56-0.7 -> 8 points per the assumed banding) to effort_points=8, triggering the decomposition gate — decomposed below with the two design-sensitive landmines (report-gate detection heuristic; watchdog nudge/fresh-mtime guard) isolated into their own slices per runner#393 rule (a), and the template-line edit kept as one mechanical batch slice per rule (b)."
+pm_reviewed: 2026-08-03
+triage_notes: "P1 (raised from the original P2): recurrence with zero decay after a month despite an existing documented lesson and active manual mitigation, unbounded and compounding operator/orchestrator attention cost as dispatch volume grows (wave mode expansion), and direct conflict with this repo's own 'do not stop for confirmation' autonomous-loop mission together outweigh the now-confirmed-smaller (but not zero) implementation surface. Pre-mortem completed above per the mandatory P1 trigger."
 github_issue: 504
 github_url: "https://github.com/astragenie/runner-plugin/issues/504"
-pm_customer_impact: 0.55
-pm_effort_estimate: 0.65
-pm_strategic_alignment: 0.55
-pm_technical_risk: 0.65
+pm_customer_impact: 0.68
+pm_effort_estimate: 0.58
+pm_strategic_alignment: 0.65
+pm_technical_risk: 0.6
 pm_dependency_depth: 0.15
-pm_composite_priority: P2
+pm_composite_priority: P1
 pm_autonomous_safe: false
 proposed_slices:
   - id_suffix: -SLICE-1
-    title: SubagentStop report-gate hook (report-back-contract detection)
-    points: 2
-    estimated_tokens: 100000
+    title: "SubagentStop report-gate hook, registered into existing hooks.json array"
+    points: 1
+    estimated_tokens: 80000
   - id_suffix: -SLICE-2
     title: Structured receipt schema definition + docs
     points: 2
@@ -40,7 +40,7 @@ proposed_slices:
   - id_suffix: -SLICE-4
     title: Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard)
     points: 2
-    estimated_tokens: 100000
+    estimated_tokens: 120000
   - id_suffix: -SLICE-5
     title: Idle-ping suppression + context-budget wiring into dispatch loop
     points: 1
@@ -118,3 +118,39 @@ but only as memory prose, not as harness mechanism.
 - SLICE-3: Mandatory final-act line across all dispatch agent templates (batch) (1 pts)
 - SLICE-4: Orchestrator watchdog rule (auto-nudge-once + fresh-mtime guard) (2 pts)
 - SLICE-5: Idle-ping suppression + context-budget wiring into dispatch loop (1 pts)
+
+## New evidence (2026-08-03 session) — scope refinement for SLICE-4 and SLICE-5
+
+Observed across one multi-agent session (5 dispatched specialists), independent
+of the 2026-07-09 wave run that motivated this FEAT:
+
+**A third failure mode, not currently covered by any proposed slice.** SLICE-4's
+watchdog is scoped to "idle-without-report". A worktree builder (SLICE-181) instead
+stopped **mid-edit with work uncommitted** — `git log` HEAD still at main, 7 files
+modified, live `exactOptionalPropertyTypes` type errors, and a final output that was
+a severed sentence fragment rather than a report. This is strictly worse than a
+missing report: an uncommitted worktree is **destroyed on prune**, so the work is
+lost outright, not merely undelivered. SLICE-4 must therefore detect
+`stopped && worktree has uncommitted changes` as its own condition, and the
+correct recovery is a nudge to *commit*, not a respawn. The existing HARD GUARD
+still applies — safe to nudge only because the agent was stopped; never nudge a
+running builder (forks execution, dev-team#162).
+
+**SLICE-5 (idle-ping suppression) confirmed with 9 occurrences in one session**,
+all bare `idle_notification` pings emitted AFTER the agent's report had already
+been delivered and acknowledged, several after explicit close-out. Sources were
+varied (pm, reviewer, builder), so this is agent-type-independent. Confirms the
+original ~8-noise-messages-per-wave observation at a comparable rate a month later.
+
+**Related durable learnings** (`.claude/artifacts/loop/learnings.jsonl`):
+`idle-ping-after-report`, `worktree-builder-stops-uncommitted`,
+`worktree-artifact-loss` (subagent review artifacts land untracked inside the
+worktree and die on prune — relevant to SLICE-2's receipt/evidence-path design).
+
+**Downstream dependency discovered:** FEAT-275 (pause telemetry) cannot record
+builder-tier dispatch outcomes at all until SLICE-1 lands. Builders emit no
+artifact by design (`docs/sop/specialist-pause-handling.md` L128-131) and
+`slice-linker/dispatch.mts` is pure prompt-string assembly with no execution or
+observation machinery, so no builder-tier pause signal exists in default
+(non-wave) orchestrator mode. FEAT-275 shipped narrowed to reviewer/validator +
+wave coverage specifically because of this gap.

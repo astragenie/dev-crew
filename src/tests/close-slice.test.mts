@@ -223,6 +223,40 @@ test("closeSlice happy path: gradeYamlPath + autonomous_safe writes scores", asy
   assert.match(snapshotContent, /# Autonomous Loop snapshot/);
 });
 
+// FEAT-275 / SLICE-178: single-shot close records reviewer/validator dispatch
+// telemetry from the same gate derivation the close ceremony already uses
+// (see close-dispatch-telemetry.mts). No review or validation artifact/badge
+// exists in this fixture: the review gate falls through to its
+// absence-tolerated "unproven" branch (not recorded — no real evidence a
+// reviewer ever ran), while the validation gate has no waiver/artifact/badge
+// at all and is unsatisfied (recorded as a paused crew:verifier dispatch).
+test("closeSlice records pause telemetry via gate derivation on a single-shot close", async () => {
+  const repo = await tmpRepo("cs-pause-telemetry-");
+  const { sliceId, featureId } = await setupSlice(repo, { autonomousSafe: true });
+  const yamlPath = path.join(repo, "grade.yaml");
+  await fs.writeFile(yamlPath, gradeYamlBody(sliceId, featureId));
+  await closeSlice(repo, sliceId, { gradeYamlPath: yamlPath });
+
+  const { pauseEventsPath } = await import("../scripts/lib/pause-telemetry.mjs");
+  const raw = await fs.readFile(pauseEventsPath(repo), "utf8");
+  const lines = raw
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+
+  assert.ok(
+    !lines.some((l: any) => l.agentRole === "crew:reviewer"),
+    "an unproven (absence-tolerated) review gate must not be recorded"
+  );
+  const verifierOutcome = lines.find(
+    (l: any) => l.type === "dispatch_outcome" && l.agentRole === "crew:verifier"
+  );
+  assert.ok(verifierOutcome, "expected a crew:verifier dispatch_outcome row");
+  assert.equal(verifierOutcome.sliceId, sliceId);
+  assert.equal(verifierOutcome.outcome, "paused");
+});
+
 test("closeSlice autonomous_safe gate: refuses --grade-yaml on autonomous_safe=false", async () => {
   const repo = await tmpRepo("cs-gate-");
   const { sliceId, featureId } = await setupSlice(repo, { autonomousSafe: false });

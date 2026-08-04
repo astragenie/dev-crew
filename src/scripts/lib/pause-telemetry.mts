@@ -138,6 +138,64 @@ export async function listPauseTelemetry(repoPath: string): Promise<PauseTelemet
  * steps are sparse enough that windowing by dispatch count would starve
  * the denominator).
  */
+// FEAT-275 / SLICE-178: staleness guard for the "Pause rate" snapshot bullet.
+// Mirrors blocked-badge-staleness.mts's shape (a `loop.<name>` numeric-days
+// config field, resolved with a fallback default, age computed from a
+// record timestamp) — the only existing timestamp-age staleness convention
+// in this codebase; there is no dedicated "cost-trajectory" time-based
+// staleness to reuse, only a count-window (see memory-snapshot.mts's
+// PAUSE_RATE_WINDOW comment). Default mirrors `loop.dispatch.pruneStaleAfterDays`
+// (7d), the other "how stale is too stale" constant already rendered
+// alongside this bullet in the same Loop telemetry section.
+export const DEFAULT_PAUSE_TELEMETRY_STALE_AFTER_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export interface PauseTelemetryStaleness {
+  /** True when there is no data at all, or the newest record is older than the threshold. */
+  stale: boolean;
+  /** ISO timestamp of the newest record, or null when no records exist. */
+  newestTs: string | null;
+  thresholdDays: number;
+}
+
+/** Reads `loop.pauseTelemetryStaleAfterDays` off an already-resolved config object. */
+export function resolvePauseTelemetryStaleAfterDays(config: Record<string, any> | null): number {
+  const raw = config?.loop?.pauseTelemetryStaleAfterDays;
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0
+    ? raw
+    : DEFAULT_PAUSE_TELEMETRY_STALE_AFTER_DAYS;
+}
+
+/**
+ * Tail-safe (mirrors summarizePauseRate's contract, module header above): a
+ * missing/empty/malformed pause-events.jsonl never throws — it returns
+ * `{ stale: true, newestTs: null }`, which callers render as "no data"
+ * rather than a fabricated rate. Only checked when the caller already knows
+ * dispatch data exists (memory-snapshot.mts gates on `dispatches > 0` first)
+ * so this "no records" branch is a defensive fallback, not the primary path.
+ */
+export async function evaluatePauseTelemetryStaleness(
+  repoPath: string,
+  config: Record<string, any> | null,
+  now: number = Date.now()
+): Promise<PauseTelemetryStaleness> {
+  const thresholdDays = resolvePauseTelemetryStaleAfterDays(config);
+  const records = await readPauseTelemetry(repoPath);
+  if (records.length === 0) {
+    return { stale: true, newestTs: null, thresholdDays };
+  }
+  let newestTs = records[0]!.ts;
+  for (const r of records) {
+    if (r.ts > newestTs) newestTs = r.ts;
+  }
+  const newestMs = Date.parse(newestTs);
+  if (Number.isNaN(newestMs)) {
+    return { stale: true, newestTs, thresholdDays };
+  }
+  const ageDays = (now - newestMs) / MS_PER_DAY;
+  return { stale: ageDays >= thresholdDays, newestTs, thresholdDays };
+}
+
 export async function summarizePauseRate(
   repoPath: string,
   windowN?: number

@@ -6,6 +6,7 @@
 
 import { buildFailurePivot } from "./failure-pivot.mjs";
 import { appendWaveEvent, type WaveEvent } from "./events.mjs";
+import { recordDispatchOutcome, recordPauseEvent } from "../pause-telemetry.mjs";
 import type {
   FailurePivot,
   SliceCandidate,
@@ -135,6 +136,7 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
   });
 
   const worktreeResults = await dispatchWithTimeout(deps.dispatchFn, prepared.agentBatch, deps.cfg);
+  await recordWaveDispatchTelemetry(repoRoot, worktreeResults, deps.cfg);
   const finalize = await deps.finalizeFn(repoRoot, prepared.runId, plan);
   record({
     type: "wave_finalized",
@@ -248,6 +250,63 @@ function makeOutcome(t0: number, haltReason: string, plan?: WavePlan): RunWaveOu
     durationMs: Date.now() - t0,
     haltReason
   };
+}
+
+// FEAT-275 / SLICE-178: records pause-telemetry.mts's dispatch-outcome /
+// pause-event rows once per worktree result — this is the real per-slice
+// resolution signal for wave mode (each WorktreeResult reflects an actual
+// completed/failed/timed-out/errored specialist dispatch, unlike
+// slice-linker/dispatch.mts which only builds a prompt string and never
+// observes resolution). `timeout`/`agent_error` are treated as a pause (no
+// clean resolution landed); `PASS`/`FAIL` are treated as completed (the
+// specialist finished and produced a real verdict, good or bad).
+//
+// Post-review (finding #1): this function used to also emit a
+// pause_event(kind="resume_success") when a `pending_fix` slice PASSed on
+// retry. That is an UNPAIRED emission — the prior failing attempt is
+// recorded as "completed" (a FAIL) or gets its own "pause" pause_event
+// (timeout/agent_error) on a DIFFERENT wave iteration, and a FAIL-triggered
+// pivot never wrote a "pause" kind at all — so a retry-PASS's resume_success
+// had no guaranteed matching "pause" to pair against. summarizePauseRate's
+// `resumeSuccessRate` divides resume_success count by pause count over full
+// history; an unpaired resume_success inflates that ratio without bound
+// (can exceed 100%). Fixed by no longer emitting it here — a successful
+// retry is fully captured by its own "completed" dispatch_outcome, and
+// `resumeSuccessRate` telemetry is reserved for the SOP's own manually
+// paired detect/resolve calls, which this automated path cannot reproduce
+// without fabricating a detection instant it never witnessed.
+//
+// Best-effort per slice: a telemetry write failure never blocks the wave.
+async function recordWaveDispatchTelemetry(
+  repoRoot: string,
+  worktreeResults: WorktreeResult[],
+  cfg: WaveConfig
+): Promise<void> {
+  for (const wr of worktreeResults) {
+    const isPause = wr.status === "timeout" || wr.status === "agent_error";
+    const outcome = isPause ? "paused" : "completed";
+    try {
+      await recordDispatchOutcome(repoRoot, {
+        sliceId: wr.sliceId,
+        agentRole: cfg.subagentType,
+        outcome
+      });
+      if (isPause) {
+        await recordPauseEvent(repoRoot, {
+          sliceId: wr.sliceId,
+          agentRole: cfg.subagentType,
+          kind: "pause",
+          detection: "no_artifact",
+          notes: `wave dispatch status: ${wr.status}`
+        });
+      }
+    } catch (err) {
+      console.warn(
+        `[wave] pause-telemetry recording failed for ${wr.sliceId} (non-fatal): ` +
+          `${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
 }
 
 function buildPivotsForWave(
