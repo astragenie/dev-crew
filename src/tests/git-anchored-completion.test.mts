@@ -51,14 +51,58 @@ function git(repo: string, ...args: string[]): void {
   assert.equal(out.status, 0, `git ${args.join(" ")} failed: ${out.stderr}`);
 }
 
-/** tmpRepo + git init -b main + identity + one commit per given subject. */
-async function tmpGitRepo(prefix: string, commitSubjects: string[]): Promise<string> {
+/**
+ * A fixture commit's file diff: repo-relative path -> file content. Absent
+ * or empty means the commit touches no files (`--allow-empty`) — the
+ * accidental-mention shape from the FEAT-284 repro. Present means the
+ * commit actually changes those paths — the genuine-evidence shape.
+ */
+type FixtureFiles = Record<string, string>;
+
+interface CommitSpec {
+  subject: string;
+  files?: FixtureFiles;
+}
+
+/** A fixture commit input: a bare subject (empty commit, existing call-site
+ * shape) or a { subject, files } spec for a real file-touching commit. */
+type CommitInput = string | CommitSpec;
+
+async function writeFixtureFiles(repo: string, files: FixtureFiles): Promise<void> {
+  for (const [relPath, content] of Object.entries(files)) {
+    const filePath = path.join(repo, relPath);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, content);
+  }
+}
+
+/** Commit `subject` in `repo`. With `files` given and non-empty, writes +
+ * stages those paths first (a real file-touching commit); otherwise commits
+ * `--allow-empty` (the accidental/no-op-diff shape the FEAT-284 repro
+ * exploited). Exported-in-file so both `tmpGitRepo` and standalone
+ * mid-sequence commits (e.g. after `addFeature`) can produce either shape. */
+async function commitFixture(repo: string, subject: string, files?: FixtureFiles): Promise<void> {
+  if (files && Object.keys(files).length > 0) {
+    await writeFixtureFiles(repo, files);
+    git(repo, "add", "-A");
+    git(repo, "commit", "-m", subject);
+  } else {
+    git(repo, "commit", "--allow-empty", "-m", subject);
+  }
+}
+
+/** tmpRepo + git init -b main + identity + one commit per given input. Each
+ * entry is either a plain subject string (empty commit — preserves every
+ * pre-FEAT-284 call site unchanged) or a { subject, files } spec that writes
+ * real files before committing. */
+async function tmpGitRepo(prefix: string, commits: CommitInput[]): Promise<string> {
   const repo = await tmpRepo(prefix);
   git(repo, "init", "-b", "main");
   git(repo, "config", "user.email", "test@example.com");
   git(repo, "config", "user.name", "Test");
-  for (const subject of commitSubjects) {
-    git(repo, "commit", "--allow-empty", "-m", subject);
+  for (const entry of commits) {
+    const spec: CommitSpec = typeof entry === "string" ? { subject: entry } : entry;
+    await commitFixture(repo, spec.subject, spec.files);
   }
   return repo;
 }
@@ -187,6 +231,130 @@ test("reconcile fails open with gitError outside a git repo", async () => {
   const res = await reconcileProposedSlicesAgainstGit(dir, "FEAT-312", PROPOSED_3);
   assert.notEqual(res.gitError, null);
   assert.deepEqual(res.shipped, []);
+});
+
+// --- diff-shape fixtures (FEAT-284) ------------------------------------------
+//
+// The matcher above (reconcileProposedSlicesAgainstGit) only ever inspects
+// commit subject/body text — it never looks at what a commit actually
+// changed. Every fixture commit prior to this section was `--allow-empty`,
+// so the suite could not distinguish a commit that *implements* a slice from
+// one that merely *mentions* it (see FEAT-284's live repro against commit
+// 71604bb4). These fixtures give that distinction a shape the next slice
+// (SLICE-189, diff-level corroboration) can assert against.
+
+test("KNOWN DEFECT (FEAT-284): an --allow-empty commit that only mentions FEAT+SLICE tokens counts as shipped evidence", async () => {
+  // Characterizes current behavior. SLICE-189 (diff corroboration) is
+  // expected to invert this assertion — an empty commit must never count.
+  const repo = await tmpGitRepo("gac-empty-evidence-", [
+    { subject: "feat: FEAT-500 SLICE-1 — allow-empty, touches nothing" }
+  ]);
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-500", [
+    { id_suffix: "-SLICE-1", title: "Empty", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(
+    res.shipped.map((s) => s.ordinal),
+    [1],
+    "KNOWN DEFECT: empty commit counted as shipped evidence — see FEAT-284 / SLICE-189"
+  );
+});
+
+test("KNOWN DEFECT (FEAT-284): a docs-only commit that mentions FEAT+SLICE tokens counts as shipped evidence (the 71604bb4 repro shape)", async () => {
+  // Characterizes current behavior. This is the exact shape of the live
+  // 71604bb4 repro: a docs-only commit whose body prose incidentally
+  // mentions both tokens. SLICE-189 is expected to invert this assertion.
+  const repo = await tmpGitRepo("gac-docs-evidence-", [
+    {
+      subject: "docs: run before committing FEAT-259's SLICE-1 to a design",
+      files: { "docs/research/design-notes.md": "# design notes\n" }
+    }
+  ]);
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-259", [
+    { id_suffix: "-SLICE-1", title: "Design", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(
+    res.shipped.map((s) => s.ordinal),
+    [1],
+    "KNOWN DEFECT: docs-only commit counted as shipped evidence — this is the 71604bb4 live repro"
+  );
+});
+
+test("reconcile finds genuine shipped evidence from a commit that changes real source paths", async () => {
+  const repo = await tmpGitRepo("gac-src-evidence-", [
+    {
+      subject: "feat: FEAT-501 SLICE-1 — implement thing",
+      files: { "src/scripts/lib/thing.mts": "export const thing = 1;\n" }
+    }
+  ]);
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-501", [
+    { id_suffix: "-SLICE-1", title: "Thing", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(
+    res.shipped.map((s) => s.ordinal),
+    [1]
+  );
+  assert.match(res.shipped[0]!.commitSha, /^[0-9a-f]{40}$/);
+});
+
+test("reconcile fixture: a candidate commit's changed paths can overlap a proposed slice's declared touches_files", async () => {
+  // SLICE-189's AC-2 downgrades a match whose changed paths share zero
+  // overlap with the slice's declared touches_files to a warning. This
+  // fixture pins the "overlap" half of that contrast; the matcher today
+  // does not consult touches_files at all, so both this and the sibling
+  // no-overlap fixture below currently produce identical (shipped) results.
+  const repo = await tmpGitRepo("gac-touches-overlap-", [
+    {
+      subject: "feat: FEAT-502 SLICE-1 — implement connector",
+      files: { "src/scripts/lib/connector.mts": "export const connector = 1;\n" }
+    }
+  ]);
+  const proposed = [
+    {
+      id_suffix: "-SLICE-1",
+      title: "Connector",
+      points: 2 as const,
+      estimated_tokens: 100_000,
+      touches_files: ["src/scripts/lib/connector.mts"]
+    }
+  ];
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-502", proposed);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(
+    res.shipped.map((s) => s.ordinal),
+    [1]
+  );
+});
+
+test("reconcile fixture: a candidate commit's changed paths can share zero overlap with a proposed slice's declared touches_files", async () => {
+  // Contrast case for the fixture above — real file changes, but to a path
+  // outside the slice's declared touch surface (docs, not the connector
+  // module). Today's matcher still records this as shipped (text-only
+  // match); SLICE-189/AC-2 is expected to downgrade it to a warning instead.
+  const repo = await tmpGitRepo("gac-touches-no-overlap-", [
+    {
+      subject: "feat: FEAT-503 SLICE-1 — implement connector",
+      files: { "docs/research/unrelated-note.md": "unrelated\n" }
+    }
+  ]);
+  const proposed = [
+    {
+      id_suffix: "-SLICE-1",
+      title: "Connector",
+      points: 2 as const,
+      estimated_tokens: 100_000,
+      touches_files: ["src/scripts/lib/connector.mts"]
+    }
+  ];
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-503", proposed);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(
+    res.shipped.map((s) => s.ordinal),
+    [1],
+    "current matcher ignores touches_files entirely — see FEAT-284 / SLICE-189 AC-2"
+  );
 });
 
 // --- end-to-end acceptance (issue #392) --------------------------------------
