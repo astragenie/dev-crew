@@ -106,3 +106,34 @@ hides the gap.
 - SLICE-4: Migrate proposed_slices_shipped frontmatter from index-prefix to per-id_suffix keyed shape (2 pts)
 - SLICE-5: Rewrite materializeProposedSlices to key off id_suffix, not existingSlices.length prefix index (2 pts)
 - SLICE-6: Add CLI escape hatch to force-materialize one named proposed slice by id_suffix (2 pts)
+
+## The false positive is self-perpetuating (measured 2026-08-04, after repair)
+
+Re-running `reconcileProposedSlicesAgainstGit` against FEAT-259 *after* the
+repair still reports `-SLICE-1` as shipped — now citing `c2e77fe7`, the
+commit that repaired and documented the original false positive. That commit
+message necessarily contains both `FEAT-259` and `SLICE-1` in prose, which is
+all the matcher requires.
+
+So the defect regenerates its own evidence: the first false positive came
+from a research commit that *designed* the slice, the second from a repair
+commit that *documented* the first. Any commit that discusses the problem
+re-creates it. Fixing the state without fixing the matcher is therefore not
+durable — the stamp will simply be rewritten on the next reconcile pass.
+
+FEAT-259 is currently unharmed only by accident: it is fully materialized
+(5 of 5 slices), so `reconcileProposedSlicesStartIndex` short-circuits at
+`if (existingCount >= proposed.length) return undefined` before reconcile is
+consulted at all. Had it been 4 of 5, the false positive would have fired a
+second time on the repair commit.
+
+Two consequences for the fix:
+
+- Diff-corroboration (AC-1) is load-bearing, not defense in depth. Both
+  offending commits would be filtered by a "did this commit change files
+  related to the slice" test: the first touched only `docs/research/**` plus
+  backlog frontmatter, the second only backlog artifacts.
+- The migration slice must re-derive stale stamps rather than trust them.
+  A stamp written by the old text-only matcher carries no evidence that its
+  cited commit did anything, so migration should re-evaluate each stamped
+  entry under the new rules instead of carrying it forward.

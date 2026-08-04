@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-188","timestamp":"2026-08-04T18:28:09.462Z","featureId":"FEAT-284","title":"SLICE-188: Rebuild git-anchored-completion test fixtures with real file-touching commits, not --allow-empty","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260804T182807Z-plan-SLICE-188.md","requiresApprovalGate":false}
