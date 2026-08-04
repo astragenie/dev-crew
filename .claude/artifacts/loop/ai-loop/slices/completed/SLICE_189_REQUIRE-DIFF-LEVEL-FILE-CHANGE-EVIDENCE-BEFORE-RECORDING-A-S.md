@@ -1,7 +1,7 @@
 ---
 id: SLICE-189
 title: Require diff-level file-change evidence before recording a slice as git-shipped
-status: pending
+status: completed
 feature: FEAT-284
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 602
 github_url: "https://github.com/astragenie/runner-plugin/issues/602"
+completed_at: 2026-08-04
 ---
 # SLICE-189: Require diff-level file-change evidence before recording a slice as git-shipped
 

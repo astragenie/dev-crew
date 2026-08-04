@@ -7,7 +7,7 @@ target_release: null
 created: 2026-08-04
 updated: 2026-08-04
 depends_on: []
-slices: [SLICE-188, SLICE-189, SLICE-190, SLICE-191, SLICE-192, SLICE-193]
+slices: [SLICE-188, SLICE-189, SLICE-190, SLICE-191, SLICE-192, SLICE-193, SLICE-194]
 derived_from: null
 pm_customer_impact: 0.9
 pm_effort_estimate: 0.7
@@ -44,11 +44,15 @@ proposed_slices:
     title: Add CLI escape hatch to force-materialize one named proposed slice by id_suffix
     points: 2
     estimated_tokens: 100000
+  - id_suffix: -SLICE-7
+    title: Treat squash-body bullet lines as subject-equivalent match targets (AC-8)
+    points: 2
+    estimated_tokens: 60000
 started_at: 2026-08-04
 github_issue: 609
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/609"
-slices_complete: [SLICE-188]
+slices_complete: [SLICE-188, SLICE-189]
 ---
 ## Description
 
@@ -101,6 +105,38 @@ hides the gap.
 - AC-6: Given a proposed slice that declares NO `touches_files` (the live FEAT-259 repro shape — none of its five proposed entries declared any), When a matching candidate commit changed only non-implementing paths such as `docs/**` and `.claude/artifacts/**`, Then the match is downgraded to a text-only warning rather than recorded as shipped evidence. Both real offending commits are filtered by this rule and neither is filtered by AC-1 or AC-2: `71604bb4` touched only `docs/research/**` plus backlog frontmatter, and `c2e77fe7` touched only backlog artifacts. Asserted against the existing docs-only fixture at `src/tests/git-anchored-completion.test.mts:263-282`, whose expectation inverts from shipped==[1] to shipped==[].
 
 - AC-7: Given a candidate commit whose FEAT-id/SLICE-ordinal token pair appears ONLY in the commit body and not in its subject, When reconcileProposedSlicesAgainstGit evaluates it, Then it is not recorded as shipped evidence (at most a text-only warning). Given a commit carrying the pair in its SUBJECT in the established convention (`feat(connectors): FEAT-312 SLICE-1 — bridge`), Then it still qualifies as evidence as today.
+
+- AC-8: Given a squash-merge commit whose body contains bullet lines composed from the original commit subjects, When reconcileProposedSlicesAgainstGit evaluates it, Then each bullet line is treated as a subject-equivalent match target, so a genuine multi-slice squash merge is recognized as evidence. Prose mentions elsewhere in the body remain non-qualifying.
+
+### Why AC-8 is required — AC-7 broke the dominant shipping shape
+
+Found by review of SLICE-189 and confirmed independently. AC-7 is not merely
+defense-in-depth; it is a net-new miss for this repo's most common real
+shape. Verified live: PR #549 / commit `859be561` genuinely shipped both
+SLICE-1 and SLICE-2 of FEAT-267 (confirmed via `gh pr view 549`), matched
+correctly before SLICE-189, and now returns `shipped=[]` with both demoted to
+`textOnlyMatches`. Squash-merged multi-slice PRs put the SLICE token only in
+the body GitHub composes from the original commit subjects — never in the
+subject, which is the PR title. Left as-is, AC-7 surrenders this module's
+main practical benefit (auto-advance) for most multi-slice FEATs here.
+
+AC-8 was measured against real commits before being adopted, because the
+previous refinement attempt reinstated the defect (see the section above):
+
+| commit class | recovered by AC-8 |
+|---|---|
+| the 3 known false positives | **0 of 3** |
+| genuine body-only commits sampled | 2 of 4 |
+
+None of `71604bb4`, `c2e77fe7`, `3bd6ab95` carries the token pair inside a
+bullet line — their bodies are hand-written prose, and two have no bullets at
+all. Both true squash merges do: `859be561` (12 bullets) and `f60fe60d`
+(15 bullets). So AC-8 recovers the shape that matters without reopening the
+hole AC-7 closed.
+
+The two still-missed samples (`0786d9ce`, `453200c1`) mention the pair in
+free prose rather than a bullet. That residue is acceptable and is precisely
+what SLICE-190's operator warning exists to surface.
 
 ### Why AC-7 exists — AC-6 does not catch the third offender
 
