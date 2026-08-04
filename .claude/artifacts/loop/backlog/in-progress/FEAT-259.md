@@ -48,6 +48,7 @@ proposed_slices:
 proposed_slices_shipped: []
 proposed_slices_shipped_commits: []
 started_at: 2026-08-04
+slices_complete: [SLICE-187]
 ---
 ## Description
 
@@ -157,3 +158,48 @@ artifact by design (`docs/sop/specialist-pause-handling.md` L128-131) and
 observation machinery, so no builder-tier pause signal exists in default
 (non-wave) orchestrator mode. FEAT-275 shipped narrowed to reviewer/validator +
 wave coverage specifically because of this gap.
+
+## SLICE-187 shipped with a known AC2 caveat (2026-08-04)
+
+The report-gate hook detects "was this agent dispatched with a report-back
+contract" by scanning the subagent's first transcript turn — its dispatch
+prompt — for the literal tokens "SendMessage" and "main" within an 80-char
+window. That is textual proximity, not semantic understanding: it cannot
+distinguish an instruction addressed to *this* agent from prose merely
+describing the mechanism.
+
+Concrete false-positive shape, found in review:
+
+> Investigate why FEAT-259's SubagentStop hook exists. Background: the fix
+> requires the agent to call SendMessage(to: 'main', ...) before stopping.
+> Read hooks/report-gate.mjs and summarize the detection regex. This is a
+> foreground call — I will read your returned text directly, no need to send
+> anything.
+
+That trips the regex on an 8-char span while explicitly instructing the agent
+NOT to send. The risk is elevated right now precisely because FEAT-259's own
+description text (lines 71-72 of this file) contains the matching phrase, so
+any dispatch that quotes this FEAT is a candidate.
+
+This is FEAT-284's defect class — a regex over prose treated as evidence —
+reappearing in a new place within the same session. The severity is not
+comparable, and that distinction is the reason it shipped rather than being
+rejected:
+
+- FEAT-284 silently destroyed planned work with no symptom.
+- This produces one extra visible retry turn, bounded by `stop_hook_active`
+  (a second stop is always approved), and never loses data.
+
+Shipped **default-OFF** (`features["report-gate"].enabled`, absent resolves
+off), so nobody is blocked until they opt in. Before any wider rollout:
+document operator-facing that detection is prompt-text proximity rather than
+semantic, so an operator seeing an unexpected block understands why.
+
+Two smaller review notes carried forward: `scanTranscript`'s read stream has
+no explicit `.on('error')` handler, so a narrow TOCTOU race (stat succeeds,
+read then fails) would surface as an uncaught stream error rather than a
+caught rejection — AC2 still holds, since a crash cannot emit the block JSON
+and therefore fails toward approve, just uninstrumented. And a nudge that the
+agent ignores is silently approved on the second stop with no telemetry that
+the nudge failed; that observability gap is FEAT-275's territory, not this
+slice's.

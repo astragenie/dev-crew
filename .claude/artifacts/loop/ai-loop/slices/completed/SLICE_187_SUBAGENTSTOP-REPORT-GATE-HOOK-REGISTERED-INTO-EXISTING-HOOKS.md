@@ -1,7 +1,7 @@
 ---
 id: SLICE-187
 title: "SubagentStop report-gate hook, registered into existing hooks.json array"
-status: pending
+status: completed
 feature: FEAT-259
 phase: null
 priority: P1
@@ -15,6 +15,7 @@ estimated_tokens: 80000
 github_issue: 598
 github_url: "https://github.com/astragenie/runner-plugin/issues/598"
 touches_files: [hooks/report-gate.mjs, .claude-plugin/hooks/hooks.json, src/tests/report-gate.test.mts]
+completed_at: 2026-08-04
 ---
 # SLICE-187: SubagentStop report-gate hook, registered into existing hooks.json array
 
