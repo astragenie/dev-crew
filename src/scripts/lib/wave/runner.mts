@@ -7,6 +7,7 @@
 import { buildFailurePivot } from "./failure-pivot.mjs";
 import { appendWaveEvent, type WaveEvent } from "./events.mjs";
 import { recordDispatchOutcome, recordPauseEvent } from "../pause-telemetry.mjs";
+import { summarizeRejections } from "./rejection-category.mjs";
 import type {
   FailurePivot,
   SliceCandidate,
@@ -106,12 +107,19 @@ export async function runWave(repoRoot: string, deps: RunWaveDeps): Promise<RunW
 
   // From here we have a real waveId → emit lifecycle events.
   record({ type: "wave_started", waveId: plan.waveId, timestamp: new Date().toISOString() });
+  // SLICE-182 (FEAT-276 AC-5): waveSize + the categorized breakdown ride
+  // alongside the pre-existing size/rejectedCount fields.
+  const rejectionBreakdown = summarizeRejections(plan.rejected);
   record({
     type: "plan_built",
     waveId: plan.waveId,
     timestamp: new Date().toISOString(),
     size: plan.size,
-    rejectedCount: plan.rejected.length
+    rejectedCount: plan.rejected.length,
+    waveSize: plan.config.waveSize,
+    rejectedConflict: rejectionBreakdown.conflict,
+    rejectedMissingConfidence: rejectionBreakdown.missingConfidence,
+    rejectedOther: rejectionBreakdown.other
   });
 
   // M2 (L2-1): emit one wave_member_slice per packed slice so downstream

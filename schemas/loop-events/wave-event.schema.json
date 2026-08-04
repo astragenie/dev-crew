@@ -9,6 +9,10 @@
     "ts": { "type": "string", "format": "date-time" },
     "size": { "type": "integer", "minimum": 0 },
     "rejectedCount": { "type": "integer", "minimum": 0 },
+    "waveSize": { "type": "integer", "minimum": 0 },
+    "rejectedConflict": { "type": "integer", "minimum": 0 },
+    "rejectedMissingConfidence": { "type": "integer", "minimum": 0 },
+    "rejectedOther": { "type": "integer", "minimum": 0 },
     "runId": { "type": "string" },
     "sliceIds": { "type": "array", "items": { "type": "string" } },
     "merged": { "type": "array", "items": { "type": "string" } },
@@ -47,10 +51,14 @@
         "properties": {
           "waveId": { "type": "string" },
           "size": { "type": "integer" },
+          "waveSize": { "type": "integer" },
           "passCount": { "type": "integer" },
           "failCount": { "type": "integer" },
           "postMergeTest": { "type": "string" },
-          "durationMs": { "type": "integer" }
+          "durationMs": { "type": "integer" },
+          "rejectedConflict": { "type": "integer" },
+          "rejectedMissingConfidence": { "type": "integer" },
+          "rejectedOther": { "type": "integer" }
         }
       }
     }

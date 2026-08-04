@@ -17,6 +17,18 @@ export type WaveIndexEntry = {
   failCount: number;
   postMergeTest: "PASS" | "FAIL" | "skipped";
   durationMs: number;
+  // SLICE-182 (FEAT-276 AC-5): requested packing capacity at plan time
+  // (packWave's opts.waveSize) alongside the achieved `size`, so a
+  // solo-packed wave ("packed 1/4") reads differently from a genuinely
+  // width-1 wave ("packed 1/1"). Optional -- entries written before this
+  // field existed omit it; renderers must not fabricate a value for them.
+  waveSize?: number;
+  // Rejection-reason breakdown (categorizeRejectionReason() in
+  // rejection-category.mts) for the wave's plan.rejected list. Optional
+  // for the same backward-compat reason as waveSize.
+  rejectedConflict?: number;
+  rejectedMissingConfidence?: number;
+  rejectedOther?: number;
 };
 
 /**
