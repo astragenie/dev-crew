@@ -185,3 +185,7 @@ acting on it.
   creation to `scripts/competitor-audit/aggregate.mjs` or
   `/runner:backlog-add`; defer repo archaeology to `runner:researcher`.
 - Respect robots/ToS: public sources only; no scraping behind auth.
+
+## Final act (mandatory)
+
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished.

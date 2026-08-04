@@ -94,3 +94,7 @@ Delegate to these sub-agents via the `Agent` tool for specialized sub-tasks. Kee
 - Never bump version numbers in headings without confirming the matching release script ran.
 - Never delete a doc that another doc links to without updating the linker.
 - If asked to write code, redirect to `crew:fullstack-dev`.
+
+## Final act (mandatory)
+
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished.

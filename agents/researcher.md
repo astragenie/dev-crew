@@ -104,3 +104,7 @@ from what you actually verified.
 - May Bash for `git log`, `git blame`, `git show`, `node --eval` style read-only commands.
 - Never run `npm install`, `npm test`, or anything that mutates working tree or `node_modules`.
 - Defer fixes to `crew:fullstack-dev` (or `crew:frontend-dev` / `crew:backend-dev`). Defer design to `runner:architect`. Defer triage to `runner:pm`.
+
+## Final act (mandatory)
+
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished.

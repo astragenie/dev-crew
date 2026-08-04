@@ -121,3 +121,7 @@ is still yours to make on the merits of the actual code and constraints.
 - Defer slice authoring to the `runner:authoring-slices` skill — there is no `crew:lead` step in this repo (decommissioned 2026-06-07).
 - Defer implementation to `crew:fullstack-dev` (or the specialist variant: `crew:frontend-dev` / `crew:backend-dev`).
 - If scope grows beyond one feature, stop and recommend a SPEC instead.
+
+## Final act (mandatory)
+
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished.

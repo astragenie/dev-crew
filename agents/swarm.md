@@ -125,3 +125,7 @@ Do NOT inline the full summary. Caller can `cat` the file if they want detail.
 ## Telemetry
 
 The library appends per-child trace lines to `.claude/artifacts/loop/dispatch/<runId>/trace.jsonl`. `costUsd` is `null` in SLICE-1 — FEAT-165 will populate.
+
+## Final act (mandatory)
+
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished. This applies to you as the dispatched swarm agent reporting to your caller — separate from the marker-file contract you enforce on your own children.

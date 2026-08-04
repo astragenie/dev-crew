@@ -331,3 +331,5 @@ Write ACs (`acs: [...]`, at least 3, Given-When-Then — see the AC drafting rul
 |---|---|---|
 | Any priority (P0–P4), no `--spec` | Yes | No |
 | `--spec` flag passed | No (acs: []) | Yes |
+
+**Final act (mandatory):** Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished.
