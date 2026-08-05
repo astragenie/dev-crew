@@ -23,9 +23,22 @@ function stripQuotes(raw: string): string {
 }
 
 // Splits an inline array's inner content on top-level commas only — a comma
-// inside a quoted item does not split (mirrors frontmatter.mts's
-// splitInlineArrayItems; kept as a local copy rather than an import so this
-// hot-path reader stays a self-contained, zero-dependency module).
+// inside a quoted item does not split. Kept as a local copy rather than an
+// import so this hot-path reader stays a self-contained, zero-dependency
+// module.
+//
+// NOT equivalent to frontmatter.mts's splitInlineArrayItems, despite the shared
+// name — corrected after SLICE-203 review found the two diverge. That one
+// carries a backslash-escape lookahead so `\"` inside a double-quoted item does
+// not prematurely close the quote, and pairs with an unescapeDoubleQuoted step;
+// this copy has neither. Fed `["a\"b,c"]`, frontmatter.mts yields the single
+// item `a"b,c` while this yields two garbled items.
+//
+// Acceptable here only because touches_files values are plain repo-relative
+// paths, which never contain escaped quotes. Do NOT treat these two functions
+// as interchangeable, and do not widen this one's input contract (e.g. reuse it
+// for a field that can carry arbitrary strings) without porting the escape
+// handling first.
 function splitInlineArrayItems(inner: string): string[] {
   const items: string[] = [];
   let current = "";
