@@ -19,9 +19,24 @@
    SLICE-191/192/193 carry the superseded AC-1…AC-5, including the AC-1 wording
    corrected on 2026-08-04 — the one that would *not* have caught the original
    incident. The correction landed in one sibling only.
-3. **No slice declares `touches_files`** (verified across all 10). `packWave`
-   sees `confidence: "missing"` and forces solo dispatch, so no parallel wave is
-   possible until FEAT-288's inline-write/block-read round-trip is fixed.
+3. **No slice declares `touches_files`** (verified across all 10, later all 28).
+   `packWave` sees `confidence: "missing"` and forces solo dispatch, so no
+   parallel wave is possible.
+
+   **Corrected 2026-08-05 — I attributed this to the wrong cause.** I wrote that
+   FEAT-288's inline-write/block-read mismatch was the blocker. It is not. 0 of
+   28 pending slices carry a `touches_files:` key at all, and 0 FEATs declare it
+   inside a `proposed_slices` entry; SLICE-187 is the only file in the repo with
+   one. A slice that declares nothing and a slice that declares something
+   unparseable both report `confidence: "missing"`, and I inferred the parser
+   from the symptom without checking whether the key was present.
+
+   FEAT-288's parser defect is real and worth fixing (proven by pre-fix test
+   failures) but PREVENTIVE — it changes no on-disk slice today. The actual
+   blocker is a producer gap, filed as FEAT-292: `agents/pm.md:45` tells the PM
+   `touches_files` is "conservative-only … when unsure, omit the field entirely",
+   so it is always omitted and the planner never receives data. Same
+   producer/consumer shape as FEAT-290.
 
 ## Phase 0 — unblock
 
@@ -30,7 +45,7 @@
 | 0.1 | FEAT-283 SLICE-1 | Review gate reads `PASS` as rejection. ~10 slices × ~2 reviewer dispatches = ~20 hand-written verdict headers avoided |
 | 0.2 | FEAT-289 | `agents/pm.md` at 335/335 against a 335 cap — any pm.md edit fails CI gate 3 |
 | 0.3 | Rescope 10 slice bodies | Fill Objective/In-scope/Out-of-scope per title; narrow ACs to the subset each slice owns; fix Done-When so only the final slice moves the FEAT |
-| 0.4 | FEAT-288 *(optional)* | Only needed for parallel waves; then backfill `touches_files` on all 10 |
+| 0.4 | ~~FEAT-288~~ → **FEAT-292** | Parallel waves need the PRODUCER fixed, not the parser. FEAT-288 is preventive and can land any time; FEAT-292 is what actually unblocks packing |
 
 0.3 is not paperwork — it is the difference between four builders each
 implementing all of FEAT-284 and four builders implementing four slices.
