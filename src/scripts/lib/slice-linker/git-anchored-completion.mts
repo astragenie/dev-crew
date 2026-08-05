@@ -32,16 +32,21 @@ export interface ShippedOrdinalEvidence {
 }
 
 // Why a text match was NOT accepted as shipped evidence (FEAT-284
-// AC-1/AC-2/AC-6/AC-7) — carried on `textOnlyMatches` so a downstream caller
-// (SLICE-190) can print an operator-visible skip/downgrade line without this
-// module owning any console output itself.
+// AC-1/AC-2/AC-6/AC-7/AC-8) — carried on `textOnlyMatches` so a downstream
+// caller (SLICE-190) can print an operator-visible skip/downgrade line
+// without this module owning any console output itself.
 export type TextOnlyMatchReason =
   | "token-pair-in-body-only" // AC-7: the FEAT-id/SLICE-ordinal pair appears
   // only when subject+body are concatenated, never within the subject alone
   // — the established genuine-evidence convention puts it in the subject
-  // (e.g. `feat(connectors): FEAT-312 SLICE-1 — bridge`). Checked before, and
-  // instead of, diff corroboration — a body-only mention never qualifies
-  // regardless of what the commit's diff touched.
+  // (e.g. `feat(connectors): FEAT-312 SLICE-1 — bridge`). AC-8 (SLICE-194)
+  // widens WHERE the pair may appear — a bullet-shaped body line (see
+  // `isBulletShapedBodyLine`) counts as subject-equivalent, since a genuine
+  // squash-merge folds each original commit's subject into the merge
+  // commit's body as one bullet line per commit — but a prose mention
+  // outside any bullet-shaped line still lands here. Checked before, and
+  // instead of, diff corroboration — a non-qualifying body-only mention
+  // never qualifies regardless of what the commit's diff touched.
   | "no-diff-evidence" // commit changed zero files (--allow-empty, or the
   // diff lookup itself failed — fail-open, treated identically to "no
   // evidence" per this module's contract)
@@ -110,6 +115,77 @@ const NON_IMPLEMENTING_PATH_PREFIXES = ["docs/", ".claude/artifacts/"];
 
 function isNonImplementingPath(changedPath: string): boolean {
   return NON_IMPLEMENTING_PATH_PREFIXES.some((prefix) => changedPath.startsWith(prefix));
+}
+
+// FEAT-284 AC-8 (SLICE-194): a commit body line shaped like a markdown/
+// squash-merge bullet — optional leading whitespace, then `-`, `*`, or `+`,
+// then at least one space before content. AC-7 (above) requires the FEAT-id/
+// SLICE-ordinal pair to sit in the commit SUBJECT because a body-only
+// mention is exactly the shape of the three live false positives (71604bb4,
+// c2e77fe7, 3bd6ab95) — all three carry the pair only in prose paragraphs.
+// But a genuine squash-merge (GitHub's default squash format, and manual
+// multi-commit squashes alike — the live 859be561 shape) folds each original
+// commit's SUBJECT into the merge commit's BODY as one bullet line per
+// commit. Those bullet lines *are* subjects; they just moved.
+//
+// The character-class test alone (`-`/`*`/`+` + whitespace at line start)
+// cannot tell a genuine list item apart from an ordinary prose sentence that
+// happens to hard-wrap onto a line starting with "-". What distinguishes
+// them is BLOCK CONTEXT: a real bullet always opens a new block — either the
+// very first line of the body, or immediately after a blank line, or as a
+// continuation of a run of bullets already recognized as such (consecutive
+// list items). A mid-paragraph wrap boundary is preceded by an ordinary,
+// non-blank, non-bullet prose line, so it never opens a block and is
+// excluded even though its leading character matches the shape. This is why
+// `bulletShapedBodyLines` walks the body sequentially tracking the previous
+// line's status rather than filtering lines independently.
+//
+// A named, documented predicate pair (matching the style of
+// `NON_IMPLEMENTING_PATH_PREFIXES`/`isNonImplementingPath` above) so a
+// future reader can see and revise the policy, not find it inline.
+//
+// Rejected alternative — do NOT adopt: "FEAT-id OR SLICE-token appears
+// anywhere in the subject" (without requiring the pair together) reinstates
+// ALL THREE known false positives, because each one's SUBJECT alone happens
+// to mention one of the two tokens on its own. This predicate never widens
+// AC-7's subject rule; it only adds qualifying bullet-shaped body lines as
+// additional subject-equivalent text to run that same paired-token pattern
+// against — a match still requires both tokens on one physical line.
+const BULLET_LINE_PATTERN = /^\s*[-*+]\s+/;
+
+function isBulletShapedBodyLine(line: string): boolean {
+  return BULLET_LINE_PATTERN.test(line);
+}
+
+/** Split a commit body into the bullet lines that actually OPEN a list block
+ * (see the block-context rationale above) — the set of subject-equivalent
+ * match targets AC-8 adds alongside the commit's actual subject. A line
+ * matching `isBulletShapedBodyLine` only qualifies when the preceding line is
+ * blank, the start of the body, or itself a qualifying bullet — never when
+ * it's a bare mid-paragraph wrap continuation. */
+function bulletShapedBodyLines(body: string): string[] {
+  const lines = body.split("\n");
+  const matches: string[] = [];
+  let precededByBlockBoundary = true; // start of body counts as a boundary
+  for (const line of lines) {
+    const isBulletShape = isBulletShapedBodyLine(line);
+    if (isBulletShape && precededByBlockBoundary) {
+      matches.push(line);
+    }
+    precededByBlockBoundary =
+      line.trim().length === 0 || (isBulletShape && precededByBlockBoundary);
+  }
+  return matches;
+}
+
+/** AC-7/AC-8: true if the FEAT-id/SLICE-ordinal `pattern` matches the
+ * commit's subject, OR a bullet-shaped body line that opens a list block
+ * (see `bulletShapedBodyLines`). Extracted so the caller's branching stays
+ * within the reconcile loop's complexity budget. */
+function hasSubjectEquivalentMatch(pattern: RegExp, hit: CommitRecord): boolean {
+  return (
+    pattern.test(hit.subject) || bulletShapedBodyLines(hit.body).some((line) => pattern.test(line))
+  );
 }
 
 function escapeRegExp(s: string): string {
@@ -250,11 +326,15 @@ function evaluateDiffCorroboration(
  * A commit whose subject/body mentions a proposed slice's FEAT-id/SLICE-
  * ordinal token pair is no longer sufficient on its own (FEAT-284): the pair
  * must appear in the commit SUBJECT itself (AC-7 — a body-only mention is
- * never evidence, no matter what the commit touched), and the match is only
- * promoted to `shipped` evidence if the commit's diff also corroborates it
- * (see `evaluateDiffCorroboration`). A text match that fails either check is
- * recorded on `textOnlyMatches` instead of being silently dropped, so a
- * caller can surface it as a warning.
+ * never evidence, no matter what the commit touched), OR on a bullet-shaped
+ * body line (AC-8/SLICE-194 — a genuine squash-merge folds each original
+ * commit subject into the merge commit's body as a bullet line; see
+ * `isBulletShapedBodyLine`), and the match is only promoted to `shipped`
+ * evidence if the commit's diff also corroborates it (see
+ * `evaluateDiffCorroboration`) — a bullet-line match is not a corroboration
+ * bypass. A text match that fails either check is recorded on
+ * `textOnlyMatches` instead of being silently dropped, so a caller can
+ * surface it as a warning.
  */
 export async function reconcileProposedSlicesAgainstGit(
   repoPath: string,
@@ -310,7 +390,15 @@ export async function reconcileProposedSlicesAgainstGit(
       // body; the established genuine-evidence convention puts it in the
       // subject. A body-only mention never qualifies, regardless of diff —
       // checked before, and instead of, diff corroboration.
-      if (!pattern.test(hit.subject)) {
+      //
+      // AC-8 (SLICE-194): a bullet-shaped body line (see
+      // `isBulletShapedBodyLine`) is a subject-equivalent match target — a
+      // genuine squash-merge folds each original commit's subject into the
+      // merge commit's body as one bullet line (the live 859be561 shape).
+      // The pattern is still run per-line, never against the whole body, so
+      // this widens WHERE the pair may appear, not WHETHER it must appear
+      // together on one line.
+      if (!hasSubjectEquivalentMatch(pattern, hit)) {
         textOnlyMatches.push({ ...record, reason: "token-pair-in-body-only" });
         continue;
       }

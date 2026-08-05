@@ -339,6 +339,154 @@ test("FEAT-284 AC-7: a token pair mentioned only in the commit BODY does NOT cou
   assert.equal(res.textOnlyMatches[0]!.reason, "token-pair-in-body-only");
 });
 
+// --- squash-body bullet lines (FEAT-284 AC-8 / SLICE-194) -------------------
+//
+// AC-7 (above) requires the FEAT-id/SLICE-ordinal pair in the commit SUBJECT
+// because a body-only mention is exactly the shape of the three known false
+// positives. But a genuine squash-merge (GitHub's default squash format, and
+// manual multi-commit squashes alike — the live 859be561 shape) folds each
+// original commit's SUBJECT into the merge commit's BODY as one bullet line
+// per commit. AC-8 treats those bullet lines as subject-equivalent, while a
+// hard-wrapped prose line that merely starts with "-" stays non-qualifying.
+
+test("FEAT-284 AC-8: squash-body bullet lines are recognized as subject-equivalent matches, while a prose line that merely starts with a dash is not (859be561 shape)", async () => {
+  const repo = await tmpGitRepo("gac-squash-bullets-", [
+    {
+      subject: "FEAT-600: squash merge landing two slices (#600)",
+      files: {
+        "src/scripts/lib/thing-one.mts": "export const thingOne = 1;\n",
+        "src/scripts/lib/thing-two.mts": "export const thingTwo = 1;\n"
+      },
+      body:
+        "* fix(dispatch): implement thing one (FEAT-600 SLICE-1)\n" +
+        "\n" +
+        "Root cause notes about thing one, in ordinary prose describing rationale\n" +
+        "and nothing else notable here.\n" +
+        "\n" +
+        "* feat(dispatch): implement thing two (FEAT-600 SLICE-2)\n" +
+        "\n" +
+        "More explanatory prose about thing two, still not itself a list.\n" +
+        "\n" +
+        "This paragraph provides closing context and eventually\n" +
+        "- happens to wrap here mentioning FEAT-600 and its SLICE-4 nuance directly " +
+        "inside prose, not as a list, before the sentence continues normally."
+    }
+  ]);
+
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-600", [
+    { id_suffix: "-SLICE-1", title: "Thing one", points: 2, estimated_tokens: 100_000 },
+    { id_suffix: "-SLICE-2", title: "Thing two", points: 2, estimated_tokens: 100_000 },
+    {
+      id_suffix: "-SLICE-4",
+      title: "Decoy — wrapped prose, not a real bullet",
+      points: 2,
+      estimated_tokens: 100_000
+    }
+  ]);
+
+  assert.equal(res.gitError, null);
+  assert.deepEqual(
+    res.shipped.map((s) => s.ordinal).sort(),
+    [1, 2],
+    "both squash-bullet slices recognized as shipped"
+  );
+  assert.equal(res.textOnlyMatches.length, 1, "the wrapped-prose decoy must not be promoted");
+  assert.equal(res.textOnlyMatches[0]!.ordinal, 4);
+  assert.equal(res.textOnlyMatches[0]!.reason, "token-pair-in-body-only");
+});
+
+test("FEAT-284 AC-8a: all three known live false positives (71604bb4, c2e77fe7, 3bd6ab95) still downgrade with the bullet-line rule active", async () => {
+  // Reconstructed from the actual commit bodies (git show -s <sha>) rather
+  // than a paraphrase, since this is exactly the failure mode the rejected
+  // "FEAT-id OR SLICE-token in subject" alternative would have reinstated.
+
+  // 71604bb4: contains a genuine bulleted list, but the list items never
+  // mention FEAT-259 — the FEAT-259/SLICE-1 pair sits only in an earlier,
+  // non-bulleted prose sentence.
+  const repo71604bb4 = await tmpGitRepo("gac-ac8a-71604bb4-", [
+    {
+      subject:
+        "docs(research): architect classification for FEAT-281/282/283 + SubagentStop contract spike",
+      files: { "docs/research/subagentstop-spike.md": "# spike\n" },
+      body:
+        "Also lands a research spike run before committing FEAT-259's SLICE-1 to a\n" +
+        "design. A documentation review flagged an issue.\n" +
+        "\n" +
+        "Three findings that change SLICE-1's shape:\n" +
+        "  - last_assistant_message carries the subagent's full final text.\n" +
+        "  - agent_type carries the caller-chosen dispatch NAME, not the role.\n" +
+        "  - No payload field enumerates tools called.\n"
+    }
+  ]);
+  const res71604bb4 = await reconcileProposedSlicesAgainstGit(repo71604bb4, "FEAT-259", [
+    { id_suffix: "-SLICE-1", title: "Design", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.deepEqual(res71604bb4.shipped, []);
+  assert.equal(res71604bb4.textOnlyMatches.length, 1);
+  assert.equal(res71604bb4.textOnlyMatches[0]!.reason, "token-pair-in-body-only");
+
+  // c2e77fe7: FEAT-259 appears in the subject, but the SLICE-1 ordinal token
+  // appears only mid-sentence in the body (never a bulleted line).
+  const repoC2e77fe7 = await tmpGitRepo("gac-ac8a-c2e77fe7-", [
+    {
+      subject: "chore(backlog): slice FEAT-259; repair git-anchored false-positive; file FEAT-284",
+      files: { ".claude/artifacts/loop/backlog/triaged/FEAT-259.md": "notes\n" },
+      body:
+        "It skipped -SLICE-1 (the SubagentStop report-gate hook, the highest-ROI\n" +
+        "mechanism in the FEAT) and stamped proposed_slices_shipped onto the FEAT,\n" +
+        "citing a docs-only commit."
+    }
+  ]);
+  const resC2e77fe7 = await reconcileProposedSlicesAgainstGit(repoC2e77fe7, "FEAT-259", [
+    { id_suffix: "-SLICE-1", title: "Report gate", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.deepEqual(resC2e77fe7.shipped, []);
+  assert.equal(resC2e77fe7.textOnlyMatches.length, 1);
+  assert.equal(resC2e77fe7.textOnlyMatches[0]!.reason, "token-pair-in-body-only");
+
+  // 3bd6ab95: subject names an unrelated ordinal (SLICE-188); body is plain
+  // prose (no bullets at all) narrating "FEAT-259's SLICE-1".
+  const repo3bd6ab95 = await tmpGitRepo("gac-ac8a-3bd6ab95-", [
+    {
+      subject:
+        "test(SLICE-188): rebuild git-anchored-completion fixtures with real file-touching commits",
+      files: { "src/tests/some-other-suite.test.mts": "test('x', () => {});\n" },
+      body:
+        "tmpGitRepo's --allow-empty-only fixture helper made it structurally\n" +
+        "impossible for the suite to distinguish a commit that implements a slice\n" +
+        "from one that merely mentions it in prose — the exact gap that let commit\n" +
+        "71604bb4 silently drop FEAT-259's SLICE-1."
+    }
+  ]);
+  const res3bd6ab95 = await reconcileProposedSlicesAgainstGit(repo3bd6ab95, "FEAT-259", [
+    { id_suffix: "-SLICE-1", title: "Design", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.deepEqual(res3bd6ab95.shipped, []);
+  assert.equal(res3bd6ab95.textOnlyMatches.length, 1);
+  assert.equal(res3bd6ab95.textOnlyMatches[0]!.reason, "token-pair-in-body-only");
+});
+
+test("FEAT-284 AC-8c: a bullet-line match still requires diff corroboration — it is not a promotion bypass", async () => {
+  const repo = await tmpGitRepo("gac-ac8c-bullet-no-diff-", [
+    {
+      subject: "FEAT-700: squash merge (#700)",
+      // No `files` — an --allow-empty commit, same as the AC-1 fixture above.
+      body: "* fix(x): implement thing (FEAT-700 SLICE-1)\n\nprose describing the change.\n"
+    }
+  ]);
+  const res = await reconcileProposedSlicesAgainstGit(repo, "FEAT-700", [
+    { id_suffix: "-SLICE-1", title: "Thing", points: 2, estimated_tokens: 100_000 }
+  ]);
+  assert.equal(res.gitError, null);
+  assert.deepEqual(res.shipped, []);
+  assert.equal(res.textOnlyMatches.length, 1);
+  assert.equal(
+    res.textOnlyMatches[0]!.reason,
+    "no-diff-evidence",
+    "the bullet-line match must still be demoted by AC-1's no-diff-evidence check, not silently promoted"
+  );
+});
+
 test("reconcile finds genuine shipped evidence from a commit that changes real source paths", async () => {
   const repo = await tmpGitRepo("gac-src-evidence-", [
     {
