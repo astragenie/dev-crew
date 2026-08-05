@@ -9,6 +9,73 @@ function normalize(p: string): string {
   return p.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
+// Strips a single layer of matching double- or single-quotes from an inline
+// array item. Writer-produced items are never quoted (createSlice's
+// touchesFiles paths never contain a comma or other char that would trigger
+// serializeScalar's QUOTE_NEEDED_RE), but a hand-authored slice frontmatter
+// may quote entries — accept that form too rather than leaving the quotes in
+// the returned path.
+function stripQuotes(raw: string): string {
+  const v = raw.trim();
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) return v.slice(1, -1);
+  if (v.length >= 2 && v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1);
+  return v;
+}
+
+// Splits an inline array's inner content on top-level commas only — a comma
+// inside a quoted item does not split (mirrors frontmatter.mts's
+// splitInlineArrayItems; kept as a local copy rather than an import so this
+// hot-path reader stays a self-contained, zero-dependency module).
+function splitInlineArrayItems(inner: string): string[] {
+  const items: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | null = null;
+  for (const ch of inner) {
+    if (quote) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === ",") {
+      items.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  items.push(current);
+  return items;
+}
+
+// Recognizes a genuine single-line YAML flow sequence (`[a, b, c]` / `[]`) —
+// requires both a leading `[` and a trailing `]` on the trimmed value, so a
+// scalar that merely starts with `[` (e.g. `[Draft] retitle`, which has no
+// closing bracket at the end) is never misread as an array. Returns null for
+// anything that isn't this shape, so the caller falls back to treating the
+// value as a plain scalar instead of silently fabricating a path list out of
+// a malformed or unrelated value.
+function parseInlineArray(value: string): string[] | null {
+  const v = value.trim();
+  if (!v.startsWith("[") || !v.endsWith("]")) return null;
+  const inner = v.slice(1, -1).trim();
+  if (inner === "") return [];
+  return splitInlineArrayItems(inner)
+    .map((item) => stripQuotes(item))
+    .filter((item) => item.length > 0);
+}
+
+// Resolves a non-empty single-line frontmatter value: an inline array parses
+// to a string[], anything else stays the plain trimmed scalar string.
+function resolveInlineValue(value: string): unknown {
+  const inlineArray = parseInlineArray(value);
+  return inlineArray !== null ? inlineArray : value.trim();
+}
+
 function parseFrontmatter(raw: string): Record<string, unknown> {
   const m = raw.match(FRONTMATTER_RE);
   if (!m || !m[1]) return {};
@@ -34,7 +101,7 @@ function parseFrontmatter(raw: string): Record<string, unknown> {
       currentKey = key;
       listAcc = [];
     } else {
-      out[key] = value.trim();
+      out[key] = resolveInlineValue(value);
     }
   }
   if (listAcc !== null && currentKey !== null) {
