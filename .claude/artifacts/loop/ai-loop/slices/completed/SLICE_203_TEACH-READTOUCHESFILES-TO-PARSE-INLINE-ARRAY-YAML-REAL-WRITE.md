@@ -1,7 +1,7 @@
 ---
 id: SLICE-203
 title: Teach readTouchesFiles to parse inline-array YAML + real writer/reader round-trip test
-status: pending
+status: completed
 feature: FEAT-288
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 1
 estimated_tokens: 60000
 github_issue: 624
 github_url: "https://github.com/astragenie/runner-plugin/issues/624"
+completed_at: 2026-08-05
 ---
 # SLICE-203: Teach readTouchesFiles to parse inline-array YAML + real writer/reader round-trip test
 

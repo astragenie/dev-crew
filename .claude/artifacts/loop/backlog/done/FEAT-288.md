@@ -1,4 +1,8 @@
-
+---
+completed_at: 2026-08-05
+status: done
+updated: 2026-08-05
+---
 ## Correction — 2026-08-05, scoring premise was wrong
 
 The demand evidence above, and the P1 score resting on it, overstated this

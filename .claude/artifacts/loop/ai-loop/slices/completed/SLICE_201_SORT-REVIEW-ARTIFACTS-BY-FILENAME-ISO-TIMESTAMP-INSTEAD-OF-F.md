@@ -1,7 +1,7 @@
 ---
 id: SLICE-201
 title: Sort review artifacts by filename ISO timestamp instead of filesystem mtime
-status: pending
+status: completed
 feature: FEAT-283
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 620
 github_url: "https://github.com/astragenie/runner-plugin/issues/620"
+completed_at: 2026-08-05
 ---
 # SLICE-201: Sort review artifacts by filename ISO timestamp instead of filesystem mtime
 

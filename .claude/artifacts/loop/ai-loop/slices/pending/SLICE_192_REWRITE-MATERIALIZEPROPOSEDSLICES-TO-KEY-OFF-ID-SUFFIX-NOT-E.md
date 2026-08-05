@@ -21,16 +21,68 @@ Implements FEAT-284. See [feature file](../../../backlog/in-progress/FEAT-284.md
 
 ## Objective
 
+This is the duplicate-slice bug. `materializeProposedSlices` decides what to
+create purely by COUNT, never by identity.
 
+`feature-lifecycle.mts:521`:
+
+```ts
+const startAt = Math.max(existingSlices.length, opts.startIndex ?? 0);
+...
+const toCreate = proposed.slice(startAt);   // :549
+```
+
+Consequence, reproduced live on 2026-08-04: FEAT-259 had ordinal 1 silently
+dropped while ordinals 2-5 materialized. Re-running `slice from-feature` saw
+`existingSlices.length === 4`, set `startAt = 4`, and created `proposed[4]` —
+ordinal 5 — **a second time**. That produced a duplicate slice file and an
+extra published GitHub issue (#598). The missing ordinal 1 stayed missing,
+because a count-based cursor cannot express "there is a hole at position 0".
+
+**Second symptom, found 2026-08-05 while scoping — not in the original report.**
+The idempotent-rerun path at `:528` pairs existing slice ids to proposed entries
+by POSITION:
+
+```ts
+existingSlices.slice(0, proposed.length).map((sid, i) => ({
+  id: sid, title: proposed[i]!.title, points: proposed[i]!.points, ...
+}))
+```
+
+When `existingSlices` order does not correspond to `proposed` order — exactly
+what a gap or an out-of-order materialization produces — this reports real slice
+ids under the wrong titles, points and token estimates. It is silent: the output
+is well-formed and wrong. Fixing the cursor without fixing this leaves a
+mislabeling path behind.
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- `src/scripts/lib/slice-linker/feature-lifecycle.mts` — key materialization off
+  `id_suffix` identity, not `existingSlices.length`. Determine which proposed
+  entries are already materialized by matching identity, then create exactly the
+  missing ones, in any position.
+- Fix the `:528` position-pairing so reported id/title/points come from a real
+  identity match rather than array index.
+- Preserve the idempotent-rerun guarantee: a second run with nothing missing
+  must still create nothing and return `idempotent: true`.
+- Preserve `startIndex` interoperability with `reconcileProposedSlicesStartIndex`
+  (the git-anchored advance path) — it must not be silently broken or ignored.
+
+## Acceptance evidence required
+
+- A regression test reproducing the live shape: ordinals 2-5 materialized,
+  ordinal 1 absent. Re-running must create ordinal 1 and must NOT create a
+  second copy of any existing ordinal. Assert both halves — the observed bug was
+  a duplicate, but the un-filled hole is the part that loses work.
+- A test asserting `:528`'s reported titles match the actual slice identities
+  for a gapped feature, not the positional pairing.
 
 ## Out of scope
 
-- bullet 1
+- `proposed_slices_shipped` frontmatter shape — SLICE-191.
+- The CLI escape hatch — SLICE-193 (it depends on this slice's keying).
+- The matcher in `git-anchored-completion.mts` — SLICE-194.
+- Do not change `planReconcileAction`'s refuse/advance/proceed semantics.
 
 ## Acceptance criteria
 
