@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-200","timestamp":"2026-08-05T04:45:12.318Z","featureId":"FEAT-283","title":"SLICE-200: Add unrecognized-verdict branch to review-gate.mts; reconcile vocab with failure-classifier","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260805T044511Z-plan-SLICE-200.md","requiresApprovalGate":false}
