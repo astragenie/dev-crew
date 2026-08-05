@@ -5,7 +5,7 @@ priority: P1
 category: feature
 target_release: null
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-05
 depends_on: []
 slices: [SLICE-188, SLICE-189, SLICE-190, SLICE-191, SLICE-192, SLICE-193, SLICE-194]
 derived_from: null
@@ -52,7 +52,7 @@ started_at: 2026-08-04
 github_issue: 609
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/609"
-slices_complete: [SLICE-188, SLICE-189, SLICE-190]
+slices_complete: [SLICE-188, SLICE-189, SLICE-190, SLICE-194]
 ---
 ## Description
 

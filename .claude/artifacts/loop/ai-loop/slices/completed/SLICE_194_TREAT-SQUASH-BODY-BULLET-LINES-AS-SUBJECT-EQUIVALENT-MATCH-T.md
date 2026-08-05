@@ -1,7 +1,7 @@
 ---
 id: SLICE-194
 title: Treat squash-body bullet lines as subject-equivalent match targets (AC-8)
-status: pending
+status: completed
 feature: FEAT-284
 phase: null
 priority: P1
@@ -9,11 +9,12 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-05
 effort_points: 2
 estimated_tokens: 60000
 github_issue: 611
 github_url: "https://github.com/astragenie/runner-plugin/issues/611"
+completed_at: 2026-08-05
 ---
 # SLICE-194: Treat squash-body bullet lines as subject-equivalent match targets (AC-8)
 

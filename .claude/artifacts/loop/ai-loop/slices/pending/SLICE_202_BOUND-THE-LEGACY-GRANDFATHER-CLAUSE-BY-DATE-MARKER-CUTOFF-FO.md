@@ -33,47 +33,69 @@ review artifact has frontmatter at all — only a bold `**Decision: PASS**` line
 the body. Those two happened to be approvals. **A prose-only rejection would have
 closed the slice just as silently**, which is the actual risk.
 
+## Approach — decided 2026-08-05: DELETE the clause, do not bound it
+
+The slice title says "bound by date/marker cutoff". Superseded by an explicit
+decision: **remove the grandfather clause entirely.** No cutoff date, no marker,
+no date-conditional branch.
+
+Rationale. A date cutoff is a permanent special case added to the gate-of-gates
+to accommodate artifacts nobody cares about any more. It would need a magic
+constant, a documented rationale, and tests on both sides of it, forever — to
+preserve behavior for a closed set of historical files. Deleting the branch is
+less code, has no constant to justify, and leaves one rule: an artifact without a
+`decision` key does not prove a review happened.
+
+The retroactive-un-close risk I raised earlier was overweighted, and the record
+should say so. `deriveReviewGate` runs at close time. Already-closed slices are
+never re-evaluated, so removing the clause cannot un-close anything historical —
+it changes only future closes.
+
 ## In scope
 
-- `src/scripts/lib/artifact-verdict.mts` / `review-gate.mts` — bound the clause
-  by artifact date or an explicit marker. Frontmatter-less artifacts written
-  after the cutoff are `unproven` (gate NOT satisfied), not grandfathered.
-- Genuinely pre-P1.3 artifacts keep today's behavior — no regression.
-- The cutoff value and its rationale recorded in-code where a reader will find
-  it, not buried in a commit message.
-- Tests for both sides of the cutoff, plus the SLICE-181/182 shape specifically
-  (no frontmatter, prose `**Decision: PASS**` in the body).
+- `src/scripts/lib/review-gate.mts` — delete the `verdict.decision === null`
+  branch at `:109-118`. A frontmatter-less artifact must fall through to
+  `unproven` (gate NOT satisfied) with a message saying the artifact carries no
+  `decision` key and how to fix it.
+- Remove the now-dead `legacy` field from `ReviewGateResult` (`:77-78`) and any
+  consumer that reads it. Leaving a permanently-false flag behind is the kind of
+  vestige this slice exists to remove.
+- Update the module header comment at `:12-13`, which documents the
+  grandfathering behavior.
+- Tests: a frontmatter-less artifact is unproven; the SLICE-181/182 shape
+  specifically (no frontmatter at all, prose `**Decision: PASS**` in the body) is
+  unproven; artifacts WITH a decision key are unaffected in every branch.
+
+## Before you delete — one check, not a blocker
+
+Report how many artifacts under `.claude/artifacts/crew/reviews/` lack a
+`decision` key, and whether any belongs to a slice that is still open. Closed
+slices are unaffected by construction. If an OPEN slice's only review artifact is
+frontmatter-less, name it — that slice will need a re-review or an explicit
+`review_skipped` badge, and the operator should hear it from you rather than
+discover it at close time.
 
 ## Out of scope
 
 - Verdict vocabulary (SLICE-200) and artifact sort order (SLICE-201).
-- The absence-tolerated branch at `:142-150` — that is P2 join-key work and its
-  own decision; do not fold it into this cutoff.
-
-## Risk note — read before choosing a cutoff
-
-This is the highest-risk slice of the three. Every gate in this repo runs through
-`deriveReviewGate`, and a cutoff set too aggressively retroactively un-closes
-historical slices whose artifacts are legitimately frontmatter-less. Establish
-how many existing artifacts under `.claude/artifacts/crew/reviews/` lack a
-`decision` key and what their date range is BEFORE picking the date — measure the
-corpus first, then choose.
-
-FEAT-283 is marked `autonomous_safe: false` specifically so a human confirms this
-cutoff. Surface the proposed date and the affected-artifact count for approval
-rather than picking one and proceeding.
+- The absence-tolerated branch at `:142-150`. It is a different rule — no
+  artifact at all, versus an artifact that proves nothing — and it carries its
+  own P2 join-key reasoning. Do not fold it in.
+- Do not rewrite or backfill existing review artifacts.
 
 ## Acceptance criteria
 
 Scoped from FEAT-283's set to defect (3) only. ACs 1-2 shipped in SLICE-200;
 ACs 3-4 belong to SLICE-201.
 
-- [ ] AC-1: Given a review artifact written after the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then it is treated as unproven (gate not satisfied) rather than silently grandfathered.
-- [ ] AC-2: Given a review artifact written before the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then the existing legacy-grandfather behavior still applies, with no regression for genuinely pre-P1.3 artifacts.
-- [ ] AC-3: Given the live corpus under `.claude/artifacts/crew/reviews/`, when the cutoff is chosen, then the count of existing frontmatter-less artifacts and their date range is MEASURED and reported first, and the proposed cutoff date is surfaced for human approval before being adopted (FEAT-283 is `autonomous_safe: false` for this reason).
-- [ ] AC-4: Given the SLICE-181 / SLICE-182 artifact shape specifically — no frontmatter at all, only a prose `**Decision: PASS**` line in the body — when evaluated against the chosen cutoff, then the outcome is asserted explicitly in a test.
-- [ ] AC-5: Given the cutoff value, when a future reader looks for its rationale, then it is recorded in-code at the decision site, not only in a commit message.
-- [ ] AC-6: Full suite green; typecheck + lint + format clean.
+- [ ] AC-1: Given a review artifact with no `decision` frontmatter key, when `review-gate.mts` evaluates it, then it is unproven (gate NOT satisfied), regardless of the artifact's date — no cutoff, no marker, no date-conditional branch anywhere in the resolution path.
+- [ ] AC-2: Given the SLICE-181 / SLICE-182 shape specifically — no frontmatter at all, only a prose `**Decision: PASS**` line in the body — when evaluated, then it is unproven, and the message names the missing `decision` key and the remedy.
+- [ ] AC-3: Given the grandfather branch is gone, when `ReviewGateResult` is inspected, then the `legacy` field and every consumer of it are removed too — no permanently-false flag left behind.
+- [ ] AC-4: Given an artifact that DOES carry a `decision` key, when evaluated, then behavior is unchanged in every branch — satisfied, rejected, and unrecognized (SLICE-200) all still resolve as before.
+- [ ] AC-5: Given the absence-tolerated branch at `:142-150`, when this slice lands, then it is untouched — no artifact at all remains a distinct case from an artifact that proves nothing.
+- [ ] AC-6: Given the live corpus, when the change is made, then the count of frontmatter-less artifacts is reported along with whether any belongs to a still-OPEN slice; any such slice is named so it can be re-reviewed or given an explicit `review_skipped` badge.
+- [ ] AC-7: Given the module header at `:12-13` documents grandfathering, when the branch is deleted, then the comment is updated to match.
+- [ ] AC-8: Full suite green; typecheck + lint + format clean.
 
 ## Done When
 
