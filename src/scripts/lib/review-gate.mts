@@ -15,9 +15,16 @@
 //          fall through and misreport as "a rejected review", which is a
 //          different condition with a different remedy (fix the artifact,
 //          not fix the code)
-//        - no frontmatter decision (pre-P1.3 artifact)          -> legacy,
-//          satisfied with a grandfathered warning
-//   4. No artifact, no badge, no waiver -> not satisfied.
+//        - no frontmatter decision key at all                  -> NOT
+//          satisfied (SLICE-202 / FEAT-283 defect 3: the prior grandfather
+//          clause treated this as satisfied with no date bound whatsoever,
+//          so it applied to an artifact written this minute, not just
+//          historical ones — removed outright rather than bounded by a
+//          cutoff date/marker; an artifact without a `decision` key does not
+//          prove a review happened, regardless of when it was written)
+//   4. No artifact, no badge, no waiver -> not satisfied (but see the
+//      absence-tolerated fallthrough below — a distinct case from #3's
+//      artifact-with-no-decision-key).
 //
 // Deliberately does NOT read workflow-state currentRun.artifacts — that field
 // is not part of runner's state model, and currentRun is a known incoherence
@@ -105,8 +112,6 @@ export interface ReviewGateResult {
   satisfied: boolean;
   reason: string;
   evidence: string[];
-  /** True when satisfaction rests on a pre-P1.3 artifact without a verdict. */
-  legacy?: boolean;
   /** True when no review evidence was found at all (absence tolerated). */
   unproven?: boolean;
   /** True when the decision value is neither accepted nor a recognized rejection. */
@@ -140,12 +145,19 @@ export async function deriveReviewGate(
   const verdict = await readNewestArtifactVerdict(artifacts);
   if (verdict) {
     if (verdict.decision === null) {
+      // SLICE-202 / FEAT-283 defect 3: no grandfather clause — an artifact
+      // with no `decision` frontmatter key never proves a review happened,
+      // no matter when it was written. This is NOT the absence-tolerated
+      // branch below (no artifact at all); a real artifact exists here, it
+      // just carries no machine-readable verdict.
       return {
-        satisfied: true,
-        legacy: true,
+        satisfied: false,
         reason:
-          "legacy review artifact (no decision frontmatter) — grandfathered pre-P1.3; " +
-          `newest: ${path.basename(verdict.file)}`,
+          `review artifact carries no \`decision\` frontmatter key (newest: ` +
+          `${path.basename(verdict.file)}) — cannot prove a review happened; ` +
+          "add a `decision:` key with an accepted value " +
+          `(${[...REVIEW_SATISFIED].join(", ")} satisfies, ${[...REVIEW_REJECTED].join(", ")} ` +
+          "blocks close) to the artifact, or record an explicit review_skipped badge",
         evidence: artifacts
       };
     }

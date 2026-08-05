@@ -161,14 +161,34 @@ test("deriveReviewGate: approved and approved_with_notes satisfy", async () => {
   assert.match(gate.reason, /approved_with_notes/);
 });
 
-test("deriveReviewGate: legacy artifact (no decision frontmatter) grandfathers", async () => {
-  const repo = await tmpRepo("cr-review-legacy-");
+// SLICE-202 / FEAT-283 defect 3: the grandfather clause was deleted outright
+// (no date/marker cutoff) — a review artifact with no `decision` frontmatter
+// key never proves a review happened, regardless of when it was written.
+test("deriveReviewGate: artifact with no decision frontmatter is unproven, NOT satisfied", async () => {
+  const repo = await tmpRepo("cr-review-nodecision-");
   const { sliceId } = await setupSlice(repo);
   await writeArtifact(repo, "reviews", sliceId, null);
   const gate = await deriveReviewGate(repo, sliceId);
-  assert.equal(gate.satisfied, true);
-  assert.equal(gate.legacy, true);
-  assert.match(gate.reason, /grandfathered/);
+  assert.equal(gate.satisfied, false);
+  assert.equal(gate.legacy, undefined);
+  assert.match(gate.reason, /no `decision` frontmatter key/);
+});
+
+// SLICE-181 / SLICE-182 shape specifically: no frontmatter block at all, only
+// a prose "**Decision: PASS**" line in the body. Must resolve identically to
+// the null-decision case above — the parser sees no frontmatter `decision`
+// key either way.
+test("deriveReviewGate: SLICE-181/182 shape (prose-only Decision line, no frontmatter) is unproven", async () => {
+  const repo = await tmpRepo("cr-review-prose-only-");
+  const { sliceId } = await setupSlice(repo);
+  const dir = path.join(repo, ".claude/artifacts/crew/reviews");
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, `20260804T120000Z-review-result-${sliceId.toLowerCase()}-test.md`);
+  await fs.writeFile(file, `# Review for ${sliceId}\n\n**Decision: PASS**\n\nLooks good.\n`);
+  const gate = await deriveReviewGate(repo, sliceId);
+  assert.equal(gate.satisfied, false);
+  assert.match(gate.reason, /no `decision` frontmatter key/);
+  assert.match(gate.reason, /add a `decision:` key/);
 });
 
 test("deriveReviewGate: requires_review false waiver satisfies", async () => {
