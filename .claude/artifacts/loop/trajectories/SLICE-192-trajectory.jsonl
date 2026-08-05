@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-192","timestamp":"2026-08-05T05:26:00.406Z","featureId":"FEAT-284","title":"SLICE-192: Rewrite materializeProposedSlices to key off id_suffix, not existingSlices.length prefix index","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260805T052600Z-plan-SLICE-192.md","requiresApprovalGate":false}
