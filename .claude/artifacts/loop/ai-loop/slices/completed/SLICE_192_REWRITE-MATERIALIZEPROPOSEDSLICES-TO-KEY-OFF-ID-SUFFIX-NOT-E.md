@@ -1,7 +1,7 @@
 ---
 id: SLICE-192
 title: "Rewrite materializeProposedSlices to key off id_suffix, not existingSlices.length prefix index"
-status: pending
+status: completed
 feature: FEAT-284
 phase: null
 priority: P1
@@ -9,11 +9,12 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-05
 effort_points: 2
 estimated_tokens: 100000
 github_issue: 608
 github_url: "https://github.com/astragenie/runner-plugin/issues/608"
+completed_at: 2026-08-05
 ---
 # SLICE-192: Rewrite materializeProposedSlices to key off id_suffix, not existingSlices.length prefix index
 

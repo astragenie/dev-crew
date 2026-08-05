@@ -1,7 +1,7 @@
 ---
 id: SLICE-202
 title: Bound the legacy grandfather clause by date/marker cutoff for frontmatter-less artifacts
-status: pending
+status: completed
 feature: FEAT-283
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 2
 estimated_tokens: 100000
 github_issue: 622
 github_url: "https://github.com/astragenie/runner-plugin/issues/622"
+completed_at: 2026-08-05
 ---
 # SLICE-202: Bound the legacy grandfather clause by date/marker cutoff for frontmatter-less artifacts
 

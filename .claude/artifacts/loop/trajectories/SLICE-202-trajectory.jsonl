@@ -1,1 +1,3 @@
 {"type":"slice_start","sliceId":"SLICE-202","timestamp":"2026-08-05T05:33:14.951Z","featureId":"FEAT-283","title":"SLICE-202: Bound the legacy grandfather clause by date/marker cutoff for frontmatter-less artifacts","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260805T053314Z-plan-SLICE-202.md","requiresApprovalGate":false}
+{"type":"slice_complete","sliceId":"SLICE-202","timestamp":"2026-08-05T06:00:54.661Z","featureId":"FEAT-283","featureMovedTo":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\backlog\\done\\FEAT-283.md","validationSatisfied":true}
+{"type":"memory_capture","sliceId":"SLICE-202","timestamp":"2026-08-05T06:00:54.663Z","learningsRecorded":0,"learningsSkipped":0,"creditedCount":0,"creditSkippedReason":"empty"}

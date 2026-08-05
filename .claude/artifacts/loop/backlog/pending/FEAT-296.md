@@ -94,3 +94,29 @@ reconciliation. Recorded here only because the duplicate-id sweep surfaces both
 and a validator written for one will report the other — it should distinguish
 them, since the remedies differ: reconcile-and-delete for drift, renumber for a
 collision.
+
+## Open slices blocked by the SLICE-202 gate change — 2026-08-05
+
+Three `status: pending` slices whose only review evidence lacks a `decision`
+key, so they will not close under the deleted-grandfather rule until re-reviewed
+or given an explicit `review_skipped` badge:
+
+- **SLICE-119** — both matching artifacts frontmatter-less
+- **SLICE-116** — four matching artifacts, all with a frontmatter block but no
+  `decision:` key. **Missed by the builder's sweep; found by the reviewer's
+  independent one.** Worth noting the builder's sweep looked for artifacts with
+  no frontmatter block at all and did not catch block-present-but-key-absent,
+  which is 75 of the 160 affected artifacts — the larger half.
+- **SLICE-118** — reported as blocked, but see above: it is the directory-drift
+  case, `completed/` copy says completed. Reconcile it rather than re-reviewing.
+
+SLICE-128 and SLICE-130 were correctly excluded — `status: done` despite sitting
+in `pending/`.
+
+SLICE-116's four artifacts span TWO different parent FEATs (`feat-169-slice-116`
+×2, `feat-183-slice-116` ×2), which is not a filing quirk — it is the signature
+of the id collision recorded in FEAT-298. Artifacts for two unrelated slices are
+pooled under one id token, so "SLICE-116's review evidence" is not a well-defined
+set. Re-reviewing it requires resolving the collision first; a `review_skipped`
+badge would apply to whichever slice wins the id lookup, which is not necessarily
+the one anybody intended.
