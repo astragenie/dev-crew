@@ -1,7 +1,7 @@
 ---
 id: SLICE-200
 title: Add unrecognized-verdict branch to review-gate.mts; reconcile vocab with failure-classifier
-status: pending
+status: completed
 feature: FEAT-283
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 1
 estimated_tokens: 60000
 github_issue: 618
 github_url: "https://github.com/astragenie/runner-plugin/issues/618"
+completed_at: 2026-08-05
 ---
 # SLICE-200: Add unrecognized-verdict branch to review-gate.mts; reconcile vocab with failure-classifier
 

@@ -1,0 +1,1 @@
+{"type":"slice_start","sliceId":"SLICE-201","timestamp":"2026-08-05T05:01:30.901Z","featureId":"FEAT-283","title":"SLICE-201: Sort review artifacts by filename ISO timestamp instead of filesystem mtime","planPath":"C:\\work\\mega\\runner-plugin\\.claude\\artifacts\\loop\\plans\\20260805T050130Z-plan-SLICE-201.md","requiresApprovalGate":false}
