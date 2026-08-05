@@ -264,3 +264,30 @@ that makes AC-7's trade acceptable. Every `textOnlyMatches` entry is a case
 where the check saw prose evidence and declined to act on it; a human needs
 to see those lines to catch the `859be561` shape. SLICE-190 should be treated
 as required to complete AC-7, not as an independent nicety.
+
+## AC-8b status — NOT fully satisfied (2026-08-05)
+
+Recording this explicitly rather than letting SLICE-194's close imply the AC is
+met.
+
+AC-8b asked that the real squash-merge commit `859be561` be recognized as
+shipped evidence when reconcile runs against LIVE repo history, not a fixture
+alone. Independently verified by reviewer-194 with a standalone script:
+
+- pinned to `f0ec093d` → recognized, `shipped=[1,2]` citing `859be561`
+- at live HEAD → NOT recognized, both ordinals demoted at `3860269f`
+
+**Verdict: met only up to the point before `3860269f` exists. Live-HEAD
+recognition remains open.**
+
+SLICE-194's own change is sound — the bullet-line matching works correctly once
+the right commit is reached. What blocks AC-8b is `commits.find()` selecting a
+newer narration commit and never continuing to the qualifying one. That is
+`FEAT-294`, which predates SLICE-194 (it arrived with AC-7 in SLICE-189) and is
+not AC-8 specific.
+
+Failure direction is safe: a false "not shipped" causes a wasted re-check, not a
+silent drop, so it does not reopen the FEAT-284 incident class. But FEAT-284
+must not be moved to `done/` on the basis that AC-8b passed, because at live
+HEAD it does not. Close FEAT-284 only after FEAT-294 lands, or close it with
+AC-8b explicitly recorded as deferred to FEAT-294 — not ticked.

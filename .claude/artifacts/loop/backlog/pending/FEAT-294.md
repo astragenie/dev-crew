@@ -33,3 +33,36 @@ Related: FEAT-284 and its SLICE-189 (AC-7) and SLICE-194 (AC-8), both of which f
 Created via free-text intake (`/runner:intake "<text>"`). Priority is
 unset — this FEAT has not been scored yet. Run `/runner:triage`
 (PM scoring + `backlog pm-apply`) to score it before slicing.
+## Sharpened by independent review — 2026-08-05
+
+reviewer-194 reproduced both runs with a standalone script calling
+`reconcileProposedSlicesAgainstGit` directly against this repo (not via the test
+file), confirming builder-194's report exactly:
+
+- `mainRef=f0ec093d` → `shipped=[1,2]` citing `859be561`
+- `mainRef=main` (live HEAD) → `shipped=[]`, both demoted at `3860269f`,
+  reason `token-pair-in-body-only`
+
+Two points the original filing understated:
+
+**1. Not AC-8 specific.** The same `commits.find()` first-match-wins logic can
+shadow a genuine AC-7 SUBJECT match, not merely bullet evidence. The bug
+predates SLICE-194 — it arrived with AC-7 in SLICE-189 — and is independent of
+which text-qualification rule is in force. Any future rule inherits it.
+
+**2. Self-reinforcing through this repo's own conventions.** The shadowing
+commit `3860269f` is a slice-close commit whose retrospective prose contains a
+hard-wrapped line mentioning "SLICE-1 and SLICE-2 of FEAT-267". Writing a
+closeout note that cites a FEAT/SLICE pair is standard practice here, so every
+such note becomes a permanent shadow over that pair's real evidence for anyone
+scanning live main afterwards. The mechanism that documents the work is the
+mechanism that hides it.
+
+Precise root cause, traced: `commits.find()` returns the first commit whose
+subject+body CONCATENATION contains the pair anywhere. It never checks whether
+that commit passes the subject/bullet gate, and never continues searching when
+it does not. The candidate that would qualify is never reached.
+
+Direction refined: search all candidates for one passing
+`hasSubjectEquivalentMatch` before demoting to a first-by-recency
+non-qualifying hit.

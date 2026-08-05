@@ -162,7 +162,19 @@ function isBulletShapedBodyLine(line: string): boolean {
  * match targets AC-8 adds alongside the commit's actual subject. A line
  * matching `isBulletShapedBodyLine` only qualifies when the preceding line is
  * blank, the start of the body, or itself a qualifying bullet — never when
- * it's a bare mid-paragraph wrap continuation. */
+ * it's a bare mid-paragraph wrap continuation.
+ *
+ * Known residual gap (SLICE-194 review, 2026-08-05): a bullet-shaped line
+ * DIRECTLY following another qualifying bullet always counts as a new item,
+ * because the run-continuation rule cannot distinguish a genuine sibling
+ * bullet from a hard-wrapped continuation of the previous bullet's text that
+ * happens to begin with `-`. The rationale above reasons only about lines
+ * preceded by prose, not about lines preceded by another bullet.
+ *
+ * Left as-is deliberately: the squash-merge bodies this exists to read are
+ * machine-generated from commit subjects and never wrap a bullet's text onto a
+ * following line, so the ambiguous shape does not occur in the real input. If
+ * this predicate is ever pointed at hand-written bodies, revisit it. */
 function bulletShapedBodyLines(body: string): string[] {
   const lines = body.split("\n");
   const matches: string[] = [];

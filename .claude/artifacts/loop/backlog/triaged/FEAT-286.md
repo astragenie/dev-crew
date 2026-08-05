@@ -102,3 +102,43 @@ Worth stating plainly, because it is the actual risk: this failure mode
 trains reviewers to re-run red CI without reading it. That habit is more
 expensive than either flake, and it is what turns a green signal into no
 signal at all — the theme running through FEAT-281, FEAT-287 and FEAT-284.
+
+## Third affected file — 2026-08-05
+
+`src/tests/git-anchored-completion.test.mts` joined the set. Observed once as
+`1 fail / 1 error` out of 27 tests, in a run taking 42.39s; three subsequent
+runs were 27 pass / 0 fail, and the file passed in every builder's and
+reviewer's full-suite run the same session.
+
+Conditions matched the established pattern: three builder subagents active in
+the repo concurrently, so filesystem and process contention was high. The slow
+run is itself the signal — 42s for 27 tests against ~1s nominal.
+
+Distinguishing detail worth recording, because it points at a different
+mechanism than the first two files. The run log carries:
+
+```
+[slice-id-allocator] git fetch origin main failed for <temp dir>
+  (offline / no remote / no network?)
+[slice-id-allocator] git ls-tree origin/main failed for <temp dir>
+  — falling back to local-only slice-id scan
+```
+
+These fixtures create real temporary git repos and the allocator attempts a
+network fetch against them. That is a spawn-plus-network path inside a test,
+which under contention has a far wider latency envelope than the pure-compute
+tests around it. The first two files (`capture-at-close-hook`,
+`guard-feat-dispatch-hook`) fail through spawn timeouts; this one adds an
+attempted network round trip on top.
+
+The fallback behavior is correct and fail-open — it degrades to a local-only
+scan and warns. The flake is in the surrounding timing, not the fallback.
+
+Bearing on scope: the FEAT's current scope note says the fix is test-infra-only
+and confined to `capture-at-close-hook.test.mts`. That is now too narrow. Three
+files share one root condition — tests that spawn processes, and in this case
+also attempt network, against wall-clock budgets that hold when the suite runs
+alone and do not when it runs under load. A per-file timeout bump would need
+doing a fourth time. Prefer a shared fixture policy: no network from test
+fixtures (stub or disable the remote scan), and bounded polling instead of
+single-shot reads wherever a spawned process is awaited.
