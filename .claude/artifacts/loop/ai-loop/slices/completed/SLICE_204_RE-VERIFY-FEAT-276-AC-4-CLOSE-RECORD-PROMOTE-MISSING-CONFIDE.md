@@ -1,7 +1,7 @@
 ---
 id: SLICE-204
 title: Re-verify FEAT-276 AC-4 close record; promote missing-confidence WARN to ERROR
-status: pending
+status: completed
 feature: FEAT-288
 phase: null
 priority: P1
@@ -14,6 +14,7 @@ effort_points: 1
 estimated_tokens: 60000
 github_issue: 626
 github_url: "https://github.com/astragenie/runner-plugin/issues/626"
+completed_at: 2026-08-05
 ---
 # SLICE-204: Re-verify FEAT-276 AC-4 close record; promote missing-confidence WARN to ERROR
 

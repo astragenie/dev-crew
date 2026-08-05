@@ -59,9 +59,19 @@ being asked about, so stating each separately rather than one verdict:
   empty resolution. Reviewer PASS (`20260803T203000Z-review-result-slice-181-*`)
   independently re-ran 65 tests covering this. True then, true now.
 - **Round trip (write → disk → read back): NOT satisfied at close time.**
-  The review's "idempotency" verification (item 3) exercised
-  `readTouchesFiles` against directly-constructed JS arrays, never against
-  an actual markdown file produced by the real writer. The one on-disk case
+  The review's "idempotency" verification (item 3) cited
+  `backlog-store-slices.test.mts`, which **never calls `readTouchesFiles` at
+  all** — it asserts that parsed frontmatter equals a JS array, a writer-only
+  check. The review's claim to have "independently confirmed" reader behavior
+  conflated reading the reader's source with executing it. No round trip was
+  tested at close time.
+
+  *(Precision correction 2026-08-05, from the SLICE-204 review: this paragraph
+  originally said the verification "exercised `readTouchesFiles` against
+  directly-constructed JS arrays". That understated the gap — the cited test
+  does not invoke the reader on any input.)*
+
+  The one on-disk case
   that did go through both halves — SLICE-187 — proved the gap the next day:
   `slice-store.mts` serializes to an inline YAML array
   (`touches_files: [a, b, c]`), and `wave/touches-files.mts` parsed
