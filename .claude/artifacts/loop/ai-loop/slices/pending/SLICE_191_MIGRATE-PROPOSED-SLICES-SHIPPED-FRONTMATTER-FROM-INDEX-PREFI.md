@@ -66,19 +66,24 @@ records.
 
 ## Acceptance criteria
 
-> WARNING: ACs copied from FEAT-284 and shared across 6 sibling slices — scope per-slice before close
+Scoped 2026-08-05 to this slice. The FEAT-level set is superseded here: ACs
+1/2/6/7 shipped in SLICE-188/189, AC-3 in SLICE-190, AC-4/5 belong to
+SLICE-192/193, AC-8 to SLICE-194. Note the FEAT's original AC-1 wording was
+corrected on 2026-08-04 and the stale version has been removed rather than left
+for a builder to act on.
 
-- [ ] AC-1: Given a candidate commit whose subject/body matches a proposed slice's FEAT-id/SLICE-ordinal token pair, When reconcileProposedSlicesAgainstGit evaluates it, Then the commit is only recorded as shipped evidence if it actually changed at least one file — a docs-only or --allow-empty commit (reproducing 71604bb4) must never produce shipped evidence, verified by a NEW fixture that creates a real file-touching commit alongside the existing empty-commit case in the same test.
-- [ ] AC-2: Given a proposed slice declares touches_files, When a diff-corroborated candidate commit's changed paths share zero overlap with that list, Then the match is downgraded to a text-only warning and reported to the operator rather than recorded as shipped evidence that advances the start index.
-- [ ] AC-3: Given any proposed slice is skipped or downgraded during a reconcile pass, When runner:start / slice from-feature runs, Then an explicit operator-visible line is printed naming the ordinal, the slice title, and the matched commit sha, so the FEAT-284 repro (SLICE-1 dropped via commit 71604bb4) surfaces a visible warning instead of silence.
-- [ ] AC-4: Given a FEAT whose proposed_slices had ordinal 1 skipped while ordinals 2-5 are already materialized (the live FEAT-259 state), When slice from-feature is re-run, Then it materializes the missing ordinal 1 and does not create a duplicate of any already-materialized ordinal — a regression test must reproduce the observed duplicate -SLICE-5 + redundant GitHub issue and assert it no longer occurs.
-- [ ] AC-5: Given an operator needs to repair a gapped FEAT by hand, When they invoke the new CLI escape hatch targeting a specific id_suffix, Then that exact proposed slice is materialized regardless of index position, without requiring direct BacklogStore API calls (the actual repair path used in the FEAT-284 live repro).
+- [ ] AC-1: Given a FEAT whose shipped evidence is recorded, when it is written, then each `id_suffix` is bound to its commit sha in one structure, so the pairing cannot desynchronize the way two positionally-correlated arrays can.
+- [ ] AC-2: Given an existing FEAT on disk carrying the legacy two-array shape (`FEAT-259`, `FEAT-284` and others), when it is read, then the evidence parses correctly with no migration pass required first.
+- [ ] AC-3: Given a legacy pair whose two arrays differ in length, when it is read, then the result is predictable and stated — never a silent mispairing of a slice to another slice's commit.
+- [ ] AC-4: Given the new shape is written, when it is read back, then it round-trips unchanged.
+- [ ] AC-5: Given an fs failure during the evidence stamp, when it occurs, then the fail-open contract at `:269-279` still holds and the advance verdict stands.
+- [ ] AC-6: Full suite green; typecheck + lint + format clean.
 
 ## Done When
 
 - all acceptance criteria PASS with evidence per `01-loop-control/EVIDENCE_RULES.md`
 - build / test commands per `.claude/loop.json` pass
-- feature FEAT-284 moved from `in-progress/` to `done/`
+- **FEAT-284 stays in `in-progress/`** unless this is the last open sibling — only the final slice moves the feature to `done/`
 - Crew `final-synthesis` artifact written
 - (pure refactors / mechanical changes: set `requires_validation: false` in frontmatter
    above to waive the validation gate — no badge needed at close time)

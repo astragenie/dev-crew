@@ -292,3 +292,29 @@ running builder is never nudged, because nudging one forks execution
 (dev-team#162).
 
 Harden the path parsing before adding any execution point.
+
+## Fresh measurement — 2026-08-05 session
+
+Six redundant post-report idle pings observed in a single session, from six
+distinct agents: `pm-288-290`, `builder-200`, `builder-203`, `builder-201`,
+`reviewer-201`, `reviewer-203`.
+
+Every one followed the same sequence: the agent delivered a complete report via
+`SendMessage(to: 'main')`, the orchestrator received and acted on it, and the
+agent then emitted a bare `idle_notification` carrying no new information. 6 of
+6 dispatches this session, i.e. a 100% rate.
+
+This is the SECOND half of the FEAT-259 failure pattern and the one AC3's
+final-act line does not address. AC3 fixes agents that stop WITHOUT reporting.
+These agents reported correctly and pinged anyway. The orchestrator cost is
+lower per event than a missed report (no nudge round-trip is needed) but it is
+not zero: each ping is a message the orchestrator must read and classify as
+redundant, and the classification is only cheap because a human is watching.
+
+Relevant to SLICE-186 (idle-ping suppression) specifically: the suppression rule
+needs to distinguish "idle after a delivered report" — safe to swallow — from
+"idle without a report" — the case that must still surface. Today nothing
+distinguishes them, because nothing tracks whether a report was delivered.
+
+Prior comparable: 27 pings in the 2026-08-04 session. Rate is unchanged; only
+the dispatch count differs.

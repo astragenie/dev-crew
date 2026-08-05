@@ -86,19 +86,22 @@ mislabeling path behind.
 
 ## Acceptance criteria
 
-> WARNING: ACs copied from FEAT-284 and shared across 6 sibling slices — scope per-slice before close
+Scoped 2026-08-05 to this slice. FEAT-level ACs 1/2/6/7 shipped in
+SLICE-188/189, AC-3 in SLICE-190, AC-5 belongs to SLICE-193, AC-8 to SLICE-194.
+FEAT AC-4 is this slice's AC-1 below.
 
-- [ ] AC-1: Given a candidate commit whose subject/body matches a proposed slice's FEAT-id/SLICE-ordinal token pair, When reconcileProposedSlicesAgainstGit evaluates it, Then the commit is only recorded as shipped evidence if it actually changed at least one file — a docs-only or --allow-empty commit (reproducing 71604bb4) must never produce shipped evidence, verified by a NEW fixture that creates a real file-touching commit alongside the existing empty-commit case in the same test.
-- [ ] AC-2: Given a proposed slice declares touches_files, When a diff-corroborated candidate commit's changed paths share zero overlap with that list, Then the match is downgraded to a text-only warning and reported to the operator rather than recorded as shipped evidence that advances the start index.
-- [ ] AC-3: Given any proposed slice is skipped or downgraded during a reconcile pass, When runner:start / slice from-feature runs, Then an explicit operator-visible line is printed naming the ordinal, the slice title, and the matched commit sha, so the FEAT-284 repro (SLICE-1 dropped via commit 71604bb4) surfaces a visible warning instead of silence.
-- [ ] AC-4: Given a FEAT whose proposed_slices had ordinal 1 skipped while ordinals 2-5 are already materialized (the live FEAT-259 state), When slice from-feature is re-run, Then it materializes the missing ordinal 1 and does not create a duplicate of any already-materialized ordinal — a regression test must reproduce the observed duplicate -SLICE-5 + redundant GitHub issue and assert it no longer occurs.
-- [ ] AC-5: Given an operator needs to repair a gapped FEAT by hand, When they invoke the new CLI escape hatch targeting a specific id_suffix, Then that exact proposed slice is materialized regardless of index position, without requiring direct BacklogStore API calls (the actual repair path used in the FEAT-284 live repro).
+- [ ] AC-1: Given a FEAT whose proposed_slices had ordinal 1 skipped while ordinals 2-5 are already materialized (the live FEAT-259 state), when `slice from-feature` is re-run, then it materializes the missing ordinal 1 AND does not create a duplicate of any already-materialized ordinal. Assert both halves — the observed bug was the duplicate, but the un-filled hole is the part that loses work.
+- [ ] AC-2: Given the same gapped feature, when the idempotent-rerun path at `:528` reports slices, then each reported id/title/points comes from a real identity match, not `existingSlices[i]` paired with `proposed[i]`.
+- [ ] AC-3: Given a feature with nothing missing, when materialization re-runs, then it creates nothing and still returns `idempotent: true` — the existing guarantee is preserved.
+- [ ] AC-4: Given the git-anchored advance path supplies a `startIndex`, when materialization runs, then that interoperability still holds and is not silently ignored by the new identity keying.
+- [ ] AC-5: Given the duplicate-slice regression, when the test suite runs, then a test reproduces the observed duplicate `-SLICE-5` plus its redundant tracker publish and asserts neither recurs.
+- [ ] AC-6: Full suite green; typecheck + lint + format clean.
 
 ## Done When
 
 - all acceptance criteria PASS with evidence per `01-loop-control/EVIDENCE_RULES.md`
 - build / test commands per `.claude/loop.json` pass
-- feature FEAT-284 moved from `in-progress/` to `done/`
+- **FEAT-284 stays in `in-progress/`** unless this is the last open sibling — only the final slice moves the feature to `done/`
 - Crew `final-synthesis` artifact written
 - (pure refactors / mechanical changes: set `requires_validation: false` in frontmatter
    above to waive the validation gate — no badge needed at close time)
