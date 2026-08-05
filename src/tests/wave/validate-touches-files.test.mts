@@ -129,4 +129,63 @@ touches_files_confidence: declared
     expect(r.errors).toHaveLength(1);
     expect(r.errors[0]).toContain("outside repo");
   });
+
+  // SLICE-204 (FEAT-288 AC-2): a slice that DECLARES touches_files but still
+  // resolves to confidence "missing" is promoted from WARN to ERROR — that
+  // combination should be unreachable for real writer output post-SLICE-203,
+  // so seeing it is a bug, not a tolerated gap.
+  test("error: declared touches_files resolves to empty inline array", () => {
+    writeSlice(
+      "pending",
+      "SLICE-7.md",
+      `---
+id: SLICE-7
+created: 2026-06-15
+touches_files: []
+---
+`
+    );
+    const r = validateRepo(tmp, { warnCutoff: "2026-06-01" });
+    expect(r.warnings).toEqual([]);
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toContain("SLICE-7");
+    expect(r.errors[0]).toContain('confidence "missing"');
+  });
+
+  test("error: declared touches_files as an empty block list", () => {
+    writeSlice(
+      "pending",
+      "SLICE-8.md",
+      `---
+id: SLICE-8
+created: 2026-06-15
+touches_files:
+---
+`
+    );
+    const r = validateRepo(tmp, { warnCutoff: "2026-06-01" });
+    expect(r.warnings).toEqual([]);
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toContain("SLICE-8");
+  });
+
+  // The overwhelmingly common case (field omitted entirely, e.g. every
+  // pending slice in this repo pre-FEAT-292) must stay a WARN, never an
+  // ERROR — this pins that the promotion cannot fire on omission.
+  test("warn (not error): touches_files key entirely absent stays a warning", () => {
+    writeSlice(
+      "pending",
+      "SLICE-9.md",
+      `---
+id: SLICE-9
+created: 2026-06-15
+---
+# body, no touches mentioned
+`
+    );
+    const r = validateRepo(tmp, { warnCutoff: "2026-06-01" });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]).toContain("SLICE-9");
+  });
 });

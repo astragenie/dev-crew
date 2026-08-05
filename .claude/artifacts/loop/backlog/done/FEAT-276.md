@@ -43,6 +43,50 @@ github_url: "https://github.com/astragenie/runner-plugin/issues/592"
 slices_complete: [SLICE-179, SLICE-180, SLICE-181, SLICE-182]
 completed_at: 2026-08-04
 ---
+## Correction — 2026-08-05, AC-4 close record re-verified (SLICE-204 / FEAT-288)
+
+AC-4 read: "Given a slice-authoring write path ... produces a slice with no
+declared touches_files, When body-regex inference also fails, THEN closing
+the gap so genuinely conflict-relevant slices get real declared paths is
+prioritized over relying on the lower-confidence inferred/missing tiers."
+This FEAT was closed 2026-08-04 with AC-4 recorded satisfied via SLICE-181.
+Re-verified per SLICE-204 — the answer differs depending on which claim is
+being asked about, so stating each separately rather than one verdict:
+
+- **Write path alone: satisfied, and remains so.** SLICE-181 gave
+  `buildSliceMarkdown`/`createSlice` (`slice-store.mts`) a real writer that
+  declares non-empty resolved paths, correctly gated against clobbering an
+  empty resolution. Reviewer PASS (`20260803T203000Z-review-result-slice-181-*`)
+  independently re-ran 65 tests covering this. True then, true now.
+- **Round trip (write → disk → read back): NOT satisfied at close time.**
+  The review's "idempotency" verification (item 3) exercised
+  `readTouchesFiles` against directly-constructed JS arrays, never against
+  an actual markdown file produced by the real writer. The one on-disk case
+  that did go through both halves — SLICE-187 — proved the gap the next day:
+  `slice-store.mts` serializes to an inline YAML array
+  (`touches_files: [a, b, c]`), and `wave/touches-files.mts` parsed
+  block-style lists only, so it read back `confidence: "missing"` — the
+  opposite of "declared." Found 2026-08-04 by builder-187, fixed 2026-08-05
+  by SLICE-203 (commit `1b3eab6e`). So for the ~18 hours between this FEAT's
+  close and SLICE-203 landing, AC-4's mechanism was dead on arrival for any
+  slice actually using the writer's real output format.
+- **Today (post-SLICE-203): satisfied, but only in a vacuous sense — not
+  ticking it as a clean PASS.** The write→read mechanism now demonstrably
+  works (real writer/reader round-trip test, SLICE-203). But measured: 0 of
+  28 pending slices and 0 FEAT `proposed_slices` entries declare
+  `touches_files` at all — `agents/pm.md` instructs the PM to omit the field
+  "when unsure," and no other in-repo writer supplies a resolved value for
+  an ordinary FEAT. So the mechanism is correct and tested, but nothing in
+  the live backlog exercises it; the outcome AC-4 was actually chasing
+  (conflict-relevant slices carrying real declared paths so wave packing
+  works) does not hold today. That producer gap is tracked separately as
+  FEAT-292 — out of scope here, not backfilled by this correction.
+
+**Verdict:** AC-4's write-path claim was and is true. Its round-trip claim
+was false at close and is now true structurally but vacuous in practice.
+Not reopening this FEAT or touching AC-1/2/3/5 — this note corrects AC-4's
+record only.
+
 ## Description
 
 Wave mode is secretly sequential: touches_files is populated on only 11 percent of slices, so the wave planner never packs more than one slice per wave. Evidence (2026-08-03 sweep): only 18 of 171 completed slice files under .claude/artifacts/loop/ai-loop/slices/completed/ contain a touches_files key. src/scripts/lib/wave/planner.mts packs parallel slots by non-conflicting touches_files and falls back to reason 'missing_touches_files_solo_only' when the field is absent (planner.mts:51), so a slice with no declared touches runs alone. Consequence: loop.marathonRunner wave mode degrades silently to sequential dispatch -- every wave run during the 2026-08-02 cost-audit program dispatched exactly one slice, and the parallel-worktree machinery (dispatch-worktree, conflict.mts, merge ordering) was paid for but never exercised at width. This also invalidates any wall-clock comparison between wave mode and slice-build mode. Fix: (1) make /runner:start always populate touches_files during shape classification rather than best-effort -- start-slice.mts already writes the field but evidently leaves it empty on most paths, so identify and close the gaps; (2) provide a backfill path for existing slices; (3) surface packing width in wave telemetry so a solo-only wave is visible rather than silent; (4) consider a conservative inferred-touches fallback (from the FEAT's declared tags/paths) so a missing field degrades to a narrow guess instead of solo-only.
