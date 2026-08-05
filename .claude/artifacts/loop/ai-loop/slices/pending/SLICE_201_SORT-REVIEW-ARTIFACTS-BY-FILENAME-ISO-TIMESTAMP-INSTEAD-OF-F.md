@@ -21,33 +21,56 @@ Implements FEAT-283. See [feature file](../../../backlog/in-progress/FEAT-283.md
 
 ## Objective
 
-Review-gate verdict handling has three defects, all observed live while closing SLICE-178 through SLICE-182 on 2026-08-04.
+Fix defect (2) of the three in FEAT-283: newest-review selection sorts by
+filesystem mtime and ignores the ISO timestamp already present in the filename.
+
+`artifact-verdict.mts:30-44` stats each candidate and sorts on `mtimeMs`. Review
+filenames already carry the authoritative ordering:
+
+    20260803T200500Z-review-result-slice-178-...
+
+mtime is not durable. `git clone`, `checkout`, `cherry-pick` and worktree
+materialization all assign arbitrary mtimes, so on a fresh clone the ordering
+for a multi-review slice is effectively random and a superseded rejection can
+outrank its own later approval.
+
+Reproduced accidentally on 2026-08-04: editing the older artifact after the
+newer one flipped the gate verdict from approved to rejected with no content
+change on either file.
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- `src/scripts/lib/artifact-verdict.mts` — parse the leading ISO timestamp from
+  the basename and sort on it; fall back to `mtimeMs` only when a filename
+  carries no parseable timestamp.
+- Mixed-corpus behavior: some filenames have a timestamp and some do not. Define
+  and test the ordering rule for that case rather than leaving it emergent.
+- Tests that set mtimes DELIBERATELY OPPOSITE to filename order and assert
+  filename order wins. A test where both orderings agree proves nothing — that
+  is how this shipped.
 
 ## Out of scope
 
-- bullet 1
+- The verdict-vocabulary branch in `review-gate.mts` — shipped in SLICE-200.
+- The grandfather-clause cutoff (`review-gate.mts:109-118`) — SLICE-202.
+- Changing the review-artifact filename convention itself.
 
 ## Acceptance criteria
 
-> WARNING: ACs copied from FEAT-283 and shared across 3 sibling slices — scope per-slice before close
+Scoped from FEAT-283's set to defect (2) only. ACs 1-2 shipped in SLICE-200;
+ACs 5-6 belong to SLICE-202.
 
-- [ ] Given a review artifact whose decision value is not in {approved, approved_with_notes, rejected} (e.g. "PASS"), when review-gate.mts evaluates it, then it reports an 'unrecognized verdict' message naming the offending value and the accepted vocabulary, distinct from the rejected-verdict message and remedy.
-- [ ] Given failure-classifier.mts's PASS_VERDICTS already treats 'pass' as valid, when review-gate.mts's REVIEW_SATISFIED set is evaluated for the same value, then the two modules agree on accepted verdict vocabulary, or the discrepancy is explicitly documented as intentional.
-- [ ] Given multiple review artifacts for one slice with differing filesystem mtimes but ISO timestamps in their filenames, when artifact-verdict.mts selects the newest, then it parses and sorts by the filename timestamp, falling back to mtime only when no timestamp is present in the name.
-- [ ] Given a fresh git clone/checkout/worktree where mtimes are arbitrary, when newest-review selection runs against a multi-review slice, then the result matches filename-timestamp order, not filesystem mtime order.
-- [ ] Given a review artifact written after the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then it is treated as unproven (gate not satisfied) rather than silently grandfathered.
-- [ ] Given a review artifact written before the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then the existing legacy-grandfather behavior still applies, with no regression for genuinely pre-P1.3 artifacts.
+- [ ] AC-1: Given multiple review artifacts for one slice with differing filesystem mtimes but ISO timestamps in their filenames, when artifact-verdict.mts selects the newest, then it parses and sorts by the filename timestamp, falling back to mtime only when no timestamp is present in the name.
+- [ ] AC-2: Given a fresh git clone/checkout/worktree where mtimes are arbitrary, when newest-review selection runs against a multi-review slice, then the result matches filename-timestamp order, not filesystem mtime order.
+- [ ] AC-3: Given a test corpus whose mtimes are set DELIBERATELY OPPOSITE to filename order, when selection runs, then filename order wins — asserted with the two orderings in conflict, since a test where they agree cannot detect this defect.
+- [ ] AC-4: Given a mixed corpus where some filenames carry a parseable timestamp and some do not, when selection runs, then the ordering rule for that case is defined and asserted rather than left emergent.
+- [ ] AC-5: Full suite green; typecheck + lint + format clean.
 
 ## Done When
 
 - all acceptance criteria PASS with evidence per `01-loop-control/EVIDENCE_RULES.md`
 - build / test commands per `.claude/loop.json` pass
-- feature FEAT-283 moved from `in-progress/` to `done/`
+- **FEAT-283 stays in `in-progress/`** unless this is the last open sibling — only the final slice moves the feature to `done/`
 - Crew `final-synthesis` artifact written
 - (pure refactors / mechanical changes: set `requires_validation: false` in frontmatter
    above to waive the validation gate — no badge needed at close time)

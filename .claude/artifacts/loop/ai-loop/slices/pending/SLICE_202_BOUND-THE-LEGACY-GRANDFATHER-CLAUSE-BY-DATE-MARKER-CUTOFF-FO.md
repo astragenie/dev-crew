@@ -21,33 +21,65 @@ Implements FEAT-283. See [feature file](../../../backlog/in-progress/FEAT-283.md
 
 ## Objective
 
-Review-gate verdict handling has three defects, all observed live while closing SLICE-178 through SLICE-182 on 2026-08-04.
+Fix defect (3) of the three in FEAT-283: the legacy grandfather clause is
+unbounded, so it silently satisfies the gate for artifacts written today.
+
+`review-gate.mts:109-118` treats ANY artifact with no `decision` frontmatter key
+as "legacy … grandfathered pre-P1.3" and returns `satisfied: true`. There is no
+date bound, so the clause applies to an artifact written this minute.
+
+SLICE-181 and SLICE-182 both closed through this path on 2026-08-04. Neither
+review artifact has frontmatter at all — only a bold `**Decision: PASS**` line in
+the body. Those two happened to be approvals. **A prose-only rejection would have
+closed the slice just as silently**, which is the actual risk.
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- `src/scripts/lib/artifact-verdict.mts` / `review-gate.mts` — bound the clause
+  by artifact date or an explicit marker. Frontmatter-less artifacts written
+  after the cutoff are `unproven` (gate NOT satisfied), not grandfathered.
+- Genuinely pre-P1.3 artifacts keep today's behavior — no regression.
+- The cutoff value and its rationale recorded in-code where a reader will find
+  it, not buried in a commit message.
+- Tests for both sides of the cutoff, plus the SLICE-181/182 shape specifically
+  (no frontmatter, prose `**Decision: PASS**` in the body).
 
 ## Out of scope
 
-- bullet 1
+- Verdict vocabulary (SLICE-200) and artifact sort order (SLICE-201).
+- The absence-tolerated branch at `:142-150` — that is P2 join-key work and its
+  own decision; do not fold it into this cutoff.
+
+## Risk note — read before choosing a cutoff
+
+This is the highest-risk slice of the three. Every gate in this repo runs through
+`deriveReviewGate`, and a cutoff set too aggressively retroactively un-closes
+historical slices whose artifacts are legitimately frontmatter-less. Establish
+how many existing artifacts under `.claude/artifacts/crew/reviews/` lack a
+`decision` key and what their date range is BEFORE picking the date — measure the
+corpus first, then choose.
+
+FEAT-283 is marked `autonomous_safe: false` specifically so a human confirms this
+cutoff. Surface the proposed date and the affected-artifact count for approval
+rather than picking one and proceeding.
 
 ## Acceptance criteria
 
-> WARNING: ACs copied from FEAT-283 and shared across 3 sibling slices — scope per-slice before close
+Scoped from FEAT-283's set to defect (3) only. ACs 1-2 shipped in SLICE-200;
+ACs 3-4 belong to SLICE-201.
 
-- [ ] Given a review artifact whose decision value is not in {approved, approved_with_notes, rejected} (e.g. "PASS"), when review-gate.mts evaluates it, then it reports an 'unrecognized verdict' message naming the offending value and the accepted vocabulary, distinct from the rejected-verdict message and remedy.
-- [ ] Given failure-classifier.mts's PASS_VERDICTS already treats 'pass' as valid, when review-gate.mts's REVIEW_SATISFIED set is evaluated for the same value, then the two modules agree on accepted verdict vocabulary, or the discrepancy is explicitly documented as intentional.
-- [ ] Given multiple review artifacts for one slice with differing filesystem mtimes but ISO timestamps in their filenames, when artifact-verdict.mts selects the newest, then it parses and sorts by the filename timestamp, falling back to mtime only when no timestamp is present in the name.
-- [ ] Given a fresh git clone/checkout/worktree where mtimes are arbitrary, when newest-review selection runs against a multi-review slice, then the result matches filename-timestamp order, not filesystem mtime order.
-- [ ] Given a review artifact written after the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then it is treated as unproven (gate not satisfied) rather than silently grandfathered.
-- [ ] Given a review artifact written before the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then the existing legacy-grandfather behavior still applies, with no regression for genuinely pre-P1.3 artifacts.
+- [ ] AC-1: Given a review artifact written after the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then it is treated as unproven (gate not satisfied) rather than silently grandfathered.
+- [ ] AC-2: Given a review artifact written before the grandfather-clause cutoff with no 'decision' frontmatter key, when review-gate.mts evaluates it, then the existing legacy-grandfather behavior still applies, with no regression for genuinely pre-P1.3 artifacts.
+- [ ] AC-3: Given the live corpus under `.claude/artifacts/crew/reviews/`, when the cutoff is chosen, then the count of existing frontmatter-less artifacts and their date range is MEASURED and reported first, and the proposed cutoff date is surfaced for human approval before being adopted (FEAT-283 is `autonomous_safe: false` for this reason).
+- [ ] AC-4: Given the SLICE-181 / SLICE-182 artifact shape specifically — no frontmatter at all, only a prose `**Decision: PASS**` line in the body — when evaluated against the chosen cutoff, then the outcome is asserted explicitly in a test.
+- [ ] AC-5: Given the cutoff value, when a future reader looks for its rationale, then it is recorded in-code at the decision site, not only in a commit message.
+- [ ] AC-6: Full suite green; typecheck + lint + format clean.
 
 ## Done When
 
 - all acceptance criteria PASS with evidence per `01-loop-control/EVIDENCE_RULES.md`
 - build / test commands per `.claude/loop.json` pass
-- feature FEAT-283 moved from `in-progress/` to `done/`
+- **FEAT-283 stays in `in-progress/`** unless this is the last open sibling — only the final slice moves the feature to `done/`
 - Crew `final-synthesis` artifact written
 - (pure refactors / mechanical changes: set `requires_validation: false` in frontmatter
    above to waive the validation gate — no badge needed at close time)
