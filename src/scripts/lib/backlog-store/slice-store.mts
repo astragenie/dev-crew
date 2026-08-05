@@ -206,16 +206,29 @@ function applyOptionalFrontmatterFields(
     effortPoints,
     estimatedTokens,
     featureFrontmatter,
-    touchesFiles
+    touchesFiles,
+    proposedSliceIdSuffix
   }: {
     effortPoints: number | undefined;
     estimatedTokens: number | undefined;
     featureFrontmatter: Record<string, unknown>;
     touchesFiles: string[] | undefined;
+    proposedSliceIdSuffix: string | undefined;
   }
 ): void {
   if (typeof effortPoints === "number") {
     frontmatter.effort_points = effortPoints;
+  }
+  // SLICE-192: durable identity binding back to the `proposed_slices` entry
+  // this slice was materialized from. Before this field existed, the only
+  // way to tell which proposed entry a materialized slice corresponded to
+  // was array position (existingSlices[i] <-> proposed[i]) — exactly the
+  // assumption that breaks the moment a gap or out-of-order materialization
+  // occurs (FEAT-284 live repro). Only set on the multi-slice
+  // (proposed_slices) path — the single-slice path has no proposed entry to
+  // bind to.
+  if (typeof proposedSliceIdSuffix === "string" && proposedSliceIdSuffix.length > 0) {
+    frontmatter.proposed_slice_id_suffix = proposedSliceIdSuffix;
   }
   // runner#393 proposal 4: carries the estimated_tokens computed/overridden
   // at proposed_slices parse time onto the materialized slice file, so a
@@ -249,7 +262,8 @@ function buildSliceMarkdown({
   estimatedTokens,
   acceptanceCriteria,
   acWarning,
-  touchesFiles
+  touchesFiles,
+  proposedSliceIdSuffix
 }: {
   id: string;
   title: string;
@@ -261,6 +275,7 @@ function buildSliceMarkdown({
   acceptanceCriteria?: string[];
   acWarning?: string;
   touchesFiles?: string[];
+  proposedSliceIdSuffix?: string;
 }): string {
   const today = nowIsoDate();
   const safeTitle = clampSliceTitle(title);
@@ -281,7 +296,8 @@ function buildSliceMarkdown({
     effortPoints,
     estimatedTokens,
     featureFrontmatter,
-    touchesFiles
+    touchesFiles,
+    proposedSliceIdSuffix
   });
   const featureDescriptionLine = (featureBody || "")
     .split(/\n+/)
@@ -367,6 +383,11 @@ export interface CreateSliceOpts {
   // FEAT, or one proposed_slices entry's own `touches_files` for a sibling
   // slice). createSlice performs no inference of its own.
   touchesFiles?: string[];
+  // SLICE-192: the `proposed_slices` entry's own `id_suffix` (e.g.
+  // `-SLICE-2`) this slice was materialized from — the durable identity
+  // binding the multi-slice materializer keys off instead of array position.
+  // Absent on the single-slice path (no proposed entry to bind to).
+  proposedSliceIdSuffix?: string;
 }
 
 export interface CreateSliceResult {
@@ -399,6 +420,7 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     acceptanceCriteria,
     acWarning,
     touchesFiles,
+    proposedSliceIdSuffix,
     config = null
   } = opts;
   const slicesRootDir = slicesRoot(repoPath, config);
@@ -420,7 +442,8 @@ export async function createSlice(opts: CreateSliceOpts): Promise<CreateSliceRes
     ...(estimatedTokens !== undefined ? { estimatedTokens } : {}),
     ...(acceptanceCriteria !== undefined ? { acceptanceCriteria } : {}),
     ...(acWarning !== undefined ? { acWarning } : {}),
-    ...(touchesFiles !== undefined ? { touchesFiles } : {})
+    ...(touchesFiles !== undefined ? { touchesFiles } : {}),
+    ...(proposedSliceIdSuffix !== undefined ? { proposedSliceIdSuffix } : {})
   });
   await fs.writeFile(filePath, content);
   return { id, filePath, title };

@@ -14,6 +14,7 @@ import {
   findFeatureById,
   updateFeatureFrontmatter
 } from "../scripts/lib/backlog-writer.mjs";
+import { createSlice } from "../scripts/lib/backlog-store.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
@@ -387,4 +388,154 @@ test("sliceFromFeature on undersized proposed_slices throws InvalidProposedSlice
       err.name === "InvalidProposedSlicesError" &&
       /sum\(points\)=4 is less than feature effort_points=13/.test(err.message)
   );
+});
+
+// FEAT-284 SLICE-192 — materializeProposedSlices used to decide what to
+// create by COUNT (Math.max(existingSlices.length, startIndex)), never by
+// identity. Live repro (2026-08-04, FEAT-259): ordinal 1 was silently
+// dropped while ordinals 2-5 materialized; re-running saw
+// existingSlices.length === 4 and re-created proposed[4] (ordinal 5) a
+// SECOND time, while ordinal 1 stayed missing. These slice files below are
+// built with `createSlice` directly and carry NO `proposed_slice_id_suffix`
+// — the exact shape of every slice materialized before this fix shipped —
+// so the regression exercises the legacy title-matching fallback, not just
+// the happy path where the new stamp is already present.
+const GAPPED_PROPOSED = [
+  { id_suffix: "-SLICE-1", title: "Fixture rebuild", points: 2 },
+  { id_suffix: "-SLICE-2", title: "Diff corroboration", points: 2 },
+  { id_suffix: "-SLICE-3", title: "Downgrade warnings", points: 2 },
+  { id_suffix: "-SLICE-4", title: "Migrate frontmatter shape", points: 2 },
+  { id_suffix: "-SLICE-5", title: "Idle-ping suppression", points: 2 }
+];
+
+async function seedGappedFeature(repo: string) {
+  const feat = await addFeature(repo, { title: "Gapped decomposition", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 10,
+    proposed_slices: GAPPED_PROPOSED
+  });
+
+  // Pre-materialize ordinals 2-5 as legacy slices (no proposed_slice_id_suffix
+  // stamp), simulating the FEAT-259/FEAT-284 state where ordinal 1 alone was
+  // dropped by the (now-fixed) git-anchored reconcile bug.
+  const entry = await findFeatureById(repo, feat.id);
+  const legacyIds: string[] = [];
+  for (const item of GAPPED_PROPOSED.slice(1)) {
+    const created = await createSlice({
+      repoPath: repo,
+      featureId: feat.id,
+      featureFilePath: entry.filePath,
+      featureFrontmatter: entry.frontmatter,
+      featureBody: entry.body,
+      title: item.title,
+      effortPoints: item.points,
+      estimatedTokens: 100_000
+    });
+    legacyIds.push(created.id);
+  }
+  await updateFeatureFrontmatter(feat.filePath, { slices: legacyIds });
+  return { feat, legacyIds };
+}
+
+test("SLICE-192: fills a dropped ordinal by identity and does not duplicate already-materialized siblings (FEAT-284/FEAT-259 regression)", async () => {
+  const repo = await tmpRepo("sfp-gap-fill-");
+  const { feat, legacyIds } = await seedGappedFeature(repo);
+
+  // Re-run: must create exactly the missing ordinal 1, never a duplicate of
+  // any of the 4 already-materialized siblings.
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.idempotent, false);
+  assert.equal(out.slices.length, 1, "must create exactly the one missing ordinal");
+  assert.equal(
+    out.slices[0].title,
+    "Fixture rebuild",
+    "must be ordinal 1's title, not a duplicate"
+  );
+  const newId = out.slices[0].id;
+  assert.ok(
+    !legacyIds.includes(newId),
+    "the created slice must be a new id, not a duplicate of a sibling"
+  );
+
+  const afterFirstRerun = await findFeatureById(repo, feat.id);
+  assert.equal(
+    afterFirstRerun.frontmatter.slices.length,
+    5,
+    "5 proposed entries -> 5 total slices"
+  );
+  assert.deepEqual(
+    new Set(afterFirstRerun.frontmatter.slices),
+    new Set([...legacyIds, newId]),
+    "no sibling id was duplicated or lost"
+  );
+
+  // Re-running again must now be fully idempotent — nothing missing, no
+  // second copy of ordinal 1 or any sibling (the observed bug: a second
+  // `from-feature` invocation re-created the LAST proposed entry a second
+  // time and published a redundant tracker issue for it).
+  const out2 = await sliceFromFeature(repo, feat.id);
+  assert.equal(out2.idempotent, true);
+  const afterSecondRerun = await findFeatureById(repo, feat.id);
+  assert.deepEqual(
+    afterSecondRerun.frontmatter.slices,
+    afterFirstRerun.frontmatter.slices,
+    "idempotent rerun must not grow the slices array"
+  );
+});
+
+test("SLICE-192: idempotent-rerun report keys off real identity, not existingSlices[i] <-> proposed[i] position (AC-2)", async () => {
+  const repo = await tmpRepo("sfp-gap-relabel-");
+  const { feat, legacyIds } = await seedGappedFeature(repo);
+
+  // Fill the gap, then re-run once more to land in the idempotent branch.
+  await sliceFromFeature(repo, feat.id);
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.idempotent, true);
+  assert.equal(out.slices.length, 5);
+
+  // `legacyIds[0]` is physically ordinal 2 ("Diff corroboration") — it sits
+  // FIRST in the FEAT's `slices` array because it was materialized before
+  // ordinal 1 was ever created. The old position-based report paired
+  // existingSlices[0] with proposed[0] (ordinal 1's title) — exactly the
+  // wrong answer. The fix must report legacyIds[0] under its OWN title.
+  const reportedForLegacy0 = out.slices.find((s: { id: string }) => s.id === legacyIds[0]);
+  assert.ok(reportedForLegacy0, `expected a report entry for ${legacyIds[0]}`);
+  assert.equal(
+    reportedForLegacy0!.title,
+    "Diff corroboration",
+    "must report the slice's own identity-matched title, not proposed[i] by array position"
+  );
+
+  // And every other reported entry's title matches its real proposed
+  // identity too — not just the one case above.
+  const byTitle = new Map(GAPPED_PROPOSED.map((p) => [p.title, p.id_suffix]));
+  for (const sl of out.slices as { id: string; title: string; points: number }[]) {
+    const matchingProposal = GAPPED_PROPOSED.find((p) => p.title === sl.title);
+    assert.ok(
+      matchingProposal,
+      `reported title "${sl.title}" must match a real proposed_slices entry`
+    );
+    assert.equal(sl.points, matchingProposal!.points);
+    assert.ok(byTitle.has(sl.title));
+  }
+});
+
+// FEAT-284 SLICE-192: loop.mts's `slice from-feature` handler publishes every
+// entry in `out.slices` to the tracker (the mechanism that turned the
+// duplicate into a redundant GitHub issue, #598). The create-path return
+// must therefore contain ONLY the slice(s) actually created this call —
+// never a already-materialized sibling — so a caller iterating `out.slices`
+// to publish never re-publishes an existing slice.
+test("SLICE-192: the create-path return contains only the newly created slice, never an already-materialized sibling (publish-safety)", async () => {
+  const repo = await tmpRepo("sfp-gap-publish-safe-");
+  const { feat, legacyIds } = await seedGappedFeature(repo);
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 1);
+  for (const sl of out.slices as { id: string }[]) {
+    assert.ok(
+      !legacyIds.includes(sl.id),
+      "materialize's create-path result must never include an already-materialized sibling id"
+    );
+  }
 });

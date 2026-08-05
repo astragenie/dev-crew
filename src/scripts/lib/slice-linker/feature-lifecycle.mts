@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { resolveConfig } from "../config-resolver.mjs";
 import { parseFrontmatter } from "../frontmatter.mjs";
+import { slicesRoot, locateSliceFile } from "../paths.mjs";
 import { findFeatureById, moveFeature, updateFeatureFrontmatter } from "../backlog-writer.mjs";
 import {
   createSlice,
@@ -468,11 +469,83 @@ interface MaterializeMultiOpts {
   proposed: ProposedSlice[];
   config: Record<string, any> | null;
   // runner-plugin#392: 0-indexed override from the git-anchored reconcile
-  // pass — set when a contiguous shipped prefix was detected beyond what
-  // `featureFM.slices` records. `Math.max`'d against existingSlices.length
-  // below so it can only ever skip forward, never re-materialize something
-  // already tracked.
+  // pass — set when a contiguous shipped prefix (ordinals 1..k, positions
+  // 0..k-1) was found in merged git history beyond what's already
+  // materialized. SLICE-192: this is still a POSITION-based signal by
+  // design (git evidence is inherently about ordinals, not materialized
+  // slice ids) — every `proposed` entry at index < startIndex is treated as
+  // shipped-per-git and is never (re)materialized locally, regardless of
+  // whether a local slice file happens to exist for it. This is orthogonal
+  // to, and composes with, the identity-keyed matching below: startIndex
+  // narrows which ordinals are even candidates for creation; identity
+  // matching then decides which of the remaining candidates already have a
+  // real materialized slice.
   startIndex?: number;
+}
+
+// SLICE-192: the durable identity signal a materialized slice carries back
+// to the `proposed_slices` entry it came from. Two sources, checked in
+// order:
+//   1. `proposed_slice_id_suffix` frontmatter (see slice-store.mts) —
+//      stamped by this module on every slice it creates from here on. The
+//      authoritative signal going forward.
+//   2. Exact title match against a proposed entry. This is the ONLY
+//      identity signal available for slices materialized before this field
+//      existed (the live FEAT-259/FEAT-284 data) — there is no other
+//      durable binding on disk. It works because proposed-slices.mts caps
+//      `title` at 100 chars, under slice-title.mts's SLICE_TITLE_MAX (120),
+//      so createSlice's clampSliceTitle never alters it: the slice
+//      frontmatter's `title` is byte-for-byte the proposed entry's title.
+//      This is a content match, not a position/index guess — it degrades
+//      to "unknown" (not a wrong answer) when titles were authored
+//      identically across siblings or hand-edited post-creation.
+// Returns undefined when neither signal identifies the slice — the caller
+// then can't rule out that this materialized slice IS some proposed entry,
+// but also can't prove which one, so it's excluded from the identity map
+// rather than guessed.
+function matchProposedIdSuffix(
+  sliceFrontmatter: Record<string, unknown>,
+  proposed: ProposedSlice[]
+): string | undefined {
+  const stamped = sliceFrontmatter.proposed_slice_id_suffix;
+  if (typeof stamped === "string" && stamped.length > 0) return stamped;
+  const title = sliceFrontmatter.title;
+  if (typeof title !== "string" || title.length === 0) return undefined;
+  return proposed.find((p) => p.title === title)?.id_suffix;
+}
+
+// SLICE-192: scans every already-materialized slice id on the FEAT
+// (`existingSlices`) and resolves which `proposed_slices` entry (by
+// `id_suffix`) it corresponds to, via `matchProposedIdSuffix`. Replaces the
+// old `existingSlices[i] <-> proposed[i]` positional pairing, which breaks
+// the moment a gap or out-of-order materialization occurs (the FEAT-284
+// live repro — see this module's other comments). A slice file that can't
+// be located, or whose identity can't be resolved, is silently skipped —
+// it contributes nothing to the map rather than a wrong entry.
+async function resolveMaterializedIdSuffixes(
+  repoPath: string,
+  config: Record<string, any> | null,
+  existingSlices: string[],
+  proposed: ProposedSlice[]
+): Promise<Map<string, string>> {
+  const slicesRootDir = slicesRoot(repoPath, config);
+  const bySuffix = new Map<string, string>();
+  for (const sliceId of existingSlices) {
+    const filePath = await locateSliceFile(slicesRootDir, sliceId);
+    if (!filePath) continue;
+    let frontmatter: Record<string, unknown>;
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      frontmatter = parseFrontmatter(content).frontmatter;
+    } catch {
+      continue;
+    }
+    const idSuffix = matchProposedIdSuffix(frontmatter, proposed);
+    if (idSuffix && !bySuffix.has(idSuffix)) {
+      bySuffix.set(idSuffix, sliceId);
+    }
+  }
+  return bySuffix;
 }
 
 // Resolves the optional createSlice() extras for one proposed_slices entry
@@ -505,6 +578,35 @@ function resolveProposedSliceCreateExtras(
   };
 }
 
+interface ProposedSliceStatus {
+  item: ProposedSlice;
+  index: number;
+  // The real materialized slice id, when identity-matched — see
+  // matchProposedIdSuffix. undefined means "no local slice file is known to
+  // correspond to this proposed entry" (either genuinely missing, or only
+  // covered by the git-anchored startIndex below).
+  materializedId: string | undefined;
+  coveredByStartIndex: boolean;
+}
+
+// SLICE-192: per-proposed-entry status, combining the two independent
+// signals that can mark an entry as "don't create this": an identity-matched
+// local slice file, or the git-anchored startIndex prefix (see
+// MaterializeMultiOpts.startIndex's doc comment for why these compose
+// rather than collapse into one check).
+function resolveProposedSliceStatuses(
+  proposed: ProposedSlice[],
+  materializedBySuffix: Map<string, string>,
+  startIndex: number
+): ProposedSliceStatus[] {
+  return proposed.map((item, index) => ({
+    item,
+    index,
+    materializedId: materializedBySuffix.get(item.id_suffix),
+    coveredByStartIndex: index < startIndex
+  }));
+}
+
 async function materializeProposedSlices(opts: MaterializeMultiOpts) {
   const {
     repoPath,
@@ -517,21 +619,34 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
     config
   } = opts;
 
-  const existingSlices = Array.isArray(featureFM.slices) ? featureFM.slices : [];
-  const startAt = Math.max(existingSlices.length, opts.startIndex ?? 0);
+  const existingSlices: string[] = Array.isArray(featureFM.slices) ? featureFM.slices : [];
+  const startIndex = Math.max(0, opts.startIndex ?? 0);
+  const materializedBySuffix = await resolveMaterializedIdSuffixes(
+    repoPath,
+    config,
+    existingSlices,
+    proposed
+  );
+  const statuses = resolveProposedSliceStatuses(proposed, materializedBySuffix, startIndex);
+  const toCreate = statuses.filter((s) => s.materializedId === undefined && !s.coveredByStartIndex);
 
-  // Idempotent rerun: if the feature already has at least as many slices
-  // as proposed entries, do nothing further. Materialized slice files are
-  // recorded on `slices`; their paths are recoverable by the caller via
-  // the locate helpers if needed.
-  if (startAt >= proposed.length) {
-    const slicesInfo = existingSlices.slice(0, proposed.length).map((sid: string, i: number) => ({
-      id: sid,
-      path: null as string | null,
-      title: proposed[i]!.title,
-      points: proposed[i]!.points,
-      estimatedTokens: proposed[i]!.estimated_tokens
-    }));
+  // Idempotent rerun: every proposed entry is either already materialized
+  // (identity-matched to a real slice file) or covered by the git-anchored
+  // startIndex prefix — nothing left to create. SLICE-192: unlike the old
+  // `existingSlices.length >= proposed.length` count check, this holds even
+  // when a gap was filled out of order or a middle entry was created after
+  // its siblings, because each entry's status is resolved independently by
+  // identity rather than by a contiguous positional cursor.
+  if (toCreate.length === 0) {
+    const slicesInfo = statuses
+      .filter((s) => s.materializedId !== undefined)
+      .map((s) => ({
+        id: s.materializedId!,
+        path: null as string | null,
+        title: s.item.title,
+        points: s.item.points,
+        estimatedTokens: s.item.estimated_tokens
+      }));
     return {
       slice: slicesInfo[0]!,
       slices: slicesInfo,
@@ -546,7 +661,6 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
     };
   }
 
-  const toCreate = proposed.slice(startAt);
   const newSlices: {
     id: string;
     path: string;
@@ -562,8 +676,13 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
 
   // Sequential, not parallel: each createSlice call allocates its next id by
   // scanning slicesRoot for the current max, so the previous iteration's
-  // write must land on disk before the next allocates.
-  for (const item of toCreate) {
+  // write must land on disk before the next allocates. Iterates `toCreate`
+  // in ascending proposed-entry order (statuses/filter preserve `proposed`'s
+  // order) — a gap at ordinal 1 with ordinals 2-5 already materialized
+  // creates only ordinal 1, in its own right position, never a duplicate of
+  // 2-5 (FEAT-284 SLICE-192).
+  for (const status of toCreate) {
+    const item = status.item;
     const ownAc =
       Array.isArray(item.acceptance_criteria) && item.acceptance_criteria.length > 0
         ? item.acceptance_criteria
@@ -585,6 +704,7 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       title: item.title,
       effortPoints: item.points,
       estimatedTokens: item.estimated_tokens,
+      proposedSliceIdSuffix: item.id_suffix,
       ...resolveProposedSliceCreateExtras(item, ownAc, warnSharedAc, featureId, proposed.length),
       config
     });
