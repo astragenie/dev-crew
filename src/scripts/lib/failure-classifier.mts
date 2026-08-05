@@ -61,6 +61,16 @@ export interface ClassifyOptions {
 
 const DEFAULT_WINDOW_DAYS = 14;
 const DEFAULT_EXEMPLAR_LIMIT = 5;
+// Vocabulary reconciliation with review-gate.mts::REVIEW_SATISFIED/
+// REVIEW_REJECTED (SLICE-200 / FEAT-283 defect 1 — deliberate, not a bug):
+// this set classifies the `verdict` field of GRADE artifacts, which has
+// historically carried validation-shaped values ({pass, fail, approved,
+// approved_with_notes}). review-gate.mts classifies the `decision` field of
+// REVIEW artifacts, whose canonical vocabulary is narrower — {approved,
+// approved_with_notes, rejected}; "pass" is intentionally NOT accepted there,
+// because a review artifact carrying `decision: pass` is using the wrong
+// (validation) vocabulary and must surface as an unrecognized verdict, not
+// silently pass as "approved". Do not merge these two sets.
 const PASS_VERDICTS = new Set(["pass", "approved", "approved_with_notes"]);
 
 // Key prefix the mining job (failure-mining.mts) writes its own candidate

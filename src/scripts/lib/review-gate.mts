@@ -8,7 +8,13 @@
 //      .claude/artifacts/crew/reviews/ -> VERDICT-AWARE (unlike the historical
 //      presence-only check that let a rejected review close as done):
 //        - frontmatter decision approved / approved_with_notes -> satisfied
+//          (case-insensitive)
 //        - frontmatter decision rejected                       -> NOT satisfied
+//        - frontmatter decision anything else (e.g. "PASS")     -> NOT satisfied,
+//          reported as an unrecognized verdict — SLICE-200 fix: this used to
+//          fall through and misreport as "a rejected review", which is a
+//          different condition with a different remedy (fix the artifact,
+//          not fix the code)
 //        - no frontmatter decision (pre-P1.3 artifact)          -> legacy,
 //          satisfied with a grandfathered warning
 //   4. No artifact, no badge, no waiver -> not satisfied.
@@ -26,7 +32,32 @@ import { pathExists } from "./paths.mjs";
 
 const DEFAULT_REVIEW_DIR = path.join(".claude", "artifacts", "crew", "reviews");
 
-const REVIEW_SATISFIED = new Set(["approved", "approved_with_notes"]);
+// Accepted review-artifact `decision` vocabulary (SLICE-200 / FEAT-283 defect 1).
+// Matching is case-insensitive — see normalizeVerdict() below.
+//
+// Vocabulary reconciliation with failure-classifier.mts::PASS_VERDICTS
+// (deliberate, not a bug): PASS_VERDICTS classifies the `verdict` field of
+// GRADE artifacts, whose vocabulary is validation-shaped ({pass, fail,
+// approved, approved_with_notes}) per historical grade-writer usage.
+// REVIEW_SATISFIED/REVIEW_REJECTED below classify the `decision` field of
+// REVIEW artifacts, whose canonical vocabulary (artifact-verdict.mts's header
+// comment) is {approved, approved_with_notes, rejected} — "pass"/"fail" are
+// not part of it. A reviewer writing `decision: pass` is using the wrong
+// (validation) vocabulary in a review artifact; that is exactly the
+// unrecognized-verdict case this module now reports distinctly rather than
+// silently accepting as equivalent to "approved". Do not fold "pass" into
+// REVIEW_SATISFIED to "match" PASS_VERDICTS — AC-1 depends on `PASS` staying
+// unrecognized here.
+export const REVIEW_SATISFIED = new Set(["approved", "approved_with_notes"]);
+// Recognized rejection value(s) for review artifacts — distinct from the
+// unrecognized-verdict branch below (different remedy: fix the code vs. fix
+// the artifact).
+export const REVIEW_REJECTED = new Set(["rejected"]);
+
+/** Lowercases/trims a raw frontmatter decision value for vocabulary lookups. */
+function normalizeVerdict(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 function normalizeSliceId(sliceId: string): string[] {
   if (!sliceId) return [];
@@ -78,6 +109,8 @@ export interface ReviewGateResult {
   legacy?: boolean;
   /** True when no review evidence was found at all (absence tolerated). */
   unproven?: boolean;
+  /** True when the decision value is neither accepted nor a recognized rejection. */
+  unrecognized?: boolean;
 }
 
 export async function deriveReviewGate(
@@ -116,19 +149,39 @@ export async function deriveReviewGate(
         evidence: artifacts
       };
     }
-    if (REVIEW_SATISFIED.has(verdict.decision)) {
+    const normalized = normalizeVerdict(verdict.decision);
+    if (REVIEW_SATISFIED.has(normalized)) {
       return {
         satisfied: true,
         reason: `review artifact decision: ${verdict.decision} (${path.basename(verdict.file)})`,
         evidence: artifacts
       };
     }
+    if (REVIEW_REJECTED.has(normalized)) {
+      return {
+        satisfied: false,
+        reason:
+          `review artifact decision: ${verdict.decision} (${path.basename(verdict.file)}) — ` +
+          "a rejected review cannot close; dispatch /crew:fix and re-review, " +
+          "record an explicit review_skipped, or use --force-close (audited)",
+        evidence: artifacts
+      };
+    }
+    // Unrecognized verdict (SLICE-200 / FEAT-283 defect 1) — NOT the same
+    // condition as a rejected review, and must not share its message or
+    // remedy. Rejected means fix the code; unrecognized means fix the
+    // artifact (wrong decision value, likely validation vocabulary bleeding
+    // into a review artifact — see the vocabulary comment above).
     return {
       satisfied: false,
+      unrecognized: true,
       reason:
         `review artifact decision: ${verdict.decision} (${path.basename(verdict.file)}) — ` +
-        "a rejected review cannot close; dispatch /crew:fix and re-review, " +
-        "record an explicit review_skipped, or use --force-close (audited)",
+        "unrecognized verdict value; accepted values are " +
+        `${[...REVIEW_SATISFIED].join(", ")} (satisfied) or ${[...REVIEW_REJECTED].join(", ")} ` +
+        "(blocks close). This is not a rejected review — no code fix is implied; " +
+        "fix the review artifact's decision field or re-dispatch the reviewer " +
+        "with the accepted vocabulary",
       evidence: artifacts
     };
   }
