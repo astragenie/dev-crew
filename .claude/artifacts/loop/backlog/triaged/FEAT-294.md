@@ -1,14 +1,31 @@
 ---
 id: FEAT-294
-status: pending
-priority: null
+status: triaged
+priority: P3
 category: feature
 target_release: null
 created: 2026-08-05
-updated: 2026-08-05
+updated: 2026-08-06
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.2
+pm_effort_estimate: 0.35
+pm_strategic_alignment: 0.4
+pm_technical_risk: 0.35
+pm_dependency_depth: 0.15
+pm_composite_priority: P3
+pm_autonomous_safe: true
+pm_reviewed: 2026-08-06
+autonomous_safe: true
+triage_notes: "commits.find() first-match-wins over newest-first git log means a later commit that merely narrates a slice (e.g. a slice-close retrospective mentioning the FEAT/SLICE pair in prose) shadows the commit that actually shipped it, demoting genuine evidence to token-pair-in-body-only. Reproduced: pinning to f0ec093d correctly reports shipped:[1,2] citing 859be561; at current HEAD both are demoted at 3860269f, a slice-close commit whose own retrospective prose cites the pair. Filing itself states severity is low and direction is safe — post-AC-7 the failure mode is false-negative (fail-open, the documented contract), FEAT-267 already sits in done/ with no live consequence, so customer_impact stays low. But the mechanism is self-reinforcing (every closeout note that cites a FEAT/SLICE pair becomes a permanent shadow) and the sharpening note confirms it predates SLICE-194 (arrived with AC-7 in SLICE-189), so it's worth fixing before it compounds further. Related: FEAT-284/SLICE-189 (AC-7), SLICE-194 (AC-8), SLICE-192. No cost analog checked this pass."
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: Evaluate all matching commits instead of first-match in git-anchored completion
+    points: 2
+    estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given a FEAT/SLICE pair with multiple commits matching the text pattern, When reconcileProposedSlicesAgainstGit runs, Then it evaluates all matching candidates rather than stopping at the first (newest) text match via commits.find().", "AC-2: Given multiple candidate commits where only one passes the subject/bullet qualification (hasSubjectEquivalentMatch) and diff corroboration, When reconciliation runs, Then the best-corroborated match is selected regardless of recency, preferring the oldest corroborating match when several qualify.", "AC-3: Given the reproduction case (mainRef=f0ec093d yields shipped=[1,2] citing 859be561; mainRef=main yields shipped=[] with both demoted at 3860269f), When this fix is applied and reconcile runs at current HEAD, Then it again reports shipped=[1,2] citing 859be561, matching the f0ec093d-anchored result.", "AC-4: Given a match was displaced by a better-corroborated one, When reconciliation completes, Then textOnlyMatches reports the displacement so an operator can see the shadowing occurred rather than inferring it from an absence."]
+    touches_files: [src/scripts/lib/slice-linker/git-anchored-completion.mts, src/tests/git-anchored-completion.test.mts]
 ---
 ## Description
 
@@ -66,3 +83,14 @@ it does not. The candidate that would qualify is never reached.
 Direction refined: search all candidates for one passing
 `hasSubjectEquivalentMatch` before demoting to a first-by-recency
 non-qualifying hit.
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: Evaluate all matching commits instead of first-match in git-anchored completion (2 pts)
+
+## Acceptance criteria (Given-When-Then)
+
+- AC-1: Given a FEAT/SLICE pair with multiple commits matching the text pattern, When reconcileProposedSlicesAgainstGit runs, Then it evaluates all matching candidates rather than stopping at the first (newest) text match via commits.find().
+- AC-2: Given multiple candidate commits where only one passes the subject/bullet qualification (hasSubjectEquivalentMatch) and diff corroboration, When reconciliation runs, Then the best-corroborated match is selected regardless of recency, preferring the oldest corroborating match when several qualify.
+- AC-3: Given the reproduction case (mainRef=f0ec093d yields shipped=[1,2] citing 859be561; mainRef=main yields shipped=[] with both demoted at 3860269f), When this fix is applied and reconcile runs at current HEAD, Then it again reports shipped=[1,2] citing 859be561, matching the f0ec093d-anchored result.
+- AC-4: Given a match was displaced by a better-corroborated one, When reconciliation completes, Then textOnlyMatches reports the displacement so an operator can see the shadowing occurred rather than inferring it from an absence.

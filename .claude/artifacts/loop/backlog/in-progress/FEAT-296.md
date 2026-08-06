@@ -1,14 +1,35 @@
 ---
 id: FEAT-296
-status: pending
-priority: null
+status: in-progress
+priority: P2
 category: feature
 target_release: null
 created: 2026-08-05
-updated: 2026-08-05
+updated: 2026-08-06
 depends_on: []
-slices: []
+slices: [SLICE-208]
 derived_from: null
+pm_customer_impact: 0.55
+pm_effort_estimate: 0.4
+pm_strategic_alignment: 0.5
+pm_technical_risk: 0.3
+pm_dependency_depth: 0.2
+pm_composite_priority: P2
+pm_autonomous_safe: true
+pm_reviewed: 2026-08-06
+autonomous_safe: true
+triage_notes: "Slice-directory and slice-frontmatter are two independent state records with nothing reconciling them: SLICE_118 exists in both ai-loop/slices/pending/ and ai-loop/slices/completed/ with contradictory content (not just location), and SLICE_128/SLICE_130/SLICE_55 sit in pending/ while their own frontmatter says done/done/superseded. Already caused real damage this session, not merely theoretical: the wrong '28 pending slices' count fed FEAT-288's priority scoring, and builder-202's open-slice sweep for SLICE-202's gate change flagged SLICE-118 as open purely because it read the pending copy. Bounded to 4 known cases plus a new CI validator (same pattern as validate-slice-touches-files.mts), so effort and risk stay moderate; not elevated to P1 because, unlike FEAT-298/FEAT-297, no live gate-verdict misread has been traced directly to these four cases beyond the triage-input contamination already described. SLICE-118 resolution must precede FEAT-298's SLICE-2 (renumbering) touching the same file. Related: FEAT-284 (slice state drifting from reality, same family), FEAT-291, FEAT-288 (a second, feature-level instance with real data loss, documented in this FEAT's body), FEAT-298 (adjacent id-collision defect, distinct remedy). No cost analog checked this pass."
+proposed_slices:
+  - id_suffix: -SLICE-1
+    title: Reconcile slice state drift and add directory/frontmatter consistency validator
+    points: 2
+    estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md exists in both ai-loop/slices/pending/ and ai-loop/slices/completed/ with divergent status frontmatter, When this slice reconciles it, Then the decision is made on evidence (git history, review/validation artifacts) rather than by picking a copy, and only one copy remains.", "AC-2: Given SLICE_128 and SLICE_130 (status: done) and SLICE_55 (status: superseded) sit in pending/ while their own frontmatter contradicts that filing, When this slice ships, Then each is moved (or otherwise reconciled) to match its frontmatter status so pending/ no longer overcounts open work.", "AC-3: Given no gate currently asserts that a slice id appears in only one state directory or that its frontmatter status agrees with its directory, When the new validator (src/scripts/validate-slice-state-consistency.mts) runs, Then it fails on a slice id present in more than one state directory, and separately fails on a frontmatter-status/directory disagreement, in the style of the existing validate-slice-touches-files.mts.", "AC-4: Given the validator is new, When CI runs, Then it is wired into CLAUDE.md's numbered CI gate list so the four known cases cannot recur unnoticed."]
+    touches_files: [.claude/artifacts/loop/ai-loop/slices/pending/SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md, .claude/artifacts/loop/ai-loop/slices/completed/SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_128_GITHUB-CREW-PR-COMMENT-TEAMMATE.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_130_DECAY-RANKED-CITATION-TRACKED-LEARNINGS-RETRIEVAL-INJECTED-A.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_55_WORKTREE-CREATION-AT-SLICE-START.md, src/scripts/validate-slice-state-consistency.mts, CLAUDE.md]
+started_at: 2026-08-06
+github_issue: 633
+github_milestone: null
+github_url: "https://github.com/astragenie/runner-plugin/issues/633"
 ---
 ## Description
 
@@ -120,3 +141,14 @@ pooled under one id token, so "SLICE-116's review evidence" is not a well-define
 set. Re-reviewing it requires resolving the collision first; a `review_skipped`
 badge would apply to whichever slice wins the id lookup, which is not necessarily
 the one anybody intended.
+
+## Proposed slices (PM decomposition)
+
+- SLICE-1: Reconcile slice state drift and add directory/frontmatter consistency validator (2 pts)
+
+## Acceptance criteria (Given-When-Then)
+
+- AC-1: Given SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md exists in both ai-loop/slices/pending/ and ai-loop/slices/completed/ with divergent status frontmatter, When this slice reconciles it, Then the decision is made on evidence (git history, review/validation artifacts) rather than by picking a copy, and only one copy remains.
+- AC-2: Given SLICE_128 and SLICE_130 (status: done) and SLICE_55 (status: superseded) sit in pending/ while their own frontmatter contradicts that filing, When this slice ships, Then each is moved (or otherwise reconciled) to match its frontmatter status so pending/ no longer overcounts open work.
+- AC-3: Given no gate currently asserts that a slice id appears in only one state directory or that its frontmatter status agrees with its directory, When the new validator (src/scripts/validate-slice-state-consistency.mts) runs, Then it fails on a slice id present in more than one state directory, and separately fails on a frontmatter-status/directory disagreement, in the style of the existing validate-slice-touches-files.mts.
+- AC-4: Given the validator is new, When CI runs, Then it is wired into CLAUDE.md's numbered CI gate list so the four known cases cannot recur unnoticed.
