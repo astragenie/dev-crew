@@ -72,8 +72,9 @@ function extractSliceNumberTokens(text: string): Set<string> {
  * pre-build QA-gate plans (qa-gate-preflight.mts), not close-time validation
  * evidence — a lone test-plan artifact must neither satisfy nor fail the
  * validation gate, so it is excluded here rather than left to fall through
- * on a missing `decision:` key (which would grandfather it as a legacy
- * "satisfied" artifact — the exact bug this exclusion prevents).
+ * to a real artifact's decision handling (a missing `decision:` key would
+ * otherwise report a misleading "add a decision key" remedy on a file that
+ * was never meant to carry close-time evidence in the first place).
  * @param {string} filePath
  * @returns {Promise<boolean>}
  */
@@ -156,11 +157,19 @@ function resolveVerdictOutcome(
   artifacts: string[]
 ) {
   if (verdict.decision === null) {
+    // SLICE-205 / FEAT-295 (twin of SLICE-202's review-gate.mts fix): no
+    // grandfather clause — a validation artifact with no `decision`
+    // frontmatter key never proves validation happened, no matter when it
+    // was written. The prior branch treated presence alone as satisfied
+    // with no date bound at all, applying equally to an artifact written
+    // this minute.
     return {
-      satisfied: true,
+      satisfied: false,
       reason:
-        `validation artifact present (${artifacts.length}) — legacy, no decision frontmatter ` +
-        `(grandfathered pre-P1.3; newest: ${path.basename(verdict.file)})`,
+        `validation artifact carries no \`decision\` frontmatter key (newest: ` +
+        `${path.basename(verdict.file)}) — cannot prove validation happened; ` +
+        "add a `decision:` key with pass|fail|skipped to the artifact, or " +
+        "record an explicit validation_skipped badge",
       evidence: artifacts
     };
   }
@@ -264,9 +273,11 @@ export async function deriveValidationGate(
 
   // P1.4: verdict-aware artifact check. Presence-only satisfaction is the
   // SLICE-174 bug (a validation that FAILED still counted as evidence).
-  // New-format artifacts (crew P1.3) carry frontmatter `decision:` with
-  // canonical {pass, fail, skipped}; pre-P1.3 artifacts have no decision and
-  // are grandfathered as satisfied.
+  // Artifacts carry frontmatter `decision:` with canonical
+  // {pass, fail, skipped}; an artifact with no `decision` key at all is NOT
+  // satisfied (SLICE-205 / FEAT-295 defect: the prior grandfather clause
+  // treated this as satisfied with no date bound whatsoever — removed
+  // outright, mirroring SLICE-202's fix to the twin review-gate.mts clause).
   const artifacts = await findValidationArtifacts(repoPath, sliceId);
   const verdict = await readNewestArtifactVerdict(artifacts);
   if (verdict) {

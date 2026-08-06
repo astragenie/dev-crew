@@ -296,14 +296,17 @@ test("completeSlice proceeds when validation artifact present for the slice", as
   const repo = await tmpRepo("al-vgate-artifact-");
   const feat = await addFeature(repo, { title: "Validated", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
+  // SLICE-205 / FEAT-295: presence alone no longer satisfies the validation
+  // gate (grandfather clause removed) — the artifact must carry a `decision:` key.
   await writeValidationsArtifact(
     repo,
-    `20260528T120000Z-validation-result-${slice.id.toLowerCase()}-feature.md`
+    `20260528T120000Z-validation-result-${slice.id.toLowerCase()}-feature.md`,
+    "---\ndecision: pass\n---\n# validation\n"
   );
   const result = await completeSlice(repo, slice.id);
   assert.match(result.feature.to, /done[\\/]FEAT-001\.md/);
   assert.equal(result.validationGate.satisfied, true);
-  assert.match(result.validationGate.reason, /validation artifact present/);
+  assert.match(result.validationGate.reason, /validation artifact decision: pass/);
 });
 
 test("completeSlice proceeds when validation_passed badge present", async () => {

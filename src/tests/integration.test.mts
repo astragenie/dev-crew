@@ -54,9 +54,11 @@ async function writeValidationArtifact(repo: string, sliceId: string): Promise<v
   const dir = path.join(repo, ".claude/artifacts/crew/validations");
   await fs.mkdir(dir, { recursive: true });
   const normalized = sliceId.toLowerCase().replace("-", "");
+  // SLICE-205 / FEAT-295: presence alone no longer satisfies the validation
+  // gate (grandfather clause removed) — the artifact must carry a `decision:` key.
   await fs.writeFile(
     path.join(dir, `20260528T120000Z-validation-result-${normalized}-feature.md`),
-    "# Validation\n\n**Status:** PASS\n\nAll acceptance criteria PASS.\n"
+    "---\ndecision: pass\n---\n# Validation\n\n**Status:** PASS\n\nAll acceptance criteria PASS.\n"
   );
 }
 
@@ -86,7 +88,7 @@ test("integration: startSlice → completeSlice happy path moves slice+feature t
   assert.match(completeResult.slice.to, /completed[\\/]SLICE_/);
   assert.match(completeResult.feature.to, /done[\\/]FEAT-/);
   assert.equal(completeResult.validationGate.satisfied, true);
-  assert.match(completeResult.validationGate.reason, /validation artifact present/);
+  assert.match(completeResult.validationGate.reason, /validation artifact decision: pass/);
 
   // Slice file is now under completed/
   const sliceStat = await fs.stat(completeResult.slice.to);

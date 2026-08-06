@@ -51,10 +51,14 @@ async function writeWorkflowState(repo: string, currentRun: unknown): Promise<vo
   );
 }
 
-async function writeValidationArtifact(repo: string, filename: string): Promise<void> {
+async function writeValidationArtifact(
+  repo: string,
+  filename: string,
+  body = "# Validation\n\n**Status:** PASS\n"
+): Promise<void> {
   const dir = path.join(repo, ".claude", "artifacts", "crew", "validations");
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, filename), "# Validation\n\n**Status:** PASS\n");
+  await fs.writeFile(path.join(dir, filename), body);
 }
 
 async function writeReviewArtifact(
@@ -160,11 +164,17 @@ test("gates: deriveValidationGate passes when validation_skipped badge in workfl
 
 test("gates: deriveValidationGate passes when matching artifact exists under validations/", async () => {
   const repo = await tmpRepo("gt-vgate-artifact-");
-  await writeValidationArtifact(repo, "20260528T120000Z-validation-result-slice01-feature.md");
+  // SLICE-205 / FEAT-295: presence alone no longer satisfies (grandfather
+  // clause removed) — the artifact must carry a `decision:` key.
+  await writeValidationArtifact(
+    repo,
+    "20260528T120000Z-validation-result-slice01-feature.md",
+    "---\ndecision: pass\n---\n# Validation\n\n**Status:** PASS\n"
+  );
   const result = await deriveValidationGate(repo, "SLICE-01");
   assert.equal(result.satisfied, true);
   assert.equal(result.evidence.length, 1);
-  assert.match(result.reason, /validation artifact present \(1\)/);
+  assert.match(result.reason, /validation artifact decision: pass/);
 });
 
 // ---------------------------------------------------------------------------
@@ -324,13 +334,14 @@ test("gates: computeFeatureResult moves feature to done when all gates pass", as
   const feat = await addFeature(repo, { title: "All gates pass", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
-  // Write validation artifact
+  // Write validation artifact. SLICE-205 / FEAT-295: a `decision:` key is
+  // required — presence alone no longer satisfies (grandfather clause removed).
   const dir = path.join(repo, ".claude/artifacts/crew/validations");
   await fs.mkdir(dir, { recursive: true });
   const normalizedId = slice.id.toLowerCase().replace("-", "");
   await fs.writeFile(
     path.join(dir, `20260528T120000Z-validation-result-${normalizedId}-feature.md`),
-    "# Validation\n\n**Status:** PASS\n"
+    "---\ndecision: pass\n---\n# Validation\n\n**Status:** PASS\n"
   );
 
   const result = await completeSlice(repo, slice.id);

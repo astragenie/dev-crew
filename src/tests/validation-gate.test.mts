@@ -62,18 +62,23 @@ test("deriveValidationGate satisfied when validation_skipped badge present, surf
   assert.match(result.reason, /validation_skipped: doc-only/);
 });
 
-test("deriveValidationGate satisfied when matching validation artifact present", async () => {
-  const repo = await tmpRepo("al-vgate-artifact-");
+// SLICE-205 / FEAT-295 (twin of SLICE-202's review-gate.mts fix): the prior
+// grandfather clause treated ANY artifact with no `decision` frontmatter key
+// as satisfied, with no date bound at all. Deleted outright — a
+// decision-less artifact now falls through to satisfied:false.
+test("deriveValidationGate: artifact with no decision frontmatter is NOT satisfied", async () => {
+  const repo = await tmpRepo("al-vgate-nodecision-");
   await writeValidationsArtifact(repo, "20260528T120000Z-validation-result-slice01-feature.md");
   const result = await deriveValidationGate(repo, "SLICE-01");
-  assert.equal(result.satisfied, true);
-  assert.match(result.reason, /validation artifact present \(1\)/);
+  assert.equal(result.satisfied, false);
+  assert.equal((result as any).legacy, undefined);
+  assert.match(result.reason, /no `decision` frontmatter key/);
   assert.equal(result.evidence.length, 1);
 });
 
 test("deriveValidationGate matches artifact via SLICE-1 unpadded id", async () => {
   const repo = await tmpRepo("al-vgate-unpadded-");
-  await writeValidationsArtifact(repo, "validation-SLICE-1.md");
+  await writeValidationArtifactWithDecision(repo, "SLICE-1", "pass", "");
   const result = await deriveValidationGate(repo, "SLICE-01");
   assert.equal(result.satisfied, true);
   assert.equal(result.evidence.length, 1);
@@ -207,7 +212,8 @@ test("deriveValidationGate: combined-slice artifact filename matches both slice 
   const repo = await tmpRepo("al-vgate-combined-");
   await writeValidationsArtifact(
     repo,
-    "20260709T120000Z-validation-result-slice-157-158-deploy.md"
+    "20260709T120000Z-validation-result-slice-157-158-deploy.md",
+    "---\ndecision: pass\n---\n# validation\n"
   );
   const result157 = await deriveValidationGate(repo, "SLICE-157");
   const result158 = await deriveValidationGate(repo, "SLICE-158");
