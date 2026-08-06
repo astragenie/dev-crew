@@ -36,14 +36,30 @@ Architect design artifact:
 
 > WARNING: ACs copied from FEAT-230 and shared across 5 sibling slices — scope per-slice before close
 
-- [ ] AC-1: GIVEN a slice tagged `stack:csharp` + `concern:security`, WHEN the
-- [ ] AC-2: GIVEN a signal that maps to no available skill, WHEN resolving, THEN the
-- [ ] AC-3: GIVEN a repo with presets present, WHEN the dispatcher resolves skills,
-- [ ] AC-4: GIVEN the resolver output, WHEN a builder is dispatched, THEN the
-- [ ] AC-5: A validation gate (CI + resolve-time) fails when a resolved/declared skill
-- [ ] AC-6: Resolution is deterministic + explainable — a `--explain` (or log) shows
-- [ ] AC-7: A DEC-* records the decommission-preset-skills decision + the live-catalog
+**Backfilled 2026-08-06 (runner-plugin#630).** The generated ACs below were
+truncated to each bullet's first physical line by an extractor bug — FEAT-230's
+ACs wrap across multiple markdown lines and the extractor only captured the
+first. Reconstructed in full from `FEAT-230.md`, byte-for-byte (mid-clause
+truncation fixed, no wording changed) except for one correction: FEAT-230's
+own AC-1 cites `react-engineering` as an example dead skill ID, but
+`react-engineering` is LIVE — just nested under a subcategory — and the FEAT
+misclassifies it by exactly the flat-lookup mistake it exists to fix (see
+FEAT-230.md's "Corrected drift measurement" section). `vue-engineering`
+(genuinely dead) is substituted below per that correction.
+
+- [ ] AC-1: GIVEN a slice tagged `stack:csharp` + `concern:security`, WHEN the dispatcher resolves skills, THEN it returns only skill IDs that EXIST in the live crew catalog (no `csharp-pro`/`vue-engineering`-style dead IDs), matched to the task signals.
+- [ ] AC-2: GIVEN a signal that maps to no available skill, WHEN resolving, THEN the resolver logs a clear "no matching skill for <signal>" and injects nothing for it — never a fabricated/dead ID (structural fix for the drift).
+- [ ] AC-3: GIVEN a repo with presets present, WHEN the dispatcher resolves skills, THEN `preset.roles.*.skills` / `fe/be.skills` are NOT read as the skill source (grep proves no runtime read of preset skill lists in the dispatch path).
+- [ ] AC-4: GIVEN the resolver output, WHEN a builder is dispatched, THEN the dispatch payload's skill block is compatible with what crew's `orchestrate-slice` consumes (contract preserved or jointly updated per the upstream-request).
+- [ ] AC-5: A validation gate (CI + resolve-time) fails when a resolved/declared skill ID is absent from the live catalog.
+- [ ] AC-6: Resolution is deterministic + explainable — a `--explain` (or log) shows which task signals selected which skills.
+- [ ] AC-7: A DEC-* records the decommission-preset-skills decision + the live-catalog source + the task→skill mapping rules.
 - [ ] AC-8: Full suite green; typecheck + lint + format clean; snapshot-freshness passes.
+
+This slice's own scope (per FEAT-230.md's contract-landed decomposition):
+`resolve-skills` CLI `--slice`/`--tags` integration + `pickBlock` fallback —
+i.e. AC-3, AC-4, and the shared AC-6/AC-8, are this slice's core; AC-1/AC-2
+are SLICE-196's core (mapping table); AC-5/AC-7 are SLICE-199's.
 
 ## Done When
 

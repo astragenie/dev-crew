@@ -56,6 +56,50 @@ function classifyAcceptanceCriteriaLine(line: string): string | null {
 }
 
 /**
+ * Consumes the physical lines immediately following a just-classified AC
+ * bullet (`results[results.length - 1]`) that are ordinary markdown
+ * continuation of that same bullet — the normal shape when a PM-authored AC
+ * wraps across multiple physical lines. Returns the index of the first line
+ * NOT consumed (runner-plugin#630 — extraction used to stop after the
+ * bullet's first physical line, silently truncating every wrapped AC
+ * mid-clause).
+ *
+ * Continuation ends at:
+ * - the next bullet (a line starting `- `, classified or not — an
+ *   unclassified bullet still ends the previous bullet's text, it's just
+ *   not itself collected);
+ * - a blank line followed by a non-indented line (plain paragraph text
+ *   resuming outside the list — NOT part of the bullet); a blank line
+ *   followed by an indented line is treated as a multi-paragraph list item
+ *   and continuation carries on past it;
+ * - the next heading (`## ...`; a `### SN` per-slice subheading does not
+ *   count, matching {@link extractAcceptanceCriteriaDetailed}'s existing
+ *   heading-terminator rule).
+ *
+ * Each consumed line is trimmed and joined onto the bullet with a single
+ * space, reconstructing the sentence markdown would render on one line.
+ */
+function accumulateContinuationLines(lines: string[], startIdx: number, results: string[]): number {
+  let i = startIdx;
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+    if (line.trim() === "") {
+      const next = lines[i + 1];
+      const nextIsIndentedContinuation =
+        next !== undefined && next.trim() !== "" && /^\s/.test(next);
+      if (!nextIsIndentedContinuation) break;
+      i++;
+      continue;
+    }
+    if (/^##\s/.test(line)) break;
+    if (/^-\s/.test(line)) break;
+    results[results.length - 1] += ` ${line.trim()}`;
+    i++;
+  }
+  return i;
+}
+
+/**
  * Parses the `## Acceptance criteria` section from a FEAT body, returning
  * both the criteria (as unchecked checkbox lines) and whether the heading
  * itself was found. The `headingFound` flag lets callers distinguish "no
@@ -65,6 +109,11 @@ function classifyAcceptanceCriteriaLine(line: string): string | null {
  * accepted authoring formats. Stops at the next `##`-level heading; a
  * `### SN` per-slice subheading does not terminate the section. See
  * astragenie/runner-plugin#322, #370.
+ *
+ * Wrapped bullets — an AC whose text spans multiple physical lines, ordinary
+ * markdown — have their continuation lines folded back in via
+ * {@link accumulateContinuationLines} rather than dropped at the first
+ * physical line (runner-plugin#630).
  */
 function extractAcceptanceCriteriaDetailed(body: string): {
   lines: string[];
@@ -75,16 +124,27 @@ function extractAcceptanceCriteriaDetailed(body: string): {
   let inSection = false;
   let headingFound = false;
   const results: string[] = [];
-  for (const line of lines) {
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
     if (/^##\s+acceptance criteria\b/i.test(line.trim())) {
       inSection = true;
       headingFound = true;
+      i++;
       continue;
     }
-    if (!inSection) continue;
+    if (!inSection) {
+      i++;
+      continue;
+    }
     if (/^##\s/.test(line)) break;
     const normalized = classifyAcceptanceCriteriaLine(line);
-    if (normalized) results.push(normalized);
+    if (normalized) {
+      results.push(normalized);
+      i = accumulateContinuationLines(lines, i + 1, results);
+      continue;
+    }
+    i++;
   }
   return { lines: results, headingFound };
 }
