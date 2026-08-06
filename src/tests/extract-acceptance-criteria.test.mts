@@ -527,3 +527,54 @@ test("sliceFromFeature preserves all FEAT ACs verbatim (checkbox state preserved
   // No placeholder
   assert.doesNotMatch(sliceContent, /<replace with/);
 });
+
+// Regression: CRLF bodies. Found by the SLICE-206 review. `body.split("\n")`
+// left a trailing \r on every physical line. The prose-bullet branch of
+// classifyAcceptanceCriteriaLine absorbs it (its regex ends `\s*$`), but the
+// CHECKBOX branch is a bare `.replace()` with no trim — so `- [ ] AC-1: ...`
+// kept a dangling \r, and a wrapped one embedded a literal \r mid-sentence
+// where the continuation was joined. Checkbox is the form every generated
+// slice uses. This repo runs on Windows, and extraction runs against
+// freshly-authored bodies before .gitattributes (eol=lf) normalizes them.
+test("extractAcceptanceCriteria: wrapped checkbox AC over CRLF has no embedded CR", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- [ ] AC-1: Given a wrapped criterion, When it spans",
+    "  more than one physical line, Then it joins.",
+    ""
+  ].join("\r\n");
+
+  const [first] = extractAcceptanceCriteria(body);
+
+  assert.ok(first, "expected one criterion");
+  assert.doesNotMatch(first, /\r/);
+  assert.match(first, /spans more than one physical line/);
+});
+
+test("extractAcceptanceCriteria: unwrapped checkbox AC over CRLF has no trailing CR", () => {
+  const body = ["## Acceptance criteria", "", "- [ ] AC-1: Given X, When Y, Then Z.", ""].join(
+    "\r\n"
+  );
+
+  const [first] = extractAcceptanceCriteria(body);
+
+  assert.ok(first, "expected one criterion");
+  assert.doesNotMatch(first, /\r/);
+});
+
+test("extractAcceptanceCriteria: CRLF and LF checkbox bodies extract identically", () => {
+  const parts = [
+    "## Acceptance criteria",
+    "",
+    "- [ ] AC-1: Given a criterion, When it wraps",
+    "  across lines, Then both encodings agree.",
+    "- [ ] AC-2: Given a second criterion, When read, Then it is separate.",
+    ""
+  ];
+
+  assert.deepEqual(
+    extractAcceptanceCriteria(parts.join("\r\n")),
+    extractAcceptanceCriteria(parts.join("\n"))
+  );
+});

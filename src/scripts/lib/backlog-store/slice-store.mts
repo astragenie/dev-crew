@@ -120,7 +120,13 @@ function extractAcceptanceCriteriaDetailed(body: string): {
   headingFound: boolean;
 } {
   if (!body) return { lines: [], headingFound: false };
-  const lines = body.split("\n");
+  // Split on the full terminator, not just "\n": a CRLF body would otherwise
+  // leave a trailing \r on every line, which classifyAcceptanceCriteriaLine
+  // preserves verbatim — embedding a literal \r mid-sentence in any wrapped
+  // criterion, and leaving one dangling on unwrapped ones. `.gitattributes`
+  // (eol=lf) normalizes the committed corpus, but extraction also runs against
+  // freshly-authored bodies before git ever sees them.
+  const lines = body.split(/\r?\n/);
   let inSection = false;
   let headingFound = false;
   const results: string[] = [];
