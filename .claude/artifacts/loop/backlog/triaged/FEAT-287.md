@@ -5,7 +5,7 @@ priority: P1
 category: feature
 target_release: null
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-06
 depends_on: []
 slices: []
 derived_from: null
@@ -16,7 +16,7 @@ pm_technical_risk: 0.5
 pm_dependency_depth: 0.25
 pm_composite_priority: P1
 pm_autonomous_safe: false
-pm_reviewed: 2026-08-04
+pm_reviewed: 2026-08-06
 autonomous_safe: false
 triage_notes: "This is the same defect class as FEAT-281 (P1: tested/gated-but-not-actually-covered) one level up, and arguably worse in one respect: FEAT-281's gap was passive (a function nobody called), while this gate actively prints 'OK — no raw backlog-state writers outside BacklogStore/allowlist' on every run while a live writer bypasses it and has already produced a confirmed external-facing bug (FEAT-285's six duplicate GitHub issues). That combination — false assurance plus a demonstrated live consequence — puts customer_impact and strategic_alignment above FEAT-285 (P2, the symptom) and FEAT-282 (P2, an orphan validator nobody currently relies on and that blocks nothing), but effort and risk are real and multi-file (porting a live external-side-effecting write path, not just widening a scan glob), which is why this sits at P1 alongside FEAT-281 rather than climbing to P0: like FEAT-283, this touches gate-adjacent/live-external-effect code, so autonomous_safe is false pending human sign-off on the port-vs-allowlist calls for the two secondary writers."
 proposed_slices:
@@ -24,14 +24,20 @@ proposed_slices:
     title: Extend backlog-write scan to scripts/ tree + .mjs files; add scanner-reach test
     points: 2
     estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given validate-backlog-writes.mts's SCAN_ROOT is hardcoded to 'src/scripts' (line 77), When this slice ships, Then the scanner walks both src/scripts and the top-level scripts/ tree, covering .mjs files as well as .mts.", "AC-2: Given scripts/lib/github-sync.mjs's raw fs.writeFile calls against FEAT paths (lines 82, 92, 184) and SLICE paths (lines 115, 121) are not yet ported (that is SLICE-2's scope), When the widened scanner runs against current main, Then it flags all five call sites as disallowed raw writers.", "AC-3: Given a new test asserting the scanner's reach, When a file is added under scripts/ (not src/scripts/) containing a disallowed raw write, Then validate-backlog-writes.mts fails and names that file."]
+    touches_files: [src/scripts/validate-backlog-writes.mts, src/tests/validate-backlog-writes.test.mts]
   - id_suffix: -SLICE-2
     title: Port github-sync.mjs raw FEAT/SLICE fs.writeFile calls to BacklogStore
     points: 2
     estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given scripts/lib/github-sync.mjs's raw fs.writeFile calls against FEAT paths (lines 82, 92, 184) and SLICE paths (lines 115, 121), When this slice ships, Then each call site is ported to BacklogStore's updateFeatureFrontmatter (feature-store.mts) / updateSliceFrontmatter (slice-store.mts) equivalents so it triggers the same cache-bust as every other sanctioned writer.", "AC-2: Given github-sync.mjs's writes are now routed through BacklogStore, When a slice-from-feature run publishes N sibling slices for one FEAT, Then listBacklog()'s memoized cache is correctly busted by every write, so the FEAT-285 duplicate-parent-issue regression (six identical parent issues for FEAT-284's six slices) does not recur.", "AC-3: Given src/scripts/lib/github-sync-loader.mts's importGithubSync resolves a computed file:// URL to reach github-sync.mjs on every `github publish` path, When this port ships, Then the live `github publish` path continues to function unchanged from the caller's perspective — a behavior-preserving port, not a public API change."]
+    touches_files: [scripts/lib/github-sync.mjs, src/tests/github-sync.test.mts]
   - id_suffix: -SLICE-3
     title: "Triage setup-github-sync.mjs + competitor-audit/aggregate.mjs writes: port or allowlist"
     points: 1
     estimated_tokens: 60000
+    acceptance_criteria: ["AC-1: Given scripts/setup-github-sync.mjs's fs.writeFile calls, When triaged, Then it is either ported to BacklogStore or added to validate-backlog-writes.mts's ALLOWLIST with a written justification in the existing DEC-076 style.", "AC-2: Given scripts/competitor-audit/aggregate.mjs's fs.writeFile calls, When triaged, Then it is either ported to BacklogStore or added to the ALLOWLIST with a written justification in the existing DEC-076 style.", "AC-3: Given both modules sit outside the backlog-frontmatter write path that caused FEAT-285 (unlike github-sync.mjs), When the triage decision is recorded, Then the written justification states why each does or does not risk the same cache-staleness bug."]
+    touches_files: [scripts/setup-github-sync.mjs, scripts/competitor-audit/aggregate.mjs, src/scripts/validate-backlog-writes.mts]
 ---
 ## Description
 

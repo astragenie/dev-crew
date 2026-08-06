@@ -1,7 +1,7 @@
 ---
 id: PM-REVIEW-FEAT-287
 feature: FEAT-287
-reviewed_at: 2026-08-04
+reviewed_at: 2026-08-06
 pm_customer_impact: 0.65
 pm_effort_estimate: 0.55
 pm_strategic_alignment: 0.8
@@ -14,11 +14,11 @@ autonomous_safe: false
 
 ## Demand Assessment
 
-- **Evidence:** Live-confirmed, not theoretical: this exact blind spot is the traced root cause of FEAT-285's six-duplicate-parent-issue bug on 2026-08-04. Verified directly against code: validate-backlog-writes.mts:77 hardcodes SCAN_ROOT = 'src/scripts', so it never walks the sibling scripts/ tree; scripts/lib/github-sync.mjs has raw fs.writeFile calls against feat.filePath at lines 82, 92, 184 and sliceFile at 115, 121 (grep-confirmed at those exact lines); src/scripts/lib/github-sync-loader.mts's importGithubSync resolves scripts/lib/<rel> via a computed pathToFileURL() and is invoked on every 'github publish' path, confirming the unscanned tree is a live hot path, not dead legacy code, and invisible to static resolution as well as to this scanner.
+- **Evidence:** none
 
 ## Scope Challenge
 
-- **Scope notes:** Extend validate-backlog-writes.mts to scan scripts/ alongside src/scripts/, and .mjs alongside .mts, rather than a single hardcoded root. Then triage each newly-surfaced writer individually: github-sync.mjs's FEAT/SLICE writes should be ported to BacklogStore's updateFeatureFrontmatter/updateSliceFrontmatter (not allowlisted), since routing them through the shared write-primitive is what actually fixes FEAT-285's cache-staleness at the root rather than just detecting the bypass; scripts/setup-github-sync.mjs and scripts/competitor-audit/aggregate.mjs need individual port-or-allowlist decisions in the existing DEC-076 written-justification style. Add a regression test asserting the scanner actually visits a file under scripts/, so this blind spot can't silently return. Worth coordinating with FEAT-281's design, since importGithubSync's computed-URL call edge would defeat a naive static call-graph resolver the same way it defeated this scanner's hardcoded root.
+- **Scope notes:** none
 
 ## Scores
 
@@ -36,6 +36,4 @@ reasoning: This is the same defect class as FEAT-281 (P1: tested/gated-but-not-a
 
 ## Risks
 
-- Porting github-sync.mjs's writes touches a live hot path exercised on every GitHub publish call — an error here breaks real issue/slice sync, not just a test fixture
-- Two other unscanned writers (setup-github-sync.mjs, competitor-audit/aggregate.mjs) still need their own DEC-076-style written justification before allowlisting; treating them as a rubber-stamp batch risks under-scoping the rationale
-- Fixing only the scan root (without porting github-sync.mjs's writes) would surface the finding in CI but leave FEAT-285's actual cache-staleness bug unfixed at the root
+- none

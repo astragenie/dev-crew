@@ -5,7 +5,7 @@ priority: P1
 category: feature
 target_release: null
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-06
 depends_on: []
 slices: []
 derived_from: null
@@ -16,7 +16,7 @@ pm_technical_risk: 0.6
 pm_dependency_depth: 0.2
 pm_composite_priority: P1
 pm_autonomous_safe: true
-pm_reviewed: 2026-08-04
+pm_reviewed: 2026-08-06
 autonomous_safe: true
 triage_notes: "Highest strategic value of the three because it's the only one that prevents recurrence of a whole defect class rather than patching one instance, and the class has already manifested three times with a proven fleet-wide side effect. Effort and risk are both elevated relative to FEAT-282/283 because it's new static-analysis infrastructure, not a bugfix in existing logic, which is why it lands at P1 rather than P0 despite the strong demand evidence — the warn-tier-first design is a technical-risk mitigation, not a scope reduction, and should stay in the AC set."
 proposed_slices:
@@ -24,14 +24,20 @@ proposed_slices:
     title: "Reference-graph scanner: flag exported lib symbols referenced only by their own tests"
     points: 2
     estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given an exported symbol in src/scripts/lib/**, When the new reference-graph scanner resolves its referencing files, Then it flags the symbol as a candidate unwired export whenever every reference comes from its own defining file plus files under src/tests/.", "AC-2: Given the three confirmed 2026-08-03/04 instances (pause-telemetry.mts's recordDispatchOutcome/recordPauseEvent, memory-snapshot.mts's renderWaveTelemetry, the {{dispatchLimits.maxSubagentsPerSlice}} template-token gap) are already wired as of this scoring, When the scanner runs against current main, Then it does not flag them as regressions, confirming the scanner's baseline is clean.", "AC-3: Given this slice ships before the allowlist and dynamic-import handling (SLICE-2), When the scanner runs, Then it reports raw candidates as a warn-tier list without suppressing any of them."]
+    touches_files: [src/scripts/validate-unwired-lib-exports.mts, src/tests/validate-unwired-lib-exports.test.mts]
   - id_suffix: -SLICE-2
     title: Allowlist config + dynamic-import call-site resolution to suppress false positives
     points: 2
     estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given a symbol explicitly listed in the allowlist config as test-only or public-API surface, When the validator from SLICE-1 runs, Then no warning is emitted for that symbol.", "AC-2: Given a symbol reached only via a dynamic `await import(...)` call from production code (the pattern used in close-slice.mts and loop.mts), When the validator resolves references, Then the dynamic-import call site counts as a real caller and the symbol is not flagged.", "AC-3: Given a symbol has zero references anywhere outside its own defining file, not even from tests, When the validator runs, Then it is still flagged as a warn-tier candidate regardless of allowlist status, since an allowlist entry implies deliberate test-only or public-API intent, not total non-use."]
+    touches_files: [src/scripts/validate-unwired-lib-exports.mts, src/tests/validate-unwired-lib-exports.test.mts]
   - id_suffix: -SLICE-3
     title: "Warn-tier CLI wiring and report output (no CI hard-fail, no gate-list renumber yet)"
     points: 2
     estimated_tokens: 100000
+    acceptance_criteria: ["AC-1: Given the validator (from SLICE-1/SLICE-2) finds candidate unwired exports, When it runs, Then it exits 0 and prints a human-readable warn-tier report rather than failing the build.", "AC-2: Given this slice explicitly excludes CI hard-fail wiring and CLAUDE.md's numbered CI gate list, When this slice ships, Then the validator is runnable standalone (e.g. `bun ./src/scripts/validate-unwired-lib-exports.mts`) with hard-fail and gate-list renumbering left for a follow-up.", "AC-3: Given the existing backlog of pre-FEAT-281 unwired exports across the repo, When the warn-tier report runs against current main, Then it surfaces the full current candidate list so it can be triaged before any future hard-fail tier is added."]
+    touches_files: [src/scripts/validate-unwired-lib-exports.mts]
 tags: [architecture, infra, backend]
 needs_contract: true
 needs_ux: false

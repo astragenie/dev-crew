@@ -5,7 +5,7 @@ priority: P1
 category: feature
 target_release: null
 created: 2026-08-05
-updated: 2026-08-05
+updated: 2026-08-06
 depends_on: []
 slices: []
 derived_from: null
@@ -16,7 +16,7 @@ pm_technical_risk: 0.4
 pm_dependency_depth: 0.5
 pm_composite_priority: P1
 pm_autonomous_safe: true
-pm_reviewed: 2026-08-05
+pm_reviewed: 2026-08-06
 autonomous_safe: true
 triage_notes: "customer_impact is high (0.7) because this is an active, observed-today correctness defect degrading builder scoping across all 10 currently-pending slices for FEAT-230/259/284, with concrete evidence of sibling AC drift already causing a stale/corrected-AC mismatch. strategic_alignment (0.65) reflects that per-slice AC scoping is core to the loop's slice-based methodology and improves wave-packing quality downstream. effort_estimate (0.45) reflects genuine multi-part scope across two files plus a new gate. dependency_depth is elevated to 0.5 — a real, cited block on FEAT-289 for the PM-contract slice specifically — but stays under the 0.6 disqualifying threshold since the other three slices are unblocked and the block itself resolves by sequencing FEAT-289 first, not by a circular or open-ended dependency. Composite computes P1 under impact>=0.7 AND alignment>=0.6."
 proposed_slices:
@@ -25,16 +25,19 @@ proposed_slices:
     points: 2
     estimated_tokens: 100000
     acceptance_criteria: ["GIVEN agents/pm.md's proposedSlices[] contract, WHEN FEAT-289's cap-relief lands and this slice edits pm.md, THEN acceptance_criteria is documented as a field the PM must populate, assigning each drafted AC to exactly the slice that delivers it.", "GIVEN a FEAT with multiple proposed slices, WHEN the PM decomposes it, THEN no AC is duplicated across two sibling proposedSlices entries and every drafted AC is assigned to exactly one slice.", "GIVEN a proposedSlices entry now carries acceptance_criteria, WHEN slice-store.mts materializes the slice, THEN the generated slice's AC section uses that per-slice list verbatim instead of the FEAT-level fallback and shared-AC warning banner."]
+    touches_files: [agents/pm.md]
   - id_suffix: -SLICE-2
     title: Conditional Done When + real placeholders + per-slice objective in slice-store.mts
     points: 2
     estimated_tokens: 100000
     acceptance_criteria: ["GIVEN a multi-slice feature's Done When block, WHEN a non-final sibling slice closes, THEN the block does not assert the whole feature moved to done — only the slice designated final does so.", "GIVEN a generated slice body, WHEN it is created, THEN its Objective section derives from that slice's own scope rather than restating the parent FEAT's first body line verbatim.", "GIVEN a generated slice body's In scope / Out of scope sections, WHEN it is created, THEN the placeholder text is not the literal '- bullet 1' / '- bullet 2' strings but a marker no builder could mistake for real content."]
+    touches_files: [src/scripts/lib/backlog-store/slice-store.mts, src/tests/backlog-store-slices.test.mts]
   - id_suffix: -SLICE-3
     title: Dispatch gate refusing slices with unreplaced placeholders or AC banner
     points: 1
     estimated_tokens: 60000
     acceptance_criteria: ["GIVEN a slice whose body still contains an unreplaced placeholder or the shared-AC warning banner, WHEN /runner:start or the wave dispatcher attempts to dispatch it, THEN a gate refuses dispatch and surfaces which placeholder or banner blocks it."]
+    touches_files: [src/scripts/lib/slice-linker/start-slice.mts, src/scripts/lib/wave/planner.mts]
 ---
 ## Description
 
