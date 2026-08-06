@@ -45,14 +45,27 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
     top-level dir still errors. Warns (does not fail) when `touches_files`
     is absent altogether on a slice created on/after `--warn-cutoff`
     (default 2026-06-15).
-12. `bun test src/tests/ --parallel --timeout 60000`
-13. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+12. `bun ./src/scripts/validate-slice-state-consistency.mts` — slice
+    state-directory vs frontmatter-status agreement (SLICE-208). Fails on
+    two distinct conditions, reported separately because the remedies
+    differ: (a) one slice id filed across MORE THAN ONE state directory
+    at once — the SLICE-118 case, which sat in both `pending/` and
+    `completed/` with divergent content and silently inflated the pending
+    count feeding triage; (b) a slice whose frontmatter `status`
+    disagrees with its containing directory (SLICE-128/130 were
+    `status: done` while filed under `pending/`). Condition (a) is scoped
+    to DISTINCT directories rather than raw id count, so it does not
+    conflate with the separate id-collision defect tracked as FEAT-298
+    (several unrelated slices reusing one id inside a single directory —
+    SLICE-115 ×4 and SLICE-117 ×4 today, which this gate must NOT flag).
+13. `bun test src/tests/ --parallel --timeout 60000`
+14. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
     `.claude/artifacts/loop/loop-snapshot.md` from merging (FEAT-208).
     Regenerates the snapshot content in-memory and diffs it against the
     on-disk file; any drift (backlog/grade counts, "next to slice" list,
     decisions, telemetry) fails CI. The pre-push hook still runs this
     check in warn-only mode (`--check-generated`) — CI is the hard gate.
-14. `bun ./src/scripts/validate-org-refs.mts` — stale-owner sweep (#474
+15. `bun ./src/scripts/validate-org-refs.mts` — stale-owner sweep (#474
     follow-up): fails when the banned pre-transfer GitHub owner name (see
     the script's `BANNED_OWNER` constant) appears in AUTHORED surfaces
     (README, ADOPTION, `src/`, `docs/`, `commands/`, `skills/`, `agents/`
@@ -67,26 +80,26 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
     pre-transfer-owner reference undetected until this run corrected it
     by hand; consider adding `.claude/crew/` to `SCAN_TARGETS` in a future
     FEAT.
-15. `bun ./src/scripts/validate-marketplace-sync.mts` — registry drift
+16. `bun ./src/scripts/validate-marketplace-sync.mts` — registry drift
     guard: fetches `astragenie/astra-marketplace`'s `marketplace.json` and
     fails when its `runner` entry version ≠ this repo's `plugin.json` (the
     registry sat at 0.67.0 while 0.68/0.69/0.70 shipped — consumers got a
     stale version). An UNREACHABLE registry degrades to a warning (exit 0)
     so a network blip never blocks CI; a reachable-and-mismatched registry
     is a hard fail.
-16. `bun ./src/scripts/validate-dispatch-markers.mts` — checks that the
+17. `bun ./src/scripts/validate-dispatch-markers.mts` — checks that the
     `<task-scoped>` order-block marker (FEAT-263 T1/T5, dispatch.mts +
     start-slice.mts) is balanced, non-nested, and that every
     FORBIDDEN/GATES/RETURN/ECHO order-block keyword stays confined inside
     a marked region.
-17. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config
+18. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config
     drift guard (improvement plan 2026-07-18, W0.2): fails when
     `.claude/loop.json` has memory enabled but the feedback shape lags the
     current contract (e.g. `memory.feedback.creditLoop` absent — the exact
     gap behind the 1.6% usefulness finding in runner-plugin#525). Memory
     disabled/absent passes; an explicit `enabled: false` on a key passes
     (choice, not drift).
-18. `bun ./src/scripts/generate-metrics-band.mts --check` — README
+19. `bun ./src/scripts/generate-metrics-band.mts --check` — README
     metrics-band freshness gate (W4): regenerates the dogfood metrics band
     in-memory from repo artifacts and fails on drift against the committed
     README, same pattern as the snapshot-freshness gate. Regenerate with
