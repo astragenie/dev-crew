@@ -283,6 +283,13 @@ export async function deriveValidationGate(
   if (verdict) {
     return resolveVerdictOutcome(verdict, artifacts);
   }
+  // NOTE (SLICE-205): readNewestArtifactVerdict returns non-null for ANY
+  // matching artifact, including one with `decision: null`, so a slice with a
+  // stray decision-less artifact returns above and never reaches the
+  // satisfiedByReview fallback below — leaving it WORSE off than a slice with
+  // no validation artifact at all. That asymmetry is intended: explicit but
+  // unreadable evidence must be fixed (add `decision:`, or record an explicit
+  // validation_skipped badge), not silently rescued by a reviewer approval.
 
   // Opt-in (loop.validation.satisfiedByReview): an EXPLICITLY-EVIDENCED review
   // gate — a real reviewer approval badge/artifact — also satisfies the
