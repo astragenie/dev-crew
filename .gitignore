@@ -11,3 +11,10 @@ dist/
 
 # Stray astramem --help dump (accidental redirect); never a real artifact
 Implement
+
+# Nested session-state trees written by hooks when a tool call leaves the cwd
+# drifted (e.g. `.claude/artifacts/loop/backlog/.claude/state/...`). The
+# `.claude/state/` rule above is ANCHORED — it contains a slash, so git reads
+# it relative to this file — and therefore never matched these. Four such
+# files reached a commit before this rule existed.
+**/.claude/state/
