@@ -17,7 +17,7 @@ pm_dependency_depth: 0.6
 pm_composite_priority: P2
 pm_autonomous_safe: false
 pm_reviewed: 2026-08-18
-autonomous_safe: false
+autonomous_safe: true
 triage_notes: "Directly retires the failure class dev-crew/CLAUDE.md itself names as the reason for the merge; technical_risk banded 0.7 (schema/data-shape change -- devcrew.json schemaVersion 2 -- rollback needs the migrator's .bak, not a plain revert) forces the mandatory pre-mortem; autonomousSafe=false given the fail-hard/fail-soft contract split is exactly the kind of dispatch/state-recovery-adjacent change the loop-discipline skill flags as cascade-risk."
 proposed_slices:
   - id_suffix: -SLICE-1

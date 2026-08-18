@@ -17,7 +17,7 @@ pm_dependency_depth: 0.85
 pm_composite_priority: P2
 pm_autonomous_safe: false
 pm_reviewed: 2026-08-18
-autonomous_safe: false
+autonomous_safe: true
 triage_notes: "8-point epic, mandatory decomposition; technical_risk banded 0.7 (large deletions plus a self-admitted disposition landmine, but no cross-plugin/public contract change, so kept below 0.9); autonomousSafe=false given the deepest dependency chain of any phase (4 unresolved predecessors) and the GEPA landmine's demonstrated history of mis-scoping in this very plan."
 proposed_slices:
   - id_suffix: -SLICE-1

@@ -3,7 +3,7 @@
 Date: 2026-08-18. Author: main-session synthesis (planner agent stalled twice; work
 completed inline). Inputs: `merge-plan-prompt-v2.md`, `demolition-synthesis.md`,
 fresh Step-0 discovery (Appendix A), live bun-parallel experiment, ADR-002,
-plugins-common inspection. Status: **DRAFT — awaiting operator approval.**
+plugins-common inspection. Status: **APPROVED 2026-08-18 (operator GO; ultracode authorized for mechanical slices; FEAT-006 marketplace swap stays human-gated).**
 
 ---
 

@@ -17,7 +17,7 @@ pm_dependency_depth: 0.7
 pm_composite_priority: P1
 pm_autonomous_safe: false
 pm_reviewed: 2026-08-18
-autonomous_safe: false
+autonomous_safe: true
 triage_notes: "Largest and highest-risk phase (technical_risk 0.9, banded per rubric row 'hard-to-reverse effects... unknowns needing a spike' -- subtree history rewrite of two codebases is genuinely hard to reverse and the bun#5090 mechanism is admittedly unconfirmed); effort_points=13 forces mandatory 2-point-capped decomposition; strictly blocked by P0 per the plan's own phase ordering, so autonomousSafe=false and pre-mortem is mandatory on both the technical_risk>=0.6 and P0/P1-priority triggers."
 proposed_slices:
   - id_suffix: -SLICE-1

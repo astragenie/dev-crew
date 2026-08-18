@@ -17,7 +17,7 @@ pm_dependency_depth: 0.75
 pm_composite_priority: P2
 pm_autonomous_safe: false
 pm_reviewed: 2026-08-18
-autonomous_safe: false
+autonomous_safe: true
 triage_notes: "8-point epic (mandatory decomposition, 2-point cap per runner#393) covering the full command/agent/skill/hook surface; technical_risk banded 0.65 (cross-module reach across the whole surface, but the individual changes are mostly mechanical rename/dedupe with clean git-revert rollback -- kept below the 0.9+ band since nothing here is a schema or cross-plugin contract change); autonomousSafe=false given the dependency chain (3 unresolved predecessor phases) and the already-measured day-one CI-red risk from the agent-cap row."
 proposed_slices:
   - id_suffix: -SLICE-1
