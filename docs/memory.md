@@ -172,4 +172,4 @@ summary — re-verify before quoting, don't trust a stale copy here either.
   corrected to `astragenie/astra-marketplace` (single registry for
   `loop`/`crew`/`cortex`) per README "Marketplace history" and ADR-013.
   This file isn't in `validate-org-refs.mts`'s `SCAN_TARGETS`, so the drift
-  evaded CI — noted in `docs/ci-gates.md` gate 14 as a follow-up candidate.
+  evaded CI — noted in `docs/ci-gates.md` gate 15 as a follow-up candidate.

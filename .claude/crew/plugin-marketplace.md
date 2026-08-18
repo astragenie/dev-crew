@@ -7,7 +7,7 @@ central `astragenie/astra-marketplace` registry (ADR-013, 2026-06-16) —
 plugin *code* still lives in separate repos, but there is no more
 per-plugin marketplace repo. See README.md "Marketplace history" for the
 full timeline. Note: `.claude/crew/` is not in `validate-org-refs.mts`'s
-scan targets, so this drift evaded CI — see `docs/ci-gates.md` gate 14. -->
+scan targets, so this drift evaded CI — see `docs/ci-gates.md` gate 15. -->
 
 ## Sources
 

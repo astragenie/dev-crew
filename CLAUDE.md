@@ -116,13 +116,14 @@ README metrics band). GitHub Actions, all under Bun, no `npm ci`/build:
 9. `bun ./src/scripts/validate-imports.mts` — slice-linker import boundary.
 10. `bun ./src/scripts/validate-backlog-writes.mts` — BacklogStore sole-writer guard.
 11. `bun ./src/scripts/validate-slice-touches-files.mts` — slice `touches_files` sanity.
-12. `bun test src/tests/ --parallel --timeout 60000`
-13. `bun ./src/scripts/validate-snapshot-freshness.mts` — loop-snapshot drift gate.
-14. `bun ./src/scripts/validate-org-refs.mts` — stale pre-transfer owner sweep.
-15. `bun ./src/scripts/validate-marketplace-sync.mts` — registry version drift.
-16. `bun ./src/scripts/validate-dispatch-markers.mts` — `<task-scoped>` marker balance.
-17. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config drift.
-18. `bun ./src/scripts/generate-metrics-band.mts --check` — README metrics-band freshness.
+12. `bun ./src/scripts/validate-slice-state-consistency.mts` — slice state-directory/frontmatter-status agreement (no id filed in two state dirs at once, no status/directory disagreement).
+13. `bun test src/tests/ --parallel --timeout 60000`
+14. `bun ./src/scripts/validate-snapshot-freshness.mts` — loop-snapshot drift gate.
+15. `bun ./src/scripts/validate-org-refs.mts` — stale pre-transfer owner sweep.
+16. `bun ./src/scripts/validate-marketplace-sync.mts` — registry version drift.
+17. `bun ./src/scripts/validate-dispatch-markers.mts` — `<task-scoped>` marker balance.
+18. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config drift.
+19. `bun ./src/scripts/generate-metrics-band.mts --check` — README metrics-band freshness.
 
 Pre-push hook runs manifest + content-length + format-check locally.
 
