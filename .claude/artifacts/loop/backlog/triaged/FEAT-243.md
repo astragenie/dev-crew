@@ -24,6 +24,8 @@ autonomous_safe: false
 triage_notes: "P2: essential safety gate for fleet rollout but not a build item competing for loop dispatch cycles — it is human-run and calendar-bound (>=3 days), so it does not carry the same urgency-for-the-loop as FEAT-242. autonomousSafe: false per the plan's own explicit framing, confirmed by my own review (no divergence)."
 github_issue: 496
 github_url: https://github.com/astragenie/runner-plugin/issues/496
+p0_bucket: defer
+p0_bucket_reason: "human-run, calendar-bound fleet-watcher pilot checkpoint; repo topology it pilots against changes once runner-plugin+dev-team collapse to one repo"
 ---
 ## Description
 

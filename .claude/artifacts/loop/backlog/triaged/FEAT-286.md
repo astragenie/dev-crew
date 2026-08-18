@@ -24,6 +24,8 @@ proposed_slices:
     title: Raise test timeout override; poll for fake-cli-calls.jsonl instead of single-shot read
     points: 1
     estimated_tokens: 60000
+p0_bucket: carry
+p0_bucket_reason: "flaky capture-at-close hook test fix is pure test-reliability work, ports as-is"
 ---
 ## Description
 

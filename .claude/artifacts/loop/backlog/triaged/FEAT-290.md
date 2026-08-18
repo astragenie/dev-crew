@@ -38,6 +38,8 @@ proposed_slices:
     estimated_tokens: 60000
     acceptance_criteria: ["GIVEN a slice whose body still contains an unreplaced placeholder or the shared-AC warning banner, WHEN /runner:start or the wave dispatcher attempts to dispatch it, THEN a gate refuses dispatch and surfaces which placeholder or banner blocks it."]
     touches_files: [src/scripts/lib/slice-linker/start-slice.mts, src/scripts/lib/wave/planner.mts]
+p0_bucket: carry
+p0_bucket_reason: "per-slice acceptance_criteria producer gap (PM contract, slice-store.mts) is core slice-generation methodology, survives the merge fully"
 ---
 ## Description
 

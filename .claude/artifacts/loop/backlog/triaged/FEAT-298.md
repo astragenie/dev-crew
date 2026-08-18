@@ -32,6 +32,8 @@ proposed_slices:
     estimated_tokens: 100000
     acceptance_criteria: ["AC-1: Given the existing renumber CLI (slice-renumber.mts / slice-renumber-artifacts.mts) built for FEAT-257/DEC-079's allocation-side fix, When it is applied to the twelve colliding files (SLICE-115 x4, SLICE-117 x4, SLICE-116 x2, SLICE-134 x2), Then each collision resolves to a unique id, and the CLI is confirmed fit for backfilling existing collisions, not only new allocation.", "AC-2: Given each renumbered slice may have review/validation artifacts or github_issue references pointing at the old id, When renumbering runs, Then those references travel with the renamed slice rather than becoming orphaned.", "AC-3: Given historical references to the original id should stay valid where possible, When choosing which claimant of a colliding id to renumber, Then the newer claimant is renumbered and the older claimant keeps the original id.", "AC-4: Given SLICE-116's four artifacts span two different parent FEATs (feat-169-slice-116, feat-183-slice-116), When SLICE-116 is renumbered, Then this collision is resolved as a prerequisite before FEAT-296's SLICE-116 re-review decision (review_skipped badge or re-review) can proceed."]
     touches_files: [src/scripts/lib/slice-renumber.mts, src/scripts/lib/slice-renumber-artifacts.mts, .claude/artifacts/loop/ai-loop/slices/completed, .claude/artifacts/loop/ai-loop/slices/pending]
+p0_bucket: carry
+p0_bucket_reason: "slice-id collision (212 files/203 ids) integrity bug + renumber CLI is a live gate-correctness defect, unaffected by the merge"
 ---
 ## Description
 

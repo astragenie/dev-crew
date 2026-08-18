@@ -32,6 +32,8 @@ proposed_slices:
     estimated_tokens: 60000
     acceptance_criteria: ["AC-1: Given the current backlog, When the coverage check runs, Then it reports how many slices carry a usable (declared or inferred) touches_files value out of the total.", "AC-2: Given SLICE-1's producer fix ships, When the coverage check is run before and after, Then the reported count visibly increases from the measured 2026-08-05 baseline of 0/28.", "AC-3: Given the coverage count regresses toward zero in the future, When the check runs in CI, Then it surfaces the regression rather than passing silently."]
     touches_files: [src/scripts/validate-slice-touches-files.mts, CLAUDE.md]
+p0_bucket: carry
+p0_bucket_reason: "wave-mode touches_files producer gap is the flagship parallel-dispatch differentiator; high-value fix, fully portable"
 ---
 ## Description
 

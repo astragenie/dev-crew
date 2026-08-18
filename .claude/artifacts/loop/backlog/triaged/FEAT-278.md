@@ -24,6 +24,8 @@ proposed_slices:
     title: "Wave packer: rejection-complete capacity guard + waveSize<=0 validation"
     points: 2
     estimated_tokens: 100000
+p0_bucket: carry
+p0_bucket_reason: "wave packer capacity-guard rejection-completeness fix is internal wave/planner.mts logic, unaffected by the merge"
 ---
 ## Description
 

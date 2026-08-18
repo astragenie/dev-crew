@@ -26,6 +26,8 @@ proposed_slices:
     estimated_tokens: 100000
     acceptance_criteria: ["AC-1: Given two review artifacts for the same slice both use a date-only filename shape (hyphenated YYYY-MM-DD- or compact YYYYMMDD-), When parseFilenameTimestamp resolves their sort keys, Then a deterministic secondary sort key (mtime, then lexical filename) breaks the tie instead of falling through to fs.readdir() order in review-gate.mts:84.", "AC-2: Given one artifact is date-only (parses to UTC midnight) and a same-day artifact carries a full compact-ISO timestamp with time-of-day, When both are sorted, Then the artifact actually written later sorts first rather than being outranked by the midnight-parsing date-only artifact.", "AC-3: Given skills/workflow/review-gates/SKILL.md's instructions to reviewer/validator agents, When this slice ships, Then the instructions state that newly written artifacts must use the full compact-ISO timestamp with time-of-day, not the date-only shape.", "AC-4: Given a test fixture with two date-only artifacts for one slice on one day, and a second fixture mixing one date-only and one full-ISO artifact for one slice on one day, When the new tests run, Then both resolve to the correct non-readdir-dependent ordering."]
     touches_files: [src/scripts/lib/artifact-verdict.mts, src/scripts/lib/review-gate.mts, skills/workflow/review-gates/SKILL.md, src/tests/artifact-verdict-filename-sort.test.mts]
+p0_bucket: carry
+p0_bucket_reason: "review-artifact filename tie-break nondeterminism is a live gate-ordering correctness bug, unaffected by the merge"
 ---
 ## Description
 

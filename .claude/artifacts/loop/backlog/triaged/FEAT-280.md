@@ -28,6 +28,8 @@ proposed_slices:
     title: "File upstream request: crew:architect-feature touches_files population"
     points: 1
     estimated_tokens: 60000
+p0_bucket: carry
+p0_bucket_reason: "touches_files UNC hardening carries directly; the crew:architect-feature upstream-request slice becomes a direct in-repo edit post-merge, not moot"
 ---
 ## Description
 

@@ -24,6 +24,8 @@ needs_contract: false
 needs_ux: false
 github_issue: 502
 github_url: https://github.com/astragenie/runner-plugin/issues/502
+p0_bucket: carry
+p0_bucket_reason: "autonomous issue-flow hooks (close-comment, --from-issue, issue events) are runner methodology surface, not seam-scoped"
 ---
 ## Description
 

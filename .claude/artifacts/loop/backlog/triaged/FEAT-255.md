@@ -24,6 +24,8 @@ needs_contract: false
 needs_ux: false
 github_issue: 503
 github_url: https://github.com/astragenie/runner-plugin/issues/503
+p0_bucket: carry
+p0_bucket_reason: "tracker-provider phase-6 hygiene; the one cross-repo item (dev-team architect-feature.md edit) becomes a trivial in-repo edit post-merge, not moot"
 ---
 ## Description
 

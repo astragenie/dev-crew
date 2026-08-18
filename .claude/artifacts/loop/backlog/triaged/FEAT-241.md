@@ -53,6 +53,8 @@ proposed_slices:
     title: specs/ rollout docs + spec-status CLI flag docs
     points: 1
     estimated_tokens: 60000
+p0_bucket: defer
+p0_bucket_reason: "large new specs/-as-source-of-truth methodology layer; scope/placement unclear until devcrew's own CI/spec conventions (SS7 harmonization) settle"
 ---
 ## Description
 

@@ -24,6 +24,8 @@ pm_autonomous_safe: true
 tags: [be]
 needs_contract: false
 needs_ux: false
+p0_bucket: carry
+p0_bucket_reason: "backlog-surface reviewer-debt cleanup is internal runner-plugin hygiene, ports as-is"
 ---
 # FEAT-262: split backlog-store.mts + close reviewer test-gap follow-ups from tracker waves 2-3
 

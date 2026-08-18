@@ -38,6 +38,8 @@ proposed_slices:
     estimated_tokens: 60000
     acceptance_criteria: ["AC-1: Given scripts/setup-github-sync.mjs's fs.writeFile calls, When triaged, Then it is either ported to BacklogStore or added to validate-backlog-writes.mts's ALLOWLIST with a written justification in the existing DEC-076 style.", "AC-2: Given scripts/competitor-audit/aggregate.mjs's fs.writeFile calls, When triaged, Then it is either ported to BacklogStore or added to the ALLOWLIST with a written justification in the existing DEC-076 style.", "AC-3: Given both modules sit outside the backlog-frontmatter write path that caused FEAT-285 (unlike github-sync.mjs), When the triage decision is recorded, Then the written justification states why each does or does not risk the same cache-staleness bug."]
     touches_files: [scripts/setup-github-sync.mjs, scripts/competitor-audit/aggregate.mjs, src/scripts/validate-backlog-writes.mts]
+p0_bucket: carry
+p0_bucket_reason: "validate-backlog-writes scan-gap fix + github-sync.mjs port to BacklogStore is a live correctness fix, directly related to FEAT-285"
 ---
 ## Description
 

@@ -24,6 +24,8 @@ pm_technical_risk: 0.4
 pm_dependency_depth: 0.1
 pm_composite_priority: P2
 pm_autonomous_safe: true
+p0_bucket: carry
+p0_bucket_reason: "extends validate-agent-refs.mts heuristic, a CI validator carried wholesale into devcrew per unification-plan SS7 dedupe list"
 ---
 # FEAT-237: reconcile install-template command names + gate command refs
 

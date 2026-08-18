@@ -22,6 +22,8 @@ pm_technical_risk: 0.15
 pm_dependency_depth: 0.05
 pm_composite_priority: P3
 pm_autonomous_safe: true
+p0_bucket: carry
+p0_bucket_reason: "astramem-client version-pin bump/DaemonClient decision is plugins-common consumption housekeeping, unaffected by the crew<->runner seam removal"
 ---
 ## Description
 

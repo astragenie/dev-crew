@@ -26,6 +26,8 @@ proposed_slices:
     estimated_tokens: 100000
     acceptance_criteria: ["AC-1: Given a FEAT/SLICE pair with multiple commits matching the text pattern, When reconcileProposedSlicesAgainstGit runs, Then it evaluates all matching candidates rather than stopping at the first (newest) text match via commits.find().", "AC-2: Given multiple candidate commits where only one passes the subject/bullet qualification (hasSubjectEquivalentMatch) and diff corroboration, When reconciliation runs, Then the best-corroborated match is selected regardless of recency, preferring the oldest corroborating match when several qualify.", "AC-3: Given the reproduction case (mainRef=f0ec093d yields shipped=[1,2] citing 859be561; mainRef=main yields shipped=[] with both demoted at 3860269f), When this fix is applied and reconcile runs at current HEAD, Then it again reports shipped=[1,2] citing 859be561, matching the f0ec093d-anchored result.", "AC-4: Given a match was displaced by a better-corroborated one, When reconciliation completes, Then textOnlyMatches reports the displacement so an operator can see the shadowing occurred rather than inferring it from an absence."]
     touches_files: [src/scripts/lib/slice-linker/git-anchored-completion.mts, src/tests/git-anchored-completion.test.mts]
+p0_bucket: carry
+p0_bucket_reason: "git-anchored-completion commits.find() shadowing bug is internal slice-linker correctness, ports as-is"
 ---
 ## Description
 

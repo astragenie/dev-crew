@@ -32,6 +32,8 @@ proposed_slices:
     title: Truncate auto-generated FEAT issue title instead of pasting full intake paragraph
     points: 1
     estimated_tokens: 60000
+p0_bucket: carry
+p0_bucket_reason: "github-sync duplicate-parent-issue bugfix is a live BacklogStore correctness defect, unaffected by the merge"
 ---
 ## Description
 

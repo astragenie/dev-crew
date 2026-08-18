@@ -31,6 +31,8 @@ proposed_slices:
 tags: [infra, workflow]
 needs_contract: false
 needs_ux: false
+p0_bucket: carry
+p0_bucket_reason: "validate-learnings-schema.mts orphan-validator fix + CI wiring is internal hygiene that ports as-is"
 ---
 ## Description
 

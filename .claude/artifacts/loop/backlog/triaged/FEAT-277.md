@@ -19,6 +19,8 @@ pm_autonomous_safe: false
 pm_reviewed: 2026-08-03
 autonomous_safe: false
 triage_notes: "P2: moderate customer_impact (disk/confusion hygiene, not blocking) and moderate strategic_alignment (ops tooling, not mission-differentiating) are offset upward by elevated technical_risk (0.7, weighted per the destructive/hard-to-reverse-effects criterion rather than pattern novelty) which argues for careful, non-autonomous rollout rather than urgency — landing at P2 with autonomous_safe=false."
+p0_bucket: carry
+p0_bucket_reason: "orphaned dispatch-worktree/runId reaper is core dispatch-lifecycle tooling devcrew needs post-merge too"
 ---
 ## Description
 

@@ -26,6 +26,8 @@ proposed_slices:
     estimated_tokens: 100000
     acceptance_criteria: ["AC-1: Given review-gate.mts exports REVIEW_SATISFIED and REVIEW_REJECTED, and skills/workflow/review-gates/SKILL.md lists the same verdict vocabulary in prose at lines 62 and 89, When a new test parses the vocabulary list out of SKILL.md, Then it asserts the parsed set matches REVIEW_SATISFIED union REVIEW_REJECTED exactly.", "AC-2: Given SKILL.md's vocabulary list is edited to add or remove a value without updating review-gate.mts, When the drift test runs, Then it fails, naming the mismatched value.", "AC-3: Given REVIEW_REJECTED currently has zero production callers (only its definition and a test reference it), When this slice completes, Then the export either has a real consumer (the new drift test) or the export keyword is dropped per repo convention (PASS_VERDICTS in failure-classifier.mts stays module-private until a second consumer exists).", "AC-4: Given ordinary prose edits to unrelated parts of SKILL.md, When the drift test runs, Then it does not false-fail — the parse is anchored narrowly to the vocabulary list only."]
     touches_files: [src/scripts/lib/review-gate.mts, skills/workflow/review-gates/SKILL.md, src/tests/review-gate-vocabulary-drift.test.mts]
+p0_bucket: carry
+p0_bucket_reason: "review-verdict vocabulary drift test between review-gate.mts and SKILL.md is internal gate-correctness hygiene"
 ---
 ## Description
 

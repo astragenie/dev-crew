@@ -41,6 +41,8 @@ proposed_slices:
 tags: [architecture, infra, backend]
 needs_contract: true
 needs_ux: false
+p0_bucket: carry
+p0_bucket_reason: "tested-but-never-wired reference-graph CI scanner is new static-analysis infra for the merged repo, high value"
 ---
 ## Description
 

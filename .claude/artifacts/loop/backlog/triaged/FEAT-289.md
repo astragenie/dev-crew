@@ -35,6 +35,8 @@ proposed_slices:
     points: 1
     estimated_tokens: 60000
     acceptance_criteria: ["GIVEN both extractions land, WHEN agents/pm.md is measured against validate-content-length.mts, THEN it sits with real headroom under its cap rather than at or within a few lines of it.", "GIVEN any owned agent file's line count nears its content-length cap, WHEN validate-content-length.mts (or a sibling check) runs, THEN it emits an advance warning below the hard-fail threshold so the next editor gets notice before a CI failure rather than at it."]
+p0_bucket: carry
+p0_bucket_reason: "agents/pm.md content-length relief; pm is a runner-owned agent with no crew duplicate, ports into devcrew's agent map largely as-is"
 ---
 ## Description
 

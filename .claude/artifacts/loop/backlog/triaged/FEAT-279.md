@@ -36,6 +36,8 @@ proposed_slices:
     title: Demote keyword heuristic to legacy fallback + deprecation tests
     points: 1
     estimated_tokens: 60000
+p0_bucket: carry
+p0_bucket_reason: "skip-badge pause-detection flag; the upstream-request spike (SLICE-2) becomes an in-repo change post-merge (cheaper), core flag work still carries"
 ---
 ## Description
 

@@ -24,6 +24,8 @@ needs_contract: true
 needs_ux: false
 github_issue: 501
 github_url: https://github.com/astragenie/runner-plugin/issues/501
+p0_bucket: carry
+p0_bucket_reason: "CompositeProvider fan-out is runner's own TaskStoreProvider abstraction, ports into devcrew as-is"
 ---
 ## Description
 

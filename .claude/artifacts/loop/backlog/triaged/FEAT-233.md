@@ -33,6 +33,8 @@ proposed_slices:
     title: Reconcile capture/recall cap policy + DEC
     points: 1
     estimated_tokens: 60000
+p0_bucket: carry
+p0_bucket_reason: "runner<->astramem-client seam (not crew<->runner); memory-transport event-loop fix and cap-policy DEC survive the merge unchanged"
 ---
 # FEAT-233: memory transport reliability — AbortSignal cancellation + reconcile cap policy
 
