@@ -27,10 +27,13 @@
   },
   "include": [
     "scripts/**/*.ts",
+    "scripts/**/*.mts",
     "scripts/**/*.mjs",
     "tests/**/*.ts",
     "hooks/**/*.ts",
-    "evals/**/*.ts"
+    "hooks/**/*.mts",
+    "evals/**/*.ts",
+    "evals/**/*.mts"
   ],
   "exclude": [
     "node_modules",

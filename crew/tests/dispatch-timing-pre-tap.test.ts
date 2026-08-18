@@ -10,7 +10,7 @@ import {
   parseAgentPreInput,
   lookupAgentModel,
   runDispatchTimingPreTap
-} from "../hooks/lib/dispatch-timing-pre-tap.ts";
+} from "../hooks/lib/dispatch-timing-pre-tap.mjs";
 import { parseUsageMetrics } from "../hooks/lib/check-subagent-return.ts";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
@@ -122,7 +122,7 @@ test("runDispatchTimingPreTap: registers a handle + JSONL row appears after end 
   const logPath = path.join(tmp, "dispatch-timing.jsonl");
 
   // We need to import the end side to trigger completion
-  const { recordDispatchEnd } = await import("../scripts/lib/dispatch-timing.ts");
+  const { recordDispatchEnd } = await import("../scripts/lib/dispatch-timing.mjs");
 
   try {
     const payload = JSON.stringify({

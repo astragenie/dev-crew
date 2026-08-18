@@ -8,3 +8,5 @@
 {"type":"gate_transition","sliceId":"SLICE-04","featureId":"FEAT-002","timestamp":"2026-08-18T22:24:08.269Z","gate":"test-adequacy","from":null,"to":"passed","ts":"2026-08-18T22:24:08.269Z"}
 {"type":"gate_transition","sliceId":"SLICE-04","featureId":"FEAT-002","timestamp":"2026-08-18T22:24:08.269Z","gate":"simplify","from":null,"to":"passed","ts":"2026-08-18T22:24:08.269Z"}
 {"type":"workflow_state_changed","sliceId":"SLICE-04","featureId":"FEAT-002","timestamp":"2026-08-18T22:24:20.417Z","from":"building","to":"done","ts":"2026-08-18T22:24:20.417Z"}
+{"type":"shape_classified","sliceId":"SLICE-04","featureId":"FEAT-002","timestamp":"2026-08-18T22:24:42.784Z","shape":"none","rationale":"no files","inlinePathUsed":false,"ts":"2026-08-18T22:24:42.784Z"}
+{"type":"workflow_state_changed","sliceId":"SLICE-04","featureId":"FEAT-002","timestamp":"2026-08-18T22:24:42.876Z","from":null,"to":"building","ts":"2026-08-18T22:24:42.876Z"}

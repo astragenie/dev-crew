@@ -6,7 +6,7 @@ import path from "node:path";
 import {
   persistDispatchHandle,
   loadAndDeleteDispatchHandle
-} from "../hooks/lib/dispatch-handle-store.ts";
+} from "../hooks/lib/dispatch-handle-store.mjs";
 
 test("persist + load returns the handle and deletes the file", async () => {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "dispatch-store-"));

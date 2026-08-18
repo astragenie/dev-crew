@@ -39,7 +39,7 @@ import {
   expandWorkflow,
   UnsupportedSkipExpressionError,
   type WorkflowPhase
-} from "../workflow-config.ts";
+} from "../workflow-config.mjs";
 import { parseMemoryConfig, resolveEffectiveConfig } from "@astragenie/memory-provider";
 
 // ── Soak dispatcher hook (FEAT-183 S7 / SLICE-104) ────────────────────────────
@@ -62,7 +62,7 @@ export {
   type SoakHookStatus,
   type SoakEntry,
   type SoakMap
-} from "../gepa/soak-dispatcher-hook.ts";
+} from "../gepa/soak-dispatcher-hook.mjs";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ name: memory-drift-check
 # errors are logged/swallowed, never propagated) while the local JSONL append
 # is synchronous/atomic — so a silent astramem failure can leave the derived
 # JSONL duplicate MORE complete than the astramem source of truth
-# (scripts/lib/memory/drift-check.ts is the read-only diagnostic from
+# (scripts/lib/memory/drift-check.mts is the read-only diagnostic from
 # FEAT-188 S5; nothing invoked it on a schedule until this workflow, FEAT-201).
 #
 # Deliberately its OWN workflow, separate from .github/workflows/test.yml
@@ -14,7 +14,7 @@ name: memory-drift-check
 # self-hosted runner has one; a plain GH-hosted runner never pairs) and runs
 # on a schedule, not per-push/PR.
 #
-# Exit codes from `runDriftCheckCli` (scripts/lib/memory/drift-check.ts):
+# Exit codes from `runDriftCheckCli` (scripts/lib/memory/drift-check.mts):
 #   0 — no drift (missing-from-astramem count <= threshold)
 #   1 — drift exceeds threshold -> a `memory_drift` event (count + ids) was
 #       appended to .claude/logs/events.jsonl -> this job FAILS
@@ -54,7 +54,7 @@ jobs:
           if [ -n "$WINDOW_DAYS" ]; then
             ARGS+=(--window-days "$WINDOW_DAYS")
           fi
-          node --experimental-strip-types ./scripts/lib/memory/drift-check.ts "${ARGS[@]}"
+          node --experimental-strip-types ./scripts/lib/memory/drift-check.mts "${ARGS[@]}"
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           # Never fail this step directly — the two annotation steps below

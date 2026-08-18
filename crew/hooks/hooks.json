@@ -40,7 +40,7 @@
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start-profile.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start-profile.mts\""
           }
         ]
       }
@@ -54,15 +54,15 @@
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/otel-subagent-stop.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/otel-subagent-stop.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-reviewer-decision.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-reviewer-decision.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-builder-terminal-state.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-builder-terminal-state.mts\""
           }
         ]
       }
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-redundant-read.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-redundant-read.mts\""
           }
         ]
       },
@@ -92,15 +92,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight-shell.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight-shell.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-bash-gate.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-bash-gate.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-push-verifier.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-push-verifier.mts\""
           }
         ]
       },
@@ -109,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight-shell.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight-shell.mts\""
           }
         ]
       },
@@ -118,15 +118,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-agent.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-agent.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-model-enforce.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-model-enforce.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-dispatch-size.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-dispatch-size.mts\""
           }
         ]
       },
@@ -135,7 +135,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-task-update-burst.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-task-update-burst.mts\""
           }
         ]
       }
@@ -146,7 +146,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/record-read-content.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/record-read-content.mts\""
           }
         ]
       },
@@ -155,7 +155,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-subagent-return.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/check-subagent-return.mts\""
           }
         ]
       },
@@ -164,7 +164,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use-bash-gate.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use-bash-gate.mts\""
           }
         ]
       },
@@ -173,7 +173,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/record-edit.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/record-edit.mts\""
           }
         ]
       },
@@ -181,11 +181,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/otel-post-tool-use.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/otel-post-tool-use.mts\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/checkpoint-cadence.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/checkpoint-cadence.mts\""
           }
         ]
       }
@@ -195,7 +195,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/otel-stop.ts\""
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/otel-stop.mts\""
           }
         ]
       }
