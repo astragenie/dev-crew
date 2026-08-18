@@ -1,6 +1,6 @@
 ---
 id: FEAT-297
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
@@ -27,9 +27,12 @@ proposed_slices:
     acceptance_criteria: ["AC-1: Given extractAcceptanceCriteriaDetailed in slice-store.mts currently captures only the first physical line of each markdown bullet, When a FEAT's AC bullet wraps across multiple lines (the normal markdown shape), Then the extractor accumulates continuation lines until the next bullet, a blank line followed by a non-indented line, or the next heading.", "AC-2: Given a test fixture FEAT with deliberately wrapped ACs, When the extractor runs against it, Then the extracted text matches the source AC text in full, byte for byte, not truncated mid-clause.", "AC-3: Given assertAcceptanceCriteria (slice-store.mts:294) relies on the same extraction to decide whether a FEAT has real ACs at all, When this fix ships, Then a regression test confirms a FEAT whose ACs all wrap no longer risks passing the presence check while delivering fragments.", "AC-4: Given SLICE_197, SLICE_198, and SLICE_199 (SLICE_196 already hand-corrected) currently carry the truncated first-line-only ACs from FEAT-230, When this slice ships, Then all three are backfilled or regenerated with their complete acceptance criteria from FEAT-230."]
     touches_files: [src/scripts/lib/backlog-store/slice-store.mts, src/tests/extract-acceptance-criteria.test.mts, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_197_RESOLVE-SKILLS-CLI-SLICE-TAGS-INTEGRATION-PICKBLOCK-FALLBACK.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_198_CROSS-PLUGIN-DOCS-UPSTREAM-REQUEST-AMENDMENT.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_199_CI-FIXTURE-SNAPSHOT-GATE-DEC-071-WRITE-UP.md]
 started_at: 2026-08-06
+completed_at: 2026-08-18
+slices_complete: [SLICE-206]
 github_issue: 629
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/629"
+p0_merge_evidence: "0df469ff merge: SLICE-206 (fix AC extractor CRLF/wrapped-bullet truncation) — wave 1"
 ---
 ## Description
 

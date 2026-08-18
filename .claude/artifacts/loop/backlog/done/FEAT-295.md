@@ -1,6 +1,6 @@
 ---
 id: FEAT-295
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
@@ -27,9 +27,12 @@ proposed_slices:
     acceptance_criteria: ["AC-1: Given resolveVerdictOutcome in validation-gate.mts (around line 158) currently treats a validation artifact with no decision key as satisfied (legacy, no decision frontmatter, grandfathered pre-P1.3), When this slice ships, Then that branch is deleted so a decision-less validation artifact no longer satisfies the gate, mirroring SLICE-202's removal of the equivalent review-gate.mts branch.", "AC-2: Given the validation corpus under .claude/artifacts/crew/validations has not yet been counted for missing-decision-key coverage, When this slice starts, Then it counts the corpus first (matching how the review corpus's 160/211 frontmatter-less figure was produced) and reports the number before deleting the branch.", "AC-3: Given any currently-open slice whose only validation evidence is frontmatter-less, When the corpus count identifies it, Then each such slice is named so it can be re-validated or given an explicit validation_skipped badge before the branch is deleted.", "AC-4: Given this repo runs reviewers.ladder [A] with loop.validation.satisfiedByReview:true, When the branch is deleted, Then the module header comment documenting the grandfathering behavior is also updated, and any now-dead legacy flag and its consumers (the pattern SLICE-202 followed for ReviewGateResult) are removed."]
     touches_files: [src/scripts/lib/validation-gate.mts, .claude/artifacts/crew/validations, src/tests/validation-gate.test.mts]
 started_at: 2026-08-06
+completed_at: 2026-08-18
+slices_complete: [SLICE-205]
 github_issue: 627
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/627"
+p0_merge_evidence: "8a498553 merge: SLICE-205 (delete unbounded validation-gate grandfather clause) — wave 1"
 ---
 ## Description
 

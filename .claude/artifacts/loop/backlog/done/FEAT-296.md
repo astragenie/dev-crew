@@ -1,6 +1,6 @@
 ---
 id: FEAT-296
-status: in-progress
+status: done
 priority: P2
 category: feature
 target_release: null
@@ -27,9 +27,12 @@ proposed_slices:
     acceptance_criteria: ["AC-1: Given SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md exists in both ai-loop/slices/pending/ and ai-loop/slices/completed/ with divergent status frontmatter, When this slice reconciles it, Then the decision is made on evidence (git history, review/validation artifacts) rather than by picking a copy, and only one copy remains.", "AC-2: Given SLICE_128 and SLICE_130 (status: done) and SLICE_55 (status: superseded) sit in pending/ while their own frontmatter contradicts that filing, When this slice ships, Then each is moved (or otherwise reconciled) to match its frontmatter status so pending/ no longer overcounts open work.", "AC-3: Given no gate currently asserts that a slice id appears in only one state directory or that its frontmatter status agrees with its directory, When the new validator (src/scripts/validate-slice-state-consistency.mts) runs, Then it fails on a slice id present in more than one state directory, and separately fails on a frontmatter-status/directory disagreement, in the style of the existing validate-slice-touches-files.mts.", "AC-4: Given the validator is new, When CI runs, Then it is wired into CLAUDE.md's numbered CI gate list so the four known cases cannot recur unnoticed."]
     touches_files: [.claude/artifacts/loop/ai-loop/slices/pending/SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md, .claude/artifacts/loop/ai-loop/slices/completed/SLICE_118_PAUSE-RESUME-CONVERSATION-LIFECYCLE-FOR-ASYNC-WAITS.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_128_GITHUB-CREW-PR-COMMENT-TEAMMATE.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_130_DECAY-RANKED-CITATION-TRACKED-LEARNINGS-RETRIEVAL-INJECTED-A.md, .claude/artifacts/loop/ai-loop/slices/pending/SLICE_55_WORKTREE-CREATION-AT-SLICE-START.md, src/scripts/validate-slice-state-consistency.mts, CLAUDE.md]
 started_at: 2026-08-06
+completed_at: 2026-08-18
+slices_complete: [SLICE-208]
 github_issue: 633
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/633"
+p0_merge_evidence: "67017b5e merge: SLICE-208 (reconcile slice-state drift + consistency validator) — wave 1"
 ---
 ## Description
 

@@ -47,6 +47,8 @@ proposed_slices:
     estimated_tokens: 100000
 started_at: 2026-08-04
 slices_complete: [SLICE-195]
+p0_disposition: carry
+p0_reason: "SLICE-195 (catalog enumerator) shipped; remaining SLICE-196-199 (mapping/matcher, CLI --slice/--tags integration, cross-plugin docs, CI fixture-snapshot gate) are cross-plugin/seam-dependent (loop.crewRepoPath gating, orchestrate-slice consumer contract) per the FEAT's own contract doc. Carry to dev-crew, where the merge collapses the crew<->runner seam this FEAT exists to bridge: the live-catalog skill resolver becomes a simpler in-repo lookup against one merged skills/ tree, with no crewRepoPath detection, no skip-path posture, and no cross-plugin docs/upstream-request slice needed. Re-scope SLICE-196/197 to drop the seam-crossing machinery before building in dev-crew; SLICE-198 (cross-plugin docs) is largely moot post-merge and SLICE-199's CI gate still applies in-repo."
 ---
 # FEAT-230: task-driven skill selection — decommission presets as the skill source
 

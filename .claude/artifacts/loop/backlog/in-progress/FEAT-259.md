@@ -49,6 +49,8 @@ proposed_slices_shipped: []
 proposed_slices_shipped_commits: []
 started_at: 2026-08-04
 slices_complete: [SLICE-187, SLICE-184, SLICE-185]
+p0_disposition: carry
+p0_reason: "SLICE-187 (report-gate hook), SLICE-184 (final-act line), SLICE-185 (watchdog, shipped deliberately unwired) are shipped. Remaining SLICE-183 (structured receipt schema + docs) and SLICE-186 (idle-ping suppression + context-budget wiring) carry to dev-crew per the plan's explicit disposition: these are dispatch-loop mechanisms, cheaper to finish as an in-repo change once crew and runner share one dispatch loop than to keep coordinating across the seam. Note the FEAT's own finding that SLICE-184 and SLICE-187 are independent, not reinforcing (agent-definition content does not reach the report-gate hook's scanned transcript), so both remaining slices still need real coverage, not just closure."
 ---
 ## Description
 

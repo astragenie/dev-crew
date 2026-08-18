@@ -30,6 +30,8 @@ started_at: 2026-08-06
 github_issue: 631
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/631"
+p0_disposition: carry
+p0_reason: "SLICE-207 was never built: no worktree, no branch, no dispatch result found in runner-plugin (verified via git worktree list / git branch -a / dispatch artifact search). No merge commit referencing SLICE-207 exists on main. Carry full scope (proposed-slices.mts trim asymmetry between clampSliceTitle and validation, plus duplicate title/id_suffix uniqueness enforcement) to dev-crew per dev-crew's DEC-001 (SLICE-207/FEAT-299 disposition is carry, not build)."
 ---
 ## Description
 

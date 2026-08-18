@@ -53,6 +53,8 @@ github_issue: 609
 github_milestone: null
 github_url: "https://github.com/astragenie/runner-plugin/issues/609"
 slices_complete: [SLICE-188, SLICE-189, SLICE-190, SLICE-194, SLICE-192]
+p0_disposition: carry
+p0_reason: "5 of 7 slices shipped (fixtures, diff-evidence + AC-7 subject/body split, downgrade-to-warning, AC-8 bullet-line matching, identity-keyed materialization). Remaining SLICE-191 (migrate proposed_slices_shipped frontmatter to per-id_suffix keyed shape) and SLICE-193 (CLI escape hatch to force-materialize a named proposed slice) are internal backlog-data-model logic in slice-linker/proposed-slices.mts, not crew-seam-dependent -- carry to dev-crew rather than close. Also record: AC-8b (live-HEAD squash-merge recognition) is explicitly NOT satisfied per this FEAT's own 2026-08-05 note -- it is blocked on FEAT-294 (a separate triaged FEAT, commits.find() selecting the wrong commit), so the carried scope must not claim AC-8b as done and should note the FEAT-294 dependency."
 ---
 ## Description
 

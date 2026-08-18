@@ -1,7 +1,7 @@
 ---
 id: SLICE-206
 title: Fix AC extractor line-truncation and backfill SLICE-197/198/199
-status: pending
+status: completed
 feature: FEAT-297
 phase: null
 priority: P1
@@ -9,7 +9,7 @@ target_release: null
 requires_validation: true
 risk: medium
 created: 2026-08-06
-updated: 2026-08-06
+updated: 2026-08-18
 effort_points: 2
 proposed_slice_id_suffix: -SLICE-1
 estimated_tokens: 100000
