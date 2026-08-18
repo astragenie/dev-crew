@@ -1,0 +1,266 @@
+/**
+ * Langfuse dataset emission — raw fetch, no SDK dependency.
+ * Module boundary: MUST NOT import from agents/, scripts/, src/, hooks/, commands/.
+ *
+ * Posts each eval run as a Langfuse dataset run with one item per test:
+ *   1. POST /api/public/datasets          (idempotent by name)
+ *   2. POST /api/public/dataset-runs      (one run per eval invocation)
+ *   3. POST /api/public/dataset-items     (one item per test)
+ *
+ * SLICE-114 (FEAT-186 S5) adds single-trace emission:
+ *   4. POST /api/public/traces            (one trace per LLMJudge.evaluate() call)
+ *   `recordTrace` — call immediately after each evaluate() call, from either
+ *   pipeline (eval or gepa). Emits a Langfuse trace with a consistent
+ *   trace_id schema: `{promptId}:{fixture|"_"}:{iso-timestamp}`.
+ *   Consumer decides whether to await or fire-and-forget; this function
+ *   swallows errors after a stderr log (matches recordItem behaviour).
+ *
+ * Auth: HTTP Basic with LANGFUSE_PUBLIC_KEY:LANGFUSE_SECRET_KEY
+ * Host: LANGFUSE_HOST env (default https://cloud.langfuse.com)
+ * Graceful skip: if either key absent, logs one stderr warning, all functions return null/void.
+ *
+ * SLICE-90 (FEAT-169 SLICE-B3).
+ */
+
+export type DatasetId = string;
+export type RunId = string;
+
+export interface LangfuseRunOpts {
+  datasetId: DatasetId;
+  promptId: string;
+  judgeId: string;
+  runName?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface LangfuseItemPayload {
+  runId: RunId;
+  testName: string;
+  pass: boolean;
+  durationMs: number;
+  asserts: Array<{ type: string; pass: boolean; message: string }>;
+  validations?: Array<{ judge: string; verdict: string; rationale: string }>;
+  disagreement?: boolean;
+}
+
+const DEFAULT_HOST = "https://cloud.langfuse.com";
+let warnedMissingKeys = false;
+
+/**
+ * Test-only: reset the one-shot warn latch so subsequent `getAuth()` calls in
+ * the keys-absent path emit the stderr warning again. Necessary when parallel
+ * or ordering-sensitive test workers share this module — the latch is module-
+ * level state and would otherwise leak across tests in the same worker.
+ *
+ * Do NOT call from production code paths.
+ */
+export function _resetWarnFlag(): void {
+  warnedMissingKeys = false;
+}
+
+function getAuth(): { publicKey: string; secretKey: string } | null {
+  const pub = process.env["LANGFUSE_PUBLIC_KEY"] ?? "";
+  const sec = process.env["LANGFUSE_SECRET_KEY"] ?? "";
+  if (!pub || !sec) {
+    if (!warnedMissingKeys) {
+      warnedMissingKeys = true;
+      process.stderr.write("langfuse: skipping — keys not set (LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY required)\n");
+    }
+    return null;
+  }
+  return { publicKey: pub, secretKey: sec };
+}
+
+function getHost(): string { return (process.env["LANGFUSE_HOST"] ?? DEFAULT_HOST).replace(/\/$/, ""); }
+
+function basicHeader(pub: string, sec: string): string {
+  return `Basic ${Buffer.from(`${pub}:${sec}`).toString("base64")}`;
+}
+
+// FEAT-176: disable emit entirely when LANGFUSE_DISABLE=1 (e.g. when host
+// has stale endpoints and 404 noise pollutes the eval output).
+function isDisabled(): boolean {
+  return process.env["LANGFUSE_DISABLE"] === "1";
+}
+
+// FEAT-176: extract a short snippet from error responses. HTML pages (Langfuse
+// 404 returns Next.js HTML) get truncated to title only; JSON bodies stay
+// readable. Prevents 200 KB of Next.js bundle paths in the eval console.
+function summarizeErrorBody(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+    const titleMatch = trimmed.match(/<title>([^<]*)<\/title>/i);
+    return titleMatch?.[1]?.trim() ?? "(HTML response — endpoint not found on host)";
+  }
+  return trimmed.slice(0, 200);
+}
+
+async function post(host: string, pub: string, sec: string, endpoint: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const res = await fetch(`${host}${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: basicHeader(pub, sec) },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`langfuse POST ${endpoint} HTTP ${res.status}: ${summarizeErrorBody(text)}`);
+  }
+  return (await res.json()) as Record<string, unknown>;
+}
+
+/** Ensure a dataset exists. Idempotent by name. Returns dataset id or null when keys absent. */
+export async function ensureDataset(promptId: string): Promise<DatasetId | null> {
+  if (isDisabled()) return null;
+  const auth = getAuth();
+  if (!auth) return null;
+  const data = await post(getHost(), auth.publicKey, auth.secretKey, "/api/public/datasets",
+    { name: promptId, description: `Agent eval dataset for prompt_id: ${promptId}` });
+  const id = data["id"] ?? data["name"];
+  return typeof id === "string" ? id : promptId;
+}
+
+/** Record a dataset run. Returns run id or null when keys absent. */
+export async function recordRun(opts: LangfuseRunOpts): Promise<RunId | null> {
+  const auth = getAuth();
+  if (!auth) return null;
+  const runName = opts.runName ?? `${opts.promptId}-${opts.judgeId}-${new Date().toISOString()}`;
+  const data = await post(getHost(), auth.publicKey, auth.secretKey, "/api/public/dataset-runs",
+    { datasetName: opts.datasetId, name: runName,
+      metadata: { promptId: opts.promptId, judgeId: opts.judgeId, ...opts.metadata } });
+  const id = data["id"] ?? data["name"];
+  return typeof id === "string" ? id : runName;
+}
+
+/** Record a single test item in a dataset run. Silently swallows errors after logging. */
+export async function recordItem(item: LangfuseItemPayload): Promise<void> {
+  const auth = getAuth();
+  if (!auth) return;
+  try {
+    await post(getHost(), auth.publicKey, auth.secretKey, "/api/public/dataset-items", {
+      datasetRunName: item.runId,
+      input: { testName: item.testName, asserts: item.asserts },
+      expectedOutput: { pass: true },
+      output: { pass: item.pass, durationMs: item.durationMs,
+        validations: item.validations ?? [], disagreement: item.disagreement ?? false },
+      metadata: { disagreement: item.disagreement ?? false, validationCount: item.validations?.length ?? 0 }
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`langfuse: recordItem failed for "${item.testName}": ${msg}\n`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SLICE-114 (FEAT-186 S5) — single-trace emission per LLMJudge.evaluate() call
+// ---------------------------------------------------------------------------
+
+/**
+ * Payload for one `LLMJudge.evaluate()` trace.
+ *
+ * `pipeline` identifies which pipeline triggered the evaluate call
+ * (e.g. "eval" for the dev-team evals pipeline, "gepa" for the GEPA runner).
+ * Both pipelines feed the same `JudgeCost`-compatible shape.
+ */
+export interface LangfuseTracePayload {
+  /** Logical pipeline: "eval" | "gepa" | any custom string. */
+  pipeline: string;
+  /** Judge provider + model from `LLMJudge.describe()`. */
+  provider: string;
+  model: string;
+  /** Langfuse provenance forwarded from `evaluate()` opts.context. */
+  context?: {
+    fixture?: string;
+    promptId?: string;
+    version?: string;
+  };
+  /** pass/fail from evaluate() result. */
+  pass: boolean;
+  /** 0..1 weighted score from evaluate() result. */
+  score: number;
+  /** Wall-clock latency from evaluate() result. */
+  latency_ms: number;
+  /** USD cost from evaluate() result. */
+  cost_usd: number;
+  /** Optional token counts from evaluate() result. */
+  tokens?: { in: number; out: number };
+}
+
+/**
+ * Derive a consistent trace ID from provenance fields.
+ *
+ * Schema: `{promptId}:{fixture|"_"}:{iso-timestamp}`
+ *
+ * Using promptId + fixture makes traces linkable to their eval source.
+ * The timestamp prevents ID collision when the same spec runs twice in rapid
+ * succession. All three segments are safe for HTTP headers / URL paths.
+ *
+ * Exported for tests that assert the schema.
+ */
+export function deriveTraceId(
+  promptId: string | undefined,
+  fixture: string | undefined,
+  timestamp: string
+): string {
+  const safePid = (promptId ?? "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeFix = (fixture ?? "_").replace(/[^a-zA-Z0-9_.-]/g, "_");
+  return `${safePid}:${safeFix}:${timestamp}`;
+}
+
+/**
+ * Emit one Langfuse trace per `LLMJudge.evaluate()` call.
+ *
+ * One trace = one evaluate call, regardless of which pipeline triggered it.
+ * The trace captures cost, latency, pass/fail, and provenance so Langfuse
+ * dashboards can aggregate across both pipelines with a uniform shape.
+ *
+ * Graceful skip: if keys absent or disabled, returns null without logging
+ * again (the first absent-key warning comes from `getAuth`). Errors after
+ * auth are swallowed with a stderr log — never throws, never calls
+ * `process.exit`.
+ *
+ * @returns The emitted trace ID, or null when skipped.
+ */
+export async function recordTrace(payload: LangfuseTracePayload): Promise<string | null> {
+  if (isDisabled()) return null;
+  const auth = getAuth();
+  if (!auth) return null;
+
+  const timestamp = new Date().toISOString();
+  const traceId = deriveTraceId(payload.context?.promptId, payload.context?.fixture, timestamp);
+
+  const body: Record<string, unknown> = {
+    id: traceId,
+    name: `judge-evaluate`,
+    timestamp,
+    input: {
+      pipeline: payload.pipeline,
+      promptId: payload.context?.promptId,
+      fixture: payload.context?.fixture,
+      version: payload.context?.version
+    },
+    output: {
+      pass: payload.pass,
+      score: payload.score
+    },
+    metadata: {
+      pipeline: payload.pipeline,
+      provider: payload.provider,
+      model: payload.model,
+      latency_ms: payload.latency_ms,
+      cost_usd: payload.cost_usd
+    }
+  };
+
+  if (payload.tokens !== undefined) {
+    (body["metadata"] as Record<string, unknown>)["tokens"] = payload.tokens;
+  }
+
+  try {
+    await post(getHost(), auth.publicKey, auth.secretKey, "/api/public/traces", body);
+    return traceId;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`langfuse: recordTrace failed (pipeline=${payload.pipeline}): ${msg}\n`);
+    return null;
+  }
+}

@@ -1,0 +1,287 @@
+// corpus-sync.ts — FEAT-193 S2: gepa-corpus-sync cross-repo aggregation.
+//
+// Agent prompts are global (ship from dev-team); failures happen in each
+// consumer repo where crew is installed. This module scans sibling repos on
+// the machine, merges their production-failure GEPA trials into the dev-team
+// hub corpus, and dedups by (agent, rationale-hash). Git-based today; an
+// astramem-transport swap is a v2 seam (topology memory
+// prompt-improvement-corpus-architecture).
+//
+// Marker discipline (AC-4, per S1's documented deviation): a synced trial is
+// eligible ONLY when `input.capture_origin === "production_failure"`. Never
+// match on `source` — all captured trials carry `source: "captured"`
+// (schema-valid; gepa-core's TrialSchema has no "production" enum value), so
+// `source` cannot distinguish a production failure from an eval/canary trial.
+//
+// Read-only on siblings (AC-5): reads sibling trial JSONL directly, writes
+// ONLY the hub corpus via gepa-core's fileStore().put() — the same single
+// writer path capture-failure-trial.ts / capture-tee.ts use (never hand-roll
+// a second JSONL writer for this store). A sibling without a trials dir is
+// skipped without error.
+
+import { createHash } from "node:crypto";
+import { readFile, readdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileStore, TrialSchema } from "@astragenie/gepa-core";
+import type { Trial } from "@astragenie/gepa-core";
+
+const TRIALS_SUBPATH = [".claude", "artifacts", "crew", "gepa", "trials"];
+const PRODUCTION_FAILURE = "production_failure";
+
+export interface CorpusSyncOptions {
+  /** The dev-team hub repo root — the aggregation target (written to). */
+  hubRepo: string;
+  /** Sibling repo roots to scan for production-failure trials (read-only). */
+  siblingRepos: string[];
+}
+
+export interface AgentSyncStat {
+  /** Eligible (production-failure) trials this agent contributed across siblings. */
+  contributed: number;
+  /** Trials written to the hub (new (agent, rationale-hash)). */
+  added: number;
+  /** Trials skipped because the hub / an earlier sibling already had the key. */
+  skipped_as_dup: number;
+}
+
+export interface CorpusSyncReport {
+  /** Per-agent stats — enumerates EVERY agent with >=1 contributed trial (AC-3). */
+  perAgent: Record<string, AgentSyncStat>;
+  totalEligible: number;
+  totalAdded: number;
+  totalSkipped: number;
+  siblingsScanned: number;
+  /** Sibling roots skipped because they have no trials dir (AC-5). */
+  siblingsSkipped: string[];
+}
+
+function trialsDir(repoRoot: string): string {
+  return join(repoRoot, ...TRIALS_SUBPATH);
+}
+
+/**
+ * Dedup key: (agent, hash(rationale)). Length-prefixing the agent makes the
+ * concatenation unambiguous with plain printable ASCII — no delimiter byte —
+ * so `(agent="a-b", rationale="c")` ("3:a-bc") can't collide with
+ * `(agent="a", rationale="b-c")` ("1:ab-c").
+ */
+function rationaleKey(agent: string, rationale: string): string {
+  return createHash("sha256").update(`${agent.length}:${agent}${rationale}`, "utf8").digest("hex");
+}
+
+function isProductionFailure(trial: Trial): boolean {
+  const input = trial.input as Record<string, unknown> | null | undefined;
+  return !!input && input["capture_origin"] === PRODUCTION_FAILURE;
+}
+
+function rationaleOf(trial: Trial): string {
+  const score = trial.score as { rationale?: unknown } | null | undefined;
+  return typeof score?.rationale === "string" ? score.rationale : "";
+}
+
+/** Parse a trials JSONL file into Trial rows, skipping malformed lines. */
+async function readTrials(file: string): Promise<Trial[]> {
+  let raw: string;
+  try {
+    raw = await readFile(file, "utf8");
+  } catch {
+    return [];
+  }
+  const out: Trial[] = [];
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    let json: unknown;
+    try {
+      json = JSON.parse(t);
+    } catch {
+      continue; // malformed JSON syntax — skip
+    }
+    // Schema-drift guard (review HIGH-2): a syntactically-valid row from a
+    // sibling on an older @astragenie/gepa-core can fail TrialSchema. Validate
+    // HERE so a drifted row is skipped, never reaching fileStore().put() where
+    // its internal parse would throw an uncaught ZodError and abort the sync.
+    const parsed = TrialSchema.safeParse(json);
+    if (parsed.success) out.push(parsed.data as Trial);
+  }
+  return out;
+}
+
+/** List agent ids (jsonl basenames) present in a repo's trials dir. */
+async function agentsInRepo(repoRoot: string): Promise<string[]> {
+  const dir = trialsDir(repoRoot);
+  if (!existsSync(dir)) return [];
+  try {
+    return (await readdir(dir))
+      .filter((f) => f.endsWith(".jsonl"))
+      .map((f) => f.slice(0, -".jsonl".length));
+  } catch {
+    return [];
+  }
+}
+
+/** Build the set of (agent, rationale-hash) keys already present in the hub. */
+async function hubExistingKeys(hubRepo: string): Promise<Set<string>> {
+  const keys = new Set<string>();
+  for (const agent of await agentsInRepo(hubRepo)) {
+    for (const trial of await readTrials(join(trialsDir(hubRepo), `${agent}.jsonl`))) {
+      // Only production-failure rows form the dedup namespace — mirrors sibling
+      // ingestion (review MEDIUM-2), so a non-failure hub trial that happens to
+      // share a rationale can't shadow a legitimately-new failure trial.
+      if (isProductionFailure(trial)) keys.add(rationaleKey(agent, rationaleOf(trial)));
+    }
+  }
+  return keys;
+}
+
+interface SyncContext {
+  hubStore: ReturnType<typeof fileStore>;
+  seen: Set<string>;
+  report: CorpusSyncReport;
+}
+
+/** Aggregate one eligible trial into the hub (or count it as a dup). */
+async function ingestTrial(agent: string, trial: Trial, ctx: SyncContext): Promise<void> {
+  const { report, seen, hubStore } = ctx;
+  report.totalEligible += 1;
+  const stat = (report.perAgent[agent] ??= { contributed: 0, added: 0, skipped_as_dup: 0 });
+  stat.contributed += 1;
+
+  const key = rationaleKey(agent, rationaleOf(trial));
+  if (seen.has(key)) {
+    stat.skipped_as_dup += 1;
+    report.totalSkipped += 1;
+    return;
+  }
+  seen.add(key);
+  await hubStore.put(trial); // AC-5: only the hub is written
+  stat.added += 1;
+  report.totalAdded += 1;
+}
+
+/** Scan one sibling repo's trials, ingesting its production-failure rows. */
+async function syncSibling(sibling: string, ctx: SyncContext): Promise<void> {
+  for (const agent of await agentsInRepo(sibling)) {
+    for (const trial of await readTrials(join(trialsDir(sibling), `${agent}.jsonl`))) {
+      if (isProductionFailure(trial)) await ingestTrial(agent, trial, ctx); // AC-4 marker discipline
+    }
+  }
+}
+
+/**
+ * Aggregate production-failure trials from sibling repos into the hub corpus,
+ * deduping by (agent, rationale-hash). Idempotent: re-running with no new
+ * trials writes nothing (AC-2). Every eligible trial is either added or
+ * counted as a dup — `totalAdded + totalSkipped === totalEligible` (AC-3).
+ */
+export async function syncCorpus(options: CorpusSyncOptions): Promise<CorpusSyncReport> {
+  const { hubRepo, siblingRepos } = options;
+  const report: CorpusSyncReport = {
+    perAgent: {},
+    totalEligible: 0,
+    totalAdded: 0,
+    totalSkipped: 0,
+    siblingsScanned: 0,
+    siblingsSkipped: []
+  };
+
+  // Seed the seen-set from the hub so a trial already in the hub is a dup, and
+  // so cross-sibling duplicates within this run collapse to one write.
+  const ctx: SyncContext = {
+    hubStore: fileStore(trialsDir(hubRepo)),
+    seen: await hubExistingKeys(hubRepo),
+    report
+  };
+
+  for (const sibling of siblingRepos) {
+    if (!existsSync(trialsDir(sibling))) {
+      report.siblingsSkipped.push(sibling);
+      continue;
+    }
+    report.siblingsScanned += 1;
+    await syncSibling(sibling, ctx);
+  }
+
+  return report;
+}
+
+/**
+ * Auto-discover sibling repos: directories alongside `hubRepo` (same parent)
+ * that carry a GEPA trials dir. Excludes the hub itself. Best-effort — returns
+ * [] if the parent is unreadable.
+ */
+async function discoverSiblings(hubRepo: string): Promise<string[]> {
+  const { dirname, resolve } = await import("node:path");
+  const parent = dirname(resolve(hubRepo));
+  const hub = resolve(hubRepo);
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = await readdir(parent, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const siblings: string[] = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const dir = join(parent, e.name);
+    if (resolve(dir) === hub) continue;
+    if (existsSync(trialsDir(dir))) siblings.push(dir);
+  }
+  return siblings;
+}
+
+export interface CorpusSyncCmdResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+/**
+ * CLI entry (`crew gepa-corpus-sync`). Explicit `--sibling <path>` flags win;
+ * otherwise siblings are auto-discovered next to the hub. `--json` emits the
+ * raw report. Never throws — returns a non-zero exitCode on hard failure.
+ */
+export async function runCorpusSyncCmd(
+  repoPath: string,
+  rawArgs: string[]
+): Promise<CorpusSyncCmdResult> {
+  const explicit: string[] = [];
+  let asJson = false;
+  for (let i = 0; i < rawArgs.length; i += 1) {
+    const a = rawArgs[i];
+    if (a === "--sibling" && rawArgs[i + 1]) {
+      explicit.push(rawArgs[i + 1]!);
+      i += 1;
+    } else if (a === "--json") {
+      asJson = true;
+    }
+  }
+  const siblingRepos = explicit.length > 0 ? explicit : await discoverSiblings(repoPath);
+  let report: CorpusSyncReport;
+  try {
+    report = await syncCorpus({ hubRepo: repoPath, siblingRepos });
+  } catch (err) {
+    return {
+      stdout: "",
+      stderr: `gepa-corpus-sync failed: ${(err as Error).message}\n`,
+      exitCode: 1
+    };
+  }
+
+  if (asJson) return { stdout: `${JSON.stringify(report, null, 2)}\n`, stderr: "", exitCode: 0 };
+
+  const lines = [
+    `gepa-corpus-sync: ${report.siblingsScanned} sibling(s) scanned, ` +
+      `${report.siblingsSkipped.length} skipped (no trials dir)`,
+    `  eligible=${report.totalEligible}  added=${report.totalAdded}  ` +
+      `deduped=${report.totalSkipped}`
+  ];
+  for (const [agent, stat] of Object.entries(report.perAgent).sort()) {
+    lines.push(
+      `  ${agent}: contributed=${stat.contributed} added=${stat.added} ` +
+        `deduped=${stat.skipped_as_dup}`
+    );
+  }
+  return { stdout: `${lines.join("\n")}\n`, stderr: "", exitCode: 0 };
+}

@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "preset": "typescript-plugin-dev",
+  "projectType": "claude-plugin",
+  "split": false,
+  "frontend": {
+    "framework": "none",
+    "language": "typescript"
+  },
+  "backend": {
+    "framework": "node",
+    "language": "typescript",
+    "storage": "none"
+  },
+  "contract": "none",
+  "deployment": "none",
+  "skills": [
+    "typescript-pro",
+    "frontend-advisory"
+  ],
+  "loop": {
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "slicesRoot": ".claude/artifacts/loop/slices",
+    "backlogRoot": ".claude/artifacts/loop/backlog",
+    "maxIterations": 25,
+    "marathonRunner": "wave",
+    "wave": {
+      "size": 3,
+      "sliceCommand": "/crew:build",
+      "sliceCommandFallback": "/crew:build",
+      "fixCommand": "/crew:fix",
+      "maxParallel": 3,
+      "dispatchTimeoutMs": 1800000,
+      "postMergeTestCmd": "node ./scripts/validate-agents.ts",
+      "maxWaveAttempts": 2,
+      "subagentType": "general-purpose",
+      "artifactsRoot": ".claude/artifacts/loop/waves"
+    },
+    "cost": {
+      "ceilingUsd": 75,
+      "regression": {
+        "multiplier": 3,
+        "window": 5,
+        "minSamples": 3
+      }
+    },
+    "modelRouting": {
+      "enabled": false
+    },
+    "validation": {
+      "satisfiedByReview": true
+    }
+  },
+  "stack": {
+    "build": [
+      {
+        "cmd": "bun",
+        "args": [
+          "test",
+          "--parallel"
+        ]
+      }
+    ],
+    "test": [
+      {
+        "cmd": "bun",
+        "args": [
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "cmd": "node",
+        "args": [
+          "./scripts/validate-manifests.ts"
+        ]
+      },
+      {
+        "cmd": "node",
+        "args": [
+          "./scripts/validate-skills.ts"
+        ]
+      }
+    ],
+    "frontendBuild": null,
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": {
+    "ladder": [
+      "A"
+    ],
+    "strictParallel": true,
+    "serialTimingThresholdMs": 90000
+  },
+  "mandatoryDocs": [
+    "docs/architecture/platform-overview.md"
+  ],
+  "productName": "hero-crew",
+  "productDescription": "Claude Code plugin: Crew harness with lead-guided engineering workflow, bounded subagents, quality gates, and inspectable handoffs.",
+  "stackDescription": "- ESM / Node.js (node:test, ESLint flat config, Prettier)\n- Content-heavy plugin: agents/, skills/, commands/, hooks/\n- No server, no container \u00e2\u20ac\u201d plugin is installed by consumers",
+  "memory": {
+    "enabled": "auto",
+    "provider": "astramem",
+    "dualWrite": true,
+    "project": "dev-team",
+    "recall": {
+      "enabled": true,
+      "k": 5,
+      "timeoutMs": 5000,
+      "maxTokens": 800
+    },
+    "profile": {
+      "enabled": true,
+      "topLessons": 10,
+      "maxTokens": 400,
+      "minFeedbackSample": 5
+    },
+    "feedback": {
+      "enabled": true,
+      "mode": "outcome",
+      "creditLoop": {
+        "enabled": true,
+        "k": 5
+      }
+    },
+    "capture": {
+      "events": [
+        "slice_close",
+        "review_fail",
+        "validation_fail",
+        "inline_return_warn",
+        "subagent_incomplete",
+        "incident_close"
+      ]
+    }
+  },
+  "github": {
+    "enabled": false,
+    "repo": null
+  }
+}

@@ -1,0 +1,1777 @@
+#!/usr/bin/env node
+
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { maybeEmitCostReport } from "./lib/cost-hygiene/emit-cost-report.ts";
+import { costSliceHandler } from "./lib/cost-hygiene/cost-slice-handler.ts";
+import { normalizeMsysPath } from "./lib/fs-utils.ts";
+import { assertBunPresent } from "./lib/installer/bun-preflight.ts";
+import {
+  normalizeReviewDecision,
+  normalizeValidationDecision,
+  ReviewArtifactSchema,
+  ValidationArtifactSchema
+} from "./lib/artifact-schemas.ts";
+
+// Flag schema. Each entry maps a CLI flag to the flags-object key and the
+// arity (whether it consumes a value). Aliases (e.g. `--verdict` → `decision`)
+// are supported by giving two entries the same target key. parseArgs() drives
+// off this table instead of a 350-line if-chain.
+//
+// Keep entries alphabetized within each arity group for diffability.
+const FLAG_SPEC = {
+  // Boolean flags (no value).
+  "--aggregate-all": { key: "aggregateAll", boolean: true },
+  "--allow-existing": { key: "allowExisting", boolean: true },
+  "--artifact-only": { key: "artifactOnly", boolean: true },
+  "--force": { key: "force", boolean: true },
+  "--help": { key: "help", boolean: true },
+  "-h": { key: "help", boolean: true },
+  "--json": { key: "json", boolean: true },
+  "--live": { key: "live", boolean: true },
+  "--no-self": { key: "noSelf", boolean: true },
+  "--non-code": { key: "nonCode", boolean: true },
+  "--repo-context": { key: "repoContext", boolean: true },
+  "--scaffold": { key: "scaffold", boolean: true },
+  "--validate": { key: "validate", boolean: true },
+  // Value-consuming flags.
+  "--agent": { key: "agent" },
+  "--alerts": { key: "alerts" },
+  "--author-id": { key: "authorId" },
+  "--budget": { key: "budget" },
+  "--approver": { key: "approver" },
+  "--badge": { key: "badge" },
+  "--blocked-by": { key: "blockedBy" },
+  "--build": { key: "build" },
+  "--builder": { key: "builder" },
+  "--clues": { key: "clues" },
+  "--commit-pattern": { key: "commitPattern" },
+  "--completed-at": { key: "completedAt" },
+  "--confidence": { key: "confidence" },
+  "--decision": { key: "decision" },
+  "--deliverable": { key: "deliverable" },
+  "--deploy": { key: "deploy" },
+  "--deployer": { key: "deployer" },
+  "--discovery-status": { key: "discoveryStatus" },
+  "--environment": { key: "environment" },
+  "--environments": { key: "environments" },
+  "--evidence": { key: "evidence" },
+  "--external-deltas": { key: "externalDeltas" },
+  "--extra-root": { key: "extraRoot" },
+  "--feat": { key: "feat" },
+  "--feature": { key: "feature" },
+  "--features": { key: "features" },
+  "--files": { key: "files" },
+  "--files-read": { key: "filesRead" },
+  "--findings": { key: "findings" },
+  "--from": { key: "from" },
+  "--goal": { key: "goal" },
+  "--handoff": { key: "handoff" },
+  "--id": { key: "id" },
+  "--k": { key: "gepaK" },
+  "--kind": { key: "kind" },
+  "--logs": { key: "logs" },
+  "--memories-used": { key: "memoriesUsed" },
+  "--metrics": { key: "metrics" },
+  "--missing": { key: "missing" },
+  "--mode": { key: "mode" },
+  "--next": { key: "next" },
+  "--note": { key: "note" },
+  "--out-of-scope": { key: "outOfScope" },
+  "--out": { key: "out" },
+  "--outcome": { key: "outcome" },
+  "--owner": { key: "owner" },
+  "--pace": { key: "pace" },
+  "--phase": { key: "phase" },
+  "--preset": { key: "preset" },
+  "--project": { key: "project" },
+  "--reason": { key: "reason" },
+  "--refresh-when": { key: "refreshWhen" },
+  "--repo": { key: "repo" },
+  "--requester": { key: "requester" },
+  "--resolver": { key: "resolver" },
+  "--resource": { key: "resource" },
+  "--revision": { key: "revision" },
+  "--reviewer": { key: "reviewer" },
+  "--reviewer-label": { key: "reviewerLabel" },
+  "--risks": { key: "risks" },
+  "--run": { key: "run" },
+  "--run-id": { key: "runId" },
+  "--run-steps": { key: "runSteps" },
+  "--run-title": { key: "runTitle" },
+  "--source": { key: "gepaSource" },
+  "--source-project": { key: "sourceProject" },
+  "--scope": { key: "scope" },
+  "--limit": { key: "limit" },
+  "--token-cap": { key: "tokenCap" },
+  "--judge": { key: "judge" },
+  "--judge-id": { key: "judgeId" },
+  "--not-checked": { key: "notChecked" },
+  "--split": { key: "split" },
+  "--severity": { key: "severity" },
+  "--shape": { key: "shape" },
+  "--skip-reason": { key: "skipReason" },
+  "--slice": { key: "slice" },
+  "--started-at": { key: "startedAt" },
+  "--status": { key: "status" },
+  "--summary": { key: "summary" },
+  "--telemetry": { key: "telemetry" },
+  "--test-summary": { key: "testSummary" },
+  "--test-summary-skip-reason": { key: "testSummarySkipReason" },
+  "--tier": { key: "tier" },
+  "--title": { key: "title" },
+  "--to": { key: "to" },
+  "--trigger-filename": { key: "triggerFilename" },
+  "--update": { key: "updatePath" },
+  "--url": { key: "url" },
+  "--validation-evidence": { key: "validationEvidence" },
+  "--validator": { key: "validator" },
+  "--verdict": { key: "decision" }, // alias of --decision
+  "--verified-from": { key: "verifiedFrom" },
+  "--weeks": { key: "weeks" },
+  "--window": { key: "window" },
+  "--role": { key: "role" },
+  "--surface": { key: "surface" },
+  "--stack": { key: "stack" },
+  "--concern": { key: "concern" },
+  "--date": { key: "date" },
+  "--lens": { key: "lens" },
+  "--since": { key: "since" },
+  "--sibling": { key: "sibling" },
+  "--tag": { key: "tag" },
+  "--tags": { key: "tags" }
+} as const;
+
+type FlagSpecValues = (typeof FLAG_SPEC)[keyof typeof FLAG_SPEC];
+type FlagKey = Exclude<FlagSpecValues["key"], "repo">;
+type Flags = {
+  [K in FlagKey]: Extract<FlagSpecValues, { key: K }> extends { boolean: true }
+    ? boolean
+    : string | null;
+} & { repo: string } & { [key: string]: string | boolean | null };
+
+function buildDefaultFlags(): Flags {
+  return {
+    repo: process.cwd(),
+    allowExisting: false,
+    help: false,
+    force: false,
+    owner: null,
+    requester: null,
+    approver: null,
+    resolver: null,
+    kind: null,
+    severity: null,
+    shape: null,
+    summary: null,
+    reason: null,
+    note: null,
+    status: "open",
+    id: null,
+    decision: null,
+    title: null,
+    goal: null,
+    mode: null,
+    pace: null,
+    scope: null,
+    outOfScope: null,
+    files: null,
+    evidence: null,
+    externalDeltas: null,
+    risks: null,
+    runSteps: null,
+    next: null,
+    from: null,
+    to: null,
+    deliverable: null,
+    confidence: null,
+    reviewer: null,
+    validator: null,
+    deployer: null,
+    environment: null,
+    build: null,
+    deploy: null,
+    environments: null,
+    logs: null,
+    metrics: null,
+    alerts: null,
+    telemetry: null,
+    clues: null,
+    discoveryStatus: null,
+    verifiedFrom: null,
+    missing: null,
+    refreshWhen: null,
+    resource: null,
+    url: null,
+    revision: null,
+    badge: null,
+    preset: null,
+    project: null,
+    commitPattern: null,
+    triggerFilename: null,
+    reviewerLabel: null,
+    startedAt: null,
+    completedAt: null,
+    runTitle: null,
+    sourceProject: null,
+    blockedBy: null,
+    feature: null,
+    features: null,
+    nonCode: false,
+    noSelf: false,
+    aggregateAll: false,
+    repoContext: false,
+    scaffold: false,
+    extraRoot: null,
+    phase: null,
+    testSummary: null,
+    testSummarySkipReason: null,
+    findings: null,
+    validationEvidence: null,
+    builder: null,
+    feat: null,
+    filesRead: null,
+    handoff: null,
+    run: null,
+    slice: null,
+    tier: null,
+    updatePath: null,
+    agent: null,
+    window: null,
+    role: null,
+    surface: null,
+    stack: null,
+    concern: null,
+    lens: null,
+    gepaSource: null,
+    limit: null,
+    tokenCap: null,
+    sibling: null,
+    json: false,
+    live: false,
+    validate: false,
+    judge: null,
+    judgeId: null,
+    authorId: null,
+    notChecked: null,
+    split: null,
+    out: null,
+    weeks: null,
+    artifactOnly: false,
+    budget: null,
+    gepaK: null,
+    since: null,
+    tag: null,
+    tags: null,
+    skipReason: null,
+    date: null,
+    runId: null,
+    outcome: null,
+    memoriesUsed: null
+  };
+}
+
+// Strip exactly one trailing newline (LF or CRLF) so file-authored bodies
+// (which almost always end in a newline) round-trip the same as an
+// equivalent argv string, without touching any internal newlines.
+function stripSingleTrailingNewline(text: string): string {
+  return text.replace(/\r?\n$/, "");
+}
+
+// Reads a `--<flag>-file <path>` value off disk (or stdin when path is "-",
+// matching `gh issue create -F -` convention). Long prose bodies — review
+// findings, synthesis summaries — routinely contain apostrophes and
+// backticks that get mangled by shell quoting when passed as a literal
+// argv string (astragenie/dev-team#152). Reading the same content from a
+// file the caller wrote directly (no shell interpolation in between) sidesteps
+// the whole class of quoting bugs.
+function readFlagFileValue(filePath: string): string {
+  const raw = filePath === "-" ? fs.readFileSync(0, "utf8") : fs.readFileSync(filePath, "utf8");
+  return stripSingleTrailingNewline(raw);
+}
+
+// Generic `--<flag>-file <path|->` companion for every value-consuming flag
+// in FLAG_SPEC (e.g. `--summary-file`, `--findings-file`): reads the value
+// from disk/stdin instead of argv so prose bodies never ride shell quoting.
+// Returns the next parse index when `value` is a recognized `-file`
+// companion token, or null otherwise (not handled — caller falls through).
+// See #152.
+// FLAG_SPEC authors: never add a real flag whose name ends in `-file` —
+// it would collide with this companion convention. Also note only one
+// flag per invocation may read stdin via `-`; a second `-` read after
+// EOF yields an empty string, not an error.
+function tryApplyFileFlagToken(
+  value: string,
+  rest: string[],
+  index: number,
+  flags: Flags
+): number | null {
+  if (!value.startsWith("--") || !value.endsWith("-file")) return null;
+  const baseFlag = value.slice(0, -"-file".length);
+  const baseSpec = (FLAG_SPEC as Record<string, { key: string; boolean?: boolean }>)[baseFlag];
+  if (!baseSpec || baseSpec.boolean) return null;
+  const filePath = rest[index + 1];
+  if (filePath === undefined) {
+    throw new Error(`${value} requires a file path argument (use - to read from stdin)`);
+  }
+  const flagsRecord = flags as Record<string, string | boolean | null>;
+  flagsRecord[baseSpec.key] = readFlagFileValue(filePath);
+  return index + 2;
+}
+
+// Apply a single token to flags/positionals. Returns the next index to read
+// (usually `index + 1` or `index + 2` for value-consuming flags) or -1 to
+// signal "stop the parse loop" (encountered `--` end-of-flags separator).
+function applyFlagToken(
+  rest: string[],
+  index: number,
+  flags: Flags,
+  positionals: string[]
+): number {
+  const value = rest[index];
+  if (value === undefined) return index + 1;
+  if (value === "--") {
+    for (let tail = index + 1; tail < rest.length; tail += 1) {
+      const tailVal = rest[tail];
+      if (tailVal !== undefined) positionals.push(tailVal);
+    }
+    return -1;
+  }
+  const spec = (FLAG_SPEC as Record<string, { key: string; boolean?: boolean }>)[value];
+  if (spec) {
+    const flagsRecord = flags as Record<string, string | boolean | null>;
+    if (spec.boolean) {
+      flagsRecord[spec.key] = true;
+      return index + 1;
+    }
+    flagsRecord[spec.key] = rest[index + 1] ?? null;
+    return index + 2;
+  }
+  const fileFlagResult = tryApplyFileFlagToken(value, rest, index, flags);
+  if (fileFlagResult !== null) return fileFlagResult;
+  if (value.startsWith("--")) {
+    throw new Error(`Unknown argument: ${value}`);
+  }
+  positionals.push(value);
+  return index + 1;
+}
+
+function resolveCommand(
+  command: string | undefined,
+  flags: Flags,
+  positionals: string[]
+): { command: string; helpTarget: string | null; flags: Flags; positionals: string[] } {
+  if (!command || command === "--help" || command === "-h") {
+    return { command: "help", helpTarget: null, flags, positionals };
+  }
+  if (flags.help) {
+    return { command: "help", helpTarget: command, flags, positionals };
+  }
+  return { command, helpTarget: null, flags, positionals };
+}
+
+function parseArgs(argv: string[]) {
+  const [command, ...rest] = argv;
+  const flags = buildDefaultFlags();
+  const positionals: string[] = [];
+
+  let index = 0;
+  while (index < rest.length) {
+    const nextIndex = applyFlagToken(rest, index, flags, positionals);
+    if (nextIndex === -1) break;
+    index = nextIndex;
+  }
+
+  return resolveCommand(command, flags, positionals);
+}
+
+function usage(target: string | null = null) {
+  const subcommands = {
+    "install-global": "  node scripts/crew.mjs install-global",
+    audit: "  node scripts/crew.mjs audit --repo <path>",
+    bootstrap: "  node scripts/crew.mjs bootstrap --repo <path>",
+    init: "  node scripts/crew.mjs init --repo <path> [--allow-existing]",
+    claim: "  node scripts/crew.mjs claim --repo <path> [--owner <name>] <files...>",
+    release: "  node scripts/crew.mjs release --repo <path> [--owner <name>] [files...]",
+    "show-claims": "  node scripts/crew.mjs show-claims --repo <path>",
+    "show-conflicts":
+      "  node scripts/crew.mjs show-conflicts --repo <path> [--owner <name>] [files...]",
+    "quickwin-lane":
+      "  node scripts/crew.mjs quickwin-lane [spawn|status] --repo <path> [--date YYYY-MM-DD]",
+    "claim-check": "  node scripts/crew.mjs claim-check --repo <path> [--owner <name>] <files...>",
+    "request-approval":
+      "  node scripts/crew.mjs request-approval --repo <path> --summary <text> [--kind <kind>] [--severity <level>] [--requester <name>] [--approver <name>] [--reason <text>]",
+    "show-approvals":
+      "  node scripts/crew.mjs show-approvals --repo <path> [--status open|resolved|all] [--approver <name>]",
+    "resolve-approval":
+      "  node scripts/crew.mjs resolve-approval --repo <path> --id <approval-id> --decision approved|rejected|canceled [--resolver <name>] [--note <text>]",
+    "wake-up": "  node scripts/crew.mjs wake-up --repo <path>",
+    "brief-me": "  node scripts/crew.mjs brief-me --repo <path>",
+    "scope-estimate":
+      "  node scripts/crew.mjs scope-estimate --files <path:lines[:eslintDisable],...>",
+    "discover-deployment": "  node scripts/crew.mjs discover-deployment --repo <path>",
+    "write-deployment-guidance":
+      "  node scripts/crew.mjs write-deployment-guidance --repo <path> --title <text> [--discovery-status repo-derived|partial|live-verified] [--verified-from <a,b>] [--missing <a,b>] [--summary <text>] [--build <text>] [--deploy <text>]",
+    "show-workflow-state": "  node scripts/crew.mjs show-workflow-state --repo <path>",
+    "mark-badge":
+      "  node scripts/crew.mjs mark-badge --repo <path> --badge review_required|review_passed|review_failed|review_skipped|validation_expected|validation_passed|validation_failed|validation_skipped|validation_stale|dev_deploy_expected|dev_checked|dev_failed|dev_skipped|prod_deploy_expected|prod_checked|prod_failed|prod_skipped|blocked|specialist_recommended|escalated_to_dispatcher|incident_resolved|rollback_executed|incident_blocked|help_request|help_resolved [--note <text>] [--blocked-by <artifact-id>] (escalated_to_lead accepted as backward-compat alias)",
+    "write-run-brief":
+      "  node scripts/crew.mjs write-run-brief --repo <path> --title <text> [--goal <text>] [--mode <mode>] [--pace <pace>]",
+    "write-build-bundle":
+      "  node scripts/crew.ts write-build-bundle --repo <path> --slice <SLICE-NN> --builder <builder|builder-be|builder-fe> --run <YYYYMMDDTHHMMSSZ> --handoff <path> [--feat <FEAT-NNN>] [--files <a,b>] [--files-read <c,d>]",
+    "write-handoff-and-bundle":
+      "  node scripts/crew.ts write-handoff-and-bundle --repo <path> --title <text> --summary <text> --files <a,b> --confidence <high|medium|low> [--builder builder|builder-be|builder-fe] [--slice <SLICE-NN>] [--run <YYYYMMDDTHHMMSSZ>] [--feat <FEAT-NNN>] [--files-read <c,d>] [--risks <text>] [--next <text>]",
+    "write-handoff":
+      "  node scripts/crew.ts write-handoff --repo <path> --title <text> [--from <role>] [--to <role>] [--goal <text>] [--summary <text>] [--scope <text>] [--out-of-scope <text>] [--deliverable <text>] [--files <a,b>] [--confidence high|medium|low] [--risks <text>] [--next <text>] [--feature <FEAT-NNN>] [--phase <name>] [--status <text>]",
+    "write-review-result":
+      "  node scripts/crew.mjs write-review-result --repo <path> --title <text> [--reviewer <role>] [--decision approved|approved_with_notes|rejected|needs_fix] [--verdict <decision>] [--not-checked <a,b,c>] [--author-id <id>] [--judge-id <id>]\n" +
+      "    Prose bodies (--summary, --findings, --risks, --next, ...) accept a `--<flag>-file <path|->` companion\n" +
+      "    (e.g. --summary-file /tmp/summary.md, or - for stdin) so apostrophes/backticks never ride shell argv (#152).",
+    "write-validation-plan":
+      "  node scripts/crew.mjs write-validation-plan --repo <path> --title <text> [--validator <role>] [--environment <name>]",
+    "write-validation-result":
+      "  node scripts/crew.mjs write-validation-result --repo <path> --title <text> [--validator <role>] [--environment <name>] [--decision pass|fail|skipped] [--skip-reason <text>]",
+    "write-deployment-check":
+      "  node scripts/crew.mjs write-deployment-check --repo <path> --title <text> [--deployer <role>] [--environment dev|prod] [--resource <name>] [--url <service-url>] [--revision <id>] [--decision <decision>]",
+    "write-final-synthesis":
+      "  node scripts/crew.mjs write-final-synthesis --repo <path> --title <text> --external-deltas <text|none> [--summary <text>] [--run-steps <a,b>] [--files <a,b>] [--force]\n" +
+      "    --summary accepts a --summary-file <path|-> companion for prose with apostrophes/backticks (#152).",
+    "cost-slice":
+      "  node scripts/crew.mjs cost-slice --repo <path> [--started-at <iso>] [--completed-at <iso>] [--run-title <text>] [--source-project <slug>] [--aggregate-all]",
+    "cost-advise": "  node scripts/crew.mjs cost-advise --repo <path>",
+    "cost-watch":
+      "  node scripts/crew.ts cost-watch --repo <path> [--limit N] [--token-cap N]\n" +
+      "    Read-only operator burn-watch (FEAT-194 S4): recent per-dispatch agent/model/tokens\n" +
+      "    (.claude/logs/dispatch-timing.jsonl) + recent per-slice usd/tokens/cache-hit%\n" +
+      "    (.claude/artifacts/crew/cost/), with an advisory flag against loop.cost.ceilingUsd\n" +
+      "    and a per-dispatch token cap (default 150000). No new telemetry pipeline.",
+    "agent-stats":
+      "  node scripts/crew.ts agent-stats [--agent <name>] [--window last_n_slices:<N>] [--repo <path>]",
+    "agent-route":
+      "  node scripts/crew.ts agent-route [--role <r>] [--surface <s>] [--stack <s>] [--concern <c>] [--lens <l>] [--scope <s>] [--repo <path>]",
+    "gepa-history":
+      "  node scripts/crew.ts gepa-history <agent> [--source eval|captured|soak] [--limit N] [--repo <path>]",
+    "gepa-corpus-sync":
+      "  node scripts/crew.ts gepa-corpus-sync [--sibling <p1,p2,...>] [--json] [--repo <path>]",
+    "gepa-corpus-report":
+      "  node scripts/crew.ts gepa-corpus-report [<agent>] [--json] [--repo <path>]",
+    "gepa-corpus-optimize":
+      "  node scripts/crew.ts gepa-corpus-optimize <agent> --budget <usd> [--k <int>] [--repo <path>]",
+    "gepa-eval":
+      "  node scripts/crew.ts gepa-eval <agent> [--live] [--judge <name>] [--validate] [--split N/M] [--repo <path>]",
+    "gepa-mine-reviewer":
+      "  node scripts/crew.ts gepa-mine-reviewer [--weeks N] [--out <dir>] [--repo <path>]",
+    "gepa-optimize":
+      "  node scripts/crew.ts gepa-optimize <agent> --budget <usd> [--k <int>] [--artifact-only] [--repo <path>]",
+    "gepa-resume":
+      "  node scripts/crew.ts gepa-resume [<agent>] [--repo <path>]\n" +
+      "    With <agent>: clears the no-winner streak counter for that agent.\n" +
+      "    Without <agent>: clears the global optimize.paused flag in gepa.config.json.",
+    "gepa-invalidate":
+      "  node scripts/crew.ts gepa-invalidate --agent <name> [--since <iso>] [--tag <tag>] [--repo <path>]",
+    "gepa-revert": "  node scripts/crew.ts gepa-revert --agent <name> [--repo <path>]",
+    "gepa-thaw": "  node scripts/crew.ts gepa-thaw <agent> [--repo <path>]",
+    "recall-block":
+      "  node scripts/crew.ts recall-block --repo <path> [--agent <name>] [--tags <a,b>] [--project <a,b>]\n" +
+      "    --project accepts a comma-list (OR-composed, FEAT-423); omitted falls back\n" +
+      "    to the configured memory.project in .claude/loop.json.",
+    "memory-drift-check":
+      "  node scripts/crew.ts memory-drift-check --repo <path> [--window <days>]\n" +
+      "    Read-only: compares learnings.jsonl entries in the window against astramem's\n" +
+      "    recall() results and reports entries not confirmed present remotely (S4\n" +
+      "    accepted-risk drift note). Never writes to astramem.",
+    "resolve-model":
+      "  node scripts/crew.ts resolve-model --phase <build|architect|...> [--shape <shape>] [--repo <path>]\n" +
+      "    Reads .claude/loop.json loop.modelRouting + the trivial-shape tier table and\n" +
+      "    prints the resolved model string (e.g. sonnet). Falls back to opus only when\n" +
+      "    no routing is configured. Prints the sentinel 'inherit' when routing is\n" +
+      '    disabled (crew.json features["model-routing"].enabled: false or\n' +
+      "    loop.modelRouting.enabled: false) — then OMIT the Agent-tool model: argument\n" +
+      "    so the agent's own model: frontmatter governs. FEAT-194 S2."
+  };
+
+  const subcommandsMap = subcommands as Record<string, string | undefined>;
+  if (target && subcommandsMap[target]) {
+    return ["Engineering OS installer", "", "Usage:", subcommandsMap[target]].join("\n");
+  }
+
+  return ["Engineering OS installer", "", "Usage:", ...Object.values(subcommands)].join("\n");
+}
+
+// Slug source priority: explicit --title → advisor target slice → advisor
+// target runTitle → fallback "advise". --title lets the loop side pass the
+// enriched FEAT/PHASE/SLICE tag so cost-advise filenames match the rest of
+// the artifact surface.
+function buildCostAdviseSlug(title: string | null, advisor: Record<string, unknown> | null) {
+  const t = advisor?.["target"] as { sliceId?: string; runTitle?: string } | null | undefined;
+  const source = title || t?.sliceId || t?.runTitle || "advise";
+  return source
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+// Optional YAML frontmatter block; "" when both feature + phase absent so
+// existing output stays byte-identical for legacy callers.
+function buildOptionalFrontmatter(feature: string | null, phase: string | null) {
+  const lines = [];
+  if (phase !== null && phase !== undefined && String(phase).length > 0) {
+    lines.push(`phase: ${JSON.stringify(String(phase))}`);
+  }
+  if (feature) lines.push(`feature: ${feature}`);
+  if (lines.length === 0) return "";
+  return ["---", ...lines, "---", ""].join("\n");
+}
+
+async function writeCostAdviseArtifact(
+  repoPath: string,
+  md: string,
+  advisor: Record<string, unknown> | null,
+  options: { title?: string | null; feature?: string | null; phase?: string | null } = {}
+) {
+  const fs = await import("node:fs/promises");
+  const pathMod = await import("node:path");
+  const { title = null, feature = null, phase = null } = options;
+  const dir = pathMod.join(repoPath, ".claude", "artifacts", "crew", "cost-insights");
+  await fs.mkdir(dir, { recursive: true });
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
+  const slug = buildCostAdviseSlug(title, advisor);
+  const fm = buildOptionalFrontmatter(feature, phase);
+  const file = pathMod.join(dir, `${stamp}-cost-advise-${slug}.md`);
+  await fs.writeFile(file, fm + md + "\n");
+  return file;
+}
+
+// Auto-emit a cost-report artifact when a run window is available. Designed
+// to be called immediately after write-final-synthesis. Failures here are
+// non-fatal: they return null so the synthesis result still surfaces.
+// Best-effort cost-advise emit. Returns a description object on success,
+// `{ error }` on failure. Extracted from maybeEmitCostReport to keep its
+// cyclomatic complexity under the eslint cap.
+async function emitCostAdvise(
+  repoPath: string,
+  { title, feature, phase }: { title: string | null; feature: string | null; phase: string | null }
+) {
+  try {
+    const { buildCostAdvisor, renderCostAdvisorMarkdown } = await import("./lib/cost-advisor.ts");
+    const advisor = await buildCostAdvisor(repoPath, { limit: 10 });
+    const md = renderCostAdvisorMarkdown(advisor);
+    const advisePath = await writeCostAdviseArtifact(
+      repoPath,
+      md,
+      advisor as unknown as Record<string, unknown>,
+      {
+        title,
+        feature,
+        phase
+      }
+    );
+    return {
+      path: advisePath,
+      recommendations: advisor.recommendations?.length || 0,
+      aggregateFlags: advisor.aggregateFlags?.length || 0
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: message };
+  }
+}
+
+// Pull a subset of string flags into an args object, mapping null/missing
+// to undefined. Keeps dispatch lambdas under the biome cognitive-complexity
+// cap by hoisting the `flags.x ?? undefined` chain into a single helper.
+function pickFlags<K extends string>(
+  flags: Flags,
+  keys: readonly K[]
+): { [P in K]: string | undefined } {
+  const result = {} as { [P in K]: string | undefined };
+  const view = flags as Record<string, unknown>;
+  for (const key of keys) {
+    const value = view[key];
+    result[key] = typeof value === "string" ? value : undefined;
+  }
+  return result;
+}
+
+// Resolve a builder name from a flag value, exiting with code 2 if invalid.
+// Centralizes the validation that several write-* commands repeat.
+function assertBuilderName(
+  builder: string,
+  command: string
+): "fullstack-dev" | "backend-dev" | "frontend-dev" {
+  const validBuilders = new Set(["fullstack-dev", "backend-dev", "frontend-dev"]);
+  if (!validBuilders.has(builder)) {
+    process.stderr.write(
+      `[crew] ${command} refused: --builder must be one of ${[...validBuilders].join(", ")}.\n`
+    );
+    process.exit(2);
+  }
+  return builder as "fullstack-dev" | "backend-dev" | "frontend-dev";
+}
+
+// Resolve --decision into the canonical review verdict enum, exiting with
+// code 2 on an unrecognized value (needs_fix, needs_revision accepted as
+// rejected aliases; approved_with_conditions accepted as an approved_with_notes
+// alias — P1.3 D7, widened FIX-0 for agents/architect-reviewer.md's verdict
+// vocab). Hoisted out of write-review-result to stay under the
+// cognitive-complexity cap, mirroring assertBuilderName above.
+function resolveReviewVerdict(rawDecision: string | null): string | undefined {
+  if (!rawDecision) return undefined;
+  const normalized = normalizeReviewDecision(rawDecision);
+  if (!normalized) {
+    process.stderr.write(
+      `[crew] write-review-result refused: unknown decision "${rawDecision}". Valid values: approved, approved_with_notes, rejected ` +
+        "(needs_fix, needs_revision accepted as aliases for rejected; approved_with_conditions accepted as an alias for approved_with_notes).\n"
+    );
+    process.exit(2);
+  }
+  return normalized.canonical;
+}
+
+// Resolve --decision into the canonical validation verdict enum, exiting with
+// code 2 on an unrecognized value. Legacy values real callers already emit
+// (passed, passed_with_notes, failed) normalize rather than refuse (P1.3).
+function resolveValidationVerdict(rawDecision: string | null): string | undefined {
+  if (!rawDecision) return undefined;
+  const normalized = normalizeValidationDecision(rawDecision);
+  if (!normalized) {
+    process.stderr.write(
+      `[crew] write-validation-result refused: unknown decision "${rawDecision}". Valid values: pass, fail, skipped (passed, passed_with_notes, failed accepted as legacy aliases).\n`
+    );
+    process.exit(2);
+  }
+  return normalized.canonical;
+}
+
+// Refuses (exit 2) an approved/approved_with_notes review of a code-bearing
+// diff that carries neither --test-summary nor --test-summary-skip-reason.
+// Hoisted out of write-review-result to stay under the complexity cap.
+function refuseIfTestAdequacyMissing(verdict: string | undefined, flags: Flags): void {
+  const isApproved = verdict === "approved" || verdict === "approved_with_notes";
+  const isCodeBearing = !flags.nonCode;
+  if (!isApproved || !isCodeBearing || flags.testSummary || flags.testSummarySkipReason) return;
+  process.stderr.write(
+    "[crew] write-review-result refused: --test-summary or --test-summary-skip-reason is required for approved code-bearing reviews. " +
+      "Pass --non-code if the diff is doc-only.\n"
+  );
+  process.exit(2);
+}
+
+// Shared refusal path for ReviewArtifactSchema / ValidationArtifactSchema
+// safeParse results (P1.3). Structural rather than importing zod's
+// SafeParseReturnType — same shape either schema's safeParse returns.
+function refuseIfSchemaInvalid(
+  command: string,
+  result: { success: boolean; error?: { issues: Array<{ message: string }> } }
+): void {
+  if (result.success) return;
+  const messages = result.error?.issues.map((i) => i.message).join("; ") ?? "unknown error";
+  process.stderr.write(`[crew] ${command} refused: schema validation failed: ${messages}\n`);
+  process.exit(2);
+}
+
+// Split a comma-delimited flag into a trimmed, non-empty string list.
+function splitCsv(value: string | null | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+// dev-team#247: derive the optional review-metadata fields for
+// write-review-result. Hoisted out of the dispatch lambda (same reasoning as
+// pickFlags) to keep its cognitive complexity under the biome cap.
+// selfApproval is DERIVED (not a flag): `authorId != null && authorId ===
+// judgeId`, so it stays undefined — and self_approval never lands in
+// frontmatter — when the caller doesn't pass --author-id.
+function deriveReviewMetadataFields(flags: Flags): {
+  notChecked: string[];
+  authorId: string | undefined;
+  judgeId: string | undefined;
+  selfApproval: boolean | undefined;
+} {
+  const notChecked = splitCsv(flags.notChecked);
+  const authorId = flags.authorId ?? undefined;
+  const judgeId = flags.judgeId ?? undefined;
+  const selfApproval = authorId !== undefined ? authorId === judgeId : undefined;
+  return { notChecked, authorId, judgeId, selfApproval };
+}
+
+// Read currentRun.slice from workflow-state.json with a graceful fallback.
+async function resolveSliceFromState(repoPath: string, sliceFlag: string | null): Promise<string> {
+  if (sliceFlag) return sliceFlag;
+  try {
+    const fs = await import("node:fs/promises");
+    const pathMod = await import("node:path");
+    const statePath = pathMod.join(repoPath, ".claude", "state", "crew", "workflow-state.json");
+    const state = JSON.parse(await fs.readFile(statePath, "utf8"));
+    return state?.currentRun?.slice ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+// Generate an ISO-like run id when --run is not supplied.
+function generateRunId(runFlag: string | null): string {
+  if (runFlag) return runFlag;
+  return new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15) + "Z";
+}
+
+// Assemble the build-bundle around a handoff, recovering gracefully if the
+// bundle write fails (handoff path still returns successfully).
+async function tryAssembleBundle(input: {
+  repoPath: string;
+  sliceId: string;
+  builderName: "fullstack-dev" | "backend-dev" | "frontend-dev";
+  runId: string;
+  feat: string | null;
+  handoffPath: string;
+  filesTouched: string[];
+  filesRead: string[];
+}): Promise<{ path: string | null; error: string | null }> {
+  try {
+    const fs = await import("node:fs/promises");
+    const { assembleBuildBundle } = await import("./lib/build-bundle/assemble.ts");
+    const handoffBody = await fs.readFile(input.handoffPath, "utf8");
+    const bundle = await assembleBuildBundle({
+      repoPath: input.repoPath,
+      sliceId: input.sliceId,
+      builderName: input.builderName,
+      runId: input.runId,
+      ...(input.feat !== null ? { feat: input.feat } : {}),
+      handoffBody,
+      filesTouched: input.filesTouched,
+      filesRead: input.filesRead
+    });
+    return { path: bundle.path, error: null };
+  } catch (e) {
+    return { path: null, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// `write-handoff-and-bundle` body extracted from the dispatch lambda to keep
+// cognitive complexity under the biome cap. Writes a handoff via writeArtifact,
+// then assembles a build-bundle that references it (non-fatal on bundle error).
+async function writeHandoffAndBundle({ repoPath, flags, positionals }: CommandContext): Promise<{
+  kind: "handoff-and-bundle";
+  handoff: string;
+  bundle: string | null;
+  bundleError: string | null;
+}> {
+  const { writeArtifact } = await import("./lib/artifacts/write.ts");
+  const r = await writeArtifact(repoPath, "handoff", {
+    title: flags.title || positionals.join(" ") || "Task Handoff",
+    from: flags.from || flags.owner || "fullstack-dev",
+    to: flags.to ?? "lead",
+    status: flags.status !== "open" ? (flags.status ?? undefined) : undefined,
+    repoContext: flags.repoContext,
+    ...pickFlags(flags, [
+      "goal",
+      "summary",
+      "scope",
+      "outOfScope",
+      "deliverable",
+      "files",
+      "confidence",
+      "risks",
+      "next",
+      "feature",
+      "phase",
+      "updatePath"
+    ])
+  });
+  if (!r.ok) throw r.error;
+  const handoff = r.value as { path: string };
+
+  const slice = await resolveSliceFromState(repoPath, flags.slice);
+  const runId = generateRunId(flags.run);
+  const builder = assertBuilderName(flags.builder ?? "fullstack-dev", "write-handoff-and-bundle");
+
+  const bundle = await tryAssembleBundle({
+    repoPath,
+    sliceId: slice,
+    builderName: builder,
+    runId,
+    feat: flags.feat,
+    handoffPath: handoff.path,
+    filesTouched: splitCsv(flags.files),
+    filesRead: splitCsv(flags.filesRead)
+  });
+
+  return {
+    kind: "handoff-and-bundle",
+    handoff: handoff.path,
+    bundle: bundle.path,
+    bundleError: bundle.error
+  };
+}
+
+interface CommandContext {
+  repoPath: string;
+  flags: Flags;
+  positionals: string[];
+}
+
+// Command registry. Each entry is `(ctx) => Promise<result>` where
+// `ctx = { repoPath, flags, positionals }`. main() dispatches by name; the
+// table replaces a 240-line else-if chain. Adding a command = one entry.
+const COMMANDS = {
+  "install-global": async () => {
+    assertBunPresent();
+    const { installGlobal } = await import("./lib/installer.ts");
+    return installGlobal();
+  },
+  audit: async ({ repoPath }: CommandContext) => {
+    const { auditRepo } = await import("./lib/installer.ts");
+    return auditRepo(repoPath);
+  },
+  bootstrap: async ({ repoPath }: CommandContext) => {
+    assertBunPresent();
+    const { bootstrapRepo } = await import("./lib/installer.ts");
+    const result = await bootstrapRepo(repoPath);
+    if (!result.ok) {
+      console.error(`Repository path does not exist: ${repoPath}`);
+      process.exit(1);
+    }
+    return result.value;
+  },
+  init: async ({ repoPath, flags }: CommandContext) => {
+    assertBunPresent();
+    const { initRepo } = await import("./lib/installer.ts");
+    return initRepo(repoPath, { allowExisting: flags.allowExisting });
+  },
+
+  claim: async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { claimFiles } = await import("./lib/claims.ts");
+    const result = await claimFiles(repoPath, positionals, {
+      owner: flags.owner || "lead-session"
+    });
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+    return result.value;
+  },
+  release: async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { releaseFiles } = await import("./lib/claims.ts");
+    const result = await releaseFiles(
+      repoPath,
+      positionals,
+      flags.owner !== null ? { owner: flags.owner } : {}
+    );
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+    return result.value;
+  },
+  "show-claims": async ({ repoPath }: CommandContext) => {
+    const { listClaims } = await import("./lib/claims.ts");
+    return { claims: await listClaims(repoPath) };
+  },
+  "show-conflicts": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { inspectClaims } = await import("./lib/claims.ts");
+    return inspectClaims(repoPath, positionals, { owner: flags.owner || "lead-session" });
+  },
+
+  "claim-check": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { checkDisjoint } = await import("./lib/claims.ts");
+    return checkDisjoint(repoPath, positionals, {
+      owner: flags.owner || "quickwin-lane"
+    });
+  },
+
+  "quickwin-lane": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { spawnChoreLane, choreLaneStatus } = await import("./lib/worktree-manager.ts");
+    const dateOpt = flags.date ? { date: flags.date } : {};
+    const action = positionals[0] ?? "spawn";
+    if (action === "status") {
+      const status = await choreLaneStatus(repoPath, dateOpt);
+      if (!status.ok) {
+        console.error(status.error.message);
+        process.exit(1);
+      }
+      return status.value;
+    }
+    if (action !== "spawn") {
+      console.error(`Unknown quickwin-lane action: ${action} (expected spawn|status)`);
+      process.exit(1);
+    }
+    const result = await spawnChoreLane(repoPath, dateOpt);
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+    return result.value;
+  },
+
+  "request-approval": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { requestApproval } = await import("./lib/approvals.ts");
+    return requestApproval(repoPath, {
+      requester: flags.requester || "lead-session",
+      approver: flags.approver ?? undefined,
+      kind: flags.kind || "scope_change",
+      severity: flags.severity || "medium",
+      summary: flags.summary || positionals.join(" ") || "Approval requested",
+      reason: flags.reason || ""
+    });
+  },
+  "show-approvals": async ({ repoPath, flags }: CommandContext) => {
+    const { listApprovals } = await import("./lib/approvals.ts");
+    return {
+      approvals: await listApprovals(repoPath, {
+        status: flags.status ?? undefined,
+        approver: flags.approver
+      })
+    };
+  },
+  "resolve-approval": async ({ repoPath, flags }: CommandContext) => {
+    const { resolveApproval } = await import("./lib/approvals.ts");
+    const result = await resolveApproval(repoPath, {
+      id: flags.id ?? undefined,
+      decision: flags.decision ?? undefined,
+      resolver: flags.resolver || "lead-session",
+      note: flags.note || ""
+    });
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+    return result.value;
+  },
+
+  "wake-up": async ({ repoPath }: CommandContext) => {
+    const { buildWakeUpBrief } = await import("./lib/wakeup.mjs");
+    return buildWakeUpBrief(repoPath);
+  },
+  "brief-me": async ({ repoPath }: CommandContext) => {
+    const { buildBriefingReport } = await import("./lib/briefing.ts");
+    return buildBriefingReport(repoPath);
+  },
+  "scope-estimate": async ({ flags, positionals }: CommandContext) => {
+    const { estimateScope } = await import("./lib/scope-estimate.ts");
+    const rawFiles = (flags.files || positionals.join(",") || "").split(",").filter(Boolean);
+    const files = rawFiles.map((entry) => {
+      const [p, linesStr, eslintDisableStr] = entry.split(":");
+      return {
+        path: p || "",
+        lines: parseInt(linesStr ?? "0", 10) || 0,
+        eslintDisable: eslintDisableStr === "true"
+      };
+    });
+    return estimateScope({ files });
+  },
+  fleet: async ({ repoPath, flags }: CommandContext) => {
+    const { buildFleetReport } = await import("./lib/fleet.ts");
+    return buildFleetReport(repoPath, {
+      extraRoots: flags.extraRoot ? [flags.extraRoot] : [],
+      includeSelf: !flags.noSelf
+    });
+  },
+  "discover-deployment": async ({ repoPath }: CommandContext) => {
+    const { discoverDeploymentClues } = await import("./lib/deployment-guidance/read.ts");
+    return discoverDeploymentClues(repoPath);
+  },
+  "write-deployment-guidance": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { writeDeploymentGuidance } = await import("./lib/deployment-guidance/write.ts");
+    const r = await writeDeploymentGuidance(repoPath, {
+      title: flags.title || positionals.join(" ") || "Repo Deployment Model",
+      owner: flags.owner || "lead-session",
+      ...pickFlags(flags, [
+        "summary",
+        "build",
+        "deploy",
+        "environments",
+        "logs",
+        "metrics",
+        "alerts",
+        "telemetry",
+        "clues",
+        "discoveryStatus",
+        "verifiedFrom",
+        "missing",
+        "refreshWhen",
+        "next"
+      ])
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+
+  "show-workflow-state": async ({ repoPath }: CommandContext) => {
+    const { loadWorkflowState, summarizeWorkflowState } = await import("./lib/workflow-state.ts");
+    const workflowState = await loadWorkflowState(repoPath);
+    return { workflowState, summary: summarizeWorkflowState(workflowState) };
+  },
+  "mark-badge": async ({ repoPath, flags }: CommandContext) => {
+    const { markWorkflowBadge } = await import("./lib/workflow-state.ts");
+    const result = await markWorkflowBadge(repoPath, {
+      badge: flags.badge ?? undefined,
+      note: flags.note || flags.reason || "",
+      blockedBy: flags.blockedBy,
+      title: flags.title ?? undefined,
+      goal: flags.goal ?? undefined,
+      mode: flags.mode ?? undefined,
+      next: flags.next ?? undefined
+    });
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+    return { badge: flags.badge, currentRun: result.value };
+  },
+
+  "write-run-brief": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fields: any = {
+      title: flags.title || positionals.join(" ") || "Run Brief",
+      owner: flags.owner || "lead-session",
+      status: flags.status === "open" ? "active" : (flags.status ?? undefined),
+      ...pickFlags(flags, [
+        "goal",
+        "mode",
+        "pace",
+        "summary",
+        "scope",
+        "outOfScope",
+        "files",
+        "next",
+        "feature",
+        "phase"
+      ])
+    };
+    if (flags.tier === "full" || flags.tier === "light") {
+      fields.tier = flags.tier;
+    }
+    const r = await writeArtifact(repoPath, "run-brief", fields);
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  "write-build-bundle": async ({ repoPath, flags }: CommandContext) => {
+    const { assembleBuildBundle } = await import("./lib/build-bundle/assemble.ts");
+    const fs = await import("node:fs/promises");
+
+    const slice = flags.slice ?? "unknown";
+    const builder = flags.builder;
+    const run = flags.run;
+    const handoffPath = flags.handoff;
+
+    if (!builder || !run || !handoffPath) {
+      process.stderr.write(
+        "[crew] write-build-bundle refused: --builder, --run, and --handoff are required.\n"
+      );
+      process.exit(2);
+    }
+    const validBuilders = new Set(["fullstack-dev", "backend-dev", "frontend-dev"]);
+    if (!validBuilders.has(builder)) {
+      process.stderr.write(
+        `[crew] write-build-bundle refused: --builder must be one of ${[...validBuilders].join(", ")}.\n`
+      );
+      process.exit(2);
+    }
+
+    const handoffBody = await fs.readFile(handoffPath, "utf8");
+    const filesTouched = (flags.files ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const filesRead = (flags.filesRead ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    const result = await assembleBuildBundle({
+      repoPath,
+      sliceId: slice,
+      builderName: builder as "fullstack-dev" | "backend-dev" | "frontend-dev",
+      runId: run,
+      ...(flags.feat !== null ? { feat: flags.feat } : {}),
+      handoffBody,
+      filesTouched,
+      filesRead
+    });
+    return result.path;
+  },
+  "write-handoff": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    // OPTIONAL dispatch-memory-credit-loop field (runner-plugin upstream
+    // request 2026-07-16): --memories-used <csv> is the ids a specialist
+    // self-reported it relied on. Absent/empty -> no key -> writeArtifact's
+    // fireMemoriesUsedCreditSilent no-ops. See
+    // docs/contracts/dispatch-memory-credit-loop-v1.md.
+    const memoriesUsed = splitCsv(flags.memoriesUsed);
+    const r = await writeArtifact(repoPath, "handoff", {
+      title: flags.title || positionals.join(" ") || "Task Handoff",
+      from: flags.from || flags.owner || "lead-session",
+      // Only pass status if it's not the default "open" value from parseArgs
+      // (the default "open" is for issue creation, not for artifacts).
+      status: flags.status !== "open" ? (flags.status ?? undefined) : undefined,
+      repoContext: flags.repoContext,
+      ...(memoriesUsed.length > 0 ? { memoriesUsed } : {}),
+      ...pickFlags(flags, [
+        "to",
+        "goal",
+        "summary",
+        "scope",
+        "outOfScope",
+        "deliverable",
+        "files",
+        "confidence",
+        "risks",
+        "next",
+        "feature",
+        "phase",
+        "updatePath"
+      ])
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  "write-handoff-and-bundle": async ({ repoPath, flags, positionals }: CommandContext) =>
+    writeHandoffAndBundle({ repoPath, flags, positionals }),
+  "write-review-result": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const rawDecision = flags.decision;
+    // verdict is the canonical enum written to frontmatter; `decision` (below)
+    // stays the raw value for body-prose back-compat.
+    const verdict = resolveReviewVerdict(rawDecision);
+    refuseIfTestAdequacyMissing(verdict, flags);
+    const status = flags.status !== "open" ? (flags.status ?? undefined) : undefined;
+    const { notChecked, authorId, judgeId, selfApproval } = deriveReviewMetadataFields(flags);
+    refuseIfSchemaInvalid(
+      "write-review-result",
+      ReviewArtifactSchema.safeParse({
+        decision: verdict,
+        phase: flags.phase ?? undefined,
+        feature: flags.feature ?? undefined,
+        slice: flags.slice ?? undefined,
+        findings: flags.findings ?? undefined,
+        status,
+        not_checked: notChecked.length > 0 ? notChecked : undefined,
+        author_id: authorId,
+        judge_id: judgeId,
+        self_approval: selfApproval
+      })
+    );
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    const r = await writeArtifact(repoPath, "review-result", {
+      title: flags.title || positionals.join(" ") || "Review Result",
+      reviewer: flags.reviewer || flags.owner || "reviewer",
+      decision: rawDecision ?? undefined,
+      verdict,
+      // Only pass status if it's not the default "open" value from parseArgs.
+      status,
+      nonCode: flags.nonCode ?? undefined,
+      findings: flags.findings ?? null,
+      scaffold: flags.scaffold ?? undefined,
+      notChecked: notChecked.length > 0 ? notChecked : undefined,
+      authorId,
+      judgeId,
+      selfApproval,
+      ...pickFlags(flags, [
+        "summary",
+        "evidence",
+        "files",
+        "risks",
+        "next",
+        "feature",
+        "phase",
+        "testSummary",
+        "testSummarySkipReason",
+        "validationEvidence",
+        "updatePath"
+      ])
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  "write-validation-plan": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    const r = await writeArtifact(repoPath, "validation-plan", {
+      title: flags.title || positionals.join(" ") || "Validation Plan",
+      validator: flags.validator || flags.owner || "verifier",
+      owner: flags.owner || "lead-session",
+      ...pickFlags(flags, [
+        "environment",
+        "goal",
+        "summary",
+        "scope",
+        "outOfScope",
+        "evidence",
+        "next",
+        "feature",
+        "phase"
+      ])
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  "write-validation-result": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const rawDecision = flags.decision;
+    // verdict is the canonical enum written to frontmatter; `decision` (below)
+    // stays the raw value for body-prose back-compat.
+    const verdict = resolveValidationVerdict(rawDecision);
+    const status = flags.status !== "open" ? (flags.status ?? undefined) : undefined;
+    refuseIfSchemaInvalid(
+      "write-validation-result",
+      ValidationArtifactSchema.safeParse({
+        decision: verdict,
+        skip_reason: flags.skipReason ?? undefined,
+        phase: flags.phase ?? undefined,
+        feature: flags.feature ?? undefined,
+        slice: flags.slice ?? undefined,
+        findings: flags.findings ?? undefined,
+        status,
+        validation_evidence: flags.validationEvidence ?? undefined
+      })
+    );
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    const r = await writeArtifact(repoPath, "validation-result", {
+      title: flags.title || positionals.join(" ") || "Validation Result",
+      validator: flags.validator || flags.owner || "verifier",
+      decision: rawDecision ?? undefined,
+      verdict,
+      skipReason: flags.skipReason ?? undefined,
+      // Only pass status if it's not the default "open" value from parseArgs.
+      status,
+      findings: flags.findings ?? null,
+      scaffold: flags.scaffold ?? undefined,
+      ...pickFlags(flags, [
+        "environment",
+        "goal",
+        "summary",
+        "evidence",
+        "files",
+        "risks",
+        "next",
+        "feature",
+        "phase",
+        "updatePath"
+      ])
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  "write-deployment-check": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    const r = await writeArtifact(repoPath, "deployment-check", {
+      title: flags.title || positionals.join(" ") || "Deployment Check",
+      deployer: flags.deployer || flags.owner || "release-engineer",
+      findings: flags.findings ?? null,
+      ...pickFlags(flags, [
+        "environment",
+        "resource",
+        "url",
+        "revision",
+        "decision",
+        "goal",
+        "summary",
+        "evidence",
+        "files",
+        "risks",
+        "next",
+        "feature",
+        "phase"
+      ])
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  "write-final-synthesis": async ({ repoPath, flags, positionals }: CommandContext) => {
+    if (flags.externalDeltas === null || flags.externalDeltas === undefined) {
+      throw new Error(
+        "write-final-synthesis requires --external-deltas. " +
+          "Enumerate sibling-config changes the synthesis depends on " +
+          "(env var renames, terraform/helm updates, sibling-repo PRs, feature flags, DB migrations, IAM). " +
+          "Pass --external-deltas none explicitly if there are none. " +
+          "A silent default is how renamed env vars silently fall back to old defaults in prod."
+      );
+    }
+    const { writeArtifact } = await import("./lib/artifacts/write.ts");
+    const synthResult = await writeArtifact(repoPath, "final-synthesis", {
+      title: flags.title || positionals.join(" ") || "Final Synthesis",
+      owner: flags.owner || "lead-session",
+      status: flags.status === "open" ? "completed" : (flags.status ?? undefined),
+      force: flags.force ?? undefined,
+      ...pickFlags(flags, [
+        "summary",
+        "files",
+        "evidence",
+        "externalDeltas",
+        "runSteps",
+        "risks",
+        "next",
+        "feature",
+        "phase"
+      ])
+    });
+    if (!synthResult.ok) throw synthResult.error;
+    const synthesis = synthResult.value;
+    const costArtifact = await maybeEmitCostReport(
+      repoPath,
+      {
+        runTitle: flags.title || positionals.join(" ") || null,
+        feature: flags.feature,
+        phase: flags.phase
+      },
+      emitCostAdvise
+    );
+    return costArtifact ? { ...synthesis, costReport: costArtifact } : synthesis;
+  },
+
+  "cost-advise": async ({ repoPath, flags }: CommandContext) => {
+    const { buildCostAdvisor, renderCostAdvisorMarkdown } = await import("./lib/cost-advisor.ts");
+    const advisor = await buildCostAdvisor(repoPath, { limit: 10 });
+    const md = renderCostAdvisorMarkdown(advisor);
+    const writePath = await writeCostAdviseArtifact(
+      repoPath,
+      md,
+      advisor as unknown as Record<string, unknown>,
+      {
+        title: flags.title,
+        feature: flags.feature,
+        phase: flags.phase
+      }
+    );
+    return {
+      target: advisor.target?.sliceId || advisor.target?.runTitle || null,
+      recommendations: advisor.recommendations,
+      aggregateFlags: advisor.aggregateFlags || [],
+      baseline: advisor.baseline,
+      reportsAnalyzed: advisor.reports.length,
+      artifactPath: writePath
+    };
+  },
+  "cost-slice": ({ repoPath, flags }: CommandContext) => costSliceHandler({ repoPath, flags }),
+
+  // Read-only operator burn-watch (FEAT-194 S4). Rides existing cost-report
+  // artifacts + dispatch-timing.jsonl — no new telemetry pipeline.
+  "cost-watch": async ({ repoPath, flags }: CommandContext) => {
+    const { buildCostWatch, renderCostWatchReport } = await import("./lib/cost-watch.ts");
+    const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
+    const tokenCap = flags.tokenCap ? parseInt(flags.tokenCap, 10) : undefined;
+    const data = await buildCostWatch(repoPath, {
+      ...(limit !== undefined && Number.isFinite(limit) ? { limit } : {}),
+      ...(tokenCap !== undefined && Number.isFinite(tokenCap)
+        ? { perDispatchTokenCap: tokenCap }
+        : {})
+    });
+    return renderCostWatchReport(data);
+  },
+
+  "cost-setup": async ({ repoPath, flags }: CommandContext) => {
+    const { parseFeatureOverrides, runCostSetup } = await import("./lib/cost-setup.ts");
+    const featuresFlag = typeof flags.features === "string" ? flags.features : null;
+    const overrides = parseFeatureOverrides(featuresFlag);
+    return runCostSetup(repoPath, overrides);
+  },
+
+  "features-list": async () => {
+    const { listFeatures } = await import("./lib/features-service.ts");
+    return { features: listFeatures() };
+  },
+
+  "agent-stats": async ({ repoPath, flags }: CommandContext) => {
+    const { aggregateAgentStats, writeAgentStatsArtifact, windowSlug } = await import(
+      "./lib/agent-stats-aggregator.ts"
+    );
+
+    // Parse --window flag (default: last_n_slices:10 or env override).
+    const rawWindow =
+      flags.window ?? `last_n_slices:${process.env["CREW_AGENT_STATS_WINDOW"] ?? "10"}`;
+    const windowMatch = /^last_n_slices:(\d+)$/.exec(rawWindow);
+    if (!windowMatch) {
+      process.stderr.write(
+        `[crew] agent-stats: unsupported window spec "${rawWindow}". Expected last_n_slices:<N>.\n`
+      );
+      process.exit(2);
+    }
+    const n = parseInt(windowMatch[1] ?? "10", 10);
+    const window = { kind: "last_n_slices" as const, n };
+
+    // Optional agent filter.
+    const agentFilter = flags.agent ? [flags.agent] : undefined;
+
+    const rows = await aggregateAgentStats(
+      agentFilter ? { repo: repoPath, window, agents: agentFilter } : { repo: repoPath, window }
+    );
+    const artifactPath = await writeAgentStatsArtifact(repoPath, rows, window);
+
+    // Pretty-print table to stdout.
+    const slug = windowSlug(window);
+    const lines: string[] = [
+      `Agent stats — window: ${slug} (${rows.length} agent(s))`,
+      "",
+      "Agent".padEnd(30) +
+        "N".padStart(4) +
+        "  pass%".padStart(7) +
+        "  wallMs".padStart(9) +
+        "  tokens".padStart(9) +
+        "  rework%".padStart(10) +
+        "  valfail%".padStart(11) +
+        "  medDisp".padStart(10),
+      "-".repeat(90)
+    ];
+    for (const r of rows) {
+      lines.push(
+        r.agent.padEnd(30) +
+          String(r.sample_count).padStart(4) +
+          `  ${(r.pass_rate * 100).toFixed(1)}%`.padStart(7) +
+          `  ${r.mean_wall_ms}`.padStart(9) +
+          `  ${r.mean_tokens}`.padStart(9) +
+          `  ${(r.review_rework_rate * 100).toFixed(1)}%`.padStart(10) +
+          `  ${(r.validation_fail_rate * 100).toFixed(1)}%`.padStart(11) +
+          `  ${r.median_dispatches_to_pass}`.padStart(10)
+      );
+    }
+    lines.push("", `Artifact written: ${artifactPath}`);
+
+    // Print the table directly (not via JSON.stringify).
+    process.stdout.write(lines.join("\n") + "\n");
+    return artifactPath;
+  },
+
+  "agent-route": async ({ repoPath, flags }: CommandContext) => {
+    const { loadAgentRegistry, routeByTags } = await import("./lib/agent-registry.ts");
+    const registry = await loadAgentRegistry(repoPath);
+    const query: import("./lib/agent-registry.ts").RouteQuery = {};
+    if (flags.role) query.role = flags.role;
+    if (flags.surface) query.surface = flags.surface;
+    if (flags.stack) query.stack = flags.stack;
+    if (flags.concern) query.concern = flags.concern;
+    if (flags.lens) query.lens = flags.lens;
+    if (flags.scope) query.scope = flags.scope;
+    const matches = routeByTags(registry, query);
+    const askedFilters = Object.values(query).filter(Boolean).length;
+
+    const lines: string[] = [
+      `Agent route — query: ${askedFilters === 0 ? "(none — listing all)" : JSON.stringify(query)} (${matches.length} match(es))`,
+      "",
+      "Rank  Score  Agent".padEnd(60) + "Matched dimensions",
+      "-".repeat(110)
+    ];
+    matches.slice(0, 20).forEach((m, i) => {
+      lines.push(
+        `${String(i + 1).padStart(4)}  ${String(m.score).padStart(5)}  ${m.entry.name.padEnd(40)} ${m.matched.join(", ")}`
+      );
+    });
+    if (matches.length > 20) lines.push("", `... ${matches.length - 20} more not shown`);
+    process.stdout.write(lines.join("\n") + "\n");
+    return { registryCount: registry.length, matchCount: matches.length };
+  },
+
+  "gepa-history": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runGepaHistoryCmd } = await import("./lib/gepa/history.ts");
+    // Reconstruct raw-args array so history.ts can parse them uniformly.
+    const rawArgs: string[] = [...positionals];
+    if (flags.gepaSource) rawArgs.push("--source", flags.gepaSource);
+    if (flags.limit) rawArgs.push("--limit", flags.limit);
+    const result = await runGepaHistoryCmd(repoPath, rawArgs);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-corpus-sync": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runCorpusSyncCmd } = await import("./lib/gepa/corpus-sync.ts");
+    const rawArgs: string[] = [...positionals];
+    // --sibling takes a comma-separated list of repo roots (the single-value
+    // flag parser keeps only the last token, so siblings ride one flag).
+    if (typeof flags.sibling === "string" && flags.sibling) {
+      for (const s of flags.sibling
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)) {
+        rawArgs.push("--sibling", s);
+      }
+    }
+    if (flags.json === true) rawArgs.push("--json");
+    const result = await runCorpusSyncCmd(repoPath, rawArgs);
+    // Return-only: main console.log's the return value, so writing stdout here
+    // too would double-print (breaks `--json | jq`).
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trimEnd();
+  },
+
+  "gepa-corpus-report": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runCorpusReportCmd } = await import("./lib/gepa/corpus-report.ts");
+    const rawArgs: string[] = [...positionals];
+    if (flags.json === true) rawArgs.push("--json");
+    const result = await runCorpusReportCmd(repoPath, rawArgs);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trimEnd();
+  },
+
+  "gepa-corpus-optimize": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runCorpusOptimizeCmd } = await import("./lib/gepa/corpus-optimize.ts");
+    const rawArgs: string[] = [...positionals];
+    if (typeof flags.budget === "string" && flags.budget) rawArgs.push("--budget", flags.budget);
+    if (typeof flags.gepaK === "string" && flags.gepaK) rawArgs.push("--k", flags.gepaK);
+    const result = await runCorpusOptimizeCmd(repoPath, rawArgs);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trimEnd();
+  },
+
+  "gepa-eval": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runGepaEvalCmd } = await import("./lib/gepa/eval.ts");
+    const rawArgs: string[] = [...positionals];
+    if (flags.live === true) rawArgs.push("--live");
+    if (flags.validate === true) rawArgs.push("--validate");
+    if (typeof flags.judge === "string" && flags.judge) rawArgs.push("--judge", flags.judge);
+    if (typeof flags.split === "string" && flags.split) rawArgs.push("--split", flags.split);
+    const result = await runGepaEvalCmd(repoPath, rawArgs);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-mine-reviewer": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runMineReviewerBugCorpus } = await import("./lib/gepa/mine-reviewer-bug-corpus.ts");
+    // Reconstruct raw-args for the mining module's own parser.
+    const rawArgs: string[] = [...positionals];
+    if (typeof flags.weeks === "string" && flags.weeks) rawArgs.push("--weeks", flags.weeks);
+    if (typeof flags.out === "string" && flags.out) rawArgs.push("--out", flags.out);
+    const result = await runMineReviewerBugCorpus(repoPath, rawArgs);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-optimize": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runGepaOptimizeCmd } = await import("./lib/gepa/gepa-optimize-cmd.ts");
+    const rawArgs: string[] = [...positionals];
+    if (typeof flags.budget === "string" && flags.budget) rawArgs.push("--budget", flags.budget);
+    if (typeof flags.gepaK === "string" && flags.gepaK) rawArgs.push("--k", flags.gepaK);
+    if (typeof flags.split === "string" && flags.split) rawArgs.push("--split", flags.split);
+    if (flags.artifactOnly === true) rawArgs.push("--artifact-only");
+    const result = await runGepaOptimizeCmd(repoPath, rawArgs);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-resume": async ({ repoPath, positionals }: CommandContext) => {
+    const { runGepaResumeCmdExtended } = await import("./lib/gepa/gepa-killswitch-cmds.ts");
+    const result = await runGepaResumeCmdExtended(repoPath, positionals);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-invalidate": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runGepaInvalidateCmd } = await import("./lib/gepa/gepa-killswitch-cmds.ts");
+    const rawArgs: string[] = [...positionals];
+    if (typeof flags.agent === "string" && flags.agent) rawArgs.push("--agent", flags.agent);
+    if (typeof flags.since === "string" && flags.since) rawArgs.push("--since", flags.since);
+    if (typeof flags.tag === "string" && flags.tag) rawArgs.push("--tag", flags.tag);
+    const result = await runGepaInvalidateCmd(repoPath, rawArgs);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-revert": async ({ repoPath, flags, positionals }: CommandContext) => {
+    const { runGepaRevertCmd } = await import("./lib/gepa/gepa-killswitch-cmds.ts");
+    const rawArgs: string[] = [...positionals];
+    if (typeof flags.agent === "string" && flags.agent) rawArgs.push("--agent", flags.agent);
+    const result = await runGepaRevertCmd(repoPath, rawArgs);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  "gepa-thaw": async ({ repoPath, positionals }: CommandContext) => {
+    const { runGepaThawCmd } = await import("./lib/gepa/gepa-killswitch-cmds.ts");
+    const result = await runGepaThawCmd(repoPath, positionals);
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.exitCode !== 0) process.exit(result.exitCode);
+    return result.stdout.trim();
+  },
+
+  // FEAT-188 S3a — the CLI surface dispatch-assembly commands (build.md,
+  // fix.md, ship.md, orchestrate-slice.md) call to fetch a formatted recall
+  // block before dispatching a subagent. Best-effort: returns { block: "" }
+  // when memory/recall is disabled, no entries match, or anything fails.
+  "recall-block": async ({ repoPath, flags }: CommandContext) => {
+    const { buildRecallBlock } = await import("./lib/memory/inject-recall.ts");
+    const tags = splitCsv(flags.tags);
+    // #159: --project accepts a comma-list (OR-composed, FEAT-423), same
+    // convention as --tags. Omitted -> buildRecallBlock falls back to the
+    // configured memory.project in .claude/loop.json.
+    const projects = splitCsv(flags.project);
+    const project: string | string[] | undefined =
+      projects.length > 1 ? projects : (projects[0] ?? undefined);
+    const block = await buildRecallBlock({
+      repoPath,
+      ...(typeof flags.agent === "string" && flags.agent ? { agent: flags.agent } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
+      ...(project !== undefined ? { project } : {})
+    });
+    return { block };
+  },
+
+  // Agent-profile load: records the injected atom ids for later feedback
+  // (when --run-id is given) and returns the `## Your track record (<agent>)`
+  // block. Injection responsibility is governed by memory.profile.injectVia:
+  //   - "hook" (DEFAULT): the SubagentStart hook injects the block
+  //     deterministically, so this CLI returns an EMPTY block — the command-md
+  //     dispatch paths omit an empty block, avoiding a double-injection while
+  //     the sidecar is still recorded for outcome-feedback.
+  //   - "command": returns the real block, for clients WITHOUT the dispatch
+  //     hook (the orchestrator appends it itself).
+  //
+  // Dispatch-memory-credit-loop (runner-plugin upstream request 2026-07-16):
+  // resolves through buildHandoffDigest, not buildProfileBlock directly, so
+  // this CLI surface gets the same recall-with-ids extension the SubagentStart
+  // hook gets (extending the seam, not forking a parallel one). Byte-identical
+  // to the pre-existing behavior when `memory.feedback.creditLoop.enabled` is false
+  // (default) — see handoff-digest.ts.
+  "profile-block": async ({ repoPath, flags }: CommandContext) => {
+    const { buildHandoffDigest } = await import("./lib/memory/handoff-digest.ts");
+    const { loadMemoryConfig } = await import("./lib/memory/inject-recall.ts");
+    const { writeInjectedAtoms } = await import("./lib/memory/injected-atoms.ts");
+    const agent = typeof flags.agent === "string" ? flags.agent : "";
+    if (!agent) return { block: "", injectedIds: [] };
+    const projects = splitCsv(flags.project);
+    const project: string | string[] | undefined =
+      projects.length > 1 ? projects : (projects[0] ?? undefined);
+    const { block, ids: injectedIds } = await buildHandoffDigest({
+      repoPath,
+      agent,
+      ...(project !== undefined ? { project } : {})
+    });
+    if (typeof flags.runId === "string" && flags.runId) {
+      await writeInjectedAtoms(repoPath, flags.runId, injectedIds);
+    }
+    const rawMemory = await loadMemoryConfig(repoPath);
+    const injectVia = (rawMemory as { profile?: { injectVia?: unknown } } | undefined)?.profile
+      ?.injectVia;
+    return { block: injectVia === "command" ? block : "", injectedIds };
+  },
+
+  // Outcome-gated positive-only feedback for a run's profile-injected atoms.
+  "profile-feedback": async ({ repoPath, flags }: CommandContext) => {
+    const { submitOutcomeFeedback } = await import("./lib/memory/profile-feedback.ts");
+    const runId = typeof flags.runId === "string" ? flags.runId : "";
+    const outcome = flags.outcome === "pass" ? "pass" : "fail";
+    if (!runId) return { credited: [] };
+    return submitOutcomeFeedback({ repoPath, runId, outcome });
+  },
+
+  // FEAT-188 S5 — read-only diagnostic comparing JSONL entries within a
+  // window against astramem's recall() results (S4 accepted-risk note: the
+  // dual-write fan-out is best-effort, so a silent astramem failure can leave
+  // the JSONL derived-duplicate MORE complete than astramem's source of
+  // truth). Never writes to astramem — surfaces candidates for an operator
+  // to reconcile manually.
+  "memory-drift-check": async ({ repoPath, flags }: CommandContext) => {
+    const { resolveAstramemRemote } = await import("@astragenie/memory-provider");
+    const { checkDrift } = await import("./lib/memory/drift-check.ts");
+    const remote = await resolveAstramemRemote();
+    if (!remote) {
+      return {
+        paired: false,
+        message: "astramem is unpaired — no drift check possible (nothing to compare against)."
+      };
+    }
+    const windowDays = typeof flags.window === "string" ? Number(flags.window) : undefined;
+    const report = await checkDrift(repoPath, remote, {
+      ...(windowDays !== undefined && Number.isFinite(windowDays) ? { windowDays } : {})
+    });
+    return { paired: true, provider: remote.name, ...report };
+  },
+
+  // FEAT-194 S2 — resolves the model tier an interactive dispatch (Agent-tool
+  // `model:` argument) should pass explicitly instead of inheriting the
+  // session model. Reads .claude/loop.json loop.modelRouting (missing/invalid
+  // file is non-fatal — treated as "no routing configured", which resolves to
+  // the opus fallback). Pure resolution logic lives in
+  // ./lib/models/resolve-model.ts; this handler owns the one bit of I/O.
+  //
+  // FEAT-194 S1 — gated behind the crew.json features["model-routing"]
+  // toggle (default on), read via features-service.ts's isEnabled() —
+  // the same helper the other three crew.json feature flags
+  // (redundant-read-stop/subagent-inline-warn/shell-preflight) use. When
+  // the operator flips it off (or sets loop.modelRouting.enabled: false),
+  // routing is bypassed entirely and the sentinel "inherit" is printed:
+  // the dispatcher must then OMIT the Agent-tool `model:` argument so the
+  // agent's own `model:` frontmatter (agents/*.md) governs.
+  "resolve-model": async ({ repoPath, flags }: CommandContext) => {
+    const phase = typeof flags.phase === "string" ? flags.phase : null;
+    if (!phase) {
+      throw new Error("resolve-model refused: --phase <build|architect|...> is required.");
+    }
+    const shape = typeof flags.shape === "string" ? flags.shape : null;
+    const { resolveDispatchModel } = await import("./lib/models/resolve-model.ts");
+    const { isEnabled, readCrewConfig } = await import("./lib/features-service.ts");
+    const fs = await import("node:fs/promises");
+    const pathMod = await import("node:path");
+    let config: { loop?: { modelRouting?: Record<string, string> } } | null = null;
+    try {
+      const raw = await fs.readFile(pathMod.join(repoPath, ".claude", "loop.json"), "utf8");
+      config = JSON.parse(raw);
+    } catch {
+      config = null;
+    }
+    const crewConfig = await readCrewConfig(repoPath);
+    const modelRoutingEnabled = isEnabled("model-routing", crewConfig);
+    return resolveDispatchModel(phase, shape, config, modelRoutingEnabled) ?? "inherit";
+  }
+};
+
+export async function runCrew(argv: string[]): Promise<{ code: number; output: string }> {
+  try {
+    const { command, helpTarget, flags, positionals } = parseArgs(argv);
+    const repoPath = path.resolve(normalizeMsysPath(flags.repo));
+
+    if (command === "help") {
+      return { code: 0, output: usage(helpTarget) };
+    }
+
+    const handler = (COMMANDS as Record<string, (ctx: CommandContext) => Promise<unknown>>)[
+      command
+    ];
+    if (!handler) {
+      return { code: 1, output: `Unknown command: ${command}` };
+    }
+
+    const result = await handler({ repoPath, flags, positionals });
+    // String results are printed as-is (e.g. file paths); everything else is JSON.
+    const output = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+    return { code: 0, output };
+  } catch (error) {
+    return { code: 1, output: (error as Error).message };
+  }
+}
+
+async function main() {
+  const { code, output } = await runCrew(process.argv.slice(2));
+  if (code === 0) {
+    console.log(output);
+  } else {
+    console.error(output);
+    process.exitCode = 1;
+  }
+}
+
+const isDirectRun =
+  process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isDirectRun) {
+  void main();
+}

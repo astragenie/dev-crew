@@ -1,0 +1,152 @@
+---
+name: ux-validation
+prompt_id: ux-validation
+version: 1.0.0
+tier: workflow
+description: Auto-triggered by crew:verifier when slice tags include surface:ui, concern:ux, or concern:accessibility. Drives Playwright via gstack:/qa, axe-core accessibility scan, console+404 scrape, and visual regression diff. Returns raw evidence; dispatcher pivots per routing-table.
+triggers: ["surface:ui", "concern:ux", "concern:accessibility", "validation phase UI"]
+owner: verifier
+last_reviewed: 2026-06-04
+---
+
+# UX Validation Gate
+
+> **⚠️ DISABLED — gstack `/qa` Playwright path is unstable and could
+> exit the current repo context.** Do NOT invoke `/qa`. Validator must
+> emit `validation_skipped --note "ux-validation gate disabled —
+> gstack /qa unstable cross-repo; use local browser harness"` for
+> matching slices, or run a local `bun test --parallel <ui-test>` and
+> record `gstack: unavailable — fell back to local harness` in
+> `--evidence`. Screenshot/axe/console/network evidence will be missing
+> until the cross-repo stability issue is resolved.
+
+Use when crew:verifier is dispatched on a slice whose FEAT
+frontmatter `tags:` array intersects with `{surface:ui, concern:ux,
+concern:accessibility}`. Otherwise the standard validator flow
+applies — this skill is silent.
+
+The skill orchestrates a single Playwright run via gstack `/qa` and
+returns raw evidence in four check categories. It does not interpret
+results or recommend a pivot target. The dispatcher reads the validation
+result + `ux-evidence.json` and pivots per
+`docs/routing-table.md` rows 84, 95, 39, 45.
+
+## When to Use
+
+Detect at validator slice-start:
+
+1. Read `tags:` from the slice's linked FEAT frontmatter.
+2. If the intersection with `{surface:ui, concern:ux,
+   concern:accessibility}` is empty → exit; standard validator flow
+   runs.
+3. Otherwise → continue with this skill.
+
+## Procedure
+
+1. **Extract acceptance criteria.** Call
+   `extractACs(sliceFileContent)` from
+   `scripts/lib/ux-validation/`. If the returned array is empty,
+   write `validation_skipped --note no_acceptance_criteria_in_slice`
+   and exit. Authoring bug — dispatcher routes to slice author.
+
+2. **Classify + translate scenarios.** For each AC, call
+   `classifyScenario(ac.text)`. ACs returning `non_ui_ac` are kept
+   for evidence but excluded from `/qa` scenarios. Build the scenario
+   list as `{id, verb, target, expect}` shapes (derive `target` /
+   `expect` from AC text via the verb position; when ambiguous,
+   pass the raw AC text as both `target` and `expect`).
+
+2.5. **Build journey.** Call `buildJourney(acs, sliceContent)` from
+   `scripts/lib/ux-validation/journey-builder.mjs`. If the result is
+   `[]` (< 2 steps or no UI ACs), skip journey mode and proceed with
+   the existing per-AC `scenarios` list from Step 2. Otherwise store
+   the result as `scenario_chain` and pass it to `buildQaInvocation`
+   at Step 4 in place of `scenarios`.
+
+3. **Discover the consumer-repo Playwright URL.** Call
+   `discoverPlaywrightConfig(repoPath)`. If `null`, write
+   `validation_skipped --note playwright_not_configured` and exit.
+   Soft skip — no failure.
+
+4. **Build + run `/qa` invocation.** Call
+   `buildQaInvocation({url, scenarios, baselineDir, outputPath, scenario_chain})`
+   with:
+   - `url`: from step 3
+   - `scenarios`: from step 2 (UI ACs only) — used when journey mode is inactive
+   - `scenario_chain`: from step 2.5 (ordered journey steps) — when present, passed to `buildQaInvocation` instead of `scenarios`
+   - `baselineDir`: `tests/playwright/baselines/`
+   - `outputPath`:
+     `.claude/artifacts/crew/validations/<timestamp>-ux-evidence.json`
+
+   Execute via Bash. `/qa` writes the evidence JSON to `outputPath`.
+
+5. **Compute verdict.** Read the evidence JSON. Call
+   `computeVerdict(evidence)` from
+   `scripts/lib/ux-validation/`. Result is one of `passed`,
+   `passed_with_notes`, `failed`.
+
+6. **Write validation-result.** Call:
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result \
+     --repo "$PWD" \
+     --title "UX validation gate: <slice-id>" \
+     --decision <verdict> \
+     --environment local \
+     --goal "<from slice objective>" \
+     --summary "<one-line>" \
+     --evidence "<relative path to ux-evidence.json>" \
+     --files "<changed UI files from slice>" \
+     --risks "<residual or none>" \
+     --next "dispatcher routes per docs/routing-table.md"
+   ```
+
+   The body should NOT interpret results. List counts only:
+   screenshots captured, a11y violations by severity, console
+   errors, network failures, visual diffs over tolerance.
+
+7. **Mark badge.**
+   - `passed` or `passed_with_notes` → `mark-badge --badge
+     validation_passed` (add `--note "<count> minor issues"` for
+     notes case).
+   - `failed` → `mark-badge --badge validation_failed --note
+     "<short failure summary>"`.
+
+8. **Return to dispatcher.** Hand back the validation-result artifact path
+   + 1-sentence headline. Lead reads + decides pivot.
+
+## Skip + error cases
+
+| Condition | Action |
+|---|---|
+| Tag intersection empty | Exit silently; standard validator runs |
+| AC extractor returns `[]` | `validation_skipped --note no_acceptance_criteria_in_slice` |
+| Playwright config not discovered | `validation_skipped --note playwright_not_configured` |
+| `/qa` skill not available | `validation_skipped --note "gstack:/qa not available — install gstack plugin"` |
+| `/qa` exits non-zero | `validation_failed --note qa_timeout` (or actual error) |
+| `/qa` writes no output file | `validation_failed --note qa_no_output` |
+
+## Pivot signal (dispatcher reads, NOT skill)
+
+The skill returns raw evidence. Pivot decision lives in
+`docs/routing-table.md`. Per-category mapping:
+
+| Failure category | Pivot |
+|---|---|
+| `ac_results[*].status == fail` | row 84 → `/crew:fix` |
+| `a11y.violations[*]` serious/critical | row 84 + `concern:accessibility` skill set |
+| `console.errors[*]` | row 95 → `gstack:/investigate` |
+| `visual.diffs[*]` over tolerance | row 84 → `/crew:fix` + ui/react-engineering |
+| `network.failures[*]` | row 84 → `/crew:fix` |
+| Multiple categories | dispatcher splits per Pre-dispatch decomposition rule |
+
+## Done
+
+Skill exits successfully when one of these terminal states is reached:
+
+- **passed:** validation-result written with `decision: passed`, badge `validation_passed` marked, control returned to dispatcher.
+- **passed_with_notes:** validation-result written with `decision: passed_with_notes`, badge `validation_passed` marked with note count, control returned to dispatcher.
+- **failed:** validation-result written with `decision: failed`, badge `validation_failed` marked with short failure summary, control returned to dispatcher (who pivots per the routing-table mapping above).
+- **skipped:** any condition from the Skip + error cases table — badge `validation_skipped` marked with the documented note, control returned to dispatcher.
+
+The skill never amends prior validation artifacts and never recommends a pivot target. Done means evidence + verdict + badge are all written and the dispatcher has the artifact path.
