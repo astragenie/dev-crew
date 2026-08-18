@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-18T21:36:20.860Z",
+  "updatedAt": "2026-08-18T21:53:23.162Z",
   "currentRun": {
-    "title": "FEAT001 SLICE02: Disposition in-flight FEATs 230/259/284/299",
+    "title": "FEAT001 SLICE03: 28-FEAT bucket sweep, worktree salvage, baseline tags",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-18T21:24:56.660Z",
-    "updatedAt": "2026-08-18T21:36:20.859Z",
-    "next": "SLICE-03 owns AC-3 (28-triaged-FEAT three-bucket sweep, moot/carry/defer), AC-4 (stale worktree branch salvage-or-delete: backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073), and AC-5 (pre-devcrew-baseline tags in both repos).",
+    "startedAt": "2026-08-18T21:41:24.343Z",
+    "updatedAt": "2026-08-18T21:53:23.161Z",
+    "next": "batch-intake the 26 carry-id FEATs into dev-crew backlog; decide disposition of dev-team's salvage branch before the import phase",
     "gates": {
       "review": null,
       "validation": null,
@@ -22,9 +22,9 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T212456Z-run-brief-feat001-slice02-disposition-in-flight-feats-230-259-284-299.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T214124Z-run-brief-feat001-slice03-28-feat-bucket-sweep-worktree-salvage-baseli.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T213620Z-handoff-slice-02-disposition-in-flight-feats-230-259-284-295-296-297.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T215323Z-handoff-slice-03-28-feat-bucket-sweep-worktree-salvage-baseline-tags.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
@@ -37,6 +37,42 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT001 SLICE02: Disposition in-flight FEATs 230/259/284/299",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-18T21:24:56.660Z",
+      "updatedAt": "2026-08-18T21:36:20.859Z",
+      "completedAt": "2026-08-18T21:36:20.859Z",
+      "next": "SLICE-03 owns AC-3 (28-triaged-FEAT three-bucket sweep, moot/carry/defer), AC-4 (stale worktree branch salvage-or-delete: backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073), and AC-5 (pre-devcrew-baseline tags in both repos).",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T212456Z-run-brief-feat001-slice02-disposition-in-flight-feats-230-259-284-299.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T213620Z-handoff-slice-02-disposition-in-flight-feats-230-259-284-295-296-297.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT001 SLICE01: Merge wave-1 reviewed branches to runner main",
       "goal": "",
