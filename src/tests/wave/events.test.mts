@@ -1,0 +1,71 @@
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { appendWaveEvent, readWaveEvents, waveEventsPath } from "../../scripts/lib/wave/events.mjs";
+
+let tmp: string;
+
+beforeEach(() => {
+  tmp = mkdtempSync(join(tmpdir(), "wave-events-"));
+});
+
+afterEach(() => {
+  rmSync(tmp, { recursive: true, force: true });
+});
+
+describe("appendWaveEvent + readWaveEvents", () => {
+  test("creates directory + appends one event line", async () => {
+    const root = ".claude/artifacts/loop/waves";
+    await appendWaveEvent(tmp, root, {
+      type: "wave_started",
+      waveId: "w-1",
+      timestamp: "2026-06-14T00:00:00Z"
+    });
+    expect(existsSync(waveEventsPath(tmp, root, "w-1"))).toBe(true);
+    const events = readWaveEvents(tmp, root, "w-1");
+    expect(events).toHaveLength(1);
+    expect(events[0]!.type).toBe("wave_started");
+  });
+
+  test("appends multiple events in order", async () => {
+    const root = ".claude/artifacts/loop/waves";
+    await appendWaveEvent(tmp, root, {
+      type: "wave_started",
+      waveId: "w-2",
+      timestamp: "2026-06-14T00:00:00Z"
+    });
+    await appendWaveEvent(tmp, root, {
+      type: "plan_built",
+      waveId: "w-2",
+      timestamp: "2026-06-14T00:00:01Z",
+      size: 3,
+      rejectedCount: 1
+    });
+    await appendWaveEvent(tmp, root, {
+      type: "wave_completed",
+      waveId: "w-2",
+      timestamp: "2026-06-14T00:00:02Z",
+      haltReason: null,
+      durationMs: 2000,
+      passCount: 3,
+      failCount: 0
+    });
+    const events = readWaveEvents(tmp, root, "w-2");
+    expect(events).toHaveLength(3);
+    expect(events.map((e) => e.type)).toEqual(["wave_started", "plan_built", "wave_completed"]);
+  });
+
+  test("readWaveEvents returns [] when file missing", () => {
+    expect(readWaveEvents(tmp, ".claude/artifacts/loop/waves", "missing")).toEqual([]);
+  });
+
+  test("appendWaveEvent returns false on bad path (does not throw)", async () => {
+    const ok = await appendWaveEvent("\0bad", "x", {
+      type: "wave_started",
+      waveId: "w-3",
+      timestamp: "2026-06-14T00:00:00Z"
+    });
+    expect(ok).toBe(false);
+  });
+});

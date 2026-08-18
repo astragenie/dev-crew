@@ -1,0 +1,170 @@
+{
+  "staleDays": 30,
+  "competitors": [
+    {
+      "slug": "aider",
+      "name": "Aider",
+      "suggested_sources": [
+        "https://github.com/Aider-AI/aider",
+        "https://aider.chat/docs/usage/commands.html",
+        "https://aider.chat/docs/config/options.html",
+        "https://aider.chat/docs/usage/lint-test.html",
+        "https://aider.chat/docs/usage/modes.html",
+        "https://aider.chat/docs/repomap.html",
+        "https://aider.chat/docs/git.html",
+        "https://aider.chat/docs/install.html",
+        "https://aider.chat/docs/more/analytics.html"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "crewai",
+      "name": "CrewAI",
+      "suggested_sources": [
+        "https://github.com/crewAIInc/crewAI",
+        "https://docs.crewai.com/introduction",
+        "https://docs.crewai.com/concepts/agents",
+        "https://docs.crewai.com/concepts/tasks",
+        "https://docs.crewai.com/concepts/crews",
+        "https://docs.crewai.com/concepts/flows",
+        "https://docs.crewai.com/concepts/memory",
+        "https://docs.crewai.com/concepts/training",
+        "https://docs.crewai.com/concepts/llms",
+        "https://docs.crewai.com/concepts/planning",
+        "https://docs.crewai.com/installation",
+        "https://github.com/crewAIInc/crewAI/releases"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "cursor-agents",
+      "name": "Cursor agents",
+      "suggested_sources": [
+        "https://cursor.com/docs/agent/overview",
+        "https://cursor.com/docs/agent/plan-mode",
+        "https://cursor.com/docs/rules",
+        "https://cursor.com/changelog/1-0",
+        "https://cursor.com/changelog/2-5",
+        "https://cursor.com/changelog",
+        "https://cursor.com/blog/agent-sandboxing",
+        "https://cursor.com/blog/agent-best-practices",
+        "https://cursor.com/features",
+        "https://cursor.com/pricing"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "devin-swe-agent",
+      "name": "Devin / SWE-Agent",
+      "suggested_sources": [
+        "https://github.com/SWE-agent/SWE-agent",
+        "https://swe-agent.com/latest/usage/cl_tutorial/",
+        "https://cognition.ai/blog",
+        "https://cognition.ai/blog/what-we-learned-building-cloud-agents",
+        "https://cognition.ai/blog/closing-the-agent-loop-devin-autofixes-review-comments"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "github-copilot-workspace",
+      "name": "GitHub Copilot Workspace / GitHub Copilot App",
+      "suggested_sources": [
+        "https://githubnext.com/projects/copilot-workspace/",
+        "https://github.com/githubnext/copilot-workspace-user-manual/blob/main/overview.md",
+        "https://github.blog/news-insights/product-news/github-copilot-workspace/",
+        "https://github.blog/changelog/2026-05-14-github-copilot-app-is-now-available-in-technical-preview/",
+        "https://github.blog/changelog/2026-06-02-expanded-technical-preview-availability-for-the-github-copilot-app/",
+        "https://github.blog/changelog/2024-12-30-expanding-access-to-the-github-copilot-workspace-technical-preview/"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "gstack",
+      "name": "gstack",
+      "suggested_sources": [
+        "https://github.com/garrytan/gstack"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "langgraph",
+      "name": "LangGraph",
+      "suggested_sources": [
+        "https://github.com/langchain-ai/langgraph",
+        "https://docs.langchain.com/oss/python/langgraph/overview",
+        "https://docs.langchain.com/oss/python/langgraph/interrupts",
+        "https://docs.langchain.com/oss/python/langgraph/memory",
+        "https://docs.langchain.com/oss/python/langgraph/durable-execution"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "openhands",
+      "name": "OpenHands",
+      "suggested_sources": [
+        "https://github.com/All-Hands-AI/OpenHands",
+        "https://docs.openhands.dev/",
+        "https://docs.openhands.dev/sdk/arch/overview",
+        "https://docs.openhands.dev/llms.txt",
+        "https://github.com/OpenHands/software-agent-sdk",
+        "https://deepwiki.com/OpenHands/software-agent-sdk/3.3-sub-agent-delegation-and-task-management",
+        "https://deepwiki.com/OpenHands/software-agent-sdk/2.1-sdk-package-(openhands-sdk)",
+        "https://arxiv.org/html/2511.03690v2",
+        "https://www.openhands.dev/blog/openhands-product-update---may-2026"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "qodo",
+      "name": "Qodo (PR-Agent / Qodo Merge / Qodo Command / Qodo Gen)",
+      "suggested_sources": [
+        "https://github.com/Codium-ai/pr-agent",
+        "https://docs.qodo.ai/code-review",
+        "https://docs.qodo.ai/qodo-command/features/multi-agent-workflows-in-qodo-cli-tool",
+        "https://github.com/qodo-ai/command",
+        "https://www.qodo.ai/features/qodo-cli/",
+        "https://www.qodo.ai/features/qodo-ide/",
+        "https://www.qodo.ai/",
+        "https://www.qodo.ai/blog/introducing-qodo-gen-cli-build-run-and-automate-agents-anywhere-in-your-sdlc/",
+        "https://www.qodo.ai/blog/why-we-chose-langgraph-again-to-power-qodo-gen-cli/",
+        "https://plugins.jetbrains.com/plugin/21206-qodo"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "superpowers",
+      "name": "superpowers",
+      "suggested_sources": [
+        "https://github.com/obra/superpowers"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    },
+    {
+      "slug": "windsurf",
+      "name": "Windsurf (Codeium, now Cognition)",
+      "suggested_sources": [
+        "https://windsurf.com/windsurf",
+        "https://docs.devin.ai/desktop/",
+        "https://docs.devin.ai/desktop/cascade/workflows",
+        "https://docs.devin.ai/desktop/cascade/memories",
+        "https://devin.ai/desktop",
+        "https://www.digitalapplied.com/blog/windsurf-2-deep-dive-cascade-agents-flows-2026",
+        "https://vibecoding.app/blog/windsurf-review",
+        "https://www.nxcode.io/resources/news/cognition-windsurf-acquisition-swe-1-5-codemaps-2026",
+        "https://devin.ai/blog/windsurf-pricing-plans"
+      ],
+      "last_audited": "2026-05-28",
+      "last_audit_dir": "docs/research/2026-05-28-competitor-gap-audit"
+    }
+  ]
+}

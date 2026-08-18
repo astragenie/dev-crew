@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/tool-call.schema.json",
+  "title": "ToolCallPayload",
+  "type": "object",
+  "required": ["sliceId", "agent", "toolName", "ts"],
+  "properties": {
+    "sliceId": { "type": "string" },
+    "agent": { "type": "string" },
+    "toolName": { "type": "string" },
+    "argsJson": { "type": "string" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "ts": { "type": "string", "format": "date-time" }
+  }
+}

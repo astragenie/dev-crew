@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/spec-created.schema.json",
+  "title": "SpecCreatedPayload",
+  "type": "object",
+  "required": ["specId", "createdAt"],
+  "properties": {
+    "specId": { "type": "string" },
+    "featId": { "type": ["string", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

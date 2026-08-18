@@ -1,0 +1,697 @@
+import { existsSync } from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.mjs";
+import { findFeatureById } from "./backlog-writer.mjs";
+import { renderIdentification } from "./slice-linker.mjs";
+import { findSpecById } from "./spec-parser.mjs";
+import {
+  gradesRoot,
+  findGradeFileForSlice,
+  parseScoresFromBody,
+  parseDecisionsFromBody,
+  validateScores,
+  isAllZeroScores,
+  detectPlaceholders
+} from "./grade-parser.mjs";
+import { locateSliceFile, slicesRoot as resolveSlicesRoot, ensureDir } from "./paths.mjs";
+import { buildArtifactSlug } from "./artifact-naming.mjs";
+import { appendGradeEvent } from "./grade-jsonl-writer.mjs";
+import { fanoutEnvelope } from "./webhook-fanout.mjs";
+import { isFeatureEnabled } from "./features-service.mjs";
+import { parseListSection } from "./lessons-feed.mjs";
+
+// FEAT-219/SLICE-1b: agent role attributed to grade-derived memory (decisions,
+// notes). Grade knowledge is produced by the slice's implementer, so it is
+// tagged crew:builder for agent-scoped recall. (Lessons flow through
+// learnings.mts and are tagged there in a follow-up.)
+const GRADE_AGENT_TYPE = "crew:builder";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+// Support two execution layouts:
+// 1. Emitted (scripts/ tree): scripts/lib/ → templates
+// 2. Direct (src/ tree): src/scripts/lib/ → templates (fallback)
+let templateDir = path.resolve(scriptDir, "..", "..", "templates");
+if (!existsSync(templateDir)) {
+  templateDir = path.resolve(scriptDir, "..", "..", "..", "templates");
+}
+
+async function readTemplate(rel: string) {
+  return fs.readFile(path.join(templateDir, rel), "utf8");
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Build a UTC timestamp string in the crew artifact format: YYYYMMDDTHHMMSSz
+function utcTimestamp() {
+  return new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
+}
+
+// Build the full path for a new grade file using the artifact naming convention.
+// Format: <gradesRoot>/<TS>-<slug>-grade.md
+// where slug = [phaseN-][featNNN-]sliceNN (via buildArtifactSlug).
+function newGradeFilePath(
+  repoRoot: string,
+  sliceId: string,
+  {
+    featureId,
+    phase,
+    config
+  }: { featureId?: string | null; phase?: string | null; config?: Record<string, any> | null } = {}
+) {
+  const slug = buildArtifactSlug({ featureId: featureId || null, phase: phase || null, sliceId });
+  const filename = `${utcTimestamp()}-${slug}-grade.md`;
+  return path.join(gradesRoot(repoRoot, config), filename);
+}
+
+async function findSliceFile(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null
+) {
+  const slicesRootDir = resolveSlicesRoot(repoPath, config);
+  return locateSliceFile(slicesRootDir, sliceId);
+}
+
+// Resolves feature/spec/phase/target_release for the prefill block. Each
+// field walks through whichever level (slice → feature → spec) carries it.
+async function readSlicePrefillFields(sliceFile: string | null) {
+  if (!sliceFile) return { featureId: null, phase: null, targetRelease: null };
+  const content = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter } = parseFrontmatter(content);
+  return {
+    featureId: frontmatter.feature || null,
+    phase: frontmatter.phase || null,
+    targetRelease: frontmatter.target_release || null
+  };
+}
+
+async function readFeaturePrefill(
+  repoPath: string,
+  featureId: string | null,
+  config: Record<string, any> | null
+) {
+  if (!featureId) return { specId: null, targetRelease: null };
+  const feat = await findFeatureById(repoPath, featureId, config);
+  if (!feat) return { specId: null, targetRelease: null };
+  const df = feat.frontmatter.derived_from;
+  return {
+    specId: (Array.isArray(df) ? df[0] : df) || null,
+    targetRelease: feat.frontmatter.target_release || null
+  };
+}
+
+async function resolveGradePrefill(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null
+) {
+  const sliceFile = await findSliceFile(repoPath, sliceId, config);
+  const fromSlice = await readSlicePrefillFields(sliceFile);
+  const fromFeature = await readFeaturePrefill(repoPath, fromSlice.featureId, config);
+  let targetRelease = fromSlice.targetRelease || fromFeature.targetRelease || null;
+  if (fromFeature.specId && !targetRelease) {
+    const spec = await findSpecById(repoPath, fromFeature.specId, config);
+    if (spec?.frontmatter?.target_release) targetRelease = spec.frontmatter.target_release;
+  }
+  return {
+    featureId: fromSlice.featureId,
+    specId: fromFeature.specId,
+    phase: fromSlice.phase,
+    targetRelease
+  };
+}
+
+function applyInferredScores(tpl: string, inference: Record<string, any>) {
+  let out = tpl;
+  for (const [dim, value] of Object.entries(inference.scores as Record<string, any>)) {
+    const fixed = value.toFixed(2);
+    out = out.replace(new RegExp(`^(  ${dim}): 0$`, "m"), `$1: ${fixed}`);
+    out = out.replace(new RegExp(`(- ${dim}): 0\\.00`), `$1: ${fixed}`);
+  }
+  if (Object.keys(inference.scores).length > 0) {
+    const sourceLines = Object.entries(inference.sources as Record<string, any>)
+      .map(([dim, srcs]) => `- ${dim}: ${srcs.join(", ")}`)
+      .join("\n");
+    out = out.replace(
+      "(Update both the frontmatter `scores:` map and this list. The frontmatter\nis what plugin commands read; the list is for human review.)",
+      `(Scores prefilled from crew artifacts where signals were available. Override any value if your honest assessment differs.)\n\n### Inference sources\n\n${sourceLines}`
+    );
+  }
+  return out;
+}
+
+function patchGradeFrontmatter(
+  tpl: string,
+  {
+    featureId,
+    specId,
+    phase,
+    targetRelease
+  }: {
+    featureId: string | null;
+    specId: string | null;
+    phase: string | null;
+    targetRelease: string | null;
+  }
+) {
+  return tpl
+    .replace(/GRADE-SLICE-NN/g, `GRADE-${tpl.match(/SLICE-\d+/)?.[0] || "SLICE-NN"}`)
+    .replace(/^(spec):\s*null/m, `$1: ${specId || "null"}`)
+    .replace(/^(phase):\s*null/m, `$1: ${phase ?? "null"}`)
+    .replace(/^(target_release):\s*null/m, `$1: ${targetRelease || "null"}`)
+    .replace(/^(feature):\s*FEAT-NNN/m, `$1: ${featureId || "null"}`);
+}
+
+export async function createGradeFile(
+  repoPath: string,
+  sliceId: string,
+  { config = null }: Record<string, any> = {}
+) {
+  if (!sliceId) throw new Error("createGradeFile requires sliceId");
+
+  // Check for an existing grade file (legacy or new format) before creating.
+  const existing = await findGradeFileForSlice(repoPath, sliceId, config);
+  if (existing) {
+    return { gradePath: existing, created: false };
+  }
+  await ensureDir(gradesRoot(repoPath, config));
+
+  const { inferScoresForSlice } = await import("./score-inference.mjs");
+  const [prefill, inference] = await Promise.all([
+    resolveGradePrefill(repoPath, sliceId, config),
+    inferScoresForSlice(repoPath, sliceId)
+  ]);
+
+  // Build the new timestamped filename using the artifact naming convention.
+  const target = newGradeFilePath(repoPath, sliceId, {
+    featureId: prefill.featureId,
+    phase: prefill.phase,
+    config
+  });
+
+  let tpl = await readTemplate("grades/grade-template.md");
+  tpl = tpl
+    .replace(/GRADE-SLICE-NN/g, `GRADE-${sliceId}`)
+    .replace(/SLICE-NN: <title>/g, `${sliceId}: <fill title>`)
+    .replace(/\bSLICE-NN\b/g, sliceId)
+    .replace(/FEAT-NNN/g, prefill.featureId || "null")
+    .replace(/YYYY-MM-DD/g, today());
+  tpl = applyInferredScores(tpl, inference);
+  tpl = patchGradeFrontmatter(tpl, prefill);
+
+  // Inject identification line after the H1 heading (first `# …` line in the body)
+  const id = renderIdentification(prefill.phase, prefill.featureId, sliceId);
+  if (id) {
+    tpl = tpl.replace(/(^# .+$)/m, `$1\n\n${id}`);
+  }
+
+  await fs.writeFile(target, tpl);
+  return {
+    gradePath: target,
+    created: true,
+    prefilled: prefill
+  };
+}
+
+// Write back the grade after agent edits: validate scores, extract DEC-TBD
+// blocks into docs/decisions/, replace TBD ids in grade body with allocated
+// ids, update frontmatter `decisions: [DEC-NNN, ...]`. Idempotent.
+export async function writeGrade(
+  repoPath: string,
+  sliceId: string,
+  { config = null }: Record<string, any> = {}
+) {
+  // Locate the grade file regardless of format (new timestamped or legacy).
+  const target = await findGradeFileForSlice(repoPath, sliceId, config);
+  if (!target) {
+    throw new Error(`Grade file not found for ${sliceId}`);
+  }
+  const content = await fs.readFile(target, "utf8");
+  const { frontmatter, body } = parseFrontmatter(content);
+  const scores = parseScoresFromBody(body);
+  const scoreErrors = validateScores(scores);
+  if (scoreErrors.length > 0) {
+    const err = new Error(
+      `Score validation failed:\n  - ${scoreErrors.join("\n  - ")}`
+    ) as NodeJS.ErrnoException;
+    err.code = "SCORE_VALIDATION";
+    throw err;
+  }
+
+  // FEAT-145: Check for unfilled/template grades (all-zero scores or placeholder text)
+  const allZeroErrors: string[] = [];
+  if (isAllZeroScores(scores)) {
+    allZeroErrors.push("All score dimensions are 0 (unfilled template)");
+  }
+  const placeholders = detectPlaceholders(body);
+  if (placeholders.length > 0) {
+    allZeroErrors.push(
+      `Found ${placeholders.length} placeholder text pattern(s):\n  - ${placeholders.join("\n  - ")}`
+    );
+  }
+  if (allZeroErrors.length > 0) {
+    const err = new Error(
+      `Grade template unfilled:\n  - ${allZeroErrors.join("\n  - ")}`
+    ) as NodeJS.ErrnoException;
+    err.code = "GRADE_TEMPLATE_UNFILLED";
+    throw err;
+  }
+
+  const decisions = parseDecisionsFromBody(body);
+  const featureId = typeof frontmatter.feature === "string" ? frontmatter.feature : undefined;
+  const { allocated, updatedBody } = await extractDecisions(
+    repoPath,
+    sliceId,
+    body,
+    decisions,
+    config,
+    featureId
+  );
+
+  // Build merged decisions list: existing IDs (already allocated) + newly allocated
+  const existingIds = decisions.filter((d) => d.id !== "DEC-TBD").map((d) => d.id);
+  const newIds = allocated.map((d) => d.id);
+  const allIds = [...new Set([...existingIds, ...newIds])];
+
+  // Populate grade timing.* + shape.* telemetry fields (FEAT-184 / FEAT-186).
+  const { computeTelemetry, applyTelemetry, applyShapeTelemetry } = await import(
+    "./grade-telemetry.mjs"
+  );
+  const telemetry = await computeTelemetry(repoPath, sliceId, config);
+  frontmatter.timing = applyTelemetry(
+    (frontmatter.timing as Record<string, unknown>) ?? {},
+    telemetry
+  );
+  frontmatter.shape = applyShapeTelemetry(
+    (frontmatter.shape as Record<string, unknown>) ?? {},
+    telemetry
+  );
+
+  // Persist updated body + frontmatter
+  const updates = {
+    decisions: allIds,
+    graded_at: frontmatter.graded_at || today()
+  };
+  // Manually rebuild file: we already have updatedBody; just re-serialize frontmatter on top.
+  const newContent = serializeFrontmatter({ ...frontmatter, ...updates }, updatedBody);
+  await fs.writeFile(target, newContent);
+
+  // Telemetry
+  const { logEvent } = await import("./telemetry.mjs");
+  await logEvent(repoPath, {
+    command: "slice grade-write",
+    slice: sliceId,
+    decisions_extracted: newIds.length,
+    decisions_total: allIds.length,
+    scores_average: averageOf(scores)
+  });
+
+  // M1: mirror grade to grades.jsonl + fan out to runner via webhook.
+  const gradeEvent = buildGradeEvent(sliceId, frontmatter, scores, allocated);
+  await appendGradeEvent(repoPath, gradeEvent);
+  await fanoutEnvelope(
+    repoPath,
+    "grade.recorded",
+    gradeEvent as unknown as Record<string, unknown>
+  );
+
+  // runner-plugin#288: fire-and-forget memory bridge emit on every grade write.
+  // Fail-silent — emit() never throws and is already 2s-capped.
+  await emitSliceCloseMemory(repoPath, sliceId, frontmatter, scores, gradeEvent);
+
+  // L3-4: emit slice.agent_progress + agent.tool_call from each crew artifact
+  // bundle that belongs to this slice. Fail-silent: any IO or parse error is
+  // swallowed so the grade write contract is not affected.
+  await emitNarrativeForSlice(repoPath, sliceId);
+
+  // P1.11: capture "## Lessons" bullets into the persistent learnings store
+  // (.claude/artifacts/loop/learnings.jsonl) so startSlice's learningsDigest
+  // (previously reading an empty store) has real feed-forward signal.
+  // Gated by the learnings-capture flag; fail-silent by design — a learnings
+  // write must never affect the grade-write contract.
+  await captureLearnings(repoPath, sliceId, updatedBody, config);
+
+  // FEAT-217 follow-up: mirror "## Surprises" and "## Followups" bullets into
+  // astramem as notes so durable slice knowledge beyond decisions + lessons
+  // reaches memory. Fail-silent; gated on memory.enabled.
+  await captureGradeNotes(repoPath, sliceId, updatedBody);
+
+  const scoresAvg = averageOf(scores);
+  if (scoresAvg !== null) {
+    const { recordGradeScore } = await import("./grade-trend.mjs");
+    await recordGradeScore(repoPath, { sliceId, avg: scoresAvg });
+  }
+
+  return {
+    gradePath: target,
+    sliceId,
+    scoresAverage: averageOf(scores),
+    decisionsAllocated: newIds,
+    decisionsTotal: allIds.length
+  };
+}
+
+function averageOf(scores: Record<string, unknown>) {
+  const vals = Object.values(scores).filter((v) => typeof v === "number") as number[];
+  if (vals.length === 0) return null;
+  return Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(3));
+}
+
+interface GradeEventOut {
+  sliceId: string;
+  featureId?: string;
+  spec?: string;
+  recordedAt: string;
+  /** FEAT-247 / A2: canonical timestamp field, dual-emitted alongside the
+   * legacy `recordedAt` for one release cycle. Always equal to `recordedAt`. */
+  ts: string;
+  scores: Record<string, number>;
+  decisions: Array<{ id: string; status: "accepted"; body: string }>;
+  timing: Record<string, unknown>;
+  shape: Record<string, unknown>;
+}
+
+function buildGradeEvent(
+  sliceId: string,
+  frontmatter: Record<string, any>,
+  scores: Record<string, unknown>,
+  allocated: Array<Record<string, any>>
+): GradeEventOut {
+  const featureId =
+    typeof frontmatter.feature === "string" ? (frontmatter.feature as string) : undefined;
+  const specId = typeof frontmatter.spec === "string" ? (frontmatter.spec as string) : undefined;
+  const recordedAt =
+    typeof frontmatter.graded_at === "string"
+      ? (frontmatter.graded_at as string)
+      : new Date().toISOString();
+  const event: GradeEventOut = {
+    sliceId,
+    recordedAt,
+    ts: recordedAt,
+    scores: scores as Record<string, number>,
+    decisions: allocated.map((d) => ({
+      id: d.id as string,
+      status: "accepted" as const,
+      body: (d.body as string | undefined) ?? ""
+    })),
+    timing: (frontmatter.timing as Record<string, unknown>) ?? {},
+    shape: (frontmatter.shape as Record<string, unknown>) ?? {}
+  };
+  if (featureId) event.featureId = featureId;
+  if (specId) event.spec = specId;
+  return event;
+}
+
+// L3-4: walk the crew bundle tree and emit narrative envelopes for each
+// bundle whose frontmatter `slice:` matches the slice id. Reads under
+// `.claude/artifacts/crew/bundles/**/*.md`. Fail-silent.
+async function emitNarrativeForSlice(repoPath: string, sliceId: string): Promise<void> {
+  try {
+    const { emitAgentNarrative } = await import("./agent-narrative-emitter.mjs");
+    const bundlesRoot = path.join(repoPath, ".claude", "artifacts", "crew", "bundles");
+    const candidates: string[] = [];
+    let subdirs: string[] = [];
+    try {
+      subdirs = await fs.readdir(bundlesRoot);
+    } catch {
+      return;
+    }
+    for (const sub of subdirs) {
+      const dir = path.join(bundlesRoot, sub);
+      let stat;
+      try {
+        stat = await fs.stat(dir);
+      } catch {
+        continue;
+      }
+      if (!stat.isDirectory()) continue;
+      let files: string[] = [];
+      try {
+        files = await fs.readdir(dir);
+      } catch {
+        continue;
+      }
+      for (const f of files) {
+        if (f.endsWith(".md")) candidates.push(path.join(dir, f));
+      }
+    }
+
+    for (const bundlePath of candidates) {
+      let head = "";
+      try {
+        // Read the first ~2KB to find the slice: frontmatter line; bundles
+        // can be MBs of diff/log content so don't load the whole file just
+        // to filter.
+        const fh = await fs.open(bundlePath, "r");
+        try {
+          const buf = Buffer.alloc(2048);
+          const { bytesRead } = await fh.read(buf, 0, 2048, 0);
+          head = buf.slice(0, bytesRead).toString("utf8");
+        } finally {
+          await fh.close();
+        }
+      } catch {
+        continue;
+      }
+      const sliceMatch = /^slice:\s*([^\n]+)/m.exec(head);
+      if (!sliceMatch || !sliceMatch[1]) continue;
+      if (sliceMatch[1].trim() !== sliceId) continue;
+      try {
+        await emitAgentNarrative(repoPath, sliceId, bundlePath);
+      } catch {
+        // best-effort per bundle
+      }
+    }
+  } catch {
+    // best-effort overall
+  }
+}
+
+async function extractDecisions(
+  repoPath: string,
+  sliceId: string,
+  body: string,
+  decisions: Record<string, any>[],
+  config: Record<string, any> | null,
+  featureId?: string
+) {
+  if (!decisions || decisions.length === 0) {
+    return { allocated: [], updatedBody: body };
+  }
+  const { nextDecisionId, writeDecisionFile } = await import("./decisions-store.mjs");
+  // FEAT-217: mirror each newly-minted decision into astramem (gated on
+  // memory.enabled, fail-silent). Read the memory config once up front.
+  const { readMemoryConfig, recordDecision } = await import("./memory-sink.mjs");
+  const memCfg = await readMemoryConfig(repoPath);
+  const allocated: any[] = [];
+  const mirrorArgs: Array<Parameters<typeof recordDecision>[1]> = [];
+  let updatedBody = body;
+  for (const dec of decisions) {
+    if (dec.id !== "DEC-TBD") continue;
+    const id = await nextDecisionId(repoPath, config);
+    await writeDecisionFile(repoPath, {
+      id,
+      title: dec.title,
+      sliceId,
+      rationale: dec.rationale,
+      consequences: dec.consequences,
+      config
+    });
+    // Replace the first DEC-TBD occurrence in the body with the allocated id
+    updatedBody = updatedBody.replace(/###\s+DEC-TBD\s*:\s*/, `### ${id}: `);
+    allocated.push({ id, title: dec.title });
+    mirrorArgs.push({
+      id,
+      title: dec.title,
+      rationale: typeof dec.rationale === "string" ? dec.rationale : undefined,
+      featureId,
+      sliceId,
+      agentType: GRADE_AGENT_TYPE,
+      config: memCfg
+    });
+  }
+  // Fire-and-forget memory mirror in PARALLEL — never blocks decision
+  // extraction and, unlike a serial await-in-loop, its wallclock is bounded by
+  // the single 2s spawn cap regardless of N decisions (PR #303 review MAJOR).
+  // recordDecision is already no-throw; .catch is defensive parity.
+  await Promise.all(mirrorArgs.map((a) => recordDecision(repoPath, a).catch(() => {})));
+  return { allocated, updatedBody };
+}
+
+// runner-plugin#288: emit a GEPA-shaped memory payload on slice close.
+// Reads memory.enabled from loop.json — defaults to "auto" (emit when CLI present).
+// Fail-silent: any error is swallowed. Never throws.
+async function emitSliceCloseMemory(
+  repoPath: string,
+  sliceId: string,
+  frontmatter: Record<string, any>,
+  scores: Record<string, unknown>,
+  gradeEvent: GradeEventOut
+): Promise<void> {
+  try {
+    const loopJsonPath = path.join(repoPath, ".claude", "loop.json");
+    let memoryEnabled: string = "auto";
+    // FEAT-263 follow-up: project attribution threaded into the GEPA payload
+    // below — same precedence memory-sink.mts's readMemoryConfig documents
+    // (explicit memory.project override wins, else productName).
+    let projectId: string | undefined;
+    try {
+      const raw = await fs.readFile(loopJsonPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const configuredMode = parsed?.memory?.enabled;
+      if (configuredMode === "never") memoryEnabled = "never";
+      const explicitProject =
+        typeof parsed?.memory?.project === "string" ? parsed.memory.project : undefined;
+      const productName = typeof parsed?.productName === "string" ? parsed.productName : undefined;
+      projectId = explicitProject ?? productName;
+    } catch {
+      // Missing or unparseable loop.json — default auto, no project.
+    }
+    if (memoryEnabled === "never") return;
+
+    // No provider pre-gate: emitGepaEvent() is fail-silent and no-ops itself
+    // when no astramem provider is discoverable (FEAT-235).
+    const { emitGepaEvent } = await import("./memory-gepa.mjs");
+
+    const { getPromptVersion } = await import("./agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const featureId =
+      typeof frontmatter.feature === "string" ? frontmatter.feature : "FEAT-unknown";
+    const scoresAvg = averageOf(scores);
+    const feedback = buildCloseFeedback(frontmatter, gradeEvent.decisions);
+
+    await emitGepaEvent({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featureId,
+      source: "close",
+      event: "slice_close",
+      score: scoresAvg ?? 0,
+      feedback,
+      input: {
+        ac_text: (frontmatter.ac_text as string | undefined) ?? "",
+        dispatch_instruction: (frontmatter.dispatch_instruction as string | undefined) ?? ""
+      },
+      output: {
+        changed_files: extractChangedFiles(frontmatter),
+        decisions: gradeEvent.decisions.map((d) => d.id)
+      },
+      prompt_version: promptVersion,
+      // FEAT-263 follow-up: attribute this hook-independent capture the same
+      // way the sibling recordDecision/recordNote calls in this module do.
+      ...(projectId ? { project: projectId } : {}),
+      agent: GRADE_AGENT_TYPE
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the grade-write path.
+  }
+}
+
+// P1.11: log each "## Lessons" bullet into the learnings store. Keys are
+// content-derived (`grade-lesson:<sliceId>:<sha1(insight)[0..8]>`) so a
+// writeGrade retry with unchanged text does not double-log, while an EDITED
+// lesson (same position, new text) gets a fresh row instead of being silently
+// dropped — a positional index key had exactly that staleness bug (P1.6/11
+// review finding). Fail-silent: any error here must never affect the
+// grade-write contract (mirrors emitSliceCloseMemory / emitNarrativeForSlice).
+async function captureLearnings(
+  repoPath: string,
+  sliceId: string,
+  body: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  if (!isFeatureEnabled("learnings-capture", config)) return;
+  const lessons = parseListSection(body, "Lessons");
+  if (lessons.length === 0) return;
+  try {
+    const { logLearning, searchLearnings } = await import("./learnings.mjs");
+    const { createHash } = await import("node:crypto");
+    const { items: existing } = await searchLearnings(repoPath, sliceId);
+    const existingKeys = new Set(existing.map((e: any) => e.key));
+    for (const lesson of lessons) {
+      const digest = createHash("sha1").update(lesson).digest("hex").slice(0, 8);
+      const key = `grade-lesson:${sliceId}:${digest}`;
+      if (existingKeys.has(key)) continue;
+      await logLearning(repoPath, {
+        key,
+        insight: lesson,
+        source: "grade-write",
+        sliceId,
+        tags: ["lesson"]
+      });
+    }
+  } catch {
+    // swallow — learnings capture is non-critical
+  }
+}
+
+// FEAT-217 follow-up: mirror "## Surprises" and "## Followups" grade bullets
+// into astramem as notes (recordNote), extending the durable-knowledge mirror
+// beyond decisions (grade-writer) and lessons (learnings.mts). Gated on
+// memory.enabled; fail-silent — a memory write must never affect the
+// grade-write contract. Unlike the lessons store there is no local dedup
+// ledger, so a writeGrade re-run may re-send these notes; memory is a
+// non-critical best-effort mirror, so occasional duplicates are acceptable.
+async function captureGradeNotes(repoPath: string, sliceId: string, body: string): Promise<void> {
+  const surprises = parseListSection(body, "Surprises");
+  const followups = parseListSection(body, "Followups");
+  if (surprises.length === 0 && followups.length === 0) return;
+  try {
+    const { readMemoryConfig, recordNote } = await import("./memory-sink.mjs");
+    const memCfg = await readMemoryConfig(repoPath);
+    if (memCfg.mode === "off") return;
+    const items: Array<{ kind: string; text: string }> = [
+      ...surprises.map((text) => ({ kind: "surprise", text })),
+      ...followups.map((text) => ({ kind: "followup", text }))
+    ];
+    // Parallel mirror — wallclock bounded by the single 2s spawn cap, not
+    // N×2s serial (PR #303 review MAJOR).
+    await Promise.all(
+      items.map(({ kind, text }) =>
+        recordNote(repoPath, {
+          text: `[${sliceId}] ${kind}: ${text}`,
+          agentType: GRADE_AGENT_TYPE,
+          config: memCfg
+        })
+      )
+    );
+  } catch {
+    // swallow — memory mirror is non-critical
+  }
+}
+
+function buildCloseFeedback(
+  frontmatter: Record<string, any>,
+  decisions: Array<{ id: string }>
+): string {
+  const parts: string[] = [];
+  const lessons = frontmatter.lessons_learned;
+  if (typeof lessons === "string" && lessons.trim().length > 0) {
+    parts.push(lessons.trim());
+  }
+  const surprises = frontmatter.surprises;
+  if (typeof surprises === "string" && surprises.trim().length > 0) {
+    parts.push(`Surprises: ${surprises.trim()}`);
+  }
+  if (decisions.length > 0) {
+    parts.push(`Decisions: ${decisions.map((d) => d.id).join(", ")}`);
+  }
+  return parts.length > 0 ? parts.join(" | ") : "Slice closed.";
+}
+
+function extractChangedFiles(frontmatter: Record<string, any>): string[] {
+  const files = frontmatter.changed_files ?? frontmatter.files;
+  if (Array.isArray(files)) {
+    return files.filter((f): f is string => typeof f === "string");
+  }
+  return [];
+}

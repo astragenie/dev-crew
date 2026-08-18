@@ -1,0 +1,1221 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { resolveConfig } from "../config-resolver.mjs";
+import { readGradeTrend, checkGradeTrend, checkMarathonMilestone } from "../grade-trend.mjs";
+import { lintAcceptanceCriteria } from "../ac-linter.mjs";
+import { writeCrewRunBrief } from "./crew-bridge.mjs";
+import { findActivePlan, detectSliceStatus, writeSliceProgress } from "./slice-progress.mjs";
+import { slicesRoot as resolveSlicesRoot } from "../paths.mjs";
+import {
+  readSliceContext,
+  readFeatureExcerpt,
+  buildDispatchInstruction,
+  pickBuilderVariant,
+  extractTags
+} from "./dispatch.mjs";
+import type { OrchestratorMode } from "./dispatch.mjs";
+import { maybeBuildArchGatePreflight } from "../arch-gate.mjs";
+import { recentLearnings } from "../learnings.mjs";
+import { resolveOrchestratorModel } from "../model-router.mjs";
+import { runPlanPreflight } from "../slice-plan.mjs";
+import { findFeatureById } from "../backlog-writer.mjs";
+import { sliceFromFeature } from "./feature-lifecycle.mjs";
+import { detectAcceptanceCriteria } from "../acceptance-criteria.mjs";
+import { computeConfidence } from "../confidence-signal.mjs";
+import { writeSessionIdToWorkflowState } from "../session-drift.mjs";
+import { ensureSliceWorktree, isBranchInProgress, getCurrentBranch } from "../worktree-manager.mjs";
+import type { WorktreeResult } from "../worktree-manager.mjs";
+import { updateSliceFrontmatter } from "../backlog-store.mjs";
+import { displaySliceTitle } from "../slice-title.mjs";
+import { classifySliceShape } from "../classify-slice-shape.mjs";
+import type { FileChange } from "../classify-slice-shape.mjs";
+import { writeShapeMarker } from "../shape-marker.mjs";
+import { emitShapeClassified } from "../shape-event-emitter.mjs";
+import { DEFAULT_RECALL_CAP_MS } from "../memory-transport.mjs";
+import {
+  readWorkflowStateForWrite,
+  WorkflowStateCorruptError,
+  WorkflowStateSchemaMismatchError
+} from "../workflow-state-guard.mjs";
+
+// ---------------------------------------------------------------------------
+// SLICE-94 / FEAT-186: shape classification helpers
+// ---------------------------------------------------------------------------
+
+/** Parse the "## Files" section from slice content into FileChange[]. */
+function parseSliceFiles(content: string | null): FileChange[] {
+  if (!content) return [];
+  const lines = content.split(/\r?\n/);
+  const startIdx = lines.findIndex((l) => /^##\s+Files\s*$/i.test(l));
+  if (startIdx === -1) return [];
+  const paths: string[] = [];
+  for (let i = startIdx + 1; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    if (/^##\s+/.test(line)) break;
+    const trimmed = line.replace(/^[-*]\s*/, "").trim();
+    if (trimmed.length > 0) paths.push(trimmed);
+  }
+  return paths.map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }));
+}
+
+/** Resolve whether the inline path is recommended for a given shape + config. */
+function resolveInlinePath(
+  shape: string,
+  dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null
+): boolean {
+  if (!dispatchLimits) return false;
+  const expanded = dispatchLimits.expandedInlineCriteria !== false;
+  const preferred = dispatchLimits.preferInlineFor ?? [];
+  return expanded && preferred.includes(shape) && shape !== "none";
+}
+
+/**
+ * Normalize a raw frontmatter `touches_files` value into a string[], or null
+ * when absent/empty/malformed. The canonical frontmatter parser
+ * (frontmatter.mts parseScalar) already turns `touches_files: [a, b, c]`
+ * into a real array — this just guards against unexpected shapes (a bare
+ * string, non-string items) rather than re-parsing.
+ */
+function normalizeDeclaredTouchesFiles(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const paths = raw.filter((p): p is string => typeof p === "string" && p.length > 0);
+  return paths.length > 0 ? paths : null;
+}
+
+/** Run classify-slice-shape, write marker (best-effort), return inline-path hint string or null + touchesFiles list. */
+async function applyShapeClassification(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  sliceContent: string | null,
+  dispatchLimits: { preferInlineFor?: string[]; expandedInlineCriteria?: boolean } | null,
+  declaredTouchesFiles: unknown = null
+): Promise<{ inlinePathHint: string | null; touchesFiles: string[] }> {
+  // FEAT-277 declares touches_files in slice frontmatter directly (no "##
+  // Files" body section) — prefer that over parseSliceFiles's body-section
+  // scan, which is empty for every frontmatter-only slice and would silently
+  // starve the wave planner's conflict-packing input (touchesFiles: []).
+  // Fall back to the body scan only when frontmatter has nothing declared.
+  const declared = normalizeDeclaredTouchesFiles(declaredTouchesFiles);
+  const files = declared
+    ? declared.map((p) => ({ path: p, added: 0, removed: 0, exportDelta: 0 }))
+    : parseSliceFiles(sliceContent);
+  const { shape, rationale } = classifySliceShape({ files });
+  const inlinePath = resolveInlinePath(shape, dispatchLimits);
+  void writeShapeMarker(repoPath, sliceId, shape, rationale, inlinePath);
+  // M5 / L5-1: emit `shape_classified` slice-event so the runner sees the
+  // shape verdict alongside lifecycle events. Best-effort — appendSliceEvent
+  // swallows fs errors and webhook fanout fails silent.
+  void emitShapeClassified(repoPath, sliceId, {
+    featureId,
+    shape,
+    rationale,
+    inlinePathUsed: inlinePath
+  });
+  const inlinePathHint = inlinePath
+    ? `inline-path recommended (shape: ${shape}, rationale: ${rationale}) — orchestrator may skip dispatched specialists for tightly-scoped slices when other gates can be lead-attested per docs/sop/inline-criteria.md.`
+    : null;
+  return { inlinePathHint, touchesFiles: files.map((f) => f.path) };
+}
+
+function computeRecentGradeAvg(scores: Array<{ sliceId: string; avg: number }>): number | null {
+  if (!scores || scores.length === 0) return null;
+  const recent = scores.slice(-3);
+  return recent.reduce((sum, s) => sum + s.avg, 0) / recent.length;
+}
+
+// Pick the orchestrator mode emitted in dispatchInstruction. Precedence:
+//   1. config.loop.orchestratorMode (explicit, validated against the union)
+//   2. "slice-build" by default — tag-driven dispatch with architect pre-flight.
+// Legacy values ("lead", "direct-builder") removed in v0.43 / FEAT-191; they
+// silently fall back to "slice-build" so operators don't see a hard error on
+// stale config.
+function resolveOrchestratorModeConfig(config: Record<string, any>): OrchestratorMode {
+  const explicit = config?.loop?.orchestratorMode;
+  if (explicit === "slice-build" || explicit === "orchestrate-slice") {
+    return explicit;
+  }
+  return "slice-build";
+}
+
+// Resolve all feature-level signals + confidence verdict in one call.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+async function resolveFeatureSignals(
+  repoPath: string,
+  featureId: string | null,
+  resolved: Record<string, any>,
+  sliceContent: string,
+  recentGradeAvg: number | null,
+  dispatch: boolean
+) {
+  const feat = featureId
+    ? await bestEffort(() => findFeatureById(repoPath, featureId, resolved))
+    : null;
+  const autonomousSafe: boolean | null = feat?.frontmatter?.autonomous_safe ?? null;
+  const dependsOnCount = Array.isArray(feat?.frontmatter?.depends_on)
+    ? feat.frontmatter.depends_on.length
+    : 0;
+  const acCount = detectAcceptanceCriteria(sliceContent).count;
+  const { confidence, reason: confidenceReason } = computeConfidence({
+    autonomousSafe,
+    acCount,
+    recentGradeAvg: typeof recentGradeAvg === "number" ? recentGradeAvg : null,
+    dependsOnCount
+  });
+  const autoMode = resolved.loop?.autoMode === true;
+  const requiresApprovalGate = computeApprovalGate(autonomousSafe, autoMode, dispatch);
+  return { autonomousSafe, confidence, confidenceReason, requiresApprovalGate };
+}
+
+async function bestEffort(fn: (...args: any[]) => any) {
+  try {
+    return await fn();
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
+  }
+}
+
+// ARCHITECT GATE (runner side): before slice 1 of a P0/P1 fullstack FEAT
+// dispatches, surface the pre-slice-1 architect + risk gate preflight (see
+// arch-gate.mts module docstring for the full architecture decision — this
+// CLI only emits the instruction; it never dispatches agents itself).
+// Best-effort: any failure resolving the gate (missing FEAT, FS error) is a
+// soft no-op, mirroring runRecallHook/learningsDigest below — the gate must
+// never block a slice-build dispatch it can't confidently evaluate.
+async function runArchGateHook(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  sliceContent: string | null,
+  resolved: Record<string, any>
+): Promise<string | null> {
+  if (!featureId) return null;
+  try {
+    const variant = pickBuilderVariant(extractTags(sliceContent), resolved);
+    return await maybeBuildArchGatePreflight({
+      repoPath,
+      sliceId,
+      featureId,
+      variant,
+      config: resolved
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Compute whether plan preflight approval gate is required.
+// Gate is required when: autonomous_safe=false AND not in auto mode AND dispatch is enabled.
+export function computeApprovalGate(
+  autonomousSafe: boolean | null,
+  autoMode: boolean,
+  dispatch: boolean
+): boolean {
+  return autonomousSafe === false && !autoMode && dispatch !== false;
+}
+
+// Quality gates that must pass before startSlice can proceed.
+// Extracted to keep startSlice under the complexity cap.
+async function runSliceStartGates(
+  sliceId: string,
+  content: string | null,
+  repoPath: string,
+  config: Record<string, any> | null
+) {
+  if (content) {
+    const acResult = lintAcceptanceCriteria(content);
+    if (!acResult.ok) {
+      const detail = acResult.error
+        ? acResult.error
+        : `${acResult.violations.length} placeholder AC(s) found:\n${acResult.violations.map((v) => `  ${v.trim()}`).join("\n")}`;
+      throw new Error(
+        `startSlice(${sliceId}): AC linter failed — ${detail}. ` +
+          "Replace all placeholder acceptance criteria before starting the slice."
+      );
+    }
+  }
+  const ladderGateSignal = await checkGradeTrend(repoPath, config);
+  if (ladderGateSignal?.shouldStop) {
+    throw new Error(
+      `startSlice(${sliceId}): Ladder gate — ${ladderGateSignal.reason}. ` +
+        "Resolve grade regression before starting the next slice."
+    );
+  }
+}
+
+// Opens a new run for the given slice. Symmetric counterpart to
+// completeSlice: rotates workflow-state.currentRun via `crew
+// write-run-brief` so cost-emit windows attribute work to this slice,
+// then refreshes the slice-progress dashboard. Looks up the slice's
+// human-readable title from the active plan when possible. Goal text
+// is taken from the slice file's `Objective` block when present.
+//
+// When { dispatch: true } (default), the returned object includes a
+// `dispatchInstruction` string — a literal prompt the loop agent
+// should hand to a subagent so the actual implementation runs through
+// `/crew:build` (per Dispatch Discipline HARD RULE in rules.md). Pass
+// dispatch: false for manual / debugging invocations where the agent
+// is doing the slice work in-conversation.
+// AC-2 (SLICE-54 FEAT-056): wrap writeSessionIdToWorkflowState in a fail-open
+// helper so startSlice's complexity stays under the lint cap.
+async function pinSessionId(repoPath: string): Promise<void> {
+  try {
+    await writeSessionIdToWorkflowState(repoPath);
+  } catch {
+    // best-effort — never blocks slice start
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SLICE-56 / FEAT-060: worktree persistence helpers
+// ---------------------------------------------------------------------------
+
+const STATE_PATH_PARTS = [".claude", "state", "crew", "workflow-state.json"];
+
+/**
+ * Write worktreePath into workflow-state.currentRun. Returns prior value for
+ * rollback.
+ *
+ * Fail-loud by design (DEC-019's failure-atomicity invariant). DEC-060 /
+ * FEAT-209: reads via readWorkflowStateForWrite — a corrupt file or a
+ * schemaVersion loop doesn't support throws WorkflowStateCorruptError /
+ * WorkflowStateSchemaMismatchError, which propagates unchanged to the caller
+ * (applyWorktreeResult) rather than silently falling back to a blank state.
+ */
+async function writeWorktreePathToState(
+  repoPath: string,
+  worktreePath: string
+): Promise<string | null> {
+  const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
+  const { state } = await readWorkflowStateForWrite(statePath);
+  if (!state.currentRun) state.currentRun = {};
+  const prior: string | null = state.currentRun.worktreePath ?? null;
+  state.currentRun.worktreePath = worktreePath;
+  state.updatedAt = new Date().toISOString();
+  await fs.mkdir(path.dirname(statePath), { recursive: true });
+  await fs.writeFile(statePath, JSON.stringify(state, null, 2), "utf8");
+  return prior;
+}
+
+/**
+ * Roll back workflow-state.currentRun.worktreePath to its prior value (null
+ * clears it). Best-effort for ordinary I/O failures (no secondary throw that
+ * would mask the original frontmatter-write error being rolled back for) —
+ * but DEC-060 / FEAT-209's two named errors (WorkflowStateCorruptError /
+ * WorkflowStateSchemaMismatchError) propagate unchanged, since a corrupt or
+ * schema-mismatched state file at rollback time is itself the more urgent
+ * problem.
+ */
+async function rollbackWorktreePathInState(repoPath: string, prior: string | null): Promise<void> {
+  const statePath = path.join(repoPath, ...STATE_PATH_PARTS);
+  let state: any;
+  try {
+    ({ state } = await readWorkflowStateForWrite(statePath));
+  } catch (err: unknown) {
+    if (
+      err instanceof WorkflowStateCorruptError ||
+      err instanceof WorkflowStateSchemaMismatchError
+    ) {
+      throw err;
+    }
+    return; // best-effort rollback — no secondary throw for unexpected I/O errors
+  }
+  try {
+    if (!state.currentRun) state.currentRun = {};
+    if (prior === null) {
+      delete state.currentRun.worktreePath;
+    } else {
+      state.currentRun.worktreePath = prior;
+    }
+    state.updatedAt = new Date().toISOString();
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2), "utf8");
+  } catch {
+    // best-effort rollback — no secondary throw
+  }
+}
+
+/** Write worktreePath into slice frontmatter. sliceFile must be an absolute path. */
+async function writeWorktreePathToFrontmatter(
+  sliceFile: string,
+  worktreePath: string,
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<void> {
+  await updateSliceFrontmatter(sliceFile, { worktreePath }, repoPath, config);
+}
+
+/**
+ * WS-4: when loop.worktreeMode is off (the dominant path), check whether
+ * another build/fix/slice is already in progress on the branch currently
+ * checked out at `repoPath` — git-native, no lock file: `isBranchInProgress`
+ * enumerates `git worktree list` and reads each matching worktree's own
+ * `.claude/state/crew/workflow-state.json` (which also covers the common
+ * case where `repoPath` itself is the sole worktree entry and still has an
+ * unfinished `currentRun.sliceId` from an earlier slice).
+ *
+ * On a hit, force isolation for THIS slice-start call only by returning a
+ * shallow-cloned config with `loop.worktreeMode` set true — the caller's own
+ * config object (and therefore the global worktreeMode default) is never
+ * mutated. Fail-open: any error resolving the branch or scanning worktrees
+ * leaves the config untouched (today's default behavior).
+ *
+ * MUST be called before any step that mutates workflow-state.currentRun
+ * (e.g. gatherSliceResources' crew write-run-brief call rotates the prior
+ * currentRun into history) — otherwise the very signal this reads is gone
+ * by the time we look for it. Callers should invoke this immediately after
+ * `resolved` is established, not "near" the later resolveSliceWorktree call.
+ */
+async function resolveWorktreeConfigWithCollisionCheck(
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<Record<string, any> | null> {
+  if (config?.loop?.worktreeMode === true) return config; // already isolating
+
+  const branchName = await getCurrentBranch(repoPath);
+  if (!branchName) return config;
+
+  const collision = await isBranchInProgress(repoPath, branchName);
+  if (!collision) return config;
+
+  return {
+    ...config,
+    loop: {
+      ...(config?.loop ?? {}),
+      worktreeMode: true
+    }
+  };
+}
+
+/**
+ * Run ensureSliceWorktree, then persist the result into workflow-state and
+ * slice frontmatter. Implements the write-order contract (state first,
+ * frontmatter second) with compensating rollback on frontmatter failure.
+ *
+ * `config` is expected to already reflect the WS-4 collision check (see
+ * resolveWorktreeConfigWithCollisionCheck) — resolved early in startSlice,
+ * before any state-mutating step erases the signal it depends on.
+ *
+ * Returns WorktreeResult on success, or null when gate is off.
+ * Propagates WorktreeError on hard git failure (no partial state written).
+ */
+async function resolveSliceWorktree(
+  repoPath: string,
+  sliceId: string,
+  sliceFile: string | null,
+  config: Record<string, any> | null,
+  featureId: string | null
+): Promise<WorktreeResult | undefined> {
+  const result = await applyWorktreeResult(repoPath, sliceId, sliceFile, config, featureId);
+  return result ?? undefined;
+}
+
+// Exported for test coverage of the rollback path (FEAT-060 contract failure-atomicity).
+// Not part of the public API surface — internal helper.
+export async function applyWorktreeResult(
+  repoPath: string,
+  sliceId: string,
+  sliceFile: string | null,
+  config: Record<string, any> | null,
+  featureId: string | null
+): Promise<WorktreeResult | null> {
+  const result = await ensureSliceWorktree(repoPath, sliceId, { config, featureId });
+  if (!result) return null;
+
+  // Failure-atomicity invariant: if worktreeMode is on we MUST be able to write
+  // BOTH workflow-state AND slice frontmatter. A null sliceFile means we
+  // couldn't locate the slice on disk — refuse to write a half-state.
+  if (!sliceFile) {
+    throw new Error(
+      `applyWorktreeResult(${sliceId}): slice file not found; refusing to write workflow-state.worktreePath without matching slice frontmatter (failure-atomicity invariant).`
+    );
+  }
+
+  // Write state first (prior value captured for rollback)
+  const prior = await writeWorktreePathToState(repoPath, result.worktreePath);
+
+  // Write slice frontmatter — roll back state on failure.
+  // sliceFile is non-null here (guarded above) — direct call, no nested if.
+  try {
+    await writeWorktreePathToFrontmatter(sliceFile, result.worktreePath, repoPath, config);
+  } catch (err) {
+    await rollbackWorktreePathInState(repoPath, prior);
+    throw err;
+  }
+
+  return result;
+}
+
+// Derive resolvedGoal/featureId/phase from slice ctx + caller goal.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+function resolveSliceMetaFields(
+  goal: string | null,
+  ctx: Record<string, any>
+): { resolvedGoal: string | null; featureId: string | null; phase: string | null } {
+  return {
+    resolvedGoal: goal || ctx.goal,
+    featureId: ctx.frontmatter.feature || null,
+    phase: ctx.frontmatter.phase || null
+  };
+}
+
+// Read the frontmatter-declared touches_files value (or null when absent).
+// Extracted to a one-line helper so startSlice's applyShapeClassification
+// call site stays a plain argument list — an inline `?? null` there would
+// add to startSlice's already-over-cap cognitive complexity score.
+function resolveDeclaredTouchesFiles(ctx: Record<string, any>): unknown {
+  return ctx.frontmatter.touches_files ?? null;
+}
+
+// eslint-disable-next-line complexity -- orchestration function; each sequential async gate adds a branch but no extractable helper reduces it further. Track if complexity grows past 20.
+export async function startSlice(
+  repoPath: string,
+  sliceIdOrFeatId: string,
+  {
+    config = null,
+    goal = null,
+    dispatch = true
+  }: {
+    config?: Record<string, any> | null;
+    goal?: string | null;
+    dispatch?: boolean;
+  } = {}
+) {
+  if (!sliceIdOrFeatId) throw new Error("startSlice requires a sliceId or FEAT id.");
+
+  // FEAT-277 AC-7: when given a FEAT id, create the slice file first via
+  // sliceFromFeature, then start the resulting slice. This merges the
+  // former runner:slice-from-feature + runner:slice-start into one call.
+  let sliceId = sliceIdOrFeatId;
+  if (/^FEAT-\d+$/i.test(sliceIdOrFeatId)) {
+    const fromFeatResult = await sliceFromFeature(repoPath, sliceIdOrFeatId, { config });
+    // sliceFromFeature returns { slice: { id, path, title } } for single-slice
+    // and { slices: [...] } for multi-slice. Use first slice in both cases.
+    const firstSlice =
+      "slice" in fromFeatResult ? fromFeatResult.slice : (fromFeatResult as any).slices?.[0];
+    if (!firstSlice?.id) {
+      throw new Error(`startSlice: sliceFromFeature(${sliceIdOrFeatId}) returned no slice id`);
+    }
+    sliceId = firstSlice.id;
+  }
+  const resolved: Record<string, any> = config ?? (await resolveConfig(repoPath));
+  const slicesRoot = resolveSlicesRoot(repoPath, resolved);
+
+  // WS-4: resolve the collision check FIRST, before any step below mutates
+  // workflow-state.currentRun (gatherSliceResources' crew write-run-brief
+  // call rotates it) and erases the very signal this depends on. Only this
+  // local `worktreeConfig` is affected — `resolved` (used everywhere else in
+  // this function) is untouched, so the global worktreeMode default never flips.
+  const worktreeConfig = await resolveWorktreeConfigWithCollisionCheck(repoPath, resolved);
+
+  const { activePlan, title: planTitle } = await resolvePlanAndTitle(repoPath, sliceId, resolved);
+
+  const ctx = await readSliceContext(slicesRoot, sliceId);
+  const title = resolveStartTitle(ctx, sliceId, planTitle);
+  const { resolvedGoal, featureId, phase } = resolveSliceMetaFields(goal, ctx);
+
+  await runSliceStartGates(sliceId, ctx.content ?? null, repoPath, resolved);
+
+  const {
+    runBrief,
+    featureExcerpt,
+    featurePath,
+    marathonMilestone,
+    gradeTrendCaution,
+    learningsDigest,
+    planPreflight,
+    recentGradeAvg
+  } = await gatherSliceResources(repoPath, {
+    sliceId,
+    title,
+    resolvedGoal,
+    featureId,
+    phase,
+    ctx,
+    resolved
+  });
+  const sliceProgress = await refreshSliceProgress(repoPath, activePlan, sliceId, resolved);
+
+  await pinSessionId(repoPath);
+
+  // SLICE-56 / FEAT-060: create (or reuse) a per-slice git worktree when
+  // loop.worktreeMode === true. Propagates WorktreeError on hard failure so
+  // the CLI exits non-zero with an actionable message. When the gate is off
+  // (default) this is a strict zero-op — worktreeInfo is undefined.
+  const worktreeInfo = await resolveSliceWorktree(
+    repoPath,
+    sliceId,
+    ctx.file,
+    worktreeConfig,
+    featureId
+  );
+
+  const { confidence, confidenceReason, requiresApprovalGate } = await resolveFeatureSignals(
+    repoPath,
+    featureId,
+    resolved,
+    ctx.content ?? "",
+    recentGradeAvg,
+    dispatch as boolean
+  );
+
+  const orchestratorMode = resolveOrchestratorModeConfig(resolved);
+
+  // SLICE-94 / FEAT-186 + FEAT-277: classify slice shape + write marker + build inline-path hint.
+  // touchesFiles is also returned so runner:start can surface it for wave planner conflict detection.
+  const { inlinePathHint, touchesFiles } = await applyShapeClassification(
+    repoPath,
+    sliceId,
+    featureId,
+    ctx.content ?? null,
+    resolved.loop?.dispatchLimits ?? null,
+    resolveDeclaredTouchesFiles(ctx)
+  );
+
+  // runner-plugin#291: recall prior failures + decisions before dispatch.
+  // Fire-and-forget on emit; never blocks slice-start path. Dormant when
+  // astramem CLI absent or memory.recall.enabled === false.
+  const recallBlock = await runRecallHook(featureId ?? sliceId, sliceId, touchesFiles, resolved);
+
+  // ARCHITECT GATE: only relevant when a dispatch instruction is actually
+  // being emitted (dispatch: false is the manual/debugging path — no gate).
+  const archGateBlock = dispatch
+    ? await runArchGateHook(repoPath, sliceId, featureId, ctx.content ?? null, resolved)
+    : null;
+
+  const result = buildStartSliceReturn({
+    sliceId,
+    title,
+    activePlan,
+    runBrief,
+    sliceProgress,
+    dispatch,
+    sliceFile: ctx.file,
+    repoPath,
+    resolvedGoal,
+    gradeTrendCaution,
+    featureId,
+    sliceContent: ctx.content ?? null,
+    featureExcerpt,
+    featurePath,
+    marathonMilestone,
+    dispatchLimits: resolved.loop?.dispatchLimits ?? null,
+    orchestratorModel: resolveOrchestratorModel(resolved),
+    learningsDigest,
+    planPreflight: planPreflight ?? null,
+    requiresApprovalGate,
+    confidence,
+    confidenceReason,
+    orchestratorMode,
+    worktreeInfo,
+    inlinePathHint,
+    touchesFiles,
+    loopConfig: resolved
+  });
+
+  // Prepend recall block to dispatch instruction when present (non-empty).
+  // NOT wrapped in <task-scoped> — formatRecallBlockV1's output is the
+  // frozen recall-injection-v1 contract (dev-team
+  // docs/contracts/recall-injection-v1.md), asserted byte-for-byte by
+  // src/tests/start-slice-recall-v1.test.mts. Changing its leading bytes is
+  // a cross-plugin breaking change, out of scope for T5 (FEAT-263 plan v2
+  // names "the learnings digest" specifically, not the recall block).
+  if (recallBlock && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${recallBlock}\n\n${result.dispatchInstruction}`;
+  }
+
+  // FEAT-219 AC-7: splice the already-computed learningsDigest into
+  // dispatchInstruction, mirroring the recallBlock splice above. Additive +
+  // fail-safe — an empty/null digest is a strict no-op (byte-identical).
+  // T5 (FEAT-263 plan v2, architect finding 9): wrapped in <task-scoped> —
+  // this digest re-presents already-durable lessons into a fresh transcript,
+  // and left unmarked the session-transcript distiller re-mints them as
+  // near-duplicate atoms (the #371 rephrase class). See
+  // wrapLearningsDigestTaskScoped's docstring for why this reuses the same
+  // marker as dispatch.mts's order-block rather than a dedicated
+  // <recalled-memory> sub-marker.
+  const wrappedLearningsDigest = wrapLearningsDigestTaskScoped(learningsDigest);
+  if (wrappedLearningsDigest && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${wrappedLearningsDigest}\n\n${result.dispatchInstruction}`;
+  }
+
+  // ARCHITECT GATE: prepend last so it's the most prominent block — the
+  // loop must see it before learnings/recall/the base dispatch prompt.
+  if (archGateBlock && typeof result.dispatchInstruction === "string") {
+    result.dispatchInstruction = `${archGateBlock}\n\n${result.dispatchInstruction}`;
+  }
+
+  await recordStartTrajectory(repoPath, sliceId, result, featureId, title);
+  void recordSliceStartEvent(repoPath, sliceId, featureId);
+  // runner-plugin#290: emit GEPA memory payload on slice start. Fire-and-forget
+  // — never throws, never blocks. Dormant when astramem CLI absent.
+  void emitSliceStartedMemory(repoPath, sliceId, featureId, result, resolved);
+  return result;
+}
+
+// Gathers all parallel async resources for a slice start in one Promise.all.
+// Extracted from startSlice to keep its cyclomatic complexity ≤ 15.
+async function gatherSliceResources(
+  repoPath: string,
+  {
+    sliceId,
+    title,
+    resolvedGoal,
+    featureId,
+    phase,
+    ctx,
+    resolved
+  }: {
+    sliceId: string;
+    title: string;
+    resolvedGoal: string | null;
+    featureId: string | null;
+    phase: string | null;
+    ctx: Record<string, any>;
+    resolved: Record<string, any>;
+  }
+) {
+  const [runBrief, gradeTrend, featureResult, marathonMilestone, learningsResult, planPreflight] =
+    await Promise.all([
+      bestEffort(() =>
+        writeCrewRunBrief(repoPath, {
+          sliceId,
+          title,
+          goal: resolvedGoal,
+          featureId,
+          phase,
+          mode: "autonomous",
+          pace: "unattended",
+          scope: ctx.scope,
+          outOfScope: ctx.outOfScope
+        })
+      ),
+      readGradeTrend(repoPath),
+      featureId ? readFeatureExcerpt(repoPath, featureId, resolved) : Promise.resolve(null),
+      checkMarathonMilestone(repoPath, resolved),
+      bestEffort(() => recentLearnings(repoPath, 3)),
+      bestEffort(() => runPlanPreflight(repoPath, sliceId, { config: resolved }))
+    ]);
+  const gradeTrendCaution =
+    gradeTrend.consecutiveBelow > 0
+      ? `Grade trend caution: ${gradeTrend.consecutiveBelow} consecutive slice(s) averaged below threshold. ` +
+        "Review recent grades before continuing if this persists."
+      : null;
+  const learningsDigest = learningsResult?.digest ?? null;
+  const recentGradeAvg = computeRecentGradeAvg(gradeTrend?.scores ?? []);
+  const featureExcerpt = featureResult?.excerpt ?? null;
+  const featurePath = featureResult?.path ?? null;
+  return {
+    runBrief,
+    featureExcerpt,
+    featurePath,
+    marathonMilestone,
+    gradeTrendCaution,
+    learningsDigest,
+    planPreflight,
+    recentGradeAvg
+  };
+}
+
+// Locate the active plan + derive the human-readable title for this slice
+// from the plan match, falling back to bare sliceId. Extracted from
+// startSlice to keep its cyclomatic complexity under the eslint cap.
+// Canonical precedence: slice-file title (frontmatter -> H1) wins; the
+// approved-slices plan entry is the fallback for slices with no file yet.
+function resolveStartTitle(
+  ctx: { frontmatter: Record<string, unknown>; content?: string | null },
+  sliceId: string,
+  planTitle: string
+) {
+  const fileTitle = displaySliceTitle(ctx.frontmatter, ctx.content ?? null, sliceId);
+  return fileTitle !== sliceId ? fileTitle : planTitle;
+}
+
+async function resolvePlanAndTitle(
+  repoPath: string,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
+  const activePlan = await findActivePlan(repoPath, config);
+  const planMatch = activePlan.slices.find((s) => s.id === sliceId.toUpperCase());
+  const title = planMatch ? `${sliceId}: ${planMatch.title}` : sliceId;
+  return { activePlan, title };
+}
+
+function resolveActivePlanSummary(activePlan: Record<string, any>) {
+  return activePlan.planPath ? { source: activePlan.source, path: activePlan.planPath } : null;
+}
+
+// Compute nextAction text based on requiresApprovalGate, dispatch, and planPreflight.
+// Extracted to keep buildStartSliceReturn under the eslint complexity cap.
+function computeNextAction(
+  sliceId: string,
+  requiresApprovalGate: boolean,
+  dispatch: boolean,
+  planPreflight: any,
+  orchestratorMode: OrchestratorMode = "slice-build"
+): string {
+  if (requiresApprovalGate) {
+    return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch the builder for ${sliceId}.`;
+  }
+  if (dispatch && orchestratorMode === "orchestrate-slice") {
+    return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+  }
+  if (dispatch) {
+    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch crew:reviewer (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
+  }
+  return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
+}
+
+// Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.
+function resolveDispatchInstruction(
+  dispatch: boolean,
+  sliceId: string,
+  title: string,
+  sliceFile: string | null,
+  repoPath: string,
+  resolvedGoal: string | null,
+  featureId: string | null,
+  sliceContent: string | null,
+  featureExcerpt: string | null,
+  featurePath: string | null,
+  dispatchLimits: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null,
+  worktreePath: string | null = null,
+  orchestratorMode: OrchestratorMode = "slice-build",
+  inlinePathHint: string | null = null,
+  loopConfig: Record<string, any> | null = null
+) {
+  if (!dispatch) return null;
+  const base = buildDispatchInstruction({
+    sliceId,
+    title,
+    sliceFile,
+    repoPath,
+    resolvedGoal,
+    featureId,
+    sliceContent,
+    featureExcerpt,
+    featurePath,
+    dispatchLimits,
+    orchestratorMode,
+    worktreePath,
+    loopConfig
+  });
+  return inlinePathHint ? `${base}\n\n${inlinePathHint}` : base;
+}
+
+// Build the return shape for startSlice. Extracted to keep startSlice
+// under the eslint complexity cap; no behavior change.
+function attachWorktreeSection(
+  base: Record<string, any>,
+  worktreeInfo: WorktreeResult | undefined
+): void {
+  if (!worktreeInfo) return;
+  base.worktree = {
+    path: worktreeInfo.worktreePath,
+    branchName: worktreeInfo.branchName,
+    created: worktreeInfo.created,
+    reused: worktreeInfo.reused
+  };
+}
+
+// eslint-disable-next-line complexity -- pure object builder; defaults destructuring inflates cyclomatic count but actual runtime branching is minimal (only attachWorktreeSection adds a real branch). Track as follow-up to convert to a typed options object.
+function buildStartSliceReturn({
+  sliceId,
+  title,
+  activePlan,
+  runBrief,
+  sliceProgress,
+  dispatch,
+  sliceFile,
+  repoPath,
+  resolvedGoal,
+  gradeTrendCaution = null,
+  featureId = null,
+  sliceContent = null,
+  featureExcerpt = null,
+  featurePath = null,
+  marathonMilestone = null,
+  dispatchLimits = null,
+  orchestratorModel = null,
+  learningsDigest = null,
+  planPreflight = null,
+  requiresApprovalGate = false,
+  touchesFiles = [] as string[],
+  confidence = null,
+  confidenceReason = null,
+  orchestratorMode = "slice-build" as OrchestratorMode,
+  worktreeInfo = undefined,
+  inlinePathHint = null,
+  loopConfig = null
+}: {
+  sliceId: string;
+  title: string;
+  activePlan: Record<string, any>;
+  runBrief: Record<string, any> | null;
+  sliceProgress: Record<string, any> | null;
+  dispatch: boolean;
+  sliceFile: string | null;
+  repoPath: string;
+  resolvedGoal: string | null;
+  gradeTrendCaution?: string | null;
+  featureId?: string | null;
+  sliceContent?: string | null;
+  featureExcerpt?: string | null;
+  featurePath?: string | null;
+  marathonMilestone?: Record<string, any> | null;
+  dispatchLimits?: { maxSubagentsPerSlice: number; preferInlineFor?: string[] } | null;
+  orchestratorModel?: string | null;
+  learningsDigest?: string | null;
+  planPreflight?: Record<string, any> | null;
+  requiresApprovalGate?: boolean;
+  touchesFiles?: string[];
+  confidence?: string | null;
+  confidenceReason?: string | null;
+  orchestratorMode?: OrchestratorMode;
+  worktreeInfo?: WorktreeResult | undefined;
+  inlinePathHint?: string | null;
+  loopConfig?: Record<string, any> | null;
+}) {
+  const worktreePath = worktreeInfo?.worktreePath ?? null;
+  const dispatchInstruction = resolveDispatchInstruction(
+    dispatch,
+    sliceId,
+    title,
+    sliceFile,
+    repoPath,
+    resolvedGoal,
+    featureId,
+    sliceContent,
+    featureExcerpt,
+    featurePath,
+    dispatchLimits,
+    worktreePath,
+    orchestratorMode,
+    inlinePathHint,
+    loopConfig
+  );
+  const activePlanSummary = resolveActivePlanSummary(activePlan);
+  const nextAction = computeNextAction(
+    sliceId,
+    requiresApprovalGate,
+    dispatch,
+    planPreflight,
+    orchestratorMode
+  );
+  const base: Record<string, any> = {
+    slice: { id: sliceId, title },
+    activePlan: activePlanSummary,
+    runBrief,
+    sliceProgress,
+    dispatchInstruction,
+    nextAction,
+    gradeTrendCaution,
+    marathonMilestone,
+    orchestratorModel,
+    learningsDigest,
+    planPreflight,
+    requiresApprovalGate,
+    confidence,
+    confidenceReason,
+    // FEAT-277 AC-7: populated by classify-slice-shape; used by wave planner for conflict detection.
+    touchesFiles
+  };
+  attachWorktreeSection(base, worktreeInfo);
+  return base;
+}
+
+// Refresh the slice-progress dashboard with the new currentSliceId.
+// Extracted from startSlice purely to lower its cyclomatic complexity.
+async function refreshSliceProgress(
+  repoPath: string,
+  activePlan: Record<string, any>,
+  sliceId: string,
+  config: Record<string, any> | null = null
+) {
+  return bestEffort(async () => {
+    const enriched = await detectSliceStatus(repoPath, activePlan.slices, {
+      slicesRoot: resolveSlicesRoot(repoPath, config)
+    });
+    return writeSliceProgress(repoPath, {
+      activePlan,
+      slices: enriched,
+      currentSliceId: sliceId
+    });
+  });
+}
+
+async function recordStartTrajectory(
+  repoPath: string,
+  sliceId: string,
+  result: Record<string, any>,
+  featureId: string | null,
+  title: string
+) {
+  try {
+    const { recordStep } = await import("../trajectory-writer.mjs");
+    await recordStep(repoPath, sliceId, "slice_start", {
+      featureId: featureId ?? null,
+      title,
+      planPath: result.planPreflight?.planPath ?? null,
+      requiresApprovalGate: result.requiresApprovalGate ?? false
+    });
+  } catch {
+    // best-effort — never blocks slice start
+  }
+}
+
+async function recordSliceStartEvent(
+  repoPath: string,
+  sliceId: string,
+  featureId: string | null
+): Promise<void> {
+  try {
+    const { appendSliceEvent } = await import("../slice-events.mjs");
+    await appendSliceEvent(repoPath, sliceId, {
+      type: "workflow_state_changed",
+      sliceId,
+      featureId,
+      timestamp: new Date().toISOString(),
+      from: null,
+      to: "building"
+    });
+  } catch (err) {
+    console.warn(
+      `[slice-events] start-event failed (${sliceId}): ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+// FEAT-263 T5 (plan v2, architect finding 9): wrap the recentLearnings()
+// digest in the same <task-scoped> marker dispatch.mts's order-blocks use,
+// so a fresh transcript that re-presents already-durable lessons doesn't get
+// re-minted as new near-duplicate atoms by the session-transcript distiller
+// (the #371 rephrase class) once upstream astramem-local#374's E3 lands a
+// skip-marked-regions extractor pass.
+//
+// Deliberately reuses <task-scoped> rather than a dedicated
+// <recalled-memory> sub-marker: today the marker's only defined meaning is
+// "skip — not durable/new" (E3 hasn't shipped the extractor-side skip logic
+// yet), so a single non-nested marker vocabulary keeps
+// validate-dispatch-markers.mts's balanced/non-nested invariant trivial to
+// check across both producers (dispatch.mts's order-blocks and this digest
+// wrap) instead of teaching it a second marker grammar for one field. The
+// astramem recall block (formatRecallBlockV1, above the splice site in
+// startSlice) is deliberately NOT wrapped here — its format is the frozen
+// recall-injection-v1 cross-plugin contract, out of scope for this slice.
+//
+// Exported so validate-dispatch-markers.mts can exercise it directly with
+// fixture input, mirroring how it imports dispatch.mts's builders.
+export function wrapLearningsDigestTaskScoped(learningsDigest: string | null): string {
+  if (!learningsDigest) return "";
+  return ["<task-scoped>", learningsDigest, "</task-scoped>"].join("\n");
+}
+
+// FEAT-188 S3b: astramem RecallHit kinds this hook will label a block line
+// with — mirrors dev-team's MemoryKindSchema (schema.ts). An unrecognized
+// `hit.type` falls back to "lesson", matching dev-team's own degraded-
+// fidelity wire mapping (astramem-provider.ts mapHitsToEntries).
+const RECALL_V1_KINDS = new Set(["failure", "lesson", "decision", "standard_violation"]);
+// MemoryEntrySchema caps summary at 280 chars (schema.ts MAX_SUMMARY_LENGTH).
+const RECALL_V1_MAX_SUMMARY = 280;
+
+/**
+ * Format recalled astramem hits per the frozen recall-injection-v1 contract
+ * (dev-team docs/contracts/recall-injection-v1.md): same
+ * `## Prior context (from astramem)` header as before, but the per-line
+ * shape now matches MemoryEntry's kind/severity/source/summary rather than
+ * the retired RecallResult type/score/slice_id/content shape. RecallHit (the
+ * wire shape astramem-client hands back) carries no severity, so every line
+ * is labeled "medium" — the same hardcode dev-team's own wire-hit mapping
+ * uses for the paired, no-local-duplicate case. Empty input -> "".
+ */
+function formatRecallBlockV1(
+  hits: { type: string; text: string; score: number; source?: string | undefined }[],
+  k: number
+): string {
+  if (hits.length === 0) return "";
+  const sorted = [...hits].sort((a, b) => b.score - a.score).slice(0, k);
+  const lines = sorted.map((hit) => {
+    const kind = RECALL_V1_KINDS.has(hit.type) ? hit.type : "lesson";
+    const summary = hit.text.slice(0, RECALL_V1_MAX_SUMMARY);
+    const source = hit.source ?? "astramem";
+    return `- **[${kind} medium]** ${source} ${summary}`;
+  });
+  return `## Prior context (from astramem)\n${lines.join("\n")}`;
+}
+
+/** Build the recallSilent request — extracted from runRecallHook to keep its
+ * cognitive complexity under the repo cap. */
+function buildRecallRequest(
+  featId: string,
+  sliceId: string,
+  touchesFiles: string[],
+  k: number,
+  project: string | undefined,
+  agent: string | undefined
+): { query: string; k: number; project?: string; agent?: string } {
+  const filePart = touchesFiles.length > 0 ? ` files:${touchesFiles.slice(0, 5).join(",")}` : "";
+  const query = `${featId} ${sliceId}${filePart} prior failures decisions lessons`;
+  return {
+    query,
+    k,
+    ...(project ? { project } : {}),
+    ...(agent ? { agent } : {})
+  };
+}
+
+/** Emit the recall_used trainset event — extracted from runRecallHook to keep
+ * its cognitive complexity under the repo cap. Fail-silent, never throws;
+ * no-ops when hitCount is 0 or no transport is discoverable. */
+async function emitRecallUsedEvent(
+  featId: string,
+  sliceId: string,
+  k: number,
+  hitCount: number
+): Promise<void> {
+  if (hitCount === 0) return;
+  try {
+    // No provider pre-gate: emitGepaEvent() is fail-silent and no-ops itself
+    // when no astramem provider is discoverable (FEAT-235).
+    const { emitGepaEvent } = await import("../memory-gepa.mjs");
+    const { getPromptVersion } = await import("../agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+    await emitGepaEvent({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featId,
+      source: "recall",
+      event: "recall_used",
+      score: 1,
+      feedback: `hits=${hitCount}`,
+      input: { feat_id: featId, slice_id: sliceId, k },
+      output: { hits: hitCount },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent.
+  }
+}
+
+// Cap policy (FEAT-233 / DEC-071), extracted as a pure helper so it can be
+// asserted deterministically without racing a wallclock: recall's own explicit
+// memory.recall.timeoutMs wins (a documented per-path override — recall runs
+// once at slice-start, not a hot per-call path, and feeds dispatch quality, so
+// it can afford a longer budget); else the shared memory.capMs (same knob
+// capture reads, memory-sink.mts); else DEFAULT_RECALL_CAP_MS (5000), recall's
+// historical default. Never a second bare literal — single source of truth
+// lives in memory-transport.mts.
+export function resolveRecallCapMs(config: Record<string, any>): number {
+  return config?.memory?.recall?.timeoutMs ?? config?.memory?.capMs ?? DEFAULT_RECALL_CAP_MS;
+}
+
+// runner-plugin#291 / FEAT-188 S3b: query astramem for prior context before
+// dispatch, formatted per the frozen recall-injection-v1 contract (see
+// formatRecallBlockV1 above). Returns a formatted Markdown block (or empty
+// string on any failure / opt-out). Never throws. Transport is the shared
+// @astragenie/astramem-client's recallSilent — a single wallclock-capped,
+// fail-silent call — retiring the CLI-spawn recallPrior/legacy
+// recall-injector.mts block this hook used before S3b.
+async function runRecallHook(
+  featId: string,
+  sliceId: string,
+  touchesFiles: string[],
+  config: Record<string, any>
+): Promise<string> {
+  try {
+    const memoryEnabled = config?.memory?.enabled;
+    if (memoryEnabled === "never") return "";
+    const recallEnabled = config?.memory?.recall?.enabled;
+    if (recallEnabled === false) return "";
+
+    const k: number = config?.memory?.recall?.k ?? 5;
+    // Cap policy (FEAT-233 / DEC-071) — see resolveRecallCapMs above.
+    const timeoutMs: number = resolveRecallCapMs(config);
+    // Cortex project derives from memory.project else productName (DEC-065) —
+    // never the featId (the pre-DEC-066 bug that queried a non-existent
+    // per-feature project). Undefined → recallSilent omits project.
+    const project: string | undefined =
+      (typeof config?.memory?.project === "string" && config.memory.project) ||
+      (typeof config?.productName === "string" && config.productName) ||
+      undefined;
+    // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent) — astramem's
+    // agent filter is a HARD filter, so scoping before enough agent-tagged
+    // history exists starves recall (#309). Slice-start recall serves the
+    // builder, so it scopes to memory.recall.agent (default crew:builder)
+    // when enabled.
+    const agent: string | undefined =
+      config?.memory?.recall?.scopeByAgent === true
+        ? (typeof config?.memory?.recall?.agent === "string" && config.memory.recall.agent) ||
+          "crew:builder"
+        : undefined;
+
+    const { recallSilent } = await import("@astragenie/astramem-client");
+
+    const response = await recallSilent(
+      buildRecallRequest(featId, sliceId, touchesFiles, k, project, agent),
+      {
+        capMs: timeoutMs
+      }
+    );
+    const hits = response?.hits ?? [];
+    const block = formatRecallBlockV1(hits, k);
+
+    // Fire-and-forget trainset telemetry — never blocks slice-start. Dormant
+    // when hits is empty or no transport is discoverable.
+    void emitRecallUsedEvent(featId, sliceId, k, hits.length);
+
+    return block;
+  } catch {
+    return "";
+  }
+}
+
+// runner-plugin#290: emit GEPA memory payload on slice start.
+// Fail-silent — emit() never throws and is already 2s-capped. Dormant when
+// astramem CLI absent or loop.memory.enabled === "never".
+async function emitSliceStartedMemory(
+  _repoPath: string,
+  sliceId: string,
+  featureId: string | null,
+  result: Record<string, any>,
+  config: Record<string, any>
+): Promise<void> {
+  try {
+    const memoryEnabled = config?.memory?.enabled;
+    if (memoryEnabled === "never") return;
+
+    // No provider pre-gate: emitGepaEvent() is fail-silent and no-ops itself
+    // when no astramem provider is discoverable (FEAT-235).
+    const { emitGepaEvent } = await import("../memory-gepa.mjs");
+
+    const { getPromptVersion } = await import("../agent-version.mjs");
+    const promptVersion = await getPromptVersion("runner");
+
+    const dispatchLabel =
+      typeof result.dispatchInstruction === "string"
+        ? result.dispatchInstruction.slice(0, 120)
+        : "n/a";
+    const agentName = result.orchestratorMode ?? "slice-build";
+
+    await emitGepaEvent({
+      ts: new Date().toISOString(),
+      slice_id: sliceId,
+      feat_id: featureId ?? "FEAT-unknown",
+      source: "start",
+      event: "slice_started",
+      score: 0.5,
+      feedback: `Slice ${sliceId} started (dispatch: ${agentName})`,
+      input: {
+        dispatch_label: dispatchLabel,
+        agent_name: agentName
+      },
+      output: {
+        confidence: result.confidence ?? null,
+        requires_approval_gate: result.requiresApprovalGate ?? false
+      },
+      prompt_version: promptVersion
+    });
+  } catch {
+    // Fail-silent: memory bridge must never affect the slice-start path.
+  }
+}

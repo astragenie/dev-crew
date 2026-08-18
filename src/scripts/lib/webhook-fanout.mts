@@ -1,0 +1,65 @@
+import { readNotifyConfig } from "./event-notifier.mjs";
+import { createWebhookSender, type FetchFn } from "./webhook-sender.mjs";
+
+// Env-aware fanout — all URL + bearer resolution is delegated to readNotifyConfig.
+//
+// Precedence (applied inside readNotifyConfig before this function runs):
+//   URL:    LOOP_INGEST_URL > ASTRARUNNER_ENV profile > loop.json webhook.url
+//   Bearer: loop.json bearer (literal) > ASTRARUNNER_ENV tokens.<env>.json > tokens.json
+//
+// Set ASTRARUNNER_ENV=local|staging|prod to switch ingest tiers without editing
+// per-repo loop.json or rotating tokens manually.
+
+export const _internals = {
+  fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args)
+};
+
+export async function fanoutEnvelope(
+  repoPath: string,
+  kind: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const cfg = await readNotifyConfig(repoPath);
+    // Pattern B guard: skip fan-out when bearer could not be resolved from
+    // committed config OR user-level token store (tier-specific or default).
+    const wh = cfg.webhook;
+    if (!wh?.url || !wh.bearer) return;
+
+    const fetchFn = _internals.fetch as unknown as FetchFn;
+    const senderConfig: {
+      url: string;
+      tenantId: string;
+      appId: string;
+      bearer: string;
+      disabled?: boolean;
+    } = {
+      url: wh.url,
+      tenantId: wh.tenantId,
+      appId: wh.appId,
+      bearer: wh.bearer
+    };
+    if (wh.disabled !== undefined) {
+      senderConfig.disabled = wh.disabled;
+    }
+    const sender = createWebhookSender(senderConfig, { fetchFn });
+    // `resolvedAt` wins over `ts` when both are present: resolve envelopes
+    // (halt_badge.resolved) carry the ORIGINAL opened `ts` in their payload
+    // per the halt-events v1 contract, so the envelope-level emittedAt must
+    // fall back to the actual resolve time instead of that stale timestamp.
+    const emittedAt =
+      (payload.resolvedAt as string | undefined) ??
+      (payload.ts as string | undefined) ??
+      (payload.timestamp as string | undefined) ??
+      new Date().toISOString();
+    await sender.send({
+      tenantId: wh.tenantId,
+      appId: wh.appId,
+      kind,
+      payload,
+      emittedAt
+    });
+  } catch {
+    // Fail-silent contract: JSONL on disk is authoritative.
+  }
+}

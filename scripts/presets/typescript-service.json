@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "presetName": "typescript-service",
+  "description": "TypeScript Node service / daemon. Fastify HTTP + better-sqlite3 / sqlite-vec storage, `tsc` build, Vitest tests, JSON-schema (ajv) wire contracts, OS-service deployment (schtasks / systemd / launchd). Fits astramemory-local-style local-first memory daemons and standalone Node services.",
+  "projectType": "service",
+  "split": false,
+  "frontend": { "framework": "none", "language": "typescript" },
+  "backend": { "framework": "node", "language": "typescript", "storage": "sqlite" },
+  "contract": "json-schema",
+  "deployment": "service",
+  "loop": {
+    "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
+    "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
+    "slicesRoot": ".claude/artifacts/loop/ai-loop/slices",
+    "backlogRoot": ".claude/artifacts/loop/backlog",
+    "specsRoot": ".claude/artifacts/loop/specs",
+    "gradesRoot": ".claude/artifacts/loop/grades",
+    "decisionsRoot": ".claude/artifacts/loop/decisions",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "maxIterations": 25,
+    "marathonMode": true
+  },
+  "stack": {
+    "build": [
+      { "cmd": "bun", "args": ["run", "build"] }
+    ],
+    "test": [
+      { "cmd": "bun", "args": ["run", "test"] },
+      { "cmd": "node", "args": ["contracts/validate.mjs"] }
+    ],
+    "frontendBuild": null,
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": { "ladder": ["A", "B"] },
+  "light": {
+    "description": "FEAT-271: trimmed reviewer ladder for repos with a CI test gate -- single Reviewer A, behavior/test validation delegated to CI via loop.validation.satisfiedByReview. Applied by `/runner:install --light` on top of the base reviewers block above; do not enable on a repo with no CI test gate (keep the two-reviewer ladder there) -- see ADOPTION.md § Light reviewer ladder rollout for when to trim, when not to, and how to revert.",
+    "reviewers": { "ladder": ["A"] },
+    "loop": { "validation": { "satisfiedByReview": true } }
+  },
+  "mandatoryDocs": [
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "productName": "Untitled TypeScript service",
+  "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
+  "stackDescription": "- TypeScript source (`src/**/*.ts`) compiled via `tsc -p .` to `dist/` (gitignored build output)\n- Node 20+ ESM runtime (`\"type\": \"module\"`)\n- Fastify HTTP daemon + CLI (`bin`); pino structured logging\n- better-sqlite3 (multiple-ciphers) + sqlite-vec for local-first encrypted vector storage\n- Vitest for tests (`bun run test` → `vitest run`)\n- JSON-schema wire contracts under `contracts/` validated by ajv (`node contracts/validate.mjs`)\n- OS-service deployment: schtasks (Windows) / systemd (Linux) / launchd (macOS) via the install wizard\n- Override the second `test` stage to `null` in `.claude/loop.json` if the repo has no contracts/validate.mjs",
+  "skills": ["typescript-pro", "backend-advisory", "database-architecture"],
+  "roles": {
+    "pm": {
+      "skills": ["superpowers:verification-before-completion", "runner:loop-discipline"]
+    },
+    "researcher": {
+      "skills": ["superpowers:verification-before-completion", "runner:loop-discipline"]
+    },
+    "architect": {
+      "skills": ["runner:loop-discipline"]
+    },
+    "document-writer": {
+      "skills": ["runner:loop-discipline"]
+    }
+  }
+}

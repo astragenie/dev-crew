@@ -1,0 +1,725 @@
+// Bridge layer that hands slice-completion artifacts off to the hero-crew
+// plugin's `crew` CLI. Calls crew via execFile against the version installed
+// in Claude Code's plugin cache. Best-effort: missing crew is a soft no-op,
+// and any single failure (cost-report / handoff / final-synthesis) does not
+// block the others.
+//
+// Extracted from slice-linker.mjs during the Tier B-8 split.
+
+import fs from "node:fs/promises";
+import path from "node:path";
+import { execFile as _execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
+import { crewCliRuntime } from "../plugin-identity.mjs";
+import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
+import { fanoutEnvelope } from "../webhook-fanout.mjs";
+import { gitTextOrThrow } from "../run-git.mjs";
+import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
+import { renderIdentification } from "./agent-report-writer.mjs";
+import { dedupeCostReportsInDir } from "./cost-report-dedup.mjs";
+import {
+  resolveCostScanWindow,
+  resolveCostReportSessionId,
+  writeCostScanCursor
+} from "./cost-scan-cursor.mjs";
+
+const execFile = promisify(_execFile);
+
+async function findHeroCrewCli() {
+  // Lookup order, most-specific-first:
+  // 1. $HERO_CREW_PATH env override (explicit user pin). This is the only
+  //    supported way to point at a local dev checkout — there is
+  //    deliberately no hardcoded author-machine absolute path here (a prior
+  //    version probed one unconditionally before the plugin cache, which
+  //    was wrong for anyone but the original author; see FEAT-236 B3).
+  // 2. Plugin cache (whatever version is installed).
+  if (process.env.HERO_CREW_PATH) {
+    const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
+    if (await pathExists(explicit)) return explicit;
+  }
+
+  // Fall back to the plugin cache (handles installs without a local checkout).
+  const { findCrewCli } = await import("../plugin-identity.mjs");
+  const cached = await findCrewCli();
+  if (cached) return cached;
+
+  return null;
+}
+
+// Writes both cost-report (cost/) and cost-advise (cost-insights/) so the
+// slice-close artifact set matches what `crew write-final-synthesis`
+// auto-emits. `--aggregate-all` mirrors maybeEmitCostReport's default in
+// crew.mjs so cross-repo sessions are captured. The advise step is
+// best-effort and reported in the return alongside the report.
+// Invokes `crew write-run-brief` to rotate workflow-state.currentRun to
+// the new slice. Best-effort: missing crew is a soft no-op so the agent
+// can still proceed; the loop driver inspects the return.
+function pushOptionalFlags(args: string[], pairs: [string, string | null | undefined][]) {
+  for (const [flag, value] of pairs) {
+    if (value) args.push(flag, String(value));
+  }
+}
+
+export async function writeCrewRunBrief(
+  repoPath: string,
+  {
+    sliceId,
+    title,
+    goal,
+    featureId,
+    phase,
+    mode,
+    pace,
+    scope,
+    outOfScope
+  }: {
+    sliceId: string;
+    title?: string | null;
+    goal?: string | null;
+    featureId?: string | null;
+    phase?: string | null;
+    mode?: string | null;
+    pace?: string | null;
+    scope?: string | null;
+    outOfScope?: string | null;
+  }
+) {
+  const cli = await findHeroCrewCli();
+  if (!cli) return { skipped: "hero-crew CLI not found" };
+  const titleSummary = title ? title.replace(/^SLICE-\d+:\s*/i, "") : null;
+  const enrichedTitle = buildArtifactTitle({
+    featureId,
+    phase,
+    sliceId,
+    summary: titleSummary && titleSummary !== sliceId ? titleSummary : undefined
+  });
+  const args = [
+    cli,
+    "write-run-brief",
+    "--repo",
+    repoPath,
+    "--title",
+    enrichedTitle,
+    "--owner",
+    "loop",
+    "--next",
+    "Begin implementation"
+  ];
+  pushOptionalFlags(args, [
+    ["--goal", goal],
+    ["--mode", mode],
+    ["--pace", pace],
+    ["--scope", scope],
+    ["--out-of-scope", outOfScope],
+    ["--feature", featureId],
+    ["--phase", phase !== null && phase !== undefined && String(phase).length > 0 ? phase : null]
+  ]);
+  try {
+    const { stdout } = await execFile(crewCliRuntime(String(args[0])), args, {
+      maxBuffer: 1024 * 1024
+    });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      return { stdout: stdout.slice(0, 500) };
+    }
+    return parsed;
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
+  }
+}
+
+// Cost attribution mode:
+// - "aggregate" (default): pass --aggregate-all so cross-repo session
+//   work is captured (mirrors maybeEmitCostReport in crew.mjs).
+// - "scoped": pass --source-project <slug> so concurrent loops in sibling
+//   worktrees don't bleed into each other's cost windows.
+// Config override: if config.loop.costProject is set, always use scoped
+// with that value — avoids false-high alerts from aggregate mode when
+// running a single repo alongside other active repos.
+// Auto-detect fallback: linked worktree OR multiple worktrees → scoped.
+export async function detectCostMode(repoPath: string, config: Record<string, any> | null) {
+  if (config?.loop?.costProject) return "scoped";
+  try {
+    const { stdout: commonDir } = await gitTextOrThrow(["rev-parse", "--git-common-dir"], {
+      cwd: repoPath,
+      maxBuffer: 64 * 1024
+    });
+    const { stdout: gitDir } = await gitTextOrThrow(["rev-parse", "--git-dir"], {
+      cwd: repoPath,
+      maxBuffer: 64 * 1024
+    });
+    // Resolve both to absolute paths against repoPath before comparing —
+    // git may emit one as relative and the other as absolute (Windows w/
+    // home-dir git repo surfaced this), making string-equality false.
+    const path = await import("node:path");
+    const commonAbs = path.resolve(repoPath, commonDir.trim());
+    const gitAbs = path.resolve(repoPath, gitDir.trim());
+    if (commonAbs !== gitAbs) return "scoped";
+    const { stdout: list } = await gitTextOrThrow(["worktree", "list", "--porcelain"], {
+      cwd: repoPath,
+      maxBuffer: 256 * 1024
+    });
+    const count = list.split(/\r?\n/).filter((l) => l.startsWith("worktree ")).length;
+    return count > 1 ? "scoped" : "aggregate";
+  } catch {
+    return "aggregate";
+  }
+}
+
+// Accepts either a bare sliceId (legacy callers) or a { sliceId, featureId,
+// phase } object. The structured form is preferred — it lets the cost-slice
+// run-title include the FEAT/phase tags so crew's slugifier writes them into
+// the cost-report filename.
+// Append --feature / --phase flags to a crew CLI arg list when present.
+// Keeps argv terse and the caller's branch count low.
+function appendFeaturePhaseArgs(
+  args: string[],
+  featureId: string | null | undefined,
+  phase: string | null | undefined
+) {
+  if (featureId) args.push("--feature", String(featureId));
+  if (phase !== null && phase !== undefined && String(phase).length > 0) {
+    args.push("--phase", String(phase));
+  }
+}
+
+// Spawn the crew CLI, return parsed JSON or fall back to a truncated stdout
+// envelope. Captures execFile errors as `{ error }` so the caller does not
+// need its own try/catch around every invocation.
+async function runCrew(args: string[]) {
+  try {
+    const { stdout } = await execFile(crewCliRuntime(String(args[0])), args, {
+      maxBuffer: 1024 * 1024
+    });
+    try {
+      return JSON.parse(stdout);
+    } catch {
+      return { stdout: stdout.slice(0, 500) };
+    }
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
+  }
+}
+
+// Normalizes a human-readable project name or repo path into the slug form
+// crew's session scanner expects under ~/.claude/projects/<slug>/ — same
+// regex crew's own slugifyRepoPath uses (session-cost.ts). Idempotent: a
+// dash already matches [^A-Za-z0-9] and maps to itself, so an
+// already-slugified value passes through unchanged (SLICE-175 root-cause
+// spike: docs/research/2026-08-02-citylive-zero-cost-telemetry.md — an
+// unslugified config.loop.costProject bypasses crew's auto-detect fallback
+// and silently zeroes the cost report).
+function slugifyProjectSlug(value: string): string {
+  return value.replace(/[^A-Za-z0-9]/g, "-");
+}
+
+// Appends --source-project flags for the primary project and any aliases
+// declared in config.loop.costProjectAliases. The crew CLI 0.9.0 parser
+// uses last-one-wins when multiple --source-project flags are passed, so
+// aliases are pushed FIRST and primary is pushed LAST — this ensures the
+// primary wins in current crew builds while the full alias list is present
+// for future crew versions that may support multi-source aggregation.
+export function appendSourceProjectArgs(
+  args: string[],
+  primary: string,
+  aliases: string[] | null | undefined
+) {
+  if (Array.isArray(aliases)) {
+    for (const alias of aliases) {
+      if (typeof alias === "string" && alias.length > 0) {
+        args.push("--source-project", alias);
+      }
+    }
+  }
+  args.push("--source-project", primary);
+}
+
+export async function tryWriteCostReport(
+  repoPath: string,
+  sliceOrInfo: string | Record<string, any> | null,
+  config: Record<string, any> | null
+) {
+  const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
+  const { sliceId, featureId = null, phase = null } = info as Record<string, any>;
+  const cli = await findHeroCrewCli();
+  if (!cli) return { skipped: "hero-crew CLI not found" };
+
+  const mode = await detectCostMode(repoPath, config);
+  const runTitle = buildArtifactTitle({ featureId, phase, sliceId });
+  const workflowState = await readCrewWorkflowState(repoPath);
+  // SLICE-162: resolve this slice's OWN scan window (persisted cursor,
+  // falling back to currentRun.startedAt only on the slice's first-ever
+  // scan) instead of always relying on crew's shared currentRun fallback
+  // — see cost-scan-cursor.mjs for the full root-cause rationale.
+  const window = await resolveCostScanWindow(repoPath, sliceId, workflowState);
+  const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
+  pushOptionalFlags(reportArgs, [
+    ["--started-at", window.startedAt],
+    ["--completed-at", window.completedAt]
+  ]);
+  if (mode === "scoped") {
+    const project = slugifyProjectSlug(config?.loop?.costProject ?? repoPath);
+    const rawAliases = config?.loop?.costProjectAliases;
+    const aliases = Array.isArray(rawAliases)
+      ? rawAliases.map((alias: unknown) =>
+          typeof alias === "string" ? slugifyProjectSlug(alias) : alias
+        )
+      : rawAliases;
+    appendSourceProjectArgs(reportArgs, project, aliases);
+  } else {
+    reportArgs.push("--aggregate-all");
+  }
+  appendFeaturePhaseArgs(reportArgs, featureId, phase);
+  const report = await runCrew(reportArgs);
+
+  // Only advance the cursor when crew's CLI actually ran (no execFile
+  // error) — a failed invocation leaves the window untouched so the next
+  // attempt retries the same, still-valid span instead of silently
+  // skipping it.
+  if (sliceId && !report?.error) {
+    await writeCostScanCursor(repoPath, sliceId, window.completedAt);
+  }
+
+  // AC-3: stamp the originating crew session/transcript id into the
+  // written report's frontmatter — crew's own artifact writer has no
+  // field for this today (see the root-cause spike), so this is a
+  // best-effort loop-side post-write patch, not a dedup-fingerprint
+  // change (resolveCostReportUsd/sliceKeyOf never read this field).
+  await stampCostReportSessionId(report, resolveCostReportSessionId(workflowState));
+
+  // FEAT-204: sweep the cost-report directory for shared-session
+  // duplicates left by this (or a sibling wave FEAT's) invocation and
+  // collapse them to shared_with references. Best-effort -- a sweep
+  // failure never blocks the cost-report/advise flow.
+  const dedup = await sweepCostReportDedup(repoPath, config);
+
+  const adviseArgs = [cli, "cost-advise", "--repo", repoPath, "--title", runTitle];
+  appendFeaturePhaseArgs(adviseArgs, featureId, phase);
+  let advise: Record<string, any> | null = null;
+  try {
+    const { stdout } = await execFile(crewCliRuntime(String(adviseArgs[0])), adviseArgs, {
+      maxBuffer: 1024 * 1024
+    });
+    try {
+      advise = JSON.parse(stdout);
+    } catch {
+      advise = { stdout: stdout.slice(0, 500) };
+    }
+  } catch (err: unknown) {
+    advise = { error: (err as Error).message };
+  }
+
+  // FEAT-234 (cross-repo): emit `cost.advise_recorded` envelope so the
+  // runner-side handler can persist into jsonl_cost_advises + render via
+  // the v2 read path when the per-app UseJsonlCostAdvises flag flips.
+  // Fail-silent contract: webhook-fanout swallows transport errors; the
+  // md file on disk remains authoritative.
+  if (advise && !advise.error) {
+    await postCostAdviseEnvelope(repoPath, { sliceId, featureId, runTitle, advise });
+  }
+
+  return { ...report, advise, costMode: mode, dedup };
+}
+
+// Collects every report file path a `crew cost-slice` JSON return can carry.
+// The CLI's return shape varies: a plain slice report returns `{ path, ... }`
+// at the top level; an aggregate-mode call that found multiple sources
+// returns `{ slice: {...}, aggregate: {...} }`, each with their own `path`.
+// Exported for direct unit coverage (SLICE-162).
+export function collectCostReportPaths(report: Record<string, any> | null | undefined): string[] {
+  if (!report) return [];
+  const paths: string[] = [];
+  if (typeof report.path === "string") paths.push(report.path);
+  if (typeof report.slice?.path === "string") paths.push(report.slice.path);
+  if (typeof report.aggregate?.path === "string") paths.push(report.aggregate.path);
+  return paths;
+}
+
+// Best-effort post-write patch: adds `session_id` to a just-written cost
+// report's frontmatter without disturbing any other field (in particular
+// `slice` / `usd`, which resolveCostReportUsd/sliceKeyOf in
+// memory-snapshot.mts key their dedup on — AC-4 requires those untouched).
+// A stamp failure never blocks the cost-report/advise flow.
+export async function stampCostReportSessionId(
+  report: Record<string, any> | null | undefined,
+  sessionId: string | null
+): Promise<void> {
+  if (!sessionId) return;
+  const paths = collectCostReportPaths(report);
+  if (paths.length === 0) return;
+  const { mergeFrontmatter } = await import("../frontmatter.mjs");
+  for (const reportPath of paths) {
+    try {
+      const raw = await fs.readFile(reportPath, "utf8");
+      await fs.writeFile(reportPath, mergeFrontmatter(raw, { session_id: sessionId }));
+    } catch {
+      // best-effort — never blocks the cost-report/advise flow
+    }
+  }
+}
+
+// Resolves the cost-report directory used by `crew cost-slice` writes and
+// runs the dedup sweep against it. A config override
+// (config.loop.costReportsDir) is honored for parity with any future
+// crew-side path customization; otherwise the standard
+// .claude/artifacts/crew/cost/ location is used.
+async function sweepCostReportDedup(
+  repoPath: string,
+  config: Record<string, any> | null
+): Promise<{ groups: number; deduped: string[] } | { error: string }> {
+  try {
+    const costDir =
+      typeof config?.loop?.costReportsDir === "string"
+        ? path.join(repoPath, config.loop.costReportsDir)
+        : path.join(repoPath, ".claude/artifacts/crew/cost");
+    return await dedupeCostReportsInDir(costDir);
+  } catch (err: unknown) {
+    return { error: (err as Error).message };
+  }
+}
+
+/**
+ * Build a `cost.advise_recorded` envelope from the cost-advise CLI output
+ * and ship it via the Pattern-B webhook-fanout (loop.notifications.webhook
+ * in .claude/loop.json + ~/.astrarunner/tokens.json bearer lookup).
+ *
+ * Payload mirrors SPEC-FEAT-234 §4.1. Fields the CLI doesn't supply are
+ * omitted — the runner handler validates only `sliceId` as required and
+ * tolerates missing optional baselines.
+ */
+async function postCostAdviseEnvelope(
+  repoPath: string,
+  opts: {
+    sliceId: string;
+    featureId: string | null | undefined;
+    runTitle: string;
+    advise: Record<string, any>;
+  }
+): Promise<void> {
+  const a = opts.advise;
+  // The CLI's stdout JSON has historically nested findings under either
+  // `recommendations`, `findings`, or `flags`. Accept all three keys with
+  // `recommendations` taking precedence so future CLI renames are forward-
+  // compatible without a runner-side change.
+  const recommendations = pickArray(a.recommendations) ?? pickArray(a.findings) ?? [];
+  const aggregateFlags =
+    pickArray(a.aggregateFlags) ?? pickArray(a.aggregate_flags) ?? pickArray(a.flags) ?? [];
+  const baselineUsdMedian = pickNumber(a.baselineUsdMedian) ?? pickNumber(a.baseline_usd_median);
+  const baselineUsdP75 = pickNumber(a.baselineUsdP75) ?? pickNumber(a.baseline_usd_p75);
+  const baselineCacheHitMedian =
+    pickNumber(a.baselineCacheHitMedian) ?? pickNumber(a.baseline_cache_hit_median);
+
+  const payload: Record<string, unknown> = {
+    sliceId: opts.sliceId,
+    targetSliceId: opts.sliceId,
+    featureId: opts.featureId ?? null,
+    runTitle: opts.runTitle,
+    recommendations,
+    aggregateFlags,
+    baselineUsdMedian,
+    baselineUsdP75,
+    baselineCacheHitMedian,
+    ts: new Date().toISOString()
+  };
+
+  await fanoutEnvelope(repoPath, "cost.advise_recorded", payload);
+}
+
+function pickArray(v: unknown): unknown[] | null {
+  return Array.isArray(v) ? v : null;
+}
+
+function pickNumber(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+// Invokes `crew mark-badge --badge validation_skipped --note <reason>` so
+// the skip is captured in workflow-state with an audit trail. Best-effort:
+// missing crew is reported via `{ skipped }`, identical to other bridge
+// calls. The slice close still proceeds — the bypass already passed the
+// gate in completeSlice; this call only records *why*.
+export async function markValidationSkippedBadge(repoPath: string, reason: string) {
+  const cli = await findHeroCrewCli();
+  if (!cli) return { skipped: "hero-crew CLI not found" };
+  const args = [
+    cli,
+    "mark-badge",
+    "--repo",
+    repoPath,
+    "--badge",
+    "validation_skipped",
+    "--note",
+    reason || "validation_skipped via /loop:slice complete --skip-validation-check"
+  ];
+  return runCrew(args);
+}
+
+function renderSynthesisScores(
+  grade: Record<string, any> | null,
+  sliceId: string,
+  SCORE_DIMENSIONS: string[]
+) {
+  if (!grade) {
+    return `_(no grade yet — run \`/loop:slice grade --id ${sliceId}\`)_`;
+  }
+  return SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n");
+}
+
+function renderSynthesisDecisions(grade: Record<string, any> | null) {
+  const decisions = grade?.frontmatter?.decisions;
+  if (!decisions || decisions.length === 0) return "_(no decisions captured)_";
+  return decisions.map((d: string) => `- ${d}`).join("\n");
+}
+
+function renderSynthesisBody({
+  sliceId,
+  sliceRel,
+  featureRel,
+  specChanges,
+  scoresBlock,
+  decisionsBlock,
+  grade,
+  repoPath,
+  config,
+  featureId,
+  phase
+}: {
+  sliceId: string;
+  sliceRel: string;
+  featureRel: string | null;
+  specChanges: Record<string, any>[] | null | undefined;
+  scoresBlock: string;
+  decisionsBlock: string;
+  grade: Record<string, any> | null;
+  repoPath: string;
+  config: Record<string, any> | null;
+  featureId: string | null | undefined;
+  phase: string | null | undefined;
+}) {
+  const gradeRel = path
+    .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
+    .replace(/\\/g, "/");
+  const id = renderIdentification(phase, featureId, sliceId);
+  return [
+    `# Final synthesis — ${sliceId}`,
+    "",
+    ...(id ? [id, ""] : []),
+    "## What shipped",
+    "",
+    `- Slice: \`${sliceRel}\` (completed)`,
+    featureRel ? `- Feature: \`${featureRel}\` (done)` : "",
+    specChanges && specChanges.length > 0
+      ? `- Spec status changes: ${specChanges.map((c) => `${c.id} → ${c.to}`).join(", ")}`
+      : "",
+    "",
+    "## Grade",
+    "",
+    scoresBlock,
+    "",
+    "## Decisions captured",
+    "",
+    decisionsBlock,
+    "",
+    "## Continuity hooks",
+    "",
+    "- Next slice selection follows Cross-Slice Continuation HARD RULE",
+    "- Researcher planning next slice should read this synthesis + recent grades for lessons-feed-forward",
+    "",
+    "## References",
+    "",
+    grade ? `- Grade file: \`${gradeRel}\`` : "- Grade missing — synthesis is incomplete",
+    `- Slice handoff: \`.claude/artifacts/crew/handoffs/<timestamp>-${sliceId.toLowerCase()}-complete.md\``,
+    ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export async function writeCrewFinalSynthesis(
+  repoPath: string,
+  {
+    sliceId,
+    slicePath,
+    featureId,
+    phase = null,
+    featureResult,
+    specChanges,
+    config = null
+  }: {
+    sliceId: string;
+    slicePath: string;
+    featureId?: string | null;
+    phase?: string | null;
+    featureResult?: Record<string, any> | null;
+    specChanges?: Record<string, any>[] | null;
+    config?: Record<string, any> | null;
+  }
+) {
+  const runsDir = path.join(repoPath, ".claude/artifacts/crew/runs");
+  await ensureDir(runsDir);
+  const slug = buildArtifactSlug({ featureId, phase, sliceId });
+  // No timestamp — slice closes once per slice id, so the filename is
+  // already unique. Re-running the close overwrites the previous artifact
+  // (intentional — the latest state is authoritative).
+  const target = path.join(runsDir, `${slug}-final-synthesis.md`);
+
+  const { findGradeForSlice, SCORE_DIMENSIONS } = await import("../grade-parser.mjs");
+  const grade = await findGradeForSlice(repoPath, sliceId);
+  const fm = {
+    kind: "final-synthesis",
+    slice: sliceId,
+    feature: featureId || null,
+    phase: phase || null,
+    grade: grade ? `GRADE-${sliceId}` : null,
+    decisions: grade?.frontmatter?.decisions || [],
+    created_at: new Date().toISOString().slice(0, 10)
+  };
+
+  const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
+  const featureRel = featureResult?.to
+    ? path.relative(repoPath, featureResult.to).replace(/\\/g, "/")
+    : null;
+  const body = renderSynthesisBody({
+    sliceId,
+    sliceRel,
+    featureRel,
+    specChanges: specChanges ?? null,
+    scoresBlock: renderSynthesisScores(grade, sliceId, SCORE_DIMENSIONS),
+    decisionsBlock: renderSynthesisDecisions(grade),
+    grade,
+    repoPath,
+    config: config ?? null,
+    featureId,
+    phase
+  });
+  const { serializeFrontmatter } = await import("../frontmatter.mjs");
+  await fs.writeFile(target, serializeFrontmatter(fm, body));
+  return { synthesisPath: target, hasGrade: Boolean(grade) };
+}
+
+export async function tryWriteAgentReport(
+  repoPath: string,
+  {
+    sliceId,
+    featureId,
+    phase,
+    startedAt
+  }: {
+    sliceId: string;
+    featureId?: string | null;
+    phase?: string | null;
+    startedAt?: string | null;
+  }
+) {
+  const { writeAgentReport } = await import("./agent-report-writer.mjs");
+  return writeAgentReport(repoPath, {
+    sliceId,
+    ...(featureId !== undefined ? { featureId } : {}),
+    ...(phase !== undefined ? { phase } : {}),
+    ...(startedAt !== undefined ? { startedAt } : {})
+  });
+}
+
+export async function writeCrewHandoff(
+  repoPath: string,
+  {
+    sliceId,
+    slicePath,
+    featureId,
+    phase = null,
+    featureResult,
+    specChanges,
+    config = null
+  }: {
+    sliceId: string;
+    slicePath: string;
+    featureId?: string | null;
+    phase?: string | null;
+    featureResult?: Record<string, any> | null;
+    specChanges?: Record<string, any>[] | null;
+    config?: Record<string, any> | null;
+  }
+) {
+  const handoffDir = path.join(repoPath, ".claude/artifacts/crew/handoffs");
+  await ensureDir(handoffDir);
+  const slug = buildArtifactSlug({ featureId, phase, sliceId });
+  // No timestamp — handoff is emitted once per slice close, slug already
+  // unique. Re-running the close overwrites; latest is authoritative.
+  const filename = `${slug}-complete.md`;
+  const target = path.join(handoffDir, filename);
+  const sliceRel = path.relative(repoPath, slicePath).replace(/\\/g, "/");
+  const featureRel = featureResult?.to
+    ? path.relative(repoPath, featureResult.to).replace(/\\/g, "/")
+    : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const fm = {
+    kind: "handoff",
+    objective: `Slice ${sliceId} complete — grade + start next slice`,
+    owner: "parent-loop",
+    slice: sliceId,
+    feature: featureId || null,
+    phase: phase || null,
+    created_at: today,
+    confidence: "high",
+    next_handoff: "grade-and-continue"
+  };
+  const gradeRel = path
+    .relative(repoPath, path.join(gradesRoot(repoPath, config), `${sliceId}-grade.md`))
+    .replace(/\\/g, "/");
+  const decisionsRel = path.relative(repoPath, decisionsRoot(repoPath, config)).replace(/\\/g, "/");
+  const handoffId = renderIdentification(phase, featureId, sliceId);
+  const body = [
+    `# Handoff — ${sliceId} complete`,
+    "",
+    ...(handoffId ? [handoffId, ""] : []),
+    "## Objective",
+    "",
+    `Slice ${sliceId} closed with acceptance criteria PASS. Capture lessons + decisions via grading, then resume Cross-Slice Continuation.`,
+    "",
+    "## Allowed scope",
+    "",
+    `- Run \`/loop:slice grade --id ${sliceId}\` to draft grade file.`,
+    `- Edit \`${gradeRel}\` (scores, lessons, decisions, narrative).`,
+    `- Run \`/loop:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
+    "- Pick next slice via Cross-Slice Continuation HARD RULE.",
+    "",
+    "## Forbidden scope",
+    "",
+    "- Starting next slice before grade is written (loses self-improvement signal).",
+    "",
+    "## Deliverable",
+    "",
+    `- \`${gradeRel}\` populated + grade-write'd`,
+    `- Any extracted \`${decisionsRel}/DEC-NNN.md\` files`,
+    "",
+    "## Changed files / evidence",
+    "",
+    `- slice file (completed): \`${sliceRel}\``,
+    featureRel ? `- feature file (done): \`${featureRel}\`` : "",
+    specChanges && specChanges.length > 0
+      ? `- spec status changes: ${specChanges.map((c) => `${c.id} → ${c.to}`).join(", ")}`
+      : "",
+    "",
+    "## Confidence",
+    "",
+    "High — slice + feature moves atomic; spec reconciliation idempotent.",
+    "",
+    "## Risks or open questions",
+    "",
+    "- Grading skipped → no retrospective signal for this slice.",
+    "",
+    "## Suggested next handoff",
+    "",
+    "After grade-write, lead picks next slice + opens new builder handoff.",
+    ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const { serializeFrontmatter } = await import("../frontmatter.mjs");
+  await fs.writeFile(target, serializeFrontmatter(fm, body));
+  return { handoffPath: target };
+}

@@ -1,0 +1,303 @@
+// PR issue categorizer and fix plan builder for autonomous PR repair.
+// Polls PR status from GitHub, categorizes unfixed issues, and emits
+// fix plans with circuit breaker (max N attempts per category).
+
+// Note: github-sync modules are .mjs files (JavaScript), not TypeScript.
+// The shared loader resolves their runtime location and imports dynamically,
+// so there is no hard TypeScript dependency on the github-sync surface.
+import { importGithubSync } from "./github-sync-loader.mjs";
+
+/**
+ * Assert that a parsed `gh pr view` JSON response has the expected shape.
+ * Tolerant of unknown additional fields.
+ * Throws with a descriptive message identifying the failing field.
+ */
+export function assertPrViewShape(parsed: unknown): void {
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("gh pr view returned unexpected JSON shape: root must be object");
+  }
+  const p = parsed as Record<string, unknown>;
+  if (typeof p["title"] !== "string") {
+    throw new Error("gh pr view returned unexpected JSON shape: title must be string");
+  }
+  if (typeof p["state"] !== "string") {
+    throw new Error("gh pr view returned unexpected JSON shape: state must be string");
+  }
+  if (!Array.isArray(p["reviews"])) {
+    throw new Error("gh pr view returned unexpected JSON shape: reviews must be array");
+  }
+  if (!Array.isArray(p["comments"])) {
+    throw new Error("gh pr view returned unexpected JSON shape: comments must be array");
+  }
+}
+
+export type PrIssueCategory =
+  | "lint"
+  | "test_failure"
+  | "review_comment"
+  | "ci_failure"
+  | "security";
+
+export interface PrFixPlan {
+  category: PrIssueCategory;
+  description: string;
+  dispatchPrompt: string;
+  attemptCount: number;
+  circuitBroken: boolean; // true when attemptCount >= maxAttemptsPerCategory
+}
+
+export interface PrFixResult {
+  prNumber: number | string;
+  ciGreen: boolean;
+  plans: PrFixPlan[];
+  haltReason: string | null; // null when no halt
+  walkedCategories: PrIssueCategory[];
+}
+
+/**
+ * Fetch PR status from GitHub using gh CLI.
+ *
+ * @param {string} _repoPath - repo root directory (retained for API shape; not used in body)
+ * @param {number | string} prNumber - PR number
+ * @param {object} options
+ * @param {function} options.ghExec - gh CLI executor (default: loaded dynamically)
+ * @param {string} options.repo - repo string (owner/name) for gh (default: auto-detect)
+ * @returns {Promise<{ raw: any; haltReason: string | null }>}
+ */
+export async function fetchPrStatus(
+  _repoPath: string,
+  prNumber: number | string,
+  options: { ghExec?: any; repo?: string } = {}
+): Promise<{ raw: any; haltReason: string | null }> {
+  const { ghExec = undefined, repo = undefined } = options;
+
+  // Dynamic import to match github-sync pattern
+  // Use dynamic import path to avoid TypeScript path resolution issues
+  let resolvedGhExec = ghExec;
+  if (!resolvedGhExec) {
+    try {
+      const ghModule = await importGithubSync("github-sync/gh.mjs");
+      resolvedGhExec = ghModule.defaultGhExec;
+    } catch {
+      return { raw: null, haltReason: "gh_unavailable" };
+    }
+  }
+
+  const args = [
+    "pr",
+    "view",
+    String(prNumber),
+    "--json",
+    "title,state,reviews,statusCheckRollup,comments"
+  ];
+
+  if (repo) {
+    args.push("--repo", repo);
+  }
+
+  let result: unknown;
+  try {
+    result = resolvedGhExec(args);
+  } catch (err: any) {
+    return {
+      raw: null,
+      haltReason: err?.message?.includes("not found") ? "gh_unavailable" : "gh_error"
+    };
+  }
+
+  const raw = typeof result === "string" ? JSON.parse(result as string) : result;
+  assertPrViewShape(raw);
+  return { raw, haltReason: null };
+}
+
+/**
+ * Categorize unfixed issues from gh pr view output.
+ *
+ * @param {any} raw - gh pr view output (title, state, reviews, statusCheckRollup, comments)
+ * @returns {PrIssueCategory[]} - unique categories of unfixed issues
+ */
+export function categorizePrIssues(raw: any): PrIssueCategory[] {
+  const categories: PrIssueCategory[] = [];
+
+  if (!raw) {
+    return categories;
+  }
+
+  // CI failures: statusCheckRollup has FAILURE or ERROR entries
+  if (raw.statusCheckRollup && Array.isArray(raw.statusCheckRollup)) {
+    const hasCiFailure = raw.statusCheckRollup.some(
+      (c: any) => c.conclusion === "FAILURE" || c.conclusion === "ERROR"
+    );
+    if (hasCiFailure) {
+      categories.push("ci_failure");
+    }
+
+    // Test failures: look for "test" in failed check names
+    const hasTestFailure = raw.statusCheckRollup.some(
+      (c: any) =>
+        (c.conclusion === "FAILURE" || c.conclusion === "ERROR") &&
+        c.name?.toLowerCase().includes("test")
+    );
+    if (hasTestFailure) {
+      categories.push("test_failure");
+    }
+
+    // Lint failures: look for "lint" in failed check names
+    const hasLintFailure = raw.statusCheckRollup.some(
+      (c: any) =>
+        (c.conclusion === "FAILURE" || c.conclusion === "ERROR") &&
+        c.name?.toLowerCase().includes("lint")
+    );
+    if (hasLintFailure) {
+      categories.push("lint");
+    }
+
+    // Security: look for "security" in failed check names
+    const hasSecurityFailure = raw.statusCheckRollup.some(
+      (c: any) =>
+        (c.conclusion === "FAILURE" || c.conclusion === "ERROR") &&
+        c.name?.toLowerCase().includes("security")
+    );
+    if (hasSecurityFailure) {
+      categories.push("security");
+    }
+  }
+
+  // Review comments: reviews requesting changes
+  if (raw.reviews && Array.isArray(raw.reviews)) {
+    const hasReviewRequest = raw.reviews.some((r: any) => r.state === "CHANGES_REQUESTED");
+    if (hasReviewRequest) {
+      categories.push("review_comment");
+    }
+  }
+
+  // Deduplicate and return
+  return [...new Set(categories)];
+}
+
+/**
+ * Run PR fix planning: fetch status, categorize issues, emit plans with circuit breaker.
+ *
+ * @param {string} repoPath - repo root directory
+ * @param {number | string} prNumber - PR number
+ * @param {object} options
+ * @param {function} options.ghExec - gh CLI executor (default: loaded dynamically)
+ * @param {string} options.repo - repo string for gh (default: auto-detect)
+ * @param {number} options.maxAttemptsPerCategory - circuit breaker threshold (default: 3)
+ * @param {Record<PrIssueCategory, number>} options.priorAttempts - previous attempt counts
+ * @returns {Promise<PrFixResult>}
+ */
+export async function runPrFix(
+  repoPath: string,
+  prNumber: number | string,
+  options: {
+    ghExec?: any;
+    repo?: string;
+    maxAttemptsPerCategory?: number;
+    priorAttempts?: Partial<Record<PrIssueCategory, number>>;
+    /** Resolved loop.json config (FEAT-188 S1b). Capture is skipped when
+     * omitted — callers that don't resolve a config (e.g. unit tests
+     * invoking this against the real repo path) get zero side effects. */
+    config?: Record<string, any> | null;
+  } = {}
+): Promise<PrFixResult> {
+  const { ghExec, repo, maxAttemptsPerCategory = 3, priorAttempts = {}, config = null } = options;
+
+  // Fetch PR status
+  const { raw, haltReason } = await fetchPrStatus(repoPath, prNumber, {
+    ...(ghExec !== undefined ? { ghExec } : {}),
+    ...(repo !== undefined ? { repo } : {})
+  });
+
+  if (haltReason) {
+    return {
+      prNumber,
+      ciGreen: false,
+      plans: [],
+      haltReason,
+      walkedCategories: []
+    };
+  }
+
+  // Check if CI is green (no FAILURE/ERROR in statusCheckRollup)
+  const ciGreen = !raw.statusCheckRollup?.some(
+    (c: any) => c.conclusion === "FAILURE" || c.conclusion === "ERROR"
+  );
+
+  // Categorize issues
+  const categories = categorizePrIssues(raw);
+
+  // Build plans for each category
+  const plans: PrFixPlan[] = categories.map((category) => {
+    const attemptCount = priorAttempts[category] ?? 0;
+    const circuitBroken = attemptCount >= maxAttemptsPerCategory;
+
+    return {
+      category,
+      description: `Fix ${category} issues in PR #${prNumber}`,
+      dispatchPrompt: `Fix ${category} issues in PR #${prNumber}. Run the failing checks and apply fixes.`,
+      attemptCount,
+      circuitBroken
+    };
+  });
+
+  // FEAT-188 S1b: capture circuit-breaker trips into the learnings store so
+  // an operator/agent re-polling this PR (or a future slice) sees the halt
+  // without re-discovering it. Fire-and-forget — never affects the plan
+  // result, and skipped entirely when no config was resolved (test safety:
+  // see captureCircuitBreakerTrips doc comment).
+  await captureCircuitBreakerTrips(repoPath, prNumber, plans, config);
+
+  return {
+    prNumber,
+    ciGreen,
+    plans,
+    haltReason: null,
+    walkedCategories: categories
+  };
+}
+
+// FEAT-188 S1b: mirror each circuit-broken plan into the persistent learnings
+// store (reuses learnings.mts::logLearning — same store + astramem mirror
+// grade-writer.mts already uses for lessons; no parallel capture mechanism).
+// Dedup key is content-derived (`pr-fix-circuit-breaker:<pr>:<category>`) so
+// re-polling the same PR with an unchanged trip doesn't spam duplicate rows.
+// Gated on `config` being supplied: callers that don't resolve one (notably
+// existing unit tests invoking runPrFix against the real repo path) get zero
+// filesystem side effects. Fail-silent: any error here must never affect the
+// pr-fix planning contract.
+async function captureCircuitBreakerTrips(
+  repoPath: string,
+  prNumber: number | string,
+  plans: PrFixPlan[],
+  config: Record<string, any> | null
+): Promise<void> {
+  if (!config) return;
+  const tripped = plans.filter((p) => p.circuitBroken);
+  if (tripped.length === 0) return;
+  try {
+    const { isFeatureEnabled } = await import("./features-service.mjs");
+    if (!isFeatureEnabled("learnings-capture", config)) return;
+
+    const { logLearning, searchLearnings } = await import("./learnings.mjs");
+    const { items: existing } = await searchLearnings(
+      repoPath,
+      `pr-fix-circuit-breaker:${prNumber}`
+    );
+    const existingKeys = new Set(existing.map((e: any) => e.key));
+    for (const plan of tripped) {
+      const key = `pr-fix-circuit-breaker:${prNumber}:${plan.category}`;
+      if (existingKeys.has(key)) continue;
+      await logLearning(repoPath, {
+        key,
+        insight:
+          `Circuit breaker tripped for "${plan.category}" on PR #${prNumber} after ` +
+          `${plan.attemptCount} attempt(s) — halting auto-fix dispatch for this category.`,
+        source: "pr-fix",
+        tags: ["pr-fix", "circuit-breaker", plan.category]
+      });
+    }
+  } catch {
+    // swallow — capture is non-critical, must never break pr-fix planning
+  }
+}

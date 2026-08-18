@@ -1,0 +1,51 @@
+# Backlog
+
+Per-feature markdown files in a four-state directory machine:
+
+| Dir | Meaning |
+|---|---|
+| `pending/` | Just dropped. No priority / category / target_release yet. Triage will fill these. |
+| `triaged/` | Triage complete. Priority + category + target_release assigned. Ready to be slotted into a slice. |
+| `in-progress/` | A slice has been derived; engineering work is underway. |
+| `done/` | Slice completed and shipped (or about to ship). |
+
+Each feature file follows the pattern `FEAT-NNN.md` (zero-padded id) with YAML
+frontmatter and a markdown body. See `feature-template.md` for the canonical
+shape.
+
+## Adding a feature
+
+Three ways:
+
+1. `/loop:backlog add "title"` — plugin creates a well-formed file in
+   `pending/` with the next available `FEAT-NNN`.
+2. Manually create `pending/FEAT-NNN.md` matching the template. Plugin picks it
+   up on the next listing.
+3. From an external producer (Telegram bot, web form, email parser, etc.) —
+   any writer that drops a markdown file in `pending/` works.
+
+## State transitions (plugin commands)
+
+- `/loop:triage` — dispatches the PM agent to score all `pending/*` on
+  5 dimensions (customer_impact, effort_estimate, strategic_alignment,
+  technical_risk, dependency_depth), then moves entries to `triaged/`.
+  PM-only since 2026-06-11 (regex fallback removed); on PM error / budget
+  exceed / validation fail, the skill halts and surfaces to the operator.
+- `/loop:backlog promote --id FEAT-NNN` — moves a triaged feature →
+  `in-progress/` and creates a linked slice in `docs/ai-loop/slices/pending/`.
+- When the slice closes, plugin moves the feature → `done/`.
+
+## Linkage
+
+- Each `FEAT-NNN.md` may have `derived_from: SPEC-NNN` in frontmatter, pointing
+  back to the parent spec.
+- Each `FEAT-NNN.md` has `slices: [SLICE-NN, ...]` listing the engineering
+  slices implementing it.
+- Release planner (`/loop:release plan`) filters by
+  `target_release`.
+
+## Don't hand-edit during triage
+
+If you set priority/category/target_release manually before triage runs, the
+heuristic respects your values. Once triage moves a file to `triaged/`,
+edit frontmatter directly to revise.

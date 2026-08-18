@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/agent-dispatch.schema.json",
+  "title": "AgentDispatchPayload",
+  "type": "object",
+  "required": ["ts", "agent", "ok"],
+  "properties": {
+    "ts": { "type": "string", "format": "date-time" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "agent": { "type": "string" },
+    "parentCommand": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "skipped": { "type": "boolean" },
+    "skipReason": { "type": "string" },
+    "costUsd": { "type": "number", "minimum": 0 },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "inputTokens": { "type": "integer", "minimum": 0 },
+    "outputTokens": { "type": "integer", "minimum": 0 },
+    "stepType": { "type": "string" },
+    "agentId": { "type": ["string", "null"] },
+    "cacheReadInputTokens": { "type": "integer", "minimum": 0 },
+    "cacheCreationInputTokens": { "type": "integer", "minimum": 0 },
+    "dispatchKind": {
+      "type": ["string", "null"],
+      "enum": ["auto", "manual", "wave", "hierarchical", null]
+    },
+    "iterationIndex": { "type": "integer", "minimum": 0 }
+  }
+}

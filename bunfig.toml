@@ -1,0 +1,3 @@
+[test]
+timeout = 60000
+preload = ["./src/tests/_test-env-guard.mts"]

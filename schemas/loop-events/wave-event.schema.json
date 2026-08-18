@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/wave-event.schema.json",
+  "title": "WaveEventPayload",
+  "type": "object",
+  "required": ["waveId", "ts"],
+  "properties": {
+    "waveId": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "size": { "type": "integer", "minimum": 0 },
+    "rejectedCount": { "type": "integer", "minimum": 0 },
+    "waveSize": { "type": "integer", "minimum": 0 },
+    "rejectedConflict": { "type": "integer", "minimum": 0 },
+    "rejectedMissingConfidence": { "type": "integer", "minimum": 0 },
+    "rejectedOther": { "type": "integer", "minimum": 0 },
+    "runId": { "type": "string" },
+    "sliceIds": { "type": "array", "items": { "type": "string" } },
+    "merged": { "type": "array", "items": { "type": "string" } },
+    "conflicts": { "type": "array", "items": { "type": "string" } },
+    "failed": { "type": "array", "items": { "type": "string" } },
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "skipped", "ok", "force_removed"]
+    },
+    "pivots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sliceId", "kind"],
+        "properties": {
+          "sliceId": { "type": "string" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    "haltReason": { "type": ["string", "null"] },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "passCount": { "type": "integer", "minimum": 0 },
+    "failCount": { "type": "integer", "minimum": 0 },
+    "sliceId": { "type": "string" },
+    "position": { "type": "integer", "minimum": 0 },
+    "branch": { "type": "string" },
+    "path": { "type": "string" },
+    "conflictedPaths": { "type": "array", "items": { "type": "string" } },
+    "baseSha": { "type": "string" },
+    "headSha": { "type": "string" },
+    "index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "waveId": { "type": "string" },
+          "size": { "type": "integer" },
+          "waveSize": { "type": "integer" },
+          "passCount": { "type": "integer" },
+          "failCount": { "type": "integer" },
+          "postMergeTest": { "type": "string" },
+          "durationMs": { "type": "integer" },
+          "rejectedConflict": { "type": "integer" },
+          "rejectedMissingConfidence": { "type": "integer" },
+          "rejectedOther": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

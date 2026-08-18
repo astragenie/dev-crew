@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/pr-merged.schema.json",
+  "title": "PrMergedPayload",
+  "type": "object",
+  "required": ["prUrl", "mergedAt"],
+  "properties": {
+    "prUrl": { "type": "string" },
+    "prNumber": { "type": ["integer", "null"] },
+    "sliceId": { "type": ["string", "null"] },
+    "featId": { "type": ["string", "null"] },
+    "mergedAt": { "type": "string", "format": "date-time" }
+  }
+}

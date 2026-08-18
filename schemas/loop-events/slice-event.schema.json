@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.astragenie.dev/schemas/loop-events/slice-event.schema.json",
+  "title": "SliceEventPayload",
+  "type": "object",
+  "required": ["ts"],
+  "properties": {
+    "sliceId": { "type": "string" },
+    "featureId": { "type": "string" },
+    "featId": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "fromState": { "type": "string" },
+    "toState": { "type": "string" },
+    "gate": { "type": "string" },
+    "agent": { "type": "string" },
+    "status": { "type": "string" },
+    "reason": { "type": "string" },
+    "shape": { "type": "string" },
+    "rationale": { "type": "string" },
+    "inlinePathUsed": { "type": "boolean" },
+    "mode": { "type": "string", "enum": ["parallel", "serial"] },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "dispatchedAt": { "type": "string", "format": "date-time" },
+    "firstOutputAt": { "type": "string", "format": "date-time" },
+    "toolCalls": { "type": "integer", "minimum": 0 },
+    "priority": { "type": ["string", "null"], "pattern": "^P[0-4]$" },
+    "category": {
+      "type": ["string", "null"],
+      "$comment": "Freeform, repo-defined backlog category vocabulary (competitor-gap, feature, workflow, tech-debt, bug, bugfix, infrastructure, ...) — not a closed enum. Normalization/bucketing happens at the consumer (astrarunner A3 SQL), not here. See FEAT-247."
+    },
+    "relates_to": { "type": ["string", "null"] },
+    "createdAt": {
+      "anyOf": [
+        { "type": "string", "format": "date" },
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

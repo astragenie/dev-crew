@@ -1,0 +1,27 @@
+# Force LF for text files repo-wide. Suppresses the "LF will be replaced
+# by CRLF" warnings on every Windows `git add` and keeps diffs clean
+# across platforms.
+* text=auto eol=lf
+
+# Windows-only files keep CRLF.
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary types — never normalise.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+
+# Append-only JSONL ledgers written from multiple branches/worktrees — every
+# branch merge otherwise conflicts on the shared tail and needs a hand-union
+# resolution. `merge=union` keeps both sides' lines and folds textually
+# identical duplicate lines within the conflicting region. Residual risk and
+# the collision-safe id scheme this pairs with: docs/sop/jsonl-ledger-merge-driver.md
+.claude/artifacts/loop/grades.jsonl    merge=union
+.claude/artifacts/loop/learnings.jsonl merge=union
