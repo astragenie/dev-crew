@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const cliPath = path.join(repoRoot, "scripts", "crew.ts");
+const cliPath = path.join(repoRoot, "scripts", "crew.mts");
 
 // FEAT-193 S1 fix-forward: pre-warm gepa-core's module graph in THIS
 // (parent, Bun-run) process before any CLI child process spawns below.

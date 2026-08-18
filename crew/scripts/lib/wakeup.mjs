@@ -3,14 +3,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseFrontmatter } from "@astragenie/plugin-std";
-import { listApprovals } from "./approvals.ts";
-import { listClaims } from "./claims.ts";
-import { readDeploymentGuidanceSummary } from "./deployment-guidance/read.ts";
+import { listApprovals } from "./approvals.mjs";
+import { listClaims } from "./claims.mjs";
+import { readDeploymentGuidanceSummary } from "./deployment-guidance/read.mjs";
 import { readFileIfExists, pathExists } from "./fs-utils.mjs";
 
 import { tailReadJsonl } from "./jsonl.mjs";
-import { loadWorkflowState, summarizeWorkflowState } from "./workflow-state.ts";
-import { collectHookHealth } from "./briefing/collect.ts";
+import { loadWorkflowState, summarizeWorkflowState } from "./workflow-state.mjs";
+import { collectHookHealth } from "./briefing/collect.mjs";
 
 const RUNS_DIR = [".claude", "artifacts", "crew", "runs"];
 const HANDOFFS_DIR = [".claude", "artifacts", "crew", "handoffs"];

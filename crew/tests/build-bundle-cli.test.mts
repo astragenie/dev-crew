@@ -23,7 +23,7 @@ test("crew.ts write-build-bundle: writes bundle artifact, prints path", async ()
   const handoffPath = path.join(repo, "handoff.md");
   await fs.writeFile(handoffPath, "## Handoff body\n\nshort\n", "utf8");
 
-  const crewScript = path.resolve(import.meta.dirname, "..", "scripts", "crew.ts");
+  const crewScript = path.resolve(import.meta.dirname, "..", "scripts", "crew.mts");
   const out = execFileSync(
     "node",
     [

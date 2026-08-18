@@ -20,7 +20,7 @@ import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const cliPath = path.join(repoRoot, "scripts", "crew.ts");
+const cliPath = path.join(repoRoot, "scripts", "crew.mts");
 
 async function makeTempDir(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -308,7 +308,7 @@ test("BUG-C: deployment-result is no longer a supported artifact kind (dead bran
   // `deployment-check`. Confirm the artifact module rejects the removed
   // kind so future refactors don't reintroduce dead code under the old name.
   const { writeArtifact } = await import(
-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "artifacts", "write.ts")).href
+    pathToFileURL(path.join(repoRoot, "scripts", "lib", "artifacts", "write.mts")).href
   );
   const repoPath = await initRepo("crew-bug-c-deployment-result-removed-");
 
@@ -448,7 +448,7 @@ test("CLI: -- terminates flag parsing and preserves dash-prefixed positionals", 
 
 test("AC-6: claimFiles returns err() when repo path escapes repo boundary", async () => {
   const { claimFiles } = await import(
-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "claims.ts")).href
+    pathToFileURL(path.join(repoRoot, "scripts", "lib", "claims.mts")).href
   );
   const repoPath = await makeTempDir("crew-ac6-claimfiles-err-");
   // "../../outside" resolves outside the repo root → toRepoRelative throws
@@ -460,7 +460,7 @@ test("AC-6: claimFiles returns err() when repo path escapes repo boundary", asyn
 
 test("AC-6: releaseFiles returns err() when repo path escapes repo boundary", async () => {
   const { releaseFiles } = await import(
-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "claims.ts")).href
+    pathToFileURL(path.join(repoRoot, "scripts", "lib", "claims.mts")).href
   );
   const repoPath = await makeTempDir("crew-ac6-releasefiles-err-");
   // releaseFiles calls toRepoRelative on explicit paths, so same boundary guard
@@ -471,7 +471,7 @@ test("AC-6: releaseFiles returns err() when repo path escapes repo boundary", as
 
 test("AC-6: resolveApproval returns err() for unknown approval id", async () => {
   const { resolveApproval } = await import(
-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "approvals.ts")).href
+    pathToFileURL(path.join(repoRoot, "scripts", "lib", "approvals.mts")).href
   );
   const repoPath = await makeTempDir("crew-ac6-resolveapproval-err-");
   const result = await resolveApproval(repoPath, {
@@ -486,7 +486,7 @@ test("AC-6: resolveApproval returns err() for unknown approval id", async () => 
 
 test("AC-6: markWorkflowBadge returns err() when badge option is missing", async () => {
   const { markWorkflowBadge } = await import(
-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "workflow-state.ts")).href
+    pathToFileURL(path.join(repoRoot, "scripts", "lib", "workflow-state.mts")).href
   );
   const repoPath = await makeTempDir("crew-ac6-markbadge-err-");
   // badge is required; omitting it triggers the validation throw

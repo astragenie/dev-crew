@@ -19,9 +19,9 @@ function readDoc(relPath: string): string {
 const incident = readDoc("commands/incident.md");
 const skill = readDoc("skills/workflow/release-recovery/SKILL.md");
 const incidentResponseSkill = readDoc("skills/workflow/incident-response/SKILL.md");
-const workflowState = readDoc("scripts/lib/workflow-state.ts");
-const gates = readDoc("scripts/lib/workflow-state-gates.ts");
-const crewCli = readDoc("scripts/crew.ts");
+const workflowState = readDoc("scripts/lib/workflow-state.mts");
+const gates = readDoc("scripts/lib/workflow-state-gates.mts");
+const crewCli = readDoc("scripts/crew.mts");
 
 // /crew:incident dispatcher ────────────────────────────────────────────────
 

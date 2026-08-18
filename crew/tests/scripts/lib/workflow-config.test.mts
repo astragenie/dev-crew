@@ -34,7 +34,7 @@ const REPO_ROOT = path.dirname(
   path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))))
 );
 const FIXTURES_DIR = path.join(REPO_ROOT, "tests", "fixtures", "workflows");
-const VALIDATE_SCRIPT = path.join(REPO_ROOT, "scripts", "validate-workflows.ts");
+const VALIDATE_SCRIPT = path.join(REPO_ROOT, "scripts", "validate-workflows.mts");
 
 // Helper: create a temp dir containing .claude/workflows.yaml pointing at a fixture
 async function makeTempRepoWithFixture(fixtureName: string): Promise<string> {

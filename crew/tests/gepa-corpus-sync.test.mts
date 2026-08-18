@@ -12,7 +12,7 @@ import { syncCorpus } from "../scripts/lib/gepa/corpus-sync.mjs";
 const cliPath = path.join(
   path.dirname(path.dirname(fileURLToPath(import.meta.url))),
   "scripts",
-  "crew.ts"
+  "crew.mts"
 );
 
 const TRIALS = [".claude", "artifacts", "crew", "gepa", "trials"];

@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const cliPath = path.join(repoRoot, "scripts", "crew.ts");
+const cliPath = path.join(repoRoot, "scripts", "crew.mts");
 
 async function makeTempRepo(prefix: string) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));

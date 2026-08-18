@@ -13,7 +13,7 @@ import {
 const cliPath = path.join(
   path.dirname(path.dirname(fileURLToPath(import.meta.url))),
   "scripts",
-  "crew.ts"
+  "crew.mts"
 );
 
 /** Records every delegate call so tests can assert composition + arg threading. */
