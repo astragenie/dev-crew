@@ -3,9 +3,13 @@
 // Crew artifact writers (dev-team P1.3) emit a canonical enum in the artifact
 // frontmatter `decision:` key: reviews use {approved, approved_with_notes,
 // rejected}; validations use {pass, fail, skipped} (+ `skip_reason`).
-// Artifacts written before P1.3 have no frontmatter decision — those are
-// "legacy" and are grandfathered by callers (satisfied with a warning), per
-// the plan's D3 cutoff.
+// Artifacts written before P1.3 have no frontmatter decision. They are NO
+// LONGER grandfathered: SLICE-202 deleted review-gate.mts's null-decision
+// branch and SLICE-205 deleted validation-gate.mts's, per an explicit owner
+// decision to remove unbounded legacy clauses rather than date-bound them.
+// A decision-less artifact now yields satisfied:false in both gates. This
+// reader still returns a verdict with `decision: null` for such artifacts —
+// classifying them is the caller's job, not this module's.
 
 import fs from "node:fs/promises";
 import path from "node:path";
