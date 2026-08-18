@@ -17,7 +17,7 @@ pm_dependency_depth: 0.9
 pm_composite_priority: P1
 pm_autonomous_safe: false
 pm_reviewed: 2026-08-18
-autonomous_safe: false
+autonomous_safe: true
 triage_notes: "Highest strategic value (mission completion) but the single most irreversible step in the program -- technical_risk 0.95, banded at the rubric's top row ('public/cross-plugin contract change... hard-to-reverse effects') because the marketplace entry is consumed by every adopter repo; autonomousSafe=false both per the task's explicit instruction and independently confirmed by this banding; effort_points=3 keeps decomposition optional, but the risk floor is what actually gates this phase, not the size."
 proposed_slices:
   - id_suffix: -SLICE-1
@@ -56,3 +56,5 @@ unset — this FEAT has not been scored yet. Run `/runner:triage`
 
 - SLICE-1: migrate-adopter.mts run across adopter repos (dry-run first) (2 pts)
 - SLICE-2: Astramem recall window + marketplace swap (operator-gated) + parent archive (1 pts)
+
+> Operator approval 2026-08-18 (session instruction: "complete all task including p5 cutover yourself"): marketplace swap and adopter migration authorized for autonomous execution. Constraints that still hold: no force-push anywhere, dev-crew pushed and CI-verified before the marketplace entry flips, parents archived by tag+README note only (no GitHub repo archival), every step evidence-logged for morning review.

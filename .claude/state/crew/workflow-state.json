@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-18T22:25:18.605Z",
+  "updatedAt": "2026-08-18T22:51:44.721Z",
   "currentRun": {
-    "title": "FEAT002 SLICE05: .ts->.mts rename sweep batch 1 (dev-team src)",
+    "title": "FEAT002 SLICE06: .ts->.mts rename sweep batch 2 + import-specifier fixes",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-18T22:25:18.605Z",
-    "updatedAt": "2026-08-18T22:25:18.605Z",
+    "startedAt": "2026-08-18T22:51:44.721Z",
+    "updatedAt": "2026-08-18T22:51:44.721Z",
     "next": "Begin implementation",
     "gates": {
       "review": null,
@@ -22,7 +22,7 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T222518Z-run-brief-feat002-slice05-ts-mts-rename-sweep-batch-1-dev-team-src.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T225144Z-run-brief-feat002-slice06-ts-mts-rename-sweep-batch-2-import-specifier.md",
       "handoffs": [],
       "reviewResult": null,
       "validationPlan": null,
@@ -35,6 +35,40 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT002 SLICE05: .ts->.mts rename sweep batch 1 (dev-team src)",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-18T22:25:18.605Z",
+      "updatedAt": "2026-08-18T22:25:18.605Z",
+      "completedAt": "2026-08-18T22:25:18.605Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T222518Z-run-brief-feat002-slice05-ts-mts-rename-sweep-batch-1-dev-team-src.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT002 SLICE04: Subtree-import dev-team + runner-plugin, preserve history",
       "goal": "",
@@ -164,42 +198,6 @@
         "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T214124Z-run-brief-feat001-slice03-28-feat-bucket-sweep-worktree-salvage-baseli.md",
         "handoffs": [
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T215323Z-handoff-slice-03-28-feat-bucket-sweep-worktree-salvage-baseline-tags.md"
-        ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT001 SLICE02: Disposition in-flight FEATs 230/259/284/299",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-18T21:24:56.660Z",
-      "updatedAt": "2026-08-18T21:36:20.859Z",
-      "completedAt": "2026-08-18T21:36:20.859Z",
-      "next": "SLICE-03 owns AC-3 (28-triaged-FEAT three-bucket sweep, moot/carry/defer), AC-4 (stale worktree branch salvage-or-delete: backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073), and AC-5 (pre-devcrew-baseline tags in both repos).",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T212456Z-run-brief-feat001-slice02-disposition-in-flight-feats-230-259-284-299.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T213620Z-handoff-slice-02-disposition-in-flight-feats-230-259-284-295-296-297.md"
         ],
         "reviewResult": null,
         "validationPlan": null,
