@@ -294,7 +294,7 @@ already built and reviewed; carry the rest as backlog imports.**
 | FEAT-284 | core fixed+pushed | close if remaining slices are seam-dependent; else carry |
 | FEAT-230 | in-flight, 5 slices | P0 triage: carry or close-with-reason; no new build in runner |
 | 28 triaged FEATs | scored, unstarted | P0 sweep, three buckets: **moot** (seam/cross-plugin — die with merge), **carry** (translate into dev-crew backlog with fresh ids, keep scores), **defer** (re-triage post-merge). Every file gets a bucket; no silent drops |
-| 6 stale worktree branches (backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073) | unknown freshness | P0: salvage-or-delete pass; anything salvaged merges before import |
+| 6 stale worktree branches (backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073) | unknown freshness | P0: **PR-gated** salvage-or-delete (operator directive 2026-08-18): no-delta branches delete directly with evidence; salvageable branches push → PR → delete only after verified merge (ancestry check, not PR state); failed PRs = `blocked`, branch retained, operator surfaced. Push local main to origin first for a clean PR base |
 | Pre-merge baseline | — | tag runner-plugin + dev-team final states (`pre-devcrew-baseline`) so "what did the parent do" has a fixed ref forever |
 
 P0 is serialized, runs in the parent repos (the one exception to "parents

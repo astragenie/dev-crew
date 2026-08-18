@@ -1,20 +1,16 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-18T21:23:10.604Z",
+  "updatedAt": "2026-08-18T21:24:56.660Z",
   "currentRun": {
-    "title": "FEAT001 SLICE01: Merge wave-1 reviewed branches to runner main",
+    "title": "FEAT001 SLICE02: Disposition in-flight FEATs 230/259/284/299",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-18T21:11:22.403Z",
-    "updatedAt": "2026-08-18T21:23:10.604Z",
-    "next": "Parent loop dispatches crew:reviewer against the 3 merge commits, then /runner:close for SLICE-205/206/208; a sibling slice should carry AC-3 (triaged sweep), AC-4 (stale-branch salvage), AC-5 (baseline tags), and the SLICE-207/FEAT-299 backlog stamp.",
+    "startedAt": "2026-08-18T21:24:56.660Z",
+    "updatedAt": "2026-08-18T21:24:56.660Z",
+    "next": "Begin implementation",
     "gates": {
-      "review": {
-        "status": "passed",
-        "updatedAt": "2026-08-18T21:23:10.604Z",
-        "note": "Merge-integrity review of the 3 wave-1 no-ff merge commits (8a498553 SLICE-205, 0df469ff SLICE-206, 67017b5e SLICE-208) into runner-plugin main, per SLICE-01 AC-1/AC-2. All 5 checks pass. `git diff <merge>^2 main-SLICE-2xx` is empty for all three merges — merge trees are byte-identical to their branch tips, so no stray edits were smuggled in and no content was lost or half-merged. Reflog confirms all three were real `git merge` (ort strategy) two-parent commits at 16:12:45-52 on 2026-08-18, with the branches still pointing at their original build tips (unrewritten). AC-1's literal test passes: `git log main --grep=SLICE-205/206/208` each return commits and `git branch --merged main` lists all three branches. Gate evidence reproduces: validate-manifests.mts OK; targeted tests for each slice's area (validation-gate.test.mts, extract-acceptance-criteria.test.mts, validate-slice-state-consistency.test.mts = 70/70 pass) plus the three collateral fixture files SLICE-205 touched outside its declared touches_files (gates.test.mts, integration.test.mts, slice-complete.test.mts = 47/47 pass). AC-2's narrative claim (\"SLICE-207 never started\") is true: no main-SLICE-207 branch exists (local or origin), and SLICE_207_....md is still under ai-loop/slices/pending/. Main is HEAD at 67017b5e, 14 commits ahead of origin/main (bcc769b8), confirmed not pushed. Working tree has only the two pre-existing/unrelated items the builder's handoff already disclosed (modified learnings.jsonl, 3 untracked devcrew-merge-plan review artifacts) — nothing from the merge leaked into the working tree."
-      },
+      "review": null,
       "validation": null,
       "deployment": {
         "dev": null,
@@ -26,11 +22,9 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T211122Z-run-brief-feat001-slice01-merge-wave-1-reviewed-branches-to-runner-mai.md",
-      "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T211727Z-handoff-slice-01-merge-wave-1-reviewed-branches-to-runner-plugin-mai.md"
-      ],
-      "reviewResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\reviews\\20260818T212310Z-review-result-slice-01-merge-integrity-review-of-wave-1-branch-merges-main.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T212456Z-run-brief-feat001-slice02-disposition-in-flight-feats-230-259-284-299.md",
+      "handoffs": [],
+      "reviewResult": null,
       "validationPlan": null,
       "validationResult": null,
       "deploymentChecks": {
@@ -40,5 +34,46 @@
       "finalSynthesis": null
     }
   },
-  "recentRuns": []
+  "recentRuns": [
+    {
+      "title": "FEAT001 SLICE01: Merge wave-1 reviewed branches to runner main",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-18T21:11:22.403Z",
+      "updatedAt": "2026-08-18T21:23:10.604Z",
+      "completedAt": "2026-08-18T21:23:10.604Z",
+      "next": "Parent loop dispatches crew:reviewer against the 3 merge commits, then /runner:close for SLICE-205/206/208; a sibling slice should carry AC-3 (triaged sweep), AC-4 (stale-branch salvage), AC-5 (baseline tags), and the SLICE-207/FEAT-299 backlog stamp.",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-08-18T21:23:10.604Z",
+          "note": "Merge-integrity review of the 3 wave-1 no-ff merge commits (8a498553 SLICE-205, 0df469ff SLICE-206, 67017b5e SLICE-208) into runner-plugin main, per SLICE-01 AC-1/AC-2. All 5 checks pass. `git diff <merge>^2 main-SLICE-2xx` is empty for all three merges — merge trees are byte-identical to their branch tips, so no stray edits were smuggled in and no content was lost or half-merged. Reflog confirms all three were real `git merge` (ort strategy) two-parent commits at 16:12:45-52 on 2026-08-18, with the branches still pointing at their original build tips (unrewritten). AC-1's literal test passes: `git log main --grep=SLICE-205/206/208` each return commits and `git branch --merged main` lists all three branches. Gate evidence reproduces: validate-manifests.mts OK; targeted tests for each slice's area (validation-gate.test.mts, extract-acceptance-criteria.test.mts, validate-slice-state-consistency.test.mts = 70/70 pass) plus the three collateral fixture files SLICE-205 touched outside its declared touches_files (gates.test.mts, integration.test.mts, slice-complete.test.mts = 47/47 pass). AC-2's narrative claim (\"SLICE-207 never started\") is true: no main-SLICE-207 branch exists (local or origin), and SLICE_207_....md is still under ai-loop/slices/pending/. Main is HEAD at 67017b5e, 14 commits ahead of origin/main (bcc769b8), confirmed not pushed. Working tree has only the two pre-existing/unrelated items the builder's handoff already disclosed (modified learnings.jsonl, 3 untracked devcrew-merge-plan review artifacts) — nothing from the merge leaked into the working tree."
+        },
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T211122Z-run-brief-feat001-slice01-merge-wave-1-reviewed-branches-to-runner-mai.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T211727Z-handoff-slice-01-merge-wave-1-reviewed-branches-to-runner-plugin-mai.md"
+        ],
+        "reviewResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\reviews\\20260818T212310Z-review-result-slice-01-merge-integrity-review-of-wave-1-branch-merges-main.md",
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    }
+  ]
 }

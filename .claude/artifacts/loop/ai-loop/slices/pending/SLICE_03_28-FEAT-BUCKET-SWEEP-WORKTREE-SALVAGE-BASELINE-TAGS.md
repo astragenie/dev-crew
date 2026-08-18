@@ -32,6 +32,27 @@ Implements FEAT-001. See [feature file](../../../backlog/in-progress/FEAT-001.md
 
 - bullet 1
 
+## Salvage procedure (operator directive 2026-08-18 — PR-gated)
+
+Salvage-or-delete for stale worktree branches is PR-GATED. A branch may only
+be deleted under one of exactly two outcomes:
+
+1. **No salvageable delta** vs runner-plugin main (empty or superseded diff —
+   verify by file/behavior presence, not diff size; squash-merge phantom-diff
+   lesson applies): delete directly, record `no-delta` with evidence.
+2. **Salvageable delta**: push the branch, open a PR to runner-plugin origin
+   main, and delete ONLY after the PR merges successfully (verify merged state
+   via `gh pr view --json state,mergedAt` and commit ancestry on origin/main —
+   not PR UI state alone; auto-merge window trap lesson applies). Record
+   `salvaged-via-PR-#NNN`.
+
+A branch with a salvageable delta whose PR fails checks or conflicts is NOT
+deleted — record `blocked-PR-#NNN` and surface to the operator.
+
+Prerequisite: local main is 14+ commits ahead of origin (wave-1 merges).
+Push main to origin FIRST so salvage PRs diff cleanly against a current base.
+If CI on the pushed main goes red, stop and surface before any salvage PRs.
+
 ## Acceptance criteria
 
 > WARNING: ACs copied from FEAT-001 and shared across 3 sibling slices — scope per-slice before close
