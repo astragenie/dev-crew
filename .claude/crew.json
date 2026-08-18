@@ -1,0 +1,49 @@
+{
+  "features": {
+    "cost-hygiene": {
+      "enabled": true
+    },
+    "redundant-read-stop": {
+      "enabled": true
+    },
+    "shell-preflight": {
+      "enabled": true
+    },
+    "subagent-inline-warn": {
+      "enabled": true
+    },
+    "push-verify": {
+      "enabled": false
+    },
+    "git-gate-block": {
+      "enabled": false
+    },
+    "otel-telemetry": {
+      "enabled": true
+    },
+    "bash-gate-telemetry": {
+      "enabled": true
+    },
+    "task-update-burst-warn": {
+      "enabled": true
+    },
+    "checkpoint-cadence": {
+      "enabled": true
+    },
+    "event-emit": {
+      "enabled": true
+    },
+    "model-routing": {
+      "enabled": true
+    },
+    "reviewer-decision-guard": {
+      "enabled": true
+    },
+    "builder-terminal-state-guard": {
+      "enabled": true
+    },
+    "dispatch-size-gate": {
+      "enabled": false
+    }
+  }
+}
