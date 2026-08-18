@@ -1,13 +1,13 @@
 ---
 id: FEAT-001
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-18
 depends_on: []
-slices: []
+slices: [SLICE-01, SLICE-02, SLICE-03]
 derived_from: null
 pm_customer_impact: 0.6
 pm_effort_estimate: 0.5
@@ -38,6 +38,8 @@ arch_review: approved
 tags: ["stack:typescript", "area:repo-ops", "concern:cross-repo-merge"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-18
+slices_complete: [SLICE-01]
 ---
 ## Description
 
