@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-18T21:24:56.660Z",
+  "updatedAt": "2026-08-18T21:36:20.860Z",
   "currentRun": {
     "title": "FEAT001 SLICE02: Disposition in-flight FEATs 230/259/284/299",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
     "startedAt": "2026-08-18T21:24:56.660Z",
-    "updatedAt": "2026-08-18T21:24:56.660Z",
-    "next": "Begin implementation",
+    "updatedAt": "2026-08-18T21:36:20.859Z",
+    "next": "SLICE-03 owns AC-3 (28-triaged-FEAT three-bucket sweep, moot/carry/defer), AC-4 (stale worktree branch salvage-or-delete: backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073), and AC-5 (pre-devcrew-baseline tags in both repos).",
     "gates": {
       "review": null,
       "validation": null,
@@ -23,7 +23,9 @@
     },
     "artifacts": {
       "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T212456Z-run-brief-feat001-slice02-disposition-in-flight-feats-230-259-284-299.md",
-      "handoffs": [],
+      "handoffs": [
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T213620Z-handoff-slice-02-disposition-in-flight-feats-230-259-284-295-296-297.md"
+      ],
       "reviewResult": null,
       "validationPlan": null,
       "validationResult": null,

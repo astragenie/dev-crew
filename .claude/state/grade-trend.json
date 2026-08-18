@@ -3,6 +3,10 @@
     {
       "sliceId": "SLICE-01",
       "avg": 0.889
+    },
+    {
+      "sliceId": "SLICE-02",
+      "avg": 0.897
     }
   ],
   "consecutiveBelow": 0

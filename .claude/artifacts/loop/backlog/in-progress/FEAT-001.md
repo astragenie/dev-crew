@@ -39,7 +39,7 @@ tags: ["stack:typescript", "area:repo-ops", "concern:cross-repo-merge"]
 needs_contract: false
 needs_ux: false
 started_at: 2026-08-18
-slices_complete: [SLICE-01]
+slices_complete: [SLICE-01, SLICE-02]
 ---
 ## Description
 
