@@ -276,6 +276,49 @@ Cleanup totals (grep-verified): ~38 files / ~2,700–3,500 LOC direct-deletable,
   outside marker blocks; (3) migrate config per §4; (4) idempotent — second run
   is a no-op; (5) `--dry-run` prints the diff first.
 
+## 6b. Parent estate settlement (new phase P0) and plugins-common policy
+
+**P0 — settle runner-plugin's in-flight work before any import.** Live state
+(verified this session): 7 in-flight FEATs, 28 triaged, wave-1 worktrees
+SLICE-205/206/208 (branches `main-SLICE-205/206/208`) built + reviewed + green
+but **unmerged**, plus 6 stale fix/chore worktree branches of unknown value.
+
+Disposition rule: **finish nothing new in runner-plugin; merge only what is
+already built and reviewed; carry the rest as backlog imports.**
+
+| Item | State | Disposition |
+|---|---|---|
+| SLICE-205/206/208 (FEAT-295/297/296) | built+reviewed+green, unmerged | **merge to runner main in P0** — cheapest value capture; subtree then imports it. Close FEATs via ceremony |
+| FEAT-299 (SLICE-207) | in-flight, no worktree found | P0 check: if built+reviewed, merge; else carry to dev-crew backlog |
+| FEAT-259 (builder pause signal, 3/5) | partially landed; watchdog unwired by design | remaining slices **carry to dev-crew** — the upstream-request half becomes an in-repo change there (cheaper than finishing across the seam) |
+| FEAT-284 | core fixed+pushed | close if remaining slices are seam-dependent; else carry |
+| FEAT-230 | in-flight, 5 slices | P0 triage: carry or close-with-reason; no new build in runner |
+| 28 triaged FEATs | scored, unstarted | P0 sweep, three buckets: **moot** (seam/cross-plugin — die with merge), **carry** (translate into dev-crew backlog with fresh ids, keep scores), **defer** (re-triage post-merge). Every file gets a bucket; no silent drops |
+| 6 stale worktree branches (backfill, feat-reconcile, fix-427, fix-481, fix-format, release-073) | unknown freshness | P0: salvage-or-delete pass; anything salvaged merges before import |
+| Pre-merge baseline | — | tag runner-plugin + dev-team final states (`pre-devcrew-baseline`) so "what did the parent do" has a fixed ref forever |
+
+P0 is serialized, runs in the parent repos (the one exception to "parents
+receive zero writes" — scoped to merges of already-reviewed work, backlog
+file moves, and tags; no new feature code), estimated **3–5 slices**.
+
+**plugins-common policy — consume yes, export no.** Verified: both parents
+already depend on plugins-common packages as ordinary npm deps —
+`@astragenie/astramem-client` 0.3.0 + `@astragenie/plugin-std` 0.5.0 (both
+repos), plus `gepa-core` 0.10.1 and `memory-provider` 0.2.1 (dev-team); 52
+source files import them. The merge changes none of that:
+
+- **Keep consuming** all four packages in devcrew. Never hand-roll astramem
+  resolution (standing lesson).
+- **The planned crew↔runner shared-registry/contract package is moot** — that
+  seam becomes in-repo function calls. This retires the stalled
+  plugins-common consumer-wiring DEC (2026-07-08) as superseded, not failed.
+- **Move no devcrew-internal logic out**: a shared package needs a second
+  consumer; post-merge there is one. Revisit only when another repo
+  (astramem-plugin, hr-team, sales) actually needs a piece — then extract.
+- **GEPA bonus**: dev-team already consumes `gepa-core` 0.10.1 — the §5
+  27-file local `scripts/lib/gepa/` cut gets easier, since core logic lives
+  in the package; the import-closure keep-list may shrink further.
+
 ## 7. CI harmonization
 
 Fresh counts: crew 19 `validate-*.ts` + runner 15 `validate-*.mts` + runner's
@@ -316,15 +359,18 @@ metrics-band regenerates against the merged repo. New gate: wiggin-term sweep
 
 | Phase | Content | Mode | Slices | Exit gate |
 |---|---|---|---|---|
+| **P0 Parent estate settlement** | merge wave-1 (SLICE-205/206/208) + any other built+reviewed branches to runner main; FEAT-299 check; in-flight FEAT dispositions; 28-triaged three-bucket sweep; stale-worktree salvage-or-delete; `pre-devcrew-baseline` tags (§6b) | serialized, runs in parent repos | 3–5 | runner main contains all reviewed work; every in-flight + triaged FEAT has a recorded bucket; both parents tagged; zero unmerged reviewed branches |
 | **P1 Runtime baseline** | subtree-import both parents; `.ts`→`.mts` rename sweep (**391 dev-team files** need rename + import-specifier fixes, demolition-verified — drives the resize); node:test→bun:test migration of dev-team suite (31 importing files); Wiggin scrub at import (§5); one tsconfig/biome; merged suite green under `bun test --parallel` | serialized (import), then wave (rename + test-API sweeps) | **7–10** | zero `node:test` imports (grep gate); zero `wiggin` hits outside archives (grep gate); N≥20 consecutive green `--parallel` runs; `bun run typecheck` clean |
 | **P2 Seam elimination** | crew-bridge → direct imports per §4 table; delete plugin-identity crew resolution; devcrew.json schema + migrator | serialized (bridge), wave (call sites) | 3–4 | zero `execFile.*crew` hits; zero `MIN_CREW_VERSION` hits; ceremony e2e-smoke green |
 | **P3 Surface merge** | §2 command/agent/skill maps applied; dispatch-token rewrite; hooks merged + consolidated; 4 over-cap agents trimmed (architect/verifier/backend-dev/release-engineer); models.yaml/model-router design merge; manifest `devcrew` | wave (per-surface batches) | 5–7 | `validate-agent-refs` green on merged tree; every old token resolves per map; **measured hook overhead ≤150ms per Bash call**; **validate-content-length green (agent 300-line cap)**; smoke: one full slice ceremony under `/devcrew:*` |
 | **P4 Content + CI** | dedupe validators; merged CI workflow (~30 gates incl. wiggin-term sweep); GEPA 27-file disposition table + cut + trial archive (§5); auto-dispatch + claims/approvals + preset-retrofit deletions; dead-path purge (ai-loop/backlog/pending-dispatch); docs merge | wave | 5–6 | CI green end-to-end; wiggin sweep gate green tree-wide; clause citations resolve; **merged CLAUDE.md ≤12KB pre-include (measured)**; GEPA disposition table covers all 27 files; deletion inventory from improve-cleanup.md fully dispositioned (each item DELETE/ARCHIVE/MERGE executed or explicitly deferred with reason) |
 | **P5 Cutover** | migrate-adopter.mts over ~10 local repos (dry-run first); marketplace swap; parents archived read-only | serialized, operator-gated | 2–3 | each adopter: installer idempotence check green; one ceremony run in one adopter repo; **explicit operator approval before marketplace edit** |
 
-Total ≈ **22–30 slices** (P1 resized after the demolition review's 391-file
-rename count). P1 entry gate: operator approves this plan. Every phase lands
-as PRs in dev-crew; parents receive zero writes throughout. Adopter count:
+Total ≈ **25–35 slices** (P1 resized after the demolition review's 391-file
+rename count; P0 added for parent estate settlement). P0 entry gate: operator
+approves this plan. P1+ land as PRs in dev-crew; parents receive zero writes
+after P0 completes (P0's writes are scoped in §6b: merges of already-reviewed
+work, backlog moves, tags — no new feature code). Adopter count:
 the §6 "~10" is a snapshot — the Appendix A enumeration command re-run at P5
 time is authoritative (demolition review observed 9-vs-10 drift between
 counts taken hours apart; worktree copies come and go).
