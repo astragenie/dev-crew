@@ -257,6 +257,137 @@ test("extractAcceptanceCriteria mixes checkbox + prose bullets in one section", 
   ]);
 });
 
+// --- Wrapped (multi-physical-line) AC bullets (runner-plugin#630) ---
+//
+// Ordinary markdown lets an AC bullet's text wrap across several physical
+// lines. Before this fix, extraction captured only the first physical line,
+// so every wrapped AC was silently truncated mid-clause (no `Then` clause
+// reached a builder). These tests pin the fixed accumulation behavior;
+// every pre-existing (non-wrapped) test above must keep passing unchanged.
+
+test("extractAcceptanceCriteria accumulates a checkbox bullet's wrapped continuation lines", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- [ ] AC-1: Given a FEAT whose AC text wraps across physical lines, When",
+    "  the extractor runs, Then it accumulates every continuation line back",
+    "  onto the bullet instead of stopping at the first line.",
+    "- [ ] AC-2: Second criterion, unwrapped."
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] AC-1: Given a FEAT whose AC text wraps across physical lines, When the extractor runs, Then it accumulates every continuation line back onto the bullet instead of stopping at the first line.",
+    "- [ ] AC-2: Second criterion, unwrapped."
+  ]);
+});
+
+test("extractAcceptanceCriteria accumulates a GIVEN-prose bullet's wrapped continuation lines", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- GIVEN a slice closes, WHEN the ceremony completes and every gate has",
+    "  reported PASS, THEN a learnings entry is appended with the grade and",
+    "  the lessons captured during the run.",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] GIVEN a slice closes, WHEN the ceremony completes and every gate has reported PASS, THEN a learnings entry is appended with the grade and the lessons captured during the run."
+  ]);
+});
+
+test("extractAcceptanceCriteria stops continuation at the next bullet, not just the heading", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- AC-1: First bullet wraps onto a",
+    "  second physical line here.",
+    "- AC-2: Second bullet also wraps onto a",
+    "  second physical line here.",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, [
+    "- [ ] AC-1: First bullet wraps onto a second physical line here.",
+    "- [ ] AC-2: Second bullet also wraps onto a second physical line here."
+  ]);
+});
+
+test("extractAcceptanceCriteria stops continuation at a blank line followed by non-indented prose", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- AC-1: A wrapped bullet whose continuation",
+    "  ends properly here.",
+    "",
+    "Some unrelated paragraph that must NOT be folded into AC-1.",
+    "",
+    "## Notes"
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.deepEqual(result, ["- [ ] AC-1: A wrapped bullet whose continuation ends properly here."]);
+});
+
+// AC-2 (SLICE-206): fixture with deliberately wrapped ACs — the extracted
+// text must match the source verbatim (modulo the newline -> single-space
+// join markdown itself performs when rendering a wrapped bullet), not merely
+// "look longer" than the truncated form.
+test("extractAcceptanceCriteria: wrapped AC fixture matches source text byte for byte, not truncated mid-clause (SLICE-206 AC-2)", () => {
+  const sourceAc1 =
+    "AC-1: GIVEN a slice tagged `stack:csharp` + `concern:security`, WHEN the " +
+    "dispatcher resolves skills, THEN it returns only skill IDs that EXIST in the " +
+    "live crew catalog (no `csharp-pro`/`vue-engineering`-style dead IDs), matched " +
+    "to the task signals.";
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- AC-1: GIVEN a slice tagged `stack:csharp` + `concern:security`, WHEN the",
+    "  dispatcher resolves skills, THEN it returns only skill IDs that EXIST in the",
+    "  live crew catalog (no `csharp-pro`/`vue-engineering`-style dead IDs), matched",
+    "  to the task signals.",
+    ""
+  ].join("\n");
+  const result = extractAcceptanceCriteria(body);
+  assert.equal(result.length, 1);
+  assert.equal(result[0], `- [ ] ${sourceAc1}`);
+  // Not truncated mid-clause: the reconstructed text must reach its own
+  // "Then" clause and its trailing full stop, not stop at "WHEN the".
+  assert.match(result[0], /THEN it returns only skill IDs/);
+  assert.match(result[0], /to the task signals\.$/);
+});
+
+// AC-3 (SLICE-206): assertAcceptanceCriteria's presence gate must see the
+// FULL bullet text, not a first-line fragment — a FEAT whose ACs all wrap
+// must not be able to pass the presence check while every stored criterion
+// ends mid-clause.
+test("assertAcceptanceCriteria: a FEAT whose ACs all wrap does not pass with truncated fragments (SLICE-206 AC-3)", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- AC-1: GIVEN a wrapped criterion, WHEN the extractor runs, THEN it must",
+    "  reach this full Then-clause rather than stopping at the word 'the'.",
+    "- AC-2: GIVEN a second wrapped criterion, WHEN it is extracted, THEN it",
+    "  must also reach its own complete Then-clause and trailing punctuation."
+  ].join("\n");
+  // Presence check passes (real ACs exist) ...
+  assert.doesNotThrow(() => assertAcceptanceCriteria("FEAT-630", body));
+  // ... and critically, what's stored is the complete criterion, not a
+  // fragment ending mid-clause on the wrap point ("WHEN the", "THEN it").
+  const extracted = extractAcceptanceCriteria(body);
+  assert.equal(extracted.length, 2);
+  for (const ac of extracted) {
+    assert.doesNotMatch(ac, /\b(WHEN|THEN)\s+(the|it)$/);
+  }
+  assert.match(
+    extracted[0],
+    /reach this full Then-clause rather than stopping at the word 'the'\.$/
+  );
+  assert.match(
+    extracted[1],
+    /must also reach its own complete Then-clause and trailing punctuation\.$/
+  );
+});
+
 // --- AcceptanceCriteriaRequiredError message differentiation (#475) ---
 
 test("assertAcceptanceCriteria: heading absent produces the original typo'd-heading guidance", () => {
@@ -395,4 +526,55 @@ test("sliceFromFeature preserves all FEAT ACs verbatim (checkbox state preserved
   assert.match(sliceContent, /- \[ \] AC-3: Third unchecked/);
   // No placeholder
   assert.doesNotMatch(sliceContent, /<replace with/);
+});
+
+// Regression: CRLF bodies. Found by the SLICE-206 review. `body.split("\n")`
+// left a trailing \r on every physical line. The prose-bullet branch of
+// classifyAcceptanceCriteriaLine absorbs it (its regex ends `\s*$`), but the
+// CHECKBOX branch is a bare `.replace()` with no trim — so `- [ ] AC-1: ...`
+// kept a dangling \r, and a wrapped one embedded a literal \r mid-sentence
+// where the continuation was joined. Checkbox is the form every generated
+// slice uses. This repo runs on Windows, and extraction runs against
+// freshly-authored bodies before .gitattributes (eol=lf) normalizes them.
+test("extractAcceptanceCriteria: wrapped checkbox AC over CRLF has no embedded CR", () => {
+  const body = [
+    "## Acceptance criteria",
+    "",
+    "- [ ] AC-1: Given a wrapped criterion, When it spans",
+    "  more than one physical line, Then it joins.",
+    ""
+  ].join("\r\n");
+
+  const [first] = extractAcceptanceCriteria(body);
+
+  assert.ok(first, "expected one criterion");
+  assert.doesNotMatch(first, /\r/);
+  assert.match(first, /spans more than one physical line/);
+});
+
+test("extractAcceptanceCriteria: unwrapped checkbox AC over CRLF has no trailing CR", () => {
+  const body = ["## Acceptance criteria", "", "- [ ] AC-1: Given X, When Y, Then Z.", ""].join(
+    "\r\n"
+  );
+
+  const [first] = extractAcceptanceCriteria(body);
+
+  assert.ok(first, "expected one criterion");
+  assert.doesNotMatch(first, /\r/);
+});
+
+test("extractAcceptanceCriteria: CRLF and LF checkbox bodies extract identically", () => {
+  const parts = [
+    "## Acceptance criteria",
+    "",
+    "- [ ] AC-1: Given a criterion, When it wraps",
+    "  across lines, Then both encodings agree.",
+    "- [ ] AC-2: Given a second criterion, When read, Then it is separate.",
+    ""
+  ];
+
+  assert.deepEqual(
+    extractAcceptanceCriteria(parts.join("\r\n")),
+    extractAcceptanceCriteria(parts.join("\n"))
+  );
 });
