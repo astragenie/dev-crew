@@ -49,7 +49,7 @@ dev-crew/
   .claude-plugin/plugin.json      name: "devcrew"  (single manifest)
   .claude-plugin/hooks/hooks.json (merged registrations)
   commands/            48 commands (54 parents − 6 collision merges), flat .md
-  agents/              27 owned + 3rdparty/ 14 vendored
+  agents/              26 owned + 3rdparty/ 14 vendored
   skills/              4 tiers (universal/workflow/domain/meta), deduped
   hooks/               merged hook scripts (.mts, Bun)
   templates/           runner templates, Wiggin-scrubbed
@@ -67,7 +67,7 @@ dev-crew/
 | crew carried (20) | adopt, architect-feature, audit-repo, build, design, fix, gepa-eval, gepa-history, gepa-invalidate, incident, init, orchestrate-slice, parallel, parallel-review, prune-artifacts, quickwin, review, ship, validate, wake-up-brief | carry as `/devcrew:<name>` |
 | crew dropped (11) | claim-files, release-files, show-claims, show-conflicts, request-approval, resolve-approval, show-approvals (claims/approvals machinery cut — §5); gepa-optimize, gepa-resume, gepa-revert, gepa-thaw (auto-promotion machinery cut — §5) | dropped, rationale in §5 |
 | runner (16) | auto, close, decisions, intake, learn, lessons-recent, list-presets, memory-setup, phase-gate, pr-fix, retrospective, spec-status, start, triage, watch, wave | carry as `/devcrew:<name>` |
-| **collisions (6→3)** | crew `install` + runner `install` → one `/devcrew:install` (both layers, one pass); crew `cost-setup` + runner `cost-setup` → one `/devcrew:cost-setup`; crew `brief-me` + runner `brief` + runner `status` → one `/devcrew:brief` (situational report + install state) | merged |
+| **collisions (7→3)** | crew `install` + runner `install` → one `/devcrew:install` (both layers, one pass); crew `cost-setup` + runner `cost-setup` → one `/devcrew:cost-setup`; crew `brief-me` + runner `brief` + runner `status` → one `/devcrew:brief` (situational report + install state) | merged |
 | 3rdparty (4→1) | refactor-code kept (live refs); architecture-review, create-architecture-documentation, create-prd dropped (zero dispatch refs, cleanup-verified) | `commands/3rdparty/` |
 
 Result: **39 first-party + 1 vendored** (20 crew + 16 runner + 3 merged). No
@@ -113,14 +113,20 @@ adopted `bun test --parallel` on 2026-06-10, but commit `a20f9dd9` (2026-07-01)
 inside another test()` in Bun's `node:test` compat shim under parallel workers.
 Current dev-team state: no `--parallel`, 3-way file-sharded CI matrix.
 
-**Root cause is the test API, not parallelism itself:** dev-team's tests are
-written against `node:test` and run through Bun's compat shim (where bun#5090
-lives); runner's 330 files use native `bun:test` and run `--parallel` clean
-daily. Therefore the P1 move is: **migrate dev-team tests from `node:test` to
-`bun:test` imports during the `.mts` conversion** — mostly mechanical
-(describe/it/expect surface), removes the shim from the path, and makes
-`--parallel` safe per the operator's Bun-first decision. Sharding remains the
-fallback only for any file that resists migration.
+**Root cause locus is the test API, not parallelism itself:** dev-team's
+failures live in Bun's `node:test` compat shim; runner's 330 files use native
+`bun:test` and run `--parallel` clean daily. Caveat from the demolition
+review: bun#5090's headline mechanism (nested subtests) appears in **zero** of
+dev-team's 31 `node:test`-importing files (grep-verified, flat test()/assert
+style throughout) — so the exact shim defect biting dev-team is not
+conclusively identified. The migration decision stands on the stronger ground:
+removing the shim from the execution path entirely (bun:test native) removes
+the whole defect class, whatever the specific trigger. P1 move: **migrate
+dev-team tests from `node:test` to `bun:test` imports during the `.mts`
+conversion** — mostly mechanical (describe/it/expect surface). The N≥20
+green-run gate is what actually proves it worked; the mechanism story is
+supporting narrative, not the evidence. Sharding remains the fallback for any
+file that resists migration.
 
 **Live experiment (this session):** `bun test --timeout 60000 --parallel tests/`
 on dev-team: 2111 tests across 212 files, 1991 pass / 118 skip / **2 fail**,
@@ -180,21 +186,33 @@ kept archived read-only.
 
 **GEPA state:** `prior_prompt_hash` is a prompt-content hash (survives import),
 but champion-provenance references promotion *commits* on dev-team main —
-those break under new hashes. Disposition upgraded per rewrite-today review:
-the **auto-promotion machinery is cut entirely** (~6,286 lines / 19 files:
-auto-pr, auto-merge-gate, branch-protection-check, killswitch — guards 11
-trial artifacts a sole operator reviews by hand; its git-SHA provenance dies
-in the import anyway). **Kept:** the eval/scoring harness (`evals/`,
-judge/meter/model-profile) — that's the part that earns its LOC. Trial
-artifacts + `.gepa/` state archived verbatim, marked
-`imported-from: dev-team@<sha>`. Promotion, if wanted later, becomes "operator
-reads eval diff, edits prompt" — no machinery.
+those break under new hashes. Disposition upgraded per rewrite-today review
+and corrected by the demolition review: `scripts/lib/gepa/` is **27 files /
+6,286 lines** (not 19 files as improve-rewrite-today.md claimed), and the
+original cut list named only 9 — leaving the three largest files
+(candidate-generator-aiplugin.ts 715, gepa-optimize-cmd.ts 583,
+optimize-runner.ts 480) and the self-diagnosed-broken
+champion-provenance-writer.ts undispositioned. Corrected rule, applied at P4:
+**default DELETE for all of `scripts/lib/gepa/`**, with the keep-list derived
+mechanically as the import closure of the three surviving commands
+(`gepa-eval`, `gepa-history`, `gepa-invalidate`) plus the `evals/` harness
+(judge/meter/model-profile). `champion-provenance-writer.ts` is explicitly on
+the delete list (the plan's own prose diagnoses its git-SHA provenance as
+broken by the import). P4 entry task: produce the full 27-file disposition
+table via import trace before deleting anything. Trial artifacts + `.gepa/`
+state archived verbatim, marked `imported-from: dev-team@<sha>`. Promotion,
+if wanted later, becomes "operator reads eval diff, edits prompt" — no
+machinery.
 
 **Wiggin scrub:** 27 files in runner-plugin (fresh grep, `-li wiggin`,
 excluding artifacts/node_modules) mention the name — templates
-(`templates/wiggin-loop.md`), docs, kb pointers. At import: rename
-`wiggin-loop.md` → `dev-crew-method.md`, rewrite references, add
-`validate-org-refs`-style CI sweep term `wiggin` to keep it dead.
+(`templates/wiggin-loop.md`), docs, kb pointers. **Timing corrected by the
+demolition review: the scrub executes in P1 at import time** (CLAUDE.md's
+decided constraint says "scrub during content import" — the earlier P4
+scheduling contradicted it). Rename `wiggin-loop.md` → `dev-crew-method.md`,
+rewrite references as part of the import slices; the `wiggin`-term CI sweep
+gate lands in P4 with the merged CI workflow and must be green over the whole
+tree there.
 
 **Validator dedupe:** both parents ship `validate-org-refs`,
 `validate-agent-refs`, `validate-manifests` — keep runner's (`.mts`), extend
@@ -298,14 +316,18 @@ metrics-band regenerates against the merged repo. New gate: wiggin-term sweep
 
 | Phase | Content | Mode | Slices | Exit gate |
 |---|---|---|---|---|
-| **P1 Runtime baseline** | subtree-import both parents; `.ts`→`.mts` rename sweep; **node:test→bun:test migration of dev-team suite (dodges bun#5090)**; one tsconfig/biome; merged suite green under `bun test --parallel` | serialized (import), then wave (rename + test-API sweeps) | 5–7 | zero `node:test` imports (grep gate); N≥20 consecutive green `--parallel` runs; `bun run typecheck` clean |
+| **P1 Runtime baseline** | subtree-import both parents; `.ts`→`.mts` rename sweep (**391 dev-team files** need rename + import-specifier fixes, demolition-verified — drives the resize); node:test→bun:test migration of dev-team suite (31 importing files); Wiggin scrub at import (§5); one tsconfig/biome; merged suite green under `bun test --parallel` | serialized (import), then wave (rename + test-API sweeps) | **7–10** | zero `node:test` imports (grep gate); zero `wiggin` hits outside archives (grep gate); N≥20 consecutive green `--parallel` runs; `bun run typecheck` clean |
 | **P2 Seam elimination** | crew-bridge → direct imports per §4 table; delete plugin-identity crew resolution; devcrew.json schema + migrator | serialized (bridge), wave (call sites) | 3–4 | zero `execFile.*crew` hits; zero `MIN_CREW_VERSION` hits; ceremony e2e-smoke green |
-| **P3 Surface merge** | §2 command/agent/skill maps applied; dispatch-token rewrite; hooks merged; manifest `devcrew` | wave (per-surface batches) | 5–7 | `validate-agent-refs` green on merged tree; every old token resolves per map; smoke: one full slice ceremony under `/devcrew:*` |
-| **P4 Content + CI** | dedupe validators; merged CI workflow (~30 gates); Wiggin scrub; GEPA auto-promotion cut + trial archive; auto-dispatch + claims/approvals + preset-retrofit deletions; dead-path purge (ai-loop/backlog/pending-dispatch); docs merge; CLAUDE.md byte budget (≤12KB pre-include) | wave | 5–6 | CI green end-to-end; wiggin sweep 0 hits; clause citations resolve; deletion inventory from improve-cleanup.md fully dispositioned (each item DELETE/ARCHIVE/MERGE executed or explicitly deferred with reason) |
+| **P3 Surface merge** | §2 command/agent/skill maps applied; dispatch-token rewrite; hooks merged + consolidated; 4 over-cap agents trimmed (architect/verifier/backend-dev/release-engineer); models.yaml/model-router design merge; manifest `devcrew` | wave (per-surface batches) | 5–7 | `validate-agent-refs` green on merged tree; every old token resolves per map; **measured hook overhead ≤150ms per Bash call**; **validate-content-length green (agent 300-line cap)**; smoke: one full slice ceremony under `/devcrew:*` |
+| **P4 Content + CI** | dedupe validators; merged CI workflow (~30 gates incl. wiggin-term sweep); GEPA 27-file disposition table + cut + trial archive (§5); auto-dispatch + claims/approvals + preset-retrofit deletions; dead-path purge (ai-loop/backlog/pending-dispatch); docs merge | wave | 5–6 | CI green end-to-end; wiggin sweep gate green tree-wide; clause citations resolve; **merged CLAUDE.md ≤12KB pre-include (measured)**; GEPA disposition table covers all 27 files; deletion inventory from improve-cleanup.md fully dispositioned (each item DELETE/ARCHIVE/MERGE executed or explicitly deferred with reason) |
 | **P5 Cutover** | migrate-adopter.mts over ~10 local repos (dry-run first); marketplace swap; parents archived read-only | serialized, operator-gated | 2–3 | each adopter: installer idempotence check green; one ceremony run in one adopter repo; **explicit operator approval before marketplace edit** |
 
-Total ≈ **20–27 slices**. P1 entry gate: operator approves this plan. Every
-phase lands as PRs in dev-crew; parents receive zero writes throughout.
+Total ≈ **22–30 slices** (P1 resized after the demolition review's 391-file
+rename count). P1 entry gate: operator approves this plan. Every phase lands
+as PRs in dev-crew; parents receive zero writes throughout. Adopter count:
+the §6 "~10" is a snapshot — the Appendix A enumeration command re-run at P5
+time is authoritative (demolition review observed 9-vs-10 drift between
+counts taken hours apart; worktree copies come and go).
 
 ## 10. Improvement-review digest (2026-08-18, three Opus agents)
 
@@ -320,6 +342,31 @@ accepted item; this table is the index:
 
 Open conflicts: none — the single reviewer conflict (claims port vs cut) is
 resolved in §5 in favor of the cut.
+
+**Demolition review round 2** (`review-plan-demolition.md`, verdict
+approve-with-changes): 4 CRITICALs fixed in place — agent-count 27→26 tree
+drift (§2), collision label 6→7 (§2), the three numeric tripwires now live in
+§9 exit-gate cells (hook ≤150ms + agent cap → P3; CLAUDE.md ≤12KB → P4), GEPA
+disposition corrected to the full 27-file inventory with import-closure
+keep-rule (§5). 2 MAJORs folded: P1 resized 5–7→7–10 slices (391-file rename
+footprint); bun#5090 mechanism claim softened to evidence-honest framing (§3).
+MEDIUM folded: Wiggin scrub moved P4→P1 per CLAUDE.md constraint.
+
+**Greenfield adjustments accepted as P-phase candidates (not yet slices):**
+- (A) Prompt-based hooks: evaluate replacing spawn-per-event hook scripts with
+  prompt-based hooks where the platform supports it — potentially a larger
+  latency win than spawn consolidation alone; P3 spike slice.
+- (B) Artifact taxonomy: collapse `.claude/artifacts/{crew,loop}/` into one
+  `.claude/artifacts/devcrew/` tree at P4 (installer + validators updated
+  together); adopter config migration handles the path move.
+- (C) Backlog store: do NOT extend the native-task-tracking cut to the backlog
+  store (files are the durable contract) — but DO replace the
+  directory-move-as-state-transition mechanic (pending/→done/ moves), which
+  the memory log documents stranding FEATs repeatedly; frontmatter status
+  field + single directory is the P4 candidate design.
+- (D) Blank-page command audit: the 39-command surface was deduped
+  cross-repo but never zero-based; P3 slice reviews each command against
+  "would we add this today" with usage evidence from session logs.
 
 ## Stop conditions honored
 
