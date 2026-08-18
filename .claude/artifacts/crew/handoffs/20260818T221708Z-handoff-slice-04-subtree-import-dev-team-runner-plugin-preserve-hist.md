@@ -1,0 +1,21 @@
+# Task Handoff: SLICE-04: subtree-import dev-team + runner-plugin, preserve history
+
+- Created: 2026-08-18T22:17:08.468Z
+- From: fullstack-dev
+- To: lead
+- Objective: Import-only slice complete, 3 commits on main (66f4d793 merge, d565c210 subtree, b544ed2c wiring), no push. AC-5 precondition verified first: pre-devcrew-baseline tag exists in both parents (runner-plugin@1ae932ba, dev-team@2d4fa713) before any subtree op ran. Salvage-branch disposition (dev-team salvage/post-243-working-tree-20260728): NOT superseded, NOT merged -- recorded valuable-unmerged. 3 commits, 150 files vs main: reduces node:test imports under tests/ from 146 files to 31 (exactly the P1 bun:test-migration target), plus lead->dispatcher rename (Slice B) and source changes to scripts/crew.ts, scripts/lib/{approvals,claims}.ts, scripts/lib/gepa/*, scripts/validate-routing-table.ts, agents/{qa-expert,test-automator}.md, CI workflow files, CHANGELOG.md, DEC-029.md. Branch left untouched in parent repo; dev-team main untouched; tag stays valid. Step 1 merge: runner-plugin main@1ae932ba merged --allow-unrelated-histories -X ours (all actual path collisions were exactly the protected set: .claude/** , CLAUDE.md, LICENSE, .gitignore -- nothing else collided, verified via comm before merging). dev-crew's CLAUDE.md/LICENSE/docs/planning win outright; runner's entire .claude/artifacts/** dogfood tree (3410 files) deliberately excluded from the live tree per .claude/** policy (history still reachable via 2nd parent, blob-identical, not lost). runner's CLAUDE.md/AGENTS.md archived as reference at docs/parents/runner-plugin-{CLAUDE,AGENTS}.md. .gitignore merged additively (dev-crew block first, runner's unique entries appended with provenance comment). Step 2 subtree: git subtree add --prefix=crew dev-team main@2d4fa713, non-squashed, layout untouched. Step 3 wiring: root package.json name -> devcrew, added test:crew script (cd crew && bun test --timeout 60000 tests/, deliberately no --parallel per bun#5090 until migration slice); crew/package.json untouched. bun install green at root (16 pkgs) and crew/ (332 pkgs).
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - package.json
+  - .gitignore
+  - docs/parents/runner-plugin-CLAUDE.md
+  - docs/parents/runner-plugin-AGENTS.md
+  - crew/ (subtree
+  - ~3064 files)
+  - root tree from runner-plugin main (980 files added)
+- Confidence: high
+- Risks: Gate (b) root suite is 3310 pass / 2 fail (of 3319), not clean green vs runner-plugin's own baseline (3312/0 fail verified independently). Both failures are self-referential existence checks -- src/tests/eval-generator.test.mts:313 and src/tests/learning-cycle.test.mts:321 -- asserting fs.existsSync on .claude/artifacts/loop/decisions/DEC-068.md and DEC-070.md, which are runner-plugin's own dogfood decision records, correctly excluded from the merged tree under the explicit .claude/** dev-crew-wins policy. Root cause fully identified; not a code regression; left unfixed as content-adaptation work (out of import-only scope, no test files touched). Gate (c) crew suite is 846 pass / 117 fail / 116 errors of 1079 tests -- INITIALLY looked like a regression vs a naive baseline check, but that first comparison accidentally ran against dev-team's checked-out salvage branch instead of main. Redid the comparison in a clean --detach worktree at main@2d4fa713 (removed after use, dev-team's own checkout never touched) and got an EXACT match: 846/117/116/1079. So gate (c) is identical-to-baseline as its own allowance permits -- this is bun#5090 at its full pre-migration scope on main, which is exactly what salvage's unmerged bun:test rewrites fix (see salvage disposition above).
+- Suggested Next Handoff: SLICE-05/06 (ts->mts rename sweep) and SLICE-07 (node:test->bun:test migration, 31 files) should pull the salvage branch's already-written bun:test rewrites as a reference/diff source rather than redo the conversion from scratch -- it already solves the exact 31-file target count. SLICE-08 (Wiggin scrub) should also fix the 2 self-referential decision-log tests once dev-crew's own DEC numbering stabilizes, or delete/rewrite them as no-longer-applicable dogfood self-checks.
+

@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-18T21:53:23.162Z",
+  "updatedAt": "2026-08-18T22:17:08.477Z",
   "currentRun": {
-    "title": "FEAT001 SLICE03: 28-FEAT bucket sweep, worktree salvage, baseline tags",
+    "title": "FEAT002 SLICE04: Subtree-import dev-team + runner-plugin, preserve history",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-18T21:41:24.343Z",
-    "updatedAt": "2026-08-18T21:53:23.161Z",
-    "next": "batch-intake the 26 carry-id FEATs into dev-crew backlog; decide disposition of dev-team's salvage branch before the import phase",
+    "startedAt": "2026-08-18T21:58:07.687Z",
+    "updatedAt": "2026-08-18T22:17:08.476Z",
+    "next": "SLICE-05/06 (ts->mts rename sweep) and SLICE-07 (node:test->bun:test migration, 31 files) should pull the salvage branch's already-written bun:test rewrites as a reference/diff source rather than redo the conversion from scratch -- it already solves the exact 31-file target count. SLICE-08 (Wiggin scrub) should also fix the 2 self-referential decision-log tests once dev-crew's own DEC numbering stabilizes, or delete/rewrite them as no-longer-applicable dogfood self-checks.",
     "gates": {
       "review": null,
       "validation": null,
@@ -22,9 +22,9 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T214124Z-run-brief-feat001-slice03-28-feat-bucket-sweep-worktree-salvage-baseli.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T215807Z-run-brief-feat002-slice04-subtree-import-dev-team-runner-plugin-preser.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T215323Z-handoff-slice-03-28-feat-bucket-sweep-worktree-salvage-baseline-tags.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T221708Z-handoff-slice-04-subtree-import-dev-team-runner-plugin-preserve-hist.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
@@ -37,6 +37,76 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT002 SLICE04: Subtree-import dev-team + runner-plugin, preserve history",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-18T21:58:02.251Z",
+      "updatedAt": "2026-08-18T21:58:02.251Z",
+      "completedAt": "2026-08-18T21:58:02.251Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T215802Z-run-brief-feat002-slice04-subtree-import-dev-team-runner-plugin-preser.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT001 SLICE03: 28-FEAT bucket sweep, worktree salvage, baseline tags",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-18T21:41:24.343Z",
+      "updatedAt": "2026-08-18T21:53:23.161Z",
+      "completedAt": "2026-08-18T21:53:23.161Z",
+      "next": "batch-intake the 26 carry-id FEATs into dev-crew backlog; decide disposition of dev-team's salvage branch before the import phase",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T214124Z-run-brief-feat001-slice03-28-feat-bucket-sweep-worktree-salvage-baseli.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T215323Z-handoff-slice-03-28-feat-bucket-sweep-worktree-salvage-baseline-tags.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT001 SLICE02: Disposition in-flight FEATs 230/259/284/299",
       "goal": "",

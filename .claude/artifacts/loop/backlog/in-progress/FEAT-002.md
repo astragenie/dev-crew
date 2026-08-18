@@ -1,13 +1,13 @@
 ---
 id: FEAT-002
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-18
 depends_on: [FEAT-001]
-slices: []
+slices: [SLICE-04, SLICE-05, SLICE-06, SLICE-07, SLICE-08, SLICE-09, SLICE-10]
 derived_from: null
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.9
@@ -54,6 +54,8 @@ needs_ux: false
 arch_attempt: 0
 arch_status: approved
 arch_review: approved
+started_at: 2026-08-18
+slices_complete: [SLICE-04]
 ---
 ## Description
 
