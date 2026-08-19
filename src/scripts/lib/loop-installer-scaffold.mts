@@ -119,8 +119,8 @@ export async function writeLoopControlFiles(
   const loopRoot = tokens.aiLoopRoot!;
   const targets = [
     {
-      template: "wiggin-loop.md",
-      target: path.join(repoPath, loopRoot, "01-loop-control", "WIGGIN_LOOP.md"),
+      template: "dev-crew-method.md",
+      target: path.join(repoPath, loopRoot, "01-loop-control", "DEV_CREW_METHOD.md"),
       tokenize: false
     },
     {

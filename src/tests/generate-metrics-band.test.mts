@@ -123,7 +123,7 @@ async function writeReadmeFixture(repo: string): Promise<void> {
   const content = [
     "# loop",
     "",
-    "A Claude Code plugin that ships the Wiggin Loop methodology.",
+    "A Claude Code plugin that ships the dev-crew method.",
     "",
     "Depends on the `crew` plugin for artifact writers — loop emits Crew",
     "`validation-result` artifacts through `crew write-validation-result`.",

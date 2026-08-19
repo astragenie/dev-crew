@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T00:12:15.091Z",
+  "updatedAt": "2026-08-19T00:34:32.222Z",
   "currentRun": {
-    "title": "FEAT002 SLICE06: .ts->.mts rename sweep batch 2 + import-specifier fixes",
+    "title": "FEAT002 SLICE08: Wiggin -> dev-crew branding scrub (27 files)",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-18T22:51:44.721Z",
-    "updatedAt": "2026-08-19T00:12:15.091Z",
-    "next": "If the team wants the remaining process.execPath+strip-types drift closed, a round 4 could sweep enum-verdicts.test.mts, validate-all.test.mts, prune-artifacts.test.mts, validate-slices.test.mts the same way (drop the flag, keep process.execPath).",
+    "startedAt": "2026-08-19T00:24:10.407Z",
+    "updatedAt": "2026-08-19T00:34:32.222Z",
+    "next": "SLICE-09 (tsconfig/biome config merge) and SLICE-10 (N=20 green parallel verification + typecheck gate) are next in the pending queue. A later slice should flatten/normalize the crew/ subtree import and its own wiggin references once dev-crew's own DEC numbering stabilizes (also flagged in the SLICE-04 handoff for the 2 self-referential decision-log test failures).",
     "gates": {
       "review": null,
       "validation": null,
@@ -22,9 +22,10 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T225144Z-run-brief-feat002-slice06-ts-mts-rename-sweep-batch-2-import-specifier.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T002410Z-run-brief-feat002-slice08-wiggin-dev-crew-branding-scrub-27-files.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T001215Z-handoff-slice-07-round-3-flip-remaining-node-spawns-to-bun-15-files.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003416Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md",
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003432Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
@@ -37,6 +38,42 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT002 SLICE06: .ts->.mts rename sweep batch 2 + import-specifier fixes",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-18T22:51:44.721Z",
+      "updatedAt": "2026-08-19T00:12:15.091Z",
+      "completedAt": "2026-08-19T00:12:15.091Z",
+      "next": "If the team wants the remaining process.execPath+strip-types drift closed, a round 4 could sweep enum-verdicts.test.mts, validate-all.test.mts, prune-artifacts.test.mts, validate-slices.test.mts the same way (drop the flag, keep process.execPath).",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T225144Z-run-brief-feat002-slice06-ts-mts-rename-sweep-batch-2-import-specifier.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T001215Z-handoff-slice-07-round-3-flip-remaining-node-spawns-to-bun-15-files.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT002 SLICE05: .ts->.mts rename sweep batch 1 (dev-team src)",
       "goal": "",
@@ -165,42 +202,6 @@
       "artifacts": {
         "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T215802Z-run-brief-feat002-slice04-subtree-import-dev-team-runner-plugin-preser.md",
         "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT001 SLICE03: 28-FEAT bucket sweep, worktree salvage, baseline tags",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-18T21:41:24.343Z",
-      "updatedAt": "2026-08-18T21:53:23.161Z",
-      "completedAt": "2026-08-18T21:53:23.161Z",
-      "next": "batch-intake the 26 carry-id FEATs into dev-crew backlog; decide disposition of dev-team's salvage branch before the import phase",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T214124Z-run-brief-feat001-slice03-28-feat-bucket-sweep-worktree-salvage-baseli.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T215323Z-handoff-slice-03-28-feat-bucket-sweep-worktree-salvage-baseline-tags.md"
-        ],
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": null,

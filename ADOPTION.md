@@ -151,7 +151,7 @@ Inspect the new files (paths below use this repo's `aiLoopRoot`/
 if you customized them):
 
 - `CLAUDE.md` — should contain `<!-- runner:start -->...<!-- runner:end -->`
-- `<aiLoopRoot>/01-loop-control/{WIGGIN_LOOP,EVIDENCE_RULES,STOP_CONDITIONS}.md`
+- `<aiLoopRoot>/01-loop-control/{DEV_CREW_METHOD,EVIDENCE_RULES,STOP_CONDITIONS}.md`
 - `<aiLoopRoot>/00-entry/{MASTER_PROMPT,SLICE_TEMPLATE}.md`
 - `<backlogPath>/{approved-slices,completed-slices,product-backlog}.md`
 - `<slicesRoot>/pending/.gitkeep`

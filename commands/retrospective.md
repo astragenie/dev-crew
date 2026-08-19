@@ -72,5 +72,5 @@ Recommended cadences:
 - Phase close: `--since <phase-start-date>` (assess the phase)
 - Release retro: `--since <release-tag-date>` (post-mortem of shipped work)
 
-The Phase Completion Gate (Wiggin Loop HARD RULE) will auto-invoke this in
+The Phase Completion Gate (dev-crew method HARD RULE) will auto-invoke this in
 v0.1.7+; for v0.1.6 it's a manual command.

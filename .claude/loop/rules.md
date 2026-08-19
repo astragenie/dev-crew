@@ -20,7 +20,7 @@ After all acceptance criteria for the current slice are PASS with evidence and a
 1. **Scan `.claude/artifacts/loop/specs/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/runner:intake --spec`. New FEAT files land in `.claude/artifacts/loop/backlog/pending/`.
 2. **Scan `.claude/artifacts/loop/backlog/pending/`** — if any pending entries exist, run `/runner:triage` to score them; scored entries move to `.claude/artifacts/loop/backlog/triaged/`.
 3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by lowest FEAT-NNN id ascending (oldest wins). Promote it: `/runner:start FEAT-NNN`.
-4. **Begin the Wiggin Loop on the new slice.** Acceptance criteria, evidence, review per `.claude/artifacts/loop/ai-loop/01-loop-control/`.
+4. **Begin the dev-crew method on the new slice.** Acceptance criteria, evidence, review per `.claude/artifacts/loop/ai-loop/01-loop-control/`.
 5. **On slice close** — run the Slice Close Ceremony (below). Do NOT skip it — every artifact is part of the slice's evidence record.
 
 If `.claude/artifacts/loop/backlog/pending/`, `.claude/artifacts/loop/backlog/triaged/`, and `.claude/artifacts/loop/specs/` are all empty/satisfied, confirm via `/runner:spec-status` and stop. Never stop just because the backlog "feels empty." Slice/phase filename linkage and the auto-mode-vs-legacy gating table: `.claude/loop/rules-reference.md`.
@@ -69,7 +69,7 @@ Before dispatching any reviewer, pre-extract the slice spec's `Files:` list and 
 Two ways to start work. Pick one per session — do **not** mix.
 
 - **`/crew:build` (interactive, single slice).** Lead-driven, lighter ceremony. No `/runner:start` required; no run-brief mandatory. The Slice Close Ceremony still applies if the change closes a slice.
-- **Autonomous loop (unattended, multi-slice).** Full ceremony required. Slice Start → Wiggin Loop → Slice Close. Invoked via `/runner:auto`, `ScheduleWakeup`, or `CronCreate`. Every slice must rotate `currentRun`.
+- **Autonomous loop (unattended, multi-slice).** Full ceremony required. Slice Start → dev-crew method → Slice Close. Invoked via `/runner:auto`, `ScheduleWakeup`, or `CronCreate`. Every slice must rotate `currentRun`.
 
 Never run both simultaneously against the same branch — they race on `workflow-state.json`. One-glance visibility into all slices: `cat .claude/state/crew/slice-progress.md`.
 
@@ -111,6 +111,6 @@ Read in this order, then pick the highest-priority PENDING slice:
 1. `.claude/artifacts/loop/ai-loop/00-entry/MASTER_PROMPT.md` — persona, stack, mandatory reading
 2. `.claude/artifacts/loop/ai-loop/backlog/approved-slices.md` — pick highest-priority PENDING slice
 3. The slice file listed in `approved-slices.md` (under `.claude/artifacts/loop/ai-loop/slices/`)
-4. `.claude/artifacts/loop/ai-loop/01-loop-control/WIGGIN_LOOP.md` — the loop sequence
+4. `.claude/artifacts/loop/ai-loop/01-loop-control/DEV_CREW_METHOD.md` — the loop sequence
 5. `.claude/artifacts/loop/ai-loop/01-loop-control/EVIDENCE_RULES.md` — how to mark PASS / PARTIAL / FAIL / BLOCKED
 6. `.claude/artifacts/loop/ai-loop/01-loop-control/STOP_CONDITIONS.md` — when the loop is allowed to stop

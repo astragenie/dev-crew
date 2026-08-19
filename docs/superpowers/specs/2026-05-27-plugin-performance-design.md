@@ -79,8 +79,8 @@ the affected listing.
 **Deduplication**:
 - CLAUDE.md: remove inline HARD RULES summary (20 lines). Keep only
   `@.claude/loop/rules.md` reference — full rules load on demand.
-- Merge `templates/wiggin-loop.md` content into `templates/loop-rules.md`
-  (they overlap 60%+). Remove wiggin-loop.md as separate file.
+- Merge `templates/dev-crew-method.md` content into `templates/loop-rules.md`
+  (they overlap 60%+). Remove dev-crew-method.md as separate file.
 - Compress `templates/master-prompt.md`: remove ceremony description
   already in rules (55 → 35 lines).
 
@@ -91,7 +91,7 @@ the affected listing.
   crew plugin already provides.
 
 **Files**: `CLAUDE.md`, `templates/loop-rules.md`,
-`templates/master-prompt.md`, `templates/wiggin-loop.md` (delete or merge)
+`templates/master-prompt.md`, `templates/dev-crew-method.md` (delete or merge)
 
 ### 4. Tool Failure Prevention — eliminate 6-9% waste
 

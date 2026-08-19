@@ -48,7 +48,7 @@ function resolveLoopPath(config: Record<string, unknown>, key: string): string {
 function buildMandatoryDocsList(config: Record<string, any>, aiLoopRoot: string): string {
   const repoDocs = (config.mandatoryDocs || []).map((doc: string) => `\`${doc}\``);
   const loopControlDocs = [
-    `\`${aiLoopRoot}/01-loop-control/WIGGIN_LOOP.md\``,
+    `\`${aiLoopRoot}/01-loop-control/DEV_CREW_METHOD.md\``,
     `\`${aiLoopRoot}/01-loop-control/EVIDENCE_RULES.md\``,
     `\`${aiLoopRoot}/01-loop-control/STOP_CONDITIONS.md\``
   ];

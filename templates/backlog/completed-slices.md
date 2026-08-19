@@ -1,7 +1,7 @@
 # Completed Slices — {{productName}}
 
 Record of completed implementation slices. Append at the end of each slice as
-part of the Wiggin Loop close-out.
+part of the dev-crew close-out.
 
 ## Format
 

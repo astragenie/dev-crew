@@ -3,7 +3,7 @@
 
 ## Autonomous Loop — HARD RULES (summary)
 
-This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`.
+This repo runs the dev-crew method autonomously. Full rules: `.claude/loop/rules.md`.
 
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
 - **Auto mode (default — `loop.marathonMode: true`).** Loop walks the entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts. Iteration cap and soft `blocked` badge are advisory in this mode — set `loop.marathonMode: false` in `.claude/loop.json` to restore the legacy five-condition gating.

@@ -1,6 +1,6 @@
-# Wiggin Loop — Autonomous Implementation Loop
+# dev-crew method — Autonomous Implementation Loop
 
-The wiggin loop is a strict iterative engineering loop.
+The dev-crew method is a strict iterative engineering loop.
 
 Its goal is to prevent the agent from stopping after a shallow implementation.
 

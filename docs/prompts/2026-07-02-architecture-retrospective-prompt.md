@@ -11,7 +11,7 @@
 You are a principal engineer doing a no-sacred-cows architecture retrospective of two
 tightly coupled Claude Code plugins:
 
-- **runner-plugin** (`C:\work\mega\runner-plugin`) — the Wiggin-Loop methodology layer:
+- **runner-plugin** (`C:\work\mega\runner-plugin`) — the dev-crew method layer:
   backlog intake/triage, slice ceremony, phase-gate runner, autonomous marathon loop,
   wave mode, GEPA optimization hooks, cost telemetry.
 - **crew / dev-team** (`C:\work\mega\dev-team`) — the specialist-agent execution layer:

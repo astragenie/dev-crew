@@ -34,7 +34,7 @@ separate subjects.
    ceremony, worktree parallelism, ship/review gates.
 
 2. **runner-plugin / loop** — `C:\work\mega\runner-plugin`
-   Wiggin-Loop methodology layer over crew: autonomous backlog walking, PM
+   dev-crew method layer over crew: autonomous backlog walking, PM
    triage, architect gate, wave mode, halt badges, cost telemetry, marathon
    checkpoints.
 

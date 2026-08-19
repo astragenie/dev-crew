@@ -1,4 +1,4 @@
-# Demo recording script — Wiggin Loop + pre-build QA gate (W4.1)
+# Demo recording script — dev-crew method + pre-build QA gate (W4.1)
 
 Target: ~3 min screen recording for README. Operator drives; every command is copy-paste ready. Rehearsed sandbox keeps it deterministic.
 

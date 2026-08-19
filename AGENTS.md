@@ -1,7 +1,7 @@
 # runner-plugin — Agent Instructions
 
 Claude Code plugin (marketplace name `loop`, plugin id `runner`, CLI namespace
-`/runner:*`) that ships the Wiggin Loop methodology as a reusable layer on top
+`/runner:*`) that ships the dev-crew method as a reusable layer on top
 of the `crew` plugin: PM-triaged backlog, slice-scoped specs with
 Given-When-Then acceptance criteria, parallel-worktree wave dispatch,
 phase-gate quality checks, and decision-grade retrospectives. Real, mature

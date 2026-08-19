@@ -82,7 +82,7 @@ You are a `crew:researcher` subagent. Read-only investigation.
 
 ## Baseline you are comparing against
 
-- `loop` plugin (Wiggin-Loop methodology layer for Claude Code): HARD RULE blocks, slice scaffold (`/loop:slice from-feature|start|complete|grade`), phase-gate runner (`/loop:phase-gate`), backlog mgmt (FEAT/SPEC), grade trend + retrospectives, PM agent with 5-axis scoring + `autonomous_safe`, model routing per phase, per-invocation cache, validation gate at slice close.
+- `loop` plugin (dev-crew method layer for Claude Code): HARD RULE blocks, slice scaffold (`/loop:slice from-feature|start|complete|grade`), phase-gate runner (`/loop:phase-gate`), backlog mgmt (FEAT/SPEC), grade trend + retrospectives, PM agent with 5-axis scoring + `autonomous_safe`, model routing per phase, per-invocation cache, validation gate at slice close.
 - `crew` plugin (workflow harness for Claude Code): roles (lead, builder, reviewer, validator, deployer, researcher), gates (review, validation, deployment dev/prod, blocked, escalation), artifact discipline (`.claude/artifacts/crew/{runs,handoffs,reviews,validations,deployments,cost,cost-insights,agents}`), workflow-state badges, hero-crew CLI (`mark-badge`, `write-handoff`, `write-review-result`, `write-validation-result`, `write-final-synthesis`).
 
 ## Taxonomy — 10 axes

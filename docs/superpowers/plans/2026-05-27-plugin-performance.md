@@ -228,7 +228,7 @@ The `<!-- loop:start -->...<!-- loop:end -->` block in CLAUDE.md contains a summ
 ```markdown
 ## Autonomous Loop — HARD RULES (summary)
 
-This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`.
+This repo runs the dev-crew method autonomously. Full rules: `.claude/loop/rules.md`.
 
 - **Run until PASS.** Do not stop for confirmation.
 - **Marathon mode (default).** Loop walks entire backlog.

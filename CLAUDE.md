@@ -16,8 +16,8 @@ plugins into a single engineering-OS plugin:
   the autonomous layer on top of crew: a PM-triaged backlog, slice-scoped
   Given-When-Then specs, parallel-worktree wave dispatch, phase-gate quality
   checks, marathon-mode autonomous backlog walks, and decision-grade
-  retrospectives. (Formerly branded "Wiggin Loop" — that name is retired;
-  the unified methodology is simply called **dev-crew**.)
+  retrospectives. (Formerly branded under a different working name — that
+  name is retired; the unified methodology is simply called **dev-crew**.)
 
 Today the two plugins couple across a fragile seam: runner resolves the crew
 CLI from the plugin cache (`MIN_CREW_VERSION` gating), bridges to it through
@@ -41,8 +41,8 @@ single agent/skill registry, a single CI gate list, and a single test suite.
   against is fixed or not triggered by the migrated suites; quarantine (not
   serialize globally) any suite that still trips it.
 - **Naming**: the methodology and plugin are both called **dev-crew**
-  (plugin id `devcrew`). "Wiggin Loop" branding is retired — do not carry
-  the name into docs, templates, prompts, or command text; scrub it during
+  (plugin id `devcrew`). The prior working-name branding is retired — do not
+  carry it into docs, templates, prompts, or command text; scrub it during
   content import.
 
 ## Ground rules for this repo
@@ -81,7 +81,7 @@ single agent/skill registry, a single CI gate list, and a single test suite.
 
 ## Autonomous Loop — HARD RULES (summary)
 
-This repo runs the Wiggin Loop autonomously. Full rules: `.claude/loop/rules.md`.
+This repo runs the dev-crew method autonomously. Full rules: `.claude/loop/rules.md`.
 
 - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
 - **Auto mode (default — `loop.marathonMode: true`).** Loop walks the entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts. Iteration cap and soft `blocked` badge are advisory in this mode — set `loop.marathonMode: false` in `.claude/loop.json` to restore the legacy five-condition gating.

@@ -1,0 +1,44 @@
+# Task Handoff: SLICE-08: Wiggin -> dev-crew branding scrub
+
+- Created: 2026-08-19T00:34:16.038Z
+- From: fullstack-dev
+- To: dispatcher
+- Objective: Scrubbed all live-product-surface 'Wiggin' references (root docs, commands/, templates/, .claude loop-control scaffold + its docs/ mirror, src/scripts installer code, tests) to dev-crew method wording. Renamed templates/wiggin-loop.md -> dev-crew-method.md and the two installed WIGGIN_LOOP.md scaffold copies (.claude/artifacts + docs/ai-loop) -> DEV_CREW_METHOD.md, updating every filename reference across CLAUDE.md/README/ADOPTION/commands/templates/rules.md and the installer (loop-installer-scaffold.mts, loop-installer-tokens.mts) plus the matching test assertion. 24 remaining wiggin hits are all inside documented exclusions: .claude/artifacts/** + .claude/state/** (historical/runtime records), crew/** (unflattened dev-team subtree, left untouched per instruction), and docs/parents/** + docs/planning/** (explicitly forbidden). Root grep -rli wiggin over everything else returns 0. Full test suite holds at the pre-existing baseline of 3310 pass / 2 fail (DEC-070/DEC-068 self-referential contract tests, unrelated pre-existing failures). validate-manifests and validate-content-length both pass. git status confirms zero changes under crew/.
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - templates/wiggin-loop.md->templates/dev-crew-method.md
+  - .claude/artifacts/loop/ai-loop/01-loop-control/WIGGIN_LOOP.md->DEV_CREW_METHOD.md
+  - docs/ai-loop/01-loop-control/WIGGIN_LOOP.md->DEV_CREW_METHOD.md
+  - CLAUDE.md
+  - AGENTS.md
+  - README.md
+  - ADOPTION.md
+  - commands/install.md
+  - commands/retrospective.md
+  - .claude/loop/rules.md
+  - templates/loop-rules.md
+  - templates/claude-md-hard-rules.md
+  - templates/master-prompt.md
+  - .claude/artifacts/loop/ai-loop/00-entry/MASTER_PROMPT.md
+  - docs/ai-loop/00-entry/MASTER_PROMPT.md
+  - .claude/artifacts/loop/ai-loop/backlog/completed-slices.md
+  - templates/backlog/completed-slices.md
+  - docs/ai-loop/backlog/completed-slices.md
+  - docs/demo/2026-07-18-qa-gate-demo-script.md
+  - docs/prompts/2026-07-02-architecture-retrospective-prompt.md
+  - docs/research/prompts/2026-07-18-competitive-audit-prompt.md
+  - docs/superpowers/plans/2026-05-27-plugin-performance.md
+  - docs/superpowers/plans/2026-05-28-competitor-gap-audit.md
+  - docs/superpowers/specs/2026-05-27-plugin-performance-design.md
+  - scripts/competitor-audit/researcher-prompt.md
+  - src/scripts/lib/score-inference.mts
+  - src/scripts/lib/loop-installer-tokens.mts
+  - src/scripts/lib/loop-installer-scaffold.mts
+  - src/tests/loop-installer.test.mts
+  - src/tests/generate-metrics-band.test.mts
+- Confidence: high
+- Risks: crew/ subtree (imported dev-team plugin copy) still contains ~7 wiggin references (CLAUDE.md, CHANGELOG.md, .claude/loop/rules.md, ai-loop scaffold) - deliberately left untouched per instruction pending a dedicated crew-subtree consolidation slice. .claude/artifacts/loop/backlog/{in-progress/FEAT-002.md,triaged/FEAT-005.md} and pending SLICE_08/09/10 spec files still cite 'wiggin' in AC prose (these ARE this program's own backlog/spec records describing the scrub itself) - left as historical/backlog artifacts per classification, not product surface. .claude/state/crew/workflow-state.json currentRun.title mirrors the live slice title verbatim (auto-managed by /runner:start) and was left alone to avoid drifting from tool-generated state.
+- Suggested Next Handoff: SLICE-09 (tsconfig/biome config merge) and SLICE-10 (N=20 green parallel verification + typecheck gate) are next in the pending queue. A later slice should flatten/normalize the crew/ subtree import and its own wiggin references once dev-crew's own DEC numbering stabilizes (also flagged in the SLICE-04 handoff for the 2 self-referential decision-log test failures).
+

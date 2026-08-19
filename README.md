@@ -4,7 +4,7 @@
 [![release](https://img.shields.io/github/v/tag/astragenie/runner-plugin?label=release&sort=semver)](https://github.com/astragenie/runner-plugin/releases)
 [![license](https://img.shields.io/github/license/astragenie/runner-plugin)](LICENSE)
 
-A Claude Code plugin that ships the Wiggin Loop methodology as a reusable
+A Claude Code plugin that ships the dev-crew method as a reusable
 layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
 safe phase-gate runner.
 
@@ -81,7 +81,7 @@ Code prompt and let each finish before pasting the next:
   `<!-- runner:start -->` block. Re-installing replaces the block in
   place; user content outside it is preserved.
 - Writes plugin-owned loop-control docs under `<aiLoopRoot>/01-loop-control/`:
-  `WIGGIN_LOOP.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`, plus
+  `DEV_CREW_METHOD.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`, plus
   `<aiLoopRoot>/00-entry/MASTER_PROMPT.md` and `SLICE_TEMPLATE.md`. Always
   overwritten on re-install — customization lives in `.claude/loop.json`, not
   in these files. `aiLoopRoot` is a config path (see Configuration below);

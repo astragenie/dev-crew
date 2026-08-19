@@ -193,7 +193,7 @@ test("installLoop writes marker block, loop-control files, backlog scaffold, con
 
   const loopRoot = path.join(repo, ".claude", "artifacts", "loop", "ai-loop");
   for (const rel of [
-    "01-loop-control/WIGGIN_LOOP.md",
+    "01-loop-control/DEV_CREW_METHOD.md",
     "01-loop-control/EVIDENCE_RULES.md",
     "01-loop-control/STOP_CONDITIONS.md",
     "00-entry/MASTER_PROMPT.md",
