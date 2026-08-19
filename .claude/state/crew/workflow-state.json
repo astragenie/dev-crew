@@ -1,21 +1,17 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T01:19:11.167Z",
+  "updatedAt": "2026-08-19T01:52:11.737Z",
   "currentRun": {
-    "title": "FEAT002 SLICE10: N>=20 green --parallel verification wave + typecheck gate",
+    "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T00:53:00.579Z",
-    "updatedAt": "2026-08-19T01:19:11.167Z",
-    "next": "Begin implementation",
+    "startedAt": "2026-08-19T01:20:30.629Z",
+    "updatedAt": "2026-08-19T01:52:11.737Z",
+    "next": "SLICE-12: write-validation-result fail-hard direct import + phase-gate call-site updates. Watch for the same strictNullChecks narrowing issue on the extracted ValidationArtifactSchema/resolveValidationVerdict module.",
     "gates": {
       "review": null,
-      "validation": {
-        "status": "failed",
-        "updatedAt": "2026-08-19T01:19:11.167Z",
-        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -26,11 +22,14 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T005300Z-run-brief-feat002-slice10-n-20-green-parallel-verification-wave-typech.md",
-      "handoffs": [],
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012030Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
+      "handoffs": [
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015200Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md",
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015211Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md"
+      ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T011911Z-validation-result-phase-unspecified-gate.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -39,6 +38,78 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T01:20:24.411Z",
+      "updatedAt": "2026-08-19T01:20:24.411Z",
+      "completedAt": "2026-08-19T01:20:24.411Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012024Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT002 SLICE10: N>=20 green --parallel verification wave + typecheck gate",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T00:53:00.579Z",
+      "updatedAt": "2026-08-19T01:19:11.167Z",
+      "completedAt": "2026-08-19T01:19:11.167Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "failed",
+          "updatedAt": "2026-08-19T01:19:11.167Z",
+          "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T005300Z-run-brief-feat002-slice10-n-20-green-parallel-verification-wave-typech.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T011911Z-validation-result-phase-unspecified-gate.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT002 SLICE09: Single tsconfig/tsconfig.test + biome config merge",
       "goal": "",
@@ -138,74 +209,6 @@
         "handoffs": [
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T001215Z-handoff-slice-07-round-3-flip-remaining-node-spawns-to-bun-15-files.md"
         ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT002 SLICE05: .ts->.mts rename sweep batch 1 (dev-team src)",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-18T22:25:18.605Z",
-      "updatedAt": "2026-08-18T22:25:18.605Z",
-      "completedAt": "2026-08-18T22:25:18.605Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T222518Z-run-brief-feat002-slice05-ts-mts-rename-sweep-batch-1-dev-team-src.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT002 SLICE04: Subtree-import dev-team + runner-plugin, preserve history",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-18T22:24:42.650Z",
-      "updatedAt": "2026-08-18T22:24:42.650Z",
-      "completedAt": "2026-08-18T22:24:42.650Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T222442Z-run-brief-feat002-slice04-subtree-import-dev-team-runner-plugin-preser.md",
-        "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": null,

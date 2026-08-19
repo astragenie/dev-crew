@@ -4,10 +4,19 @@
 // in cost-scan-cursor.test.mts. This file adds the coverage that spike
 // flagged as still missing:
 //
-//  1. AC-1 at the INTEGRATION level: a real (fake) `crew` CLI subprocess
-//     spawned twice through the actual `tryWriteCostReport` bridge function,
-//     proving the fix end-to-end rather than only at the
-//     `resolveCostScanWindow` unit boundary.
+//  1. AC-1 at the INTEGRATION level: `tryWriteCostReport` invoked twice in a
+//     row, proving the window-advance fix end-to-end rather than only at
+//     the `resolveCostScanWindow` unit boundary. SLICE-11 (P2
+//     seam-elimination) removed `tryWriteCostReport`'s `crew` CLI subprocess
+//     hop entirely, so this test was rewritten off the old `$HERO_CREW_PATH`
+//     fake-CLI-plus-argv-inspection seam and now asserts on the real
+//     `costSliceHandler`/`computeSessionCost` direct-import return value
+//     (`result.cost.window.{start,end}`, echoed back by
+//     `session-cost.mts`'s `assembleCostResult`) instead of a fake
+//     subprocess's argv or a fabricated report file. `config.loop.costProject`
+//     is set so cost mode resolves to "scoped" (a single, fast, likely-empty
+//     directory scan) rather than "aggregate" (a real, slow scan of
+//     `~/.claude/projects/` on whatever machine runs the test).
 //  2. The `resolveCostScanWindow` falsy-sliceId defensive branch (LOW nit
 //     from the SLICE-162 review).
 //  3. AC-4: memory-snapshot.mts's dedup key (resolveCostReportUsd /
@@ -28,7 +37,6 @@ import {
 } from "../scripts/lib/slice-linker/cost-scan-cursor.mjs";
 import { tryWriteCostReport } from "../scripts/lib/slice-linker/crew-bridge.mjs";
 import { loadCostReportUSDValues } from "../scripts/lib/memory-snapshot.mjs";
-import { initGitRepo } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -45,182 +53,73 @@ async function seedWorkflowState(repo: string, startedAt: string): Promise<void>
   );
 }
 
-/**
- * Writes a fake `crew` CLI at `<dir>/scripts/crew.mjs` that logs every
- * invocation's argv to `<dir>/calls.jsonl` and, for `cost-slice`, writes a
- * real cost-report markdown file into the target repo's
- * `.claude/artifacts/crew/cost/` directory. `crew-bridge.mts::findHeroCrewCli`
- * resolves `$HERO_CREW_PATH/scripts/crew.mjs` BEFORE the plugin cache, so
- * pointing that env var here exercises `tryWriteCostReport`'s real
- * subprocess-spawn path rather than stubbing the function itself.
- */
-async function writeFakeCrewCli(dir: string): Promise<{ cliDir: string; logPath: string }> {
-  const scriptsDir = path.join(dir, "scripts");
-  await fs.mkdir(scriptsDir, { recursive: true });
-  const logPath = path.join(dir, "calls.jsonl");
-  const scriptPath = path.join(scriptsDir, "crew.mjs");
-  await fs.writeFile(
-    scriptPath,
-    `import fs from "node:fs";
-import path from "node:path";
-
-const argv = process.argv.slice(2);
-fs.appendFileSync(${JSON.stringify(logPath)}, JSON.stringify(argv) + "\\n");
-
-function flag(name) {
-  const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : null;
-}
-
-const cmd = argv[0];
-if (cmd === "cost-slice") {
-  const repo = flag("--repo");
-  const startedAt = flag("--started-at");
-  const completedAt = flag("--completed-at");
-  const outDir = path.join(repo, ".claude", "artifacts", "crew", "cost");
-  fs.mkdirSync(outDir, { recursive: true });
-  const filename =
-    Date.now() + "-" + Math.random().toString(36).slice(2) + "-cost-report-fake.md";
-  const filePath = path.join(outDir, filename);
-  const body = [
-    "---",
-    "kind: cost-report",
-    "run_title: " + JSON.stringify(flag("--run-title") ?? ""),
-    "usd: 1.23",
-    "total_tokens: 1000",
-    "window_start: " + (startedAt ?? "null"),
-    "window_end: " + completedAt,
-    "created_at: " + new Date().toISOString(),
-    "---",
-    "",
-    "# Fake Cost Report",
-    ""
-  ].join("\\n");
-  fs.writeFileSync(filePath, body);
-  console.log(JSON.stringify({ path: filePath }));
-} else if (cmd === "cost-advise") {
-  console.log(JSON.stringify({ recommendations: [] }));
-} else {
-  console.log(JSON.stringify({}));
-}
-`
-  );
-  return { cliDir: dir, logPath };
-}
-
-async function readCalls(logPath: string): Promise<string[][]> {
-  try {
-    const raw = await fs.readFile(logPath, "utf8");
-    return raw
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l));
-  } catch {
-    return [];
-  }
-}
-
-function flagFromArgv(argv: string[], name: string): string | null {
-  const i = argv.indexOf(name);
-  return i >= 0 ? (argv[i + 1] ?? null) : null;
-}
-
-async function withHeroCrewPath<T>(cliDir: string, fn: () => Promise<T>): Promise<T> {
-  const saved = process.env.HERO_CREW_PATH;
-  process.env.HERO_CREW_PATH = cliDir;
-  try {
-    return await fn();
-  } finally {
-    if (saved === undefined) delete process.env.HERO_CREW_PATH;
-    else process.env.HERO_CREW_PATH = saved;
-  }
-}
-
 const STALE_STARTED_AT = "2026-07-03T10:50:26.134Z";
 
 // ---------------------------------------------------------------------------
-// AC-1, integration level: real tryWriteCostReport + fake crew subprocess
+// AC-1, integration level: real tryWriteCostReport, direct-import path
 // ---------------------------------------------------------------------------
 
 test("AC-1 integration: two consecutive tryWriteCostReport calls for the same slice in one session advance the window instead of freezing it", async () => {
   const repo = await tmpRepo("csw-int-repo-");
-  const cliHome = await tmpRepo("csw-int-cli-");
-  await initGitRepo(repo);
   await seedWorkflowState(repo, STALE_STARTED_AT);
-  const { cliDir, logPath } = await writeFakeCrewCli(cliHome);
+  const config = { loop: { costProject: "csw-int-fake-project" } };
+  const sliceId = "SLICE-CSW-INT";
 
-  await withHeroCrewPath(cliDir, async () => {
-    const sliceId = "SLICE-CSW-INT";
+  const firstResult: any = await tryWriteCostReport(repo, { sliceId }, config);
+  assert.ok(!firstResult?.error, `first call must not error: ${JSON.stringify(firstResult)}`);
 
-    const firstResult: any = await tryWriteCostReport(repo, { sliceId }, null);
-    assert.ok(!firstResult?.error, `first call must not error: ${JSON.stringify(firstResult)}`);
+  const secondResult: any = await tryWriteCostReport(repo, { sliceId }, config);
+  assert.ok(!secondResult?.error, `second call must not error: ${JSON.stringify(secondResult)}`);
 
-    const secondResult: any = await tryWriteCostReport(repo, { sliceId }, null);
-    assert.ok(!secondResult?.error, `second call must not error: ${JSON.stringify(secondResult)}`);
+  const firstStartedAt = firstResult.cost?.window?.start;
+  const firstCompletedAt = firstResult.cost?.window?.end;
+  const secondStartedAt = secondResult.cost?.window?.start;
+  const secondCompletedAt = secondResult.cost?.window?.end;
 
-    const calls = await readCalls(logPath);
-    const costSliceCalls = calls.filter((c) => c[0] === "cost-slice");
-    assert.equal(costSliceCalls.length, 2, "expected exactly two cost-slice invocations");
+  assert.equal(
+    firstStartedAt,
+    STALE_STARTED_AT,
+    "first-ever scan for this slice has no cursor yet, so it falls back to currentRun.startedAt"
+  );
+  assert.ok(firstCompletedAt, "first call must resolve a window end");
 
-    const [firstArgv, secondArgv] = costSliceCalls as [string[], string[]];
-    const firstStartedAt = flagFromArgv(firstArgv, "--started-at");
-    const firstCompletedAt = flagFromArgv(firstArgv, "--completed-at");
-    const secondStartedAt = flagFromArgv(secondArgv, "--started-at");
-    const secondCompletedAt = flagFromArgv(secondArgv, "--completed-at");
+  // The exact regression this slice exists to pin: the SECOND invocation's
+  // Window Start must be the FIRST invocation's Window End -- not the
+  // still-frozen currentRun value. workflow-state.json is never rewritten
+  // between the two calls here, which is exactly the "repeated
+  // same-session scan" failure mode from the root-cause spike.
+  assert.equal(
+    secondStartedAt,
+    firstCompletedAt,
+    "second scan's Window Start must advance to the first scan's Window End"
+  );
+  assert.notEqual(
+    secondStartedAt,
+    STALE_STARTED_AT,
+    "second scan must NOT re-read the frozen currentRun.startedAt"
+  );
+  assert.ok(secondCompletedAt, "second call must resolve a window end");
+  assert.notEqual(
+    secondCompletedAt,
+    firstCompletedAt,
+    "the window must keep advancing, not repeat the same span"
+  );
 
-    assert.equal(
-      firstStartedAt,
-      STALE_STARTED_AT,
-      "first-ever scan for this slice has no cursor yet, so it falls back to currentRun.startedAt"
-    );
-    assert.ok(firstCompletedAt, "first call must supply --completed-at");
+  // Cross-check against the actual written report files -- proves the
+  // persisted cursor really drove what was scanned, end to end through the
+  // bridge function under test.
+  assert.equal(typeof firstResult.path, "string", "first result must carry a written report path");
+  assert.equal(
+    typeof secondResult.path,
+    "string",
+    "second result must carry a written report path"
+  );
 
-    // The exact regression this slice exists to pin: the SECOND invocation's
-    // Window Start must be the FIRST invocation's Window End -- not the
-    // still-frozen currentRun value. workflow-state.json is never rewritten
-    // between the two calls here, which is exactly the "repeated
-    // same-session scan" failure mode from the root-cause spike.
-    assert.equal(
-      secondStartedAt,
-      firstCompletedAt,
-      "second scan's Window Start must advance to the first scan's Window End"
-    );
-    assert.notEqual(
-      secondStartedAt,
-      STALE_STARTED_AT,
-      "second scan must NOT re-read the frozen currentRun.startedAt"
-    );
-    assert.ok(secondCompletedAt, "second call must supply --completed-at");
-    assert.notEqual(
-      secondCompletedAt,
-      firstCompletedAt,
-      "the window must keep advancing, not repeat the same span"
-    );
-
-    // Cross-check against the actual written report files (not just argv) --
-    // proves the persisted cursor really drove what crew was told to scan,
-    // end to end through the bridge function under test.
-    assert.equal(
-      typeof firstResult.path,
-      "string",
-      "first result must carry a written report path"
-    );
-    assert.equal(
-      typeof secondResult.path,
-      "string",
-      "second result must carry a written report path"
-    );
-    const firstReport = await fs.readFile(firstResult.path, "utf8");
-    const secondReport = await fs.readFile(secondResult.path, "utf8");
-    assert.ok(firstReport.includes(`window_start: ${STALE_STARTED_AT}`));
-    assert.ok(secondReport.includes(`window_start: ${firstCompletedAt}`));
-
-    // The persisted cursor must reflect the SECOND call's completedAt --
-    // ready to hand the next (third) invocation an even later window.
-    const cursor = await readCostScanCursor(repo, sliceId);
-    assert.ok(cursor, "cursor should exist after two successful scans");
-    assert.equal(cursor!.lastWindowEnd, secondCompletedAt);
-  });
+  // The persisted cursor must reflect the SECOND call's completedAt --
+  // ready to hand the next (third) invocation an even later window.
+  const cursor = await readCostScanCursor(repo, sliceId);
+  assert.ok(cursor, "cursor should exist after two successful scans");
+  assert.equal(cursor!.lastWindowEnd, secondCompletedAt);
 });
 
 // ---------------------------------------------------------------------------

@@ -11,10 +11,13 @@
 // surfaced (the citylive report's `usd: 0` / `Auto-detected: no`
 // fingerprint).
 //
-// These tests exercise the real `tryWriteCostReport` bridge function
-// against a fake `crew` CLI (same $HERO_CREW_PATH seam as
-// cost-scan-window-regression.test.mts) and assert on the argv the fake
-// CLI actually receives.
+// SLICE-11 (P2 seam-elimination): `tryWriteCostReport` no longer shells out
+// to a `crew` CLI subprocess, so these tests were rewritten off the
+// `$HERO_CREW_PATH` fake-CLI-plus-argv-inspection seam and now exercise the
+// real `costSliceHandler`/`computeSessionCost` direct-import path end to
+// end. `computeSessionCost`'s return echoes back the resolved slug as
+// `cost.sourceProject` (session-cost.mts's `assembleCostResult`), which is
+// what these tests assert on instead of inspecting a fake subprocess's argv.
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -30,164 +33,74 @@ async function tmpRepo(prefix: string): Promise<string> {
   return repo;
 }
 
-/**
- * Writes a fake `crew` CLI at `<dir>/scripts/crew.mjs` that logs every
- * invocation's argv to `<dir>/calls.jsonl` and, for `cost-slice`, writes a
- * real cost-report markdown file into the target repo's
- * `.claude/artifacts/crew/cost/` directory — same shape as the fixture in
- * cost-scan-window-regression.test.mts, trimmed to what these tests need.
- */
-async function writeFakeCrewCli(dir: string): Promise<{ cliDir: string; logPath: string }> {
-  const scriptsDir = path.join(dir, "scripts");
-  await fs.mkdir(scriptsDir, { recursive: true });
-  const logPath = path.join(dir, "calls.jsonl");
-  const scriptPath = path.join(scriptsDir, "crew.mjs");
+// Seeds workflow-state.currentRun.startedAt so costSliceHandler has a
+// window to scan (it throws without one) — same fixture pattern as
+// cost-scan-window-regression.test.mts.
+async function seedWorkflowState(repo: string, startedAt: string): Promise<void> {
+  const dir = path.join(repo, ".claude", "state", "crew");
+  await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
-    scriptPath,
-    `import fs from "node:fs";
-import path from "node:path";
-
-const argv = process.argv.slice(2);
-fs.appendFileSync(${JSON.stringify(logPath)}, JSON.stringify(argv) + "\\n");
-
-function flag(name) {
-  const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : null;
-}
-
-const cmd = argv[0];
-if (cmd === "cost-slice") {
-  const repo = flag("--repo");
-  const outDir = path.join(repo, ".claude", "artifacts", "crew", "cost");
-  fs.mkdirSync(outDir, { recursive: true });
-  const filename =
-    Date.now() + "-" + Math.random().toString(36).slice(2) + "-cost-report-fake.md";
-  const filePath = path.join(outDir, filename);
-  const body = [
-    "---",
-    "kind: cost-report",
-    "run_title: " + JSON.stringify(flag("--run-title") ?? ""),
-    "usd: 1.23",
-    "created_at: " + new Date().toISOString(),
-    "---",
-    "",
-    "# Fake Cost Report",
-    ""
-  ].join("\\n");
-  fs.writeFileSync(filePath, body);
-  console.log(JSON.stringify({ path: filePath }));
-} else if (cmd === "cost-advise") {
-  console.log(JSON.stringify({ recommendations: [] }));
-} else {
-  console.log(JSON.stringify({}));
-}
-`
+    path.join(dir, "workflow-state.json"),
+    JSON.stringify({ currentRun: { startedAt } })
   );
-  return { cliDir: dir, logPath };
 }
 
-async function readCalls(logPath: string): Promise<string[][]> {
-  try {
-    const raw = await fs.readFile(logPath, "utf8");
-    return raw
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l));
-  } catch {
-    return [];
-  }
-}
+const STARTED_AT = "2026-08-01T00:00:00.000Z";
 
-function sourceProjectValues(argv: string[]): string[] {
-  const values: string[] = [];
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--source-project") values.push(argv[i + 1]);
-  }
-  return values;
-}
-
-async function withHeroCrewPath<T>(cliDir: string, fn: () => Promise<T>): Promise<T> {
-  const saved = process.env.HERO_CREW_PATH;
-  process.env.HERO_CREW_PATH = cliDir;
-  try {
-    return await fn();
-  } finally {
-    if (saved === undefined) delete process.env.HERO_CREW_PATH;
-    else process.env.HERO_CREW_PATH = saved;
-  }
-}
-
-test("AC-2: an unslugified config.loop.costProject (citylive-shaped fixture) reaches the crew argv slugified", async () => {
+test("AC-2: an unslugified config.loop.costProject (citylive-shaped fixture) reaches computeSessionCost slugified", async () => {
   const repo = await tmpRepo("cps-citylive-repo-");
-  const cliHome = await tmpRepo("cps-citylive-cli-");
-  const { cliDir, logPath } = await writeFakeCrewCli(cliHome);
+  await seedWorkflowState(repo, STARTED_AT);
 
-  await withHeroCrewPath(cliDir, async () => {
-    const config = { loop: { costProject: "AstraGenie.CityLive" } };
-    const result: any = await tryWriteCostReport(repo, { sliceId: "SLICE-CPS-1" }, config);
-    assert.ok(!result?.error, `tryWriteCostReport must not error: ${JSON.stringify(result)}`);
+  const config = { loop: { costProject: "AstraGenie.CityLive" } };
+  const result: any = await tryWriteCostReport(repo, { sliceId: "SLICE-CPS-1" }, config);
+  assert.ok(!result?.error, `tryWriteCostReport must not error: ${JSON.stringify(result)}`);
 
-    const calls = await readCalls(logPath);
-    const costSliceCall = calls.find((c) => c[0] === "cost-slice");
-    assert.ok(costSliceCall, "expected a cost-slice invocation");
-
-    const values = sourceProjectValues(costSliceCall!);
-    assert.deepEqual(
-      values,
-      ["AstraGenie-CityLive"],
-      "the raw human-readable project name must be slugified before it reaches --source-project"
-    );
-  });
+  assert.equal(
+    result.cost?.sourceProject,
+    "AstraGenie-CityLive",
+    "the raw human-readable project name must be slugified before it reaches the session scanner"
+  );
 });
 
 test("AC-4: an already-slugified config.loop.costProject is unchanged (idempotent, no regression for the standard-path case)", async () => {
   const repo = await tmpRepo("cps-idempotent-repo-");
-  const cliHome = await tmpRepo("cps-idempotent-cli-");
-  const { cliDir, logPath } = await writeFakeCrewCli(cliHome);
+  await seedWorkflowState(repo, STARTED_AT);
 
-  await withHeroCrewPath(cliDir, async () => {
-    const alreadySlugged = "C--work-mega-runner-plugin";
-    const config = { loop: { costProject: alreadySlugged } };
-    const result: any = await tryWriteCostReport(repo, { sliceId: "SLICE-CPS-2" }, config);
-    assert.ok(!result?.error, `tryWriteCostReport must not error: ${JSON.stringify(result)}`);
+  const alreadySlugged = "C--work-mega-runner-plugin";
+  const config = { loop: { costProject: alreadySlugged } };
+  const result: any = await tryWriteCostReport(repo, { sliceId: "SLICE-CPS-2" }, config);
+  assert.ok(!result?.error, `tryWriteCostReport must not error: ${JSON.stringify(result)}`);
 
-    const calls = await readCalls(logPath);
-    const costSliceCall = calls.find((c) => c[0] === "cost-slice");
-    assert.ok(costSliceCall, "expected a cost-slice invocation");
-
-    const values = sourceProjectValues(costSliceCall!);
-    assert.deepEqual(
-      values,
-      [alreadySlugged],
-      "an already-slugified value must pass through unchanged"
-    );
-  });
+  assert.equal(
+    result.cost?.sourceProject,
+    alreadySlugged,
+    "an already-slugified value must pass through unchanged"
+  );
 });
 
-test("AC-2/AC-4 combined: costProjectAliases are normalized the same way, primary still pushed last", async () => {
+test("AC-2/AC-4 combined: costProjectAliases present in config does not change the primary project actually scanned", async () => {
   const repo = await tmpRepo("cps-aliases-repo-");
-  const cliHome = await tmpRepo("cps-aliases-cli-");
-  const { cliDir, logPath } = await writeFakeCrewCli(cliHome);
+  await seedWorkflowState(repo, STARTED_AT);
 
-  await withHeroCrewPath(cliDir, async () => {
-    const config = {
-      loop: {
-        costProject: "AstraGenie.CityLive",
-        costProjectAliases: ["Old.Project.Name", "already-slugified-alias"]
-      }
-    };
-    const result: any = await tryWriteCostReport(repo, { sliceId: "SLICE-CPS-3" }, config);
-    assert.ok(!result?.error, `tryWriteCostReport must not error: ${JSON.stringify(result)}`);
+  // Under the old CLI/argv seam, aliases were pushed before the primary and
+  // the CLI's last-flag-wins parser meant only the primary ever mattered
+  // (see appendSourceProjectArgs' own unit tests). The direct-import flags
+  // object never builds an argv array at all, so aliases have no
+  // representation there either — this test locks that the primary is
+  // still the one slugified value that reaches computeSessionCost,
+  // regardless of whatever aliases are configured alongside it.
+  const config = {
+    loop: {
+      costProject: "AstraGenie.CityLive",
+      costProjectAliases: ["Old.Project.Name", "already-slugified-alias"]
+    }
+  };
+  const result: any = await tryWriteCostReport(repo, { sliceId: "SLICE-CPS-3" }, config);
+  assert.ok(!result?.error, `tryWriteCostReport must not error: ${JSON.stringify(result)}`);
 
-    const calls = await readCalls(logPath);
-    const costSliceCall = calls.find((c) => c[0] === "cost-slice");
-    assert.ok(costSliceCall, "expected a cost-slice invocation");
-
-    const values = sourceProjectValues(costSliceCall!);
-    assert.deepEqual(
-      values,
-      ["Old-Project-Name", "already-slugified-alias", "AstraGenie-CityLive"],
-      "aliases are slugified in place, order preserved, primary still last"
-    );
-  });
+  assert.equal(
+    result.cost?.sourceProject,
+    "AstraGenie-CityLive",
+    "the primary project must be slugified and used regardless of aliases present in config"
+  );
 });

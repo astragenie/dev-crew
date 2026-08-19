@@ -1,19 +1,28 @@
-// Bridge layer that hands slice-completion artifacts off to the hero-crew
-// plugin's `crew` CLI. Calls crew via execFile against the version installed
-// in Claude Code's plugin cache. Best-effort: missing crew is a soft no-op,
-// and any single failure (cost-report / handoff / final-synthesis) does not
-// block the others.
+// Bridge layer that hands slice-completion artifacts off to the crew
+// library. Direct in-process imports of crew/scripts/lib/** functions — no
+// more subprocess/execFile hop (P2 seam-elimination, SLICE-11). Best-effort:
+// any single failure (cost-report / handoff / final-synthesis) does not
+// block the others; each fail-soft call catches internally, logs a
+// structured line naming the call site (AC-4), and returns an `{ error }`
+// shape so callers' `bestEffort()` wrappers see identical behavior to the
+// old CLI-catch path.
 //
 // Extracted from slice-linker.mjs during the Tier B-8 split.
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile as _execFile } from "node:child_process";
-import { promisify } from "node:util";
 
+import { writeArtifact } from "../../../../crew/scripts/lib/artifacts/write.mjs";
+import type { ArtifactFields } from "../../../../crew/scripts/lib/artifacts/write.mjs";
+import { costSliceHandler } from "../../../../crew/scripts/lib/cost-hygiene/cost-slice-handler.mjs";
+import { writeCostAdviseArtifact } from "../../../../crew/scripts/lib/cost-hygiene/cost-advise-writer.mjs";
+import {
+  buildCostAdvisor,
+  renderCostAdvisorMarkdown
+} from "../../../../crew/scripts/lib/cost-advisor.mjs";
+import { markWorkflowBadge } from "../../../../crew/scripts/lib/workflow-state.mjs";
 import { buildArtifactSlug, buildArtifactTitle } from "../artifact-naming.mjs";
-import { crewCliRuntime } from "../plugin-identity.mjs";
-import { pathExists, ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
+import { ensureDir, gradesRoot, decisionsRoot } from "../paths.mjs";
 import { fanoutEnvelope } from "../webhook-fanout.mjs";
 import { gitTextOrThrow } from "../run-git.mjs";
 import { readCrewWorkflowState } from "../crew-workflow-reader.mjs";
@@ -25,43 +34,16 @@ import {
   writeCostScanCursor
 } from "./cost-scan-cursor.mjs";
 
-const execFile = promisify(_execFile);
-
-async function findHeroCrewCli() {
-  // Lookup order, most-specific-first:
-  // 1. $HERO_CREW_PATH env override (explicit user pin). This is the only
-  //    supported way to point at a local dev checkout — there is
-  //    deliberately no hardcoded author-machine absolute path here (a prior
-  //    version probed one unconditionally before the plugin cache, which
-  //    was wrong for anyone but the original author; see FEAT-236 B3).
-  // 2. Plugin cache (whatever version is installed).
-  if (process.env.HERO_CREW_PATH) {
-    const explicit = path.join(process.env.HERO_CREW_PATH, "scripts", "crew.mjs");
-    if (await pathExists(explicit)) return explicit;
-  }
-
-  // Fall back to the plugin cache (handles installs without a local checkout).
-  const { findCrewCli } = await import("../plugin-identity.mjs");
-  const cached = await findCrewCli();
-  if (cached) return cached;
-
-  return null;
-}
-
 // Writes both cost-report (cost/) and cost-advise (cost-insights/) so the
 // slice-close artifact set matches what `crew write-final-synthesis`
-// auto-emits. `--aggregate-all` mirrors maybeEmitCostReport's default in
-// crew.mjs so cross-repo sessions are captured. The advise step is
-// best-effort and reported in the return alongside the report.
-// Invokes `crew write-run-brief` to rotate workflow-state.currentRun to
-// the new slice. Best-effort: missing crew is a soft no-op so the agent
-// can still proceed; the loop driver inspects the return.
-function pushOptionalFlags(args: string[], pairs: [string, string | null | undefined][]) {
-  for (const [flag, value] of pairs) {
-    if (value) args.push(flag, String(value));
-  }
-}
-
+// auto-emits. `--aggregate-all` (aggregateAll flag) mirrors
+// maybeEmitCostReport's default in crew.mts so cross-repo sessions are
+// captured. The advise step is best-effort and reported in the return
+// alongside the report.
+// Direct-imports `writeArtifact("run-brief", ...)` to rotate
+// workflow-state.currentRun to the new slice. Best-effort: a write failure
+// is a soft no-op so the agent can still proceed; the loop driver inspects
+// the return.
 export async function writeCrewRunBrief(
   repoPath: string,
   {
@@ -86,8 +68,6 @@ export async function writeCrewRunBrief(
     outOfScope?: string | null;
   }
 ) {
-  const cli = await findHeroCrewCli();
-  if (!cli) return { skipped: "hero-crew CLI not found" };
   const titleSummary = title ? title.replace(/^SLICE-\d+:\s*/i, "") : null;
   const enrichedTitle = buildArtifactTitle({
     featureId,
@@ -95,40 +75,27 @@ export async function writeCrewRunBrief(
     sliceId,
     summary: titleSummary && titleSummary !== sliceId ? titleSummary : undefined
   });
-  const args = [
-    cli,
-    "write-run-brief",
-    "--repo",
-    repoPath,
-    "--title",
-    enrichedTitle,
-    "--owner",
-    "loop",
-    "--next",
-    "Begin implementation"
-  ];
-  pushOptionalFlags(args, [
-    ["--goal", goal],
-    ["--mode", mode],
-    ["--pace", pace],
-    ["--scope", scope],
-    ["--out-of-scope", outOfScope],
-    ["--feature", featureId],
-    ["--phase", phase !== null && phase !== undefined && String(phase).length > 0 ? phase : null]
-  ]);
+  const hasPhase = phase !== null && phase !== undefined && String(phase).length > 0;
+  const fields: ArtifactFields = {
+    title: enrichedTitle,
+    owner: "loop",
+    next: "Begin implementation",
+    ...(goal ? { goal } : {}),
+    ...(mode ? { mode } : {}),
+    ...(pace ? { pace } : {}),
+    ...(scope ? { scope } : {}),
+    ...(outOfScope ? { outOfScope } : {}),
+    ...(featureId ? { feature: featureId } : {}),
+    ...(hasPhase ? { phase: phase as string } : {})
+  };
   try {
-    const { stdout } = await execFile(crewCliRuntime(String(args[0])), args, {
-      maxBuffer: 1024 * 1024
-    });
-    let parsed;
-    try {
-      parsed = JSON.parse(stdout);
-    } catch {
-      return { stdout: stdout.slice(0, 500) };
-    }
-    return parsed;
+    const r = await writeArtifact(repoPath, "run-brief", fields);
+    if (r.ok === false) throw r.error;
+    return r.value;
   } catch (err: unknown) {
-    return { error: (err as Error).message };
+    const message = (err as Error).message;
+    console.error(`[crew-bridge] write-run-brief failed (slice=${sliceId}): ${message}`);
+    return { error: message };
   }
 }
 
@@ -174,36 +141,6 @@ export async function detectCostMode(repoPath: string, config: Record<string, an
 // phase } object. The structured form is preferred — it lets the cost-slice
 // run-title include the FEAT/phase tags so crew's slugifier writes them into
 // the cost-report filename.
-// Append --feature / --phase flags to a crew CLI arg list when present.
-// Keeps argv terse and the caller's branch count low.
-function appendFeaturePhaseArgs(
-  args: string[],
-  featureId: string | null | undefined,
-  phase: string | null | undefined
-) {
-  if (featureId) args.push("--feature", String(featureId));
-  if (phase !== null && phase !== undefined && String(phase).length > 0) {
-    args.push("--phase", String(phase));
-  }
-}
-
-// Spawn the crew CLI, return parsed JSON or fall back to a truncated stdout
-// envelope. Captures execFile errors as `{ error }` so the caller does not
-// need its own try/catch around every invocation.
-async function runCrew(args: string[]) {
-  try {
-    const { stdout } = await execFile(crewCliRuntime(String(args[0])), args, {
-      maxBuffer: 1024 * 1024
-    });
-    try {
-      return JSON.parse(stdout);
-    } catch {
-      return { stdout: stdout.slice(0, 500) };
-    }
-  } catch (err: unknown) {
-    return { error: (err as Error).message };
-  }
-}
 
 // Normalizes a human-readable project name or repo path into the slug form
 // crew's session scanner expects under ~/.claude/projects/<slug>/ — same
@@ -238,6 +175,92 @@ export function appendSourceProjectArgs(
   args.push("--source-project", primary);
 }
 
+// Builds the costSliceHandler flags record for the resolved mode/window.
+// Aliases (config.loop.costProjectAliases) only mattered for the old argv
+// path's last-flag-wins CLI parsing (appendSourceProjectArgs) — a
+// direct-call flags object has a single sourceProject key, so only the
+// primary project (the value that always won under argv too) needs to be
+// set here. See appendSourceProjectArgs' own tests for the argv-shape
+// behavior this replaces.
+function buildCostSliceFlags(
+  mode: "scoped" | "aggregate",
+  config: Record<string, any> | null,
+  repoPath: string,
+  window: { startedAt: string | null; completedAt: string },
+  featureId: string | null,
+  phase: string | null,
+  runTitle: string
+): Record<string, unknown> {
+  const flags: Record<string, unknown> = { runTitle };
+  if (window.startedAt) flags.startedAt = window.startedAt;
+  if (window.completedAt) flags.completedAt = window.completedAt;
+  if (mode === "scoped") {
+    flags.sourceProject = slugifyProjectSlug(config?.loop?.costProject ?? repoPath);
+  } else {
+    flags.aggregateAll = true;
+  }
+  if (featureId) flags.feature = featureId;
+  if (phase !== null && phase !== undefined && String(phase).length > 0) {
+    flags.phase = phase;
+  }
+  return flags;
+}
+
+// Direct-imports costSliceHandler. Fail-soft: catches internally, logs the
+// call site (AC-4), and returns `{ error }` so the cursor-advance-only-on-
+// success gate in tryWriteCostReport can inspect it the same way the old
+// execFile-catch path did.
+async function runCostSliceCall(
+  repoPath: string,
+  flags: Record<string, unknown>,
+  sliceId: string | null | undefined
+): Promise<Record<string, any>> {
+  try {
+    return await costSliceHandler({ repoPath, flags });
+  } catch (err: unknown) {
+    const message = (err as Error).message;
+    console.error(`[crew-bridge] cost-slice failed (slice=${sliceId ?? "unknown"}): ${message}`);
+    return { error: message };
+  }
+}
+
+// Direct-imports buildCostAdvisor/renderCostAdvisorMarkdown/
+// writeCostAdviseArtifact and mirrors crew.mts's own "cost-advise" CLI
+// handler return shape (target/recommendations/aggregateFlags/baseline/
+// reportsAnalyzed/artifactPath) so downstream consumers
+// (postCostAdviseEnvelope, slice-close consumers) see an identical object
+// either way. Fail-soft: catches internally, logs the call site (AC-4).
+async function runCostAdviseCall(
+  repoPath: string,
+  runTitle: string,
+  featureId: string | null,
+  phase: string | null,
+  sliceId: string | null | undefined
+): Promise<Record<string, any>> {
+  try {
+    const advisor = await buildCostAdvisor(repoPath, { limit: 10 });
+    const md = renderCostAdvisorMarkdown(advisor);
+    const artifactPath = await writeCostAdviseArtifact(
+      repoPath,
+      md,
+      advisor as unknown as Record<string, unknown>,
+      { title: runTitle, feature: featureId, phase }
+    );
+    return {
+      target: advisor.target?.sliceId || advisor.target?.runTitle || null,
+      recommendations: advisor.recommendations,
+      aggregateFlags: advisor.aggregateFlags || [],
+      baseline: advisor.baseline,
+      reportsAnalyzed: advisor.reports.length,
+      artifactPath
+    };
+  } catch (err: unknown) {
+    const message = (err as Error).message;
+    console.error(`[crew-bridge] cost-advise failed (slice=${sliceId ?? "unknown"}): ${message}`);
+    return { error: message };
+  }
+}
+
 export async function tryWriteCostReport(
   repoPath: string,
   sliceOrInfo: string | Record<string, any> | null,
@@ -245,8 +268,6 @@ export async function tryWriteCostReport(
 ) {
   const info = typeof sliceOrInfo === "string" ? { sliceId: sliceOrInfo } : sliceOrInfo || {};
   const { sliceId, featureId = null, phase = null } = info as Record<string, any>;
-  const cli = await findHeroCrewCli();
-  if (!cli) return { skipped: "hero-crew CLI not found" };
 
   const mode = await detectCostMode(repoPath, config);
   const runTitle = buildArtifactTitle({ featureId, phase, sliceId });
@@ -256,30 +277,20 @@ export async function tryWriteCostReport(
   // scan) instead of always relying on crew's shared currentRun fallback
   // — see cost-scan-cursor.mjs for the full root-cause rationale.
   const window = await resolveCostScanWindow(repoPath, sliceId, workflowState);
-  const reportArgs = [cli, "cost-slice", "--repo", repoPath, "--run-title", runTitle];
-  pushOptionalFlags(reportArgs, [
-    ["--started-at", window.startedAt],
-    ["--completed-at", window.completedAt]
-  ]);
-  if (mode === "scoped") {
-    const project = slugifyProjectSlug(config?.loop?.costProject ?? repoPath);
-    const rawAliases = config?.loop?.costProjectAliases;
-    const aliases = Array.isArray(rawAliases)
-      ? rawAliases.map((alias: unknown) =>
-          typeof alias === "string" ? slugifyProjectSlug(alias) : alias
-        )
-      : rawAliases;
-    appendSourceProjectArgs(reportArgs, project, aliases);
-  } else {
-    reportArgs.push("--aggregate-all");
-  }
-  appendFeaturePhaseArgs(reportArgs, featureId, phase);
-  const report = await runCrew(reportArgs);
+  const costSliceFlags = buildCostSliceFlags(
+    mode,
+    config,
+    repoPath,
+    window,
+    featureId,
+    phase,
+    runTitle
+  );
+  const report = await runCostSliceCall(repoPath, costSliceFlags, sliceId);
 
-  // Only advance the cursor when crew's CLI actually ran (no execFile
-  // error) — a failed invocation leaves the window untouched so the next
-  // attempt retries the same, still-valid span instead of silently
-  // skipping it.
+  // Only advance the cursor when the direct call actually succeeded — a
+  // failed invocation leaves the window untouched so the next attempt
+  // retries the same, still-valid span instead of silently skipping it.
   if (sliceId && !report?.error) {
     await writeCostScanCursor(repoPath, sliceId, window.completedAt);
   }
@@ -297,21 +308,7 @@ export async function tryWriteCostReport(
   // failure never blocks the cost-report/advise flow.
   const dedup = await sweepCostReportDedup(repoPath, config);
 
-  const adviseArgs = [cli, "cost-advise", "--repo", repoPath, "--title", runTitle];
-  appendFeaturePhaseArgs(adviseArgs, featureId, phase);
-  let advise: Record<string, any> | null = null;
-  try {
-    const { stdout } = await execFile(crewCliRuntime(String(adviseArgs[0])), adviseArgs, {
-      maxBuffer: 1024 * 1024
-    });
-    try {
-      advise = JSON.parse(stdout);
-    } catch {
-      advise = { stdout: stdout.slice(0, 500) };
-    }
-  } catch (err: unknown) {
-    advise = { error: (err as Error).message };
-  }
+  const advise = await runCostAdviseCall(repoPath, runTitle, featureId, phase, sliceId);
 
   // FEAT-234 (cross-repo): emit `cost.advise_recorded` envelope so the
   // runner-side handler can persist into jsonl_cost_advises + render via
@@ -437,25 +434,22 @@ function pickNumber(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-// Invokes `crew mark-badge --badge validation_skipped --note <reason>` so
-// the skip is captured in workflow-state with an audit trail. Best-effort:
-// missing crew is reported via `{ skipped }`, identical to other bridge
-// calls. The slice close still proceeds — the bypass already passed the
-// gate in completeSlice; this call only records *why*.
+// Direct-imports `markWorkflowBadge({ badge: "validation_skipped", ... })`
+// so the skip is captured in workflow-state with an audit trail.
+// Best-effort: a write failure is reported via `{ error }`, identical to
+// the other bridge calls. The slice close still proceeds — the bypass
+// already passed the gate in completeSlice; this call only records *why*.
 export async function markValidationSkippedBadge(repoPath: string, reason: string) {
-  const cli = await findHeroCrewCli();
-  if (!cli) return { skipped: "hero-crew CLI not found" };
-  const args = [
-    cli,
-    "mark-badge",
-    "--repo",
-    repoPath,
-    "--badge",
-    "validation_skipped",
-    "--note",
-    reason || "validation_skipped via /loop:slice complete --skip-validation-check"
-  ];
-  return runCrew(args);
+  const note = reason || "validation_skipped via /loop:slice complete --skip-validation-check";
+  try {
+    const result = await markWorkflowBadge(repoPath, { badge: "validation_skipped", note });
+    if (result.ok === false) throw result.error;
+    return { badge: "validation_skipped", currentRun: result.value };
+  } catch (err: unknown) {
+    const message = (err as Error).message;
+    console.error(`[crew-bridge] mark-badge failed (badge=validation_skipped): ${message}`);
+    return { error: message };
+  }
 }
 
 function renderSynthesisScores(

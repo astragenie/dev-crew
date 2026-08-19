@@ -165,7 +165,7 @@ export async function costSliceHandler({
     }),
     collectDispatchBreakdown(
       repoPath,
-      (run as Record<string, unknown> | null)?.["runId"] as string | undefined
+      (run as unknown as Record<string, unknown> | null)?.["runId"] as string | undefined
     )
   ]);
   const outcome = (await collectOutcomeLinkage(repoPath, runTitle)) as unknown as Record<
@@ -182,7 +182,7 @@ export async function costSliceHandler({
     ...(phase != null ? { phase } : {}),
     ...(dispatchBreakdown != null ? { dispatchBreakdown } : {})
   });
-  if (!writeResult.ok) throw writeResult.error;
+  if (writeResult.ok === false) throw writeResult.error;
   const sliceArtifact: Record<string, unknown> = { ...writeResult.value };
   sliceArtifact["cost"] = sliceCost;
   sliceArtifact["outcome"] = outcome;
@@ -197,7 +197,7 @@ export async function costSliceHandler({
     fields: Record<string, unknown>
   ): Promise<Record<string, unknown>> => {
     const r = await writeArt(rp, kind, fields as import("../artifacts/write.mjs").ArtifactFields);
-    if (!r.ok) throw r.error;
+    if (r.ok === false) throw r.error;
     return r.value as unknown as Record<string, unknown>;
   };
 

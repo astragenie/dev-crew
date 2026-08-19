@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { maybeEmitCostReport } from "./lib/cost-hygiene/emit-cost-report.mjs";
 import { costSliceHandler } from "./lib/cost-hygiene/cost-slice-handler.mjs";
+import { writeCostAdviseArtifact } from "./lib/cost-hygiene/cost-advise-writer.mjs";
 import { normalizeMsysPath } from "./lib/fs-utils.mjs";
 import { assertBunPresent } from "./lib/installer/bun-preflight.mjs";
 import {
@@ -497,54 +498,6 @@ function usage(target: string | null = null) {
   }
 
   return ["Engineering OS installer", "", "Usage:", ...Object.values(subcommands)].join("\n");
-}
-
-// Slug source priority: explicit --title → advisor target slice → advisor
-// target runTitle → fallback "advise". --title lets the loop side pass the
-// enriched FEAT/PHASE/SLICE tag so cost-advise filenames match the rest of
-// the artifact surface.
-function buildCostAdviseSlug(title: string | null, advisor: Record<string, unknown> | null) {
-  const t = advisor?.["target"] as { sliceId?: string; runTitle?: string } | null | undefined;
-  const source = title || t?.sliceId || t?.runTitle || "advise";
-  return source
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
-
-// Optional YAML frontmatter block; "" when both feature + phase absent so
-// existing output stays byte-identical for legacy callers.
-function buildOptionalFrontmatter(feature: string | null, phase: string | null) {
-  const lines = [];
-  if (phase !== null && phase !== undefined && String(phase).length > 0) {
-    lines.push(`phase: ${JSON.stringify(String(phase))}`);
-  }
-  if (feature) lines.push(`feature: ${feature}`);
-  if (lines.length === 0) return "";
-  return ["---", ...lines, "---", ""].join("\n");
-}
-
-async function writeCostAdviseArtifact(
-  repoPath: string,
-  md: string,
-  advisor: Record<string, unknown> | null,
-  options: { title?: string | null; feature?: string | null; phase?: string | null } = {}
-) {
-  const fs = await import("node:fs/promises");
-  const pathMod = await import("node:path");
-  const { title = null, feature = null, phase = null } = options;
-  const dir = pathMod.join(repoPath, ".claude", "artifacts", "crew", "cost-insights");
-  await fs.mkdir(dir, { recursive: true });
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
-  const slug = buildCostAdviseSlug(title, advisor);
-  const fm = buildOptionalFrontmatter(feature, phase);
-  const file = pathMod.join(dir, `${stamp}-cost-advise-${slug}.md`);
-  await fs.writeFile(file, fm + md + "\n");
-  return file;
 }
 
 // Auto-emit a cost-report artifact when a run window is available. Designed
