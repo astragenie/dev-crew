@@ -21,12 +21,13 @@ name: test
 #   slow-tests            - root's bun test suite MINUS the six known
 #                           git-worktree suites (runner-plugin#355), with a
 #                           job-level timeout + in-step retry.
-#   crew-tests             - crew's bun test suite (tests/ --parallel).
-#                           SLICE-10 (FEAT-004 P1) proved N>=20 consecutive
-#                           green `--parallel` runs on this tree, so this
-#                           uses `bun run test:crew` (root package.json,
-#                           already --parallel) rather than crew's retired
-#                           3-way SHARD_TOTAL matrix from bun#5090-era CI.
+#   crew-tests             - crew's bun test suite, SERIAL on CI (see the
+#                           crew-tests job comment: roaming bun#5090-class
+#                           exact-60s hangs under --parallel on the Linux
+#                           self-hosted runner, 2026-08-19 incident).
+#                           Local dev still uses `bun run test:crew`
+#                           (--parallel; SLICE-10's N>=20 green proof was
+#                           measured on Windows/interactive load).
 #   worktree-quarantine   - only the six worktree-touching root suites named
 #                           in #355. Hard per-invocation kill via `timeout`,
 #                           non-blocking (continue-on-error) so a deadlock
@@ -246,13 +247,23 @@ jobs:
   crew-tests:
     name: crew-tests
     # Serialized after slow-tests (needs chain, not a concurrency group) so
-    # the two 8x-PARALLEL `bun test` jobs never compete for the same
-    # self-hosted runner's CPU/fds at once — 2026-08-19 CI incident: both
-    # jobs ran concurrently and crew-tests hit two spurious 60000ms timeouts
-    # (telemetry-cli --emit-observability, assembleBuildBundle orphan bundle
-    # path) that pass instantly (2.1s, 0 fail) run solo. `if: always()` keeps
-    # crew-tests running even when slow-tests fails, so a real slow-tests
-    # regression doesn't hide a crew-tests regression.
+    # the two big `bun test` jobs never compete for the same self-hosted
+    # runner's CPU/fds at once. `if: always()` keeps crew-tests running even
+    # when slow-tests fails, so a real slow-tests regression doesn't hide a
+    # crew-tests regression.
+    #
+    # This job runs the crew suite WITHOUT --parallel (crew/package.json's
+    # own canonical `test` invocation, 1971-pass baseline). Evidence from the
+    # 2026-08-19 first-push incident: run 32236192977 hung two tests
+    # (telemetry-cli, assembleBuildBundle) at exactly 60000ms; after job
+    # serialization, run 32237130842 hung two DIFFERENT tests
+    # (cli-synthesis-cost pair) at exactly 60000ms. Roaming exact-timeout
+    # hangs across unrelated files, each green solo (0.6-2.1s), on Linux
+    # only — the bun#5090-class scheduler starvation ADR-002 warned about.
+    # Per unification-plan.md: quarantine the suite that trips it — crew's
+    # suite trips it suite-wide at random, so CI runs it serial (~2-3 min).
+    # Local dev keeps `bun run test:crew` (--parallel, fine on this tree
+    # under Windows/interactive load; N>=20 proof from SLICE-10 stands).
     needs: [changes, slow-tests]
     if: ${{ always() && needs.changes.outputs.code == 'true' }}
     runs-on: self-hosted
@@ -263,8 +274,8 @@ jobs:
       - name: Install dependencies
         run: cd crew && bun install --frozen-lockfile
 
-      - name: Run crew suite
-        run: cd crew && bun test --timeout 60000 tests/ --parallel
+      - name: Run crew suite (serial — see bun#5090 note above)
+        run: cd crew && bun test --timeout 60000 tests/
 
   # Quarantine job for the six root suites named in #355 that perform real
   # `git worktree` operations and have been observed to hang the runner

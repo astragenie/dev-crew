@@ -1,21 +1,17 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T09:05:42.533Z",
+  "updatedAt": "2026-08-19T09:14:24.566Z",
   "currentRun": {
-    "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
+    "title": "FEAT006 SLICE26: migrate-adopter.mts run across adopter repos (dry-run first)",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T07:11:37.889Z",
-    "updatedAt": "2026-08-19T09:05:42.533Z",
-    "next": "SLICE-25 ports this file's numbered gate list verbatim into CLAUDE.md's ## CI gates section (the handshake noted in the dispatch). Follow-up FEAT: backfill agent/skill content debt (prompt_id/version/Report-contract/evals-spec) then promote gates 33/34 to blocking and fix crew/tests/validate-all.test.mts. Follow-up FEAT: decide devcrew:-prefix convention for skill dir-name-vs-frontmatter-name (skills/pm-decompose names itself devcrew:pm-decompose). Decide whether crew's e2e-smoke/e2e:smoke:ux and hooks/check-redundant-read.mts self-test belong in this workflow or a separate one.",
+    "startedAt": "2026-08-19T09:06:03.182Z",
+    "updatedAt": "2026-08-19T09:14:24.566Z",
+    "next": "1) Root-cause DEC-068/DEC-070: find what SLICE-20..23 did to FEAT-222/FEAT-229's backlog files and either restore/relocate them or update the DEC contract-record fixture/test. 2) Re-run crew-tests' 2 timeout cases in isolation to confirm infra vs real. 3) Once CI is green on a fresh push, resume SLICE-26 gate 2 (author migrate-adopter.mts) through gate 5 (per-adopter migration ledger).",
     "gates": {
       "review": null,
-      "validation": {
-        "status": "failed",
-        "updatedAt": "2026-08-19T09:05:42.533Z",
-        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -26,17 +22,13 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T071137Z-run-brief-feat005-slice20-validator-dedupe-dead-path-purge-ai-loop-bac.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T090603Z-run-brief-feat006-slice26-migrate-adopter-mts-run-across-adopter-repos.md",
       "handoffs": [
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T073424Z-handoff-slice-22-gepa-disposition-table-deletion-executed.md",
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081453Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081518Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T083103Z-handoff-slice-25-docs-merge-claude-md-12kb-budget-triage.md",
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T084404Z-handoff-slice-24-merged-ci-workflow-41-gates-clause-registry-port.md"
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T091424Z-handoff-slice-26-blocked-at-gate-1-dev-crew-push-ci-is-red-real-regr.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T090542Z-validation-result-phase-unspecified-gate.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -45,6 +37,50 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T07:11:37.889Z",
+      "updatedAt": "2026-08-19T09:05:42.533Z",
+      "completedAt": "2026-08-19T09:05:42.533Z",
+      "next": "SLICE-25 ports this file's numbered gate list verbatim into CLAUDE.md's ## CI gates section (the handshake noted in the dispatch). Follow-up FEAT: backfill agent/skill content debt (prompt_id/version/Report-contract/evals-spec) then promote gates 33/34 to blocking and fix crew/tests/validate-all.test.mts. Follow-up FEAT: decide devcrew:-prefix convention for skill dir-name-vs-frontmatter-name (skills/pm-decompose names itself devcrew:pm-decompose). Decide whether crew's e2e-smoke/e2e:smoke:ux and hooks/check-redundant-read.mts self-test belong in this workflow or a separate one.",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "failed",
+          "updatedAt": "2026-08-19T09:05:42.533Z",
+          "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T071137Z-run-brief-feat005-slice20-validator-dedupe-dead-path-purge-ai-loop-bac.md",
+        "handoffs": [
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T073424Z-handoff-slice-22-gepa-disposition-table-deletion-executed.md",
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081453Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081518Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T083103Z-handoff-slice-25-docs-merge-claude-md-12kb-budget-triage.md",
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T084404Z-handoff-slice-24-merged-ci-workflow-41-gates-clause-registry-port.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T090542Z-validation-result-phase-unspecified-gate.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
       "goal": "",
@@ -191,42 +227,6 @@
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T030730Z-validation-result-phase-unspecified-gate.md",
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T02:05:27.578Z",
-      "updatedAt": "2026-08-19T02:26:03.468Z",
-      "completedAt": "2026-08-19T02:26:03.468Z",
-      "next": "SLICE-13: devcrew.json schemaVersion 2 migrator + plugin-identity.mts/arch-gate.mts/loop-installer.mts findCrewCli/MIN_CREW_VERSION deletions (AC-2/AC-5).",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T020527Z-run-brief-feat003-slice12-fail-hard-write-validation-result-direct-imp.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
-        ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
         "deploymentChecks": {
           "dev": null,
           "prod": null
