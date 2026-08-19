@@ -17,7 +17,6 @@
     "test": "bun test --timeout 60000 tests/",
     "test:shard": "bun scripts/test-shard.mts",
     "test:agents": "CREW_AGENT_EVAL=1 bun test tests/agent-eval/",
-    "test:node": "node --test --experimental-strip-types",
     "validate:manifests": "bun ./scripts/validate-manifests.mts",
     "lint": "biome lint scripts/ hooks/",
     "typecheck": "tsc --noEmit",
@@ -40,7 +39,7 @@
     "e2e:smoke:ux": "bun ./scripts/e2e-smoke-ux.mts",
     "evals": "bun evals/cli.mts",
     "evals:memory-delta": "bun evals/memory-delta.mts",
-    "evals:view": "node -e \"console.log('Open in your browser: file://' + require('path').resolve('evals/viewer/index.html').replace(/\\\\/g,'/'))\""
+    "evals:view": "bun -e \"console.log('Open in your browser: file://' + require('path').resolve('evals/viewer/index.html').replace(/\\\\/g,'/'))\""
   },
   "dependencies": {
     "@astragenie/astramem-client": "^0.3.0",

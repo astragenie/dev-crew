@@ -24,7 +24,7 @@ import { makeTempDir, loadState, cliPath } from "./helpers/cli-fixtures.mjs";
 // in-process runCrew() would kill the test runner itself (same reason
 // tests/crew-write-review-result.test.ts uses spawnSync for its exit-2 cases).
 function runCli(args: string[]) {
-  const result = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, ...args], {
+  const result = spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
     timeout: 30_000
   });

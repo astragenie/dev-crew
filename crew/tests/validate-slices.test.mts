@@ -15,7 +15,7 @@ async function makeFixture(prefix: string) {
 }
 
 function runValidator(repoPath: string) {
-  const result = spawnSync(process.execPath, ["--experimental-strip-types", scriptPath], {
+  const result = spawnSync(process.execPath, [scriptPath], {
     encoding: "utf8",
     timeout: 30_000,
     cwd: repoPath,

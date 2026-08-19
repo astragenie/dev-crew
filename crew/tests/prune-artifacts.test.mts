@@ -98,15 +98,7 @@ test("--dry-run: prints would-delete list and does NOT delete the file", async (
 
   const { stdout } = await execFile(
     process.execPath,
-    [
-      "--experimental-strip-types",
-      pruneScript,
-      "--dry-run",
-      "--older-than",
-      "1",
-      "--repo",
-      repoDir
-    ],
+    [pruneScript, "--dry-run", "--older-than", "1", "--repo", repoDir],
     { encoding: "utf8" }
   );
 
@@ -126,15 +118,7 @@ test("--dry-run: exits 0 even when files are found", async () => {
 
   const result = await execFile(
     process.execPath,
-    [
-      "--experimental-strip-types",
-      pruneScript,
-      "--dry-run",
-      "--older-than",
-      "1",
-      "--repo",
-      repoDir
-    ],
+    [pruneScript, "--dry-run", "--older-than", "1", "--repo", repoDir],
     { encoding: "utf8" }
   );
 
@@ -147,7 +131,7 @@ test("without --dry-run: actually deletes old files", async () => {
 
   const { stdout } = await execFile(
     process.execPath,
-    ["--experimental-strip-types", pruneScript, "--older-than", "1", "--repo", repoDir],
+    [pruneScript, "--older-than", "1", "--repo", repoDir],
     { encoding: "utf8" }
   );
 

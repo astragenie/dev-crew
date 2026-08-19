@@ -7,7 +7,7 @@ const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const scriptPath = path.join(repoRoot, "scripts", "validate-all.mts");
 
 function runValidateAll(cwd = repoRoot) {
-  const result = spawnSync(process.execPath, ["--experimental-strip-types", scriptPath], {
+  const result = spawnSync(process.execPath, [scriptPath], {
     encoding: "utf8",
     timeout: 60_000,
     cwd

@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T00:34:32.222Z",
+  "updatedAt": "2026-08-19T00:47:57.618Z",
   "currentRun": {
-    "title": "FEAT002 SLICE08: Wiggin -> dev-crew branding scrub (27 files)",
+    "title": "FEAT002 SLICE09: Single tsconfig/tsconfig.test + biome config merge",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T00:24:10.407Z",
-    "updatedAt": "2026-08-19T00:34:32.222Z",
-    "next": "SLICE-09 (tsconfig/biome config merge) and SLICE-10 (N=20 green parallel verification + typecheck gate) are next in the pending queue. A later slice should flatten/normalize the crew/ subtree import and its own wiggin references once dev-crew's own DEC numbering stabilizes (also flagged in the SLICE-04 handoff for the 2 self-referential decision-log test failures).",
+    "startedAt": "2026-08-19T00:40:33.000Z",
+    "updatedAt": "2026-08-19T00:47:57.617Z",
+    "next": "P3 flattening will eventually dissolve the crew/ prefix and these two config files should merge into one at that point -- this slice deliberately kept them separate and coherent rather than merging early. Consider whether the root:false crew/biome.json should later gain extends://\" once P3 lands and rule sets are reconciled.",
     "gates": {
       "review": null,
       "validation": null,
@@ -22,10 +22,9 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T002410Z-run-brief-feat002-slice08-wiggin-dev-crew-branding-scrub-27-files.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T004032Z-run-brief-feat002-slice09-single-tsconfig-tsconfig-test-biome-config-m.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003416Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md",
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003432Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T004757Z-handoff-slice-09-tsconfig-biome-config-unification.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
@@ -38,6 +37,43 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT002 SLICE08: Wiggin -> dev-crew branding scrub (27 files)",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T00:24:10.407Z",
+      "updatedAt": "2026-08-19T00:34:32.222Z",
+      "completedAt": "2026-08-19T00:34:32.222Z",
+      "next": "SLICE-09 (tsconfig/biome config merge) and SLICE-10 (N=20 green parallel verification + typecheck gate) are next in the pending queue. A later slice should flatten/normalize the crew/ subtree import and its own wiggin references once dev-crew's own DEC numbering stabilizes (also flagged in the SLICE-04 handoff for the 2 self-referential decision-log test failures).",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T002410Z-run-brief-feat002-slice08-wiggin-dev-crew-branding-scrub-27-files.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003416Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md",
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003432Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT002 SLICE06: .ts->.mts rename sweep batch 2 + import-specifier fixes",
       "goal": "",
@@ -168,40 +204,6 @@
         "handoffs": [
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260818T221708Z-handoff-slice-04-subtree-import-dev-team-runner-plugin-preserve-hist.md"
         ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT002 SLICE04: Subtree-import dev-team + runner-plugin, preserve history",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-18T21:58:02.251Z",
-      "updatedAt": "2026-08-18T21:58:02.251Z",
-      "completedAt": "2026-08-18T21:58:02.251Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T215802Z-run-brief-feat002-slice04-subtree-import-dev-team-runner-plugin-preser.md",
-        "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": null,

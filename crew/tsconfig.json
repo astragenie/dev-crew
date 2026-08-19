@@ -22,7 +22,7 @@
     "allowImportingTsExtensions": true,
     "types": [
       "node",
-      "bun-types"
+      "bun"
     ]
   },
   "include": [
@@ -33,7 +33,8 @@
     "hooks/**/*.ts",
     "hooks/**/*.mts",
     "evals/**/*.ts",
-    "evals/**/*.mts"
+    "evals/**/*.mts",
+    "skills/**/*.mts"
   ],
   "exclude": [
     "node_modules",
