@@ -75,13 +75,24 @@ export async function captureFailureLearning(
   repoPath: string,
   entry: FailureEntryInput
 ): Promise<void> {
+  const ts = new Date();
+  const summary = entry.summary.slice(0, MAX_SUMMARY_LENGTH);
+  // key/insight are required by the root schema gate
+  // (src/scripts/validate-learnings-schema.mts) on every row of the shared
+  // learnings.jsonl — root's logLearning always writes them, so this writer
+  // must too. Key mirrors the sibling failure rows' shape:
+  // "<source>:<first tag|agent>:<compact UTC stamp>".
+  const compactTs = ts.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const keyScope = entry.tags?.[0] ?? entry.agent ?? "unknown";
   await appendJsonlEntry(repoPath, LEARNINGS_PATH, {
     kind: "failure",
-    ts: new Date().toISOString(),
+    ts: ts.toISOString(),
     agent: entry.agent ?? null,
     severity: entry.severity ?? "medium",
     tags: entry.tags ?? [],
-    summary: entry.summary.slice(0, MAX_SUMMARY_LENGTH),
-    source: entry.source
+    summary,
+    source: entry.source,
+    key: `${entry.source}:${keyScope}:${compactTs}`,
+    insight: summary
   });
 }
