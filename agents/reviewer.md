@@ -3,7 +3,7 @@ name: reviewer
 prompt_id: reviewer
 version: 1.1.1
 model_pinned: sonnet
-evals: evals/agents/crew-reviewer.yaml
+evals: crew/evals/agents/crew-reviewer.yaml
 capabilities:
   role: [reviewer]
   concerns: [security, refactor]

@@ -71,8 +71,8 @@ cutover, FEAT-006 (P5).
 
 Full rationale: `docs/ci-gates.md` (source of truth for name + order —
 `generate-metrics-band.mts` counts this list; keep both in sync). One
-merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–28 blocking
-(`fast-gate`), 29–34 advisory, 35–39 tsc/biome, 40–41 the two test suites:
+merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–30 blocking
+(`fast-gate`), 31–34 advisory, 35–39 tsc/biome, 40–41 the two test suites:
 
 1. `bun install --frozen-lockfile` (root + `crew/`, two lockfiles).
 2. `validate-manifests.mts` — root manifest sanity.
@@ -102,12 +102,12 @@ merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–28 blocking
 26. `crew/scripts/validate-bundles.mts` — build-bundle schema/version.
 27. `crew/scripts/validate-configs.mts` — routing-table schema + drift.
 28. `crew/scripts/validate-routing-table.mts --coverage-only` — skill-id resolution.
-29. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag (advisory).
-30. `crew/scripts/validate-routing-table.mts` full-coverage mode (advisory).
-31. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness (advisory).
-32. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag (advisory).
-33. `crew/scripts/validate-agents.mts` — agent prompt quality bar (advisory).
-34. `crew/scripts/validate-skills.mts` — skill quality bar (advisory).
+29. `crew/scripts/validate-agents.mts` — agent prompt quality bar.
+30. `crew/scripts/validate-skills.mts` — skill quality bar.
+31. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag (advisory).
+32. `crew/scripts/validate-routing-table.mts` full-coverage mode (advisory).
+33. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness (advisory).
+34. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag (advisory).
 35. `bunx tsc --noEmit` — root, root test, and `crew/tsconfig.json` (3 projects).
 36. `bunx biome lint src/` (root scope).
 37. `bunx biome format src/` (root, check mode).

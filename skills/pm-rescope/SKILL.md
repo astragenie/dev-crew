@@ -1,5 +1,8 @@
 ---
-name: devcrew:pm-rescope
+name: pm-rescope
+prompt_id: pm-rescope
+version: 1.0.0
+tier: workflow
 description: Autonomous scope/AC rewrite for one FEAT from a list of reviewer objections — the GATE workstream's reject-loop path. Dispatches devcrew:pm --rescope, unattended (no operator confirmation, unlike devcrew:pm-review). Use when architect-reviewer (or any gate) rejects a FEAT/slice proposal and the objections need to be folded back into the FEAT's scope + ACs before re-submission.
 ---
 

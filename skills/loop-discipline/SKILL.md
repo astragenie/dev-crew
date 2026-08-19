@@ -1,5 +1,8 @@
 ---
-name: devcrew:loop-discipline
+name: loop-discipline
+prompt_id: loop-discipline
+version: 1.0.0
+tier: workflow
 description: Use at the start of substantive engineering work in any repo that has the loop plugin installed. Loads the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) and reminds the agent not to pause for user confirmation mid-slice. Trigger automatically when starting a session in a repo whose CLAUDE.md contains `<!-- runner:start -->`.
 ---
 

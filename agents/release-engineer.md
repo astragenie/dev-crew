@@ -3,7 +3,7 @@ name: release-engineer
 prompt_id: release-engineer
 version: 1.3.2
 model_pinned: sonnet
-evals: evals/agents/crew-release-engineer.yaml
+evals: crew/evals/agents/crew-release-engineer.yaml
 capabilities:
   role: [release-engineer, infrastructure-engineer]
   surfaces: [infra, plugin-manifest, ci, workflows, hooks, telemetry]
@@ -239,7 +239,11 @@ Place these settings near the top of the file under a short `## Settings` headin
 
 ## Context efficiency
 
-No re-Read after Edit/Write, scoped reads (Grep then `offset`+`limit`), coalesced Bash calls, and batched parallel shell commands follow the shared pattern used across researcher/architect/verifier/document-writer agents. Release-engineer-specific: when resuming from a handoff, check for a `## Repo Layout` section in the handoff artifact before running `ls`/`find`/`cat package.json` — a pre-discovered layout saves 3–5 tool turns per run.
+No re-Read after Edit/Write, scoped reads (Grep then `offset`+`limit`), and batched parallel shell commands follow the shared pattern used across researcher/architect/verifier/document-writer agents. Release-engineer-specific: when resuming from a handoff, check for a `## Repo Layout` section in the handoff artifact before running `ls`/`find`/`cat package.json` — a pre-discovered layout saves 3–5 tool turns per run.
+
+### Coalesce Bash calls
+
+Prefer `cmd1 && cmd2 && cmd3` over separate Bash invocations when commands are related and don't need intervening model reasoning. Example: combine `git status && git diff --stat && git log --oneline -5` into one call, not three. Carve-out: keep them separate when each result drives the next decision; chain only for pure data-collection or all-or-nothing.
 
 ## Integration with Other Agents
 

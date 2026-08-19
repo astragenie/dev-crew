@@ -3,7 +3,7 @@ name: refactor
 prompt_id: refactor
 version: 3.0.2
 model_pinned: opus
-evals: evals/agents/crew-refactor.yaml
+evals: crew/evals/agents/crew-refactor.yaml
 capabilities:
   role: [implementer]
   surfaces: [agent-prompts, scripts]

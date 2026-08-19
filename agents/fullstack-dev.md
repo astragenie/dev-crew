@@ -3,7 +3,7 @@ name: fullstack-dev
 prompt_id: fullstack-dev
 version: 2.1.4
 model_pinned: sonnet
-evals: evals/agents/crew-fullstack-dev.yaml
+evals: crew/evals/agents/crew-fullstack-dev.yaml
 capabilities:
   role: [implementer]
   surfaces: [agent-prompts, plugin-manifest, hooks, commands, docs, schema, scripts]

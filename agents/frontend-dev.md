@@ -3,7 +3,7 @@ name: frontend-dev
 prompt_id: frontend-dev
 version: 2.1.3
 model_pinned: sonnet
-evals: evals/agents/crew-frontend-dev.yaml
+evals: crew/evals/agents/crew-frontend-dev.yaml
 capabilities:
   role: [implementer]
   surfaces: [ui]

@@ -3,7 +3,7 @@ name: aiplugin-dev
 prompt_id: aiplugin-dev
 version: 1.2.4
 model_pinned: sonnet
-evals: evals/agents/crew-aiplugin-dev.yaml
+evals: crew/evals/agents/crew-aiplugin-dev.yaml
 capabilities:
   role: [implementer]
   surfaces: [plugin-internals, agent-prompts, plugin-manifest, hooks, commands, docs, scripts]

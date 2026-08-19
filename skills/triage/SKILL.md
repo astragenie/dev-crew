@@ -1,5 +1,8 @@
 ---
-name: devcrew:triage
+name: triage
+prompt_id: triage
+version: 1.0.0
+tier: workflow
 description: Triage every pending backlog FEAT via the PM agent (5-dimension LLM scoring). PM-only — on agent error, validation failure, or budget exceedance, halt and surface to the operator. The regex fallback path was removed 2026-06-11.
 ---
 

@@ -1,5 +1,8 @@
 ---
-name: devcrew:pm-review
+name: pm-review
+prompt_id: pm-review
+version: 1.0.0
+tier: workflow
 description: Deep interactive review of a single backlog feature. Shows PM reasoning, asks user to confirm or override scores. Use when user wants to challenge a triage result or review a high-stakes feature. Trigger on "/devcrew:pm-review" or "review this feature" or "challenge this priority".
 ---
 

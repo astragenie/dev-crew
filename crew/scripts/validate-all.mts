@@ -10,13 +10,18 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const validators = ["validate-manifests.mts", "validate-slices.mts"];
-
-// Advisory pending the agent/skill content-backfill FEAT (SLICE-24 decision):
-// P3's surface merge exposed pre-existing content gaps (missing prompt_id /
-// version / report-contract on runner-origin agents, dangling eval-spec
-// pointers). These report findings but do not fail the aggregate.
-const advisoryValidators = ["validate-skills.mts", "validate-agents.mts"];
+// validate-agents.mts / validate-skills.mts were advisory pending the
+// agent/skill content-backfill FEAT (SLICE-24 decision): P3's surface merge
+// exposed pre-existing content gaps (missing prompt_id / version /
+// report-contract on runner-origin agents, dangling eval-spec pointers).
+// FEAT-015/SLICE-33 backfilled the debt and promoted both to blocking.
+const validators = [
+  "validate-manifests.mts",
+  "validate-slices.mts",
+  "validate-skills.mts",
+  "validate-agents.mts"
+];
+const advisoryValidators: string[] = [];
 
 interface ValidatorResult {
   script: string;

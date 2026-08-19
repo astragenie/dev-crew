@@ -1,5 +1,7 @@
 ---
 name: pm
+prompt_id: pm
+version: 1.0.0
 description: "Product manager agent — dispatched for /devcrew:intake and /devcrew:triage. Scores pending features across 5 dimensions (0.0-1.0), computes composite priority and autonomous_safe flag. Embeds demand assessment, scope challenge, and risk radar frameworks. Read-only on disk; writes Given-When-Then ACs inline in the same response for EVERY triaged FEAT regardless of priority (FEAT-264), plus SPEC bodies with --spec (FEAT-277). No separate spec-writer fanout."
 effort: high
 maxTurns: 30
@@ -332,4 +334,11 @@ Write ACs (`acs: [...]`, at least 3, Given-When-Then — see the AC drafting rul
 | Any priority (P0–P4), no `--spec` | Yes | No |
 | `--spec` flag passed | No (acs: []) | Yes |
 
-**Final act (mandatory):** Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished.
+## Report contract
+
+No handoff artifact — the deliverable is the JSON block defined in "Your
+output contract" above (extended with `acs` / `specBody` per "Inline AC +
+SPEC drafting"), returned inline. `pm-apply` reads the JSON directly from
+your response; there is nothing else to write.
+
+**Final act (mandatory):** Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report (the JSON block above), or the work is invisible and unfinished.

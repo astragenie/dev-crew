@@ -13,8 +13,8 @@ name: test
 # worktree-touching tests from hanging the required check
 # (astragenie/runner-plugin#355):
 #
-#   fast-gate            - every validator (root's 18 + crew's 9 blocking +
-#                           crew's 6 advisory) + 3 tsc projects + 4 biome
+#   fast-gate            - every validator (root's 18 + crew's 11 blocking +
+#                           crew's 4 advisory) + 3 tsc projects + 4 biome
 #                           invocations (root src/, crew-scoped). Target
 #                           ~1-2 min. This is the required status check:
 #                           "fast-gate / test (self-hosted)".
@@ -156,13 +156,13 @@ jobs:
         bun ./crew/scripts/validate-bundles.mts
         bun ./crew/scripts/validate-configs.mts
         bun ./crew/scripts/validate-routing-table.mts --coverage-only
+        bun ./crew/scripts/validate-agents.mts
+        bun ./crew/scripts/validate-skills.mts
       advisory-validators: |
         bun ./crew/scripts/validate-syntheses.mts
         CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts
         bun ./crew/scripts/validate-adr-template.mts --strict
         bun ./crew/scripts/validate-backlog-drift.mts
-        bun ./crew/scripts/validate-agents.mts
-        bun ./crew/scripts/validate-skills.mts
       bun-commands: |
         bunx tsc --project tsconfig.json --noEmit
         bunx tsc --project tsconfig.test.json --noEmit

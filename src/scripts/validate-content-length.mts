@@ -24,10 +24,16 @@ export const AGENT_SKIP_PATHS = ["agents/3rdparty/"];
 // (FEAT-277 absorbed spec-writer) plus the issue #402 key-name contract, plus
 // the astramem memory-recall block (all owned agents gained Skill/MCP tool
 // grants + a "Memory (astramem)" prompt block — see agents/architect.md for
-// the proof case that motivated the rollout).
+// the proof case that motivated the rollout). FEAT-015/SLICE-33 bumped both
+// pm.md (added the required "## Report contract" section) and verifier.md
+// (added the mandatory pre-loaded-universals marker block — SLICE-76
+// FEAT-153 — plus the required "TaskUpdate batching"/"Coalesce Bash calls"
+// rules) to clear the validate-agents.mts content-backfill debt without
+// trimming required content.
 // Bump per file, never the global default.
 export const AGENT_LINE_OVERRIDES: Record<string, number> = {
-  "agents/pm.md": 335
+  "agents/pm.md": 345,
+  "agents/verifier.md": 345
 };
 
 async function walk(

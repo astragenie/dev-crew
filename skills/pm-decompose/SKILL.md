@@ -1,5 +1,8 @@
 ---
-name: devcrew:pm-decompose
+name: pm-decompose
+prompt_id: pm-decompose
+version: 1.0.0
+tier: workflow
 description: Enhanced spec decomposition with PM pre-scoring. Reads a SPEC, identifies natural feature boundaries using scope challenge, pre-scores each proposed feature, and creates FEAT files with priority and autonomous_safe already set. Use instead of /devcrew:spec-decompose when you want PM-quality features from the start.
 ---
 

@@ -1,5 +1,7 @@
 ---
 name: swarm
+prompt_id: swarm
+version: 1.0.0
 description: Spawn N parallel child subagents in isolated git worktrees, awaitAll
   with blocking semantics, then merge DONE children to the parent branch in
   priority order. Depth-capped via .claude/loop.json (`dispatchLimits.maxDepth`,
@@ -126,6 +128,13 @@ Do NOT inline the full summary. Caller can `cat` the file if they want detail.
 
 The library appends per-child trace lines to `.claude/artifacts/loop/dispatch/<runId>/trace.jsonl`. `costUsd` is `null` in SLICE-1 — FEAT-165 will populate.
 
+## Report contract
+
+No handoff artifact — the deliverable is the "Return to caller" block above
+(headline + `summary.md` path + run id), returned inline. Children's own
+completion artifacts (handoffs, review/validation results) already carry
+the detail; do not duplicate them here.
+
 ## Final act (mandatory)
 
-Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report, or the work is invisible and unfinished. This applies to you as the dispatched swarm agent reporting to your caller — separate from the marker-file contract you enforce on your own children.
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report (the "Return to caller" block above), or the work is invisible and unfinished. This applies to you as the dispatched swarm agent reporting to your caller — separate from the marker-file contract you enforce on your own children.

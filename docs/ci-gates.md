@@ -120,6 +120,34 @@ this file).
 28. `bun ./crew/scripts/validate-routing-table.mts --coverage-only` —
     routing-table skill-id resolution (blocking, coverage-only mode; the
     full-coverage mode runs advisory below).
+29. `bun ./crew/scripts/validate-agents.mts` — agent prompt quality bar
+    (required frontmatter, "## Report contract" section, no duplicate
+    names, universal-skill drift markers, evals-spec pointers). **Promoted
+    to blocking** (FEAT-015/SLICE-33): the pre-existing content debt SLICE-24
+    surfaced (missing `prompt_id`/`version`, missing "## Report contract",
+    dangling `evals:` pointers) is backfilled — `market-researcher.md`,
+    `pm.md`, and `swarm.md` gained `prompt_id`/`version`/"## Report
+    contract"; `release-engineer.md` and `verifier.md` gained their missing
+    context-efficiency rules and (verifier) its universal-skill drift
+    marker; the nine dangling `evals:` pointers were repointed from
+    `evals/agents/crew-*.yaml` to the real on-disk location
+    `crew/evals/agents/crew-*.yaml` (the P3 surface merge moved `agents/`
+    to the monorepo root but never moved `evals/`, which still lives
+    under `crew/`).
+30. `bun ./crew/scripts/validate-skills.mts` — skill quality bar. **Promoted
+    to blocking** (FEAT-015/SLICE-33), same backfill treatment as gate 29.
+    The open question SLICE-24 flagged — several skill directories carried
+    a `devcrew:`-namespace-prefixed `name:` in frontmatter while their
+    directory name stayed bare (e.g. `skills/pm-decompose/SKILL.md` named
+    itself `devcrew:pm-decompose`) — resolved as content debt, not a
+    validator convention gap: every other skill in the merged tree (all
+    `skills/domain/**`, `skills/meta/**`) already uses a bare `name:`
+    matching its directory, and the plugin namespace prefix is derived at
+    runtime from the plugin manifest, never stored in frontmatter. The five
+    outlier skills (`loop-discipline`, `pm-decompose`, `pm-rescope`,
+    `pm-review`, `triage`) had their frontmatter `name:` corrected to drop
+    the `devcrew:` prefix, matching the rest of the tree; the validator's
+    strict-equality directory-name check was left unchanged.
 
 Gates 20/22/23/24/25/26/27 required a fix as part of this slice: their
 `AGENTS_ROOT`/`SKILLS_ROOT` constants still pointed at `crew/agents/` and
@@ -142,40 +170,21 @@ render-routing-table.mts`).
 **Advisory (non-blocking within `fast-gate`, still run and reported on
 every push/PR):**
 
-29. `bun ./crew/scripts/validate-syntheses.mts` — flags placeholder-rotted
+31. `bun ./crew/scripts/validate-syntheses.mts` — flags placeholder-rotted
     final-synthesis/grade artifacts. Advisory by design (documented in the
     script's own header) — `runner:close`'s `grade_incomplete` badge is the
     hard gate at close time.
-30. `CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts`
+32. `CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts`
     — full-coverage cross-check of every agent's "### Skills you consult"
     block against `docs/routing-table.md`. Opt-in via env var by design;
     advisory because coverage gaps here are additive documentation debt,
     not correctness bugs (the blocking gate 28 already guards resolution).
-31. `bun ./crew/scripts/validate-adr-template.mts --strict` — ADR
+33. `bun ./crew/scripts/validate-adr-template.mts --strict` — ADR
     "Alternatives considered" section completeness.
-32. `bun ./crew/scripts/validate-backlog-drift.mts` — flags a `triaged/`
+34. `bun ./crew/scripts/validate-backlog-drift.mts` — flags a `triaged/`
     slice whose close ceremony already ran in git history but was never
     moved to `done/`. Advisory by the script's own design (flags for a
     human/loop to act on; never moves files itself).
-33. `bun ./crew/scripts/validate-agents.mts` — agent prompt quality bar
-    (required frontmatter, "## Report contract" section, no duplicate
-    names, universal-skill drift markers, evals-spec pointers). **Wired
-    advisory, not blocking** (SLICE-24): the `AGENTS_ROOT` fix above
-    surfaced real pre-existing content debt across many agent files
-    (missing `prompt_id`/`version`, missing "## Report contract", `evals:`
-    frontmatter pointing at specs that don't exist yet) that predates this
-    slice and is out of its scope to backfill. A follow-up FEAT should
-    clear the debt and promote this to blocking.
-34. `bun ./crew/scripts/validate-skills.mts` — skill quality bar (same
-    treatment as gate 33, same reason). Also surfaced a genuine open
-    question, not just backfill debt: several skill directories now carry
-    a `devcrew:`-namespace-prefixed `name:` in frontmatter while their
-    directory name stays bare (e.g. `skills/pm-decompose/SKILL.md` names
-    itself `devcrew:pm-decompose`) — the validator's directory-name match
-    is a strict equality check with no namespace-prefix awareness, so this
-    may be a validator convention gap rather than pure content debt. Needs
-    a decision (rename directories, or teach the validator about the
-    `devcrew:` prefix) before promoting to blocking.
 35. `bunx tsc --project tsconfig.json --noEmit` + `--project
     tsconfig.test.json --noEmit` (root) + `--project crew/tsconfig.json
     --noEmit` (crew — its own, deliberately divergent `strict`/`types`

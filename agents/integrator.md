@@ -3,7 +3,7 @@ name: integrator
 prompt_id: integrator
 version: 1.0.3
 model_pinned: sonnet
-evals: evals/agents/crew-integrator.yaml
+evals: crew/evals/agents/crew-integrator.yaml
 capabilities:
   role: [verifier]
   surfaces: [api, ui]
