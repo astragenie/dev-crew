@@ -72,10 +72,105 @@ function usage() {
     "  bun src/scripts/loop.mts doctor --repo <path> [--check|--fix]",
     "  bun src/scripts/loop.mts dispatch <subcommand> [args...]   (see: dispatch --help)",
     "  bun src/scripts/loop.mts learn --repo <path>   (runs the continuous-learning cycle once)",
+    "  bun src/scripts/loop.mts slice <subcommand> --repo <path> [args...]   (see: slice --help)",
+    "  bun src/scripts/loop.mts backlog <subcommand> --repo <path> [args...]   (see: backlog --help)",
+    "  bun src/scripts/loop.mts intake from-text --text <text> --repo <path>   (see: intake --help)",
+    "  bun src/scripts/loop.mts config <get|migrate-devcrew> [--repo <path>]   (see: config --help)",
+    "",
+    "Pass --help (or -h) after any subcommand to print that subcommand's usage",
+    "and return before any side effect — no filesystem write, no dispatch.",
     "",
     "Hard dependency: the `crew` plugin must be installed. Phase-gate writes its",
     "artifact through `crew write-validation-result`."
   ].join("\n");
+}
+
+// Per-subcommand --help text (FEAT-020 / SLICE-37). Every command routed
+// through the COMMANDS registry below gets its side-effecting handler gated
+// on flags.help at the single dispatch chokepoint in main() — see the
+// `if (flags.help ...)` guard there. This map only supplies the *text*; it
+// is not itself part of the gating logic, so a command missing from this map
+// still gets a safe (generic) usage print, never a silent fall-through to a
+// handler. `dispatch` and `config` are intercepted before parseArgs runs (see
+// the rawArgv shortcuts at the top of main()) and are not gated by that
+// chokepoint — both already refuse to touch the filesystem on missing/unknown
+// sub-subcommands (dispatch forwards to dispatch.mts's own parser; config's
+// unknown-sub branch is a pure `console.error` + exitCode). Their entries
+// here are documentation only.
+const SUBCOMMAND_USAGE: Record<string, string> = {
+  install: [
+    "loop CLI — install",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts install --repo <path> [--preset <name>] [--light]",
+    "",
+    "Scaffolds or refreshes the loop methodology layer (CLAUDE.md hard-rule",
+    "block, loop-control docs, backlog scaffold, .claude/loop.json) in the",
+    "target repo. --preset selects the stack preset (see: list-presets).",
+    "--light trims to the single-reviewer ladder."
+  ].join("\n"),
+  slice: [
+    "loop CLI — slice",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts slice <subcommand> --repo <path> [args...]",
+    "",
+    "Slice-lifecycle operations (from-feature, start, close, ...). Run the",
+    "specific subcommand without --help to see its own usage/error output."
+  ].join("\n"),
+  backlog: [
+    "loop CLI — backlog",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts backlog <subcommand> --repo <path> [args...]",
+    "",
+    "Backlog operations: add, pm-apply, pm-rescope, arch-gate-apply,",
+    "list-pending-ids, slice-renumber, and more. Run the specific subcommand",
+    "without --help to see its own usage/error output."
+  ].join("\n"),
+  intake: [
+    "loop CLI — intake",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts intake from-text --text <text> --repo <path> [--deep] [--spec] [--dry-run]",
+    "",
+    "Free-text backlog intake: mechanically creates a new unscored FEAT from prose."
+  ].join("\n"),
+  dispatch: [
+    "loop CLI — dispatch",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts dispatch <subcommand> [args...]",
+    "",
+    "Forwarded verbatim to src/scripts/dispatch.mts as a child process — its own",
+    "argument parser governs subcommand flags (--plan, --parent-branch, --depth,",
+    "--dry-run, --json, --run-id, --config); this file's FLAG_SPEC does not apply."
+  ].join("\n"),
+  config: [
+    "loop CLI — config",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts config get <dotted.path> [--repo <path>]",
+    "  bun src/scripts/loop.mts config migrate-devcrew [--repo <path>]",
+    "",
+    "Read or migrate .claude/loop.json. Neither sub-subcommand writes anything",
+    "besides migrate-devcrew's documented backup+merge."
+  ].join("\n"),
+  decisions: [
+    "loop CLI — decisions",
+    "",
+    "Usage:",
+    "  bun src/scripts/loop.mts decisions <list|show|relevant|supersede> --repo <path> [args...]",
+    "",
+    "Decision-log operations: list, show, relevant, supersede. Run the",
+    "specific subcommand without --help to see its own usage/error output."
+  ].join("\n")
+};
+
+// AC-3: resolve --help text for any subcommand, falling back to the general
+// usage() block for commands with no dedicated entry above.
+function usageFor(command: string): string {
+  return SUBCOMMAND_USAGE[command] ?? usage();
 }
 
 // Command registry. Each handler returns the result that gets JSON-stringified
@@ -843,6 +938,20 @@ async function main() {
 
   if (command === "help") {
     console.log(usage());
+    return;
+  }
+
+  // AC-1/AC-3 (FEAT-020 / SLICE-37): single dispatch-level chokepoint — every
+  // subcommand in the COMMANDS registry below (install, slice, backlog,
+  // intake, ...) is gated here, before config resolution, before the
+  // DELETED_SKILLS_MAP stub check, and before the handler lookup. This is
+  // what closes the SLICE-31 near-miss: `install --help` used to reach
+  // installLoop() and execute a real install (flags.help was parsed
+  // correctly but never checked). Placed as early as possible so no
+  // handler — including ones added later — can accidentally run a side
+  // effect first.
+  if (flags.help) {
+    console.log(usageFor(command));
     return;
   }
 
