@@ -1,7 +1,7 @@
 ---
 id: SLICE-37
 title: Implement FEAT-020
-status: pending
+status: completed
 feature: FEAT-020
 phase: null
 priority: P0
@@ -10,6 +10,8 @@ requires_validation: true
 risk: high
 created: 2026-08-19
 updated: 2026-08-19
+completed_at: 2026-08-19
+badges: [serial-reviewer-warning]
 ---
 # SLICE-37: Implement FEAT-020
 

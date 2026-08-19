@@ -1,0 +1,41 @@
+---
+id: PM-REVIEW-FEAT-020
+feature: FEAT-020
+reviewed_at: 2026-08-19
+pm_customer_impact: 0.85
+pm_effort_estimate: 0.4
+pm_strategic_alignment: 0.55
+pm_technical_risk: 0.25
+pm_dependency_depth: 0.15
+composite_priority: P0
+autonomous_safe: true
+---
+# PM Review — FEAT-020
+
+## Demand Assessment
+
+- **Evidence:** Confirmed against source, not just the FEAT's own claim: src/scripts/lib/cli-args.mts's parseArgs correctly parses --help into flags.help=true and already hard-fails on globally-unrecognized flags via an 'Unknown argument: <flag>' throw -- the defect is downstream. src/scripts/loop.mts's install dispatch path never checks flags.help before running side effects; grepping the whole file for flags.help turns up exactly one call site (line ~2006), unrelated to install. This produced a real, dated near-miss: 'install --help' executed a REAL install against cwd during SLICE-31 tonight, rewriting this repo's own CLAUDE.md (caught and reverted) -- a live incident, not a hypothetical.
+
+## Scope Challenge
+
+- **Scope notes:** Two-part fix: (1) add a flags.help guard clause to the install handler, printing usage text and returning before any filesystem write, and audit every other subcommand branch in loop.mts's dispatcher for the same missing check (FEAT text names 'likely sibling subcommands' -- CONFIG_OPTIONAL_COMMANDS at loop.mts:916 groups install with list-presets, a reasonable starting audit list); (2) confirm whether the existing globally-unknown-flag hard-fail (parseArgs already throws on a fully-unrecognized '--bogus-flag') needs extending to also catch flags that ARE globally recognized in FLAG_SPEC but invalid for a specific subcommand -- FLAG_SPEC is one shared namespace across all subcommands today, so a flag valid for one subcommand silently passes through when used with another. Regression tests must invoke the actual command handler against a temp/fixture repo (never this repo's own working tree), asserting zero file writes for both 'install --help' and 'install --bogus-flag'.
+
+## Scores
+
+- customer_impact: 0.85
+- effort_estimate: 0.40
+- strategic_alignment: 0.55
+- technical_risk: 0.25
+- dependency_depth: 0.15
+
+## Priority Derivation
+
+composite_priority: P0
+autonomous_safe: true
+reasoning: Confirmed live near-miss data-loss defect, source-verified rather than taken on faith: parseArgs already sets flags.help correctly, but install's dispatch path never checks it, and this executed a real install against cwd tonight during SLICE-31 (caught and reverted). Treated as bugfix-class for the P0 branch given customer_impact=0.85 -- severity comes from blast radius (any operator running --help expecting a no-op) over code-change danger, the same framing applied to FEAT-010 in the prior review. The fix itself is a bounded, low-risk guard-clause pattern repeated across a known, small set of subcommand handlers, keeping autonomous_safe true.
+
+## Risks
+
+- It is two weeks later and this slice failed review or validation -- most likely cause: the fix added a flags.help guard to install but missed one of the other 'likely sibling subcommands' also named in scope, leaving a different silent-side-effect footgun undiscovered until the next live near-miss.
+- This merged and broke the loop -- rollback: clean git revert only; the fix is guard-clause additions plus regression tests, no data/schema migration, no cross-plugin coordination.
+- Which existing test would NOT catch a regression here: a test that calls parseArgs() directly (the pattern cli-args.mts's own comments recommend, to avoid corrupting the live test-runner's argv) but never exercises the actual command dispatcher/handler would miss this exact bug -- the defect lives in the handler ignoring flags.help, not in parseArgs itself, which already sets it correctly. Coverage must invoke the handler, not just the parser.

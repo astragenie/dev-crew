@@ -1,20 +1,20 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T20:59:51.041Z",
+  "updatedAt": "2026-08-19T21:47:21.187Z",
   "currentRun": {
-    "title": "FEAT015 SLICE33: Implement FEAT-015",
-    "goal": "Agent/skill content backfill: crew's validate-agents.mts and validate-skills.mts run ADVISORY in CI because P3's surface merge exposed pre-existing content debt (missing prompt_id/version frontmatter, missing Report contract sections, dangling evals-spec pointers, skills dir-name vs devcrew:-prefixed frontmatter-name mismatch). Backfill the content across the merged agents/ and skills/ trees, then flip both validators to blocking.",
+    "title": "FEAT019 SLICE38: Implement FEAT-019",
+    "goal": "Cut devcrew v1.0.0: bump plugin.json + package.json from 1.0.0-rc.1, update CHANGELOG with the unification summary, bump the astra-marketplace devcrew entry version in a paired commit, tag v1.0.0. Production-promotion class: requires explicit operator approval at execution time — NOT autonomous_safe.",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T20:35:28.489Z",
-    "updatedAt": "2026-08-19T20:59:51.041Z",
+    "startedAt": "2026-08-19T21:38:46.383Z",
+    "updatedAt": "2026-08-19T21:47:21.187Z",
     "next": "Begin implementation",
     "gates": {
       "review": null,
       "validation": {
         "status": "skipped",
-        "updatedAt": "2026-08-19T20:59:51.041Z",
-        "note": "reviewer live-validated CLI + neuter round-trips; artifact 20260819T213000Z approved; AC-8b recorded OPEN"
+        "updatedAt": "2026-08-19T21:47:21.187Z",
+        "note": "reviewer live-reproduced both gaps pre-fix and re-ran all repros post-fix incl. position-independent and wave run/loop live; artifacts needs_fix 20260819T230000Z -> approved 20260819T233000Z"
       },
       "deployment": {
         "dev": null,
@@ -26,7 +26,7 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T203528Z-run-brief-feat015-slice33-implement-feat-015.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T213846Z-run-brief-feat019-slice38-implement-feat-019.md",
       "handoffs": [],
       "reviewResult": null,
       "validationPlan": null,
@@ -40,88 +40,20 @@
   },
   "recentRuns": [
     {
-      "title": "FEAT009 SLICE32: Implement FEAT-009",
-      "goal": "Carried from runner-plugin FEAT-284 (git-anchored slice completion silently drops planned work on prose-only commit matches) after P0 parent-estate settlement. 5 of 7 slices already shipped in runner-plugin (src/scripts/lib/slice-linker/git-anchored-completion.mts, src/scripts/lib/proposed-slices.mts): SLICE-188 (real file-touching test fixtures replacing --allow-empty), SLICE-189 (diff-level evidence requirement + AC-7 subject-only token-pair matching), SLICE-190 (downgrade text-only matches to",
+      "title": "FEAT020 SLICE37: Implement FEAT-020",
+      "goal": "CLI arg-parse hardening: loop.mts install (and likely sibling subcommands) silently ignores unknown flags — 'install --help' fell through and executed a REAL install against cwd, rewriting the current repo's CLAUDE.md (observed live during SLICE-31, reverted). Unknown flags must hard-fail with usage text before any side effect; add --help support to every subcommand; regression test: 'install --help' and 'install --bogus-flag' both exit non-zero (or print usage) with ZERO file writes.",
       "mode": "autonomous",
       "status": "active",
-      "startedAt": "2026-08-19T20:35:26.820Z",
-      "updatedAt": "2026-08-19T20:35:26.820Z",
-      "completedAt": "2026-08-19T20:35:26.820Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T203526Z-run-brief-feat009-slice32-implement-feat-009.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT011 SLICE31: Implement FEAT-011",
-      "goal": "Migrate the two skipped adopters (kb, standards): run the devcrew installer against each (they have no .claude/loop.json so migrate-adopter refused to render), pick a sensible preset per repo, then run migrate-adopter to collapse their crew:start marker blocks; both repos end with exactly one devcrew block, a devcrew.json, and a local commit.",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T20:15:50.039Z",
-      "updatedAt": "2026-08-19T20:15:50.039Z",
-      "completedAt": "2026-08-19T20:15:50.039Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T201550Z-run-brief-feat011-slice31-implement-feat-011.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT012 SLICE30: Implement FEAT-012",
-      "goal": "Clean up sales repo CLAUDE.md: remove the pre-existing UNMARKED duplicate 'Autonomous Loop — HARD RULES' section carrying dead /loop:slice and /loop:phase-gate references (predates the devcrew migration, traced to commit 89de31a 'agentic-setup rebuild'); keep the single devcrew marker block as the only loop-rules section; local commit in sales only.",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T20:11:52.282Z",
-      "updatedAt": "2026-08-19T20:15:22.974Z",
-      "completedAt": "2026-08-19T20:15:22.974Z",
+      "startedAt": "2026-08-19T21:16:47.578Z",
+      "updatedAt": "2026-08-19T21:30:35.283Z",
+      "completedAt": "2026-08-19T21:30:35.283Z",
       "next": "Begin implementation",
       "gates": {
         "review": null,
         "validation": {
           "status": "skipped",
-          "updatedAt": "2026-08-19T20:15:22.974Z",
-          "note": "doc-only deletion in adopter repo; reviewer-lite verified single-hunk deletion, marker block byte-identical, zero /loop: refs"
+          "updatedAt": "2026-08-19T21:30:35.283Z",
+          "note": "reviewer verified --variant byte-stability in detached worktree, neutered the preset gate live, git-history-traced replacement skills; artifacts 20260819T220500Z needs_fix -> 20260819T223500Z approved"
         },
         "deployment": {
           "dev": null,
@@ -133,7 +65,7 @@
         "help": null
       },
       "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T201152Z-run-brief-feat012-slice30-implement-feat-012.md",
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T211647Z-run-brief-feat020-slice37-implement-feat-020.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
@@ -146,13 +78,13 @@
       }
     },
     {
-      "title": "FEAT018 SLICE29: Implement FEAT-018",
-      "goal": "Guarded-fire test coverage: crew/scripts/lib/guarded-fire.mts survived the GEPA deletion as relocated fail-soft infrastructure but its unit test was deleted with the gepa test tree (SLICE-22 grade note); write a fresh colocated bun:test suite covering fire-success, swallow-on-error, and timeout paths.",
+      "title": "FEAT016 SLICE36: Implement FEAT-016",
+      "goal": "Command surface audit execution: merge the 7 near-duplicate command pairs and cut the 1 dead command identified in the P3 command audit (see docs/planning/unification-plan.md section 2 command map); each merged command keeps one canonical name + a hard-break stub note in CHANGELOG; validate-agent-refs stays green.",
       "mode": "autonomous",
       "status": "active",
-      "startedAt": "2026-08-19T20:11:50.740Z",
-      "updatedAt": "2026-08-19T20:11:50.740Z",
-      "completedAt": "2026-08-19T20:11:50.740Z",
+      "startedAt": "2026-08-19T21:01:31.001Z",
+      "updatedAt": "2026-08-19T21:01:31.001Z",
+      "completedAt": "2026-08-19T21:01:31.001Z",
       "next": "Begin implementation",
       "gates": {
         "review": null,
@@ -167,7 +99,7 @@
         "help": null
       },
       "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T201150Z-run-brief-feat018-slice29-implement-feat-018.md",
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210130Z-run-brief-feat016-slice36-implement-feat-016.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
@@ -180,13 +112,13 @@
       }
     },
     {
-      "title": "FEAT010 SLICE28: Implement FEAT-010",
-      "goal": "Carried from runner-plugin FEAT-299 (proposed-slices.mts validation gaps made load-bearing by SLICE-192's identity keying) after P0 parent-estate settlement, full scope -- SLICE-207 was never built in runner-plugin (verified: no worktree, no branch, no dispatch result, no merge commit on main), per dev-crew's own DEC-001 ('SLICE-207/FEAT-299 disposition is carry, not build'). Two gaps in src/scripts/lib/proposed-slices.mts, both now load-bearing because SLICE-192 (shipped, see FEAT-284) replaced",
+      "title": "FEAT007 SLICE35: Implement FEAT-007",
+      "goal": "Carried from runner-plugin FEAT-230 (task-driven skill selection, decommission presets as the skill source) after P0 parent-estate settlement. SLICE-195 (live crew skill catalog enumerator) already shipped in runner-plugin, evidenced at .claude/artifacts/crew/runs/2026-07-08-feat230-task-driven-skill-selection-contract.md and src/scripts/lib/skill-catalog.mts. Remaining scope, re-framed for the merged repo where the crew<->runner seam this FEAT bridges no longer exists: build a task-signal (stac",
       "mode": "autonomous",
       "status": "active",
-      "startedAt": "2026-08-19T20:10:59.810Z",
-      "updatedAt": "2026-08-19T20:10:59.810Z",
-      "completedAt": "2026-08-19T20:10:59.810Z",
+      "startedAt": "2026-08-19T21:01:29.355Z",
+      "updatedAt": "2026-08-19T21:01:29.355Z",
+      "completedAt": "2026-08-19T21:01:29.355Z",
       "next": "Begin implementation",
       "gates": {
         "review": null,
@@ -201,7 +133,79 @@
         "help": null
       },
       "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T201059Z-run-brief-feat010-slice28-implement-feat-010.md",
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210129Z-run-brief-feat007-slice35-implement-feat-007.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT013 SLICE34: Implement FEAT-013",
+      "goal": "crew/ flatten phase 1 — boundary validator + hooks.json path map: add a root validator enforcing the root<->crew/ import boundary (today only convention + CI path strings guard it; the single sanctioned cross-import is hooks/pre-push-gate.mts -> 4 crew modules, allowlist it), and produce a machine-readable inventory of every ${CLAUDE_PLUGIN_ROOT}/crew/... path in .claude-plugin/hooks/hooks.json as the prerequisite map for the later hooks relocation.",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T21:01:27.736Z",
+      "updatedAt": "2026-08-19T21:01:27.736Z",
+      "completedAt": "2026-08-19T21:01:27.736Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210127Z-run-brief-feat013-slice34-implement-feat-013.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT015 SLICE33: Implement FEAT-015",
+      "goal": "Agent/skill content backfill: crew's validate-agents.mts and validate-skills.mts run ADVISORY in CI because P3's surface merge exposed pre-existing content debt (missing prompt_id/version frontmatter, missing Report contract sections, dangling evals-spec pointers, skills dir-name vs devcrew:-prefixed frontmatter-name mismatch). Backfill the content across the merged agents/ and skills/ trees, then flip both validators to blocking.",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T20:35:28.489Z",
+      "updatedAt": "2026-08-19T20:59:51.041Z",
+      "completedAt": "2026-08-19T20:59:51.041Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "skipped",
+          "updatedAt": "2026-08-19T20:59:51.041Z",
+          "note": "reviewer live-validated CLI + neuter round-trips; artifact 20260819T213000Z approved; AC-8b recorded OPEN"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T203528Z-run-brief-feat015-slice33-implement-feat-015.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,

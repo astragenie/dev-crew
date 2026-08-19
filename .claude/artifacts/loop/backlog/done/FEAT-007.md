@@ -1,13 +1,13 @@
 ---
 id: FEAT-007
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-35]
 derived_from: null
 pm_customer_impact: 0.55
 pm_effort_estimate: 0.5
@@ -22,6 +22,9 @@ triage_notes: "Real, evidenced correctness defect (dead skill ids silently no-op
 tags: ["stack:typescript", "area:skill-catalog", "concern:skill-resolution"]
 needs_contract: true
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-35]
+completed_at: 2026-08-19
 ---
 ## Description
 

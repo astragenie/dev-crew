@@ -1,6 +1,6 @@
 ---
 id: FEAT-013
-status: in-progress
+status: done
 priority: P2
 category: feature
 target_release: null
@@ -23,6 +23,8 @@ tags: ["stack:typescript", "area:repo-boundary", "concern:crew-flatten"]
 needs_contract: true
 needs_ux: false
 started_at: 2026-08-19
+slices_complete: [SLICE-34]
+completed_at: 2026-08-19
 ---
 ## Description
 

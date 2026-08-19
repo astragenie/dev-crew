@@ -1,13 +1,13 @@
 ---
 id: FEAT-019
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-38]
 derived_from: null
 pm_customer_impact: 0.75
 pm_effort_estimate: 0.25
@@ -22,6 +22,7 @@ triage_notes: "High strategic_alignment (this is the roadmap centerpiece the who
 tags: ["stack:typescript", "area:release-engineering", "concern:production-promotion"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
 ---
 ## Description
 

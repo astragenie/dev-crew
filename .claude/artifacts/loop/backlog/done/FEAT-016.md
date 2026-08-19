@@ -1,13 +1,13 @@
 ---
 id: FEAT-016
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-36]
 derived_from: null
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.4
@@ -22,6 +22,9 @@ triage_notes: Bounded execution of an already-completed audit with a documented 
 tags: ["stack:markdown", "area:plugin-surface", "concern:command-consolidation"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-36]
+completed_at: 2026-08-19
 ---
 ## Description
 
