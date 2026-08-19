@@ -318,9 +318,7 @@ test("CLI `retrospective` learningCycle stays null when learningLoop is not enab
 // AC-6: the cadence decision is recorded
 // ---------------------------------------------------------------------------
 
-test("DEC-070 contract record exists for FEAT-229", async () => {
-  const decPath = path.resolve("./.claude/artifacts/loop/decisions/DEC-070.md");
-  const raw = await fs.readFile(decPath, "utf8");
-  assert.match(raw, /status: accepted/);
-  assert.match(raw, /FEAT-229/);
-});
+// DEC-070.md was runner-plugin's own dogfood decision record — deliberately
+// excluded from the dev-crew tree at the SLICE-04 subtree import (see that
+// slice's handoff). The self-check asserting its presence no longer applies
+// here and was removed rather than ported.

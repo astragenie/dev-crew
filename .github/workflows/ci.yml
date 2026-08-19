@@ -191,7 +191,16 @@ jobs:
         run: |
           set -uo pipefail
 
+          # run_suite prints the run's own output as it happens (so the log
+          # stays streaming/live) AND captures it to decide pass/fail. Do not
+          # trust `bun test`'s process exit code alone: bun v1.3.14 has been
+          # observed (this repo's first-ever CI run, 2026-08-19) to exit 0
+          # from a `--parallel` run whose own summary reported "N fail" —
+          # corroborate the process exit code against the printed summary
+          # line before treating a run as green.
           run_suite() {
+            local log_file
+            log_file="$(mktemp)"
             timeout --signal=KILL 480 bun test src/tests/ \
               --parallel --timeout 60000 --no-orphans \
               --path-ignore-patterns="**/auto-merge.test.mts" \
@@ -199,7 +208,18 @@ jobs:
               --path-ignore-patterns="**/integration.test.mts" \
               --path-ignore-patterns="**/integrations.test.mts" \
               --path-ignore-patterns="**/slice-complete.test.mts" \
-              --path-ignore-patterns="**/slice-start.test.mts"
+              --path-ignore-patterns="**/slice-start.test.mts" 2>&1 | tee "$log_file"
+            local exit_code=${PIPESTATUS[0]}
+            if [ "$exit_code" -ne 0 ]; then
+              rm -f "$log_file"
+              return "$exit_code"
+            fi
+            if grep -qE '^ *[1-9][0-9]* fail$' "$log_file"; then
+              rm -f "$log_file"
+              return 1
+            fi
+            rm -f "$log_file"
+            return 0
           }
 
           max_attempts=2
@@ -225,8 +245,16 @@ jobs:
   # "test:crew" script exactly.
   crew-tests:
     name: crew-tests
-    needs: changes
-    if: ${{ needs.changes.outputs.code == 'true' }}
+    # Serialized after slow-tests (needs chain, not a concurrency group) so
+    # the two 8x-PARALLEL `bun test` jobs never compete for the same
+    # self-hosted runner's CPU/fds at once — 2026-08-19 CI incident: both
+    # jobs ran concurrently and crew-tests hit two spurious 60000ms timeouts
+    # (telemetry-cli --emit-observability, assembleBuildBundle orphan bundle
+    # path) that pass instantly (2.1s, 0 fail) run solo. `if: always()` keeps
+    # crew-tests running even when slow-tests fails, so a real slow-tests
+    # regression doesn't hide a crew-tests regression.
+    needs: [changes, slow-tests]
+    if: ${{ always() && needs.changes.outputs.code == 'true' }}
     runs-on: self-hosted
     timeout-minutes: 10
     steps:

@@ -310,9 +310,7 @@ test("a batch with mixed mapped/unmapped clusters resolves each independently", 
 // AC-6: the contract decision is recorded
 // ---------------------------------------------------------------------------
 
-test("DEC-068 contract record exists for FEAT-222", async () => {
-  const decPath = path.resolve("./.claude/artifacts/loop/decisions/DEC-068.md");
-  const raw = await fs.readFile(decPath, "utf8");
-  assert.match(raw, /status: accepted/);
-  assert.match(raw, /FEAT-222/);
-});
+// DEC-068.md was runner-plugin's own dogfood decision record — deliberately
+// excluded from the dev-crew tree at the SLICE-04 subtree import (see that
+// slice's handoff). The self-check asserting its presence no longer applies
+// here and was removed rather than ported.
