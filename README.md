@@ -31,8 +31,8 @@ _Dogfood metrics — generated 2026-08-19. Every number below is computed from t
 |---|---|
 | FEATs shipped (done) | 5 |
 | Slices closed, last 90 days | 25 |
-| Grade average, last 5 slice closes | 0.905 (n=25 total) |
-| median per slice-close session scan | $9.506 (mean $12.275, +29.1% divergence) |
+| Grade average, last 5 slice closes | 0.905 (n=27 total) |
+| median per slice-close session scan | $24.353 (mean $21.033, -13.6% divergence) |
 | Halt badges documented | 16 |
 | CI gates enforced | 41 |
 
