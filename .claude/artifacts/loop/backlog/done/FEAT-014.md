@@ -1,13 +1,14 @@
 ---
 id: FEAT-014
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
+completed_at: 2026-08-19
 depends_on: [FEAT-013]
-slices: []
+slices: [SLICE-39, SLICE-40, SLICE-41, SLICE-42]
 derived_from: null
 pm_customer_impact: 0.4
 pm_effort_estimate: 0.75
@@ -39,6 +40,8 @@ proposed_slices:
 tags: ["stack:typescript", "area:build-tooling", "concern:crew-flatten"]
 needs_contract: true
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-39]
 ---
 ## Description
 

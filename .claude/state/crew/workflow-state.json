@@ -1,20 +1,20 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T21:47:21.187Z",
+  "updatedAt": "2026-08-19T21:57:16.462Z",
   "currentRun": {
-    "title": "FEAT019 SLICE38: Implement FEAT-019",
-    "goal": "Cut devcrew v1.0.0: bump plugin.json + package.json from 1.0.0-rc.1, update CHANGELOG with the unification summary, bump the astra-marketplace devcrew entry version in a paired commit, tag v1.0.0. Production-promotion class: requires explicit operator approval at execution time — NOT autonomous_safe.",
+    "title": "FEAT014 SLICE39: Resolve TS6-vs-TS7 compiler-API landmine (design decision + ADR)",
+    "goal": "crew/ flatten phase 2 — unify tsconfig + package.json: single root package.json/bun.lock and one tsconfig strategy for the 287 crew files. Blockers to resolve: crew pinned TS6 because openapi-typescript needs the JS compiler API (native tsc 7 lacks it — keep typescript 6 as a devDependency for that tool or replace the tool), NodeNext-vs-Bundler moduleResolution divergence, ~10 crew-only deps to merge. CI crew-tests job then collapses into the root suite invocation.",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T21:38:46.383Z",
-    "updatedAt": "2026-08-19T21:47:21.187Z",
+    "startedAt": "2026-08-19T21:51:30.175Z",
+    "updatedAt": "2026-08-19T21:57:16.462Z",
     "next": "Begin implementation",
     "gates": {
       "review": null,
       "validation": {
         "status": "skipped",
-        "updatedAt": "2026-08-19T21:47:21.187Z",
-        "note": "reviewer live-reproduced both gaps pre-fix and re-ran all repros post-fix incl. position-independent and wave run/loop live; artifacts needs_fix 20260819T230000Z -> approved 20260819T233000Z"
+        "updatedAt": "2026-08-19T21:57:16.462Z",
+        "note": "design-only slice: deliverable is the ADR (0f6c0377), independently endorsed by the SLICE-34 review"
       },
       "deployment": {
         "dev": null,
@@ -26,7 +26,7 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T213846Z-run-brief-feat019-slice38-implement-feat-019.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T215130Z-run-brief-feat014-slice39-resolve-ts6-vs-ts7-compiler-api-landmine-des.md",
       "handoffs": [],
       "reviewResult": null,
       "validationPlan": null,
@@ -39,6 +39,44 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT019 SLICE38: Implement FEAT-019",
+      "goal": "Cut devcrew v1.0.0: bump plugin.json + package.json from 1.0.0-rc.1, update CHANGELOG with the unification summary, bump the astra-marketplace devcrew entry version in a paired commit, tag v1.0.0. Production-promotion class: requires explicit operator approval at execution time — NOT autonomous_safe.",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T21:38:46.383Z",
+      "updatedAt": "2026-08-19T21:47:21.187Z",
+      "completedAt": "2026-08-19T21:47:21.187Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "skipped",
+          "updatedAt": "2026-08-19T21:47:21.187Z",
+          "note": "reviewer live-reproduced both gaps pre-fix and re-ran all repros post-fix incl. position-independent and wave run/loop live; artifacts needs_fix 20260819T230000Z -> approved 20260819T233000Z"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T213846Z-run-brief-feat019-slice38-implement-feat-019.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT020 SLICE37: Implement FEAT-020",
       "goal": "CLI arg-parse hardening: loop.mts install (and likely sibling subcommands) silently ignores unknown flags — 'install --help' fell through and executed a REAL install against cwd, rewriting the current repo's CLAUDE.md (observed live during SLICE-31, reverted). Unknown flags must hard-fail with usage text before any side effect; add --help support to every subcommand; regression test: 'install --help' and 'install --bogus-flag' both exit non-zero (or print usage) with ZERO file writes.",
@@ -168,44 +206,6 @@
       },
       "artifacts": {
         "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210127Z-run-brief-feat013-slice34-implement-feat-013.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT015 SLICE33: Implement FEAT-015",
-      "goal": "Agent/skill content backfill: crew's validate-agents.mts and validate-skills.mts run ADVISORY in CI because P3's surface merge exposed pre-existing content debt (missing prompt_id/version frontmatter, missing Report contract sections, dangling evals-spec pointers, skills dir-name vs devcrew:-prefixed frontmatter-name mismatch). Backfill the content across the merged agents/ and skills/ trees, then flip both validators to blocking.",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T20:35:28.489Z",
-      "updatedAt": "2026-08-19T20:59:51.041Z",
-      "completedAt": "2026-08-19T20:59:51.041Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": {
-          "status": "skipped",
-          "updatedAt": "2026-08-19T20:59:51.041Z",
-          "note": "reviewer live-validated CLI + neuter round-trips; artifact 20260819T213000Z approved; AC-8b recorded OPEN"
-        },
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T203528Z-run-brief-feat015-slice33-implement-feat-015.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,

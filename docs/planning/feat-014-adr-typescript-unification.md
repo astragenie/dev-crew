@@ -113,3 +113,53 @@ guarantee.
    change required by this decision — the two `bunx tsc --project ...`
    `bun-commands:` entries already run as separate invocations in `ci.yml`
    and stay that way.
+
+## Amendment 2 (2026-08-19 implementation attempt)
+
+**SLICE-40's implementation attempt proved the "genuine Bun workspace
+member" mechanism above unachievable on Bun 1.3.14.** Declaring
+`workspaces: ["crew"]` at root hoists `openapi-typescript` up into root
+`node_modules`; its peer resolution then walks up and resolves against
+root's `typescript@7.0.2` instead of `crew`'s scoped `^6.0.3` —
+`ts.factory` comes back `undefined` (verified directly via `require`).
+This silently breaks `validate-contracts.mts` — no install-time error, only
+a runtime crash the first time `generateTs` runs.
+
+Three fixes were tried and empirically failed:
+
+1. **Nested overrides** (scoping `crew`'s `typescript` resolution
+   independently via a nested `overrides` block) — unsupported; Bun prints
+   an explicit error refusing the nested form.
+2. **Flat override in `crew`'s own manifest** — silently ignored; Bun's
+   hoisting still wins and root's `typescript@7.0.2` is what resolves.
+3. **`--linker isolated`** — peer dependency still resolves to root's
+   `typescript@7.0.2` regardless of linker mode.
+
+An A/B comparison against `HEAD` (pre-`workspaces` two-tree topology, two
+separate `bun install`s, two `bun.lock` files) confirmed that topology
+resolves `typescript` correctly for both trees — the breakage is
+specifically caused by the workspace-hoisting mechanism this ADR's original
+migration steps called for, not by anything else in SLICE-40's change.
+
+### Amended decision
+
+**The two separate install trees — root and `crew/`, two lockfiles, two
+install steps in CI — are the ACCEPTED end state under Bun 1.3.14.** This is
+not a deferred TODO to revisit opportunistically; it is the final resolved
+shape for as long as Bun 1.3.14's hoisting/override behavior holds. FEAT-014's
+remaining mechanical slices — **SLICE-40 (dep merge) and SLICE-41/SLICE-42**
+per the original migration steps above — are **superseded** by this
+amendment: no further attempt to unify the two `package.json`/`bun.lock`
+pairs into one tree should be made under the current toolchain.
+
+### Revisit triggers (any one reopens this decision)
+
+1. **Bun ships nested overrides or a `nohoist`-equivalent** — the exact
+   mechanism attempt #1 above needed and Bun currently refuses.
+2. **openapi-typescript ships TS7 compiler-API support** — watch its
+   `unstable/ast/factory` subpath (named in the original decision's evidence
+   section) for a release that targets it instead of the classic bare
+   `import ts from "typescript"` factory surface.
+3. **`crew` drops `validate-contracts.mts`'s `openapi-typescript`
+   dependency** — removes the forcing function entirely, independent of any
+   Bun or upstream-tool change.

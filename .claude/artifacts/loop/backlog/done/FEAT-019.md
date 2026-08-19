@@ -1,6 +1,6 @@
 ---
 id: FEAT-019
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
@@ -23,6 +23,8 @@ tags: ["stack:typescript", "area:release-engineering", "concern:production-promo
 needs_contract: false
 needs_ux: false
 started_at: 2026-08-19
+slices_complete: [SLICE-38]
+completed_at: 2026-08-19
 ---
 ## Description
 
