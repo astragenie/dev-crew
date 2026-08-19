@@ -18,7 +18,6 @@ export type ParallelDeps = {
     body: string
   ) => Promise<string>;
   recordWithCrew: (
-    crewCli: string,
     repoPath: string,
     title: string,
     decision: string,
@@ -93,7 +92,6 @@ export async function runPhaseGateParallel(
   phase: unknown,
   note: string,
   startedAt: string,
-  crewCli: string,
   groups: Groups,
   only: string | undefined,
   deps: ParallelDeps
@@ -112,8 +110,10 @@ export async function runPhaseGateParallel(
   const body = renderParallelReport(config, phase, note, startedAt, endedAt, overallStatus, result);
   const artifactPath = await deps.writeReport(repoPath, config, phase, body);
   const summary = `phase ${phase} ${overallStatus} (parallel) — preset ${config.preset} — ${result.groups.length} groups`;
+  // Fail-hard (P2 contract §2, SLICE-12): deliberately no try/catch — a
+  // thrown error from deps.recordWithCrew propagates uncaught out of
+  // runPhaseGateParallel, mirroring the serial path in phase-gate.mts.
   const crewResult = await deps.recordWithCrew(
-    crewCli,
     repoPath,
     `Phase ${phase} gate`,
     overallStatus === "PASS" ? "passed" : "failed",

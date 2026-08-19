@@ -8,12 +8,7 @@ import { costSliceHandler } from "./lib/cost-hygiene/cost-slice-handler.mjs";
 import { writeCostAdviseArtifact } from "./lib/cost-hygiene/cost-advise-writer.mjs";
 import { normalizeMsysPath } from "./lib/fs-utils.mjs";
 import { assertBunPresent } from "./lib/installer/bun-preflight.mjs";
-import {
-  normalizeReviewDecision,
-  normalizeValidationDecision,
-  ReviewArtifactSchema,
-  ValidationArtifactSchema
-} from "./lib/artifact-schemas.mjs";
+import { normalizeReviewDecision, ReviewArtifactSchema } from "./lib/artifact-schemas.mjs";
 
 // Flag schema. Each entry maps a CLI flag to the flags-object key and the
 // arity (whether it consumes a value). Aliases (e.g. `--verdict` → `decision`)
@@ -586,21 +581,6 @@ function resolveReviewVerdict(rawDecision: string | null): string | undefined {
   return normalized.canonical;
 }
 
-// Resolve --decision into the canonical validation verdict enum, exiting with
-// code 2 on an unrecognized value. Legacy values real callers already emit
-// (passed, passed_with_notes, failed) normalize rather than refuse (P1.3).
-function resolveValidationVerdict(rawDecision: string | null): string | undefined {
-  if (!rawDecision) return undefined;
-  const normalized = normalizeValidationDecision(rawDecision);
-  if (!normalized) {
-    process.stderr.write(
-      `[crew] write-validation-result refused: unknown decision "${rawDecision}". Valid values: pass, fail, skipped (passed, passed_with_notes, failed accepted as legacy aliases).\n`
-    );
-    process.exit(2);
-  }
-  return normalized.canonical;
-}
-
 // Refuses (exit 2) an approved/approved_with_notes review of a code-bearing
 // diff that carries neither --test-summary nor --test-summary-skip-reason.
 // Hoisted out of write-review-result to stay under the complexity cap.
@@ -615,9 +595,13 @@ function refuseIfTestAdequacyMissing(verdict: string | undefined, flags: Flags):
   process.exit(2);
 }
 
-// Shared refusal path for ReviewArtifactSchema / ValidationArtifactSchema
-// safeParse results (P1.3). Structural rather than importing zod's
-// SafeParseReturnType — same shape either schema's safeParse returns.
+// Refusal path for ReviewArtifactSchema safeParse results (P1.3). Structural
+// rather than importing zod's SafeParseReturnType. ValidationArtifactSchema
+// no longer routes through here as of SLICE-12 (P2 seam-elimination) — its
+// refusal now lives in lib/artifacts/validation-result-writer.mts, which
+// throws instead of exiting so runner-plugin's phase-gate.mts can direct-
+// import it; this handler's own catch block maps that throw back to the
+// same stderr + exit(2) shape refuseIfSchemaInvalid still produces here.
 function refuseIfSchemaInvalid(
   command: string,
   result: { success: boolean; error?: { issues: Array<{ message: string }> } }
@@ -1165,50 +1149,46 @@ const COMMANDS = {
     return r.value;
   },
   "write-validation-result": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const rawDecision = flags.decision;
-    // verdict is the canonical enum written to frontmatter; `decision` (below)
-    // stays the raw value for body-prose back-compat.
-    const verdict = resolveValidationVerdict(rawDecision);
-    const status = flags.status !== "open" ? (flags.status ?? undefined) : undefined;
-    refuseIfSchemaInvalid(
-      "write-validation-result",
-      ValidationArtifactSchema.safeParse({
-        decision: verdict,
-        skip_reason: flags.skipReason ?? undefined,
-        phase: flags.phase ?? undefined,
-        feature: flags.feature ?? undefined,
-        slice: flags.slice ?? undefined,
-        findings: flags.findings ?? undefined,
-        status,
-        validation_evidence: flags.validationEvidence ?? undefined
-      })
+    // SLICE-12 (P2 seam-elimination contract §1): verdict resolution +
+    // schema refusal + write now live in an importable module
+    // (lib/artifacts/validation-result-writer.mjs) so runner-plugin's
+    // phase-gate.mts can call it directly instead of shelling out to this
+    // CLI. That module throws (never process.exit) on refusal — this
+    // handler is the one place that still owns the CLI-UX contract, so it
+    // catches the throw and maps it back to the original stderr + exit(2)
+    // behavior, byte-identical to before the extraction.
+    const { writeValidationResultArtifact } = await import(
+      "./lib/artifacts/validation-result-writer.mjs"
     );
-    const { writeArtifact } = await import("./lib/artifacts/write.mjs");
-    const r = await writeArtifact(repoPath, "validation-result", {
-      title: flags.title || positionals.join(" ") || "Validation Result",
-      validator: flags.validator || flags.owner || "verifier",
-      decision: rawDecision ?? undefined,
-      verdict,
-      skipReason: flags.skipReason ?? undefined,
-      // Only pass status if it's not the default "open" value from parseArgs.
-      status,
-      findings: flags.findings ?? null,
-      scaffold: flags.scaffold ?? undefined,
-      ...pickFlags(flags, [
-        "environment",
-        "goal",
-        "summary",
-        "evidence",
-        "files",
-        "risks",
-        "next",
-        "feature",
-        "phase",
-        "updatePath"
-      ])
-    });
-    if (!r.ok) throw r.error;
-    return r.value;
+    const status = flags.status !== "open" ? (flags.status ?? undefined) : undefined;
+    try {
+      return await writeValidationResultArtifact(repoPath, {
+        title: flags.title || positionals.join(" ") || "Validation Result",
+        validator: flags.validator || flags.owner || "verifier",
+        decision: flags.decision ?? undefined,
+        status,
+        findings: flags.findings ?? null,
+        scaffold: flags.scaffold ?? undefined,
+        slice: flags.slice ?? undefined,
+        validationEvidence: flags.validationEvidence ?? undefined,
+        ...pickFlags(flags, [
+          "environment",
+          "goal",
+          "summary",
+          "evidence",
+          "files",
+          "risks",
+          "next",
+          "feature",
+          "phase",
+          "updatePath",
+          "skipReason"
+        ])
+      });
+    } catch (e: unknown) {
+      process.stderr.write(`[crew] ${(e as Error).message}\n`);
+      process.exit(2);
+    }
   },
   "write-deployment-check": async ({ repoPath, flags, positionals }: CommandContext) => {
     const { writeArtifact } = await import("./lib/artifacts/write.mjs");

@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T01:52:11.737Z",
+  "updatedAt": "2026-08-19T02:26:03.468Z",
   "currentRun": {
-    "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
+    "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T01:20:30.629Z",
-    "updatedAt": "2026-08-19T01:52:11.737Z",
-    "next": "SLICE-12: write-validation-result fail-hard direct import + phase-gate call-site updates. Watch for the same strictNullChecks narrowing issue on the extracted ValidationArtifactSchema/resolveValidationVerdict module.",
+    "startedAt": "2026-08-19T02:05:27.578Z",
+    "updatedAt": "2026-08-19T02:26:03.468Z",
+    "next": "SLICE-13: devcrew.json schemaVersion 2 migrator + plugin-identity.mts/arch-gate.mts/loop-installer.mts findCrewCli/MIN_CREW_VERSION deletions (AC-2/AC-5).",
     "gates": {
       "review": null,
       "validation": null,
@@ -22,10 +22,9 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012030Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T020527Z-run-brief-feat003-slice12-fail-hard-write-validation-result-direct-imp.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015200Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md",
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015211Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
@@ -38,6 +37,43 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T01:20:30.629Z",
+      "updatedAt": "2026-08-19T01:52:11.737Z",
+      "completedAt": "2026-08-19T01:52:11.737Z",
+      "next": "SLICE-12: write-validation-result fail-hard direct import + phase-gate call-site updates. Watch for the same strictNullChecks narrowing issue on the extracted ValidationArtifactSchema/resolveValidationVerdict module.",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012030Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015200Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md",
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015211Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
       "goal": "",
@@ -172,42 +208,6 @@
         "handoffs": [
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003416Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md",
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003432Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md"
-        ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT002 SLICE06: .ts->.mts rename sweep batch 2 + import-specifier fixes",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-18T22:51:44.721Z",
-      "updatedAt": "2026-08-19T00:12:15.091Z",
-      "completedAt": "2026-08-19T00:12:15.091Z",
-      "next": "If the team wants the remaining process.execPath+strip-types drift closed, a round 4 could sweep enum-verdicts.test.mts, validate-all.test.mts, prune-artifacts.test.mts, validate-slices.test.mts the same way (drop the flag, keep process.execPath).",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260818T225144Z-run-brief-feat002-slice06-ts-mts-rename-sweep-batch-2-import-specifier.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T001215Z-handoff-slice-07-round-3-flip-remaining-node-spawns-to-bun-15-files.md"
         ],
         "reviewResult": null,
         "validationPlan": null,

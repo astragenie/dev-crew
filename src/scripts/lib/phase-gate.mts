@@ -1,17 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile as execFileCallback } from "node:child_process";
-import { promisify } from "node:util";
 
 import { resolveConfig } from "./config-resolver.mjs";
-import { findCrewCli, crewCliRuntime } from "./plugin-identity.mjs";
+import { writeValidationResultArtifact } from "../../../crew/scripts/lib/artifacts/validation-result-writer.mjs";
 import { nowIso, runAspireStage, runSingleStage, runStageList } from "./phase-gate/runners.mjs";
 import type { Groups } from "./phase-gate/parallel-runner.mjs";
 import { runPhaseGateParallel } from "./phase-gate/parallel-orchestrator.mjs";
 import { incrementIteration } from "./loop-iteration.mjs";
 import { emitPhaseGateModeDetected, resolveCurrentSliceId } from "./phase-gate-mode-emitter.mjs";
-
-const execFile = promisify(execFileCallback);
 
 function renderReport(
   config: Record<string, any>,
@@ -102,8 +98,20 @@ async function writeReport(
   return target;
 }
 
+// P2 seam-elimination (SLICE-12, docs/planning/p2-seam-contract.md §2):
+// direct-import replacement for the old `execFile(... "write-validation-
+// result" ...)` subprocess call. FAIL-HARD BY DESIGN — this is a behavior
+// ADDITION, not a preservation. The old execFile path caught its own
+// failure into `{ ok: false, error }` and neither caller (this file's
+// serial path nor parallel-orchestrator.mts) ever inspected `.ok` before
+// returning `overallStatus`, so a failed write silently left
+// `crewArtifactRegistered: false` with zero effect on control flow
+// (seam-contract.md finding 2). Here, no try/catch: writeValidationResult
+// Artifact throws on any failure (bad decision, schema refusal, fs error)
+// and this function does not swallow it — the throw must propagate all the
+// way up through runPhaseGate/runPhaseGateParallel so the phase-gate run
+// exits non-zero and no PASS validation artifact is ever claimed.
 async function recordWithCrew(
-  crewCli: string,
   repoPath: string,
   title: string,
   decision: string,
@@ -111,43 +119,16 @@ async function recordWithCrew(
   artifactPath: string,
   phase: unknown
 ) {
-  try {
-    const args = [
-      crewCli,
-      "write-validation-result",
-      "--repo",
-      repoPath,
-      "--title",
-      title,
-      "--decision",
-      decision,
-      "--summary",
-      summary,
-      "--evidence",
-      artifactPath
-    ];
-    if (phase !== null && phase !== undefined && String(phase).length > 0) {
-      args.push("--phase", String(phase));
-    }
-    const { stdout } = await execFile(crewCliRuntime(crewCli), args, {
-      maxBuffer: 1024 * 1024
-    });
-    // Capture the crew-written artifact path so we can strip the leading
-    // timestamp prefix (matches the repo-owned phase-gate filename surface).
-    let crewArtifactPath: string | null = null;
-    try {
-      const parsed = JSON.parse(stdout);
-      const candidate = parsed?.artifactPath || parsed?.path || parsed?.outputPath || null;
-      if (typeof candidate === "string" && candidate.length > 0) {
-        crewArtifactPath = candidate;
-      }
-    } catch {
-      // crew CLI may not emit JSON — best-effort only.
-    }
-    return { ok: true, crewArtifactPath };
-  } catch (error: unknown) {
-    return { ok: false, error: (error as Error).message };
-  }
+  const phaseStr =
+    phase !== null && phase !== undefined && String(phase).length > 0 ? String(phase) : undefined;
+  const record = await writeValidationResultArtifact(repoPath, {
+    title,
+    decision,
+    summary,
+    evidence: artifactPath,
+    phase: phaseStr
+  });
+  return { ok: true, crewArtifactPath: record.path };
 }
 
 async function safeIncrementIteration(repoPath: string) {
@@ -214,13 +195,12 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
   const phase = options.phase || "unspecified";
   const note = options.note || "";
 
-  const crewCli = await findCrewCli();
-  if (!crewCli) {
-    throw new Error(
-      "Hard dependency missing: crew CLI not found in plugin cache. Install crew first."
-    );
-  }
-
+  // P2 seam-elimination (SLICE-12/13): crew is a same-repo subtree now, not
+  // an installed plugin — the old "is crew installed" hard-dependency guard
+  // (findCrewCli/crewCliRuntime) no longer applies to this direct-import
+  // path. (plugin-identity.mts's findCrewCli/crewCliRuntime exports
+  // themselves are unchanged here — other consumers still use them; their
+  // removal is SLICE-13's scope, not this file's.)
   const parallelGroups = resolveParallelGroups(config, options);
   if (parallelGroups) {
     const result = await runPhaseGateParallel(
@@ -229,7 +209,6 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
       phase,
       note,
       startedAt,
-      crewCli,
       parallelGroups,
       options.only,
       { writeReport, recordWithCrew, safeIncrementIteration, runPassPostHooks }
@@ -257,8 +236,9 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
   const artifactPath = await writeReport(repoPath, config, phase, body);
 
   const summary = `phase ${phase} ${overallStatus} — preset ${config.preset} — ${stageResults.filter((s) => !s.skipped).length} stages run`;
+  // Fail-hard (see recordWithCrew's header comment): deliberately no
+  // try/catch here. A thrown error propagates uncaught out of runPhaseGate.
   const crewResult = await recordWithCrew(
-    crewCli,
     repoPath,
     `Phase ${phase} gate`,
     anyFailed ? "failed" : "passed",
@@ -298,8 +278,12 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
     phase,
     preset: config.preset,
     artifactPath,
+    // recordWithCrew is fail-hard (see its header comment): reaching this
+    // line means the write already succeeded — a failure would have thrown
+    // and aborted runPhaseGate before we got here. Always true/null when
+    // present, kept for output-shape stability with pre-SLICE-12 callers.
     crewArtifactRegistered: crewResult.ok,
-    crewArtifactError: crewResult.error || null,
+    crewArtifactError: null,
     stages: stageResults.map((s) => ({
       name: s.name,
       skipped: Boolean(s.skipped),
