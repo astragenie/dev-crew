@@ -137,11 +137,24 @@ function validateOne(s: unknown, featureId: string, index: number): ProposedSlic
     );
   }
 
-  const title = obj["title"];
+  // FEAT-010 Gap B: trim before validating/storing. createSlice's
+  // clampSliceTitle (slice-title.mts) trims a slice's title before writing
+  // it to the materialized slice's frontmatter, but the legacy title-match
+  // fallback in matchProposedIdSuffix (feature-lifecycle.mts) compares this
+  // ProposedSlice's `title` against that stored (trimmed) value. If this
+  // parse step kept the raw untrimmed string, a whitespace-padded proposed
+  // title could never === its own stored entry, so every rerun of
+  // `slice from-feature` would see it as "not yet materialized" and create
+  // a fresh duplicate slice + tracker issue forever (the GitHub issue 598
+  // class of bug). Trimming here, once, keeps every downstream consumer
+  // (uniqueness check below, matchProposedIdSuffix) working off the same
+  // normalized value the slice file will actually carry.
+  const titleRaw = obj["title"];
+  const title = typeof titleRaw === "string" ? titleRaw.trim() : titleRaw;
   if (typeof title !== "string" || title.length === 0 || title.length > MAX_TITLE_LEN) {
     throw new InvalidProposedSlicesError(
       featureId,
-      `title in slice ${index} must be a non-empty string ≤ ${MAX_TITLE_LEN} chars (got ${JSON.stringify(title)})`
+      `title in slice ${index} must be a non-empty string ≤ ${MAX_TITLE_LEN} chars (got ${JSON.stringify(titleRaw)})`
     );
   }
 
@@ -225,6 +238,42 @@ function resolveTouchesFiles(
   return paths;
 }
 
+// FEAT-010 Gap A: without this, two proposed entries sharing a title make
+// the legacy title-match fallback (matchProposedIdSuffix,
+// feature-lifecycle.mts) collapse both onto one id_suffix via `.find()` —
+// recreating a FEAT-284-class duplicate-slice bug through a different door
+// — while two entries sharing an id_suffix silently swallow the second one
+// (it can never be identity-matched, so it's excluded from the "already
+// materialized" set forever). Runs after per-entry validateOne so titles
+// are already trimmed, and only on the callers that parse *new* writes
+// (pm-apply.mts at PM-decomposition time, feature-lifecycle.mts at
+// slice-from-feature dispatch time) — no CI gate re-parses the whole
+// backlog through this function, so pre-existing historical duplicates
+// (see FEAT-010's backlog scan) are not retroactively broken.
+function assertUniqueProposedSlices(slices: ProposedSlice[], featureId: string): void {
+  const seenTitles = new Map<string, number>();
+  const seenSuffixes = new Map<string, number>();
+  for (const [index, s] of slices.entries()) {
+    const priorTitleIndex = seenTitles.get(s.title);
+    if (priorTitleIndex !== undefined) {
+      throw new InvalidProposedSlicesError(
+        featureId,
+        `duplicate title ${JSON.stringify(s.title)} in proposed_slices (slice ${priorTitleIndex} and slice ${index}) — titles must be unique within a FEAT's proposed_slices`
+      );
+    }
+    seenTitles.set(s.title, index);
+
+    const priorSuffixIndex = seenSuffixes.get(s.id_suffix);
+    if (priorSuffixIndex !== undefined) {
+      throw new InvalidProposedSlicesError(
+        featureId,
+        `duplicate id_suffix ${JSON.stringify(s.id_suffix)} in proposed_slices (slice ${priorSuffixIndex} and slice ${index}) — id_suffix must be unique within a FEAT's proposed_slices`
+      );
+    }
+    seenSuffixes.set(s.id_suffix, index);
+  }
+}
+
 /**
  * Parse and validate the `proposed_slices` array from a FEAT's frontmatter.
  *
@@ -255,6 +304,7 @@ export function parseProposedSlices(
     );
   }
   const slices = raw.map((s, i) => validateOne(s, featureId, i));
+  assertUniqueProposedSlices(slices, featureId);
 
   if (typeof effortPoints === "number" && Number.isFinite(effortPoints)) {
     const sum = slices.reduce((acc, s) => acc + s.points, 0);

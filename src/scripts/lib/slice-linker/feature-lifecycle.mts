@@ -511,7 +511,13 @@ function matchProposedIdSuffix(
   if (typeof stamped === "string" && stamped.length > 0) return stamped;
   const title = sliceFrontmatter.title;
   if (typeof title !== "string" || title.length === 0) return undefined;
-  return proposed.find((p) => p.title === title)?.id_suffix;
+  // FEAT-010 Gap B: compare trimmed on both sides. proposed-slices.mts now
+  // trims a proposed entry's title at parse time, so this is belt-and-
+  // suspenders against a stored slice title that predates that fix (or was
+  // hand-edited) — trimming here too means the fallback match can't be
+  // defeated by whitespace on either side.
+  const trimmedTitle = title.trim();
+  return proposed.find((p) => p.title.trim() === trimmedTitle)?.id_suffix;
 }
 
 // SLICE-192: scans every already-materialized slice id on the FEAT

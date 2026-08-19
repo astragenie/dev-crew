@@ -332,6 +332,80 @@ test("FEAT-276: a touches_files path with parent traversal throws", () => {
   );
 });
 
+// FEAT-010 Gap B: title is trimmed at parse time so it matches what
+// clampSliceTitle (slice-title.mts) will later store on the materialized
+// slice's own frontmatter.
+test("FEAT-010: a whitespace-padded title is trimmed before being stored on the ProposedSlice", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "  Library core  ", points: 2 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.title, "Library core");
+});
+
+test("FEAT-010: a title that is only whitespace fails as empty, not as whitespace-only", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: "   ", points: 2 }];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError && /title in slice 0/.test(err.message)
+  );
+});
+
+test("FEAT-010: title length cap is enforced on the trimmed value (padding does not count toward the limit)", () => {
+  const raw = [{ id_suffix: "-SLICE-1", title: `  ${"x".repeat(100)}  `, points: 2 }];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out![0]!.title.length, 100);
+});
+
+// FEAT-010 Gap A: uniqueness validation on title and id_suffix within a
+// FEAT's proposed_slices.
+test("FEAT-010 Gap A: duplicate title within proposed_slices rejects, naming the duplicate", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "Same title", points: 1 },
+    { id_suffix: "-SLICE-2", title: "Same title", points: 1 }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError &&
+      /duplicate title "Same title"/.test(err.message) &&
+      /slice 0 and slice 1/.test(err.message)
+  );
+});
+
+test("FEAT-010 Gap A: duplicate title after trimming (whitespace-only difference) rejects", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "  Same title", points: 1 },
+    { id_suffix: "-SLICE-2", title: "Same title  ", points: 1 }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) => err instanceof InvalidProposedSlicesError && /duplicate title/.test(err.message)
+  );
+});
+
+test("FEAT-010 Gap A: duplicate id_suffix within proposed_slices rejects, naming the duplicate", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "First", points: 1 },
+    { id_suffix: "-SLICE-1", title: "Second", points: 1 }
+  ];
+  assert.throws(
+    () => parseProposedSlices(raw, FEAT),
+    (err: Error) =>
+      err instanceof InvalidProposedSlicesError &&
+      /duplicate id_suffix "-SLICE-1"/.test(err.message) &&
+      /slice 0 and slice 1/.test(err.message)
+  );
+});
+
+test("FEAT-010 Gap A: distinct titles and id_suffixes pass through unaffected", () => {
+  const raw = [
+    { id_suffix: "-SLICE-1", title: "First", points: 1 },
+    { id_suffix: "-SLICE-2", title: "Second", points: 1 }
+  ];
+  const out = parseProposedSlices(raw, FEAT);
+  assert.equal(out!.length, 2);
+});
+
 test("AC-2: threshold is configurable via 4th arg", () => {
   assert.throws(
     () => assertSized(FEAT, 5, undefined, 5),

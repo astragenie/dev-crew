@@ -141,6 +141,58 @@ test("sliceFromFeature is idempotent on proposed_slices rerun (no duplicate slic
   assert.deepEqual(slicesAfterR2, slicesAfterR1, "slices array must not grow");
 });
 
+// FEAT-010 AC-1 + AC-4: clampSliceTitle (slice-title.mts) trims a title
+// before storing it on the materialized slice, but the legacy title-match
+// fallback (matchProposedIdSuffix) used to compare against the RAW
+// untrimmed proposed title — a whitespace-padded proposed title could never
+// === match its own stored (trimmed) entry, so every rerun saw "not yet
+// materialized" and created a fresh duplicate slice (+ tracker issue)
+// forever — the GitHub issue 598 class of bug (loop.mts:1567-1574 publishes
+// every entry in `out.slices`). The fallback only fires for slices that
+// predate the SLICE-192 `proposed_slice_id_suffix` stamp (createSlice always
+// stamps it now), so this seeds a legacy slice directly via `createSlice`
+// with no stamp — the exact shape of every slice materialized before that
+// fix shipped — mirroring seedGappedFeature above.
+test("sliceFromFeature: a whitespace-padded proposed title matches its own legacy (unstamped) slice by trimmed title across repeated reruns", async () => {
+  const repo = await tmpRepo("sfp-ws-title-");
+  const feat = await addFeature(repo, { title: "Big work", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 2,
+    proposed_slices: [{ id_suffix: "-SLICE-1", title: "  Library core  ", points: 2 }]
+  });
+
+  // Simulate the pre-existing (legacy, unstamped) slice a prior real run
+  // materialized: createSlice's own clampSliceTitle trims the title it
+  // stores, so this legacy slice's stored title is the trimmed form.
+  const entry = await findFeatureById(repo, feat.id);
+  const legacy = await createSlice({
+    repoPath: repo,
+    featureId: feat.id,
+    featureFilePath: entry.filePath,
+    featureFrontmatter: entry.frontmatter,
+    featureBody: entry.body,
+    title: "Library core",
+    effortPoints: 2,
+    estimatedTokens: 100_000
+  });
+  await updateFeatureFrontmatter(feat.filePath, { slices: [legacy.id] });
+
+  for (let rerun = 0; rerun < 3; rerun += 1) {
+    const r = await sliceFromFeature(repo, feat.id);
+    assert.equal(
+      r.idempotent,
+      true,
+      `rerun ${rerun + 1} must recognize the legacy slice via trimmed title match, not recreate it`
+    );
+    const slicesAfter = (await findFeatureById(repo, feat.id)).frontmatter.slices;
+    assert.deepEqual(
+      slicesAfter,
+      [legacy.id],
+      `rerun ${rerun + 1} must not grow the feature's slices array beyond the one legacy slice`
+    );
+  }
+});
+
 test("sliceFromFeature single-slice path (no proposed_slices) returns slices array of length 1", async () => {
   const repo = await tmpRepo("sfp-single-");
   const feat = await addFeature(repo, { title: "Small work", body: AC_SECTION_BODY });
