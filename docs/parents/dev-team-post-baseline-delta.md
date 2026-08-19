@@ -1,0 +1,46 @@
+# dev-team post-baseline delta (2d4fa713..7e4e1ba6) — disposition
+
+devcrew's `crew/` subtree was imported from dev-team `main@2d4fa713`
+(tag `pre-devcrew-baseline`), but that tag sat on a stale local `main`.
+Remote dev-team `main` had 24 more commits (`2d4fa713..7e4e1ba6`, PRs
+#244-#270, dated 2026-07-16..21) that never made it into devcrew. This
+table walks all 24 in commit order and dispositions each. Reference repo
+`C:\work\mega\dev-team` is on `main@72d0b88c` (later than `7e4e1ba6`) and
+was read-only for this audit.
+
+| # | Commit | Subject | Disposition | Notes |
+|---|--------|---------|--------------|-------|
+| 1 | `8f0b88e4` | rename(wire): lead -> dispatcher for handoff/claim/approval defaults (#243) | **PARTIAL PORT** | `scripts/lib/approvals.ts` piece is impossible — approvals.ts is deleted in devcrew per SLICE-23 (forbidden to re-import). Ported the rest: `crew.mts` wire defaults (`to`/`owner`/`from` → `"dispatcher"`/`"dispatcher-session"`), `claims.mts` `normalizeOwnerAlias` helper (lead-session/dispatcher-session alias comparison), `deployment-guidance/write.mts` owner default, `validate-routing-table.mts` `KNOWN_CREW_ROLES`/`CREW_ROLE_IN_CELL_RE` "lead" token removal (verified zero live "lead" hits in `crew/docs/routing-table.md` before removing, same as dev-team's own verification). No regression-guard test ported (out of explicit must-port scope; risk is low, single-file string literal). |
+| 2 | `5ea1bd56` | test: migrate batch 2/5 node:test → bun:test (#245) | SUPERSEDED | devcrew already completed its own node:test → bun:test migration during the unification's own P1 phase, independently of dev-team's bun#5090 batches. Verified: 0 files under `crew/tests` import from `"node:test"`, 181 import from `"bun:test"`. |
+| 3 | `d0c64e50` | test: migrate batch 5/5 node:test → bun:test (#246) | SUPERSEDED | Same as #2. |
+| 4 | `407c0aaf` | test: migrate batch 4/5 node:test → bun:test (#247) | SUPERSEDED | Same as #2. |
+| 5 | `00e59794` | test: migrate batch 1/5 node:test → bun:test (#248) | SUPERSEDED | Same as #2. |
+| 6 | `63945c79` | test: migrate batch 3/5 node:test → bun:test (#249) | SUPERSEDED | Same as #2. |
+| 7 | `bb7d22bd` | docs(decisions): DEC-029 badge-alias deprecation plan (#244) | DOCS-ONLY-SKIP | dev-team-specific decision-log entry under its own `.claude/artifacts/loop/decisions/`; not a devcrew decision, no code/behavior to port. |
+| 8 | `29d0449f` | docs(artifacts): testrot scout manifest (#251) | DOCS-ONLY-SKIP | dev-team-specific run artifact documenting its own bun#5090 batch-migration plan; superseded in relevance now that #2-#6 are superseded. |
+| 9 | `4c189e0f` | ci: pin reusable-plugin-ci.yml ref to @v1 (#252) | SKIP (forbidden) | Touches `.github/workflows/*` — devcrew has its own single CI, out of scope per task instructions. |
+| 10 | `81f4925c` | ci: harden auto-merge (#253) | SKIP (forbidden) | `.github/workflows/*`. |
+| 11 | `3f65b394` | ci: job timeouts + concurrency groups (#254) | SKIP (forbidden) | `.github/workflows/*`. |
+| 12 | `1c8b85c9` | ci: aws label parity + checkout@v5 bump (#255) | SKIP (forbidden) | `.github/workflows/*`. |
+| 13 | `93bc6ab0` | ci: missing timeout-minutes on auto-merge job (#256) | SKIP (forbidden) | `.github/workflows/*`. |
+| 14 | `166bc014` | feat(agents): qa-expert implementation-blind mode + test-automator red-first exception (#258) | **PORT** | Target files alive (`agents/qa-expert.md` v1.1.0→1.2.0, `agents/test-automator.md` v2.3.1→2.4.0), behavior confirmed missing (grep for "implementation-blind"/"red-first" found nothing pre-port). Devcrew already carries the exact trigger condition this section depends on — `loop.qa_gate: "pre-build"` (FEAT-264) is fully live in devcrew per `docs/halt-badges.md:409` and `docs/demo/2026-07-18-qa-gate-demo-script.md` — so this is a clean, well-matched port, not an adaptation. |
+| 15 | `525b2286` | fix(gepa): champion-provenance frontmatter + synthetic-mode honesty (W5) (#260) | SUPERSEDED (forbidden) | Touches `scripts/lib/gepa/champion-provenance-writer.ts`, `gepa-killswitch-cmds.ts`, `optimize-runner.ts` — the GEPA auto-promotion/optimize pipeline devcrew deleted per DEC-021 (evals kept, optimize/promote cut). Per task instructions, record-not-port. |
+| 16 | `7fdc9308` | feat(lib): repair-signature dedup for bounded retry loops (#257/#259) | **PORT** | New file, target (`scripts/lib/repair-signature.mts`) did not exist in devcrew. Ported the pure lib 1:1 (`normalizeSignature`, `createRepairSignatureTracker`), the `crew.mts repair-check` CLI subcommand (FLAG_SPEC + defaults + COMMANDS entry + usage text), and both test files (`repair-signature.test.mts`, `cli-repair-check.test.mts`), converted to `.mts`/`.mjs`-specifier/bun:test conventions. |
+| 17 | `93a19b76` | feat(hooks): SubagentStop gate-guard + PreToolUse artifact-lock (warn-first) (#262) | **PORT** | Explicit must-port. New hooks — devcrew had neither `subagent-gate-guard` nor `pre-tool-use-artifact-lock` before this port (confirmed absent via `find`). Ported `crew/hooks/lib/{subagent-gate-guard,pre-tool-use-artifact-lock,warn-first-flag}.mts`, shims `crew/hooks/{subagent-gate-guard,pre-tool-use-artifact-lock}.mts`, both test files, and registration in `.claude-plugin/hooks/hooks.json` (the live-wired manifest, not the vestigial `crew/hooks/hooks.json` copy from the subtree import). |
+| 18 | `6ce6494d` | docs(changelog): drop stale follow-up note from #260 (#261) | DOCS-ONLY-SKIP | CHANGELOG cleanup for a GEPA fix (#260) that is itself superseded (#15 above). |
+| 19 | `bd106007` | docs(gepa): update stale parseFrontmatter comment (#263) | SUPERSEDED | devcrew's `crew/scripts/validate-agents.mts::parseFrontmatter` (line 33) has no GEPA-provenance frontmatter-stripping logic or comment at all — the whole `stripGepafrontmatter`/`gepa:` leading-block mechanism this comment describes does not exist in devcrew (consistent with the GEPA optimize/promote pipeline being cut per DEC-021). Nothing to update. |
+| 20 | `34789a75` | fix(hooks): close MultiEdit/NotebookEdit artifact-lock bypass; wire repair-check into SOP retry loops (#264) | **PORT** (folded into #17/#16) | Explicit must-port. Rather than porting #17 warn-first-only and then re-diffing this bypass fix on top, the widened `Write\|Edit\|MultiEdit\|NotebookEdit` matcher and `notebook_path` handling were baked into the artifact-lock hook from the start (source file + shim + hooks.json registration + both matching test cases (k)-(o)). The repair-check retry-loop wiring was ported into `commands/fix.md`, `commands/incident.md`, `commands/ship.md` (renumbered steps, same structure as dev-team's diff). |
+| 21 | `bf485a06` | chore(crew): flip gate-guard + artifact-lock hooks warn → block (#266) | **PORT** (folded into #17) | Explicit must-port. Added `"gate-guard": {"enabled": true}` and `"artifact-lock": {"enabled": true}` to devcrew's root `.claude/crew.json` (the live-read config — `crew/.claude/crew.json` is a vestigial copy from the subtree import and was left untouched). Unlike dev-team's own flip, this was not preceded by a live e2e hook smoke in devcrew — flagged as a residual risk the reviewer should weigh (see report). |
+| 22 | `e196061a` | chore(release): v0.67.0 (#265) | DOCS-ONLY-SKIP | dev-team's own release ceremony (version bump + CHANGELOG + plugin.json version) for a repo that no longer exists as a standalone shipped plugin — devcrew has its own release cadence and version. |
+| 23 | `4be6d006` | fix(orchestrate-slice): repoint Step 2.5 preset path to repo .claude/loop.json (#267) | **PORT (adapted)** | Confirmed the stale path survived devcrew's P3 command merge — `commands/orchestrate-slice.md` still had the pre-fix `PRESET_NAME` grep + `--preset .../presets/<name>.json` + `--override .claude/loop.json` shape verbatim. Applied dev-team's core fix (repoint `--preset` straight at `.claude/loop.json`, drop `--override` — devcrew's own `.claude/loop.json` already carries the DEC-069 `skills`/`fe`/`be`/`roles` backfill, verified via grep) PLUS one devcrew-specific adaptation dev-team's fix didn't need: dropped the entire `LOOP_ROOT`/"is the loop plugin installed" discovery block, since devcrew unified loop+crew into one plugin — `src/scripts/loop.mts` ships in the same `${CLAUDE_PLUGIN_ROOT}` as `crew/scripts/crew.mts`, there is no separate plugin to detect. Rewrote the three `resolve-skills` calls to `bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts"`, matching every other command file's invocation convention in this repo. |
+| 24 | `7e4e1ba6` | docs: agentic-setup rebuild — altitude model (CLAUDE.md 297→166) (#270) | DOCS-ONLY-SKIP | dev-team's own CLAUDE.md/AGENTS.md/README rebuild for a repo structure that predates the devcrew unification; devcrew has its own CLAUDE.md under active maintenance. |
+
+## Summary
+
+- **PORT**: #14, #16, #17, #20, #21, #23 (6 commits fully or adapted-ported)
+- **PARTIAL PORT**: #1 (1 commit, approvals.ts piece impossible)
+- **SUPERSEDED**: #2, #3, #4, #5, #6, #15, #19 (7 commits — 5 bun:test batches + 2 GEPA-pipeline commits)
+- **SKIP (forbidden, `.github/workflows/*`)**: #9, #10, #11, #12, #13 (5 commits)
+- **DOCS-ONLY-SKIP**: #7, #8, #18, #22, #24 (5 commits)
+
+24/24 dispositioned. Zero commits deferred without a recorded reason.

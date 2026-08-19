@@ -44,6 +44,12 @@
     },
     "dispatch-size-gate": {
       "enabled": false
+    },
+    "gate-guard": {
+      "enabled": true
+    },
+    "artifact-lock": {
+      "enabled": true
     }
   }
 }

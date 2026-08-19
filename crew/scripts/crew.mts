@@ -136,7 +136,9 @@ const FLAG_SPEC = {
   "--since": { key: "since" },
   "--sibling": { key: "sibling" },
   "--tag": { key: "tag" },
-  "--tags": { key: "tags" }
+  "--tags": { key: "tags" },
+  "--failure-output": { key: "failureOutput" },
+  "--prev-signature": { key: "prevSignature" }
 } as const;
 
 type FlagSpecValues = (typeof FLAG_SPEC)[keyof typeof FLAG_SPEC];
@@ -264,7 +266,9 @@ function buildDefaultFlags(): Flags {
     date: null,
     runId: null,
     outcome: null,
-    memoriesUsed: null
+    memoriesUsed: null,
+    failureOutput: null,
+    prevSignature: null
   };
 }
 
@@ -468,7 +472,14 @@ function usage(target: string | null = null) {
       "    no routing is configured. Prints the sentinel 'inherit' when routing is\n" +
       '    disabled (crew.json features["model-routing"].enabled: false or\n' +
       "    loop.modelRouting.enabled: false) — then OMIT the Agent-tool model: argument\n" +
-      "    so the agent's own model: frontmatter governs. FEAT-194 S2."
+      "    so the agent's own model: frontmatter governs. FEAT-194 S2.",
+    "repair-check":
+      "  node scripts/crew.mts repair-check --failure-output <text> [--prev-signature <text>]\n" +
+      "    Bounded-retry-loop dedup helper (ported from dev-team#257): normalizes\n" +
+      "    --failure-output into a signature and reports shouldStop=true once it matches\n" +
+      "    --prev-signature (the signature returned by the prior call in the same retry\n" +
+      "    loop) — signals that retrying hit the same failure twice in a row and stopped\n" +
+      "    changing the outcome."
   };
 
   const subcommandsMap = subcommands as Record<string, string | undefined>;
@@ -688,7 +699,7 @@ async function writeHandoffAndBundle({ repoPath, flags, positionals }: CommandCo
   const r = await writeArtifact(repoPath, "handoff", {
     title: flags.title || positionals.join(" ") || "Task Handoff",
     from: flags.from || flags.owner || "fullstack-dev",
-    to: flags.to ?? "lead",
+    to: flags.to ?? "dispatcher",
     status: flags.status !== "open" ? (flags.status ?? undefined) : undefined,
     repoContext: flags.repoContext,
     ...pickFlags(flags, [
@@ -770,7 +781,7 @@ const COMMANDS = {
   claim: async ({ repoPath, flags, positionals }: CommandContext) => {
     const { claimFiles } = await import("./lib/claims.mjs");
     const result = await claimFiles(repoPath, positionals, {
-      owner: flags.owner || "lead-session"
+      owner: flags.owner || "dispatcher-session"
     });
     if (!result.ok) {
       console.error(result.error.message);
@@ -797,7 +808,7 @@ const COMMANDS = {
   },
   "show-conflicts": async ({ repoPath, flags, positionals }: CommandContext) => {
     const { inspectClaims } = await import("./lib/claims.mjs");
-    return inspectClaims(repoPath, positionals, { owner: flags.owner || "lead-session" });
+    return inspectClaims(repoPath, positionals, { owner: flags.owner || "dispatcher-session" });
   },
 
   "claim-check": async ({ repoPath, flags, positionals }: CommandContext) => {
@@ -867,7 +878,7 @@ const COMMANDS = {
     const { writeDeploymentGuidance } = await import("./lib/deployment-guidance/write.mjs");
     const r = await writeDeploymentGuidance(repoPath, {
       title: flags.title || positionals.join(" ") || "Repo Deployment Model",
-      owner: flags.owner || "lead-session",
+      owner: flags.owner || "dispatcher-session",
       ...pickFlags(flags, [
         "summary",
         "build",
@@ -917,7 +928,7 @@ const COMMANDS = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fields: any = {
       title: flags.title || positionals.join(" ") || "Run Brief",
-      owner: flags.owner || "lead-session",
+      owner: flags.owner || "dispatcher-session",
       status: flags.status === "open" ? "active" : (flags.status ?? undefined),
       ...pickFlags(flags, [
         "goal",
@@ -994,7 +1005,7 @@ const COMMANDS = {
     const memoriesUsed = splitCsv(flags.memoriesUsed);
     const r = await writeArtifact(repoPath, "handoff", {
       title: flags.title || positionals.join(" ") || "Task Handoff",
-      from: flags.from || flags.owner || "lead-session",
+      from: flags.from || flags.owner || "dispatcher-session",
       // Only pass status if it's not the default "open" value from parseArgs
       // (the default "open" is for issue creation, not for artifacts).
       status: flags.status !== "open" ? (flags.status ?? undefined) : undefined,
@@ -1081,7 +1092,7 @@ const COMMANDS = {
     const r = await writeArtifact(repoPath, "validation-plan", {
       title: flags.title || positionals.join(" ") || "Validation Plan",
       validator: flags.validator || flags.owner || "verifier",
-      owner: flags.owner || "lead-session",
+      owner: flags.owner || "dispatcher-session",
       ...pickFlags(flags, [
         "environment",
         "goal",
@@ -1177,7 +1188,7 @@ const COMMANDS = {
     const { writeArtifact } = await import("./lib/artifacts/write.mjs");
     const synthResult = await writeArtifact(repoPath, "final-synthesis", {
       title: flags.title || positionals.join(" ") || "Final Synthesis",
-      owner: flags.owner || "lead-session",
+      owner: flags.owner || "dispatcher-session",
       status: flags.status === "open" ? "completed" : (flags.status ?? undefined),
       force: flags.force ?? undefined,
       ...pickFlags(flags, [
@@ -1544,6 +1555,37 @@ const COMMANDS = {
     const crewConfig = await readCrewConfig(repoPath);
     const modelRoutingEnabled = isEnabled("model-routing", crewConfig);
     return resolveDispatchModel(phase, shape, config, modelRoutingEnabled) ?? "inherit";
+  },
+
+  // Ported from dev-team#257 piece 3 — bounded-retry-loop dedup check for
+  // the auto-fix retry loops (fix.md / incident.md / ship.md's "Retry < N?
+  // Loop. Else halt." step). Each invocation is a fresh process, so the
+  // caller passes back the signature the PREVIOUS call returned as
+  // --prev-signature; that single seed reconstructs the "have we now seen
+  // this signature twice in a row" state a single long-lived tracker would
+  // hold (default stopAfterRepeats=2 — the only threshold a one-shot CLI
+  // call can decide correctly without its own persisted state). Pure
+  // decision logic lives in ./lib/repair-signature.ts; this handler owns
+  // arg parsing + the one-line stderr log only.
+  "repair-check": async ({ flags }: CommandContext) => {
+    const { createRepairSignatureTracker, normalizeSignature } = await import(
+      "./lib/repair-signature.mjs"
+    );
+    const failureOutput = typeof flags.failureOutput === "string" ? flags.failureOutput : null;
+    if (!failureOutput) {
+      throw new Error("repair-check refused: --failure-output <text> is required.");
+    }
+    const tracker = createRepairSignatureTracker();
+    const prevSignature = typeof flags.prevSignature === "string" ? flags.prevSignature : null;
+    if (prevSignature) tracker.shouldStop(prevSignature);
+    const signature = normalizeSignature(failureOutput);
+    const shouldStop = tracker.shouldStop(signature);
+    if (shouldStop) {
+      console.error(
+        `repair-check: same failure signature repeated — stop retrying and escalate instead (signature: "${signature}")`
+      );
+    }
+    return { signature, shouldStop };
   }
 };
 
