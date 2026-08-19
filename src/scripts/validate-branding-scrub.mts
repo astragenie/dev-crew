@@ -57,9 +57,15 @@ const EXCLUDED_DIR_PREFIXES = [
 const EXCLUDED_FILES = new Set(["crew/CLAUDE.md", "crew/CHANGELOG.md"]);
 
 // This guard's own source + test must name the banned token to do their job.
+// migrate-adopter is in the same boat (SLICE-26): its whole purpose is
+// collapsing the legacy-branded `loop:` marker blocks out of adopter repos,
+// so its fixtures must CONTAIN the legacy branding and its assertions must
+// name it to prove removal (`assert.ok(!onDisk.includes(...))`).
 const ALLOWLIST = new Set([
   path.join("src", "scripts", "validate-branding-scrub.mts"),
-  path.join("src", "tests", "validate-branding-scrub.test.mts")
+  path.join("src", "tests", "validate-branding-scrub.test.mts"),
+  path.join("src", "scripts", "lib", "migrate-adopter-markers.mts"),
+  path.join("src", "tests", "migrate-adopter.test.mts")
 ]);
 
 export interface BrandingScrubFinding {
