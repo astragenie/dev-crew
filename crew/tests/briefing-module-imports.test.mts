@@ -10,34 +10,100 @@ test("briefing modules can be imported independently", async () => {
   await import("../scripts/lib/briefing/collect.mjs");
 
   // Verify core functions exist in their home modules
-  expect(typeof git.collectGitActivity === "function", "git.collectGitActivity exists").toBeTruthy();
-  expect(typeof cost.collectRecentCosts === "function", "cost.collectRecentCosts exists").toBeTruthy();
-  expect(typeof cost.collectCostHealth === "function", "cost.collectCostHealth exists").toBeTruthy();
-  expect(typeof cost.collectCostAggregate === "function", "cost.collectCostAggregate exists").toBeTruthy();
-  expect(typeof cost.computeModelCompliance === "function", "cost.computeModelCompliance exists").toBeTruthy();
-  expect(typeof cost.collectModelCompliance === "function", "cost.collectModelCompliance exists").toBeTruthy();
-  expect(typeof workflow.collectRelevantArtifacts === "function", "workflow.collectRelevantArtifacts exists").toBeTruthy();
-  expect(typeof workflow.fetchAutonomousLoopBrief === "function", "workflow.fetchAutonomousLoopBrief exists").toBeTruthy();
-  expect(typeof workflow.findAutonomousLoopCli === "function", "workflow.findAutonomousLoopCli exists").toBeTruthy();
-  expect(typeof hook.collectHookHealth === "function", "hook.collectHookHealth exists").toBeTruthy();
-  expect(typeof bundle.collectBundleStats === "function", "bundle.collectBundleStats exists").toBeTruthy();
+  expect(
+    typeof git.collectGitActivity === "function",
+    "git.collectGitActivity exists"
+  ).toBeTruthy();
+  expect(
+    typeof cost.collectRecentCosts === "function",
+    "cost.collectRecentCosts exists"
+  ).toBeTruthy();
+  expect(
+    typeof cost.collectCostHealth === "function",
+    "cost.collectCostHealth exists"
+  ).toBeTruthy();
+  expect(
+    typeof cost.collectCostAggregate === "function",
+    "cost.collectCostAggregate exists"
+  ).toBeTruthy();
+  expect(
+    typeof cost.computeModelCompliance === "function",
+    "cost.computeModelCompliance exists"
+  ).toBeTruthy();
+  expect(
+    typeof cost.collectModelCompliance === "function",
+    "cost.collectModelCompliance exists"
+  ).toBeTruthy();
+  expect(
+    typeof workflow.collectRelevantArtifacts === "function",
+    "workflow.collectRelevantArtifacts exists"
+  ).toBeTruthy();
+  expect(
+    typeof workflow.fetchAutonomousLoopBrief === "function",
+    "workflow.fetchAutonomousLoopBrief exists"
+  ).toBeTruthy();
+  expect(
+    typeof workflow.findAutonomousLoopCli === "function",
+    "workflow.findAutonomousLoopCli exists"
+  ).toBeTruthy();
+  expect(
+    typeof hook.collectHookHealth === "function",
+    "hook.collectHookHealth exists"
+  ).toBeTruthy();
+  expect(
+    typeof bundle.collectBundleStats === "function",
+    "bundle.collectBundleStats exists"
+  ).toBeTruthy();
 });
 
 test("collect.ts re-exports all functions from modules", async () => {
   const collect = await import("../scripts/lib/briefing/collect.mjs");
 
   // Verify all functions are re-exported from collect.ts
-  expect(typeof collect.collectGitActivity === "function", "collect.collectGitActivity re-exported").toBeTruthy();
-  expect(typeof collect.collectRecentCosts === "function", "collect.collectRecentCosts re-exported").toBeTruthy();
-  expect(typeof collect.collectCostHealth === "function", "collect.collectCostHealth re-exported").toBeTruthy();
-  expect(typeof collect.collectCostAggregate === "function", "collect.collectCostAggregate re-exported").toBeTruthy();
-  expect(typeof collect.computeModelCompliance === "function", "collect.computeModelCompliance re-exported").toBeTruthy();
-  expect(typeof collect.collectModelCompliance === "function", "collect.collectModelCompliance re-exported").toBeTruthy();
-  expect(typeof collect.collectRelevantArtifacts === "function", "collect.collectRelevantArtifacts re-exported").toBeTruthy();
-  expect(typeof collect.fetchAutonomousLoopBrief === "function", "collect.fetchAutonomousLoopBrief re-exported").toBeTruthy();
-  expect(typeof collect.findAutonomousLoopCli === "function", "collect.findAutonomousLoopCli re-exported").toBeTruthy();
-  expect(typeof collect.collectHookHealth === "function", "collect.collectHookHealth re-exported").toBeTruthy();
-  expect(typeof collect.collectBundleStats === "function", "collect.collectBundleStats re-exported").toBeTruthy();
+  expect(
+    typeof collect.collectGitActivity === "function",
+    "collect.collectGitActivity re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectRecentCosts === "function",
+    "collect.collectRecentCosts re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectCostHealth === "function",
+    "collect.collectCostHealth re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectCostAggregate === "function",
+    "collect.collectCostAggregate re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.computeModelCompliance === "function",
+    "collect.computeModelCompliance re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectModelCompliance === "function",
+    "collect.collectModelCompliance re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectRelevantArtifacts === "function",
+    "collect.collectRelevantArtifacts re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.fetchAutonomousLoopBrief === "function",
+    "collect.fetchAutonomousLoopBrief re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.findAutonomousLoopCli === "function",
+    "collect.findAutonomousLoopCli re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectHookHealth === "function",
+    "collect.collectHookHealth re-exported"
+  ).toBeTruthy();
+  expect(
+    typeof collect.collectBundleStats === "function",
+    "collect.collectBundleStats re-exported"
+  ).toBeTruthy();
 });
 
 test("collect.ts re-exports all interfaces from modules", async () => {

@@ -13,7 +13,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test, expect } from "bun:test";
-import { buildHandoffDigest, parseCreditLoopConfig } from "../scripts/lib/memory/handoff-digest.mjs";
+import {
+  buildHandoffDigest,
+  parseCreditLoopConfig
+} from "../scripts/lib/memory/handoff-digest.mjs";
 import { buildProfileBlock } from "../scripts/lib/memory/inject-profile.mjs";
 import { fileProvider } from "@astragenie/memory-provider";
 import type { AgentProfile, ProfileCapableProvider } from "../scripts/lib/memory/profile-types.mjs";
@@ -161,7 +164,10 @@ test("buildHandoffDigest hard-caps recall hits at 5 even when more entries match
     const recallLines = digest.block
       .split("\n")
       .filter((l) => l.startsWith("- **[") && l.includes("hit-"));
-    expect(recallLines.length <= 5, `expected <=5 recall lines, got ${recallLines.length}`).toBeTruthy();
+    expect(
+      recallLines.length <= 5,
+      `expected <=5 recall lines, got ${recallLines.length}`
+    ).toBeTruthy();
   } finally {
     await cleanup(repo);
   }

@@ -42,9 +42,9 @@ test("detectSubagentIncomplete: artifact path present → false regardless of st
 });
 
 test("detectSubagentIncomplete: terminal status present, no artifact path → false", () => {
-  expect(
-    detectSubagentIncomplete({ body: "DONE: task complete, nothing else to note." })
-  ).toBe(false);
+  expect(detectSubagentIncomplete({ body: "DONE: task complete, nothing else to note." })).toBe(
+    false
+  );
 });
 
 test("detectSubagentIncomplete: both artifact path and terminal status → false", () => {
@@ -57,7 +57,5 @@ test("detectSubagentIncomplete: both artifact path and terminal status → false
 
 test("detectSubagentIncomplete: worktreeDirty is accepted but not required for detection", () => {
   expect(detectSubagentIncomplete({ body: "no path, no status", worktreeDirty: true })).toBe(true);
-  expect(
-    detectSubagentIncomplete({ body: "no path, no status", worktreeDirty: false })
-  ).toBe(true);
+  expect(detectSubagentIncomplete({ body: "no path, no status", worktreeDirty: false })).toBe(true);
 });

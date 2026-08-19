@@ -142,7 +142,8 @@ export class MergeError extends Error {
     this.failedStep = opts.failedStep;
     this.gitStderr = opts.gitStderr ?? "";
     this.fixHint =
-      opts.fixHint ?? `Run \`/devcrew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
+      opts.fixHint ??
+      `Run \`/devcrew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
     this.attemptedBranch = opts.attemptedBranch;
     this.attemptedWorktree = opts.attemptedWorktree;
   }

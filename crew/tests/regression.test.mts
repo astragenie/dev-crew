@@ -57,12 +57,7 @@ test("BUG-A: concurrent claims on disjoint files do not lose data (5-way paralle
   }
   await Promise.all(promises);
 
-  const showOutput = await execFile("bun", [
-    cliPath,
-    "show-claims",
-    "--repo",
-    repoPath
-  ]);
+  const showOutput = await execFile("bun", [cliPath, "show-claims", "--repo", repoPath]);
   const showResult = JSON.parse(showOutput.stdout);
   expect(
     showResult.claims.length,
@@ -97,25 +92,12 @@ test("BUG-A: concurrent releases do not corrupt claims state", async () => {
   const promises = [];
   for (let i = 0; i < count; i += 1) {
     promises.push(
-      execFile("bun", [
-        cliPath,
-        "release",
-        "--repo",
-        repoPath,
-        "--owner",
-        `o_${i}`,
-        `f_${i}.txt`
-      ])
+      execFile("bun", [cliPath, "release", "--repo", repoPath, "--owner", `o_${i}`, `f_${i}.txt`])
     );
   }
   await Promise.all(promises);
 
-  const showOutput = await execFile("bun", [
-    cliPath,
-    "show-claims",
-    "--repo",
-    repoPath
-  ]);
+  const showOutput = await execFile("bun", [cliPath, "show-claims", "--repo", repoPath]);
   const showResult = JSON.parse(showOutput.stdout);
   expect(
     showResult.claims.length,
@@ -158,19 +140,13 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
   ]);
 
   // Sanity: pending gate exists on the first run.
-  let stateOutput = await execFile("bun", [
-    cliPath,
-    "show-workflow-state",
-    "--repo",
-    repoPath
-  ]);
+  let stateOutput = await execFile("bun", [cliPath, "show-workflow-state", "--repo", repoPath]);
   let state = JSON.parse(stateOutput.stdout);
   expect(state.workflowState.currentRun.title).toBe("First run");
   expect(state.workflowState.currentRun.gates.review.status).toBe("required");
-  expect(
-    state.workflowState.recentRuns.length,
-    "archive should be empty before second brief"
-  ).toBe(0);
+  expect(state.workflowState.recentRuns.length, "archive should be empty before second brief").toBe(
+    0
+  );
 
   // Write a second run brief. The first run must be archived, not destroyed.
   await execFile("bun", [
@@ -186,20 +162,14 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
     "assisted single-session"
   ]);
 
-  stateOutput = await execFile("bun", [
-    cliPath,
-    "show-workflow-state",
-    "--repo",
-    repoPath
-  ]);
+  stateOutput = await execFile("bun", [cliPath, "show-workflow-state", "--repo", repoPath]);
   state = JSON.parse(stateOutput.stdout);
 
   expect(state.workflowState.currentRun.title).toBe("Second run");
   expect(state.workflowState.currentRun.goal).toBe("Second goal");
-  expect(
-    state.workflowState.recentRuns.length,
-    "first run should be archived to recentRuns"
-  ).toBe(1);
+  expect(state.workflowState.recentRuns.length, "first run should be archived to recentRuns").toBe(
+    1
+  );
 
   const archived = state.workflowState.recentRuns[0];
   expect(archived.title).toBe("First run");
@@ -230,12 +200,7 @@ test("BUG-B: multiple sequential run briefs cap at MAX_RECENT_RUNS without dropp
     ]);
   }
 
-  const stateOutput = await execFile("bun", [
-    cliPath,
-    "show-workflow-state",
-    "--repo",
-    repoPath
-  ]);
+  const stateOutput = await execFile("bun", [cliPath, "show-workflow-state", "--repo", repoPath]);
   const state = JSON.parse(stateOutput.stdout);
 
   expect(state.workflowState.currentRun.title).toBe("Run 7");
@@ -338,12 +303,7 @@ test("BUG-E: discover-deployment uses POSIX separators in clue paths on all plat
   await fs.mkdir(path.join(repoPath, "terraform"), { recursive: true });
   await fs.writeFile(path.join(repoPath, "terraform", "main.tf"), "// terraform\n");
 
-  const output = await execFile("bun", [
-    cliPath,
-    "discover-deployment",
-    "--repo",
-    repoPath
-  ]);
+  const output = await execFile("bun", [cliPath, "discover-deployment", "--repo", repoPath]);
   const result = JSON.parse(output.stdout);
 
   // Each classifier branch should produce its expected clue:
@@ -351,13 +311,19 @@ test("BUG-E: discover-deployment uses POSIX separators in clue paths on all plat
     result.clues.includes(".github/workflows/deploy.yml"),
     "github workflow not discovered"
   ).toBeTruthy();
-  expect(result.clues.includes(".circleci/config.yml"), "circleci config not discovered").toBeTruthy();
+  expect(
+    result.clues.includes(".circleci/config.yml"),
+    "circleci config not discovered"
+  ).toBeTruthy();
   expect(result.clues.includes("Dockerfile"), "Dockerfile not discovered").toBeTruthy();
   expect(
     result.clues.includes("infra/k8s/deploy.yaml"),
     "infra k8s manifest not discovered"
   ).toBeTruthy();
-  expect(result.clues.includes("terraform/main.tf"), "terraform config not discovered").toBeTruthy();
+  expect(
+    result.clues.includes("terraform/main.tf"),
+    "terraform config not discovered"
+  ).toBeTruthy();
 
   // No clue should contain a backslash. This is the regression catcher:
   // on Windows pre-fix, every nested-path clue contained backslashes.
@@ -390,12 +356,7 @@ test("BUG-E: file fixtures with directory paths under deployment hints are disco
     await fs.writeFile(path.join(repoPath, dir, file), "content\n");
   }
 
-  const output = await execFile("bun", [
-    cliPath,
-    "discover-deployment",
-    "--repo",
-    repoPath
-  ]);
+  const output = await execFile("bun", [cliPath, "discover-deployment", "--repo", repoPath]);
   const result = JSON.parse(output.stdout);
 
   for (const [dir, file] of hints) {

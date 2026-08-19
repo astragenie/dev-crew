@@ -177,7 +177,10 @@ test("otel-post-tool-use.mts flushes BatchSpanProcessor before exit", async () =
   });
   expect(exitCode, "hook must exit 0").toBe(0);
   expect(capture.authHeader, "auth header forwarded").toBe("Basic test-auth-token");
-  expect(capture.body.length > 0, "OTLP body non-empty (span flushed before process exit)").toBeTruthy();
+  expect(
+    capture.body.length > 0,
+    "OTLP body non-empty (span flushed before process exit)"
+  ).toBeTruthy();
 });
 
 test("otel-stop.mts flushes BatchSpanProcessor before exit", async () => {
@@ -191,7 +194,10 @@ test("otel-stop.mts flushes BatchSpanProcessor before exit", async () => {
     stdinPayload: payload
   });
   expect(exitCode, "hook must exit 0").toBe(0);
-  expect(capture.body.length > 0, "OTLP body non-empty (span flushed before process exit)").toBeTruthy();
+  expect(
+    capture.body.length > 0,
+    "OTLP body non-empty (span flushed before process exit)"
+  ).toBeTruthy();
 });
 
 test("otel-subagent-stop.mts flushes BatchSpanProcessor before exit", async () => {
@@ -205,5 +211,8 @@ test("otel-subagent-stop.mts flushes BatchSpanProcessor before exit", async () =
     stdinPayload: payload
   });
   expect(exitCode, "hook must exit 0").toBe(0);
-  expect(capture.body.length > 0, "OTLP body non-empty (span flushed before process exit)").toBeTruthy();
+  expect(
+    capture.body.length > 0,
+    "OTLP body non-empty (span flushed before process exit)"
+  ).toBeTruthy();
 });

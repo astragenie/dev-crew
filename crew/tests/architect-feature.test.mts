@@ -37,7 +37,9 @@ test("architect-feature documents ## Inferred Tags section requirement", async (
 
 test("architect-feature documents tag write-back as additive", async () => {
   const text = await fs.readFile(CMD, "utf8");
-  expect(text, "command must document that tag write-back never removes existing tags").toMatch(/additive|never remove|net.new/i);
+  expect(text, "command must document that tag write-back never removes existing tags").toMatch(
+    /additive|never remove|net.new/i
+  );
 });
 
 test("architect-feature documents --auto-start flag", async () => {
@@ -47,15 +49,23 @@ test("architect-feature documents --auto-start flag", async () => {
 
 test("architect-feature documents FEAT-not-found error handling", async () => {
   const text = await fs.readFile(CMD, "utf8");
-  expect(text, "command must document FEAT-not-found error case").toMatch(/not found|paths tried|halt/i);
+  expect(text, "command must document FEAT-not-found error case").toMatch(
+    /not found|paths tried|halt/i
+  );
 });
 
 test("architect-feature documents re-run idempotency (Feature Revision prefix)", async () => {
   const text = await fs.readFile(CMD, "utf8");
-  expect(text, "command must use 'Feature Revision' prefix to distinguish re-run sections from orchestrate-slice Revision sections").toMatch(/Feature Revision/);
+  expect(
+    text,
+    "command must use 'Feature Revision' prefix to distinguish re-run sections from orchestrate-slice Revision sections"
+  ).toMatch(/Feature Revision/);
 });
 
 test("architect-feature documents --auto-start clean exit when no pending slice", async () => {
   const text = await fs.readFile(CMD, "utf8");
-  expect(text, "command must document exit 0 when no pending slice found under --auto-start").toMatch(/exit 0/);
+  expect(
+    text,
+    "command must document exit 0 when no pending slice found under --auto-start"
+  ).toMatch(/exit 0/);
 });

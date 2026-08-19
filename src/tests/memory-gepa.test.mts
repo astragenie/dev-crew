@@ -196,7 +196,11 @@ test("emitGepaEvent sends project/agent as top-level wire fields, mirrored in me
     health: async () => ({ ok: true })
   });
 
-  await emitGepaEvent({ ...makePayload(), project: "runner-plugin", agent: "devcrew:fullstack-dev" });
+  await emitGepaEvent({
+    ...makePayload(),
+    project: "runner-plugin",
+    agent: "devcrew:fullstack-dev"
+  });
 
   assert.equal(seen.length, 1);
   assert.equal(seen[0]!["project"], "runner-plugin");

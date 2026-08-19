@@ -34,8 +34,10 @@ test("assembleBuildBundle: happy path writes bundle with frontmatter and four se
     filesRead: ["c.md"]
   });
 
-  expect(result.path.endsWith("SLICE-99/backend-dev-20260608T223000Z-build-bundle.md") ||
-      result.path.endsWith("SLICE-99\\backend-dev-20260608T223000Z-build-bundle.md")).toBeTruthy();
+  expect(
+    result.path.endsWith("SLICE-99/backend-dev-20260608T223000Z-build-bundle.md") ||
+      result.path.endsWith("SLICE-99\\backend-dev-20260608T223000Z-build-bundle.md")
+  ).toBeTruthy();
   expect(result.truncated).toBe(false);
   expect(result.filesReadSkipped).toEqual([]);
 
@@ -91,7 +93,9 @@ test("assembleBuildBundle: outside-repo path in files_read is dropped", async ()
     filesRead: ["../outside.txt"]
   });
 
-  expect(result.filesReadSkipped.some((s) => s.path === "../outside.txt" && s.reason === "outside-repo")).toBeTruthy();
+  expect(
+    result.filesReadSkipped.some((s) => s.path === "../outside.txt" && s.reason === "outside-repo")
+  ).toBeTruthy();
 });
 
 test("assembleBuildBundle: binary file in files_touched is replaced with placeholder", async () => {

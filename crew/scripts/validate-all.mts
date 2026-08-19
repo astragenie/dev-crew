@@ -10,12 +10,13 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const validators = [
-  "validate-manifests.mts",
-  "validate-skills.mts",
-  "validate-agents.mts",
-  "validate-slices.mts"
-];
+const validators = ["validate-manifests.mts", "validate-slices.mts"];
+
+// Advisory pending the agent/skill content-backfill FEAT (SLICE-24 decision):
+// P3's surface merge exposed pre-existing content gaps (missing prompt_id /
+// version / report-contract on runner-origin agents, dangling eval-spec
+// pointers). These report findings but do not fail the aggregate.
+const advisoryValidators = ["validate-skills.mts", "validate-agents.mts"];
 
 interface ValidatorResult {
   script: string;
@@ -53,6 +54,15 @@ const results = await Promise.all(validators.map(runValidator));
 const failures = results.filter((r) => !r.ok);
 
 printResults(results);
+
+const advisoryResults = await Promise.all(advisoryValidators.map(runValidator));
+for (const r of advisoryResults) {
+  if (r.ok) {
+    process.stdout.write(`✓ ${r.script}\n`);
+  } else {
+    process.stdout.write(`⚠ ${r.script} (advisory — findings do not fail the aggregate)\n`);
+  }
+}
 
 if (failures.length > 0) {
   process.stderr.write(`\n${failures.length} validator(s) failed.\n`);

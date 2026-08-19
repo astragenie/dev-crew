@@ -41,7 +41,10 @@ test("nudges once the threshold of post-edit tool calls is reached", async () =>
     const parsed = JSON.parse(out!);
     expect(parsed.decision).toBe("approve");
     expect(parsed.systemMessage).toMatch(/checkpoint/i);
-    expect(!("hookSpecificOutput" in parsed), "must not use hookSpecificOutput (#176 trap)").toBeTruthy();
+    expect(
+      !("hookSpecificOutput" in parsed),
+      "must not use hookSpecificOutput (#176 trap)"
+    ).toBeTruthy();
   } finally {
     delete process.env["CREW_CHECKPOINT_CADENCE_N"];
     await cleanup(repo);

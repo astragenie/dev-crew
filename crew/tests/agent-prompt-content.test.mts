@@ -23,21 +23,33 @@ const builder = readAgent("fullstack-dev");
 // beyond that. Future shrinks may lower further; relax this test in tandem.
 test("fullstack-dev.md stays under 330 line cap (FEAT-170 SLICE-D)", () => {
   const lines = builder.split(/\r?\n/).length;
-  expect(lines <= 330, `fullstack-dev.md is ${lines} lines, exceeds 330-line cap (FEAT-170 SLICE-D regression gate)`).toBeTruthy();
+  expect(
+    lines <= 330,
+    `fullstack-dev.md is ${lines} lines, exceeds 330-line cap (FEAT-170 SLICE-D regression gate)`
+  ).toBeTruthy();
 });
 
 test("fullstack-dev.md declares root-cause-discipline skill (FEAT-170 SLICE-D)", () => {
-  expect(builder.includes("root-cause-discipline"), "fullstack-dev.md missing root-cause-discipline skill reference (FEAT-170 SLICE-D)").toBeTruthy();
+  expect(
+    builder.includes("root-cause-discipline"),
+    "fullstack-dev.md missing root-cause-discipline skill reference (FEAT-170 SLICE-D)"
+  ).toBeTruthy();
 });
 
 test("backend-dev.md declares root-cause-discipline skill (FEAT-170 SLICE-D)", () => {
   const be = readAgent("backend-dev");
-  expect(be.includes("root-cause-discipline"), "backend-dev.md missing root-cause-discipline skill reference (FEAT-170 SLICE-D)").toBeTruthy();
+  expect(
+    be.includes("root-cause-discipline"),
+    "backend-dev.md missing root-cause-discipline skill reference (FEAT-170 SLICE-D)"
+  ).toBeTruthy();
 });
 
 test("frontend-dev.md declares root-cause-discipline skill (FEAT-170 SLICE-D)", () => {
   const fe = readAgent("frontend-dev");
-  expect(fe.includes("root-cause-discipline"), "frontend-dev.md missing root-cause-discipline skill reference (FEAT-170 SLICE-D)").toBeTruthy();
+  expect(
+    fe.includes("root-cause-discipline"),
+    "frontend-dev.md missing root-cause-discipline skill reference (FEAT-170 SLICE-D)"
+  ).toBeTruthy();
 });
 
 // FEAT-170 SLICE-D drift prevention: "lead" mentions in builder prompts are
@@ -82,17 +94,26 @@ function leadDriftScan(content: string, file: string): string[] {
 
 test("fullstack-dev.md has no 'lead' drift outside whitelist (FEAT-170 SLICE-D)", () => {
   const drifts = leadDriftScan(builder, "agents/fullstack-dev.md");
-  expect(drifts.length, `fullstack-dev.md has ${drifts.length} 'lead' mention(s) outside whitelist (use 'orchestrator' instead):\n${drifts.join("\n")}`).toBe(0);
+  expect(
+    drifts.length,
+    `fullstack-dev.md has ${drifts.length} 'lead' mention(s) outside whitelist (use 'orchestrator' instead):\n${drifts.join("\n")}`
+  ).toBe(0);
 });
 
 test("backend-dev.md has no 'lead' drift outside whitelist (FEAT-170 SLICE-D)", () => {
   const drifts = leadDriftScan(readAgent("backend-dev"), "agents/backend-dev.md");
-  expect(drifts.length, `backend-dev.md has ${drifts.length} 'lead' mention(s) outside whitelist:\n${drifts.join("\n")}`).toBe(0);
+  expect(
+    drifts.length,
+    `backend-dev.md has ${drifts.length} 'lead' mention(s) outside whitelist:\n${drifts.join("\n")}`
+  ).toBe(0);
 });
 
 test("frontend-dev.md has no 'lead' drift outside whitelist (FEAT-170 SLICE-D)", () => {
   const drifts = leadDriftScan(readAgent("frontend-dev"), "agents/frontend-dev.md");
-  expect(drifts.length, `frontend-dev.md has ${drifts.length} 'lead' mention(s) outside whitelist:\n${drifts.join("\n")}`).toBe(0);
+  expect(
+    drifts.length,
+    `frontend-dev.md has ${drifts.length} 'lead' mention(s) outside whitelist:\n${drifts.join("\n")}`
+  ).toBe(0);
 });
 
 // Obsoleted 2026-06-21: scope-cross + cross-layer-split handling centralized in
@@ -100,11 +121,17 @@ test("frontend-dev.md has no 'lead' drift outside whitelist (FEAT-170 SLICE-D)",
 // no longer carries an inline "## Cross-layer split detection" section by
 // design. Keep the skip marker as a documented archaeology pointer.
 test.skip("fullstack-dev.md declares Cross-layer split detection section (FEAT-170 SLICE-B)", () => {
-  expect(builder.includes("## Cross-layer split detection") || builder.includes("SPLIT_BUILD"), "fullstack-dev.md missing SPLIT_BUILD signal guidance (FEAT-170 SLICE-B)").toBeTruthy();
+  expect(
+    builder.includes("## Cross-layer split detection") || builder.includes("SPLIT_BUILD"),
+    "fullstack-dev.md missing SPLIT_BUILD signal guidance (FEAT-170 SLICE-B)"
+  ).toBeTruthy();
 });
 
 test("fullstack-dev.md declares Forbidden block (FEAT-170 SLICE-B)", () => {
-  expect(builder.includes("## Forbidden"), "fullstack-dev.md missing ## Forbidden block (FEAT-170 SLICE-B)").toBeTruthy();
+  expect(
+    builder.includes("## Forbidden"),
+    "fullstack-dev.md missing ## Forbidden block (FEAT-170 SLICE-B)"
+  ).toBeTruthy();
 });
 
 test("builder-mindset skill lists expanded leak phrases (extracted from per-agent identity anchors in v0.43)", () => {
@@ -124,12 +151,18 @@ test("builder-mindset skill lists expanded leak phrases (extracted from per-agen
     "Let me re-read",
     "As the orchestrator"
   ]) {
-    expect(skill.includes(phrase), `builder-mindset/SKILL.md missing leak phrase "${phrase}"`).toBeTruthy();
+    expect(
+      skill.includes(phrase),
+      `builder-mindset/SKILL.md missing leak phrase "${phrase}"`
+    ).toBeTruthy();
   }
 });
 
 test("fullstack-dev.md loads builder-mindset for identity anchor", () => {
-  expect(builder.includes("skills/universal/builder-mindset/"), "fullstack-dev.md must reference skills/universal/builder-mindset/ for leak phrases").toBeTruthy();
+  expect(
+    builder.includes("skills/universal/builder-mindset/"),
+    "fullstack-dev.md must reference skills/universal/builder-mindset/ for leak phrases"
+  ).toBeTruthy();
 });
 
 test("builder.md contains TDD policy reference", () => {
@@ -145,7 +178,10 @@ test("builder.md contains write-handoff instruction", () => {
 });
 
 test("builder.md contains validation_skipped badge reference", () => {
-  expect(builder.includes("validation_skipped"), "builder.md missing validation_skipped").toBeTruthy();
+  expect(
+    builder.includes("validation_skipped"),
+    "builder.md missing validation_skipped"
+  ).toBeTruthy();
 });
 
 test("builder.md references mark-badge", () => {
@@ -157,7 +193,10 @@ test("builder.md references mark-badge", () => {
 // self-verify-gate skill). The builder prompt now points at builder-ceremony
 // instead of carrying the self-verify reference inline.
 test("builder.md points at builder-ceremony skill (which carries self-verify reference)", () => {
-  expect(builder.includes("skills/workflow/builder-ceremony"), "builder.md must point at builder-ceremony skill").toBeTruthy();
+  expect(
+    builder.includes("skills/workflow/builder-ceremony"),
+    "builder.md must point at builder-ceremony skill"
+  ).toBeTruthy();
 });
 
 // FEAT-170 SLICE-D follow-up, superseded by dev-team#227: builders MUST NOT
@@ -168,14 +207,23 @@ test("builder.md points at builder-ceremony skill (which carries self-verify ref
 // + "Narration without a posted PR report = contract violation" guardrail.
 // "NEVER invoke write-handoff" stays as the protective guardrail unchanged.
 test("builder.md prohibits write-handoff CLI invocation (FEAT-170 SLICE-D / dev-team#227)", () => {
-  expect(builder.includes("Narration without a posted PR report = contract violation"), "fullstack-dev.md must contain the report-to-PR contract-violation guardrail").toBeTruthy();
-  expect(builder.includes("NEVER invoke `write-handoff`") ||
-      builder.includes("NEVER invoke write-handoff"), "fullstack-dev.md must contain the 'NEVER invoke write-handoff' guardrail").toBeTruthy();
+  expect(
+    builder.includes("Narration without a posted PR report = contract violation"),
+    "fullstack-dev.md must contain the report-to-PR contract-violation guardrail"
+  ).toBeTruthy();
+  expect(
+    builder.includes("NEVER invoke `write-handoff`") ||
+      builder.includes("NEVER invoke write-handoff"),
+    "fullstack-dev.md must contain the 'NEVER invoke write-handoff' guardrail"
+  ).toBeTruthy();
 });
 
 test("builder.md declares the STATUS-token follow-up format (FEAT-170 SLICE-D)", () => {
   for (const token of ["DONE", "BLOCKED", "HELP", "IN-PROGRESS"]) {
-    expect(builder.includes(token), `fullstack-dev.md missing STATUS token "${token}" — see Report contract section`).toBeTruthy();
+    expect(
+      builder.includes(token),
+      `fullstack-dev.md missing STATUS token "${token}" — see Report contract section`
+    ).toBeTruthy();
   }
 });
 
@@ -185,11 +233,17 @@ const selfVerifySkill = readFileSync(
 );
 
 test("self-verify-gate skill is scoped to affected-class tests", () => {
-  expect(selfVerifySkill.includes("Affected-class tests only"), "self-verify-gate skill missing scoped affected-class test gate").toBeTruthy();
+  expect(
+    selfVerifySkill.includes("Affected-class tests only"),
+    "self-verify-gate skill missing scoped affected-class test gate"
+  ).toBeTruthy();
 });
 
 test("self-verify-gate skill defers the full suite to the validator", () => {
-  expect(selfVerifySkill.includes("Deferred to validator"), "self-verify-gate skill missing Deferred to validator handoff line").toBeTruthy();
+  expect(
+    selfVerifySkill.includes("Deferred to validator"),
+    "self-verify-gate skill missing Deferred to validator handoff line"
+  ).toBeTruthy();
 });
 
 // ── reviewer ─────────────────────────────────────────────────────────────────
@@ -197,7 +251,10 @@ test("self-verify-gate skill defers the full suite to the validator", () => {
 const reviewer = readAgent("reviewer");
 
 test("reviewer.md references write-review-result", () => {
-  expect(reviewer.includes("write-review-result"), "reviewer.md missing write-review-result").toBeTruthy();
+  expect(
+    reviewer.includes("write-review-result"),
+    "reviewer.md missing write-review-result"
+  ).toBeTruthy();
 });
 
 test("reviewer.md contains Test Adequacy section", () => {
@@ -205,11 +262,17 @@ test("reviewer.md contains Test Adequacy section", () => {
 });
 
 test("reviewer.md dropped --validation-evidence bundling (validator now mandatory)", () => {
-  expect(!reviewer.includes("--validation-evidence"), "reviewer.md should no longer emit --validation-evidence — the validator owns the mandatory full gate").toBeTruthy();
+  expect(
+    !reviewer.includes("--validation-evidence"),
+    "reviewer.md should no longer emit --validation-evidence — the validator owns the mandatory full gate"
+  ).toBeTruthy();
 });
 
 test("reviewer.md re-runs the builder's affected-class test set", () => {
-  expect(reviewer.includes("Affected-test re-run"), "reviewer.md missing affected-test re-run gate").toBeTruthy();
+  expect(
+    reviewer.includes("Affected-test re-run"),
+    "reviewer.md missing affected-test re-run gate"
+  ).toBeTruthy();
 });
 
 test("reviewer.md contains rejected decision option", () => {
@@ -225,12 +288,21 @@ test("reviewer.md addresses regression concerns", () => {
 const validator = readAgent("verifier");
 
 test("validator.md contains validation_skipped badge", () => {
-  expect(validator.includes("validation_skipped"), "validator.md missing validation_skipped").toBeTruthy();
+  expect(
+    validator.includes("validation_skipped"),
+    "validator.md missing validation_skipped"
+  ).toBeTruthy();
 });
 
 test("validator.md routes UI/UX scope to crew:qa-expert", () => {
-  expect(validator.includes("crew:qa-expert"), "validator.md missing crew:qa-expert routing for UI/UX scope").toBeTruthy();
-  expect(validator.includes("UI/UX/a11y is NOT verifier's scope"), "verifier.md missing explicit UI/UX-out-of-scope guard").toBeTruthy();
+  expect(
+    validator.includes("crew:qa-expert"),
+    "validator.md missing crew:qa-expert routing for UI/UX scope"
+  ).toBeTruthy();
+  expect(
+    validator.includes("UI/UX/a11y is NOT verifier's scope"),
+    "verifier.md missing explicit UI/UX-out-of-scope guard"
+  ).toBeTruthy();
 });
 
 test("validator.md requires evidence gathering", () => {
@@ -246,7 +318,10 @@ test("validator.md contains mark-badge reference", () => {
 });
 
 test("validator.md owns the mandatory full gate (lint + format:check)", () => {
-  expect(validator.includes("Mandatory final gate") && validator.includes("format:check"), "validator.md missing mandatory full gate with format:check").toBeTruthy();
+  expect(
+    validator.includes("Mandatory final gate") && validator.includes("format:check"),
+    "validator.md missing mandatory full gate with format:check"
+  ).toBeTruthy();
 });
 
 // ── deployer ─────────────────────────────────────────────────────────────────
@@ -254,7 +329,10 @@ test("validator.md owns the mandatory full gate (lint + format:check)", () => {
 const deployer = readAgent("release-engineer");
 
 test("deployer.md references write-deployment-check", () => {
-  expect(deployer.includes("write-deployment-check"), "deployer.md missing write-deployment-check").toBeTruthy();
+  expect(
+    deployer.includes("write-deployment-check"),
+    "deployer.md missing write-deployment-check"
+  ).toBeTruthy();
 });
 
 test("deployer.md addresses environment transitions", () => {
@@ -330,19 +408,34 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
   describe("fullstack-dev (already compliant)", () => {
     const content = readAgent("fullstack-dev");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "fullstack-dev.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "fullstack-dev.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "fullstack-dev.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "fullstack-dev.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "fullstack-dev.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "fullstack-dev.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "fullstack-dev.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "fullstack-dev.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "fullstack-dev.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "fullstack-dev.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     // FEAT-180 (v2.0.0 builder rewrite): Identity anchor stays at the FRONT
     // (per user "you are builder / fullstack-developer up top"), HARD
@@ -352,116 +445,200 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
       expect(contractIdx !== -1, "fullstack-dev.md HARD CONTRACT heading not found").toBeTruthy();
       expect(identityIdx !== -1, "fullstack-dev.md missing Identity anchor").toBeTruthy();
-      expect(identityIdx < contractIdx, "fullstack-dev.md Identity anchor must appear before HARD CONTRACT").toBeTruthy();
+      expect(
+        identityIdx < contractIdx,
+        "fullstack-dev.md Identity anchor must appear before HARD CONTRACT"
+      ).toBeTruthy();
     });
   });
 
   describe("frontend-dev (already compliant)", () => {
     const content = readAgent("frontend-dev");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "frontend-dev.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "frontend-dev.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "frontend-dev.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "frontend-dev.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "frontend-dev.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "frontend-dev.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "frontend-dev.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "frontend-dev.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "frontend-dev.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "frontend-dev.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: after Identity anchor, before first tactical heading", () => {
       const identityIdx = content.indexOf("## Identity anchor");
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
       expect(contractIdx !== -1, "frontend-dev.md HARD CONTRACT heading not found").toBeTruthy();
       expect(identityIdx !== -1, "frontend-dev.md missing Identity anchor").toBeTruthy();
-      expect(contractIdx > identityIdx, "frontend-dev.md HARD CONTRACT must appear after Identity anchor").toBeTruthy();
-      expect(contractIdx < firstTacticalIdx(content), "frontend-dev.md HARD CONTRACT must appear before first tactical heading").toBeTruthy();
+      expect(
+        contractIdx > identityIdx,
+        "frontend-dev.md HARD CONTRACT must appear after Identity anchor"
+      ).toBeTruthy();
+      expect(
+        contractIdx < firstTacticalIdx(content),
+        "frontend-dev.md HARD CONTRACT must appear before first tactical heading"
+      ).toBeTruthy();
     });
   });
 
   describe("backend-dev (already compliant)", () => {
     const content = readAgent("backend-dev");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "backend-dev.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "backend-dev.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "backend-dev.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "backend-dev.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "backend-dev.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "backend-dev.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "backend-dev.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "backend-dev.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "backend-dev.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "backend-dev.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: after Identity anchor, before first tactical heading", () => {
       const identityIdx = content.indexOf("## Identity anchor");
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
       expect(contractIdx !== -1, "backend-dev.md HARD CONTRACT heading not found").toBeTruthy();
       expect(identityIdx !== -1, "backend-dev.md missing Identity anchor").toBeTruthy();
-      expect(contractIdx > identityIdx, "backend-dev.md HARD CONTRACT must appear after Identity anchor").toBeTruthy();
-      expect(contractIdx < firstTacticalIdx(content), "backend-dev.md HARD CONTRACT must appear before first tactical heading").toBeTruthy();
+      expect(
+        contractIdx > identityIdx,
+        "backend-dev.md HARD CONTRACT must appear after Identity anchor"
+      ).toBeTruthy();
+      expect(
+        contractIdx < firstTacticalIdx(content),
+        "backend-dev.md HARD CONTRACT must appear before first tactical heading"
+      ).toBeTruthy();
     });
   });
 
   describe("reviewer (already compliant)", () => {
     const content = readAgent("reviewer");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "reviewer.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "reviewer.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "reviewer.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "reviewer.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "reviewer.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "reviewer.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-review-result keyword", () => {
-      expect(content.includes("write-review-result"), "reviewer.md HARD CONTRACT missing write-review-result keyword").toBeTruthy();
+      expect(
+        content.includes("write-review-result"),
+        "reviewer.md HARD CONTRACT missing write-review-result keyword"
+      ).toBeTruthy();
     });
     test("no backlog ids (FEAT-NNN / DEC-NNN / SLICE-NN)", () => {
       const ids = content.match(/\b(FEAT-\d+|DEC-\d+|SLICE-\d+)\b/g);
-      expect(!ids || ids.length === 0, `reviewer.md must not contain backlog ids; found: ${ids?.join(", ")}`).toBeTruthy();
+      expect(
+        !ids || ids.length === 0,
+        `reviewer.md must not contain backlog ids; found: ${ids?.join(", ")}`
+      ).toBeTruthy();
     });
     // Lead-agent removed in v0.41 (hard cut). Body-text gate is enforced repo-wide
     // by NO_LEAD_REF_REQUIRED in scripts/validate-agents.ts — see the parametrized
     // describe block "no lead refs across active agents" below.
     test("SLICE_BASE fallback — uses git merge-base, not fixed HEAD~1", () => {
-      expect(content.includes("git merge-base"), "reviewer.md SLICE_BASE computation must use git merge-base, not hardcoded HEAD~1").toBeTruthy();
+      expect(
+        content.includes("git merge-base"),
+        "reviewer.md SLICE_BASE computation must use git merge-base, not hardcoded HEAD~1"
+      ).toBeTruthy();
     });
     test("placement before first tactical heading", () => {
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
       expect(contractIdx !== -1, "reviewer.md HARD CONTRACT heading not found").toBeTruthy();
-      expect(contractIdx < firstTacticalIdx(content), "reviewer.md HARD CONTRACT must appear before first tactical heading").toBeTruthy();
+      expect(
+        contractIdx < firstTacticalIdx(content),
+        "reviewer.md HARD CONTRACT must appear before first tactical heading"
+      ).toBeTruthy();
     });
   });
 
   describe("verifier (already compliant)", () => {
     const content = readAgent("verifier");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "verifier.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "verifier.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "verifier.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "verifier.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "verifier.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "verifier.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-validation-result keyword", () => {
-      expect(content.includes("write-validation-result"), "verifier.md HARD CONTRACT missing write-validation-result keyword").toBeTruthy();
+      expect(
+        content.includes("write-validation-result"),
+        "verifier.md HARD CONTRACT missing write-validation-result keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "verifier.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "verifier.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement before first tactical heading (Golden Path)", () => {
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
       expect(contractIdx !== -1, "verifier.md HARD CONTRACT heading not found").toBeTruthy();
-      expect(contractIdx < firstTacticalIdx(content), "verifier.md HARD CONTRACT must appear before first tactical heading").toBeTruthy();
+      expect(
+        contractIdx < firstTacticalIdx(content),
+        "verifier.md HARD CONTRACT must appear before first tactical heading"
+      ).toBeTruthy();
     });
   });
 
@@ -470,22 +647,40 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
   describe("architect (newly added)", () => {
     const content = readAgent("architect");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "architect.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "architect.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "architect.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "architect.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "architect.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "architect.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "architect.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "architect.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("role-specific: Agent dispatch keyword", () => {
-      expect(content.includes("Agent"), "architect.md HARD CONTRACT missing Agent dispatch keyword").toBeTruthy();
+      expect(
+        content.includes("Agent"),
+        "architect.md HARD CONTRACT missing Agent dispatch keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "architect.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "architect.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: after Custom instructions, before Golden Path (tactical heading)", () => {
       const customIdx = content.indexOf("## Custom instructions");
@@ -494,21 +689,36 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
       expect(contractIdx !== -1, "architect.md HARD CONTRACT heading not found").toBeTruthy();
       expect(customIdx !== -1, "architect.md missing Custom instructions section").toBeTruthy();
       expect(goldenPathIdx !== -1, "architect.md missing Golden Path heading").toBeTruthy();
-      expect(contractIdx > customIdx, "architect.md HARD CONTRACT must appear after Custom instructions").toBeTruthy();
-      expect(contractIdx < goldenPathIdx, "architect.md HARD CONTRACT must appear before Golden Path").toBeTruthy();
+      expect(
+        contractIdx > customIdx,
+        "architect.md HARD CONTRACT must appear after Custom instructions"
+      ).toBeTruthy();
+      expect(
+        contractIdx < goldenPathIdx,
+        "architect.md HARD CONTRACT must appear before Golden Path"
+      ).toBeTruthy();
     });
   });
 
   describe("reviewer-lite (renamed from reviewer-verifier, validation stripped)", () => {
     const content = readAgent("reviewer-lite");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "reviewer-lite.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "reviewer-lite.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("write-review-result keyword present", () => {
-      expect(content.includes("write-review-result"), "reviewer-lite.md HARD CONTRACT missing write-review-result keyword").toBeTruthy();
+      expect(
+        content.includes("write-review-result"),
+        "reviewer-lite.md HARD CONTRACT missing write-review-result keyword"
+      ).toBeTruthy();
     });
     test("no validation-result dispatch (validation moved to pre-push hook + /crew:ship)", () => {
-      expect(!content.includes("write-validation-result"), "reviewer-lite.md must NOT call write-validation-result — validation belongs to verifier + hook").toBeTruthy();
+      expect(
+        !content.includes("write-validation-result"),
+        "reviewer-lite.md must NOT call write-validation-result — validation belongs to verifier + hook"
+      ).toBeTruthy();
     });
     test("no full validation gate (lint/format:check/tests/verify:all) inline", () => {
       const validationMarkers = [
@@ -518,7 +728,10 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
         "parallel-gates.ts"
       ];
       for (const marker of validationMarkers) {
-        expect(!content.includes(marker), `reviewer-lite.md must NOT run validation gate inline; found "${marker}"`).toBeTruthy();
+        expect(
+          !content.includes(marker),
+          `reviewer-lite.md must NOT run validation gate inline; found "${marker}"`
+        ).toBeTruthy();
       }
     });
   });
@@ -526,19 +739,34 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
   describe("integrator (newly added)", () => {
     const content = readAgent("integrator");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "integrator.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "integrator.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "integrator.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "integrator.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "integrator.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "integrator.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "integrator.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "integrator.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "integrator.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "integrator.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: after Custom instructions, before Procedure of record (tactical heading)", () => {
       const customIdx = content.indexOf("## Custom instructions");
@@ -547,79 +775,145 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
       expect(contractIdx !== -1, "integrator.md HARD CONTRACT heading not found").toBeTruthy();
       expect(customIdx !== -1, "integrator.md missing Custom instructions section").toBeTruthy();
       expect(procedureIdx !== -1, "integrator.md missing Procedure of record heading").toBeTruthy();
-      expect(contractIdx > customIdx, "integrator.md HARD CONTRACT must appear after Custom instructions").toBeTruthy();
-      expect(contractIdx < procedureIdx, "integrator.md HARD CONTRACT must appear before Procedure of record").toBeTruthy();
+      expect(
+        contractIdx > customIdx,
+        "integrator.md HARD CONTRACT must appear after Custom instructions"
+      ).toBeTruthy();
+      expect(
+        contractIdx < procedureIdx,
+        "integrator.md HARD CONTRACT must appear before Procedure of record"
+      ).toBeTruthy();
     });
   });
 
   describe("release-engineer (newly added)", () => {
     const content = readAgent("release-engineer");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "release-engineer.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "release-engineer.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "release-engineer.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "release-engineer.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "release-engineer.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "release-engineer.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-deployment-check keyword", () => {
-      expect(content.includes("write-deployment-check"), "release-engineer.md HARD CONTRACT missing write-deployment-check keyword").toBeTruthy();
+      expect(
+        content.includes("write-deployment-check"),
+        "release-engineer.md HARD CONTRACT missing write-deployment-check keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "release-engineer.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "release-engineer.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: after Custom instructions, before deployment-specific content", () => {
       const customIdx = content.indexOf("## Custom instructions");
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
-      expect(contractIdx !== -1, "release-engineer.md HARD CONTRACT heading not found").toBeTruthy();
-      expect(customIdx !== -1, "release-engineer.md missing Custom instructions section").toBeTruthy();
-      expect(contractIdx > customIdx, "release-engineer.md HARD CONTRACT must appear after Custom instructions").toBeTruthy();
+      expect(
+        contractIdx !== -1,
+        "release-engineer.md HARD CONTRACT heading not found"
+      ).toBeTruthy();
+      expect(
+        customIdx !== -1,
+        "release-engineer.md missing Custom instructions section"
+      ).toBeTruthy();
+      expect(
+        contractIdx > customIdx,
+        "release-engineer.md HARD CONTRACT must appear after Custom instructions"
+      ).toBeTruthy();
     });
   });
 
   describe("document-writer (newly added)", () => {
     const content = readAgent("document-writer");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "document-writer.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "document-writer.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "document-writer.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "document-writer.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "document-writer.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "document-writer.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "document-writer.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "document-writer.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "document-writer.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "document-writer.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: before Your output contract section", () => {
       const contractIdx = content.indexOf(HARD_CONTRACT_HEADING);
       const outputContractIdx = content.indexOf("## Your output contract");
       expect(contractIdx !== -1, "document-writer.md HARD CONTRACT heading not found").toBeTruthy();
-      expect(outputContractIdx !== -1, "document-writer.md missing Your output contract heading").toBeTruthy();
-      expect(contractIdx < outputContractIdx, "document-writer.md HARD CONTRACT must appear before Your output contract section").toBeTruthy();
+      expect(
+        outputContractIdx !== -1,
+        "document-writer.md missing Your output contract heading"
+      ).toBeTruthy();
+      expect(
+        contractIdx < outputContractIdx,
+        "document-writer.md HARD CONTRACT must appear before Your output contract section"
+      ).toBeTruthy();
     });
   });
 
   describe("refactor (newly added)", () => {
     const content = readAgent("refactor");
     test("heading present", () => {
-      expect(content.includes(HARD_CONTRACT_HEADING), "refactor.md missing HARD CONTRACT heading").toBeTruthy();
+      expect(
+        content.includes(HARD_CONTRACT_HEADING),
+        "refactor.md missing HARD CONTRACT heading"
+      ).toBeTruthy();
     });
     test("required preamble phrase", () => {
-      expect(hasPreamble(content), "refactor.md missing LAST action/tool call before returning preamble").toBeTruthy();
+      expect(
+        hasPreamble(content),
+        "refactor.md missing LAST action/tool call before returning preamble"
+      ).toBeTruthy();
     });
     test("narration + violation phrases", () => {
-      expect(content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE), "refactor.md missing narration/contract-violation phrases").toBeTruthy();
+      expect(
+        content.includes(REQUIRED_NARRATION_PHRASE) && content.includes(REQUIRED_VIOLATION_PHRASE),
+        "refactor.md missing narration/contract-violation phrases"
+      ).toBeTruthy();
     });
     test("role-specific: write-handoff keyword", () => {
-      expect(content.includes("write-handoff"), "refactor.md HARD CONTRACT missing write-handoff keyword").toBeTruthy();
+      expect(
+        content.includes("write-handoff"),
+        "refactor.md HARD CONTRACT missing write-handoff keyword"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "refactor.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "refactor.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("placement: after Custom instructions, before Concern areas content", () => {
       const customIdx = content.indexOf("## Custom instructions");
@@ -628,8 +922,14 @@ describe.skip("## HARD OUTPUT CONTRACT — Prong A coverage", () => {
       expect(contractIdx !== -1, "refactor.md HARD CONTRACT heading not found").toBeTruthy();
       expect(customIdx !== -1, "refactor.md missing Custom instructions section").toBeTruthy();
       expect(concernIdx !== -1, "refactor.md missing Concern areas heading").toBeTruthy();
-      expect(contractIdx > customIdx, "refactor.md HARD CONTRACT must appear after Custom instructions").toBeTruthy();
-      expect(contractIdx < concernIdx, "refactor.md HARD CONTRACT must appear before Concern areas").toBeTruthy();
+      expect(
+        contractIdx > customIdx,
+        "refactor.md HARD CONTRACT must appear after Custom instructions"
+      ).toBeTruthy();
+      expect(
+        contractIdx < concernIdx,
+        "refactor.md HARD CONTRACT must appear before Concern areas"
+      ).toBeTruthy();
     });
   });
 });
@@ -665,7 +965,10 @@ describe.skip("## First action — Prong B coverage", () => {
     // negative-pattern lines; assert FEAT-161 cite still present (pause-detection
     // semantics now carried by badge state).
     test("FEAT-161 cite-back (pause-detection now via badge state)", () => {
-      expect(content.includes(FEAT_161_CITE), "fullstack-dev.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "fullstack-dev.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
   });
 
@@ -681,16 +984,28 @@ describe.skip("## First action — Prong B coverage", () => {
     describe(`${agentName} (no-handoff contract — FEAT-170 SLICE-D)`, () => {
       const content = readAgent(agentName);
       test("FEAT-161 cite-back (pause-detection via badge state)", () => {
-        expect(content.includes(FEAT_161_CITE), `${agentName}.md missing FEAT-161 cite-back`).toBeTruthy();
+        expect(
+          content.includes(FEAT_161_CITE),
+          `${agentName}.md missing FEAT-161 cite-back`
+        ).toBeTruthy();
       });
       test("prohibits write-handoff CLI invocation", () => {
-        expect(content.includes("do NOT write handoff") || content.includes("DO NOT write handoff"), `${agentName}.md must contain "do NOT write handoff" guardrail`).toBeTruthy();
-        expect(content.includes("NEVER invoke `write-handoff`") ||
-            content.includes("NEVER invoke write-handoff"), `${agentName}.md must contain "NEVER invoke write-handoff" guardrail`).toBeTruthy();
+        expect(
+          content.includes("do NOT write handoff") || content.includes("DO NOT write handoff"),
+          `${agentName}.md must contain "do NOT write handoff" guardrail`
+        ).toBeTruthy();
+        expect(
+          content.includes("NEVER invoke `write-handoff`") ||
+            content.includes("NEVER invoke write-handoff"),
+          `${agentName}.md must contain "NEVER invoke write-handoff" guardrail`
+        ).toBeTruthy();
       });
       test("declares STATUS-token follow-up format", () => {
         for (const token of ["DONE", "BLOCKED", "HELP", "IN-PROGRESS"]) {
-          expect(content.includes(token), `${agentName}.md missing STATUS token "${token}"`).toBeTruthy();
+          expect(
+            content.includes(token),
+            `${agentName}.md missing STATUS token "${token}"`
+          ).toBeTruthy();
         }
       });
     });
@@ -699,22 +1014,34 @@ describe.skip("## First action — Prong B coverage", () => {
   describe("reviewer", () => {
     const content = readAgent("reviewer");
     test("stub heading present", () => {
-      expect(content.includes(STUB_HEADING), "reviewer.md missing stub artifact heading").toBeTruthy();
+      expect(
+        content.includes(STUB_HEADING),
+        "reviewer.md missing stub artifact heading"
+      ).toBeTruthy();
     });
     test("--scaffold flag present", () => {
       expect(content.includes(SCAFFOLD_FLAG), "reviewer.md missing --scaffold flag").toBeTruthy();
     });
     test("--status in-progress present", () => {
-      expect(content.includes(STATUS_IN_PROGRESS), "reviewer.md missing --status in-progress").toBeTruthy();
+      expect(
+        content.includes(STATUS_IN_PROGRESS),
+        "reviewer.md missing --status in-progress"
+      ).toBeTruthy();
     });
     test("--update flag present", () => {
       expect(content.includes(UPDATE_FLAG), "reviewer.md missing --update flag").toBeTruthy();
     });
     test("role-specific: write-review-result command", () => {
-      expect(content.includes("write-review-result"), "reviewer.md missing write-review-result").toBeTruthy();
+      expect(
+        content.includes("write-review-result"),
+        "reviewer.md missing write-review-result"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "reviewer.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "reviewer.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("DEC-019 reference", () => {
       expect(content.includes(DEC_019), "reviewer.md missing DEC-019 reference").toBeTruthy();
@@ -724,41 +1051,65 @@ describe.skip("## First action — Prong B coverage", () => {
   describe("reviewer-lite (single-stub — validation stripped in v0.41.x rename)", () => {
     const content = readAgent("reviewer-lite");
     test("--scaffold flag present", () => {
-      expect(content.includes(SCAFFOLD_FLAG), "reviewer-lite.md missing --scaffold flag").toBeTruthy();
+      expect(
+        content.includes(SCAFFOLD_FLAG),
+        "reviewer-lite.md missing --scaffold flag"
+      ).toBeTruthy();
     });
     test("--status in-progress present", () => {
-      expect(content.includes(STATUS_IN_PROGRESS), "reviewer-lite.md missing --status in-progress").toBeTruthy();
+      expect(
+        content.includes(STATUS_IN_PROGRESS),
+        "reviewer-lite.md missing --status in-progress"
+      ).toBeTruthy();
     });
     test("--update flag present", () => {
       expect(content.includes(UPDATE_FLAG), "reviewer-lite.md missing --update flag").toBeTruthy();
     });
     test("write-review-result present", () => {
-      expect(content.includes("write-review-result"), "reviewer-lite.md missing write-review-result").toBeTruthy();
+      expect(
+        content.includes("write-review-result"),
+        "reviewer-lite.md missing write-review-result"
+      ).toBeTruthy();
     });
     test("write-validation-result absent (validation moved to hook + ship)", () => {
-      expect(!content.includes("write-validation-result"), "reviewer-lite.md must NOT call write-validation-result").toBeTruthy();
+      expect(
+        !content.includes("write-validation-result"),
+        "reviewer-lite.md must NOT call write-validation-result"
+      ).toBeTruthy();
     });
   });
 
   describe("verifier", () => {
     const content = readAgent("verifier");
     test("stub heading present", () => {
-      expect(content.includes(STUB_HEADING), "verifier.md missing stub artifact heading").toBeTruthy();
+      expect(
+        content.includes(STUB_HEADING),
+        "verifier.md missing stub artifact heading"
+      ).toBeTruthy();
     });
     test("--scaffold flag present", () => {
       expect(content.includes(SCAFFOLD_FLAG), "verifier.md missing --scaffold flag").toBeTruthy();
     });
     test("--status in-progress present", () => {
-      expect(content.includes(STATUS_IN_PROGRESS), "verifier.md missing --status in-progress").toBeTruthy();
+      expect(
+        content.includes(STATUS_IN_PROGRESS),
+        "verifier.md missing --status in-progress"
+      ).toBeTruthy();
     });
     test("--update flag present", () => {
       expect(content.includes(UPDATE_FLAG), "verifier.md missing --update flag").toBeTruthy();
     });
     test("role-specific: write-validation-result command", () => {
-      expect(content.includes("write-validation-result"), "verifier.md missing write-validation-result").toBeTruthy();
+      expect(
+        content.includes("write-validation-result"),
+        "verifier.md missing write-validation-result"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "verifier.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "verifier.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("DEC-019 reference", () => {
       expect(content.includes(DEC_019), "verifier.md missing DEC-019 reference").toBeTruthy();
@@ -768,13 +1119,19 @@ describe.skip("## First action — Prong B coverage", () => {
   describe("integrator", () => {
     const content = readAgent("integrator");
     test("stub heading present", () => {
-      expect(content.includes(STUB_HEADING), "integrator.md missing stub artifact heading").toBeTruthy();
+      expect(
+        content.includes(STUB_HEADING),
+        "integrator.md missing stub artifact heading"
+      ).toBeTruthy();
     });
     test("--scaffold flag present", () => {
       expect(content.includes(SCAFFOLD_FLAG), "integrator.md missing --scaffold flag").toBeTruthy();
     });
     test("--status in-progress present", () => {
-      expect(content.includes(STATUS_IN_PROGRESS), "integrator.md missing --status in-progress").toBeTruthy();
+      expect(
+        content.includes(STATUS_IN_PROGRESS),
+        "integrator.md missing --status in-progress"
+      ).toBeTruthy();
     });
     test("--update flag present", () => {
       expect(content.includes(UPDATE_FLAG), "integrator.md missing --update flag").toBeTruthy();
@@ -783,7 +1140,10 @@ describe.skip("## First action — Prong B coverage", () => {
       expect(content.includes("write-handoff"), "integrator.md missing write-handoff").toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "integrator.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "integrator.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("DEC-019 reference", () => {
       expect(content.includes(DEC_019), "integrator.md missing DEC-019 reference").toBeTruthy();
@@ -793,38 +1153,65 @@ describe.skip("## First action — Prong B coverage", () => {
   describe("release-engineer", () => {
     const content = readAgent("release-engineer");
     test("stub heading present", () => {
-      expect(content.includes(STUB_HEADING), "release-engineer.md missing stub artifact heading").toBeTruthy();
+      expect(
+        content.includes(STUB_HEADING),
+        "release-engineer.md missing stub artifact heading"
+      ).toBeTruthy();
     });
     test("--scaffold flag present", () => {
-      expect(content.includes(SCAFFOLD_FLAG), "release-engineer.md missing --scaffold flag").toBeTruthy();
+      expect(
+        content.includes(SCAFFOLD_FLAG),
+        "release-engineer.md missing --scaffold flag"
+      ).toBeTruthy();
     });
     test("--status in-progress present", () => {
-      expect(content.includes(STATUS_IN_PROGRESS), "release-engineer.md missing --status in-progress").toBeTruthy();
+      expect(
+        content.includes(STATUS_IN_PROGRESS),
+        "release-engineer.md missing --status in-progress"
+      ).toBeTruthy();
     });
     test("--update flag present", () => {
-      expect(content.includes(UPDATE_FLAG), "release-engineer.md missing --update flag").toBeTruthy();
+      expect(
+        content.includes(UPDATE_FLAG),
+        "release-engineer.md missing --update flag"
+      ).toBeTruthy();
     });
     test("role-specific: write-deployment-check command", () => {
-      expect(content.includes("write-deployment-check"), "release-engineer.md missing write-deployment-check").toBeTruthy();
+      expect(
+        content.includes("write-deployment-check"),
+        "release-engineer.md missing write-deployment-check"
+      ).toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "release-engineer.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "release-engineer.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("DEC-019 reference", () => {
-      expect(content.includes(DEC_019), "release-engineer.md missing DEC-019 reference").toBeTruthy();
+      expect(
+        content.includes(DEC_019),
+        "release-engineer.md missing DEC-019 reference"
+      ).toBeTruthy();
     });
   });
 
   describe("refactor", () => {
     const content = readAgent("refactor");
     test("stub heading present", () => {
-      expect(content.includes(STUB_HEADING), "refactor.md missing stub artifact heading").toBeTruthy();
+      expect(
+        content.includes(STUB_HEADING),
+        "refactor.md missing stub artifact heading"
+      ).toBeTruthy();
     });
     test("--scaffold flag present", () => {
       expect(content.includes(SCAFFOLD_FLAG), "refactor.md missing --scaffold flag").toBeTruthy();
     });
     test("--status in-progress present", () => {
-      expect(content.includes(STATUS_IN_PROGRESS), "refactor.md missing --status in-progress").toBeTruthy();
+      expect(
+        content.includes(STATUS_IN_PROGRESS),
+        "refactor.md missing --status in-progress"
+      ).toBeTruthy();
     });
     test("--update flag present", () => {
       expect(content.includes(UPDATE_FLAG), "refactor.md missing --update flag").toBeTruthy();
@@ -833,7 +1220,10 @@ describe.skip("## First action — Prong B coverage", () => {
       expect(content.includes("write-handoff"), "refactor.md missing write-handoff").toBeTruthy();
     });
     test("FEAT-161 cite-back", () => {
-      expect(content.includes(FEAT_161_CITE), "refactor.md missing FEAT-161 cite-back").toBeTruthy();
+      expect(
+        content.includes(FEAT_161_CITE),
+        "refactor.md missing FEAT-161 cite-back"
+      ).toBeTruthy();
     });
     test("DEC-019 reference", () => {
       expect(content.includes(DEC_019), "refactor.md missing DEC-019 reference").toBeTruthy();
@@ -865,24 +1255,36 @@ describe("## Structural deviation rule — extracted to builder-ceremony skill i
   const skill = readFileSync(skillPath, "utf8");
 
   test("structural deviation heading present in skill", () => {
-    expect(skill.includes(STRUCTURAL_DEVIATION_HEADING), `builder-ceremony/SKILL.md missing "${STRUCTURAL_DEVIATION_HEADING}" heading`).toBeTruthy();
+    expect(
+      skill.includes(STRUCTURAL_DEVIATION_HEADING),
+      `builder-ceremony/SKILL.md missing "${STRUCTURAL_DEVIATION_HEADING}" heading`
+    ).toBeTruthy();
   });
 
   test("structural-deviation return instruction present in skill (BLOCKED form)", () => {
     const usesBlockedFollowUp =
       skill.includes("BLOCKED: structural-deviation") ||
       skill.includes("BLOCKED: structural deviation");
-    expect(usesBlockedFollowUp, `builder-ceremony/SKILL.md missing structural-deviation return instruction (BLOCKED follow-up form)`).toBeTruthy();
+    expect(
+      usesBlockedFollowUp,
+      `builder-ceremony/SKILL.md missing structural-deviation return instruction (BLOCKED follow-up form)`
+    ).toBeTruthy();
   });
 
   test("structural-deviation: risks-field prefix present in skill", () => {
-    expect(skill.includes(STRUCTURAL_DEVIATION_PREFIX), `builder-ceremony/SKILL.md missing "${STRUCTURAL_DEVIATION_PREFIX}" risks-field prefix convention`).toBeTruthy();
+    expect(
+      skill.includes(STRUCTURAL_DEVIATION_PREFIX),
+      `builder-ceremony/SKILL.md missing "${STRUCTURAL_DEVIATION_PREFIX}" risks-field prefix convention`
+    ).toBeTruthy();
   });
 
   test("anti-silent-workaround warning present in skill", () => {
     const hasWarning =
       skill.includes(ANTI_SILENT_WORKAROUND_A) || skill.includes(ANTI_SILENT_WORKAROUND_B);
-    expect(hasWarning, `builder-ceremony/SKILL.md missing anti-silent-workaround warning ("silently drop" or "silent workaround")`).toBeTruthy();
+    expect(
+      hasWarning,
+      `builder-ceremony/SKILL.md missing anti-silent-workaround warning ("silently drop" or "silent workaround")`
+    ).toBeTruthy();
   });
 
   // Per-agent assertion: each builder must reference the ceremony skill (so the
@@ -898,7 +1300,10 @@ describe("## Structural deviation rule — extracted to builder-ceremony skill i
     describe(agentName, () => {
       const content = readAgent(agentName);
       test("references builder-ceremony skill", () => {
-        expect(content.includes("skills/workflow/builder-ceremony/"), `${agentName}.md must reference skills/workflow/builder-ceremony/ for structural deviation rule`).toBeTruthy();
+        expect(
+          content.includes("skills/workflow/builder-ceremony/"),
+          `${agentName}.md must reference skills/workflow/builder-ceremony/ for structural deviation rule`
+        ).toBeTruthy();
       });
     });
   }
@@ -941,7 +1346,10 @@ describe("No lead refs across active agents", () => {
       const content = readAgent(name);
       const body = content.replace(/^---[\s\S]*?---\n/, "");
       const matches = body.match(/\bthe lead\b|\bto the lead\b|\bby the lead\b|\bcrew:lead\b/gi);
-      expect(!matches || matches.length === 0, `${name}.md must not reference removed 'lead' agent; found: ${matches?.join(", ")}`).toBeTruthy();
+      expect(
+        !matches || matches.length === 0,
+        `${name}.md must not reference removed 'lead' agent; found: ${matches?.join(", ")}`
+      ).toBeTruthy();
     });
   }
 });

@@ -16,5 +16,8 @@ test("assertBunPresent: throws with an install URL when bun is missing", () => {
     err = e;
   }
   expect(err instanceof Error, "expected an Error to be thrown").toBeTruthy();
-  expect(String(err).includes("https://bun.sh"), `error message should reference bun.sh: ${String(err)}`).toBeTruthy();
+  expect(
+    String(err).includes("https://bun.sh"),
+    `error message should reference bun.sh: ${String(err)}`
+  ).toBeTruthy();
 });

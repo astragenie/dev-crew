@@ -35,7 +35,11 @@ import {
 } from "./lib/workflow-config.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const AGENTS_ROOT = path.join(REPO_ROOT, "agents");
+// P3 surface merge moved agents/ to the monorepo root (devcrew unification);
+// workflows.yaml itself stays crew-local under crew/.claude/ — same
+// REPO_ROOT/SURFACE_ROOT split validate-configs.mts already documents.
+const SURFACE_ROOT = path.resolve(REPO_ROOT, "..");
+const AGENTS_ROOT = path.join(SURFACE_ROOT, "agents");
 
 // Role precedence map for phase-order validation
 const ROLE_PRECEDENCE: Record<string, number> = {

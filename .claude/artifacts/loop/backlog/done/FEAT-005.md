@@ -1,6 +1,6 @@
 ---
 id: FEAT-005
-status: in-progress
+status: done
 priority: P2
 category: feature
 target_release: null
@@ -51,7 +51,8 @@ arch_attempt: 0
 arch_status: approved
 arch_review: approved
 started_at: 2026-08-19
-slices_complete: [SLICE-20, SLICE-21, SLICE-22, SLICE-23]
+slices_complete: [SLICE-20, SLICE-21, SLICE-22, SLICE-23, SLICE-24, SLICE-25]
+completed_at: 2026-08-19
 ---
 ## Description
 

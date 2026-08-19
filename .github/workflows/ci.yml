@@ -1,25 +1,80 @@
 name: test
 
-# CI is split into three jobs to stop worktree-touching tests from hanging
-# the required check (astragenie/runner-plugin#355):
+# devcrew unification (SLICE-24, FEAT-005): the SINGLE CI workflow for this
+# repo. Both former parents (runner-plugin's root ci.yml, crew's
+# .github/workflows/*) are merged here; crew/.github/workflows/ was deleted
+# — crew-subtree gates (crew/scripts/validate-*, crew/tsconfig.json,
+# crew/biome.json, crew/tests/) now run FROM ROOT as part of this workflow,
+# not as their own repo-local CI. Bun 1.3.14+ is baked into the self-hosted
+# runner image (devops#64) — no setup-bun step, no ETXTBSY race; MIN_BUN
+# is asserted for visibility, not installed.
 #
-#   fast-gate            - validators + tsc (both configs) + biome. Target
-#                           ~1 min. This is the job the required status check
-#                           should point at: "fast-gate / test (self-hosted)".
-#   slow-tests            - the full bun test suite MINUS the six known
-#                           git-worktree suites, with a job-level timeout and
-#                           an in-step retry so a hang self-clears instead of
-#                           sitting for ~28 minutes.
-#   worktree-quarantine   - only the six worktree-touching suites named in
-#                           #355 (auto-merge, synergy, integration,
-#                           integrations, slice-complete, slice-start). Hard
-#                           per-invocation kill via `timeout`, and the job is
-#                           non-blocking (continue-on-error) so a deadlock in
-#                           real `git worktree` operations can never hold up
-#                           merges for more than ~2 minutes.
+# CI is split into jobs the same way runner-plugin's did, to stop
+# worktree-touching tests from hanging the required check
+# (astragenie/runner-plugin#355):
 #
-# Every test still runs somewhere — slow-tests and worktree-quarantine
-# together cover the same file set the old single `test` job covered.
+#   fast-gate            - every validator (root's 18 + crew's 9 blocking +
+#                           crew's 6 advisory) + 3 tsc projects + 4 biome
+#                           invocations (root src/, crew-scoped). Target
+#                           ~1-2 min. This is the required status check:
+#                           "fast-gate / test (self-hosted)".
+#   slow-tests            - root's bun test suite MINUS the six known
+#                           git-worktree suites (runner-plugin#355), with a
+#                           job-level timeout + in-step retry.
+#   crew-tests             - crew's bun test suite (tests/ --parallel).
+#                           SLICE-10 (FEAT-004 P1) proved N>=20 consecutive
+#                           green `--parallel` runs on this tree, so this
+#                           uses `bun run test:crew` (root package.json,
+#                           already --parallel) rather than crew's retired
+#                           3-way SHARD_TOTAL matrix from bun#5090-era CI.
+#   worktree-quarantine   - only the six worktree-touching root suites named
+#                           in #355. Hard per-invocation kill via `timeout`,
+#                           non-blocking (continue-on-error) so a deadlock
+#                           in real `git worktree` operations can never hold
+#                           up merges for more than ~2 minutes.
+#
+# Every test still runs somewhere. Full numbered gate list + rationale:
+# docs/ci-gates.md (kept in sync with this file's `validators:` /
+# `advisory-validators:` / `bun-commands:` block — SLICE-25 ports the same
+# numbered list into CLAUDE.md's "## CI gates" section, the metrics-band
+# machine contract).
+#
+# Named drops from the former parents' CI (unification-plan.md SS7: "retire
+# none silently — any gate dropped must be named"):
+#   - crew's hooks/check-redundant-read.mts self-test — a hook smoke-test,
+#     not a repo-content gate; crew/tests/ already carries broad hook
+#     coverage (hook-feature-gating, hook-error-events, cost-hygiene-hook,
+#     etc.). Deferred, not lost.
+#   - crew's e2e-smoke.mts / e2e:smoke:ux (Linux-only commands) — live
+#     `claude` CLI integration smoke, out of scope for this slice; needs its
+#     own follow-up FEAT to decide whether it belongs in this workflow or a
+#     separate scheduled one (it never ran on every PR even in crew's own
+#     CI — see the old workflow's `linux-only-commands` split).
+#   - crew's negative-fixture shell loops for validate-contracts.mts /
+#     validate-ux-spec.mts (asserting a broken fixture fails linting) — both
+#     scripts require an explicit file arg (no repo-wide sweep mode) and the
+#     same assertions already live in crew/tests/validate-contracts.test.mts
+#     and crew/tests/validate-ux-spec.test.mts, covered by the crew-tests
+#     job. Re-asserting them as standalone CI shell steps was redundant.
+#   - crew's `validate-manifests.mts` did NOT dedupe into root's despite
+#     unification-plan.md SS7's "dedupe manifests (keep runner's, widen
+#     scope)" text — src/scripts/validate-manifests.mts's own header
+#     comment (written during SLICE-20) already establishes that the
+#     manifest merge is explicitly deferred to Phase 5 (marketplace/manifest
+#     unification), overriding the plan's earlier general text. Both stay,
+#     as two separate gates, until Phase 5.
+#
+# crew's validate-agents.mts / validate-skills.mts are wired ADVISORY, not
+# blocking (see advisory-validators: below) — SLICE-24 found their
+# AGENTS_ROOT/SKILLS_ROOT pointed at now-empty crew/agents//crew/skills/
+# (P3 moved the real trees to the monorepo root) and fixed that path bug,
+# but fixing the path surfaced real pre-existing content debt across many
+# files (missing prompt_id/version frontmatter, missing "## Report
+# contract" sections, evals-spec pointers to files that don't exist yet,
+# and a skills directory-name-vs-"devcrew:"-prefixed-frontmatter-name
+# mismatch that may itself be a validator convention gap, not content
+# debt). That backfill is out of scope here; a follow-up FEAT should
+# promote these to blocking once the debt is cleared.
 
 on:
   push:
@@ -60,13 +115,18 @@ jobs:
             echo "code=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # Fast validators + tsc + biome. Skipped on docs-only PRs (see `changes`).
+  # Every validator (root + crew blocking + crew advisory) + 3 tsc projects +
+  # 4 biome invocations, exactly once. Skipped on docs-only PRs (see
+  # `changes`). See docs/ci-gates.md for the full numbered list + rationale.
   fast-gate:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@v1
     with:
-      install-cmd: bun install --frozen-lockfile
+      install-cmd: |
+        bun --version
+        bun install --frozen-lockfile
+        cd crew && bun install --frozen-lockfile && cd ..
       validators: |
         bun ./src/scripts/validate-manifests.mts
         bun ./src/scripts/validate-content-length.mts
@@ -77,22 +137,43 @@ jobs:
         bun ./src/scripts/validate-imports.mts
         bun ./src/scripts/validate-backlog-writes.mts
         bun ./src/scripts/validate-slice-touches-files.mts
+        bun ./src/scripts/validate-slice-state-consistency.mts
         bun ./src/scripts/validate-snapshot-freshness.mts
         bun ./src/scripts/validate-org-refs.mts
         bun ./src/scripts/validate-marketplace-sync.mts
         bun ./src/scripts/validate-memory-config.mts
+        bun ./src/scripts/validate-learnings-schema.mts --repo .
+        bun ./src/scripts/validate-effort-points.mts
+        bun ./src/scripts/validate-branding-scrub.mts
         bun ./src/scripts/generate-metrics-band.mts --check
+        bun ./crew/scripts/validate-manifests.mts
+        bun ./crew/scripts/validate-dispatch-graph.mts
+        bun ./crew/scripts/validate-workflows.mts
+        bun ./crew/scripts/validate-slices.mts
+        bun ./crew/scripts/validate-badges.mts
+        bun ./crew/scripts/validate-loop-state.mts
+        bun ./crew/scripts/validate-bundles.mts
+        bun ./crew/scripts/validate-configs.mts
+        bun ./crew/scripts/validate-routing-table.mts --coverage-only
+      advisory-validators: |
+        bun ./crew/scripts/validate-syntheses.mts
+        CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts
+        bun ./crew/scripts/validate-adr-template.mts --strict
+        bun ./crew/scripts/validate-backlog-drift.mts
+        bun ./crew/scripts/validate-agents.mts
+        bun ./crew/scripts/validate-skills.mts
       bun-commands: |
         bunx tsc --project tsconfig.json --noEmit
         bunx tsc --project tsconfig.test.json --noEmit
+        bunx tsc --project crew/tsconfig.json --noEmit
         bunx biome lint src/
         bunx biome format src/
+        cd crew && bunx biome lint scripts/ hooks/ && bunx biome format scripts/ tests/ && cd ..
 
-  # Full suite minus the quarantined worktree suites (see worktree-quarantine
-  # below). Not gated by the reusable workflow because it needs a job-level
-  # timeout-minutes + an in-job retry loop that the reusable workflow's fixed
-  # 30-minute job timeout can't give us. Bun/Node are baked into the
-  # self-hosted runner image (devops#64) — no setup-bun/setup-node steps.
+  # Full root suite minus the quarantined worktree suites (see
+  # worktree-quarantine below). Not gated by the reusable workflow because it
+  # needs a job-level timeout-minutes + an in-job retry loop the reusable
+  # workflow's fixed 30-minute job timeout can't give us.
   slow-tests:
     name: slow-tests
     needs: changes
@@ -137,10 +218,29 @@ jobs:
           echo "::error::slow-tests failed after ${max_attempts} attempts"
           exit 1
 
-  # Quarantine job for the six suites named in #355 that perform real `git
-  # worktree` operations and have been observed to hang the runner
-  # indefinitely (PR #348: ~28 min, "this test timed out after 60000ms" /
-  # "killed N dangling process(es)"). Non-blocking by design
+  # crew's full suite. SLICE-10 (FEAT-004 P1) already proved N>=20
+  # consecutive green `--parallel` runs on this tree (bun#5090 risk row,
+  # unification-plan.md SS8) — no sharding, no quarantine list needed unless
+  # a future run demonstrates a hang, matching root package.json's
+  # "test:crew" script exactly.
+  crew-tests:
+    name: crew-tests
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: cd crew && bun install --frozen-lockfile
+
+      - name: Run crew suite
+        run: cd crew && bun test --timeout 60000 tests/ --parallel
+
+  # Quarantine job for the six root suites named in #355 that perform real
+  # `git worktree` operations and have been observed to hang the runner
+  # indefinitely (PR #348: ~28 min). Non-blocking by design
   # (continue-on-error) and hard-killed at the OS level via `timeout` so a
   # deadlock here can never hold the required check for more than ~2 min.
   worktree-quarantine:
@@ -178,11 +278,13 @@ jobs:
           exit 0
 
   # Required check. Always runs (if: always) so it reports on every PR, which
-  # avoids the "required check never runs → PR stuck" trap on a strict ruleset.
-  # Passes when the change is docs-only (fast-gate skipped) OR when fast-gate
-  # succeeded. slow-tests/worktree are intentionally NOT gated here (slow-tests
-  # can be flaky; worktree is already non-blocking) — fast-gate is the merge
-  # gate, matching the pre-existing required-check semantics.
+  # avoids the "required check never runs → PR stuck" trap on a strict
+  # ruleset. Passes when the change is docs-only (fast-gate skipped) OR when
+  # fast-gate succeeded. slow-tests/crew-tests/worktree are intentionally NOT
+  # gated here (slow-tests/crew-tests can be flaky on a self-hosted runner;
+  # worktree is already non-blocking) — fast-gate is the merge gate, matching
+  # the pre-existing runner-plugin required-check semantics this repo
+  # inherited.
   gate:
     name: gate
     needs: [changes, fast-gate]

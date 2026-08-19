@@ -67,9 +67,7 @@ test("SpanRecordSchema: passthrough keeps unknown fields like traceState", () =>
     droppedAttributesCount: 0
   }) as Record<string, unknown>;
   expect(span["traceState"], "traceState must survive passthrough").toBe("vendor=x");
-  expect(span["droppedAttributesCount"], "droppedAttributesCount must survive passthrough").toBe(
-    0
-  );
+  expect(span["droppedAttributesCount"], "droppedAttributesCount must survive passthrough").toBe(0);
 });
 
 test("newTraceId and newSpanId are deterministic", () => {

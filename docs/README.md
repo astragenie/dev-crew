@@ -27,6 +27,23 @@ top-level `docs/` folder.
 | `upstream-requests/` | Open requests filed against sibling plugins (`dev-team`/`crew`, `astramem-plugin`) — see `memory.md` "Open upstream requests"; `archive/` holds resolved/superseded ones | `YYYY-MM-DD-<target-plugin>-slug.md` |
 | `ai-loop/`, `backlog/` | **Legacy/stale** — pre-dates the `.claude/artifacts/loop/{ai-loop,backlog}` path migration (last touched 2026-06-09/12). The live equivalents are under `.claude/`, driven by `.claude/loop.json`'s `aiLoopRoot`/`backlogPath`. See `memory.md` "Known path drift" — flagged as delete-candidates, not yet removed (operator call, not this audit's scope) |
 
+## Merged-repo docs disposition (SLICE-25, 2026-08-19)
+
+`crew/docs/**` (123 files: `architecture/`, `backlog/`, `contracts/`,
+`decisions/`, `design/`, `diagnostics/`, `grades/`, `investigations/`,
+`observability/`, `operations/`, `process/`, `prompts/`, `research/`,
+`retrospectives/`, `specs/`, `standards/`, `superpowers/`) is the
+pre-merge `crew`/`dev-team` plugin's own docs tree, vendored as part of
+the `crew/` rump — **DEFERRED, not migrated by this slice.** Reason: bulk
+content-relevant migration (architecture decisions, contracts) is out of
+this 1-effort-point slice's budget; the map here just needs to be honest
+about where things live today. Until a follow-up FEAT does the move,
+`crew/docs/**` is the live reference for pre-merge `crew` design history —
+read it in place rather than assuming it was ported into this `docs/`
+tree. `crew/CLAUDE.md` (the rump's own root doc, still scanned by
+`validate-agent-refs.mts`'s `SCAN_FILES`) is likewise untouched by this
+slice.
+
 ## What's NOT here
 
 `templates/`, `commands/`, `skills/`, `agents/` (excl. `3rdparty/` vendored

@@ -135,11 +135,15 @@ test("write-handoff with --update overwrites stub in place, no second file creat
     const handoffCountAfter = filesAfter.filter((f) => f.includes("handoff")).length;
 
     // Verify only ONE handoff file exists (no second file created)
-    expect(handoffCountAfter, "should not create a second file; update should overwrite").toBe(handoffCountBefore);
+    expect(handoffCountAfter, "should not create a second file; update should overwrite").toBe(
+      handoffCountBefore
+    );
 
     // Verify the file was updated with new content
     stubBody = await fs.readFile(stubPath, "utf8");
-    expect(stubBody, "updated stub should contain 'Status: completed'").toMatch(/Status: completed/);
+    expect(stubBody, "updated stub should contain 'Status: completed'").toMatch(
+      /Status: completed/
+    );
     expect(stubBody, "updated stub should contain 'final artifact'").toMatch(/final artifact/);
     expect(stubBody, "updated stub should contain 'completed work'").toMatch(/completed work/);
   } finally {
@@ -276,7 +280,9 @@ test("artifact write without --update creates new timestamped file (backward com
     const artifact2 = JSON.parse(result2.stdout);
 
     // Verify two different files exist
-    expect(artifact1.path, "should create two separate files without --update").not.toBe(artifact2.path);
+    expect(artifact1.path, "should create two separate files without --update").not.toBe(
+      artifact2.path
+    );
     const exists1 = await fs.stat(artifact1.path);
     const exists2 = await fs.stat(artifact2.path);
     expect(exists1, "first artifact should exist").toBeTruthy();

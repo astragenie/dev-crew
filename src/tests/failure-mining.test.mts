@@ -11,7 +11,12 @@ import { miningRoot } from "../scripts/lib/paths.mjs";
 import { mineFailures } from "../scripts/lib/failure-mining.mjs";
 
 async function seedPausedDispatch(repo: string, sliceId: string, ts: string): Promise<void> {
-  await recordDispatchOutcome(repo, { ts, agentRole: "devcrew:builder", sliceId, outcome: "paused" });
+  await recordDispatchOutcome(repo, {
+    ts,
+    agentRole: "devcrew:builder",
+    sliceId,
+    outcome: "paused"
+  });
 }
 
 // ---------------------------------------------------------------------------

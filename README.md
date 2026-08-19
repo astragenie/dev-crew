@@ -1,30 +1,40 @@
-# loop
+# dev-crew
 
-[![test](https://github.com/astragenie/runner-plugin/actions/workflows/test.yml/badge.svg)](https://github.com/astragenie/runner-plugin/actions/workflows/test.yml)
-[![release](https://img.shields.io/github/v/tag/astragenie/runner-plugin?label=release&sort=semver)](https://github.com/astragenie/runner-plugin/releases)
-[![license](https://img.shields.io/github/license/astragenie/runner-plugin)](LICENSE)
+[![test](https://github.com/astragenie/devcrew/actions/workflows/test.yml/badge.svg)](https://github.com/astragenie/devcrew/actions/workflows/test.yml)
+[![release](https://img.shields.io/github/v/tag/astragenie/devcrew?label=release&sort=semver)](https://github.com/astragenie/devcrew/releases)
+[![license](https://img.shields.io/github/license/astragenie/devcrew)](LICENSE)
 
-A Claude Code plugin that ships the dev-crew method as a reusable
-layer: HARD RULE blocks, slice scaffold, plugin-owned loop-control docs, and a
-safe phase-gate runner.
+A unified engineering-OS Claude Code plugin (plugin id `devcrew`, CLI
+namespace `/devcrew:*`): a dispatcher-guided ceremony layer (bounded
+specialist subagents, quality gates, inspectable handoffs) fused with an
+autonomous layer on top of it (PM-triaged backlog, slice-scoped
+Given-When-Then specs, parallel-worktree wave dispatch, phase-gate quality
+checks, decision-grade retrospectives) — one repo, one release train, one
+CLI namespace, where this used to be two separately-shipped plugins
+(`crew`/`dev-team` and `loop`/`runner-plugin`) bridged by a fragile
+cross-repo seam. HARD RULE blocks, slice scaffold, plugin-owned
+loop-control docs, and a safe phase-gate runner all ship from this single
+repo now.
 
-Depends on the [`crew`](https://github.com/astragenie/dev-team) plugin
-(>= v0.57.0) for artifact writers — loop emits Crew
-`validation-result` artifacts through `crew write-validation-result`.
+Post-merge, the ceremony layer ships from inside this same repo — see
+"Repo topology" in `CLAUDE.md`. `crew/` is a vendored rump of the
+pre-merge `crew`/`dev-team` plugin still used for artifact writers today
+(`crew write-validation-result`); the eventual single-plugin cutover is
+tracked as FEAT-006 (P5, operator-authorized).
 
 <!-- demo-recording: pending W4.1 asciinema asset -->
 
 <!-- metrics-band:start -->
-_Dogfood metrics — generated 2026-08-06. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
+_Dogfood metrics — generated 2026-08-19. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
 
 | Metric | Value |
 |---|---|
-| FEATs shipped (done) | 196 |
-| Slices closed, last 90 days | 171 |
-| Grade average, last 5 slice closes | 0.862 (n=151 total) |
-| median per slice-close session scan | $4.832 (mean $6.707, +38.8% divergence) |
+| FEATs shipped (done) | 4 |
+| Slices closed, last 90 days | 19 |
+| Grade average, last 5 slice closes | 0.905 (n=23 total) |
+| median per slice-close session scan | $3.772 (mean $9.816, +160.2% divergence) |
 | Halt badges documented | 16 |
-| CI gates enforced | 19 |
+| CI gates enforced | 41 |
 
 Sources:
 - FEATs shipped / slices closed: `.claude/artifacts/loop/backlog/done/*.md` frontmatter (`completed_at`, `slices`).
@@ -40,39 +50,40 @@ Positioning we can back with an artifact, not a slogan — every claim below
 either cites a file in this repo or a specific PR/issue. Compared against
 "generic agent platforms" as a category, not any named product.
 
-| Dimension | Loop (this repo) | Generic agent platforms |
+| Dimension | dev-crew (this repo) | Generic agent platforms |
 | --- | --- | --- |
 | Halt/stop enforcement | Documented halt badges (see metrics band above; `docs/halt-badges.md`), each with an explicit `Fires when` condition wired into either the walker's `stop-conditions.mts` snapshot or the close-time gate pre-flight, and fanned out as `halt_badge` / `halt_badge.resolved` webhook events — not just prose guidance. | Typically prose-only "best practices" or a single generic stop condition, with no cross-plugin fan-out contract to verify a badge actually fired. |
 | Prompt optimization | One fully auditable live promotion: GEPA judge trial `c948e52c`, `aiplugin-dev` 1.2.3→1.2.4 (CHANGELOG-traceable). Default candidate generation is synthetic string mutation — real LLM reflection only runs behind an explicit flag, and that distinction is documented rather than blurred. | Often marketed as "self-improving" or "reflective" with no public trial artifact a reader can open and verify. |
 | CI enforcement | CI gates enforced (see metrics band above; `CLAUDE.md` § "CI gates"), several traced directly to a production incident retro — e.g. phantom-agent dispatch (#371), stale pre-transfer owner refs (#474), worktree-hang quarantine (#355). | Gate counts, when published, are rarely tied to a named incident a reader can look up. |
 | Cost reporting | Median per slice-close session scan reported alongside the mean with a divergence flag, so a skewed average can't hide behind a single headline number (see metrics band above). | Cost claims are usually a single average, or omitted entirely. |
-| Access | `/plugin install loop@astra` — self-serve, no waitlist, on any tier. | Some competing "self-learning" agent platforms gate every pricing tier, including free, behind a waitlist. |
+| Access | `/plugin install devcrew@astra` — self-serve, no waitlist, on any tier. | Some competing "self-learning" agent platforms gate every pricing tier, including free, behind a waitlist. |
 
 _Comparison reflects publicly documented positioning as of 2026-07-18._
 
 ## Install
 
-These are three separate commands — paste one at a time into the Claude
-Code prompt and let each finish before pasting the next:
+Post-cutover, this is one command — paste into the Claude Code prompt:
 
 ```
 /plugin marketplace add astragenie/astra-marketplace
-/plugin install crew@astra
-/plugin install loop@astra
+/plugin install devcrew@astra
 ```
 
-`crew` must be installed first. Minimum compatible release: `v0.57.0`
-(`src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`). See
-[ADOPTION.md](ADOPTION.md) for new-repo onboarding.
+See [ADOPTION.md](ADOPTION.md) for new-repo onboarding.
 
 > **Marketplace history:**
 >
 > - Pre-v0.8.7: shipped via the `hero-crew` repo (paired releases).
-> - v0.8.7–v0.41.x: shipped from its own `loop` marketplace, decoupled.
-> - v0.41.0+: shipped from the central `astragenie/astra-marketplace`
->   alongside `crew` and `cortex`. Plugin code stays in
->   [`astragenie/runner-plugin`](https://github.com/astragenie/runner-plugin); the
->   marketplace registry is its own repo.
+> - v0.8.7–v0.41.x: `loop` shipped from its own marketplace, decoupled
+>   from `crew`.
+> - v0.41.0+: both `crew` and `loop` shipped from the central
+>   `astragenie/astra-marketplace` registry as two separate installs
+>   (`crew@astra` then `loop@astra`), each still its own repo/codebase.
+> - 2026-08-18+: `crew`/`dev-team` and `loop`/`runner-plugin` merge into
+>   this single `astragenie/devcrew` repo (FEAT-002..006). Until the P5
+>   cutover slice lands, the merge repo is a working build, not yet the
+>   published `devcrew@astra` marketplace entry — check `CHANGELOG.md`
+>   for the release that flips it over.
 
 ## What it does
 
@@ -310,24 +321,23 @@ crew is not installed.
 
 ## Marketplace
 
-Shipped from the central `astragenie/astra-marketplace` registry alongside
-`crew` and `cortex` (see "Marketplace history" above) — that registry's
-`marketplace.json` is the source of truth for the published `loop` entry, not
-this repo. Plugin code stays in this repo
-([`astragenie/runner-plugin`](https://github.com/astragenie/runner-plugin)).
+Ships from the central `astragenie/astra-marketplace` registry (see
+"Marketplace history" above) — that registry's `marketplace.json` is the
+source of truth for the published entry, not this repo. Plugin code lives
+in this repo ([`astragenie/devcrew`](https://github.com/astragenie/devcrew)).
 `bun ./src/scripts/validate-marketplace-sync.mts` is a CI gate that fails a
 push if the registry's pinned version drifts from `.claude-plugin/plugin.json`
 here.
 
-## Hard dependency on `crew`
+## `crew` rump dependency (merge window only)
 
-The phase-gate runner writes its validation artifact through
-`crew write-validation-result`. Install errors with a clear message if the
-crew CLI is not discoverable in `~/.claude/plugins/cache/astra/crew/*/`.
-
-If you install `crew` under a different marketplace name, set
-`CREW_MARKETPLACE_NAME` in the environment before invoking
-loop CLI commands.
+Until the FEAT-006 cutover, the phase-gate runner still writes its
+validation artifact through `crew write-validation-result`, resolved
+against the vendored `crew/` rump inside this repo rather than an
+external plugin-cache install. See "Repo topology" in `CLAUDE.md`. If you
+point at a differently-named `crew` install during this window, set
+`CREW_MARKETPLACE_NAME` in the environment before invoking loop CLI
+commands.
 
 ## What it doesn't do (v1 scope)
 
@@ -359,12 +369,15 @@ and emit. See `docs/sop/memory-bridge.md` for the full wire contract.
 it scopes every `recall_memory`/`remember` call so one repo's slice history
 never bleeds into another's. The convention: **set it to the repo's own
 checkout directory name.** This repo is the worked example — its own
-`.claude/loop.json` sets `memory.project: "runner-plugin"`, matching the
-`runner-plugin` directory, and `CLAUDE.md`'s "Memory binding (astramem)"
-section spells out why that value has to stay in sync with whatever the
-loop's runtime sends (an explicit `memory.project` always wins over the
-`productName` fallback `grade-writer.mts`/`memory-sink.mts` fall back to
-when no override is set — see `docs/sop/memory-bridge.md`).
+`.claude/loop.json` sets `memory.project: "dev-crew"`, matching the
+`devcrew` directory's product name, and `CLAUDE.md`'s "Memory binding
+(astramem)" section spells out why that value has to stay in sync with
+whatever the loop's runtime sends (an explicit `memory.project` always
+wins over the `productName` fallback `grade-writer.mts`/`memory-sink.mts`
+fall back to when no override is set — see `docs/sop/memory-bridge.md`).
+During the merge window, also recall against the two predecessor project
+ids, `dev-team` and `runner-plugin` — most historical lessons still live
+there (see `CLAUDE.md`'s "dual-project recall window" note).
 
 Seed (or migrate) a repo onto this convention with the idempotent
 `memory-setup` subcommand (`commands/memory-setup.md`, mirrors

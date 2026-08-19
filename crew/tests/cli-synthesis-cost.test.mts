@@ -256,7 +256,9 @@ test("cost-advise accepts --title --feature --phase and slugs filename + emits f
   expect(adviseResult.code).toBe(0);
   const adviseOutput = JSON.parse(adviseResult.output);
   expect(adviseOutput.artifactPath).toBeTruthy();
-  expect(path.basename(adviseOutput.artifactPath)).toMatch(/-cost-advise-phase3-feat021-slice36\.md$/);
+  expect(path.basename(adviseOutput.artifactPath)).toMatch(
+    /-cost-advise-phase3-feat021-slice36\.md$/
+  );
   const body = await fs.readFile(adviseOutput.artifactPath, "utf8");
   expect(body).toMatch(/^---\nphase: "3"\nfeature: FEAT-021\n---\n/);
 });

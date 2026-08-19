@@ -38,9 +38,15 @@ test("concurrent markWorkflowBadge calls merge correctly (no lost updates)", asy
     // Verify both gates are set in final state
     const final = await loadWorkflowState(repoPath);
     expect(final.currentRun?.gates.review?.status, "review gate should be passed").toBe("passed");
-    expect(final.currentRun?.gates.validation?.status, "validation gate should be passed").toBe("passed");
-    expect(final.currentRun?.gates.review?.note, "review note should be persisted").toBe("review OK");
-    expect(final.currentRun?.gates.validation?.note, "validation note should be persisted").toBe("validation OK");
+    expect(final.currentRun?.gates.validation?.status, "validation gate should be passed").toBe(
+      "passed"
+    );
+    expect(final.currentRun?.gates.review?.note, "review note should be persisted").toBe(
+      "review OK"
+    );
+    expect(final.currentRun?.gates.validation?.note, "validation note should be persisted").toBe(
+      "validation OK"
+    );
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }
@@ -82,8 +88,12 @@ test("validation_stale badge sets validation gate to stale status", async () => 
 
     // Verify state
     state = await loadWorkflowState(repoPath);
-    expect(state.currentRun?.gates.validation?.status, "validation gate should be stale").toBe("stale");
-    expect(state.currentRun?.gates.validation?.note, "stale note should be persisted").toBe("invalidated by review needs_fix");
+    expect(state.currentRun?.gates.validation?.status, "validation gate should be stale").toBe(
+      "stale"
+    );
+    expect(state.currentRun?.gates.validation?.note, "stale note should be persisted").toBe(
+      "invalidated by review needs_fix"
+    );
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }

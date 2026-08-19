@@ -20,7 +20,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PEER_DISPATCH_ALLOWLIST } from "./lib/dispatch/peer-dispatch-allowlist.mjs";
 
-const AGENTS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "agents");
+// P3 surface merge moved agents/ to the monorepo root (devcrew unification) —
+// see validate-workflows.mts's SURFACE_ROOT note for the same split.
+const AGENTS_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "agents"
+);
 const MAX_LINES = 350;
 
 function parseFrontmatter(text: string): Record<string, string> | null {

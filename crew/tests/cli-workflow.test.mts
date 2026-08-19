@@ -136,10 +136,14 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
   expect(wakeUp.latestArtifacts.validationResult.title).toMatch(/Wake-up validation result/);
   expect(wakeUp.latestArtifacts.deploymentCheck.title).toMatch(/Wake-up deployment check/);
   expect(wakeUp.memory.hot.repoGuidance.deployment.title).toMatch(/Wake-up deployment model/);
-  expect(wakeUp.memory.hot.repoMemory.some((entry: { path: string }) => entry.path.endsWith("CLAUDE.md"))).toBeTruthy();
+  expect(
+    wakeUp.memory.hot.repoMemory.some((entry: { path: string }) => entry.path.endsWith("CLAUDE.md"))
+  ).toBeTruthy();
   expect(wakeUp.memory.hot.latestArtifacts.runBrief.title).toMatch(/Wake-up test run/);
   expect(wakeUp.memory.hot.latestArtifacts.validationPlan.title).toMatch(/Wake-up validation plan/);
-  expect(wakeUp.memory.hot.latestArtifacts.deploymentCheck.title).toMatch(/Wake-up deployment check/);
+  expect(wakeUp.memory.hot.latestArtifacts.deploymentCheck.title).toMatch(
+    /Wake-up deployment check/
+  );
   expect(wakeUp.memory.warm.validation.title).toMatch(/Wake-up validation result/);
   expect(wakeUp.memory.hot.claims.length).toBe(1);
   expect(wakeUp.memory.hot.workflow.currentRun.gates.review.status).toBe("required");
@@ -220,15 +224,23 @@ test("CLI brief-me synthesizes workflow state, git activity, and next step", asy
   expect(brief.sections.recentActivity.git.workingTree.branch).toBe("main");
   expect(brief.sections.recentActivity.git.workingTree.hasChanges).toBe(true);
   expect(brief.sections.recentActivity.git.workingTree.untrackedCount >= 1).toBeTruthy();
-  expect(brief.sections.recentActivity.git.workingTree.changedPaths.includes("notes.txt")).toBeTruthy();
+  expect(
+    brief.sections.recentActivity.git.workingTree.changedPaths.includes("notes.txt")
+  ).toBeTruthy();
   expect(brief.sections.recentActivity.latestArtifacts[0].label.length > 0).toBe(true);
-  expect(brief.sections.recentActivity.repoMemory.some((entry: { path: string }) =>
+  expect(
+    brief.sections.recentActivity.repoMemory.some((entry: { path: string }) =>
       entry.path.endsWith("CLAUDE.md")
-    )).toBeTruthy();
-  expect(brief.sections.recentActivity.retrievalGuide.some((entry: { path: string }) =>
+    )
+  ).toBeTruthy();
+  expect(
+    brief.sections.recentActivity.retrievalGuide.some((entry: { path: string }) =>
       entry.path.endsWith("CLAUDE.md")
-    )).toBeTruthy();
-  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/Independent review is still required/);
+    )
+  ).toBeTruthy();
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(
+    /Independent review is still required/
+  );
   expect(brief.sections.importantReminders.join("\n")).toMatch(/Working tree has/);
   expect(brief.sections.recommendedNextStep).toMatch(/Run independent review next/);
   expect(brief.sections.secondaryOptions.length >= 1).toBeTruthy();
@@ -281,7 +293,9 @@ test("CLI brief-me surfaces failed gates before generic next steps", async () =>
   expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
 
-  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/Independent review failed: Missing null guard/);
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(
+    /Independent review failed: Missing null guard/
+  );
   expect(brief.sections.recommendedNextStep).toMatch(/Address the failed review findings/);
 });
 
@@ -426,7 +440,9 @@ test("CLI workflow state and brief-me surface missing artifact write-backs after
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
   expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
-  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/review artifact write-back is still missing/);
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(
+    /review artifact write-back is still missing/
+  );
   expect(brief.sections.recommendedNextStep).toMatch(/Write the review-result artifact now/);
 });
 
@@ -453,7 +469,9 @@ test("CLI workflow state and brief-me surface missing run briefs after meaningfu
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
   expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
-  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/Independent review is still required/);
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(
+    /Independent review is still required/
+  );
   expect(brief.sections.recommendedNextStep).toMatch(/Run independent review next/);
 });
 
@@ -590,8 +608,10 @@ test("brief-me surfaces blocked in pending badges", async () => {
   expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
 
-  expect((brief.pendingBadges || brief.workflow?.pendingBadges || []).includes("blocked") ||
-      JSON.stringify(brief).includes("blocked")).toBeTruthy();
+  expect(
+    (brief.pendingBadges || brief.workflow?.pendingBadges || []).includes("blocked") ||
+      JSON.stringify(brief).includes("blocked")
+  ).toBeTruthy();
 });
 
 test("brief-me reports routingTableStale=false when file recent or absent", async () => {
@@ -635,5 +655,7 @@ test("brief-me reports routingTableStale=true when mtime > 30 days old", async (
   expect(summary.routingTableAgeDays >= 30).toBeTruthy();
 
   const reminders = brief.sections?.importantReminders || [];
-  expect(reminders.some((r: string) => r.includes("Routing table") && r.includes("stale"))).toBeTruthy();
+  expect(
+    reminders.some((r: string) => r.includes("Routing table") && r.includes("stale"))
+  ).toBeTruthy();
 });

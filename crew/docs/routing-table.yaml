@@ -59,7 +59,7 @@ rows:
   - section: workflow-signals
     signal: "**Ambiguous scope** (unclear where to start, spans multiple modules)"
     route_to: dispatcher
-    notes: Re-scope task, define boundaries, then dispatch to fullstack-dev. Use `/crew:using-crew` to frame the work.
+    notes: Re-scope task, define boundaries, then dispatch to fullstack-dev.
   - section: workflow-signals
     signal: "**Cross-module / architectural refactor** (touches 5+ files, changes public API)"
     route_to: dispatcher
@@ -79,7 +79,7 @@ rows:
   - section: workflow-signals
     signal: "**Session start / work planning** (new task, unclear next steps)"
     route_to: dispatcher
-    notes: Retrieve bounded context with `/crew:brief-me`. Define scope, assign to role, set pace. Avoid ambiguity at start.
+    notes: Retrieve bounded context with `/brief`. Define scope, assign to role, set pace. Avoid ambiguity at start.
   - section: workflow-signals
     signal: "**Blocked work or escalation** (dependency unmet, config broken, ambiguous requirements)"
     route_to: dispatcher

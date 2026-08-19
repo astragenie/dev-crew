@@ -22,7 +22,14 @@ import {
   BIDIRECTIONAL_ALLOWED
 } from "./lib/dispatch/peer-dispatch-allowlist.mjs";
 
-const AGENTS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "agents");
+// P3 surface merge moved agents/ to the monorepo root (devcrew unification) —
+// see validate-workflows.mts's SURFACE_ROOT note for the same split.
+const AGENTS_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "agents"
+);
 
 // Agents whose Peer dispatch whitelists are parsed for graph construction, and
 // the documented bidirectional cycle-detector exception, now both live in

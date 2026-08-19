@@ -117,7 +117,10 @@ test("spawnReactionProcess: real args call the injected spawn function detached,
     };
   };
 
-  const spawnArgs = buildSpawnArgs(makeSpawn("intake", "/devcrew:intake --from-issue x"), undefined);
+  const spawnArgs = buildSpawnArgs(
+    makeSpawn("intake", "/devcrew:intake --from-issue x"),
+    undefined
+  );
   assert.ok(spawnArgs);
   spawnReactionProcess(spawnArgs, spawnFn);
 

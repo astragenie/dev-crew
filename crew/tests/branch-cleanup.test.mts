@@ -14,7 +14,11 @@ import path from "node:path";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
-import { isStandardMerged, isSquashMerged, isBranchMerged } from "../scripts/lib/branch-cleanup.mjs";
+import {
+  isStandardMerged,
+  isSquashMerged,
+  isBranchMerged
+} from "../scripts/lib/branch-cleanup.mjs";
 
 const execFile = promisify(execFileCallback);
 

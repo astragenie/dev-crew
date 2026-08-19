@@ -1,19 +1,19 @@
-# Phase Gate Report — phase unspecified — 2026-08-19T07:11:04.502Z
+# Phase Gate Report — phase unspecified — 2026-08-19T09:05:42.425Z
 
 ## Summary
 - Status: FAIL
 - Preset: typescript-plugin-dev
-- Started: 2026-08-19T07:09:22.524Z
-- Ended: 2026-08-19T07:11:04.502Z
-- Note: P3 surface merge complete
+- Started: 2026-08-19T09:04:04.620Z
+- Ended: 2026-08-19T09:05:42.425Z
+- Note: P4 content+CI complete
 
 ## build
-### PASS `bun run lint` (cwd: ., exit 0, 594ms)
+### PASS `bun run lint` (cwd: ., exit 0, 620ms)
 
 ```text
 The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
 Diagnostics not shown: 294.
-Checked 607 files in 400ms. No fixes applied.
+Checked 609 files in 419ms. No fixes applied.
 Found 61 warnings.
 Found 253 infos.
 ```
@@ -267,46 +267,46 @@ src\scripts\lib\arch-gate.mts:375:23 lint/complexity/noExcessiveCognitiveComplex
   i Please refactor this function to reduce its complexity score from 18 to the max allowed complexity 15.
   
 
-src\scripts\lib\auto-merge.mts:163:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+src\scripts\lib\auto-merge.mts:164:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
 
   ! Change to an optional chain.
   
-    161 │ ): string {
-    162 │   const { sliceTitle, sliceId, featureId, gradeAvg, decisionIds } = opts;
-  > 163 │   if (!sliceTitle || !sliceTitle.trim()) {
+    162 │ ): string {
+    163 │   const { sliceTitle, sliceId, featureId, gradeAvg, decisionIds } = opts;
+  > 164 │   if (!sliceTitle || !sliceTitle.trim()) {
         │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    164 │     throw new MergeError({
-    165 │       code: "MERGE_FAILED",
+    165 │     throw new MergeError({
+    166 │       code: "MERGE_FAILED",
   
   i Unsafe fix: Change to an optional chain.
   
-    161 161 │   ): string {
-    162 162 │     const { sliceTitle, sliceId, featureId, gradeAvg, decisionIds } = opts;
-    163     │ - ··if·(!sliceTitle·||·!sliceTitle.trim())·{
-        163 │ + ··if·(!sliceTitle?.trim())·{
-    164 164 │       throw new MergeError({
-    165 165 │         code: "MERGE_FAILED",
+    162 162 │   ): string {
+    163 163 │     const { sliceTitle, sliceId, featureId, gradeAvg, decisionIds } = opts;
+    164     │ - ··if·(!sliceTitle·||·!sliceTitle.trim())·{
+        164 │ + ··if·(!sliceTitle?.trim())·{
+    165 165 │       throw new MergeError({
+    166 166 │         code: "MERGE_FAILED",
   
 
-src\scripts\lib\auto-merge.mts:172:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+src\scripts\lib\auto-merge.mts:173:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
 
   ! Change to an optional chain.
   
-    170 │     });
-    171 │   }
-  > 172 │   if (!sliceId || !sliceId.trim()) {
+    171 │     });
+    172 │   }
+  > 173 │   if (!sliceId || !sliceId.trim()) {
         │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    173 │     throw new MergeError({
-    174 │       code: "MERGE_FAILED",
+    174 │     throw new MergeError({
+    175 │       code: "MERGE_FAILED",
   
   i Unsafe fix: Change to an optional chain.
   
-    170 170 │       });
-    171 171 │     }
-    172     │ - ··if·(!sliceId·||·!sliceId.trim())·{
-        172 │ + ··if·(!sliceId?.trim())·{
-    173 173 │       throw new MergeError({
-    174 174 │         code: "MERGE_FAILED",
+    171 171 │       });
+    172 172 │     }
+    173     │ - ··if·(!sliceId·||·!sliceId.trim())·{
+        173 │ + ··if·(!sliceId?.trim())·{
+    174 174 │       throw new MergeError({
+    175 175 │         code: "MERGE_FAILED",
   
 
 src\scripts\lib\backlog-auditor.mts:39:10 lint/complexity/noExcessiveCognitiveComplexity ━━━━━━━━━━━
@@ -377,7 +377,7 @@ src\scripts\lib\cli-args.mts:122:17 lint/complexity/noExcessiveCognitiveComplexi
 ```
 
 ## test
-### FAIL `bun test --parallel` (cwd: ., exit 1, 101381ms)
+### FAIL `bun test --parallel` (cwd: ., exit 1, 97183ms)
 
 ```text
 bun test v1.3.14 (0d9b296a) 20x PARALLEL
@@ -386,129 +386,128 @@ bun test v1.3.14 (0d9b296a) 20x PARALLEL
 **stderr:**
 ```text
 ... (truncated, showing last 65536 bytes)
-FYy (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-scaffold-OhrFYy — falling back to local-only slice-id scan (remote max treated as 0).
-[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[features] snapshot-autoregen: enabled
-
-src\tests\cost-regression-mode-flip.test.mts:
-{"event":"cost-regression-check","timestamp":"2026-08-19T07:09:56.594Z","mode":"median","actual_usd":35,"expected_usd":null,"median_usd_per_point":null,"effort_points":null,"threshold_usd":30,"triggered":true,"multiplier":3,"window":5,"sample_count":3}
-
-src\tests\slice-linker.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-small-oDVKRY (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-small-oDVKRY — falling back to local-only slice-id scan (remote max treated as 0).
-
-crew\tests\dispatch-size-gate.test.mts:
-[features] dispatch-size-gate: disabled
-
-src\tests\cost-regression-sizing.test.mts:
-[loop] WARN: loop.costRegressionMode is deprecated; rename to loop.cost.regression.mode in .claude/loop.json (run /devcrew:cost-setup to auto-migrate).
-[loop] WARN: loop.costMedianUsdPerPoint is deprecated; rename to loop.cost.regression.medianUsdPerPoint in .claude/loop.json (run /devcrew:cost-setup to auto-migrate).
-{"event":"cost-regression-check","timestamp":"2026-08-19T07:09:56.811Z","mode":"expected_usd","actual_usd":100,"expected_usd":10,"median_usd_per_point":10,"effort_points":1,"threshold_usd":30,"triggered":true,"multiplier":3,"window":5,"sample_count":3}
-
-crew\tests\dispatch-size-gate.test.mts:
-[features] dispatch-size-gate: disabled
-[features] dispatch-size-gate: enabled
-
-src\tests\cost-regression-sizing.test.mts:
-{"event":"cost-regression-check","timestamp":"2026-08-19T07:09:56.860Z","mode":"expected_usd","actual_usd":150,"expected_usd":130,"median_usd_per_point":10,"effort_points":13,"threshold_usd":390,"triggered":false,"multiplier":3,"window":5,"sample_count":3}
-
-crew\tests\dispatch-size-gate.test.mts:
-[features] dispatch-size-gate: disabled
-
-src\tests\cost-regression-sizing.test.mts:
-{"event":"cost-regression-check","timestamp":"2026-08-19T07:09:56.893Z","mode":"expected_usd","actual_usd":30,"expected_usd":10,"median_usd_per_point":10,"effort_points":1,"threshold_usd":30,"triggered":false,"multiplier":3,"window":5,"sample_count":3}
-
-crew\tests\dispatch-size-gate.test.mts:
-[features] dispatch-size-gate: disabled
-
-src\tests\eval-generator.test.mts:
-310 | // AC-6: the contract decision is recorded
-311 | // ---------------------------------------------------------------------------
-312 | 
-313 | test("DEC-068 contract record exists for FEAT-222", async () => {
-314 |   const decPath = path.resolve("./.claude/artifacts/loop/decisions/DEC-068.md");
-315 |   const raw = await fs.readFile(decPath, "utf8");
-                             ^
-ENOENT: no such file or directory, open 'C:\work\mega\devcrew\.claude\artifacts\loop\decisions\DEC-068.md'
-    path: "C:\\work\\mega\\devcrew\\.claude\\artifacts\\loop\\decisions\\DEC-068.md",
- syscall: "open",
-   errno: -2,
-    code: "ENOENT"
-
-      at async <anonymous> (C:\work\mega\devcrew\src\tests\eval-generator.test.mts:315:24)
-(fail) DEC-068 contract record exists for FEAT-222 [1.83ms]
-
-src\tests\integrations.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-v19-handoff-1qTfFA (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-v19-handoff-1qTfFA — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice writes a crew handoff artifact [5002.81ms]
-  ^ this test timed out after 5000ms.
-
-src\tests\slice-linker.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-flow-EpASXi (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-flow-EpASXi — falling back to local-only slice-id scan (remote max treated as 0).
-[features] parallel-fe-be-variant: enabled
-
-src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-regen-Be2EuO (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-regen-Be2EuO — falling back to local-only slice-id scan (remote max treated as 0).
-[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[features] snapshot-autoregen: enabled
-
-src\tests\slice-linker.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-block-Skr2Fl (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-block-Skr2Fl — falling back to local-only slice-id scan (remote max treated as 0).
-[features] parallel-fe-be-variant: enabled
-
-src\tests\learning-cycle.test.mts:
-[features] learnings-capture: enabled
-
-src\tests\slice-complete-tracker-close.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-none-42WJ2I (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-none-42WJ2I — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice makes zero gh calls when the FEAT has no github_issue [5000.91ms]
-  ^ this test timed out after 5000ms.
-
-src\tests\learning-cycle.test.mts:
-[features] learnings-capture: enabled
-[features] learnings-capture: enabled
-[features] learnings-capture: enabled
-[features] learnings-capture: enabled
-
-src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-disabled-7zSds3 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-disabled-7zSds3 — falling back to local-only slice-id scan (remote max treated as 0).
-[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[features] snapshot-autoregen: disabled
+ote max treated as 0).
 
 src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-single-PDeAR1 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-single-PDeAR1 — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-touches-0uiDE2 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-touches-0uiDE2 — falling back to local-only slice-id scan (remote max treated as 0).
 
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-ZzTLby (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-ZzTLby — falling back to local-only slice-id scan (remote max treated as 0).
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\grade-notes-memory.test.mts:
+[features] learnings-capture: enabled
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
 
 src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-explicit-rMtU3h (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-explicit-rMtU3h — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-touches-9qZR1l (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-touches-9qZR1l — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\grade-notes-memory.test.mts:
+[features] learnings-capture: enabled
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-I63s0n (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-I63s0n — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\start-slice-recall-v1.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-off-mZLTzr (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-off-mZLTzr — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
 
 src\tests\slice-from-feature-proposed-slices.test.mts:
 [git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 3 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-atomic-IHionO (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-atomic-IHionO — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 3 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-atomic-IHionO (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-atomic-IHionO — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-linker] FEAT-001 -SLICE-3: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 3 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-atomic-IHionO (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-atomic-IHionO — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-4e0zRZ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-4e0zRZ — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-4e0zRZ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-4e0zRZ — falling back to local-only slice-id scan (remote max treated as 0).
 
-src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-happy-V1c2lU (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-happy-V1c2lU — falling back to local-only slice-id scan (remote max treated as 0).
+src\tests\integrations.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-link-ts-keep-GEiJqK (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-link-ts-keep-GEiJqK — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-no-warn-rFt2La (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-no-warn-rFt2La — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\close-slice-learnings.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-learnings-eHmqKU (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-learnings-eHmqKU — falling back to local-only slice-id scan (remote max treated as 0).
+[features] close-refusal: enabled
+[closeSlice] GATE_FAILED_AT_CLOSE (warn-mode 1/3): validation-gate: no validation artifact under .claude/artifacts/crew/validations/, no validation_passed/skipped badge in workflow-state, no explicit requires_validation: false waiver on slice — enforcing after warm-up.
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[features] learnings-capture: enabled
+[features] snapshot-autoregen: enabled
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+
+src\tests\slice-from-feature-proposed-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-9Sn8vX (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-9Sn8vX — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-fallback-warn-Cx0c38 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-fallback-warn-Cx0c38 — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\git-anchored-completion.test.mts:
+[git-anchored-completion] FEAT-001: 2 proposed slice(s) skipped as already-shipped (start index advances past them):
+  - ordinal 1 (-SLICE-1 "Bridge") — matched commit a909ec2 "feat: FEAT-001 SLICE-1 — bridge shipped"
+  - ordinal 2 (-SLICE-2 "ACL") — matched commit 9c5b3cf "feat: FEAT-001 SLICE-2 — ACL shipped"
+[slice-linker] FEAT-001 -SLICE-3: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 3 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\gac-e2e-lmnVOk (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\gac-e2e-lmnVOk — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-ac-YCqXy8 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-ac-YCqXy8 — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\start-slice-recall-v1.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-baseline-EGuOH3 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-baseline-EGuOH3 — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-on-MPCBLN (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-on-MPCBLN — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-linker.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-link-r9WUpw (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-link-r9WUpw — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\integrations.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-v19-link-Se5azh (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-v19-link-Se5azh — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-update-fm-cGpbdG (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-update-fm-cGpbdG — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\close-slice-learnings.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-learnings-notes-ACWswS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-learnings-notes-ACWswS — falling back to local-only slice-id scan (remote max treated as 0).
 [features] close-refusal: enabled
 [closeSlice] GATE_FAILED_AT_CLOSE (warn-mode 1/3): validation-gate: no validation artifact under .claude/artifacts/crew/validations/, no validation_passed/skipped badge in workflow-state, no explicit requires_validation: false waiver on slice — enforcing after warm-up.
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
@@ -519,71 +518,101 @@ src\tests\auto-walker.test.mts:
 [features] redundant-read-stop: enabled
 [features] redundant-read-stop: enabled
 
-src\tests\learning-cycle.test.mts:
-318 | // AC-6: the cadence decision is recorded
-319 | // ---------------------------------------------------------------------------
-320 | 
-321 | test("DEC-070 contract record exists for FEAT-229", async () => {
-322 |   const decPath = path.resolve("./.claude/artifacts/loop/decisions/DEC-070.md");
-323 |   const raw = await fs.readFile(decPath, "utf8");
-                             ^
-ENOENT: no such file or directory, open 'C:\work\mega\devcrew\.claude\artifacts\loop\decisions\DEC-070.md'
-    path: "C:\\work\\mega\\devcrew\\.claude\\artifacts\\loop\\decisions\\DEC-070.md",
- syscall: "open",
-   errno: -2,
-    code: "ENOENT"
-
-      at async <anonymous> (C:\work\mega\devcrew\src\tests\learning-cycle.test.mts:323:24)
-(fail) DEC-070 contract record exists for FEAT-229 [3.75ms]
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-sequence-Nl0UI4 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-sequence-Nl0UI4 — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-sequence-Nl0UI4 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-sequence-Nl0UI4 — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-sequence-Nl0UI4 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-sequence-Nl0UI4 — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\dispatch-trace.test.mts:
-[dispatch] marker parse failed for FE: JSON Parse error: Expected '}'
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
+src\tests\slice-from-feature-proposed-slices.test.mts:
+[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
+[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-2HQZgL (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-2HQZgL — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-2HQZgL (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-2HQZgL — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\slice-renumber.test.mts:
 [slice-renumber] SLICE-37 -> SLICE-48 failed partway through. Completed before the failure:
   - rename: .claude/artifacts/loop/ai-loop/slices/pending/SLICE_37_TEST_SLICE.md -> .claude/artifacts/loop/ai-loop/slices/pending/SLICE_48_TEST_SLICE.md
   - rename: .claude/artifacts/loop/grades/20260610T120000Z-grade-slice37.md -> .claude/artifacts/loop/grades/20260610T120000Z-grade-slice48.md
 
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-move-lkaUEV (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-move-lkaUEV — falling back to local-only slice-id scan (remote max treated as 0).
+
 src\tests\auto-walker.test.mts:
 [features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
 
-src\tests\slice-from-feature-proposed-slices.test.mts:
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-xDtuOF (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-xDtuOF — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-xDtuOF (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-idem-xDtuOF — falling back to local-only slice-id scan (remote max treated as 0).
+src\tests\integration.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\it-blocked-q15HxK (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\it-blocked-q15HxK — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) integration: startSlice → completeSlice blocked by validation gate keeps feature open [5000.39ms]
+  ^ this test timed out after 5000ms.
+
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\backlog-store-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-move-samedir-sEHW8H (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-move-samedir-sEHW8H — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-linker.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-mono-uEr2HZ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-mono-uEr2HZ — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-mono-uEr2HZ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-mono-uEr2HZ — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\auto-mode.test.mts:
 [features] redundant-read-stop: enabled
 
+src\tests\auto-walker.test.mts:
+[features] redundant-read-stop: enabled
+
+src\tests\auto-mode.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\start-slice-recall-v1.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-nohang-Ch7exL (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-recall-v1-nohang-Ch7exL — falling back to local-only slice-id scan (remote max treated as 0).
+
 src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-tags-a4fnVK (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-tags-a4fnVK — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-list-getbyid-DYORin (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-list-getbyid-DYORin — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-linker.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-flat-o1ngxc (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-flat-o1ngxc — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\github-sync.test.mts:
+[github-sync] FEAT-001 ← GitHub issue #42: Add health endpoint
+[github-sync] bootstrap: 1 created, 0 skipped
+
+src\tests\slice-from-feature-proposed-slices.test.mts:
+[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-YbMMbG (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-YbMMbG — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-YbMMbG (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-YbMMbG — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\auto-mode.test.mts:
+[features] redundant-read-stop: enabled
+
+src\tests\integrations.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-v19-infer-linkage-SWs6IB (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-v19-infer-linkage-SWs6IB — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\auto-walker.test.mts:
 [features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
+
+src\tests\github-sync.test.mts:
+[github-sync] bootstrap: 0 created, 1 skipped
+[github-sync] bootstrap: 0 created, 0 skipped
+[github-sync] Published: 0 milestones, 1 issues, 0 sub-issues
 
 src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-pause-telemetry-ZM6BGf (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-pause-telemetry-ZM6BGf — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-pureyaml-0GZ2A7 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-pureyaml-0GZ2A7 — falling back to local-only slice-id scan (remote max treated as 0).
 [features] close-refusal: enabled
 [closeSlice] GATE_FAILED_AT_CLOSE (warn-mode 1/3): validation-gate: no validation artifact under .claude/artifacts/crew/validations/, no validation_passed/skipped badge in workflow-state, no explicit requires_validation: false waiver on slice — enforcing after warm-up.
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
@@ -592,242 +621,247 @@ src\tests\close-slice.test.mts:
 
 src\tests\auto-mode.test.mts:
 [features] redundant-read-stop: enabled
+
+src\tests\github-sync.test.mts:
+[github-sync] Published: 0 milestones, 0 issues, 0 sub-issues
+[github-sync] Published: 0 milestones, 0 issues, 0 sub-issues
+
+src\tests\auto-mode.test.mts:
 [features] redundant-read-stop: enabled
 
-src\tests\auto-walker.test.mts:
+src\tests\github-sync.test.mts:
+[github-sync] publishFeat: FEAT-001 → #99
+
+src\tests\auto-mode.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\github-sync.test.mts:
+[github-sync] publishFeat: FEAT-001 → #10
+[github-sync] publishSlice: SLICE-01 → #11 (sub of #10)
+
+src\tests\auto-mode.test.mts:
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+[features] redundant-read-stop: enabled
+
+src\tests\slice-linker.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-idem-Efm9J3 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-idem-Efm9J3 — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-idem-Efm9J3 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-idem-Efm9J3 — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\auto-mode.test.mts:
 [features] redundant-read-stop: enabled
 [features] redundant-read-stop: enabled
 
 src\tests\slice-from-feature-proposed-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-ietgx3 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-ietgx3 — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-touches-jb6ZlS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-touches-jb6ZlS — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
+[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-IiaO9a (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-IiaO9a — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-IiaO9a (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-IiaO9a — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-gate-gWVz9a (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-gate-gWVz9a — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-scaffold-gokHBd (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-scaffold-gokHBd — falling back to local-only slice-id scan (remote max treated as 0).
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[features] snapshot-autoregen: enabled
 
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
+src\tests\slice-linker.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-small-bu3ELn (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-small-bu3ELn — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-flow-WGpa0h (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-flow-WGpa0h — falling back to local-only slice-id scan (remote max treated as 0).
+[features] parallel-fe-be-variant: enabled
 
-src\tests\loop-iteration.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-touches-UbwBdc (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-touches-UbwBdc — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-dispatch-J0XokN (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-dispatch-J0XokN — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\loop-iteration.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-tBItN8 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-tBItN8 — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\auto-mode.test.mts:
-[features] redundant-read-stop: enabled
+src\tests\close-slice.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-regen-ea42Yo (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-regen-ea42Yo — falling back to local-only slice-id scan (remote max treated as 0).
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[features] snapshot-autoregen: enabled
 
 src\tests\slice-from-feature-proposed-slices.test.mts:
 [git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
 [slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-DrOYcp (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-DrOYcp — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-NatJXu (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-NatJXu — falling back to local-only slice-id scan (remote max treated as 0).
 [slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-DrOYcp (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-propagate-DrOYcp — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-no-warn-Rf0taJ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-own-ac-no-warn-Rf0taJ — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\hierarchical-dispatch.test.mts:
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-
-src\tests\loop-iteration.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-fallback-warn-VXiUrZ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-fallback-warn-VXiUrZ — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\loop-iteration.test.mts:
-[features] redundant-read-stop: enabled
-[features] redundant-read-stop: enabled
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-orchestrate-p5xSoQ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-orchestrate-p5xSoQ — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\auto-walker.test.mts:
-[features] redundant-read-stop: enabled
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-ac-WQPDOD (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-create-no-ac-WQPDOD — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-from-feature-proposed-slices.test.mts:
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-Z5IZ9u (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-Z5IZ9u — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-Z5IZ9u (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-own-ac-Z5IZ9u — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-update-fm-CiXrue (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-update-fm-CiXrue — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-wvdZJs (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-wvdZJs — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-move-eh1kzx (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-move-eh1kzx — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-fullstack-xQiDhk (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-fullstack-xQiDhk — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-from-feature-proposed-slices.test.mts:
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-YBPNH9 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-YBPNH9 — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-YBPNH9 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-comma-ac-YBPNH9 — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-move-samedir-UCzLvp (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-move-samedir-UCzLvp — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\close-slice.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-refuse-ZtecAU (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-refuse-ZtecAU — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\backlog-store-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\bss-list-getbyid-Uas4tp (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\bss-list-getbyid-Uas4tp — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-NatJXu (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-NatJXu — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\slice-complete-tracker-close.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-idem-PEhXn6 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-idem-PEhXn6 — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice does not re-close the FEAT issue on an idempotent re-run (already done) [5000.95ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-softfail-kbItjo (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-softfail-kbItjo — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice close ceremony still succeeds when the tracker provider throws (soft-fail) [5000.02ms]
   ^ this test timed out after 5000ms.
 
-src\tests\hierarchical-dispatch.test.mts:
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'A.touch', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/SLICE-E2E'
+src\tests\slice-linker.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-block-qXsS8S (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-fu6-block-qXsS8S — falling back to local-only slice-id scan (remote max treated as 0).
+[features] parallel-fe-be-variant: enabled
+
+src\tests\close-slice.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-disabled-slZnhM (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-snapshot-disabled-slZnhM — falling back to local-only slice-id scan (remote max treated as 0).
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[features] snapshot-autoregen: disabled
+
+src\tests\slice-from-feature-proposed-slices.test.mts:
+[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-proposed-DoyboY (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-proposed-DoyboY — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-start.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-progress-on-complete-du4A8X (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-progress-on-complete-du4A8X — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice also refreshes slice-progress [5001.87ms]
+  ^ this test timed out after 5000ms.
+
+src\tests\close-slice.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-happy-LshKEh (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-happy-LshKEh — falling back to local-only slice-id scan (remote max treated as 0).
+[features] close-refusal: enabled
+[closeSlice] GATE_FAILED_AT_CLOSE (warn-mode 1/3): validation-gate: no validation artifact under .claude/artifacts/crew/validations/, no validation_passed/skipped badge in workflow-state, no explicit requires_validation: false waiver on slice — enforcing after warm-up.
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[features] learnings-capture: enabled
+[features] snapshot-autoregen: enabled
 
 src\tests\slice-from-feature-proposed-slices.test.mts:
 [git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
 [slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-KUnu6H (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-KUnu6H — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-1Z0N0f (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-1Z0N0f — falling back to local-only slice-id scan (remote max treated as 0).
 [slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-KUnu6H (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-shared-warn-KUnu6H — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-1Z0N0f (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-1Z0N0f — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-single-Nuyl6w (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-single-Nuyl6w — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-progress-signals-H2nCbO (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-progress-signals-H2nCbO — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-gate-W60cv8 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-gate-W60cv8 — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\close-slice.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-pause-telemetry-L7Rkuo (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-pause-telemetry-L7Rkuo — falling back to local-only slice-id scan (remote max treated as 0).
+[features] close-refusal: enabled
+[closeSlice] GATE_FAILED_AT_CLOSE (warn-mode 1/3): validation-gate: no validation artifact under .claude/artifacts/crew/validations/, no validation_passed/skipped badge in workflow-state, no explicit requires_validation: false waiver on slice — enforcing after warm-up.
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[features] learnings-capture: enabled
+[features] snapshot-autoregen: enabled
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-gate-weLyiN (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-gate-weLyiN — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-start.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-pass-MQKv49 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-pass-MQKv49 — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ladder-gate-s58ewz (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ladder-gate-s58ewz — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\slice-from-feature-proposed-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A — falling back to local-only slice-id scan (remote max treated as 0).
 [git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-proposed-jXeOkf (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-single-proposed-jXeOkf — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 5 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-M2u98A — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\close-slice.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-OZSHch (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-OZSHch — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\worktree-manager.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\wm-collision-force-Q3pOpo (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\wm-collision-force-Q3pOpo — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\wm-collision-force-j7AKFI (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\wm-collision-force-j7AKFI — falling back to local-only slice-id scan (remote max treated as 0).
 
-src\tests\hierarchical-dispatch.integration.test.mts:
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'ok.txt', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/MIX'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'shared.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'shared.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'shared.txt', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/CONF'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/DC'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-
-src\tests\slice-from-feature-proposed-slices.test.mts:
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-hbyBXF (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-hbyBXF — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-linker] FEAT-001 -SLICE-2: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 2 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-hbyBXF (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-hbyBXF — falling back to local-only slice-id scan (remote max treated as 0).
+src\tests\close-slice.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-refuse-VCcoQC (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\cs-cli-refuse-VCcoQC — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-learnings-digest-lOmA4Q (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-learnings-digest-lOmA4Q — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-marathon-43X7Vt (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-marathon-43X7Vt — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\integration.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\it-skip-WtR70J (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\it-skip-WtR70J — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) integration: startSlice → completeSlice with --skip-validation-check bypasses gate [5002.23ms]
+  ^ this test timed out after 5000ms.
 
 src\tests\slice-from-feature-proposed-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-single-PxUFvB (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-touches-single-PxUFvB — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS — falling back to local-only slice-id scan (remote max treated as 0).
+[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
+[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 5 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-h15WLS — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-start.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-NKQuzp (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-NKQuzp — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\worktree-manager.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\wm-no-collision-KjbjVG (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\wm-no-collision-KjbjVG — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\integration.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\it-dataflow-A9BnZv (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\it-dataflow-A9BnZv — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-complete.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-b9vpEb (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-b9vpEb — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice moves slice to completed/ and feature to done/ [5000.75ms]
+  ^ this test timed out after 5000ms.
+
+src\tests\slice-start.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-null-vrvvfk (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-null-vrvvfk — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-from-feature-proposed-slices.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP — falling back to local-only slice-id scan (remote max treated as 0).
+[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
+[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 5 sibling slices. Scope this slice's AC section before close.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-bCLTxP — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\slice-start.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-rrmVkd (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-rrmVkd — falling back to local-only slice-id scan (remote max treated as 0).
+
+src\tests\integrations.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-v19-handoff-NwXApz (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-v19-handoff-NwXApz — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice writes a crew handoff artifact [5004.07ms]
+  ^ this test timed out after 5000ms.
+
+src\tests\slice-start.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-frontmatter-IxQ0e2 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-frontmatter-IxQ0e2 — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-start-feat-dispatch-pzPw4N (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-start-feat-dispatch-pzPw4N — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\auto-merge.test.mts:
 loop CLI
@@ -844,204 +878,139 @@ Usage:
 Hard dependency: the `crew` plugin must be installed. Phase-gate writes its
 artifact through `crew write-validation-result`.
 
-src\tests\worktree-manager.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\wm-no-collision-JsWScM (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\wm-no-collision-JsWScM — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-learnings-noop-nvfz4c (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-learnings-noop-nvfz4c — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-complete.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-YL8n6J (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-YL8n6J — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice moves slice to completed/ and feature to done/ [5001.17ms]
-  ^ this test timed out after 5000ms.
-
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-nodispatch-4koF11 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-start-nodispatch-4koF11 — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-from-feature-proposed-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t — falling back to local-only slice-id scan (remote max treated as 0).
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 5 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-fill-qQxX3t — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\dispatch-recover.test.mts:
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'A.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'B.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'C.txt', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/REC2'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'A.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'B.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'C.txt', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/REC3'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/RECW'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/RECN'
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'A.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'B.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'C.txt', LF will be replaced by CRLF the next time Git touches it
+src\tests\dispatch-worktree.test.mts:
 warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
 warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'A.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'B.txt', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'C.txt', LF will be replaced by CRLF the next time Git touches it
-Already on 'slice/REC4'
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.claude/artifacts/crew/handoffs/SLICE-X-handoff.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'extra.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'more.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.claude/artifacts/loop/backlog/triaged/SLICE-500.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.claude/artifacts/loop/backlog/pending/SLICE-501.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
 
-src\tests\slice-from-feature-proposed-slices.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i — falling back to local-only slice-id scan (remote max treated as 0).
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 5 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-relabel-G7nD0i — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred — falling back to local-only slice-id scan (remote max treated as 0).
-[git-anchored-completion] FEAT-001: no resolvable main ref (fail-open) — proceeding unchecked.
-[slice-linker] FEAT-001 -SLICE-1: no acceptance_criteria on this proposed_slices entry — copying FEAT-level ACs across 5 sibling slices. Scope this slice's AC section before close.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\sfp-gap-publish-safe-3HNred — falling back to local-only slice-id scan (remote max treated as 0).
-
-src\tests\slice-complete-tracker-close.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-softfail-kHpa3O (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-tracker-close-softfail-kHpa3O — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice close ceremony still succeeds when the tracker provider throws (soft-fail) [5002.02ms]
+src\tests\integration.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\it-nextaction-p45z4O (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\it-nextaction-p45z4O — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) integration: completeSlice nextAction always mentions slice grade command [5001.03ms]
   ^ this test timed out after 5000ms.
 
 src\tests\slice-complete.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-spec-mfqvFv (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-spec-mfqvFv — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice auto-rolls parent spec to satisfied when all features done [5000.01ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-spec-zDAb1W (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-spec-zDAb1W — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice auto-rolls parent spec to satisfied when all features done [5001.02ms]
   ^ this test timed out after 5000ms.
 
-src\tests\slice-start.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-progress-on-complete-rgprOA (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-progress-on-complete-rgprOA — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice also refreshes slice-progress [5000.39ms]
-  ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-gate-cPQVvj (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-gate-cPQVvj — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-pass-rB0U91 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ac-pass-rB0U91 — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ladder-gate-eIm4GK (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-ladder-gate-eIm4GK — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-marathon-eOmX9m (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-marathon-eOmX9m — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-4zXM6G (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-4zXM6G — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-null-rxVTo4 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-orch-model-null-rxVTo4 — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-q0ZJDD (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-q0ZJDD — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-frontmatter-XxOwtH (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-start-touches-files-frontmatter-XxOwtH — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-start-feat-dispatch-R3AhB5 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-start-feat-dispatch-R3AhB5 — falling back to local-only slice-id scan (remote max treated as 0).
+src\tests\integration.test.mts:
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\it-waiver-I3eqir (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\it-waiver-I3eqir — falling back to local-only slice-id scan (remote max treated as 0).
+[crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\it-idmatch-pwiKpj (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\it-idmatch-pwiKpj — falling back to local-only slice-id scan (remote max treated as 0).
 
 src\tests\slice-complete.test.mts:
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-idem-4TWTl2 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-idem-4TWTl2 — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice is idempotent — re-running on a completed slice doesn't error [5000.93ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-idem-qUANRq (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-complete-idem-qUANRq — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice is idempotent — re-running on a completed slice doesn't error [5000.89ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-blocked-cUvHK0 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-blocked-cUvHK0 — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice blocked when featureEnd ceremony has simplifyRan: false [5000.80ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-blocked-3aZzbE (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-blocked-3aZzbE — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice blocked when featureEnd ceremony has simplifyRan: false [5001.92ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-allowed-EdNtiA (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-allowed-EdNtiA — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice allowed when featureEnd ceremony has simplifyRan: true [5000.08ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-allowed-fudx85 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-allowed-fudx85 — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice allowed when featureEnd ceremony has simplifyRan: true [5000.01ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-no-ceremony-gX2rS2 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-no-ceremony-gX2rS2 — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice allowed when no featureEnd ceremony exists [5000.88ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-no-ceremony-e4YUYz (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-slice-simplify-no-ceremony-e4YUYz — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice allowed when no featureEnd ceremony exists [5001.09ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-keep-fm-9DdJLE (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-keep-fm-9DdJLE — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice keeps feature in-progress when feature_complete: false in frontmatter [5004.02ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-keep-fm-SvBBDw (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-keep-fm-SvBBDw — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice keeps feature in-progress when feature_complete: false in frontmatter [5000.88ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-keep-flag-ITN27Y (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-keep-flag-ITN27Y — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice keeps feature in-progress when keepFeatureOpen runtime flag passed [5001.08ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-keep-flag-OdzjDd (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-keep-flag-OdzjDd — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice keeps feature in-progress when keepFeatureOpen runtime flag passed [5001.97ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-explicit-true-3Lv4O7 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-explicit-true-3Lv4O7 — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice still moves feature to done when feature_complete: true explicitly set [5002.76ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-explicit-true-oejceU (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-explicit-true-oejceU — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice still moves feature to done when feature_complete: true explicitly set [5002.98ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-block-iaXsKU (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-block-iaXsKU — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-block-Yjy2gA (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-block-Yjy2gA — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-artifact-boNl7e (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-artifact-boNl7e — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-artifact-URkOAx (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-artifact-URkOAx — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-passed-nkDFfX (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-passed-nkDFfX — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-passed-LNrw7C (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-passed-LNrw7C — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-pre-skipped-TmWlnt (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-pre-skipped-TmWlnt — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-pre-skipped-d6rHME (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-pre-skipped-d6rHME — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-waiver-y67UAg (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-waiver-y67UAg — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-waiver-J8FctV (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-waiver-J8FctV — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-empty-Xjq8vd (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-empty-Xjq8vd — falling back to local-only slice-id scan (remote max treated as 0).
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-ok-OEwSTA (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-ok-OEwSTA — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice --skip-validation-check with reason bypasses gate [5000.13ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-empty-VYQTx9 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-empty-VYQTx9 — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-ok-bJtTbK (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-vgate-skip-ok-bJtTbK — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice --skip-validation-check with reason bypasses gate [5000.47ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-red-9yxa3j (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-red-9yxa3j — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice returns updated_confidence red when builderEvidence has test-fail [5000.86ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-red-6LMiAV (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-red-6LMiAV — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice returns updated_confidence red when builderEvidence has test-fail [5000.05ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-null-ra1Dz3 (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-null-ra1Dz3 — falling back to local-only slice-id scan (remote max treated as 0).
-(fail) completeSlice returns updated_confidence null when no builderEvidence [5000.04ms]
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-null-bAmOnj (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-builder-evidence-null-bAmOnj — falling back to local-only slice-id scan (remote max treated as 0).
+(fail) completeSlice returns updated_confidence null when no builderEvidence [5000.92ms]
   ^ this test timed out after 5000ms.
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-fresh-WdBHyt (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-fresh-WdBHyt — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-fresh-rmTAak (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-fresh-rmTAak — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-stale-ysdepZ (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-stale-ysdepZ — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-stale-R7axVo (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-stale-R7axVo — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-rEJAic (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-rEJAic — falling back to local-only slice-id scan (remote max treated as 0).
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-yCh5dN (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-yCh5dN — falling back to local-only slice-id scan (remote max treated as 0).
 [crew-bridge] cost-slice failed (slice=SLICE-01): cost-slice requires --started-at or an active/last run with startedAt
-[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-rEJAic (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
-[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-rEJAic — falling back to local-only slice-id scan (remote max treated as 0).
-[stale-blocked-badge] gates.blocked updatedAt=2026-08-17T07:11:04.089Z is 2.0d old (threshold 1d) — downgrading to a warning, feature roll proceeds. note: "2 days old" — clear it in C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-rEJAic\.claude\state\crew\workflow-state.json or re-block.
+[slice-id-allocator] git fetch origin main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-yCh5dN (offline / no remote / no network?) — remote slice-id scan may use a stale or missing origin/main ref.
+[slice-id-allocator] git ls-tree origin/main failed for C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-yCh5dN — falling back to local-only slice-id scan (remote max treated as 0).
+[stale-blocked-badge] gates.blocked updatedAt=2026-08-17T09:05:42.041Z is 2.0d old (threshold 1d) — downgrading to a warning, feature roll proceeds. note: "2 days old" — clear it in C:\Users\serge\AppData\Local\Temp\al-blocked-threshold-yCh5dN\.claude\state\crew\workflow-state.json or re-block.
 [crew-bridge] cost-slice failed (slice=SLICE-02): cost-slice requires --started-at or an active/last run with startedAt
 The system cannot find the path specified.
 
- 5302 pass
+ 5030 pass
  124 skip
  47 fail
- 6694 expect() calls
-Ran 5473 tests across 539 files. [101.35s]
+ 5729 expect() calls
+Ran 5201 tests across 505 files. [97.16s]
 ```
 
 ## frontendBuild

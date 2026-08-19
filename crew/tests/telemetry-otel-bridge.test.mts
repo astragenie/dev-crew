@@ -99,7 +99,10 @@ test("initBridge: disabled cfg returns null without CREW_OTEL_ENABLED", async ()
     const sdk = await initBridge(cfg);
     const elapsed = performance.now() - t0;
     expect(sdk, "disabled bridge must return null").toBe(null);
-    expect(elapsed < 50, `initBridge disabled should be < 50ms, was ${elapsed.toFixed(1)}ms`).toBeTruthy();
+    expect(
+      elapsed < 50,
+      `initBridge disabled should be < 50ms, was ${elapsed.toFixed(1)}ms`
+    ).toBeTruthy();
   } finally {
     if (envBefore !== undefined) process.env["CREW_OTEL_ENABLED"] = envBefore;
   }
@@ -167,8 +170,14 @@ test("sampleSpan: sample_rate=1.0 always true", () => {
 
 test("sampleSpan: sample_rate=0.6 boundary", () => {
   const cfg = makeEnabledConfig({ sample_rate: 0.6 });
-  expect(sampleSpan(cfg, () => 0.3), "0.3 < 0.6 → true").toBe(true);
-  expect(sampleSpan(cfg, () => 0.9), "0.9 >= 0.6 → false").toBe(false);
+  expect(
+    sampleSpan(cfg, () => 0.3),
+    "0.3 < 0.6 → true"
+  ).toBe(true);
+  expect(
+    sampleSpan(cfg, () => 0.9),
+    "0.9 >= 0.6 → false"
+  ).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -195,7 +204,10 @@ test("emitStopSpan: Stop span flushed via forceFlush within 1.5s", async () => {
     )
   ]);
   const elapsed = performance.now() - t0;
-  expect(elapsed < 1500, `flush must complete within 1.5s, took ${elapsed.toFixed(0)}ms`).toBeTruthy();
+  expect(
+    elapsed < 1500,
+    `flush must complete within 1.5s, took ${elapsed.toFixed(0)}ms`
+  ).toBeTruthy();
 
   const stopSpan = spans.find((s) => s.name === "session.stop");
   expect(stopSpan !== undefined, "session.stop span must be flushed").toBeTruthy();

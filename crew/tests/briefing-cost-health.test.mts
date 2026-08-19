@@ -107,7 +107,10 @@ test("collectCostHealth: returns costHealth with grade and topConcern when cost 
     expect(typeof result.grade === "string", "grade must be a string").toBeTruthy();
     expect(result.reportCount >= 1, "reportCount must be >= 1").toBeTruthy();
     // topConcern can be null (no rules fired) or a string
-    expect(result.topConcern === null || typeof result.topConcern === "string", "topConcern must be string or null").toBeTruthy();
+    expect(
+      result.topConcern === null || typeof result.topConcern === "string",
+      "topConcern must be string or null"
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -138,7 +141,10 @@ test("collectCostHealth: grade is a valid A-F letter", async () => {
   try {
     const result = await collectCostHealth(tmpDir);
     expect(result !== null, "Expected non-null result").toBeTruthy();
-    expect(validGrades.has(result.grade), `grade '${result.grade}' must be one of A,B,C,D,F`).toBeTruthy();
+    expect(
+      validGrades.has(result.grade),
+      `grade '${result.grade}' must be one of A,B,C,D,F`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -155,7 +161,10 @@ test("collectCostHealth: topConcern is string or null", async () => {
   try {
     const result = await collectCostHealth(tmpDir);
     expect(result !== null, "Expected non-null result").toBeTruthy();
-    expect(result.topConcern === null || typeof result.topConcern === "string", `topConcern must be string or null, got ${typeof result.topConcern}`).toBeTruthy();
+    expect(
+      result.topConcern === null || typeof result.topConcern === "string",
+      `topConcern must be string or null, got ${typeof result.topConcern}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -196,7 +205,10 @@ test("collectCostHealth: grade downgrades when cache hit is below A threshold", 
     expect(result !== null, "Expected non-null result").toBeTruthy();
     const gradeOrder = ["A", "B", "C", "D", "F"];
     const gradeIdx = gradeOrder.indexOf(result.grade);
-    expect(gradeIdx >= gradeOrder.indexOf("D"), `Expected grade D or worse for cache hit 85%, got ${result.grade}`).toBeTruthy();
+    expect(
+      gradeIdx >= gradeOrder.indexOf("D"),
+      `Expected grade D or worse for cache hit 85%, got ${result.grade}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -213,7 +225,10 @@ test("collectCostHealth: topConcern is a non-empty string when a rule fires", as
   try {
     const result = await collectCostHealth(tmpDir);
     expect(result !== null, "Expected non-null result").toBeTruthy();
-    expect(typeof result.topConcern === "string" && result.topConcern.length > 0, `Expected non-empty topConcern string when cache-busted rule fires, got: ${JSON.stringify(result.topConcern)}`).toBeTruthy();
+    expect(
+      typeof result.topConcern === "string" && result.topConcern.length > 0,
+      `Expected non-empty topConcern string when cache-busted rule fires, got: ${JSON.stringify(result.topConcern)}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -250,7 +265,10 @@ test("buildBriefingReport: summary.costHealth is present when cost reports exist
   // Need a minimal git repo for buildBriefingReport to not fail
   try {
     const result = await buildBriefingReport(tmpDir);
-    expect("costHealth" in result, "Expected costHealth field in buildBriefingReport output").toBeTruthy();
+    expect(
+      "costHealth" in result,
+      "Expected costHealth field in buildBriefingReport output"
+    ).toBeTruthy();
     // When reports exist, costHealth should be non-null
     if (result.costHealth != null) {
       expect(typeof (result.costHealth as { grade: string }).grade === "string").toBeTruthy();
@@ -269,7 +287,10 @@ test("buildBriefingReport: costHealth is null when no cost reports exist", async
   const tmpDir = await makeTempRepo([]); // no reports
   try {
     const result = await buildBriefingReport(tmpDir);
-    expect("costHealth" in result, "Expected costHealth key to be present in result (even if null)").toBeTruthy();
+    expect(
+      "costHealth" in result,
+      "Expected costHealth key to be present in result (even if null)"
+    ).toBeTruthy();
     expect(result.costHealth, "Expected costHealth to be null when no reports exist").toBe(null);
   } finally {
     await cleanup(tmpDir);
@@ -452,7 +473,10 @@ test("collectCostAggregate: returns aggregate data when aggregate-variant file e
   });
   try {
     const result = await collectCostAggregate(tmpDir);
-    expect(result !== null, "Expected non-null costAggregate when aggregate file exists").toBeTruthy();
+    expect(
+      result !== null,
+      "Expected non-null costAggregate when aggregate file exists"
+    ).toBeTruthy();
     expect(typeof result.grade === "string", "grade must be a string").toBeTruthy();
   } finally {
     await cleanup(tmpDir);
@@ -476,7 +500,10 @@ test("collectCostHealth: grade uses slice reread count (9), not aggregate reread
     // If grade is derived from aggregate (114 rereads) → F
     // Grade must NOT be F when using the per-slice file.
     // (cacheHitPct=99 → A; 9 rereads → C-band worst case for that metric alone)
-    expect(sliceHealth.grade, `costHealth.grade should not be F when slice has only 9 rereads (expected C or better), got ${sliceHealth.grade}`).not.toBe("F");
+    expect(
+      sliceHealth.grade,
+      `costHealth.grade should not be F when slice has only 9 rereads (expected C or better), got ${sliceHealth.grade}`
+    ).not.toBe("F");
   } finally {
     await cleanup(tmpDir);
   }
@@ -500,7 +527,9 @@ test("collectCostAggregate: returns null in legacy-only world (no aggregate-vari
   const tmpDir = await makeTempRepoWithVariants({ legacyFiles: [legacyText] });
   try {
     const result = await collectCostAggregate(tmpDir);
-    expect(result, "Expected null costAggregate when only legacy (non-infixed) files exist").toBe(null);
+    expect(result, "Expected null costAggregate when only legacy (non-infixed) files exist").toBe(
+      null
+    );
   } finally {
     await cleanup(tmpDir);
   }
@@ -513,7 +542,10 @@ test("buildBriefingReport: exposes costAggregate field at top level", async () =
   const tmpDir = await makeTempRepoWithVariants({ sliceFiles: [sliceText] });
   try {
     const result = await buildBriefingReport(tmpDir);
-    expect("costAggregate" in result, "Expected costAggregate key in buildBriefingReport output").toBeTruthy();
+    expect(
+      "costAggregate" in result,
+      "Expected costAggregate key in buildBriefingReport output"
+    ).toBeTruthy();
     // With no aggregate file, costAggregate should be null
     expect(result.costAggregate, "Expected costAggregate null when no aggregate file").toBe(null);
   } finally {

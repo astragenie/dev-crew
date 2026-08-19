@@ -107,7 +107,9 @@ test("captureFailureLearning degrades safely (never throws) when the target path
     const blockerPath = path.join(repo, ".claude", "artifacts", "loop");
     await fs.mkdir(path.dirname(blockerPath), { recursive: true });
     await fs.writeFile(blockerPath, "not a directory", "utf8");
-    await expect(captureFailureLearning(repo, { summary: "should not throw", source: "review_fail" })).resolves.toBeUndefined();
+    await expect(
+      captureFailureLearning(repo, { summary: "should not throw", source: "review_fail" })
+    ).resolves.toBeUndefined();
   } finally {
     await cleanup(repo);
   }

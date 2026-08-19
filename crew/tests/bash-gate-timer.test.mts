@@ -80,7 +80,10 @@ test("end-to-end: startGateTimer + endGateTimer writes JSONL row with correct fi
     const row = JSON.parse(raw.trim()) as Record<string, unknown>;
     expect(row["gate"]).toBe("lint");
     expect(row["exitCode"]).toBe(0);
-    expect(typeof row["durationMs"] === "number" && row["durationMs"] >= 10, `durationMs ${row["durationMs"]} below floor`).toBeTruthy();
+    expect(
+      typeof row["durationMs"] === "number" && row["durationMs"] >= 10,
+      `durationMs ${row["durationMs"]} below floor`
+    ).toBeTruthy();
   } finally {
     delete process.env["CREW_BASH_GATE_LOG"];
     await fs.rm(tmp, { recursive: true, force: true });

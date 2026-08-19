@@ -1,0 +1,33 @@
+# Task Handoff: SLICE-24: merged CI workflow (41 gates) + clause-registry port
+
+- Created: 2026-08-19T08:44:04.678Z
+- From: fullstack-dev
+- To: lead
+- Objective: Authored the single merged .github/workflows/ci.yml (root ci.yml + crew's 4 workflows deleted -> crew subtree now runs from root). fast-gate job runs 18 root validators + 10 crew validators (8 blocking + routing-table --coverage-only, 6 advisory: syntheses/routing-table-full/adr-template/backlog-drift/agents/skills) + 3 tsc projects + 4 biome invocations (root src/, crew-scoped) = 41 numbered gates total (docs/ci-gates.md, not literally ~30 -- documented why). Fixed the 4 pre-existing malformed learnings.jsonl entries (validation_fail-shape rows missing key/insight) blocking gate 16. Wrote new gate 18, validate-branding-scrub.mts (+test), a standing 3-bucket sweep for the retired product name replacing SLICE-08's one-time scrub; renamed from an initial wiggin-scrub filename after discovering it self-triggered its own regex via its own filename. Found and fixed a real bug while wiring crew gates: validate-workflows/agents/skills/dispatch-graph.mts still pointed AGENTS_ROOT/SKILLS_ROOT at now-empty crew/agents//crew/skills (P3 moved the real trees to the monorepo root) -- agents/skills were silently vacuous 0-checked passes, workflows/dispatch-graph hard-failed. Fixed all 4 path constants; fixing agents/skills surfaced real pre-existing content debt (missing prompt_id/version, missing Report-contract sections, evals-spec dangling pointers, a skills dir-name-vs-devcrew-prefix mismatch) so wired those two ADVISORY not blocking pending a follow-up FEAT. validate-configs.mts failed for a different real reason (2 stale crew:brief-me/crew:using-crew tokens in routing-table.yaml prose) -- fixed + re-rendered routing-table.md. Ran biome format --write across both trees (59 files, pre-existing whitespace-only drift, mechanical/safe) since format-check needed to be green to wire it blocking. Verified every gate locally end-to-end: fast-gate (validators+tsc x3+biome x4) 8s; root suite 3235 pass/2 known-fail(DEC-068/070, pre-documented in DEC-004.md)/7 skip in ~52-70s; crew suite 1699 pass/2 fail(validate-all.test.mts, direct expected consequence of the AGENTS_ROOT/SKILLS_ROOT fix, documented) in ~11-17s.
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - .github/workflows/ci.yml
+  - crew/.github/workflows/(deleted:4 files)
+  - docs/ci-gates.md
+  - src/scripts/validate-branding-scrub.mts
+  - src/tests/validate-branding-scrub.test.mts
+  - .claude/artifacts/loop/learnings.jsonl
+  - .claude/artifacts/loop/loop-snapshot.md
+  - README.md(metrics-band regen)
+  - crew/docs/routing-table.yaml
+  - crew/docs/routing-table.md
+  - crew/scripts/validate-workflows.mts
+  - crew/scripts/validate-agents.mts
+  - crew/scripts/validate-skills.mts
+  - crew/scripts/validate-dispatch-graph.mts
+  - src/scripts/lib/auto-merge.mts(format-only)
+  - crew/scripts/lib/briefing.mts(format-only)
+  - crew/scripts/lib/briefing/collect.mts(format-only)
+  - 7 root src/tests/*.test.mts files(format-only)
+  - ~48 crew/tests/*.test.mts files(format-only)
+- Confidence: high
+- Risks: CLAUDE.md/AGENTS.md/docs/README.md/docs/memory.md/.claude/state/crew/workflow-state.json show as modified in git status but are NOT my changes -- another concurrent slice (SLICE-25 docs-merge, handoff artifact already on disk) is editing them live in this shared working tree; do not attribute those diffs to this slice or commit them together. validate-agents.mts/validate-skills.mts wired advisory not blocking -- real content debt across many agent/skill files, needs a follow-up FEAT before promotion to blocking. crew/tests/validate-all.test.mts has 2 known-red assertions now (same root cause, documented in docs/ci-gates.md). Manifest dedupe from unification-plan.md SS7 was NOT done -- src/scripts/validate-manifests.mts's own SLICE-20 comment defers that to Phase 5, which is more authoritative than the plan text; flagging in case that reading is wrong. GEPA agent-eval-regression.yml and memory-drift-check (drift.yml) from crew's deleted workflows were not ported -- neither was in the team-lead's named carry-over list; named as a drop if that was an oversight.
+- Suggested Next Handoff: SLICE-25 ports this file's numbered gate list verbatim into CLAUDE.md's ## CI gates section (the handshake noted in the dispatch). Follow-up FEAT: backfill agent/skill content debt (prompt_id/version/Report-contract/evals-spec) then promote gates 33/34 to blocking and fix crew/tests/validate-all.test.mts. Follow-up FEAT: decide devcrew:-prefix convention for skill dir-name-vs-frontmatter-name (skills/pm-decompose names itself devcrew:pm-decompose). Decide whether crew's e2e-smoke/e2e:smoke:ux and hooks/check-redundant-read.mts self-test belong in this workflow or a separate one.
+

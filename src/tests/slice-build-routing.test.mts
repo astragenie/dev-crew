@@ -313,7 +313,10 @@ test("buildDispatchInstruction slice-build + fe+be emits PARALLEL DISPATCH with 
   assert.ok(out.includes("devcrew:frontend-dev"), "must reference devcrew:frontend-dev");
   assert.ok(out.includes("devcrew:backend-dev"), "must reference devcrew:backend-dev");
   // The parent loop should still drive the inspector/verifier gates after both subagents finish.
-  assert.ok(out.includes("devcrew:reviewer"), "must mention devcrew:reviewer for gate-driving guidance");
+  assert.ok(
+    out.includes("devcrew:reviewer"),
+    "must mention devcrew:reviewer for gate-driving guidance"
+  );
 });
 
 test("buildDispatchInstruction slice-build + fe+be returns a SINGLE string (not an array or object)", () => {

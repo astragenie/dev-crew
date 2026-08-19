@@ -1,17 +1,21 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T08:15:18.956Z",
+  "updatedAt": "2026-08-19T09:05:42.533Z",
   "currentRun": {
     "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
     "startedAt": "2026-08-19T07:11:37.889Z",
-    "updatedAt": "2026-08-19T08:15:18.955Z",
-    "next": "Lead decision needed on each of the 3 blockers before re-attempting: (a) quickwin.md redesign or plan revision for claims; (b) either scope a larger auto-dispatch rewrite slice (cover loop.mts + cost-by-skill.mts + failure-classifier.mts together) or close this cut as wont-fix; (c) sequence preset-retrofit deletion AFTER migrate-adopter.mts ships. Gates all green on the executed approvals.mts deletion: 3x tsc 0 errors, crew tests 1683 pass 18 pre-existing-unrelated fail (before/after identical, none of the 18 touch approvals/claims/wakeup/briefing), src tests 3316 pass 2 pre-existing-unrelated fail, 15 of 16 validators clean (learnings-schema exempted per instruction, marketplace-sync WARN is expected-during-release), ceremony smoke (loop.mts status) exit 0, biome lint+format clean on all touched files.",
+    "updatedAt": "2026-08-19T09:05:42.533Z",
+    "next": "SLICE-25 ports this file's numbered gate list verbatim into CLAUDE.md's ## CI gates section (the handshake noted in the dispatch). Follow-up FEAT: backfill agent/skill content debt (prompt_id/version/Report-contract/evals-spec) then promote gates 33/34 to blocking and fix crew/tests/validate-all.test.mts. Follow-up FEAT: decide devcrew:-prefix convention for skill dir-name-vs-frontmatter-name (skills/pm-decompose names itself devcrew:pm-decompose). Decide whether crew's e2e-smoke/e2e:smoke:ux and hooks/check-redundant-read.mts self-test belong in this workflow or a separate one.",
     "gates": {
       "review": null,
-      "validation": null,
+      "validation": {
+        "status": "failed",
+        "updatedAt": "2026-08-19T09:05:42.533Z",
+        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+      },
       "deployment": {
         "dev": null,
         "prod": null
@@ -26,11 +30,13 @@
       "handoffs": [
         "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T073424Z-handoff-slice-22-gepa-disposition-table-deletion-executed.md",
         "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081453Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081518Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md"
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081518Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T083103Z-handoff-slice-25-docs-merge-claude-md-12kb-budget-triage.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T084404Z-handoff-slice-24-merged-ci-workflow-41-gates-clause-registry-port.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": null,
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T090542Z-validation-result-phase-unspecified-gate.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null

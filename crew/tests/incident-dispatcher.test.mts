@@ -33,14 +33,10 @@ test("FEAT-182 SLICE-A: incident.md has frontmatter description", () => {
 test("FEAT-182 SLICE-A: triage routes unknown root cause to crew:researcher (NOT investigator)", () => {
   // Smoke test from FEAT-182 spec: "Why is the dashboard returning 500s?"
   // is unknown-root-cause and must route to researcher per the AC.
-  expect(
-    /unknown root cause[\s\S]*?crew:researcher/i.test(incident)
-  ).toBeTruthy();
+  expect(/unknown root cause[\s\S]*?crew:researcher/i.test(incident)).toBeTruthy();
   // Reverse assertion: dispatcher must explicitly warn against using
   // investigator for RCA.
-  expect(incident).toMatch(
-    /do NOT use `devcrew:investigator` for root cause analysis/i
-  );
+  expect(incident).toMatch(/do NOT use `devcrew:investigator` for root cause analysis/i);
 });
 
 test("FEAT-182 SLICE-A: triage routes rollback need to crew:release-engineer", () => {
@@ -50,21 +46,15 @@ test("FEAT-182 SLICE-A: triage routes rollback need to crew:release-engineer", (
 });
 
 test("FEAT-182 SLICE-A: triage routes code locations to crew:investigator", () => {
-  expect(
-    /code locations needed[\s\S]*?crew:investigator/i.test(incident)
-  ).toBeTruthy();
+  expect(/code locations needed[\s\S]*?crew:investigator/i.test(incident)).toBeTruthy();
 });
 
 test("FEAT-182 SLICE-A: triage routes known root cause to specialist builder", () => {
-  expect(
-    /root cause known[\s\S]*?specialist builder/i.test(incident)
-  ).toBeTruthy();
+  expect(/root cause known[\s\S]*?specialist builder/i.test(incident)).toBeTruthy();
 });
 
 test("FEAT-182 SLICE-A: triage routes broken release ceremony to crew:release-engineer", () => {
-  expect(
-    /broken release ceremony[\s\S]*?crew:release-engineer/i.test(incident)
-  ).toBeTruthy();
+  expect(/broken release ceremony[\s\S]*?crew:release-engineer/i.test(incident)).toBeTruthy();
 });
 
 test("FEAT-182 SLICE-A: workflow loads release-recovery skill before release-ceremony dispatch", () => {
@@ -137,9 +127,7 @@ test("FEAT-182 SLICE-B: BADGE_TABLE registers incident_blocked", () => {
 });
 
 test("FEAT-182 SLICE-B: mark-badge usage string lists incident_blocked", () => {
-  expect(crewCli).toMatch(
-    /--badge[\s\S]*?incident_resolved\|rollback_executed\|incident_blocked/
-  );
+  expect(crewCli).toMatch(/--badge[\s\S]*?incident_resolved\|rollback_executed\|incident_blocked/);
 });
 
 test("FEAT-182 SLICE-B: dispatcher marks incident_blocked on auto-fix retry exhaustion", () => {
@@ -149,15 +137,11 @@ test("FEAT-182 SLICE-B: dispatcher marks incident_blocked on auto-fix retry exha
 });
 
 test("FEAT-182 SLICE-B: dispatcher documents incident_blocked for a rollback decision needing the user", () => {
-  expect(incident).toMatch(
-    /mark `incident_blocked` and hand the decision to the user/i
-  );
+  expect(incident).toMatch(/mark `incident_blocked` and hand the decision to the user/i);
 });
 
 test("FEAT-182 SLICE-B: dispatcher loads the incident-response skill before prod-incident dispatch", () => {
-  expect(incident).toMatch(
-    /load `skills\/workflow\/incident-response\/` before dispatch/
-  );
+  expect(incident).toMatch(/load `skills\/workflow\/incident-response\/` before dispatch/);
 });
 
 test("FEAT-182 SLICE-B: incident-response SKILL has tier=workflow frontmatter", () => {
@@ -165,9 +149,7 @@ test("FEAT-182 SLICE-B: incident-response SKILL has tier=workflow frontmatter", 
 });
 
 test("FEAT-182 SLICE-B: incident-response describes the rollback decision tree (code vs config vs traffic)", () => {
-  expect(incidentResponseSkill).toMatch(
-    /Rollback decision tree \(code vs config vs traffic\)/i
-  );
+  expect(incidentResponseSkill).toMatch(/Rollback decision tree \(code vs config vs traffic\)/i);
 });
 
 test("FEAT-182 SLICE-B: incident-response names the Azure MCP tools for log/metric/trace reading", () => {

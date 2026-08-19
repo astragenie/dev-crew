@@ -98,7 +98,9 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:00:05.000Z" }];
+    const pairs: PairInput[] = [
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:00:05.000Z" }
+    ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result.length, 1);
@@ -123,7 +125,9 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
         iterationIndex: 1
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }
+    ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     // Should pick the 10:00 entry (latest before 10:05)
@@ -141,7 +145,9 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:00:00.000Z" }];
+    const pairs: PairInput[] = [
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:00:00.000Z" }
+    ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);
@@ -241,7 +247,9 @@ describe("AC-7d: back-compat with v1 audit entries (no sliceId)", () => {
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }
+    ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     // No match because entry.sliceId !== "SLICE-137" (undefined !== "SLICE-137")
@@ -259,7 +267,9 @@ describe("AC-7d: back-compat with v1 audit entries (no sliceId)", () => {
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }
+    ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);
@@ -275,7 +285,9 @@ describe("AC-7d: back-compat with v1 audit entries (no sliceId)", () => {
         iterationIndex: 5
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }
+    ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);

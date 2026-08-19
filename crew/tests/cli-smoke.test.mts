@@ -6,12 +6,7 @@ test("smoke: claims family (init)", async () => {
   const rootPath = await makeTempDir("crew-smoke-claims-");
   const repoPath = path.join(rootPath, "app");
 
-  const { stdout, stderr } = await execFile("bun", [
-    cliPath,
-    "init",
-    "--repo",
-    repoPath
-  ]);
+  const { stdout, stderr } = await execFile("bun", [cliPath, "init", "--repo", repoPath]);
 
   expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);
@@ -77,13 +72,9 @@ test("smoke: cost family (cost-advise)", async () => {
   // Init first
   await execFile("bun", [cliPath, "init", "--repo", repoPath]);
 
-  const { stdout, stderr } = await execFile(
-    "bun",
-    [cliPath, "cost-advise", "--repo", repoPath],
-    {
-      env: { ...process.env, CREW_PROJECTS_ROOT: tempProjRoot }
-    }
-  );
+  const { stdout, stderr } = await execFile("bun", [cliPath, "cost-advise", "--repo", repoPath], {
+    env: { ...process.env, CREW_PROJECTS_ROOT: tempProjRoot }
+  });
 
   expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);

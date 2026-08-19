@@ -20,7 +20,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SKILLS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "skills");
+// P3 surface merge moved skills/ to the monorepo root (devcrew unification) —
+// see validate-workflows.mts's SURFACE_ROOT note for the same split.
+const SKILLS_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "skills"
+);
 const VALID_TIERS = new Set(["universal", "workflow", "domain", "meta"]);
 const MAX_LINES = 200;
 const STALE_REVIEW_DAYS = 180;

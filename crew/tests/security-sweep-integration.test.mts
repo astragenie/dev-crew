@@ -14,7 +14,14 @@ import { execSync, spawnSync } from "node:child_process";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const devCrewRoot = path.dirname(repoRoot);
-const scanScript = path.join(devCrewRoot, "skills", "domain", "security-sweep", "scripts", "scan.mts");
+const scanScript = path.join(
+  devCrewRoot,
+  "skills",
+  "domain",
+  "security-sweep",
+  "scripts",
+  "scan.mts"
+);
 const fixtureSource = path.join(
   repoRoot,
   "tests",

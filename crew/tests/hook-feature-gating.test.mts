@@ -703,7 +703,10 @@ test("pre-push-verifier: not-found message reports scanned dir, window count, an
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.decision).toBe("block");
-    expect(parsed.reason.includes(validationsDir), "reason should include the scanned dir").toBeTruthy();
+    expect(
+      parsed.reason.includes(validationsDir),
+      "reason should include the scanned dir"
+    ).toBeTruthy();
     expect(parsed.reason).toMatch(/1 validation artifact\(s\) found within the last hour/);
     expect(parsed.reason).toMatch(/decision=fail/);
   } finally {

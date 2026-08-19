@@ -1,75 +1,199 @@
 # Repo Instructions — dev-crew
 
+@AGENTS.md
+
+> Tool-agnostic scaffold guide above. Everything below is repo-specific.
+> Clauses are short pointers by design — full detail: `docs/memory.md`,
+> `docs/ci-gates.md`.
+
+## Session protocol (mandatory, not advisory)
+
+Before non-trivial work: **read `docs/memory.md` in full** (the ONLY
+source for load-bearing contracts/path drift/merge history), **re-verify**
+against live state before relying on an entry, **write back** corrections
+the same session you find them.
+
 ## Mission
 
-**dev-crew** (plugin id `devcrew`) is the unification of two Claude Code
-plugins into a single engineering-OS plugin:
-
-- **crew** (repo `astragenie/dev-team`) — the ceremony layer: a
-  dispatcher-guided engineering workflow with bounded specialist subagents
-  (builders, reviewers, verifiers, architects), quality gates, inspectable
-  handoff artifacts, GEPA prompt optimization, and cost/observability
-  tooling. Slash commands (`/crew:build`, `/crew:fix`, `/crew:ship`) act as
-  dispatchers that fan out to 23+ first-party agents guided by 70+ tiered
-  skills.
-- **runner** (repo `astragenie/runner-plugin`, marketplace name `loop`) —
-  the autonomous layer on top of crew: a PM-triaged backlog, slice-scoped
-  Given-When-Then specs, parallel-worktree wave dispatch, phase-gate quality
-  checks, marathon-mode autonomous backlog walks, and decision-grade
-  retrospectives. (Formerly branded under a different working name — that
-  name is retired; the unified methodology is simply called **dev-crew**.)
-
-Today the two plugins couple across a fragile seam: runner resolves the crew
-CLI from the plugin cache (`MIN_CREW_VERSION` gating), bridges to it through
-a 700+ line `execFile` layer, and parses crew-authored artifacts; crew reads
-`.claude/loop.json` as a shared contract and references runner ceremonies by
-name. That seam has produced recurring failure classes — silent
-agent-rename phantoms, version-floor bumps, marketplace version drift, and a
-standing queue of cross-repo "upstream request" files.
-
-dev-crew merges both codebases into one repo and (eventually) one plugin so
-the seam becomes ordinary function calls under a single release train, a
-single agent/skill registry, a single CI gate list, and a single test suite.
-
-## Decided constraints (operator decisions, 2026-08-18 — do not relitigate without operator)
-
-- **Runtime**: Bun-first everywhere. `.mts` sources run directly under Bun,
-  no build/emit step; tests run `bun test --parallel` wherever possible.
-  dev-team's Node `--experimental-strip-types` fallback (ADR-002) and its
-  no-`--parallel` workaround are legacy to migrate away from — before
-  dropping the workaround, verify the Bun scheduler bug ADR-002 was written
-  against is fixed or not triggered by the migrated suites; quarantine (not
-  serialize globally) any suite that still trips it.
-- **Naming**: the methodology and plugin are both called **dev-crew**
-  (plugin id `devcrew`). The prior working-name branding is retired — do not
-  carry it into docs, templates, prompts, or command text; scrub it during
-  content import.
-
-## Ground rules for this repo
-
-- **The merge itself is not yet decided in shape.** Planning artifacts live
-  in `docs/planning/`. The decision brief (merge vs shared-package
-  extraction vs status quo) gates any phase plan; the phase plan gates any
-  code import. Do not start importing source from either parent repo
-  without an approved plan.
-- **Parent repos are read-only inputs.** `C:\work\mega\dev-team` and
-  `C:\work\mega\runner-plugin` are the sources of truth for behavior; never
-  edit them from work scoped to this repo.
-- **This repo dogfoods the harness it will absorb** — crew + runner are
-  installed here so the merged plugin is planned and built through its own
-  backlog/slice/review ceremony.
-- Sole operator, no external adopters to protect. Migration concerns are
-  bounded to this machine's repos.
-- Baseline commit discipline: no commits unless the operator asks.
+**dev-crew** (plugin id `devcrew`, CLI namespace `/devcrew:*`) unifies two
+prior plugins: **crew**'s dispatcher-guided ceremony layer (bounded
+specialists, quality gates, inspectable handoffs, GEPA optimization) +
+**runner**'s autonomous layer on top (PM-triaged backlog,
+Given-When-Then specs, wave dispatch, phase-gate checks, retrospectives).
+The two used to couple across a fragile cross-repo seam (`execFile`
+bridge, version pins, marketplace drift); merging turns that into
+ordinary function calls under one release train, one agent/skill
+registry, one CI gate list, one test suite. Dogfoods what it ships.
+**Operator decisions, 2026-08-18 — do not relitigate:** Bun-first
+everywhere, no build step; plugin+methodology are both **dev-crew**,
+prior branding retired; sole operator during the merge window.
 
 ## Authority documents
 
-- `docs/planning/merge-plan-prompt-v1.md` — first-draft planning prompt
-  (superseded by v2 once written; keep for provenance).
-- Parent-repo authority docs: `dev-team/CLAUDE.md`, `dev-team/AGENTS.md`,
-  `runner-plugin/CLAUDE.md`, `runner-plugin/AGENTS.md`,
-  `runner-plugin/docs/memory.md` — read before relying on any claim about
-  either parent's behavior.
+Read first: `README.md` → `docs/code-conventions.md` → `docs/memory.md`.
+
+- **`README.md`**/**`ADOPTION.md`** — what this ships, install, walkthrough.
+- **`docs/memory.md`** — durable facts: contracts, path drift, merge history.
+- **`docs/README.md`** — `docs/` map, incl. deferred `crew/docs/**` note.
+- **`docs/code-conventions.md`**/**`docs/ci-gates.md`** — conventions, CI rationale.
+- **`docs/upstream-requests/`** — open requests against parent-repo.
+- **`docs/halt-badges.md`** — halt-badge registry (SPEC-003).
+- **`.claude/artifacts/loop/backlog/`**/**`CHANGELOG.md`** — roadmap, releases.
+
+## Memory binding (astramem)
+
+<!-- clause: memory-binding -->
+
+Project id **`dev-crew`** (astramem MCP,
+`mcp__plugin_crew_astramem__*`); pass `project: "dev-crew"` top-level —
+nesting under `metadata` is silently dropped. **Dual-project recall:**
+most lessons still live under `dev-team`/`runner-plugin` — recall those
+too before "no prior art." Follow `astramem:using-memory`; short,
+one-fact memories; `scope: "team"` for cross-session.
+
+## Engineering standards
+
+<!-- clause: engineering-standards -->
+
+<!-- clause: local-commands -->
+
+Consult [`Astragenie.Standards`](https://github.com/astragenie/standards)
+if installed at a sibling path. `docs/code-conventions.md` is
+authoritative here; `AGENTS.md` §§ Commands/Style for the rest.
+**Repo topology:** `crew` is no longer an external plugin-cache dependency
+— `crew/` is a vendored rump (own `plugin.json`, `bun run test:crew`,
+`crew/docs/**` not yet migrated) until one `plugin.json` lands at
+cutover, FEAT-006 (P5).
+
+## CI gates
+
+<!-- clause: ci-gates -->
+
+Full rationale: `docs/ci-gates.md` (source of truth for name + order —
+`generate-metrics-band.mts` counts this list; keep both in sync). One
+merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–28 blocking
+(`fast-gate`), 29–34 advisory, 35–39 tsc/biome, 40–41 the two test suites:
+
+1. `bun install --frozen-lockfile` (root + `crew/`, two lockfiles).
+2. `validate-manifests.mts` — root manifest sanity.
+3. `validate-content-length.mts` — 300/200-line caps.
+4. `validate-event-schemas.mts` — AJV loop-event payload check.
+5. `validate-decline-citations.mts --repo .` — P4 FEATs cite a clause id.
+6. `validate-agent-refs.mts` — no phantom `crew:`/`runner:`/`devcrew:` tokens.
+7. `validate-dispatch-markers.mts` — `<task-scoped>` marker balance.
+8. `validate-imports.mts` — slice-linker import boundary.
+9. `validate-backlog-writes.mts` — BacklogStore sole-writer guard.
+10. `validate-slice-touches-files.mts` — slice `touches_files` sanity.
+11. `validate-slice-state-consistency.mts` — state-dir/status agreement.
+12. `validate-snapshot-freshness.mts` — loop-snapshot drift gate.
+13. `validate-org-refs.mts` — stale pre-transfer owner sweep (incl. `crew/`).
+14. `validate-marketplace-sync.mts` — registry version drift.
+15. `validate-memory-config.mts` — memory-feedback config drift.
+16. `validate-learnings-schema.mts --repo .` — learnings.jsonl schema.
+17. `validate-effort-points.mts` — FEAT `effort_points` Fibonacci check.
+18. `validate-branding-scrub.mts` — retired-name sweep, full merged tree.
+19. `generate-metrics-band.mts --check` — README metrics-band freshness.
+20. `crew/scripts/validate-manifests.mts` — crew's own manifest check.
+21. `crew/scripts/validate-dispatch-graph.mts` — peer-dispatch DAG check.
+22. `crew/scripts/validate-workflows.mts` — workflows.yaml schema/order.
+23. `crew/scripts/validate-slices.mts` — AC-placeholder/workflow linter.
+24. `crew/scripts/validate-badges.mts` — BADGE_TABLE cross-check.
+25. `crew/scripts/validate-loop-state.mts` — single backlog tree, unique ids.
+26. `crew/scripts/validate-bundles.mts` — build-bundle schema/version.
+27. `crew/scripts/validate-configs.mts` — routing-table schema + drift.
+28. `crew/scripts/validate-routing-table.mts --coverage-only` — skill-id resolution.
+29. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag (advisory).
+30. `crew/scripts/validate-routing-table.mts` full-coverage mode (advisory).
+31. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness (advisory).
+32. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag (advisory).
+33. `crew/scripts/validate-agents.mts` — agent prompt quality bar (advisory).
+34. `crew/scripts/validate-skills.mts` — skill quality bar (advisory).
+35. `bunx tsc --noEmit` — root, root test, and `crew/tsconfig.json` (3 projects).
+36. `bunx biome lint src/` (root scope).
+37. `bunx biome format src/` (root, check mode).
+38. `cd crew && bunx biome lint scripts/ hooks/` (crew's own config).
+39. `cd crew && bunx biome format scripts/ tests/` (crew, check mode).
+40. `bun test src/tests/ --parallel` (root, minus 6 quarantined suites).
+41. `cd crew && bun test tests/ --parallel` (crew).
+
+Pre-push hook runs manifest + content-length + format-check locally.
+
+## Repo conventions
+
+<!-- clause: repo-conventions -->
+
+See `AGENTS.md` § Style (ESM-only, Bun, module size, content-length caps,
+lint/complexity rules, `.mjs` specifiers on `.mts` sources,
+`process.exitCode` not `process.exit`, zero-warning lint).
+
+## Marathon session checkpoint
+
+<!-- clause: marathon-checkpoint -->
+
+`loop.marathonCheckpointEvery` (unset — default **4**): advisory at N
+closes since last retrospective, hard stop at 2N. `docs/memory.md` §
+"Marathon checkpoint".
+
+## Backlog discipline
+
+<!-- clause: backlog-discipline -->
+
+Active backlog: `.claude/artifacts/loop/backlog/{pending,triaged,in-progress,done}/`.
+Each FEAT declares `priority`, `status`, `autonomous_safe`. `/devcrew:intake`
+is the recommended entry (PM scoring + architect classification, one
+call); `--deep`/`--spec` draft ACs inline. PM P4 declines cite a clause
+id (`declined_per: [<clause-id>]`). `docs/memory.md` § "Backlog discipline".
+
+## Orchestrator mode
+
+<!-- clause: orchestrator-mode -->
+
+`orchestratorMode` selects `"slice-build"` (default, unset here) or
+`"orchestrate-slice"` (sequential). Legacy modes removed — `docs/memory.md`
+§ "Orchestrator mode".
+
+## Reviewer ladder presets
+
+<!-- clause: reviewer-ladder-presets -->
+
+`reviewers.ladder` is config-driven (`["A","B"]`, `["A"]`, `["B"]`).
+**This repo's setting is `["A","B"]`** — the two-reviewer default.
+`docs/memory.md` § "Reviewer ladder".
+
+## Owned agents
+
+<!-- clause: owned-agents -->
+
+Dispatch via `Agent(subagent_type: ...)`, one `devcrew:` namespace: former
+`runner:` role agents (`pm`, `architect`, `researcher`,
+`market-researcher`, `document-writer`, `swarm`) + former `crew:`
+specialists (`fullstack-dev`, `backend-dev`, `frontend-dev`, `reviewer`,
+`verifier`, more) — full list in `agents/`.
+
+## Auto-dispatch primitives
+
+<!-- clause: auto-dispatch-primitives -->
+
+`src/scripts/lib/auto-dispatch.mts` is opt-in audit infra — subcommands
+do NOT auto-dispatch agents; slash flows are the contract (DEC-011).
+
+## Safety
+
+<!-- clause: safety -->
+
+Never commit secrets. Never disable hooks (`--no-verify`) without
+request. Never force-push `main`.
+
+## Decisions not to relitigate
+
+- **`clause: ...` markers + `## CI gates` list are machine-read** — see
+  `docs/memory.md` § "Load-bearing CLAUDE.md contracts" first.
+  `backlog-discipline`/`repo-conventions` are live-cited by
+  `declined_per` — never delete/rename without a citation sweep.
+- **Never hand-edit the marker blocks below** — regenerated by
+  `/crew:install` / `/devcrew:install`; edit config instead.
+- **Never register a local plugin marketplace** — GitHub source only.
+- Everything in `@AGENTS.md`'s Never-do applies.
 
 <!-- crew:start -->
 <!-- Crew framework memory. Run /crew:install after plugin updates that change framework memory. -->
@@ -96,3 +220,7 @@ This repo runs the dev-crew method autonomously. Full rules: `.claude/loop/rules
 First action when starting the runner: read `.claude/loop/rules.md` → `.claude/artifacts/loop/ai-loop/00-entry/MASTER_PROMPT.md` → `.claude/artifacts/loop/ai-loop/backlog/approved-slices.md`.
 
 <!-- runner:end -->
+
+## Project state (auto-generated)
+
+@.claude/artifacts/loop/loop-snapshot.md

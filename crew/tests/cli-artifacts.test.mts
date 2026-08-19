@@ -60,7 +60,9 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "approved_with_notes",
     "--non-code"
   ]);
-  expect(reviewAliasResult.code, "write-review-result with --verdict should exit with code 0").toBe(0);
+  expect(reviewAliasResult.code, "write-review-result with --verdict should exit with code 0").toBe(
+    0
+  );
   const reviewAliasOutput = JSON.parse(reviewAliasResult.output);
   const reviewAliasBody = await fs.readFile(reviewAliasOutput.path, "utf8");
   expect(reviewAliasBody).toMatch(/approved_with_notes/);
@@ -232,7 +234,10 @@ test("write-* commands embed --feature and --phase in frontmatter", async () => 
   expect(reviewResult.code, "write-review-result should exit with code 0").toBe(0);
   const reviewPath = JSON.parse(reviewResult.output).path;
   const reviewBody = await fs.readFile(reviewPath, "utf8");
-  expect(reviewBody, "review-result with feature/phase absent still carries the canonical decision frontmatter (P1.3)").toMatch(/^---\ndecision: approved\n---\n/);
+  expect(
+    reviewBody,
+    "review-result with feature/phase absent still carries the canonical decision frontmatter (P1.3)"
+  ).toMatch(/^---\ndecision: approved\n---\n/);
 
   // review-result with only feature emits frontmatter without phase line
   const reviewFeatResult = await runCrew([
@@ -294,7 +299,10 @@ test("write-handoff without --repo-context has no ## Repo Layout section", async
   expect(result.code, "write-handoff should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  expect(!content.includes("## Repo Layout"), "should not contain Repo Layout without flag").toBeTruthy();
+  expect(
+    !content.includes("## Repo Layout"),
+    "should not contain Repo Layout without flag"
+  ).toBeTruthy();
 });
 
 test("write-review-result with --validation-evidence emits frontmatter field and body section", async () => {
@@ -317,9 +325,16 @@ test("write-review-result with --validation-evidence emits frontmatter field and
   expect(result.code, "write-review-result should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  expect(content, "frontmatter should contain validation_evidence key").toMatch(/validation_evidence:/);
-  expect(content.includes(evidenceText), "frontmatter or body should contain the evidence text").toBeTruthy();
-  expect(content, "body should contain ## Validation Evidence section").toMatch(/## Validation Evidence/);
+  expect(content, "frontmatter should contain validation_evidence key").toMatch(
+    /validation_evidence:/
+  );
+  expect(
+    content.includes(evidenceText),
+    "frontmatter or body should contain the evidence text"
+  ).toBeTruthy();
+  expect(content, "body should contain ## Validation Evidence section").toMatch(
+    /## Validation Evidence/
+  );
 });
 
 test("write-review-result without --validation-evidence emits no frontmatter field and no body section", async () => {
@@ -338,8 +353,14 @@ test("write-review-result without --validation-evidence emits no frontmatter fie
   expect(result.code, "write-review-result should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  expect(!content.includes("validation_evidence"), "artifact should have no validation_evidence field when flag omitted").toBeTruthy();
-  expect(!content.includes("## Validation Evidence"), "artifact should have no Validation Evidence section when flag omitted").toBeTruthy();
+  expect(
+    !content.includes("validation_evidence"),
+    "artifact should have no validation_evidence field when flag omitted"
+  ).toBeTruthy();
+  expect(
+    !content.includes("## Validation Evidence"),
+    "artifact should have no Validation Evidence section when flag omitted"
+  ).toBeTruthy();
 });
 
 test("write-review-result with --validation-evidence empty string treats it as omitted", async () => {
@@ -360,8 +381,14 @@ test("write-review-result with --validation-evidence empty string treats it as o
   expect(result.code, "write-review-result should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  expect(!content.includes("validation_evidence"), "artifact should have no validation_evidence field when flag is empty string").toBeTruthy();
-  expect(!content.includes("## Validation Evidence"), "artifact should have no Validation Evidence section when flag is empty string").toBeTruthy();
+  expect(
+    !content.includes("validation_evidence"),
+    "artifact should have no validation_evidence field when flag is empty string"
+  ).toBeTruthy();
+  expect(
+    !content.includes("## Validation Evidence"),
+    "artifact should have no Validation Evidence section when flag is empty string"
+  ).toBeTruthy();
 });
 
 test("write-validation-result: --findings persisted in frontmatter", async () => {
@@ -384,10 +411,9 @@ test("write-validation-result: --findings persisted in frontmatter", async () =>
     expect(result.code, "write-validation-result should exit with code 0").toBe(0);
     const output = JSON.parse(result.output);
     const body = await fs.readFile(output.path, "utf8");
-    expect(
-      body,
-      "validation artifact must contain findings"
-    ).toMatch(/findings:.*pass:2,partial:0,fail:1/);
+    expect(body, "validation artifact must contain findings").toMatch(
+      /findings:.*pass:2,partial:0,fail:1/
+    );
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }
@@ -415,10 +441,9 @@ test("write-deployment-check: --findings persisted in frontmatter", async () => 
     expect(result.code, "write-deployment-check should exit with code 0").toBe(0);
     const output = JSON.parse(result.output);
     const body = await fs.readFile(output.path, "utf8");
-    expect(
-      body,
-      "deployment artifact must contain findings"
-    ).toMatch(/findings:.*healthy:1,degraded:0,down:0/);
+    expect(body, "deployment artifact must contain findings").toMatch(
+      /findings:.*healthy:1,degraded:0,down:0/
+    );
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }

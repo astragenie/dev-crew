@@ -169,8 +169,14 @@ test("collectRecentCosts dedupe: all-aggregate same window → sumUsdRecent = la
     expect(result.recent.length, "recent[] must contain all 3 raw reports").toBe(3);
     expect(result.totalReports, "totalReports must be 3").toBe(3);
     expect(result.dedupedCount, "dedupedCount must be 1 (latest aggregate only)").toBe(1);
-    expect(Math.abs(result.sumUsdRecent! - 3995.81) < 0.01, `sumUsdRecent must be ~3995.81, got ${result.sumUsdRecent}`).toBeTruthy();
-    expect(Math.abs(result.avgUsdRecent! - 3995.81) < 0.01, `avgUsdRecent must divide by dedupedCount (1), got ${result.avgUsdRecent}`).toBeTruthy();
+    expect(
+      Math.abs(result.sumUsdRecent! - 3995.81) < 0.01,
+      `sumUsdRecent must be ~3995.81, got ${result.sumUsdRecent}`
+    ).toBeTruthy();
+    expect(
+      Math.abs(result.avgUsdRecent! - 3995.81) < 0.01,
+      `avgUsdRecent must divide by dedupedCount (1), got ${result.avgUsdRecent}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -214,7 +220,10 @@ test("collectRecentCosts dedupe: aggregate + nested slice same window → sumUsd
 
     expect(result.recent.length, "recent[] must contain both raw reports").toBe(2);
     expect(result.dedupedCount, "dedupedCount must be 1 (aggregate wins)").toBe(1);
-    expect(Math.abs(result.sumUsdRecent! - 3995.81) < 0.01, `sumUsdRecent must be aggregate usd ~3995.81, got ${result.sumUsdRecent}`).toBeTruthy();
+    expect(
+      Math.abs(result.sumUsdRecent! - 3995.81) < 0.01,
+      `sumUsdRecent must be aggregate usd ~3995.81, got ${result.sumUsdRecent}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -257,7 +266,10 @@ test("collectRecentCosts dedupe: disjoint historical windows → sumUsdRecent = 
 
     expect(result.recent.length, "recent[] must contain both raw reports").toBe(2);
     expect(result.dedupedCount, "dedupedCount must be 2 (both disjoint windows)").toBe(2);
-    expect(Math.abs(result.sumUsdRecent! - 300) < 0.01, `sumUsdRecent must be plain sum 300, got ${result.sumUsdRecent}`).toBeTruthy();
+    expect(
+      Math.abs(result.sumUsdRecent! - 300) < 0.01,
+      `sumUsdRecent must be plain sum 300, got ${result.sumUsdRecent}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -326,9 +338,14 @@ test("collectRecentCosts dedupe: mixed scenario → sum = latest aggregate + dis
     const result = await collectRecentCosts(tmpDir, 5);
 
     expect(result.recent.length, "recent[] must contain all 4 raw reports").toBe(4);
-    expect(result.dedupedCount, "dedupedCount must be 2 (latest agg + disjoint historical)").toBe(2);
+    expect(result.dedupedCount, "dedupedCount must be 2 (latest agg + disjoint historical)").toBe(
+      2
+    );
     const expected = 3995.81 + 50;
-    expect(Math.abs(result.sumUsdRecent! - expected) < 0.01, `sumUsdRecent must be ${expected}, got ${result.sumUsdRecent}`).toBeTruthy();
+    expect(
+      Math.abs(result.sumUsdRecent! - expected) < 0.01,
+      `sumUsdRecent must be ${expected}, got ${result.sumUsdRecent}`
+    ).toBeTruthy();
   } finally {
     await cleanup(tmpDir);
   }
@@ -375,7 +392,10 @@ test("collectRecentCosts dedupe: modelBurn only counts deduped reports", async (
     // modelBurn.slices for opus should be 1 (one deduped report), not 2
     const opusBurn = result.modelBurn?.find((m) => m.model === opusModel);
     expect(opusBurn != null, `Expected modelBurn entry for ${opusModel}`).toBeTruthy();
-    expect(opusBurn.slices, `modelBurn.slices for ${opusModel} must be 1 (deduped), got ${opusBurn.slices}`).toBe(1);
+    expect(
+      opusBurn.slices,
+      `modelBurn.slices for ${opusModel} must be 1 (deduped), got ${opusBurn.slices}`
+    ).toBe(1);
   } finally {
     await cleanup(tmpDir);
   }
@@ -392,7 +412,10 @@ test("collectRecentCosts: dedupedCount field is present on result", async () => 
 
     const result = await collectRecentCosts(tmpDir, 5);
 
-    expect("dedupedCount" in result, "dedupedCount field must be present on collectRecentCosts result").toBeTruthy();
+    expect(
+      "dedupedCount" in result,
+      "dedupedCount field must be present on collectRecentCosts result"
+    ).toBeTruthy();
     expect(typeof result.dedupedCount === "number", "dedupedCount must be a number").toBeTruthy();
   } finally {
     await cleanup(tmpDir);
