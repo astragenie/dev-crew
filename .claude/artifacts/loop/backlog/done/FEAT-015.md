@@ -1,13 +1,13 @@
 ---
 id: FEAT-015
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-33]
 derived_from: null
 pm_customer_impact: 0.5
 pm_effort_estimate: 0.55
@@ -22,6 +22,9 @@ triage_notes: "Directly-evidenced quality-gate hardening work with a known, unif
 tags: ["stack:markdown", "area:content-quality", "concern:ci-gate-hardening"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-33]
+completed_at: 2026-08-19
 ---
 ## Description
 

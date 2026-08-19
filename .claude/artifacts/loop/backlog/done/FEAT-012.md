@@ -1,13 +1,13 @@
 ---
 id: FEAT-012
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-30]
 derived_from: null
 pm_customer_impact: 0.35
 pm_effort_estimate: 0.15
@@ -22,6 +22,9 @@ triage_notes: "Trivial single-file doc cleanup with a concretely-traced cause; a
 tags: ["stack:markdown", "area:adopter-migration", "concern:doc-cleanup"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-30]
+completed_at: 2026-08-19
 ---
 ## Description
 

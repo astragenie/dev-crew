@@ -1,13 +1,13 @@
 ---
 id: FEAT-011
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-31]
 derived_from: null
 pm_customer_impact: 0.5
 pm_effort_estimate: 0.35
@@ -22,6 +22,9 @@ triage_notes: "Bounded, mechanical rollout-completion chore using already-built,
 tags: ["stack:typescript", "area:adopter-migration", "concern:rollout"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-31]
+completed_at: 2026-08-19
 ---
 ## Description
 

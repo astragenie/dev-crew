@@ -1,13 +1,13 @@
 ---
 id: FEAT-009
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-32]
 derived_from: null
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.45
@@ -22,6 +22,9 @@ triage_notes: "Data-model correctness work on already-shipped, load-bearing code
 tags: ["stack:typescript", "area:backlog-data-model", "concern:data-migration"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-32]
+completed_at: 2026-08-19
 ---
 ## Description
 

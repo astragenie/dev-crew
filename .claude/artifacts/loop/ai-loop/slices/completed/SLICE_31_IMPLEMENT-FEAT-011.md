@@ -1,7 +1,7 @@
 ---
 id: SLICE-31
 title: Implement FEAT-011
-status: pending
+status: completed
 feature: FEAT-011
 phase: null
 priority: P2
@@ -11,6 +11,7 @@ risk: medium
 created: 2026-08-19
 updated: 2026-08-19
 tags: ["stack:typescript"]
+completed_at: 2026-08-19
 ---
 # SLICE-31: Implement FEAT-011
 

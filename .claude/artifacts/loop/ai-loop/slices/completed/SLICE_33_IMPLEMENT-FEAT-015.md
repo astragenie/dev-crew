@@ -1,7 +1,7 @@
 ---
 id: SLICE-33
 title: Implement FEAT-015
-status: pending
+status: completed
 feature: FEAT-015
 phase: null
 priority: P2
@@ -11,6 +11,7 @@ risk: medium
 created: 2026-08-19
 updated: 2026-08-19
 tags: ["stack:markdown"]
+completed_at: 2026-08-19
 ---
 # SLICE-33: Implement FEAT-015
 

@@ -1,13 +1,13 @@
 ---
 id: FEAT-018
-status: triaged
+status: in-progress
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-29]
 derived_from: null
 pm_customer_impact: 0.35
 pm_effort_estimate: 0.2
@@ -22,6 +22,7 @@ triage_notes: "Small, well-specified test-coverage gap closure on load-bearing f
 tags: ["stack:typescript", "area:test-coverage", "concern:fail-soft-infra"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
 ---
 ## Description
 

@@ -1,13 +1,13 @@
 ---
 id: FEAT-010
-status: triaged
+status: in-progress
 priority: P0
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-28]
 derived_from: null
 pm_customer_impact: 0.85
 pm_effort_estimate: 0.3
@@ -22,6 +22,7 @@ triage_notes: "High customer_impact from a confirmed, unbounded, self-escalating
 tags: ["stack:typescript", "area:backlog-data-model", "concern:bugfix"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-19
 ---
 ## Description
 
