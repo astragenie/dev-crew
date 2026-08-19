@@ -49,7 +49,7 @@ Include:
 
 ### Archived context (stored in memory / artifact)
 
-Use for: persistent cross-session memory. Write to `.claude/artifacts/crew/` or invoke `/loop:snapshot-memory`.
+Use for: persistent cross-session memory. Write to `.claude/artifacts/crew/` or invoke `/devcrew:snapshot-memory`.
 
 Include:
 - Historical decisions with rationale
@@ -71,12 +71,12 @@ Execute this loop at each context-prep trigger:
 
 4. **Distribute** — Pass the packaged context to the next agent via `write-handoff --repo-context` or inline in the dispatch instruction. The `--repo-context` flag saves 3–5 tool turns per subagent.
 
-5. **Checkpoint** — At major milestones, write a durable artifact under `.claude/artifacts/crew/handoffs/`. Pair with `/loop:snapshot-memory` for cross-session repo memory.
+5. **Checkpoint** — At major milestones, write a durable artifact under `.claude/artifacts/crew/handoffs/`. Pair with `/devcrew:snapshot-memory` for cross-session repo memory.
 
 ## Integration with crew infrastructure
 
 - **Pre-compaction:** If ≥3 compactions observed, write a checkpoint handoff and reduce scope before dispatching another subagent.
-- **Snapshot-memory pairing:** Durable project state (decisions, grades, backlog) belongs in `/loop:snapshot-memory` output, not in per-agent briefings.
+- **Snapshot-memory pairing:** Durable project state (decisions, grades, backlog) belongs in `/devcrew:snapshot-memory` output, not in per-agent briefings.
 - **Handoff CLI:** Use `node ... crew.mjs write-handoff` for structured handoffs. Inline context returns inflate dispatcher context unnecessarily.
 
 ## Done / Acceptance

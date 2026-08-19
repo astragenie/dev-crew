@@ -41,7 +41,7 @@ Exactly one FIRST tool call, one LAST tool call. Both target the same artifact p
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
   --repo "$PWD" --title "<slice-id> TS review" \
   --reviewer typescript-reviewer \
   --scaffold --status in-progress --summary "starting TS review"
@@ -53,7 +53,7 @@ Capture the returned `path` — that is `<scaffold-path>` everywhere below.
 
 ```bash
 # success path
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
   --update <scaffold-path> --status completed \
   --decision <approved|approved_with_notes|rejected> \
   --reviewer typescript-reviewer \
@@ -63,7 +63,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result \
   --files "<files reviewed>"
 
 # blocked path (no .ts/.tsx files in diff, dispatch context unclear)
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
   --update <scaffold-path> --status blocked --decision rejected \
   --reviewer typescript-reviewer \
   --summary "<reason>"

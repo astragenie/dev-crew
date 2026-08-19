@@ -116,7 +116,7 @@ test("sliceFromFeature refuses when effort_points >= 8 and proposed_slices missi
     (err: Error) =>
       err.name === "DecompositionRequiredError" &&
       /sized 13 points/.test(err.message) &&
-      /\/loop:pm-review/.test(err.message)
+      /\/devcrew:pm-review/.test(err.message)
   );
   // Backlog state untouched — feature stays in pending, no slice file created.
   const found = await findFeatureById(repo, feat.id);

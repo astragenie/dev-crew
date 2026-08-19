@@ -106,7 +106,7 @@ function detectSpecFlowAlerts(specs: Record<string, any>[]) {
         severity: "info",
         category: "spec-flow",
         message: `${s.id} is approved but not yet decomposed into features`,
-        suggested_action: `Run /loop:spec decompose --id ${s.id} --features "title 1; title 2; ..."`
+        suggested_action: `Run /devcrew:spec decompose --id ${s.id} --features "title 1; title 2; ..."`
       });
     }
   }
@@ -121,7 +121,7 @@ function detectBacklogFlowAlerts(backlog: Record<string, any>[]) {
       severity: "info",
       category: "backlog-flow",
       message: `${pending.length} features pending triage`,
-      suggested_action: `Run /loop:triage to dispatch the PM agent for 5-dimension scoring.`
+      suggested_action: `Run /devcrew:triage to dispatch the PM agent for 5-dimension scoring.`
     }
   ];
 }
@@ -193,7 +193,7 @@ function detectInProgressOrphanAlerts(backlog: Record<string, any>[]) {
         severity: "warn",
         category: "in-progress-orphan",
         message: `${f.id} is in-progress but has no linked slice`,
-        suggested_action: `Run /loop:slice from-feature --id ${f.id}.`
+        suggested_action: `Run /devcrew:slice from-feature --id ${f.id}.`
       });
     }
   }

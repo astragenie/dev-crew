@@ -351,7 +351,7 @@ async function emitDeployHandoffsForReadyReleases(repoPath: string) {
       "",
       "## Allowed scope",
       "",
-      `1. Run \`/loop:release plan --version ${version}\` to refresh the release notes with current status.`,
+      `1. Run \`/devcrew:release plan --version ${version}\` to refresh the release notes with current status.`,
       `2. \`git tag ${version} && git push origin ${version}\` once the release notes look right.`,
       "3. Run the deployer agent / scripts per repo deployment guidance.",
       "4. Capture deployment evidence via crew `write-deployment-result`.",
@@ -370,7 +370,7 @@ async function emitDeployHandoffsForReadyReleases(repoPath: string) {
       "",
       "## Risks or open questions",
       "",
-      "- Verify no in-progress slices still touch the same area (`/loop:brief` for in-flight state).",
+      "- Verify no in-progress slices still touch the same area (`/devcrew:brief` for in-flight state).",
       ""
     ].join("\n");
     await fs.writeFile(target, serializeFrontmatter(fm, body));

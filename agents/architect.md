@@ -112,7 +112,7 @@ Always-on: `skills/domain/architecture/architecture-advisory/` (procedure of rec
 | Diagram authoring (architecture, ERD, sequence, flowchart)          | `skills/domain/architecture/diagram-methodology/` + `skills/workflow/diagram-review/` |
 | SPEC authoring / large-scope FEAT decomposition                     | `skills/workflow/spec-decomposition/`              |
 
-For slice sizing before dispatch, consult `skills/workflow/slice-sizing/` and `node scripts/crew.ts scope-estimate --files <path:lines,...>` (heavy tier → split before designing).
+For slice sizing before dispatch, consult `skills/workflow/slice-sizing/` and `bun crew/scripts/crew.mts scope-estimate --files <path:lines,...>` (heavy tier → split before designing).
 
 ## Delegation map
 
@@ -191,7 +191,7 @@ Run the verifier that matches what you emitted. If no verifier exists for that a
 
 | Artifact                                  | Verifier                                                                  |
 | ----------------------------------------- | -------------------------------------------------------------------------- |
-| OpenAPI YAML (FEAT contract)              | `node ./scripts/validate-contracts.ts <yaml>`                              |
+| OpenAPI YAML (FEAT contract)              | `bun ./crew/scripts/validate-contracts.mts <yaml>`                              |
 | Mermaid diagram                           | `npx -y mmdc -i <file> -o /tmp/out.svg 2>&1` (parse-only smoke; skip if mmdc unavailable) |
 | ADR markdown only                         | `node ./scripts/validate-adr-template.ts <adr-path>` (Options-Considered structure check, advisory by default; --strict gates merge) |
 | Topology / capacity / data-model sketch   | None; record `verifier: none`                                             |
@@ -235,7 +235,7 @@ Every termination path — completion, pause, blocker, context-budget end — wr
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --summary "<one-sentence headline>" \
@@ -251,7 +251,7 @@ If mid-task and cannot complete: write a `--confidence low` handoff with `--risk
 - **Coalesce Bash calls** — prefer `cmd1 && cmd2 && cmd3` over separate invocations when commands are related and don't need intervening reasoning; keep them separate only when each result drives the next decision.
 - **Batch parallel dispatches** — issue independent specialist dispatches (e.g. backend-architect + database-architect) in a single parallel `Agent` tool block.
 - **TaskUpdate batching** — send `in_progress` for the current task only; coalesce `completed` markers at logical sequence boundaries; never run ≥3 TaskUpdate calls back-to-back (the `check-task-update-burst` hook logs cache-churn evidence).
-- **No re-Read after Edit/Write** — a successful Edit/Write would have errored on failure. For the OpenAPI YAML specifically, `node ./scripts/validate-contracts.ts <yaml>` is your evidence, not a re-Read.
+- **No re-Read after Edit/Write** — a successful Edit/Write would have errored on failure. For the OpenAPI YAML specifically, `bun ./crew/scripts/validate-contracts.mts <yaml>` is your evidence, not a re-Read.
 
 ## Output contract — FEAT contract artifact
 
@@ -259,9 +259,9 @@ When dispatched to produce or revise a FEAT contract, emit THREE files at FEAT-s
 
 1. `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.openapi.yaml` — OpenAPI 3.1 (canonical). Follow `skills/domain/architecture/openapi-authoring/SKILL.md`.
 2. `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.md` — Decision rationale + Data Contracts + Revisions. Do NOT duplicate wire shapes from the YAML.
-3. `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.ts` — Regenerate via `node ./scripts/validate-contracts.ts <yaml> --write`. Commit.
+3. `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.ts` — Regenerate via `bun ./crew/scripts/validate-contracts.mts <yaml> --write`. Commit.
 
-After emission, run `node ./scripts/validate-contracts.ts <yaml>` — record PASS/FAIL in the **completion handoff `--risks`** field (NOT in the start acknowledgement; verifier runs after emission, not before).
+After emission, run `bun ./crew/scripts/validate-contracts.mts <yaml>` — record PASS/FAIL in the **completion handoff `--risks`** field (NOT in the start acknowledgement; verifier runs after emission, not before).
 
 Return shape to the dispatcher is ALWAYS three lines (no exceptions):
 

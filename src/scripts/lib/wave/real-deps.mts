@@ -2,7 +2,7 @@
 // Real DI implementations for the wave runner. Shells out to git and
 // existing loop.mts dispatch subcommands. Note: realDispatch is a
 // runtime-only constraint — actual parallel Agent dispatch requires the
-// Claude Code harness. The /loop:wave slash flow handles dispatch via
+// Claude Code harness. The /devcrew:wave slash flow handles dispatch via
 // the harness; headless CLI runs of `wave run` will error at dispatch.
 
 import { spawnSync } from "node:child_process";
@@ -191,7 +191,7 @@ export async function realDispatch(
   _cfg: WaveConfig
 ): Promise<WorktreeResult[]> {
   throw new Error(
-    "realDispatch must be invoked from the /loop:wave slash flow (Agent dispatch is harness-only)."
+    "realDispatch must be invoked from the /devcrew:wave slash flow (Agent dispatch is harness-only)."
   );
 }
 

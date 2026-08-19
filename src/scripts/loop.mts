@@ -858,7 +858,7 @@ async function resolveBacklogAddBody(
   });
   console.error(
     "[backlog add] researcher auto-dispatch removed (see DEC-011). " +
-      "Creating FEAT with empty body — run /loop:backlog-add for researcher enrichment, " +
+      "Creating FEAT with empty body — run /devcrew:backlog-add for researcher enrichment, " +
       "or pass --body explicitly."
   );
   return "";
@@ -1248,7 +1248,7 @@ export async function runBacklogEnrich(repoPath: string, _flags: Record<string, 
   });
   console.error(
     `[backlog enrich] CLI auto-dispatch removed (see DEC-011). ` +
-      `Use the slash flow: /loop:backlog-enrich. ` +
+      `Use the slash flow: /devcrew:backlog-enrich. ` +
       `${needsClassify.length} feature(s) need classification.`
   );
   process.exitCode = 1;
@@ -1324,7 +1324,7 @@ async function runBacklogSubcommand(
     // bare "unknown subcommand" error. Triage is PM-only since
     // commit 505a8a5 (2026-06-11).
     throw new Error(
-      "`backlog triage` (regex fallback) was removed on 2026-06-11. Triage is PM-only — invoke `/loop:triage` (skill) instead. On PM error, halt and surface to the operator."
+      "`backlog triage` (regex fallback) was removed on 2026-06-11. Triage is PM-only — invoke `/devcrew:triage` (skill) instead. On PM error, halt and surface to the operator."
     );
   }
   if (sub === "promote") {
@@ -1505,7 +1505,7 @@ const SPEC_HANDLERS = {
     });
     const msg =
       `[spec decompose] architect auto-dispatch removed (see DEC-011). ` +
-      `Use the slash flow: /loop:spec-decompose --id ${specId}, ` +
+      `Use the slash flow: /devcrew:spec-decompose --id ${specId}, ` +
       `or pass --features 'Title 1; Title 2; ...'`;
     console.error(msg);
     process.exitCode = 1;

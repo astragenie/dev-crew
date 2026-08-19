@@ -11,7 +11,7 @@ Use this workflow before adopting when you want to understand the current repo s
 Workflow:
 
 1. Run the installer audit command:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" audit --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" audit --repo "$PWD"`
 2. Report whether the repo already has:
    - `CLAUDE.md`
    - `.claude/`

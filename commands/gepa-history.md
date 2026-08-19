@@ -17,7 +17,7 @@ Show recent GEPA trials for the named agent. Reads from the local fileStore JSON
 
 ## Behavior
 
-The command shells to `node scripts/crew.ts gepa-history` with the given args. Output is one tabular line per trial, sorted by `created_at` desc:
+The command shells to `bun crew/scripts/crew.mts gepa-history` with the given args. Output is one tabular line per trial, sorted by `created_at` desc:
 
 ```
 trial_id | source | pass | score | cost_usd | latency_ms | created_at

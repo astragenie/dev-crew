@@ -19,7 +19,7 @@ const AC_BULLET_RE = /^- (\[[ x]\] )?\S/;
  *
  * Recognizes two section-opener patterns (case-insensitive):
  *   1. `## Acceptance criteria` — ATX heading (original)
- *   2. `Acceptance criteria:` — bare line-prefix (inline style used by /loop:backlog add)
+ *   2. `Acceptance criteria:` — bare line-prefix (inline style used by /devcrew:backlog add)
  *
  * After the opener, counts:
  *   - Bullet lines: `^- (\[[ x]\] )?\S`

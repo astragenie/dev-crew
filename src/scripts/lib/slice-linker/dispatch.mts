@@ -291,7 +291,7 @@ function buildParallelFeBeInstruction(
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
-  const returnLine = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch devcrew:reviewer, then devcrew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`;
+  const returnLine = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch devcrew:reviewer, then devcrew:verifier if behavior changed, then run /devcrew:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`;
   const perAgentOrders = [
     `FORBIDDEN: Do NOT dispatch devcrew:reviewer or devcrew:verifier yourself.`,
     `RETURN: ${returnLine}`,
@@ -385,7 +385,7 @@ export function buildDispatchInstruction({
     const objective = `Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path.`;
     const orders = [
       `FORBIDDEN: Do NOT dispatch devcrew:reviewer or devcrew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol.`,
-      `RETURN: When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch devcrew:reviewer, then devcrew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`,
+      `RETURN: When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch devcrew:reviewer, then devcrew:verifier if behavior changed, then run /devcrew:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`,
       ...(suffix ? [`GATES: ${suffix}`] : [])
     ];
     header = [
@@ -463,7 +463,7 @@ function buildOrchestrateSliceInstruction(sliceId: string): string {
     ``,
     `The command dispatches specialists in sequence from the main thread (architect if needed,`,
     `builder, reviewer, validator, devcrew:document-writer). All dispatches are visible in this`,
-    `window. When the ladder completes, close with /loop:slice complete --id ${sliceId}.`
+    `window. When the ladder completes, close with /devcrew:slice complete --id ${sliceId}.`
   ].join("\n");
 }
 

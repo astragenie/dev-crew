@@ -440,7 +440,7 @@ function pickNumber(v: unknown): number | null {
 // the other bridge calls. The slice close still proceeds — the bypass
 // already passed the gate in completeSlice; this call only records *why*.
 export async function markValidationSkippedBadge(repoPath: string, reason: string) {
-  const note = reason || "validation_skipped via /loop:slice complete --skip-validation-check";
+  const note = reason || "validation_skipped via /devcrew:slice complete --skip-validation-check";
   try {
     const result = await markWorkflowBadge(repoPath, { badge: "validation_skipped", note });
     if (result.ok === false) throw result.error;
@@ -458,7 +458,7 @@ function renderSynthesisScores(
   SCORE_DIMENSIONS: string[]
 ) {
   if (!grade) {
-    return `_(no grade yet — run \`/loop:slice grade --id ${sliceId}\`)_`;
+    return `_(no grade yet — run \`/devcrew:slice grade --id ${sliceId}\`)_`;
   }
   return SCORE_DIMENSIONS.map((dim) => `- ${dim}: ${grade.scores?.[dim] ?? "(unset)"}`).join("\n");
 }
@@ -676,9 +676,9 @@ export async function writeCrewHandoff(
     "",
     "## Allowed scope",
     "",
-    `- Run \`/loop:slice grade --id ${sliceId}\` to draft grade file.`,
+    `- Run \`/devcrew:slice grade --id ${sliceId}\` to draft grade file.`,
     `- Edit \`${gradeRel}\` (scores, lessons, decisions, narrative).`,
-    `- Run \`/loop:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
+    `- Run \`/devcrew:slice grade-write --id ${sliceId}\` to extract decisions + emit telemetry.`,
     "- Pick next slice via Cross-Slice Continuation HARD RULE.",
     "",
     "## Forbidden scope",

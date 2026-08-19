@@ -75,7 +75,7 @@ function appendBacklogExhaustedSignals(
   if (stats.pendingOrTriaged === 0 && stats.inProgress === 0 && stats.approvedUndecomposed === 0) {
     reasons.push("backlog empty + no undecomposed specs → no actionable work");
     suggestions.push(
-      "Author a new SPEC or FEAT to continue. Run `/loop:spec add` or `/loop:backlog add`."
+      "Author a new SPEC or FEAT to continue. Run `/devcrew:spec add` or `/devcrew:backlog add`."
     );
   }
 }
@@ -282,7 +282,7 @@ function applyMarathonCheckpointSignal(
 ) {
   if (!sig) return;
   const due = `${sig.closesSinceCheckpoint} slice(s) closed since the last retrospective`;
-  const cmd = "Run `/loop:retrospective` to capture lessons before continuing.";
+  const cmd = "Run `/devcrew:retrospective` to capture lessons before continuing.";
   if (sig.level === "warn") {
     suggestions.push(
       `marathon_checkpoint_due: ${due} (advisory at >=${sig.every}, hard stop at >=${sig.hardThreshold}). ${cmd}`

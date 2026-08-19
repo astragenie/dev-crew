@@ -167,7 +167,7 @@ Extract `SLICE_ID` from matched file's `id:` frontmatter field or its filename s
 
 Run slice start ceremony:
 
-    /loop:slice start --id <SLICE_ID>
+    /devcrew:slice start --id <SLICE_ID>
 
 If the command exits non-zero: halt and print the full error output. Do not proceed.
 

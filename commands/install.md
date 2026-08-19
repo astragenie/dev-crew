@@ -28,7 +28,7 @@ Run:
 
 ```bash
 set -euo pipefail
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" install-global
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" install-global
 ```
 
 Report which files changed, whether global memory is installed, the

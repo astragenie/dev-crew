@@ -8,7 +8,7 @@ source: derived from spec-decomposition methodology + observed builder cap-hit p
 source_version: 2026-06-04
 last_reviewed: 2026-06-04
 owner: hero-crew
-triggers: [/loop:spec-decompose, slice start, builder dispatch estimate, work-breakdown-structure sizing, multi-file slice planning, cap-hit risk]
+triggers: [/devcrew:spec-decompose, slice start, builder dispatch estimate, work-breakdown-structure sizing, multi-file slice planning, cap-hit risk]
 ---
 
 # Slice Sizing
@@ -16,7 +16,7 @@ triggers: [/loop:spec-decompose, slice start, builder dispatch estimate, work-br
 ## When to use
 
 Load this skill:
-- At SPEC decomposition time (`/loop:spec-decompose`) — size atomic actions before writing slice specs.
+- At SPEC decomposition time (`/devcrew:spec-decompose`) — size atomic actions before writing slice specs.
 - At slice-start — verify the slice fits before dispatching a builder.
 - Before any builder dispatch where the scope estimate exceeds ~30 turns.
 - When the pre-dispatch decomposition rule (below) flags ≥2 role concerns.

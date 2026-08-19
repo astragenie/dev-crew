@@ -89,7 +89,7 @@ Include:
 
 When review materially completes, persist it with:
 
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.mts" write-review-result --repo "$PWD" --title "<short title>" ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --title "<short title>" ...`
 
 ## Escalation Rule
 

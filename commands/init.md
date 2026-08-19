@@ -21,7 +21,7 @@ Workflow:
 
 1. Determine whether the repository already exists or needs to be created.
 2. Run the installer:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" init --repo "$PWD" --allow-existing`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" init --repo "$PWD" --allow-existing`
 3. Create the repository structure if needed.
 4. Create `CLAUDE.md` with repo-owned rules and framework imports.
 5. Add initial `.claude/` files that make the harness usable immediately.
@@ -32,8 +32,8 @@ Workflow:
    - Docker / compose / infra files
    - obvious runtime or service entrypoints
 8. If the repo already reveals useful deployment clues, write initial deployment guidance:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" discover-deployment --repo "$PWD"`
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-deployment-guidance --repo "$PWD" --title "<short title>" --discovery-status repo-derived ...`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" discover-deployment --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-guidance --repo "$PWD" --title "<short title>" --discovery-status repo-derived ...`
 9. If deployment is only partly clear, record the known build/deploy path and what still needs live verification instead of guessing.
 10. If global Crew memory is missing or stale, recommend `/devcrew:install`.
 11. Summarize what was created, what deployment memory was seeded, and how the user should start working.

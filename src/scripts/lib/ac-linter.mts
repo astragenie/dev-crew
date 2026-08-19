@@ -1,5 +1,5 @@
 // Scans a slice file's ## Acceptance criteria section and detects placeholder
-// bullets that were never replaced by the author. Enforced at /loop:slice start
+// bullets that were never replaced by the author. Enforced at /devcrew:slice start
 // to prevent the autonomous loop from self-certifying vague work as complete.
 
 // Patterns that identify a placeholder (unfilled) acceptance criterion.

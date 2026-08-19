@@ -478,7 +478,7 @@ async function checkValidationGate(ctx: MergeContext): Promise<void> {
         ? `Validation gate explicitly failed for ${ctx.sliceId}. Cannot auto-merge.`
         : `Validation gate not satisfied for ${ctx.sliceId}. Run /devcrew:validate or pass --skip-validation-check.`,
     failedStep: "validation-gate",
-    fixHint: `Open the validation artifact to see what failed, then re-run /loop:slice complete.`,
+    fixHint: `Open the validation artifact to see what failed, then re-run /devcrew:slice complete.`,
     attemptedBranch: ctx.branchName,
     attemptedWorktree: ctx.worktreePath
   });

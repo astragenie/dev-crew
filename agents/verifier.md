@@ -38,7 +38,7 @@ The dispatcher routes your verdict to merge / fix / escalate per the routing-tab
 **FIRST action upon dispatch** (before any Read / Grep / Bash investigation) — this is the ONLY first-call command; the "First action" section below explains why, it does not define a different command:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result --repo "$PWD" --scaffold --status in-progress --confidence low --title "<slice-id> validation" --summary "starting investigation"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result --repo "$PWD" --scaffold --status in-progress --confidence low --title "<slice-id> validation" --summary "starting investigation"
 ```
 
 Capture the returned `path`. The scaffold artifact establishes your validation path early with an empty `decision:` field so a mid-run pause leaves a detectable stub instead of nothing.
@@ -181,7 +181,7 @@ Right after the opening statement, emit a stub:
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result \
   --repo "$PWD" --title "<short>" --status in-progress \
   --summary "<what is being validated>"
 ```
@@ -194,7 +194,7 @@ Minimum required flags: `--title`, `--decision`, `--summary`, `--environment`, `
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result \
   --repo "$PWD" \
   --update "<stub path>" \
   --title "<short title>" \
@@ -214,7 +214,7 @@ Emit BEFORE finalizing the validation-result. Badges surface in `brief-me` / `wa
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge <badge> --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge <badge> --note "<reason>"
 ```
 
 `<badge>` for verifier manual emission:

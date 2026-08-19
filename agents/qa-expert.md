@@ -75,7 +75,7 @@ anyway, do not end the turn until its result is collected.
 ## Report contract
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --from qa-expert --to dispatcher \

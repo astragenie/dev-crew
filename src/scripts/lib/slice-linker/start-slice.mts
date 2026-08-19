@@ -758,12 +758,12 @@ function computeNextAction(
     return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch the builder for ${sliceId}.`;
   }
   if (dispatch && orchestratorMode === "orchestrate-slice") {
-    return `Run /devcrew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+    return `Run /devcrew:orchestrate-slice --id ${sliceId}; close with /devcrew:slice complete --id ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch devcrew:reviewer (and devcrew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
+    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch devcrew:reviewer (and devcrew:verifier if behavior changed); close with /devcrew:slice complete --id ${sliceId}.`;
   }
-  return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
+  return `Begin acceptance-criteria work for ${sliceId}. Close with /devcrew:slice complete --id ${sliceId}.`;
 }
 
 // Resolve dispatchInstruction or null. Extracted to keep buildStartSliceReturn ≤ 15.

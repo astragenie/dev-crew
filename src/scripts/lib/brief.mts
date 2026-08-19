@@ -13,7 +13,7 @@ import { recentLearnings } from "./learnings.mjs";
 
 // Standalone loop situational report. Complements crew's brief-me;
 // surfaces backlog/specs/grades/decisions/alerts without modifying the
-// crew plugin. Designed to be called as part of /loop:brief.
+// crew plugin. Designed to be called as part of /devcrew:brief.
 
 function avg(values: unknown[]) {
   const nums = values.filter((v): v is number => typeof v === "number");

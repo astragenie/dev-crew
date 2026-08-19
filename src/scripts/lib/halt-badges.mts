@@ -90,7 +90,7 @@ function renderMarathonCheckpoint(e: any): string[] {
     `- Slices closed since last retrospective: ${e.closesSinceCheckpoint}`,
     `- Configured threshold: \`marathonCheckpointEvery\` = ${e.every} (hard at ${e.hardThreshold})`,
     `- Last retrospective: ${e.lastRetroPath ? `\`${e.lastRetroPath}\`` : "none"}`,
-    `- Suggested action: run \`/loop:retrospective\` to capture lessons. The walker resumes the next slice once a fresh retrospective lands under \`.claude/artifacts/loop/retrospectives/\`.`
+    `- Suggested action: run \`/devcrew:retrospective\` to capture lessons. The walker resumes the next slice once a fresh retrospective lands under \`.claude/artifacts/loop/retrospectives/\`.`
   ];
 }
 

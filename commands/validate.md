@@ -18,7 +18,7 @@ Expected shape:
 2. identify the scenario, flow, or environment to validate
 3. if the validation scenario is substantial, write a validation plan
 3a. preload builder context (build bundle): resolve the current slice id from `.claude/state/crew/workflow-state.json` (`currentRun.slice`) and call:
-   - `node -e 'import("./scripts/lib/build-bundle/inline.ts").then(m => m.inlineLatestBundle({ sliceId: process.argv[1] })).then(s => process.stdout.write(s))' "<SLICE-NN>"`
+   - `bun -e 'import("./crew/scripts/lib/build-bundle/inline.mts").then(m => m.inlineLatestBundle({ sliceId: process.argv[1] })).then(s => process.stdout.write(s))' "<SLICE-NN>"`
    If the returned string is non-empty, include it verbatim in the validator dispatch prompt **before** the role-specific task body. If empty, dispatch the validator without preload (today's behavior) — bundle inline is non-blocking. The header inside the bundle (`## Builder context (preloaded — do not re-Read these files)`) is your signal to the validator that those files do not need to be re-Read.
 4. run the validation checks and collect evidence
 5. write the validation result and update workflow state immediately when validation materially completes
@@ -32,16 +32,16 @@ Validation should focus on behavior, not code style:
 
 When validation is expected, record that gate in workflow state:
 
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge validation_expected`
+- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_expected`
 
 If the scenario is substantial, write a validation plan:
 
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-plan --repo "$PWD" --title "<short title>" ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-plan --repo "$PWD" --title "<short title>" ...`
 
 When validation materially completes, write the validation result:
 
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result --repo "$PWD" --title "<short title>" ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result --repo "$PWD" --title "<short title>" ...`
 
 If validation is intentionally skipped, record that explicitly in workflow state:
 
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"`
+- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"`

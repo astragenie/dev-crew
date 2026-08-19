@@ -10,7 +10,7 @@ import { pathExists } from "./paths.mjs";
 //
 //   1. Open claim on a FEAT-NNN file -> ensure feature is in in-progress/.
 //      Captures the case where agent claimed the file but forgot to run
-//      `/loop:slice from-feature`.
+//      `/devcrew:slice from-feature`.
 //
 //   2. In-progress feature with no open claim -> emit a "claim suggested"
 //      warning so the agent acquires the claim before editing.

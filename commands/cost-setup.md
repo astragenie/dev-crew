@@ -86,17 +86,17 @@ gone — control is config-only now.
 
 1. Run the setup (idempotent — safe to re-run):
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" cost-setup --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" cost-setup --repo "$PWD"
    ```
 
 2. To override one or more feature defaults at the same time:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" cost-setup --repo "$PWD" --features "cost-hygiene=off,shell-preflight=off"
+   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" cost-setup --repo "$PWD" --features "cost-hygiene=off,shell-preflight=off"
    ```
 
 3. To inspect the current registry without writing:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" features-list
+   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" features-list
    ```
 
 ### Output

@@ -164,7 +164,7 @@ anyway, do not end the turn until its result is collected.
 **Stub on entry.** FIRST tool call, before any investigation:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting quality sweep"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting quality sweep"
 ```
 
 A mid-run pause then leaves a `decision: pending` artifact the parent can detect (FEAT-161). `--scaffold`/`--update` are idempotent (DEC-019).
@@ -179,7 +179,7 @@ A mid-run pause then leaves a `decision: pending` artifact the parent can detect
 **Handoff** (LAST tool call, every dispatch — early stop included, with `--confidence low --risks "<unfixed + CI state>"`):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
   --repo "$PWD" --update <path-from-scaffold> \
   --title "<short title>" \
   --from refactor --to dispatcher \

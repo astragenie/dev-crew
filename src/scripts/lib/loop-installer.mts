@@ -82,7 +82,7 @@ export async function installLoop(
   if (!bunCheck.ok) {
     throw new Error(
       `loop requires bun >= ${bunCheck.required} (found: ${bunCheck.version ?? "not installed"}). ` +
-        `Install: https://bun.sh — then re-run /loop:install.`
+        `Install: https://bun.sh — then re-run /devcrew:install.`
     );
   }
 

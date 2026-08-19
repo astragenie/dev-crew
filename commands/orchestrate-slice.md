@@ -6,7 +6,7 @@ auto_execute_steps: false
 
 # Orchestrate Slice
 
-Run this after `/loop:slice start --id SLICE-NN`. It reads the slice file, classifies it by tags and frontmatter, then dispatches the right specialist ladder in sequence — all from the main thread, all visible.
+Run this after `/devcrew:slice start --id SLICE-NN`. It reads the slice file, classifies it by tags and frontmatter, then dispatches the right specialist ladder in sequence — all from the main thread, all visible.
 
 ## Workflow
 
@@ -61,8 +61,8 @@ Run this after `/loop:slice start --id SLICE-NN`. It reads the slice file, class
    Classification: SPLIT_BUILD=<true|false> NEEDS_CONTRACT=<true|false> NEEDS_UX=<true|false> BEHAVIOR_CHANGED=<true|false> RELEASE_CONTENT=<true|false> DOCS_NEEDED=<true|false>
    ```
 
-The classification logic is also implemented in `scripts/orchestrate-slice-classify.mjs` (the source of truth for SPLIT_BUILD). When in doubt, run:
-  node ./scripts/orchestrate-slice-classify.mjs <slice-path>
+The classification logic is also implemented in `crew/scripts/orchestrate-slice-classify.mts` (the source of truth for SPLIT_BUILD). When in doubt, run:
+  bun ./crew/scripts/orchestrate-slice-classify.mts <slice-path>
 to see the deterministic answer.
 
 ---
@@ -73,7 +73,7 @@ to see the deterministic answer.
 
 Locate the FEAT ID from the slice frontmatter (`feat:` field or `FEAT-NNN` in the title). If none, derive from the slice ID (SLICE-NN → look up which FEAT owns this slice in the slice file body).
 
-Check whether `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.openapi.yaml` already exists. The artifact is FEAT-scoped (shared across all slices of the FEAT) — loop's `/loop:backlog-enrich` pass 2 and `/loop:slice-from-feature` on-demand trigger pre-populate it when missing.
+Check whether `.claude/artifacts/crew/designs/<FEAT-ID>-contracts.openapi.yaml` already exists. The artifact is FEAT-scoped (shared across all slices of the FEAT) — loop's `/devcrew:backlog-enrich` pass 2 and `/devcrew:slice-from-feature` on-demand trigger pre-populate it when missing.
 
 **Decision tree:**
 
@@ -121,10 +121,10 @@ If the YAML does not exist: create it from scratch following `skills/domain/arch
 Before writing the markdown companion (`CONTRACT_MD_PATH`): READ it first if it already exists on disk. If it contains a `## Inferred Tags` section, it was authored by architect-feature's FEAT-level schema (`## TypeScript Interfaces` / `## API Contracts` / `## Event Schemas` / `## Data Contracts` / `## Inferred Tags`) — do NOT overwrite it. Preserve all five sections verbatim and APPEND a `## Revision — SLICE-NN` subsection below them. Otherwise (no `## Inferred Tags` — companion schema already in place, or file absent), write/extend it using only the companion schema: Decision rationale + Data Contracts + Revisions, per `skills/domain/architecture/openapi-authoring/SKILL.md` — no wire-type duplication.
 
 After writing/revising the YAML, regenerate the TS:
-  node ./scripts/validate-contracts.ts <yaml> --write
+  bun ./crew/scripts/validate-contracts.mts <yaml> --write
 
 Then run the validator without --write to confirm clean:
-  node ./scripts/validate-contracts.ts <yaml>
+  bun ./crew/scripts/validate-contracts.mts <yaml>
   (must exit 0; redocly lint + drift check must pass)
 
 Return ONLY the YAML path on a single line.
@@ -188,7 +188,7 @@ in Step 3 / 3a / 3b prepend the block when non-empty, omit it otherwise.
 **Do NOT let Step 3 / 3a / 3b's Agent-tool dispatch inherit the session model.** Resolve the tier explicitly, once per orchestrate-slice run:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" resolve-model --repo "$PWD" --phase build
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" resolve-model --repo "$PWD" --phase build
 ```
 
 Store the printed value (e.g. `sonnet`) as `BUILD_MODEL`. **If it prints `inherit` (model routing disabled), OMIT the `model:` argument on every builder dispatch** — each agent's own `model:` frontmatter (`agents/*.md`) then governs; do not substitute a model yourself. Otherwise pass `BUILD_MODEL` as the `model:` argument on every builder Agent-tool call in Steps 3 / 3a / 3b below (`devcrew:fullstack-dev`, `devcrew:frontend-dev`, `devcrew:backend-dev` — uxdesigner is not a builder and is unaffected). If a shape classifier is available for this slice (mechanical doc-only / config-only / test-only / single-module edit), pass `--shape <shape>` too — it overrides the phase tier and takes priority over `BUILD_MODEL`.
@@ -202,14 +202,14 @@ Fetch a recall block per builder variant BEFORE dispatching (same CLI surface
 
 ```bash
 # SPLIT_BUILD = true
-FE_RECALL_BLOCK=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" recall-block \
+FE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block \
   --repo "$PWD" --agent devcrew:frontend-dev --tags "<FEAT tags csv>" 2>/dev/null | jq -r '.block // empty')
 
-BE_RECALL_BLOCK=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" recall-block \
+BE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block \
   --repo "$PWD" --agent devcrew:backend-dev --tags "<FEAT tags csv>" 2>/dev/null | jq -r '.block // empty')
 
 # SPLIT_BUILD = false
-SINGLE_RECALL_BLOCK=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" recall-block \
+SINGLE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block \
   --repo "$PWD" --agent <resolved single-variant builder agent> --tags "<FEAT tags csv>" 2>/dev/null | jq -r '.block // empty')
 ```
 
@@ -232,14 +232,14 @@ to this run:
 
 ```bash
 # SPLIT_BUILD = true
-FE_PROFILE_BLOCK=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" profile-block \
+FE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block \
   --repo "$PWD" --agent devcrew:frontend-dev --run-id "<SLICE-NN>" 2>/dev/null | jq -r '.block // empty')
 
-BE_PROFILE_BLOCK=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" profile-block \
+BE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block \
   --repo "$PWD" --agent devcrew:backend-dev --run-id "<SLICE-NN>" 2>/dev/null | jq -r '.block // empty')
 
 # SPLIT_BUILD = false
-SINGLE_PROFILE_BLOCK=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" profile-block \
+SINGLE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block \
   --repo "$PWD" --agent <resolved single-variant builder agent> --run-id "<SLICE-NN>" 2>/dev/null | jq -r '.block // empty')
 ```
 
@@ -313,7 +313,7 @@ Produce:
 - A YAML frontmatter block at the top of the file with `slice:`, `feat:`, and `contracts:` fields (where `contracts:` points to the FEAT YAML path).
 
 After writing the spec, run:
-  node ./scripts/validate-ux-spec.ts <ux-spec-path>
+  bun ./crew/scripts/validate-ux-spec.mts <ux-spec-path>
 (must exit 0; every operationId referenced must exist in the FEAT YAML.)
 
 Return ONLY the artifact path on a single line.
@@ -470,12 +470,12 @@ Cross-plugin slices are always treated as long regardless of the counts above.
 SHORT_SLICE = (acCount ≤ 6  OR  changedFilesCount ≤ 10)  AND  NOT cross_plugin
 ```
 
-`isShortSlice()` in `scripts/orchestrate-slice-classify.ts` implements this logic and can
+`isShortSlice()` in `crew/scripts/orchestrate-slice-classify.mts` implements this logic and can
 be called directly:
 
 ```bash
-node -e "
-  import('./scripts/orchestrate-slice-classify.ts').then(m =>
+bun -e "
+  import('./crew/scripts/orchestrate-slice-classify.mts').then(m =>
     console.log(m.isShortSlice({ acCount: <N>, changedFilesCount: <M> }))
   );
 "
@@ -580,9 +580,9 @@ Store the returned path as `VALIDATION_PATH`.
 
 If any dispatched reviewer returns `needs_fix`:
 
-1. If `RISK_GATE = true` and a `VALIDATION_PATH` was produced: mark it stale — `node scripts/crew.ts mark-badge --repo "$PWD" --badge validation_stale --note "invalidated by review needs_fix"`. When `RISK_GATE = false` (no dedicated verifier ran), skip this sub-step — there is no separate validation artifact to invalidate; the reviewer's own `needs_fix` result is the signal.
+1. If `RISK_GATE = true` and a `VALIDATION_PATH` was produced: mark it stale — `bun crew/scripts/crew.mts mark-badge --repo "$PWD" --badge validation_stale --note "invalidated by review needs_fix"`. When `RISK_GATE = false` (no dedicated verifier ran), skip this sub-step — there is no separate validation artifact to invalidate; the reviewer's own `needs_fix` result is the signal.
 2. **Profile feedback (agent-profile-load-feedback):** record the fail outcome for the builder(s) profile-blocked in Step 2.7a, best-effort, using the SAME `<SLICE-NN>` run-id:
-   `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" profile-feedback --repo "$PWD" --run-id "<SLICE-NN>" --outcome fail`
+   `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id "<SLICE-NN>" --outcome fail`
 3. Re-dispatch builder with review findings (run `/devcrew:fix` flow).
 4. After builder PASS on the fix bounce: re-dispatch the same gate composition selected in Step 4.5 (single reviewer on `RISK_GATE = false`; reviewer + 2nd reviewer/verifier on `RISK_GATE = true`).
 5. Proceed to Step 6 after all dispatched gates PASS.
@@ -632,7 +632,7 @@ Store the returned path as `DOCWRITER_PATH`.
 Run:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-final-synthesis \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis \
   --repo "$PWD" \
   --title "orchestrate-slice: <SLICE-NN title>" \
   --summary "<one-paragraph summary of what shipped, which specialists ran, CONTRACT_YAML_PATH, CHANGELOG_WRITER_PATH, and DOCWRITER_PATH if set>" \
@@ -643,5 +643,5 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-final-synthesis \
 After the command succeeds, print:
 
 ```
-Orchestration complete. Next: /loop:slice complete --id SLICE-NN
+Orchestration complete. Next: /devcrew:slice complete --id SLICE-NN
 ```

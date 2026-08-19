@@ -137,7 +137,7 @@ Every UX spec you produce MUST contain the following sections:
 
 ## Frontmatter requirement
 
-Every UX spec MUST include this frontmatter block so `scripts/validate-ux-spec.ts` can cross-check operationIds:
+Every UX spec MUST include this frontmatter block so `crew/scripts/validate-ux-spec.mts` can cross-check operationIds:
 
 ```yaml
 ---
@@ -154,7 +154,7 @@ The `contracts:` field must point at the FEAT's canonical OpenAPI YAML, relative
 Write your full completion report by calling:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --from uxdesigner --to dispatcher \

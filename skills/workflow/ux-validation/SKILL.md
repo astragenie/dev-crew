@@ -88,7 +88,7 @@ Detect at validator slice-start:
 6. **Write validation-result.** Call:
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result \
+   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result \
      --repo "$PWD" \
      --title "UX validation gate: <slice-id>" \
      --decision <verdict> \

@@ -198,7 +198,7 @@ test("AC-2: assertSized refuses when effort_points >= 8 and no proposed_slices",
     (err: Error) =>
       err instanceof DecompositionRequiredError &&
       /FEAT-999 is sized 13 points/.test(err.message) &&
-      /\/loop:pm-review FEAT-999/.test(err.message)
+      /\/devcrew:pm-review FEAT-999/.test(err.message)
   );
 });
 

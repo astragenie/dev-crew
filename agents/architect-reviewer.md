@@ -27,7 +27,7 @@ Your job: evaluate design proposals, ADRs, and system topology decisions for sou
 Before any Read, Grep, or Bash investigation, your FIRST tool call MUST be:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting architecture review"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting architecture review"
 ```
 
 A mid-run pause on a 15-turn opus review otherwise leaves ZERO artifact (FEAT-161 risk #1). At end of run, re-invoke with `--update <path-from-scaffold>` carrying your real verdict.
@@ -133,7 +133,7 @@ Keep each finding to one sentence of problem + one sentence of consequence. No e
 You have no Write/Edit tools — the review body reaches disk exclusively through the crew CLI. Finalize the scaffold via Bash as your LAST tool call:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result --repo "$PWD" --update <path-from-scaffold> \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --update <path-from-scaffold> \
   --decision "<approved|approved_with_notes|rejected>" \
   --summary "<verdict + count of Critical findings>" \
   --findings "<Output Format sections 2-10, compressed markdown>" \
@@ -147,7 +147,7 @@ If `--findings` (or `--summary`) prose contains apostrophes/backticks/code ident
 cat > /tmp/findings.md <<'FINDINGS_EOF'
 <Output Format sections 2-10, compressed markdown — apostrophes/backticks are safe inside a quoted heredoc>
 FINDINGS_EOF
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result --repo "$PWD" --update <path-from-scaffold> \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --update <path-from-scaffold> \
   --decision "<approved|approved_with_notes|rejected>" \
   --summary "<verdict + count of Critical findings>" \
   --findings-file /tmp/findings.md \

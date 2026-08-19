@@ -82,7 +82,7 @@ export class DecompositionRequiredError extends Error {
     public readonly effortPoints: number
   ) {
     super(
-      `${featureId} is sized ${effortPoints} points — emit proposed_slices first via /loop:pm-review ${featureId}`
+      `${featureId} is sized ${effortPoints} points — emit proposed_slices first via /devcrew:pm-review ${featureId}`
     );
     this.name = "DecompositionRequiredError";
   }

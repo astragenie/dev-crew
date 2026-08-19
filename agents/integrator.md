@@ -51,7 +51,7 @@ See `.claude/artifacts/loop/backlog/in-progress/FEAT-161.md` for the FEAT tracki
 Before any Read, Grep, or Bash investigation, your FIRST tool call MUST be:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting investigation"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting investigation"
 ```
 
 This establishes the artifact path. At the end of your run (after smoke gate passes or you hit a blocker), re-invoke the same command with `--update <path-from-scaffold>` carrying your real verdict, confidence, and summary.
@@ -132,8 +132,8 @@ Before writing the artifact:
 ## Workflow badges
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge help_request --note "<setup problem>"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge blocked --note "<external blocker>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge help_request --note "<setup problem>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge blocked --note "<external blocker>"
 ```
 
 ## Context ceiling

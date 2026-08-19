@@ -39,7 +39,7 @@ If you must stop early (environment locked, credentials missing, CI red), write 
 Before any Read, Grep, or Bash investigation, your FIRST tool call MUST be:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-deployment-check --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting investigation"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-check --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting investigation"
 ```
 
 This establishes the artifact path. At the end of your run (after deployment gates pass or you hit a blocker), re-invoke the same command with `--update <path-from-scaffold>` carrying your real verdict, confidence, and summary.
@@ -118,7 +118,7 @@ After a deploy attempt (success, failure, or rollback), write the
 deployment-check artifact BEFORE writing the handoff:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-deployment-check \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-check \
   --repo "$PWD" \
   --title "<short title>" \
   --decision passed|passed_with_notes|failed \
@@ -143,16 +143,16 @@ When you hit an external blocker or need to escalate before writing your deploym
 
 ```bash
 # External blocker (environment locked, credentials unavailable, CI red)
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge blocked --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge blocked --note "<reason>"
 
 # Escalate when production promotion decision requires human approval
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge escalated_to_dispatcher --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge escalated_to_dispatcher --note "<reason>"
 
 # Record a skipped dev deployment gate
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge dev_skipped --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge dev_skipped --note "<reason>"
 
 # Record a skipped prod deployment gate
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge prod_skipped --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge prod_skipped --note "<reason>"
 ```
 
 Emit the badge BEFORE writing the deployment-check artifact. The badge surfaces in `brief-me` and `wake-up`; the artifact carries the detail.
@@ -162,7 +162,7 @@ Emit the badge BEFORE writing the deployment-check artifact. The badge surfaces 
 Write your full completion report by calling:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --from <role> --to dispatcher \

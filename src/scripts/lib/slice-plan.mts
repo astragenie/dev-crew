@@ -3,7 +3,7 @@
  *
  * SLICE-10 (FEAT-006 SLICE-A): bare pre-flight primitive — no approval gate.
  * Ships the foundation that FEAT-006 SLICE-B (approval gate) and
- * FEAT-025 (/loop:auto) both depend on.
+ * FEAT-025 (/devcrew:auto) both depend on.
  */
 
 import fs from "node:fs/promises";

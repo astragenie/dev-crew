@@ -14,8 +14,8 @@
  * |---------------------|----------------------------------|---------------------------------|
  * | publishFeature      | FEAT created / first sync        | external ID or null             |
  * | publishSlice        | SLICE created / first sync       | external ID or null             |
- * | closeSlice          | /loop:slice complete             | void                            |
- * | postSliceComment    | /loop:slice complete             | void                            |
+ * | closeSlice          | /devcrew:slice complete          | void                            |
+ * | postSliceComment    | /devcrew:slice complete          | void                            |
  * | updateStatus        | slice-start or status change     | void                            |
  * | syncPull            | /loop github sync-pull           | { features, slices }            |
  * | bootstrap           | /loop github bootstrap           | { features }                    |

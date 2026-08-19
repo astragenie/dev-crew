@@ -77,14 +77,14 @@ When this ladder dispatches such a peer, the `Agent`-tool call MUST carry `isola
 
 ## Standard ladder (FEAT-tag routing)
 
-Builder routing: see `docs/routing-table.md` → "Builder routing matrix" (generated from `docs/routing-table.yaml` — the authoritative source; do not hand-copy the table here, edit the yaml and re-run `node scripts/render-routing-table.ts` instead). `commands/orchestrate-slice.md` "Builder routing" carries the full signal-level decision detail (`FE_ONLY`/`BE_ONLY`/`SPLIT_BUILD`/`TS_TOOLING_ONLY`) this matrix summarizes.
+Builder routing: see `docs/routing-table.md` → "Builder routing matrix" (generated from `docs/routing-table.yaml` — the authoritative source; do not hand-copy the table here, edit the yaml and re-run `bun crew/scripts/render-routing-table.mts` instead). `commands/orchestrate-slice.md` "Builder routing" carries the full signal-level decision detail (`FE_ONLY`/`BE_ONLY`/`SPLIT_BUILD`/`TS_TOOLING_ONLY`) this matrix summarizes.
 
 ### Model tier resolution (REQUIRED — run before every builder Agent-tool dispatch)
 
 **Do NOT inherit the session model for the builder dispatch.** Before invoking the `Agent` tool for the specialist builder, resolve its tier explicitly:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" resolve-model --repo "$PWD" --phase build
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" resolve-model --repo "$PWD" --phase build
 ```
 
 Pass the printed value (e.g. `sonnet`) as the Agent-tool dispatch's `model:` argument. **If it prints `inherit` (model routing disabled), OMIT the `model:` argument entirely** — the dispatched agent's own `model:` frontmatter (`agents/*.md`) then governs; do not substitute a model yourself. If the slice classifies as a trivial shape (`doc-update` / `config-tweak` / `test-only` / `single-module-edit`), pass `--shape <shape>` too — it overrides the phase tier. This mirrors the autonomous wave path's `resolveWaveDispatchModel`, which sets the model programmatically; here the resolution is honored by the orchestrator LLM, not enforced by a hook — see "Honest limitation" below.
@@ -111,7 +111,7 @@ After both (or only B when A skipped) return their review-result artifacts:
 - Any `rejected` decision → stop; escalate to user with the artifact path(s) and findings
 - Both `approved` or `approved_with_notes` (or only B approved when A skipped):
   ```
-  node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge review_passed
+  bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge review_passed
   ```
 - When A was skipped, `review_passed` requires only Reviewer B to approve.
 
@@ -126,7 +126,7 @@ Workflow:
 1. First verify the current workspace path:
    - `pwd`
 2. Start by reading the repo wake-up brief:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" wake-up --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" wake-up --repo "$PWD"`
 3. Explicitly confirm the returned `repoPath` matches the current working directory. If it does not, stop and correct the repo context before proceeding.
    For substantial work, do not start implementation until this step is complete.
    In an established same-repo session, do this quietly unless there is an actual mismatch or repo switch.
@@ -148,7 +148,7 @@ Workflow:
    - `assisted single-session`
    - `team run`
 7. If the task is substantial enough that future wake-up context will matter, immediately write a run brief with:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-run-brief --repo "$PWD" --title "<short title>" --goal "<goal>" --mode "<mode>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-run-brief --repo "$PWD" --title "<short title>" --goal "<goal>" --mode "<mode>"`
 8. If using `single-session`, do the work directly and do not spawn helpers.
 9. Use `assisted single-session` when a helper can reduce uncertainty or validate work without becoming a communicating team.
 10. Only use a `team run` when ownership can be split cleanly.
@@ -159,11 +159,11 @@ Workflow:
    - validator for behavior checks when behavior can be exercised
    - researcher for uncertainty reduction if needed
 12a. **Recall injection (FEAT-188 S3a).** Before dispatching the builder, fetch a recall block:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" recall-block --repo "$PWD" --agent <builder-agent-name> --tags "<FEAT tags csv>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block --repo "$PWD" --agent <builder-agent-name> --tags "<FEAT tags csv>"`
    - If `.block` is non-empty, prepend it verbatim (it is already the `## Prior context (from astramem)` block) to the builder's dispatch instruction. If empty (memory not configured, or nothing recalled), omit — do not add any placeholder text.
 12b. **Profile injection (agent-profile-load-feedback).** Immediately after the recall block, fetch the builder's track record (best-effort, empty when disabled):
    - Resolve `<runId>` from `.claude/state/crew/workflow-state.json` (`currentRun.slice`) — reuse this SAME value for the profile-feedback call in step 24a below.
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" profile-block --repo "$PWD" --agent <builder-agent-name> --run-id <runId>`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block --repo "$PWD" --agent <builder-agent-name> --run-id <runId>`
    - If `.block` is non-empty, append it (it is already the `## Your track record (<agent>)` block) to the builder's dispatch instruction, after the recall block. If empty (profile disabled, or no track record yet), omit — do not add any placeholder text.
    - **Dispatch-memory-credit-loop (opt-in, `memory.feedback.creditLoop.enabled`).** When enabled, this block additionally carries a `## Recall (memory credit loop)` section — recall hits with `<!--atom:id-->` markers, same as the track-record atoms. Each carried id is a candidate for the builder's OPTIONAL `memories_used` report (see step 19). See `docs/contracts/dispatch-memory-credit-loop-v1.md`.
 13. Keep ownership explicit and avoid same-file parallel editing.
@@ -174,26 +174,26 @@ Workflow:
 15. If the implementation is split into code-bearing sub-tasks, make those sub-tasks independently reviewable and review them where practical before treating them as complete.
 16. Substantial non-code deliverables should normally be reviewed before being treated as done.
 17. For implementation work that changes code, independent review is the default. When code work is complete and waiting for review, record that gate in workflow state:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge review_required`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge review_required`
 18. If you skip review, say so explicitly and record it in workflow state with a reason:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge review_skipped --note "<reason>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge review_skipped --note "<reason>"`
 19. When a helper or teammate hands work back, write a handoff artifact if the run is substantial:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-handoff --repo "$PWD" --title "<short title>" --from <role> --to dispatcher --summary "<headline>" --scope "<in scope>" --deliverable "<what shipped>" --files "<changed files>" --confidence "<high|medium|low>" --risks "<risks or none>" --next "<next handoff or none>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff --repo "$PWD" --title "<short title>" --from <role> --to dispatcher --summary "<headline>" --scope "<in scope>" --deliverable "<what shipped>" --files "<changed files>" --confidence "<high|medium|low>" --risks "<risks or none>" --next "<next handoff or none>"`
    - **Optional `--memories-used <id1,id2>`**: if the teammate's report names specific memory ids it relied on (from step 12b's digest), pass them here — the CLI credits usefulness feedback for exactly those ids, best-effort. Omit entirely when the report names none; never required, never gated. See `docs/contracts/dispatch-memory-credit-loop-v1.md`.
 20. When a reviewer materially reviews the change, write a review artifact immediately before you move on:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-review-result --repo "$PWD" --title "<short title>" --decision <approved|approved_with_notes|rejected> --author-id <builder-agent> --judge-id <reviewer-agent> --summary "<verdict>" --evidence "<files checked>" --files "<files in diff>" --test-summary "<test coverage>" --risks "<risks or none>" --next "<follow-up or none>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --title "<short title>" --decision <approved|approved_with_notes|rejected> --author-id <builder-agent> --judge-id <reviewer-agent> --summary "<verdict>" --evidence "<files checked>" --files "<files in diff>" --test-summary "<test coverage>" --risks "<risks or none>" --next "<follow-up or none>"`
    - If `--summary` (or any prose flag) contains apostrophes/backticks, shell argv quoting can mangle or drop it (dev-team#152). Write the body to a temp file and pass `--summary-file <path>` (or any `--<flag>-file <path>`) instead.
 21. If the changed behavior can be exercised meaningfully, define the validation scenario and run validation after review. When validation is expected, record that gate in workflow state:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge validation_expected`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_expected`
 22. When the scenario is substantial enough to preserve, write a validation plan:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-plan --repo "$PWD" --title "<short title>" ...`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-plan --repo "$PWD" --title "<short title>" ...`
 23. If you skip validation, say so explicitly and record it in workflow state with a reason:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"`
 24. When a validator materially checks behavior, write a validation artifact immediately before you move on:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-validation-result --repo "$PWD" --title "<short title>" ...`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result --repo "$PWD" --title "<short title>" ...`
 24a. **Auto-continue to dev ship (opt-in).** After review and validation are both resolved, check `.claude/crew/deployment.md` for a `dev.stable: true` setting. If present AND all build gates are green (review PASS or `review_skipped` with reason, validation PASS or `validation_skipped` with reason, no open `help_request`) AND the target environment is dev (not production), continue into the `/devcrew:ship` flow in this same session — do not return to the user at the review boundary. Production promotion still requires explicit user approval per `agents/release-engineer.md` rule 11. If `dev.stable: true` is absent or any gate is not green, stop at synthesis (step 25) as today and surface the unresolved gate.
    - **Profile feedback (agent-profile-load-feedback).** Also at this point (review and validation both resolved, one way or the other), record outcome-gated feedback for any track-record atoms injected in step 12b, best-effort — never blocks the synthesis or ship continuation:
-     `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" profile-feedback --repo "$PWD" --run-id <runId> --outcome <pass|fail>`
+     `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id <runId> --outcome <pass|fail>`
      Use the SAME `<runId>` from step 12b. `--outcome pass` when review is approved/approved_with_notes (or explicitly skipped with reason) AND validation passed (or explicitly skipped with reason); `--outcome fail` when review was rejected or validation failed.
 25. End with a clear synthesis for the user:
    - what changed
@@ -209,6 +209,6 @@ Workflow:
     - if yes, is validation resolved or explicitly skipped?
     - did the run leave the artifact trail it should?
 26. For substantial work, write a final synthesis artifact:
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" write-final-synthesis --repo "$PWD" --title "<short title>" --summary "<summary>" --external-deltas "<off-repo changes required, or 'none'>"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis --repo "$PWD" --title "<short title>" --summary "<summary>" --external-deltas "<off-repo changes required, or 'none'>"`
    - The CLI rejects missing `--external-deltas`. Enumerate sibling-config changes the synthesis depends on (env var renames in deploy manifests, terraform/helm updates, sibling-repo PRs, feature flags, DB migrations, IAM). Pass `--external-deltas none` explicitly if there are none. A silent default is how renamed env vars silently fall back to old defaults in prod.
    - For `--summary` prose with apostrophes/backticks, prefer `--summary-file <path>` over inlining it (dev-team#152).

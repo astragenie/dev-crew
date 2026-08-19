@@ -39,10 +39,10 @@ Flags:
 
 ```bash
 # Invalidate all trials for fullstack-dev since June 25
-node scripts/crew.ts gepa-invalidate --agent fullstack-dev --since 2026-06-25T00:00:00Z
+bun crew/scripts/crew.mts gepa-invalidate --agent fullstack-dev --since 2026-06-25T00:00:00Z
 
 # Invalidate all trials for fullstack-dev with tag "broken-judge"
-node scripts/crew.ts gepa-invalidate --agent fullstack-dev --tag broken-judge
+bun crew/scripts/crew.mts gepa-invalidate --agent fullstack-dev --tag broken-judge
 ```
 
 ## See also

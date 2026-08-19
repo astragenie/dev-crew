@@ -613,7 +613,7 @@ function buildCompleteResult({
     updated_confidence_reason: updatedConfidence?.reason ?? null,
     autoMerge: autoMergeResult ?? null,
     trackerSync: trackerSync ?? null,
-    nextAction: `Run /loop:slice grade --id ${sliceId} to capture lessons + decisions.`
+    nextAction: `Run /devcrew:slice grade --id ${sliceId} to capture lessons + decisions.`
   };
 }
 

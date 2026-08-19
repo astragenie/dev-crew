@@ -40,5 +40,5 @@ Flags:
 
 - `commands/gepa-history.md` — inspect recent trials.
 - `evals/agents/crew-<agent>.yaml` — per-agent eval config.
-- `scripts/lib/gepa/run-with-lock.ts` — lock-wrap implementation.
+- `crew/scripts/lib/gepa/run-with-lock.mts` — lock-wrap implementation.
 - `scripts/lib/gepa/split-train-heldout.ts` — train/heldOut splitter.
