@@ -177,6 +177,92 @@ test("replaceMarkerBlocks: repeated calls with trailing content after the block 
   assert.equal(twice, thrice);
 });
 
+// SLICE-31 finding: kb/standards each carried only a `crew:start` block at
+// the TOP of CLAUDE.md (no prior loop.json, so no `runner:` block existed
+// yet); running `/devcrew:install` fresh appends the new `runner:start`
+// block at file-END. The old collapse-to-first-start/last-end logic
+// silently deleted the whole hand-authored document body sitting between
+// them. These two tests fail on the pre-fix code.
+
+test("replaceMarkerBlocks: two far-apart spans with hand-authored content between them survives byte-identical, block lands at the first span's position", () => {
+  const body = [
+    "## Mission",
+    "",
+    "This repository is the long-term knowledge vault. It answers why we chose",
+    "an architecture, what patterns keep repeating, and what agents should",
+    "remember long-term.",
+    "",
+    "## Navigation",
+    "",
+    "Start at INDEX.md and fan out from there."
+  ].join("\n");
+  const content = `# CLAUDE.md\n\n${CREW_BLOCK}\n\n${body}\n\n${RUNNER_BLOCK}\n`;
+  const result = replaceMarkerBlocks(
+    content,
+    `${DEVCREW_MARKER_START}\nbody\n${DEVCREW_MARKER_END}`
+  );
+
+  // The hand-authored body survives byte-identical (not truncated, not
+  // reworded) — every line of it is present verbatim.
+  for (const line of body.split("\n")) {
+    assert.ok(result.includes(line), `expected surviving body to include: ${line}`);
+  }
+  assert.ok(!result.includes("<!-- crew:start -->"));
+  assert.ok(!result.includes("<!-- runner:start -->"));
+  const devcrewStarts = result.split(DEVCREW_MARKER_START).length - 1;
+  assert.equal(devcrewStarts, 1);
+
+  // The rendered block lands where the FIRST removed span (crew:) used to
+  // be — i.e. before the hand-authored body, not after it.
+  const blockIndex = result.indexOf(DEVCREW_MARKER_START);
+  const bodyIndex = result.indexOf("## Mission");
+  assert.ok(blockIndex < bodyIndex, "devcrew block should land before the surviving body");
+});
+
+test("replaceMarkerBlocks: three interleaved spans (crew + runner + loop) each with hand-authored content between them all survive", () => {
+  const gapOne = "Gap one: notes between crew and runner blocks.";
+  const gapTwo = "Gap two: notes between runner and loop blocks.";
+  const tail = "Tail: notes after the last block.";
+  const content = [
+    "# CLAUDE.md",
+    "",
+    CREW_BLOCK,
+    "",
+    gapOne,
+    "",
+    RUNNER_BLOCK,
+    "",
+    gapTwo,
+    "",
+    LOOP_BLOCK,
+    "",
+    tail,
+    ""
+  ].join("\n");
+
+  const result = replaceMarkerBlocks(
+    content,
+    `${DEVCREW_MARKER_START}\nbody\n${DEVCREW_MARKER_END}`
+  );
+
+  assert.ok(result.includes(gapOne));
+  assert.ok(result.includes(gapTwo));
+  assert.ok(result.includes(tail));
+  assert.ok(!result.includes("<!-- crew:start -->"));
+  assert.ok(!result.includes("<!-- runner:start -->"));
+  assert.ok(!result.includes("<!-- loop:start -->"));
+  const devcrewStarts = result.split(DEVCREW_MARKER_START).length - 1;
+  assert.equal(devcrewStarts, 1);
+
+  // Idempotence on this new shape: applying again against the already
+  // single-span result is a no-op.
+  const second = replaceMarkerBlocks(
+    result,
+    `${DEVCREW_MARKER_START}\nbody\n${DEVCREW_MARKER_END}`
+  );
+  assert.equal(second, result);
+});
+
 test("hasOnlyDevcrewMarker: true only when exactly one devcrew span and zero legacy spans exist", () => {
   assert.equal(hasOnlyDevcrewMarker(`${DEVCREW_MARKER_START}\nx\n${DEVCREW_MARKER_END}`), true);
   assert.equal(hasOnlyDevcrewMarker(RUNNER_BLOCK), false);

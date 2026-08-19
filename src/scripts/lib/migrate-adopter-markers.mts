@@ -120,22 +120,51 @@ export async function renderDevcrewBlock(
 // devcrew span, nothing else) removes that span and reinserts the same
 // freshly-rendered text, producing byte-identical output when the rendered
 // block itself is deterministic (SLICE-26 AC-2).
+//
+// Each span is cut out independently — everything else in `content`,
+// INCLUDING hand-authored text sitting between two separate spans, is
+// preserved. SLICE-31 finding: an earlier version collapsed everything from
+// the first span's start to the last span's end into a single block,
+// silently discarding any inter-span content. That was invisible across the
+// 18 SLICE-26 adopters because their `crew:`/`runner:` blocks always sat
+// adjacent to each other, but it is not a safe general assumption — an
+// adopter that only ever had a `crew:` block at the top of CLAUDE.md and
+// gets a fresh `runner:` block appended at file-end (e.g. by
+// `/devcrew:install` on a repo with no prior loop.json) can have an entire
+// hand-authored document body sandwiched between the two, which the old
+// logic would delete on `--apply`.
 export function replaceMarkerBlocks(content: string, renderedBlock: string): string {
   const spans = findMarkerSpans(content);
   if (spans.length === 0) {
     return `${content.trimEnd()}\n\n${renderedBlock}\n`;
   }
-  const firstStart = spans[0]!.start;
-  const lastEnd = spans[spans.length - 1]!.end;
-  const before = content.slice(0, firstStart).trimEnd();
-  // Full trim (not just trimStart) — trailing blank lines/EOF newlines left
-  // in `after` would otherwise survive un-touched inside the joined string
-  // while the final template literal's own `\n` adds one more on top,
-  // growing the file's trailing blank-line count by one on every run (a real
-  // AC-2 idempotence regression found migrating 7/18 real adopters).
-  const after = content.slice(lastEnd).trim();
-  const parts = [before, renderedBlock];
-  if (after) parts.push(after);
+
+  // Slice `content` into the segments that survive once every span is cut
+  // out: text before the first span, each inter-span gap, and text after
+  // the last span. `segments.length` is always `spans.length + 1`.
+  const segments: string[] = [];
+  let cursor = 0;
+  for (const span of spans) {
+    segments.push(content.slice(cursor, span.start));
+    cursor = span.end;
+  }
+  segments.push(content.slice(cursor));
+
+  const before = segments[0]!.trimEnd();
+  // Full trim (not just trimStart) on every retained segment after the
+  // first — trailing blank lines/EOF newlines left un-normalized would
+  // otherwise survive un-touched inside the joined string while the final
+  // template literal's own `\n` adds one more on top, growing the file's
+  // trailing blank-line count by one on every run (a real AC-2 idempotence
+  // regression found migrating 7/18 real adopters). Empty segments (the
+  // common case: adjacent spans separated only by blank lines) are dropped
+  // so they don't inject stray paragraph breaks.
+  const rest = segments
+    .slice(1)
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+
+  const parts = [before, renderedBlock, ...rest];
   return `${parts.join("\n\n")}\n`;
 }
 
