@@ -1,14 +1,27 @@
 ---
 id: FEAT-010
-status: pending
-priority: null
+status: triaged
+priority: P0
 category: feature
 target_release: null
 created: 2026-08-18
-updated: 2026-08-18
+updated: 2026-08-19
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.85
+pm_effort_estimate: 0.3
+pm_strategic_alignment: 0.6
+pm_technical_risk: 0.2
+pm_dependency_depth: 0.2
+pm_composite_priority: P0
+pm_autonomous_safe: true
+pm_reviewed: 2026-08-19
+autonomous_safe: true
+triage_notes: "High customer_impact from a confirmed, unbounded, self-escalating defect (fresh tracker issue spam on every rerun) drives P0 via the impact>=0.8-and-defect-class branch, even though the fix itself is genuinely low technical_risk (1-2 files, known pattern, trivial revert) -- exactly the 'weigh risk accordingly' case flagged going in: severity comes from blast radius/recurrence, not code-change danger. Low effort and low risk keep it autonomous-safe."
+tags: ["stack:typescript", "area:backlog-data-model", "concern:bugfix"]
+needs_contract: false
+needs_ux: false
 ---
 ## Description
 
@@ -19,3 +32,9 @@ Carried from runner-plugin FEAT-299 (proposed-slices.mts validation gaps made lo
 Created via free-text intake (`/runner:intake "<text>"`). Priority is
 unset — this FEAT has not been scored yet. Run `/runner:triage`
 (PM scoring + `backlog pm-apply`) to score it before slicing.
+## Acceptance criteria (Given-When-Then)
+
+- AC-1: Given a proposed slice title with leading/trailing whitespace (e.g. ' Library core'), When it is validated against its own stored (trimmed) entry via the legacy title-match fallback, Then the trimmed comparison succeeds and the slice is recognized as already-materialized instead of being recreated.
+- AC-2: Given a FEAT's proposed_slices containing two entries with the same title (or the same id_suffix), When materializeProposedSlices validates the array, Then it rejects with an error message naming the specific duplicate title or id_suffix, rather than silently collapsing them via .find() or silently swallowing the second entry.
+- AC-3: Given the existing backlog corpus, When the pre-existing-duplicate scan runs BEFORE the uniqueness check is enabled, Then it reports any historical duplicates found so they can be resolved or explicitly grandfathered, and CI does not fail unannounced on historical data.
+- AC-4: Given a regression test that reruns slice-from-feature 3+ times against the same FEAT with a deliberately-untrimmed proposed title, When the test asserts on proposed-slice count, Then it shows zero growth across reruns (closing the GitHub-issue-598-class unbounded loop).

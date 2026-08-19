@@ -1,14 +1,27 @@
 ---
 id: FEAT-008
-status: pending
-priority: null
+status: triaged
+priority: P2
 category: feature
 target_release: null
 created: 2026-08-18
-updated: 2026-08-18
+updated: 2026-08-19
 depends_on: []
 slices: []
 derived_from: null
+pm_customer_impact: 0.6
+pm_effort_estimate: 0.45
+pm_strategic_alignment: 0.6
+pm_technical_risk: 0.5
+pm_dependency_depth: 0.2
+pm_composite_priority: P2
+pm_autonomous_safe: true
+pm_reviewed: 2026-08-19
+autonomous_safe: true
+triage_notes: "Concrete, quantified operational-waste defect (100% idle-ping recurrence) with a bounded fix inside the dispatch loop's own hygiene layer; no schema/contract break, so P2/autonomous-safe."
+tags: ["stack:typescript", "area:dispatch-loop", "concern:agent-reporting"]
+needs_contract: true
+needs_ux: false
 ---
 ## Description
 
@@ -19,3 +32,9 @@ Carried from runner-plugin FEAT-259 (agent SendMessage report-back enforcement) 
 Created via free-text intake (`/runner:intake "<text>"`). Priority is
 unset — this FEAT has not been scored yet. Run `/runner:triage`
 (PM scoring + `backlog pm-apply`) to score it before slicing.
+## Acceptance criteria (Given-When-Then)
+
+- AC-1: Given a dispatched subagent that has already sent a structured receipt ({status, items[], commit_shas[], evidence_path, deviations[]}) and it was acknowledged by the parent, When that subagent later emits a bare idle_notification ping, Then the dispatch loop suppresses it and does not re-inject it into the parent's context.
+- AC-2: Given a subagent template updated with the new receipt schema, When the subagent completes its work and sends its final report, Then the report is <=15 lines and contains status, items[], commit_shas[], evidence_path, and deviations[] fields in the documented shape.
+- AC-3: Given a subagent that stops WITHOUT ever having sent a structured receipt (the already-fixed missing-report case from SLICE-187), When SubagentStop fires, Then idle-ping suppression does not swallow that stop event -- it must remain distinct from, not a regression of, the report-gate hook's existing behavior.
+- AC-4: Given the receipt-schema and idle-suppression code paths, When a test asserts on an agent .md template's static content alone, Then it is treated as insufficient coverage (per the FEAT's own reinforcement-vs-independence finding) -- the AC set must include at least one test that exercises the live transcript-scanning/dispatch-loop path, not template content alone.

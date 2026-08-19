@@ -1,0 +1,306 @@
+[
+  {
+    "featureId": "FEAT-007",
+    "scores": {
+      "customer_impact": 0.55,
+      "effort_estimate": 0.5,
+      "strategic_alignment": 0.65,
+      "technical_risk": 0.4,
+      "dependency_depth": 0.15
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT body cites a concrete, previously-observed defect: dotnet-only.json/dotnet-react.json/dotnet-typescript-vue.json referenced skill ids (csharp-pro, react-engineering, frontend-advisory, a11y-advisory, vue-engineering) that were removed when crew reorganized into skills/domain/ -- those presets silently no-op today instead of failing loudly. SLICE-195 (live catalog enumerator) already shipped in runner-plugin; the remaining matcher/CLI/validation-gate/DEC work is now cheaper post-merge since the crew<->runner cross-plugin seam this FEAT bridged no longer exists.",
+    "scopeNotes": "Smallest deliverable: task-signal (stack:*/concern:*/surface:*) to skill mapping table plus a resolve-time validation gate that fails loudly on a resolved-but-absent skill id -- that alone fixes the dead-ID defect. CLI --slice/--tags wiring and the DEC to decommission preset.roles.*.skills can follow in the same slice since they share the same matcher. The old cross-plugin docs/upstream-request amendment scope (former SLICE-198) is explicitly dropped as moot post-merge. Carry forward the corrected-drift-measurement lesson from runner-plugin FEAT-230: catalog enumeration must recurse and key on SKILL.md basename, not a flat top-level listing, or the validation gate will itself false-positive on live nested skills.",
+    "risks": [
+      "A flat (non-recursive) catalog scan in the new validation gate would reproduce the exact false-negative 'missing skill' bug this FEAT exists to fix -- guard with a fixture test asserting a nested skills/domain/* entry resolves.",
+      "Decommissioning preset.roles.*.skills as the skill source without a DEC and a compat window could silently change resolution behavior for any adopter repo still on preset-driven resolve-skills."
+    ],
+    "reasoning": "Real, evidenced correctness defect (dead skill ids silently no-op) with meaningfully reduced scope now that the cross-plugin seam is gone; bounded to one module area with a known-pattern matcher/CLI/validator shape, so P2/autonomous-safe with no cost analog beyond the general SLICE-24 validator-hardening pattern ($26, avg 0.924).",
+    "acs": [
+      "AC-1: Given a task-signal tuple derived from a FEAT's stack:/concern:/surface: tags, When resolve-skills is invoked with --slice or --tags, Then the matcher returns the recursively-enumerated skill ids (keyed on SKILL.md basename, including nested skills/domain/* entries) that match the tags, falling back to the legacy pickBlock preset path only when no tag match exists.",
+      "AC-2: Given a resolved skill id that is not present in the live catalog enumeration, When resolve-skills runs (interactively or in CI via the fixture-snapshot check), Then the command fails loudly with the offending skill id named in the error, rather than silently omitting it from the resolved set.",
+      "AC-3: Given the dotnet-only.json / dotnet-react.json / dotnet-typescript-vue.json presets referencing csharp-pro/react-engineering/frontend-advisory/a11y-advisory/vue-engineering, When the new CI fixture-snapshot validation gate runs, Then it fails on the currently-dead ids (regression-proving the original defect is caught) until those presets are corrected or the DEC decommissions preset-driven resolution.",
+      "AC-4: Given a DEC drafted for decommissioning preset.roles.*.skills/fe.skills/be.skills as the skill source, When it is filed under .claude/artifacts/loop/decisions/, Then it documents the task-signal matcher as the replacement mechanism and the migration/compat posture for any --variant fe|be|single callers still in use."
+    ]
+  },
+  {
+    "featureId": "FEAT-008",
+    "scores": {
+      "customer_impact": 0.6,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.6,
+      "technical_risk": 0.5,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT body quotes a measured, reproduced defect distinct from the already-fixed missing-report case: bare idle_notification pings emitted after a report was already delivered and acknowledged, at 100% recurrence (6-of-6 and 9-of-9) across two separate runner-plugin sessions. The FEAT's own finding that SLICE-184 (template) and SLICE-187 (report-gate hook) are independent, not reinforcing -- because an owned agent's .md template content never reaches the transcript first turn the hook scans -- means the receipt-schema and idle-suppression work has no existing coverage to lean on.",
+    "scopeNotes": "Two independent deliverables: (1) structured receipt schema ({status, items[], commit_shas[], evidence_path, deviations[]}, target <=15 lines) documented and adopted by dispatch prompt templates, and (2) idle-ping suppression wired into the dispatch loop's context-budget hygiene once a report has been delivered+acknowledged. SLICE-185's orchestrator-watchdog logic (src/scripts/lib/orchestrator-watchdog.mts) ships deliberately unwired with a disclosed parseChangedPaths gap on quoted/renamed git paths -- do not wire an execution point to it as part of this FEAT without first hardening that gap; treat it as out of scope here.",
+    "reasoning": "Concrete, quantified operational-waste defect (100% idle-ping recurrence) with a bounded fix inside the dispatch loop's own hygiene layer; no schema/contract break, so P2/autonomous-safe.",
+    "acs": [
+      "AC-1: Given a dispatched subagent that has already sent a structured receipt ({status, items[], commit_shas[], evidence_path, deviations[]}) and it was acknowledged by the parent, When that subagent later emits a bare idle_notification ping, Then the dispatch loop suppresses it and does not re-inject it into the parent's context.",
+      "AC-2: Given a subagent template updated with the new receipt schema, When the subagent completes its work and sends its final report, Then the report is <=15 lines and contains status, items[], commit_shas[], evidence_path, and deviations[] fields in the documented shape.",
+      "AC-3: Given a subagent that stops WITHOUT ever having sent a structured receipt (the already-fixed missing-report case from SLICE-187), When SubagentStop fires, Then idle-ping suppression does not swallow that stop event -- it must remain distinct from, not a regression of, the report-gate hook's existing behavior.",
+      "AC-4: Given the receipt-schema and idle-suppression code paths, When a test asserts on an agent .md template's static content alone, Then it is treated as insufficient coverage (per the FEAT's own reinforcement-vs-independence finding) -- the AC set must include at least one test that exercises the live transcript-scanning/dispatch-loop path, not template content alone."
+    ]
+  },
+  {
+    "featureId": "FEAT-009",
+    "scores": {
+      "customer_impact": 0.45,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.55,
+      "technical_risk": 0.6,
+      "dependency_depth": 0.3
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "5 of 7 slices of the parent FEAT (runner-plugin FEAT-284) already shipped and are load-bearing (src/scripts/lib/slice-linker/git-anchored-completion.mts, src/scripts/lib/proposed-slices.mts). The remaining two pieces (SLICE-191 frontmatter migration, SLICE-193 CLI escape hatch) are the original live-repro's actual remediation path, not speculative scope.",
+    "scopeNotes": "Two bounded pieces: (1) migrate proposed_slices_shipped frontmatter from index-prefix to per-id_suffix keyed shape so stale legacy stamps are re-derived under the new matching rules rather than blindly trusted, and (2) a CLI escape hatch to force-materialize one named proposed slice by id_suffix (bypassing direct BacklogStore calls, mirroring how the original live repro was repaired). Explicitly excludes AC-8b (live-HEAD squash-merge recognition, commit 859be561 class) -- that gap is tracked separately (runner-plugin FEAT-294, itself only triaged, not yet in-flight) and must not be treated as closed by this FEAT.",
+    "risks": [
+      "It is two weeks later and this slice failed review or validation -- most likely cause: the index-prefix-to-id_suffix frontmatter migration mis-maps one of the ~200 pre-existing legacy stamps, silently re-flagging an already-shipped slice as unshipped (or vice versa) on the next slice-from-feature run.",
+      "This merged and broke the loop -- rollback requires more than git revert: any FEAT whose frontmatter was already rewritten to the new keyed shape before the revert would need a data-cleanup pass, since the revert restores old code but not old frontmatter.",
+      "Which existing test would NOT catch a regression here: a test asserting only on freshly-created FEATs (id_suffix present from creation) would miss a regression specific to the ~200 pre-existing slices relying on the untouched title-match legacy fallback -- coverage must include at least one pre-existing-format fixture.",
+      "FEAT-010 (same session's other carried item) touches the same file, src/scripts/lib/proposed-slices.mts, for a different defect (trim-before-validate, uniqueness checks) -- sequencing risk if both are built in parallel worktrees without coordination; recommend building FEAT-010 first since it is smaller and higher priority, then rebasing FEAT-009's slice on top."
+    ],
+    "reasoning": "Data-model correctness work on already-shipped, load-bearing code; technical_risk sits at the top of the 0.4-0.5 new-pattern band (0.6) because it is a frontmatter shape migration across ~200 pre-existing entries, which is why the pre-mortem above is included even though the composite lands at P2.",
+    "acs": [
+      "AC-1: Given a FEAT whose proposed_slices_shipped frontmatter uses the old index-prefix shape, When the migration runs, Then it is rewritten to a per-id_suffix keyed shape and the FEAT's shipped/unshipped status for every existing entry is preserved exactly (no false-positive or false-negative re-flags).",
+      "AC-2: Given a FEAT with a gap in its materialized proposed_slices (one named entry never created), When an operator runs the new CLI escape hatch with that FEAT id and the target id_suffix, Then exactly that one slice is force-materialized without requiring direct BacklogStore access.",
+      "AC-3: Given the AC-8b squash-merge live-HEAD recognition gap (commits.find() selecting a newer narration commit over the qualifying one), When this FEAT's slices are graded/closed, Then the grade/close artifact explicitly notes AC-8b remains open and tracked under runner-plugin FEAT-294, not silently marked satisfied.",
+      "AC-4: Given repeated reruns of slice-from-feature against the same FEAT after the migration lands, When the regression test suite runs, Then it asserts zero growth in duplicate or orphaned proposed-slice entries across at least 3 simulated reruns."
+    ]
+  },
+  {
+    "featureId": "FEAT-010",
+    "scores": {
+      "customer_impact": 0.85,
+      "effort_estimate": 0.3,
+      "strategic_alignment": 0.6,
+      "technical_risk": 0.2,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P0",
+    "autonomousSafe": true,
+    "demandEvidence": "Confirmed live defect in shipped code, not speculative: SLICE-207 was never built in runner-plugin (verified -- no worktree, no branch, no dispatch result, no merge commit on main), and dev-crew's own DEC-001 records the disposition as 'carry, not build'. Gap B (untrimmed-vs-trimmed title comparison) causes an UNBOUNDED duplicate-recreation loop on every rerun of slice-from-feature, publishing a fresh tracker issue each iteration -- the same mechanism that produced GitHub issue 598 from the original FEAT-284 duplicate.",
+    "scopeNotes": "Treated as a defect/bugfix in substance despite category:feature in frontmatter (auto-set by free-text intake) -- team-lead flagged this explicitly as a live risk to weigh accordingly. Fix is narrow and mechanical: trim before validating/storing (or compare trimmed on the legacy fallback path) in src/scripts/lib/proposed-slices.mts, plus uniqueness validation on both title and id_suffix within a FEAT's proposed_slices, rejecting with a message naming the duplicate. Scan the existing backlog for pre-existing duplicates BEFORE enabling the uniqueness check so it does not fail CI on historical data unannounced -- that scan-first sequencing is itself part of the acceptance scope, not an afterthought.",
+    "risks": [
+      "It is two weeks later and this slice failed review or validation -- most likely cause: the pre-existing-duplicate scan is skipped or incomplete, and enabling the uniqueness check trips CI on historical backlog data that was never announced as needing cleanup.",
+      "This merged and broke the loop -- rollback is a clean git revert only: the fix is trim-on-compare plus a validation check, no data migration, no cross-plugin coordination.",
+      "Which existing test would NOT catch a regression here: any test using already-trimmed fixture titles would miss the actual bug, since the defect only manifests with a title carrying real leading/trailing whitespace that survives to the untrimmed validation path -- the regression test must use a deliberately-untrimmed fixture."
+    ],
+    "reasoning": "High customer_impact from a confirmed, unbounded, self-escalating defect (fresh tracker issue spam on every rerun) drives P0 via the impact>=0.8-and-defect-class branch, even though the fix itself is genuinely low technical_risk (1-2 files, known pattern, trivial revert) -- exactly the 'weigh risk accordingly' case flagged going in: severity comes from blast radius/recurrence, not code-change danger. Low effort and low risk keep it autonomous-safe.",
+    "acs": [
+      "AC-1: Given a proposed slice title with leading/trailing whitespace (e.g. ' Library core'), When it is validated against its own stored (trimmed) entry via the legacy title-match fallback, Then the trimmed comparison succeeds and the slice is recognized as already-materialized instead of being recreated.",
+      "AC-2: Given a FEAT's proposed_slices containing two entries with the same title (or the same id_suffix), When materializeProposedSlices validates the array, Then it rejects with an error message naming the specific duplicate title or id_suffix, rather than silently collapsing them via .find() or silently swallowing the second entry.",
+      "AC-3: Given the existing backlog corpus, When the pre-existing-duplicate scan runs BEFORE the uniqueness check is enabled, Then it reports any historical duplicates found so they can be resolved or explicitly grandfathered, and CI does not fail unannounced on historical data.",
+      "AC-4: Given a regression test that reruns slice-from-feature 3+ times against the same FEAT with a deliberately-untrimmed proposed title, When the test asserts on proposed-slice count, Then it shows zero growth across reruns (closing the GitHub-issue-598-class unbounded loop)."
+    ]
+  },
+  {
+    "featureId": "FEAT-011",
+    "scores": {
+      "customer_impact": 0.5,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.5,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.25
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT states both adopter repos (kb, standards) were skipped by the installer because they have no .claude/loop.json to render against -- a specific, already-diagnosed blocker, not a hypothetical one.",
+    "scopeNotes": "Smallest deliverable: run the devcrew installer against each repo first (resolving the missing-loop.json blocker), pick a preset per repo, then run migrate-adopter to collapse each repo's crew:start marker blocks into a single devcrew block. Both repos end with exactly one devcrew block, a devcrew.json, and a local commit -- no push, no cross-repo automation beyond that. Execution happens in external repos (kb, standards), which this repo's own touches_files convention does not cover -- flag that explicitly at slice-start.",
+    "reasoning": "Bounded, mechanical rollout-completion chore using already-built, already-used tooling (installer + migrate-adopter); the only real unknown is the two repos' specific pre-existing marker-block shape, which is why technical_risk sits at 0.35 rather than the trivial 0.15 band.",
+    "acs": [
+      "AC-1: Given the kb repo with no .claude/loop.json, When the devcrew installer is run against it with a selected preset, Then it renders a valid loop.json and the repo becomes migratable.",
+      "AC-2: Given the standards repo in the same pre-migration state, When the same installer+migrate-adopter sequence runs, Then it independently reaches the same end state without depending on kb's migration order.",
+      "AC-3: Given either repo after migration, When its CLAUDE.md is inspected, Then it contains exactly one devcrew marker block (no duplicate or orphaned crew:start blocks) and a devcrew.json is present.",
+      "AC-4: Given the migration is complete for a repo, When the change is reviewed, Then it is captured as a single local commit in that repo (no push performed as part of this FEAT)."
+    ]
+  },
+  {
+    "featureId": "FEAT-012",
+    "scores": {
+      "customer_impact": 0.35,
+      "effort_estimate": 0.15,
+      "strategic_alignment": 0.35,
+      "technical_risk": 0.15,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT traces the duplicate section to a specific prior commit (89de31a, 'agentic-setup rebuild') predating the devcrew migration -- a concretely-sourced defect, not a guess.",
+    "scopeNotes": "Smallest deliverable: delete the unmarked duplicate 'Autonomous Loop -- HARD RULES' section (dead /loop:slice, /loop:phase-gate references) from the sales repo's CLAUDE.md, leaving the single devcrew marker block as the sole loop-rules section. Single-file, single-commit, sales repo only -- no other repo touched.",
+    "reasoning": "Trivial single-file doc cleanup with a concretely-traced cause; all dimensions score low, landing at the formula's default P2 band despite being intuitively low-stakes -- flagged as opportunistic pickup rather than urgent.",
+    "acs": [
+      "AC-1: Given the sales repo's CLAUDE.md containing both the unmarked legacy 'Autonomous Loop -- HARD RULES' section and the devcrew marker block, When the cleanup runs, Then the unmarked legacy section is removed in full.",
+      "AC-2: Given the cleanup is applied, When CLAUDE.md is inspected afterward, Then exactly one loop-rules section remains (the devcrew marker block) and no dead /loop:slice or /loop:phase-gate references remain anywhere in the file.",
+      "AC-3: Given no other content in the sales repo's CLAUDE.md is in scope, When the diff is reviewed, Then it touches only the removed section's lines -- no unrelated edits.",
+      "AC-4: Given the change is complete, When it is committed, Then it is a single local commit scoped to the sales repo only."
+    ]
+  },
+  {
+    "featureId": "FEAT-013",
+    "scores": {
+      "customer_impact": 0.45,
+      "effort_estimate": 0.4,
+      "strategic_alignment": 0.6,
+      "technical_risk": 0.4,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Directly continues the active 'crew/ flatten' program evidenced by the last 5 graded slices (SLICE-21..25, avg 0.891-0.924) already working this exact seam; FEAT body names the one sanctioned cross-import today (hooks/pre-push-gate.mts -> 4 crew modules) as the allowlist seed, and hooks.json's ${CLAUDE_PLUGIN_ROOT}/crew/... paths as the concrete inventory target for the later hooks relocation (FEAT-014-adjacent phase 2 work).",
+    "scopeNotes": "Two deliverables: (1) a root validator enforcing the root<->crew/ import boundary (today enforced only by convention + CI path strings), allowlisting the single sanctioned hooks/pre-push-gate.mts cross-import, and (2) a machine-readable inventory of every ${CLAUDE_PLUGIN_ROOT}/crew/... path in .claude-plugin/hooks/hooks.json as the prerequisite map for a later hooks relocation (not this FEAT's scope to relocate them). This is phase 1 of a 2-phase program; FEAT-014 (phase 2) is not blocked on this landing first at a frontmatter depends_on level, but sequencing it first reduces phase-2 risk.",
+    "reasoning": "New validator pattern in the repo but no schema/contract change and a clean single-file rollback; directly supports the actively-graded crew/ flatten program, so P2/autonomous-safe with no pre-mortem required (risk below 0.6, not P0/P1).",
+    "acs": [
+      "AC-1: Given a source file outside crew/ that attempts to import a crew/-internal module not on the allowlist, When the root validator runs in CI, Then it fails with the offending file:line and the disallowed import path named.",
+      "AC-2: Given hooks/pre-push-gate.mts importing from 4 crew modules, When the validator runs, Then those specific imports pass because they are on the sanctioned allowlist, and no other cross-import is silently permitted.",
+      "AC-3: Given .claude-plugin/hooks/hooks.json, When the inventory scan runs, Then it produces a machine-readable list of every ${CLAUDE_PLUGIN_ROOT}/crew/... path referenced in that file, keyed by hook name.",
+      "AC-4: Given the new validator is added to CI, When an existing, currently-passing build runs against it, Then it passes cleanly (no false-positive on any currently-sanctioned import pattern)."
+    ]
+  },
+  {
+    "featureId": "FEAT-014",
+    "scores": {
+      "customer_impact": 0.4,
+      "effort_estimate": 0.75,
+      "strategic_alignment": 0.55,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.35
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "Phase 2 of the same actively-graded crew/ flatten program as FEAT-013; FEAT body names concrete, already-identified blockers (crew pinned to TS6 because openapi-typescript needs the JS compiler API that native tsc 7 lacks; NodeNext-vs-Bundler moduleResolution divergence; ~10 crew-only deps to merge) rather than speculative scope.",
+    "scopeNotes": "Genuinely large, cross-cutting change: single root package.json/bun.lock and one tsconfig strategy across 287 crew files, with CI's crew-tests job collapsing into the root suite invocation once done. Per runner#393 policy (a), the TS6-vs-TS7 compiler-API conflict is a flagged landmine/design-decision (no resolution stated in the FEAT text -- 'keep typescript 6 as a devDependency for that tool or replace the tool' is an open question) and is isolated into its own slice below rather than absorbed into the mechanical dependency-merge work.",
+    "risks": [
+      "It is two weeks later and this slice failed review or validation -- most likely cause: the TS6-vs-TS7 compiler-API landmine was decided informally mid-slice instead of via its own isolated design slice, and the chosen resolution (keep TS6 devDependency vs replace openapi-typescript) turns out to be wrong once the full 287-file tree is compiled against it.",
+      "This merged and broke the loop -- rollback requires more than git revert: once package.json/bun.lock are unified and the crew-tests CI job is collapsed into the root suite, reverting requires restoring both the lockfile state AND the separate CI job definition, not just the source diff.",
+      "Which existing test would NOT catch a regression here: existing per-tree (crew vs root) test runs would not catch a moduleResolution divergence regression that only manifests once both trees compile under a single unified tsconfig -- the AC set must include a full-repo build/typecheck pass, not just each tree's existing suite in isolation."
+    ],
+    "reasoning": "Effort_estimate of 0.75 maps to 8 Fibonacci points (pm-effort-mapper.mts band 0.6-0.85), triggering the decomposition gate; technical_risk of 0.65 (cross-module reach across 287 files plus an unresolved tooling landmine) forces autonomousSafe:false on its own via the >0.6 threshold, independent of the decomposition requirement -- this needs architect/operator involvement before any slice in this FEAT is dispatched autonomously.",
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Resolve TS6-vs-TS7 compiler-API landmine (design decision + ADR)", "points": 2 },
+      { "id_suffix": "-SLICE-2", "title": "Merge crew-only deps into root package.json/bun.lock", "points": 2 },
+      { "id_suffix": "-SLICE-3", "title": "Unify tsconfig moduleResolution (NodeNext vs Bundler) across crew/ and root", "points": 2 },
+      { "id_suffix": "-SLICE-4", "title": "Collapse CI crew-tests job into root suite invocation", "points": 2 }
+    ],
+    "acs": [
+      "AC-1: Given the TS6-vs-TS7 compiler-API conflict (openapi-typescript needs the JS compiler API that native tsc 7 lacks), When the isolated design-decision slice completes, Then an ADR records the chosen resolution (keep typescript 6 as a scoped devDependency, or replace the tool) with the rationale for what was rejected.",
+      "AC-2: Given the ~10 crew-only dependencies and crew's separate package.json, When they are merged into the root package.json/bun.lock, Then a single lockfile resolves for the whole repo with no version conflicts left unresolved.",
+      "AC-3: Given the NodeNext-vs-Bundler moduleResolution divergence between crew/ and root, When the unified tsconfig strategy lands, Then `bunx tsc --noEmit` passes across the full 287-file crew/ tree AND the pre-existing root tree under the single config.",
+      "AC-4: Given the CI crew-tests job currently running separately, When it is collapsed into the root suite invocation, Then `bun test src/tests/ --parallel` (or the unified equivalent) covers what crew-tests previously covered, with no test silently dropped from CI."
+    ]
+  },
+  {
+    "featureId": "FEAT-015",
+    "scores": {
+      "customer_impact": 0.5,
+      "effort_estimate": 0.55,
+      "strategic_alignment": 0.65,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.15
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Directly named as a followup in the most recent lessons digest (SLICE-24, avg 0.924): 'Post-1.0: content-backfill FEAT (prompt_id/version/report-contract/eval specs)' -- this FEAT is that exact followup, plus the same lesson's finding that 'a validator scanning an empty dir passes vacuously' explains why the debt (missing prompt_id/version frontmatter, missing Report contract sections, dangling evals-spec pointers, skills dir-name vs devcrew:-prefixed frontmatter-name mismatch) was only surfaced once P3's surface merge de-vacuousized the validators.",
+    "scopeNotes": "Uniform, mechanical backfill across the merged agents/ and skills/ trees (fill known-schema gaps: prompt_id, version, Report contract sections, eval-spec pointers, name-mismatch fixes) -- per runner#393 policy (b), this is a batch of structurally-independent-but-uniform-pattern sites, not individually design-sensitive, so it does not need per-site decomposition at PM-score time even though the file count may be large; if the actual touched-file count turns out large at slice-start, the shape classifier should split it into a batch. Effort_estimate of 0.55 stays under the 0.6 decomposition-gate threshold on that basis. Once backfill is verified complete, flip both validate-agents.mts and validate-skills.mts from advisory to blocking in the same FEAT.",
+    "reasoning": "Directly-evidenced quality-gate hardening work with a known, uniform schema to backfill against and a low-risk mechanical fix; P2/autonomous-safe.",
+    "acs": [
+      "AC-1: Given an agent or skill file missing prompt_id and/or version frontmatter, When the backfill runs, Then both fields are populated per the schema validate-agents.mts/validate-skills.mts already check for in advisory mode.",
+      "AC-2: Given an agent file missing a Report contract section, When the backfill runs, Then a Report contract section is added following the same shape used by existing compliant agents in the tree.",
+      "AC-3: Given a skill whose directory name does not match its devcrew:-prefixed frontmatter name, When the backfill runs, Then the mismatch is resolved (directory renamed or frontmatter corrected) and validate-skills.mts's name-mismatch check passes for that skill.",
+      "AC-4: Given both validate-agents.mts and validate-skills.mts currently run advisory in CI, When the backfill is verified complete (0 findings in advisory mode across a clean run), Then both validators are flipped to blocking and CI fails on any future regression."
+    ]
+  },
+  {
+    "featureId": "FEAT-016",
+    "scores": {
+      "customer_impact": 0.45,
+      "effort_estimate": 0.4,
+      "strategic_alignment": 0.55,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT cites a completed prior analysis (docs/planning/unification-plan.md section 2 command map, from the P3 command audit) identifying 7 near-duplicate command pairs and 1 dead command -- this FEAT executes an already-scoped plan rather than performing fresh discovery.",
+    "scopeNotes": "Execution-only: merge each of the 7 near-duplicate command pairs to one canonical name with a hard-break stub note in CHANGELOG (consistent with this program's stated 'hard cutover, no shims' posture -- no silent aliasing), and cut the 1 dead command. Batch the 7 mechanical, uniform-pattern merges into one slice per runner#393 policy (b); validate-agent-refs must stay green throughout since it is the CI gate that catches phantom dispatch tokens left behind by an incomplete merge.",
+    "reasoning": "Bounded execution of an already-completed audit with a documented plan to follow and an existing CI gate (validate-agent-refs) already positioned to catch incomplete merges; P2/autonomous-safe.",
+    "acs": [
+      "AC-1: Given the 7 near-duplicate command pairs identified in docs/planning/unification-plan.md section 2, When each pair is merged, Then exactly one canonical command name remains per pair and the non-canonical name is removed (not aliased).",
+      "AC-2: Given a command removed as part of a merge or as the 1 identified dead command, When CHANGELOG.md is updated, Then it contains a hard-break stub note (no silent shim) naming the removed command and its canonical replacement where applicable.",
+      "AC-3: Given the full set of merges and the one deletion, When `bun ./src/scripts/validate-agent-refs.mts` runs, Then it passes with zero phantom crew:/runner:/devcrew: dispatch tokens left referencing a removed command.",
+      "AC-4: Given a command that had no near-duplicate and was not the dead command, When the merge work completes, Then it is left untouched -- no scope creep beyond the 7 pairs plus 1 deletion named in the audit."
+    ]
+  },
+  {
+    "featureId": "FEAT-017",
+    "scores": {
+      "customer_impact": 0.4,
+      "effort_estimate": 0.2,
+      "strategic_alignment": 0.6,
+      "technical_risk": 0.3,
+      "dependency_depth": 0.65
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "FEAT directly enforces the constitution.md-recorded decision for this program: 'hard /devcrew:* cutover no shims'. The legacy allowlist in guard-feat-dispatch was deliberately kept functional through the cutover per that same decision, and this FEAT is its scheduled retirement.",
+    "scopeNotes": "Mechanically trivial (empty one allowlist array, update its tests) but explicitly NOT YET ACTIONABLE: FEAT text schedules this for 'one release after devcrew 1.0.0 goes live' (FEAT-019). Dispatching this today would hard-fail any straggler still on legacy /crew:/ /runner: tokens before the promised deprecation window has elapsed.",
+    "reasoning": "Trivial code change but genuinely blocked on an external, time-based release gate (FEAT-019 shipping plus one full release cycle) that is not expressible in frontmatter depends_on -- dependency_depth is scored at 0.65 to reflect that real gate, which forces autonomousSafe:false so the loop does not grab this low-effort P2 item prematurely and hard-fail legacy-token consumers ahead of schedule.",
+    "acs": [
+      "AC-1: Given devcrew v1.0.0 has shipped AND one full release cycle has elapsed since, When this FEAT is picked up, Then the legacy /crew: and /runner: allowlist in guard-feat-dispatch is emptied.",
+      "AC-2: Given the allowlist is emptied, When a dispatch prompt uses a legacy /crew: or /runner: token, Then guard-feat-dispatch hard-fails it instead of silently permitting it through the (now-empty) allowlist.",
+      "AC-3: Given the existing guard-feat-dispatch-hook.test.mts suite currently asserts on allowlisted legacy-token behavior, When the allowlist is emptied, Then those tests are updated to assert the new hard-fail behavior instead of the old pass-through behavior.",
+      "AC-4: Given this FEAT is scored before devcrew 1.0.0 has shipped, When it reaches the autonomous loop's dispatch queue, Then it is NOT auto-dispatched until a human confirms the 1.0.0-plus-one-release timing gate has actually elapsed."
+    ]
+  },
+  {
+    "featureId": "FEAT-018",
+    "scores": {
+      "customer_impact": 0.35,
+      "effort_estimate": 0.2,
+      "strategic_alignment": 0.45,
+      "technical_risk": 0.15,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Directly named in the SLICE-22 grade lesson (avg 0.91): 'Carried note: guarded-fire needs its own test file (post-cutover chore)' -- guarded-fire.mts (crew/scripts/lib/guarded-fire.mts) survived the GEPA deletion as relocated fail-soft infrastructure, but its unit test was deleted along with the gepa test tree.",
+    "scopeNotes": "Test-only change, no production code touched. Write a fresh colocated bun:test suite (matching the repo's existing src/tests/*.mts convention) covering the three named paths: fire-success, swallow-on-error, and timeout.",
+    "reasoning": "Small, well-specified test-coverage gap closure on load-bearing fail-soft infra, directly evidenced by a recent grade lesson; trivially low risk since it is test-only.",
+    "acs": [
+      "AC-1: Given guarded-fire's success path, When a colocated bun:test exercises a normal fire() call that completes without error, Then the test asserts the wrapped function's result is returned unchanged.",
+      "AC-2: Given guarded-fire's fail-soft contract, When the wrapped function throws, Then a colocated test asserts the error is swallowed (not propagated) and the documented fallback/no-op behavior occurs instead.",
+      "AC-3: Given guarded-fire's timeout path, When the wrapped function exceeds its configured timeout, Then a colocated test asserts the call is treated as failed/swallowed per the same fail-soft contract as the error case, not left hanging.",
+      "AC-4: Given the new test file, When `bun test src/tests/ --parallel --timeout 60000` runs, Then it passes and is picked up by the existing suite discovery with no separate CI wiring needed."
+    ]
+  },
+  {
+    "featureId": "FEAT-019",
+    "scores": {
+      "customer_impact": 0.75,
+      "effort_estimate": 0.25,
+      "strategic_alignment": 0.9,
+      "technical_risk": 0.55,
+      "dependency_depth": 0.4
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "This FEAT is the explicit culmination of the P0-P5 devcrew unification program (FEAT-003 through FEAT-006 completed, per the session's own task history) -- shipping the merged crew+runner plugin as v1.0.0 to the astra-marketplace registry.",
+    "scopeNotes": "Mechanically bounded: bump plugin.json + package.json from 1.0.0-rc.1, update CHANGELOG with the unification summary, bump the astra-marketplace devcrew entry version in a paired commit, tag v1.0.0. Low raw effort does not reduce the stakes -- a marketplace-published tag is hard to unpublish/re-point cleanly, which is exactly why this is gated to explicit operator approval rather than autonomous execution, per this repo's own constitution.md ('Production promotion, tag pushes, and force-pushes are NEVER unlocked by dev.stable... require explicit user approval').",
+    "risks": [
+      "It is two weeks later and this slice failed review or validation -- most likely cause: the plugin.json/package.json version bump and the astra-marketplace registry entry bump land as two separate, non-atomic commits, leaving the registry pointing at a version whose tag does not yet exist (or vice versa).",
+      "This merged and broke the loop -- rollback requires cross-plugin/cross-repo coordination: reverting the tag alone does not un-publish the marketplace registry entry, so a bad 1.0.0 cut needs a coordinated revert in both this repo AND the astra-marketplace registry.",
+      "Which existing test would NOT catch a regression here: `bun ./src/scripts/validate-marketplace-sync.mts` (CI gate 16) catches version-string drift but would NOT catch a registry entry that is syntactically in sync yet points at a tag that was never actually pushed -- the AC set must include a live check that the pushed tag exists, not just a static string-sync check."
+    ],
+    "reasoning": "High strategic_alignment (this is the roadmap centerpiece the whole program targets) and impact 0.75 with alignment 0.9 land it at P1 via the formula. autonomousSafe is forced to false per explicit production-promotion policy -- both this repo's constitution.md and the team lead's direction require operator approval regardless of the computed dimension scores.",
+    "acs": [
+      "AC-1: Given plugin.json and package.json currently at 1.0.0-rc.1, When the release commit is prepared, Then both are bumped to 1.0.0 in the same commit.",
+      "AC-2: Given CHANGELOG.md, When the release commit is prepared, Then it contains a summary of the unification program (P0-P5) under the new 1.0.0 entry.",
+      "AC-3: Given the astra-marketplace registry's devcrew entry, When the paired commit lands, Then its version matches the newly-tagged 1.0.0 and `bun ./src/scripts/validate-marketplace-sync.mts` passes.",
+      "AC-4: Given all of the above is committed and reviewed, When the v1.0.0 tag is created, Then it is created and pushed ONLY after explicit operator approval at execution time -- no autonomous dispatch performs the tag/push step."
+    ]
+  }
+]
