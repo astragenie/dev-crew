@@ -35,6 +35,7 @@ arch_attempt: 0
 arch_status: approved
 arch_review: approved
 started_at: 2026-08-19
+slices_complete: [SLICE-27]
 ---
 ## Description
 

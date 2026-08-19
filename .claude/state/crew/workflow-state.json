@@ -1,17 +1,21 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T09:14:24.566Z",
+  "updatedAt": "2026-08-19T16:16:18.063Z",
   "currentRun": {
     "title": "FEAT006 SLICE26: migrate-adopter.mts run across adopter repos (dry-run first)",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
     "startedAt": "2026-08-19T09:06:03.182Z",
-    "updatedAt": "2026-08-19T09:14:24.566Z",
+    "updatedAt": "2026-08-19T16:16:18.063Z",
     "next": "1) Root-cause DEC-068/DEC-070: find what SLICE-20..23 did to FEAT-222/FEAT-229's backlog files and either restore/relocate them or update the DEC contract-record fixture/test. 2) Re-run crew-tests' 2 timeout cases in isolation to confirm infra vs real. 3) Once CI is green on a fresh push, resume SLICE-26 gate 2 (author migrate-adopter.mts) through gate 5 (per-adopter migration ledger).",
     "gates": {
       "review": null,
-      "validation": null,
+      "validation": {
+        "status": "passed",
+        "updatedAt": "2026-08-19T16:16:18.063Z",
+        "note": "phase unspecified PASS — preset typescript-plugin-dev — 2 stages run"
+      },
       "deployment": {
         "dev": null,
         "prod": null
@@ -28,7 +32,7 @@
       ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": null,
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T161618Z-validation-result-phase-unspecified-gate.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null

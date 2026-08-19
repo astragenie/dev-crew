@@ -42,19 +42,22 @@
         "cmd": "bun",
         "args": [
           "test",
-          "--parallel"
+          "src/tests/",
+          "--parallel",
+          "--timeout",
+          "60000"
         ]
       },
       {
-        "cmd": "node",
+        "cmd": "bun",
         "args": [
-          "./scripts/validate-manifests.mjs"
+          "./src/scripts/validate-manifests.mts"
         ]
       },
       {
-        "cmd": "node",
+        "cmd": "bun",
         "args": [
-          "./scripts/validate-content-length.mjs"
+          "./src/scripts/validate-content-length.mts"
         ]
       }
     ],
@@ -76,7 +79,7 @@
   ],
   "productName": "dev-crew",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
-  "stackDescription": "- TypeScript source (`src/scripts/**/*.mts`) run directly under Bun â€” no emitted `scripts/*.mjs` tree; relative imports keep the `.mjs` specifier extension and `tsc --noEmit` is typecheck-only\n- Bun runtime (NodeNext module resolution, ES2022 target)\n- `bun test --parallel` for tests, colocated in `src/tests/*.mts`\n- Biome for lint/format (cap: cognitive complexity â‰¤15)\n- Manifest validators: `src/scripts/validate-manifests.mts` (plugin.json + marketplace registry sync) and `src/scripts/validate-content-length.mts` (agents â‰¤300, skills â‰¤200 lines)",
+  "stackDescription": "- TypeScript source (`src/scripts/**/*.mts`) run directly under Bun \u00e2\u20ac\u201d no emitted `scripts/*.mjs` tree; relative imports keep the `.mjs` specifier extension and `tsc --noEmit` is typecheck-only\n- Bun runtime (NodeNext module resolution, ES2022 target)\n- `bun test --parallel` for tests, colocated in `src/tests/*.mts`\n- Biome for lint/format (cap: cognitive complexity \u00e2\u2030\u00a415)\n- Manifest validators: `src/scripts/validate-manifests.mts` (plugin.json + marketplace registry sync) and `src/scripts/validate-content-length.mts` (agents \u00e2\u2030\u00a4300, skills \u00e2\u2030\u00a4200 lines)",
   "skills": [
     "typescript-pro",
     "frontend-advisory"
@@ -169,5 +172,31 @@
     "dispatch-size-gate": {
       "enabled": false
     }
+  },
+  "commands": {
+    "test": [
+      {
+        "cmd": "bun",
+        "args": [
+          "test",
+          "src/tests/",
+          "--parallel",
+          "--timeout",
+          "60000"
+        ]
+      },
+      {
+        "cmd": "bun",
+        "args": [
+          "./src/scripts/validate-manifests.mts"
+        ]
+      },
+      {
+        "cmd": "bun",
+        "args": [
+          "./src/scripts/validate-content-length.mts"
+        ]
+      }
+    ]
   }
 }

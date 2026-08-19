@@ -1,0 +1,3 @@
+{"type":"dispatch_outcome","ts":"2026-08-19T16:03:39.609Z","agentRole":"devcrew:reviewer","outcome":"completed","sliceId":"SLICE-26"}
+{"type":"dispatch_outcome","ts":"2026-08-19T16:03:39.611Z","agentRole":"devcrew:verifier","outcome":"paused","sliceId":"SLICE-26"}
+{"type":"pause_event","ts":"2026-08-19T16:03:39.611Z","agentRole":"devcrew:verifier","kind":"pause","detection":"no_artifact","sliceId":"SLICE-26","notes":"no validation artifact under .claude/artifacts/crew/validations/, no validation_passed/skipped badge in workflow-state, no explicit requires_validation: false waiver on slice"}

@@ -1,0 +1,2 @@
+{"type":"slice_complete","sliceId":"SLICE-27","timestamp":"2026-08-19T16:04:11.553Z","featureId":"FEAT-006","featureMovedTo":null,"validationSatisfied":true}
+{"type":"memory_capture","sliceId":"SLICE-27","timestamp":"2026-08-19T16:04:11.554Z","learningsRecorded":0,"learningsSkipped":0,"creditedCount":0,"creditSkippedReason":"empty"}
