@@ -136,6 +136,7 @@ jobs:
         bun ./src/scripts/validate-agent-refs.mts
         bun ./src/scripts/validate-dispatch-markers.mts
         bun ./src/scripts/validate-imports.mts
+        bun ./src/scripts/validate-repo-boundary.mts
         bun ./src/scripts/validate-backlog-writes.mts
         bun ./src/scripts/validate-slice-touches-files.mts
         bun ./src/scripts/validate-slice-state-consistency.mts

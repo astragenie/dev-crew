@@ -71,8 +71,8 @@ cutover, FEAT-006 (P5).
 
 Full rationale: `docs/ci-gates.md` (source of truth for name + order —
 `generate-metrics-band.mts` counts this list; keep both in sync). One
-merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–30 blocking
-(`fast-gate`), 31–34 advisory, 35–39 tsc/biome, 40–41 the two test suites:
+merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–31 blocking
+(`fast-gate`), 32–35 advisory, 36–40 tsc/biome, 41–42 both test suites:
 
 1. `bun install --frozen-lockfile` (root + `crew/`, two lockfiles).
 2. `validate-manifests.mts` — root manifest sanity.
@@ -82,39 +82,40 @@ merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–30 blocking
 6. `validate-agent-refs.mts` — no phantom `crew:`/`runner:`/`devcrew:` tokens.
 7. `validate-dispatch-markers.mts` — `<task-scoped>` marker balance.
 8. `validate-imports.mts` — slice-linker import boundary.
-9. `validate-backlog-writes.mts` — BacklogStore sole-writer guard.
-10. `validate-slice-touches-files.mts` — slice `touches_files` sanity.
-11. `validate-slice-state-consistency.mts` — state-dir/status agreement.
-12. `validate-snapshot-freshness.mts` — loop-snapshot drift gate.
-13. `validate-org-refs.mts` — stale pre-transfer owner sweep (incl. `crew/`).
-14. `validate-marketplace-sync.mts` — registry version drift.
-15. `validate-memory-config.mts` — memory-feedback config drift.
-16. `validate-learnings-schema.mts --repo .` — learnings.jsonl schema.
-17. `validate-effort-points.mts` — FEAT `effort_points` Fibonacci check.
-18. `validate-branding-scrub.mts` — retired-name sweep, full merged tree.
-19. `generate-metrics-band.mts --check` — README metrics-band freshness.
-20. `crew/scripts/validate-manifests.mts` — crew's own manifest check.
-21. `crew/scripts/validate-dispatch-graph.mts` — peer-dispatch DAG check.
-22. `crew/scripts/validate-workflows.mts` — workflows.yaml schema/order.
-23. `crew/scripts/validate-slices.mts` — AC-placeholder/workflow linter.
-24. `crew/scripts/validate-badges.mts` — BADGE_TABLE cross-check.
-25. `crew/scripts/validate-loop-state.mts` — single backlog tree, unique ids.
-26. `crew/scripts/validate-bundles.mts` — build-bundle schema/version.
-27. `crew/scripts/validate-configs.mts` — routing-table schema + drift.
-28. `crew/scripts/validate-routing-table.mts --coverage-only` — skill-id resolution.
-29. `crew/scripts/validate-agents.mts` — agent prompt quality bar.
-30. `crew/scripts/validate-skills.mts` — skill quality bar.
-31. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag (advisory).
-32. `crew/scripts/validate-routing-table.mts` full-coverage mode (advisory).
-33. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness (advisory).
-34. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag (advisory).
-35. `bunx tsc --noEmit` — root, root test, and `crew/tsconfig.json` (3 projects).
-36. `bunx biome lint src/` (root scope).
-37. `bunx biome format src/` (root, check mode).
-38. `cd crew && bunx biome lint scripts/ hooks/` (crew's own config).
-39. `cd crew && bunx biome format scripts/ tests/` (crew, check mode).
-40. `bun test src/tests/ --parallel` (root, minus 6 quarantined suites).
-41. `cd crew && bun test tests/ --parallel` (crew).
+9. `validate-repo-boundary.mts` — root/crew boundary + hooks.json drift
+10. `validate-backlog-writes.mts` — BacklogStore sole-writer guard.
+11. `validate-slice-touches-files.mts` — slice `touches_files` sanity.
+12. `validate-slice-state-consistency.mts` — state-dir/status agreement.
+13. `validate-snapshot-freshness.mts` — loop-snapshot drift gate.
+14. `validate-org-refs.mts` — stale pre-transfer owner sweep (incl. `crew/`).
+15. `validate-marketplace-sync.mts` — registry version drift.
+16. `validate-memory-config.mts` — memory-feedback config drift.
+17. `validate-learnings-schema.mts --repo .` — learnings.jsonl schema.
+18. `validate-effort-points.mts` — FEAT `effort_points` Fibonacci check.
+19. `validate-branding-scrub.mts` — retired-name sweep, full merged tree.
+20. `generate-metrics-band.mts --check` — README metrics-band freshness.
+21. `crew/scripts/validate-manifests.mts` — crew's own manifest check.
+22. `crew/scripts/validate-dispatch-graph.mts` — peer-dispatch DAG check.
+23. `crew/scripts/validate-workflows.mts` — workflows.yaml schema/order.
+24. `crew/scripts/validate-slices.mts` — AC-placeholder/workflow linter.
+25. `crew/scripts/validate-badges.mts` — BADGE_TABLE cross-check.
+26. `crew/scripts/validate-loop-state.mts` — single backlog tree, unique ids.
+27. `crew/scripts/validate-bundles.mts` — build-bundle schema/version.
+28. `crew/scripts/validate-configs.mts` — routing-table schema + drift.
+29. `crew/scripts/validate-routing-table.mts --coverage-only` — skill-id resolution.
+30. `crew/scripts/validate-agents.mts` — agent prompt quality bar.
+31. `crew/scripts/validate-skills.mts` — skill quality bar.
+32. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag.
+33. `crew/scripts/validate-routing-table.mts` full-coverage mode.
+34. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness.
+35. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag.
+36. `bunx tsc --noEmit` — root, root test, and `crew/tsconfig.json` (3 projects).
+37. `bunx biome lint src/` (root scope).
+38. `bunx biome format src/` (root, check mode).
+39. `cd crew && bunx biome lint scripts/ hooks/` (crew's own config).
+40. `cd crew && bunx biome format scripts/ tests/` (crew, check mode).
+41. `bun test src/tests/ --parallel` (root, minus 6 quarantined suites).
+42. `cd crew && bun test tests/ --parallel` (crew).
 
 Pre-push hook runs manifest + content-length + format-check locally.
 

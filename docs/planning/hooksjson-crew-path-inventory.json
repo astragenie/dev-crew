@@ -1,0 +1,150 @@
+{
+  "SessionStart": [
+    {
+      "path": "crew/scripts/log_event.sh",
+      "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" session_start",
+      "matcherIndex": 0
+    }
+  ],
+  "TaskCreated": [
+    {
+      "path": "crew/scripts/log_event.sh",
+      "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" task_created",
+      "matcherIndex": 0
+    }
+  ],
+  "TaskCompleted": [
+    {
+      "path": "crew/scripts/log_event.sh",
+      "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" task_completed",
+      "matcherIndex": 0
+    }
+  ],
+  "SubagentStart": [
+    {
+      "path": "crew/scripts/log_event.sh",
+      "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" subagent_start",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/subagent-start-profile.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/subagent-start-profile.mts\"",
+      "matcherIndex": 0
+    }
+  ],
+  "SubagentStop": [
+    {
+      "path": "crew/scripts/log_event.sh",
+      "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" subagent_stop",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/otel-subagent-stop.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/otel-subagent-stop.mts\"",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/check-reviewer-decision.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-reviewer-decision.mts\"",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/check-builder-terminal-state.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-builder-terminal-state.mts\"",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/subagent-gate-guard.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/subagent-gate-guard.mts\"",
+      "matcherIndex": 0
+    }
+  ],
+  "TeammateIdle": [
+    {
+      "path": "crew/scripts/log_event.sh",
+      "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" teammate_idle",
+      "matcherIndex": 0
+    }
+  ],
+  "PreToolUse": [
+    {
+      "path": "crew/hooks/preflight-shell.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/preflight-shell.mts\"",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/pre-tool-use-bash-gate.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-bash-gate.mts\"",
+      "matcherIndex": 1
+    },
+    {
+      "path": "crew/hooks/check-redundant-read.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-redundant-read.mts\"",
+      "matcherIndex": 2
+    },
+    {
+      "path": "crew/hooks/pre-tool-use-agent.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-agent.mts\"",
+      "matcherIndex": 3
+    },
+    {
+      "path": "crew/hooks/pre-tool-use-model-enforce.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-model-enforce.mts\"",
+      "matcherIndex": 3
+    },
+    {
+      "path": "crew/hooks/pre-tool-use-dispatch-size.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-dispatch-size.mts\"",
+      "matcherIndex": 3
+    },
+    {
+      "path": "crew/hooks/check-task-update-burst.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-task-update-burst.mts\"",
+      "matcherIndex": 4
+    },
+    {
+      "path": "crew/hooks/pre-tool-use-artifact-lock.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-artifact-lock.mts\"",
+      "matcherIndex": 5
+    }
+  ],
+  "PostToolUse": [
+    {
+      "path": "crew/hooks/record-read-content.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/record-read-content.mts\"",
+      "matcherIndex": 0
+    },
+    {
+      "path": "crew/hooks/check-subagent-return.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-subagent-return.mts\"",
+      "matcherIndex": 1
+    },
+    {
+      "path": "crew/hooks/post-tool-use-bash-gate.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/post-tool-use-bash-gate.mts\"",
+      "matcherIndex": 2
+    },
+    {
+      "path": "crew/hooks/record-edit.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/record-edit.mts\"",
+      "matcherIndex": 3
+    },
+    {
+      "path": "crew/hooks/otel-post-tool-use.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/otel-post-tool-use.mts\"",
+      "matcherIndex": 4
+    },
+    {
+      "path": "crew/hooks/checkpoint-cadence.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/checkpoint-cadence.mts\"",
+      "matcherIndex": 4
+    }
+  ],
+  "Stop": [
+    {
+      "path": "crew/hooks/otel-stop.mts",
+      "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/otel-stop.mts\"",
+      "matcherIndex": 0
+    }
+  ]
+}

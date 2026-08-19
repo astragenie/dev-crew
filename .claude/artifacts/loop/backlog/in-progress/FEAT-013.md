@@ -1,13 +1,13 @@
 ---
 id: FEAT-013
-status: triaged
+status: in-progress
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-34]
 derived_from: null
 pm_customer_impact: 0.45
 pm_effort_estimate: 0.4
@@ -22,6 +22,7 @@ triage_notes: "New validator pattern in the repo but no schema/contract change a
 tags: ["stack:typescript", "area:repo-boundary", "concern:crew-flatten"]
 needs_contract: true
 needs_ux: false
+started_at: 2026-08-19
 ---
 ## Description
 

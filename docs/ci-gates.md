@@ -50,35 +50,51 @@ this file).
    and confines FORBIDDEN/GATES/RETURN/ECHO keywords inside a marked region.
 8. `bun ./src/scripts/validate-imports.mts` — enforces the slice-linker
    sub-module import boundary.
-9. `bun ./src/scripts/validate-backlog-writes.mts` — explicit-allowlist
-   guard: fails when a file outside `backlog-store.mts` raw-writes a
-   backlog-shaped FEAT/SLICE path.
-10. `bun ./src/scripts/validate-slice-touches-files.mts` — validates every
+9. `bun ./src/scripts/validate-repo-boundary.mts` — **new gate** (SLICE-34,
+   FEAT-013). Enforces the root<->`crew/` import direction boundary — a
+   different concern from gate 8 (that one guards sub-module barrels
+   *inside* `src/scripts/`; this one guards the root/`crew/` split). Forbids
+   any `src/**`/`hooks/**` file from importing a `crew/`-internal module
+   except a hardcoded allowlist (10 entries across 3 files as of
+   2026-08-19: 4 in `hooks/pre-push-gate.mts`, 5 in
+   `src/scripts/lib/slice-linker/crew-bridge.mts`, 1 in
+   `src/scripts/lib/phase-gate.mts` — the contract doc that scoped this
+   slice only evidenced the first file's 4; the other 6 were found by this
+   slice's own repo-wide grep and kept, not removed). Forbids the reverse
+   direction (`crew/**` importing outside `crew/`) entirely — zero-entry
+   allowlist, confirmed empty by the same grep. Also fails on drift between
+   `.claude-plugin/hooks/hooks.json`'s `crew/` path census and the
+   generated `docs/planning/hooksjson-crew-path-inventory.json` (prerequisite
+   map for the later hooks-relocation FEAT).
+10. `bun ./src/scripts/validate-backlog-writes.mts` — explicit-allowlist
+    guard: fails when a file outside `backlog-store.mts` raw-writes a
+    backlog-shaped FEAT/SLICE path.
+11. `bun ./src/scripts/validate-slice-touches-files.mts` — validates every
     pending/in-progress/needs-review slice's `touches_files`.
-11. `bun ./src/scripts/validate-slice-state-consistency.mts` — slice
+12. `bun ./src/scripts/validate-slice-state-consistency.mts` — slice
     state-directory vs frontmatter-status agreement (one slice id filed
     across more than one state directory, or `status:` disagreeing with
     its containing directory).
-12. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
+13. `bun ./src/scripts/validate-snapshot-freshness.mts` — blocks a stale
     `.claude/artifacts/loop/loop-snapshot.md` from merging; regenerates the
     snapshot in-memory and diffs it against the on-disk file.
-13. `bun ./src/scripts/validate-org-refs.mts` — stale pre-transfer-GitHub-owner
+14. `bun ./src/scripts/validate-org-refs.mts` — stale pre-transfer-GitHub-owner
     sweep (see the script's `BANNED_OWNER` constant for the literal token; the
     current owner is `astragenie`) over authored surfaces including the
     widened `crew/` scope (SLICE-20).
-14. `bun ./src/scripts/validate-marketplace-sync.mts` — registry-drift
+15. `bun ./src/scripts/validate-marketplace-sync.mts` — registry-drift
     guard against `astragenie/astra-marketplace`'s `marketplace.json`.
     Degrades to a warning on an unreachable registry.
-15. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config
+16. `bun ./src/scripts/validate-memory-config.mts` — memory-feedback config
     drift guard (`.claude/loop.json`'s `memory.feedback.creditLoop` shape).
-16. `bun ./src/scripts/validate-learnings-schema.mts --repo .` — schema
+17. `bun ./src/scripts/validate-learnings-schema.mts --repo .` — schema
     check on `.claude/artifacts/loop/learnings.jsonl`'s FEAT-220 enum
     fields. SLICE-24 fixed 4 pre-existing malformed root entries that
     predated this gate ever being wired in — see "learnings.jsonl fix
     ledger" below.
-17. `bun ./src/scripts/validate-effort-points.mts` — FEAT frontmatter
+18. `bun ./src/scripts/validate-effort-points.mts` — FEAT frontmatter
     `effort_points` must be a Fibonacci value; `expected_usd` non-negative.
-18. `bun ./src/scripts/validate-branding-scrub.mts` — **new gate** (SLICE-24,
+19. `bun ./src/scripts/validate-branding-scrub.mts` — **new gate** (SLICE-24,
     FEAT-005 AC-2). Continuous sweep for the retired product name SLICE-08
     scrubbed (see the script's `BANNED_RE` for the literal token) across the
     full merged tree, replacing SLICE-08's one-time scrub with a standing
@@ -91,10 +107,10 @@ this file).
     `docs/planning/**` (frozen parent snapshots + the migration planning
     archive). See the script's header comment for full rationale; unit
     tests at `src/tests/validate-branding-scrub.test.mts`.
-19. `bun ./src/scripts/generate-metrics-band.mts --check` — README
+20. `bun ./src/scripts/generate-metrics-band.mts --check` — README
     metrics-band freshness gate; regenerates in-memory and diffs against
     the committed README.
-20. `bun ./crew/scripts/validate-manifests.mts` — crew's own manifest check
+21. `bun ./crew/scripts/validate-manifests.mts` — crew's own manifest check
     (`crew/.claude-plugin/plugin.json` + `crew/package.json`). **Not**
     deduped with gate 2 despite `unification-plan.md` §7's general
     "dedupe manifests" text — `src/scripts/validate-manifests.mts`'s own
@@ -102,25 +118,25 @@ this file).
     manifest/marketplace merge is explicitly deferred to Phase 5; that
     more-recent, more-specific decision in the code overrides the plan's
     earlier general text. Both stay as two separate gates until Phase 5.
-21. `bun ./crew/scripts/validate-dispatch-graph.mts` — cycle detector over
+22. `bun ./crew/scripts/validate-dispatch-graph.mts` — cycle detector over
     the `## Peer dispatch` allowlist graph (must be a DAG).
-22. `bun ./crew/scripts/validate-workflows.mts` — `.claude/workflows.yaml`
+23. `bun ./crew/scripts/validate-workflows.mts` — `.claude/workflows.yaml`
     schema + phase-order + parallelism-cap + agent-existence checks.
-23. `bun ./crew/scripts/validate-slices.mts` — AC-placeholder + workflow-
+24. `bun ./crew/scripts/validate-slices.mts` — AC-placeholder + workflow-
     field linter over pending slice files.
-24. `bun ./crew/scripts/validate-badges.mts` — cross-checks `BADGE_TABLE`
+25. `bun ./crew/scripts/validate-badges.mts` — cross-checks `BADGE_TABLE`
     against the `mark-badge` CLI help text and the badge catalog doc.
-25. `bun ./crew/scripts/validate-loop-state.mts` — exactly one populated
+26. `bun ./crew/scripts/validate-loop-state.mts` — exactly one populated
     backlog tree, unique FEAT ids.
-26. `bun ./crew/scripts/validate-bundles.mts` — build-bundle schema/version
+27. `bun ./crew/scripts/validate-bundles.mts` — build-bundle schema/version
     checks.
-27. `bun ./crew/scripts/validate-configs.mts` — `docs/routing-table.yaml`
+28. `bun ./crew/scripts/validate-configs.mts` — `docs/routing-table.yaml`
     schema + drift-vs-rendered-`.md` + every `crew:<token>` reference
     resolves against the live merged surface.
-28. `bun ./crew/scripts/validate-routing-table.mts --coverage-only` —
+29. `bun ./crew/scripts/validate-routing-table.mts --coverage-only` —
     routing-table skill-id resolution (blocking, coverage-only mode; the
     full-coverage mode runs advisory below).
-29. `bun ./crew/scripts/validate-agents.mts` — agent prompt quality bar
+30. `bun ./crew/scripts/validate-agents.mts` — agent prompt quality bar
     (required frontmatter, "## Report contract" section, no duplicate
     names, universal-skill drift markers, evals-spec pointers). **Promoted
     to blocking** (FEAT-015/SLICE-33): the pre-existing content debt SLICE-24
@@ -134,8 +150,8 @@ this file).
     `crew/evals/agents/crew-*.yaml` (the P3 surface merge moved `agents/`
     to the monorepo root but never moved `evals/`, which still lives
     under `crew/`).
-30. `bun ./crew/scripts/validate-skills.mts` — skill quality bar. **Promoted
-    to blocking** (FEAT-015/SLICE-33), same backfill treatment as gate 29.
+31. `bun ./crew/scripts/validate-skills.mts` — skill quality bar. **Promoted
+    to blocking** (FEAT-015/SLICE-33), same backfill treatment as gate 30.
     The open question SLICE-24 flagged — several skill directories carried
     a `devcrew:`-namespace-prefixed `name:` in frontmatter while their
     directory name stayed bare (e.g. `skills/pm-decompose/SKILL.md` named
@@ -149,7 +165,7 @@ this file).
     the `devcrew:` prefix, matching the rest of the tree; the validator's
     strict-equality directory-name check was left unchanged.
 
-Gates 20/22/23/24/25/26/27 required a fix as part of this slice: their
+Gates 21/23/24/25/26/27/28 required a fix as part of this slice: their
 `AGENTS_ROOT`/`SKILLS_ROOT` constants still pointed at `crew/agents/` and
 `crew/skills/` — directories the P3 surface merge emptied out when it moved
 the real trees to the monorepo root. Before the fix, `validate-agents.mts`
@@ -170,38 +186,38 @@ render-routing-table.mts`).
 **Advisory (non-blocking within `fast-gate`, still run and reported on
 every push/PR):**
 
-31. `bun ./crew/scripts/validate-syntheses.mts` — flags placeholder-rotted
+32. `bun ./crew/scripts/validate-syntheses.mts` — flags placeholder-rotted
     final-synthesis/grade artifacts. Advisory by design (documented in the
     script's own header) — `runner:close`'s `grade_incomplete` badge is the
     hard gate at close time.
-32. `CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts`
+33. `CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts`
     — full-coverage cross-check of every agent's "### Skills you consult"
     block against `docs/routing-table.md`. Opt-in via env var by design;
     advisory because coverage gaps here are additive documentation debt,
-    not correctness bugs (the blocking gate 28 already guards resolution).
-33. `bun ./crew/scripts/validate-adr-template.mts --strict` — ADR
+    not correctness bugs (the blocking gate 29 already guards resolution).
+34. `bun ./crew/scripts/validate-adr-template.mts --strict` — ADR
     "Alternatives considered" section completeness.
-34. `bun ./crew/scripts/validate-backlog-drift.mts` — flags a `triaged/`
+35. `bun ./crew/scripts/validate-backlog-drift.mts` — flags a `triaged/`
     slice whose close ceremony already ran in git history but was never
     moved to `done/`. Advisory by the script's own design (flags for a
     human/loop to act on; never moves files itself).
-35. `bunx tsc --project tsconfig.json --noEmit` + `--project
+36. `bunx tsc --project tsconfig.json --noEmit` + `--project
     tsconfig.test.json --noEmit` (root) + `--project crew/tsconfig.json
     --noEmit` (crew — its own, deliberately divergent `strict`/`types`
     config per SLICE-09; not merged into root's tsconfig, per that slice's
     design).
-36. `bunx biome lint src/` (root scope — root's `biome.json` `files.includes`
+37. `bunx biome lint src/` (root scope — root's `biome.json` `files.includes`
     is `**/src/**`, so `crew/` paths are invisible to this invocation).
-37. `bunx biome format src/` (root, check mode).
-38. `cd crew && bunx biome lint scripts/ hooks/` — crew-scoped, invoked from
+38. `bunx biome format src/` (root, check mode).
+39. `cd crew && bunx biome lint scripts/ hooks/` — crew-scoped, invoked from
     within `crew/` so `crew/biome.json` (`root: false`, deliberately
     divergent rules per SLICE-09) resolves as the effective config rather
     than relying on ambiguous nested-config auto-discovery from root.
-39. `cd crew && bunx biome format scripts/ tests/` (crew-scoped, check
+40. `cd crew && bunx biome format scripts/ tests/` (crew-scoped, check
     mode) — matches `crew/package.json`'s own `format:check` script.
-40. `bun test src/tests/ --parallel --timeout 60000` (root suite, minus the
+41. `bun test src/tests/ --parallel --timeout 60000` (root suite, minus the
     six known git-worktree-hanging suites — see "Job structure" below).
-41. `cd crew && bun test --timeout 60000 tests/ --parallel` (crew suite).
+42. `cd crew && bun test --timeout 60000 tests/ --parallel` (crew suite).
     SLICE-10 (FEAT-004 P1) already proved N≥20 consecutive green
     `--parallel` runs on this tree, so this runs unsharded and
     unquarantined, matching root `package.json`'s existing `test:crew`
@@ -209,15 +225,15 @@ every push/PR):**
 
 ## Job structure and gating
 
-- **`fast-gate`** runs gates 1–39 (installs, all validators, tsc, biome).
+- **`fast-gate`** runs gates 1–40 (installs, all validators, tsc, biome).
   This is the required status check.
-- **`slow-tests`** runs gate 40 (root suite, retried once on a 480s
+- **`slow-tests`** runs gate 41 (root suite, retried once on a 480s
   per-attempt timeout) — kept as its own job (not the reusable-workflow
   wrapper) because it needs a job-level timeout the reusable workflow's
   fixed 30-minute limit can't give it, mirroring runner-plugin's original
   design (astragenie/runner-plugin#355).
-- **`crew-tests`** runs gate 41.
-- **`worktree-quarantine`** runs the six suites gate 40 excludes
+- **`crew-tests`** runs gate 42.
+- **`worktree-quarantine`** runs the six suites gate 41 excludes
   (`auto-merge`, `synergy`, `integration`, `integrations`,
   `slice-complete`, `slice-start` — real `git worktree` operations known to
   hang the runner, PR #348), hard-killed via `timeout`, `continue-on-error:
@@ -242,12 +258,12 @@ every push/PR):**
   `validate-ux-spec.mts` (asserting a broken fixture fails linting) — both
   scripts require an explicit file arg (no repo-wide sweep mode) and the
   same assertions already live in `crew/tests/validate-contracts.test.mts`
-  and `crew/tests/validate-ux-spec.test.mts`, covered by gate 41.
+  and `crew/tests/validate-ux-spec.test.mts`, covered by gate 42.
 
 ## learnings.jsonl fix ledger (SLICE-24)
 
 Root `.claude/artifacts/loop/learnings.jsonl` had 4 pre-existing entries
-that predate the `validate-learnings-schema.mts` gate (16) ever being wired
+that predate the `validate-learnings-schema.mts` gate (17) ever being wired
 into this merged CI, and would have failed it immediately on first run. All
 4 came from the `validation_fail` capture path (a different write shape
 than the FEAT-220 grade-lesson shape — `kind`/`ts`/`agent`/`severity`/
@@ -263,7 +279,7 @@ an `insight` (mirroring `summary`) to each rather than deleting the record:
 
 `crew/.claude/artifacts/loop/learnings.jsonl` (a sibling, crew-local file)
 has many more entries in the same non-FEAT-220 shape, but is **not** in
-scope for gate 16 as written (`validate-learnings-schema.mts` only checks
+scope for gate 17 as written (`validate-learnings-schema.mts` only checks
 the repo-root file) — left untouched.
 
 ## Known-red side effects of this slice (documented, not silently hidden)
@@ -271,7 +287,7 @@ the repo-root file) — left untouched.
 - `crew/tests/validate-all.test.mts`'s 2 assertions ("exits 0 on clean
   repo" / "check mark for each validator") were red immediately after the
   `AGENTS_ROOT`/`SKILLS_ROOT` fix above surfaced real pre-existing content
-  debt (the same debt gates 33/34 are advisory for) — **fixed as of
+  debt (the same debt gates 34/35 are advisory for) — **fixed as of
   2026-08-19** (verified: `cd crew && bun test tests/validate-all.test.mts`
   → 2 pass, 0 fail). Left here as a dated note rather than deleted, so a
   future reader who sees this file referenced from an old handoff knows
