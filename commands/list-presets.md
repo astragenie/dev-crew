@@ -30,8 +30,6 @@ Built-in presets:
   sidecars. Standalone .NET service or library repos.
 - `dotnet-react` — C# .NET backend + React / Vite frontend. One solution,
   one dashboard.
-- `dotnet-typescript-vue` — C# .NET backend + Vue 3 / Vite (TypeScript)
-  frontend + .NET Aspire orchestration.
 - `typescript-plugin-dev` — TypeScript Claude Code plugin repos. Bun test
   runner + manifest / content-length validators.
 - `typescript-service` — TypeScript Node service / daemon. Fastify +

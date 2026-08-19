@@ -5,6 +5,21 @@ prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
 `crew`+`runner` plugin ships under the name `devcrew`.
 
+## [Unreleased]
+
+- **Hard break**: removed the `dotnet-typescript-vue` preset
+  (`scripts/presets/dotnet-typescript-vue.json`). Evidence: zero adopter
+  repos across the sole operator's estate referenced this preset (verified
+  via grep across every sibling repo's `.claude/loop.json` /
+  `.claude/devcrew.json`), and it has shipped with no framework-specific
+  frontend skill since `vue-engineering` was deleted as a dead skill id
+  (SLICE-35 AC-3 preset repair) — no successor Vue skill exists in the
+  catalog. No shim or fallback is provided. `/devcrew:install --preset
+  dotnet-typescript-vue` now fails with the standard unknown-preset error
+  (`Unknown preset "dotnet-typescript-vue". Known presets: ...`), which
+  lists `dotnet-react` — the nearest TypeScript-frontend neighbor — among
+  the remaining options. (FEAT-021 / SLICE-44)
+
 ## [1.0.0] — 2026-08-19 — devcrew: the unified crew+runner plugin
 
 First stable release of **devcrew**, the merger of the `crew` (dev-team)

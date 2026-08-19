@@ -202,7 +202,6 @@ for a first-time install.
 | `dotnet-python`          | C# .NET + Aspire local orchestration + Python LangGraph agents + Terraform infra (split FE React + BE .NET) |
 | `dotnet-only`            | C# .NET backend only — no frontend, Aspire, or Python sidecars                    |
 | `dotnet-react`           | C# .NET backend + React / Vite frontend                                          |
-| `dotnet-typescript-vue`  | C# .NET backend + Vue 3 / Vite (TypeScript) frontend + .NET Aspire               |
 | `typescript-plugin-dev`  | TypeScript Claude Code plugin repos — Bun test + manifest validators             |
 | `typescript-service`     | TypeScript Node service / daemon — Fastify + better-sqlite3 / sqlite-vec, `tsc`, Vitest, JSON-schema contracts |
 

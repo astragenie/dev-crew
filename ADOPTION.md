@@ -74,7 +74,6 @@ Current built-ins:
 | `dotnet-python` | C# .NET + Aspire + Python LangGraph agents + Terraform (split FE React + BE .NET) |
 | `dotnet-only` | C# .NET backend only |
 | `dotnet-react` | C# .NET backend + React / Vite frontend |
-| `dotnet-typescript-vue` | C# .NET backend + Vue 3 / Vite (TypeScript) + Aspire |
 | `typescript-plugin-dev` | TypeScript Claude Code plugin repos — Bun test + manifest validators |
 | `typescript-service` | TypeScript Node service / daemon — Fastify, `tsc`, Vitest, JSON-schema contracts |
 
