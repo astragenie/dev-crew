@@ -51,6 +51,8 @@ export const FLAG_SPEC = {
   "--insight": { key: "insight" },
   "--confidence": { key: "confidence" },
   "--slice": { key: "slice" },
+  // resolve-skills task-signal matcher path (FEAT-007 / SLICE-35)
+  "--tags": { key: "tags" },
   "--limit": { key: "limit" },
   "--window": { key: "window" },
   "--max-features": { key: "maxFeatures" },
@@ -157,6 +159,7 @@ export function parseArgs(argv: string[]) {
     insight: null,
     confidence: null,
     slice: null,
+    tags: null,
     limit: null,
     window: null,
     maxFeatures: null,

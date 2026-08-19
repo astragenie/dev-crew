@@ -13,14 +13,13 @@ async function seedSkillDir(dir: string): Promise<void> {
 }
 
 /**
- * Build a fixture crew checkout under a fresh tmp repo, standing in for
- * `dev-team`'s real `skills/domain/**` shape: a leaf-at-category skill, a
- * nested-subcategory skill, and a directory that must be EXCLUDED because it
- * has no SKILL.md of its own (only a sibling reference doc).
+ * Build a fixture `skills/domain/**` tree, standing in for this repo's real
+ * shape: a leaf-at-category skill, a nested-subcategory skill, and a
+ * directory that must be EXCLUDED because it has no SKILL.md of its own
+ * (only a sibling reference doc).
  */
-async function makeCrewFixture(): Promise<string> {
-  const crewRepo = await makeTmpRepo("skill-catalog-crew-");
-  const domain = path.join(crewRepo, "skills", "domain");
+async function makeDomainFixture(repo: string): Promise<string> {
+  const domain = path.join(repo, "skills", "domain");
   // leaf-at-category skill
   await seedSkillDir(path.join(domain, "security-advisory"));
   // nested-subcategory skill (parent "ui" itself is NOT a skill)
@@ -33,16 +32,14 @@ async function makeCrewFixture(): Promise<string> {
     "not a skill\n"
   );
   await seedSkillDir(path.join(domain, "contract-codegen"));
-  return crewRepo;
+  return domain;
 }
 
 test("enumerateSkillCatalog finds leaf-at-category and nested-subcategory skills, excludes marker-less dirs", async () => {
-  const crewRepo = await makeCrewFixture();
   const repo = await makeTmpRepo("skill-catalog-repo-");
+  await makeDomainFixture(repo);
 
-  const result = await enumerateSkillCatalog(repo, {
-    config: { loop: { crewRepoPath: crewRepo } }
-  });
+  const result = await enumerateSkillCatalog(repo);
 
   assert.ok(result.catalog);
   const ids = [...result.catalog!.keys()].sort();
@@ -55,57 +52,68 @@ test("enumerateSkillCatalog finds leaf-at-category and nested-subcategory skills
   assert.ok(!result.catalog!.has("ui"));
 });
 
-test("enumerateSkillCatalog returns null with a reason when crewRepoPath is unset", async () => {
+test("enumerateSkillCatalog defaults to <repoPath>/skills/domain with no config lookup", async () => {
   const repo = await makeTmpRepo("skill-catalog-repo-");
+  await seedSkillDir(path.join(repo, "skills", "domain", "python-pro"));
 
-  const result = await enumerateSkillCatalog(repo, {});
+  const result = await enumerateSkillCatalog(repo);
 
-  assert.equal(result.catalog, null);
-  assert.match(result.reason ?? "", /crewRepoPath/);
+  assert.ok(result.catalog);
+  assert.deepEqual([...result.catalog!.keys()], ["python-pro"]);
 });
 
-test("enumerateSkillCatalog returns null with a reason when config is entirely absent", async () => {
-  const repo = await makeTmpRepo("skill-catalog-repo-");
+test("enumerateSkillCatalog returns null with a reason when repoPath has no skills/domain", async () => {
+  const repo = await makeTmpRepo("skill-catalog-repo-empty-");
 
   const result = await enumerateSkillCatalog(repo);
 
   assert.equal(result.catalog, null);
-  assert.match(result.reason ?? "", /crewRepoPath/);
-});
-
-test("enumerateSkillCatalog returns null with a reason when crewRepoPath does not exist", async () => {
-  const repo = await makeTmpRepo("skill-catalog-repo-");
-  const nonexistent = path.join(repo, "no-such-crew-checkout");
-
-  const result = await enumerateSkillCatalog(repo, {
-    config: { loop: { crewRepoPath: nonexistent } }
-  });
-
-  assert.equal(result.catalog, null);
   assert.match(result.reason ?? "", /skills\/domain/);
 });
 
-test("enumerateSkillCatalog returns null with a reason when crewRepoPath exists but has no skills/domain", async () => {
-  const crewRepo = await makeTmpRepo("skill-catalog-crew-empty-");
+test("enumerateSkillCatalog honors an explicit domainRoot override", async () => {
   const repo = await makeTmpRepo("skill-catalog-repo-");
+  const altRoot = path.join(repo, "elsewhere", "skills", "domain");
+  await seedSkillDir(path.join(altRoot, "typescript-pro"));
 
-  const result = await enumerateSkillCatalog(repo, {
-    config: { loop: { crewRepoPath: crewRepo } }
-  });
-
-  assert.equal(result.catalog, null);
-  assert.match(result.reason ?? "", /skills\/domain/);
-});
-
-test("enumerateSkillCatalog never throws for a relative crewRepoPath resolved against repoPath", async () => {
-  const repo = await makeTmpRepo("skill-catalog-repo-");
-  const domain = path.join(repo, "sibling-crew", "skills", "domain");
-  await seedSkillDir(path.join(domain, "python-pro"));
-
-  const result = await enumerateSkillCatalog(repo, {
-    config: { loop: { crewRepoPath: "sibling-crew" } }
-  });
+  const result = await enumerateSkillCatalog(repo, { domainRoot: altRoot });
 
   assert.ok(result.catalog);
-  assert.deepEqual([...result.catalog!.keys()], ["python-pro"]);
+  assert.deepEqual([...result.catalog!.keys()], ["typescript-pro"]);
+});
+
+test("enumerateSkillCatalog never throws for a nonexistent domainRoot override", async () => {
+  const repo = await makeTmpRepo("skill-catalog-repo-");
+
+  const result = await enumerateSkillCatalog(repo, {
+    domainRoot: path.join(repo, "no-such-tree")
+  });
+
+  assert.equal(result.catalog, null);
+  assert.match(result.reason ?? "", /skills\/domain/);
+});
+
+// Neuter-proof: exercises the ACTUAL recursive walk against this repo's own
+// real skills/domain tree (not a fixture) — a regression that flattened the
+// walk back to a top-level-only listing would fail this test, because
+// react-engineering only exists nested under ui/. Also re-verifies the
+// FEAT-007 contract's dead-ID finding directly against the live tree: these
+// four ids were removed when crew reorganized skills/domain/ and must stay
+// absent, or the matcher table's "unresolved" reporting would go silently
+// stale.
+test("enumerateSkillCatalog against this repo's real skills/domain: nested react-engineering resolves, confirmed-dead ids do not", async () => {
+  const repoRoot = path.resolve(".");
+
+  const result = await enumerateSkillCatalog(repoRoot);
+
+  assert.ok(result.catalog, "this repo must have a real skills/domain tree");
+  assert.ok(
+    result.catalog!.has("react-engineering"),
+    "nested skill must be found by the recursive walk"
+  );
+  assert.equal(result.catalog!.get("react-engineering")!.relPath, "ui/react-engineering");
+
+  for (const deadId of ["csharp-pro", "frontend-advisory", "a11y-advisory", "vue-engineering"]) {
+    assert.ok(!result.catalog!.has(deadId), `${deadId} is confirmed dead and must not resolve`);
+  }
 });

@@ -568,7 +568,11 @@ async function runArchitectSubcommand(
   };
 }
 
-function runResolveSkillsCommand(
+// Legacy --variant + --preset path. UNCHANGED from before FEAT-007/SLICE-35
+// (verbatim body) — byte-stable for the 5 existing call sites
+// (commands/orchestrate-slice.md x3, skills/pm-rescope/SKILL.md,
+// skills/triage/SKILL.md), none of which migrate in this slice.
+function runVariantResolveSkills(
   flags: Record<string, any>,
   resolveSkills: typeof import("./lib/skill-resolver.mjs").resolveSkills
 ): void {
@@ -619,6 +623,133 @@ function runResolveSkillsCommand(
     process.stderr.write(`error: ${msg}\n`);
     process.exitCode = 1;
   }
+}
+
+// Resolve the tags for a --slice/--tags task-signal resolve. Returns the
+// tag array, or an { error } envelope on a hard failure (slice not found).
+async function collectTaskSignalTags(
+  flags: Record<string, any>,
+  repoPath: string
+): Promise<string[] | { error: string }> {
+  if (flags.tags) {
+    return String(flags.tags)
+      .split(",")
+      .map((t: string) => t.trim())
+      .filter((t: string) => t.length > 0);
+  }
+
+  const { resolveConfig } = await import("./lib/config-resolver.mjs");
+  let config: Record<string, any> | null = null;
+  try {
+    config = await resolveConfig(repoPath);
+  } catch {
+    // Best-effort: --slice must work in a repo without .claude/loop.json too
+    // (resolveConfig throws by design, DEC-069, for an unconfigured repo) —
+    // fall back to the loop's own PATH_DEFAULTS below.
+    config = null;
+  }
+
+  const { slicesRoot, locateSliceFile } = await import("./lib/paths.mjs");
+  const slicesRootDir = slicesRoot(repoPath, config);
+  const sliceFile = await locateSliceFile(slicesRootDir, flags.slice);
+  if (!sliceFile) {
+    return { error: `slice not found: ${flags.slice} (looked under ${slicesRootDir})` };
+  }
+
+  const fs = await import("node:fs/promises");
+  const { parseFrontmatter } = await import("./lib/frontmatter.mjs");
+  const raw = await fs.readFile(sliceFile, "utf8");
+  const { frontmatter } = parseFrontmatter(raw);
+  return Array.isArray(frontmatter.tags) ? (frontmatter.tags as string[]) : [];
+}
+
+// NEW (FEAT-007 / SLICE-35): --slice/--tags task-signal matcher path.
+// Additive — routes through skill-matcher.mjs against the live catalog
+// (skill-catalog.mjs) instead of a preset. AC-1: falls back to the legacy
+// pickBlock preset path only when both --preset AND --variant are also
+// given (pickBlock has no signature that doesn't take a variant) — a
+// documented, narrower reading of the contract's `--slice <id> [--preset
+// <path>]` sketch, called out in the handoff.
+async function runTaskSignalResolveSkills(
+  flags: Record<string, any>,
+  repoPath: string,
+  resolveSkills: typeof import("./lib/skill-resolver.mjs").resolveSkills
+): Promise<void> {
+  const tagsResult = await collectTaskSignalTags(flags, repoPath);
+  if (!Array.isArray(tagsResult)) {
+    process.stderr.write(`error: ${tagsResult.error}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const tags = tagsResult;
+
+  const { enumerateSkillCatalog } = await import("./lib/skill-catalog.mjs");
+  const { matchSkills } = await import("./lib/skill-matcher.mjs");
+  const { renderDispatchBlock } = await import("./lib/skill-resolver.mjs");
+
+  let catalogResult: Awaited<ReturnType<typeof enumerateSkillCatalog>>;
+  try {
+    catalogResult = await enumerateSkillCatalog(repoPath);
+  } catch (err: unknown) {
+    const msg = (err as { message?: string } | undefined)?.message ?? String(err);
+    process.stderr.write(`error: ${msg}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const match = matchSkills({ tags }, catalogResult.catalog);
+
+  // AC-2: --strict fails loudly on any unresolved id, naming it.
+  if (flags.strict && match.unresolved.length > 0) {
+    process.stderr.write(
+      `error: unresolved skill id(s) not present in the live catalog: ${match.unresolved.join(", ")}\n`
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (match.skills.length === 0) {
+    if (flags.preset && flags.variant) {
+      runVariantResolveSkills(flags, resolveSkills);
+      return;
+    }
+    if (match.unresolved.length > 0) {
+      process.stderr.write(
+        `warn: no skills resolved from tags (unresolved: ${match.unresolved.join(", ")})\n`
+      );
+    } else {
+      process.stderr.write("warn: no skills resolved for the given tags\n");
+    }
+    process.exitCode = 2;
+    return;
+  }
+
+  if (match.unresolved.length > 0) {
+    process.stderr.write(
+      `warn: unresolved skill id(s) not present in the live catalog: ${match.unresolved.join(", ")}\n`
+    );
+  }
+
+  process.stdout.write(
+    JSON.stringify(
+      { ...match, dispatchInstructionBlock: renderDispatchBlock(match.skills) },
+      null,
+      2
+    ) + "\n"
+  );
+  process.exitCode = 0;
+}
+
+async function runResolveSkillsCommand(
+  flags: Record<string, any>,
+  repoPath: string,
+  resolveSkills: typeof import("./lib/skill-resolver.mjs").resolveSkills
+): Promise<void> {
+  if (flags.slice || flags.tags) {
+    await runTaskSignalResolveSkills(flags, repoPath, resolveSkills);
+    return;
+  }
+  runVariantResolveSkills(flags, resolveSkills);
 }
 
 async function runConfigGetSubcommand(argv: string[]): Promise<void> {
@@ -716,7 +847,7 @@ async function main() {
   }
 
   if (command === "resolve-skills") {
-    runResolveSkillsCommand(flags, resolveSkills);
+    await runResolveSkillsCommand(flags, repoPath, resolveSkills);
     clearFrontmatterCache();
     return;
   }

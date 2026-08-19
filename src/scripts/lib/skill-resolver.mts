@@ -4,6 +4,16 @@ import { deepMerge } from "./deep-merge.mjs";
 
 export type Variant = "fe" | "be" | "single" | RoleName;
 
+// FEAT-007/SLICE-35 posture: this preset-driven `pickBlock` path is no
+// longer the preferred skill source — skill-matcher.mjs's task-signal
+// matcher (matched against the live skills/domain catalog) is primary for
+// any caller that can supply --slice/--tags. This function and the 5
+// existing --variant call sites (commands/orchestrate-slice.md,
+// skills/pm-rescope/SKILL.md, skills/triage/SKILL.md) are UNCHANGED and
+// keep working exactly as before — nothing here was migrated or removed —
+// but new call sites should prefer the matcher. See
+// docs/planning/feat-007-skill-matcher-contract.md's "DEC to file" section
+// for the full decommissioning posture (formal decision record pending).
 export type SkillSource =
   | "preset.fe"
   | "preset.be"
