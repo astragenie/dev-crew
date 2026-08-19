@@ -32,4 +32,19 @@ describe("loop.mts wave subcommand", () => {
     const out = `${r.stdout}${r.stderr}`;
     expect(out).toMatch(/(waveId|size)/);
   });
+
+  // FEAT-020 / SLICE-37 review follow-up (20260819T230000Z): waveCli only
+  // checked `sub === "--help"|"-h"` (the token right after "wave") — a
+  // `--help` passed after the plan/run/loop subcommand, e.g. `wave plan
+  // --help`, fell through to the real case body and ran actual plan/pack
+  // logic instead of printing usage. Assert the usage text, not the
+  // "Wave plan:"/JSON output the real plan case would have produced.
+  test("wave plan --help prints usage instead of running the real plan logic", () => {
+    const r = run(["wave", "plan", "--help", "--repo", process.cwd()]);
+    const out = `${r.stdout}${r.stderr}`;
+    expect(r.status).toBe(0);
+    expect(out).toContain("plan|run|loop");
+    expect(out).not.toMatch(/^Wave plan:/m);
+    expect(out).not.toContain("waveId");
+  });
 });

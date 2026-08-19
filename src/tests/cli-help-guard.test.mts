@@ -15,7 +15,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { LOOP_CLI, initGitRepo, makeTmpRepo } from "./_fixtures.mjs";
+import { LOOP_CLI, initGitRepo, makeTmpRepo, writeLoopJson } from "./_fixtures.mjs";
 
 function run(args: string[]) {
   return spawnSync("bun", [LOOP_CLI, ...args], { encoding: "utf8" });
@@ -82,5 +82,30 @@ describe("loop.mts CLI --help guard (FEAT-020 / SLICE-37)", () => {
     expect(`${r.stdout}${r.stderr}`.toLowerCase()).toContain("backlog");
 
     expect(await listNonGitFiles(repo)).toEqual([]);
+  });
+
+  // Review follow-up (20260819T230000Z): `config` is short-circuited on
+  // rawArgv before the flags.help chokepoint above ever runs, and its own
+  // router only recognized sub === "get"|"migrate-devcrew" — a `--help`
+  // anywhere else in argv fell through to runConfigMigrateDevcrewSubcommand()
+  // and executed migrateToDevcrewConfig() for real, writing
+  // .claude/devcrew.json plus a .bak alongside .claude/loop.json. Live-
+  // reproduced against this repo's own working tree during review.
+  test("config migrate-devcrew --help exits 0 and writes zero files (no devcrew.json / .bak)", async () => {
+    const repo = await makeTmpRepo("cli-help-config-migrate-");
+    await initGitRepo(repo);
+    // A real .claude/loop.json so migrateToDevcrewConfig() has something to
+    // migrate — proves the guard, not an unrelated "nothing to do" no-op.
+    await writeLoopJson(repo, { aiLoopRoot: ".claude/artifacts/loop/ai-loop" });
+    const before = await listNonGitFiles(repo);
+
+    const r = run(["config", "migrate-devcrew", "--help", "--repo", repo]);
+
+    expect(r.status).toBe(0);
+
+    const after = await listNonGitFiles(repo);
+    expect(after).toEqual(before);
+    expect(after.some((f) => f.endsWith("devcrew.json"))).toBe(false);
+    expect(after.some((f) => f.endsWith(".bak"))).toBe(false);
   });
 });

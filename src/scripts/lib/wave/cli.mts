@@ -30,6 +30,18 @@ function readLoopJson(repoRoot: string): {
 }
 
 export default async function waveCli(sub: string, argv: string[]): Promise<void> {
+  // FEAT-020 / SLICE-37 follow-up (review 20260819T230000Z): `wave` is
+  // short-circuited on rawArgv before loop.mts's parseArgs/flags.help
+  // chokepoint ever runs, and the switch below only recognized
+  // sub === "--help"|"-h" — `wave plan --help` (or run/loop) fell through to
+  // the real case body and executed live plan/dispatch/merge logic instead
+  // of printing usage. Check for help anywhere in the sub's own argv (not
+  // just as the subcommand token itself) before doing any work — same
+  // pattern dispatch.mts already uses safely.
+  if (sub === "--help" || sub === "-h" || argv.includes("--help") || argv.includes("-h")) {
+    console.log("loop.mts wave <plan|run|loop> [--repo PATH] [--size N] [--json]");
+    return;
+  }
   const repoRoot = getFlag(argv, "repo", process.cwd()) ?? process.cwd();
   const wantJson = hasFlag(argv, "json");
   const sizeOverride = getFlag(argv, "size");

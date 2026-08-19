@@ -882,6 +882,18 @@ async function runConfigMigrateDevcrewSubcommand(argv: string[]): Promise<void> 
 }
 
 async function runConfigSubcommand(argv: string[]): Promise<void> {
+  // FEAT-020 / SLICE-37 follow-up (review 20260819T230000Z): `config` is
+  // short-circuited on rawArgv before loop.mts's parseArgs/flags.help
+  // chokepoint ever runs, and this router's own parsing only recognized
+  // sub === "get"|"migrate-devcrew" — a bare "--help" anywhere else in argv
+  // (e.g. `config migrate-devcrew --help`) fell through to
+  // runConfigMigrateDevcrewSubcommand() and executed a real write. Mirror
+  // dispatch.mts's own parser, which already resolves help from anywhere in
+  // argv, before matching on `sub` at all.
+  if (argv.includes("--help") || argv.includes("-h")) {
+    console.log(usageFor("config"));
+    return;
+  }
   const [sub, ...rest] = argv;
   if (sub === "get") {
     await runConfigGetSubcommand(argv);
