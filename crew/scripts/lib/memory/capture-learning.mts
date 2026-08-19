@@ -82,7 +82,10 @@ export async function captureFailureLearning(
   // learnings.jsonl — root's logLearning always writes them, so this writer
   // must too. Key mirrors the sibling failure rows' shape:
   // "<source>:<first tag|agent>:<compact UTC stamp>".
-  const compactTs = ts.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const compactTs = ts
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z$/, "Z");
   const keyScope = entry.tags?.[0] ?? entry.agent ?? "unknown";
   await appendJsonlEntry(repoPath, LEARNINGS_PATH, {
     kind: "failure",
