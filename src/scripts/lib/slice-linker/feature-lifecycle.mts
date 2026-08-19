@@ -24,6 +24,7 @@ import {
   type TextOnlyMatchReason,
   type ShippedOrdinalEvidence
 } from "./git-anchored-completion.mjs";
+import { mergeShippedEvidence } from "./proposed-slices-shipped.mjs";
 
 // Re-exported so CLI handlers (loop.mts) can catch it alongside
 // DecompositionRequiredError/InvalidProposedSlicesError/AcceptanceCriteriaRequiredError.
@@ -267,10 +268,21 @@ async function reconcileProposedSlicesStartIndex(
   // audit trail, not a gate: an fs failure here must not block the start
   // (same fail-open contract as the git checks above) — the advance verdict
   // stands either way, it just won't survive a fresh checkout.
+  //
+  // FEAT-009 SLICE-191: mergeShippedEvidence both migrates any pre-existing
+  // legacy index-prefix stamp (proposed_slices_shipped / _commits, two
+  // parallel arrays) to the per-id_suffix keyed shape AND folds in this
+  // pass's new evidence, in one write — see proposed-slices-shipped.mts for
+  // why the keyed shape is an array-of-mappings, not an object map.
+  // proposed_slices_shipped_commits is retired going forward: every entry
+  // now carries its own commit_sha inline.
   try {
     await updateFeatureFrontmatter(featureFilePath, {
-      proposed_slices_shipped: reconcile.shipped.map((s) => s.idSuffix),
-      proposed_slices_shipped_commits: reconcile.shipped.map((s) => s.commitSha)
+      proposed_slices_shipped: mergeShippedEvidence(
+        sourceFM.proposed_slices_shipped,
+        sourceFM.proposed_slices_shipped_commits,
+        reconcile.shipped
+      )
     });
   } catch (err: unknown) {
     console.warn(
@@ -738,6 +750,137 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
     },
     classify: null,
     idempotent: false
+  };
+}
+
+/** FEAT-009 AC-2 — thrown when the named `id_suffix` has no matching entry
+ * in the FEAT's `proposed_slices`. */
+export class ProposedSliceNotFoundError extends Error {
+  constructor(
+    public readonly featureId: string,
+    public readonly idSuffix: string
+  ) {
+    super(`${featureId}: no proposed_slices entry with id_suffix ${JSON.stringify(idSuffix)}`);
+    this.name = "ProposedSliceNotFoundError";
+  }
+}
+
+/** FEAT-009 AC-2 — thrown when the named `id_suffix` already has a real
+ * materialized slice (identity-resolved via matchProposedIdSuffix), so
+ * force-materializing again would create a duplicate. */
+export class ProposedSliceAlreadyMaterializedError extends Error {
+  constructor(
+    public readonly featureId: string,
+    public readonly idSuffix: string,
+    public readonly sliceId: string
+  ) {
+    super(
+      `${featureId}: proposed_slices entry ${idSuffix} is already materialized as ${sliceId} — refusing to create a duplicate`
+    );
+    this.name = "ProposedSliceAlreadyMaterializedError";
+  }
+}
+
+/**
+ * FEAT-009 AC-2 — CLI escape hatch: force-materialize exactly ONE named
+ * `proposed_slices` entry by `id_suffix`, so an operator can repair a gapped
+ * FEAT (one proposed entry that was never materialized) without calling
+ * BacklogStore directly — the original runner-plugin#392 live repro required
+ * a direct BacklogStore call for exactly this repair (see
+ * git-anchored-completion.mts's module doc comment).
+ *
+ * Deliberately bypasses the git-anchored startIndex reconcile
+ * (reconcileProposedSlicesStartIndex) entirely: this is an explicit,
+ * operator-directed override of ONE entry, not the automatic per-FEAT scan.
+ * It still refuses — ProposedSliceAlreadyMaterializedError — rather than
+ * duplicate when the named entry already resolves to a real slice file,
+ * using the same identity resolution (matchProposedIdSuffix, via
+ * resolveMaterializedIdSuffixes) the automatic multi-slice path relies on.
+ */
+export async function forceMaterializeProposedSlice(
+  repoPath: string,
+  featureId: string,
+  idSuffix: string,
+  { config = null }: { config?: any } = {}
+) {
+  const resolved = config || (await resolveConfig(repoPath));
+  const entry = await findFeatureById(repoPath, featureId);
+  if (!entry) throw new Error(`Feature not found: ${featureId}`);
+
+  const sourceContent = await fs.readFile(entry.filePath, "utf8");
+  const { frontmatter: sourceFM, body: sourceBody } = parseFrontmatter(sourceContent);
+  const proposed = parseProposedSlices(sourceFM.proposed_slices, featureId);
+  if (!proposed || proposed.length === 0) {
+    throw new Error(`${featureId} has no proposed_slices entries to force-materialize.`);
+  }
+  const item = proposed.find((p) => p.id_suffix === idSuffix);
+  if (!item) throw new ProposedSliceNotFoundError(featureId, idSuffix);
+
+  // Same AC gate as sliceFromFeature's normal path — the force hatch is an
+  // alternate entry into materialization, not an exemption from it.
+  assertAcceptanceCriteria(featureId, sourceBody);
+
+  const movedFromState = entry.state;
+  let featureFilePath = entry.filePath;
+  if (entry.state !== "in-progress") {
+    const result = await moveFeature(entry.filePath, "in-progress");
+    featureFilePath = result.to;
+  }
+
+  const featureContent = await fs.readFile(featureFilePath, "utf8");
+  const { frontmatter: featureFM, body: featureBody } = parseFrontmatter(featureContent);
+  const existingSlices: string[] = Array.isArray(featureFM.slices) ? featureFM.slices : [];
+
+  const materializedBySuffix = await resolveMaterializedIdSuffixes(
+    repoPath,
+    resolved,
+    existingSlices,
+    proposed
+  );
+  const already = materializedBySuffix.get(idSuffix);
+  if (already) {
+    throw new ProposedSliceAlreadyMaterializedError(featureId, idSuffix, already);
+  }
+
+  const ownAc =
+    Array.isArray(item.acceptance_criteria) && item.acceptance_criteria.length > 0
+      ? item.acceptance_criteria
+      : undefined;
+  const warnSharedAc = !ownAc && proposed.length >= 2;
+  if (warnSharedAc) {
+    console.warn(
+      `[slice-linker] ${featureId} ${item.id_suffix}: no acceptance_criteria on this ` +
+        `proposed_slices entry — copying FEAT-level ACs across ${proposed.length} sibling ` +
+        "slices. Scope this slice's AC section before close."
+    );
+  }
+
+  const created = await createSlice({
+    repoPath,
+    featureId,
+    featureFilePath,
+    featureFrontmatter: featureFM,
+    featureBody,
+    title: item.title,
+    effortPoints: item.points,
+    estimatedTokens: item.estimated_tokens,
+    proposedSliceIdSuffix: item.id_suffix,
+    ...resolveProposedSliceCreateExtras(item, ownAc, warnSharedAc, featureId, proposed.length),
+    config: resolved
+  });
+
+  await updateFeatureFrontmatter(featureFilePath, {
+    slices: [...existingSlices, created.id]
+  });
+
+  return {
+    slice: { id: created.id, path: created.filePath, title: created.title },
+    feature: {
+      id: featureId,
+      path: featureFilePath,
+      fromState: movedFromState,
+      toState: "in-progress" as const
+    }
   };
 }
 

@@ -385,6 +385,19 @@ export async function reconcileProposedSlicesAgainstGit(
         `${featTok}[^\\n]{0,80}?${sliceTok}|${sliceTok}[^\\n]{0,80}?${featTok}`,
         "i"
       );
+      // KNOWN OPEN GAP (FEAT-009 AC-3, carried from runner-plugin FEAT-284's
+      // "AC-8b status" section, tracked as runner-plugin FEAT-294 — NOT
+      // fixed by this module, do not treat as closed): `commits` is ordered
+      // newest-first, so `.find()` returns the FIRST (most recent) commit
+      // whose subject+body mention this FEAT/SLICE pair. On a live squash-
+      // merge history (e.g. commit 859be561) a newer commit can separately
+      // narrate the same FEAT/SLICE pair in prose (a status update, a
+      // follow-up mention) WITHOUT being the actual implementing squash-
+      // merge — `.find()` locks onto that narration commit and never
+      // continues scanning to the real qualifying commit further back,
+      // producing a false "not shipped" (or a wrongly-attributed sha) result
+      // for genuine squash-merge evidence. Out of scope for SLICE-191/193 —
+      // see FEAT-009.md's "AC-8b status" caveat.
       const hit = commits.find((c) => pattern.test(`${c.subject} ${c.body}`));
       if (!hit) continue;
 

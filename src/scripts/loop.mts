@@ -1607,6 +1607,40 @@ const SLICE_HANDLERS = {
     }
     return out;
   },
+  // FEAT-009 AC-2 (SLICE-193): CLI escape hatch to force-materialize one
+  // named `proposed_slices` entry by id_suffix, so a gapped FEAT can be
+  // repaired without calling BacklogStore directly.
+  "force-materialize": async (
+    repoPath: string,
+    flags: Record<string, any>,
+    _rest: string[],
+    featureId: string,
+    opts: { config?: Record<string, any> | null } = {}
+  ) => {
+    requireId(featureId, "slice force-materialize requires --id FEAT-NNN.");
+    const idSuffix = requireId(
+      flags.idSuffix,
+      "slice force-materialize requires --id-suffix -SLICE-N."
+    );
+    const { forceMaterializeProposedSlice } = await import(
+      "./lib/slice-linker/feature-lifecycle.mjs"
+    );
+    const out = await forceMaterializeProposedSlice(repoPath, featureId, idSuffix, {
+      config: opts.config
+    });
+    try {
+      await publishSliceViaProvider(repoPath, out.slice.id, featureId, opts.config ?? null);
+    } catch (e) {
+      console.error(`[github] publish warning (slice force-materialize): ${(e as Error).message}`);
+    }
+    const { logEvent } = await import("./lib/telemetry.mjs");
+    await logEvent(repoPath, {
+      command: "slice force-materialize",
+      feature: featureId,
+      slice: out.slice.id
+    });
+    return out;
+  },
   grade: async (repoPath: string, flags: Record<string, any>, _rest: string[], sliceId: string) => {
     requireId(sliceId, "slice grade requires --id SLICE-NN.");
     const { resolveEffectiveCwd } = await import("./lib/effective-cwd.mjs");
@@ -1817,7 +1851,7 @@ async function runSliceSubcommand(
   const [sub, ...rest] = positionals;
   if (!sub)
     throw new Error(
-      "slice requires a subcommand: from-feature | start | grade | grade-write | complete | link | review-ladder | post-builder-fanout | plan"
+      "slice requires a subcommand: from-feature | force-materialize | start | grade | grade-write | complete | link | review-ladder | post-builder-fanout | plan"
     );
   const handler = (SLICE_HANDLERS as Record<string, (...args: any[]) => any>)[sub];
   if (!handler) throw new Error(`Unknown slice subcommand: ${sub}`);

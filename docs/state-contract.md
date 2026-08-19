@@ -42,8 +42,8 @@ Once resolved at dispatcher startup, roots are threaded through all command hand
 | `slices` | Array of `SLICE-NN` strings | Yes (may be empty array) |
 | `schemaVersion` | Integer; only `1` accepted | No (absent ⇒ v1) |
 | `proposed_slices` | Array of `{id_suffix, title, points, estimated_tokens?, acceptance_criteria?}` (see `proposed-slices.mts`) — `estimated_tokens` defaults from `points` via `pm-effort-mapper.mts::estimateTokensForPoints` when omitted, and any entry whose (explicit or defaulted) `estimated_tokens` exceeds the ~200k `TOKEN_SPLIT_THRESHOLD` is refused at parse time (runner#393 proposal 4) | No |
-| `proposed_slices_shipped` | Array of `id_suffix` strings (runner-plugin#392) — stamped by the git-anchored reconcile pass when merged-commit evidence shows a proposed slice was already shipped through a path that never ran `sliceFromFeature`. Durable audit trail; not schema-enforced. | No |
-| `proposed_slices_shipped_commits` | Array of commit SHAs, index-aligned with `proposed_slices_shipped` (runner-plugin#392) | No |
+| `proposed_slices_shipped` | Array of `{id_suffix, commit_sha}` (runner-plugin#392; FEAT-009 SLICE-191 — per-id_suffix keyed shape, see `proposed-slices-shipped.mts`) — stamped by the git-anchored reconcile pass when merged-commit evidence shows a proposed slice was already shipped through a path that never ran `sliceFromFeature`. Durable audit trail; not schema-enforced. Legacy shape (two parallel arrays: `proposed_slices_shipped` as `id_suffix` strings + `proposed_slices_shipped_commits` as index-aligned SHAs) is migrated lazily on next write via `migrateShippedFrontmatter`. | No |
+| `proposed_slices_shipped_commits` | **Deprecated** (FEAT-009 SLICE-191) — legacy sibling array, index-aligned with the old `proposed_slices_shipped` id_suffix-string-array shape (runner-plugin#392). No longer written; `commit_sha` now lives inline on each `proposed_slices_shipped` entry. Read only by the migration path for backward compatibility. | No |
 
 ### Slice Frontmatter
 

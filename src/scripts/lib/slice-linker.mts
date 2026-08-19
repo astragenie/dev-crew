@@ -4,7 +4,10 @@ export {
   AcceptanceCriteriaRequiredError,
   assertAcceptanceCriteria,
   extractAcceptanceCriteria,
-  SliceAlreadyShippedError
+  SliceAlreadyShippedError,
+  forceMaterializeProposedSlice,
+  ProposedSliceNotFoundError,
+  ProposedSliceAlreadyMaterializedError
 } from "./slice-linker/feature-lifecycle.mjs";
 export { completeSlice } from "./slice-linker/complete-slice.mjs";
 export { closeSlice } from "./slice-linker/close-slice.mjs";

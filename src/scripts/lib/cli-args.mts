@@ -116,7 +116,9 @@ export const FLAG_SPEC = {
   // at slice close (see slice-linker/close-memory-capture.mjs)
   "--learnings": { key: "learnings" },
   "--learnings-agent": { key: "learningsAgent" },
-  "--memories-used": { key: "memoriesUsed" }
+  "--memories-used": { key: "memoriesUsed" },
+  // FEAT-009 AC-2 (SLICE-193): slice force-materialize target
+  "--id-suffix": { key: "idSuffix" }
 };
 
 export function parseArgs(argv: string[]) {
@@ -205,7 +207,8 @@ export function parseArgs(argv: string[]) {
     to: null,
     learnings: null,
     learningsAgent: null,
-    memoriesUsed: null
+    memoriesUsed: null,
+    idSuffix: null
   };
   const positionals: any[] = [];
 

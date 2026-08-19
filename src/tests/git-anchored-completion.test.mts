@@ -612,10 +612,124 @@ test("sliceFromFeature skips shipped prefix: scaffolds SLICE-3 when 1/2 are merg
   assert.equal(out.slices.length, 1, "must scaffold only the first unshipped slice");
   assert.equal(out.slices[0].title, "OAuth");
 
-  // Durable stamp survives on the FEAT frontmatter.
+  // Durable stamp survives on the FEAT frontmatter, in the FEAT-009
+  // SLICE-191 per-id_suffix keyed shape — each entry self-identifies via
+  // its own id_suffix field, no positional pairing with a second array.
   const updated = await findFeatureById(repo, feat.id);
-  assert.deepEqual(updated.frontmatter.proposed_slices_shipped, ["-SLICE-1", "-SLICE-2"]);
-  assert.equal(updated.frontmatter.proposed_slices_shipped_commits.length, 2);
+  const stamp = updated.frontmatter.proposed_slices_shipped as {
+    id_suffix: string;
+    commit_sha: string;
+  }[];
+  assert.equal(stamp.length, 2);
+  const byId = new Map(stamp.map((e) => [e.id_suffix, e.commit_sha]));
+  assert.ok(byId.has("-SLICE-1") && byId.get("-SLICE-1")!.length === 40);
+  assert.ok(byId.has("-SLICE-2") && byId.get("-SLICE-2")!.length === 40);
+});
+
+// FEAT-009 AC-1 (SLICE-191): a FEAT whose proposed_slices_shipped frontmatter
+// was already stamped under the OLD index-prefix shape (two parallel
+// top-level arrays) by a pre-migration run must have that shape rewritten to
+// the per-id_suffix keyed array the next time evidence is stamped for it —
+// preserving the pre-existing entries' shipped status exactly while folding
+// in whatever new evidence this pass finds.
+test("FEAT-009 AC-1: a legacy index-prefix proposed_slices_shipped stamp is migrated to the keyed shape on the next reconcile write, preserving prior entries", async () => {
+  const repo = await tmpGitRepo("gac-migrate-", ["chore: init"]);
+  const feat = await addFeature(repo, { title: "Connectors", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 6,
+    proposed_slices: PROPOSED_3,
+    // Simulate a pre-migration on-disk stamp: SLICE-1 already recorded as
+    // shipped under the legacy two-array shape, from a run that predates
+    // this migration.
+    proposed_slices_shipped: ["-SLICE-1"],
+    proposed_slices_shipped_commits: ["deadbeefcafe"]
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-1 — bridge shipped`, {
+    "src/scripts/lib/bridge.mts": "export const bridge = 1;\n"
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-2 — ACL shipped`, {
+    "src/scripts/lib/acl.mts": "export const acl = 1;\n"
+  });
+
+  const out = await sliceFromFeature(repo, feat.id);
+  assert.equal(out.slices.length, 1, "must scaffold only the first unshipped slice");
+  assert.equal(out.slices[0].title, "OAuth");
+
+  const updated = await findFeatureById(repo, feat.id);
+  const stamp = updated.frontmatter.proposed_slices_shipped as {
+    id_suffix: string;
+    commit_sha: string;
+  }[];
+  assert.ok(Array.isArray(stamp), "stamp must be rewritten as an array (the keyed shape)");
+  const byId = new Map(stamp.map((e) => [e.id_suffix, e.commit_sha]));
+  // SLICE-1's pre-existing legacy entry survived migration — status
+  // preserved exactly (still present, still shipped) even though this run's
+  // git evidence carries a DIFFERENT (real) commit sha for it than the
+  // fixture's fake legacy stamp — last-write-wins on re-observed evidence.
+  assert.ok(byId.has("-SLICE-1"), "SLICE-1's shipped status must survive migration");
+  assert.notEqual(
+    byId.get("-SLICE-1"),
+    "deadbeefcafe",
+    "re-observed evidence overwrites the stale legacy commit_sha"
+  );
+  assert.ok(byId.has("-SLICE-2"), "SLICE-2's newly-found evidence must be present too");
+  assert.equal(stamp.length, 2, "no duplicate or dropped entries from the migration");
+});
+
+// FEAT-009 AC-4: repeated reruns of slice-from-feature against the same FEAT
+// after the migration lands must not grow duplicate or orphaned
+// proposed-slice entries — checked across 3 simulated reruns, on a FEAT that
+// starts from a legacy-shaped stamp (the exact starting condition AC-1's
+// migration targets).
+test("FEAT-009 AC-4: 3 reruns of sliceFromFeature after a legacy-shaped stamp migrates produce zero growth in duplicate or orphaned proposed-slice entries", async () => {
+  const repo = await tmpGitRepo("gac-ac4-reruns-", ["chore: init"]);
+  const feat = await addFeature(repo, { title: "Connectors", body: AC_SECTION_BODY });
+  await updateFeatureFrontmatter(feat.filePath, {
+    effort_points: 6,
+    proposed_slices: PROPOSED_3,
+    proposed_slices_shipped: ["-SLICE-1"],
+    proposed_slices_shipped_commits: ["deadbeefcafe"]
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-1 — bridge shipped`, {
+    "src/scripts/lib/bridge.mts": "export const bridge = 1;\n"
+  });
+  await commitFixture(repo, `feat: ${feat.id} SLICE-2 — ACL shipped`, {
+    "src/scripts/lib/acl.mts": "export const acl = 1;\n"
+  });
+
+  const out1 = await sliceFromFeature(repo, feat.id);
+  assert.equal(out1.slices.length, 1, "first run: only the unshipped ordinal 3 is scaffolded");
+  const afterRun1 = (await findFeatureById(repo, feat.id)).frontmatter.slices as string[];
+  assert.equal(afterRun1.length, 1);
+
+  for (let rerun = 0; rerun < 3; rerun += 1) {
+    const out = await sliceFromFeature(repo, feat.id);
+    assert.equal(out.idempotent, true, `rerun ${rerun + 1} must be idempotent, no new slices`);
+    const slicesNow = (await findFeatureById(repo, feat.id)).frontmatter.slices as string[];
+    assert.deepEqual(
+      slicesNow,
+      afterRun1,
+      `rerun ${rerun + 1} must not grow or shrink the FEAT's materialized slices`
+    );
+    assert.equal(new Set(slicesNow).size, slicesNow.length, `rerun ${rerun + 1}: no duplicate ids`);
+
+    const stamp = (await findFeatureById(repo, feat.id)).frontmatter.proposed_slices_shipped as {
+      id_suffix: string;
+      commit_sha: string;
+    }[];
+    const ids = stamp.map((e) => e.id_suffix);
+    assert.equal(
+      new Set(ids).size,
+      ids.length,
+      `rerun ${rerun + 1}: proposed_slices_shipped must carry no duplicate id_suffix entries`
+    );
+    // No orphaned entry: every id_suffix on the stamp must correspond to a
+    // real proposed_slices entry on this FEAT.
+    const validIds = new Set(PROPOSED_3.map((p) => p.id_suffix));
+    for (const id of ids) {
+      assert.ok(validIds.has(id), `rerun ${rerun + 1}: ${id} on the stamp is orphaned`);
+    }
+  }
 });
 
 test("sliceFromFeature refuses a fully-shipped FEAT and leaves backlog state untouched", async () => {
