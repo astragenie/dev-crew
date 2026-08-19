@@ -44,10 +44,10 @@
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- Vue 3 + Vite + TypeScript + Pinia + Tailwind dashboard\n- .NET Aspire AppHost for local orchestration\n- xUnit, FluentAssertions for backend tests",
   "fe": {
-    "skills": ["vue-engineering", "typescript-pro", "frontend-advisory", "contract-codegen", "a11y-advisory"]
+    "skills": ["typescript-pro", "fullstack-advisory", "contract-codegen", "react-ui-quality"]
   },
   "be": {
-    "skills": ["csharp-pro", "backend-advisory", "database-architecture", "contract-codegen"]
+    "skills": ["csharp-conventions", "backend-advisory", "database-architecture", "contract-codegen"]
   },
   "roles": {
     "pm": {

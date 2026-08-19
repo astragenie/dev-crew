@@ -44,7 +44,7 @@
   "productName": "Untitled .NET product",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core (typical)\n- xUnit for tests\n- No frontend / no Aspire / no Python sidecars",
-  "skills": ["csharp-pro", "backend-advisory", "database-architecture", "contract-codegen"],
+  "skills": ["csharp-conventions", "backend-advisory", "database-architecture", "contract-codegen"],
   "roles": {
     "pm": {
       "skills": ["superpowers:verification-before-completion", "loop:loop-discipline"]

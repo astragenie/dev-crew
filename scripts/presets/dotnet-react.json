@@ -44,10 +44,10 @@
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- C# .NET 10, ASP.NET Core, EF Core\n- React + Vite + TypeScript dashboard\n- xUnit for backend tests\n- pgvector / Postgres for storage when configured",
   "fe": {
-    "skills": ["react-engineering", "typescript-pro", "frontend-advisory", "contract-codegen", "a11y-advisory"]
+    "skills": ["react-engineering", "typescript-pro", "fullstack-advisory", "contract-codegen", "react-ui-quality"]
   },
   "be": {
-    "skills": ["csharp-pro", "backend-advisory", "database-architecture", "contract-codegen"]
+    "skills": ["csharp-conventions", "backend-advisory", "database-architecture", "contract-codegen"]
   },
   "roles": {
     "pm": {

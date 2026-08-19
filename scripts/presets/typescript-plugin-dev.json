@@ -48,7 +48,7 @@
   "productName": "Untitled Claude Code plugin",
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- TypeScript source (`src/scripts/**/*.mts`) run directly under Bun — no emitted `scripts/*.mjs` tree; relative imports keep the `.mjs` specifier extension and `tsc --noEmit` is typecheck-only\n- Bun runtime (NodeNext module resolution, ES2022 target)\n- `bun test --parallel` for tests, colocated in `src/tests/*.mts`\n- Biome for lint/format (cap: cognitive complexity ≤15)\n- Manifest validators: `src/scripts/validate-manifests.mts` (plugin.json + marketplace registry sync) and `src/scripts/validate-content-length.mts` (agents ≤300, skills ≤200 lines)",
-  "skills": ["typescript-pro", "frontend-advisory"],
+  "skills": ["typescript-pro", "fullstack-advisory"],
   "roles": {
     "pm": {
       "skills": ["superpowers:verification-before-completion", "runner:loop-discipline"]

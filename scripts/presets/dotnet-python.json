@@ -45,10 +45,10 @@
   "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
   "stackDescription": "- C# .NET (Aspire local orchestration when configured)\n- Python agents (LangGraph or FastAPI) when configured\n- Terraform for infrastructure when configured",
   "fe": {
-    "skills": ["react-engineering", "typescript-pro", "frontend-advisory", "contract-codegen", "a11y-advisory"]
+    "skills": ["react-engineering", "typescript-pro", "fullstack-advisory", "contract-codegen", "react-ui-quality"]
   },
   "be": {
-    "skills": ["csharp-pro", "python-pro", "backend-advisory", "database-architecture", "contract-codegen"]
+    "skills": ["csharp-conventions", "python-pro", "backend-advisory", "database-architecture", "contract-codegen"]
   },
   "roles": {
     "pm": {
