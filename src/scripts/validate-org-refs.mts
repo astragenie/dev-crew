@@ -50,8 +50,9 @@ const SCAN_TARGETS = [
   "crew/CLAUDE.md",
   "crew/README.md",
   "crew/.claude-plugin",
-  "crew/crew-architecture-analysis.md",
-  "crew/crew-optimization.md",
+  // crew-architecture-analysis.md / crew-optimization.md moved from crew/
+  // root to docs/audits/ (2026-08-19 hygiene pass) — covered by the "docs"
+  // target above, no separate entries needed.
   // crew/.claude/crew — authored methodology docs (constitution.md,
   // deployment.md, plugin-marketplace.md, protocol.md,
   // telemetry.example.yaml, workflow.md), confirmed present as of SLICE-20.
