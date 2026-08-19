@@ -23,6 +23,28 @@ Goals:
 - keep framework constitution and workflow in the one global managed copy
 - make the result easy to inspect and easy to remove
 
+## Optional pre-check (formerly `/devcrew:audit-repo`)
+
+When you want to understand the current repo state before writing anything
+— e.g. deciding between `/devcrew:adopt` and `/devcrew:init`, or just
+confirming whether the harness is already present — run the audit-only
+check first instead of jumping to step 1 below:
+
+1. `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" audit --repo "$PWD"`
+2. Report whether the repo already has:
+   - `CLAUDE.md`
+   - `.claude/`
+   - `.claude/settings.json`
+   - `.claude/artifacts/crew/`
+   - `.claude/state/crew/`
+   - global Crew memory in `~/.claude/crew/`
+3. If the harness is incomplete, recommend either continuing with this
+   workflow (adoption into an existing repo) or `/devcrew:init` instead
+   (fresh repo).
+
+This pre-check overlaps with what step 1's `bootstrap` inspects on its own
+— skip it when you already intend to adopt and just want to proceed.
+
 Workflow:
 
 1. Run the installer:

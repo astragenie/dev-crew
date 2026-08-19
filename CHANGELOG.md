@@ -2,7 +2,34 @@
 
 All notable changes to the `runner` plugin are documented here. Versions
 prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
-shipped under the name `loop`.
+shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
+`crew`+`runner` plugin ships under the name `devcrew`.
+
+## [1.0.0-rc.1] — 2026-08-19 — command-surface consolidation (FEAT-016 / SLICE-36)
+
+Executes the blank-page 39-command audit's merge/cut list
+(`.claude/artifacts/crew/validations/20260819T064902Z-validation-result-slice-19-full-ceremony-smoke-test-blank-page-command-audit.md`,
+"MERGE-CANDIDATE (7)" / "CUT-CANDIDATE (1)") from the P3 command surface
+merge (FEAT-004/SLICE-19). Command surface: 33 first-party + 1 vendored
+(down from 39+1).
+
+### Removed (hard break — no shim)
+
+- `audit-repo` → folded into `/devcrew:adopt` as an optional pre-check step.
+- `gepa-eval`, `gepa-history`, `gepa-invalidate` → merged into one new
+  `/devcrew:gepa <eval|history|invalidate|resume|revert|thaw>` command
+  (`resume`/`revert`/`thaw` were CLI-only before this merge — this is
+  their first slash-command wrapper).
+- `lessons-recent` → folded into `/devcrew:learn` as the `lessons`
+  subcommand (`/devcrew:learn <log|recent|lessons>`); kept as a distinct
+  subcommand from `learn`'s pre-existing `recent` because the two read
+  different stores (`learnings.jsonl` vs slice-grade files) despite the
+  similar names.
+- `parallel-review` → folded into `/devcrew:build`'s team-run guidance
+  (step 10); no replacement command, use `/devcrew:build`.
+- `wake-up-brief` → cut (dead command per the blank-page audit — zero
+  real usage, its own doc already pointed users at `/devcrew:brief`).
+  No content merge; use `/devcrew:brief` for situational reporting.
 
 ## [v0.78.0] — 2026-08-02 — cost-scan window fix, light reviewer ladder, memory-setup seeding
 

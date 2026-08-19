@@ -102,3 +102,54 @@ vs never-reported-then-stop).
   its own header's "not wired" disclosure? Out of this FEAT's stated scope
   (FEAT-008 only asks for receipt schema + idle suppression) but flagged for
   a follow-up FEAT rather than silently left stale.
+
+## Amendment (2026-08-19 spike)
+
+**Spike result.** `TeammateIdle` has **never fired** in this harness: zero
+`events.jsonl` lines and zero payload files under `C:\work\mega\.claude\logs`
+across a session with ~60 idling named teammates, while `SubagentStop` /
+`SessionStart` / `SubagentStart` all fired normally in the same session. Two
+untested hypotheses recorded: (a) `TeammateIdle` targets a different
+teammate primitive than Agent-tool-dispatched teammates (this repo's
+dispatch model); (b) project-local `.claude/settings.json` hook
+registrations — which omit `TeammateIdle` — mask the plugin's `hooks.json`
+registration for that event. Separately, `SubagentStop`'s payload is now
+**empirically confirmed**: `session_id`, `transcript_path`, `cwd`,
+`agent_id`, `agent_type`, `stop_hook_active`, `agent_transcript_path`,
+`last_assistant_message` are all real fields — `report-gate.mjs`'s three
+load-bearing reads (`stop_hook_active`, `cwd`, `agent_transcript_path`) are
+confirmed, not assumed.
+
+**Revised execution design — supersedes "How idle-ping suppression consumes
+it" above.** `SubagentStop`, not `TeammateIdle`, is the primary (and for now
+only) execution point for receipt detection: extend `report-gate.mjs` (or a
+sibling `SubagentStop` hook) to run the same `agent_transcript_path` JSONL
+scan it already does, additionally checking for a valid `AgentReceipt`
+block. The correlation mechanism this doc's Open Questions previously
+hedged as a fallback (§ line ~97-99, "correlate by `agentId` against a
+loop-maintained lane table") is **promoted from hedge to the actual
+mechanism**: the `SubagentStop` hook writes `agent_id -> {receiptSeen, transcriptPath}`
+into a persisted lane table the moment it detects a valid receipt, so any
+future idle-suppression consumer looks up `agent_id` there instead of
+depending on an unverified `TeammateIdle` payload.
+
+**`TeammateIdle` demoted.** Do not build any hook registered on
+`TeammateIdle` until a live provocation spike proves it fires in this
+harness at all. That spike's first test must be hypothesis (b): add an
+explicit `TeammateIdle` entry to project-local `.claude/settings.json`
+(not just the plugin's `hooks.json`) and re-run the same idling-teammate
+scenario — if it fires under `settings.json` but not under `hooks.json`
+alone, that confirms masking and the fix is a registration change, not new
+hook logic. Until that spike resolves, `TeammateIdle`-based suppression is
+out of scope; the `SubagentStop`-based receipt detection above is the whole
+of what FEAT-008 should ship.
+
+**Revised implementation slices:**
+1. Receipt schema + rewrite the 7 templates' "Final step" sections (unchanged).
+2. Extend `report-gate.mjs` (or a new sibling `SubagentStop` hook) to detect
+   and record `AgentReceipt` via the lane table, keyed by `agent_id`.
+3. `TeammateIdle` provocation spike (settings.json-masking test) — gates any
+   further idle-suppression work; tracked as its own follow-up, not part of
+   this FEAT's build scope.
+4. *(Deferred, blocked on #3)* `TeammateIdle`-based suppression hook, only
+   if the spike proves the event fires.
