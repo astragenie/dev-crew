@@ -18,12 +18,12 @@ async function tmpRepo(prefix: string): Promise<string> {
 // --- validate-marketplace-sync compareVersions (pure) ---
 
 test("compareVersions: ok when registry runner entry matches plugin.json", () => {
-  const r = compareVersions("0.70.0", { plugins: [{ name: "runner", version: "0.70.0" }] });
+  const r = compareVersions("0.70.0", { plugins: [{ name: "devcrew", version: "0.70.0" }] });
   assert.equal(r.status, "ok");
 });
 
 test("compareVersions: drift when registry entry is behind", () => {
-  const r = compareVersions("0.70.0", { plugins: [{ name: "runner", version: "0.67.0" }] });
+  const r = compareVersions("0.70.0", { plugins: [{ name: "devcrew", version: "0.67.0" }] });
   assert.equal(r.status, "drift");
   assert.equal(r.status === "drift" && r.registryVersion, "0.67.0");
 });
@@ -38,7 +38,7 @@ test("compareVersions: only the runner entry is consulted, not siblings", () => 
   const r = compareVersions("0.70.0", {
     plugins: [
       { name: "crew", version: "0.61.0" },
-      { name: "runner", version: "0.70.0" },
+      { name: "devcrew", version: "0.70.0" },
       { name: "astramem", version: "0.6.1" }
     ]
   });

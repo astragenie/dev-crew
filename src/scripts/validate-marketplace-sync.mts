@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 const REGISTRY_RAW_URL =
   "https://raw.githubusercontent.com/astragenie/astra-marketplace/main/.claude-plugin/marketplace.json";
-const PLUGIN_NAME = "runner";
+const PLUGIN_NAME = "devcrew";
 const FETCH_TIMEOUT_MS = 15_000;
 
 export interface MarketplaceEntry {

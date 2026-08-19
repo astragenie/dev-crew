@@ -9,7 +9,7 @@ import {
 } from "../scripts/validate-marketplace-sync.mjs";
 
 const registryAt = (version: string | null) => ({
-  plugins: version === null ? [] : [{ name: "runner", version }]
+  plugins: version === null ? [] : [{ name: "devcrew", version }]
 });
 
 const drift = (localVersion: string, registryVersion: string | null): SyncResult => ({
