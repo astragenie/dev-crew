@@ -147,7 +147,9 @@ test("installLoop's .claude/loop.json alone satisfies resolve-skills (AC-3)", as
   const loopJsonPath = path.join(repo, ".claude", "loop.json");
   const resolved = resolveSkills({ presetPath: loopJsonPath, variant: "single" });
   assert.ok(resolved, "expected a resolved skills block for variant=single");
-  assert.deepEqual(resolved!.skills, ["typescript-pro", "frontend-advisory"]);
+  // fullstack-advisory replaced the retired frontend-advisory id in the
+  // preset skill arrays (SLICE-35 AC-3 preset-vs-catalog repair).
+  assert.deepEqual(resolved!.skills, ["typescript-pro", "fullstack-advisory"]);
 });
 
 test("installLoop is idempotent: re-running does not duplicate marker block", async () => {
