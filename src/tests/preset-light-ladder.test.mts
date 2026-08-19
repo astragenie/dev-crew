@@ -2,7 +2,7 @@
 // documented "light" reviewer-ladder override (single Reviewer A +
 // loop.validation.satisfiedByReview: true), mirroring this repo's own proven
 // .claude/loop.json setting. This is a batch, mechanical guarantee across all
-// preset templates -- the actual `/runner:install --light` flag wiring that
+// preset templates -- the actual `/devcrew:install --light` flag wiring that
 // consumes this data is SLICE-168's deliverable, not this test's concern.
 import { test } from "bun:test";
 import { strict as assert } from "node:assert";

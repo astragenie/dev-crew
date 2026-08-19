@@ -5,9 +5,9 @@ import type { WaveConfig, WorktreeResult } from "../../scripts/lib/wave/types.mj
 
 const cfg: WaveConfig = {
   size: 3,
-  sliceCommand: "/crew:o",
-  sliceCommandFallback: "/crew:b",
-  fixCommand: "/crew:f",
+  sliceCommand: "/devcrew:o",
+  sliceCommandFallback: "/devcrew:b",
+  fixCommand: "/devcrew:f",
   maxParallel: 3,
   dispatchTimeoutMs: 1,
   postMergeTestCmd: "",
@@ -26,7 +26,7 @@ describe("runWave pre-flight", () => {
         size: 1,
         items: [],
         rejected: [],
-        config: { waveSize: 3, sliceCommand: "/crew:o" }
+        config: { waveSize: 3, sliceCommand: "/devcrew:o" }
       }),
       prepareFn: async () => ({ runId: "r", agentBatch: [] }),
       dispatchFn: async () => [],
@@ -46,7 +46,7 @@ describe("runWave pre-flight", () => {
         size: 0,
         items: [],
         rejected: [],
-        config: { waveSize: 3, sliceCommand: "/crew:o" }
+        config: { waveSize: 3, sliceCommand: "/devcrew:o" }
       }),
       prepareFn: async () => ({ runId: "r", agentBatch: [] }),
       dispatchFn: async () => [],
@@ -70,7 +70,7 @@ describe("runWave pre-flight", () => {
         size: 1,
         items: [],
         rejected: [],
-        config: { waveSize: 3, sliceCommand: "/crew:o" }
+        config: { waveSize: 3, sliceCommand: "/devcrew:o" }
       }),
       prepareFn: async () => ({ runId: "r", agentBatch: [] }),
       dispatchFn: async () => [],
@@ -92,19 +92,19 @@ describe("runWave failure pivots", () => {
           sliceId: "S1",
           featureId: "F1",
           worktreeBranch: "wave/w-mixed/S1",
-          sliceCommand: "/crew:o",
+          sliceCommand: "/devcrew:o",
           dispatchPrompt: "p1"
         },
         {
           sliceId: "S2",
           featureId: "F2",
           worktreeBranch: "wave/w-mixed/S2",
-          sliceCommand: "/crew:o",
+          sliceCommand: "/devcrew:o",
           dispatchPrompt: "p2"
         }
       ],
       rejected: [],
-      config: { waveSize: 3, sliceCommand: "/crew:o" }
+      config: { waveSize: 3, sliceCommand: "/devcrew:o" }
     };
     const wts: WorktreeResult[] = [
       {
@@ -165,12 +165,12 @@ describe("runWave dispatch timeout", () => {
           sliceId: "S1",
           featureId: "F1",
           worktreeBranch: "wave/w-timeout/S1",
-          sliceCommand: "/crew:o",
+          sliceCommand: "/devcrew:o",
           dispatchPrompt: "p1"
         }
       ],
       rejected: [],
-      config: { waveSize: 3, sliceCommand: "/crew:o" }
+      config: { waveSize: 3, sliceCommand: "/devcrew:o" }
     };
     const tinyTimeoutCfg = { ...cfg, dispatchTimeoutMs: 10 };
     const r = await runWave("/tmp/fake", {

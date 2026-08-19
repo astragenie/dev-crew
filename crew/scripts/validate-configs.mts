@@ -40,9 +40,18 @@ import { ModelsConfigSchema, type ModelsConfig } from "./lib/models/schema.mjs";
 import { createTokenResolver } from "./lib/dispatch/resolve-token.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// Monorepo root: agents/, commands/, skills/ live here — docs/routing-table.yaml
+// and models.yaml stay under crew/ (REPO_ROOT). See resolve-token.mts's
+// TokenResolverRoots doc comment for why these two roots diverge.
+const SURFACE_ROOT = path.resolve(REPO_ROOT, "..");
 const DEFAULT_YAML_PATH = path.join(REPO_ROOT, "docs", "routing-table.yaml");
 const DEFAULT_MD_PATH = path.join(REPO_ROOT, "docs", "routing-table.md");
 const DEFAULT_MODELS_YAML_PATH = path.join(REPO_ROOT, "models.yaml");
+
+/** repoRoot omitted -> production split roots; explicit repoRoot -> same root for both (test fixtures). */
+function tokenResolverRoots(repoRoot?: string) {
+  return repoRoot ? repoRoot : { surfaceRoot: SURFACE_ROOT, docsRoot: REPO_ROOT };
+}
 
 const CREW_TOKEN_RE = /\bcrew:([a-z0-9-]+)\b/g;
 
@@ -52,8 +61,8 @@ const CREW_TOKEN_RE = /\bcrew:([a-z0-9-]+)\b/g;
  * via scripts/lib/dispatch/resolve-token.ts. Builds a fresh resolver per call —
  * use checkResolution (one resolver for all rows) on hot paths.
  */
-export async function resolveCrewToken(name: string, repoRoot = REPO_ROOT): Promise<boolean> {
-  const resolver = await createTokenResolver(repoRoot);
+export async function resolveCrewToken(name: string, repoRoot?: string): Promise<boolean> {
+  const resolver = await createTokenResolver(tokenResolverRoots(repoRoot));
   return resolver.resolves(name);
 }
 
@@ -109,9 +118,9 @@ export async function checkDrift(rows: RoutingRow[], mdPath = DEFAULT_MD_PATH): 
   return [];
 }
 
-export async function checkResolution(rows: RoutingRow[], repoRoot = REPO_ROOT): Promise<string[]> {
+export async function checkResolution(rows: RoutingRow[], repoRoot?: string): Promise<string[]> {
   const errors: string[] = [];
-  const resolver = await createTokenResolver(repoRoot);
+  const resolver = await createTokenResolver(tokenResolverRoots(repoRoot));
   for (const row of rows) {
     for (const token of extractCrewTokens(row)) {
       if (!resolver.resolves(token)) {
@@ -136,7 +145,7 @@ export async function checkResolution(rows: RoutingRow[], repoRoot = REPO_ROOT):
  */
 export async function checkOrchestrateConsistency(
   rows: RoutingRow[],
-  repoRoot = REPO_ROOT
+  repoRoot = SURFACE_ROOT
 ): Promise<string[]> {
   const matrixTokens = new Set<string>();
   for (const row of rows.filter((r) => r.section === "builder-matrix")) {

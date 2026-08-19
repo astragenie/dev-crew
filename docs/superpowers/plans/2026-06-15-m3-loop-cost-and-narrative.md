@@ -70,7 +70,7 @@ describe("agent timing fields", () => {
       featureId: null,
       timestamp: "2026-06-15T12:00:00.000Z",
       agent: "crew:builder",
-      parentCommand: "/crew:build",
+      parentCommand: "/devcrew:build",
       dispatchedAt: "2026-06-15T12:00:00.000Z"
     } as never);
     const file = eventsPath(repo, "SLICE-1");
@@ -168,8 +168,8 @@ describe("auto-dispatch fanout", () => {
     try {
       appendAuditLog(repo, {
         timestamp: "2026-06-15T12:00:00.000Z",
-        agent: "runner:architect",
-        parentCommand: "/runner:backlog-enrich",
+        agent: "devcrew:architect",
+        parentCommand: "/devcrew:backlog-enrich",
         ok: true,
         costUsd: 0.42,
         durationMs: 1234,
@@ -183,7 +183,7 @@ describe("auto-dispatch fanout", () => {
     expect(calls.length).toBeGreaterThanOrEqual(1);
     const body = JSON.parse(String(calls[0].init?.body));
     expect(body.kind).toBe("agent.dispatch");
-    expect(body.payload.agent).toBe("runner:architect");
+    expect(body.payload.agent).toBe("devcrew:architect");
     expect(body.payload.costUsd).toBe(0.42);
   });
 });

@@ -21,7 +21,7 @@
 // ownership" note). `writeArtifactLock` is called once a test-plan
 // artifact's path becomes known
 // (`qa-gate-preflight.mts::emitQaGateArtifactWritten`). `removeArtifactLock`
-// is called at `runner:close` (`close-slice.mts`) and at dispatch-prune's
+// is called at `devcrew:close` (`close-slice.mts`) and at dispatch-prune's
 // orphan reap path — both idempotent no-ops when no lock file exists. The
 // dev-team hook's own 48h default TTL (`isLockExpired`, mirrored here as
 // `LOCK_TTL_MS`) is the orphan backstop when a removal call is missed.
@@ -110,7 +110,7 @@ export async function writeArtifactLock(
  * Remove the artifact lock for `sliceId`, if present. Idempotent — a
  * missing lock file (never created, already removed, or reaped past its
  * TTL by the consumer hook) is a silent no-op, not an error. Called from
- * `runner:close` (`close-slice.mts`) and `dispatch-prune.mts`'s orphan
+ * `devcrew:close` (`close-slice.mts`) and `dispatch-prune.mts`'s orphan
  * reap path.
  *
  * Fail-soft: any non-"already gone" error is logged via `console.warn` and

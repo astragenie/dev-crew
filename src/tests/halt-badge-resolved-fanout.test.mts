@@ -138,7 +138,7 @@ describe("fanoutHaltBadgesFromSnapshot — halt_badge.resolved transitions", () 
       path.join(auditDir, "auto-dispatch.jsonl"),
       `${[
         JSON.stringify({ timestamp: "2026-06-15T00:00:00.000Z", agent: "loop:architect" }),
-        JSON.stringify({ timestamp: "2026-06-15T00:05:00.000Z", agent: "crew:builder" })
+        JSON.stringify({ timestamp: "2026-06-15T00:05:00.000Z", agent: "devcrew:builder" })
       ].join("\n")}\n`,
       "utf8"
     );

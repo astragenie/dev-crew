@@ -55,7 +55,7 @@ Three consequences for FEAT-259's design:
    surface it. Worth revisiting SLICE-1's scope against this.
 
 2. **`agent_type` carries the dispatch NAME, not the role.** It read
-   `arch-classify-281-283`, not `runner:architect`. SLICE-1's "was this
+   `arch-classify-281-283`, not `devcrew:architect`. SLICE-1's "was this
    agent dispatched with a report-back contract?" test cannot key off
    `agent_type` as the FEAT's text implies — the value is caller-chosen.
 

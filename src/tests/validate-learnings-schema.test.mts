@@ -144,7 +144,7 @@ test("validateLearningsSchema: the 5 real legacy rows all pass unchanged", async
       id: 5,
       timestamp: "2026-07-02T13:45:19.099Z",
       key: "aiplugin-dev-pause-rate",
-      insight: "crew:aiplugin-dev pauses mid-run at ~80% rate.",
+      insight: "devcrew:aiplugin-dev pauses mid-run at ~80% rate.",
       confidence: 0.9,
       source: "wave-session-2026-07-02",
       tags: ["specialist-pause", "aiplugin-dev", "dispatch-reliability"]

@@ -68,7 +68,7 @@ Library has zero plugin-specific code — pure git shell + Agent invocation. Dis
 export type DispatchPlan = {
   id: string;               // child id, e.g. "FEAT-134" or "child-1"
   priority: number;         // merge order (0 first)
-  agentType: string;        // e.g. "crew:fullstack-dev", "crew:inspector"
+  agentType: string;        // e.g. "devcrew:fullstack-dev", "devcrew:inspector"
   prompt: string;           // self-contained prompt for child
   branch?: string;          // override; default = `<parentBranch>-${id}`
 };
@@ -300,9 +300,9 @@ Agent is thin — all logic in library + CLI. Agent's job: prompt interpretation
 
 | Use case | Caller | Children |
 |---|---|---|
-| Intra-slice fan-out | builder | `crew:frontend-dev`, `crew:backend-dev` |
+| Intra-slice fan-out | builder | `devcrew:frontend-dev`, `devcrew:backend-dev` |
 | Recursive FEAT decomp | parallel-runner-style | `loop:hierarchical-dispatcher` (recursive) |
-| Parallel review | reviewer | `crew:inspector` × N (per dimension) |
+| Parallel review | reviewer | `devcrew:inspector` × N (per dimension) |
 
 SLICE-1 ships a test that exercises one level of recursion (parent → child → grandchild).
 

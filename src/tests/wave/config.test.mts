@@ -9,7 +9,7 @@ describe("resolveWaveConfig", () => {
   test("returns defaults when block absent", () => {
     const c = resolveWaveConfig({});
     expect(c.size).toBe(3);
-    expect(c.sliceCommand).toBe("/crew:orchestrate-slice");
+    expect(c.sliceCommand).toBe("/devcrew:orchestrate-slice");
     expect(c.maxParallel).toBe(3);
     expect(c.maxWaveAttempts).toBe(2);
     expect(c.subagentType).toBe("general-purpose");
@@ -17,10 +17,10 @@ describe("resolveWaveConfig", () => {
 
   test("user overrides applied", () => {
     const c = resolveWaveConfig({
-      wave: { size: 5, sliceCommand: "/crew:build", maxWaveAttempts: 3 }
+      wave: { size: 5, sliceCommand: "/devcrew:build", maxWaveAttempts: 3 }
     });
     expect(c.size).toBe(5);
-    expect(c.sliceCommand).toBe("/crew:build");
+    expect(c.sliceCommand).toBe("/devcrew:build");
     expect(c.maxWaveAttempts).toBe(3);
   });
 });
@@ -29,9 +29,9 @@ describe("validateWaveConfig", () => {
   test("PASS on valid config", () => {
     const r = validateWaveConfig({
       size: 3,
-      sliceCommand: "/crew:orchestrate-slice",
-      sliceCommandFallback: "/crew:build",
-      fixCommand: "/crew:fix",
+      sliceCommand: "/devcrew:orchestrate-slice",
+      sliceCommandFallback: "/devcrew:build",
+      fixCommand: "/devcrew:fix",
       maxParallel: 3,
       dispatchTimeoutMs: 1800000,
       postMergeTestCmd: "bun test",

@@ -103,7 +103,7 @@ export async function installLoop(
   if (!options.preset && !hasExistingConfig) {
     throw new Error(
       "No --preset given and no existing .claude/loop.json found. " +
-        "Run `/runner:install --preset <name>` to scaffold one (see `/runner:list-presets` for options)."
+        "Run `/devcrew:install --preset <name>` to scaffold one (see `/devcrew:list-presets` for options)."
     );
   }
 

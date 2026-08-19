@@ -816,7 +816,7 @@ async function writeDocWriterSkipAuditLog(repoPath: string): Promise<void> {
     const { appendAuditLog } = await import("../auto-dispatch.mjs");
     await appendAuditLog(repoPath, {
       timestamp: new Date().toISOString(),
-      agent: "crew:document-writer",
+      agent: "devcrew:document-writer",
       parentCommand: "slice-complete",
       ok: true,
       skipped: true,

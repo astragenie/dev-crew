@@ -17,7 +17,7 @@ async function readPm(): Promise<{ frontmatter: Record<string, any>; body: strin
 // Denylist migration: cherry-picking Skill/ToolSearch/MCP tool names into an
 // explicit `tools:` allowlist does not work — the harness silently drops
 // those special tools on dispatch. The working pattern (proven by
-// crew:reviewer, then agents/architect.md) is a denylist: no `tools:`
+// devcrew:reviewer, then agents/architect.md) is a denylist: no `tools:`
 // allowlist at all, plus `disallowedTools:` for what the agent must never
 // do. Agent + ToolSearch (and Skill + MCP) then inherit automatically.
 

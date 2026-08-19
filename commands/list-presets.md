@@ -14,7 +14,7 @@ Returns an array of `{ name, description }` for each `scripts/presets/*.json`
 shipped by the plugin.
 
 **These are install-time templates only** (FEAT-218 Phase 2 / DEC-069):
-`/runner:install --preset <name>` inlines the chosen template's full content
+`/devcrew:install --preset <name>` inlines the chosen template's full content
 into `.claude/loop.json` once, at scaffold time. After install, nothing at
 runtime reads `scripts/presets/*.json` again — `.claude/loop.json` is the
 sole source of truth for `resolveConfig`, phase-gate, and builder skill

@@ -1,14 +1,25 @@
 ---
 name: security-advisory
+prompt_id: security-advisory
+version: 1.0.0
 tier: domain
 description: Comprehensive security engineering skill for application security, penetration testing, security architecture, and compliance auditing. Includes security assessment tools, threat modeling, crypto implementation, and security automation. Use when designing security architecture, conducting penetration tests, implementing cryptography, or performing security audits.
 source: aitmpl/development/senior-security
 source_version: 2026-06-04
 last_reviewed: 2026-06-04
 owner: hero-crew
+triggers: auth, crypto, secrets, input validation, OWASP, threat model, SQL injection, XSS
 ---
 
 # Security Advisory
+
+## When to use
+
+- Designing or reviewing authentication and authorization flows
+- Implementing cryptography, secrets management, or token handling
+- Auditing input handling for injection or XSS vulnerabilities
+- Conducting a threat model or OWASP-aligned security review
+- Evaluating compliance requirements (GDPR, SOC 2, PCI)
 
 Complete toolkit for senior security engineering with modern tools and best practices.
 
@@ -56,7 +67,7 @@ Advanced tooling for penetration testing. Features: expert-level automation, cus
 
 ## Development Workflow
 
-1. **Setup:** `npm install` or `pip install -r requirements.txt`; copy `.env.example .env`
+1. **Setup:** `bun install` or `pip install -r requirements.txt`; copy `.env.example .env`
 2. **Run analysis:** `python scripts/security_auditor.py .`
 3. **Apply practices** from `references/security_architecture_patterns.md`, `references/penetration_testing_guide.md`, `references/cryptography_implementation.md`
 
@@ -90,10 +101,10 @@ Advanced tooling for penetration testing. Features: expert-level automation, cus
 
 ```bash
 # Development
-npm run dev
-npm run build
-npm run test
-npm run lint
+bun run dev
+bun run build
+bun test --parallel
+bun run lint
 
 # Analysis
 python scripts/security_auditor.py .
@@ -124,3 +135,10 @@ Check the comprehensive troubleshooting section in `references/cryptography_impl
 - Workflow Guide: `references/penetration_testing_guide.md`
 - Technical Guide: `references/cryptography_implementation.md`
 - Tool Scripts: `scripts/` directory
+
+## Done / Acceptance
+
+- Identified vulnerabilities are categorized by severity and each has a remediation action
+- Threat model covers entry points, trust boundaries, and data flows
+- Authentication and authorization paths are verified against the threat model
+- All high/critical findings are resolved or carry an explicit accepted-risk note

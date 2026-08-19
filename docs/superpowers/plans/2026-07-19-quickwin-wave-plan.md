@@ -17,7 +17,7 @@ via isolated worktrees, zero same-file overlap inside a wave.
 
 ## Wave 0 — prep (main checkout, sequential, ~10 min, no worktrees)
 
-1. `/runner:intake` over pending — scores FEAT-236/237/249/262 into `triaged/`
+1. `/devcrew:intake` over pending — scores FEAT-236/237/249/262 into `triaged/`
    (all sit in `pending/` today; loop cannot pick them). PM inline spec
    (FEAT-277) stamps `touches_files` — required by the wave planner and CI
    gate #11.
@@ -26,7 +26,7 @@ via isolated worktrees, zero same-file overlap inside a wave.
 3. Regen `loop-snapshot` + commit wave-0 prep on a fresh branch
    (`chore/wave0-intake`). New branch+PR per batch — auto-merge-window-trap.
 4. Check marathon checkpoint pressure (`snapshot.marathonCheckpoint`) — a hard
-   stop mid-wave wastes the whole dispatch; run `/runner:retrospective` first
+   stop mid-wave wastes the whole dispatch; run `/devcrew:retrospective` first
    if `level` is near hard.
 
 ## Wave 1 — 4 parallel lanes (worktrees)
@@ -39,7 +39,7 @@ via isolated worktrees, zero same-file overlap inside a wave.
 | D | dev-team preset-path repoint | `dev-team` wt | `commands/orchestrate-slice.md` Step 2.5 |
 
 Zero file overlap. Dispatch all four in ONE parallel Agent block
-(`/crew:parallel` for A–C; lane D is a separate `crew:build` against dev-team).
+(`/devcrew:parallel` for A–C; lane D is a separate `devcrew:build` against dev-team).
 Merge order after all PASS: A → B → C (priority order), D independent PR on
 dev-team.
 
@@ -53,7 +53,7 @@ dev-team.
 
 ## Wave 3 — serial close-out (main checkout)
 
-1. `/runner:close` per finished slice (PR merge alone strands FEATs in
+1. `/devcrew:close` per finished slice (PR merge alone strands FEATs in
    pending — reconcile via ceremony, known trap).
 2. Regen snapshot + `generate-metrics-band.mts --write` (gates #13/#18).
 3. CHANGELOG + single release PR for the batch; version bump if warranted.

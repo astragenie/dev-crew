@@ -1224,14 +1224,14 @@ Expected: split presets emit JSON on `fe` and `be`, exit 2 on `single`. No-split
 
 - [ ] **Step F.5: Confirm legacy fallback still works**
 
-In a test repo (or temporarily): rename `.claude/loop.json` and one preset to make the CLI fall through to exit 2. Confirm that `crew:fullstack-dev` still works using the baked-in routing tables. This proves Phase 1 is non-breaking for repos that haven't migrated their preset yet.
+In a test repo (or temporarily): rename `.claude/loop.json` and one preset to make the CLI fall through to exit 2. Confirm that `devcrew:fullstack-dev` still works using the baked-in routing tables. This proves Phase 1 is non-breaking for repos that haven't migrated their preset yet.
 
 ---
 
 ## What this plan does NOT include
 
-- Phase 2 (`/crew:orchestrate-slice` automatic invocation of `resolve-skills`) — blocked on upstream `hero-crew` change documented in `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`. Track separately.
-- Phase 3 (deleting baked-in routing tables from `crew:fullstack-dev*` agents) — requires Phase 2 to be stable for at least one release cycle.
+- Phase 2 (`/devcrew:orchestrate-slice` automatic invocation of `resolve-skills`) — blocked on upstream `hero-crew` change documented in `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`. Track separately.
+- Phase 3 (deleting baked-in routing tables from `devcrew:fullstack-dev*` agents) — requires Phase 2 to be stable for at least one release cycle.
 - Migration of historical FEAT frontmatter to remove stale `stack:*` / `surface` fields. They are harmless once readers stop consuming them.
 - Skill ID lint registry — current decision is opaque strings + `--strict` opt-in escalation. Revisit if drift appears.
 

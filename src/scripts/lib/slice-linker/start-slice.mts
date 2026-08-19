@@ -253,7 +253,7 @@ async function runSliceStartGates(
 // When { dispatch: true } (default), the returned object includes a
 // `dispatchInstruction` string — a literal prompt the loop agent
 // should hand to a subagent so the actual implementation runs through
-// `/crew:build` (per Dispatch Discipline HARD RULE in rules.md). Pass
+// `/devcrew:build` (per Dispatch Discipline HARD RULE in rules.md). Pass
 // dispatch: false for manual / debugging invocations where the agent
 // is doing the slice work in-conversation.
 // AC-2 (SLICE-54 FEAT-056): wrap writeSessionIdToWorkflowState in a fail-open
@@ -484,7 +484,7 @@ export async function startSlice(
 
   // FEAT-277 AC-7: when given a FEAT id, create the slice file first via
   // sliceFromFeature, then start the resulting slice. This merges the
-  // former runner:slice-from-feature + runner:slice-start into one call.
+  // former devcrew:slice-from-feature + devcrew:slice-start into one call.
   let sliceId = sliceIdOrFeatId;
   if (/^FEAT-\d+$/i.test(sliceIdOrFeatId)) {
     const fromFeatResult = await sliceFromFeature(repoPath, sliceIdOrFeatId, { config });
@@ -561,7 +561,7 @@ export async function startSlice(
   const orchestratorMode = resolveOrchestratorModeConfig(resolved);
 
   // SLICE-94 / FEAT-186 + FEAT-277: classify slice shape + write marker + build inline-path hint.
-  // touchesFiles is also returned so runner:start can surface it for wave planner conflict detection.
+  // touchesFiles is also returned so devcrew:start can surface it for wave planner conflict detection.
   const { inlinePathHint, touchesFiles } = await applyShapeClassification(
     repoPath,
     sliceId,
@@ -758,10 +758,10 @@ function computeNextAction(
     return `Review plan at ${planPreflight?.planPath ?? "plan artifact"}, then approve to dispatch the builder for ${sliceId}.`;
   }
   if (dispatch && orchestratorMode === "orchestrate-slice") {
-    return `Run /crew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
+    return `Run /devcrew:orchestrate-slice --id ${sliceId}; close with /loop:slice complete --id ${sliceId}.`;
   }
   if (dispatch) {
-    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch crew:reviewer (and crew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
+    return `Dispatch the tag-routed crew builder (slice-build mode) for ${sliceId}; then dispatch devcrew:reviewer (and devcrew:verifier if behavior changed); close with /loop:slice complete --id ${sliceId}.`;
   }
   return `Begin acceptance-criteria work for ${sliceId}. Close with /loop:slice complete --id ${sliceId}.`;
 }
@@ -1141,12 +1141,12 @@ async function runRecallHook(
     // Agent-scoped recall is OPT-IN (memory.recall.scopeByAgent) — astramem's
     // agent filter is a HARD filter, so scoping before enough agent-tagged
     // history exists starves recall (#309). Slice-start recall serves the
-    // builder, so it scopes to memory.recall.agent (default crew:builder)
+    // builder, so it scopes to memory.recall.agent (default devcrew:builder)
     // when enabled.
     const agent: string | undefined =
       config?.memory?.recall?.scopeByAgent === true
         ? (typeof config?.memory?.recall?.agent === "string" && config.memory.recall.agent) ||
-          "crew:builder"
+          "devcrew:builder"
         : undefined;
 
     const { recallSilent } = await import("@astragenie/astramem-client");

@@ -12,8 +12,8 @@ The user operates five repos: two Claude Code plugins (TypeScript / ESM Node) an
 Today's skill activation flow does not exploit that:
 
 1. `/loop:backlog-enrich` dispatches the `architect` agent against every triaged FEAT to classify it into `tags` / `surface` / `stack:*` frontmatter.
-2. `crew:frontend-dev` and `crew:backend-dev` carry baked-in routing tables that map `stack:csharp → skills/domain/csharp-pro/` and similar.
-3. `/crew:orchestrate-slice` does not yet read `surface` / `stack` (upstream gap — see `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`). So today every dispatch falls back to the generic `crew:fullstack-dev` with no language-specific skill loadout.
+2. `devcrew:frontend-dev` and `devcrew:backend-dev` carry baked-in routing tables that map `stack:csharp → skills/domain/csharp-pro/` and similar.
+3. `/devcrew:orchestrate-slice` does not yet read `surface` / `stack` (upstream gap — see `docs/upstream-requests/2026-06-07-hero-crew-orchestrate-slice-surface-stack-routing.md`). So today every dispatch falls back to the generic `devcrew:fullstack-dev` with no language-specific skill loadout.
 
 Costs of the per-FEAT classification model:
 
@@ -44,7 +44,7 @@ Costs of the per-FEAT classification model:
 | Q1 — routing axes | Preset axes: `projectType`, `frontend`, `backend` (with storage), `contract`, `deployment`. No flat `languages` array. |
 | Q2 — activation mechanism | Orchestrator (Phase 2) / operator (Phase 1) reads preset, injects a `## Required skills (resolved)` block into the builder dispatch prompt. |
 | Q3 — mapping location | Each `scripts/presets/*.json` declares its own `skills` (or `fe.skills` + `be.skills`) array explicitly. No central rules table. |
-| Q4 — split shape | Preset carries `split: boolean`. `true` → `fe.skills` + `be.skills` consumed by `crew:frontend-dev` and `crew:backend-dev`. `false` → top-level `skills` consumed by generic `crew:fullstack-dev`. |
+| Q4 — split shape | Preset carries `split: boolean`. `true` → `fe.skills` + `be.skills` consumed by `devcrew:frontend-dev` and `devcrew:backend-dev`. `false` → top-level `skills` consumed by generic `devcrew:fullstack-dev`. |
 | Q5 — classifier fate | Drop `stack:*` and `surface` emission from `/loop:backlog-enrich`. Preset is sole source. Architect dispatch on enrichment may be skipped entirely if no other fields remain (revisit during implementation). |
 
 ## Architecture
@@ -60,9 +60,9 @@ scripts/loop.mjs resolve-skills --variant <fe|be|single>
         ↓ JSON output (skills[] + rendered block)
 operator pastes block into builder dispatch          (Phase 1, today)
         ↓ OR
-/crew:orchestrate-slice invokes the same CLI         (Phase 2, post-upstream)
+/devcrew:orchestrate-slice invokes the same CLI         (Phase 2, post-upstream)
         ↓
-crew:frontend-dev / crew:backend-dev / crew:fullstack-dev
+devcrew:frontend-dev / devcrew:backend-dev / devcrew:fullstack-dev
         ↓ Step 0
 Skill tool: invoke each skill id in resolved skills[]
         ↓
@@ -187,7 +187,7 @@ The three-code contract gives orchestrators and operators clean shell branching.
 
 ### Builder agent edits (Phase 2 — upstream)
 
-A new prologue is added to `crew:fullstack-dev`, `crew:frontend-dev`, `crew:backend-dev`:
+A new prologue is added to `devcrew:fullstack-dev`, `devcrew:frontend-dev`, `devcrew:backend-dev`:
 
 > **Step 0 — Resolve skills.** If the dispatch prompt contains a section starting with `## Required skills (resolved)`, invoke each listed skill via the `Skill` tool before any other work. Otherwise, fall back to the routing tables in the agent prompt body.
 
@@ -220,7 +220,7 @@ Migration cleanup of historical FEAT frontmatter is out of scope for this design
 ### Walking a SaaS slice (preset `dotnet-react`, `split: true`)
 
 ```
-1. Operator: /crew:orchestrate-slice SLICE-NNN
+1. Operator: /devcrew:orchestrate-slice SLICE-NNN
 2. Orchestrator picks FEAT, reads slice file.
 3. Orchestrator determines FE + BE dispatch needed.
 4a. Orchestrator runs:
@@ -237,19 +237,19 @@ Migration cleanup of historical FEAT frontmatter is out of scope for this design
       }
 4b. Same for --variant be.
 5. Orchestrator embeds each block into the dispatch prompt for the matching builder.
-6. Agent(subagent_type: crew:frontend-dev, prompt: <objective> + <scope> + <block> + <ACs>)
-   Agent(subagent_type: crew:backend-dev, prompt: <objective> + <scope> + <block> + <ACs>)
+6. Agent(subagent_type: devcrew:frontend-dev, prompt: <objective> + <scope> + <block> + <ACs>)
+   Agent(subagent_type: devcrew:backend-dev, prompt: <objective> + <scope> + <block> + <ACs>)
 7. Builder reads block as Step 0, invokes each skill via Skill tool, then implements.
 ```
 
 ### Walking a plugin slice (preset `typescript-plugin-dev`, `split: false`)
 
 ```
-1. Operator: /crew:orchestrate-slice SLICE-NNN
+1. Operator: /devcrew:orchestrate-slice SLICE-NNN
 2. Orchestrator runs:
    resolve-skills --variant single --preset scripts/presets/typescript-plugin-dev.json
    → { variant: "single", skills: ["typescript-pro", "frontend-advisory"], source: "preset.skills", ... }
-3. Orchestrator dispatches a single crew:fullstack-dev with the block embedded.
+3. Orchestrator dispatches a single devcrew:fullstack-dev with the block embedded.
 4. Builder Step 0 → Skill invocations → implementation.
 ```
 
@@ -374,7 +374,7 @@ The resolver is pure. The CLI is a thin wrapper. No network, no clock, no FS wri
 | Phase | Scope | Blocked on |
 |---|---|---|
 | 1 | Preset schema extension, resolver module, CLI subcommand, manifest validator update, classifier removal, optional `/loop:dispatch-builder` convenience. | Nothing — ships loop-only. |
-| 2 | `/crew:orchestrate-slice` reads the same CLI; operator hop disappears; orchestrator emits resolved blocks automatically. | `hero-crew` upstream PR per `docs/upstream-requests/2026-06-07-...`. |
+| 2 | `/devcrew:orchestrate-slice` reads the same CLI; operator hop disappears; orchestrator emits resolved blocks automatically. | `hero-crew` upstream PR per `docs/upstream-requests/2026-06-07-...`. |
 | 3 | Delete baked-in routing tables from builder agents; preset becomes the sole source of skill loadout. | Phase 2 stable in production for at least one release cycle. |
 
 ## Open questions

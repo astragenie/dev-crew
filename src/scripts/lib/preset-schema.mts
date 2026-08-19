@@ -51,7 +51,7 @@ export interface PresetV1 {
     serialTimingThresholdMs?: number;
   };
   // FEAT-271 / SLICE-167: opt-in trimmed-ladder override, applied by
-  // `/runner:install --light` (SLICE-168) on top of the base preset above.
+  // `/devcrew:install --light` (SLICE-168) on top of the base preset above.
   // Install-time template data only -- resolveConfig never reads this at
   // runtime (DEC-069); the installer deep-merges it into the written
   // .claude/loop.json when the light flag is passed, and otherwise ignores

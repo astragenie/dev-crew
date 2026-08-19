@@ -1,8 +1,8 @@
-// FEAT-188 / S1b — AC-1: runner:close lessons capture fires with zero
+// FEAT-188 / S1b — AC-1: devcrew:close lessons capture fires with zero
 // operator action on the single-shot ceremony (autonomous_safe: true +
 // --grade-yaml). This exercises the FULL closeSlice ceremony (not writeGrade
 // directly, which grade-writer-learnings.test.mts already covers) to prove
-// the wiring from `runner:close` all the way to learnings.jsonl is intact.
+// the wiring from `devcrew:close` all the way to learnings.jsonl is intact.
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -123,7 +123,7 @@ test("closeSlice single-shot ceremony auto-appends learnings.jsonl with zero ext
   const yamlPath = path.join(repo, "grade.yaml");
   await fs.writeFile(yamlPath, gradeYamlBody(sliceId, featureId, ["Lesson from close ceremony"]));
 
-  // The only call the operator/agent makes is runner:close itself.
+  // The only call the operator/agent makes is devcrew:close itself.
   const out = await closeSlice(repo, sliceId, { gradeYamlPath: yamlPath });
   assert.equal(out.scaffoldOnly, false);
 

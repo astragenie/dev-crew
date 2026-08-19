@@ -22,5 +22,5 @@ See [spec](../../superpowers/specs/2026-05-28-loop-crew-competitor-gap-audit-des
 
 ## Methodology
 
-See spec §Method. Each brief is produced by a `crew:researcher`
+See spec §Method. Each brief is produced by a `devcrew:researcher`
 subagent following the prompt at `scripts/competitor-audit/researcher-prompt.md`.

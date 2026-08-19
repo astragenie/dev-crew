@@ -359,17 +359,17 @@ function makePivot(overrides: Partial<FailurePivot> = {}): FailurePivot {
     failureArtifactPath: ".claude/artifacts/crew/handoffs/SLICE-9-fail.md",
     worktreePath: "/tmp/wt/SLICE-9",
     retryCount: 1,
-    fixCommand: "/crew:fix",
-    fixDispatchPrompt: "/crew:fix --slice SLICE-9",
+    fixCommand: "/devcrew:fix",
+    fixDispatchPrompt: "/devcrew:fix --slice SLICE-9",
     ...overrides
   };
 }
 
 const CFG: WaveConfig = {
   size: 3,
-  sliceCommand: "/crew:orchestrate-slice",
-  sliceCommandFallback: "/crew:build",
-  fixCommand: "/crew:fix",
+  sliceCommand: "/devcrew:orchestrate-slice",
+  sliceCommandFallback: "/devcrew:build",
+  fixCommand: "/devcrew:fix",
   maxParallel: 3,
   dispatchTimeoutMs: 30 * 60 * 1000,
   postMergeTestCmd: "bun test",
@@ -414,7 +414,7 @@ describe("failure-pivot regex-to-mergeFrontmatter port regression (AC-4)", () =>
       wave_id: "wave-A",
       kind: "worktree_fail",
       artifact: ".claude/artifacts/crew/handoffs/SLICE-9-fail.md",
-      pivot_command: "/crew:fix"
+      pivot_command: "/devcrew:fix"
     });
     // Reformatted to inline-bracket bytes, but parses back to the identical array.
     expect(frontmatter.tags).toEqual(["storage", "refactor"]);

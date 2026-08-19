@@ -180,7 +180,7 @@ slice workflow, agent runs, wave outcomes, backlog flow AND
 | Webhook 401/403 | Disable webhook for session. Surface `webhook_auth_failed` halt-badge on next snapshot. |
 | Webhook 429 | In-process backoff (1s/2s/4s, cap 3). Give up to filesystem-resync. |
 | Loop cannot reach runner | No-op. Dual-write to disk continues. |
-| Malformed JSONL line | Skip line, log `jsonl_parse_error`. Operator runs `/runner:validate-jsonl`. |
+| Malformed JSONL line | Skip line, log `jsonl_parse_error`. Operator runs `/devcrew:validate-jsonl`. |
 
 ### Runner
 

@@ -1,5 +1,5 @@
 ---
-name: runner:loop-discipline
+name: devcrew:loop-discipline
 description: Use at the start of substantive engineering work in any repo that has the loop plugin installed. Loads the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) and reminds the agent not to pause for user confirmation mid-slice. Trigger automatically when starting a session in a repo whose CLAUDE.md contains `<!-- runner:start -->`.
 ---
 
@@ -23,9 +23,9 @@ block. Read it now. The three HARD RULE statements there govern this session.
 2. **Cross-Slice Continuation** — When a slice closes, auto-pick the next
    PENDING slice from `approved-slices.md`. If the list is empty but
    `product-backlog.md` has unmet requirements, derive a new slice
-   (`/runner:derive-slice`) and proceed.
+   (`/devcrew:derive-slice`) and proceed.
 3. **Phase Completion Gate** — At phase boundaries, invoke
-   `/runner:phase-gate`. Do NOT hand-author the validation
+   `/devcrew:phase-gate`. Do NOT hand-author the validation
    artifact — let the plugin own it.
 </HARD-GATE>
 
@@ -84,5 +84,5 @@ Every meaningful action emits a Crew artifact:
 
 - run brief at the start of a substantial slice → `crew write-run-brief`
 - review pass → `crew write-review-result`
-- validation → `crew write-validation-result` (or `/runner:phase-gate`)
+- validation → `crew write-validation-result` (or `/devcrew:phase-gate`)
 - final synthesis when the slice closes → `crew write-final-synthesis`

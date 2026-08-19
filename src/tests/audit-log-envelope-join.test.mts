@@ -42,7 +42,7 @@ describe("AC-7a: sliceId round-trip in audit entry", () => {
     const repo = await tmpDir("ae-join-a-");
     try {
       await dispatchAgent({
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         prompt: "build",
         parentCommand: "slice start",
         repoRoot: repo,
@@ -66,7 +66,7 @@ describe("AC-7a: sliceId round-trip in audit entry", () => {
     const repo = await tmpDir("ae-join-anull-");
     try {
       await dispatchAgent({
-        agent: "crew:reviewer",
+        agent: "devcrew:reviewer",
         prompt: "review",
         parentCommand: "slice review",
         repoRoot: repo,
@@ -92,13 +92,13 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "auto",
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: "2026-07-01T10:00:05.000Z" }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:00:05.000Z" }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result.length, 1);
@@ -110,20 +110,20 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T09:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "manual",
         iterationIndex: 0
       },
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "auto",
         iterationIndex: 1
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     // Should pick the 10:00 entry (latest before 10:05)
@@ -135,13 +135,13 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T12:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "auto",
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: "2026-07-01T10:00:00.000Z" }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:00:00.000Z" }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);
@@ -152,13 +152,13 @@ describe("AC-7b: joinAuditToPairs nearest-preceding match", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "wave",
         iterationIndex: 2
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: null }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: null }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);
@@ -175,7 +175,7 @@ describe("AC-7c: joinAuditToPairs LIFO consumption", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "auto",
         iterationIndex: 0
@@ -183,8 +183,8 @@ describe("AC-7c: joinAuditToPairs LIFO consumption", () => {
     ];
     // Two pairs competing for the same audit entry
     const pairs: PairInput[] = [
-      { agentType: "crew:builder", startTs: "2026-07-01T10:05:00.000Z" },
-      { agentType: "crew:builder", startTs: "2026-07-01T10:10:00.000Z" }
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" },
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:10:00.000Z" }
     ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
@@ -201,22 +201,22 @@ describe("AC-7c: joinAuditToPairs LIFO consumption", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "auto",
         iterationIndex: 0
       },
       {
         timestamp: "2026-07-01T10:06:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-137",
         dispatchKind: "auto",
         iterationIndex: 1
       }
     ];
     const pairs: PairInput[] = [
-      { agentType: "crew:builder", startTs: "2026-07-01T10:05:00.000Z" },
-      { agentType: "crew:builder", startTs: "2026-07-01T10:10:00.000Z" }
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" },
+      { agentType: "devcrew:builder", startTs: "2026-07-01T10:10:00.000Z" }
     ];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
@@ -235,13 +235,13 @@ describe("AC-7d: back-compat with v1 audit entries (no sliceId)", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         // sliceId intentionally absent
         dispatchKind: "auto",
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     // No match because entry.sliceId !== "SLICE-137" (undefined !== "SLICE-137")
@@ -253,13 +253,13 @@ describe("AC-7d: back-compat with v1 audit entries (no sliceId)", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: null,
         dispatchKind: "manual",
         iterationIndex: 0
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);
@@ -269,13 +269,13 @@ describe("AC-7d: back-compat with v1 audit entries (no sliceId)", () => {
     const entries: AuditEntryForJoin[] = [
       {
         timestamp: "2026-07-01T10:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         sliceId: "SLICE-999",
         dispatchKind: "wave",
         iterationIndex: 5
       }
     ];
-    const pairs: PairInput[] = [{ agentType: "crew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
+    const pairs: PairInput[] = [{ agentType: "devcrew:builder", startTs: "2026-07-01T10:05:00.000Z" }];
 
     const result = joinAuditToPairs(pairs, entries, "SLICE-137");
     assert.equal(result[0]!.dispatchKind, null);
@@ -296,7 +296,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
       await fs.mkdir(path.dirname(logPath), { recursive: true });
       await fs.writeFile(logPath, "", "utf8");
 
-      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "crew:builder");
+      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "devcrew:builder");
       assert.equal(idx, 0);
     } finally {
       await fs.rm(repo, { recursive: true, force: true });
@@ -307,7 +307,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
     const idx = await computeNextIterationIndex(
       "/tmp/nonexistent-dir-99999/auto-dispatch.jsonl",
       "SLICE-137",
-      "crew:builder"
+      "devcrew:builder"
     );
     assert.equal(idx, 0);
   });
@@ -316,7 +316,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
     const repo = await tmpDir("ae-join-e1-");
     try {
       await dispatchAgent({
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         prompt: "build",
         parentCommand: "slice start",
         repoRoot: repo,
@@ -327,7 +327,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
       await flushAuditLog(repo);
 
       const logPath = auditLogPath(repo);
-      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "crew:builder");
+      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "devcrew:builder");
       assert.equal(idx, 1);
     } finally {
       await fs.rm(repo, { recursive: true, force: true });
@@ -338,7 +338,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
     const repo = await tmpDir("ae-join-e2-");
     try {
       await dispatchAgent({
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         prompt: "build",
         parentCommand: "slice start",
         repoRoot: repo,
@@ -347,7 +347,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
         iterationIndex: 0
       });
       await dispatchAgent({
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         prompt: "build retry",
         parentCommand: "slice retry",
         repoRoot: repo,
@@ -358,7 +358,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
       await flushAuditLog(repo);
 
       const logPath = auditLogPath(repo);
-      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "crew:builder");
+      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "devcrew:builder");
       assert.equal(idx, 2);
     } finally {
       await fs.rm(repo, { recursive: true, force: true });
@@ -369,7 +369,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
     const repo = await tmpDir("ae-join-ecross-");
     try {
       await dispatchAgent({
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         prompt: "build for 999",
         parentCommand: "slice start",
         repoRoot: repo,
@@ -381,7 +381,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
 
       const logPath = auditLogPath(repo);
       // SLICE-137 has no entries — should return 0
-      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "crew:builder");
+      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "devcrew:builder");
       assert.equal(idx, 0);
     } finally {
       await fs.rm(repo, { recursive: true, force: true });
@@ -392,7 +392,7 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
     const repo = await tmpDir("ae-join-eagent-");
     try {
       await dispatchAgent({
-        agent: "crew:reviewer",
+        agent: "devcrew:reviewer",
         prompt: "review",
         parentCommand: "slice review",
         repoRoot: repo,
@@ -403,8 +403,8 @@ describe("AC-7e: computeNextIterationIndex sequence", () => {
       await flushAuditLog(repo);
 
       const logPath = auditLogPath(repo);
-      // crew:builder has no entries for SLICE-137 — should return 0
-      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "crew:builder");
+      // devcrew:builder has no entries for SLICE-137 — should return 0
+      const idx = await computeNextIterationIndex(logPath, "SLICE-137", "devcrew:builder");
       assert.equal(idx, 0);
     } finally {
       await fs.rm(repo, { recursive: true, force: true });

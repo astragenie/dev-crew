@@ -5,10 +5,10 @@ import { describe, expect, test } from "bun:test";
  *
  * Verifies that all four former standalone skills are reachable as
  * subcommands of the unified `decisions` command:
- *   runner:decisions-list      → decisions list
- *   runner:decisions-show      → decisions show
- *   runner:decisions-relevant  → decisions relevant
- *   runner:decisions-supersede → decisions supersede
+ *   devcrew:decisions-list      → decisions list
+ *   devcrew:decisions-show      → decisions show
+ *   devcrew:decisions-relevant  → decisions relevant
+ *   devcrew:decisions-supersede → decisions supersede
  */
 
 describe("decisions CLI subcommands", () => {

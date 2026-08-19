@@ -75,7 +75,7 @@ describe("resolveResolverAgentRole", () => {
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(
       path.join(dir, "auto-dispatch.jsonl"),
-      `${[JSON.stringify({ agent: "loop:architect" }), JSON.stringify({ agent: "crew:reviewer" })].join("\n")}\n`,
+      `${[JSON.stringify({ agent: "loop:architect" }), JSON.stringify({ agent: "devcrew:reviewer" })].join("\n")}\n`,
       "utf8"
     );
     expect(await resolveResolverAgentRole(repo)).toBe("reviewer");

@@ -20,7 +20,7 @@ GitHub Actions runs on every push and PR (all under Bun, no `npm ci`/build):
 5. `bun ./src/scripts/validate-agent-refs.mts` — blocks a `crew:<name>` /
    `runner:<name>` dispatch instruction whose `<name>` doesn't resolve to a
    real agent, command, or skill (astragenie/runner-plugin#371 — a phantom
-   `crew:builder` shipped in installed loop rules and broke consumer
+   `devcrew:builder` shipped in installed loop rules and broke consumer
    orchestrators). Scans `CLAUDE.md` only.
 6. `bunx tsc --project tsconfig.json --noEmit` + `--project tsconfig.test.json`
 7. `bunx biome lint src/`

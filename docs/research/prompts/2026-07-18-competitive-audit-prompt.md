@@ -38,7 +38,7 @@ separate subjects.
    triage, architect gate, wave mode, halt badges, cost telemetry, marathon
    checkpoints.
 
-3. **GEPA capability** — `C:\work\mega\gepa-core` plus the `crew:gepa-*`
+3. **GEPA capability** — `C:\work\mega\gepa-core` plus the `devcrew:gepa-*`
    commands in dev-team (`gepa-optimize`, `gepa-eval`, `gepa-history`, rubric
    agents under `agents/*.gepa*`). Determine what works today, what is
    partially implemented, what is stubbed, and whether gepa-core is active,
@@ -252,7 +252,7 @@ From otta and COG. Each item:
 Do NOT recommend a feature merely because a competitor has it.
 
 ### 7. FEAT drafts (top 3–5)
-Ready for `/runner:intake`, each with: title, target repo, problem,
+Ready for `/devcrew:intake`, each with: title, target repo, problem,
 user/operator value, proposed scope, acceptance criteria, exclusions,
 dependencies, evidence links. **Do not create backlog files** — keep drafts
 inside the report for operator review.

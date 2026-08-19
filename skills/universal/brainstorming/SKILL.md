@@ -66,6 +66,6 @@ When this repo is loop-enabled (`.claude/loop.json` present), brainstorming feed
   - `customer_impact`, `effort_estimate`, `strategic_alignment`, `technical_risk`, `dependency_depth`
   - Even rough 0.0–1.0 estimates beat leaving them empty
 - **Suggest `autonomous_safe` value** with one-line rationale. Vague AC ⇒ `false`. Bounded mechanical refactor with concrete tests ⇒ `true`.
-- **Hand off** by running `/runner:backlog-add` (new pending FEAT) rather than writing the FEAT body inline, so frontmatter stays canonical.
-- **If the idea is a SPEC** (multi-feature, multi-slice), use `/runner:spec-add` and let `/runner:spec-decompose` derive FEATs.
+- **Hand off** by running `/devcrew:backlog-add` (new pending FEAT) rather than writing the FEAT body inline, so frontmatter stays canonical.
+- **If the idea is a SPEC** (multi-feature, multi-slice), use `/devcrew:spec-add` and let `/devcrew:spec-decompose` derive FEATs.
 - **If the brainstorming surfaces a structural choice** (provider abstraction, contract change, new plugin surface), dispatch the `architect` agent before any builder picks it up.

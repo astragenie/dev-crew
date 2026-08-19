@@ -35,7 +35,7 @@ test("recordPauseEvent appends one JSON line with the documented shape", async (
   const repo = await tmpRepo("pt-pause-shape-");
   await recordPauseEvent(repo, {
     sliceId: "SLICE-99",
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     dispatchId: "dispatch-1",
     kind: "pause",
     detection: "no_artifact",
@@ -47,7 +47,7 @@ test("recordPauseEvent appends one JSON line with the documented shape", async (
   const record = lines[0]!;
   assert.equal(record.type, "pause_event");
   assert.equal(record.sliceId, "SLICE-99");
-  assert.equal(record.agentRole, "crew:fullstack-dev");
+  assert.equal(record.agentRole, "devcrew:fullstack-dev");
   assert.equal(record.dispatchId, "dispatch-1");
   assert.equal(record.kind, "pause");
   assert.equal(record.detection, "no_artifact");
@@ -59,7 +59,7 @@ test("recordPauseEvent honors a caller-supplied ts instead of stamping now()", a
   const repo = await tmpRepo("pt-pause-ts-");
   await recordPauseEvent(repo, {
     ts: "2026-07-01T00:00:00.000Z",
-    agentRole: "crew:reviewer",
+    agentRole: "devcrew:reviewer",
     kind: "resume_success",
     detection: "scaffold_in_progress"
   });
@@ -70,7 +70,7 @@ test("recordPauseEvent honors a caller-supplied ts instead of stamping now()", a
 test("recordPauseEvent omits optional fields when not provided", async () => {
   const repo = await tmpRepo("pt-pause-optional-");
   await recordPauseEvent(repo, {
-    agentRole: "crew:verifier",
+    agentRole: "devcrew:verifier",
     kind: "pickup",
     detection: "mid_sentence"
   });
@@ -83,7 +83,7 @@ test("recordPauseEvent omits optional fields when not provided", async () => {
 test("recordDispatchOutcome appends one JSON line with the documented shape", async () => {
   const repo = await tmpRepo("pt-outcome-shape-");
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     sliceId: "SLICE-99",
     outcome: "paused"
   });
@@ -91,7 +91,7 @@ test("recordDispatchOutcome appends one JSON line with the documented shape", as
   assert.equal(lines.length, 1);
   const record = lines[0]!;
   assert.equal(record.type, "dispatch_outcome");
-  assert.equal(record.agentRole, "crew:fullstack-dev");
+  assert.equal(record.agentRole, "devcrew:fullstack-dev");
   assert.equal(record.sliceId, "SLICE-99");
   assert.equal(record.outcome, "paused");
   assert.ok(typeof record.ts === "string" && record.ts.length > 0);
@@ -100,16 +100,16 @@ test("recordDispatchOutcome appends one JSON line with the documented shape", as
 test("recordPauseEvent and recordDispatchOutcome share one file, interleaved in write order", async () => {
   const repo = await tmpRepo("pt-shared-file-");
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "completed"
   });
   await recordPauseEvent(repo, {
-    agentRole: "crew:reviewer",
+    agentRole: "devcrew:reviewer",
     kind: "pause",
     detection: "no_artifact"
   });
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:reviewer",
+    agentRole: "devcrew:reviewer",
     outcome: "paused"
   });
 
@@ -140,7 +140,7 @@ test("summarizePauseRate returns all-zero summary when zero dispatch outcomes ex
   const repo = await tmpRepo("pt-zero-dispatch-");
   // Only a pause_event, no dispatch_outcome rows -- denominator is 0.
   await recordPauseEvent(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     kind: "pause",
     detection: "mid_sentence"
   });

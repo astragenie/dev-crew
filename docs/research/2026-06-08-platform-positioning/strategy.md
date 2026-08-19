@@ -220,16 +220,16 @@ Composite = `Impact + (3 - Difficulty) + Moat`, max 9.
 
 (Ranked by composite from §7; biased toward "extends current Crew surface, ships in ≤2 slices.")
 
-1. **CREW-NEXT-1: GitHub `@crew` PR-comment teammate.** Add webhook receiver + slash flow that picks up `@crew review` / `@crew fix the test failure` in PR comments and dispatches `crew:inspector` / `crew:fullstack-dev` against the change. Composite 6. Closes major commercial gap (Codex/Claude Code/Cline at 3).
+1. **CREW-NEXT-1: GitHub `@crew` PR-comment teammate.** Add webhook receiver + slash flow that picks up `@crew review` / `@crew fix the test failure` in PR comments and dispatches `devcrew:inspector` / `devcrew:fullstack-dev` against the change. Composite 6. Closes major commercial gap (Codex/Claude Code/Cline at 3).
 2. **CREW-NEXT-2: Linear teammate flow (assign-to-agent).** First-party Linear adapter that watches issue assignment, decomposes into FEAT (via existing `/loop:spec-decompose`), and posts status back to the Linear issue with embedded grade summary. Composite 6.
-3. **CREW-NEXT-3: Per-skill cost attribution.** Extend cost-advisor to bucket spend by skill name (not just by slice). Surfaces "you spent $4.12 on `crew:inspector` calls last week, 30% above 4-week average." Composite 7.
+3. **CREW-NEXT-3: Per-skill cost attribution.** Extend cost-advisor to bucket spend by skill name (not just by slice). Surfaces "you spent $4.12 on `devcrew:inspector` calls last week, 30% above 4-week average." Composite 7.
 4. **CREW-NEXT-4: Enterprise Trust-Center page + SOC2-inheritance messaging.** Markdown page at `docs/trust/` enumerating Claude Code's SOC2/ISO/SSO posture + per-axis "Crew+Loop inherits this because…" notes. Composite 6.
 5. **CREW-NEXT-5: Halt-badge cross-plugin contract as marketing pillar.** Promote `docs/halt-badges.md` + SPEC-003 to a top-level README section + blog post + skill manifest. Composite 7.
-6. **CREW-NEXT-6: Per-FEAT cost forecast.** At `crew:fullstack-dev` dispatch time, look up historical avg cost for similar FEATs by tag, surface "predicted $X ± Y, current budget $Z." Composite 6.
-7. **CREW-NEXT-7: Architecture-governance dashboard.** Aggregate `decisions/*.md` + `grades/*.md` into a single HTML/MD report (`crew:brief-me --governance`) showing decision lineage + grade trend + supersession graph. Composite 6.
+6. **CREW-NEXT-6: Per-FEAT cost forecast.** At `devcrew:fullstack-dev` dispatch time, look up historical avg cost for similar FEATs by tag, surface "predicted $X ± Y, current budget $Z." Composite 6.
+7. **CREW-NEXT-7: Architecture-governance dashboard.** Aggregate `decisions/*.md` + `grades/*.md` into a single HTML/MD report (`devcrew:brief-me --governance`) showing decision lineage + grade trend + supersession graph. Composite 6.
 8. **CREW-NEXT-8: Crew-skill activity badge (per-PR).** Inject markdown summary into PR description: "Crew dispatches: reviewer (PASS), validator (PASS), 3 DEC-NNN refs, grade snapshot." Closes "show-your-work" gap for buyers. Composite 6.
-9. **CREW-NEXT-9: Crew CLI run-summary export.** `crew:export --since=1w` emits structured JSONL of all dispatches + costs + outcomes for OTel/Datadog/Grafana ingestion. Closes Agent Analytics gap (rivals Cline/LangGraph at 3). Composite 5.
-10. **CREW-NEXT-10: Crew adopt-existing-repo onboarding wizard.** Interactive `crew:install` flow that detects stack, picks preset, scaffolds `.claude/crew/` artifacts, and runs a sample `/crew:build` against a trivial task — first-run experience. Composite 5.
+9. **CREW-NEXT-9: Crew CLI run-summary export.** `devcrew:export --since=1w` emits structured JSONL of all dispatches + costs + outcomes for OTel/Datadog/Grafana ingestion. Closes Agent Analytics gap (rivals Cline/LangGraph at 3). Composite 5.
+10. **CREW-NEXT-10: Crew adopt-existing-repo onboarding wizard.** Interactive `devcrew:install` flow that detects stack, picks preset, scaffolds `.claude/crew/` artifacts, and runs a sample `/devcrew:build` against a trivial task — first-run experience. Composite 5.
 
 ---
 

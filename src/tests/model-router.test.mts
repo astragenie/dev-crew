@@ -147,7 +147,7 @@ test("FEAT-205 regression: a docs-shaped slice fixture produces a dispatch with 
   const prompt = buildDispatchPrompt({
     sliceId: "SLICE-DOC-1",
     worktreePath: "/tmp/wt/SLICE-DOC-1",
-    sliceCommand: "/crew:orchestrate-slice",
+    sliceCommand: "/devcrew:orchestrate-slice",
     mode: "normal"
   });
   assert.ok(

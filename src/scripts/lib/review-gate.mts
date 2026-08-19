@@ -174,7 +174,7 @@ export async function deriveReviewGate(
         satisfied: false,
         reason:
           `review artifact decision: ${verdict.decision} (${path.basename(verdict.file)}) — ` +
-          "a rejected review cannot close; dispatch /crew:fix and re-review, " +
+          "a rejected review cannot close; dispatch /devcrew:fix and re-review, " +
           "record an explicit review_skipped, or use --force-close (audited)",
         evidence: artifacts
       };

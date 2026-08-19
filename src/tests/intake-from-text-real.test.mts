@@ -27,7 +27,7 @@ test("intakeFromText writes a real pending FEAT with priority null and the free 
 
   assert.ok(result.filePath, "filePath must be set for a real (non-dry-run) write");
   assert.match(result.featId, /^FEAT-\d+/);
-  assert.equal(result.priority, null, "priority is unset — scoring is deferred to /runner:triage");
+  assert.equal(result.priority, null, "priority is unset — scoring is deferred to /devcrew:triage");
 
   const content = await fs.readFile(result.filePath!, "utf8");
   const { frontmatter, body } = parseFrontmatter(content);

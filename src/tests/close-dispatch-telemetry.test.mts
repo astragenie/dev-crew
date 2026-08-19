@@ -111,7 +111,7 @@ test("classifyGateForTelemetry records an unsatisfied gate as paused + emits a p
 
 test("recordGateDispatchTelemetry writes nothing for a non-recordable gate", async () => {
   const repo = await tmpRepo("cdt-norecord-");
-  await recordGateDispatchTelemetry(repo, "SLICE-1", "crew:reviewer", {
+  await recordGateDispatchTelemetry(repo, "SLICE-1", "devcrew:reviewer", {
     satisfied: true,
     unproven: true,
     reason: "no review artifact matched"
@@ -122,7 +122,7 @@ test("recordGateDispatchTelemetry writes nothing for a non-recordable gate", asy
 
 test("recordGateDispatchTelemetry records completed for a clean approval", async () => {
   const repo = await tmpRepo("cdt-completed-");
-  await recordGateDispatchTelemetry(repo, "SLICE-1", "crew:reviewer", {
+  await recordGateDispatchTelemetry(repo, "SLICE-1", "devcrew:reviewer", {
     satisfied: true,
     reason: "review artifact decision: approved (x.md)"
   });
@@ -130,13 +130,13 @@ test("recordGateDispatchTelemetry records completed for a clean approval", async
   assert.equal(lines.length, 1);
   assert.equal(lines[0]!.type, "dispatch_outcome");
   assert.equal(lines[0]!.outcome, "completed");
-  assert.equal(lines[0]!.agentRole, "crew:reviewer");
+  assert.equal(lines[0]!.agentRole, "devcrew:reviewer");
   assert.equal(lines[0]!.sliceId, "SLICE-1");
 });
 
 test("recordGateDispatchTelemetry records paused + pause_event for an unsatisfied gate", async () => {
   const repo = await tmpRepo("cdt-paused-");
-  await recordGateDispatchTelemetry(repo, "SLICE-2", "crew:verifier", {
+  await recordGateDispatchTelemetry(repo, "SLICE-2", "devcrew:verifier", {
     satisfied: false,
     reason: "no validation artifact under ..."
   });
@@ -151,7 +151,7 @@ test("recordGateDispatchTelemetry records paused + pause_event for an unsatisfie
 
 test("recordGateDispatchTelemetry records paused (no pause_event) for a skip-badge resolution — never an unpaired resume_success", async () => {
   const repo = await tmpRepo("cdt-resume-");
-  await recordGateDispatchTelemetry(repo, "SLICE-3", "crew:reviewer", {
+  await recordGateDispatchTelemetry(repo, "SLICE-3", "devcrew:reviewer", {
     satisfied: true,
     reason: "workflow-state gate: review_skipped: lead-attested, no artifact found"
   });
@@ -167,7 +167,7 @@ test("recordGateDispatchTelemetry records paused (no pause_event) for a skip-bad
 
 test("recordGateDispatchTelemetry writes nothing for a policy-based skip-badge (note doesn't cite a pause)", async () => {
   const repo = await tmpRepo("cdt-policy-skip-");
-  await recordGateDispatchTelemetry(repo, "SLICE-5", "crew:verifier", {
+  await recordGateDispatchTelemetry(repo, "SLICE-5", "devcrew:verifier", {
     satisfied: true,
     reason: "workflow-state gate: validation_skipped: doc-only slice, no behavior changed"
   });

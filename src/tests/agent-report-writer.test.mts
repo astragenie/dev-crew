@@ -132,7 +132,7 @@ test("happy path — 2 agents, full data → artifact written with agent_count: 
     turns: 8,
     model: "claude-opus-4-7",
     tools: { Edit: 4 },
-    skills: ["crew:build"]
+    skills: ["devcrew:build"]
   });
 
   await writeAgentEvents(repo, [
@@ -145,7 +145,7 @@ test("happy path — 2 agents, full data → artifact written with agent_count: 
       transcriptPath: transcriptA
     },
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "bbbb0002",
       sessionId: "sess-001",
       startTs: "2026-05-24T10:04:15.000Z",
@@ -171,10 +171,10 @@ test("happy path — 2 agents, full data → artifact written with agent_count: 
   assert.equal(frontmatter.agent_count, 2);
   assert.equal(frontmatter.total_turns, 13);
   assert.ok(body.includes("Explore"));
-  assert.ok(body.includes("crew:fullstack-dev"));
+  assert.ok(body.includes("devcrew:fullstack-dev"));
   assert.ok(body.includes("claude-sonnet-4-6"));
   assert.ok(body.includes("claude-opus-4-7"));
-  assert.ok(body.includes("crew:build"));
+  assert.ok(body.includes("devcrew:build"));
   // Body starts with phase/feature/slice identification
   assert.ok(body.includes("**Phase:** R2"), "body has phase identification");
   assert.ok(body.includes("**Feature:** FEAT-042"), "body has feature identification");
@@ -221,7 +221,7 @@ test("transcript not found → artifact written, model shows n/a, turns 0", asyn
   const repo = await tmpRepo("al-arw-notranscript-");
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:researcher",
+      agentType: "devcrew:researcher",
       agentId: "dddd0001",
       sessionId: "sess-002",
       startTs: "2026-05-24T09:00:00.000Z",
@@ -312,7 +312,7 @@ test("parallel group detected → body names both agents in group", async () => 
       transcriptPath: ta
     },
     {
-      agentType: "crew:researcher",
+      agentType: "devcrew:researcher",
       agentId: "f002",
       sessionId: "sess-par",
       startTs: "2026-05-24T10:02:00.000Z",
@@ -326,7 +326,7 @@ test("parallel group detected → body names both agents in group", async () => 
   assert.ok(content.includes("Group 1"));
   assert.ok(content.includes("concurrent"));
   assert.ok(content.includes("Explore"));
-  assert.ok(content.includes("crew:researcher"));
+  assert.ok(content.includes("devcrew:researcher"));
 });
 
 test("sequential agents → no parallel groups", async () => {
@@ -346,7 +346,7 @@ test("sequential agents → no parallel groups", async () => {
       transcriptPath: ta
     },
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "g002",
       sessionId: "sess-seq",
       startTs: "2026-05-24T10:03:00.000Z",
@@ -370,7 +370,7 @@ test("skill extraction from transcript → Skills column shows skill name", asyn
   });
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "h001",
       sessionId: "sess-sk",
       startTs: "2026-05-24T11:00:00.000Z",
@@ -390,7 +390,7 @@ test("start without stop — agent counted with stopTs null, in-flight note rend
   // No stopTs → helper omits the subagent_stop event entirely.
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "nostop001",
       sessionId: "sess-nostop",
       startTs: "2026-05-24T11:00:00.000Z",
@@ -410,7 +410,7 @@ test("start without stop — agent counted with stopTs null, in-flight note rend
     body.includes("no `subagent_stop` event recorded"),
     "in-flight diagnostic note rendered"
   );
-  assert.ok(body.includes("crew:fullstack-dev"), "agent type from start payload");
+  assert.ok(body.includes("devcrew:fullstack-dev"), "agent type from start payload");
   assert.ok(body.includes("| n/a |"), "duration column shows n/a for stop-less agent");
 });
 
@@ -421,7 +421,7 @@ test("mix of start-only and start+stop — both counted, only start-only marked 
 
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:researcher",
+      agentType: "devcrew:researcher",
       agentId: "complete001",
       sessionId: "sess-mix",
       startTs: "2026-05-24T11:00:00.000Z",
@@ -429,7 +429,7 @@ test("mix of start-only and start+stop — both counted, only start-only marked 
       transcriptPath: transcript
     },
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "inflight001",
       sessionId: "sess-mix",
       startTs: "2026-05-24T11:05:00.000Z",
@@ -449,8 +449,8 @@ test("mix of start-only and start+stop — both counted, only start-only marked 
     body.includes("1 agent(s) have no `subagent_stop`"),
     "note counts only in-flight agents"
   );
-  assert.ok(body.includes("crew:researcher"));
-  assert.ok(body.includes("crew:fullstack-dev"));
+  assert.ok(body.includes("devcrew:researcher"));
+  assert.ok(body.includes("devcrew:fullstack-dev"));
 });
 
 test("duplicate hook fires sharing transcriptPath → collapsed to one row", async () => {
@@ -465,7 +465,7 @@ test("duplicate hook fires sharing transcriptPath → collapsed to one row", asy
 
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "dupe-a",
       sessionId: "sess-dupe",
       startTs: "2026-05-24T11:00:00.000Z",
@@ -473,7 +473,7 @@ test("duplicate hook fires sharing transcriptPath → collapsed to one row", asy
       transcriptPath: transcript
     },
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "dupe-b",
       sessionId: "sess-dupe",
       startTs: "2026-05-24T11:00:00.000Z",
@@ -486,8 +486,8 @@ test("duplicate hook fires sharing transcriptPath → collapsed to one row", asy
   assert.equal(result.agentCount, 1, "duplicate transcript collapses to one agent row");
 
   const content = await fs.readFile(result.reportPath, "utf8");
-  const builderRowMatches = content.match(/\| crew:fullstack-dev \|/g) ?? [];
-  assert.equal(builderRowMatches.length, 1, "table contains exactly one crew:fullstack-dev row");
+  const builderRowMatches = content.match(/\| devcrew:fullstack-dev \|/g) ?? [];
+  assert.equal(builderRowMatches.length, 1, "table contains exactly one devcrew:fullstack-dev row");
 });
 
 test("agent_type fallback — stop payload with null agent_type uses start payload's agent_type", async () => {
@@ -507,7 +507,7 @@ test("agent_type fallback — stop payload with null agent_type uses start paylo
     JSON.stringify({
       session_id: "sess-fb",
       agent_id: agentId,
-      agent_type: "crew:fullstack-dev",
+      agent_type: "devcrew:fullstack-dev",
       hook_event_name: "SubagentStart"
     })
   );
@@ -549,7 +549,7 @@ test("agent_type fallback — stop payload with null agent_type uses start paylo
   assert.equal(result.agentCount, 1);
   const content = await fs.readFile(result.reportPath, "utf8");
   assert.ok(
-    content.includes("crew:fullstack-dev"),
+    content.includes("devcrew:fullstack-dev"),
     "agent_type from start payload should appear in body"
   );
   assert.ok(

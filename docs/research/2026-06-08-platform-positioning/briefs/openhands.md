@@ -47,7 +47,7 @@ Formerly OpenDevin. OSS AI software-engineering agent maintained by All-Hands-AI
 
 ## Weaknesses (top 3)
 1. **No architecture-governance primitive.** Zero ADR / decision-tracking. Agent writes code but doesn't capture *why*. Loop's DEC-NNN ledger + grade ledger is defensible gap.
-2. **No structured human-gate / phase-gate contract.** Approval implicit (CLI confirms risky commands; user interrupts). No equivalent of `/crew:review → /crew:validate → /crew:ship` with named pass/fail artifacts. For regulated buyers (financial, healthcare), Loop's gate ceremony is positioning win.
+2. **No structured human-gate / phase-gate contract.** Approval implicit (CLI confirms risky commands; user interrupts). No equivalent of `/devcrew:review → /devcrew:validate → /devcrew:ship` with named pass/fail artifacts. For regulated buyers (financial, healthcare), Loop's gate ceremony is positioning win.
 3. **Weak grade/retro learning loop.** "Monitoring and Improving Skills" is manual guidance; no automated per-slice grade aggregation feeding next run. Loop's grade ledger + cost trajectory + decisions structurally ahead — though OpenHands has ~100x run volume to mine if they choose.
 
 ## Features Crew/Loop should NOT copy (and why)

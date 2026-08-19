@@ -7,7 +7,7 @@
 // returning `scaffoldOnly: true` so the caller knows a manual grade-write
 // is still required.
 //
-// FEAT-277: runner:close pre-flight (verification-before-completion).
+// FEAT-277: devcrew:close pre-flight (verification-before-completion).
 // Before the ceremony fires, closeSlice checks whether every acceptance
 // criterion in the slice file is checked (- [x]). If unchecked ACs are
 // found, it returns an error shape unless `forceClose: true` is set.
@@ -94,9 +94,9 @@ export interface CloseSliceResult {
   scaffoldOnly: boolean;
   gradePath: string;
   // -------------------------------------------------------------------------
-  // runner:close canonical surface (FEAT-277 / AC-9)
+  // devcrew:close canonical surface (FEAT-277 / AC-9)
   // Surfaces the key paths and grade summary at the top level so the CLI
-  // layer (runner:close) can return { handoffPath, synthesisPath, costUsd,
+  // layer (devcrew:close) can return { handoffPath, synthesisPath, costUsd,
   // grades } without having to drill into the nested complete object.
   // -------------------------------------------------------------------------
   /** Path to the crew handoff artifact written by the complete ceremony. */
@@ -172,7 +172,7 @@ export async function closeSlice(
       const unchecked = findUncheckedAcs(sliceContent);
       if (unchecked.length > 0) {
         const err = new Error(
-          `runner:close pre-flight failed: ${unchecked.length} acceptance criterion/criteria not yet checked off. ` +
+          `devcrew:close pre-flight failed: ${unchecked.length} acceptance criterion/criteria not yet checked off. ` +
             `Mark all ACs [x] with evidence before closing, or use --force-close to bypass.`
         ) as NodeJS.ErrnoException;
         err.code = "PREFLIGHT_EVIDENCE_MISSING";
@@ -330,7 +330,7 @@ const WARMUP_STATE_REL = ".claude/state/loop/close-refusal-state.json";
 const WARMUP_CLOSES = 3;
 
 // FEAT-264 SLICE-5 (AC-5): a test_confidence grade score below this value
-// blocks runner:close via GATE_FAILED_AT_CLOSE — but only when the owning
+// blocks devcrew:close via GATE_FAILED_AT_CLOSE — but only when the owning
 // repo has opted in via `loop.qa_gate: "pre-build"` (config-scoped; see
 // qa-gate-config.mts). Matches the same 0.80 bar the FEAT text and the
 // existing grade-trend halt-badge (loop.gradeTrendThreshold) both use.
@@ -490,7 +490,7 @@ async function assertCloseGatesSatisfied(
   }
 
   const err = new Error(
-    `runner:close gate pre-flight failed for ${sliceId}: ${failures.join(" | ")}. ` +
+    `devcrew:close gate pre-flight failed for ${sliceId}: ${failures.join(" | ")}. ` +
       "Fix and re-run the gate, record an explicit skip, or use --force-close (audited)."
   ) as NodeJS.ErrnoException;
   err.code = "GATE_FAILED_AT_CLOSE";

@@ -6,7 +6,7 @@
 
 ## Problem
 
-Subagent dispatches via `Agent({ subagent_type: "crew:fullstack-dev" | "crew:inspector" | "crew:verifier" })` sometimes pause mid-investigation and return interim narration text WITHOUT calling the required write-\* CLI to land their artifact (handoff, review-result, validation-result). The lead receives a partial textual response; the artifact path is missing.
+Subagent dispatches via `Agent({ subagent_type: "devcrew:fullstack-dev" | "devcrew:inspector" | "devcrew:verifier" })` sometimes pause mid-investigation and return interim narration text WITHOUT calling the required write-\* CLI to land their artifact (handoff, review-result, validation-result). The lead receives a partial textual response; the artifact path is missing.
 
 When this happens, the lead must NOT treat the partial response as a completed gate. The gate is unresolved.
 
@@ -16,12 +16,12 @@ Pattern observed across 6 slices in a single autonomous session:
 
 | Slice    | Role(s) that paused                                                              |
 | -------- | -------------------------------------------------------------------------------- |
-| SLICE-51 | crew:inspector × 2 (both paused; review_skipped recorded with explicit reason)   |
-| SLICE-52 | crew:fullstack-dev (lead wrote handoff)                                          |
-| SLICE-53 | crew:fullstack-dev, crew:verifier (lead wrote both)                              |
-| SLICE-54 | crew:fullstack-dev, crew:verifier (lead wrote both)                              |
-| SLICE-56 | crew:fullstack-dev, crew:verifier (lead wrote both)                              |
-| SLICE-57 | crew:fullstack-dev (lead skipped both reviewer + validator via lead-attestation) |
+| SLICE-51 | devcrew:inspector × 2 (both paused; review_skipped recorded with explicit reason)   |
+| SLICE-52 | devcrew:fullstack-dev (lead wrote handoff)                                          |
+| SLICE-53 | devcrew:fullstack-dev, devcrew:verifier (lead wrote both)                              |
+| SLICE-54 | devcrew:fullstack-dev, devcrew:verifier (lead wrote both)                              |
+| SLICE-56 | devcrew:fullstack-dev, devcrew:verifier (lead wrote both)                              |
+| SLICE-57 | devcrew:fullstack-dev (lead skipped both reviewer + validator via lead-attestation) |
 
 Pattern is consistent across all three specialist roles in the crew plugin. Not a per-role bug.
 
@@ -72,7 +72,7 @@ bun -e "
 import('./src/scripts/lib/pause-telemetry.mts').then(({ recordPauseEvent }) =>
   recordPauseEvent(process.cwd(), {
     sliceId: '<slice-id>',
-    agentRole: 'crew:fullstack-dev', // or crew:inspector / crew:verifier
+    agentRole: 'devcrew:fullstack-dev', // or devcrew:inspector / devcrew:verifier
     kind: 'pause',
     detection: 'no_artifact' // or scaffold_in_progress / mid_sentence
   })
@@ -83,7 +83,7 @@ bun -e "
 import('./src/scripts/lib/pause-telemetry.mts').then(({ recordPauseEvent }) =>
   recordPauseEvent(process.cwd(), {
     sliceId: '<slice-id>',
-    agentRole: 'crew:fullstack-dev',
+    agentRole: 'devcrew:fullstack-dev',
     kind: 'resume_success',
     detection: 'no_artifact'
   })
@@ -99,7 +99,7 @@ bun -e "
 import('./src/scripts/lib/pause-telemetry.mts').then(({ recordDispatchOutcome }) =>
   recordDispatchOutcome(process.cwd(), {
     sliceId: '<slice-id>',
-    agentRole: 'crew:fullstack-dev',
+    agentRole: 'devcrew:fullstack-dev',
     outcome: 'paused' // or 'completed'
   })
 )"
@@ -114,7 +114,7 @@ it is omitted (never an error) when the file is absent.
 
 **Status: narrow retirement, reviewer/validator only.** Since crew 0.47.0
 (installed; floor bumped in `src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`,
-FEAT-176/SLICE-134), `crew:inspector` (reviewer) and `crew:verifier`
+FEAT-176/SLICE-134), `devcrew:inspector` (reviewer) and `devcrew:verifier`
 (validator) dispatches write a scaffold artifact (`--scaffold --status
 in-progress`) as their FIRST tool call and overwrite it (`--update ...
 --status completed`) as their LAST (Section 1 above, confirmed present in
@@ -124,8 +124,8 @@ existence-AND-status check already resumes/completes the gate from the
 scaffold in most cases without the lead needing to write an artifact from
 scratch.
 
-**Builder-tier dispatches (`crew:fullstack-dev` / `crew:frontend-dev` /
-`crew:backend-dev`) are NOT covered by the scaffold contract** — 0.47.0
+**Builder-tier dispatches (`devcrew:fullstack-dev` / `devcrew:frontend-dev` /
+`devcrew:backend-dev`) are NOT covered by the scaffold contract** — 0.47.0
 redesigned builders to never write a handoff artifact at all ("Builders
 do NOT write handoff artifacts ... NEVER invoke write-handoff"; inline
 follow-up only). There is no scaffold to check for a paused builder;
@@ -145,8 +145,8 @@ this role today.
 Section 2's manual fallback (Option A / Option B below) stays **ACTIVE**
 for:
 
-- builder-tier dispatches (`crew:fullstack-dev` / `crew:frontend-dev` /
-  `crew:backend-dev`) — no scaffold exists by design
+- builder-tier dispatches (`devcrew:fullstack-dev` / `devcrew:frontend-dev` /
+  `devcrew:backend-dev`) — no scaffold exists by design
 - `aiplugin-dev` — contract merged upstream but not yet released; re-check
   this note after the next crew version bump
 - any agent invoked without the HARD OUTPUT CONTRACT (e.g. a vendored
@@ -156,7 +156,7 @@ for:
   inspector/verifier
 
 Only skip straight to Section 1's scaffold-status check (and treat
-manual fallback as optional) for `crew:inspector` / `crew:verifier`
+manual fallback as optional) for `devcrew:inspector` / `devcrew:verifier`
 dispatches. For every other role, manual fallback remains the default
 path until its own contract ships and this section is updated again.
 
@@ -236,7 +236,7 @@ The default remains: dispatch the full ladder, verify each artifact lands, fall 
 
 Persistent specialist-pause across 6 slices is most likely a model-side behavior, not a prompt-engineering issue. A separate **upstream-request FEAT against hero-crew** should propose either:
 
-- A prompt-level reminder added to crew:fullstack-dev / crew:inspector / crew:verifier: "BEFORE returning, your LAST tool call MUST be write-handoff / write-review-result / write-validation-result"
+- A prompt-level reminder added to devcrew:fullstack-dev / devcrew:inspector / devcrew:verifier: "BEFORE returning, your LAST tool call MUST be write-handoff / write-review-result / write-validation-result"
 - OR a CLI-side completion enforcement that refuses to mark a dispatch successful without a recorded artifact path
 
 Log when the pattern persists past the next 5 slices. FEAT-058 (today's hero-crew upstream-request for the redundant-read hook) is a separate concern; this SOP cross-references it as the upstream pattern, not as a dependency.

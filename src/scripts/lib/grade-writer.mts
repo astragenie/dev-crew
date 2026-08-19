@@ -25,9 +25,9 @@ import { parseListSection } from "./lessons-feed.mjs";
 
 // FEAT-219/SLICE-1b: agent role attributed to grade-derived memory (decisions,
 // notes). Grade knowledge is produced by the slice's implementer, so it is
-// tagged crew:builder for agent-scoped recall. (Lessons flow through
+// tagged devcrew:builder for agent-scoped recall. (Lessons flow through
 // learnings.mts and are tagged there in a follow-up.)
-const GRADE_AGENT_TYPE = "crew:builder";
+const GRADE_AGENT_TYPE = "devcrew:builder";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 // Support two execution layouts:

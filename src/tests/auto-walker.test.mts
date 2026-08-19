@@ -159,7 +159,7 @@ test("walker plan emits 'orchestrate-slice' prompt when loop.orchestratorMode='o
   assert.equal(result.plans.length, 1);
   const plan = result.plans[0];
   assert.equal(plan.orchestratorMode, "orchestrate-slice");
-  assert.match(plan.dispatchPrompt, /\/crew:orchestrate-slice/);
+  assert.match(plan.dispatchPrompt, /\/devcrew:orchestrate-slice/);
 });
 
 test("walker plan: unsafe entry (autonomous_safe=false) also carries orchestratorMode=slice-build by default", async () => {

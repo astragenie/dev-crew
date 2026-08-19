@@ -54,12 +54,12 @@ The CLI aggregates; the dispatching agent must synthesize. From the
 returned report:
 
 1. For each entry in `dimensionsBelowThreshold`: confirm the
-   weak-dimension AC rule is being applied (see `runner:authoring-slices`
+   weak-dimension AC rule is being applied (see `devcrew:authoring-slices`
    — every new slice must carry a targeting AC). If recent slices in
-   the window lack one, log the gap via `/runner:learn`.
+   the window lack one, log the gap via `/devcrew:learn`.
 2. For each `topLessons` entry with `count >= 2`: decide — is this a
-   process fix (log via `/runner:learn`), a backlog item (propose via
-   `/runner:backlog-add`), or already covered by an accepted DEC? State
+   process fix (log via `/devcrew:learn`), a backlog item (propose via
+   `/devcrew:backlog-add`), or already covered by an accepted DEC? State
    the disposition in the retrospective artifact; do not leave repeat
    lessons undispositioned.
 3. If a dimension has been below threshold across two consecutive

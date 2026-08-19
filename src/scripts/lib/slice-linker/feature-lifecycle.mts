@@ -155,7 +155,7 @@ const TEXT_ONLY_REASON_LABEL: Record<TextOnlyMatchReason, string> = {
 // FEAT-284 AC-3: git-anchored-completion.mts is a pure evaluator (see its
 // module doc comment) — it hands back `textOnlyMatches` but never prints
 // anything itself. This is the one caller that both makes the reconcile
-// decision and has an operator watching (runner:start / slice from-feature),
+// decision and has an operator watching (devcrew:start / slice from-feature),
 // so it owns surfacing the two situations a reconcile pass can produce:
 //
 //   - demoted: a commit's text matched a proposed slice's FEAT-id/SLICE-

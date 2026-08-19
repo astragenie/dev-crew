@@ -1,4 +1,4 @@
-// FEAT-188 / S1b — AC-2: runner:pr-fix circuit-breaker trips are captured
+// FEAT-188 / S1b — AC-2: devcrew:pr-fix circuit-breaker trips are captured
 // into the persistent learnings store (reuses learnings.mts::logLearning —
 // the same store + astramem mirror grade-writer.mts already uses). This was
 // genuinely absent before S1b: the bridge's event table had no pr-fix event.

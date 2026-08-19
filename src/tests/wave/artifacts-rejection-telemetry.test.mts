@@ -44,11 +44,11 @@ describe("updateIndex — rejection telemetry (AC-5)", () => {
           sliceId: "SLICE-1",
           featureId: "FEAT-1",
           worktreeBranch: "wave/wave-solo-in-wide-request/SLICE-1",
-          sliceCommand: "/crew:orchestrate-slice"
+          sliceCommand: "/devcrew:orchestrate-slice"
         }
       ],
       rejected: [],
-      config: { waveSize: 4, sliceCommand: "/crew:orchestrate-slice" }
+      config: { waveSize: 4, sliceCommand: "/devcrew:orchestrate-slice" }
     };
     updateIndex(tmp, makeResult(plan), ".claude/artifacts/loop/waves");
     const idx = JSON.parse(
@@ -67,7 +67,7 @@ describe("updateIndex — rejection telemetry (AC-5)", () => {
           sliceId: "SLICE-1",
           featureId: "FEAT-1",
           worktreeBranch: "wave/wave-mixed-rejections/SLICE-1",
-          sliceCommand: "/crew:orchestrate-slice"
+          sliceCommand: "/devcrew:orchestrate-slice"
         }
       ],
       rejected: [
@@ -76,7 +76,7 @@ describe("updateIndex — rejection telemetry (AC-5)", () => {
         { sliceId: "SLICE-4", reason: "missing_touches_files_solo_only" },
         { sliceId: "SLICE-5", reason: "pre-flight: help_request open" }
       ],
-      config: { waveSize: 5, sliceCommand: "/crew:orchestrate-slice" }
+      config: { waveSize: 5, sliceCommand: "/devcrew:orchestrate-slice" }
     };
     updateIndex(tmp, makeResult(plan), ".claude/artifacts/loop/waves");
     const idx = JSON.parse(
@@ -94,7 +94,7 @@ describe("updateIndex — rejection telemetry (AC-5)", () => {
       size: 2,
       items: [],
       rejected: [],
-      config: { waveSize: 2, sliceCommand: "/crew:orchestrate-slice" }
+      config: { waveSize: 2, sliceCommand: "/devcrew:orchestrate-slice" }
     };
     updateIndex(tmp, makeResult(plan), ".claude/artifacts/loop/waves");
     const idx = JSON.parse(

@@ -15,7 +15,7 @@
 // collectExpiredClaims below is that re-surfacing primitive.
 //
 // TTL default: 30 minutes (1800s). Chosen to comfortably outlast a normal
-// headless reaction (intake / pr-fix / crew:fix runs are typically single-
+// headless reaction (intake / pr-fix / devcrew:fix runs are typically single-
 // digit minutes) while keeping the orphaned-claim recovery window well
 // under the ~5-minute tick cadence's own noise floor multiplied out — a
 // crashed reaction is retried within one to a few ticks, not left claimed

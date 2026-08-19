@@ -13,9 +13,9 @@ Before executing the sequential walker, check `.claude/loop.json` for
 RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
 ```
 
-If `RUNNER === "wave"`, delegate to `/runner:wave loop` and exit. Do not run
+If `RUNNER === "wave"`, delegate to `/devcrew:wave loop` and exit. Do not run
 the sequential walker. The wave loop respects the same `loop.maxIterations`,
-`loop.autoMode`, and `/runner:stop-check` conditions, plus the wave-specific
+`loop.autoMode`, and `/devcrew:stop-check` conditions, plus the wave-specific
 halt reasons documented in `commands/wave.md`.
 
 If `RUNNER === "sequential"` (default), proceed with the existing workflow
@@ -93,7 +93,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
     Mirrors `loop.orchestratorMode` from `.claude/loop.json`.
   - `dispatchPrompt`: prompt for the dispatched agent. Framed as orchestration
     when mode is `"lead"`, as direct implementation when `"direct-builder"`,
-    or as a `/crew:orchestrate-slice` invocation when `"orchestrate-slice"`.
+    or as a `/devcrew:orchestrate-slice` invocation when `"orchestrate-slice"`.
   - `builderPrompt`: **deprecated** alias of `dispatchPrompt` retained for
     v0.38.x readers. New consumers should use `dispatchPrompt` and route
     based on `orchestratorMode`.
@@ -143,5 +143,5 @@ When `autonomous_safe: false` is encountered, the walker evaluates:
 ## Roadmap
 
 - **SLICE-A** — Backlog walker + auto-decisions for autonomous_safe=true items only. ✓ Shipped
-- **SLICE-B** — Plan Mode pre-flight + risk gate + /crew:fix auto-pivot. ✓ Shipped
+- **SLICE-B** — Plan Mode pre-flight + risk gate + /devcrew:fix auto-pivot. ✓ Shipped
 - **SLICE-C** — Stop-condition wiring + cost cap + escalation flag. ✓ Shipped

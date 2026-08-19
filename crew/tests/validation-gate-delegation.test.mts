@@ -28,13 +28,21 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
+// commands/*.md and skills/** moved from crew/{commands,skills}/ to the
+// repo-root {commands,skills}/ in the devcrew command-map merge (SLICE-14).
+function resolveRelPath(relPath: string): string {
+  return relPath.startsWith("commands/") || relPath.startsWith("skills/")
+    ? path.join(repoRoot, "..", relPath)
+    : path.join(repoRoot, relPath);
+}
+
 async function readJson(relPath: string): Promise<unknown> {
-  const text = await fs.readFile(path.join(repoRoot, relPath), "utf8");
+  const text = await fs.readFile(resolveRelPath(relPath), "utf8");
   return JSON.parse(text);
 }
 
 async function readText(relPath: string): Promise<string> {
-  return fs.readFile(path.join(repoRoot, relPath), "utf8");
+  return fs.readFile(resolveRelPath(relPath), "utf8");
 }
 
 // ── AC-1: .claude/loop.json config shape ────────────────────────────────────
@@ -65,7 +73,7 @@ test("loop.json: loop.modelRouting is disabled — agent frontmatter governs dis
 test("validator-gate SKILL: documents the satisfiedByReview default delegation path", async () => {
   const text = await readText("skills/workflow/validator-gate/SKILL.md");
   expect(text).toMatch(/satisfiedByReview/);
-  expect(text).toMatch(/do not dispatch `crew:verifier`/i);
+  expect(text).toMatch(/do not dispatch `devcrew:verifier`/i);
 });
 
 test("validator-gate SKILL: documents the risk-gated exception that still dispatches crew:verifier", async () => {
@@ -78,7 +86,7 @@ test("validator-gate SKILL: documents the risk-gated exception that still dispat
 
 test("validator-gate SKILL: no longer asserts the old always-dispatch-no-skip absolute", async () => {
   const text = await readText("skills/workflow/validator-gate/SKILL.md");
-  expect(text).not.toMatch(/Always dispatch `crew:verifier` on any code-bearing slice/i);
+  expect(text).not.toMatch(/Always dispatch `devcrew:verifier` on any code-bearing slice/i);
   expect(text).not.toMatch(/No skip path: a code-only diff still needs the verifier/i);
 });
 
@@ -95,14 +103,14 @@ test("orchestrate-slice.md: RISK_GATE is computed from risk/tags/SPLIT_BUILD bef
 
 test("orchestrate-slice.md: RISK_GATE=false dispatches exactly one reviewer and no dedicated verifier", async () => {
   const text = await readText("commands/orchestrate-slice.md");
-  expect(text).toMatch(/`RISK_GATE = false`.*dispatch exactly \*\*one\*\* `crew:reviewer`/s);
-  expect(text).toMatch(/Do \*\*not\*\* dispatch a dedicated `crew:verifier`/);
+  expect(text).toMatch(/`RISK_GATE = false`.*dispatch exactly \*\*one\*\* `devcrew:reviewer`/s);
+  expect(text).toMatch(/Do \*\*not\*\* dispatch a dedicated `devcrew:verifier`/);
 });
 
 test("orchestrate-slice.md: RISK_GATE=true still fires the heavy 2nd-reviewer/verifier path", async () => {
   const text = await readText("commands/orchestrate-slice.md");
   expect(text).toMatch(/`RISK_GATE = true`.*dispatch the heavy path/s);
-  expect(text).toMatch(/fan-out-review\/SKILL\.md.*AND\/OR a dedicated `crew:verifier`/s);
+  expect(text).toMatch(/fan-out-review\/SKILL\.md.*AND\/OR a dedicated `devcrew:verifier`/s);
 });
 
 test("orchestrate-slice.md: full-suite ownership is documented as CI (test.yml), not dropped", async () => {

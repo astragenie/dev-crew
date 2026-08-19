@@ -8,13 +8,13 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
     {
       id: "FE",
       priority: 0,
-      agentType: "crew:frontend-dev",
+      agentType: "devcrew:frontend-dev",
       prompt: "build fe"
     },
     {
       id: "BE",
       priority: 1,
-      agentType: "crew:backend-dev",
+      agentType: "devcrew:backend-dev",
       prompt: "build be"
     }
   ];
@@ -26,7 +26,7 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
     repoRoot: "/main/repo"
   });
   assert.equal(calls.length, 2);
-  assert.equal(calls[0].subagent_type, "crew:frontend-dev");
+  assert.equal(calls[0].subagent_type, "devcrew:frontend-dev");
   assert.match(calls[0].prompt, /build fe/);
   assert.match(calls[0].prompt, /LOOP_DISPATCH_DEPTH=1/);
   assert.equal(calls[0].description, "dispatch FE");

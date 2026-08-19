@@ -6,7 +6,7 @@
 // optionally pushes, and cleans up the worktree + branch.
 //
 // On any failure, sets the `merge_failed` halt-badge and preserves the worktree
-// so the operator can resume via /crew:fix.
+// so the operator can resume via /devcrew:fix.
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -142,7 +142,7 @@ export class MergeError extends Error {
     this.failedStep = opts.failedStep;
     this.gitStderr = opts.gitStderr ?? "";
     this.fixHint =
-      opts.fixHint ?? `Run \`/crew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
+      opts.fixHint ?? `Run \`/devcrew:fix\` against worktree \`${opts.attemptedWorktree}\` to resume.`;
     this.attemptedBranch = opts.attemptedBranch;
     this.attemptedWorktree = opts.attemptedWorktree;
   }
@@ -476,7 +476,7 @@ async function checkValidationGate(ctx: MergeContext): Promise<void> {
     message:
       code === "VALIDATION_FAILED"
         ? `Validation gate explicitly failed for ${ctx.sliceId}. Cannot auto-merge.`
-        : `Validation gate not satisfied for ${ctx.sliceId}. Run /crew:validate or pass --skip-validation-check.`,
+        : `Validation gate not satisfied for ${ctx.sliceId}. Run /devcrew:validate or pass --skip-validation-check.`,
     failedStep: "validation-gate",
     fixHint: `Open the validation artifact to see what failed, then re-run /loop:slice complete.`,
     attemptedBranch: ctx.branchName,
@@ -519,7 +519,7 @@ async function rebaseBranchOntoMain(ctx: MergeContext): Promise<void> {
       message: `git rebase origin/main failed for branch ${ctx.branchName}: ${(err?.stderr ?? err?.message ?? "").trim()}`,
       failedStep: "rebase",
       gitStderr: (err?.stderr ?? "").trim(),
-      fixHint: `Run \`/crew:fix\` against worktree \`${ctx.worktreePath}\` to resolve rebase conflict.`,
+      fixHint: `Run \`/devcrew:fix\` against worktree \`${ctx.worktreePath}\` to resolve rebase conflict.`,
       attemptedBranch: ctx.branchName,
       attemptedWorktree: ctx.worktreePath
     });

@@ -193,13 +193,13 @@ export class AcceptanceCriteriaRequiredError extends Error {
             "`- GIVEN ... WHEN ... THEN ...`, or `- [ ] ...` / `- [x] ...` checkboxes (a plain " +
             "`- some note` bullet does not count) before a slice can be scaffolded. " +
             "Placeholder AC auto-generation was removed; run " +
-            `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
+            `\`/devcrew:triage --deep ${featureId}\` or \`/devcrew:pm-review ${featureId}\` to draft ACs.`
         : `${featureId} has no acceptance criteria — the PM must author at least one ` +
             "testable bullet under a `## Acceptance criteria` heading (qualifier suffixes " +
             "like `## Acceptance criteria (Given-When-Then)` are accepted; check for a typo'd " +
             "heading first) before a slice can be scaffolded. " +
             "Placeholder AC auto-generation was removed; run " +
-            `\`/runner:triage --deep ${featureId}\` or \`/runner:pm-review ${featureId}\` to draft ACs.`
+            `\`/devcrew:triage --deep ${featureId}\` or \`/devcrew:pm-review ${featureId}\` to draft ACs.`
     );
     this.name = "AcceptanceCriteriaRequiredError";
   }

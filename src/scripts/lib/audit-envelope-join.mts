@@ -120,7 +120,7 @@ export function joinAuditToPairs<T extends PairInput>(
  *
  * @param auditLogPath  Absolute path to auto-dispatch.jsonl.
  * @param sliceId       Slice scoping key.
- * @param agent         Agent identifier (e.g. "crew:builder").
+ * @param agent         Agent identifier (e.g. "devcrew:builder").
  */
 export async function computeNextIterationIndex(
   auditLogPath: string,

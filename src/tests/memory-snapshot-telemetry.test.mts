@@ -359,23 +359,23 @@ test("writeMemorySnapshot renders Pause rate bullet once dispatch outcomes exist
   await addFeature(repo, { title: "Test" });
 
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "completed"
   });
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "completed"
   });
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "paused"
   });
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "completed"
   });
   await recordPauseEvent(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     kind: "pause",
     detection: "no_artifact"
   });
@@ -398,12 +398,12 @@ test("writeMemorySnapshot renders 'no data (stale, ...)' when the newest pause r
   await addFeature(repo, { title: "Test" });
 
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "paused",
     ts: "2026-07-02T18:34:00.000Z"
   });
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "completed",
     ts: "2026-07-02T18:30:00.000Z"
   });
@@ -428,13 +428,13 @@ test("writeMemorySnapshot renders the numeric Pause rate when a fresh dispatch r
   await addFeature(repo, { title: "Test" });
 
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "paused",
     ts: "2026-07-02T18:34:00.000Z"
   });
   // Fresh record recorded "now" (default ts) keeps the window live.
   await recordDispatchOutcome(repo, {
-    agentRole: "crew:fullstack-dev",
+    agentRole: "devcrew:fullstack-dev",
     outcome: "completed"
   });
 

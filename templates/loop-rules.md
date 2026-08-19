@@ -1,6 +1,6 @@
 # Autonomous Loop — HARD RULES
 
-Plugin-managed by `/runner:install`. Do not edit by hand. Full rationale,
+Plugin-managed by `/devcrew:install`. Do not edit by hand. Full rationale,
 tables, and worked examples for the rules below: `.claude/loop/rules-reference.md`.
 
 ## Autonomous Loop Instruction — HARD RULE
@@ -17,26 +17,26 @@ Stop only on: a `crew run escalated_to_human` badge, cost cap exceeded (`loop.co
 
 After all acceptance criteria for the current slice are PASS with evidence and all artifacts written, automatically pick the next unit of work — without user confirmation:
 
-1. **Scan `{{specsRoot}}/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/runner:intake --spec`. New FEAT files land in `{{backlogRoot}}/pending/`.
-2. **Scan `{{backlogRoot}}/pending/`** — if any pending entries exist, run `/runner:triage` to score them; scored entries move to `{{backlogRoot}}/triaged/`.
-3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by lowest FEAT-NNN id ascending (oldest wins). Promote it: `/runner:start FEAT-NNN`.
+1. **Scan `{{specsRoot}}/`** — for any spec with `status: approved` and empty `derived_features`, decompose it: `/devcrew:intake --spec`. New FEAT files land in `{{backlogRoot}}/pending/`.
+2. **Scan `{{backlogRoot}}/pending/`** — if any pending entries exist, run `/devcrew:triage` to score them; scored entries move to `{{backlogRoot}}/triaged/`.
+3. **Pick the highest-priority triaged feature** — order P0 > P1 > P2 > P3; break ties by lowest FEAT-NNN id ascending (oldest wins). Promote it: `/devcrew:start FEAT-NNN`.
 4. **Begin the dev-crew method on the new slice.** Acceptance criteria, evidence, review per `{{aiLoopRoot}}/01-loop-control/`.
 5. **On slice close** — run the Slice Close Ceremony (below). Do NOT skip it — every artifact is part of the slice's evidence record.
 
-If `{{backlogRoot}}/pending/`, `{{backlogRoot}}/triaged/`, and `{{specsRoot}}/` are all empty/satisfied, confirm via `/runner:spec-status` and stop. Never stop just because the backlog "feels empty." Slice/phase filename linkage and the auto-mode-vs-legacy gating table: `.claude/loop/rules-reference.md`.
+If `{{backlogRoot}}/pending/`, `{{backlogRoot}}/triaged/`, and `{{specsRoot}}/` are all empty/satisfied, confirm via `/devcrew:spec-status` and stop. Never stop just because the backlog "feels empty." Slice/phase filename linkage and the auto-mode-vs-legacy gating table: `.claude/loop/rules-reference.md`.
 
 ## Orchestrator Model Gate — HARD RULE
 
-After `/runner:start` returns, check `orchestratorModel` in the result. If it is non-null and does not match your current session model, STOP before any slice work. Exact stop text and restart command: `.claude/loop/rules-reference.md`. Resuming on the wrong model is a real cost mistake, not a formality.
+After `/devcrew:start` returns, check `orchestratorModel` in the result. If it is non-null and does not match your current session model, STOP before any slice work. Exact stop text and restart command: `.claude/loop/rules-reference.md`. Resuming on the wrong model is a real cost mistake, not a formality.
 
 ## Slice Start Ceremony — HARD RULE
 
 Open every slice through the canonical start command **before** beginning acceptance-criteria work:
 
 1. **Identify the next slice.** Check `docs/superpowers/plans/*.md` for unchecked `## Task N: SLICE_NN` headings first; else fall back to Cross-Slice Continuation.
-2. **`/runner:start <FEAT-NNN|SLICE-NN>`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
+2. **`/devcrew:start <FEAT-NNN|SLICE-NN>`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. Surface errors and stop — never proceed against a stale run.
-4. **Dispatch a crew builder subagent.** The return includes a `dispatchInstruction` — hand it to `crew:fullstack-dev` (or the stack-specific `crew:backend-dev` / `crew:frontend-dev`), or generic `claude`. There is no agent literally named `crew:builder`. Builder owns implementation only; when it returns, dispatch `crew:reviewer`, then `crew:validator` if behavior changed. **Do not implement inline.**
+4. **Dispatch a crew builder subagent.** The return includes a `dispatchInstruction` — hand it to `devcrew:fullstack-dev` (or the stack-specific `devcrew:backend-dev` / `devcrew:frontend-dev`), or generic `claude`. There is no agent literally named `devcrew:builder`. Builder owns implementation only; when it returns, dispatch `devcrew:reviewer`, then `devcrew:validator` if behavior changed. **Do not implement inline.**
 5. **Wait for builder, reviewer, and validator reports**, then run the Slice Close Ceremony.
 
 Exception: manual invocations may pass `--no-dispatch`. The autonomous loop itself should never pass `--no-dispatch`.
@@ -47,16 +47,16 @@ The autonomous loop is an **orchestrator**, not an implementer. Every code-beari
 
 | Situation                                                          | Dispatch                                                                                             |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Slice implementation (acceptance criteria work)                    | a crew builder subagent — `crew:fullstack-dev` (or `crew:backend-dev` / `crew:frontend-dev`), or generic `claude` |
-| Bug found during slice (test fail, regression, integration error)  | `/crew:fix` subagent                                                                                 |
-| Independent code review pass                                       | `/crew:review` subagent (or the configured reviewer ladder)                                          |
-| Behavior validation when something is runnable                     | `/crew:validate` subagent                                                                            |
-| Deployment / shipping a reviewed change                             | `/crew:ship` subagent                                                                                |
+| Slice implementation (acceptance criteria work)                    | a crew builder subagent — `devcrew:fullstack-dev` (or `devcrew:backend-dev` / `devcrew:frontend-dev`), or generic `claude` |
+| Bug found during slice (test fail, regression, integration error)  | `/devcrew:fix` subagent                                                                                 |
+| Independent code review pass                                       | `/devcrew:review` subagent (or the configured reviewer ladder)                                          |
+| Behavior validation when something is runnable                     | `/devcrew:validate` subagent                                                                            |
+| Deployment / shipping a reviewed change                             | `/devcrew:ship` subagent                                                                                |
 | Trivial inline fixup (typo, fixture path, single-line patch)       | Inline is fine — but log it in the run-brief                                                        |
 
-Pivot triggers — any of these means **stop, dispatch `/crew:fix`, then resume**: a review_result with `status: needs_fix`; a validation_result with `status: fail`; a build/test failure that needs a root-cause hunt.
+Pivot triggers — any of these means **stop, dispatch `/devcrew:fix`, then resume**: a review_result with `status: needs_fix`; a validation_result with `status: fail`; a build/test failure that needs a root-cause hunt.
 
-**Never use `caveman:*` agents for slice work** — they lack the full artifact protocol. Always use a real crew builder, `crew:reviewer`, `crew:validator`, `crew:release-engineer` — never `crew:builder`, which is not an agent.
+**Never use `caveman:*` agents for slice work** — they lack the full artifact protocol. Always use a real crew builder, `devcrew:reviewer`, `devcrew:validator`, `devcrew:release-engineer` — never `devcrew:builder`, which is not an agent.
 
 **Dispatch budget:** maximum {{maxSubagentsPerSlice}} subagent dispatches per slice. Inline execution for single-file edits, test/lint/format fixes. When in doubt, prefer dispatch — a subagent run produces its own artifact trail.
 
@@ -68,8 +68,8 @@ Before dispatching any reviewer, pre-extract the slice spec's `Files:` list and 
 
 Two ways to start work. Pick one per session — do **not** mix.
 
-- **`/crew:build` (interactive, single slice).** Lead-driven, lighter ceremony. No `/runner:start` required; no run-brief mandatory. The Slice Close Ceremony still applies if the change closes a slice.
-- **Autonomous loop (unattended, multi-slice).** Full ceremony required. Slice Start → dev-crew method → Slice Close. Invoked via `/runner:auto`, `ScheduleWakeup`, or `CronCreate`. Every slice must rotate `currentRun`.
+- **`/devcrew:build` (interactive, single slice).** Lead-driven, lighter ceremony. No `/devcrew:start` required; no run-brief mandatory. The Slice Close Ceremony still applies if the change closes a slice.
+- **Autonomous loop (unattended, multi-slice).** Full ceremony required. Slice Start → dev-crew method → Slice Close. Invoked via `/devcrew:auto`, `ScheduleWakeup`, or `CronCreate`. Every slice must rotate `currentRun`.
 
 Never run both simultaneously against the same branch — they race on `workflow-state.json`. One-glance visibility into all slices: `cat .claude/state/crew/slice-progress.md`.
 
@@ -77,7 +77,7 @@ Never run both simultaneously against the same branch — they race on `workflow
 
 When every acceptance criterion is PASS with evidence, close the slice **before** picking up the next one. Manual file moves are NOT a substitute — they bypass artifact fan-out:
 
-1. **`/runner:close SLICE-NN`** — atomically moves the slice to `completed/`, moves the linked feature to `done/`, reconciles parent SPEC status, captures grade + lessons, and fans out `handoffs/`, `runs/final-synthesis-*`, and `cost/`+`cost-insights/` artifacts.
+1. **`/devcrew:close SLICE-NN`** — atomically moves the slice to `completed/`, moves the linked feature to `done/`, reconciles parent SPEC status, captures grade + lessons, and fans out `handoffs/`, `runs/final-synthesis-*`, and `cost/`+`cost-insights/` artifacts.
 2. **Inspect the ceremony return** — verify `handoffPath`, `synthesisPath`, and `costUsd` are populated. Fix any `{ error: ... }` before continuing.
 3. **Apply Cross-Slice Continuation** to pick the next unit of work.
 
@@ -85,7 +85,7 @@ Expected artifact set per slice, all present before Cross-Slice Continuation: `r
 
 ## Phase Completion Gate — HARD RULE
 
-When the last slice in a phase completes, run `/runner:phase-gate`. The plugin executes every configured stage via `execFile` (no shell interpretation), captures output, and writes one validation artifact under `{{phaseGateArtifactDir}}/phase-<N>-gate-<date>.md`. Do NOT proceed to the next phase on FAIL. Do NOT hand-author the gate artifact.
+When the last slice in a phase completes, run `/devcrew:phase-gate`. The plugin executes every configured stage via `execFile` (no shell interpretation), captures output, and writes one validation artifact under `{{phaseGateArtifactDir}}/phase-<N>-gate-<date>.md`. Do NOT proceed to the next phase on FAIL. Do NOT hand-author the gate artifact.
 
 ## Worktree Parallelism — HARD RULE
 
@@ -95,7 +95,7 @@ Run concurrent features in sibling git worktrees — each has its own `.claude/s
 2. Copy or git-track `.claude/loop.json` per branch.
 3. Run the loop independently in each worktree.
 
-Cost-attribution scoping order and the fleet-view command: `.claude/loop/rules-reference.md`. Constraints: each worktree must be on its own branch; never push from inside the autonomous loop; never run `/crew:build` and the autonomous loop simultaneously on the same worktree.
+Cost-attribution scoping order and the fleet-view command: `.claude/loop/rules-reference.md`. Constraints: each worktree must be on its own branch; never push from inside the autonomous loop; never run `/devcrew:build` and the autonomous loop simultaneously on the same worktree.
 
 ## Tool Discipline
 

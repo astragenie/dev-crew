@@ -103,7 +103,7 @@ This command is the core of FEAT-009 (autonomous PR repair flow):
 ## Example flow
 
 1. `/loop pr-fix --pr 42` — discovers lint + test_failure issues.
-2. Orchestrator dispatches `/crew:fix` with lint fix prompt.
+2. Orchestrator dispatches `/devcrew:fix` with lint fix prompt.
 3. Fix agent commits; PR checks re-run.
 4. `/loop pr-fix --pr 42 --body '{"lint":1}'` — lint category now has attemptCount=1; test_failure still 0.
 5. Repeat until CI green or circuit breaker fires on any category.

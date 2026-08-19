@@ -2,15 +2,15 @@
 
 **Status**: draft (awaiting implementation FEAT)
 **Date**: 2026-06-04
-**Origin**: SLICE-35 / FEAT-037 surfaced workflow ambiguity — parent (orchestrator) was surprised when crew:lead chose single-session inline mode for a 3-test slice instead of dispatching crew:fullstack-dev. Lead followed the v0.7.2 `dispatchInstruction` prompt correctly ("Prefer inline for test-fix"); the surprise was a visibility gap, not a misbehavior.
+**Origin**: SLICE-35 / FEAT-037 surfaced workflow ambiguity — parent (orchestrator) was surprised when devcrew:lead chose single-session inline mode for a 3-test slice instead of dispatching devcrew:fullstack-dev. Lead followed the v0.7.2 `dispatchInstruction` prompt correctly ("Prefer inline for test-fix"); the surprise was a visibility gap, not a misbehavior.
 
 ## Goal
 
-Give the parent orchestrator early visibility into crew:lead's chosen mode and per-AC progress, so that parent can cleanly interrupt or let the run proceed without surprise. Preserve lead's discretion to choose inline vs team-run per workflow rules.
+Give the parent orchestrator early visibility into devcrew:lead's chosen mode and per-AC progress, so that parent can cleanly interrupt or let the run proceed without surprise. Preserve lead's discretion to choose inline vs team-run per workflow rules.
 
 ## Non-goals
 
-- Forcing crew:lead to dispatch crew:fullstack-dev for every code-bearing slice (HARD RULES vs v0.7.2 prompt reconciliation is a separate FEAT).
+- Forcing devcrew:lead to dispatch devcrew:fullstack-dev for every code-bearing slice (HARD RULES vs v0.7.2 prompt reconciliation is a separate FEAT).
 - Cross-plugin changes to `crew/agents/lead.md`. This FEAT is loop-side only.
 - Enforcement: if lead omits the conventions below, parent degrades gracefully — no retry, no error.
 
@@ -30,7 +30,7 @@ Two new line-tags lead is instructed to emit.
 
 - Emitted exactly once, in lead's first turn after dispatch.
 - One of three values, mirrors the crew lead workflow mode taxonomy.
-- Free-form note may follow `—`, e.g. `[MODE] team-run — delegating crew:fullstack-dev for src/foo/`.
+- Free-form note may follow `—`, e.g. `[MODE] team-run — delegating devcrew:fullstack-dev for src/foo/`.
 
 ### `[CHECKPOINT]` — once per AC
 
@@ -40,7 +40,7 @@ Two new line-tags lead is instructed to emit.
 
 - One emitted per AC in the slice, AFTER the AC is verified.
 - Status is one of `pass` / `fail` / `skip`.
-- Status `fail` is the parent's interrupt signal — parent may pivot to `/crew:fix` rather than wait for the close ceremony.
+- Status `fail` is the parent's interrupt signal — parent may pivot to `/devcrew:fix` rather than wait for the close ceremony.
 - Status `skip` carries a reason in the note (e.g., `skipped — issue addressed in earlier slice`).
 
 ## Error handling
@@ -67,5 +67,5 @@ Future tightening (separate FEAT, conditional on observed drift):
 ## References
 
 - Trigger event: SLICE-35 (commit `70bd72d`, grade `0.897`) — lead dispatched, chose inline mode, was about to write artifacts when parent stopped it.
-- v0.7.2 release: `chore(release): v0.7.2 — slice dispatch routes to crew:lead + FEAT-034 marker drain + auditLogPath` (commit `3b0683b`). Established `buildDispatchInstruction` emitting `Dispatch crew:lead subagent...`.
+- v0.7.2 release: `chore(release): v0.7.2 — slice dispatch routes to devcrew:lead + FEAT-034 marker drain + auditLogPath` (commit `3b0683b`). Established `buildDispatchInstruction` emitting `Dispatch devcrew:lead subagent...`.
 - HARD RULES: `.claude/loop/rules.md` — currently says "never implement inline except trivial single-line fixups". Reconciliation with v0.7.2 lead prompt is a separate FEAT (already noted in GRADE-SLICE-35 Followups).

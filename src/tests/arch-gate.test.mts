@@ -1,7 +1,7 @@
 // ARCHITECT GATE (runner side) — pre-slice-1 architect + risk gate for P0/P1
 // fullstack FEATs, with a bounded reject loop that DEFERS (never blocks for
 // a human). See src/scripts/lib/arch-gate.mts module docstring for the
-// architecture decision (runner:start emits instructions; it never
+// architecture decision (devcrew:start emits instructions; it never
 // dispatches agents itself).
 
 import fs from "node:fs/promises";
@@ -154,8 +154,8 @@ test("shouldRunArchGate: true on gate_in_progress re-entry even though the contr
 test("buildArchGatePreflight: mentions the FEAT id, both specialists, and the persist CLI call", () => {
   const block = buildArchGatePreflight("FEAT-500", "Some Feature");
   assert.match(block, /FEAT-500/);
-  assert.match(block, /crew:architect-feature/);
-  assert.match(block, /crew:architect-reviewer/);
+  assert.match(block, /devcrew:architect-feature/);
+  assert.match(block, /devcrew:architect-reviewer/);
   assert.match(block, /arch-gate-apply/);
   assert.match(block, /deferred_design/);
   assert.match(block, /budget_exceeded/);

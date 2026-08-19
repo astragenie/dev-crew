@@ -10,25 +10,25 @@ depends_on: []
 slices: []
 derived_from: null
 ---
-# FEAT-007: Wire /crew:orchestrate-slice as default dispatchInstruction in slice-start
+# FEAT-007: Wire /devcrew:orchestrate-slice as default dispatchInstruction in slice-start
 
 ## Description
 
 When the autonomous loop starts a slice via `/loop:slice start --id SLICE-NN`, it
-currently emits a generic `dispatchInstruction` telling the lead to run `/crew:build`.
-Now that hero-crew ships `/crew:orchestrate-slice` (FEAT-040, merged 2026-06-05), the
+currently emits a generic `dispatchInstruction` telling the lead to run `/devcrew:build`.
+Now that hero-crew ships `/devcrew:orchestrate-slice` (FEAT-040, merged 2026-06-05), the
 loop should emit that command instead — so the full tag-driven specialist ladder
 (architect → uxdesigner → builder → reviewer → validator → copywriter → doc-writer)
 fires automatically without manual lead assembly.
 
 ## Acceptance hints
 
-- `slice-start` output `dispatchInstruction` reads `/crew:orchestrate-slice --id SLICE-NN`
-  (or equivalent invocation) instead of `/crew:build`
+- `slice-start` output `dispatchInstruction` reads `/devcrew:orchestrate-slice --id SLICE-NN`
+  (or equivalent invocation) instead of `/devcrew:build`
 - `MIN_CREW_VERSION` guard in dispatch logic bumped to the hero-crew release that
-  ships `/crew:orchestrate-slice` (≥0.10.x; confirm exact tag at implementation time)
+  ships `/devcrew:orchestrate-slice` (≥0.10.x; confirm exact tag at implementation time)
 - If the installed crew version is below `MIN_CREW_VERSION`, fall back gracefully
-  to the existing `/crew:build` dispatch with a warning in the instruction text
+  to the existing `/devcrew:build` dispatch with a warning in the instruction text
 - Existing slice-start tests updated / extended to cover the new dispatch shape
 - `dispatch.mts` (or equivalent dispatch wiring) updated to route through
   orchestrate-slice when version guard passes

@@ -100,8 +100,8 @@ test("writeGrade mirrors Surprises + Followups into astramem as notes", async ()
   );
   // SLICE-1b: grade-derived notes are agent-tagged as the slice implementer.
   assert.ok(
-    notes.every((c) => c.metadata?.["agent"] === "crew:builder"),
-    `notes should carry agent metadata crew:builder, got: ${JSON.stringify(notes)}`
+    notes.every((c) => c.metadata?.["agent"] === "devcrew:builder"),
+    `notes should carry agent metadata devcrew:builder, got: ${JSON.stringify(notes)}`
   );
 });
 

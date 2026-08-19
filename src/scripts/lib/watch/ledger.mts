@@ -25,7 +25,7 @@ import path from "node:path";
 import type { Finding } from "./types.mjs";
 import { readJsonOrDefault, updateStateAtomic } from "./state.mjs";
 
-// Generous outlier bound over pr-fix/intake/crew:fix's typical single-digit-
+// Generous outlier bound over pr-fix/intake/devcrew:fix's typical single-digit-
 // minute runtime — matches claims.mts's DEFAULT_CLAIM_TTL_SECONDS reasoning.
 export const MAX_REACTION_RUNTIME_SECONDS = 1800;
 

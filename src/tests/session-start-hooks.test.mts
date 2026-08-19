@@ -68,7 +68,7 @@ test("bootstrap-context: default (no loop.json) prints HARD RULES and exits 0", 
   const result = runHook(hookPath, { cwd: repo });
   assert.equal(result.status, 0);
   assert.match(result.stdout, /HARD RULES/);
-  assert.match(result.stdout, /\/runner:start/);
+  assert.match(result.stdout, /\/devcrew:start/);
 });
 
 test("bootstrap-context: features.bootstrap-context.enabled=false -> exit 0, no output", async () => {

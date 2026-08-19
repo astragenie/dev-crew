@@ -380,7 +380,7 @@ describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
 
   test("dispatchKind + iterationIndex written to audit log when set", async () => {
     await dispatchAgent({
-      agent: "runner:builder",
+      agent: "devcrew:builder",
       prompt: "build the thing",
       parentCommand: "slice-start",
       repoRoot: repo,
@@ -404,7 +404,7 @@ describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
     };
     try {
       await dispatchAgent({
-        agent: "runner:builder",
+        agent: "devcrew:builder",
         prompt: "build",
         parentCommand: "test",
         repoRoot: repo,
@@ -429,7 +429,7 @@ describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
     };
     try {
       await dispatchAgent({
-        agent: "runner:builder",
+        agent: "devcrew:builder",
         prompt: "build",
         parentCommand: "test",
         repoRoot: repo,
@@ -448,7 +448,7 @@ describe("AC-5: dispatchAgent audit-log dispatchKind + iterationIndex", () => {
 
   test("absent dispatchKind defaults to null, iterationIndex to 0", async () => {
     await dispatchAgent({
-      agent: "runner:reviewer",
+      agent: "devcrew:reviewer",
       prompt: "review",
       parentCommand: "slice-review",
       repoRoot: repo

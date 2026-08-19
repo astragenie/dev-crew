@@ -4,9 +4,9 @@
 
 **Goal:** Drive SPEC-002 ("Reliability Hardening from Grade Followups") to `satisfied`, closing 9 operational gaps and lifting `production_readiness` dim from 0.825 → ≥ 0.90.
 
-**Architecture:** SPEC-level orchestration plan over the loop methodology. Each FEAT under SPEC-002 ships through the standard loop pipeline (decompose → triage → slice → build → grade → done). Per-FEAT TDD decomposition is delegated to `loop:spec-decompose`'s architect auto-dispatch and `/crew:build`'s builder. This plan only orchestrates the top-level sequence and the SPEC-level acceptance check.
+**Architecture:** SPEC-level orchestration plan over the loop methodology. Each FEAT under SPEC-002 ships through the standard loop pipeline (decompose → triage → slice → build → grade → done). Per-FEAT TDD decomposition is delegated to `loop:spec-decompose`'s architect auto-dispatch and `/devcrew:build`'s builder. This plan only orchestrates the top-level sequence and the SPEC-level acceptance check.
 
-**Tech Stack:** loop CLI (`node scripts/loop.mjs`), crew CLI (`node scripts/crew.mjs`), `/crew:build` dispatch, architect auto-dispatch (FEAT-028 SLICE-C).
+**Tech Stack:** loop CLI (`node scripts/loop.mjs`), crew CLI (`node scripts/crew.mjs`), `/devcrew:build` dispatch, architect auto-dispatch (FEAT-028 SLICE-C).
 
 ---
 
@@ -134,15 +134,15 @@ Open the new slice file under `.claude/artifacts/loop/ai-loop/slices/pending/`. 
 Run: `node "C:/work/mega/loop/scripts/loop.mjs" slice start --id <SLICE-id>`
 Expected: ok, run brief written.
 
-- [ ] **Step 4: Dispatch builder via /crew:build**
+- [ ] **Step 4: Dispatch builder via /devcrew:build**
 
-Since FEAT-A is `autonomous_safe: false`, the orchestrator dispatches `/crew:build` and reviews the diff before merge. Per loop HARD RULES, builder is dispatched as subagent — never inline implementation.
+Since FEAT-A is `autonomous_safe: false`, the orchestrator dispatches `/devcrew:build` and reviews the diff before merge. Per loop HARD RULES, builder is dispatched as subagent — never inline implementation.
 
 ```
-/crew:build
+/devcrew:build
 ```
 
-Then review handoff artifact from `crew:fullstack-dev` per existing review ladder pattern (Reviewer A: correctness on dispatch lifecycle; Reviewer B: regression risk on `/loop:slice complete` ceremony). Run `node scripts/loop.mjs slice review-ladder --id <SLICE-id>` to emit reviewer prompts.
+Then review handoff artifact from `devcrew:fullstack-dev` per existing review ladder pattern (Reviewer A: correctness on dispatch lifecycle; Reviewer B: regression risk on `/loop:slice complete` ceremony). Run `node scripts/loop.mjs slice review-ladder --id <SLICE-id>` to emit reviewer prompts.
 
 - [ ] **Step 5: Run tests + lint + format check**
 
@@ -197,7 +197,7 @@ Run: `node "C:/work/mega/loop/scripts/loop.mjs" slice start --id <SLICE-id>`
 
 - [ ] **Step 4: Build (autonomous_safe: true → can run via autonomous loop)**
 
-If running autonomously: continue normal loop. If supervised: dispatch via `/crew:build`.
+If running autonomously: continue normal loop. If supervised: dispatch via `/devcrew:build`.
 
 - [ ] **Step 5: Test + lint + close ceremony + grade**
 

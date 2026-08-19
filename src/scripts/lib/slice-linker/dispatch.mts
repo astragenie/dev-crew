@@ -61,7 +61,7 @@ export const TASK_SCOPED_ORDER_KEYWORDS = ["FORBIDDEN", "GATES", "RETURN", "ECHO
 // literal tag text.
 const ECHO_RULE_LINES = [
   `ECHO: Never quote this task-scoped block back into your handoff or report — restating a FORBIDDEN/GATES/RETURN bullet "for completeness" leaks task-scoped orders into durable memory/handoff text.`,
-  `  Bad:  "Handoff note: FORBIDDEN — did not dispatch crew:reviewer, for completeness."`,
+  `  Bad:  "Handoff note: FORBIDDEN — did not dispatch devcrew:reviewer, for completeness."`,
   `  Good: "Reviewer/verifier dispatch left to the parent loop per slice-build orchestration."`
 ];
 
@@ -104,7 +104,7 @@ function appendProgressSignals(lines: string[]) {
     "",
     "Emit two advisory line-tags so the parent orchestrator has early visibility into your mode choice and per-AC progress. Advisory only — parent degrades gracefully on absence.",
     "",
-    "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating crew:fullstack-dev for src/foo/`.",
+    "- `[MODE] <single-session|assisted-single-session|team-run>` — emit exactly once, as the first line of your first response after dispatch. Optional free-form note after `—`, e.g. `[MODE] team-run — delegating devcrew:fullstack-dev for src/foo/`.",
     "- `[CHECKPOINT] AC-<N>: <pass|fail|skip> — <≤80 char note>` — emit one per AC AFTER the AC is verified. Status `fail` is the parent's interrupt signal; status `skip` carries a reason in the note."
   );
 }
@@ -268,11 +268,11 @@ export function pickBuilderVariant(
 }
 
 function variantToAgent(variant: BuilderVariant): string {
-  if (variant === "frontend") return "crew:frontend-dev";
-  if (variant === "backend") return "crew:backend-dev";
+  if (variant === "frontend") return "devcrew:frontend-dev";
+  if (variant === "backend") return "devcrew:backend-dev";
   // "fullstack" and "unknown" both dispatch the fullstack builder — for
   // "unknown" this is a safe superset, not a confirmed fullstack signal.
-  return "crew:fullstack-dev";
+  return "devcrew:fullstack-dev";
 }
 
 /**
@@ -291,33 +291,33 @@ function buildParallelFeBeInstruction(
   const goalLine = resolvedGoal ? ` Goal: ${resolvedGoal.slice(0, 200)}.` : "";
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
-  const returnLine = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`;
+  const returnLine = `When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch devcrew:reviewer, then devcrew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`;
   const perAgentOrders = [
-    `FORBIDDEN: Do NOT dispatch crew:reviewer or crew:verifier yourself.`,
+    `FORBIDDEN: Do NOT dispatch devcrew:reviewer or devcrew:verifier yourself.`,
     `RETURN: ${returnLine}`,
     ...(suffix ? [`GATES: ${suffix}`] : [])
   ];
   const perAgentTaskScoped = formatTaskScopedQuote(perAgentOrders);
   const topOrders = [
     `FORBIDDEN: Never use caveman:* agents for slice work.`,
-    `GATES: The parent loop drives crew:reviewer and crew:verifier AFTER both subagents return.`
+    `GATES: The parent loop drives devcrew:reviewer and devcrew:verifier AFTER both subagents return.`
   ];
   return [
     `PARALLEL DISPATCH — issue ONE Agent message with TWO parallel tool calls:`,
     "",
-    `  1. crew:frontend-dev with the **Frontend prompt** below.`,
-    `  2. crew:backend-dev with the **Backend prompt** below.`,
+    `  1. devcrew:frontend-dev with the **Frontend prompt** below.`,
+    `  2. devcrew:backend-dev with the **Backend prompt** below.`,
     "",
     `Both subagents own their respective slice surface.`,
     "",
     formatTaskScopedPlain(topOrders),
     "",
-    `**Frontend prompt** (for crew:frontend-dev):`,
+    `**Frontend prompt** (for devcrew:frontend-dev):`,
     `> Implement the frontend portion of ${title}.${sliceRef}${goalLine} You own implementation of the frontend surface only.`,
     `>`,
     perAgentTaskScoped,
     "",
-    `**Backend prompt** (for crew:backend-dev):`,
+    `**Backend prompt** (for devcrew:backend-dev):`,
     `> Implement the backend portion of ${title}.${sliceRef}${goalLine} You own implementation of the backend surface only.`,
     `>`,
     perAgentTaskScoped
@@ -384,8 +384,8 @@ export function buildDispatchInstruction({
     const suffix = buildBudgetLine(dispatchLimits);
     const objective = `Implement ${title}.${sliceRef}${goalLine} You own implementation only — frame, edit, run the self-verify gates, and return a write-handoff artifact path.`;
     const orders = [
-      `FORBIDDEN: Do NOT dispatch crew:reviewer or crew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol.`,
-      `RETURN: When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch crew:reviewer, then crew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`,
+      `FORBIDDEN: Do NOT dispatch devcrew:reviewer or devcrew:verifier yourself; the parent loop drives those gates separately after you return. Never use caveman:* agents for slice work — they lack the artifact protocol.`,
+      `RETURN: When acceptance criteria PASS with evidence in your self-verify gates, return control so the parent loop can dispatch devcrew:reviewer, then devcrew:verifier if behavior changed, then run /loop:slice complete --id ${sliceId}. If a needed cross-cutting change is out of scope, stop and surface it to the parent loop.`,
       ...(suffix ? [`GATES: ${suffix}`] : [])
     ];
     header = [
@@ -446,7 +446,7 @@ function buildArchitectPreflight(sliceId: string, title: string, rel: string | n
   return [
     `ARCHITECT PRE-FLIGHT — slice declares \`needs_contract: true\` and no contract artifact exists yet.`,
     "",
-    `Dispatch crew:architect FIRST with this prompt:`,
+    `Dispatch devcrew:architect FIRST with this prompt:`,
     "",
     `> Produce a contract artifact for ${sliceId} (${title}).${sliceRef} Write the contract under \`.claude/artifacts/crew/contracts/${sliceId}-<short-name>.md\` with frontmatter \`kind: contract\` + \`slice: ${sliceId}\`. The contract must capture: data shapes, public function signatures, integration surfaces, and edge cases the builder(s) will consume. Return the artifact path so the parent loop can verify and proceed.`,
     "",
@@ -457,12 +457,12 @@ function buildArchitectPreflight(sliceId: string, title: string, rel: string | n
 
 function buildOrchestrateSliceInstruction(sliceId: string): string {
   return [
-    `Invoke /crew:orchestrate-slice to run the full specialist ladder for this slice:`,
+    `Invoke /devcrew:orchestrate-slice to run the full specialist ladder for this slice:`,
     ``,
-    `> /crew:orchestrate-slice --id ${sliceId}`,
+    `> /devcrew:orchestrate-slice --id ${sliceId}`,
     ``,
     `The command dispatches specialists in sequence from the main thread (architect if needed,`,
-    `builder, reviewer, validator, crew:document-writer). All dispatches are visible in this`,
+    `builder, reviewer, validator, devcrew:document-writer). All dispatches are visible in this`,
     `window. When the ladder completes, close with /loop:slice complete --id ${sliceId}.`
   ].join("\n");
 }

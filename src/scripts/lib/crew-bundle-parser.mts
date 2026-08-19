@@ -5,7 +5,7 @@
 // Expected bundle shape (illustrative — see src/tests/fixtures/crew-bundle-sample.md):
 //
 //   ---
-//   agent: crew:builder
+//   agent: devcrew:builder
 //   slice: SLICE-1
 //   started: 2026-06-15T12:00:00Z
 //   ---

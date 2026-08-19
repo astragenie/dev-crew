@@ -53,7 +53,7 @@ describe("agent-dispatch.schema.json — ts is required, timestamp is tolerated-
       kind: "agent.dispatch",
       payload: {
         timestamp: "2026-07-09T00:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         ok: true
       },
       emittedAt: "2026-07-09T00:00:00.000Z"
@@ -68,7 +68,7 @@ describe("agent-dispatch.schema.json — ts is required, timestamp is tolerated-
       kind: "agent.dispatch",
       payload: {
         ts: "2026-07-09T00:00:00.000Z",
-        agent: "crew:builder",
+        agent: "devcrew:builder",
         ok: true
       },
       emittedAt: "2026-07-09T00:00:00.000Z"

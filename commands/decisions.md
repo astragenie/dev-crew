@@ -8,10 +8,10 @@ auto_execute_steps: false
 
 Single command with subcommands. Replaces:
 
-- `runner:decisions-list`      → `runner:decisions list`
-- `runner:decisions-show`      → `runner:decisions show --id DEC-NNN`
-- `runner:decisions-relevant`  → `runner:decisions relevant --files "<file1>,<file2>"`
-- `runner:decisions-supersede` → `runner:decisions supersede --id DEC-OLD --by DEC-NEW`
+- `devcrew:decisions-list`      → `devcrew:decisions list`
+- `devcrew:decisions-show`      → `devcrew:decisions show --id DEC-NNN`
+- `devcrew:decisions-relevant`  → `devcrew:decisions relevant --files "<file1>,<file2>"`
+- `devcrew:decisions-supersede` → `devcrew:decisions supersede --id DEC-OLD --by DEC-NEW`
 
 ## list
 

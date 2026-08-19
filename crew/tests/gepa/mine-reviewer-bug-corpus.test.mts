@@ -185,7 +185,8 @@ describe("SLICE-103 runMineReviewerBugCorpus — mining", () => {
 // ---------------------------------------------------------------------------
 
 describe("SLICE-103 — hand-seeded corpus EvalCaseSchema validation", () => {
-  const evalDir = join(import.meta.dir, "../../agents/reviewer/.gepa/eval");
+  // agents/reviewer/.gepa moved to the true repo root (one level above crew/).
+  const evalDir = join(import.meta.dir, "../../../agents/reviewer/.gepa/eval");
 
   // The 10 canonical bug cases
   const expectedCases = [

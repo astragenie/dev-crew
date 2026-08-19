@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a wave-mode autonomous runner that dispatches N independent slices into parallel git worktrees per wave, merges PASS, pivots FAIL into `/crew:fix` next wave, and loops until standard stop-check fires.
+**Goal:** Add a wave-mode autonomous runner that dispatches N independent slices into parallel git worktrees per wave, merges PASS, pivots FAIL into `/devcrew:fix` next wave, and loops until standard stop-check fires.
 
-**Architecture:** New `src/scripts/lib/wave/` library (planner + runner + failure-pivot + artifacts), one new slash command `/runner:wave`, three new `loop.mts` subcommands (`wave plan|run|loop`), `loop.json` schema extension (`marathonRunner` + `wave` block), spec-writer contract addition (`touches_files` slice frontmatter), and a single config knob (`marathonRunner: "wave"`) that opts the marathon into wave mode. All crew dispatch goes through a configured slash command (`/crew:orchestrate-slice` default) — loop stays decoupled from crew internals.
+**Architecture:** New `src/scripts/lib/wave/` library (planner + runner + failure-pivot + artifacts), one new slash command `/devcrew:wave`, three new `loop.mts` subcommands (`wave plan|run|loop`), `loop.json` schema extension (`marathonRunner` + `wave` block), spec-writer contract addition (`touches_files` slice frontmatter), and a single config knob (`marathonRunner: "wave"`) that opts the marathon into wave mode. All crew dispatch goes through a configured slash command (`/devcrew:orchestrate-slice` default) — loop stays decoupled from crew internals.
 
 **Tech Stack:** TypeScript + Bun runtime, ESM, existing `lib/dispatch-*` primitives for worktree spawn/merge, `lib/stop-conditions.mts` for halt detection, `lib/memory-snapshot.mts` for telemetry. Spec is at `docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md`.
 
@@ -25,7 +25,7 @@
 | `src/scripts/lib/wave/runner.mts` | `runWave(repoRoot, opts)`, `loopWaves(repoRoot, opts)` — orchestrates plan→dispatch→finalize→retest |
 | `src/scripts/lib/wave/dispatch-prompt.mts` | Builds per-worktree agent prompt invoking configured slash command |
 | `src/scripts/validate-slice-touches-files.mts` | CI script: warn on missing, error on bad paths |
-| `commands/wave.md` | `/runner:wave` slash flow (plan / run / loop subcommands) |
+| `commands/wave.md` | `/devcrew:wave` slash flow (plan / run / loop subcommands) |
 | `src/tests/wave/conflict.test.mts` | Conflict graph + path-set unit tests |
 | `src/tests/wave/touches-files.test.mts` | Parser + inference + missing fallback |
 | `src/tests/wave/planner.test.mts` | Ranking + greedy packer edge cases |
@@ -48,7 +48,7 @@
 | `src/scripts/lib/halt-badges.mts` | Add `wave_post_merge_red`, `wave_dirty_main`, `wave_pending_fix_count`, `wave_escalation_count` |
 | `src/scripts/lib/memory-snapshot.mts` | Read `.claude/artifacts/loop/waves/index.json`; emit "Wave telemetry" block |
 | `agents/spec-writer.md` | Add `touches_files` contract paragraph to slice-level SDD section |
-| `commands/auto.md` | Route to `/runner:wave loop` when `marathonRunner === "wave"` |
+| `commands/auto.md` | Route to `/devcrew:wave loop` when `marathonRunner === "wave"` |
 | `commands/start.md` | Same routing |
 | `docs/halt-badges.md` | Document the 4 new wave badges |
 | `.claude/loop.json` | Add `marathonRunner: "wave"` + `wave` block scaffold (this repo's opt-in) |
@@ -1046,7 +1046,7 @@ function cand(id: string, paths: string[], over: Partial<SliceCandidate> = {}): 
   };
 }
 
-const opts = { waveSize: 3, sliceCommand: "/crew:orchestrate-slice", waveId: "test-wave" };
+const opts = { waveSize: 3, sliceCommand: "/devcrew:orchestrate-slice", waveId: "test-wave" };
 
 describe("packWave", () => {
   test("empty ranked list returns size 0", () => {
@@ -1098,7 +1098,7 @@ describe("packWave", () => {
 
   test("dispatchPrompt contains sliceCommand + sliceId + worktreePath placeholder", () => {
     const p = packWave([cand("S1", ["src/a.mts"])], opts);
-    expect(p.items[0].dispatchPrompt).toContain("/crew:orchestrate-slice");
+    expect(p.items[0].dispatchPrompt).toContain("/devcrew:orchestrate-slice");
     expect(p.items[0].dispatchPrompt).toContain("S1");
   });
 
@@ -1212,7 +1212,7 @@ export function buildDispatchPrompt(opts: DispatchPromptOpts): string {
       `You are running in worktree ${opts.worktreePath} for slice ${opts.sliceId} in fix mode.`,
       `Previous wave attempt FAILED. Failure artifact: ${opts.failureArtifactPath ?? "(unknown)"}.`,
       `1. Read the failure artifact in full.`,
-      `2. Execute the slash command: /crew:fix --slice ${opts.sliceId} --failure ${opts.failureArtifactPath ?? "(unknown)"}`,
+      `2. Execute the slash command: /devcrew:fix --slice ${opts.sliceId} --failure ${opts.failureArtifactPath ?? "(unknown)"}`,
       `3. Wait for completion.`,
       `4. Return a JSON marker on the last line: {"slice":"${opts.sliceId}","status":"PASS"|"FAIL","artifacts":[paths]}`,
     ].join("\n");
@@ -1262,23 +1262,23 @@ describe("buildDispatchPrompt", () => {
     const p = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal",
     });
-    expect(p).toContain("/crew:orchestrate-slice --id SLICE-117");
+    expect(p).toContain("/devcrew:orchestrate-slice --id SLICE-117");
     expect(p).toContain("/tmp/wt/SLICE-117");
     expect(p).toContain("JSON marker");
   });
 
-  test("fix mode includes failure artifact path and /crew:fix invocation", () => {
+  test("fix mode includes failure artifact path and /devcrew:fix invocation", () => {
     const p = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "fix",
       failureArtifactPath: ".claude/artifacts/crew/handoffs/SLICE-117-fail.md",
     });
-    expect(p).toContain("/crew:fix --slice SLICE-117");
+    expect(p).toContain("/devcrew:fix --slice SLICE-117");
     expect(p).toContain(".claude/artifacts/crew/handoffs/SLICE-117-fail.md");
     expect(p).toContain("fix mode");
   });
@@ -1287,7 +1287,7 @@ describe("buildDispatchPrompt", () => {
     const p = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "fix",
     });
     expect(p).toContain("(unknown)");
@@ -1545,9 +1545,9 @@ import type { SliceCandidate, WaveConfig, WorktreeResult } from "../../scripts/l
 
 const cfg: WaveConfig = {
   size: 3,
-  sliceCommand: "/crew:orchestrate-slice",
-  sliceCommandFallback: "/crew:build",
-  fixCommand: "/crew:fix",
+  sliceCommand: "/devcrew:orchestrate-slice",
+  sliceCommandFallback: "/devcrew:build",
+  fixCommand: "/devcrew:fix",
   maxParallel: 3,
   dispatchTimeoutMs: 30 * 60 * 1000,
   postMergeTestCmd: "bun test",
@@ -1612,9 +1612,9 @@ describe("buildFailurePivot", () => {
     expect(p.retryCount).toBe(2);
   });
 
-  test("fixDispatchPrompt contains /crew:fix and failureArtifactPath", () => {
+  test("fixDispatchPrompt contains /devcrew:fix and failureArtifactPath", () => {
     const p = buildFailurePivot(mkResult("S1"), { conflicts: [] }, mkCandidate("S1"), "wave-1", cfg);
-    expect(p.fixDispatchPrompt).toContain("/crew:fix --slice S1");
+    expect(p.fixDispatchPrompt).toContain("/devcrew:fix --slice S1");
     expect(p.fixDispatchPrompt).toContain(p.failureArtifactPath);
   });
 });
@@ -1857,12 +1857,12 @@ const plan: WavePlan = {
       sliceId: "SLICE-1",
       featureId: "FEAT-1",
       worktreeBranch: "wave/wave-1/SLICE-1",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       dispatchPrompt: "prompt",
     },
   ],
   rejected: [],
-  config: { waveSize: 3, sliceCommand: "/crew:orchestrate-slice" },
+  config: { waveSize: 3, sliceCommand: "/devcrew:orchestrate-slice" },
 };
 
 const result: WaveResult = {
@@ -2027,7 +2027,7 @@ describe("resolveWaveConfig", () => {
   test("returns defaults when block absent", () => {
     const c = resolveWaveConfig({});
     expect(c.size).toBe(3);
-    expect(c.sliceCommand).toBe("/crew:orchestrate-slice");
+    expect(c.sliceCommand).toBe("/devcrew:orchestrate-slice");
     expect(c.maxParallel).toBe(3);
     expect(c.maxWaveAttempts).toBe(2);
     expect(c.subagentType).toBe("general-purpose");
@@ -2035,10 +2035,10 @@ describe("resolveWaveConfig", () => {
 
   test("user overrides applied", () => {
     const c = resolveWaveConfig({
-      wave: { size: 5, sliceCommand: "/crew:build", maxWaveAttempts: 3 },
+      wave: { size: 5, sliceCommand: "/devcrew:build", maxWaveAttempts: 3 },
     });
     expect(c.size).toBe(5);
-    expect(c.sliceCommand).toBe("/crew:build");
+    expect(c.sliceCommand).toBe("/devcrew:build");
     expect(c.maxWaveAttempts).toBe(3);
   });
 });
@@ -2047,9 +2047,9 @@ describe("validateWaveConfig", () => {
   test("PASS on valid config", () => {
     expect(validateWaveConfig({
       size: 3,
-      sliceCommand: "/crew:orchestrate-slice",
-      sliceCommandFallback: "/crew:build",
-      fixCommand: "/crew:fix",
+      sliceCommand: "/devcrew:orchestrate-slice",
+      sliceCommandFallback: "/devcrew:build",
+      fixCommand: "/devcrew:fix",
       maxParallel: 3,
       dispatchTimeoutMs: 1800000,
       postMergeTestCmd: "bun test",
@@ -2087,9 +2087,9 @@ import type { WaveConfig } from "./types.mjs";
 
 const DEFAULTS: WaveConfig = {
   size: 3,
-  sliceCommand: "/crew:orchestrate-slice",
-  sliceCommandFallback: "/crew:build",
-  fixCommand: "/crew:fix",
+  sliceCommand: "/devcrew:orchestrate-slice",
+  sliceCommandFallback: "/devcrew:build",
+  fixCommand: "/devcrew:fix",
   maxParallel: 3,
   dispatchTimeoutMs: 30 * 60 * 1000,
   postMergeTestCmd: "bun test src/tests/ --parallel --timeout 60000",
@@ -2416,7 +2416,7 @@ describe("runWave failure pivots", () => {
       size: 3,
       sliceCommand: "/crew:o",
       sliceCommandFallback: "/crew:b",
-      fixCommand: "/crew:fix",
+      fixCommand: "/devcrew:fix",
       maxParallel: 3,
       dispatchTimeoutMs: 1,
       postMergeTestCmd: "",
@@ -2854,7 +2854,7 @@ git commit -m "feat(wave): add 'wave plan' CLI subcommand on loop.mts"
 - [ ] **Step 1: Find existing dispatch CLI invocations**
 
 Run: `grep -n "dispatch prepare\|dispatch finalize\|dispatchPrepare\|dispatchFinalize" src/scripts/lib/*.mts src/scripts/loop.mts | head -10`
-Note the function/module names used by `/crew:parallel` flow.
+Note the function/module names used by `/devcrew:parallel` flow.
 
 - [ ] **Step 2: Wire real implementations into cli.mts**
 
@@ -3017,10 +3017,10 @@ export async function realDispatch(
 ): Promise<WorktreeResult[]> {
   // The runtime path: emit a structured payload that the slash flow turns into N parallel
   // Agent calls. For headless CLI runs (no Claude harness), this throws — the wrapper
-  // command /runner:wave handles dispatch via the harness. Document this constraint in the
-  // /runner:wave slash command.
+  // command /devcrew:wave handles dispatch via the harness. Document this constraint in the
+  // /devcrew:wave slash command.
   throw new Error(
-    "realDispatch must be invoked from the /runner:wave slash flow (Agent dispatch is harness-only).",
+    "realDispatch must be invoked from the /devcrew:wave slash flow (Agent dispatch is harness-only).",
   );
 }
 
@@ -3083,7 +3083,7 @@ git commit -m "feat(wave): wire 'wave run' and 'wave loop' CLI to real dispatch 
 
 ---
 
-## Task 18: /runner:wave slash command
+## Task 18: /devcrew:wave slash command
 
 **Files:**
 - Create: `commands/wave.md`
@@ -3093,7 +3093,7 @@ git commit -m "feat(wave): wire 'wave run' and 'wave loop' CLI to real dispatch 
 ```markdown
 ---
 name: wave
-description: "Run wave-mode autonomous runner: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /crew:fix next wave. Subcommands: plan | run | loop."
+description: "Run wave-mode autonomous runner: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /devcrew:fix next wave. Subcommands: plan | run | loop."
 auto_execute_steps: false
 ---
 
@@ -3101,8 +3101,8 @@ auto_execute_steps: false
 
 Reads triaged slices with declared `touches_files`, packs up to `wave.size` non-conflicting
 into one wave, dispatches each slice into a parallel git worktree, merges PASS branches,
-runs post-merge tests, enqueues FAIL slices for `/crew:fix` next wave. Loops until
-`/runner:stop-check` fires.
+runs post-merge tests, enqueues FAIL slices for `/devcrew:fix` next wave. Loops until
+`/devcrew:stop-check` fires.
 
 ## Subcommands
 
@@ -3129,11 +3129,11 @@ parallel-agent batch payload that the harness materializes into N parallel
 `Agent(subagent_type: general-purpose)` calls. Each agent's prompt instructs:
 
 1. `cd <worktreePath>`
-2. Execute the configured slash command (`/crew:orchestrate-slice --id <SLICE-ID>` by default).
+2. Execute the configured slash command (`/devcrew:orchestrate-slice --id <SLICE-ID>` by default).
 3. Return a last-line JSON marker: `{"slice":"<id>","status":"PASS"|"FAIL","artifacts":[...]}`.
 
 After all N agents return, the wave runner calls `dispatch finalize` (merges PASS
-branches, leaves FAIL worktrees on disk for next-wave `/crew:fix`), runs the post-merge
+branches, leaves FAIL worktrees on disk for next-wave `/devcrew:fix`), runs the post-merge
 test command, writes artifacts to `.claude/artifacts/loop/waves/<waveId>/`, and exits.
 
 ### loop — repeat `run` until a stop condition fires
@@ -3168,9 +3168,9 @@ with `loop.maxIterations: 25` allows up to 75 slice closes per run. Tighten
     "marathonRunner": "wave",
     "wave": {
       "size": 3,
-      "sliceCommand": "/crew:orchestrate-slice",
-      "sliceCommandFallback": "/crew:build",
-      "fixCommand": "/crew:fix",
+      "sliceCommand": "/devcrew:orchestrate-slice",
+      "sliceCommandFallback": "/devcrew:build",
+      "fixCommand": "/devcrew:fix",
       "maxParallel": 3,
       "dispatchTimeoutMs": 1800000,
       "postMergeTestCmd": "bun test src/tests/ --parallel --timeout 60000",
@@ -3182,7 +3182,7 @@ with `loop.maxIterations: 25` allows up to 75 slice closes per run. Tighten
 }
 ```
 
-`marathonRunner: "wave"` opts the marathon (`/runner:auto`, `/runner:start`) into wave mode.
+`marathonRunner: "wave"` opts the marathon (`/devcrew:auto`, `/devcrew:start`) into wave mode.
 Default remains `"sequential"`.
 
 ## Failure pivots
@@ -3190,7 +3190,7 @@ Default remains `"sequential"`.
 A FAIL worktree from wave N:
 1. Has its slice frontmatter mutated: `wave_attempts++`, `pending_fix: true`, `last_failure: {...}`.
 2. Is picked first by the planner in wave N+1 (pendingFix ranks ahead of compositeScore).
-3. Dispatches with a fix-mode prompt invoking `/crew:fix --slice <id> --failure <artifact>`.
+3. Dispatches with a fix-mode prompt invoking `/devcrew:fix --slice <id> --failure <artifact>`.
 4. Escalates to `needs-review/` after `wave.maxWaveAttempts` (default 2) failures.
 
 ## Artifacts
@@ -3221,7 +3221,7 @@ Expected: PASS
 
 ```bash
 git add commands/wave.md
-git commit -m "feat(wave): add /runner:wave slash command with plan|run|loop subcommands"
+git commit -m "feat(wave): add /devcrew:wave slash command with plan|run|loop subcommands"
 ```
 
 ---
@@ -3483,9 +3483,9 @@ Before executing the sequential walker, check `.claude/loop.json` for `loop.mara
 RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
 ```
 
-If `RUNNER === "wave"`, delegate to `/runner:wave loop` and exit. Do not run the sequential
+If `RUNNER === "wave"`, delegate to `/devcrew:wave loop` and exit. Do not run the sequential
 walker. The wave loop respects the same `loop.maxIterations`, `loop.autoMode`, and
-`/runner:stop-check` conditions, plus the wave-specific halt reasons documented in
+`/devcrew:stop-check` conditions, plus the wave-specific halt reasons documented in
 `commands/wave.md`.
 
 If `RUNNER === "sequential"` (default), proceed with the existing workflow below.
@@ -3540,9 +3540,9 @@ Edit `.claude/loop.json`:
     "marathonRunner": "wave",
     "wave": {
       "size": 3,
-      "sliceCommand": "/crew:orchestrate-slice",
-      "sliceCommandFallback": "/crew:build",
-      "fixCommand": "/crew:fix",
+      "sliceCommand": "/devcrew:orchestrate-slice",
+      "sliceCommandFallback": "/devcrew:build",
+      "fixCommand": "/devcrew:fix",
       "maxParallel": 3,
       "dispatchTimeoutMs": 1800000,
       "postMergeTestCmd": "bun test src/tests/ --parallel --timeout 60000",
@@ -3566,7 +3566,7 @@ Expected: PASS
 
 ```bash
 git add commands/auto.md commands/start.md src/scripts/loop.mts .claude/loop.json
-git commit -m "feat(wave): route marathon entry points to /runner:wave when marathonRunner=='wave'"
+git commit -m "feat(wave): route marathon entry points to /devcrew:wave when marathonRunner=='wave'"
 ```
 
 ---
@@ -3728,7 +3728,7 @@ describe("wave e2e (fully mocked dispatch)", () => {
 
     expect(outcome.mergedBranches).toHaveLength(2);
     expect(outcome.failurePivots).toHaveLength(1);
-    expect(outcome.failurePivots[0].fixDispatchPrompt).toContain("/crew:fix");
+    expect(outcome.failurePivots[0].fixDispatchPrompt).toContain("/devcrew:fix");
   });
 });
 ```
@@ -3777,7 +3777,7 @@ Insert after the orchestrator-mode section:
 ## Wave mode
 
 Opt-in marathon runner that dispatches N independent slices per "wave" into parallel
-git worktrees, merges PASS branches, pivots FAIL slices into `/crew:fix` next wave, and
+git worktrees, merges PASS branches, pivots FAIL slices into `/devcrew:fix` next wave, and
 loops until standard stop-check fires.
 
 Enable in `.claude/loop.json`:
@@ -3786,12 +3786,12 @@ Enable in `.claude/loop.json`:
 {
   "loop": {
     "marathonRunner": "wave",
-    "wave": { "size": 3, "sliceCommand": "/crew:orchestrate-slice" }
+    "wave": { "size": 3, "sliceCommand": "/devcrew:orchestrate-slice" }
   }
 }
 ```
 
-Run via `/runner:wave loop` (or `/runner:auto` once `marathonRunner: "wave"` is set —
+Run via `/devcrew:wave loop` (or `/devcrew:auto` once `marathonRunner: "wave"` is set —
 auto routes to wave automatically).
 
 Slice prerequisite: `touches_files` in slice frontmatter. Spec-writer populates this
@@ -3809,8 +3809,8 @@ Prepend to `CHANGELOG.md` (under any existing "Unreleased" heading):
 
 ```markdown
 ### Added
-- Wave-mode autonomous loop (`/runner:wave plan|run|loop`): dispatches up to N independent
-  slices per wave into parallel git worktrees, merges PASS, pivots FAIL into `/crew:fix`
+- Wave-mode autonomous loop (`/devcrew:wave plan|run|loop`): dispatches up to N independent
+  slices per wave into parallel git worktrees, merges PASS, pivots FAIL into `/devcrew:fix`
   next wave, runs post-merge tests, loops until standard stop-check fires. Opt-in via
   `loop.json:marathonRunner: "wave"`; default remains `"sequential"`.
 - `touches_files` slice frontmatter contract + parser + CI validator
@@ -3823,7 +3823,7 @@ Prepend to `CHANGELOG.md` (under any existing "Unreleased" heading):
 ### Changed
 - spec-writer agent contract requires `touches_files` in slice frontmatter for wave-mode
   dispatch.
-- `commands/auto.md` and `commands/start.md` route to `/runner:wave loop` when
+- `commands/auto.md` and `commands/start.md` route to `/devcrew:wave loop` when
   `loop.marathonRunner === "wave"`.
 ```
 
@@ -3834,8 +3834,8 @@ Append a paragraph after the "Orchestrator mode" section:
 ```markdown
 ### Wave mode (opt-in)
 
-Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/runner:auto` and
-`/runner:start` into wave mode: per-wave parallel worktree dispatch instead of single-slice
+Set `loop.marathonRunner: "wave"` in `.claude/loop.json` to flip `/devcrew:auto` and
+`/devcrew:start` into wave mode: per-wave parallel worktree dispatch instead of single-slice
 sequential. See `commands/wave.md` and
 `docs/superpowers/specs/2026-06-14-wave-mode-loop-design.md`.
 
@@ -3875,7 +3875,7 @@ After completing all tasks, run this checklist:
 | touches_files contract | Tasks 3, 4, 5 |
 | Planner (rank + conflict graph + packer) | Tasks 2, 6, 7, 9 |
 | Wave runner lifecycle | Tasks 13, 14, 15 |
-| Failure pivot to /crew:fix | Task 10, 14 |
+| Failure pivot to /devcrew:fix | Task 10, 14 |
 | Config + CLI surface | Tasks 12, 16, 17 |
 | Slash command + marathon routing | Tasks 18, 21 |
 | Artifacts + snapshot integration | Tasks 11, 20 |
@@ -4041,7 +4041,7 @@ Parallelism: 1 (solo — only T14 ready, runner.mts is held).
 | # | Task | touches_files | depends on |
 |---|---|---|---|
 | 1 | T15 — loopWaves multi-wave driver | `src/scripts/lib/wave/runner.mts`, `src/tests/wave/runner.test.mts` | T14 |
-| 2 | T18 — `/runner:wave` slash command | `commands/wave.md` | T16 |
+| 2 | T18 — `/devcrew:wave` slash command | `commands/wave.md` | T16 |
 
 Parallelism: 2. Disjoint files (T15 in runner.mts, T18 in commands/wave.md).
 
@@ -4107,7 +4107,7 @@ For each task:
      {\"task\":\"T<id>\",\"status\":\"PASS\"|\"FAIL\",\"commits\":[sha...],\"artifacts\":[paths]}"
 ```
 
-After all subagents return PASS, merge worktrees to main, run full test suite, proceed to next wave. FAIL tasks pivot to `/crew:fix` next wave per the wave-mode contract.
+After all subagents return PASS, merge worktrees to main, run full test suite, proceed to next wave. FAIL tasks pivot to `/devcrew:fix` next wave per the wave-mode contract.
 
 ---
 

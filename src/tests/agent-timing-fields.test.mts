@@ -16,8 +16,8 @@ describe("agent timing fields", () => {
       sliceId: "SLICE-1",
       featureId: null,
       timestamp: "2026-06-15T12:00:00.000Z",
-      agent: "crew:builder",
-      parentCommand: "/crew:build",
+      agent: "devcrew:builder",
+      parentCommand: "/devcrew:build",
       dispatchedAt: "2026-06-15T12:00:00.000Z"
     } as never);
     const file = eventsPath(repo, "SLICE-1");
@@ -33,7 +33,7 @@ describe("agent timing fields", () => {
       sliceId: "SLICE-1",
       featureId: null,
       timestamp: "2026-06-15T12:00:00.000Z",
-      agent: "crew:builder",
+      agent: "devcrew:builder",
       status: "ok",
       durationMs: 90000,
       firstOutputAt: "2026-06-15T12:00:05.000Z",

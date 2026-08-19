@@ -51,7 +51,7 @@ test("watch-tick.mts is never scheduler-invoked with platform branching in this 
   expect(scriptPath.replace(/\\/g, "/")).toMatch(/src\/scripts\/watch-tick\.mts$/);
 });
 
-// AC-8: /runner:watch and the scheduler registration must point at the same
+// AC-8: /devcrew:watch and the scheduler registration must point at the same
 // entry-point script — no divergent code path.
 test("AC-8: commands/watch.md and the scheduler both reference watch-tick.mts", async () => {
   const watchMd = await fs.readFile(path.resolve("commands/watch.md"), "utf-8");

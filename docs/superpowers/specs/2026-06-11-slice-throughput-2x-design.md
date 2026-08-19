@@ -17,7 +17,7 @@ User-locked tactical choice during brainstorming:
 - Stay within the loop repo. File upstream-request for `hero-crew` but don't block on it.
 - Target 2x wall-clock per slice. Quality floor: average grade ≥ 0.83.
 
-Ceremony surfaces (`/runner:slice start`, `/runner:slice complete`, `/runner:slice grade`) confirmed in scope for edit.
+Ceremony surfaces (`/devcrew:slice start`, `/devcrew:slice complete`, `/devcrew:slice grade`) confirmed in scope for edit.
 
 ## Levers (all config-gated, default ON)
 
@@ -150,9 +150,9 @@ Returns:
 {
   "sliceId": "SLICE-91",
   "tasks": [
-    { "role": "reviewer-A", "subagent_type": "crew:inspector", "prompt": "..." },
-    { "role": "reviewer-B", "subagent_type": "crew:inspector", "prompt": "..." },
-    { "role": "validator",  "subagent_type": "crew:verifier", "prompt": "..." }
+    { "role": "reviewer-A", "subagent_type": "devcrew:inspector", "prompt": "..." },
+    { "role": "reviewer-B", "subagent_type": "devcrew:inspector", "prompt": "..." },
+    { "role": "validator",  "subagent_type": "devcrew:verifier", "prompt": "..." }
   ],
   "instructions": "PARALLEL_DISPATCH_CONTRACT v1 ...",
   "aggregation": { "halt_on_any_FAIL": true, "wait_for_all": true }
@@ -202,7 +202,7 @@ New CLI `bun src/scripts/loop.mts perf-report --window 10` aggregates speedup vs
 
 ## Acceptance criteria
 
-**Wall-clock measure** for AC-1: `wall_clock_seconds` is the elapsed time from `/runner:slice start` event in the telemetry log to the corresponding `slice grade-write` event for the same slice id. Includes all dispatches and waits. Excludes time the loop spent on adjacent slices.
+**Wall-clock measure** for AC-1: `wall_clock_seconds` is the elapsed time from `/devcrew:slice start` event in the telemetry log to the corresponding `slice grade-write` event for the same slice id. Includes all dispatches and waits. Excludes time the loop spent on adjacent slices.
 
 | AC | Target | Measure |
 |---|---|---|
@@ -236,7 +236,7 @@ Deferred per user choice during brainstorming. Each may become its own FEAT late
 
 - Architect preflight cache (hash on FEAT-id + scope-fence + affected paths; reuse within 24h window).
 - Broader validator skip criteria (auto-skip when `requires_validation: false` + test delta ≥ AC target + no production code touched).
-- Hero-crew upstream-request for `crew:lead` to enforce parallel dispatch at the agent level. File as documentation; do not block on it.
+- Hero-crew upstream-request for `devcrew:lead` to enforce parallel dispatch at the agent level. File as documentation; do not block on it.
 - Aggressive Approach C levers (speculative reviewer-A on builder partials, collapsed grading) — violate the "no quality loss" constraint.
 
 ## References

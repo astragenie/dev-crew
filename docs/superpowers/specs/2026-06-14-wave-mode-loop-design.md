@@ -7,14 +7,14 @@
 
 ## Problem
 
-The autonomous loop currently walks the triaged backlog one slice at a time. `/runner:auto`
+The autonomous loop currently walks the triaged backlog one slice at a time. `/devcrew:auto`
 emits a sequential dispatch plan; each slice runs the full ceremony (start → builder →
 reviewer → validator → complete → grade) before the next slice begins. Throughput is
 bounded by single-slice wall-clock latency even when several triaged FEATs touch disjoint
 files and could safely run in parallel.
 
-`/crew:parallel` (FEAT-136) already proves out the parallel-worktree primitive — it
-spawns N git worktrees, dispatches `crew:lead` per worktree, and merges DONE branches
+`/devcrew:parallel` (FEAT-136) already proves out the parallel-worktree primitive — it
+spawns N git worktrees, dispatches `devcrew:lead` per worktree, and merges DONE branches
 back to main. It is a manual one-shot. Nothing today loops it, tests between waves, or
 auto-routes failures into the next wave.
 
@@ -24,17 +24,17 @@ Add a wave-mode runner that:
 1. Packs up to N independent slices per wave (using per-slice `touches_files` declared
    in slice frontmatter).
 2. Dispatches each slice into its own git worktree in parallel.
-3. Merges PASS results, enqueues FAIL results for `/crew:fix` in the next wave.
+3. Merges PASS results, enqueues FAIL results for `/devcrew:fix` in the next wave.
 4. Runs the full test suite once after the wave merges.
-5. Loops until a standard `/runner:stop-check` condition fires.
+5. Loops until a standard `/devcrew:stop-check` condition fires.
 
-Wave mode is opt-in via `loop.json:marathonRunner: "wave"`. Sequential `/runner:auto`
+Wave mode is opt-in via `loop.json:marathonRunner: "wave"`. Sequential `/devcrew:auto`
 stays untouched and remains the default.
 
 ## Non-goals
 
 - Changing the slice ceremony semantics (start/complete/grade unchanged).
-- Replacing `/runner:auto` for users who want sequential execution.
+- Replacing `/devcrew:auto` for users who want sequential execution.
 - Cross-slice automatic conflict resolution (planner avoids conflicts; it does not
   attempt three-way merges).
 - Parallelizing slices **within the same FEAT** (one FEAT → one worktree per wave).
@@ -47,14 +47,14 @@ stays untouched and remains the default.
 | Wave unit | one SLICE per worktree |
 | Conflict gate | spec-writer declares `touches_files`; planner enforces non-overlap |
 | Wave size | fixed `loop.json:wave.size` (default 3) |
-| Mixed-result handling | merge PASS, dispatch `/crew:fix` for FAIL in next wave |
+| Mixed-result handling | merge PASS, dispatch `/devcrew:fix` for FAIL in next wave |
 | Test gate | per-worktree validator + once after wave merge |
-| CLI surface | new `/runner:wave` command; `marathonRunner: "wave"` opts marathon in |
-| Halt | standard `/runner:stop-check` only (+ internal `post_merge_red`, `dirty_main`) |
-| Dispatch shape | configured slash command (`/crew:orchestrate-slice` default), not direct `crew:lead` agent |
+| CLI surface | new `/devcrew:wave` command; `marathonRunner: "wave"` opts marathon in |
+| Halt | standard `/devcrew:stop-check` only (+ internal `post_merge_red`, `dirty_main`) |
+| Dispatch shape | configured slash command (`/devcrew:orchestrate-slice` default), not direct `devcrew:lead` agent |
 | Approach | wave-native planner library (`src/scripts/lib/wave/*`) |
 
-Rationale for slash-command façade: loop should not couple to `crew:lead`'s internals.
+Rationale for slash-command façade: loop should not couple to `devcrew:lead`'s internals.
 Crew can swap lead → direct-builder → any future implementation without a loop edit.
 One config knob (`wave.sliceCommand`) controls which crew flow runs per worktree.
 
@@ -67,7 +67,7 @@ src/scripts/lib/wave/
   planner.mts          # ranker + file-set conflict graph + greedy packer
   runner.mts           # wave runner: plan → dispatch → finalize → retest → next
   touchesFiles.mts     # read slice frontmatter, infer when missing
-  failurePivot.mts     # FAIL item → /crew:fix dispatch prompt builder
+  failurePivot.mts     # FAIL item → /devcrew:fix dispatch prompt builder
   artifacts.mts        # write .claude/artifacts/loop/waves/<wave-id>/*
 
 src/scripts/loop.mts
@@ -75,7 +75,7 @@ src/scripts/loop.mts
   + subcommand `wave run`      # one wave end-to-end
   + subcommand `wave loop`     # repeat wave run until stop-check fires
 
-commands/wave.md               # /runner:wave slash flow
+commands/wave.md               # /devcrew:wave slash flow
 agents/spec-writer.md          # contract update: require touches_files in slice frontmatter
 src/scripts/lib/slice-frontmatter.mts  # parse + validate touches_files field
 
@@ -83,7 +83,7 @@ src/tests/wave/
   planner.test.mts             # packing + conflict graph
   runner.test.mts              # wave lifecycle (mocked dispatch)
   touchesFiles.test.mts        # parse + fallback
-  failurePivot.test.mts        # /crew:fix prompt shape
+  failurePivot.test.mts        # /devcrew:fix prompt shape
 src/tests/integration/
   wave-e2e.test.mts            # one full wave against fixture repo
 ```
@@ -91,7 +91,7 @@ src/tests/integration/
 ### Data flow per wave
 
 ```
-runner:auto/ranking ────► planner.pack(triagedSlices, N=3)
+devcrew:auto/ranking ────► planner.pack(triagedSlices, N=3)
                             │
                             ▼
                        WavePlan { items: [SliceDispatch...] }
@@ -111,7 +111,7 @@ runner:auto/ranking ────► planner.pack(triagedSlices, N=3)
                             │
                             ▼
                        PASS  → backlog updates
-                       FAIL  → enqueue /crew:fix for next wave
+                       FAIL  → enqueue /devcrew:fix for next wave
                             │
                             ▼
                        stop-check → next wave OR halt
@@ -120,7 +120,7 @@ runner:auto/ranking ────► planner.pack(triagedSlices, N=3)
 Reuse from existing code:
 - `loop.mts auto` ranking (extracted to shared module)
 - `dispatch prepare` + `dispatch finalize` CLI subcommands (unchanged)
-- `/runner:stop-check` + `checkStopConditions` (unchanged)
+- `/devcrew:stop-check` + `checkStopConditions` (unchanged)
 - Crew slash commands invoked per worktree (no direct agent coupling)
 
 ## touches_files contract
@@ -350,7 +350,7 @@ export async function loopWaves(repoRoot: string, opts: LoopOpts): Promise<LoopR
 6. FINALIZE (MERGE PASS BRANCHES)
    - `loop.mts dispatch finalize --run-id <id> --plan <plan>`
    - merges only branches whose marker.status === "PASS"
-   - FAIL worktrees: kept on disk for /crew:fix
+   - FAIL worktrees: kept on disk for /devcrew:fix
    - returns { merged: [], conflicts: [], failed: [] }
 
 7. POST-MERGE TEST
@@ -393,9 +393,9 @@ while true:
 
 | Case | Handling |
 |---|---|
-| Single worktree timeout | FAIL; PASS siblings still merge; /crew:fix next wave |
+| Single worktree timeout | FAIL; PASS siblings still merge; /devcrew:fix next wave |
 | Agent returns no marker | agent_error; same as FAIL |
-| Merge conflict on PASS branch | finalize keeps worktree, marks merge_conflict; /crew:fix pivot |
+| Merge conflict on PASS branch | finalize keeps worktree, marks merge_conflict; /devcrew:fix pivot |
 | Post-merge test red | HALT — operator decides whether to revert |
 
 ### Concurrency budget
@@ -403,7 +403,7 @@ while true:
 - `wave.dispatchTimeoutMs` (default 30 min per worktree) — runner cancels overdue workers.
 - `wave.maxParallel` (default = waveSize) — throttle below waveSize on resource-constrained hosts.
 
-## Failure pivot to /crew:fix
+## Failure pivot to /devcrew:fix
 
 `src/scripts/lib/wave/failurePivot.mts`:
 
@@ -445,7 +445,7 @@ last_failure:
   wave_id: "2026-06-14T1230Z"
   kind: "worktree_fail"
   artifact: ".claude/artifacts/crew/handoffs/SLICE-117-reviewer-fail.md"
-  pivot_command: "/crew:fix"
+  pivot_command: "/devcrew:fix"
 ---
 ```
 
@@ -460,7 +460,7 @@ Previous wave attempt FAILED. Failure artifact:
   <failure_artifact_path>
 
 1. Read the failure artifact in full.
-2. Execute the slash command: /crew:fix --slice <slice-id> --failure <failure_artifact_path>
+2. Execute the slash command: /devcrew:fix --slice <slice-id> --failure <failure_artifact_path>
 3. Wait for it to complete.
 4. Return a JSON marker on the last line:
    {"slice":"<id>","status":"PASS"|"FAIL","artifacts":[paths],"fixAttempt":<retry_count>}
@@ -474,14 +474,14 @@ After `wave_attempts >= cfg.maxWaveAttempts` (default 2):
 - Append to `.claude/artifacts/loop/waves/<waveId>/escalations.json`.
 - Planner no longer considers it.
 
-This is the only auto-escalation path. Standard `/runner:stop-check` `escalated_to_human`
+This is the only auto-escalation path. Standard `/devcrew:stop-check` `escalated_to_human`
 fires if escalation count crosses `escalationThreshold: 3` (existing config).
 
 ### Worktree lifecycle for fixes
 
 | State | Worktree disposition |
 |---|---|
-| First FAIL → next wave will retry | Keep worktree on disk; reuse for /crew:fix |
+| First FAIL → next wave will retry | Keep worktree on disk; reuse for /devcrew:fix |
 | Second FAIL → escalation | Remove worktree; commit failure artifact reference |
 | Merge conflict (PASS → conflict) | Reset worktree to parent main HEAD; treat as fresh FAIL |
 
@@ -490,7 +490,7 @@ fires if escalation count crosses `escalationThreshold: 3` (existing config).
 Each successful wave finalize counts as N closes (N = `mergedBranches.length`).
 `checkMarathonCheckpoint` reuses unchanged: a wave that closes 3 slices burns 3
 checkpoint-budget closes, which is correct — more work, faster pressure toward
-`/runner:retrospective`.
+`/devcrew:retrospective`.
 
 ## Config + CLI
 
@@ -503,9 +503,9 @@ checkpoint-budget closes, which is correct — more work, faster pressure toward
     "marathonRunner": "wave",              // NEW; "sequential" | "wave"; default "sequential"
     "wave": {                              // NEW; only consulted when marathonRunner === "wave"
       "size": 3,
-      "sliceCommand": "/crew:orchestrate-slice",
-      "sliceCommandFallback": "/crew:build",
-      "fixCommand": "/crew:fix",
+      "sliceCommand": "/devcrew:orchestrate-slice",
+      "sliceCommandFallback": "/devcrew:build",
+      "fixCommand": "/devcrew:fix",
       "maxParallel": 3,
       "dispatchTimeoutMs": 1800000,
       "postMergeTestCmd": "bun test src/tests/ --parallel --timeout 60000",
@@ -553,27 +553,27 @@ Exit codes (entry points only). Mapping is by halt reason, not by surface:
 | `3` | `escalated_to_human`, `escalation_threshold_hit` |
 | `1` | unexpected error (uncaught exception, dirty git on startup, missing config, schema validation fail) |
 
-The wave runner asks `/runner:stop-check` for `{ shouldStop, reason, severity }` and routes
+The wave runner asks `/devcrew:stop-check` for `{ shouldStop, reason, severity }` and routes
 on severity: `info` → exit `0`, `warn` → exit `2`, `error` → exit `2`, `escalation` → exit `3`.
 
-### `/runner:wave` slash command (`commands/wave.md`)
+### `/devcrew:wave` slash command (`commands/wave.md`)
 
 Wraps `loop.mts wave loop`. Subcommands:
-- `/runner:wave plan` — emit next wave plan, no dispatch
-- `/runner:wave run` — one wave
-- `/runner:wave loop` — until halt (default)
+- `/devcrew:wave plan` — emit next wave plan, no dispatch
+- `/devcrew:wave run` — one wave
+- `/devcrew:wave loop` — until halt (default)
 
-Behavior parity with `/runner:auto`:
+Behavior parity with `/devcrew:auto`:
 - Respects `loop.autoMode` (no per-plan approval prompt)
 - Respects `costStopThreshold`
 - Respects all existing stop-check conditions
-- Emits halt reasons in same format as `/runner:auto`
+- Emits halt reasons in same format as `/devcrew:auto`
 
 ### Marathon entry-point switch
 
-Existing `/runner:start` and `/runner:auto` consult `marathonRunner`:
-- `"sequential"` → existing `/runner:auto` flow unchanged
-- `"wave"` → `/runner:auto` shells out to `/runner:wave loop` and exits
+Existing `/devcrew:start` and `/devcrew:auto` consult `marathonRunner`:
+- `"sequential"` → existing `/devcrew:auto` flow unchanged
+- `"wave"` → `/devcrew:auto` shells out to `/devcrew:wave loop` and exits
 
 Single config knob flips entire marathon strategy.
 
@@ -602,7 +602,7 @@ in `commands/wave.md` as a deliberate semantic shift.
   index.json                         # rolling list (last 50)
 ```
 
-`index.json` rolls oldest waves via `/crew:prune-artifacts` integration (add
+`index.json` rolls oldest waves via `/devcrew:prune-artifacts` integration (add
 `loop/waves/**` to its prune list).
 
 ### Snapshot integration
@@ -635,7 +635,7 @@ New badges in `snapshot.haltBadges`:
 
 ### Stop conditions
 
-No new conditions on `/runner:stop-check` surface — reuse existing.
+No new conditions on `/devcrew:stop-check` surface — reuse existing.
 
 | Existing condition | How wave loop responds |
 |---|---|
@@ -646,7 +646,7 @@ No new conditions on `/runner:stop-check` surface — reuse existing.
 | `redundant_read_cap` | existing snapshot-level guard; no override |
 | `help_request_open` | refuses next wave start |
 
-Internal halt-only (do NOT change `/runner:stop-check` surface):
+Internal halt-only (do NOT change `/devcrew:stop-check` surface):
 - `post_merge_red`
 - `dirty_main`
 - `max_waves` (per-run flag)
@@ -678,10 +678,10 @@ Coverage targets:
    thinner CLI wrapper? Affects whether crew-side `dispatch prepare` needs an update.
 2. Where should the `wave_attempts` field be cleared after a successful PASS — on
    wave finalize, on slice complete, or both?
-3. Does `/crew:prune-artifacts` need a per-prefix configuration extension, or is a
+3. Does `/devcrew:prune-artifacts` need a per-prefix configuration extension, or is a
    single `loop/waves/**` add sufficient?
-4. Should `/runner:wave` ever auto-create slices from triaged FEATs (via
-   `/runner:slice-from-feature`), or only consume already-pending slices?
+4. Should `/devcrew:wave` ever auto-create slices from triaged FEATs (via
+   `/devcrew:slice-from-feature`), or only consume already-pending slices?
 
 These are implementation-phase decisions, not design-blocking.
 
@@ -690,7 +690,7 @@ These are implementation-phase decisions, not design-blocking.
 1. Land schema + spec-writer contract update + validator (touches_files everywhere).
 2. Land planner + tests (no runner integration yet).
 3. Land runner + e2e test (gated behind `marathonRunner: "wave"`).
-4. Land `/runner:wave` slash command + CLI subcommands.
+4. Land `/devcrew:wave` slash command + CLI subcommands.
 5. Update `docs/halt-badges.md` with new badges.
 6. Default `marathonRunner: "sequential"` ships unchanged — opt-in only.
 7. After 1–2 weeks of opt-in use, evaluate flipping default.

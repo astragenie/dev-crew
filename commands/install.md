@@ -1,14 +1,45 @@
 ---
 name: install
-description: Install or refresh the loop methodology layer in this repo (HARD RULE blocks, loop-control docs, backlog scaffold, .claude/loop.json).
+description: Install or refresh dev-crew end to end — global framework memory (~/.claude/crew/*) plus the repo-level method layer (HARD RULE blocks, loop-control docs, backlog scaffold, .claude/loop.json).
 auto_execute_steps: false
 ---
 
-# Install Autonomous Loop
+# Install
+
+Installs dev-crew in one pass: global framework memory first, then the
+repo-level method layer. Both steps are idempotent — safe to re-run to
+refresh either layer independently.
+
+## Step 1 — Global framework memory
+
+Install or update the managed global dev-crew memory files. Skip this step
+only if global memory is already installed at the current plugin version
+(compare `~/.claude/crew/metadata.json`).
+
+This writes one global managed copy:
+
+- `~/.claude/crew/constitution.md`
+- `~/.claude/crew/workflow.md`
+- `~/.claude/crew/metadata.json`
+
+It also ensures global `~/.claude/CLAUDE.md` imports the constitution and workflow.
+
+Run:
+
+```bash
+set -euo pipefail
+node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.ts" install-global
+```
+
+Report which files changed, whether global memory is installed, the
+installed global memory version, and whether the user should run
+`/reload-plugins`.
+
+## Step 2 — Repo-level method layer
 
 Adds the dev-crew method to the current repo:
 
-- Replaces or appends the `<!-- runner:start -->` marker block in `CLAUDE.md` with the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) plus the First Action section.
+- Replaces or appends the `<!-- runner:start -->` marker block in `CLAUDE.md` with the three HARD RULE blocks (Autonomous Loop, Cross-Slice Continuation, Phase Completion Gate) plus the First Action section. (The marker renames to `<!-- devcrew:start -->` at the P5 cutover — code still writes `runner:start` until then.)
 - Writes plugin-owned loop-control docs under `<aiLoopRoot>/01-loop-control/`: `DEV_CREW_METHOD.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`. **Always overwritten** — user customization lives in `.claude/loop.json`, not in these files.
 - Writes `<aiLoopRoot>/00-entry/MASTER_PROMPT.md` and `SLICE_TEMPLATE.md` (always overwritten).
 - Creates backlog scaffolds at `<backlogPath>/{approved,completed,product-backlog}.md` and `<slicesRoot>/pending/.gitkeep` — **only if missing**, never clobbered.
@@ -19,7 +50,9 @@ Adds the dev-crew method to the current repo:
 
 If the repo currently has an ad-hoc HARD RULE block hand-pasted into CLAUDE.md (the pattern from legacy pre-dev-crew harness repos / MemoryService / AstraGenie.Tools), the installer migrates it: extracts the phase-gate commands into the config, deletes the ad-hoc block, writes the new marker-bracketed block in its place.
 
-**Hard dependency:** the `crew` plugin must be installed in the Claude Code plugin cache. The installer errors with a clear message if it cannot find `crew`.
+**Hard dependency:** Step 1 (global framework memory) must have already
+succeeded at least once for this plugin version — the installer errors with
+a clear message if it cannot find `crew`.
 
 Workflow:
 
@@ -36,10 +69,21 @@ Workflow:
    ```
    `--preset` is **required** for a first-time install (no `.claude/loop.json` on disk yet) — there is no hardcoded default stack. Omit `--preset` only to re-install/refresh an already-configured repo; the installer then reads the existing `.claude/loop.json` as-is (no re-merge). Add `--light` to seed the trimmed single-reviewer ladder instead of the default two-reviewer ladder (only on a repo with a CI test gate).
 4. Report which files were written and which preset is active.
-5. Suggest the user populate `.claude/loop.json` `productName`, `productDescription`, and `stack` overrides before running `/runner:phase-gate` for the first time.
+5. Suggest the user populate `.claude/loop.json` `productName`, `productDescription`, and `stack` overrides before running `/devcrew:phase-gate` for the first time.
 
-After install:
+## After install
 
-- `/runner:status` — show resolved config + marker presence
-- `/runner:phase-gate --phase <N>` — run the configured suite
-- `/runner:list-presets` — see built-in presets
+- `/devcrew:brief` — show resolved config + marker presence (folds in the former `/devcrew:brief` check)
+- `/devcrew:phase-gate --phase <N>` — run the configured suite
+- `/devcrew:list-presets` — see built-in presets
+
+End with a short welcome message:
+
+- congratulate the user on the excellent life choice of installing dev-crew
+- keep it brief and slightly tongue-in-cheek
+- remind them of the next useful commands: `/devcrew:init`, `/devcrew:adopt`, and `/devcrew:brief`
+
+Do not delegate this to another command name or skill reference.
+`/devcrew:install` is the primary user-facing entry point for both the
+global and repo-level installs above.
+</content>

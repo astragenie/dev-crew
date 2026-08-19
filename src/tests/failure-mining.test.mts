@@ -11,7 +11,7 @@ import { miningRoot } from "../scripts/lib/paths.mjs";
 import { mineFailures } from "../scripts/lib/failure-mining.mjs";
 
 async function seedPausedDispatch(repo: string, sliceId: string, ts: string): Promise<void> {
-  await recordDispatchOutcome(repo, { ts, agentRole: "crew:builder", sliceId, outcome: "paused" });
+  await recordDispatchOutcome(repo, { ts, agentRole: "devcrew:builder", sliceId, outcome: "paused" });
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ test("mineFailures over a later, non-overlapping window with a new root cause ad
   const { recordDispatchOutcome: record2 } = await import("../scripts/lib/pause-telemetry.mjs");
   await record2(repo, {
     ts: "2026-08-01T00:00:00.000Z",
-    agentRole: "crew:frontend-dev",
+    agentRole: "devcrew:frontend-dev",
     sliceId: "FEAT-600",
     outcome: "paused"
   });

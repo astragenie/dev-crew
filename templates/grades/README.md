@@ -6,7 +6,7 @@ decisions made, and surprises. Lives at `.claude/artifacts/loop/grades/SLICE-NN-
 ## Lifecycle
 
 1. After slice acceptance criteria PASS:
-   `/runner:slice grade --id SLICE-NN`
+   `/devcrew:slice grade --id SLICE-NN`
    Plugin generates a pre-filled template (file only — won't clobber an
    existing grade).
 2. Agent edits the grade inline:
@@ -16,7 +16,7 @@ decisions made, and surprises. Lives at `.claude/artifacts/loop/grades/SLICE-NN-
      for retrospective decisions made during the slice.
    - Fills the narrative sections (What went well / wrong / differently).
 3. Persist + extract:
-   `/runner:slice grade-write --id SLICE-NN`
+   `/devcrew:slice grade-write --id SLICE-NN`
    - Validates scores in [0, 1]
    - For each `### DEC-TBD: <title>` block, allocates `DEC-NNN` and writes
      a full ADR-style file under `.claude/artifacts/loop/decisions/`

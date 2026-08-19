@@ -10,8 +10,11 @@ import {
 } from "../scripts/orchestrate-slice-classify.mjs";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const COMMAND_PATH = path.join(repoRoot, "commands", "orchestrate-slice.md");
-const ARCHITECT_PATH = path.join(repoRoot, "agents", "architect.md");
+// commands/orchestrate-slice.md moved from crew/commands/ to the repo-root
+// commands/ in the devcrew command-map merge (SLICE-14); agents/ has not
+// been merged yet (SLICE-15) so architect.md stays under crew/.
+const COMMAND_PATH = path.join(repoRoot, "..", "commands", "orchestrate-slice.md");
+const ARCHITECT_PATH = path.join(repoRoot, "..", "agents", "architect.md");
 
 test("commands/orchestrate-slice.md exists", async () => {
   await fs.access(COMMAND_PATH);
@@ -36,11 +39,11 @@ test("orchestrate-slice command body contains Steps 0 through 8", async () => {
 test("orchestrate-slice command references all required specialist agents", async () => {
   const text = await fs.readFile(COMMAND_PATH, "utf8");
   const required = [
-    "crew:architect",
-    "crew:uxdesigner",
-    "crew:fullstack-dev",
-    "crew:reviewer",
-    "crew:verifier"
+    "devcrew:architect",
+    "devcrew:uxdesigner",
+    "devcrew:fullstack-dev",
+    "devcrew:reviewer",
+    "devcrew:verifier"
   ];
   for (const agent of required) {
     expect(text, `command must reference ${agent}`).toMatch(new RegExp(agent));

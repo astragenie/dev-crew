@@ -8,7 +8,7 @@ drift.
 
 ## Dispatch prompt template
 
-When dispatching `crew:architect` to write a contracts artifact, use the
+When dispatching `devcrew:architect` to write a contracts artifact, use the
 following prompt verbatim (substituting `<ABSOLUTE_PATH_TO_FEAT>` and
 `<FEAT-ID>` with the concrete values):
 
@@ -64,8 +64,8 @@ artifact. Instead, log:
 
 ```
 WARNING: contracts artifact for <FEAT-ID> not written — architect response
-empty/malformed. Re-run /runner:backlog-enrich or rely on
-/crew:orchestrate-slice Step 1 retry.
+empty/malformed. Re-run /devcrew:backlog-enrich or rely on
+/devcrew:orchestrate-slice Step 1 retry.
 ```
 
 Then continue the calling flow without the artifact (fail-open per FEAT-049

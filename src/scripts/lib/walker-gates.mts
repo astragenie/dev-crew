@@ -20,7 +20,7 @@ export interface DispatchPlan {
    *   - "slice-build" (default) → dispatch the tag-routed crew builder variant
    *     (frontend-dev / backend-dev / fullstack-dev / parallel fe+be) with
    *     optional architect pre-flight when the slice declares needs_contract.
-   *   - "orchestrate-slice" → invoke /crew:orchestrate-slice (no subagent dispatch,
+   *   - "orchestrate-slice" → invoke /devcrew:orchestrate-slice (no subagent dispatch,
    *     in-thread slash flow).
    * Mirrors `loop.orchestratorMode` from `.claude/loop.json`. Defaults to
    * "slice-build". Legacy "lead" / "direct-builder" modes were removed in
@@ -282,7 +282,7 @@ function buildPromptSummary(
   const title = extractTitle(entry);
   const category = entry.frontmatter.category ? ` (${entry.frontmatter.category})` : "";
   if (orchestratorMode === "orchestrate-slice") {
-    return `Run /crew:orchestrate-slice for ${entry.id}: ${title}${category} — see feature file for full acceptance criteria.`;
+    return `Run /devcrew:orchestrate-slice for ${entry.id}: ${title}${category} — see feature file for full acceptance criteria.`;
   }
   return `Implement ${entry.id}: ${title}${category} — see feature file for full acceptance criteria.`;
 }

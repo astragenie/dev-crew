@@ -9,7 +9,7 @@ auto_execute_steps: false
 Runs one watcher tick (FEAT-242 Track B1) against the local
 `~/.claude/watch/repos.json` registry. This is the SAME entry point the
 scheduled task registered by `scripts/setup-watch-scheduler.mjs` invokes —
-`/runner:watch` and the scheduler are two callers of one script, never two
+`/devcrew:watch` and the scheduler are two callers of one script, never two
 implementations (AC-8).
 
 Workflow:
@@ -40,7 +40,7 @@ Workflow:
 - **Scheduler** (`scripts/setup-watch-scheduler.mjs`) — unattended,
   ~5-minute cadence, no open terminal required. The default operating mode
   once a repo is registered.
-- **`/runner:watch`** — on-demand, for pilot debugging ("did the last
+- **`/devcrew:watch`** — on-demand, for pilot debugging ("did the last
   finding get picked up?"), live escalation, or exercising the tick
   immediately after editing the registry rather than waiting for the next
   scheduled interval.

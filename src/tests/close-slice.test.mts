@@ -41,7 +41,7 @@ async function setupSlice(
   const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });
   await updateFeatureFrontmatter(feat.filePath, { autonomous_safe: opts.autonomousSafe });
   const result = await sliceFromFeature(repo, feat.id);
-  // Mark all ACs checked so the runner:close pre-flight (FEAT-277) passes.
+  // Mark all ACs checked so the devcrew:close pre-flight (FEAT-277) passes.
   // In test fixtures, ACs are proof-of-concept placeholders — we simulate
   // the "builder checked them off" step by replacing [ ] with [x].
   const slicePath = result.slice.path;
@@ -229,7 +229,7 @@ test("closeSlice happy path: gradeYamlPath + autonomous_safe writes scores", asy
 // exists in this fixture: the review gate falls through to its
 // absence-tolerated "unproven" branch (not recorded — no real evidence a
 // reviewer ever ran), while the validation gate has no waiver/artifact/badge
-// at all and is unsatisfied (recorded as a paused crew:verifier dispatch).
+// at all and is unsatisfied (recorded as a paused devcrew:verifier dispatch).
 test("closeSlice records pause telemetry via gate derivation on a single-shot close", async () => {
   const repo = await tmpRepo("cs-pause-telemetry-");
   const { sliceId, featureId } = await setupSlice(repo, { autonomousSafe: true });
@@ -246,13 +246,13 @@ test("closeSlice records pause telemetry via gate derivation on a single-shot cl
     .map((l) => JSON.parse(l));
 
   assert.ok(
-    !lines.some((l: any) => l.agentRole === "crew:reviewer"),
+    !lines.some((l: any) => l.agentRole === "devcrew:reviewer"),
     "an unproven (absence-tolerated) review gate must not be recorded"
   );
   const verifierOutcome = lines.find(
-    (l: any) => l.type === "dispatch_outcome" && l.agentRole === "crew:verifier"
+    (l: any) => l.type === "dispatch_outcome" && l.agentRole === "devcrew:verifier"
   );
-  assert.ok(verifierOutcome, "expected a crew:verifier dispatch_outcome row");
+  assert.ok(verifierOutcome, "expected a devcrew:verifier dispatch_outcome row");
   assert.equal(verifierOutcome.sliceId, sliceId);
   assert.equal(verifierOutcome.outcome, "paused");
 });

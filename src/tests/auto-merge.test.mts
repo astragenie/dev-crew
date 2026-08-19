@@ -435,9 +435,9 @@ test("runAutoMerge: rebase conflict → throws REBASE_CONFLICT, merge_failed bad
     assert.ok(err instanceof MergeError, "should throw MergeError");
     assert.equal(err.code, "REBASE_CONFLICT");
     assert.equal(err.failedStep, "rebase");
-    // fix hint points to /crew:fix
+    // fix hint points to /devcrew:fix
     assert.ok(
-      err.fixHint.includes("/crew:fix") || err.fixHint.includes("rebase"),
+      err.fixHint.includes("/devcrew:fix") || err.fixHint.includes("rebase"),
       "fixHint mentions fix"
     );
   }

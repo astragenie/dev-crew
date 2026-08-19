@@ -123,8 +123,8 @@ test("startSlice emits slice-build tag-routed dispatch by default (FEAT-191: lea
   // Default orchestratorMode = "slice-build" — no config override needed.
   const result = await startSlice(repo, slice.id);
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present by default");
-  // No tags set on this slice → slice-build falls through to crew:fullstack-dev.
-  assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
+  // No tags set on this slice → slice-build falls through to devcrew:fullstack-dev.
+  assert.match(result.dispatchInstruction, /Dispatch devcrew:fullstack-dev subagent/);
   assert.match(result.dispatchInstruction, new RegExp(slice.id));
   assert.doesNotMatch(
     result.dispatchInstruction,
@@ -144,18 +144,18 @@ test("slice-start emits orchestrate-slice when orchestratorMode='orchestrate-sli
   assert.ok(result.dispatchInstruction, "dispatchInstruction should be present");
   assert.match(
     result.dispatchInstruction,
-    /\/crew:orchestrate-slice/,
-    "instruction must reference /crew:orchestrate-slice"
+    /\/devcrew:orchestrate-slice/,
+    "instruction must reference /devcrew:orchestrate-slice"
   );
   assert.match(result.dispatchInstruction, new RegExp(slice.id));
   assert.match(
     result.nextAction,
-    /\/crew:orchestrate-slice/,
-    "nextAction must reference /crew:orchestrate-slice"
+    /\/devcrew:orchestrate-slice/,
+    "nextAction must reference /devcrew:orchestrate-slice"
   );
 });
 
-test("slice-build mode falls back to crew:fullstack-dev when slice has no fe/be tags", async () => {
+test("slice-build mode falls back to devcrew:fullstack-dev when slice has no fe/be tags", async () => {
   const repo = await tmpRepo("al-slice-start-fullstack-");
   await pinOrchestratorMode(repo, "slice-build");
   await writePlan(repo, [{ id: "SLICE-01", title: "First" }]);
@@ -163,7 +163,7 @@ test("slice-build mode falls back to crew:fullstack-dev when slice has no fe/be 
   const { slice } = await sliceFromFeature(repo, feat.id);
   await fillPlaceholderACs(slice.path);
   const result = await startSlice(repo, slice.id);
-  assert.match(result.dispatchInstruction, /Dispatch crew:fullstack-dev subagent/);
+  assert.match(result.dispatchInstruction, /Dispatch devcrew:fullstack-dev subagent/);
 });
 
 test("dispatchInstruction includes [MODE] + [CHECKPOINT] progress signals (FEAT-038)", async () => {
@@ -216,7 +216,7 @@ test("startSlice splices a non-empty learningsDigest into dispatchInstruction (F
   // Digest is prepended, mirroring the recallBlock splice pattern.
   assert.ok(
     result.dispatchInstruction.indexOf("## Operational learnings") <
-      result.dispatchInstruction.indexOf("Dispatch crew:"),
+      result.dispatchInstruction.indexOf("Dispatch devcrew:"),
     "learnings digest must be prepended ahead of the dispatch body"
   );
 });
@@ -240,7 +240,7 @@ test("startSlice leaves dispatchInstruction unchanged when learningsDigest is em
   // Byte-identical noop: instruction is exactly the pre-existing dispatch
   // body (no leading digest concatenation), matching the shape asserted by
   // the FEAT-191 default-dispatch test above.
-  assert.match(result.dispatchInstruction, /^Dispatch crew:fullstack-dev subagent/);
+  assert.match(result.dispatchInstruction, /^Dispatch devcrew:fullstack-dev subagent/);
 });
 
 test("startSlice with dispatch:false omits the instruction", async () => {
@@ -377,7 +377,7 @@ test("startSlice result includes touchesFiles array from classify step (FEAT-277
 });
 
 // Regression: startSlice must honor a frontmatter-declared touches_files list
-// (the shape PM's inline drafting and /runner:start actually write) rather
+// (the shape PM's inline drafting and /devcrew:start actually write) rather
 // than silently returning [] because the "## Files" body section is empty.
 test("startSlice honors frontmatter touches_files over empty ## Files classification", async () => {
   const repo = await tmpRepo("al-start-touches-files-frontmatter-");

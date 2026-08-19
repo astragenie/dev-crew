@@ -1,5 +1,5 @@
 ---
-name: runner:triage
+name: devcrew:triage
 description: Triage every pending backlog FEAT via the PM agent (5-dimension LLM scoring). PM-only — on agent error, validation failure, or budget exceedance, halt and surface to the operator. The regex fallback path was removed 2026-06-11.
 ---
 
@@ -23,8 +23,8 @@ PM-only triage. Single public command for the loop.
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --repo "$PWD"
    ```
 
-   When the operator invokes `/runner:triage --include-triaged` or
-   `/runner:retriage --include-triaged`, append the flag to the CLI call:
+   When the operator invokes `/devcrew:triage --include-triaged` or
+   `/devcrew:retriage --include-triaged`, append the flag to the CLI call:
 
    ```bash
    bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --include-triaged --repo "$PWD"
@@ -33,7 +33,7 @@ PM-only triage. Single public command for the loop.
    This adds FEATs from `triaged/` to the id list. PM overwrites the existing
    `pm_*` fields on those FEATs in place (no state move). FEAT-194 / SLICE-110.
 
-   When the operator invokes `/runner:triage --ids FEAT-166,FEAT-182,FEAT-186`
+   When the operator invokes `/devcrew:triage --ids FEAT-166,FEAT-182,FEAT-186`
    (FEAT-201), pass the ids flag instead:
 
    ```bash
@@ -68,7 +68,7 @@ PM-only triage. Single public command for the loop.
    "Required skills" list in `agents/pm.md`). On exit 1, halt and
    surface the stderr.
 
-4. **Dispatch `runner:pm` agent.** Prepend the resolved-skills block (when
+4. **Dispatch `devcrew:pm` agent.** Prepend the resolved-skills block (when
    present) to the prompt so PM invokes the right `Skill` tools before
    scoring. Prompt MUST include the explicit id list AND a results-file
    path (DEC-058 — PM's `Write` grant is scoped to this one file, under
@@ -171,7 +171,7 @@ On halt:
 ## When this runs
 
 - **Automatically:** Cross-Slice Continuation HARD RULE dispatches when `pending/` is non-empty.
-- **Manually:** `/runner:triage`.
+- **Manually:** `/devcrew:triage`.
 
 ## Why no fallback
 

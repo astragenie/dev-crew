@@ -10,7 +10,7 @@ resolved: null
 resolved_by: null
 ---
 
-# Upstream-request: repoint `/crew:orchestrate-slice` Step 2.5 at `.claude/loop.json` instead of `scripts/presets/<name>.json`
+# Upstream-request: repoint `/devcrew:orchestrate-slice` Step 2.5 at `.claude/loop.json` instead of `scripts/presets/<name>.json`
 
 ## Filed against
 
@@ -35,7 +35,7 @@ This greps the consuming repo's `.claude/loop.json` for a `preset` field, then b
 
 This still works today because `scripts/presets/*.json` remain on disk (loop's DEC-069 explicitly kept them as install-time templates rather than deleting them — see "Alternatives considered and rejected" in the research doc). But it is fragile and increasingly stale:
 
-- It re-derives, via a hardcoded path + `--override` merge, something `/runner:install` already computed once and inlined into `.claude/loop.json` at install time. The two sources can drift (e.g. a repo's `.claude/loop.json.skills` array is hand-edited post-install; `--override` semantics mean the union isn't obviously predictable without reading both files).
+- It re-derives, via a hardcoded path + `--override` merge, something `/devcrew:install` already computed once and inlined into `.claude/loop.json` at install time. The two sources can drift (e.g. a repo's `.claude/loop.json.skills` array is hand-edited post-install; `--override` semantics mean the union isn't obviously predictable without reading both files).
 - `.claude/loop.json`'s `preset` field is purely informational now (a label copied over at scaffold time) — nothing else in loop reads it to make a decision. Depending on it for path construction is depending on a field that could be removed or made optional in a future loop release without anyone noticing dev-team still parses it with a regex.
 - No fallback if `scripts/presets/${PRESET_NAME}.json` is missing or the preset name is stale relative to the installed loop version — the call just fails, degrading silently to "no skill block" per `orchestrate-slice.md:166-171`.
 
@@ -53,11 +53,11 @@ Notes for whoever picks this up:
 
 - Drop `--override .claude/loop.json` — there is nothing left to layer on top of it; the repo's own config **is** the fully-resolved config now.
 - `resolve-skills`'s CLI shape is unchanged (`--preset <path> --variant <fe|be|single|pm|researcher|architect|document-writer>`); only the path argument changes. No loop-side code change is required to support this — `skill-resolver.mts::resolveSkills` already accepts any JSON file matching the `PresetV1` shape, and an installer-inlined `.claude/loop.json` satisfies that shape today (verified by loop's AC-4 golden test, `src/tests/skill-resolution-golden.test.mts`, which asserts resolved skills are byte-identical whether the source file is a named template or an installed repo's own config).
-- Recommended transition: try `.claude/loop.json` first; fall back to the current `scripts/presets/${PRESET_NAME}.json` path only if `.claude/loop.json` resolves to `null`/error, to cover repos that installed loop before FEAT-218 landed and haven't re-run `/runner:install` to backfill the `skills`/`fe`/`be`/`roles` fields (see DEC-069's "Known gap" consequence). Drop the fallback once a reasonable migration window has passed.
+- Recommended transition: try `.claude/loop.json` first; fall back to the current `scripts/presets/${PRESET_NAME}.json` path only if `.claude/loop.json` resolves to `null`/error, to cover repos that installed loop before FEAT-218 landed and haven't re-run `/devcrew:install` to backfill the `skills`/`fe`/`be`/`roles` fields (see DEC-069's "Known gap" consequence). Drop the fallback once a reasonable migration window has passed.
 
 ## Loop-side state (already shipped as of this filing)
 
 - `scripts/presets/*.json` (6 files) remain on disk, unchanged in shape — this request does not require any loop-side file moves.
-- `/runner:install --preset <name>` inlines a template's full content (`loop.*`, `stack.*`, `reviewers`, `mandatoryDocs`, `productName`/`productDescription`, `stackDescription`, `skills`/`fe`/`be`, `roles.*`) into `.claude/loop.json` at scaffold time (`src/scripts/lib/loop-installer.mts::installLoop`).
+- `/devcrew:install --preset <name>` inlines a template's full content (`loop.*`, `stack.*`, `reviewers`, `mandatoryDocs`, `productName`/`productDescription`, `stackDescription`, `skills`/`fe`/`be`, `roles.*`) into `.claude/loop.json` at scaffold time (`src/scripts/lib/loop-installer.mts::installLoop`).
 - `config-resolver.mts::resolveConfig` no longer merges a preset at runtime; it reads `.claude/loop.json` directly (errors clearly if absent).
 - No loop-side blocker remains for this request — it is purely a dev-team-side edit to one Bash step in one command markdown file.

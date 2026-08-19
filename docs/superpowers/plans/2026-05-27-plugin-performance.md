@@ -144,9 +144,9 @@ function buildDispatchInstruction({ sliceId, title, sliceFile, repoPath, resolve
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const modelLine = modelHint ? `\n\n> Preferred model: ${modelHint}. Use this model for the build subagent unless the task requires deeper reasoning.` : "";
   return [
-    `Dispatch /crew:build subagent with this prompt:`,
+    `Dispatch /devcrew:build subagent with this prompt:`,
     "",
-    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`crew:inspector\` subagent. For validation, dispatch a \`crew:verifier\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${modelLine}`
+    `> Implement ${title}.${sliceRef}${goalLine} Follow the full crew build workflow (frame → implement → review → validate → synthesize). For review, dispatch a \`devcrew:inspector\` subagent. For validation, dispatch a \`devcrew:verifier\` subagent. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /devcrew:fix before resuming.${modelLine}`
   ].join("\n");
 }
 ```
@@ -233,7 +233,7 @@ This repo runs the dev-crew method autonomously. Full rules: `.claude/loop/rules
 - **Run until PASS.** Do not stop for confirmation.
 - **Marathon mode (default).** Loop walks entire backlog.
 - **Slice start/close ceremony.** Every slice MUST use `/loop:slice start` and `/loop:slice complete`.
-- **Dispatch discipline.** Hand work to `/crew:build` subagent; never implement inline.
+- **Dispatch discipline.** Hand work to `/devcrew:build` subagent; never implement inline.
 - **Auto-continue.** After ceremony, promote next item without asking.
 
 First action when starting the loop: read `.claude/loop/rules.md` → `docs/ai-loop/00-entry/MASTER_PROMPT.md` → `docs/ai-loop/backlog/approved-slices.md`.

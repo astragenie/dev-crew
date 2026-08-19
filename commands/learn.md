@@ -16,7 +16,7 @@ sibling JSON field on the `startSlice` result — it is **not** spliced
 into the builder's `dispatchInstruction` string, so the agent does not
 yet inherit it automatically. That wiring is tracked as FEAT-219
 SLICE-3. Until it lands, pull recent learnings into context manually
-via `learnings recent` (below) or `/runner:lessons-recent`.
+via `learnings recent` (below) or `/devcrew:lessons-recent`.
 
 ## Usage
 

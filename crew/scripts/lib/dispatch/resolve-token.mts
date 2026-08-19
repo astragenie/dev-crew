@@ -82,14 +82,32 @@ export interface TokenResolver {
   forwardReferences: Set<string>;
 }
 
+/**
+ * Root config for createTokenResolver. `surfaceRoot` locates agents/, commands/,
+ * skills/; `docsRoot` locates docs/routing-table.yaml (forward_references). They
+ * diverge in the devcrew monorepo, where agents/commands/skills live at the
+ * monorepo root but docs/routing-table.yaml stays under crew/. Defaults to
+ * `surfaceRoot` when omitted, matching the pre-split single-root behavior.
+ */
+export interface TokenResolverRoots {
+  surfaceRoot: string;
+  docsRoot?: string;
+}
+
 /** Builds a resolver with one upfront scan of agents/, commands/, skills/ and the forward-reference allowlist. */
-export async function createTokenResolver(repoRoot: string): Promise<TokenResolver> {
+export async function createTokenResolver(
+  roots: string | TokenResolverRoots
+): Promise<TokenResolver> {
+  const { surfaceRoot, docsRoot } =
+    typeof roots === "string"
+      ? { surfaceRoot: roots, docsRoot: roots }
+      : { docsRoot: roots.surfaceRoot, ...roots };
   const skillNames = new Set<string>();
   const [agentNames, commandNames, forwardReferences] = await Promise.all([
-    listMdBasenames(path.join(repoRoot, "agents")),
-    listMdBasenames(path.join(repoRoot, "commands")),
-    loadForwardReferences(repoRoot),
-    collectSkillDirNames(path.join(repoRoot, "skills"), skillNames)
+    listMdBasenames(path.join(surfaceRoot, "agents")),
+    listMdBasenames(path.join(surfaceRoot, "commands")),
+    loadForwardReferences(docsRoot),
+    collectSkillDirNames(path.join(surfaceRoot, "skills"), skillNames)
   ]);
   return {
     resolves: (name: string) =>

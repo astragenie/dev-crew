@@ -32,7 +32,7 @@ import { locateSliceFile, slicesRoot as resolveSlicesRoot } from "./paths.mjs";
 
 export type FanoutTask = {
   role: "reviewer-A" | "reviewer-B";
-  subagent_type: "crew:reviewer";
+  subagent_type: "devcrew:reviewer";
   description: string;
   prompt: string;
 };
@@ -144,7 +144,7 @@ export async function buildPostBuilderFanout(
   const reviewerTasks: FanoutTask[] = await Promise.all(
     ladder.map(async (role) => ({
       role: `reviewer-${role}` as "reviewer-A" | "reviewer-B",
-      subagent_type: "crew:reviewer" as const,
+      subagent_type: "devcrew:reviewer" as const,
       description: `Reviewer ${role} review of ${sliceId} (fanout)`,
       prompt: await reviewerPrompt(repoPath, sliceId, slicePathRel, role, config)
     }))

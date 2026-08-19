@@ -1,4 +1,4 @@
-# Design: Inline `/crew:build` dispatch — replace `crew:lead` subagent
+# Design: Inline `/devcrew:build` dispatch — replace `devcrew:lead` subagent
 
 **Date:** 2026-06-04
 **Status:** approved
@@ -6,11 +6,11 @@
 
 ## Problem
 
-After commit `7b8b90b` the autonomous loop dispatches a `crew:lead` subagent per slice. Lead is instructed to "frame → delegate to crew:fullstack-dev → review → validate → synthesize". In practice, lead agents implement code inline (instability pattern A) rather than delegating, making the dispatch layer non-deterministic. The prior approach (`Dispatch /crew:build subagent`) was more stable but lacked a clear lead workflow.
+After commit `7b8b90b` the autonomous loop dispatches a `devcrew:lead` subagent per slice. Lead is instructed to "frame → delegate to devcrew:fullstack-dev → review → validate → synthesize". In practice, lead agents implement code inline (instability pattern A) rather than delegating, making the dispatch layer non-deterministic. The prior approach (`Dispatch /devcrew:build subagent`) was more stable but lacked a clear lead workflow.
 
 ## Goal
 
-Replace the `crew:lead` subagent dispatch with an inline invocation of the `crew:build` skill so the loop orchestrator itself acts as lead. This eliminates the delegation indirection that causes instability while preserving the full crew build workflow.
+Replace the `devcrew:lead` subagent dispatch with an inline invocation of the `devcrew:build` skill so the loop orchestrator itself acts as lead. This eliminates the delegation indirection that causes instability while preserving the full crew build workflow.
 
 ## Design
 
@@ -19,28 +19,28 @@ Replace the `crew:lead` subagent dispatch with an inline invocation of the `crew
 `buildDispatchInstruction()` changes its emitted text from:
 
 ```
-Dispatch crew:lead subagent with this prompt:
+Dispatch devcrew:lead subagent with this prompt:
 > Lead the implementation of ...
 ```
 
 to:
 
 ```
-Invoke the `crew:build` skill with this context:
+Invoke the `devcrew:build` skill with this context:
 > **Slice:** SLICE-NN — <title>
 > **Goal:** <resolvedGoal>
 > **Mode preference:** single-session unless the slice has explicit multi-file parallel work.
 > When acceptance criteria PASS with evidence, return control — run /loop:slice complete --id SLICE-NN.
-> If review or validation reports needs_fix / fail, use /crew:fix before returning.
+> If review or validation reports needs_fix / fail, use /devcrew:fix before returning.
 ```
 
-The orchestrator reads this and calls `Skill("crew:build", sliceContext)`. The crew:build workflow runs inline in the orchestrator's conversation. No separate lead subagent is spawned.
+The orchestrator reads this and calls `Skill("devcrew:build", sliceContext)`. The devcrew:build workflow runs inline in the orchestrator's conversation. No separate lead subagent is spawned.
 
 ### Why this is more stable
 
-- `crew:build` explicitly allows single-session mode (orchestrator implements directly) — "implements inline" is the intended path, not a failure mode.
+- `devcrew:build` explicitly allows single-session mode (orchestrator implements directly) — "implements inline" is the intended path, not a failure mode.
 - No delegation step where lead must choose to spawn builder vs. implement directly.
-- crew:build's review step dispatches `crew:inspector` as a subagent only when warranted — same as before but now the decision is made by the orchestrator following an explicit workflow, not by a lead agent guessing.
+- devcrew:build's review step dispatches `devcrew:inspector` as a subagent only when warranted — same as before but now the decision is made by the orchestrator following an explicit workflow, not by a lead agent guessing.
 
 ### Feature path in context block
 
@@ -90,7 +90,7 @@ Compiled `.mjs` outputs regenerated in lockstep.
 ## Acceptance criteria
 
 - [ ] AC-1: `npm test`, `npm run lint`, `npm run typecheck`, `npm run format:check` all pass
-- [ ] AC-2: `buildDispatchInstruction()` emits `Invoke the \`crew:build\` skill` text (not `crew:lead`)
+- [ ] AC-2: `buildDispatchInstruction()` emits `Invoke the \`devcrew:build\` skill` text (not `devcrew:lead`)
 - [ ] AC-3: When `featureExcerpt` is provided, context block includes `Path:` line with the feature file path
 - [ ] AC-4: When `featurePath` is null/absent, context block renders exactly as before (no `Path:` line)
 - [ ] AC-5: `.claude/loop/rules.md` dispatch table row updated to reflect inline skill invocation

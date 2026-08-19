@@ -507,8 +507,8 @@ test("AC-reg: buildDefaultTickExec wires the configured allowlist into a real sp
   await exec.spawnReaction({
     finding: { kind: "issue", findingId: "issue:1", ghSlug: "org/repo-a" },
     action: "intake",
-    command: 'claude -p "/runner:intake --from-issue x"',
-    promptArg: "/runner:intake --from-issue x",
+    command: 'claude -p "/devcrew:intake --from-issue x"',
+    promptArg: "/devcrew:intake --from-issue x",
     cwd: "C:\\work\\repo-a"
   });
 
@@ -520,7 +520,7 @@ test("AC-reg: buildDefaultTickExec wires the configured allowlist into a real sp
   assert.equal(spawnCalls[0]!.bin, "claude");
   assert.deepEqual(spawnCalls[0]!.args, [
     "-p",
-    "/runner:intake --from-issue x",
+    "/devcrew:intake --from-issue x",
     "--allowedTools",
     "Read,Bash(gh:*)"
   ]);
@@ -541,12 +541,12 @@ test("AC-reg: buildDefaultTickExec with no allowedTools configured adds no --all
   await exec.spawnReaction({
     finding: { kind: "red-pr", findingId: "pr:9", ghSlug: "org/repo-a" },
     action: "pr-fix",
-    command: 'claude -p "/runner:pr-fix 9"',
-    promptArg: "/runner:pr-fix 9",
+    command: 'claude -p "/devcrew:pr-fix 9"',
+    promptArg: "/devcrew:pr-fix 9",
     cwd: "C:\\work\\repo-a"
   });
 
-  assert.deepEqual(spawnCalls, [["-p", "/runner:pr-fix 9"]]);
+  assert.deepEqual(spawnCalls, [["-p", "/devcrew:pr-fix 9"]]);
 });
 
 test("AC-reg: buildDefaultTickExec never calls spawnFn for an issue-broker-file (tier-2) reaction", async () => {

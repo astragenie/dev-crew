@@ -97,7 +97,7 @@ export async function diffHaltBadgeTransitions(
 /**
  * Best-effort resolver-agent-role lookup: read the last line of
  * auto-dispatch.jsonl and derive a role from its `agent` field
- * (namespace-prefixed, e.g. "crew:builder" -> "builder"). Returns
+ * (namespace-prefixed, e.g. "devcrew:builder" -> "builder"). Returns
  * `undefined` when the log is absent, empty, malformed, or the last entry
  * has no usable `agent` field — callers MUST omit the field in that case
  * rather than send an empty string. BE upsert semantics tolerate the field's

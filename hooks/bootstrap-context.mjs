@@ -5,8 +5,8 @@
 // context compaction in long marathonMode: true sessions.
 // Content sourced from .claude/loop/rules.md (static copy — no filesystem
 // read). Path retains the `loop/` directory prefix intentionally — only
-// the command namespace renamed to `runner:*` (see CHANGELOG "Loop→Runner
-// plugin rename").
+// the command namespace renamed, first to `runner:*` then to `devcrew:*`
+// (see CHANGELOG "Loop→Runner plugin rename" and the devcrew unification).
 //
 // Fail-open contract: any error exits silently with code 0.
 // Never blocks session start.
@@ -37,15 +37,15 @@ HARD RULES — read .claude/loop/rules.md for the full set.
    as a chat question.
 
 3. Slice ceremony is mandatory. Every slice MUST use:
-     /runner:start --id <FEAT-ID or SLICE-NN>
+     /devcrew:start --id <FEAT-ID or SLICE-NN>
    AND on completion:
-     /runner:close --id SLICE-NN
+     /devcrew:close --id SLICE-NN
    No slice may skip either ceremony step.
 
-4. Dispatch discipline. Implementation goes to the tag-routed crew builder
-   (crew:frontend-dev / crew:backend-dev / crew:fullstack-dev) only.
+4. Dispatch discipline. Implementation goes to the tag-routed devcrew builder
+   (devcrew:frontend-dev / devcrew:backend-dev / devcrew:fullstack-dev) only.
    Never implement inline except trivial single-line fixups.
-   Parent loop dispatches crew:inspector then crew:verifier after builder.
+   Parent loop dispatches devcrew:inspector then devcrew:verifier after builder.
 
 5. Auto-continue: after slice ceremony, promote next backlog item without
    asking. Stop only on: escalated_to_human | cost cap exceeded |

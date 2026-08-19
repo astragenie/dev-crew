@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const AGENT_PATH = path.join(REPO_ROOT, "agents", "frontend-dev.md");
 
 test("frontend-dev.md exists and has frontmatter name=frontend-dev", async () => {

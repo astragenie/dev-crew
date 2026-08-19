@@ -4,7 +4,7 @@
 
 **Goal:** Run a 7-competitor feature gap audit against `loop` + `crew`, producing per-competitor briefs, a master matrix, and auto-drafted FEAT candidates for triage.
 
-**Architecture:** Hybrid orchestration + code. A small deterministic aggregator script (`scripts/competitor-audit/aggregate.mjs`) consumes 7 researcher briefs, builds the master matrix, dedupes + scores candidates, and emits draft FEAT files. The researcher prompt lives as a versioned template (`scripts/competitor-audit/researcher-prompt.md`) so the audit is reproducible quarterly. Researchers are dispatched as parallel `crew:researcher` subagents (one per competitor).
+**Architecture:** Hybrid orchestration + code. A small deterministic aggregator script (`scripts/competitor-audit/aggregate.mjs`) consumes 7 researcher briefs, builds the master matrix, dedupes + scores candidates, and emits draft FEAT files. The researcher prompt lives as a versioned template (`scripts/competitor-audit/researcher-prompt.md`) so the audit is reproducible quarterly. Researchers are dispatched as parallel `devcrew:researcher` subagents (one per competitor).
 
 **Tech Stack:** ESM Node.js (.mjs), node:test, existing `parseFrontmatter` + `serializeFrontmatter` helpers, `addFeature` from `backlog-writer.mjs`. No new dependencies.
 
@@ -59,7 +59,7 @@ See [spec](../../superpowers/specs/2026-05-28-loop-crew-competitor-gap-audit-des
 
 ## Methodology
 
-See spec §Method. Each brief is produced by a `crew:researcher`
+See spec §Method. Each brief is produced by a `devcrew:researcher`
 subagent following the prompt at `scripts/competitor-audit/researcher-prompt.md`.
 ```
 
@@ -70,7 +70,7 @@ Create `scripts/competitor-audit/researcher-prompt.md`:
 ```markdown
 # Researcher Prompt — Competitor Gap Audit
 
-You are a `crew:researcher` subagent. Read-only investigation.
+You are a `devcrew:researcher` subagent. Read-only investigation.
 
 ## Target
 
@@ -861,7 +861,7 @@ git commit -m "feat(audit): runAudit entrypoint — matrix.md + auto-draft FEAT 
 - Read-only inputs: `scripts/competitor-audit/researcher-prompt.md`
 - Output: `docs/research/2026-05-28-competitor-gap-audit/briefs/<competitor>.md` (×7)
 
-This task uses the `Agent` tool to dispatch 7 `crew:researcher` subagents in parallel — one per competitor. All 7 calls go in a single message to maximize parallelism.
+This task uses the `Agent` tool to dispatch 7 `devcrew:researcher` subagents in parallel — one per competitor. All 7 calls go in a single message to maximize parallelism.
 
 - [ ] **Step 1: Confirm the dispatch list + slugs**
 
@@ -879,12 +879,12 @@ Slugs the aggregator will read:
 
 - [ ] **Step 2: Dispatch all 7 in parallel (single message, 7 `Agent` tool calls)**
 
-For each competitor, dispatch a `crew:researcher` subagent with this
+For each competitor, dispatch a `devcrew:researcher` subagent with this
 prompt (substitute `{{COMPETITOR_NAME}}`, `{{COMPETITOR_HOST}}`,
 `{{COMPETITOR_LANGUAGE}}`, `{{COMPETITOR_SLUG}}`, `{{SUGGESTED_SOURCES}}`):
 
 ```
-You are a crew:researcher subagent. Read-only.
+You are a devcrew:researcher subagent. Read-only.
 
 Read this prompt template from disk for full instructions:
   scripts/competitor-audit/researcher-prompt.md
@@ -949,7 +949,7 @@ Expected: 7 lines, each `missing axes: 0` and `gaps: >= 1`.
 
 - [ ] **Step 5: Re-dispatch any brief that failed validation**
 
-If any brief failed `parseBrief`, dispatch a follow-up `crew:researcher`
+If any brief failed `parseBrief`, dispatch a follow-up `devcrew:researcher`
 for that competitor only with the original prompt plus a one-line
 correction: "Previous brief at <path> failed schema check. Specifically:
 <missing axes or zero gaps>. Re-write to conform."
@@ -1081,7 +1081,7 @@ Spec coverage check:
 | Goal                          | Task 1 (scaffold), Tasks 5-7 (execute)         |
 | Competitor shortlist (7)      | Task 5 dispatch table                          |
 | Taxonomy (10 axes)            | Task 2 `AXES` constant + tests                 |
-| Method — dispatch model       | Task 5 (parallel `crew:researcher`)            |
+| Method — dispatch model       | Task 5 (parallel `devcrew:researcher`)            |
 | Per-researcher schema         | Task 1 step 3 (prompt) + Task 2 `parseBrief`   |
 | Lead synthesis — matrix       | Task 3 `renderMatrixMarkdown` + Task 6         |
 | Lead synthesis — gap-density  | _(N/A — emerges from the rendered matrix; not auto-computed in v1)_ |

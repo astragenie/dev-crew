@@ -24,7 +24,7 @@ function cand(id: string, paths: string[], over: Partial<SliceCandidate> = {}): 
   };
 }
 
-const opts = { waveSize: 3, sliceCommand: "/crew:orchestrate-slice", waveId: "test-wave" };
+const opts = { waveSize: 3, sliceCommand: "/devcrew:orchestrate-slice", waveId: "test-wave" };
 
 describe("packWave", () => {
   test("empty ranked list returns size 0", () => {
@@ -91,7 +91,7 @@ describe("packWave", () => {
 
   test("WavePlanItem carries sliceCommand for downstream prompt building", () => {
     const p = packWave([cand("S1", ["src/a.mts"])], opts);
-    expect(p.items[0]!.sliceCommand).toBe("/crew:orchestrate-slice");
+    expect(p.items[0]!.sliceCommand).toBe("/devcrew:orchestrate-slice");
     expect(p.items[0]!.sliceId).toBe("S1");
   });
 

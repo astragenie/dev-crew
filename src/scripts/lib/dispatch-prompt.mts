@@ -21,7 +21,7 @@ export function augmentPrompt(prompt: string, args: AugmentArgs): string {
     `${childId}.result.json`
   );
   const header = [
-    "## Hierarchical dispatch context (injected by runner:swarm)",
+    "## Hierarchical dispatch context (injected by devcrew:swarm)",
     "",
     `- Run id: \`${runId}\` (set \`LOOP_DISPATCH_RUN_ID=${runId}\` when invoking nested dispatch)`,
     `- Your depth: ${nextDepth} (set \`LOOP_DISPATCH_DEPTH=${nextDepth}\` OR pass \`--depth ${nextDepth}\` to \`bun src/scripts/loop.mts dispatch\` if you spawn grandchildren)`,

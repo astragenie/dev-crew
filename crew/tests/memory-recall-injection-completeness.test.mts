@@ -24,11 +24,14 @@ interface AssemblyModule {
 // dispatch.mts is wired via its own emitted `memory` field (no CLI call —
 // it's a pure plan generator), so its marker differs from the markdown
 // command files, which call the `recall-block` CLI surface directly.
+// Command files moved from crew/commands/ to the repo-root commands/ in the
+// devcrew command-map merge (SLICE-14) — relPath climbs one extra level for
+// those four; scripts/lib/slice-linker/dispatch.mts stays under crew/.
 const ASSEMBLY_MODULES: AssemblyModule[] = [
-  { relPath: "commands/build.md", marker: /recall-block/ },
-  { relPath: "commands/fix.md", marker: /recall-block/ },
-  { relPath: "commands/ship.md", marker: /recall-block/ },
-  { relPath: "commands/orchestrate-slice.md", marker: /recall-block/ },
+  { relPath: "../commands/build.md", marker: /recall-block/ },
+  { relPath: "../commands/fix.md", marker: /recall-block/ },
+  { relPath: "../commands/ship.md", marker: /recall-block/ },
+  { relPath: "../commands/orchestrate-slice.md", marker: /recall-block/ },
   {
     relPath: "scripts/lib/slice-linker/dispatch.mts",
     marker: /inject-recall\.ts|DispatchMemoryHint/

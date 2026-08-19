@@ -318,7 +318,7 @@ test("dispatchAgent emits agent_dispatched and agent_completed when sliceId prov
   const tmpEventsDir = await fs.mkdtemp(path.join(os.tmpdir(), "dispatch-events-"));
   try {
     await dispatchAgent({
-      agent: "crew:fullstack-dev",
+      agent: "devcrew:fullstack-dev",
       prompt: "build it",
       parentCommand: "test",
       repoRoot: tmpEventsDir,
@@ -335,7 +335,7 @@ test("dispatchAgent emits agent_dispatched and agent_completed when sliceId prov
     const dispatched = lines.find((l: any) => l.type === "agent_dispatched");
     const completed = lines.find((l: any) => l.type === "agent_completed");
     assert.ok(dispatched, "agent_dispatched missing");
-    assert.equal(dispatched.agent, "crew:fullstack-dev");
+    assert.equal(dispatched.agent, "devcrew:fullstack-dev");
     assert.equal(dispatched.sliceId, "SLICE-10");
     assert.ok(completed, "agent_completed missing");
     assert.equal(completed.status, "ok");
@@ -348,7 +348,7 @@ test("dispatchAgent emits agent_completed:skipped when skip flag present and sli
   const tmpEventsDir = await fs.mkdtemp(path.join(os.tmpdir(), "dispatch-skip-"));
   try {
     await dispatchAgent({
-      agent: "crew:fullstack-dev",
+      agent: "devcrew:fullstack-dev",
       prompt: "build it",
       parentCommand: "test",
       repoRoot: tmpEventsDir,

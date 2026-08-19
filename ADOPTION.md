@@ -1,6 +1,6 @@
 # Adoption Checklist — loop
 
-Run through this before invoking `/runner:install` on a new repo or
+Run through this before invoking `/devcrew:install` on a new repo or
 re-running it on a repo that already has hand-pasted HARD RULE blocks.
 
 ## Prerequisites
@@ -12,8 +12,8 @@ re-running it on a repo that already has hand-pasted HARD RULE blocks.
   refuses to install against a missing or too-old crew. There's no separate
   CLI check to hand-run before install — the installer itself does the
   discovery and errors with a clear message if crew isn't found. If you want
-  to confirm crew is live before starting, run `/crew:brief-me` (or, once
-  `loop` is installed, `/runner:status` — its `crewCli` field is `null` if
+  to confirm crew is live before starting, run `/devcrew:brief` (or, once
+  `loop` is installed, `/devcrew:brief` — its `crewCli` field is `null` if
   crew isn't discoverable).
 - Repo has a `.git/` directory. Install fails fast on non-git targets.
 - Repo has a `CLAUDE.md` (created automatically if missing).
@@ -45,8 +45,8 @@ cp -r .claude ".claude.backup.$(date -u +%Y%m%dT%H%M%SZ)-pre-autoloop"
    `## Autonomous Loop Instruction — HARD RULE` blocks (the pattern some
    repos hand-authored before this plugin existed)? If yes, the installer
    migrates them automatically: extracts phase-gate commands into config,
-   strips the ad-hoc blocks, writes the new `<!-- runner:start -->` /
-   `<!-- runner:end -->` marker block in their place. Local customizations
+   strips the ad-hoc blocks, writes the new `<!-- devcrew:start -->` /
+   `<!-- devcrew:end -->` marker block in their place. Local customizations
    to those blocks beyond stack commands are not preserved — capture them
    first if you need them.
 2. **Existing loop-control content** — once installed, files under
@@ -64,7 +64,7 @@ cp -r .claude ".claude.backup.$(date -u +%Y%m%dT%H%M%SZ)-pre-autoloop"
 ## Step 3 — Pick a preset
 
 ```
-/runner:list-presets
+/devcrew:list-presets
 ```
 
 Current built-ins:
@@ -88,7 +88,7 @@ templates only: the chosen preset's content is inlined into
 ## Step 4 — Install
 
 ```
-/runner:install --preset <name>
+/devcrew:install --preset <name>
 ```
 
 The installer reports `writes` — the list of files it modified or created.
@@ -130,13 +130,13 @@ Then re-run install (omit `--preset` — it's read from the existing config)
 to regenerate `MASTER_PROMPT.md` from the updated config:
 
 ```
-/runner:install
+/devcrew:install
 ```
 
 ## Step 6 — Verify
 
 ```
-/runner:status
+/devcrew:brief
 ```
 
 Should report:
@@ -147,10 +147,10 @@ Should report:
 - `crewCli` populated (not `null`)
 
 Inspect the new files (paths below use this repo's `aiLoopRoot`/
-`backlogPath`/`slicesRoot` config values — confirm yours via `/runner:status`
+`backlogPath`/`slicesRoot` config values — confirm yours via `/devcrew:brief`
 if you customized them):
 
-- `CLAUDE.md` — should contain `<!-- runner:start -->...<!-- runner:end -->`
+- `CLAUDE.md` — should contain `<!-- devcrew:start -->...<!-- devcrew:end -->`
 - `<aiLoopRoot>/01-loop-control/{DEV_CREW_METHOD,EVIDENCE_RULES,STOP_CONDITIONS}.md`
 - `<aiLoopRoot>/00-entry/{MASTER_PROMPT,SLICE_TEMPLATE}.md`
 - `<backlogPath>/{approved-slices,completed-slices,product-backlog}.md`
@@ -163,7 +163,7 @@ Once you've completed a phase of work and your stack commands work in
 isolation:
 
 ```
-/runner:phase-gate --phase 1 --note "initial scaffold"
+/devcrew:phase-gate --phase 1 --note "initial scaffold"
 ```
 
 The plugin runs each configured stage, captures all output, writes
@@ -185,14 +185,14 @@ once the install is stable.
 
 ## Ongoing use
 
-Once configured, `/runner:start` (no args) auto-picks the highest-priority
-triaged FEAT and returns a `dispatchInstruction`; `/runner:start FEAT-NNN`
-opens a specific one. `/runner:close` runs the atomic close ceremony.
+Once configured, `/devcrew:start` (no args) auto-picks the highest-priority
+triaged FEAT and returns a `dispatchInstruction`; `/devcrew:start FEAT-NNN`
+opens a specific one. `/devcrew:close` runs the atomic close ceremony.
 See `README.md` § "Quickstart" for the full day-to-day command list.
 
 ## Light reviewer ladder rollout
 
-`/runner:install --light` trims the default two-reviewer ladder down to a
+`/devcrew:install --light` trims the default two-reviewer ladder down to a
 single reviewer (Reviewer A) and delegates behavior/test validation to your
 CI pipeline, by seeding two keys in `.claude/loop.json`:
 
@@ -241,7 +241,7 @@ Keep the full `["A", "B"]` ladder — do not pass `--light` — when:
   on a first install either way):
 
   ```
-  /runner:install --preset <name> --light
+  /devcrew:install --preset <name> --light
   ```
 
   The chosen preset's opt-in `light` block is merged over `reviewers` and
@@ -251,7 +251,7 @@ Keep the full `["A", "B"]` ladder — do not pass `--light` — when:
   installed before this flag existed):
 
   ```
-  /runner:install --light
+  /devcrew:install --light
   ```
 
   No `--preset` needed. The installer reads the existing

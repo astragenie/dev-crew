@@ -45,7 +45,7 @@ function mockFetch(handler: (url: string) => Response): { url: string }[] {
 }
 
 const PROFILE = {
-  agent: "runner:pm",
+  agent: "devcrew:pm",
   counts: { lesson: 1, decision: 1 },
   total: 2,
   first_seen: 1,
@@ -74,13 +74,13 @@ test("buildMemoryContext injects the agent profile when memory.profile.enabled",
     const calls = mockFetch(() => jsonResponse(PROFILE));
     const result = await buildMemoryContext({
       repoPath,
-      agentType: "runner:pm",
+      agentType: "devcrew:pm",
       config: { memory: { enabled: true, profile: { enabled: true } } }
     });
     assert.match(result, /Do not scope recall by agent before warm-up/);
     assert.match(result, /Route builds to sonnet/);
     assert.match(result, /Prefer fail-open readers/);
-    assert.ok(calls.some((c) => c.url.endsWith("/agents/runner%3Apm/profile")));
+    assert.ok(calls.some((c) => c.url.endsWith("/agents/devcrew%3Apm/profile")));
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }
@@ -92,7 +92,7 @@ test("buildMemoryContext does NOT inject the profile when memory.profile is abse
     const calls = mockFetch(() => jsonResponse(PROFILE));
     const result = await buildMemoryContext({
       repoPath,
-      agentType: "runner:pm",
+      agentType: "devcrew:pm",
       config: { memory: { enabled: true } }
     });
     assert.doesNotMatch(result, /Do not scope recall by agent before warm-up/);
@@ -110,7 +110,7 @@ test("buildMemoryContext is fail-open: a throwing profile fetch never breaks the
     }) as unknown as typeof fetch;
     const result = await buildMemoryContext({
       repoPath,
-      agentType: "runner:pm",
+      agentType: "devcrew:pm",
       config: { memory: { enabled: true, profile: { enabled: true } } }
     });
     // No data anywhere else + profile failed -> empty, but crucially no throw.

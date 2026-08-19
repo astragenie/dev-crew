@@ -62,7 +62,7 @@ function renderMergeFailed(e: any): string[] {
   const fixHint =
     e.code === "PUSH_FAILED"
       ? `Run \`git push origin main\` manually — the commit is on local main.`
-      : `Run \`/crew:fix\` against worktree \`${e.attemptedWorktree}\` to resume.`;
+      : `Run \`/devcrew:fix\` against worktree \`${e.attemptedWorktree}\` to resume.`;
   return [
     `- Slice: ${e.slice}${e.feature ? ` / ${e.feature}` : ""}`,
     `- Failed step: ${e.failedStep} (code ${e.code})`,

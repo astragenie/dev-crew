@@ -4,22 +4,22 @@ date: 2026-06-10
 status: superseded-by-feat-191
 priority: P1
 related:
-  - reverses: 2026-06-07 crew:lead decommission in loop CLAUDE.md
+  - reverses: 2026-06-07 devcrew:lead decommission in loop CLAUDE.md
   - loop-side change: src/scripts/lib/slice-linker/dispatch.mts (added orchestratorMode: "lead")
 resolved: 2026-06-12
 resolved_by: >-
   FEAT-191 / SLICE-107 dropped `lead` and `direct-builder` as loop-side
   orchestrator modes (v0.43) for documented cause — `lead` mode
   suffered persistent specialist-pause across SLICE-97/98/99/101/102/103/104.
-  This request asked hero-crew to route MORE surfaces (`/crew:build`,
-  `/crew:validate`, `/crew:fix`) through `crew:lead`; that direction is
+  This request asked hero-crew to route MORE surfaces (`/devcrew:build`,
+  `/devcrew:validate`, `/devcrew:fix`) through `devcrew:lead`; that direction is
   now reversed on the loop side. See CLAUDE.md "Orchestrator mode" for
   the current `slice-build` / `orchestrate-slice` contract. Do not
   re-open this request without first re-litigating the lead-pause
   root cause that motivated FEAT-191.
 ---
 
-# Restore crew:lead as orchestrator in /crew:build, /crew:validate, /crew:fix
+# Restore devcrew:lead as orchestrator in /devcrew:build, /devcrew:validate, /devcrew:fix
 
 > **Superseded 2026-06-12 by FEAT-191.** Loop-side `lead` orchestrator
 > mode was removed for documented cause (persistent specialist-pause).
@@ -29,29 +29,29 @@ resolved_by: >-
 
 ## Context
 
-The loop plugin previously decommissioned `crew:lead` (2026-06-07) and
-routed slice-start directly to `crew:fullstack-dev`. As of 2026-06-10 the loop
+The loop plugin previously decommissioned `devcrew:lead` (2026-06-07) and
+routed slice-start directly to `devcrew:fullstack-dev`. As of 2026-06-10 the loop
 side has reversed this: `/runner:slice start` now emits a `Dispatch
-crew:lead subagent` instruction by default (configurable via
+devcrew:lead subagent` instruction by default (configurable via
 `config.loop.orchestratorMode` in `.claude/loop.json`).
 
-For consistency, the crew slash flows `/crew:build`, `/crew:validate`,
-and `/crew:fix` should also route through `crew:lead` as orchestrator
+For consistency, the crew slash flows `/devcrew:build`, `/devcrew:validate`,
+and `/devcrew:fix` should also route through `devcrew:lead` as orchestrator
 rather than directly invoking the builder / validator specialist.
 
 ## Ask
 
 Update the hero-crew plugin so the following commands emit a
-`Dispatch crew:lead subagent...` instruction by default:
+`Dispatch devcrew:lead subagent...` instruction by default:
 
-- `/crew:build` — currently dispatches `crew:fullstack-dev` directly for
-  feature work; should route through `crew:lead` so lead can run the
+- `/devcrew:build` — currently dispatches `devcrew:fullstack-dev` directly for
+  feature work; should route through `devcrew:lead` so lead can run the
   full ceremony (architect → builder → reviewer → validator → synthesis).
-- `/crew:validate` — currently dispatches `crew:verifier` directly;
-  should route through `crew:lead` for non-trivial validation work
+- `/devcrew:validate` — currently dispatches `devcrew:verifier` directly;
+  should route through `devcrew:lead` for non-trivial validation work
   (or remain direct for simple gate runs — operator choice).
-- `/crew:fix` — currently dispatches builder + reviewer in a fix loop;
-  should route through `crew:lead` so lead can sequence the fix +
+- `/devcrew:fix` — currently dispatches builder + reviewer in a fix loop;
+  should route through `devcrew:lead` so lead can sequence the fix +
   re-review + re-validate cycle.
 
 Each command should accept an `orchestratorMode` override (matching the
@@ -71,8 +71,8 @@ per-repo.
 
 ## Acceptance criteria
 
-- `/crew:build`, `/crew:validate`, `/crew:fix` default to dispatching
-  `crew:lead` when no `--mode` override is given.
+- `/devcrew:build`, `/devcrew:validate`, `/devcrew:fix` default to dispatching
+  `devcrew:lead` when no `--mode` override is given.
 - `--mode=direct-builder` (or equivalent) preserves the current
   direct-specialist behavior for operators who pin it.
 - A short note in `hero-crew/CHANGELOG.md` documents the routing change

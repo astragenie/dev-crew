@@ -13,7 +13,10 @@ import {
 import { parseUsageMetrics } from "../hooks/lib/check-subagent-return.mjs";
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-const REPO_ROOT = path.join(__dirname, "..");
+// agents/ moved to the true repo root (one level above crew/); bump REPO_ROOT
+// so both lookupAgentModel (agent-file resolution) and runDispatchTimingPreTap
+// (CLAUDE_PLUGIN_ROOT) resolve against the real repo root.
+const REPO_ROOT = path.join(__dirname, "..", "..");
 
 // ── parseAgentPreInput ────────────────────────────────────────────────────────
 
@@ -81,13 +84,33 @@ test("parseAgentPreInput: minimal payload with only tool_name Agent and tool_inp
 // crew:lead removed in v0.41 hard cut — lookup now returns "unknown".
 
 test("lookupAgentModel: crew:fullstack-dev → sonnet", async () => {
-  const model = await lookupAgentModel("crew:fullstack-dev");
-  expect(model).toBe("sonnet");
+  const origRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  process.env.CLAUDE_PLUGIN_ROOT = REPO_ROOT;
+  try {
+    const model = await lookupAgentModel("crew:fullstack-dev");
+    expect(model).toBe("sonnet");
+  } finally {
+    if (origRoot !== undefined) {
+      process.env.CLAUDE_PLUGIN_ROOT = origRoot;
+    } else {
+      delete process.env.CLAUDE_PLUGIN_ROOT;
+    }
+  }
 });
 
 test("lookupAgentModel: crew:investigator → haiku", async () => {
-  const model = await lookupAgentModel("crew:investigator");
-  expect(model).toBe("haiku");
+  const origRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  process.env.CLAUDE_PLUGIN_ROOT = REPO_ROOT;
+  try {
+    const model = await lookupAgentModel("crew:investigator");
+    expect(model).toBe("haiku");
+  } finally {
+    if (origRoot !== undefined) {
+      process.env.CLAUDE_PLUGIN_ROOT = origRoot;
+    } else {
+      delete process.env.CLAUDE_PLUGIN_ROOT;
+    }
+  }
 });
 
 test("lookupAgentModel: nonexistent agent → unknown", async () => {

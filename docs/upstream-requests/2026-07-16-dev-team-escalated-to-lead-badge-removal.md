@@ -44,7 +44,7 @@ this repo has nothing to do until dev-team's Phase 3 (removal) lands:
    one change:
    - Bump `MIN_CREW_VERSION` in
      `src/scripts/lib/plugin-identity.mts` to the dev-team release that
-     shipped the removal, so `/runner:install` refuses to configure this
+     shipped the removal, so `/devcrew:install` refuses to configure this
      loop against a crew version old enough for the alias's documented
      behavior to still be real.
    - Drop the `(alias escalated_to_lead)` parenthetical from

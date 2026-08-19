@@ -23,7 +23,11 @@ import {
 import type { AgentRun } from "@astragenie/gepa-core";
 
 const REPO_ROOT = join(import.meta.dir, "../..");
-const RUBRIC_PATH = join(REPO_ROOT, "agents", "reviewer", ".gepa", "rubric.md");
+// agents/reviewer/.gepa moved to the true repo root (one level above crew/);
+// evals/agents legitimately stays under crew/evals/, so REVIEWER_SPEC_PATH
+// is unaffected and still uses REPO_ROOT.
+const DEV_CREW_ROOT = join(REPO_ROOT, "..");
+const RUBRIC_PATH = join(DEV_CREW_ROOT, "agents", "reviewer", ".gepa", "rubric.md");
 const REVIEWER_SPEC_PATH = join(REPO_ROOT, "evals", "agents", "crew-reviewer.yaml");
 
 // ---------------------------------------------------------------------------

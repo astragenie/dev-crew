@@ -656,7 +656,7 @@ test("sliceFromFeature refuses a fully-shipped FEAT and leaves backlog state unt
 // its own) — reconcileProposedSlicesStartIndex in feature-lifecycle.mts is
 // the one caller that both makes the reconcile decision and has an operator
 // watching, so these tests exercise it via sliceFromFeature, the same public
-// entry point runner:start uses.
+// entry point devcrew:start uses.
 
 async function withCapturedWarnings<T>(
   fn: () => Promise<T>

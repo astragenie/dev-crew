@@ -1,5 +1,5 @@
 // pr-watch.mts — PR check polling + auto-fix dispatch loop (FEAT-110 / SLICE-134).
-// Polls `gh pr checks`, dispatches crew:builder on failures, enforces retry/cost
+// Polls `gh pr checks`, dispatches devcrew:builder on failures, enforces retry/cost
 // ceilings, handles PR state edge cases, and returns a discriminated result.
 //
 // FEAT-494 unblock: `waitForMergeAfterGreen` (opt-in, default false) makes

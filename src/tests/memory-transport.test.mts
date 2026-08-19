@@ -157,17 +157,17 @@ describe("recordMemory — provider-first transport", () => {
     const result = await recordMemory(tmpRepo, {
       kind: "lesson",
       content: "worktree cwd bites again",
-      agentType: "crew:builder"
+      agentType: "devcrew:builder"
     });
 
     expect(result).toEqual({ recorded: true, reason: "ok" });
     expect(seen).toHaveLength(1);
     expect(seen[0]?.type).toBe("lesson");
     expect(seen[0]?.text).toBe("worktree cwd bites again");
-    expect(seen[0]?.metadata).toEqual({ project: "test-proj", agent: "crew:builder" });
+    expect(seen[0]?.metadata).toEqual({ project: "test-proj", agent: "devcrew:builder" });
     // CANARY-REVIEWER-8801: same tags also delivered as top-level fields.
     expect(seen[0]?.project).toBe("test-proj");
-    expect(seen[0]?.agent).toBe("crew:builder");
+    expect(seen[0]?.agent).toBe("devcrew:builder");
     expect(typeof seen[0]?.id).toBe("string");
     expect(seen[0]?.id.length).toBeGreaterThan(0);
     // Phase 3a: scope defaults to "team" (tmpRepo's loop.json sets no

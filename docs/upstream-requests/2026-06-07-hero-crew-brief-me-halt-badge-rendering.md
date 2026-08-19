@@ -52,7 +52,7 @@ For each fired halt, render:
 1. Gate name (human-readable, from registry — e.g. "Cost regression")
 2. Field name (machine, e.g. `costRegression`) for cross-reference
 3. Key threshold values (current vs threshold) pulled from the badge body
-4. Suggested next action — usually pointer to the config knob (e.g. `loop.costRegressionMultiplier` in `.claude/loop.json`) or runbook (`/crew:fix`)
+4. Suggested next action — usually pointer to the config knob (e.g. `loop.costRegressionMultiplier` in `.claude/loop.json`) or runbook (`/devcrew:fix`)
 
 Iterate the registry, NOT the JSON keys of `snapshot`. Unknown future halt-badge fields must NOT break rendering — see fail-open contract below.
 

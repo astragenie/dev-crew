@@ -55,12 +55,12 @@ Crew hook behavior:
 3. **Warn-first rollout**: warn-only mode before hard-deny, feature-flagged like
    the dispatch-size gate.
 4. **Orphan handling**: locks past `expiresAt` (or older than a default TTL, e.g.
-   48h) are ignored and eligible for reaping; runner-plugin's `runner:close` and
+   48h) are ignored and eligible for reaping; runner-plugin's `devcrew:close` and
    `dispatch prune` delete the slice's lock file. A dead slice therefore cannot
    wedge future work (reviewer OBJ-3's orphaned-lock concern).
 
 Lifecycle ownership: runner-plugin writes the lock in its qa-gate pre-flight
-(SLICE-3/4 code) and removes it at `runner:close`/prune; crew only ever reads.
+(SLICE-3/4 code) and removes it at `devcrew:close`/prune; crew only ever reads.
 Single-writer, matches the existing state-file idiom (`workflow-state.json`,
 `halt-badge-state.json`).
 

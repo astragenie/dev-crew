@@ -89,7 +89,7 @@ const TIMING_ARTIFACT_PATH = path.join(
 );
 
 const PROJECT = "runner-plugin";
-const AGENT_TYPE = "runner:researcher";
+const AGENT_TYPE = "devcrew:researcher";
 const CANARY_MARKER = `SMOKE-E2E-${randomUUID().slice(0, 8)}`;
 
 /** Set by T2 once the canary is written; consumed by T4/T5. Tests run in
@@ -315,7 +315,7 @@ async function t4ProfileAttribution(): Promise<void> {
 }
 
 registerTest(
-  "T4 agent-profile attribution: canary lesson attributed to runner:researcher",
+  "T4 agent-profile attribution: canary lesson attributed to devcrew:researcher",
   t4ProfileAttribution
 );
 

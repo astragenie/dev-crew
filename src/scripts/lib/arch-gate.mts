@@ -3,10 +3,10 @@
 // a human). Builds on WS-3 (pickBuilderVariant surface-based variants),
 // PM --rescope (pm-apply.mts applyPmRescope), and WS-4 (isBranchInProgress).
 //
-// ARCHITECTURE DECISION: `runner:start` is a CLI — it RETURNS a
+// ARCHITECTURE DECISION: `devcrew:start` is a CLI — it RETURNS a
 // dispatchInstruction for the orchestrating loop to execute; it never spawns
-// agents itself. So this module never dispatches crew:architect-feature /
-// crew:architect-reviewer directly. It only:
+// agents itself. So this module never dispatches devcrew:architect-feature /
+// devcrew:architect-reviewer directly. It only:
 //   1. decides WHETHER the gate should fire (shouldRunArchGate /
 //      maybeBuildArchGatePreflight),
 //   2. emits the instruction TEXT the loop hands to subagents
@@ -14,14 +14,14 @@
 //   3. persists the reject-loop state machine into FEAT frontmatter once the
 //      loop reports a verdict back (applyArchGateVerdict) — a frontmatter
 //      state machine, not an in-process loop. Re-entry (a later
-//      `runner:start` call for the same FEAT) reads `arch_attempt` /
+//      `devcrew:start` call for the same FEAT) reads `arch_attempt` /
 //      `arch_status` back off disk to resume the cycle.
 //
 // Re-entry note: `contractsArtifactExists()` gates the FIRST entry into the
 // gate (avoids re-running the gate for FEATs that already carry a finished
 // contracts artifact from an earlier or unrelated pass). Once a cycle is
 // underway (`arch_status === "gate_in_progress"`), the state machine —not
-// the contracts-file check— governs re-entry: crew:architect-feature
+// the contracts-file check— governs re-entry: devcrew:architect-feature
 // regenerates the same path on every round, so the file already existing
 // from round 1 must not block round 2 after a rescope.
 
@@ -87,7 +87,7 @@ export interface ArchGateConditionInput {
 }
 
 /**
- * Pure decision function for whether `runner:start` should prepend the
+ * Pure decision function for whether `devcrew:start` should prepend the
  * ARCHITECT GATE preflight instruction to a slice-build dispatch. See the
  * module docstring for the re-entry precedence rule. Crew presence is no
  * longer a precondition (P2 seam-elimination, SLICE-13) — crew is a
@@ -116,16 +116,16 @@ export function buildArchGatePreflight(featureId: string, title: string): string
       `fullstack FEAT with no approved contracts artifact yet — run the risk gate BEFORE ` +
       `dispatching the first slice builder.`,
     "",
-    `1. Dispatch crew:architect-feature FIRST with this prompt:`,
+    `1. Dispatch devcrew:architect-feature FIRST with this prompt:`,
     "",
-    `> Run /crew:architect-feature ${featureId} WITHOUT --auto-start. Produce the contracts ` +
+    `> Run /devcrew:architect-feature ${featureId} WITHOUT --auto-start. Produce the contracts ` +
       `artifact at \`${contractsPath}\` and infer surface/stack/concern tags onto the FEAT ` +
       `frontmatter. Return the artifact path.`,
     "",
-    `AWAIT the contracts artifact. Then dispatch crew:architect-reviewer over it:`,
+    `AWAIT the contracts artifact. Then dispatch devcrew:architect-reviewer over it:`,
     "",
     `> Review \`${contractsPath}\` for ${featureId}. Assess service boundaries, integration ` +
-      `risk, and scalability per crew:architect-reviewer's rubric. Return a verdict of ` +
+      `risk, and scalability per devcrew:architect-reviewer's rubric. Return a verdict of ` +
       `approved | approved_with_notes | rejected (needs_revision), a list of objections when ` +
       `the verdict is not approved, and a list of risk flags (concerns worth recording even on ` +
       `an approved_with_notes verdict).`,
@@ -140,7 +140,7 @@ export function buildArchGatePreflight(featureId: string, title: string): string
     `  - \`arch_status: "approved"\` → gate cleared. Proceed with the builder dispatch below.`,
     `  - \`arch_status: "gate_in_progress"\` (rejected, attempt < budget) → run ` +
       `\`bun loop.mts backlog pm-rescope --file <p> --ids ${featureId}\` with the reviewer's ` +
-      `objections, then re-run \`/runner:start\` for ${featureId} to re-enter the gate. Do NOT ` +
+      `objections, then re-run \`/devcrew:start\` for ${featureId} to re-enter the gate. Do NOT ` +
       `dispatch the builder this round.`,
     `  - \`arch_status: "deferred_design"\` (rejected, attempts exhausted) → the FEAT has been ` +
       `auto-deferred (priority demoted one step, autonomous_safe: false). Move on to the next ` +

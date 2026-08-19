@@ -44,7 +44,7 @@ describe("specialist-pause-detector", () => {
       await emitSpecialistPause(
         repo,
         "SLICE-42",
-        "crew:fullstack-dev",
+        "devcrew:fullstack-dev",
         "Output ended mid-sentence",
         {
           featureId: "FEAT-99",
@@ -62,7 +62,7 @@ describe("specialist-pause-detector", () => {
     expect(body.kind).toBe("slice.specialist_pause");
     expect(body.payload.sliceId).toBe("SLICE-42");
     expect(body.payload.featureId).toBe("FEAT-99");
-    expect(body.payload.agent).toBe("crew:fullstack-dev");
+    expect(body.payload.agent).toBe("devcrew:fullstack-dev");
     expect(body.payload.reason).toBe("Output ended mid-sentence");
     expect(body.payload.expectedArtifactPath).toBe(".claude/artifacts/crew/handoffs/SLICE-42.md");
 
@@ -72,7 +72,7 @@ describe("specialist-pause-detector", () => {
     expect(lines.length).toBe(1);
     const parsed = JSON.parse(lines[0]!);
     expect(parsed.type).toBe("specialist_pause");
-    expect(parsed.agent).toBe("crew:fullstack-dev");
+    expect(parsed.agent).toBe("devcrew:fullstack-dev");
     expect(parsed.reason).toBe("Output ended mid-sentence");
     expect(parsed.sliceId).toBe("SLICE-42");
   });
@@ -91,7 +91,7 @@ describe("specialist-pause-detector", () => {
         repoPath: repo,
         sliceId: "SLICE-7",
         featureId: "FEAT-7",
-        agent: "crew:reviewer",
+        agent: "devcrew:reviewer",
         builderOutput: "Let me check the file... pausing now to think.",
         expectedArtifactPath: ".claude/artifacts/crew/reviews/missing.md",
         timestamp: "2026-06-15T13:00:00.000Z"
@@ -103,7 +103,7 @@ describe("specialist-pause-detector", () => {
     expect(calls.length).toBe(1);
     const body = JSON.parse(String(calls[0].init?.body));
     expect(body.kind).toBe("slice.specialist_pause");
-    expect(body.payload.agent).toBe("crew:reviewer");
+    expect(body.payload.agent).toBe("devcrew:reviewer");
     expect(body.payload.sliceId).toBe("SLICE-7");
     expect(String(body.payload.reason)).toContain("pause keywords");
   });
@@ -127,7 +127,7 @@ describe("specialist-pause-detector", () => {
         repoPath: repo,
         sliceId: "SLICE-8",
         featureId: null,
-        agent: "crew:verifier",
+        agent: "devcrew:verifier",
         builderOutput: "PASS — all gates green.",
         expectedArtifactPath: artifact
       });

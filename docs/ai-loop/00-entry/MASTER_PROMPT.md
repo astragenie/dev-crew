@@ -53,7 +53,7 @@ A slice is complete only when:
 - relevant test suites pass (per `.claude/loop.json` `stack.test`)
 - documentation is updated if architecture or interfaces changed
 - a Crew `review-result` artifact is written (auto via commit bridge or
-  manually via `/crew:write-review-result`)
+  manually via `/devcrew:write-review-result`)
 - a Crew `final-synthesis` is written when the slice closes
 
 Use `EVIDENCE_RULES.md` to mark each acceptance criterion PASS / PARTIAL / FAIL /

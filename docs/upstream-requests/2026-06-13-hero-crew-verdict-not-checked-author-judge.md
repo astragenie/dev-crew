@@ -91,7 +91,7 @@ handoff from the same slice. If the handoff is absent, `self_approval` defaults 
 
 ### Grade aggregation impact
 
-When `runner:slice grade` reads review artifacts:
+When `devcrew:slice grade` reads review artifacts:
 
 - If `not_checked_warning: true` → subtract 0.05 from `test_confidence` and
   `production_readiness` dimensions (reviewer declared unknown coverage).
@@ -125,7 +125,7 @@ provenance at every artifact boundary. A review with no author is forensically o
   `not_checked_warning: true` in frontmatter; artifact is still written.
 - **AC-4**: `self_approval` is computed when the linked builder handoff is readable;
   defaults to `null` when the handoff is absent.
-- **AC-5**: `runner:slice grade` applies the `not_checked_warning` and `self_approval`
+- **AC-5**: `devcrew:slice grade` applies the `not_checked_warning` and `self_approval`
   dimension adjustments described above (or loop-side companion FEAT handles it).
 - **AC-6**: tests cover: normal write with all new flags, write with empty
   `--not-checked` (warning path), self-approval detection (same author == builder).

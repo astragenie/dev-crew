@@ -1,5 +1,7 @@
 ---
 name: writing-task-handoffs
+prompt_id: writing-task-handoffs
+version: 1.0.0
 tier: universal
 description: Use when delegating or concluding substantial work so tasks, ownership, risks, and next steps are explicit and easy to inspect.
 owner: astra
@@ -11,11 +13,11 @@ triggers: ["handoff", "delegate", "ownership change", "write-handoff"]
 
 ## Trigger
 
-Use whenever work passes between lead, builder, reviewer, researcher, or the user — completion, mid-flight pause, blocker, or context-budget end. Always required for substantial work before returning to the lead.
+Use whenever work passes between dispatcher, builder, reviewer, researcher, or the user — completion, mid-flight pause, blocker, or context-budget end. Always required for substantial work before returning to the dispatcher.
 
 ## Overview
 
-Use this skill whenever work passes between lead, builder, reviewer, researcher, or the user.
+Use this skill whenever work passes between dispatcher, builder, reviewer, researcher, or the user.
 
 Without a clean handoff, the next agent (or the user) starts blind — they waste time rediscovering context that was already known. The handoff should be good enough that a new teammate can continue without guessing.
 
@@ -59,7 +61,7 @@ When persisting a handoff, prefer:
 
 Preferred command:
 
-- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.mjs" write-handoff --repo "$PWD" --title "<short title>" ...`
+- `node "${CLAUDE_PLUGIN_ROOT}/scripts/crew.mts" write-handoff --repo "$PWD" --title "<short title>" ...`
 
 ## Done
 

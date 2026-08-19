@@ -2,7 +2,7 @@
 // undispositioned recurring lessons) are captured into the persistent
 // learnings store with zero operator action. Today `commands/retrospective.md`
 // ("Synthesis step") asks the dispatching agent to manually run
-// `/runner:learn` for each of these; this test proves the raw finding now
+// `/devcrew:learn` for each of these; this test proves the raw finding now
 // survives automatically even if that follow-up synthesis step is skipped.
 
 import fs from "node:fs/promises";

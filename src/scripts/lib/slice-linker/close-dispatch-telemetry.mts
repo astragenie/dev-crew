@@ -10,7 +10,7 @@
 // SCOPE (post-review, FEAT-275 narrowed per reviewer finding #2): this module
 // only ever sees the reviewer/validator TIER, derived from a gate's already-
 // resolved state at close time. It has NO visibility into builder-tier
-// dispatches (crew:fullstack-dev/frontend-dev/backend-dev) in the default
+// dispatches (devcrew:fullstack-dev/frontend-dev/backend-dev) in the default
 // (non-wave) orchestrator mode — docs/sop/specialist-pause-handling.md's own
 // reproduction table shows THAT is the dominant, still-open pause case, and
 // closing that gap requires a real-time signal (a SubagentStop report-gate
@@ -173,7 +173,7 @@ export async function recordGateDispatchTelemetry(
 
 /**
  * Derives the review + validation gates for a slice and records dispatch
- * telemetry for both specialist roles (crew:reviewer / crew:verifier).
+ * telemetry for both specialist roles (devcrew:reviewer / devcrew:verifier).
  * Called once per single-shot close (closeSlice's --grade-yaml path) —
  * that is the actual "specialist dispatch completes" moment for the
  * ceremony. Never throws.
@@ -189,10 +189,10 @@ export async function recordCloseDispatchTelemetry(
     const { deriveValidationGate } = await import("../validation-gate.mjs");
 
     const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
-    await recordGateDispatchTelemetry(repoPath, sliceId, "crew:reviewer", reviewGate);
+    await recordGateDispatchTelemetry(repoPath, sliceId, "devcrew:reviewer", reviewGate);
 
     const validationGate = await deriveValidationGate(repoPath, sliceId, { sliceFm, config });
-    await recordGateDispatchTelemetry(repoPath, sliceId, "crew:verifier", validationGate);
+    await recordGateDispatchTelemetry(repoPath, sliceId, "devcrew:verifier", validationGate);
   } catch (err) {
     console.warn(
       `[close-dispatch-telemetry] gate derivation failed for ${sliceId} (non-fatal): ` +

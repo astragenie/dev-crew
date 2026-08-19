@@ -245,8 +245,8 @@ test("buildDispatchInstruction without optional fields emits default slice-build
     repoPath: "/repo",
     resolvedGoal: null
   });
-  // No sliceContent → no tags → slice-build falls through to crew:fullstack-dev.
-  assert.match(result, /Dispatch crew:fullstack-dev subagent/);
+  // No sliceContent → no tags → slice-build falls through to devcrew:fullstack-dev.
+  assert.match(result, /Dispatch devcrew:fullstack-dev subagent/);
   assert.doesNotMatch(result, /Slice context/);
 });
 
@@ -330,7 +330,7 @@ test("buildDispatchInstruction without dispatchLimits omits budget block", () =>
 
 // --- orchestratorMode emission tests (FEAT-191: lead + direct-builder removed) ---
 
-test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /crew:orchestrate-slice command", () => {
+test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /devcrew:orchestrate-slice command", () => {
   const result = buildDispatchInstruction({
     sliceId: "SLICE-OS",
     title: "SLICE-OS: Orchestrate-slice path",
@@ -339,8 +339,8 @@ test("buildDispatchInstruction with orchestratorMode='orchestrate-slice' emits /
     resolvedGoal: "Use legacy orchestrate-slice",
     orchestratorMode: "orchestrate-slice"
   });
-  assert.match(result, /\/crew:orchestrate-slice --id SLICE-OS/);
-  assert.doesNotMatch(result, /Dispatch crew:fullstack-dev subagent/);
+  assert.match(result, /\/devcrew:orchestrate-slice --id SLICE-OS/);
+  assert.doesNotMatch(result, /Dispatch devcrew:fullstack-dev subagent/);
 });
 
 test("buildDispatchInstruction defaults to slice-build when no mode specified", () => {
@@ -352,8 +352,8 @@ test("buildDispatchInstruction defaults to slice-build when no mode specified", 
     resolvedGoal: "Default mode"
   });
   // Default mode = slice-build. With no sliceContent (no tags), variant
-  // falls through to crew:fullstack-dev.
-  assert.match(result, /Dispatch crew:fullstack-dev subagent/);
+  // falls through to devcrew:fullstack-dev.
+  assert.match(result, /Dispatch devcrew:fullstack-dev subagent/);
 });
 
 test("readFeatureExcerpt returns {path, excerpt} object when feature found", async () => {

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 // Tests for hooks/guard-feat-dispatch.mjs. Covers the P1.0 feature-flag
 // envelope around the exit-2 block path (features.dispatch-guard-block.
 // enabled) plus the P1.8 allowlist rename: current runner:* ids pass,
-// retired loop:*/crew:builder* ids still pass this release as legacy
+// retired loop:*/devcrew:builder* ids still pass this release as legacy
 // aliases, and general-purpose stays blocked (that's the entire point of
 // this hook).
 
@@ -101,38 +101,38 @@ test("guard-feat-dispatch: legacy alias crew:builder still passes this release (
 
 // P1.8 allowlist rename coverage.
 
-test("guard-feat-dispatch: runner:architect (renamed from loop:architect) passes", async () => {
+test("guard-feat-dispatch: devcrew:architect (renamed from loop:architect) passes", async () => {
   const repo = await tmpRepo("gfd-runner-architect-");
   const result = runHook(repo, {
     tool_name: "Agent",
-    tool_input: { subagent_type: "runner:architect", prompt: "implement FEAT-999" }
+    tool_input: { subagent_type: "devcrew:architect", prompt: "implement FEAT-999" }
   });
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");
 });
 
-test("guard-feat-dispatch: runner:document-writer (renamed from loop:document-writer) passes", async () => {
+test("guard-feat-dispatch: devcrew:document-writer (renamed from loop:document-writer) passes", async () => {
   const repo = await tmpRepo("gfd-runner-docwriter-");
   const result = runHook(repo, {
     tool_name: "Agent",
-    tool_input: { subagent_type: "runner:document-writer", prompt: "implement FEAT-999" }
+    tool_input: { subagent_type: "devcrew:document-writer", prompt: "implement FEAT-999" }
   });
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");
 });
 
-test("guard-feat-dispatch: runner:pm and runner:researcher (renamed from loop:pm / loop:researcher) pass", async () => {
+test("guard-feat-dispatch: devcrew:pm and devcrew:researcher (renamed from loop:pm / loop:researcher) pass", async () => {
   const repoPm = await tmpRepo("gfd-runner-pm-");
   const pmResult = runHook(repoPm, {
     tool_name: "Agent",
-    tool_input: { subagent_type: "runner:pm", prompt: "implement FEAT-999" }
+    tool_input: { subagent_type: "devcrew:pm", prompt: "implement FEAT-999" }
   });
   assert.equal(pmResult.status, 0);
 
   const repoResearcher = await tmpRepo("gfd-runner-researcher-");
   const researcherResult = runHook(repoResearcher, {
     tool_name: "Agent",
-    tool_input: { subagent_type: "runner:researcher", prompt: "implement FEAT-999" }
+    tool_input: { subagent_type: "devcrew:researcher", prompt: "implement FEAT-999" }
   });
   assert.equal(researcherResult.status, 0);
 });
@@ -147,28 +147,28 @@ test("guard-feat-dispatch: old loop:architect still passes this release as a leg
   assert.equal(result.stderr, "");
 });
 
-test("guard-feat-dispatch: crew:dev-lite and crew:investigator pass (newly added ceremony participants)", async () => {
+test("guard-feat-dispatch: devcrew:dev-lite and devcrew:investigator pass (newly added ceremony participants)", async () => {
   const repoDevLite = await tmpRepo("gfd-dev-lite-");
   const devLiteResult = runHook(repoDevLite, {
     tool_name: "Agent",
-    tool_input: { subagent_type: "crew:dev-lite", prompt: "implement FEAT-999" }
+    tool_input: { subagent_type: "devcrew:dev-lite", prompt: "implement FEAT-999" }
   });
   assert.equal(devLiteResult.status, 0);
 
   const repoInvestigator = await tmpRepo("gfd-investigator-");
   const investigatorResult = runHook(repoInvestigator, {
     tool_name: "Agent",
-    tool_input: { subagent_type: "crew:investigator", prompt: "implement FEAT-999" }
+    tool_input: { subagent_type: "devcrew:investigator", prompt: "implement FEAT-999" }
   });
   assert.equal(investigatorResult.status, 0);
 });
 
 test("guard-feat-dispatch: read-only review-gate reviewers pass (runner#404)", async () => {
   for (const reviewer of [
-    "crew:architect-reviewer",
-    "crew:csharp-reviewer",
-    "crew:typescript-reviewer",
-    "crew:reviewer-lite"
+    "devcrew:architect-reviewer",
+    "devcrew:csharp-reviewer",
+    "devcrew:typescript-reviewer",
+    "devcrew:reviewer-lite"
   ]) {
     const repo = await tmpRepo("gfd-reviewer-fanout-");
     const result = runHook(repo, {
@@ -212,10 +212,10 @@ test("guard-feat-dispatch: override guidance text lists the current runner:* ids
     tool_input: { subagent_type: "general-purpose", prompt: "implement FEAT-999" }
   });
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /runner:architect/);
-  assert.match(result.stderr, /runner:document-writer/);
-  assert.match(result.stderr, /\/runner:start/);
-  assert.match(result.stderr, /\/runner:close/);
+  assert.match(result.stderr, /devcrew:architect/);
+  assert.match(result.stderr, /devcrew:document-writer/);
+  assert.match(result.stderr, /\/devcrew:start/);
+  assert.match(result.stderr, /\/devcrew:close/);
 });
 
 test("guard-feat-dispatch: non-FEAT prompts pass through regardless of flag state", async () => {

@@ -5,7 +5,7 @@
 // These tests now verify that completeSlice succeeds on the basic ceremony path without
 // the drain plumbing.
 //
-// Task 11 (FEAT-277): also verifies that closeSlice returns the runner:close canonical
+// Task 11 (FEAT-277): also verifies that closeSlice returns the devcrew:close canonical
 // payload shape { handoffPath, synthesisPath, costUsd, grades }.
 
 import fs from "node:fs/promises";
@@ -174,9 +174,9 @@ test("slice-complete ceremony: completeSlice does NOT throw on basic ceremony pa
 });
 
 // ---------------------------------------------------------------------------
-// Test 4 (FEAT-277 Task 11): runner:close canonical payload
+// Test 4 (FEAT-277 Task 11): devcrew:close canonical payload
 //
-// Verifies that closeSlice (the backbone behind runner:close) returns the
+// Verifies that closeSlice (the backbone behind devcrew:close) returns the
 // full payload shape specified in the design:
 //   { handoffPath, synthesisPath, costUsd, grades }
 //
@@ -185,7 +185,7 @@ test("slice-complete ceremony: completeSlice does NOT throw on basic ceremony pa
 // can fill it and run grade-write as a follow-up.
 // ---------------------------------------------------------------------------
 
-test("close ceremony returns canonical runner:close payload { handoffPath, synthesisPath, costUsd, grades }", async () => {
+test("close ceremony returns canonical devcrew:close payload { handoffPath, synthesisPath, costUsd, grades }", async () => {
   const repo = await tmpRepo("scmd-close-payload-");
   const featId = "FEAT-MD04";
   const sliceId = "SLICE-MD04";
@@ -220,6 +220,6 @@ test("close ceremony returns canonical runner:close payload { handoffPath, synth
   // grades — must be defined; scaffold-only path sets grades.scaffoldOnly = true
   assert.ok(
     result.grades !== undefined && result.grades !== null,
-    `grades must be defined on the runner:close payload; got ${JSON.stringify(result.grades)}`
+    `grades must be defined on the devcrew:close payload; got ${JSON.stringify(result.grades)}`
   );
 });

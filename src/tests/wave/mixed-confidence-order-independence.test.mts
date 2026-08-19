@@ -67,7 +67,7 @@ function permutations<T>(arr: T[]): T[][] {
   return result;
 }
 
-const bigWave = { waveSize: 10, sliceCommand: "/crew:orchestrate-slice", waveId: "order-test" };
+const bigWave = { waveSize: 10, sliceCommand: "/devcrew:orchestrate-slice", waveId: "order-test" };
 
 describe("mixed-confidence packing order-independence (FEAT-276/SLICE-180)", () => {
   test("packed set of declared candidates is stable across every permutation with interleaved missing candidates", () => {
@@ -181,7 +181,7 @@ describe("rejection-completeness across permutations (non-capacity-limited plans
   test("every candidate lands in exactly one of items or rejected, for every permutation of each scenario", () => {
     const opts = {
       waveSize: 100,
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       waveId: "completeness-test"
     };
 

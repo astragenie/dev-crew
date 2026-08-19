@@ -173,11 +173,11 @@ test("buildGepaMetadata mirrors project/agent into metadata when present", () =>
   const payload: GepaPayload = {
     ...makePayload(),
     project: "runner-plugin",
-    agent: "crew:builder"
+    agent: "devcrew:builder"
   };
   const metadata = buildGepaMetadata(payload);
   assert.equal(metadata["project"], "runner-plugin");
-  assert.equal(metadata["agent"], "crew:builder");
+  assert.equal(metadata["agent"], "devcrew:builder");
 });
 
 test("buildGepaMetadata omits project/agent keys when absent (no regression for existing callers)", () => {
@@ -196,14 +196,14 @@ test("emitGepaEvent sends project/agent as top-level wire fields, mirrored in me
     health: async () => ({ ok: true })
   });
 
-  await emitGepaEvent({ ...makePayload(), project: "runner-plugin", agent: "crew:fullstack-dev" });
+  await emitGepaEvent({ ...makePayload(), project: "runner-plugin", agent: "devcrew:fullstack-dev" });
 
   assert.equal(seen.length, 1);
   assert.equal(seen[0]!["project"], "runner-plugin");
-  assert.equal(seen[0]!["agent"], "crew:fullstack-dev");
+  assert.equal(seen[0]!["agent"], "devcrew:fullstack-dev");
   const meta = seen[0]!["metadata"] as Record<string, unknown>;
   assert.equal(meta["project"], "runner-plugin");
-  assert.equal(meta["agent"], "crew:fullstack-dev");
+  assert.equal(meta["agent"], "devcrew:fullstack-dev");
 });
 
 test("emitGepaEvent omits project/agent top-level fields when absent", async () => {

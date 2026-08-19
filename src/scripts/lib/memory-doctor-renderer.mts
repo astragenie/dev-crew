@@ -1,6 +1,6 @@
 // Memory doctor renderer (runner-plugin#292).
 //
-// Formats a MemoryStatus into a Markdown block suitable for runner:status output.
+// Formats a MemoryStatus into a Markdown block suitable for devcrew:brief output.
 // Pure function — no I/O, no side effects.
 
 import type { MemoryStatus } from "./memory-doctor.mjs";

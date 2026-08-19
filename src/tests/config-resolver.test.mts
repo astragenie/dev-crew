@@ -33,7 +33,7 @@ test("resolveConfig throws a clear error when unconfigured", async () => {
   const repo = await tmpRepo("al-resolve-unconfigured-");
   await assert.rejects(
     () => resolveConfig(repo),
-    /No \.claude\/loop\.json found.*\/runner:install --preset/s
+    /No \.claude\/loop\.json found.*\/devcrew:install --preset/s
   );
 });
 
@@ -129,7 +129,7 @@ test("writeConfigIfMissing writes new config when missing", async () => {
   assert.equal(parsed.productName, "Fresh");
 });
 
-// FEAT-271 / SLICE-168: applyLightLadder is the merge step `/runner:install
+// FEAT-271 / SLICE-168: applyLightLadder is the merge step `/devcrew:install
 // --light` applies on top of resolveConfig's output, before the config is
 // inlined into .claude/loop.json.
 test("applyLightLadder merges the preset's light block over reviewers and loop.validation", async () => {

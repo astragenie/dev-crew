@@ -7,7 +7,7 @@
 // scripts/setup-watch-scheduler.mjs, which only ever invokes THIS script by
 // path; this file has no idea what scheduled it.
 //
-// `/runner:watch` (commands/watch.md) invokes this same script — there is
+// `/devcrew:watch` (commands/watch.md) invokes this same script — there is
 // no divergent code path between the scheduled tick and the interactive
 // command (AC-8).
 //
@@ -21,7 +21,7 @@ import type { WatchTickExec } from "./lib/watch.mjs";
 
 // `exec` is exposed here purely for testability (mirrors runTick's own
 // exec-injection pattern) — production invocation (the scheduler and
-// /runner:watch) always calls main() with no arguments and gets the real
+// /devcrew:watch) always calls main() with no arguments and gets the real
 // `gh` + spawn exec built by runTick's default.
 export interface MainOptions {
   watchHome?: string;

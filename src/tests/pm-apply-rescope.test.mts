@@ -2,7 +2,7 @@
 //
 // Validates `applyPmRescope` (the pm-apply.mts rescope entry point) and its
 // CLI subcommand `backlog pm-rescope --file <results.json>`. The GATE
-// workstream dispatches `runner:pm --rescope <FEAT-ID>` with a list of
+// workstream dispatches `devcrew:pm --rescope <FEAT-ID>` with a list of
 // architect-reviewer objections; PM rewrites the FEAT's AC section to
 // address them. This funnels through the SAME writer as `applyPmResults`
 // (appendAcsSection's sibling `replaceAcsSection`, plus `updateFeatureFrontmatter`

@@ -3,7 +3,7 @@
 - **Date:** 2026-07-16
 - **From:** runner-plugin (loop layer)
 - **To:** dev-team (crew plugin) — dispatch-assembly surfaces
-  (`/crew:build`, `/crew:fix`, `orchestrate-slice`, subagent preamble assembly)
+  (`/devcrew:build`, `/devcrew:fix`, `orchestrate-slice`, subagent preamble assembly)
 - **Status:** open
 - **Design record:** runner-plugin
   `.claude/artifacts/crew/runs/20260716T110000Z-plan-memory-credit-loop-ceremony-neutral.md`
@@ -21,7 +21,7 @@ memory-integration review: retrieval and crediting need an
 orchestrator-controlled path, not a voluntary subagent action).
 
 Runner-side slice ceremonies cannot fix this alone: most crew dispatches never
-pass through `/runner:start` (direct `/crew:build`, `/crew:fix`,
+pass through `/devcrew:start` (direct `/devcrew:build`, `/devcrew:fix`,
 `orchestrate-slice`, ad-hoc `Agent()` calls).
 
 ## Ask

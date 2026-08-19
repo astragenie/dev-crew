@@ -87,7 +87,7 @@ function emitPreservedArtifacts(
       child.id,
       child.status,
       inventory,
-      `Worker exited with status \`${child.status}\`. Worktree + branch preserved. Inspect, cherry-pick anything worth keeping, then clean up manually OR rerun via \`/crew:fix\`.`
+      `Worker exited with status \`${child.status}\`. Worktree + branch preserved. Inspect, cherry-pick anything worth keeping, then clean up manually OR rerun via \`/devcrew:fix\`.`
     );
   }
 }
@@ -136,7 +136,7 @@ function mergeOne(
         child.id,
         "CONFLICTED",
         inventory,
-        `Merge against \`${parentBranch}\` conflicted. Worktree + branch left in place for inspection. Resolve conflicts manually OR rerun the slice via \`/crew:fix\`. Once resolved, run \`git worktree remove ${child.worktreePath}\` + \`git branch -D ${child.branch}\`.`
+        `Merge against \`${parentBranch}\` conflicted. Worktree + branch left in place for inspection. Resolve conflicts manually OR rerun the slice via \`/devcrew:fix\`. Once resolved, run \`git worktree remove ${child.worktreePath}\` + \`git branch -D ${child.branch}\`.`
       );
     }
     updated.set(child.id, {

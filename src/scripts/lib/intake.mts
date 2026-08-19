@@ -8,7 +8,7 @@
  * normalize free text into a `pending/` FEAT file with `priority: null`
  * (unscored), reusing the same `addFeature` write path every other backlog
  * entry point uses. Scoring happens afterward via the normal PM/triage
- * phase (`/runner:triage` → `pm-apply`, see pm-apply.mts), which already
+ * phase (`/devcrew:triage` → `pm-apply`, see pm-apply.mts), which already
  * handles pending → triaged + `pm_*` frontmatter.
  *
  * `--spec` is explicitly NOT implemented here: a 10-section SPEC body
@@ -62,8 +62,8 @@ function buildIntakeBody(text: string): string {
     "",
     "## Intake notes",
     "",
-    'Created via free-text intake (`/runner:intake "<text>"`). Priority is',
-    "unset — this FEAT has not been scored yet. Run `/runner:triage`",
+    'Created via free-text intake (`/devcrew:intake "<text>"`). Priority is',
+    "unset — this FEAT has not been scored yet. Run `/devcrew:triage`",
     "(PM scoring + `backlog pm-apply`) to score it before slicing."
   ].join("\n");
 }
@@ -78,7 +78,7 @@ export async function intakeFromText(opts: IntakeFromTextOpts): Promise<IntakeFr
     throw new Error(
       "intakeFromText: --spec mode is not_implemented — a 10-section SPEC body needs PM/LLM " +
         "drafting judgment this CLI cannot dispatch (DEC-011). Use the documented agent-driven " +
-        "flow instead: dispatch runner:pm with --spec from the intake skill, then write the " +
+        "flow instead: dispatch devcrew:pm with --spec from the intake skill, then write the " +
         "SPEC file directly."
     );
   }

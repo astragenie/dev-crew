@@ -78,7 +78,7 @@ Code prompt and let each finish before pasting the next:
 
 - Installs three HARD RULE blocks in your repo's CLAUDE.md (Autonomous Loop,
   Cross-Slice Continuation, Phase Completion Gate) inside a marker-bracketed
-  `<!-- runner:start -->` block. Re-installing replaces the block in
+  `<!-- devcrew:start -->` block. Re-installing replaces the block in
   place; user content outside it is preserved.
 - Writes plugin-owned loop-control docs under `<aiLoopRoot>/01-loop-control/`:
   `DEV_CREW_METHOD.md`, `EVIDENCE_RULES.md`, `STOP_CONDITIONS.md`, plus
@@ -102,7 +102,7 @@ Code prompt and let each finish before pasting the next:
 In a repo with `crew` already installed:
 
 ```bash
-/runner:install --preset dotnet-python
+/devcrew:install --preset dotnet-python
 ```
 
 Then edit `.claude/loop.json` to set `productName`,
@@ -112,14 +112,14 @@ regenerate `MASTER_PROMPT.md` from the updated config.
 Once configured:
 
 ```bash
-/runner:status          # health check
-/runner:start           # no args: auto-picks the highest-priority triaged FEAT
-/runner:start FEAT-NNN  # start a specific FEAT (creates the slice file)
-/runner:phase-gate --phase 4 --note "ingestion phase close"
-/runner:list-presets    # see built-in presets
+/devcrew:brief          # health check
+/devcrew:start           # no args: auto-picks the highest-priority triaged FEAT
+/devcrew:start FEAT-NNN  # start a specific FEAT (creates the slice file)
+/devcrew:phase-gate --phase 4 --note "ingestion phase close"
+/devcrew:list-presets    # see built-in presets
 ```
 
-`/runner:start` subsumes the older `next-slice` / `derive-slice` /
+`/devcrew:start` subsumes the older `next-slice` / `derive-slice` /
 `slice-from-feature` commands — those no longer exist as standalone slash
 commands.
 
@@ -167,10 +167,10 @@ specific tier via the `model:` field in the agent's own frontmatter
 
 | Agent | Pinned model | Why |
 | --- | --- | --- |
-| `runner:pm` | `opus` | Five-dimension scoring + inline AC/SPEC drafting benefits from the strongest tier. |
-| `runner:researcher` / `runner:market-researcher` | `haiku` | Read-only lookups, cheapest tier suffices. |
-| `runner:swarm` | `sonnet` | Dispatch orchestration, not deep reasoning. |
-| `runner:document-writer` | `sonnet` | Markdown drafting (FEAT-270, 2026-08-02): a fleet cost audit found Opus at 87-100% of USD spend in most repos, while repos running non-Opus tiers landed noticeably cheaper per slice at comparable context size. Documentation work doesn't need Opus-tier reasoning, so `document-writer` is pinned to Sonnet. |
+| `devcrew:pm` | `opus` | Five-dimension scoring + inline AC/SPEC drafting benefits from the strongest tier. |
+| `devcrew:researcher` / `devcrew:market-researcher` | `haiku` | Read-only lookups, cheapest tier suffices. |
+| `devcrew:swarm` | `sonnet` | Dispatch orchestration, not deep reasoning. |
+| `devcrew:document-writer` | `sonnet` | Markdown drafting (FEAT-270, 2026-08-02): a fleet cost audit found Opus at 87-100% of USD spend in most repos, while repos running non-Opus tiers landed noticeably cheaper per slice at comparable context size. Documentation work doesn't need Opus-tier reasoning, so `document-writer` is pinned to Sonnet. |
 
 To use a different tier for an agent, edit that agent's `model:` frontmatter
 field directly — there is no config-level override for individual roles yet
@@ -181,7 +181,7 @@ reviewer, need an eval gate before they're considered).
 ## Built-in presets
 
 Presets are **install-time templates only** (FEAT-218 Phase 2 / DEC-069):
-`/runner:install --preset <name>` inlines the chosen template's full content
+`/devcrew:install --preset <name>` inlines the chosen template's full content
 into `.claude/loop.json` once, at scaffold time, and nothing at runtime reads
 `scripts/presets/*.json` again. There is no default — `--preset` is required
 for a first-time install.
@@ -216,7 +216,7 @@ Runtime is Bun; source `.mts` files run directly — there is no emitted
   dispatch primitive (FEAT-020 SLICE-1); barrel re-export of the
   `dispatch-*.mts` modules
 
-## Hierarchical dispatch (`runner:swarm`, FEAT-020 SLICE-1)
+## Hierarchical dispatch (`devcrew:swarm`, FEAT-020 SLICE-1)
 
 A parent agent can spawn N parallel child subagents in isolated git worktrees,
 block on `awaitAll`, then merge DONE children to the parent branch in priority
@@ -253,7 +253,7 @@ bun src/scripts/loop.mts dispatch finalize \
   --run-id <id> --parent-branch slice/SLICE-90 --plan plan.json [--repo .] [--depth 0]
 ```
 
-In production, the `runner:swarm` agent runs `prepare`, invokes
+In production, the `devcrew:swarm` agent runs `prepare`, invokes
 the Agent tool with the returned batch in **one message**, then runs `finalize`.
 
 ### Telemetry artifacts
@@ -265,14 +265,14 @@ the Agent tool with the returned batch in **one message**, then runs `finalize`.
 
 ### Out of scope for SLICE-1
 
-`crew:parallel-runner` refactor (SLICE-2), truly-async non-blocking parent, cancellation,
+`devcrew:parallel-runner` refactor (SLICE-2), truly-async non-blocking parent, cancellation,
 `--resume`, cost rollup, budget cap (FEAT-133), per-skill cost (FEAT-165).
 
 ## Wave mode
 
 Opt-in marathon runner that dispatches N independent slices per "wave" into
 parallel git worktrees, merges PASS branches, pivots FAIL slices into
-`/crew:fix` next wave, and loops until standard stop-check fires.
+`/devcrew:fix` next wave, and loops until standard stop-check fires.
 
 Enable in `.claude/loop.json`:
 
@@ -280,12 +280,12 @@ Enable in `.claude/loop.json`:
 {
   "loop": {
     "marathonRunner": "wave",
-    "wave": { "size": 3, "sliceCommand": "/crew:orchestrate-slice" }
+    "wave": { "size": 3, "sliceCommand": "/devcrew:orchestrate-slice" }
   }
 }
 ```
 
-Run via `/runner:wave loop` (or `/runner:auto` once `marathonRunner: "wave"` is
+Run via `/devcrew:wave loop` (or `/devcrew:auto` once `marathonRunner: "wave"` is
 set — auto routes to wave automatically).
 
 Slice prerequisite: `touches_files` in slice frontmatter. Spec-writer
@@ -347,7 +347,7 @@ Runner is live-wired to the **astramem** MCP server (no longer a dormant
 CLI-spawn bridge — `src/scripts/lib/memory-bridge.mts` was retired by
 FEAT-235). GEPA-shaped events flow in-process through
 `src/scripts/lib/memory-gepa.mts` / `memory-sink.mts` on slice start,
-`runner:close` (grade write), and `runner:phase-gate` FAIL — recall on slice
+`devcrew:close` (grade write), and `devcrew:phase-gate` FAIL — recall on slice
 start, remember on close.
 
 Set `memory.enabled: "never"` in `.claude/loop.json` to disable both recall
@@ -368,7 +368,7 @@ when no override is set — see `docs/sop/memory-bridge.md`).
 
 Seed (or migrate) a repo onto this convention with the idempotent
 `memory-setup` subcommand (`commands/memory-setup.md`, mirrors
-`runner:cost-setup`'s pattern): it defaults `memory.project` to the repo
+`devcrew:cost-setup`'s pattern): it defaults `memory.project` to the repo
 directory's basename whenever nothing is already set, and never touches an
 existing value — including an explicit `enabled: false` opt-out.
 

@@ -8,7 +8,7 @@ import { readDevcrewConfigIfPresent } from "./devcrew-config.mjs";
 // Resolves the per-repo config from .claude/loop.json.
 //
 // Post-FEAT-218 (Phase 2): presets are install-time templates only.
-// `/runner:install --preset X` inlines a preset's full content into
+// `/devcrew:install --preset X` inlines a preset's full content into
 // `.claude/loop.json` once, at scaffold time (see loop-installer.mts) — after
 // that, nothing at runtime reads `scripts/presets/*.json` again.
 //
@@ -146,8 +146,8 @@ export async function resolveConfig(repoPath: string, options: Record<string, un
   }
   if (!userConfig) {
     throw new Error(
-      `No ${CONFIG_FILENAME} found in ${repoPath}. Run \`/runner:install --preset <name>\` first ` +
-        `(see \`/runner:list-presets\` for available templates).`
+      `No ${CONFIG_FILENAME} found in ${repoPath}. Run \`/devcrew:install --preset <name>\` first ` +
+        `(see \`/devcrew:list-presets\` for available templates).`
     );
   }
   return userConfig;
@@ -170,7 +170,7 @@ export function configPath(repoPath: string) {
   return path.join(repoPath, CONFIG_FILENAME);
 }
 
-// FEAT-271 / SLICE-168: `/runner:install --light` support. The preset's
+// FEAT-271 / SLICE-168: `/devcrew:install --light` support. The preset's
 // opt-in `light` block (SLICE-167 — reviewers.ladder trimmed to ["A"] +
 // loop.validation.satisfiedByReview: true) is install-time template data
 // only (DEC-069); this deep-merges it over the resolved config's `reviewers`

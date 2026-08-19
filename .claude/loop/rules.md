@@ -36,7 +36,7 @@ Open every slice through the canonical start command **before** beginning accept
 1. **Identify the next slice.** Check `docs/superpowers/plans/*.md` for unchecked `## Task N: SLICE_NN` headings first; else fall back to Cross-Slice Continuation.
 2. **`/runner:start <FEAT-NNN|SLICE-NN>`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
 3. **Inspect the return.** Confirm `runBrief.artifactPath` is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. Surface errors and stop — never proceed against a stale run.
-4. **Dispatch a crew builder subagent.** The return includes a `dispatchInstruction` — hand it to `crew:fullstack-dev` (or the stack-specific `crew:backend-dev` / `crew:frontend-dev`), or generic `claude`. There is no agent literally named `crew:builder`. Builder owns implementation only; when it returns, dispatch `crew:reviewer`, then `crew:validator` if behavior changed. **Do not implement inline.**
+4. **Dispatch a crew builder subagent.** The return includes a `dispatchInstruction` — hand it to `crew:fullstack-dev` (or the stack-specific `crew:backend-dev` / `crew:frontend-dev`), or generic `claude`. There is no agent literally named `crew:builder`. Builder owns implementation only; when it returns, dispatch `crew:reviewer`, then `crew:verifier` if behavior changed. **Do not implement inline.**
 5. **Wait for builder, reviewer, and validator reports**, then run the Slice Close Ceremony.
 
 Exception: manual invocations may pass `--no-dispatch`. The autonomous loop itself should never pass `--no-dispatch`.
@@ -56,7 +56,7 @@ The autonomous loop is an **orchestrator**, not an implementer. Every code-beari
 
 Pivot triggers — any of these means **stop, dispatch `/crew:fix`, then resume**: a review_result with `status: needs_fix`; a validation_result with `status: fail`; a build/test failure that needs a root-cause hunt.
 
-**Never use `caveman:*` agents for slice work** — they lack the full artifact protocol. Always use a real crew builder, `crew:reviewer`, `crew:validator`, `crew:release-engineer` — never `crew:builder`, which is not an agent.
+**Never use `caveman:*` agents for slice work** — they lack the full artifact protocol. Always use a real crew builder, `crew:reviewer`, `crew:verifier`, `crew:release-engineer` — never `crew:builder`, which is not an agent.
 
 **Dispatch budget:** maximum 3 subagent dispatches per slice. Inline execution for single-file edits, test/lint/format fixes. When in doubt, prefer dispatch — a subagent run produces its own artifact trail.
 

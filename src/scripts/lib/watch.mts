@@ -3,7 +3,7 @@
 // the directory (see src/scripts/validate-imports.mts). Runtime surface is
 // intentionally narrow per the contract — these are the symbols consumed by
 // src/scripts/watch-tick.mts (the scheduler entry point) and, via the same
-// entry point, /runner:watch (commands/watch.md) — SLICE-146.
+// entry point, /devcrew:watch (commands/watch.md) — SLICE-146.
 export { runTick, recordReactionOutcome } from "./watch/tick.mjs";
 export { readRegistry, validateRegistry } from "./watch/registry.mjs";
 export { defaultWatchHome } from "./watch/state.mjs";

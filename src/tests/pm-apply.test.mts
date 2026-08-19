@@ -348,7 +348,7 @@ test("CLI: backlog pm-apply --file commits a fixture results file end-to-end", a
 // ---------------------------------------------------------------------
 // Issue #402 — live-drift hardening.
 //
-// Bug 1: runner:pm emitted `featId` / `proposed_slices` instead of the
+// Bug 1: devcrew:pm emitted `featId` / `proposed_slices` instead of the
 // documented `featureId` / `proposedSlices`, and pm-apply rejected 4/4
 // entries. The recovered results file (FEAT-214 AC-5) was unappliable as
 // written. `featId` and `proposed_slices` are now accepted as documented
@@ -372,7 +372,7 @@ test("applyPmResults: featId + proposed_slices aliases normalize to the document
       scores: validScores(),
       compositePriority: "P1",
       autonomousSafe: true,
-      reasoning: "emitted with drifted keys by a live runner:pm dispatch",
+      reasoning: "emitted with drifted keys by a live devcrew:pm dispatch",
       acs: ["Given X, When Y, Then Z"],
       proposed_slices: [
         { id_suffix: "-SLICE-1", title: "Library + tests", points: 2 },

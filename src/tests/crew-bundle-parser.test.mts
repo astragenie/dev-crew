@@ -21,7 +21,7 @@ describe("parseCrewBundle", () => {
 
   test("extracts agent + sliceId from frontmatter", async () => {
     const result = await parseCrewBundle(FIXTURE);
-    expect(result.agent).toBe("crew:builder");
+    expect(result.agent).toBe("devcrew:builder");
     expect(result.sliceId).toBe("SLICE-1");
   });
 });

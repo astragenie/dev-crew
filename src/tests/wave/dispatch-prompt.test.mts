@@ -15,23 +15,23 @@ describe("buildDispatchPrompt", () => {
     const p = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal"
     });
-    expect(p).toContain("/crew:orchestrate-slice --id SLICE-117");
+    expect(p).toContain("/devcrew:orchestrate-slice --id SLICE-117");
     expect(p).toContain("/tmp/wt/SLICE-117");
     expect(p).toContain("JSON marker");
   });
 
-  test("fix mode includes failure artifact path and /crew:fix invocation", () => {
+  test("fix mode includes failure artifact path and /devcrew:fix invocation", () => {
     const p = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "fix",
       failureArtifactPath: ".claude/artifacts/crew/handoffs/SLICE-117-fail.md"
     });
-    expect(p).toContain("/crew:fix --slice SLICE-117");
+    expect(p).toContain("/devcrew:fix --slice SLICE-117");
     expect(p).toContain(".claude/artifacts/crew/handoffs/SLICE-117-fail.md");
     expect(p).toContain("fix mode");
   });
@@ -40,7 +40,7 @@ describe("buildDispatchPrompt", () => {
     const p = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "fix"
     });
     expect(p).toContain("no failure artifact was captured");
@@ -73,13 +73,13 @@ describe("buildDispatchPromptWithMemory", () => {
     const base = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal"
     });
     const withMemory = await buildDispatchPromptWithMemory({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal",
       repoPath: repo as string,
       featureId: "FEAT-368",
@@ -98,13 +98,13 @@ describe("buildDispatchPromptWithMemory", () => {
     const base = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal"
     });
     const withMemory = await buildDispatchPromptWithMemory({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal",
       repoPath: repo as string,
       featureId: "FEAT-368",
@@ -123,13 +123,13 @@ describe("buildDispatchPromptWithMemory", () => {
     const base = buildDispatchPrompt({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal"
     });
     const withMemory = await buildDispatchPromptWithMemory({
       sliceId: "SLICE-117",
       worktreePath: "/tmp/wt/SLICE-117",
-      sliceCommand: "/crew:orchestrate-slice",
+      sliceCommand: "/devcrew:orchestrate-slice",
       mode: "normal",
       repoPath: repo as string,
       featureId: "FEAT-368",

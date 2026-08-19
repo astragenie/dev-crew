@@ -8,9 +8,9 @@ import type { SliceCandidate, WaveConfig, WorktreeResult } from "../../scripts/l
 
 const cfg: WaveConfig = {
   size: 3,
-  sliceCommand: "/crew:orchestrate-slice",
-  sliceCommandFallback: "/crew:build",
-  fixCommand: "/crew:fix",
+  sliceCommand: "/devcrew:orchestrate-slice",
+  sliceCommandFallback: "/devcrew:build",
+  fixCommand: "/devcrew:fix",
   maxParallel: 3,
   dispatchTimeoutMs: 30 * 60 * 1000,
   postMergeTestCmd: "bun test",
@@ -96,7 +96,7 @@ describe("buildFailurePivot", () => {
     expect(p.retryCount).toBe(2);
   });
 
-  test("fixDispatchPrompt contains /crew:fix and failureArtifactPath", () => {
+  test("fixDispatchPrompt contains /devcrew:fix and failureArtifactPath", () => {
     const p = buildFailurePivot(
       mkResult("S1"),
       { conflicts: [] },
@@ -104,7 +104,7 @@ describe("buildFailurePivot", () => {
       "wave-1",
       cfg
     );
-    expect(p.fixDispatchPrompt).toContain("/crew:fix --slice S1");
+    expect(p.fixDispatchPrompt).toContain("/devcrew:fix --slice S1");
     expect(p.fixDispatchPrompt).toContain(p.failureArtifactPath);
   });
 

@@ -1,7 +1,7 @@
 # Prompt: Full Architecture Retrospective — runner-plugin + crew (dev-team) — v2 FINAL
 
 > Paste this prompt into a fresh Claude Code session opened at `C:\work\mega\runner-plugin`.
-> Dispatch read-only subagents liberally (`runner:researcher`, `crew:investigator`,
+> Dispatch read-only subagents liberally (`devcrew:researcher`, `devcrew:investigator`,
 > `Explore`); budget ~2–4h of agent time.
 
 ---
@@ -87,9 +87,9 @@ Map the real module/dependency graph of both plugins (commands ↔ skills ↔ ag
   - Two overlapping state stores: crew `workflow-state` vs loop backlog frontmatter
     vs `loop-snapshot.md` — who is source of truth, where do they drift? (Evidence:
     2026-06-10 workflow-state reconcileNote after a session hang.)
-  - Duplicate agent rosters: `runner:researcher` vs `crew:researcher`,
-    `runner:document-writer` vs `crew:document-writer`, `runner:architect` vs
-    `crew:architect`, plus `3rdparty/` vendored agents in BOTH plugins. Measure the
+  - Duplicate agent rosters: `devcrew:researcher` vs `devcrew:researcher`,
+    `devcrew:document-writer` vs `devcrew:document-writer`, `devcrew:architect` vs
+    `devcrew:architect`, plus `3rdparty/` vendored agents in BOTH plugins. Measure the
     duplication; sketch a single shared agent registry.
   - Cross-plugin contract surface: `MIN_CREW_VERSION` pinning, `snapshot.*`
     halt-badges (SPEC-003), `docs/upstream-requests/` as ad-hoc RFC process.
@@ -113,7 +113,7 @@ SLICE-97..104). Investigate:
   which agents pause, on which prompt shapes, at what context sizes? **Compute the
   pause rate and retry rate** — numbers, not anecdotes.
 - Audit dispatch prompts (the `dispatchInstruction` templates from
-  `/runner:slice start`, `commands/slice-review-ladder.md`, `/crew:orchestrate-slice`):
+  `/devcrew:slice start`, `commands/slice-review-ladder.md`, `/devcrew:orchestrate-slice`):
   measure length, redundancy, tool budgets, inline-output fallbacks. Propose a
   single shared dispatch-prompt builder with hard budgets (tool-call caps,
   "write artifact FIRST" ordering, structured-output schemas over artifact-file
@@ -180,8 +180,8 @@ them to a runtime (tools, dispatch, model selection). Assess distance:
 
 ### WP6 — Role-Prompt Validation (pm, architect, devs, reviewers)
 
-For each of: `runner:pm`, `runner:architect`, `crew:backend-dev`,
-`crew:frontend-dev`, `crew:fullstack-dev`, `crew:inspector`, `crew:verifier`
+For each of: `devcrew:pm`, `devcrew:architect`, `devcrew:backend-dev`,
+`devcrew:frontend-dev`, `devcrew:fullstack-dev`, `crew:inspector`, `devcrew:verifier`
 (and lite variants):
 
 - Score the prompt 0–10 against: single responsibility, explicit output contract,

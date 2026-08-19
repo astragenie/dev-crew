@@ -81,7 +81,7 @@ export interface GepaPayload {
   // ---------------------------------------------------------------------------
   /** Astramem project tag (e.g. loop.json's memory.project / productName). */
   project?: string;
-  /** Producing-agent role tag (e.g. "crew:builder", "crew:fullstack-dev"). */
+  /** Producing-agent role tag (e.g. "devcrew:builder", "devcrew:fullstack-dev"). */
   agent?: string;
 }
 

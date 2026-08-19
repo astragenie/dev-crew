@@ -1,26 +1,26 @@
 ---
 name: close
-description: Close a slice — pre-flight AC evidence check, move slice file to completed/, feature to done/, auto-roll satisfied specs, capture grade and lessons in one atomic ceremony. Subsumes runner:slice-grade, runner:slice-grade-write, and verification-before-completion pre-flight.
+description: Close a slice — pre-flight AC evidence check, move slice file to completed/, feature to done/, auto-roll satisfied specs, capture grade and lessons in one atomic ceremony. Subsumes devcrew:slice-grade, devcrew:slice-grade-write, and verification-before-completion pre-flight.
 auto_execute_steps: false
 ---
 
-# runner:close
+# devcrew:close
 
 Unified atomic close ceremony at the end of a slice. Replaces three separate
-commands (`runner:slice-complete`, `runner:slice-grade`, `runner:slice-grade-write`)
+commands (`devcrew:slice-complete`, `devcrew:slice-grade`, `devcrew:slice-grade-write`)
 and folds in the verification-before-completion pre-flight.
 
 This command subsumes:
 
-- `runner:slice-complete` — move slice + feature files, write handoff + synthesis + cost report
-- `runner:slice-grade` — capture scores and lessons
-- `runner:slice-grade-write` — validate + persist grade, extract decisions, emit telemetry
+- `devcrew:slice-complete` — move slice + feature files, write handoff + synthesis + cost report
+- `devcrew:slice-grade` — capture scores and lessons
+- `devcrew:slice-grade-write` — validate + persist grade, extract decisions, emit telemetry
 - `verification-before-completion` pre-flight — verify all ACs are checked before ceremony fires
 
 ## Flow
 
 ```
-runner:close SLICE-NN [--grade-yaml <path>] [--force-close] ...
+devcrew:close SLICE-NN [--grade-yaml <path>] [--force-close] ...
 
 → Pre-flight: check all ACs in slice file are [x] (verified)
 → slice-complete: move slice/feature files, write handoff + final-synthesis + cost-report
@@ -92,13 +92,13 @@ kill switch, matching every other memory touchpoint in this repo.
 
 ## Pre-flight: verification-before-completion
 
-Before the ceremony fires (when `--grade-yaml` is supplied), `runner:close`
+Before the ceremony fires (when `--grade-yaml` is supplied), `devcrew:close`
 checks that every acceptance criterion in the slice file is checked off
 (`- [x]`). If unchecked ACs are found, it returns an error:
 
 ```json
 {
-  "error": "runner:close pre-flight failed: N acceptance criterion/criteria not yet checked off.",
+  "error": "devcrew:close pre-flight failed: N acceptance criterion/criteria not yet checked off.",
   "missingEvidence": ["- [ ] AC-1: ...", "- [ ] AC-2: ..."]
 }
 ```
@@ -106,12 +106,12 @@ checks that every acceptance criterion in the slice file is checked off
 To bypass: use `--force-close` (for doc-only slices, infra-only slices, or
 when ACs are satisfied by evidence outside the slice file itself).
 
-This is the code-level enforcement of `runner:verification-before-completion`
+This is the code-level enforcement of `devcrew:verification-before-completion`
 (which remains a prompt-level skill guiding agent behavior).
 
 ## Validation gate
 
-`runner:close` refuses to roll the parent feature to `done/` when **no
+`devcrew:close` refuses to roll the parent feature to `done/` when **no
 validation evidence** exists for the slice. The slice itself still moves to
 `completed/` (the gate only holds the feature transition).
 
@@ -122,7 +122,7 @@ The gate is satisfied when **any** of these is true:
 2. The crew workflow-state has `currentRun.gates.validation.status` set
    to `passed` or `skipped`.
 3. The slice file frontmatter contains `requires_validation: false`.
-4. `runner:close` is invoked with `--skip-validation-check "<reason>"`.
+4. `devcrew:close` is invoked with `--skip-validation-check "<reason>"`.
 
 ## Returns
 
@@ -152,7 +152,7 @@ astramem tool manually (doing so would double-write):
 - **Decisions** — `grade-writer.mts::extractDecisions` calls
   `memory-sink.mts::recordDecision` for every newly-minted `DEC-NNN` as part of
   `slice-grade-write`. FEAT/SLICE ids are embedded for traceability.
-- **Lessons** — `learnings.mts::logLearning` (the `runner:learn` store write)
+- **Lessons** — `learnings.mts::logLearning` (the `devcrew:learn` store write)
   calls `recordLesson`.
 
 The sink is **opt-in and fail-silent**: it fires only when `memory.enabled` in
@@ -173,7 +173,7 @@ nested form).
 
 ## Aggregation (post-builder fanout)
 
-The `dispatchInstruction` emitted by `runner:start` (mode `lead`) directs
+The `dispatchInstruction` emitted by `devcrew:start` (mode `lead`) directs
 the orchestrator to invoke the fanout CLI after builder PASS:
 
 ```bash
@@ -182,22 +182,22 @@ bun src/scripts/loop.mts slice post-builder-fanout --id <slice-id>
 
 This writes a marker file at `.claude/artifacts/loop/fanout-markers/<slice-id>.json`
 and emits a 3-task parallel payload (reviewer-A, reviewer-B, validator). Wait
-for all three artifacts before calling `runner:close`.
+for all three artifacts before calling `devcrew:close`.
 
 Aggregation rules:
 
 - Any reviewer FAIL halts the slice.
 - Validator FAIL halts the slice.
-- All PASS → `runner:close`.
+- All PASS → `devcrew:close`.
 
 ## PR-merge detection (DORA pr.merged — FEAT-494 unblock)
 
-`runner:close` itself only moves files and grades — it has no git/PR
+`devcrew:close` itself only moves files and grades — it has no git/PR
 awareness, and GitHub-native auto-merge completes asynchronously (there is
 no in-code "just merged" moment the ceremony can hook). If this slice
-shipped through a PR (i.e. the work landed via `crew:ship` or any other
+shipped through a PR (i.e. the work landed via `devcrew:ship` or any other
 PR-filing flow rather than a direct commit to main), the orchestrator
-should follow `runner:close` with a `pr-watch` call so the `pr.merged`
+should follow `devcrew:close` with a `pr-watch` call so the `pr.merged`
 DORA envelope actually fires once GitHub merges it:
 
 ```bash

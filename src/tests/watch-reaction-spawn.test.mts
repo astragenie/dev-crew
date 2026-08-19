@@ -16,7 +16,7 @@ const FORBIDDEN_FLAG = "--dangerously-skip-permissions";
 
 function makeSpawn(
   action: ReactionAction,
-  promptArg = "/runner:intake --from-issue x"
+  promptArg = "/devcrew:intake --from-issue x"
 ): ReactionSpawn {
   return {
     finding: { kind: "issue", findingId: "issue:1", ghSlug: "org/repo" },
@@ -72,22 +72,22 @@ test("AC-3: buildSpawnArgs returns null for issue-broker-file (tier-2, watch-onl
 });
 
 test("buildSpawnArgs: no allowlist configured means no --allowedTools flag at all (normal permission prompts, never a bypass)", () => {
-  const result = buildSpawnArgs(makeSpawn("intake", "/runner:intake --from-issue x"), undefined);
+  const result = buildSpawnArgs(makeSpawn("intake", "/devcrew:intake --from-issue x"), undefined);
   assert.ok(result);
-  assert.deepEqual(result!.args, ["-p", "/runner:intake --from-issue x"]);
+  assert.deepEqual(result!.args, ["-p", "/devcrew:intake --from-issue x"]);
   assert.equal(result!.bin, CLAUDE_BIN);
 });
 
 test("buildSpawnArgs: a configured allowlist is joined into a single --allowedTools value", () => {
-  const result = buildSpawnArgs(makeSpawn("pr-fix", "/runner:pr-fix 5"), ["Read", "Bash(gh:*)"]);
+  const result = buildSpawnArgs(makeSpawn("pr-fix", "/devcrew:pr-fix 5"), ["Read", "Bash(gh:*)"]);
   assert.ok(result);
-  assert.deepEqual(result!.args, ["-p", "/runner:pr-fix 5", "--allowedTools", "Read,Bash(gh:*)"]);
+  assert.deepEqual(result!.args, ["-p", "/devcrew:pr-fix 5", "--allowedTools", "Read,Bash(gh:*)"]);
 });
 
 test("buildSpawnArgs: an empty allowlist array behaves like an absent allowlist", () => {
-  const result = buildSpawnArgs(makeSpawn("crew-fix", "/crew:fix run:9"), []);
+  const result = buildSpawnArgs(makeSpawn("crew-fix", "/devcrew:fix run:9"), []);
   assert.ok(result);
-  assert.deepEqual(result!.args, ["-p", "/crew:fix run:9"]);
+  assert.deepEqual(result!.args, ["-p", "/devcrew:fix run:9"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -117,13 +117,13 @@ test("spawnReactionProcess: real args call the injected spawn function detached,
     };
   };
 
-  const spawnArgs = buildSpawnArgs(makeSpawn("intake", "/runner:intake --from-issue x"), undefined);
+  const spawnArgs = buildSpawnArgs(makeSpawn("intake", "/devcrew:intake --from-issue x"), undefined);
   assert.ok(spawnArgs);
   spawnReactionProcess(spawnArgs, spawnFn);
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0]!.bin, CLAUDE_BIN);
-  assert.deepEqual(calls[0]!.args, ["-p", "/runner:intake --from-issue x"]);
+  assert.deepEqual(calls[0]!.args, ["-p", "/devcrew:intake --from-issue x"]);
   assert.deepEqual(calls[0]!.options, { cwd: "C:\\work\\repo", detached: true, stdio: "ignore" });
   assert.equal(unrefCalled, true);
 });
@@ -137,7 +137,7 @@ test("spawnReactionProcess: a spawn 'error' event is logged, not thrown, and nev
     unref: () => {}
   });
 
-  const spawnArgs = buildSpawnArgs(makeSpawn("crew-fix", "/crew:fix run:1"), undefined);
+  const spawnArgs = buildSpawnArgs(makeSpawn("crew-fix", "/devcrew:fix run:1"), undefined);
   assert.ok(spawnArgs);
   spawnReactionProcess(spawnArgs, spawnFn);
 

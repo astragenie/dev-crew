@@ -2,7 +2,7 @@
 //
 // AC-3 canary (content-assertion form): loop's eval infrastructure for live
 // agent dispatch does not yet have production data (per FEAT-210), so this
-// test does not dispatch a live runner:pm agent against an engineered FEAT
+// test does not dispatch a live devcrew:pm agent against an engineered FEAT
 // body. Instead it asserts the enforceable proxy: the injection-defense
 // contract text exists on every in-scope agent, and PM's own boundary text
 // explicitly instructs ignoring embedded imperatives and scoring on the

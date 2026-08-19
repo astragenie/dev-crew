@@ -1,21 +1,17 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T03:07:30.030Z",
+  "updatedAt": "2026-08-19T05:57:18.961Z",
   "currentRun": {
-    "title": "FEAT003 SLICE13: devcrew.json schemaVersion 2 merge + migrator",
+    "title": "FEAT004 SLICE14: Command map application + dispatch-token rewrite",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T02:32:45.400Z",
-    "updatedAt": "2026-08-19T03:07:30.030Z",
-    "next": "PM/architect close-out for FEAT-003 (all three P2 slices SLICE-11/12/13 now landed); P3 (FEAT-004 surface merge) is next in the backlog per loop-snapshot.md.",
+    "startedAt": "2026-08-19T03:07:55.529Z",
+    "updatedAt": "2026-08-19T05:57:18.960Z",
+    "next": "Lead: decide disposition of crew:using-crew (routing-table.yaml line 62 -- no matching skill exists anywhere in the repo, likely dead content from the original dev-team subtree import) and crew:brief-me (commands/brief.md references a retired command name in prose). Both are cosmetic/content, not code-path bugs.",
     "gates": {
       "review": null,
-      "validation": {
-        "status": "failed",
-        "updatedAt": "2026-08-19T03:07:30.030Z",
-        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -26,13 +22,15 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T023245Z-run-brief-feat003-slice13-devcrew-json-schemaversion-2-merge-migrator.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T030755Z-run-brief-feat004-slice14-command-map-application-dispatch-token-rewri.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T025505Z-handoff-slice-13-devcrew-json-schema-v2-migrator-plugin-identity-arc.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T032404Z-handoff-slice-14-command-map-application-structural-half.md",
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T040735Z-handoff-slice-14-fallout-fix-pass-devcrew-token-sweep-gaps-closed-al.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T055718Z-handoff-token-resolver-root-split-fix-crew-agents-commands-skills-mo.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T030730Z-validation-result-phase-unspecified-gate.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -41,6 +39,46 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT003 SLICE13: devcrew.json schemaVersion 2 merge + migrator",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T02:32:45.400Z",
+      "updatedAt": "2026-08-19T03:07:30.030Z",
+      "completedAt": "2026-08-19T03:07:30.030Z",
+      "next": "PM/architect close-out for FEAT-003 (all three P2 slices SLICE-11/12/13 now landed); P3 (FEAT-004 surface merge) is next in the backlog per loop-snapshot.md.",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "failed",
+          "updatedAt": "2026-08-19T03:07:30.030Z",
+          "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T023245Z-run-brief-feat003-slice13-devcrew-json-schemaversion-2-merge-migrator.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T025505Z-handoff-slice-13-devcrew-json-schema-v2-migrator-plugin-identity-arc.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T030730Z-validation-result-phase-unspecified-gate.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
       "goal": "",
@@ -179,42 +217,6 @@
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T011911Z-validation-result-phase-unspecified-gate.md",
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT002 SLICE09: Single tsconfig/tsconfig.test + biome config merge",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T00:40:33.000Z",
-      "updatedAt": "2026-08-19T00:47:57.617Z",
-      "completedAt": "2026-08-19T00:47:57.617Z",
-      "next": "P3 flattening will eventually dissolve the crew/ prefix and these two config files should merge into one at that point -- this slice deliberately kept them separate and coherent rather than merging early. Consider whether the root:false crew/biome.json should later gain extends://\" once P3 lands and rule sets are reconciled.",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T004032Z-run-brief-feat002-slice09-single-tsconfig-tsconfig-test-biome-config-m.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T004757Z-handoff-slice-09-tsconfig-biome-config-unification.md"
-        ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
         "deploymentChecks": {
           "dev": null,
           "prod": null

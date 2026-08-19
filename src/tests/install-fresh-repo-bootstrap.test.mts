@@ -28,7 +28,7 @@ test("install on a fresh repo is not blocked by the dispatcher config throw (#36
     assert.equal(before, false, "precondition: fresh repo must have no loop.json");
 
     // Before the fix this rejected with the DEC-069 "No .claude/loop.json found
-    // ... Run /runner:install --preset <name> first" error, thrown by the
+    // ... Run /devcrew:install --preset <name> first" error, thrown by the
     // dispatcher-level resolveConfig BEFORE the install handler ever ran. The
     // fix skips that pre-resolve for install, so the command reaches installLoop.
     let ok = false;
@@ -47,7 +47,7 @@ test("install on a fresh repo is not blocked by the dispatcher config throw (#36
     // acceptable; we only assert the #364 throw is gone.
     assert.doesNotMatch(
       stderr,
-      /No .*loop\.json found|Run `?\/runner:install/i,
+      /No .*loop\.json found|Run `?\/devcrew:install/i,
       `install must not hit the dispatcher config-not-found throw; stderr was: ${stderr}`
     );
 

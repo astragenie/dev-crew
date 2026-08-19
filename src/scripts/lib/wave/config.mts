@@ -5,9 +5,9 @@ import type { WaveConfig } from "./types.mjs";
 
 const DEFAULTS: WaveConfig = {
   size: 3,
-  sliceCommand: "/crew:orchestrate-slice",
-  sliceCommandFallback: "/crew:build",
-  fixCommand: "/crew:fix",
+  sliceCommand: "/devcrew:orchestrate-slice",
+  sliceCommandFallback: "/devcrew:build",
+  fixCommand: "/devcrew:fix",
   maxParallel: 3,
   dispatchTimeoutMs: 30 * 60 * 1000,
   postMergeTestCmd: "bun test src/tests/ --parallel --timeout 60000",

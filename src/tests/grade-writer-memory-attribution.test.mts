@@ -91,7 +91,7 @@ async function fillGrade(gradePath: string) {
   await fs.writeFile(gradePath, content);
 }
 
-test("emitSliceCloseMemory tags the slice_close GEPA event with project (via productName) and agent=crew:builder", async () => {
+test("emitSliceCloseMemory tags the slice_close GEPA event with project (via productName) and agent=devcrew:builder", async () => {
   const repo = await tmpRepo("grade-writer-memattr-project-", { productName: "runner-plugin" });
   try {
     const sliceId = "SLICE-92";
@@ -105,9 +105,9 @@ test("emitSliceCloseMemory tags the slice_close GEPA event with project (via pro
     const sliceClose = calls.find((c) => c.type === "lesson");
     assert.ok(sliceClose, "expected a slice_close (-> lesson kind) GEPA event to be emitted");
     assert.equal(sliceClose!.project, "runner-plugin");
-    assert.equal(sliceClose!.agent, "crew:builder");
+    assert.equal(sliceClose!.agent, "devcrew:builder");
     assert.equal(sliceClose!.metadata?.project, "runner-plugin");
-    assert.equal(sliceClose!.metadata?.agent, "crew:builder");
+    assert.equal(sliceClose!.metadata?.agent, "devcrew:builder");
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
@@ -150,7 +150,7 @@ test("emitSliceCloseMemory omits project when neither memory.project nor product
     assert.ok(sliceClose);
     assert.equal(sliceClose!.project, undefined);
     // agent attribution is unconditional (GRADE_AGENT_TYPE), independent of project.
-    assert.equal(sliceClose!.agent, "crew:builder");
+    assert.equal(sliceClose!.agent, "devcrew:builder");
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }

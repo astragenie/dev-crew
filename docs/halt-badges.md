@@ -71,7 +71,7 @@ field that was populated on a previous call (tracked via
 `.claude/state/loop/halt-badge-state.json`, see `src/scripts/lib/halt-badge-state.mts`)
 and is `null`/absent on the current call. `resolverAgentRole` is read
 best-effort from the last entry of `.claude/artifacts/loop/auto-dispatch.jsonl`
-(namespace prefix stripped, e.g. `crew:builder` → `builder`) and omitted
+(namespace prefix stripped, e.g. `devcrew:builder` → `builder`) and omitted
 entirely when unavailable.
 
 **BE semantics (astrarunner, out of loop's control):** upserts by
@@ -194,14 +194,14 @@ in `astragenie/astrarunner`.
 }
 ```
 
-**Meaning:** the auto-merge stage detected `validation_failed`, a rebase conflict, a merge error, or a push error. The worktree and slice branch are preserved for `/crew:fix` to resume.
+**Meaning:** the auto-merge stage detected `validation_failed`, a rebase conflict, a merge error, or a push error. The worktree and slice branch are preserved for `/devcrew:fix` to resume.
 
 **Fires when:** `runAutoMerge` throws `MergeError` AND `opts.dryRun === false`. NEVER set on `--dry-run` (zero-side-effect guarantee). NEVER set when `--no-merge` is passed or when no worktree is active (legacy slices).
 
 **Suggested operator action:**
-- `code: "REBASE_CONFLICT" | "MERGE_FAILED"`: run `/crew:fix` against the preserved worktree.
+- `code: "REBASE_CONFLICT" | "MERGE_FAILED"`: run `/devcrew:fix` against the preserved worktree.
 - `code: "PUSH_FAILED"`: run `git push origin main` manually — the commit is already on local main.
-- `code: "VALIDATION_FAILED" | "VALIDATION_REQUIRED"`: open the validation artifact to see what failed, then re-run `/runner:slice complete`.
+- `code: "VALIDATION_FAILED" | "VALIDATION_REQUIRED"`: open the validation artifact to see what failed, then re-run `/devcrew:slice complete`.
 
 **Origin:** FEAT-062 / SLICE-64 / v0.23.0. Source: `src/scripts/lib/auto-merge.mts::runAutoMerge`. Also surfaced as `currentRun.gates.mergeFailed` in `workflow-state.json`.
 
@@ -258,7 +258,7 @@ When disabled, `checkRedundantReadStop` short-circuits to `null` regardless of `
 
 **Fires when:** the number of grade files (`*-grade.md` under `gradesRoot`, default `.claude/artifacts/loop/grades/`) with `mtime` newer than the newest retrospective file (under `retroRoot`, default `.claude/artifacts/loop/retrospectives/`) reaches `every` (warn) or `2 × every` (hard). When no retrospective exists, the anchor is the unix epoch, so every grade counts.
 
-**Suggested operator action:** run `/runner:retrospective` to capture lessons + decisions. The walker resumes once a fresh retrospective file lands under `retroRoot`. Tune `loop.marathonCheckpointEvery` in `.claude/loop.json` to widen the window for marathon-style sessions; values <= 0 or non-integer fall back to the default rather than disabling.
+**Suggested operator action:** run `/devcrew:retrospective` to capture lessons + decisions. The walker resumes once a fresh retrospective file lands under `retroRoot`. Tune `loop.marathonCheckpointEvery` in `.claude/loop.json` to widen the window for marathon-style sessions; values <= 0 or non-integer fall back to the default rather than disabling.
 
 **Origin:** FEAT-181 / SLICE-92 / v0.40.0. Source: `src/scripts/lib/marathon-checkpoint.mts::checkMarathonCheckpoint`. Snapshot builder: `src/scripts/lib/stop-conditions.mts::buildMarathonCheckpointSnapshotEntry`.
 
@@ -337,7 +337,7 @@ This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` ret
 { triggered: true; haltReason: "pr-closed" }
 ```
 
-**Meaning:** `/runner:pr-watch` terminated abnormally. The `haltReason` field identifies the stop cause. Emitted in the JSON return value of the `pr-watch` CLI command.
+**Meaning:** `/devcrew:pr-watch` terminated abnormally. The `haltReason` field identifies the stop cause. Emitted in the JSON return value of the `pr-watch` CLI command.
 
 **Fires when:**
 - `"max-retries"` — completed builder dispatches reached `loop.prWatch.maxRetries` and checks remain failing.
@@ -357,7 +357,7 @@ This deletes `.claude/state/loop/stuck-detector.json`; the next `stop-check` ret
 
 Unlike the `snapshot.*` registry above, these badges are NOT produced by the
 `stop-conditions.mts` walker snapshot — they fan out directly from the
-single-shot `runner:close --grade-yaml` pre-flight
+single-shot `devcrew:close --grade-yaml` pre-flight
 (`assertCloseGatesSatisfied` in `src/scripts/lib/slice-linker/close-slice.mts`)
 at the moment a close is refused. Both share the same
 `GATE_FAILED_AT_CLOSE` error code, 3-close warm-up, and fan-out envelope
@@ -378,13 +378,13 @@ whenever it is the qa-grade check specifically that failed.
 }
 ```
 
-**Meaning:** the single-shot `runner:close --grade-yaml` pre-flight refused (or, during warm-up, would have refused) to close the slice because the review gate and/or the validation gate — and/or the `qaGradeGate` check documented below — was not satisfied at the moment of close.
+**Meaning:** the single-shot `devcrew:close --grade-yaml` pre-flight refused (or, during warm-up, would have refused) to close the slice because the review gate and/or the validation gate — and/or the `qaGradeGate` check documented below — was not satisfied at the moment of close.
 
 **Fires when:** `assertCloseGatesSatisfied` (`src/scripts/lib/slice-linker/close-slice.mts`) finds at least one of `deriveReviewGate` (`src/scripts/lib/review-gate.mts`), `deriveValidationGate` (`src/scripts/lib/validation-gate.mts`), or `checkQaGradeGate` unsatisfied. Runs only on the `--grade-yaml` single-shot close path (`gradeYamlPath && !opts.forceClose`) AND only when the `close-refusal` feature flag is enabled (`src/scripts/lib/features-service.mts`, default `true` since v0.61.0) — the multi-step scaffold-only path (no `--grade-yaml`) is not gated here. An explicit `--skip-validation-check <reason>` counts the validation gate as satisfied (recorded as an auditable `validation_skipped` badge downstream), so only the review gate or qa-grade gate can still trip the badge in that case.
 
 **Warm-up semantics:** the first `WARMUP_CLOSES` (3) gate-evaluated closes for a repo are warn-mode — the envelope still fans out with `enforced: false`, but `closeSlice` logs a warning and lets the close proceed. From the 4th gate-evaluated close onward, `enforced: true` and `closeSlice` throws an error with `code: "GATE_FAILED_AT_CLOSE"` and `gateFailures` set to the same `failures` array, refusing the close. The counter (`gateEvaluatedCloses`) persists at `.claude/state/loop/close-refusal-state.json` and increments on every gate-evaluated close attempt, whether it passes or fails.
 
-**Suggested operator action:** fix the underlying review/validation gate (or the qa-grade dimension, see below) and re-run `runner:close`, supply an explicit `--skip-validation-check` reason, or use `--force-close` (audited — records `force_closed_reason` on the slice plus a `slice_force_closed` event).
+**Suggested operator action:** fix the underlying review/validation gate (or the qa-grade dimension, see below) and re-run `devcrew:close`, supply an explicit `--skip-validation-check` reason, or use `--force-close` (audited — records `force_closed_reason` on the slice plus a `slice_force_closed` event).
 
 **Origin:** P1.4 close-refusal hardening (v0.61.0). Source: `src/scripts/lib/slice-linker/close-slice.mts::assertCloseGatesSatisfied`. Feature flag: `src/scripts/lib/features-service.mts` (`close-refusal`). Tests: `src/tests/close-refusal.test.mts`.
 

@@ -100,14 +100,14 @@ test("distinct agentTypes → non-zero totals matching the synthetic fixture sum
   await writeTranscript(transcriptB, { turns: 3, model: "claude-sonnet-4-6" });
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "fe-agent",
       startTs: "2026-07-05T10:00:00.000Z",
       stopTs: "2026-07-05T10:05:00.000Z",
       transcriptPath: transcriptA
     },
     {
-      agentType: "crew:backend-dev",
+      agentType: "devcrew:backend-dev",
       agentId: "be-agent",
       startTs: "2026-07-05T10:00:10.000Z",
       stopTs: "2026-07-05T10:06:00.000Z",
@@ -116,8 +116,8 @@ test("distinct agentTypes → non-zero totals matching the synthetic fixture sum
   ]);
 
   const plans = [
-    { id: "FE", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
-    { id: "BE", priority: 1, agentType: "crew:backend-dev", prompt: "" }
+    { id: "FE", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" },
+    { id: "BE", priority: 1, agentType: "devcrew:backend-dev", prompt: "" }
   ];
 
   const result = await aggregateDispatchCost(plans, {
@@ -142,14 +142,14 @@ test("2+ same-agentType children (concurrent) → partialChildren names both, no
   await writeTranscript(transcriptB, { turns: 2, model: "claude-sonnet-4-6" });
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "child-a",
       startTs: "2026-07-05T10:00:00.000Z",
       stopTs: "2026-07-05T10:05:00.000Z",
       transcriptPath: transcriptA
     },
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "child-b",
       startTs: "2026-07-05T10:00:05.000Z",
       stopTs: "2026-07-05T10:05:05.000Z",
@@ -158,8 +158,8 @@ test("2+ same-agentType children (concurrent) → partialChildren names both, no
   ]);
 
   const plans = [
-    { id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
-    { id: "B", priority: 1, agentType: "crew:fullstack-dev", prompt: "" }
+    { id: "A", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" },
+    { id: "B", priority: 1, agentType: "devcrew:fullstack-dev", prompt: "" }
   ];
 
   const result = await aggregateDispatchCost(plans, {
@@ -177,8 +177,8 @@ test("missing events.jsonl → valid zeros + every child in partialChildren, nev
   const repo = await tmpRepo();
   // Deliberately do not create .claude/logs/events.jsonl.
   const plans = [
-    { id: "FE", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
-    { id: "BE", priority: 1, agentType: "crew:backend-dev", prompt: "" }
+    { id: "FE", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" },
+    { id: "BE", priority: 1, agentType: "devcrew:backend-dev", prompt: "" }
   ];
 
   const result = await aggregateDispatchCost(plans, {
@@ -201,7 +201,7 @@ test("a child with no correlated transcript at all → partial, siblings still a
   await writeTranscript(transcriptA, { turns: 1, model: "claude-sonnet-4-6" });
   await writeAgentEvents(repo, [
     {
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       agentId: "fe-agent",
       startTs: "2026-07-05T10:00:00.000Z",
       stopTs: "2026-07-05T10:05:00.000Z",
@@ -211,8 +211,8 @@ test("a child with no correlated transcript at all → partial, siblings still a
 
   // BE never wrote a subagent event at all (e.g. it FAILED before hooks fired).
   const plans = [
-    { id: "FE", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
-    { id: "BE", priority: 1, agentType: "crew:backend-dev", prompt: "" }
+    { id: "FE", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" },
+    { id: "BE", priority: 1, agentType: "devcrew:backend-dev", prompt: "" }
   ];
 
   const result = await aggregateDispatchCost(plans, {

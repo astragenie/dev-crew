@@ -108,7 +108,7 @@ function withId(index: number, featureId: string | null, msg: string): string {
 
 /**
  * Issue #402 bug 1 — documented key aliases for live LLM output drift.
- * A dispatched `runner:pm` emitted `featId` / `proposed_slices` instead of
+ * A dispatched `devcrew:pm` emitted `featId` / `proposed_slices` instead of
  * the contract's `featureId` / `proposedSlices` and the whole batch was
  * rejected, defeating the FEAT-214 AC-5 "recoverable results on disk" goal.
  * Exactly these two aliases are tolerated (belt-and-suspenders with the
@@ -546,7 +546,7 @@ export async function applyPmResults(
 }
 
 // ---------------------------------------------------------------------
-// Rescope (GATE reject-loop integration): `runner:pm --rescope <FEAT-ID>`
+// Rescope (GATE reject-loop integration): `devcrew:pm --rescope <FEAT-ID>`
 // rewrites scope + Given-When-Then ACs to address architect-reviewer
 // objections. Distinct entry point from `applyPmResults` above because a
 // rescope is not a re-score — it does not touch scores/compositePriority/

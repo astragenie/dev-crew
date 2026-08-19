@@ -105,7 +105,7 @@ Legend: ● = full coverage, ◐ = partial, ○ = absent.
 - Description: Superpowers dispatches two separate reviewer subagents per task: spec-compliance first, then code quality. crew dispatches a single reviewer at slice close. Splitting the review surfaces spec drift task-by-task (cheaper to fix) and separates correctness from quality concerns.
 - Source: skills/subagent-driven-development/SKILL.md, skills/requesting-code-review/SKILL.md
 - Impact (0-3): 2 -- catches spec drift earlier; single-stage review at slice close is a lagging signal
-- Effort (0-3): 2 -- new review dispatch pattern in crew:fullstack-dev handoff
+- Effort (0-3): 2 -- new review dispatch pattern in devcrew:fullstack-dev handoff
 - Fit (0-3): 2 -- additive to existing crew review gate; does not replace it
 - Composite: 2 + (3 - 2) + 2 = 5
 

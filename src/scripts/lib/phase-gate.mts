@@ -267,7 +267,7 @@ export async function runPhaseGate(repoPath: string, options: Record<string, any
   await emitPhaseGateModeDetected(repoPath, { sliceId, mode: "serial" });
 
   // runner-plugin#288: emit GEPA memory payload on FAIL only (PASS is covered
-  // by runner:close grade write). Fire-and-forget — never throws, never blocks.
+  // by devcrew:close grade write). Fire-and-forget — never throws, never blocks.
   if (anyFailed) {
     await emitPhaseGateFailMemory(repoPath, sliceId, phase, stageResults);
   }

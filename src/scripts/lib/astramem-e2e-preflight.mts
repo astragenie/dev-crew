@@ -12,7 +12,7 @@
 // Complementary to memory-doctor.mts::probeMemory(): that probe shells out
 // to `astramem doctor --json`, whose payload shape has no field reporting
 // actual local/saas reachability (see memory-doctor.mts's module comment) —
-// runner:pm found during this slice's review that probeMemory() therefore
+// devcrew:pm found during this slice's review that probeMemory() therefore
 // never truthfully reports whether the daemon is actually listening. This
 // module closes that gap with a direct HTTP GET against the daemon's own
 // /health endpoint.

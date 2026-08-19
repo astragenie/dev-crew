@@ -103,7 +103,7 @@ and `write-run-brief` is the *only* thing that rotates it. If a slice close
 happens without an immediately-preceding fresh start for that same slice —
 a retry, an out-of-band reconciliation pass, or (per this repo's own
 memory: "Direct merge strands FEATs in pending — build→PR→merge skips
-`/runner:close`; reconcile pending→done manually") a slice whose normal
+`/devcrew:close`; reconcile pending→done manually") a slice whose normal
 start ceremony was bypassed entirely — `currentRun.startedAt` is whatever
 was left over from the last slice that *did* run the start ceremony,
 however old. The 2026-07-10 evidence lines up with this repo's own

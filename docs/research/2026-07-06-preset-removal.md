@@ -73,7 +73,7 @@ stale relative to the real preset shape — a preset could ship a broken
   "whatever preset is already recorded in `.claude/loop.json`, or the
   default if no config exists".
 - `commands/status.md:3,18` — reports "active preset name" as part of
-  `/runner:status` output.
+  `/devcrew:brief` output.
 
 **Installer / phase-gate**
 - `src/scripts/lib/loop-installer.mts:77,94,109,117,129` — calls
@@ -163,7 +163,7 @@ Whatever replaces it must preserve exactly the same `split` boolean and
 `pickBlock` (`skill-resolver.mts:67-86`) branches on it byte-for-byte.
 
 **c. The "install with one flag" UX** (`--preset dotnet-python` at install
-time, `/runner:list-presets` to browse options) is a real onboarding
+time, `/devcrew:list-presets` to browse options) is a real onboarding
 affordance. Removing it without a replacement forces every new repo to
 hand-author a `.claude/loop.json` from scratch — a regression for the
 "pick a preset closest to your stack" flow documented in
@@ -173,7 +173,7 @@ hand-author a `.claude/loop.json` from scratch — a regression for the
 already flagged as wrong-for-most-repos in the FEAT triage notes and in
 AC-5. Any repo with no `.claude/loop.json` and no explicit `--preset`
 silently gets .NET/Python/Aspire stack commands, which is actively
-misleading for e.g. a bare TypeScript repo running `/runner:install` with
+misleading for e.g. a bare TypeScript repo running `/devcrew:install` with
 no flags.
 
 ## 4. Migration path
@@ -181,7 +181,7 @@ no flags.
 **Recommended (matches the FEAT's proposal): installer-time inlining, then
 delete.**
 
-1. `/runner:install --preset X` becomes a one-time *scaffolder*: it still
+1. `/devcrew:install --preset X` becomes a one-time *scaffolder*: it still
    reads `scripts/presets/X.json` (or, post-Phase-2, an install-time-only
    template directory) but writes the **fully-resolved** content directly
    into `.claude/loop.json` — `loop.*`, `stack.*`, `reviewers.ladder`,
@@ -190,7 +190,7 @@ delete.**
 2. `resolveConfig` drops the preset load/merge entirely and the
    `dotnet-python` default (AC-5): it reads `.claude/loop.json` directly. For
    an unconfigured repo (no `.claude/loop.json`), it throws a clear error
-   ("run `/runner:install` first") rather than silently assuming a stack —
+   ("run `/devcrew:install` first") rather than silently assuming a stack —
    preferred over a hardcoded minimal skeleton because a skeleton with empty
    `stack.build`/`stack.test` would make phase-gate silently no-op instead of
    telling the operator to configure it.
@@ -213,7 +213,7 @@ delete.**
    `validateAllPresets` in CI.
 5. `scripts/presets/*.json` demoted to **install-time templates only**
    (recommended over outright removal): keep the 6 files as the seed data
-   `/runner:install --preset X` reads once, but nothing at runtime ever
+   `/devcrew:install --preset X` reads once, but nothing at runtime ever
    loads them again post-install. `commands/list-presets.md` keeps working
    unchanged (it's just enumerating template choices). This preserves the
    "install with one flag" UX (§3c) at zero runtime cost, and it means
@@ -223,7 +223,7 @@ delete.**
    satisfied because the only remaining reader is the installer's one-time
    scaffold path, which the AC's own carve-out language allows ("matches
    only in retired/template code").
-6. `--preset` flag on `/runner:install` survives as the template selector
+6. `--preset` flag on `/devcrew:install` survives as the template selector
    (recommended per the FEAT's own risk note) — same flag, same values,
    different plumbing underneath.
 
@@ -269,7 +269,7 @@ and avoiding an unconditional two-repo synchronized deletion.
    isn't self-contained yet (covers the migration window / repos that
    haven't reinstalled). Land in dev-team, not loop.
 5. **SLICE E — remove `dotnet-python` default + error path.** `resolveConfig`
-   throws a clear "run /runner:install" error for a missing config instead
+   throws a clear "run /devcrew:install" error for a missing config instead
    of defaulting (AC-5). Update `config-resolver.test.mts`.
 6. **SLICE F — docs + DEC record.** Update `README.md`, `commands/install.md`,
    `commands/list-presets.md` (now "install-time templates" language),

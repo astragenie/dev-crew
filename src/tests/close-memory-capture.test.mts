@@ -173,7 +173,7 @@ describe("captureStructuredLearnings", () => {
       sliceId: "SLICE-1",
       featureId: "FEAT-1",
       learningsPath: file,
-      agentType: "crew:fullstack-dev",
+      agentType: "devcrew:fullstack-dev",
       resolvedConfig: { memory: { enabled: "on" } }
     });
 
@@ -186,7 +186,7 @@ describe("captureStructuredLearnings", () => {
     expect(calls[2]?.type).toBe("note");
     expect(calls[0]?.text).toContain("lesson text");
     expect(calls[0]?.text).toContain("[FEAT-1/SLICE-1]");
-    expect(calls[0]?.metadata?.["agent"]).toBe("crew:fullstack-dev");
+    expect(calls[0]?.metadata?.["agent"]).toBe("devcrew:fullstack-dev");
   });
 
   test("no-op when learningsPath is absent", async () => {
@@ -285,17 +285,17 @@ describe("captureStructuredLearnings", () => {
 // ---------------------------------------------------------------------------
 
 describe("deriveDefaultLearningsAgent", () => {
-  test("api surface tag -> crew:backend-dev", () => {
-    expect(deriveDefaultLearningsAgent({ tags: ["surface:api"] })).toBe("crew:backend-dev");
+  test("api surface tag -> devcrew:backend-dev", () => {
+    expect(deriveDefaultLearningsAgent({ tags: ["surface:api"] })).toBe("devcrew:backend-dev");
   });
 
-  test("ui surface tag -> crew:frontend-dev", () => {
-    expect(deriveDefaultLearningsAgent({ tags: ["surface:ui"] })).toBe("crew:frontend-dev");
+  test("ui surface tag -> devcrew:frontend-dev", () => {
+    expect(deriveDefaultLearningsAgent({ tags: ["surface:ui"] })).toBe("devcrew:frontend-dev");
   });
 
-  test("both surfaces -> crew:fullstack-dev", () => {
+  test("both surfaces -> devcrew:fullstack-dev", () => {
     expect(deriveDefaultLearningsAgent({ tags: ["surface:ui", "surface:api"] })).toBe(
-      "crew:fullstack-dev"
+      "devcrew:fullstack-dev"
     );
   });
 

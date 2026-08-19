@@ -18,7 +18,7 @@ behind the 1.6% usefulness finding in runner-plugin#525).
   creditLoop.{enabled,k}}` if missing.
 - Leaves any already-set value alone — including an explicit `false` — and
   preserves any custom keys already present under `memory.*`. Re-running
-  against an unchanged config is a no-op (mirrors `runner:cost-setup`'s
+  against an unchanged config is a no-op (mirrors `devcrew:cost-setup`'s
   idempotent-migrate behavior).
 
 ## Defaults applied when nothing is set yet

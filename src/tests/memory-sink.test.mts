@@ -217,9 +217,9 @@ describe("recordMemory delivery (capturing fake provider)", () => {
     await recordDecision(repoDir, {
       id: "DEC-070",
       title: "x",
-      agentType: "crew:reviewer"
+      agentType: "devcrew:reviewer"
     });
-    expect(calls[0]?.metadata?.["agent"]).toBe("crew:reviewer");
+    expect(calls[0]?.metadata?.["agent"]).toBe("devcrew:reviewer");
   });
 
   test("no agent metadata key when agentType is absent", async () => {
@@ -237,11 +237,11 @@ describe("recordMemory delivery (capturing fake provider)", () => {
     const res = await recordFailure(repoDir, {
       summary: "review rejected: missing null check",
       sliceId: "SLICE-01",
-      agentType: "crew:reviewer"
+      agentType: "devcrew:reviewer"
     });
     expect(res.recorded).toBe(true);
     expect(calls[0]?.type).toBe("failure");
-    expect(calls[0]?.metadata?.["agent"]).toBe("crew:reviewer");
+    expect(calls[0]?.metadata?.["agent"]).toBe("devcrew:reviewer");
   });
 
   test("AC-4: content is sanitized (control chars stripped, no forged newline)", async () => {
@@ -298,17 +298,17 @@ describe("recordMemory delivery (capturing fake provider)", () => {
     await recordDecision(repoDir, {
       id: "DEC-080",
       title: "top-level tagging",
-      agentType: "crew:reviewer"
+      agentType: "devcrew:reviewer"
     });
 
     expect(calls).toHaveLength(1);
     const call = calls[0]!;
     // Top level: what a provider reading flat request fields (not metadata) sees.
     expect(call.project).toBe("loop");
-    expect(call.agent).toBe("crew:reviewer");
+    expect(call.agent).toBe("devcrew:reviewer");
     // metadata copy stays intact — back-compat with providers that only read metadata.
     expect(call.metadata?.["project"]).toBe("loop");
-    expect(call.metadata?.["agent"]).toBe("crew:reviewer");
+    expect(call.metadata?.["agent"]).toBe("devcrew:reviewer");
   });
 
   test("no top-level project/agent keys when both are absent", async () => {

@@ -172,10 +172,10 @@ export async function captureStructuredLearnings(
 // ---------------------------------------------------------------------------
 
 const VARIANT_TO_AGENT: Partial<Record<BuilderVariant, string>> = {
-  frontend: "crew:frontend-dev",
-  backend: "crew:backend-dev",
-  fullstack: "crew:fullstack-dev",
-  "parallel-fe-be": "crew:fullstack-dev"
+  frontend: "devcrew:frontend-dev",
+  backend: "devcrew:backend-dev",
+  fullstack: "devcrew:fullstack-dev",
+  "parallel-fe-be": "devcrew:fullstack-dev"
 };
 
 /**

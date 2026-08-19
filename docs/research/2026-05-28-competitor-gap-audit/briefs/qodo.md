@@ -73,5 +73,5 @@ Legend: ● full coverage, ◐ partial, ○ absent.
 - **PR-Agent v0 vs Qodo v2 fork tension**: Open-source PR-Agent is now positioned as "legacy"; new capabilities (multi-agent, Rules, Context Engine) are proprietary v2. Teams on the OSS path see slower feature movement.
 - **Closed-source for the differentiated multi-agent runtime**: Code-review v2, Merge, Command, and Gen are commercial. loop/crew are fully open and forkable.
 - **No constitution / hard-rule equivalent for the agent itself**: Rules govern reviewed code; there is no public "hard rules" file governing the agent operator (do-not-commit-without-review, do-not-skip-hooks, etc.). loop HARD RULE blocks are a differentiator for the operator-side contract.
-- **Heavier install footprint**: Multiple binaries (PR-Agent pip, Command npm, Gen IDE extensions, Merge Git App). loop/crew install as Claude Code plugins via `/loop:install` + `/crew:install`.
+- **Heavier install footprint**: Multiple binaries (PR-Agent pip, Command npm, Gen IDE extensions, Merge Git App). loop/crew install as Claude Code plugins via `/loop:install` + `/devcrew:install`.
 

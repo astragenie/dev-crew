@@ -109,7 +109,7 @@ export async function runTick(options: RunTickOptions): Promise<TickResult> {
 // Layer-2-side hook: records a reaction outcome into reaction.json (the
 // reaction-owned file — COND-2) and emits watch.reaction. Callable by
 // whatever ultimately spawns `claude -p` (the scheduler script / interactive
-// /runner:watch command land in SLICE-146); exposed now so AC-5 can prove
+// /devcrew:watch command land in SLICE-146); exposed now so AC-5 can prove
 // the tick/reaction write split holds against real state-module behavior.
 
 export interface RecordReactionOutcomeOptions {

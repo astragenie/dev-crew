@@ -224,7 +224,7 @@ test("formatCostBySkillReport includes skill name, spend, and delta", () => {
 test("formatCostBySkillReport shows n/a when delta is null (zero baseline)", () => {
   const rows = [
     {
-      skillName: "crew:reviewer",
+      skillName: "devcrew:reviewer",
       currentWeekUsd: 0.1,
       fourWeekAvgUsd: 0,
       deltaPercent: null,

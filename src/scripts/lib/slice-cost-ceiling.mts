@@ -11,7 +11,7 @@ export const DEFAULT_SLICE_COST_CEILING_USD = 75;
 /**
  * Read the slice cost ceiling honoring the new nested shape
  * (`loop.cost.ceilingUsd`) first, then falling back to the legacy flat key
- * (`loop.costSliceCeiling`) with a one-line stderr warn. Run /runner:cost-setup
+ * (`loop.costSliceCeiling`) with a one-line stderr warn. Run /devcrew:cost-setup
  * to migrate the file in-place.
  */
 function resolveSliceCeilingUsd(config: Record<string, any> | null): number {
@@ -23,7 +23,7 @@ function resolveSliceCeilingUsd(config: Record<string, any> | null): number {
   if (typeof legacy === "number" && Number.isFinite(legacy) && legacy > 0) {
     process.stderr.write(
       "[loop] WARN: loop.costSliceCeiling is deprecated; rename to loop.cost.ceilingUsd " +
-        "in .claude/loop.json (run /runner:cost-setup to auto-migrate).\n"
+        "in .claude/loop.json (run /devcrew:cost-setup to auto-migrate).\n"
     );
     return legacy;
   }

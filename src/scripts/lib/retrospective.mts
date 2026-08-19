@@ -298,7 +298,7 @@ export async function writeRetrospective(repoPath: string, options: Record<strin
   // dimension gaps and undispositioned recurring lessons — into the
   // learnings store with zero operator action. Today `commands/retrospective.md`
   // ("Synthesis step") asks the dispatching agent to manually run
-  // `/runner:learn` for each of these; this makes the persistence automatic
+  // `/devcrew:learn` for each of these; this makes the persistence automatic
   // (the agent's synthesis/disposition judgment is unchanged — this only
   // guarantees the raw finding survives even if that follow-up is skipped).
   // Fire-and-forget: must never affect the retrospective artifact write.

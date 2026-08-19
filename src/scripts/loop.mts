@@ -393,7 +393,7 @@ const COMMANDS = {
 
     if (allowHumanComments) {
       console.warn(
-        "WARNING: human review comment text will be forwarded to crew:builder. " +
+        "WARNING: human review comment text will be forwarded to devcrew:builder. " +
           "Ensure the PR is from a trusted source to avoid prompt injection."
       );
     }
@@ -532,8 +532,8 @@ async function runArchitectSubcommand(
   const editorLabel = editorModel ?? "inherit (agent frontmatter — omit model:)";
   const editorSentence =
     editorModel === null
-      ? "Dispatch `crew:fullstack-dev` subagent for the editor phase WITHOUT a `model:` argument — model routing is disabled, so the agent's own `model:` frontmatter governs. After it returns, dispatch `crew:reviewer` (and `crew:verifier` if behavior changed) before closing the slice."
-      : `Dispatch \`crew:fullstack-dev\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`crew:reviewer\` (and \`crew:verifier\` if behavior changed) before closing the slice.`;
+      ? "Dispatch `devcrew:fullstack-dev` subagent for the editor phase WITHOUT a `model:` argument — model routing is disabled, so the agent's own `model:` frontmatter governs. After it returns, dispatch `devcrew:reviewer` (and `devcrew:verifier` if behavior changed) before closing the slice."
+      : `Dispatch \`devcrew:fullstack-dev\` subagent for the editor phase, which will use the ${editorModel} model for implementation. After it returns, dispatch \`devcrew:reviewer\` (and \`devcrew:verifier\` if behavior changed) before closing the slice.`;
 
   const dispatchInstruction = [
     `## Two-Model Split Dispatch`,
@@ -727,41 +727,41 @@ async function main() {
   // with a clear replacement pointer before any config resolution or handler
   // lookup so callers get actionable output even in a bare repo.
   const DELETED_SKILLS_MAP: Record<string, string> = {
-    "backlog-add": "runner:intake",
-    "backlog-enrich": "runner:intake",
-    "backlog-list": "runner:status",
-    "backlog-promote": "runner:triage",
-    "pm-review": "runner:intake --deep",
-    "pm-decompose": "runner:intake --spec",
-    retriage: "runner:triage --ids",
-    "spec-add": "runner:intake --spec",
-    "spec-decompose": "runner:intake --spec",
-    "spec-list": "runner:status",
-    "slice-from-feature": "runner:start FEAT-NNN",
-    "derive-slice": "runner:start FEAT-NNN",
-    "next-slice": "runner:start",
-    "slice-plan": "runner:start (auto-runs plan)",
-    "slice-link": "runner:close (auto-links)",
-    "slice-grade": "runner:close",
-    "slice-grade-write": "runner:close",
+    "backlog-add": "devcrew:intake",
+    "backlog-enrich": "devcrew:intake",
+    "backlog-list": "devcrew:brief",
+    "backlog-promote": "devcrew:triage",
+    "pm-review": "devcrew:intake --deep",
+    "pm-decompose": "devcrew:intake --spec",
+    retriage: "devcrew:triage --ids",
+    "spec-add": "devcrew:intake --spec",
+    "spec-decompose": "devcrew:intake --spec",
+    "spec-list": "devcrew:brief",
+    "slice-from-feature": "devcrew:start FEAT-NNN",
+    "derive-slice": "devcrew:start FEAT-NNN",
+    "next-slice": "devcrew:start",
+    "slice-plan": "devcrew:start (auto-runs plan)",
+    "slice-link": "devcrew:close (auto-links)",
+    "slice-grade": "devcrew:close",
+    "slice-grade-write": "devcrew:close",
     "slice-post-builder-fanout": "internal-only",
     "slice-review-ladder": "internal-only",
     "sync-claims": "internal-only (claims-sync still runs)",
-    "classify-slice-shape": "internal-only (runs during runner:start)",
-    "release-plan": "runner:phase-gate",
-    "competitor-audit": "crew:market-researcher",
-    architect: "crew:architect",
-    "stop-check": "internal-only (runner:auto)",
+    "classify-slice-shape": "internal-only (runs during devcrew:start)",
+    "release-plan": "devcrew:phase-gate",
+    "competitor-audit": "devcrew:market-researcher",
+    architect: "devcrew:architect",
+    "stop-check": "internal-only (devcrew:auto)",
     // "snapshot-memory" removed from this map (FEAT-214 item 7): a real
     // handler has existed since v0.53 (see COMMANDS["snapshot-memory"]
     // below) — this stub silently intercepted every invocation before the
     // handler lookup ever ran, and its replacement pointer was also wrong
-    // (`runner:status` never regenerates the snapshot; see
+    // (`devcrew:brief` never regenerates the snapshot; see
     // reportStatus() in loop-installer.mts).
-    "decisions-list": "runner:decisions list",
-    "decisions-show": "runner:decisions show",
-    "decisions-relevant": "runner:decisions relevant",
-    "decisions-supersede": "runner:decisions supersede"
+    "decisions-list": "devcrew:decisions list",
+    "decisions-show": "devcrew:decisions show",
+    "decisions-relevant": "devcrew:decisions relevant",
+    "decisions-supersede": "devcrew:decisions supersede"
   };
   if (DELETED_SKILLS_MAP[command]) {
     process.stderr.write(
@@ -849,7 +849,7 @@ async function resolveBacklogAddBody(
   const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
   await appendAuditLog(repoPath, {
     timestamp: new Date().toISOString(),
-    agent: "runner:researcher",
+    agent: "devcrew:researcher",
     parentCommand: "backlog-add",
     ok: false,
     skipped: true,
@@ -1239,7 +1239,7 @@ export async function runBacklogEnrich(repoPath: string, _flags: Record<string, 
 
   await appendAuditLog(repoPath, {
     timestamp: new Date().toISOString(),
-    agent: "runner:architect",
+    agent: "devcrew:architect",
     parentCommand: "backlog enrich",
     ok: false,
     skipped: true,
@@ -1496,7 +1496,7 @@ const SPEC_HANDLERS = {
     const { appendAuditLog } = await import("./lib/auto-dispatch.mjs");
     await appendAuditLog(repoPath, {
       timestamp: new Date().toISOString(),
-      agent: "runner:architect",
+      agent: "devcrew:architect",
       parentCommand: "spec-decompose",
       ok: false,
       skipped: true,

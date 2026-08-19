@@ -161,7 +161,7 @@ test("slice-complete docwriter: --no-doc-writer → deprecated warning on stderr
 
   // Audit log entry written with cli-refusal-cli-doc-writer-disabled
   const lines = await readJsonLines(auditLogPath(repo));
-  const docWriterEntries = lines.filter((e: any) => e.agent === "crew:document-writer");
+  const docWriterEntries = lines.filter((e: any) => e.agent === "devcrew:document-writer");
   assert.ok(docWriterEntries.length >= 1, "at least one doc-writer audit log entry");
   const entry = docWriterEntries[0] as any;
   assert.equal(entry.skipped, true, "audit entry skipped must be true");
@@ -201,7 +201,7 @@ test("slice-complete docwriter: default path → audit log written with cli-refu
 
   // Audit log entry written with cli-refusal-cli-doc-writer-disabled
   const lines = await readJsonLines(auditLogPath(repo));
-  const docWriterEntries = lines.filter((e: any) => e.agent === "crew:document-writer");
+  const docWriterEntries = lines.filter((e: any) => e.agent === "devcrew:document-writer");
   assert.ok(docWriterEntries.length >= 1, "at least one doc-writer audit log entry");
   const entry = docWriterEntries[0] as any;
   assert.equal(entry.skipped, true, "audit entry skipped must be true");

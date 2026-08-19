@@ -69,7 +69,7 @@ describe("emitAgentNarrative", () => {
     expect(progress.length).toBe(3);
     expect(progress[0].payload.stage).toBe("discover");
     expect(progress[0].payload.sliceId).toBe("SLICE-1");
-    expect(progress[0].payload.agent).toBe("crew:builder");
+    expect(progress[0].payload.agent).toBe("devcrew:builder");
 
     const tools = captured.filter((c) => c.kind === "agent.tool_call");
     expect(tools.length).toBe(5);

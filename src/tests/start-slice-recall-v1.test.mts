@@ -93,7 +93,7 @@ test("recall OFF: dispatchInstruction carries no recall block", async () => {
     /## Prior context \(from astramem\)/,
     "no recall block should be injected when memory.recall.enabled is false"
   );
-  assert.match(result.dispatchInstruction, /^Dispatch crew:fullstack-dev subagent/);
+  assert.match(result.dispatchInstruction, /^Dispatch devcrew:fullstack-dev subagent/);
 });
 
 test("recall ON: block matches recall-injection-v1 contract format; dispatch body below it is byte-identical to the OFF path", async () => {

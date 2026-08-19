@@ -80,19 +80,19 @@ test("classifyFailures groups multiple pause dispatches into one subagent_incomp
   const repo = await makeTmpRepo("fc-ac1-");
   await recordDispatchOutcome(repo, {
     ts: "2026-07-01T00:00:00.000Z",
-    agentRole: "crew:builder",
+    agentRole: "devcrew:builder",
     sliceId: "FEAT-100",
     outcome: "paused"
   });
   await recordDispatchOutcome(repo, {
     ts: "2026-07-03T00:00:00.000Z",
-    agentRole: "crew:builder",
+    agentRole: "devcrew:builder",
     sliceId: "FEAT-101",
     outcome: "paused"
   });
   await recordDispatchOutcome(repo, {
     ts: "2026-07-02T00:00:00.000Z",
-    agentRole: "crew:reviewer",
+    agentRole: "devcrew:reviewer",
     sliceId: "FEAT-102",
     outcome: "completed"
   });
@@ -114,13 +114,13 @@ test("collectFailureSignals excludes signals outside the since window", async ()
   const repo = await makeTmpRepo("fc-window-");
   await recordDispatchOutcome(repo, {
     ts: "2026-01-01T00:00:00.000Z",
-    agentRole: "crew:builder",
+    agentRole: "devcrew:builder",
     sliceId: "FEAT-OLD",
     outcome: "paused"
   });
   await recordDispatchOutcome(repo, {
     ts: "2026-07-01T00:00:00.000Z",
-    agentRole: "crew:builder",
+    agentRole: "devcrew:builder",
     sliceId: "FEAT-NEW",
     outcome: "paused"
   });

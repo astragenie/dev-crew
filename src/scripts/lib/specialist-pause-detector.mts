@@ -22,7 +22,7 @@ export interface SpecialistPauseProbeInput {
   sliceId: string;
   /** Optional feature id ("FEAT-NNN") — passed through to the event payload. */
   featureId?: string | null;
-  /** Specialist role / agent name (e.g. "crew:fullstack-dev"). */
+  /** Specialist role / agent name (e.g. "devcrew:fullstack-dev"). */
   agent: string;
   /** Raw textual output captured from the subagent dispatch. */
   builderOutput: string;

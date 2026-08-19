@@ -1,7 +1,7 @@
 {
-  "name": "runner",
-  "version": "0.78.0",
-  "description": "Spec-driven agentic development engine for Claude Code: PM-triaged backlog, slice-scoped specs with Given-When-Then acceptance criteria, parallel-worktree wave dispatch, automated phase-gate quality + review + validation, and decision-grade retros. Stack-agnostic; per-repo config selects test commands at phase boundaries. Built for fast, audited, regression-resistant code delivery at scale. Depends on the `crew` plugin for artifact writers.",
+  "name": "devcrew",
+  "version": "1.0.0-rc.1",
+  "description": "Unified engineering-OS plugin for Claude Code: a dispatcher-guided workflow with bounded specialist subagents (builders, reviewers, verifiers, architects), quality gates, and inspectable handoff artifacts, layered with a PM-triaged backlog, slice-scoped Given-When-Then specs, parallel-worktree wave dispatch, automated phase-gate quality + review + validation, and decision-grade retrospectives. Stack-agnostic; per-repo config selects test commands at phase boundaries.",
   "author": {
     "name": "astra"
   },
@@ -15,7 +15,10 @@
     "slice-methodology",
     "phase-gate",
     "quality-gates",
-    "parallel-waves"
+    "parallel-waves",
+    "multi-agent",
+    "workflow",
+    "observability"
   ],
   "userConfig": {
     "ingest_url": {

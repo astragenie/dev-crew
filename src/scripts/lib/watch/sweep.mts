@@ -252,11 +252,11 @@ function promptForFinding(finding: Finding, action: ReactionAction, entry: Regis
   const number = finding.findingId.split(":")[1];
   switch (action) {
     case "intake":
-      return `/runner:intake --from-issue https://github.com/${entry.ghSlug}/issues/${number}`;
+      return `/devcrew:intake --from-issue https://github.com/${entry.ghSlug}/issues/${number}`;
     case "pr-fix":
-      return `/runner:pr-fix ${number}`;
+      return `/devcrew:pr-fix ${number}`;
     case "crew-fix":
-      return `/crew:fix run:${number}`;
+      return `/devcrew:fix run:${number}`;
     case "issue-broker-file":
       return "";
   }

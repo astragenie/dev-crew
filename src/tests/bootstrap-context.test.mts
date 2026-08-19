@@ -42,12 +42,12 @@ test("bootstrap-context hook output covers all six required topics", () => {
     'must include "autoMode" or "auto mode"'
   );
   assert.ok(
-    stdout.includes("/runner:start"),
-    'must include "/runner:start" (P1.8 renamed from the retired /loop:slice start)'
+    stdout.includes("/devcrew:start"),
+    'must include "/devcrew:start" (P1.8 renamed from the retired /loop:slice start)'
   );
   assert.ok(
-    stdout.includes("crew:fullstack-dev"),
-    "must include a current builder reference (crew:fullstack-dev, P1.8-renamed from the retired crew:builder)"
+    stdout.includes("devcrew:fullstack-dev"),
+    "must include a current builder reference (devcrew:fullstack-dev, P1.8-renamed from the retired devcrew:builder)"
   );
   assert.ok(stdout.includes("escalated_to_human"), 'must include "escalated_to_human"');
   assert.ok(stdout.includes("rules.md"), 'must include "rules.md"');

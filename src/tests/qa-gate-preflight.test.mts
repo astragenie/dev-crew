@@ -98,9 +98,9 @@ test("buildDispatchInstruction: QA GATE PRE-FLIGHT appears when qa_gate=pre-buil
     loopConfig: PRE_BUILD_CONFIG
   });
   assert.match(out, /QA GATE PRE-FLIGHT/);
-  assert.ok(out.includes("crew:qa-expert"), "must dispatch crew:qa-expert");
-  assert.ok(out.includes("crew:test-automator"), "must dispatch crew:test-automator next");
-  assert.ok(out.includes("Dispatch crew:backend-dev"), "builder dispatch still embedded below");
+  assert.ok(out.includes("devcrew:qa-expert"), "must dispatch devcrew:qa-expert");
+  assert.ok(out.includes("devcrew:test-automator"), "must dispatch devcrew:test-automator next");
+  assert.ok(out.includes("Dispatch devcrew:backend-dev"), "builder dispatch still embedded below");
 });
 
 for (const [label, config] of [
@@ -157,7 +157,7 @@ test("buildDispatchInstruction: QA gate stacks AFTER the architect pre-flight", 
   assert.match(out, /^ARCHITECT PRE-FLIGHT/);
   const architectIdx = out.indexOf("ARCHITECT PRE-FLIGHT");
   const qaIdx = out.indexOf("QA GATE PRE-FLIGHT");
-  const builderIdx = out.indexOf("Dispatch crew:backend-dev");
+  const builderIdx = out.indexOf("Dispatch devcrew:backend-dev");
   assert.ok(
     architectIdx >= 0 && qaIdx > architectIdx,
     "QA gate block must follow the architect block"
@@ -256,7 +256,7 @@ test("buildQaGatePreflight: builder segment carries a FORBIDDEN order against ed
   const block = buildQaGatePreflight("SLICE-QG-9", "QA gate slice", "path/to/FEAT-264.md");
   assert.match(block, /FORBIDDEN:.*qa_gate_artifact/s);
   assert.match(block, /make them pass \(green\)/);
-  assert.match(block, /crew:test-automator/);
+  assert.match(block, /devcrew:test-automator/);
   assert.match(block, /red-first/i);
 });
 

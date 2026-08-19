@@ -72,7 +72,7 @@ test("pickBuilderVariant: bare fe + be (no canonical signal) -> unknown (fe/be f
 // WS-3: missing/malformed tag data now resolves to the distinct "unknown"
 // variant, not "fullstack" — a fullstack-gated dispatch must not fire on
 // every untagged slice by default. variantToAgent still routes "unknown" to
-// crew:fullstack-dev as a safe superset (see buildDispatchInstruction tests
+// devcrew:fullstack-dev as a safe superset (see buildDispatchInstruction tests
 // below), but the variant VALUE is no longer indistinguishable from a
 // confirmed fullstack signal.
 test("pickBuilderVariant: empty array -> unknown", () => {
@@ -253,7 +253,7 @@ test("pickBuilderVariant: bare fe/be tags are inert alongside a canonical surfac
   assert.equal(pickBuilderVariant(["fe", "surface:api"]), "backend");
 });
 
-test("buildDispatchInstruction slice-build + fe-only emits crew:frontend-dev", () => {
+test("buildDispatchInstruction slice-build + fe-only emits devcrew:frontend-dev", () => {
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",
     title: "Test slice",
@@ -263,10 +263,10 @@ test("buildDispatchInstruction slice-build + fe-only emits crew:frontend-dev", (
     orchestratorMode: "slice-build",
     sliceContent: "---\ntags: [surface:ui]\n---\n# Slice\n"
   });
-  assert.match(out, /^Dispatch crew:frontend-dev subagent/);
+  assert.match(out, /^Dispatch devcrew:frontend-dev subagent/);
 });
 
-test("buildDispatchInstruction slice-build + be-only emits crew:backend-dev", () => {
+test("buildDispatchInstruction slice-build + be-only emits devcrew:backend-dev", () => {
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",
     title: "Test slice",
@@ -276,10 +276,10 @@ test("buildDispatchInstruction slice-build + be-only emits crew:backend-dev", ()
     orchestratorMode: "slice-build",
     sliceContent: "---\ntags: [surface:api]\n---\n# Slice\n"
   });
-  assert.match(out, /^Dispatch crew:backend-dev subagent/);
+  assert.match(out, /^Dispatch devcrew:backend-dev subagent/);
 });
 
-test("buildDispatchInstruction slice-build + fe+be + parallel-fe-be-variant disabled emits crew:fullstack-dev (P1.0)", () => {
+test("buildDispatchInstruction slice-build + fe+be + parallel-fe-be-variant disabled emits devcrew:fullstack-dev (P1.0)", () => {
   const out = buildDispatchInstruction({
     sliceId: "SLICE-105",
     title: "Test slice",
@@ -290,7 +290,7 @@ test("buildDispatchInstruction slice-build + fe+be + parallel-fe-be-variant disa
     sliceContent: "---\ntags: [surface:ui, surface:api]\n---\n# Slice\n",
     loopConfig: { features: { "parallel-fe-be-variant": { enabled: false } } }
   });
-  assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
+  assert.match(out, /^Dispatch devcrew:fullstack-dev subagent/);
   assert.ok(!out.includes("PARALLEL DISPATCH"));
 });
 
@@ -310,10 +310,10 @@ test("buildDispatchInstruction slice-build + fe+be emits PARALLEL DISPATCH with 
     sliceContent: '---\ntags:\n  - "surface:ui"\n  - "surface:api"\n---\n# Slice\n'
   });
   assert.match(out, /^PARALLEL DISPATCH/);
-  assert.ok(out.includes("crew:frontend-dev"), "must reference crew:frontend-dev");
-  assert.ok(out.includes("crew:backend-dev"), "must reference crew:backend-dev");
+  assert.ok(out.includes("devcrew:frontend-dev"), "must reference devcrew:frontend-dev");
+  assert.ok(out.includes("devcrew:backend-dev"), "must reference devcrew:backend-dev");
   // The parent loop should still drive the inspector/verifier gates after both subagents finish.
-  assert.ok(out.includes("crew:reviewer"), "must mention crew:reviewer for gate-driving guidance");
+  assert.ok(out.includes("devcrew:reviewer"), "must mention devcrew:reviewer for gate-driving guidance");
 });
 
 test("buildDispatchInstruction slice-build + fe+be returns a SINGLE string (not an array or object)", () => {
@@ -353,7 +353,7 @@ test("buildDispatchInstruction slice-build + fe+be: tag order does not change ou
   assert.match(b, /^PARALLEL DISPATCH/);
 });
 
-test("buildDispatchInstruction slice-build + no tags falls back to crew:fullstack-dev", () => {
+test("buildDispatchInstruction slice-build + no tags falls back to devcrew:fullstack-dev", () => {
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",
     title: "Test slice",
@@ -363,7 +363,7 @@ test("buildDispatchInstruction slice-build + no tags falls back to crew:fullstac
     orchestratorMode: "slice-build",
     sliceContent: "---\nid: SLICE-104\n---\n# Slice\n"
   });
-  assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
+  assert.match(out, /^Dispatch devcrew:fullstack-dev subagent/);
 });
 
 // FEAT-190 SLICE-106 — architect pre-flight when needs_contract: true.
@@ -396,10 +396,10 @@ test("slice-build + needs_contract:true + no contract artifact: prepends archite
     sliceContent: "---\nneeds_contract: true\ntags: [surface:api]\n---\n# Slice\n"
   });
   assert.match(out, /^ARCHITECT PRE-FLIGHT/);
-  assert.ok(out.includes("crew:architect"), "must dispatch crew:architect first");
+  assert.ok(out.includes("devcrew:architect"), "must dispatch devcrew:architect first");
   // Builder dispatch still embedded below the pre-flight.
   assert.ok(
-    out.includes("Dispatch crew:backend-dev"),
+    out.includes("Dispatch devcrew:backend-dev"),
     "must still include the builder dispatch below pre-flight"
   );
 });
@@ -416,7 +416,7 @@ test("slice-build + needs_contract:true + EXISTING contract artifact: no pre-fli
     sliceContent: "---\nneeds_contract: true\ntags: [surface:ui]\n---\n# Slice\n"
   });
   assert.ok(!out.startsWith("ARCHITECT PRE-FLIGHT"), "no pre-flight when contract exists");
-  assert.match(out, /^Dispatch crew:frontend-dev/);
+  assert.match(out, /^Dispatch devcrew:frontend-dev/);
 });
 
 test("slice-build + needs_contract:false: no pre-flight regardless of artifact presence", async () => {
@@ -431,7 +431,7 @@ test("slice-build + needs_contract:false: no pre-flight regardless of artifact p
     sliceContent: "---\nneeds_contract: false\ntags: [surface:api]\n---\n# Slice\n"
   });
   assert.ok(!out.startsWith("ARCHITECT PRE-FLIGHT"), "no pre-flight when needs_contract is false");
-  assert.match(out, /^Dispatch crew:backend-dev/);
+  assert.match(out, /^Dispatch devcrew:backend-dev/);
 });
 
 test("slice-build + needs_contract missing (default false): no pre-flight", async () => {
@@ -463,7 +463,7 @@ test("orchestrate-slice mode ignores needs_contract — no pre-flight (in-thread
     !out.startsWith("ARCHITECT PRE-FLIGHT"),
     "orchestrate-slice mode must not add pre-flight — that's slice-build's path"
   );
-  assert.match(out, /\/crew:orchestrate-slice/);
+  assert.match(out, /\/devcrew:orchestrate-slice/);
 });
 
 test("slice-build + needs_contract:true + parallel-fe-be: pre-flight precedes PARALLEL DISPATCH header", async () => {
@@ -479,13 +479,13 @@ test("slice-build + needs_contract:true + parallel-fe-be: pre-flight precedes PA
   });
   assert.match(out, /^ARCHITECT PRE-FLIGHT/);
   assert.ok(out.includes("PARALLEL DISPATCH"), "builder portion must still be parallel");
-  assert.ok(out.includes("crew:frontend-dev"));
-  assert.ok(out.includes("crew:backend-dev"));
+  assert.ok(out.includes("devcrew:frontend-dev"));
+  assert.ok(out.includes("devcrew:backend-dev"));
 });
 
-test("slice-build (no sliceContent at all) emits crew:fullstack-dev (the no-tag fallback)", () => {
+test("slice-build (no sliceContent at all) emits devcrew:fullstack-dev (the no-tag fallback)", () => {
   // No sliceContent → extractTags returns undefined → pickBuilderVariant
-  // returns "fullstack" → crew:fullstack-dev. This preserves the behavior
+  // returns "fullstack" → devcrew:fullstack-dev. This preserves the behavior
   // operators had with the pre-FEAT-191 direct-builder mode.
   const out = buildDispatchInstruction({
     sliceId: "SLICE-104",
@@ -495,5 +495,5 @@ test("slice-build (no sliceContent at all) emits crew:fullstack-dev (the no-tag 
     resolvedGoal: null,
     orchestratorMode: "slice-build"
   });
-  assert.match(out, /^Dispatch crew:fullstack-dev subagent/);
+  assert.match(out, /^Dispatch devcrew:fullstack-dev subagent/);
 });

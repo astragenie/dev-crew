@@ -4,7 +4,7 @@
 
 **Goal:** Ship a loop-owned hierarchical parallel subagent dispatch primitive: library + CLI subcommand + thin agent wrapper, with recursion depth cap, worktree-per-child isolation, blocking awaitAll API, and continue-on-failure semantics.
 
-**Architecture:** A single TypeScript library (`src/scripts/lib/hierarchical-dispatch.mts`) exports `dispatchHierarchical()`. A new `node scripts/loop.mjs dispatch` CLI subcommand and a `loop:hierarchical-dispatcher` agent both call into it. Children run in isolated git worktrees forked from the parent branch; grandchildren fork off the child's branch. Parent merges DONE children sequentially in priority order. Slice-2 (out of scope here) refactors `crew:parallel-runner` to call the same library.
+**Architecture:** A single TypeScript library (`src/scripts/lib/hierarchical-dispatch.mts`) exports `dispatchHierarchical()`. A new `node scripts/loop.mjs dispatch` CLI subcommand and a `loop:hierarchical-dispatcher` agent both call into it. Children run in isolated git worktrees forked from the parent branch; grandchildren fork off the child's branch. Parent merges DONE children sequentially in priority order. Slice-2 (out of scope here) refactors `devcrew:parallel-runner` to call the same library.
 
 **Tech Stack:** Node.js ESM, TypeScript (`.mts` → `.mjs` via tsc), Node test runner (`node --test`), git CLI for worktree ops, `.claude/loop.json` for config.
 
@@ -1156,8 +1156,8 @@ import {
 
 test("buildAgentBatch: produces one call per plan with augmented prompt", () => {
   const plans: any[] = [
-    { id: "FE", priority: 0, agentType: "crew:frontend-dev", prompt: "build fe" },
-    { id: "BE", priority: 1, agentType: "crew:backend-dev", prompt: "build be" },
+    { id: "FE", priority: 0, agentType: "devcrew:frontend-dev", prompt: "build fe" },
+    { id: "BE", priority: 1, agentType: "devcrew:backend-dev", prompt: "build be" },
   ];
   const calls: AgentBatchCall[] = buildAgentBatch(plans, {
     runId: "r1",
@@ -1166,7 +1166,7 @@ test("buildAgentBatch: produces one call per plan with augmented prompt", () => 
     childBranchById: { FE: "slice/X-FE", BE: "slice/X-BE" },
   });
   assert.equal(calls.length, 2);
-  assert.equal(calls[0].subagent_type, "crew:frontend-dev");
+  assert.equal(calls[0].subagent_type, "devcrew:frontend-dev");
   assert.match(calls[0].prompt, /build fe/);
   assert.match(calls[0].prompt, /LOOP_DISPATCH_DEPTH=1/);
   assert.equal(calls[0].description, "dispatch FE");
@@ -1550,8 +1550,8 @@ test("prepareDispatch: enforces gates, spawns worktrees, returns batch", () => {
   const repo = initRepo();
   execSync("git checkout -q -b slice/SLICE-PD", { cwd: repo });
   const plans = [
-    { id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "do A" },
-    { id: "B", priority: 1, agentType: "crew:fullstack-dev", prompt: "do B" },
+    { id: "A", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "do A" },
+    { id: "B", priority: 1, agentType: "devcrew:fullstack-dev", prompt: "do B" },
   ];
   const prepared = prepareDispatch(plans, {
     parentBranch: "slice/SLICE-PD",
@@ -1569,7 +1569,7 @@ test("dispatchHierarchical: end-to-end with mock runAgentBatch — happy path", 
   const repo = initRepo();
   execSync("git checkout -q -b slice/SLICE-E2E", { cwd: repo });
   const plans = [
-    { id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "noop" },
+    { id: "A", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "noop" },
   ];
   const runAgentBatch = async (
     batch: AgentBatchCall[],
@@ -1836,7 +1836,7 @@ test("dispatch --dry-run prints augmented prompts without spawning worktree", ()
   const planPath = path.join(repo, "plan.json");
   fs.writeFileSync(planPath, JSON.stringify({
     plans: [
-      { id: "FE", priority: 0, agentType: "crew:fullstack-dev", prompt: "build it" },
+      { id: "FE", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "build it" },
     ],
   }));
   const cli = path.resolve("scripts/dispatch.mjs");
@@ -1856,7 +1856,7 @@ test("dispatch prepare emits batch JSON when --json flag set", () => {
   const repo = initRepoWithBranch("slice/SLICE-JSON");
   const planPath = path.join(repo, "plan.json");
   fs.writeFileSync(planPath, JSON.stringify({
-    plans: [{ id: "FE", priority: 0, agentType: "crew:fullstack-dev", prompt: "x" }],
+    plans: [{ id: "FE", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "x" }],
   }));
   const cli = path.resolve("scripts/dispatch.mjs");
   const out = execFileSync(
@@ -2190,7 +2190,7 @@ I do not own:
    - Otherwise: `node scripts/loop.mjs` from repo root.
 3. Write the plan to `/tmp/plan-<random>.json`:
    ```json
-   { "plans": [ {"id":"FE","priority":0,"agentType":"crew:frontend-dev","prompt":"..."}, ... ] }
+   { "plans": [ {"id":"FE","priority":0,"agentType":"devcrew:frontend-dev","prompt":"..."}, ... ] }
    ```
 
 ## Prepare phase
@@ -2329,8 +2329,8 @@ test("integration: happy path — 2 children both DONE, both merge clean", async
   const repo = initRepo();
   execSync("git checkout -qb slice/HP", { cwd: repo });
   const plans: DispatchPlan[] = [
-    { id: "A", priority: 0, agentType: "crew:fullstack-dev", prompt: "do A" },
-    { id: "B", priority: 1, agentType: "crew:fullstack-dev", prompt: "do B" },
+    { id: "A", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "do A" },
+    { id: "B", priority: 1, agentType: "devcrew:fullstack-dev", prompt: "do B" },
   ];
   const stub = makeStubAgent(repo, (id) => ({ status: "DONE", commit: `${id}.txt` }));
   const results = await dispatchHierarchical(
@@ -2349,8 +2349,8 @@ test("integration: one child FAILED — sibling still merges", async () => {
   const repo = initRepo();
   execSync("git checkout -qb slice/MIX", { cwd: repo });
   const plans: DispatchPlan[] = [
-    { id: "OK", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
-    { id: "BAD", priority: 1, agentType: "crew:fullstack-dev", prompt: "" },
+    { id: "OK", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" },
+    { id: "BAD", priority: 1, agentType: "devcrew:fullstack-dev", prompt: "" },
   ];
   const stub = makeStubAgent(repo, (id) =>
     id === "OK"
@@ -2373,8 +2373,8 @@ test("integration: merge conflict surfaces CONFLICTED, both worktrees preserved"
   fs.writeFileSync(path.join(repo, "shared.txt"), "base\n");
   execSync("git add . && git commit -qm base", { cwd: repo });
   const plans: DispatchPlan[] = [
-    { id: "X", priority: 0, agentType: "crew:fullstack-dev", prompt: "" },
-    { id: "Y", priority: 1, agentType: "crew:fullstack-dev", prompt: "" },
+    { id: "X", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" },
+    { id: "Y", priority: 1, agentType: "devcrew:fullstack-dev", prompt: "" },
   ];
   const stub = async (batch: any, ctx: any) => {
     const dir = path.join(repo, ".claude/artifacts/loop/dispatch", ctx.runId);
@@ -2428,7 +2428,7 @@ test("integration: recursion 1 level deep — grandchild merges into child, chil
       const id = call.description.replace(/^dispatch /, "");
       const cwd = ctx.cwdById[id];
       // child does: dispatch one grandchild from its own cwd
-      const grandPlans = [{ id: "GC", priority: 0, agentType: "crew:fullstack-dev", prompt: "" }];
+      const grandPlans = [{ id: "GC", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" }];
       await dispatchHierarchical(
         grandPlans,
         { parentBranch: ctx.branchById[id], repoRoot: cwd, depth: 1 },
@@ -2440,7 +2440,7 @@ test("integration: recursion 1 level deep — grandchild merges into child, chil
       }));
     }
   };
-  const plans = [{ id: "C", priority: 0, agentType: "crew:fullstack-dev", prompt: "" }];
+  const plans = [{ id: "C", priority: 0, agentType: "devcrew:fullstack-dev", prompt: "" }];
   const results = await dispatchHierarchical(
     plans,
     { parentBranch: "slice/REC", repoRoot: repo, depth: 0 },
@@ -2588,7 +2588,7 @@ the Agent tool with the returned batch in **one message**, then runs `finalize`.
 
 ### Out of scope for SLICE-1
 
-`crew:parallel-runner` refactor (SLICE-2), truly-async non-blocking parent, cancellation,
+`devcrew:parallel-runner` refactor (SLICE-2), truly-async non-blocking parent, cancellation,
 `--resume`, cost rollup, budget cap (FEAT-133), per-skill cost (FEAT-165).
 ````
 
@@ -2604,7 +2604,7 @@ At the top of `CHANGELOG.md`, under the `## [Unreleased]` heading (or matching t
   `loop:hierarchical-dispatcher` agent. Worktree-per-child isolation,
   blocking `awaitAll`, continue-on-failure, depth-capped recursion via
   `.claude/loop.json` (`dispatchLimits.maxDepth`, default 3). SLICE-2
-  (upstream PR refactoring `crew:parallel-runner` to call this library)
+  (upstream PR refactoring `devcrew:parallel-runner` to call this library)
   is a follow-up. Spec: `docs/superpowers/specs/2026-06-09-feat020-hierarchical-dispatch-design.md`.
 ```
 

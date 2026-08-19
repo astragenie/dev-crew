@@ -23,11 +23,11 @@ const plan: WavePlan = {
       sliceId: "SLICE-1",
       featureId: "FEAT-1",
       worktreeBranch: "wave/wave-1/SLICE-1",
-      sliceCommand: "/crew:orchestrate-slice"
+      sliceCommand: "/devcrew:orchestrate-slice"
     }
   ],
   rejected: [],
-  config: { waveSize: 3, sliceCommand: "/crew:orchestrate-slice" }
+  config: { waveSize: 3, sliceCommand: "/devcrew:orchestrate-slice" }
 };
 
 const result: WaveResult = {

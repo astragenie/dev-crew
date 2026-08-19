@@ -10,7 +10,7 @@ rules. When in doubt about what's binding, `rules.md` wins.
 
 Slices carry two optional linkage fields:
 
-- `feature: FEAT-NNN` — set automatically by `/runner:start`.
+- `feature: FEAT-NNN` — set automatically by `/devcrew:start`.
 - `phase: <string|null>` — free-form phase identifier (`"1"`, `"2"`,
   `"beta"`). Defaults to `null`.
 
@@ -58,7 +58,7 @@ enforced in code, not only in prose.
 
 ## Orchestrator Model Gate — exact stop text
 
-When `orchestratorModel` (returned by `/runner:start`) is non-null and
+When `orchestratorModel` (returned by `/devcrew:start`) is non-null and
 doesn't match the current session model, stop before any slice work and
 output:
 

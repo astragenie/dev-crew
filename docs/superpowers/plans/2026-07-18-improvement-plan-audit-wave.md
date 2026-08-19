@@ -56,7 +56,7 @@ market onboarding that fails, and no cost numbers before the unit is resolved);
    (slice vs wave vs session) and relabel `memory-snapshot.mts:277` accordingly. Blocks
    W4's metrics band; also decides whether `sliceCostCeiling` is actually binding.
 
-## W1 — Enforcement hooks (otta port; file as FEAT via /runner:intake)
+## W1 — Enforcement hooks (otta port; file as FEAT via /devcrew:intake)
 
 Port two otta patterns into crew (dev-team) plus one of our own extension, loop
 consumes. (Citation honesty per review OBJ-4: only the SubagentStop guard and
@@ -107,9 +107,9 @@ Already decomposed into 5 slices (ACs 1–6 in `triaged/FEAT-264.md`). Plan-leve
 
 ## W3 — Onboarding truth + wizard (audit FEAT draft C)
 
-1. Truth pass (S): rewrite `ADOPTION.md` against current `/runner:install`; fix README
+1. Truth pass (S): rewrite `ADOPTION.md` against current `/devcrew:install`; fix README
    test/CLI/preset sections; make dev-team README skill/agent counts CI-derived.
-2. Wizard UX (M): `/runner:install` gains before/after readiness report + file-write
+2. Wizard UX (M): `/devcrew:install` gains before/after readiness report + file-write
    summary confirmation + inline failure-mode copy (otta `commands/setup.md:21-346`
    pattern). *AC: stranger completes ADOPTION.md verbatim without hitting a nonexistent
    command; install prints readiness delta + write list.*
@@ -150,7 +150,7 @@ Already decomposed into 5 slices (ACs 1–6 in `triaged/FEAT-264.md`). Plan-leve
 
 ## Tracking
 
-- W0 items 1–2, W1, W3, W4 → file via `/runner:intake` from audit FEAT drafts A–D
+- W0 items 1–2, W1, W3, W4 → file via `/devcrew:intake` from audit FEAT drafts A–D
   (report §7). W0 items 3–4 → astramem-local issues. W2 is FEAT-264 (#527), already
   triaged. W5 → dev-team FEATs.
 - Success metrics to re-measure after each wave: memory usefulness rate (1.6% baseline),

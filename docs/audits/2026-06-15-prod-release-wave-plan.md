@@ -52,7 +52,7 @@ All 5 disjoint. Run one wave.
 | **F6** | Repo cruft purge | `.gitignore`, delete `typecheck-errors.txt`, delete `.claude.backup.20260524T215027Z/`, delete `package-lock.json` | XS | MED | `.gitignore` += `typecheck-errors.txt`, `*.log`, `.DS_Store`, `Thumbs.db`, `.vscode/`, `.idea/`. Bun runtime → npm lockfile dead. |
 | **F7** | Dead-code file delete | delete `src/scripts/codemod-add-any.mts` | XS | MED | Port complete (FEAT-021). File ships with `: any` literals + `execSync npx tsc`. Verify no importer first. |
 | **F8** | Manifest metadata expand | `.claude-plugin/plugin.json`, `package.json` | XS | LOW | plugin.json += `repository`, `homepage`, `bugs` + keywords (`wave-mode`, `parallel-dispatch`, `git-worktree`). package.json += `description`, `repository`, `author`, `license`. **Blocked by F1** (don't conflict on version line). |
-| **F9** | Backlog state hygiene | triaged FEAT files + `.claude/artifacts/loop/loop-snapshot.md` | S | MED | Run `/runner:retriage --include-triaged` to add `touches_files` to 5 triaged FEATs. Regen snapshot via `/runner:snapshot-memory`. Audit `v0.44.0`→`v0.50.1` release ceremony recovery. |
+| **F9** | Backlog state hygiene | triaged FEAT files + `.claude/artifacts/loop/loop-snapshot.md` | S | MED | Run `/devcrew:retriage --include-triaged` to add `touches_files` to 5 triaged FEATs. Regen snapshot via `/devcrew:snapshot-memory`. Audit `v0.44.0`→`v0.50.1` release ceremony recovery. |
 | **F10** | Tests + stubs audit | `worktree-manager.test.mts`, `src/scripts/loop.mts`, `src/scripts/lib/grade-parser.mts`, `src/scripts/lib/task-store/setup-writer.mts` | XS | MED | 3× `TODO(2026-09-11)` stub audit — close if obsolete, else leave with FEAT-NNN tracking. Skipped test L617: delete or attach tracking. |
 
 **Gate to TAG**: F1+F8 sequenced (same files). Verify all tests + lint + format. Bump version. Tag `v0.51.0`. Push.
@@ -228,6 +228,6 @@ bun src/scripts/loop.mts wave loop --max-waves 12
 |---|---|
 | M5 file-splits introduce import-cycle | Run typecheck on each child branch BEFORE auto-merge gate; reject on TS2305/TS2691 |
 | F22b-d parallelReadDir applied with bad mtime cache invalidation | Cover with `lib/parallel-read-dir.test.mts` BEFORE F22b-d ship |
-| F20 in-process stop-check breaks `crew:fix` hand-off | Wire integration test against wave-mode dry-run before merge |
+| F20 in-process stop-check breaks `devcrew:fix` hand-off | Wire integration test against wave-mode dry-run before merge |
 | F33 command sub-splits race on shared `argument-hint` schema | Define schema once in F33-prep, then sub-feature dispatch |
 | Tag ceremony broken (per audit PR17 / v0.44 → v0.50.1 gap) | F1 includes `bump-version` invocation audit; restore tag history if missing |

@@ -1,4 +1,4 @@
-# Tool-restricted crew:lead subagent orchestrator — design
+# Tool-restricted devcrew:lead subagent orchestrator — design
 
 **Status**: draft
 **Date**: 2026-06-04
@@ -7,28 +7,28 @@
 
 ## Summary
 
-Replace the current loop-drives-builder-directly dispatch with a `crew:lead` subagent that orchestrates every specialist a slice needs (builder, reviewer, validator, uxdesigner, copywriter, architect, docwriter). Enforce lead's "router only" boundary mechanically by restricting its `tools:` frontmatter to read-and-coordinate only — no `Edit`, no `Write`, no `NotebookEdit`. Lead routes via the static table already in `agents/lead.md`; each specialist runs in its own child subagent context.
+Replace the current loop-drives-builder-directly dispatch with a `devcrew:lead` subagent that orchestrates every specialist a slice needs (builder, reviewer, validator, uxdesigner, copywriter, architect, docwriter). Enforce lead's "router only" boundary mechanically by restricting its `tools:` frontmatter to read-and-coordinate only — no `Edit`, no `Write`, no `NotebookEdit`. Lead routes via the static table already in `agents/lead.md`; each specialist runs in its own child subagent context.
 
 ## Why
 
 Audit of the last 10 completed slices shows 6/10 would have meaningfully benefited from at least one specialist beyond builder/reviewer/validator. Architect coverage is the biggest gap (4/10 slices touched new contracts or cross-module refactors but never ran architect). The current loop-dispatches-builder model is fast on backend-only slices but systematically misses UX, design-doc, and release-content work.
 
-Putting `crew:lead` back in the dispatch path restores specialist coverage. Tool restriction is the mechanism that prevents lead from regressing into "lead does it itself" — without it, lead has historically been tempted to edit code or write release notes inline, defeating the orchestration intent.
+Putting `devcrew:lead` back in the dispatch path restores specialist coverage. Tool restriction is the mechanism that prevents lead from regressing into "lead does it itself" — without it, lead has historically been tempted to edit code or write release notes inline, defeating the orchestration intent.
 
 ## Mental Model
 
 ```
 loop session (Claude main thread)
   ├─ /loop:slice start --id SLICE-NN  → emits dispatchInstruction
-  └─ dispatches crew:lead subagent  (fresh context, tool-restricted)
+  └─ dispatches devcrew:lead subagent  (fresh context, tool-restricted)
         ├─ reads slice file + feature excerpt (Read)
         ├─ applies lead.md static routing table by tag + file group
-        ├─ dispatches crew:architect child subagent IF new contract/refactor
-        ├─ dispatches crew:fullstack-dev child subagent for implementation
-        ├─ dispatches crew:inspector child subagent for review gate
-        ├─ dispatches crew:verifier child subagent IF behavior changed
-        ├─ dispatches crew:uxdesigner child subagent IF UI surface touched
-        ├─ dispatches crew:copywriter child subagent IF release content
+        ├─ dispatches devcrew:architect child subagent IF new contract/refactor
+        ├─ dispatches devcrew:fullstack-dev child subagent for implementation
+        ├─ dispatches devcrew:inspector child subagent for review gate
+        ├─ dispatches devcrew:verifier child subagent IF behavior changed
+        ├─ dispatches devcrew:uxdesigner child subagent IF UI surface touched
+        ├─ dispatches devcrew:copywriter child subagent IF release content
         ├─ writes final synthesis artifact
         └─ returns synthesis path to loop
   └─ /loop:slice complete --id SLICE-NN
@@ -39,15 +39,15 @@ Each child subagent has fresh context. Lead reads each child's handoff artifact 
 ## Components
 
 - **`agents/lead.md` frontmatter change** (hero-crew). Add explicit `tools:` array: `[Read, Grep, Glob, Bash, Agent, TaskCreate, TaskUpdate]`. Drop `Edit`, `Write`, `NotebookEdit`. Body unchanged — existing static routing table at lines 67-125 and lead-only/do-not-delegate block at line 248 already match the orchestrator role.
-- **`commands/slice-start.md` body** (loop). Doc update — replace `crew:fullstack-dev` dispatch language with `crew:lead`. JSON example updated. Post-action steps shrink from four to two (dispatch lead, then close).
-- **`src/scripts/lib/slice-linker/dispatch.mts`** (loop). Change `Dispatch crew:fullstack-dev subagent` → `Dispatch crew:lead subagent`. Replace the "implementation only, parent loop drives gates" prompt with "orchestrate per agents/lead.md routing table — dispatch architect/builder/reviewer/validator/uxdesigner/copywriter/docwriter as needed". Remove the builder-only scope sentence.
-- **`src/scripts/lib/slice-linker/start-slice.mts`** (loop). `computeNextAction` returns "Dispatch crew:lead subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}." Two steps instead of four.
-- **`src/scripts/loop.mts`** (loop). Architect command output references `crew:lead` instead of `crew:fullstack-dev`.
-- **`src/tests/slice-linker.test.mts`, `src/tests/slice-start.test.mts`** (loop). Regex updates — match `Dispatch crew:lead subagent`.
+- **`commands/slice-start.md` body** (loop). Doc update — replace `devcrew:fullstack-dev` dispatch language with `devcrew:lead`. JSON example updated. Post-action steps shrink from four to two (dispatch lead, then close).
+- **`src/scripts/lib/slice-linker/dispatch.mts`** (loop). Change `Dispatch devcrew:fullstack-dev subagent` → `Dispatch devcrew:lead subagent`. Replace the "implementation only, parent loop drives gates" prompt with "orchestrate per agents/lead.md routing table — dispatch architect/builder/reviewer/validator/uxdesigner/copywriter/docwriter as needed". Remove the builder-only scope sentence.
+- **`src/scripts/lib/slice-linker/start-slice.mts`** (loop). `computeNextAction` returns "Dispatch devcrew:lead subagent for ${sliceId}; close with /loop:slice complete --id ${sliceId}." Two steps instead of four.
+- **`src/scripts/loop.mts`** (loop). Architect command output references `devcrew:lead` instead of `devcrew:fullstack-dev`.
+- **`src/tests/slice-linker.test.mts`, `src/tests/slice-start.test.mts`** (loop). Regex updates — match `Dispatch devcrew:lead subagent`.
 
 ## How It Works Together
 
-The loop session never sees specialist work directly. It sees one subagent (crew:lead), gets one synthesis path back, then closes the slice. All routing decisions and specialist coordination happen in the lead subagent context, which is fresh per slice and tool-restricted.
+The loop session never sees specialist work directly. It sees one subagent (devcrew:lead), gets one synthesis path back, then closes the slice. All routing decisions and specialist coordination happen in the lead subagent context, which is fresh per slice and tool-restricted.
 
 Lead's static routing table (already in `agents/lead.md` lines 67-125) is the canonical decision logic. The table maps output type → specialist:
 
@@ -69,21 +69,21 @@ Lead reads slice frontmatter `tags:` plus the file groups it audits in the slice
 ## Edge Cases
 
 - **Lead crashes mid-orchestration**. Whole slice stalls. Loop's existing escalation path (mark `escalated_to_human` badge) still applies — loop can detect a lead subagent timeout / error and badge accordingly. Same blast radius as a builder crash today.
-- **Lead skips a specialist that should have fired**. Mitigation: loop's `crew:inspector` (still dispatched independently in `/loop:slice complete --review` flow if we keep one) can flag missing artifacts. Or accept that lead is the authority and trust its routing. Decision: trust lead by default; revisit if misses observed.
+- **Lead skips a specialist that should have fired**. Mitigation: loop's `devcrew:inspector` (still dispatched independently in `/loop:slice complete --review` flow if we keep one) can flag missing artifacts. Or accept that lead is the authority and trust its routing. Decision: trust lead by default; revisit if misses observed.
 - **Slice with no relevant specialists beyond builder** (4/10 in audit). Lead still dispatches but only spawns builder + reviewer + validator. The tax is one extra subagent layer. Cost ≈ +10-20% turn budget on those slices.
 - **Backward compatibility with in-flight slices**. SLICE-36 is in-progress. Should land this change after SLICE-36 closes to avoid mid-slice contract switch.
-- **`/crew:build` standalone (non-loop) entry point**. Unchanged — `commands/build.md` already drives lead in single-session mode. The tool restriction applies there too, and lead.md is already designed for that flow.
+- **`/devcrew:build` standalone (non-loop) entry point**. Unchanged — `commands/build.md` already drives lead in single-session mode. The tool restriction applies there too, and lead.md is already designed for that flow.
 
 ## Fail Modes
 
 - **Lead misroutes scope to wrong specialist**. User sees a weak handoff artifact — same as today when builder takes on uxdesigner work. Recoverable: re-dispatch with corrected prompt.
 - **Tool restriction breaks legitimate lead Read/Bash needs**. Mitigation: keep `Read`, `Grep`, `Glob`, `Bash` in the tools array. Lead can still inspect repo state, run wake-up, mark badges, write run brief, write synthesis (the synthesis writer uses `Bash` to call `scripts/crew.mjs write-final-synthesis`, not `Write`).
 - **Lead grows context reading too many child handoffs**. Lead is supposed to read each artifact via `Read` tool. For very large multi-specialist slices, lead context could approach compaction. Mitigation: artifact paths only in inline returns (already the contract per existing handoff protocol).
-- **`crew:lead` subagent doesn't exist in user's installed version**. Hard dependency. Loop's `MIN_CREW_VERSION` already pins crew version; bump it for this change.
+- **`devcrew:lead` subagent doesn't exist in user's installed version**. Hard dependency. Loop's `MIN_CREW_VERSION` already pins crew version; bump it for this change.
 
 ## What Working Properly Means
 
-- Loop slice-start emits a `crew:lead` dispatch instruction (not `crew:fullstack-dev`)
+- Loop slice-start emits a `devcrew:lead` dispatch instruction (not `devcrew:fullstack-dev`)
 - A real slice run shows the lead subagent dispatching multiple child subagents per its routing table — verified by inspecting `.claude/artifacts/crew/handoffs/` for child handoff artifacts named after architect/builder/reviewer/validator/uxdesigner/etc as appropriate
 - Lead's final synthesis artifact references every child handoff path
 - Loop's slice-complete reads lead's synthesis and closes the slice without separately driving review/validate
@@ -92,10 +92,10 @@ Lead reads slice frontmatter `tags:` plus the file groups it audits in the slice
 ## What Done Means
 
 - [ ] `hero-crew/agents/lead.md` frontmatter restricts `tools:` to read-and-coordinate set
-- [ ] `loop/commands/slice-start.md` references `crew:lead` in body, JSON example, and post-action steps
-- [ ] `loop/src/scripts/lib/slice-linker/dispatch.mts` emits `crew:lead` dispatch text with orchestration scope
+- [ ] `loop/commands/slice-start.md` references `devcrew:lead` in body, JSON example, and post-action steps
+- [ ] `loop/src/scripts/lib/slice-linker/dispatch.mts` emits `devcrew:lead` dispatch text with orchestration scope
 - [ ] `loop/src/scripts/lib/slice-linker/start-slice.mts` `computeNextAction` returns the two-step sequence
-- [ ] `loop/src/scripts/loop.mts` architect command output references `crew:lead`
+- [ ] `loop/src/scripts/loop.mts` architect command output references `devcrew:lead`
 - [ ] Loop tests (slice-linker + slice-start) updated to assert the new regex
 - [ ] `loop/scripts/lib/plugin-identity.mjs::MIN_CREW_VERSION` bumped to the crew release that ships the lead tool restriction
 - [ ] Full loop test suite passes (717+ tests)
@@ -112,19 +112,19 @@ Lead reads slice frontmatter `tags:` plus the file groups it audits in the slice
 
 ```
 Before (today):
-loop ─dispatch─> crew:fullstack-dev
-              ─dispatch─> crew:inspector
-              ─dispatch─> crew:verifier (if behavior changed)
+loop ─dispatch─> devcrew:fullstack-dev
+              ─dispatch─> devcrew:inspector
+              ─dispatch─> devcrew:verifier (if behavior changed)
               ─close───> /loop:slice complete
 
 After (this design):
-loop ─dispatch─> crew:lead (tool-restricted: no Edit/Write)
-                    ├─dispatch─> crew:architect
-                    ├─dispatch─> crew:fullstack-dev
-                    ├─dispatch─> crew:inspector
-                    ├─dispatch─> crew:verifier
-                    ├─dispatch─> crew:uxdesigner
-                    ├─dispatch─> crew:copywriter
+loop ─dispatch─> devcrew:lead (tool-restricted: no Edit/Write)
+                    ├─dispatch─> devcrew:architect
+                    ├─dispatch─> devcrew:fullstack-dev
+                    ├─dispatch─> devcrew:inspector
+                    ├─dispatch─> devcrew:verifier
+                    ├─dispatch─> devcrew:uxdesigner
+                    ├─dispatch─> devcrew:copywriter
                     └─writes──> final synthesis artifact
      ─close─> /loop:slice complete (reads lead synthesis only)
 ```

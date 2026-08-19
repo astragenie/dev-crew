@@ -32,7 +32,7 @@ Both of runner-plugin's capped memory paths hit this:
    capMs: timeoutMs })` (default 5000ms, `DEFAULT_RECALL_CAP_MS`, see
    DEC-071). Same shape: the losing call is abandoned, not cancelled.
 
-Concretely, this means a short-lived CLI process (e.g. `/runner:start`
+Concretely, this means a short-lived CLI process (e.g. `/devcrew:start`
 finishing its work and about to exit) can be held open for up to astramem's
 own internal abort window (observed ~5s) past the point where the caller
 already moved on. It is bounded (not unbounded — the plain-absent-backend

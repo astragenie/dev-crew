@@ -167,6 +167,6 @@ describe("wave e2e (fully mocked dispatch)", () => {
 
     expect(outcome.mergedBranches).toHaveLength(2);
     expect(outcome.failurePivots).toHaveLength(1);
-    expect(outcome.failurePivots[0]!.fixDispatchPrompt).toContain("/crew:fix");
+    expect(outcome.failurePivots[0]!.fixDispatchPrompt).toContain("/devcrew:fix");
   });
 });

@@ -141,8 +141,8 @@ export interface SliceRenumberedEvent extends SliceEventBase {
 
 /**
  * FEAT-264 SLICE-3 (AC-3, #527): pre-build QA-gate test-plan artifact write
- * seam. `runner:start` never calls `Agent()` itself (architect C.7), so the
- * actual `crew:qa-expert` write happens out-of-process — this event is a
+ * seam. `devcrew:start` never calls `Agent()` itself (architect C.7), so the
+ * actual `devcrew:qa-expert` write happens out-of-process — this event is a
  * ready-made emission point for whichever caller observes the artifact
  * landing (`qa-gate-preflight.mts::emitQaGateArtifactWritten`), not yet
  * wired into the in-process `startSlice` flow. AC-3's ordering requirement

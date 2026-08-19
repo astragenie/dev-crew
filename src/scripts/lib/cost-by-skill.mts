@@ -4,7 +4,7 @@
 // surface a ranked report with 4-week avg and week-over-week delta.
 //
 // The field in auto-dispatch.jsonl is `agent` (e.g. "loop:researcher",
-// "crew:document-writer"). This module treats `agent` as the "skill name"
+// "devcrew:document-writer"). This module treats `agent` as the "skill name"
 // for cost attribution purposes, since no separate `skill_name` field exists
 // in the log schema.
 

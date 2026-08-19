@@ -1,6 +1,6 @@
 // runner-plugin#392: git-anchored slice-completion check.
 //
-// runner:start (via sliceFromFeature) previously trusted a FEAT's
+// devcrew:start (via sliceFromFeature) previously trusted a FEAT's
 // proposed_slices index / frontmatter `slices` count as the sole signal for
 // "which slice comes next" — that state routinely drifts from git reality
 // (a slice ships through a path this tool never recorded: a manual PR, a

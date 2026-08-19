@@ -7,8 +7,8 @@
 // qa-gate-config.mts::resolveQaGateMode) is `"pre-build"` and no
 // `kind: test-plan` artifact exists yet for this slice under
 // `.claude/artifacts/crew/validations/`, prepend a QA GATE PRE-FLIGHT block
-// that dispatches a context-isolated crew:qa-expert BEFORE the builder,
-// followed by crew:test-automator implementing the failing tests red-first
+// that dispatches a context-isolated devcrew:qa-expert BEFORE the builder,
+// followed by devcrew:test-automator implementing the failing tests red-first
 // (dev-team#258's red-first mode).
 //
 // dispatch.mts stacks this AFTER the architect pre-flight (composable, not
@@ -212,7 +212,7 @@ function formatTaskScopedQuote(orderLines: string[]): string {
 /**
  * Build the QA GATE PRE-FLIGHT instruction block. `featureACsRef` is a
  * pointer (typically the FEAT file path) callers thread through so the
- * dispatched crew:qa-expert knows exactly where to read the FEAT's
+ * dispatched devcrew:qa-expert knows exactly where to read the FEAT's
  * Given-When-Then ACs from — the sole slice-scoped content in its allowlist.
  */
 export function buildQaGatePreflight(
@@ -229,28 +229,28 @@ export function buildQaGatePreflight(
     `- Stack identity from \`.claude/loop.json\` (\`frontend\`/\`backend\`/\`stackDescription\`).`
   ];
   const orders = [
-    `FORBIDDEN: Do NOT give crew:qa-expert the diff, the implementation code, or any file outside the three allowlisted inputs above — context isolation is this pre-flight's entire purpose (review OBJ-7: an isolated-but-useless plan is as real a failure mode as a leak).`,
-    `GATES: crew:qa-expert MUST write the test-plan artifact under \`.claude/artifacts/crew/validations/\` with frontmatter \`kind: test-plan\` (never \`decision:\` — that key belongs to the close-time validation gate's pass/fail/skipped vocabulary, not a pre-build plan) + \`slice: ${sliceId}\`, and record its path in this slice's frontmatter (\`qa_gate_artifact\`) before returning.`,
-    `RETURN: Return the test-plan artifact path so the parent loop can hand it to crew:test-automator next.`
+    `FORBIDDEN: Do NOT give devcrew:qa-expert the diff, the implementation code, or any file outside the three allowlisted inputs above — context isolation is this pre-flight's entire purpose (review OBJ-7: an isolated-but-useless plan is as real a failure mode as a leak).`,
+    `GATES: devcrew:qa-expert MUST write the test-plan artifact under \`.claude/artifacts/crew/validations/\` with frontmatter \`kind: test-plan\` (never \`decision:\` — that key belongs to the close-time validation gate's pass/fail/skipped vocabulary, not a pre-build plan) + \`slice: ${sliceId}\`, and record its path in this slice's frontmatter (\`qa_gate_artifact\`) before returning.`,
+    `RETURN: Return the test-plan artifact path so the parent loop can hand it to devcrew:test-automator next.`
   ];
   return [
     `QA GATE PRE-FLIGHT — \`loop.qa_gate: "pre-build"\` is set and no test-plan artifact exists yet for ${sliceId}.`,
     "",
-    `Dispatch a context-isolated crew:qa-expert FIRST with this prompt:`,
+    `Dispatch a context-isolated devcrew:qa-expert FIRST with this prompt:`,
     "",
     `> Produce a pre-build test plan for ${sliceId} (${title}).${acsRefLine} Read ONLY:`,
     ...allowlist.map((line) => `> ${line}`),
     `>`,
     formatTaskScopedQuote(orders),
     "",
-    `AWAIT the test-plan artifact. Then dispatch crew:test-automator with this prompt:`,
+    `AWAIT the test-plan artifact. Then dispatch devcrew:test-automator with this prompt:`,
     "",
     `> Implement failing tests (red) from the test-plan artifact above for ${sliceId}, per dev-team#258's red-first mode. Do not write or edit the test-plan artifact itself — implement only the tests it specifies, and stop once they fail for the expected (not-yet-implemented) reason.`,
     "",
     `AWAIT the failing (red) tests. Then proceed with the builder dispatch below, instructed to make them pass (green):`,
     "",
     formatTaskScopedQuote([
-      `FORBIDDEN: Do NOT Write or Edit the test-plan artifact recorded in this slice's frontmatter under \`qa_gate_artifact\` — the goalpost is locked once crew:test-automator has seeded the red tests from it. If a red test looks wrong, report it back rather than editing the plan (dev-team#257/#262's PreToolUse hook mechanically denies this edit too, once the lock the pre-flight wrote is enforced).`,
+      `FORBIDDEN: Do NOT Write or Edit the test-plan artifact recorded in this slice's frontmatter under \`qa_gate_artifact\` — the goalpost is locked once devcrew:test-automator has seeded the red tests from it. If a red test looks wrong, report it back rather than editing the plan (dev-team#257/#262's PreToolUse hook mechanically denies this edit too, once the lock the pre-flight wrote is enforced).`,
       `GATES: The builder's job is "make these tests pass" only — no new test files that change the plan's intent, no rewriting the red tests' assertions beyond a genuine typo fix (flag ambiguity in the plan instead of silently redefining coverage).`,
       `RETURN: Confirm the tests pass green without having touched the test-plan artifact path.`
     ]),
@@ -275,7 +275,7 @@ export interface QaGateArtifactWrittenInput {
 /**
  * Emit a `qa_gate_artifact_written` slice-event — mirrors
  * `shape-event-emitter.mts::emitShapeClassified`'s thin-wrapper shape. The
- * write this records happens out-of-process (crew:qa-expert, dispatched by
+ * write this records happens out-of-process (devcrew:qa-expert, dispatched by
  * the orchestrating agent) — this helper is the emission seam a caller
  * observing that write can invoke; it is not wired into `startSlice` itself
  * (architect C.7). Best-effort by virtue of `appendSliceEvent` — never
@@ -283,7 +283,7 @@ export interface QaGateArtifactWrittenInput {
  *
  * SLICE-4 (AC-4): the artifact's path is only known at this call site (it
  * was unknown when the QA GATE PRE-FLIGHT text was built, before
- * crew:qa-expert ran) — this is therefore also the earliest point the
+ * devcrew:qa-expert ran) — this is therefore also the earliest point the
  * goalpost-lock can mechanically apply, so this helper also writes the
  * artifact lock (`artifact-lock-writer.mts::writeArtifactLock`) for
  * `input.artifactPath`. `writeArtifactLock` is itself fail-soft (never

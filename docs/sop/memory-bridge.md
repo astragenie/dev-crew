@@ -220,7 +220,7 @@ as a repeatable, `ASTRAMEM_E2E`-gated suite:
 | T1 | `/health` × 5 | daemon reachable, `status: ok`, min latency budget |
 | T2 | `recordMemory()` → project-filtered `/recall` | write path tags `project`/`agent`; a fresh atom is findable within ~10s (polled, not single-shot) |
 | T3 | 10× semantic `/recall`, k=15 | p50/p95 latency budget |
-| T4 | `profileSilent()` (`GET /agents/:agent/profile`) | the T2 canary attributes to `runner:researcher`, with an agent-filtered-recall fallback |
+| T4 | `profileSilent()` (`GET /agents/:agent/profile`) | the T2 canary attributes to `devcrew:researcher`, with an agent-filtered-recall fallback |
 | T5 | `feedbackSilent()` (`POST /memory/:id/used`) | usefulness moves off 0.5 for the credited atom |
 | T6 | `boundedFetch()` against a connection that accepts but never responds | the suite's own wire calls can never hang past their bound (regression guard for the 300s-hang incident, astramem-local#347) |
 
@@ -254,7 +254,7 @@ first write). Skip mode writes nothing.
 ## Structured learnings + outcome-weighted credit at close (FEAT-263 T2 / Phase 3b)
 
 `src/scripts/lib/slice-linker/close-memory-capture.mts` adds two optional,
-ceremony-neutral inputs to `runner:close` (`completeSlice`/`closeSlice`),
+ceremony-neutral inputs to `devcrew:close` (`completeSlice`/`closeSlice`),
 threaded through the CLI as `--learnings <file.json>`,
 `--learnings-agent <agentType>`, and `--memories-used <file.json>`. Both
 fire as `void`-called fire-and-forget calls alongside the existing
@@ -287,8 +287,8 @@ keeping.
 Producing-agent attribution: an explicit `--learnings-agent <agentType>`
 wins; otherwise `deriveDefaultLearningsAgent()` derives it from the slice's
 own frontmatter `tags` via the same `pickBuilderVariant()` dispatch.mts
-already uses at dispatch time (`surface:api` -> `crew:backend-dev`,
-`surface:ui` -> `crew:frontend-dev`, both -> `crew:fullstack-dev`). The
+already uses at dispatch time (`surface:api` -> `devcrew:backend-dev`,
+`surface:ui` -> `devcrew:frontend-dev`, both -> `devcrew:fullstack-dev`). The
 `"unknown"` variant (no tag signal) resolves to `null` (omitted) rather than
 guessing fullstack — dispatch.mts treats "unknown" as a safe dispatch
 fallback, not a confirmed attribution signal, so defaulting learnings
@@ -334,7 +334,7 @@ CANARY-REVIEWER-8801 tagging convention. `grade-writer.mts`'s
 `emitSliceCloseMemory` (the `slice_close` GEPA emission) is the first
 caller to populate them: `project` from the same `memory.project` /
 `productName` precedence documented above, `agent` from the module's
-existing `GRADE_AGENT_TYPE` ("crew:builder") constant already used for the
+existing `GRADE_AGENT_TYPE` ("devcrew:builder") constant already used for the
 sibling `recordDecision`/`recordNote` calls in that file — reusing the
 established static tag rather than introducing a second attribution
 mechanism. Other `emitGepaEvent` call sites (`phase-gate.mts`,

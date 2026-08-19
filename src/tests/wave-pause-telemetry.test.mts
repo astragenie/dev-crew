@@ -18,7 +18,7 @@ const cfg: WaveConfig = {
   dispatchTimeoutMs: 1000,
   postMergeTestCmd: "",
   maxWaveAttempts: 2,
-  subagentType: "crew:fullstack-dev",
+  subagentType: "devcrew:fullstack-dev",
   artifactsRoot: ".claude/artifacts/loop/waves"
 };
 
@@ -106,7 +106,7 @@ describe("runWave — pause telemetry wiring (FEAT-275)", () => {
     expect(lines[0]!.type).toBe("dispatch_outcome");
     expect(lines[0]!.outcome).toBe("completed");
     expect(lines[0]!.sliceId).toBe("SLICE-A");
-    expect(lines[0]!.agentRole).toBe("crew:fullstack-dev");
+    expect(lines[0]!.agentRole).toBe("devcrew:fullstack-dev");
   });
 
   test("records a completed dispatch outcome for a FAIL result (specialist finished, verdict was bad)", async () => {

@@ -5,7 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const CMD = path.join(repoRoot, "commands", "architect-feature.md");
+// commands/architect-feature.md moved from crew/commands/ to the repo-root
+// commands/ in the devcrew command-map merge (SLICE-14).
+const CMD = path.join(repoRoot, "..", "commands", "architect-feature.md");
 
 test("commands/architect-feature.md exists", async () => {
   await expect(fs.access(CMD)).resolves.toBeFalsy();

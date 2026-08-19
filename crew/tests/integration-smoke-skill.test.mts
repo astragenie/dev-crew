@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SKILL_PATH = path.join(REPO_ROOT, "skills", "workflow", "integration-smoke", "SKILL.md");
 
 test("integration-smoke skill has correct frontmatter", async () => {

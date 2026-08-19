@@ -1,6 +1,6 @@
 ---
 name: wave
-description: "Run wave-mode autonomous runner: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /crew:fix next wave. Subcommands: plan | run | loop."
+description: "Run wave-mode autonomous runner: pack N independent slices into parallel worktrees, dispatch in one parallel block, merge PASS, pivot FAIL into /devcrew:fix next wave. Subcommands: plan | run | loop."
 auto_execute_steps: false
 ---
 
@@ -9,7 +9,7 @@ auto_execute_steps: false
 Reads triaged slices with declared `touches_files`, packs up to `wave.size`
 non-conflicting slices into one wave, dispatches each into a parallel git
 worktree, merges PASS branches, runs post-merge tests, and enqueues FAIL
-slices for `/crew:fix` next wave. Loops until `/runner:stop-check` fires.
+slices for `/devcrew:fix` next wave. Loops until `/devcrew:stop-check` fires.
 
 ## Subcommands
 
@@ -52,7 +52,7 @@ N parallel `Agent(subagent_type: general-purpose)` calls. Each agent prompt
 instructs:
 
 1. `cd <worktreePath>`
-2. Execute the configured slash command (`/crew:orchestrate-slice --id <SLICE-ID>`).
+2. Execute the configured slash command (`/devcrew:orchestrate-slice --id <SLICE-ID>`).
 3. Return a last-line JSON marker:
    `{"slice":"<id>","status":"PASS"|"FAIL","artifacts":[...]}`.
 
@@ -76,7 +76,7 @@ is enabled):
    (`loop.modelRouting.build`, default `sonnet`).
 
 After all N agents return, `run` calls `dispatch finalize`: merges PASS
-branches, leaves FAIL worktrees on disk for next-wave `/crew:fix`, runs the
+branches, leaves FAIL worktrees on disk for next-wave `/devcrew:fix`, runs the
 post-merge test command, writes artifacts, and exits.
 
 With `--dry-run`, worktrees are created but no agents are dispatched; plan
@@ -100,7 +100,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" wave loop \
 ```
 
 Calls `run` in a loop, decrementing `--max-waves` each iteration. Stops
-when `maxWaves` is reached, the backlog is exhausted, or `/runner:stop-check`
+when `maxWaves` is reached, the backlog is exhausted, or `/devcrew:stop-check`
 fires a halt condition.
 
 ## Behavioral note: iteration accounting
@@ -127,9 +127,9 @@ cost proportionally.
     "marathonRunner": "wave",
     "wave": {
       "size": 3,
-      "sliceCommand": "/crew:orchestrate-slice",
-      "sliceCommandFallback": "/crew:build",
-      "fixCommand": "/crew:fix",
+      "sliceCommand": "/devcrew:orchestrate-slice",
+      "sliceCommandFallback": "/devcrew:build",
+      "fixCommand": "/devcrew:fix",
       "maxParallel": 3,
       "dispatchTimeoutMs": 1800000,
       "postMergeTestCmd": "bun test src/tests/ --parallel --timeout 60000",
@@ -141,7 +141,7 @@ cost proportionally.
 }
 ```
 
-`marathonRunner: "wave"` opts `/runner:auto` and `/runner:start` into wave mode
+`marathonRunner: "wave"` opts `/devcrew:auto` and `/devcrew:start` into wave mode
 (wiring lands in T21). Default remains `"sequential"`.
 
 ## Failure pivots
@@ -153,7 +153,7 @@ A FAIL worktree from wave N:
 2. Is ranked first by the planner in wave N+1 (`pendingFix` ranks ahead of
    `compositeScore`).
 3. Dispatches with a fix-mode prompt invoking
-   `/crew:fix --slice <id> --failure <artifact>`.
+   `/devcrew:fix --slice <id> --failure <artifact>`.
 4. Escalates to `needs-review/` after `wave.maxWaveAttempts` (default 2)
    consecutive failures.
 
@@ -176,14 +176,14 @@ A FAIL worktree from wave N:
 - `run` — shipped (T17).
 - `loop` — shipped (T17).
 - `marathonRunner` routing — shipped (T21). Set in `.claude/loop.json` to opt
-  `/runner:auto` and `/runner:start` into wave mode.
+  `/devcrew:auto` and `/devcrew:start` into wave mode.
 
 Known limitations:
 
 - `realDispatch` throws on headless invocation — the parallel-agent step
-  requires the Claude Code harness. The `/runner:wave` slash flow handles
+  requires the Claude Code harness. The `/devcrew:wave` slash flow handles
   dispatch via harness.
-- `realStopCheck` is a soft no-op until `/runner:stop-check` exposes a
+- `realStopCheck` is a soft no-op until `/devcrew:stop-check` exposes a
   programmatic CLI surface.
 - `realFinalize` cannot distinguish merge-conflict branches from cleanly-merged
   ones (always returns `conflicts: []`); merge-conflict failure pivots do not

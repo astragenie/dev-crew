@@ -50,7 +50,7 @@ the audit produces ranked candidates only.
 
 ### Dispatch model
 
-Lead dispatches **7 parallel `crew:researcher` subagents**, one per
+Lead dispatches **7 parallel `devcrew:researcher` subagents**, one per
 competitor. Each researcher works read-only against public sources
 (documentation sites, GitHub repos, marketplace listings, blog posts).
 No hands-on install / runtime probing is required.

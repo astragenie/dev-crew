@@ -61,14 +61,14 @@ export interface CostRegressionSignal {
 
 // Per-resolver fallback: read the nested `loop.cost.regression.*` shape first,
 // fall back to the legacy flat `loop.costRegression*` shape with a single
-// stderr WARN line per process. Run /runner:cost-setup to migrate the file.
+// stderr WARN line per process. Run /devcrew:cost-setup to migrate the file.
 const warnedLegacyKeys = new Set<string>();
 function warnLegacyKey(legacyPath: string, nestedPath: string): void {
   if (warnedLegacyKeys.has(legacyPath)) return;
   warnedLegacyKeys.add(legacyPath);
   process.stderr.write(
     `[loop] WARN: ${legacyPath} is deprecated; rename to ${nestedPath} in .claude/loop.json ` +
-      "(run /runner:cost-setup to auto-migrate).\n"
+      "(run /devcrew:cost-setup to auto-migrate).\n"
   );
 }
 

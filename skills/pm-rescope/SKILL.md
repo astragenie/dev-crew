@@ -1,21 +1,21 @@
 ---
-name: runner:pm-rescope
-description: Autonomous scope/AC rewrite for one FEAT from a list of reviewer objections — the GATE workstream's reject-loop path. Dispatches runner:pm --rescope, unattended (no operator confirmation, unlike runner:pm-review). Use when architect-reviewer (or any gate) rejects a FEAT/slice proposal and the objections need to be folded back into the FEAT's scope + ACs before re-submission.
+name: devcrew:pm-rescope
+description: Autonomous scope/AC rewrite for one FEAT from a list of reviewer objections — the GATE workstream's reject-loop path. Dispatches devcrew:pm --rescope, unattended (no operator confirmation, unlike devcrew:pm-review). Use when architect-reviewer (or any gate) rejects a FEAT/slice proposal and the objections need to be folded back into the FEAT's scope + ACs before re-submission.
 ---
 
 # PM Rescope — Autonomous Scope Rewrite From Reviewer Objections
 
 Single-FEAT, unattended rescope. This is the autonomous sibling of
-`runner:pm-review`: no interactive confirmation, no dimension-by-dimension
+`devcrew:pm-review`: no interactive confirmation, no dimension-by-dimension
 walkthrough — the GATE calls this in a loop and needs a deterministic
 commit or a structured failure, nothing else.
 
 ## Usage
 
 ```
-/runner:pm-rescope --id FEAT-NNN --objections "objection one|objection two"
-/runner:pm-rescope --id FEAT-NNN --objections-file path/to/objections.json
-echo '["objection one","objection two"]' | /runner:pm-rescope --id FEAT-NNN
+/devcrew:pm-rescope --id FEAT-NNN --objections "objection one|objection two"
+/devcrew:pm-rescope --id FEAT-NNN --objections-file path/to/objections.json
+echo '["objection one","objection two"]' | /devcrew:pm-rescope --id FEAT-NNN
 ```
 
 ## Inputs
@@ -38,7 +38,7 @@ echo '["objection one","objection two"]' | /runner:pm-rescope --id FEAT-NNN
    `triaged/` — `backlog pm-rescope` (step 4) only writes those states,
    so fail fast here rather than after a wasted PM dispatch.
 
-2. **Resolve PM skills via preset** (same as `runner:triage` step 3):
+2. **Resolve PM skills via preset** (same as `devcrew:triage` step 3):
 
    ```bash
    PRESET_NAME=$(bun -e 'console.log(JSON.parse(require("node:fs").readFileSync(".claude/loop.json","utf8")).preset)')
@@ -51,7 +51,7 @@ echo '["objection one","objection two"]' | /runner:pm-rescope --id FEAT-NNN
    On exit 0, prepend `.dispatchInstructionBlock`. On exit 2, proceed
    without it. On exit 1, halt and surface the stderr.
 
-3. **Dispatch `runner:pm` agent** with the `--rescope` trigger. Prompt MUST
+3. **Dispatch `devcrew:pm` agent** with the `--rescope` trigger. Prompt MUST
    include the FEAT id, the resolved objections list, and a results-file
    path (same DEC-058 scoped-`Write` pattern as triage):
 
@@ -80,7 +80,7 @@ echo '["objection one","objection two"]' | /runner:pm-rescope --id FEAT-NNN
      literal words "Given", "When", and "Then".
    - `result.reasoning` MUST be a non-empty string.
    - Reject and halt (`halt_reason: validation_fail`) on any violation —
-     no partial commit, same failure posture as `runner:triage` step 5.
+     no partial commit, same failure posture as `devcrew:triage` step 5.
 
 5. **Commit via the pm-apply write path** (DEC-058 hybrid — the results
    file from step 3 is the only thing PM itself writes; this subcommand is
@@ -100,7 +100,7 @@ echo '["objection one","objection two"]' | /runner:pm-rescope --id FEAT-NNN
 
 6. **Halt on any failure** (no objections resolved, PM dispatch error,
    validation failure, or a non-empty `pm-rescope` `failures` array).
-   Surface a structured halt exactly like `runner:triage`:
+   Surface a structured halt exactly like `devcrew:triage`:
 
    ```json
    {
@@ -113,7 +113,7 @@ echo '["objection one","objection two"]' | /runner:pm-rescope --id FEAT-NNN
 
 ## Rescope output schema
 
-The `runner:pm` agent's `--rescope` response uses its own schema — **NOT a
+The `devcrew:pm` agent's `--rescope` response uses its own schema — **NOT a
 re-score**: no `scores`, no `compositePriority`, no `autonomousSafe` (those stay
 whatever triage set). Only scope and ACs move.
 
@@ -157,11 +157,11 @@ list — REPLACES the AC section, never appends a second one. `pm_rescope_count`
 increments each successful call so the audit trail shows how many rewrite
 passes a FEAT went through before the GATE accepted it.
 
-## Difference from `/runner:pm-review`
+## Difference from `/devcrew:pm-review`
 
-`/runner:pm-review` is interactive: it walks the operator through all three
+`/devcrew:pm-review` is interactive: it walks the operator through all three
 PM frameworks and asks for confirmation on each dimension before writing
-scores. `/runner:pm-rescope` is unattended: it takes a fixed objections
+scores. `/devcrew:pm-rescope` is unattended: it takes a fixed objections
 list, produces a fixed rewrite, and commits or halts — no dimension
 walkthrough, no re-scoring. Use `pm-review` when a human wants to
 challenge a priority; use `pm-rescope` when the GATE's reject loop needs

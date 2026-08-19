@@ -46,7 +46,7 @@ back — this agent does not name memory tools directly.
    - Otherwise: `bun src/scripts/loop.mts` from repo root.
 3. Write the plan to `/tmp/plan-<random>.json`:
    ```json
-   { "plans": [ {"id":"FE","priority":0,"agentType":"crew:frontend-dev","prompt":"..."}, ... ] }
+   { "plans": [ {"id":"FE","priority":0,"agentType":"devcrew:frontend-dev","prompt":"..."}, ... ] }
    ```
 
 ## Prepare phase

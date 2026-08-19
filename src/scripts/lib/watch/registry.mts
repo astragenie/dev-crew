@@ -109,7 +109,7 @@ function validateEntry(entry: unknown, idx: number, seenSlugs: Map<string, numbe
 /**
  * Pure schema + shard-exclusivity validation. Never throws — callers decide
  * whether an invalid registry is fatal (watch/tick.mts throws; a future
- * `/runner:watch` CLI may prefer to report and exit).
+ * `/devcrew:watch` CLI may prefer to report and exit).
  */
 export function validateRegistry(registry: RegistryFile): RegistryValidationResult {
   if (!registry || typeof registry !== "object") {

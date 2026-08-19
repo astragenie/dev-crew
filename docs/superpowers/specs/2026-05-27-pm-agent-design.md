@@ -131,7 +131,7 @@ Cross-Slice Continuation rule updated:
 3. Pick highest-priority triaged feature (existing, now uses `composite_priority`)
 4. Promote to slice (existing)
 
-PM agent runs as subagent — same dispatch pattern as `crew:fullstack-dev`.
+PM agent runs as subagent — same dispatch pattern as `devcrew:fullstack-dev`.
 
 ## PM Review Artifacts
 

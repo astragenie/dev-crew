@@ -1,8 +1,8 @@
-# Inline `/crew:build` Dispatch Implementation Plan
+# Inline `/devcrew:build` Dispatch Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace `Dispatch crew:lead subagent` with `Invoke the \`crew:build\` skill` in `buildDispatchInstruction()`, and surface the feature file path in the dispatch context block.
+**Goal:** Replace `Dispatch devcrew:lead subagent` with `Invoke the \`devcrew:build\` skill` in `buildDispatchInstruction()`, and surface the feature file path in the dispatch context block.
 
 **Architecture:** Pure text change in `dispatch.mts` dispatch prompt + `readFeatureExcerpt` return-type change from `string|null` to `{path,excerpt}|null`. `start-slice.mts` threads the path through. Tests updated to match new text.
 
@@ -187,9 +187,9 @@ export function buildDispatchInstruction({
   const sliceRef = rel ? ` See \`${rel}\` for acceptance criteria.` : "";
   const suffix = buildBudgetLine(dispatchLimits);
   const lines = [
-    `Dispatch crew:lead subagent with this prompt:`,
+    `Dispatch devcrew:lead subagent with this prompt:`,
     "",
-    `> Lead the implementation of ${title}.${sliceRef}${goalLine} Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`crew:fullstack-dev\` when scope warrants), require independent review via \`crew:inspector\` when code changes, and validation via \`crew:verifier\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /crew:fix before resuming.${suffix}`
+    `> Lead the implementation of ${title}.${sliceRef}${goalLine} Run the full crew lead workflow: frame the work (in-scope / out-of-scope / mode choice), implement via single-session, assisted single-session, or team run (delegating to \`devcrew:fullstack-dev\` when scope warrants), require independent review via \`devcrew:inspector\` when code changes, and validation via \`devcrew:verifier\` when behavior is exercisable, then synthesize. Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, pivot through /devcrew:fix before resuming.${suffix}`
   ];
   appendProgressSignals(lines);
   appendContextBlock(lines, rel, sliceContent, featureId, featureExcerpt, featurePath);
@@ -222,7 +222,7 @@ git commit -m "feat(dispatch): surface feature file path in context block"
 
 - [ ] **Step 1: Write failing test**
 
-In `src/tests/slice-start.test.mts`, find the existing test at line ~90 that asserts `dispatchInstruction` matches `/Dispatch crew:lead subagent/`. After that test, add:
+In `src/tests/slice-start.test.mts`, find the existing test at line ~90 that asserts `dispatchInstruction` matches `/Dispatch devcrew:lead subagent/`. After that test, add:
 
 ```typescript
 test("startSlice threads featurePath into dispatchInstruction context block", async () => {
@@ -344,7 +344,7 @@ git commit -m "feat(dispatch): thread featurePath through start-slice into dispa
 
 ---
 
-### Task 4: Rewrite dispatch text to invoke `/crew:build` skill
+### Task 4: Rewrite dispatch text to invoke `/devcrew:build` skill
 
 **Files:**
 - Modify: `src/scripts/lib/slice-linker/dispatch.mts:54-57` (the lines array in buildDispatchInstruction)
@@ -354,13 +354,13 @@ git commit -m "feat(dispatch): thread featurePath through start-slice into dispa
 In `src/tests/slice-linker.test.mts` line 139, change:
 
 ```typescript
-assert.match(result, /Dispatch crew:lead/);
+assert.match(result, /Dispatch devcrew:lead/);
 ```
 
 to:
 
 ```typescript
-assert.match(result, /Invoke the `crew:build` skill/);
+assert.match(result, /Invoke the `devcrew:build` skill/);
 ```
 
 Also update the test at line 116 (`buildDispatchInstruction with featureExcerpt embeds feature section`) — if it asserts on the dispatch opener, update it similarly.
@@ -370,26 +370,26 @@ Also update the test at line 116 (`buildDispatchInstruction with featureExcerpt 
 Change:
 
 ```typescript
-assert.match(result.dispatchInstruction, /Dispatch crew:lead subagent/);
+assert.match(result.dispatchInstruction, /Dispatch devcrew:lead subagent/);
 // ...
-assert.match(result.nextAction, /Dispatch crew:lead subagent/);
+assert.match(result.nextAction, /Dispatch devcrew:lead subagent/);
 ```
 
 to:
 
 ```typescript
-assert.match(result.dispatchInstruction, /Invoke the `crew:build` skill/);
+assert.match(result.dispatchInstruction, /Invoke the `devcrew:build` skill/);
 // ...
-assert.match(result.nextAction, /crew:build/);
+assert.match(result.nextAction, /devcrew:build/);
 ```
 
 - [ ] **Step 3: Run tests to verify they now fail**
 
 ```bash
-npm test 2>&1 | grep -E "fail|crew:build|crew:lead"
+npm test 2>&1 | grep -E "fail|devcrew:build|devcrew:lead"
 ```
 
-Expected: the two updated assertions fail (text still says `Dispatch crew:lead`).
+Expected: the two updated assertions fail (text still says `Dispatch devcrew:lead`).
 
 - [ ] **Step 4: Rewrite the dispatch text in `buildDispatchInstruction`**
 
@@ -397,24 +397,24 @@ In `dispatch.mts`, replace lines 54–57 (the `lines` array initialization):
 
 ```typescript
   const lines = [
-    `Invoke the \`crew:build\` skill with this context:`,
+    `Invoke the \`devcrew:build\` skill with this context:`,
     "",
     `> **Slice:** ${sliceId} — ${title}.${sliceRef}`,
     `> **Goal:** ${goalLine ? resolvedGoal.slice(0, 200) : "(see slice file)"}`,
     `> **Mode preference:** single-session unless the slice has explicit multi-file parallel work.`,
-    `> Run the full crew build workflow (frame → implement → review → validate → synthesize). Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, use /crew:fix before returning.${suffix}`
+    `> Run the full crew build workflow (frame → implement → review → validate → synthesize). Never use caveman:* agents for slice work — they lack the artifact protocol. When acceptance criteria PASS with evidence, return control so the parent loop can run /loop:slice complete --id ${sliceId}. If review or validation reports needs_fix / fail, use /devcrew:fix before returning.${suffix}`
   ];
 ```
 
 - [ ] **Step 5: Update `computeNextAction` text**
 
-In `start-slice.mts`, find the `computeNextAction` function and update any string that says `Dispatch crew:lead subagent` to `Invoke crew:build skill`. Search:
+In `start-slice.mts`, find the `computeNextAction` function and update any string that says `Dispatch devcrew:lead subagent` to `Invoke devcrew:build skill`. Search:
 
 ```bash
-grep -n "Dispatch crew:lead\|crew:lead subagent" src/scripts/lib/slice-linker/start-slice.mts
+grep -n "Dispatch devcrew:lead\|devcrew:lead subagent" src/scripts/lib/slice-linker/start-slice.mts
 ```
 
-Replace each match with the equivalent `crew:build` phrasing.
+Replace each match with the equivalent `devcrew:build` phrasing.
 
 - [ ] **Step 6: Run all tests**
 
@@ -428,7 +428,7 @@ Expected: all tests pass (683+ / 0 fail).
 
 ```bash
 git add src/scripts/lib/slice-linker/dispatch.mts src/scripts/lib/slice-linker/start-slice.mts src/tests/slice-linker.test.mts src/tests/slice-start.test.mts
-git commit -m "feat(dispatch): invoke crew:build skill inline instead of crew:lead subagent"
+git commit -m "feat(dispatch): invoke devcrew:build skill inline instead of devcrew:lead subagent"
 ```
 
 ---
@@ -444,20 +444,20 @@ git commit -m "feat(dispatch): invoke crew:build skill inline instead of crew:le
 Find the dispatch table row:
 
 ```
-| Slice implementation (acceptance criteria work)                   | `crew:lead` subagent (which delegates to `crew:fullstack-dev`)    |
+| Slice implementation (acceptance criteria work)                   | `devcrew:lead` subagent (which delegates to `devcrew:fullstack-dev`)    |
 ```
 
 Change to:
 
 ```
-| Slice implementation (acceptance criteria work)                   | `crew:build` skill (inline — orchestrator acts as lead)     |
+| Slice implementation (acceptance criteria work)                   | `devcrew:build` skill (inline — orchestrator acts as lead)     |
 ```
 
-Also find any prose that says "Dispatch crew:lead subagent" (in the numbered dispatch steps) and update to "Invoke the `crew:build` skill".
+Also find any prose that says "Dispatch devcrew:lead subagent" (in the numbered dispatch steps) and update to "Invoke the `devcrew:build` skill".
 
 - [ ] **Step 2: Mirror the same change in `templates/loop-rules.md`**
 
-Same search-and-replace: `crew:lead subagent (which delegates to \`crew:fullstack-dev\`)` → `crew:build skill (inline — orchestrator acts as lead)`.
+Same search-and-replace: `devcrew:lead subagent (which delegates to \`devcrew:fullstack-dev\`)` → `devcrew:build skill (inline — orchestrator acts as lead)`.
 
 - [ ] **Step 3: Verify manifests and content-length**
 
@@ -471,7 +471,7 @@ Expected: no errors.
 
 ```bash
 git add .claude/loop/rules.md templates/loop-rules.md
-git commit -m "docs(rules): update dispatch table — crew:build skill replaces crew:lead subagent"
+git commit -m "docs(rules): update dispatch table — devcrew:build skill replaces devcrew:lead subagent"
 ```
 
 ---
@@ -513,7 +513,7 @@ node scripts/validate-manifests.mjs && node scripts/validate-content-length.mjs
 
 ```bash
 git add scripts/
-git commit -m "build: regenerate compiled outputs for inline crew:build dispatch"
+git commit -m "build: regenerate compiled outputs for inline devcrew:build dispatch"
 ```
 
 ---
@@ -521,22 +521,22 @@ git commit -m "build: regenerate compiled outputs for inline crew:build dispatch
 ### Task 7: Verify CLAUDE.md + snapshot
 
 **Files:**
-- Read: `CLAUDE.md` (check if it references crew:lead dispatch — update if so)
+- Read: `CLAUDE.md` (check if it references devcrew:lead dispatch — update if so)
 - Run: `/loop:snapshot-memory` (update loop-snapshot.md)
 
-- [ ] **Step 1: Check CLAUDE.md for stale crew:lead references**
+- [ ] **Step 1: Check CLAUDE.md for stale devcrew:lead references**
 
 ```bash
-grep -n "crew:lead\|Dispatch crew" CLAUDE.md
+grep -n "devcrew:lead\|Dispatch crew" CLAUDE.md
 ```
 
-If any matches, update the relevant lines to reference `crew:build skill`.
+If any matches, update the relevant lines to reference `devcrew:build skill`.
 
 - [ ] **Step 2: Commit CLAUDE.md if changed**
 
 ```bash
 git add CLAUDE.md
-git commit -m "docs(claude-md): update dispatch reference to crew:build skill"
+git commit -m "docs(claude-md): update dispatch reference to devcrew:build skill"
 ```
 
 - [ ] **Step 3: Run snapshot**

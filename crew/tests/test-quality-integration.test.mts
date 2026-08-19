@@ -10,8 +10,11 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+// agents/skills/commands moved to the true repo root (one level above crew/);
+// crew/tests/fixtures legitimately stays under crew/, so fixtureDir is unaffected.
+const devCrewRoot = path.join(repoRoot, "..");
 const analyzeScript = path.join(
-  repoRoot,
+  devCrewRoot,
   "skills",
   "workflow",
   "test-quality",

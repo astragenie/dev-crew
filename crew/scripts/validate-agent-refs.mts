@@ -33,6 +33,11 @@ import { fileURLToPath } from "node:url";
 import { createTokenResolver, type TokenResolver } from "./lib/dispatch/resolve-token.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// Monorepo root: agents/, commands/, skills/, and the live .claude/loop/
+// methodology tree all live here now — see resolve-token.mts's
+// TokenResolverRoots doc comment. docs/routing-table.yaml stays under
+// crew/ (REPO_ROOT), so the resolver needs the split roots too.
+const SURFACE_ROOT = path.resolve(REPO_ROOT, "..");
 
 export interface AgentRefFinding {
   file: string;
@@ -117,22 +122,30 @@ function scanFileForFindings(label: string, text: string, known: KnownNames): Ag
   return findings;
 }
 
-export async function validateAgentRefs(repoRoot = REPO_ROOT) {
+export async function validateAgentRefs(repoRoot?: string) {
+  // Explicit repoRoot (tests) keeps the old single-root behavior: agents/,
+  // commands/, skills/, docs/routing-table.yaml, and .claude/loop/ all under
+  // one synthetic fixture root. The production default (no arg) splits:
+  // surface dirs + .claude/loop live at the monorepo root; docs/routing-table.yaml
+  // stays under crew/ (REPO_ROOT).
+  const surfaceRoot = repoRoot ?? SURFACE_ROOT;
   const known: KnownNames = {
-    resolver: await createTokenResolver(repoRoot),
-    commandNames3rdparty: listMdBasenames(path.join(repoRoot, "commands", "3rdparty")),
-    agentNames3rdparty: listMdBasenames(path.join(repoRoot, "agents", "3rdparty"))
+    resolver: await createTokenResolver(
+      repoRoot ? repoRoot : { surfaceRoot: SURFACE_ROOT, docsRoot: REPO_ROOT }
+    ),
+    commandNames3rdparty: listMdBasenames(path.join(surfaceRoot, "commands", "3rdparty")),
+    agentNames3rdparty: listMdBasenames(path.join(surfaceRoot, "agents", "3rdparty"))
   };
 
   const scanDirs = ["commands", "skills", "agents", path.join(".claude", "loop")];
   const files: string[] = [];
   for (const d of scanDirs) {
-    files.push(...(await walkMarkdown(path.join(repoRoot, d))));
+    files.push(...(await walkMarkdown(path.join(surfaceRoot, d))));
   }
 
   const findings: AgentRefFinding[] = [];
   for (const filePath of files) {
-    const label = path.relative(repoRoot, filePath).replace(/\\/g, "/");
+    const label = path.relative(surfaceRoot, filePath).replace(/\\/g, "/");
     const text = await fs.readFile(filePath, "utf8");
     findings.push(...scanFileForFindings(label, text, known));
   }

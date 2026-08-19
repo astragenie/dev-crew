@@ -45,13 +45,21 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
+// commands/*.md moved from crew/commands/ to the repo-root commands/ in the
+// devcrew command-map merge (SLICE-14); skills/ moved the same way (SLICE-16).
+function resolveRelPath(relPath: string): string {
+  return relPath.startsWith("commands/") || relPath.startsWith("skills/")
+    ? path.join(repoRoot, "..", relPath)
+    : path.join(repoRoot, relPath);
+}
+
 async function readJson(relPath: string): Promise<unknown> {
-  const text = await fs.readFile(path.join(repoRoot, relPath), "utf8");
+  const text = await fs.readFile(resolveRelPath(relPath), "utf8");
   return JSON.parse(text);
 }
 
 async function readText(relPath: string): Promise<string> {
-  return fs.readFile(path.join(repoRoot, relPath), "utf8");
+  return fs.readFile(resolveRelPath(relPath), "utf8");
 }
 
 // ── AC-2: .claude/loop.json config shape ────────────────────────────────────
@@ -82,9 +90,9 @@ test("loop.json: reviewers.ladder is undisturbed by the telemetry-activation cha
 test("fan-out-review SKILL: documents the stack-lens 2nd-reviewer selection rule", async () => {
   const text = await readText("skills/workflow/fan-out-review/SKILL.md");
   expect(text).toMatch(/Stack-lens 2nd-reviewer pick/);
-  expect(text).toMatch(/`\.cs`[^\n]*≥\s*60%[^\n]*`crew:csharp-reviewer`/);
-  expect(text).toMatch(/`\.ts`[^\n]*\/\s*`\.tsx`[^\n]*≥\s*60%[^\n]*`crew:typescript-reviewer`/);
-  expect(text).toMatch(/fall back to a generic `crew:reviewer` 2nd lens/);
+  expect(text).toMatch(/`\.cs`[^\n]*≥\s*60%[^\n]*`devcrew:csharp-reviewer`/);
+  expect(text).toMatch(/`\.ts`[^\n]*\/\s*`\.tsx`[^\n]*≥\s*60%[^\n]*`devcrew:typescript-reviewer`/);
+  expect(text).toMatch(/fall back to a generic `devcrew:reviewer` 2nd lens/);
 });
 
 test("fan-out-review SKILL: Done section includes the stack-lens rule check", async () => {
@@ -105,8 +113,8 @@ test("orchestrate-slice.md: heavy path states reviewers + verifier are emitted i
 test("orchestrate-slice.md: heavy path documents the stack-lens 2nd-reviewer rule inline", async () => {
   const text = await readText("commands/orchestrate-slice.md");
   expect(text).toMatch(/Stack-lens 2nd reviewer \(FEAT-203 \/ SLICE-113\)/);
-  expect(text).toMatch(/crew:csharp-reviewer/);
-  expect(text).toMatch(/crew:typescript-reviewer/);
+  expect(text).toMatch(/devcrew:csharp-reviewer/);
+  expect(text).toMatch(/devcrew:typescript-reviewer/);
 });
 
 test("orchestrate-slice.md: heavy path documents serial-dispatch telemetry via reviewers.strictParallel", async () => {

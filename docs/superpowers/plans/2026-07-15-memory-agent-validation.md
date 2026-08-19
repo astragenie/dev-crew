@@ -58,17 +58,17 @@ Fastest "agents working" proof: Steps 2–4 on runner-plugin alone (~30 min).
 - [ ] Per repo × role (builder, reviewer, architect): MCP `remember({ type:lesson,
       projectId:<repo>, agentId:"crew:<role>", scope:"team", importance:0.9,
       content:"…CANARY-<role>-####" })`.
-- **AC:** `agent_profile({agent:"crew:reviewer"})` returns the canary;
+- **AC:** `agent_profile({agent:"devcrew:reviewer"})` returns the canary;
       `recall_memory({project:"runner-plugin"})` finds it.
 
 ### Step 4 — Validate LOAD (both paths) ← first proof
 - [ ] runner programmatic: drive `buildMemoryContext({agentType, sliceId, project})`
       (unit + live) → block contains canary. Then a real reviewer dispatch via
       `post-builder-fanout` → block present in prompt.
-- [ ] crew hook: run `subagent-start-profile.ts` `{agent_type:"crew:architect",
+- [ ] crew hook: run `subagent-start-profile.ts` `{agent_type:"devcrew:architect",
       cwd:dev-team}` + profile enabled → `additionalContext` emits the "Your track
       record" block with the canary.
-- [ ] Live agent: dispatch a real `crew:reviewer` / `crew:architect` in dev-team →
+- [ ] Live agent: dispatch a real `devcrew:reviewer` / `devcrew:architect` in dev-team →
       injected block appears, agent references the canary lesson.
 - **AC = PASS:** a dispatched reviewer/architect provably sees its role's prior lesson.
 
@@ -80,7 +80,7 @@ Fastest "agents working" proof: Steps 2–4 on runner-plugin alone (~30 min).
 
 ### Step 6 — Validate the REAL write path (needs #341 or interim patch)
 - [ ] After #341 fix (map `metadata.{project,agent}` → top-level in
-      astramem-client), run a real `/runner:close` → the DEC/lesson it writes is
+      astramem-client), run a real `/devcrew:close` → the DEC/lesson it writes is
       tagged (recall by project finds it; agent_profile shows it).
 - [ ] Interim option: patch runner `memory-sink.mts` to set top-level
       `projectId`/`agentId` on the payload, if organic writes are wanted before
@@ -115,8 +115,8 @@ Step7, Step8                               (breadth + durability)
 
 Ran the ASAP path (Steps 1–4) against the live daemon. Results:
 
-- ✅ **agent_profile is populated per-role** — `crew:reviewer` 1121 atoms / 237
-  lessons, `crew:architect` 73 atoms — both including seeded canaries. The
+- ✅ **agent_profile is populated per-role** — `devcrew:reviewer` 1121 atoms / 237
+  lessons, `devcrew:architect` 73 atoms — both including seeded canaries. The
   role-scoped lessons the load path needs already exist (written by the
   capture-at-close hook + direct MCP, which DO tag agent).
 - ✅ **Stale dependency fixed** — installed `@astragenie/astramem-client` was

@@ -15,9 +15,11 @@ function readDoc(relPath: string): string {
   return readFileSync(resolve(ROOT, relPath), "utf8");
 }
 
-const incident = readDoc("commands/incident.md");
-const skill = readDoc("skills/workflow/release-recovery/SKILL.md");
-const incidentResponseSkill = readDoc("skills/workflow/incident-response/SKILL.md");
+// commands/incident.md moved from crew/commands/ to the repo-root commands/
+// in the devcrew command-map merge (SLICE-14).
+const incident = readDoc("../commands/incident.md");
+const skill = readDoc("../skills/workflow/release-recovery/SKILL.md");
+const incidentResponseSkill = readDoc("../skills/workflow/incident-response/SKILL.md");
 const workflowState = readDoc("scripts/lib/workflow-state.mts");
 const gates = readDoc("scripts/lib/workflow-state-gates.mts");
 const crewCli = readDoc("scripts/crew.mts");
@@ -37,7 +39,7 @@ test("FEAT-182 SLICE-A: triage routes unknown root cause to crew:researcher (NOT
   // Reverse assertion: dispatcher must explicitly warn against using
   // investigator for RCA.
   expect(incident).toMatch(
-    /do NOT use `crew:investigator` for root cause analysis/i
+    /do NOT use `devcrew:investigator` for root cause analysis/i
   );
 });
 
@@ -186,7 +188,7 @@ test("FEAT-182 SLICE-B: incident-response stays under 200-line tier cap", () => 
 });
 
 test("FEAT-182 SLICE-B: release-engineer documents the incident-triggered rollback procedure", () => {
-  const releaseEngineer = readDoc("agents/release-engineer.md");
+  const releaseEngineer = readDoc("../agents/release-engineer.md");
   expect(releaseEngineer).toMatch(/## Rollback procedure \(incident-triggered\)/);
   expect(releaseEngineer).toMatch(/prod → stage → dev/);
   expect(releaseEngineer).toMatch(/v<X\.Y\.Z>-rollback-<timestamp>/);
