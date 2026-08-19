@@ -19,9 +19,18 @@ import {
 export const DEVCREW_MARKER_START = "<!-- devcrew:start -->";
 export const DEVCREW_MARKER_END = "<!-- devcrew:end -->";
 
+// `loop:` is a THIRD legacy marker pair, from the original "Wiggin Loop"
+// installer that predates the runner-plugin rename — several real adopters
+// still carry it, sometimes alongside a `crew:` block, sometimes alone.
+// Reviewer-caught defect (SLICE-26 review, 2026-08-19): omitting it here
+// left a stale, half-rewritten duplicate "Autonomous Loop HARD RULES"
+// section in 7/16 already-migrated adopters (rewriteDispatchTokens ran over
+// the whole file and touched dispatch tokens *inside* the unrecognized
+// span, since the span was never removed and thus never excluded).
 const LEGACY_MARKER_PAIRS = [
   { start: "<!-- crew:start -->", end: "<!-- crew:end -->" },
-  { start: "<!-- runner:start -->", end: "<!-- runner:end -->" }
+  { start: "<!-- runner:start -->", end: "<!-- runner:end -->" },
+  { start: "<!-- loop:start -->", end: "<!-- loop:end -->" }
 ];
 
 const ALL_MARKER_PAIRS = [

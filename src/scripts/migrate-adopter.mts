@@ -174,7 +174,14 @@ async function hasLegacyMarkerBlock(dirPath: string): Promise<boolean> {
     .readFile(path.join(dirPath, "CLAUDE.md"), "utf8")
     .catch((): null => null);
   if (content === null) return false;
-  return content.includes("<!-- runner:start -->") || content.includes("<!-- crew:start -->");
+  // `loop:` included alongside `runner:`/`crew:` (reviewer-caught gap, SLICE-26
+  // review) — a repo carrying only a `loop:start` block (pre-runner-plugin-rename
+  // installer, no crew:/runner: block) would otherwise never be enumerated.
+  return (
+    content.includes("<!-- runner:start -->") ||
+    content.includes("<!-- crew:start -->") ||
+    content.includes("<!-- loop:start -->")
+  );
 }
 
 // Scans each root in `scanRoots` one level deep for candidate adopter repos:

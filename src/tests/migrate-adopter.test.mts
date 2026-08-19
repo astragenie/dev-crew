@@ -50,6 +50,21 @@ const CREW_BLOCK = [
   "<!-- crew:end -->"
 ].join("\n");
 
+// Third legacy marker pair (pre-runner-plugin-rename "Wiggin Loop"
+// installer). Deliberately carries a raw `/crew:build` dispatch token so
+// tests can assert it does NOT survive (rewritten in place) once the span is
+// recognized and collapsed — reviewer-caught gap, SLICE-26 review.
+const LOOP_BLOCK = [
+  "<!-- loop:start -->",
+  "<!-- Installed by /loop:install. -->",
+  "",
+  "## Autonomous Loop — HARD RULES (summary)",
+  "",
+  "This repo runs the Wiggin Loop autonomously. Run `/crew:build` first.",
+  "",
+  "<!-- loop:end -->"
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // migrate-adopter-markers.mts
 // ---------------------------------------------------------------------------
@@ -87,6 +102,62 @@ test("replaceMarkerBlocks: both crew and runner blocks collapse into one devcrew
   assert.ok(!result.includes("<!-- crew:start -->"));
   assert.ok(!result.includes("<!-- runner:start -->"));
   assert.ok(result.includes("Tail."));
+});
+
+// Reviewer-caught gap (SLICE-26 review, 2026-08-19): a third legacy marker
+// pair (`loop:`, from the pre-runner-plugin-rename "Wiggin Loop" installer)
+// was left unrecognized, surviving as a duplicate stale section with
+// half-rewritten dispatch tokens in 7/16 real adopters. These three tests
+// fail on the pre-fix code (loop: absent from LEGACY_MARKER_PAIRS).
+
+test("replaceMarkerBlocks: loop-only block (no crew/runner) is replaced with the devcrew block", () => {
+  const content = `# CLAUDE.md\n\nProse.\n\n${LOOP_BLOCK}\n\nTail.\n`;
+  const result = replaceMarkerBlocks(
+    content,
+    `${DEVCREW_MARKER_START}\nbody\n${DEVCREW_MARKER_END}`
+  );
+  assert.ok(result.includes(DEVCREW_MARKER_START));
+  assert.ok(!result.includes("<!-- loop:start -->"));
+  assert.ok(!result.includes("<!-- loop:end -->"));
+  assert.ok(result.includes("Tail."));
+});
+
+test("replaceMarkerBlocks: loop and crew blocks both present collapse into exactly one devcrew block", () => {
+  const content = `# CLAUDE.md\n\n${CREW_BLOCK}\n\n${LOOP_BLOCK}\n\nTail.\n`;
+  const result = replaceMarkerBlocks(
+    content,
+    `${DEVCREW_MARKER_START}\nbody\n${DEVCREW_MARKER_END}`
+  );
+  const devcrewStarts = result.split(DEVCREW_MARKER_START).length - 1;
+  assert.equal(devcrewStarts, 1);
+  assert.ok(!result.includes("<!-- crew:start -->"));
+  assert.ok(!result.includes("<!-- loop:start -->"));
+  assert.ok(result.includes("Tail."));
+});
+
+test("migrateAdopterRepo: a dispatch token embedded inside a loop: block does not survive half-rewritten (no /devcrew:build or /loop: residue)", async () => {
+  const repo = await tmpRepo("mig-loop-token-");
+  await writeClaudeMd(repo, `# CLAUDE.md\n\n${CREW_BLOCK}\n\n${LOOP_BLOCK}\n\n## Tail\n`);
+
+  const result = await migrateAdopterRepo(repo, { dryRun: false });
+  const claudeChange = result.changes.find((c) => c.file === "CLAUDE.md");
+  assert.equal(claudeChange?.changed, true);
+
+  const onDisk = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
+  // The whole loop: span (including its distinguishing sentence and raw
+  // `/crew:build` token) is removed by replaceMarkerBlocks BEFORE
+  // rewriteDispatchTokens ever runs — so neither the untouched original
+  // sentence nor a naive whole-file rewrite of it should appear anywhere in
+  // the output. (Checking the exact sentence, not the bare `/devcrew:build`
+  // token in isolation — the real devcrew template legitimately mentions
+  // `/devcrew:build` elsewhere as its own build-entry-point doc line.)
+  assert.ok(!onDisk.includes("Run `/crew:build` first"));
+  assert.ok(!onDisk.includes("Run `/devcrew:build` first"));
+  assert.ok(!onDisk.includes("Wiggin Loop"));
+  assert.ok(!onDisk.includes("<!-- loop:start -->"));
+  assert.ok(!onDisk.includes("<!-- loop:end -->"));
+  const devcrewStarts = onDisk.split(DEVCREW_MARKER_START).length - 1;
+  assert.equal(devcrewStarts, 1);
 });
 
 test("replaceMarkerBlocks: already-devcrew content is a structural no-op when the rendered block is unchanged", () => {
@@ -315,4 +386,15 @@ test("enumerateAdopters: finds repos with a legacy marker block, skips excluded 
 
   const found = await enumerateAdopters([root], ["devcrew"]);
   assert.deepEqual(found, [adopter]);
+});
+
+test("enumerateAdopters: finds a repo carrying only a loop: block (no crew:/runner:)", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "mig-enum-loop-"));
+
+  const loopOnly = path.join(root, "loop-only-adopter");
+  await fs.mkdir(loopOnly, { recursive: true });
+  await fs.writeFile(path.join(loopOnly, "CLAUDE.md"), LOOP_BLOCK);
+
+  const found = await enumerateAdopters([root], []);
+  assert.deepEqual(found, [loopOnly]);
 });
