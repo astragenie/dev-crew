@@ -1,28 +1,15 @@
 {
   "hooks": {
-    "PreToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Bash",
+        "matcher": "startup|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/src/scripts/pre-push-validate.mts\"",
-            "timeout": 30
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" session_start"
           }
         ]
       },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-feat-dispatch.mjs\"",
-            "description": "loop:feat-dispatch-guard"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
       {
         "hooks": [
           {
@@ -54,9 +41,49 @@
         ]
       }
     ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" task_created"
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" task_created",
+            "description": "runner:astrarunner-emit-task-created",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" task_completed"
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" task_completed",
+            "description": "runner:astrarunner-emit-task-completed",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" subagent_start"
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/subagent-start-profile.mts\""
+          },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" subagent_start",
@@ -71,24 +98,32 @@
         "hooks": [
           {
             "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" subagent_stop"
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/otel-subagent-stop.mts\""
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-reviewer-decision.mts\""
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-builder-terminal-state.mts\""
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" subagent_stop",
             "description": "runner:astrarunner-emit-subagent-stop",
             "timeout": 5
-          }
-        ]
-      },
-      {
-        "hooks": [
+          },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/capture-at-close.mjs\"",
             "description": "runner:capture-at-close-subagent-stop",
             "timeout": 8
-          }
-        ]
-      },
-      {
-        "hooks": [
+          },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/report-gate.mjs\"",
@@ -110,26 +145,138 @@
         ]
       }
     ],
-    "TaskCreated": [
+    "TeammateIdle": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" task_created",
-            "description": "runner:astrarunner-emit-task-created",
-            "timeout": 5
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/crew/scripts/log_event.sh\" teammate_idle"
           }
         ]
       }
     ],
-    "TaskCompleted": [
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/preflight-shell.mts\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-bash-gate.mts\""
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-push-gate.mts\"",
+            "description": "devcrew:pre-push-gate (merges crew pre-push-verifier + runner pre-push-validate)",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-redundant-read.mts\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-agent.mts\""
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-model-enforce.mts\""
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/pre-tool-use-dispatch-size.mts\""
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-feat-dispatch.mjs\"",
+            "description": "loop:feat-dispatch-guard"
+          }
+        ]
+      },
+      {
+        "matcher": "TaskUpdate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-task-update-burst.mts\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/record-read-content.mts\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/check-subagent-return.mts\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/post-tool-use-bash-gate.mts\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/record-edit.mts\""
+          }
+        ]
+      },
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/emit-astrarunner-event.mjs\" task_completed",
-            "description": "runner:astrarunner-emit-task-completed",
-            "timeout": 5
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/otel-post-tool-use.mts\""
+          },
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/checkpoint-cadence.mts\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/crew/hooks/otel-stop.mts\""
           }
         ]
       }

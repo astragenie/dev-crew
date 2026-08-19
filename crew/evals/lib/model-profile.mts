@@ -54,8 +54,14 @@ export function validateModelsConfig(data: unknown): ModelsConfig {
     throw new ModelProfileError("models.yaml: root must be an object");
   }
   const cfg = data as Record<string, unknown>;
-  if (typeof cfg["version"] !== "string") {
-    throw new ModelProfileError("models.yaml: missing or invalid 'version'");
+  // Mirrors scripts/lib/models/schema.ts's ModelsConfigSchema version check
+  // (MAJOR.MINOR.PATCH) — enforced identically here so a malformed version
+  // string is rejected the same way by both validators. See
+  // tests/model-profile-schema-parity.test.mts for the guard.
+  if (typeof cfg["version"] !== "string" || !/^\d+\.\d+\.\d+$/.test(cfg["version"])) {
+    throw new ModelProfileError(
+      "models.yaml: missing or invalid 'version' (expected MAJOR.MINOR.PATCH)"
+    );
   }
   if (typeof cfg["default_profile"] !== "string") {
     throw new ModelProfileError("models.yaml: missing or invalid 'default_profile'");

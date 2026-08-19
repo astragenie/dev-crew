@@ -51,7 +51,7 @@ arch_attempt: 0
 arch_status: approved
 arch_review: approved
 started_at: 2026-08-19
-slices_complete: [SLICE-14, SLICE-15, SLICE-16]
+slices_complete: [SLICE-14, SLICE-15, SLICE-16, SLICE-18, SLICE-17]
 ---
 ## Description
 

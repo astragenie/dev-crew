@@ -22,7 +22,8 @@
     "noUncheckedIndexedAccess": true
   },
   "include": [
-    "src/scripts/**/*.mts"
+    "src/scripts/**/*.mts",
+    "hooks/**/*.mts"
   ],
   "exclude": [
     "node_modules",

@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T05:57:18.961Z",
+  "updatedAt": "2026-08-19T06:28:14.482Z",
   "currentRun": {
     "title": "FEAT004 SLICE14: Command map application + dispatch-token rewrite",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
     "startedAt": "2026-08-19T03:07:55.529Z",
-    "updatedAt": "2026-08-19T05:57:18.960Z",
-    "next": "Lead: decide disposition of crew:using-crew (routing-table.yaml line 62 -- no matching skill exists anywhere in the repo, likely dead content from the original dev-team subtree import) and crew:brief-me (commands/brief.md references a retired command name in prose). Both are cosmetic/content, not code-path bugs.",
+    "updatedAt": "2026-08-19T06:28:14.482Z",
+    "next": "P3 spike slice (unification-plan.md Sec 10-A): evaluate prompt-based hooks as the structural fix for the cold-start floor this slice's measurements expose. Separately, once the crew/scripts/lib -> src/scripts/lib merge slice lands, revisit physically relocating crew/hooks/*.mts into hooks/ root per the original ask (crew/tests/telemetry-hooks-json.test.mts will need its HOOKS_JSON_PATH updated in that same slice, not before).",
     "gates": {
       "review": null,
       "validation": null,
@@ -26,7 +26,10 @@
       "handoffs": [
         "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T032404Z-handoff-slice-14-command-map-application-structural-half.md",
         "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T040735Z-handoff-slice-14-fallout-fix-pass-devcrew-token-sweep-gaps-closed-al.md",
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T055718Z-handoff-token-resolver-root-split-fix-crew-agents-commands-skills-mo.md"
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T055718Z-handoff-token-resolver-root-split-fix-crew-agents-commands-skills-mo.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062035Z-handoff-slice-18-models-yaml-model-router-single-source-design-merge.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062758Z-handoff-slice-17-hooks-merge-matcher-scoped-consolidation.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062814Z-handoff-slice-17-hooks-merge-matcher-scoped-consolidation.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
