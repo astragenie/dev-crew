@@ -10,7 +10,11 @@
  *
  * Two rules, both driven by real path resolution (not string matching —
  * `crew/tests/../hooks/lib/x.mjs` string-matches "hooks/" but resolves back
- * inside crew/, and must not be flagged):
+ * inside crew/, and must not be flagged). Extraction covers both static
+ * `from "..."` clauses and dynamic `import("...")` calls (this repo's
+ * dominant lazy-loading idiom) — string-literal specifiers only;
+ * `import(someVar)` / `import(\`${tpl}\`)` are not statically resolvable
+ * and are deliberately not flagged (see extractRelativeImports).
  *
  *   1. root-to-crew: a file under src/** or hooks/** (i.e. outside crew/)
  *      importing a module whose resolved path lands inside crew/ must be on
@@ -119,16 +123,22 @@ interface RawImport {
   spec: string;
 }
 
-// Matches the module specifier on a `from "..."` clause regardless of
-// whether the import/export bindings span multiple lines above it (e.g.
-// `import {\n  a,\n  b\n} from "../x.mjs";` — the "from" line is what
-// matters, not whether the literal word "import" appears on that line).
+// Matches two import shapes:
+//   1. the module specifier on a `from "..."` clause, regardless of whether
+//      the import/export bindings span multiple lines above it (e.g.
+//      `import {\n  a,\n  b\n} from "../x.mjs";` — the "from" line is what
+//      matters, not whether the literal word "import" appears on that line).
+//   2. a dynamic `import("...")` call expression — this repo's dominant
+//      lazy-loading idiom, and a real boundary-scan bypass if left
+//      unmatched (caught live in review). String-literal args only:
+//      `import(someVar)` / `import(\`${x}\`)` are not statically
+//      resolvable and are deliberately not flagged.
 function extractRelativeImports(content: string): RawImport[] {
   const found: RawImport[] = [];
-  const re = /from\s+["']([^"']+)["']/g;
+  const re = /from\s+["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
   let m: RegExpExecArray | null = re.exec(content);
   while (m !== null) {
-    const spec = m[1];
+    const spec = m[1] ?? m[2];
     if (spec?.startsWith(".")) {
       const line = content.slice(0, m.index).split("\n").length;
       found.push({ line, spec });

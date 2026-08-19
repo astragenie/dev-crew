@@ -114,6 +114,49 @@ export { runHook };
   assert.equal(result.ok, true, JSON.stringify(result.violations));
 });
 
+// Stash/neuter-proof: pins file/line/direction/resolvedImport, not just
+// `ok === false` — review found a live bypass where a dynamic
+// `await import("...")` sailed past a static-`from`-only scan.
+test("a dynamic root->crew import() is caught with file:line", async () => {
+  const root = await mkTmp();
+  await writeFileAt(
+    root,
+    "src/scripts/lib/lazy-consumer.mts",
+    `export async function loadUnsanctioned() {
+  const mod = await import("../../../crew/scripts/lib/something-unsanctioned.mjs");
+  return mod;
+}
+`
+  );
+
+  const result = await validateRepoBoundary(root);
+  assert.equal(result.ok, false);
+  assert.equal(result.violations.length, 1);
+  const [violation] = result.violations;
+  assert.equal(violation?.file, "src/scripts/lib/lazy-consumer.mts");
+  assert.equal(violation?.line, 2);
+  assert.equal(violation?.direction, "root-to-crew");
+  assert.equal(violation?.resolvedImport, "crew/scripts/lib/something-unsanctioned.mjs");
+});
+
+test("a dynamic import() of a crew-internal relative path that string-matches a root dir name stays clean", async () => {
+  const root = await mkTmp();
+  // Same string-match trap as the static-import case above, but via
+  // dynamic import(): crew/tests/../hooks/lib/x.mjs resolves to
+  // crew/hooks/lib/x.mjs — still inside crew/, must not be flagged.
+  await writeFileAt(
+    root,
+    "crew/tests/lazy.test.mts",
+    `export async function loadHook() {
+  return await import("../hooks/lib/x.mjs");
+}
+`
+  );
+
+  const result = await validateRepoBoundary(root);
+  assert.equal(result.ok, true, JSON.stringify(result.violations));
+});
+
 test("hooks.json crew-path inventory extraction matches the real fixture shape", async () => {
   const hooksJson = {
     hooks: {
