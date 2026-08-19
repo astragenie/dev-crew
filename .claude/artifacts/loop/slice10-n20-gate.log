@@ -1,0 +1,51 @@
+crew run 1: pass=1971 fail=0
+crew run 2: pass=1971 fail=0
+crew run 3: pass=1971 fail=0
+crew run 4: pass=1971 fail=0
+crew run 5: pass=1971 fail=0
+crew run 6: pass=1971 fail=0
+crew run 7: pass=1971 fail=0
+crew run 8: pass=1971 fail=0
+crew run 9: pass=1971 fail=0
+crew run 10: pass=1971 fail=0
+crew run 11: pass=1971 fail=0
+crew run 12: pass=1971 fail=0
+crew run 13: pass=1971 fail=0
+crew run 14: pass=1971 fail=0
+crew run 15: pass=1971 fail=0
+crew run 16: pass=1971 fail=0
+crew run 17: pass=1971 fail=0
+crew run 18: pass=1971 fail=0
+crew run 19: pass=1971 fail=0
+crew run 20: pass=1971 fail=0
+root run 1: pass=3310 fail=2
+root run 2: pass=3310 fail=2
+root run 3: pass=3310 fail=2
+root run 4: pass=3309 fail=3
+ 3309 pass
+ 7 skip
+ 3 fail
+ 1557 expect() calls
+Ran 3319 tests across 326 files. [32.99s]
+root run 5: pass=3310 fail=2
+root run 6: pass=3310 fail=2
+root run 7: pass=3310 fail=2
+root run 8: pass=3310 fail=2
+root run 9: pass=3310 fail=2
+root run 10: pass=3310 fail=2
+root run 11: pass=3309 fail=3
+ 3309 pass
+ 7 skip
+ 3 fail
+ 1557 expect() calls
+Ran 3319 tests across 326 files. [27.49s]
+root run 12: pass=3310 fail=2
+root run 13: pass=3310 fail=2
+root run 14: pass=3310 fail=2
+root run 15: pass=3310 fail=2
+root run 16: pass=3310 fail=2
+root run 17: pass=3310 fail=2
+root run 18: pass=3310 fail=2
+root run 19: pass=3310 fail=2
+root run 20: pass=3310 fail=2
+SUMMARY crew_bad=0 root_bad=2
