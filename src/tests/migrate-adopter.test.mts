@@ -96,6 +96,16 @@ test("replaceMarkerBlocks: already-devcrew content is a structural no-op when th
   assert.equal(result, content);
 });
 
+test("replaceMarkerBlocks: repeated calls with trailing content after the block do not grow trailing blank lines (AC-2 regression)", () => {
+  const block = `${DEVCREW_MARKER_START}\nbody\n${DEVCREW_MARKER_END}`;
+  const content = `# CLAUDE.md\n\nProse.\n\n${block}\n\n## Project state\n\n@snapshot.md\n`;
+  const once = replaceMarkerBlocks(content, block);
+  const twice = replaceMarkerBlocks(once, block);
+  const thrice = replaceMarkerBlocks(twice, block);
+  assert.equal(once, twice);
+  assert.equal(twice, thrice);
+});
+
 test("hasOnlyDevcrewMarker: true only when exactly one devcrew span and zero legacy spans exist", () => {
   assert.equal(hasOnlyDevcrewMarker(`${DEVCREW_MARKER_START}\nx\n${DEVCREW_MARKER_END}`), true);
   assert.equal(hasOnlyDevcrewMarker(RUNNER_BLOCK), false);
@@ -212,7 +222,14 @@ test("migrateAdopterRepo: --dry-run writes nothing to disk", async () => {
 
 test("migrateAdopterRepo: applies marker regen + config migration, then a second run is a no-op (AC-2)", async () => {
   const repo = await tmpRepo("mig-apply-");
-  await writeClaudeMd(repo, `# CLAUDE.md\n\n${CREW_BLOCK}\n\n${RUNNER_BLOCK}\n`);
+  // Trailing content after the marker block (mirrors real adopter CLAUDE.md
+  // files, which always have a "## Project state" section afterward) —
+  // regression coverage for the trailing-blank-line-growth bug this test
+  // previously missed by ending the fixture right at the marker block.
+  await writeClaudeMd(
+    repo,
+    `# CLAUDE.md\n\n${CREW_BLOCK}\n\n${RUNNER_BLOCK}\n\n## Project state\n\n@snapshot.md\n`
+  );
 
   const first = await migrateAdopterRepo(repo, { dryRun: false });
   const firstClaudeChange = first.changes.find((c) => c.file === "CLAUDE.md");

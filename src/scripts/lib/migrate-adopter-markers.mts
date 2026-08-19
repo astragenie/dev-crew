@@ -119,7 +119,12 @@ export function replaceMarkerBlocks(content: string, renderedBlock: string): str
   const firstStart = spans[0]!.start;
   const lastEnd = spans[spans.length - 1]!.end;
   const before = content.slice(0, firstStart).trimEnd();
-  const after = content.slice(lastEnd).trimStart();
+  // Full trim (not just trimStart) — trailing blank lines/EOF newlines left
+  // in `after` would otherwise survive un-touched inside the joined string
+  // while the final template literal's own `\n` adds one more on top,
+  // growing the file's trailing blank-line count by one on every run (a real
+  // AC-2 idempotence regression found migrating 7/18 real adopters).
+  const after = content.slice(lastEnd).trim();
   const parts = [before, renderedBlock];
   if (after) parts.push(after);
   return `${parts.join("\n\n")}\n`;
