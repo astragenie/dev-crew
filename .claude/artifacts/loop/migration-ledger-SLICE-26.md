@@ -281,3 +281,80 @@ step.
 - devcrew commits: `223961b7` (initial script+tests), `474be650` (AC-2
   trailing-newline fix + regression tests), plus one more for the loop:-marker
   fix + regression tests (SHA in the final return payload).
+
+## SLICE-31 addendum — kb + standards (FEAT-011)
+
+Migrates the 2 adopters this slice skipped (`kb`, `standards` — both lacked
+`.claude/loop.json`, so `migrate-adopter` had nothing to render CLAUDE.md's
+path tokens from). Both are pure-markdown repos (`kb` = AI-native knowledge
+vault, `standards` = canonical engineering-standards repo) — neither has a
+`package.json` or a runtime toolchain; `kb` carries one `.mjs` utility
+script (`scripts/refresh-inventory.mjs`), `standards` a `.ps1` + a
+`tools/scripts` dir. None of devcrew's 6 built-in presets is docs-oriented.
+**Preset: `typescript-plugin-dev`** for both — the least prescriptive/most
+generic of the 6 (source-optional, no frontend/backend storage/infra
+assumptions). **`--light` deliberately NOT applied**: that preset's own
+`light` block docstring warns "do not enable on a repo with no CI test
+gate," and neither `kb` nor `standards` has one.
+
+### Real defect found and fixed first (blocking, not a scope choice)
+
+First attempt (installer run, `migrate-adopter --dry-run` against `kb`)
+surfaced a genuine data-loss bug in `replaceMarkerBlocks`
+(`src/scripts/lib/migrate-adopter-markers.mts`): it collapsed everything
+from the FIRST marker span's start to the LAST marker span's end into one
+block, discarding any hand-authored content sitting *between* two separate
+spans. Invisible across all 18 SLICE-26 adopters (their `crew:`/`runner:`
+blocks always sat adjacent). Fatal for `kb`/`standards`: neither had ever
+had a `runner:` block, so `/devcrew:install` appends the new one at
+file-END, while the pre-existing `crew:start` sits at the top — sandwiching
+the entire hand-authored document body (kb: ~130 lines Mission/Core Mental
+Model/Navigation/Update-triggers; standards: ~62 lines
+Mission/Repository-Structure/Standards-Philosophy/Safety-Rules) in between.
+`--apply` would have deleted all of it. Work stopped short of `--apply` on
+first pass, both repos reverted to pristine (`git status --porcelain`
+empty), finding reported to the lead rather than forced around.
+
+Lead adjusted SLICE-31 scope to include the fix (normally
+`migrate-adopter`/installer are consumed as-is). Fixed by cutting each span
+out independently and preserving all other content (including inter-span
+gaps), inserting the single rendered block at the first removed span's
+position; the AC-2 trailing-trim behavior (SLICE-26) is unchanged. 2
+regression tests added (far-apart spans; three interleaved spans),
+confirmed to FAIL on pre-fix code via `git stash` round-trip
+(`AssertionError: expected surviving body to include: ## Mission` and
+`AssertionError: false == true` on the inter-span content check) before
+being restored to pass. Re-verified zero-diff `--dry-run` against 3
+already-migrated real adopters (`authentic`, `dating`, `memory`) to confirm
+the SLICE-26 estate is unaffected. Full gate run after the fix: `tsc`
+(both configs) clean, `biome lint`/`format` clean, `migrate-adopter.test.mts`
+27/27 pass (25 prior + 2 new), full suite `bun test src/tests/ --parallel`
+3358 pass / 7 skip / 0 fail across 329 files. Committed to devcrew `main`
+as `b1799c11` ("fix(SLICE-31): preserve inter-span content in
+migrate-adopter marker collapse").
+
+### Migration results
+
+| Adopter | Preset | Dry-run diff (post-fix) | Applied | Idempotent | Commit branch | Commit SHA |
+|---|---|---|---|---|---|---|
+| kb | typescript-plugin-dev | marker collapse only (46 lines: crew:→devcrew:, runner: removed) — hand-authored body untouched, confirmed present in output | yes | yes (0 diff) | `main` | `200f26f2b05633716b372de5021859ff73f9b581` |
+| standards | typescript-plugin-dev | marker collapse only (46 lines, same shape) — hand-authored body untouched, confirmed present in output | yes | yes (0 diff) | `feat/adr-012-multi-tenant-schema` (repo's pre-existing checked-out branch — not switched by this slice) | `5fd6e553b31e7b20e49a454840c37a1a6b84ab60` |
+
+Both end states verified directly (not just trusting script output): exactly
+one `<!-- devcrew:start -->...<!-- devcrew:end -->` block, zero
+`crew:`/`runner:`/`loop:` legacy marker literals, `.claude/devcrew.json`
+present with `schemaVersion: 2`, hand-authored body content spot-checked
+present (kb: `## Mission`, `## Core Mental Model`, `## Navigation`,
+"Obsidian-compatible vault" all found; standards: `## Repository Structure`,
+`## Standards Philosophy`, `## Product Repo Expectations`, "Not a product
+repo, not a memory vault" all found). No `git push` run against either
+repo, per forbidden scope.
+
+### Known footgun, not fixed in this slice
+
+`bun src/scripts/loop.mts install --help` is not a recognized flag — it
+silently falls through and executes a real install against `--repo`'s
+default (cwd), rather than erroring or printing usage. Caught once during
+this slice (accidentally ran against devcrew's own repo, reverted
+immediately via `git checkout` on the 5 touched files before any other
+action). Lead is filing this as its own FEAT rather than fixing it here.
