@@ -1,13 +1,13 @@
 ---
 id: FEAT-021
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-44]
 derived_from: null
 pm_customer_impact: 0.2
 pm_effort_estimate: 0.2
@@ -19,6 +19,9 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-08-19
 autonomous_safe: true
 triage_notes: "Concrete, source-verified demand check across every adopter repo in the sole operator's estate shows zero live or historical consumers of dotnet-typescript-vue -- this drives the recommendation to deprecate the preset rather than author a new skill, which Framework 1 would otherwise flag as speculative investment. All five dimensions score low given the small, low-risk, low-value nature of a clean deprecation; lands at the formula's default P2 band (the same treatment given to FEAT-012's trivial cleanup last round) despite being intuitively a low-priority hygiene item, not an urgent one."
+started_at: 2026-08-19
+slices_complete: [SLICE-44]
+completed_at: 2026-08-19
 ---
 ## Description
 

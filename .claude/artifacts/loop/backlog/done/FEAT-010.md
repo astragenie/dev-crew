@@ -1,11 +1,12 @@
 ---
 id: FEAT-010
-status: in-progress
+status: done
 priority: P0
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-19
+completed_at: 2026-08-19
 depends_on: []
 slices: [SLICE-28]
 derived_from: null

@@ -1,13 +1,13 @@
 ---
 id: FEAT-008
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-18
 updated: 2026-08-19
 depends_on: []
-slices: []
+slices: [SLICE-43]
 derived_from: null
 pm_customer_impact: 0.6
 pm_effort_estimate: 0.45
@@ -22,6 +22,9 @@ triage_notes: "Concrete, quantified operational-waste defect (100% idle-ping rec
 tags: ["stack:typescript", "area:dispatch-loop", "concern:agent-reporting"]
 needs_contract: true
 needs_ux: false
+started_at: 2026-08-19
+slices_complete: [SLICE-43]
+completed_at: 2026-08-19
 ---
 ## Description
 

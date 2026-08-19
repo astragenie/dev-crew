@@ -1,20 +1,20 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T21:57:16.462Z",
+  "updatedAt": "2026-08-19T22:40:39.522Z",
   "currentRun": {
-    "title": "FEAT014 SLICE39: Resolve TS6-vs-TS7 compiler-API landmine (design decision + ADR)",
-    "goal": "crew/ flatten phase 2 — unify tsconfig + package.json: single root package.json/bun.lock and one tsconfig strategy for the 287 crew files. Blockers to resolve: crew pinned TS6 because openapi-typescript needs the JS compiler API (native tsc 7 lacks it — keep typescript 6 as a devDependency for that tool or replace the tool), NodeNext-vs-Bundler moduleResolution divergence, ~10 crew-only deps to merge. CI crew-tests job then collapses into the root suite invocation.",
+    "title": "FEAT021 SLICE44: Implement FEAT-021",
+    "goal": "Vue skill gap: dotnet-typescript-vue preset's fe block lost its only Vue-framework skill when dead id vue-engineering was deleted (SLICE-35 AC-3 preset repair — no successor skill exists in the catalog). Decide: author a real vue-engineering skill under skills/domain/ui/ (mirroring react-engineering's shape) OR deprecate the dotnet-typescript-vue preset if Vue is no longer a supported stack. Evidence: src/tests/preset-skill-ids.test.mts guards presets against dead ids; the preset currently ships",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T21:51:30.175Z",
-    "updatedAt": "2026-08-19T21:57:16.462Z",
+    "startedAt": "2026-08-19T22:18:21.184Z",
+    "updatedAt": "2026-08-19T22:40:39.522Z",
     "next": "Begin implementation",
     "gates": {
       "review": null,
       "validation": {
         "status": "skipped",
-        "updatedAt": "2026-08-19T21:57:16.462Z",
-        "note": "design-only slice: deliverable is the ADR (0f6c0377), independently endorsed by the SLICE-34 review"
+        "updatedAt": "2026-08-19T22:40:39.522Z",
+        "note": "reviewer piped identical edge receipts through both validator runtimes (exact parity 4/4), fail-soft proven on corrupt/missing/no-receipt inputs, lane-table upsert verified live; artifact 20260819T223854Z approved"
       },
       "deployment": {
         "dev": null,
@@ -26,7 +26,7 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T215130Z-run-brief-feat014-slice39-resolve-ts6-vs-ts7-compiler-api-landmine-des.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T221821Z-run-brief-feat021-slice44-implement-feat-021.md",
       "handoffs": [],
       "reviewResult": null,
       "validationPlan": null,
@@ -39,6 +39,78 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT008 SLICE43: Implement FEAT-008",
+      "goal": "Carried from runner-plugin FEAT-259 (agent SendMessage report-back enforcement) after P0 parent-estate settlement. Three of five slices already shipped in runner-plugin: SLICE-187 (SubagentStop report-gate hook, hooks/report-gate.mjs, shipped default-off with a known prompt-text-proximity false-positive risk documented in FEAT-259.md), SLICE-184 (mandatory final-act SendMessage line across owned agent templates), and SLICE-185 (orchestrator-watchdog decision logic in src/scripts/lib/orchestrator",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T22:18:19.609Z",
+      "updatedAt": "2026-08-19T22:18:19.609Z",
+      "completedAt": "2026-08-19T22:18:19.609Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T221819Z-run-brief-feat008-slice43-implement-feat-008.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT014 SLICE39: Resolve TS6-vs-TS7 compiler-API landmine (design decision + ADR)",
+      "goal": "crew/ flatten phase 2 — unify tsconfig + package.json: single root package.json/bun.lock and one tsconfig strategy for the 287 crew files. Blockers to resolve: crew pinned TS6 because openapi-typescript needs the JS compiler API (native tsc 7 lacks it — keep typescript 6 as a devDependency for that tool or replace the tool), NodeNext-vs-Bundler moduleResolution divergence, ~10 crew-only deps to merge. CI crew-tests job then collapses into the root suite invocation.",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T21:51:30.175Z",
+      "updatedAt": "2026-08-19T21:57:16.462Z",
+      "completedAt": "2026-08-19T21:57:16.462Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "skipped",
+          "updatedAt": "2026-08-19T21:57:16.462Z",
+          "note": "design-only slice: deliverable is the ADR (0f6c0377), independently endorsed by the SLICE-34 review"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T215130Z-run-brief-feat014-slice39-resolve-ts6-vs-ts7-compiler-api-landmine-des.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT019 SLICE38: Implement FEAT-019",
       "goal": "Cut devcrew v1.0.0: bump plugin.json + package.json from 1.0.0-rc.1, update CHANGELOG with the unification summary, bump the astra-marketplace devcrew entry version in a paired commit, tag v1.0.0. Production-promotion class: requires explicit operator approval at execution time — NOT autonomous_safe.",
@@ -138,74 +210,6 @@
       },
       "artifacts": {
         "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210130Z-run-brief-feat016-slice36-implement-feat-016.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT007 SLICE35: Implement FEAT-007",
-      "goal": "Carried from runner-plugin FEAT-230 (task-driven skill selection, decommission presets as the skill source) after P0 parent-estate settlement. SLICE-195 (live crew skill catalog enumerator) already shipped in runner-plugin, evidenced at .claude/artifacts/crew/runs/2026-07-08-feat230-task-driven-skill-selection-contract.md and src/scripts/lib/skill-catalog.mts. Remaining scope, re-framed for the merged repo where the crew<->runner seam this FEAT bridges no longer exists: build a task-signal (stac",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T21:01:29.355Z",
-      "updatedAt": "2026-08-19T21:01:29.355Z",
-      "completedAt": "2026-08-19T21:01:29.355Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210129Z-run-brief-feat007-slice35-implement-feat-007.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT013 SLICE34: Implement FEAT-013",
-      "goal": "crew/ flatten phase 1 — boundary validator + hooks.json path map: add a root validator enforcing the root<->crew/ import boundary (today only convention + CI path strings guard it; the single sanctioned cross-import is hooks/pre-push-gate.mts -> 4 crew modules, allowlist it), and produce a machine-readable inventory of every ${CLAUDE_PLUGIN_ROOT}/crew/... path in .claude-plugin/hooks/hooks.json as the prerequisite map for the later hooks relocation.",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T21:01:27.736Z",
-      "updatedAt": "2026-08-19T21:01:27.736Z",
-      "completedAt": "2026-08-19T21:01:27.736Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210127Z-run-brief-feat013-slice34-implement-feat-013.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
