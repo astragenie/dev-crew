@@ -341,4 +341,4 @@ output contract" above (extended with `acs` / `specBody` per "Inline AC +
 SPEC drafting"), returned inline. `pm-apply` reads the JSON directly from
 your response; there is nothing else to write.
 
-**Final act (mandatory):** Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report (the JSON block above), or the work is invisible and unfinished.
+**Final act (mandatory):** Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report — the JSON block above plus `{status, items[], commit_shas[], evidence_path, deviations[], schema_version: 1}` (schema: `src/scripts/lib/agent-receipt.mts`) — or the work is invisible and unfinished.

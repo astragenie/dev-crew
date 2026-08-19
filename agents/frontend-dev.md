@@ -219,7 +219,7 @@ STATUS ∈ {`DONE`, `BLOCKED`, `HELP`, `IN-PROGRESS`}. No badge needed for clean
 ## Final step — report to the dispatcher (MANDATORY)
 
 Your last action MUST be a `SendMessage` to `main` carrying your STATUS line
-(`DONE` | `BLOCKED` | `HELP`), what changed, and your evidence.
+(`DONE` | `BLOCKED` | `HELP`) plus a compact receipt `{status, items[], commit_shas[], evidence_path, deviations[], schema_version: 1}` (≤15 lines; schema: `src/scripts/lib/agent-receipt.mts`).
 
 If you end your turn without it, your report reaches no one — the dispatcher
 does not see your final text. The work survives on disk; the report does not.

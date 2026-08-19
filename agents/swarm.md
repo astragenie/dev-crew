@@ -137,4 +137,4 @@ the detail; do not duplicate them here.
 
 ## Final act (mandatory)
 
-Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report (the "Return to caller" block above), or the work is invisible and unfinished. This applies to you as the dispatched swarm agent reporting to your caller — separate from the marker-file contract you enforce on your own children.
+Your plain final text is NOT delivered to the orchestrator — your last action MUST be `SendMessage(to: 'main', ...)` with your report — the "Return to caller" block above plus `{status, items[], commit_shas[], evidence_path, deviations[], schema_version: 1}` (schema: `src/scripts/lib/agent-receipt.mts`) — or the work is invisible and unfinished. This applies to you as the dispatched swarm agent reporting to your caller — separate from the marker-file contract you enforce on your own children.

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { LANE_TABLE_REL } from "../scripts/lib/agent-receipt.mjs";
 
 // Tests for hooks/report-gate.mjs — the SubagentStop hook that blocks a
 // dispatched agent from stopping when its dispatch prompt established a
@@ -51,6 +52,40 @@ function assistantSendMessage(): TranscriptLine {
       content: [{ type: "tool_use", name: "SendMessage", input: { to: "main", message: "done" } }]
     }
   };
+}
+
+const SAMPLE_RECEIPT = {
+  status: "DONE",
+  items: ["did the thing"],
+  commit_shas: ["abc1234"],
+  evidence_path: ".claude/artifacts/crew/validations/x.md",
+  deviations: [],
+  schema_version: 1
+};
+
+function assistantSendMessageWithReceipt(receipt: unknown = SAMPLE_RECEIPT): TranscriptLine {
+  return {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [
+        {
+          type: "tool_use",
+          name: "SendMessage",
+          input: { to: "main", message: `DONE\n${JSON.stringify(receipt)}` }
+        }
+      ]
+    }
+  };
+}
+
+async function readLaneTableFile(repo: string): Promise<Record<string, unknown> | null> {
+  try {
+    const raw = await fs.readFile(path.join(repo, LANE_TABLE_REL), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 async function writeTranscript(
@@ -335,5 +370,217 @@ describe("report-gate.mjs — fail-open paths", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("");
     expect(elapsed).toBeLessThan(10000);
+  });
+});
+
+// FEAT-008 / SLICE-43 — receipt detection + lane table. This side effect is
+// independent of the block/approve gate tested above: it runs whether or
+// not features["report-gate"].enabled is set, never touches stdout, and
+// only ever writes .claude/state/loop/receipt-lane-table.json. Every test
+// below asserts on that file, never on result.stdout/status, to keep the
+// two mechanisms' test coverage observably distinct (AC-3).
+describe("report-gate.mjs — receipt detection + lane table", () => {
+  test("valid receipt + agent_id, report-gate feature absent -> lane table entry written anyway", async () => {
+    const repo = await tmpRepo("report-gate-receipt-nogate-");
+    // Deliberately no loop.json at all — this is the "gate is OFF/absent"
+    // case the block decision fails open on, but receipt recording must
+    // not depend on it (see report-gate.mjs's addendum comment).
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt()
+    ]);
+
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcript,
+      agent_id: "agent-1"
+    });
+
+    const table = await readLaneTableFile(repo);
+    expect(table).not.toBeNull();
+    expect(table?.["agent-1"]).toMatchObject({ receiptSeen: true, transcriptPath: transcript });
+  });
+
+  test("SendMessage present but no valid receipt inside it -> no lane table entry", async () => {
+    const repo = await tmpRepo("report-gate-receipt-noreceipt-");
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessage() // message: "done" — no JSON receipt inside
+    ]);
+
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcript,
+      agent_id: "agent-1"
+    });
+
+    const table = await readLaneTableFile(repo);
+    expect(table === null || table["agent-1"] === undefined).toBe(true);
+  });
+
+  test("no SendMessage at all (the report-gate block case) -> lane table stays empty, block still fires", async () => {
+    const repo = await tmpRepo("report-gate-receipt-noreport-");
+    await writeLoopConfig(repo, GATE_ON);
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(REPORT_BACK_PROMPT),
+      assistantText("Done, here is my summary of findings.")
+    ]);
+
+    const result = runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcript,
+      agent_id: "agent-1"
+    });
+
+    // Distinctness (AC-3): the block decision still fires exactly as before...
+    expect(JSON.parse(result.stdout).decision).toBe("block");
+    // ...and the lane table records no receipt sighting for this agent.
+    const table = await readLaneTableFile(repo);
+    expect(table === null || table["agent-1"] === undefined).toBe(true);
+  });
+
+  test("missing agent_id in payload -> no lane table write even with a valid receipt", async () => {
+    const repo = await tmpRepo("report-gate-receipt-noagentid-");
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt()
+    ]);
+
+    runHook({ cwd: repo, hook_event_name: "SubagentStop", agent_transcript_path: transcript });
+
+    const table = await readLaneTableFile(repo);
+    expect(table).toBeNull();
+  });
+
+  test("transcript missing from disk -> no throw, exit 0, no lane table write (fail-soft)", async () => {
+    const repo = await tmpRepo("report-gate-receipt-notranscript-");
+    const goneTranscript = path.join(repo, "already-gone.jsonl");
+
+    const result = runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: goneTranscript,
+      agent_id: "agent-1"
+    });
+
+    expect(result.status).toBe(0);
+    expect(await readLaneTableFile(repo)).toBeNull();
+  });
+
+  test("corrupt JSONL lines around a valid receipt -> still detected, malformed lines skipped", async () => {
+    const repo = await tmpRepo("report-gate-receipt-corruptlines-");
+    const p = path.join(repo, "agent.jsonl");
+    await fs.writeFile(
+      p,
+      [
+        "not json at all",
+        JSON.stringify(userTurn(NO_CONTRACT_PROMPT)),
+        "{ broken json",
+        JSON.stringify(assistantSendMessageWithReceipt()),
+        ""
+      ].join("\n")
+    );
+
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: p,
+      agent_id: "agent-1"
+    });
+
+    const table = await readLaneTableFile(repo);
+    expect(table?.["agent-1"]).toMatchObject({ receiptSeen: true });
+  });
+
+  test("agent sends a draft then a corrected receipt -> the LAST valid receipt wins", async () => {
+    const repo = await tmpRepo("report-gate-receipt-lastwins-");
+    const firstReceipt = { ...SAMPLE_RECEIPT, evidence_path: "first.md" };
+    const secondReceipt = { ...SAMPLE_RECEIPT, evidence_path: "second.md" };
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt(firstReceipt),
+      assistantText("Wait, let me correct that."),
+      assistantSendMessageWithReceipt(secondReceipt)
+    ]);
+
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcript,
+      agent_id: "agent-1"
+    });
+
+    const table = await readLaneTableFile(repo);
+    expect(table?.["agent-1"]).toMatchObject({ receiptSeen: true, transcriptPath: transcript });
+  });
+
+  test("oversized transcript is skipped without being read -> no lane table write", async () => {
+    const repo = await tmpRepo("report-gate-receipt-oversized-");
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt()
+    ]);
+    const size = (await fs.stat(transcript)).size;
+
+    runHook(
+      {
+        cwd: repo,
+        hook_event_name: "SubagentStop",
+        agent_transcript_path: transcript,
+        agent_id: "agent-1"
+      },
+      { REPORT_GATE_MAX_BYTES: String(size - 1) }
+    );
+
+    expect(await readLaneTableFile(repo)).toBeNull();
+  });
+
+  test("stop_hook_active = true -> no lane table write (loop guard applies here too)", async () => {
+    const repo = await tmpRepo("report-gate-receipt-loopguard-");
+    const transcript = await writeTranscript(repo, "agent.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt()
+    ]);
+
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcript,
+      agent_id: "agent-1",
+      stop_hook_active: true
+    });
+
+    expect(await readLaneTableFile(repo)).toBeNull();
+  });
+
+  test("second agent's sighting does not clobber a first agent's existing entry", async () => {
+    const repo = await tmpRepo("report-gate-receipt-multiagent-");
+    const transcriptA = await writeTranscript(repo, "agent-a.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt()
+    ]);
+    const transcriptB = await writeTranscript(repo, "agent-b.jsonl", [
+      userTurn(NO_CONTRACT_PROMPT),
+      assistantSendMessageWithReceipt()
+    ]);
+
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcriptA,
+      agent_id: "agent-a"
+    });
+    runHook({
+      cwd: repo,
+      hook_event_name: "SubagentStop",
+      agent_transcript_path: transcriptB,
+      agent_id: "agent-b"
+    });
+
+    const table = await readLaneTableFile(repo);
+    expect(Object.keys(table ?? {}).sort()).toEqual(["agent-a", "agent-b"]);
   });
 });

@@ -78,8 +78,15 @@
 // than shipping with the existing manual mitigation still in place, so
 // operators must opt in explicitly once they've seen it behave correctly in
 // their own session.
+//
+// FEAT-008 / SLICE-43 addendum: this file also runs a second, independent
+// SubagentStop side effect — receipt detection + lane-table recording. See
+// the "Receipt detection + lane table" comment block below main(), and
+// docs/planning/feat-008-receipt-schema-contract.md for the design. That
+// addition never blocks and is not gated behind reportGateEnabled().
 
 import { createReadStream, readFileSync, statSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
 
@@ -190,6 +197,194 @@ function block(reason) {
   process.exitCode = 0;
 }
 
+// --- Receipt detection + lane table (FEAT-008 / SLICE-43) ----------------
+// Additive extension, alongside the block/approve gate above — none of the
+// functions or call sites above this comment are touched. Detects the
+// structured AgentReceipt ({status, items[], commit_shas[], evidence_path,
+// deviations[], schema_version}) that the 7 owned dispatch templates now
+// require appended to their final SendMessage, and records a sighting in a
+// persisted lane table keyed by agent_id (.claude/state/loop/receipt-lane-
+// table.json). This is the correlation mechanism the amended contract
+// (docs/planning/feat-008-receipt-schema-contract.md, 2026-08-19) promotes
+// from hedge to actual mechanism, ahead of any future TeammateIdle-based
+// consumer.
+//
+// Deliberately NOT gated behind reportGateEnabled(): unlike the block
+// decision, a lane-table write can never false-positive-block an agent —
+// worst case it's a missed or stale sighting, not a stuck subagent — so it
+// doesn't need the same default-off caution. It runs unconditionally so
+// this repo (which does not currently opt into the report-gate block
+// feature) still gets live AC-2/AC-4 coverage of the transcript-scanning
+// path, not just template content.
+//
+// Structural check mirrors src/scripts/lib/agent-receipt.mts's
+// validateAgentReceipt() — reimplemented dependency-free here for the same
+// reason the loop.json reader above is: this file runs via plain `node`,
+// no build step, and cannot import the bun-oriented src/scripts/lib tree.
+// Keep the two shapes in lockstep by hand if the schema changes.
+
+const RECEIPT_STATUSES = new Set(["DONE", "BLOCKED", "HELP", "IN-PROGRESS"]);
+const RECEIPT_SCHEMA_VERSION = 1;
+const LANE_TABLE_REL = path.join(".claude", "state", "loop", "receipt-lane-table.json");
+
+function isStringArray(v) {
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
+
+function isValidReceiptShape(v) {
+  return (
+    v !== null &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    RECEIPT_STATUSES.has(v.status) &&
+    isStringArray(v.items) &&
+    isStringArray(v.commit_shas) &&
+    (v.evidence_path === null || typeof v.evidence_path === "string") &&
+    isStringArray(v.deviations) &&
+    v.schema_version === RECEIPT_SCHEMA_VERSION
+  );
+}
+
+/** Extracts every SendMessage tool_use's string `input.message`, in
+ * transcript order — mirrors hasSendMessageToolUse's detection shape but
+ * returns the payload text instead of a boolean, since receipt detection
+ * needs the content, not just presence. */
+function sendMessageTexts(obj) {
+  if (obj?.type !== "assistant") return [];
+  const content = obj.message?.content;
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter((b) => b?.type === "tool_use" && b?.name === "SendMessage")
+    .map((b) => b?.input?.message)
+    .filter((m) => typeof m === "string");
+}
+
+/** Finds the first balanced {...} JSON object substring in `text` and
+ * returns it parsed if it validates as an AgentReceipt, else null. Brace
+ * balancing does not account for `{`/`}` inside JSON string values (same
+ * documented looseness as REPORT_BACK_CONTRACT_RE above) — worst case a
+ * malformed candidate fails JSON.parse and this returns null, which is the
+ * safe/conservative outcome for a fail-soft detector. Never throws. */
+function extractReceipt(text) {
+  if (typeof text !== "string") return null;
+  let searchFrom = 0;
+  while (true) {
+    const start = text.indexOf("{", searchFrom);
+    if (start === -1) return null;
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "{") depth++;
+      else if (text[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end === -1) return null; // unbalanced — no candidate left to try
+    const candidate = text.slice(start, end + 1);
+    try {
+      const parsed = JSON.parse(candidate);
+      if (isValidReceiptShape(parsed)) return parsed;
+    } catch {
+      // not JSON — fall through and try the next '{'
+    }
+    searchFrom = end + 1;
+  }
+}
+
+/** Single bounded pass over the transcript: collects whether any
+ * SendMessage tool_use appeared and the LAST valid receipt found among
+ * them (an agent may draft-then-resend; the final one wins). Independent
+ * of scanTranscript() above — deliberately not sharing its early-break
+ * optimization, which stops once presence alone is known and would miss a
+ * later, receipt-bearing SendMessage. Never throws on a bad line. */
+async function scanTranscriptForReceipt(transcriptPath) {
+  let sawSendMessage = false;
+  let receipt = null;
+  const rl = readline.createInterface({
+    input: createReadStream(transcriptPath),
+    crlfDelay: Infinity
+  });
+  try {
+    for await (const line of rl) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      let obj;
+      try {
+        obj = JSON.parse(trimmed);
+      } catch {
+        continue;
+      }
+      for (const msg of sendMessageTexts(obj)) {
+        sawSendMessage = true;
+        const found = extractReceipt(msg);
+        if (found) receipt = found;
+      }
+    }
+  } finally {
+    rl.close();
+  }
+  return { sawSendMessage, receipt };
+}
+
+async function readLaneTable(repoPath) {
+  try {
+    const raw = await readFile(path.join(repoPath, LANE_TABLE_REL), "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch {
+    // fail-open: absent or malformed file -> empty table
+  }
+  return {};
+}
+
+async function upsertLaneEntry(repoPath, agentId, entry) {
+  const table = await readLaneTable(repoPath);
+  table[agentId] = entry;
+  const filePath = path.join(repoPath, LANE_TABLE_REL);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(table, null, 2)}\n`, "utf8");
+}
+
+/** Guarded-fire: scans the transcript for a valid receipt and, if found,
+ * records the sighting in the lane table keyed by agent_id. Every failure
+ * path (missing transcript path, missing agent_id, stat failure, oversized
+ * transcript, scan timeout/error, no receipt found) resolves to a silent
+ * no-op — this function never throws and never blocks the stop decision.
+ * The caller additionally wraps the call in .catch(() => {}) as a last-
+ * resort backstop. */
+async function recordReceiptSighting(payload, repoPath) {
+  const transcriptPath = payload.agent_transcript_path;
+  if (!transcriptPath || typeof transcriptPath !== "string") return;
+  const agentId = payload.agent_id;
+  if (!agentId || typeof agentId !== "string") return; // lane table is keyed by agent_id
+
+  let stat;
+  try {
+    stat = statSync(transcriptPath);
+  } catch {
+    return; // transcript already gone — fail open
+  }
+  if (stat.size > MAX_TRANSCRIPT_BYTES) return; // bounded work — skip
+
+  let scan;
+  try {
+    scan = await withTimeout(scanTranscriptForReceipt(transcriptPath), TIMEOUT_MS);
+  } catch {
+    return; // parse error or timeout — fail open
+  }
+  if (!scan.receipt) return; // no valid receipt found yet — nothing to record
+
+  await upsertLaneEntry(repoPath, agentId, {
+    receiptSeen: true,
+    transcriptPath,
+    ts: new Date().toISOString()
+  });
+}
+
 async function main() {
   const payload = readHookPayload();
   if (!payload) return; // malformed stdin — fail open
@@ -199,6 +394,9 @@ async function main() {
   if (payload.stop_hook_active === true) return;
 
   const repoPath = (typeof payload.cwd === "string" && payload.cwd) || process.cwd();
+
+  await recordReceiptSighting(payload, repoPath).catch(() => {});
+
   if (!reportGateEnabled(repoPath)) return; // opt-in feature, off by default
 
   const transcriptPath = payload.agent_transcript_path;
