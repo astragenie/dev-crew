@@ -5,6 +5,35 @@ prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
 `crew`+`runner` plugin ships under the name `devcrew`.
 
+## [1.0.0] — 2026-08-19 — devcrew: the unified crew+runner plugin
+
+First stable release of **devcrew**, the merger of the `crew` (dev-team)
+and `runner` (runner-plugin) Claude Code plugins into one repo, one
+plugin, one release train. Highlights of the unification program
+(27 slices, P0–P5) and the post-cutover hardening wave (11 more slices):
+
+- **One plugin**: single agent/skill/command registry (33+1 commands,
+  26+14 agents, 79 skills), single 42-gate CI, single test suite
+  (root 3418 + crew 1878 tests, 0 fail). The crew↔runner `execFile`
+  seam is gone — ordinary function calls under `devcrew.json`
+  (schemaVersion 2) config.
+- **Marketplace**: install `devcrew` from the `astra` marketplace; the
+  `crew` and `runner` entries are retired. 20 adopter repos migrated
+  (marker blocks collapsed to one `devcrew` block, dispatch tokens
+  rewritten, config migrated with .bak backups).
+- **Enforcement hooks** (ported from dev-team v0.67.0): SubagentStop
+  gate-guard + PreToolUse artifact-lock, block mode.
+- **New CI gates**: root↔crew import boundary (10 sanctioned bridges),
+  preset-vs-catalog skill referential integrity, agent/skill content
+  validators now blocking, learnings schema, branding scrub.
+- **CLI safety (P0)**: every subcommand honors `--help` before any side
+  effect across all dispatch surfaces (COMMANDS registry, config router,
+  waveCli); unknown flags hard-fail pre-handler.
+- **Skill routing**: task-signal matcher against the live skills catalog
+  replaces rotting preset skill lists (presets remain fallback-only).
+- Both parent repos are archived (banner + `archived-superseded-by-devcrew`
+  tags); full history preserved in this repo.
+
 ## [1.0.0-rc.1] — 2026-08-19 — command-surface consolidation (FEAT-016 / SLICE-36)
 
 Executes the blank-page 39-command audit's merge/cut list
