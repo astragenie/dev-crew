@@ -39,7 +39,7 @@ export async function discoverTestFiles(
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
-      } else if (entry.isFile() && entry.name.endsWith(".test.ts")) {
+      } else if (entry.isFile() && entry.name.endsWith(".test.mts")) {
         out.push(path.relative(root, full).split(path.sep).join("/"));
       }
     }

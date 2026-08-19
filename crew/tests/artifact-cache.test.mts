@@ -1,5 +1,4 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -19,10 +18,10 @@ test("getCachedArtifact: returns parsed frontmatter and body", async () => {
   );
   try {
     const result = await getCachedArtifact(filePath);
-    assert.equal(result.fm.id, "SLICE-1");
-    assert.equal(result.fm.title, "Test");
-    assert.ok(result.body.includes("# Heading"));
-    assert.ok(typeof result.mtimeMs === "number");
+    expect(result.fm.id).toBe("SLICE-1");
+    expect(result.fm.title).toBe("Test");
+    expect(result.body.includes("# Heading")).toBeTruthy();
+    expect(typeof result.mtimeMs === "number").toBeTruthy();
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
@@ -36,7 +35,7 @@ test("getCachedArtifact: second call returns cached result without re-reading", 
     const first = await getCachedArtifact(filePath);
     const second = await getCachedArtifact(filePath);
     // Same object reference means cache was hit
-    assert.strictEqual(first, second);
+    expect(first).toBe(second);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
@@ -46,26 +45,25 @@ test("getCachedArtifact: cache invalidated when file changes (mtime advances)", 
   const { dir, filePath } = await writeTmp("---\nid: OLD\n---\nOld body");
   try {
     const first = await getCachedArtifact(filePath);
-    assert.equal(first.fm.id, "OLD");
+    expect(first.fm.id).toBe("OLD");
 
     // Write new content and force a new mtime by delaying slightly
     await new Promise((r) => setTimeout(r, 10));
     await fs.writeFile(filePath, "---\nid: NEW\n---\nNew body", "utf8");
 
     const second = await getCachedArtifact(filePath);
-    assert.equal(second.fm.id, "NEW");
-    assert.notStrictEqual(first, second);
+    expect(second.fm.id).toBe("NEW");
+    expect(first).not.toBe(second);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
 });
 
 test("getCachedArtifact: throws for missing file", async () => {
-  await assert.rejects(
-    () => getCachedArtifact("/nonexistent/path/missing.md"),
-    (err) => {
-      assert.equal((err as NodeJS.ErrnoException).code, "ENOENT");
-      return true;
-    }
-  );
+  try {
+    await getCachedArtifact("/nonexistent/path/missing.md");
+    throw new Error("expected getCachedArtifact to reject");
+  } catch (err) {
+    expect((err as NodeJS.ErrnoException).code).toBe("ENOENT");
+  }
 });

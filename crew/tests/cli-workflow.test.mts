@@ -1,8 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { before, after } from "node:test";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect, beforeAll, afterAll } from "bun:test";
 import { runCrew } from "../scripts/crew.mjs";
 import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 
@@ -14,13 +12,13 @@ import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 let fixtureRoot: string;
 let savedProjectsRoot: string | undefined;
 
-before(async () => {
+beforeAll(async () => {
   savedProjectsRoot = process.env.CREW_PROJECTS_ROOT;
   fixtureRoot = await makeTempDir("crew-workflow-fixture-");
   process.env.CREW_PROJECTS_ROOT = fixtureRoot;
 });
 
-after(async () => {
+afterAll(async () => {
   if (savedProjectsRoot === undefined) delete process.env.CREW_PROJECTS_ROOT;
   else process.env.CREW_PROJECTS_ROOT = savedProjectsRoot;
   await fs.rm(fixtureRoot, { recursive: true, force: true });
@@ -129,38 +127,36 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
   ]);
 
   const wakeUpResult = await runCrew(["wake-up", "--repo", repoPath]);
-  assert.equal(wakeUpResult.code, 0, "wake-up should exit with code 0");
+  expect(wakeUpResult.code).toBe(0);
   const wakeUp = JSON.parse(wakeUpResult.output);
 
-  assert.equal(wakeUp.summary.memoryPolicy, "bounded-v1");
-  assert.equal(wakeUp.summary.activeClaims, 1);
-  assert.equal(wakeUp.summary.openApprovals, 1);
-  assert.equal(wakeUp.summary.hasActiveWorkflow, true);
-  assert.deepEqual(wakeUp.summary.pendingWorkflowBadges, ["review_required"]);
-  assert.equal(wakeUp.summary.hasDeploymentGuidance, true);
-  assert.equal(wakeUp.summary.repoMemoryFiles >= 1, true);
-  assert.equal(wakeUp.summary.hasRecentRunMemory, true);
-  assert.match(wakeUp.repoGuidance.deployment.title, /Wake-up deployment model/);
-  assert.equal(wakeUp.repoGuidance.deployment.discoveryStatus, "repo-derived");
-  assert.match(wakeUp.latestArtifacts.runBrief.title, /Wake-up test run/);
-  assert.match(wakeUp.latestArtifacts.validationPlan.title, /Wake-up validation plan/);
-  assert.match(wakeUp.latestArtifacts.validationResult.title, /Wake-up validation result/);
-  assert.match(wakeUp.latestArtifacts.deploymentCheck.title, /Wake-up deployment check/);
-  assert.match(wakeUp.memory.hot.repoGuidance.deployment.title, /Wake-up deployment model/);
-  assert.ok(
-    wakeUp.memory.hot.repoMemory.some((entry: { path: string }) => entry.path.endsWith("CLAUDE.md"))
-  );
-  assert.match(wakeUp.memory.hot.latestArtifacts.runBrief.title, /Wake-up test run/);
-  assert.match(wakeUp.memory.hot.latestArtifacts.validationPlan.title, /Wake-up validation plan/);
-  assert.match(wakeUp.memory.hot.latestArtifacts.deploymentCheck.title, /Wake-up deployment check/);
-  assert.match(wakeUp.memory.warm.validation.title, /Wake-up validation result/);
-  assert.equal(wakeUp.memory.hot.claims.length, 1);
-  assert.equal(wakeUp.memory.hot.openApprovals.length, 1);
-  assert.equal(wakeUp.memory.hot.workflow.currentRun.gates.review.status, "required");
-  assert.ok(wakeUp.memory.cold.archiveCounts.runs >= 1);
-  assert.ok(wakeUp.memory.cold.archiveCounts.validations >= 2);
-  assert.ok(wakeUp.memory.cold.archiveCounts.deployments >= 1);
-  assert.deepEqual(wakeUp.memory.cold.omittedByDefault, [
+  expect(wakeUp.summary.memoryPolicy).toBe("bounded-v1");
+  expect(wakeUp.summary.activeClaims).toBe(1);
+  expect(wakeUp.summary.openApprovals).toBe(1);
+  expect(wakeUp.summary.hasActiveWorkflow).toBe(true);
+  expect(wakeUp.summary.pendingWorkflowBadges).toEqual(["review_required"]);
+  expect(wakeUp.summary.hasDeploymentGuidance).toBe(true);
+  expect(wakeUp.summary.repoMemoryFiles >= 1).toBe(true);
+  expect(wakeUp.summary.hasRecentRunMemory).toBe(true);
+  expect(wakeUp.repoGuidance.deployment.title).toMatch(/Wake-up deployment model/);
+  expect(wakeUp.repoGuidance.deployment.discoveryStatus).toBe("repo-derived");
+  expect(wakeUp.latestArtifacts.runBrief.title).toMatch(/Wake-up test run/);
+  expect(wakeUp.latestArtifacts.validationPlan.title).toMatch(/Wake-up validation plan/);
+  expect(wakeUp.latestArtifacts.validationResult.title).toMatch(/Wake-up validation result/);
+  expect(wakeUp.latestArtifacts.deploymentCheck.title).toMatch(/Wake-up deployment check/);
+  expect(wakeUp.memory.hot.repoGuidance.deployment.title).toMatch(/Wake-up deployment model/);
+  expect(wakeUp.memory.hot.repoMemory.some((entry: { path: string }) => entry.path.endsWith("CLAUDE.md"))).toBeTruthy();
+  expect(wakeUp.memory.hot.latestArtifacts.runBrief.title).toMatch(/Wake-up test run/);
+  expect(wakeUp.memory.hot.latestArtifacts.validationPlan.title).toMatch(/Wake-up validation plan/);
+  expect(wakeUp.memory.hot.latestArtifacts.deploymentCheck.title).toMatch(/Wake-up deployment check/);
+  expect(wakeUp.memory.warm.validation.title).toMatch(/Wake-up validation result/);
+  expect(wakeUp.memory.hot.claims.length).toBe(1);
+  expect(wakeUp.memory.hot.openApprovals.length).toBe(1);
+  expect(wakeUp.memory.hot.workflow.currentRun.gates.review.status).toBe("required");
+  expect(wakeUp.memory.cold.archiveCounts.runs >= 1).toBeTruthy();
+  expect(wakeUp.memory.cold.archiveCounts.validations >= 2).toBeTruthy();
+  expect(wakeUp.memory.cold.archiveCounts.deployments >= 1).toBeTruthy();
+  expect(wakeUp.memory.cold.omittedByDefault).toEqual([
     "older_artifacts",
     "resolved_approvals",
     "full_event_log",
@@ -231,34 +227,30 @@ test("CLI brief-me synthesizes workflow state, git activity, and next step", asy
   await fs.writeFile(path.join(repoPath, "notes.txt"), "untracked\n");
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
 
-  assert.equal(brief.repoPath, repoPath);
-  assert.equal(brief.summary.isGitRepo, true);
-  assert.equal(brief.summary.hasActiveWorkflow, true);
-  assert.deepEqual(brief.summary.pendingWorkflowBadges, ["review_required"]);
-  assert.equal(brief.sections.currentObjective.title, "Brief me test run");
-  assert.equal(brief.sections.currentObjective.goal, "Exercise repo briefing");
-  assert.equal(brief.sections.recentActivity.git.workingTree.branch, "main");
-  assert.equal(brief.sections.recentActivity.git.workingTree.hasChanges, true);
-  assert.ok(brief.sections.recentActivity.git.workingTree.untrackedCount >= 1);
-  assert.ok(brief.sections.recentActivity.git.workingTree.changedPaths.includes("notes.txt"));
-  assert.equal(brief.sections.recentActivity.latestArtifacts[0].label.length > 0, true);
-  assert.ok(
-    brief.sections.recentActivity.repoMemory.some((entry: { path: string }) =>
+  expect(brief.repoPath).toBe(repoPath);
+  expect(brief.summary.isGitRepo).toBe(true);
+  expect(brief.summary.hasActiveWorkflow).toBe(true);
+  expect(brief.summary.pendingWorkflowBadges).toEqual(["review_required"]);
+  expect(brief.sections.currentObjective.title).toBe("Brief me test run");
+  expect(brief.sections.currentObjective.goal).toBe("Exercise repo briefing");
+  expect(brief.sections.recentActivity.git.workingTree.branch).toBe("main");
+  expect(brief.sections.recentActivity.git.workingTree.hasChanges).toBe(true);
+  expect(brief.sections.recentActivity.git.workingTree.untrackedCount >= 1).toBeTruthy();
+  expect(brief.sections.recentActivity.git.workingTree.changedPaths.includes("notes.txt")).toBeTruthy();
+  expect(brief.sections.recentActivity.latestArtifacts[0].label.length > 0).toBe(true);
+  expect(brief.sections.recentActivity.repoMemory.some((entry: { path: string }) =>
       entry.path.endsWith("CLAUDE.md")
-    )
-  );
-  assert.ok(
-    brief.sections.recentActivity.retrievalGuide.some((entry: { path: string }) =>
+    )).toBeTruthy();
+  expect(brief.sections.recentActivity.retrievalGuide.some((entry: { path: string }) =>
       entry.path.endsWith("CLAUDE.md")
-    )
-  );
-  assert.match(brief.sections.blockedOrMissing.join("\n"), /Independent review is still required/);
-  assert.match(brief.sections.importantReminders.join("\n"), /Working tree has/);
-  assert.match(brief.sections.recommendedNextStep, /Run independent review next/);
-  assert.ok(brief.sections.secondaryOptions.length >= 1);
+    )).toBeTruthy();
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/Independent review is still required/);
+  expect(brief.sections.importantReminders.join("\n")).toMatch(/Working tree has/);
+  expect(brief.sections.recommendedNextStep).toMatch(/Run independent review next/);
+  expect(brief.sections.secondaryOptions.length >= 1).toBeTruthy();
 });
 
 test("CLI brief-me is read-only for an uninitialized repo", async () => {
@@ -266,12 +258,12 @@ test("CLI brief-me is read-only for an uninitialized repo", async () => {
   await fs.writeFile(path.join(repoPath, "README.md"), "# Plain repo\n");
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
 
-  assert.equal(brief.repoPath, repoPath);
-  await assert.rejects(fs.access(path.join(repoPath, ".claude")));
-  assert.match(brief.sections.recommendedNextStep, /\/crew:adopt/);
+  expect(brief.repoPath).toBe(repoPath);
+  await expect(fs.access(path.join(repoPath, ".claude"))).rejects.toThrow();
+  expect(brief.sections.recommendedNextStep).toMatch(/\/crew:adopt/);
 });
 
 test("CLI brief-me surfaces failed gates before generic next steps", async () => {
@@ -305,14 +297,11 @@ test("CLI brief-me surfaces failed gates before generic next steps", async () =>
   ]);
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
 
-  assert.match(
-    brief.sections.blockedOrMissing.join("\n"),
-    /Independent review failed: Missing null guard/
-  );
-  assert.match(brief.sections.recommendedNextStep, /Address the failed review findings/);
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/Independent review failed: Missing null guard/);
+  expect(brief.sections.recommendedNextStep).toMatch(/Address the failed review findings/);
 });
 
 test("CLI workflow state tracks gate badges and artifact progress", async () => {
@@ -334,11 +323,11 @@ test("CLI workflow state tracks gate badges and artifact progress", async () => 
   await runCrew(["mark-badge", "--repo", repoPath, "--badge", "review_required"]);
 
   let workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   let workflow = JSON.parse(workflowResult.output);
-  assert.equal(workflow.summary.currentRun.gates.review.status, "required");
-  assert.deepEqual(workflow.summary.pendingBadges, ["review_required"]);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, []);
+  expect(workflow.summary.currentRun.gates.review.status).toBe("required");
+  expect(workflow.summary.pendingBadges).toEqual(["review_required"]);
+  expect(workflow.summary.missingArtifactWrites).toEqual([]);
 
   await runCrew([
     "write-review-result",
@@ -362,12 +351,12 @@ test("CLI workflow state tracks gate badges and artifact progress", async () => 
   ]);
 
   workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   workflow = JSON.parse(workflowResult.output);
-  assert.equal(workflow.summary.currentRun.gates.review.status, "passed");
-  assert.equal(workflow.summary.currentRun.gates.validation.status, "expected");
-  assert.deepEqual(workflow.summary.pendingBadges, ["validation_expected"]);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, []);
+  expect(workflow.summary.currentRun.gates.review.status).toBe("passed");
+  expect(workflow.summary.currentRun.gates.validation.status).toBe("expected");
+  expect(workflow.summary.pendingBadges).toEqual(["validation_expected"]);
+  expect(workflow.summary.missingArtifactWrites).toEqual([]);
 
   await runCrew([
     "write-validation-result",
@@ -380,20 +369,20 @@ test("CLI workflow state tracks gate badges and artifact progress", async () => 
   ]);
 
   workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   workflow = JSON.parse(workflowResult.output);
-  assert.equal(workflow.summary.currentRun.gates.validation.status, "passed");
-  assert.deepEqual(workflow.summary.pendingBadges, []);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, ["final_synthesis_missing"]);
+  expect(workflow.summary.currentRun.gates.validation.status).toBe("passed");
+  expect(workflow.summary.pendingBadges).toEqual([]);
+  expect(workflow.summary.missingArtifactWrites).toEqual(["final_synthesis_missing"]);
 
   await runCrew(["mark-badge", "--repo", repoPath, "--badge", "dev_deploy_expected"]);
 
   workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   workflow = JSON.parse(workflowResult.output);
-  assert.equal(workflow.summary.currentRun.gates.deployment.dev.status, "expected");
-  assert.deepEqual(workflow.summary.pendingBadges, ["dev_deploy_expected"]);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, []);
+  expect(workflow.summary.currentRun.gates.deployment.dev.status).toBe("expected");
+  expect(workflow.summary.pendingBadges).toEqual(["dev_deploy_expected"]);
+  expect(workflow.summary.missingArtifactWrites).toEqual([]);
 
   await runCrew([
     "write-deployment-check",
@@ -414,11 +403,11 @@ test("CLI workflow state tracks gate badges and artifact progress", async () => 
   ]);
 
   workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   workflow = JSON.parse(workflowResult.output);
-  assert.equal(workflow.summary.currentRun.gates.deployment.dev.status, "passed");
-  assert.deepEqual(workflow.summary.pendingBadges, []);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, ["final_synthesis_missing"]);
+  expect(workflow.summary.currentRun.gates.deployment.dev.status).toBe("passed");
+  expect(workflow.summary.pendingBadges).toEqual([]);
+  expect(workflow.summary.missingArtifactWrites).toEqual(["final_synthesis_missing"]);
 });
 
 test("CLI workflow state and brief-me surface missing artifact write-backs after a completed phase", async () => {
@@ -448,19 +437,16 @@ test("CLI workflow state and brief-me surface missing artifact write-backs after
   ]);
 
   const workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   const workflow = JSON.parse(workflowResult.output);
-  assert.deepEqual(workflow.summary.pendingBadges, []);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, ["review_result_missing"]);
+  expect(workflow.summary.pendingBadges).toEqual([]);
+  expect(workflow.summary.missingArtifactWrites).toEqual(["review_result_missing"]);
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
-  assert.match(
-    brief.sections.blockedOrMissing.join("\n"),
-    /review artifact write-back is still missing/
-  );
-  assert.match(brief.sections.recommendedNextStep, /Write the review-result artifact now/);
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/review artifact write-back is still missing/);
+  expect(brief.sections.recommendedNextStep).toMatch(/Write the review-result artifact now/);
 });
 
 test("CLI workflow state and brief-me surface missing run briefs after meaningful progress starts", async () => {
@@ -478,23 +464,23 @@ test("CLI workflow state and brief-me surface missing run briefs after meaningfu
   ]);
 
   const workflowResult = await runCrew(["show-workflow-state", "--repo", repoPath]);
-  assert.equal(workflowResult.code, 0, "show-workflow-state should exit with code 0");
+  expect(workflowResult.code).toBe(0);
   const workflow = JSON.parse(workflowResult.output);
-  assert.deepEqual(workflow.summary.pendingBadges, ["review_required"]);
-  assert.deepEqual(workflow.summary.missingArtifactWrites, []);
+  expect(workflow.summary.pendingBadges).toEqual(["review_required"]);
+  expect(workflow.summary.missingArtifactWrites).toEqual([]);
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
-  assert.match(brief.sections.blockedOrMissing.join("\n"), /Independent review is still required/);
-  assert.match(brief.sections.recommendedNextStep, /Run independent review next/);
+  expect(brief.sections.blockedOrMissing.join("\n")).toMatch(/Independent review is still required/);
+  expect(brief.sections.recommendedNextStep).toMatch(/Run independent review next/);
 });
 
 test("CLI subcommand help works without error", async () => {
   const helpResult = await runCrew(["write-review-result", "--help"]);
-  assert.equal(helpResult.code, 0, "help should exit with code 0");
-  assert.match(helpResult.output, /write-review-result/);
-  assert.match(helpResult.output, /--decision|--verdict/);
+  expect(helpResult.code).toBe(0);
+  expect(helpResult.output).toMatch(/write-review-result/);
+  expect(helpResult.output).toMatch(/--decision|--verdict/);
 });
 
 test("CLI install-global writes managed global memory into HOME", async () => {
@@ -508,15 +494,15 @@ test("CLI install-global writes managed global memory into HOME", async () => {
     process.env.USERPROFILE = homePath;
 
     const installResult = await runCrew(["install-global"]);
-    assert.equal(installResult.code, 0, "install-global should exit with code 0");
+    expect(installResult.code).toBe(0);
     const result = JSON.parse(installResult.output);
 
-    assert.equal(result.mode, "install-global");
-    assert.match(result.welcome.headline, /Crew/);
-    assert.ok(result.welcome.commands.includes("/crew:init"));
-    assert.equal(result.global.hasGlobalMemory, true);
-    assert.equal(result.global.globalMemoryStale, false);
-    assert.deepEqual(result.writes, [
+    expect(result.mode).toBe("install-global");
+    expect(result.welcome.headline).toMatch(/Crew/);
+    expect(result.welcome.commands.includes("/crew:init")).toBeTruthy();
+    expect(result.global.hasGlobalMemory).toBe(true);
+    expect(result.global.globalMemoryStale).toBe(false);
+    expect(result.writes).toEqual([
       "~/.claude/crew/constitution.md",
       "~/.claude/crew/workflow.md",
       "~/.claude/crew/metadata.json",
@@ -524,9 +510,9 @@ test("CLI install-global writes managed global memory into HOME", async () => {
     ]);
 
     const repeatResult = await runCrew(["install-global"]);
-    assert.equal(repeatResult.code, 0, "install-global repeat should exit with code 0");
+    expect(repeatResult.code).toBe(0);
     const repeatOutput = JSON.parse(repeatResult.output);
-    assert.deepEqual(repeatOutput.writes, []);
+    expect(repeatOutput.writes).toEqual([]);
   } finally {
     // Restore original env vars
     if (savedHome !== undefined) process.env.HOME = savedHome;
@@ -566,9 +552,9 @@ test("mark-badge blocked persists note + blockedBy", async () => {
   const stateContent = await fs.readFile(stateFile, "utf8");
   const state = JSON.parse(stateContent);
 
-  assert.equal(state.currentRun.gates.blocked.status, "blocked");
-  assert.equal(state.currentRun.gates.blocked.note, "Waiting on upstream API spec");
-  assert.equal(state.currentRun.gates.blocked.blockedBy, "ART-2025-12-12-spec-q");
+  expect(state.currentRun.gates.blocked.status).toBe("blocked");
+  expect(state.currentRun.gates.blocked.note).toBe("Waiting on upstream API spec");
+  expect(state.currentRun.gates.blocked.blockedBy).toBe("ART-2025-12-12-spec-q");
 });
 
 test("mark-badge escalated_to_lead persists note", async () => {
@@ -599,11 +585,8 @@ test("mark-badge escalated_to_lead persists note", async () => {
   const stateContent = await fs.readFile(stateFile, "utf8");
   const state = JSON.parse(stateContent);
 
-  assert.equal(state.currentRun.gates.escalation.status, "escalated");
-  assert.equal(
-    state.currentRun.gates.escalation.note,
-    "Scope ambiguous; need stakeholder sign-off"
-  );
+  expect(state.currentRun.gates.escalation.status).toBe("escalated");
+  expect(state.currentRun.gates.escalation.note).toBe("Scope ambiguous; need stakeholder sign-off");
 });
 
 test("brief-me surfaces blocked in pending badges", async () => {
@@ -623,14 +606,11 @@ test("brief-me surfaces blocked in pending badges", async () => {
   await runCrew(["mark-badge", "--repo", repoPath, "--badge", "blocked", "--note", "Reason"]);
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
 
-  assert.ok(
-    (brief.pendingBadges || brief.workflow?.pendingBadges || []).includes("blocked") ||
-      JSON.stringify(brief).includes("blocked"),
-    "brief-me output should mention blocked"
-  );
+  expect((brief.pendingBadges || brief.workflow?.pendingBadges || []).includes("blocked") ||
+      JSON.stringify(brief).includes("blocked")).toBeTruthy();
 });
 
 test("brief-me reports routingTableStale=false when file recent or absent", async () => {
@@ -639,22 +619,22 @@ test("brief-me reports routingTableStale=false when file recent or absent", asyn
 
   // file absent
   let briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   let brief = JSON.parse(briefResult.output);
   let summary = brief.summary || {};
-  assert.equal(summary.routingTablePresent, false);
-  assert.equal(summary.routingTableStale, false);
+  expect(summary.routingTablePresent).toBe(false);
+  expect(summary.routingTableStale).toBe(false);
 
   // file present + fresh
   await fs.mkdir(path.join(repoPath, "docs"), { recursive: true });
   await fs.writeFile(path.join(repoPath, "docs", "routing-table.md"), "# Routing table\n");
 
   briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   brief = JSON.parse(briefResult.output);
   summary = brief.summary || {};
-  assert.equal(summary.routingTablePresent, true);
-  assert.equal(summary.routingTableStale, false);
+  expect(summary.routingTablePresent).toBe(true);
+  expect(summary.routingTableStale).toBe(false);
 });
 
 test("brief-me reports routingTableStale=true when mtime > 30 days old", async () => {
@@ -667,15 +647,12 @@ test("brief-me reports routingTableStale=true when mtime > 30 days old", async (
   await fs.utimes(filePath, oldTime, oldTime);
 
   const briefResult = await runCrew(["brief-me", "--repo", repoPath]);
-  assert.equal(briefResult.code, 0, "brief-me should exit with code 0");
+  expect(briefResult.code).toBe(0);
   const brief = JSON.parse(briefResult.output);
   const summary = brief.summary || {};
-  assert.equal(summary.routingTableStale, true);
-  assert.ok(summary.routingTableAgeDays >= 30);
+  expect(summary.routingTableStale).toBe(true);
+  expect(summary.routingTableAgeDays >= 30).toBeTruthy();
 
   const reminders = brief.sections?.importantReminders || [];
-  assert.ok(
-    reminders.some((r: string) => r.includes("Routing table") && r.includes("stale")),
-    "reminders should mention routing-table staleness"
-  );
+  expect(reminders.some((r: string) => r.includes("Routing table") && r.includes("stale"))).toBeTruthy();
 });

@@ -1,6 +1,5 @@
 // tests/brief-me-hook-health.test.mjs
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 
 import { formatHookHealthSection } from "../scripts/lib/briefing.mjs";
 
@@ -14,9 +13,9 @@ test("formatHookHealthSection returns green header when all hooks clean", () => 
     ]
   };
   const section = formatHookHealthSection(health);
-  assert.match(section, /##\s+Hook health/);
-  assert.match(section, /all hooks clean/i);
-  assert.doesNotMatch(section, /yellow/i);
+  expect(section).toMatch(/##\s+Hook health/);
+  expect(section).toMatch(/all hooks clean/i);
+  expect(section).not.toMatch(/yellow/i);
 });
 
 test("formatHookHealthSection shows error count for yellow hooks", () => {
@@ -27,6 +26,6 @@ test("formatHookHealthSection shows error count for yellow hooks", () => {
     ]
   };
   const section = formatHookHealthSection(health);
-  assert.match(section, /preflight-shell/);
-  assert.match(section, /3/);
+  expect(section).toMatch(/preflight-shell/);
+  expect(section).toMatch(/3/);
 });

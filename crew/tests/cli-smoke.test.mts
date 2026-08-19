@@ -1,23 +1,21 @@
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { execFile, cliPath, makeTempDir } from "./helpers/cli-fixtures.mjs";
 
 test("smoke: claims family (init)", async () => {
   const rootPath = await makeTempDir("crew-smoke-claims-");
   const repoPath = path.join(rootPath, "app");
 
-  const { stdout, stderr } = await execFile("node", [
-    "--experimental-strip-types",
+  const { stdout, stderr } = await execFile("bun", [
     cliPath,
     "init",
     "--repo",
     repoPath
   ]);
 
-  assert.match(stderr, /^(\s*)$/, "stderr should be empty on success");
+  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);
-  assert.equal(result.mode, "init", "result should have mode=init");
+  expect(result.mode, "result should have mode=init").toBe("init");
 });
 
 test("smoke: approvals family (request-approval)", async () => {
@@ -25,10 +23,9 @@ test("smoke: approvals family (request-approval)", async () => {
   const repoPath = path.join(rootPath, "app");
 
   // Init first
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", repoPath]);
+  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
 
-  const { stdout, stderr } = await execFile("node", [
-    "--experimental-strip-types",
+  const { stdout, stderr } = await execFile("bun", [
     cliPath,
     "request-approval",
     "--repo",
@@ -39,9 +36,9 @@ test("smoke: approvals family (request-approval)", async () => {
     "smoke"
   ]);
 
-  assert.match(stderr, /^(\s*)$/, "stderr should be empty on success");
+  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);
-  assert.ok(result.id, "result should have an id field");
+  expect(result.id, "result should have an id field").toBeTruthy();
 });
 
 test("smoke: artifacts family (write-handoff)", async () => {
@@ -49,10 +46,9 @@ test("smoke: artifacts family (write-handoff)", async () => {
   const repoPath = path.join(rootPath, "app");
 
   // Init first
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", repoPath]);
+  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
 
-  const { stdout, stderr } = await execFile("node", [
-    "--experimental-strip-types",
+  const { stdout, stderr } = await execFile("bun", [
     cliPath,
     "write-handoff",
     "--repo",
@@ -61,9 +57,9 @@ test("smoke: artifacts family (write-handoff)", async () => {
     "smoke"
   ]);
 
-  assert.match(stderr, /^(\s*)$/, "stderr should be empty on success");
+  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);
-  assert.ok(result.path, "result should have path field");
+  expect(result.path, "result should have path field").toBeTruthy();
 });
 
 test("smoke: synthesis family (write-final-synthesis)", async () => {
@@ -72,12 +68,11 @@ test("smoke: synthesis family (write-final-synthesis)", async () => {
   const tempProjRoot = await makeTempDir("crew-smoke-proj-");
 
   // Init first
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", repoPath]);
+  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
 
   const { stdout, stderr } = await execFile(
-    "node",
+    "bun",
     [
-      "--experimental-strip-types",
       cliPath,
       "write-final-synthesis",
       "--repo",
@@ -92,9 +87,9 @@ test("smoke: synthesis family (write-final-synthesis)", async () => {
     }
   );
 
-  assert.match(stderr, /^(\s*)$/, "stderr should be empty on success");
+  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);
-  assert.ok(result.path, "result should have path field");
+  expect(result.path, "result should have path field").toBeTruthy();
 });
 
 test("smoke: cost family (cost-advise)", async () => {
@@ -103,17 +98,17 @@ test("smoke: cost family (cost-advise)", async () => {
   const tempProjRoot = await makeTempDir("crew-smoke-cost-proj-");
 
   // Init first
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", repoPath]);
+  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
 
   const { stdout, stderr } = await execFile(
-    "node",
-    ["--experimental-strip-types", cliPath, "cost-advise", "--repo", repoPath],
+    "bun",
+    [cliPath, "cost-advise", "--repo", repoPath],
     {
       env: { ...process.env, CREW_PROJECTS_ROOT: tempProjRoot }
     }
   );
 
-  assert.match(stderr, /^(\s*)$/, "stderr should be empty on success");
+  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
   const result = JSON.parse(stdout);
-  assert.ok(result.artifactPath, "result should have artifactPath field");
+  expect(result.artifactPath, "result should have artifactPath field").toBeTruthy();
 });

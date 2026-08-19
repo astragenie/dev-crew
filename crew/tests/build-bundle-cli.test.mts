@@ -1,5 +1,4 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -25,9 +24,8 @@ test("crew.ts write-build-bundle: writes bundle artifact, prints path", async ()
 
   const crewScript = path.resolve(import.meta.dirname, "..", "scripts", "crew.mts");
   const out = execFileSync(
-    "node",
+    "bun",
     [
-      "--experimental-strip-types",
       crewScript,
       "write-build-bundle",
       "--repo",
@@ -51,7 +49,7 @@ test("crew.ts write-build-bundle: writes bundle artifact, prints path", async ()
   );
 
   const printedPath = out.trim().split(/\r?\n/).pop() ?? "";
-  assert.ok(printedPath.endsWith("build-bundle.md"), `got: ${printedPath}`);
+  expect(printedPath.endsWith("build-bundle.md"), `got: ${printedPath}`).toBeTruthy();
   const stat = await fs.stat(printedPath);
-  assert.ok(stat.size > 0);
+  expect(stat.size > 0).toBeTruthy();
 });

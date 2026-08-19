@@ -130,7 +130,7 @@ describe("workflow-config loader", () => {
 
   test("5. invalid phase order fails validate-workflows.ts CLI (exit 1, stderr contains 'phase order')", () => {
     const fixturePath = path.join(FIXTURES_DIR, "invalid-phase-order.yaml");
-    const result = spawnSync("node", [VALIDATE_SCRIPT, "--config", fixturePath], {
+    const result = spawnSync("bun", [VALIDATE_SCRIPT, "--config", fixturePath], {
       encoding: "utf8",
       cwd: REPO_ROOT
     });

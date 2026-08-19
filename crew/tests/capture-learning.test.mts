@@ -4,11 +4,10 @@
 // capture. Not the S2 MemoryProvider (doesn't exist yet) — this writes
 // straight to .claude/artifacts/loop/learnings.jsonl in a shape S2's Zod
 // schema can adopt without a migration (kind/severity/tags/summary/source).
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
 import { captureFailureLearning } from "../scripts/lib/memory/capture-learning.mjs";
 
 async function makeTempRepo(prefix: string) {
@@ -41,16 +40,16 @@ test("captureFailureLearning appends a failure-kind entry with the forward-compa
       source: "review_fail"
     });
     const lines = await readLearningsLines(repo);
-    assert.equal(lines.length, 1);
+    expect(lines.length).toBe(1);
     const entry = lines[0]!;
-    assert.equal(entry.kind, "failure");
-    assert.equal(entry.agent, "reviewer");
-    assert.equal(entry.severity, "high");
-    assert.equal(entry.summary, "review rejected: missing null guard");
-    assert.deepEqual(entry.tags, ["review-result", "SLICE-01"]);
-    assert.equal(entry.source, "review_fail");
-    assert.equal(typeof entry.ts, "string");
-    assert.ok(!Number.isNaN(Date.parse(entry.ts as string)));
+    expect(entry.kind).toBe("failure");
+    expect(entry.agent).toBe("reviewer");
+    expect(entry.severity).toBe("high");
+    expect(entry.summary).toBe("review rejected: missing null guard");
+    expect(entry.tags).toEqual(["review-result", "SLICE-01"]);
+    expect(entry.source).toBe("review_fail");
+    expect(typeof entry.ts).toBe("string");
+    expect(!Number.isNaN(Date.parse(entry.ts as string))).toBeTruthy();
   } finally {
     await cleanup(repo);
   }
@@ -64,10 +63,10 @@ test("captureFailureLearning creates the parent directory when missing", async (
       source: "validation_fail"
     });
     const lines = await readLearningsLines(repo);
-    assert.equal(lines.length, 1);
-    assert.equal(lines[0]!.agent, null);
-    assert.equal(lines[0]!.severity, "medium", "default severity is medium when unspecified");
-    assert.deepEqual(lines[0]!.tags, [], "default tags is empty array when unspecified");
+    expect(lines.length).toBe(1);
+    expect(lines[0]!.agent).toBe(null);
+    expect(lines[0]!.severity, "default severity is medium when unspecified").toBe("medium");
+    expect(lines[0]!.tags, "default tags is empty array when unspecified").toEqual([]);
   } finally {
     await cleanup(repo);
   }
@@ -79,9 +78,9 @@ test("captureFailureLearning appends (does not overwrite) across multiple calls"
     await captureFailureLearning(repo, { summary: "first", source: "review_fail" });
     await captureFailureLearning(repo, { summary: "second", source: "validation_fail" });
     const lines = await readLearningsLines(repo);
-    assert.equal(lines.length, 2);
-    assert.equal(lines[0]!.summary, "first");
-    assert.equal(lines[1]!.summary, "second");
+    expect(lines.length).toBe(2);
+    expect(lines[0]!.summary).toBe("first");
+    expect(lines[1]!.summary).toBe("second");
   } finally {
     await cleanup(repo);
   }
@@ -93,7 +92,7 @@ test("captureFailureLearning truncates an over-long summary to 280 chars", async
     const longSummary = "x".repeat(500);
     await captureFailureLearning(repo, { summary: longSummary, source: "review_fail" });
     const lines = await readLearningsLines(repo);
-    assert.equal((lines[0]!.summary as string).length, 280);
+    expect((lines[0]!.summary as string).length).toBe(280);
   } finally {
     await cleanup(repo);
   }
@@ -108,9 +107,7 @@ test("captureFailureLearning degrades safely (never throws) when the target path
     const blockerPath = path.join(repo, ".claude", "artifacts", "loop");
     await fs.mkdir(path.dirname(blockerPath), { recursive: true });
     await fs.writeFile(blockerPath, "not a directory", "utf8");
-    await assert.doesNotReject(
-      captureFailureLearning(repo, { summary: "should not throw", source: "review_fail" })
-    );
+    await expect(captureFailureLearning(repo, { summary: "should not throw", source: "review_fail" })).resolves.toBeUndefined();
   } finally {
     await cleanup(repo);
   }

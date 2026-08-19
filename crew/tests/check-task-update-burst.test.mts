@@ -1,6 +1,5 @@
 // FEAT-155: in-process tests for check-task-update-burst hook core.
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -37,7 +36,7 @@ test("FEAT-155: 1 TaskUpdate → no burst row", async () => {
   try {
     await runCheckTaskUpdateBurstHook(makePayload("s1", repo));
     const lines = await readBurstLog(repo);
-    assert.equal(lines.length, 0);
+    expect(lines.length).toBe(0);
   } finally {
     await cleanup(repo);
   }
@@ -49,7 +48,7 @@ test("FEAT-155: 2 consecutive TaskUpdates → no burst row (below threshold)", a
     await runCheckTaskUpdateBurstHook(makePayload("s2", repo));
     await runCheckTaskUpdateBurstHook(makePayload("s2", repo));
     const lines = await readBurstLog(repo);
-    assert.equal(lines.length, 0);
+    expect(lines.length).toBe(0);
   } finally {
     await cleanup(repo);
   }
@@ -62,10 +61,10 @@ test("FEAT-155: 3 consecutive TaskUpdates → burst row written", async () => {
     await runCheckTaskUpdateBurstHook(makePayload("s3", repo));
     await runCheckTaskUpdateBurstHook(makePayload("s3", repo));
     const lines = await readBurstLog(repo);
-    assert.equal(lines.length, 1);
+    expect(lines.length).toBe(1);
     const row: unknown = JSON.parse(lines[0]!);
-    assert.equal((row as Record<string, unknown>).event, "task-update-burst");
-    assert.equal((row as Record<string, unknown>).consecutive_count, 3);
+    expect((row as Record<string, unknown>).event).toBe("task-update-burst");
+    expect((row as Record<string, unknown>).consecutive_count).toBe(3);
   } finally {
     await cleanup(repo);
   }
@@ -78,8 +77,8 @@ test("FEAT-155: 5 consecutive TaskUpdates → 3 burst rows (>=3, >=4, >=5)", asy
       await runCheckTaskUpdateBurstHook(makePayload("s4", repo));
     }
     const lines = await readBurstLog(repo);
-    assert.equal(lines.length, 3);
-    assert.equal((JSON.parse(lines[2]!) as Record<string, unknown>).consecutive_count, 5);
+    expect(lines.length).toBe(3);
+    expect((JSON.parse(lines[2]!) as Record<string, unknown>).consecutive_count).toBe(5);
   } finally {
     await cleanup(repo);
   }
@@ -98,7 +97,7 @@ test("FEAT-155: cost-hygiene config feature disabled → no burst row, no state 
     await runCheckTaskUpdateBurstHook(makePayload("s5", repo));
     await runCheckTaskUpdateBurstHook(makePayload("s5", repo));
     const lines = await readBurstLog(repo);
-    assert.equal(lines.length, 0);
+    expect(lines.length).toBe(0);
     const stateFile = path.join(repo, ".claude", "state", "task-update-burst", "s5.json");
     let stateExists = false;
     try {
@@ -107,7 +106,7 @@ test("FEAT-155: cost-hygiene config feature disabled → no burst row, no state 
     } catch {
       stateExists = false;
     }
-    assert.equal(stateExists, false);
+    expect(stateExists).toBe(false);
   } finally {
     await cleanup(repo);
   }
@@ -119,7 +118,7 @@ test("FEAT-155: malformed payload → no throw, no burst row", async () => {
     await runCheckTaskUpdateBurstHook("not-json");
     await runCheckTaskUpdateBurstHook(JSON.stringify({ session_id: 123 }));
     const lines = await readBurstLog(repo);
-    assert.equal(lines.length, 0);
+    expect(lines.length).toBe(0);
   } finally {
     await cleanup(repo);
   }

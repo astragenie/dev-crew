@@ -1,14 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { runCrew } from "../scripts/crew.mjs";
 import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 
 test("CLI artifact writers create markdown artifacts", async () => {
   const repoPath = await makeTempDir("crew-cli-artifacts-");
   const initResult = await runCrew(["init", "--repo", repoPath]);
-  assert.equal(initResult.code, 0, "init should exit with code 0");
+  expect(initResult.code, "init should exit with code 0").toBe(0);
 
   const runBriefResult = await runCrew([
     "write-run-brief",
@@ -25,11 +24,11 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "--files",
     "app/templates/create.html,static/js/create.js"
   ]);
-  assert.equal(runBriefResult.code, 0, "write-run-brief should exit with code 0");
+  expect(runBriefResult.code, "write-run-brief should exit with code 0").toBe(0);
   const runBriefOutput = JSON.parse(runBriefResult.output);
   const runBriefBody = await fs.readFile(runBriefOutput.path, "utf8");
-  assert.match(runBriefBody, /# Run Brief: Platform guidance feature/);
-  assert.match(runBriefBody, /single-session/);
+  expect(runBriefBody).toMatch(/# Run Brief: Platform guidance feature/);
+  expect(runBriefBody).toMatch(/single-session/);
 
   const reviewResult = await runCrew([
     "write-review-result",
@@ -45,11 +44,11 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "app/templates/create.html",
     "--non-code"
   ]);
-  assert.equal(reviewResult.code, 0, "write-review-result should exit with code 0");
+  expect(reviewResult.code, "write-review-result should exit with code 0").toBe(0);
   const reviewOutput = JSON.parse(reviewResult.output);
   const reviewBody = await fs.readFile(reviewOutput.path, "utf8");
-  assert.match(reviewBody, /# Review Result: Platform guidance review/);
-  assert.match(reviewBody, /approved/);
+  expect(reviewBody).toMatch(/# Review Result: Platform guidance review/);
+  expect(reviewBody).toMatch(/approved/);
 
   const reviewAliasResult = await runCrew([
     "write-review-result",
@@ -61,14 +60,10 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "approved_with_notes",
     "--non-code"
   ]);
-  assert.equal(
-    reviewAliasResult.code,
-    0,
-    "write-review-result with --verdict should exit with code 0"
-  );
+  expect(reviewAliasResult.code, "write-review-result with --verdict should exit with code 0").toBe(0);
   const reviewAliasOutput = JSON.parse(reviewAliasResult.output);
   const reviewAliasBody = await fs.readFile(reviewAliasOutput.path, "utf8");
-  assert.match(reviewAliasBody, /approved_with_notes/);
+  expect(reviewAliasBody).toMatch(/approved_with_notes/);
 
   const validationPlanResult = await runCrew([
     "write-validation-plan",
@@ -85,11 +80,11 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "--evidence",
     "vite build,playwright smoke"
   ]);
-  assert.equal(validationPlanResult.code, 0, "write-validation-plan should exit with code 0");
+  expect(validationPlanResult.code, "write-validation-plan should exit with code 0").toBe(0);
   const validationPlanOutput = JSON.parse(validationPlanResult.output);
   const validationPlanBody = await fs.readFile(validationPlanOutput.path, "utf8");
-  assert.match(validationPlanBody, /# Validation Plan: Platform guidance validation plan/);
-  assert.match(validationPlanBody, /Exercise the create flow and collect smoke evidence/);
+  expect(validationPlanBody).toMatch(/# Validation Plan: Platform guidance validation plan/);
+  expect(validationPlanBody).toMatch(/Exercise the create flow and collect smoke evidence/);
 
   const validationResult = await runCrew([
     "write-validation-result",
@@ -108,12 +103,12 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "--files",
     "http://localhost:5173,app/templates/create.html"
   ]);
-  assert.equal(validationResult.code, 0, "write-validation-result should exit with code 0");
+  expect(validationResult.code, "write-validation-result should exit with code 0").toBe(0);
   const validationOutput = JSON.parse(validationResult.output);
   const validationBody = await fs.readFile(validationOutput.path, "utf8");
-  assert.match(validationBody, /# Validation Result: Platform guidance validation/);
-  assert.match(validationBody, /local/);
-  assert.match(validationBody, /passed/);
+  expect(validationBody).toMatch(/# Validation Result: Platform guidance validation/);
+  expect(validationBody).toMatch(/local/);
+  expect(validationBody).toMatch(/passed/);
 
   const deploymentCheckResult = await runCrew([
     "write-deployment-check",
@@ -138,23 +133,23 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "--files",
     "https://platform-guidance-dev.example.com"
   ]);
-  assert.equal(deploymentCheckResult.code, 0, "write-deployment-check should exit with code 0");
+  expect(deploymentCheckResult.code, "write-deployment-check should exit with code 0").toBe(0);
   const deploymentCheckOutput = JSON.parse(deploymentCheckResult.output);
   const deploymentCheckBody = await fs.readFile(deploymentCheckOutput.path, "utf8");
-  assert.match(deploymentCheckBody, /# Deployment Check: Platform guidance dev deploy/);
-  assert.match(deploymentCheckBody, /cloud-run:platform-guidance-dev/);
-  assert.match(deploymentCheckBody, /https:\/\/platform-guidance-dev\.example\.com/);
-  assert.match(deploymentCheckBody, /platform-guidance-dev-00012-abc/);
+  expect(deploymentCheckBody).toMatch(/# Deployment Check: Platform guidance dev deploy/);
+  expect(deploymentCheckBody).toMatch(/cloud-run:platform-guidance-dev/);
+  expect(deploymentCheckBody).toMatch(/https:\/\/platform-guidance-dev\.example\.com/);
+  expect(deploymentCheckBody).toMatch(/platform-guidance-dev-00012-abc/);
 
   await fs.mkdir(path.join(repoPath, ".github", "workflows"), { recursive: true });
   await fs.writeFile(path.join(repoPath, ".github", "workflows", "deploy.yml"), "name: deploy\n");
   await fs.writeFile(path.join(repoPath, "Dockerfile"), "FROM node:20\n");
 
   const discoverResult = await runCrew(["discover-deployment", "--repo", repoPath]);
-  assert.equal(discoverResult.code, 0, "discover-deployment should exit with code 0");
+  expect(discoverResult.code, "discover-deployment should exit with code 0").toBe(0);
   const discoverOutput = JSON.parse(discoverResult.output);
-  assert.ok(discoverOutput.clues.includes(".github/workflows/deploy.yml"));
-  assert.ok(discoverOutput.clues.includes("Dockerfile"));
+  expect(discoverOutput.clues.includes(".github/workflows/deploy.yml")).toBeTruthy();
+  expect(discoverOutput.clues.includes("Dockerfile")).toBeTruthy();
 
   const guidanceResult = await runCrew([
     "write-deployment-guidance",
@@ -185,22 +180,22 @@ test("CLI artifact writers create markdown artifacts", async () => {
     "--missing",
     "staging playground service url"
   ]);
-  assert.equal(guidanceResult.code, 0, "write-deployment-guidance should exit with code 0");
+  expect(guidanceResult.code, "write-deployment-guidance should exit with code 0").toBe(0);
   const guidanceOutput = JSON.parse(guidanceResult.output);
   const guidanceBody = await fs.readFile(guidanceOutput.path, "utf8");
-  assert.match(guidanceBody, /# Deployment Guidance: Platform guidance deployment model/);
-  assert.match(guidanceBody, /- Discovery Status: live-verified/);
-  assert.match(guidanceBody, /- Verified From:/);
-  assert.match(guidanceBody, /GitHub Actions builds the image/);
-  assert.match(guidanceBody, /Cloud Logging service logs/);
-  assert.match(guidanceBody, /staging playground service url/);
-  assert.match(guidanceBody, /\.github\/workflows\/deploy\.yml/);
+  expect(guidanceBody).toMatch(/# Deployment Guidance: Platform guidance deployment model/);
+  expect(guidanceBody).toMatch(/- Discovery Status: live-verified/);
+  expect(guidanceBody).toMatch(/- Verified From:/);
+  expect(guidanceBody).toMatch(/GitHub Actions builds the image/);
+  expect(guidanceBody).toMatch(/Cloud Logging service logs/);
+  expect(guidanceBody).toMatch(/staging playground service url/);
+  expect(guidanceBody).toMatch(/\.github\/workflows\/deploy\.yml/);
 });
 
 test("write-* commands embed --feature and --phase in frontmatter", async () => {
   const repoPath = await makeTempDir("crew-cli-feature-phase-");
   const initResult = await runCrew(["init", "--repo", repoPath]);
-  assert.equal(initResult.code, 0, "init should exit with code 0");
+  expect(initResult.code, "init should exit with code 0").toBe(0);
 
   // run-brief with feature + phase
   const runBriefResult = await runCrew([
@@ -214,11 +209,11 @@ test("write-* commands embed --feature and --phase in frontmatter", async () => 
     "--phase",
     "3"
   ]);
-  assert.equal(runBriefResult.code, 0, "write-run-brief should exit with code 0");
+  expect(runBriefResult.code, "write-run-brief should exit with code 0").toBe(0);
   const briefPath = JSON.parse(runBriefResult.output).path;
   const briefBody = await fs.readFile(briefPath, "utf8");
-  assert.match(briefBody, /^---\nphase: "3"\nfeature: FEAT-021\nstatus: \w+\n---\n/);
-  assert.match(briefBody, /# Run Brief: Tagged brief/);
+  expect(briefBody).toMatch(/^---\nphase: "3"\nfeature: FEAT-021\nstatus: \w+\n---\n/);
+  expect(briefBody).toMatch(/# Run Brief: Tagged brief/);
 
   // review-result without feature/phase: P1.3 (2026-07-04) now always emits a
   // canonical `decision:` frontmatter line when --decision is set, so "no
@@ -234,14 +229,10 @@ test("write-* commands embed --feature and --phase in frontmatter", async () => 
     "approved",
     "--non-code"
   ]);
-  assert.equal(reviewResult.code, 0, "write-review-result should exit with code 0");
+  expect(reviewResult.code, "write-review-result should exit with code 0").toBe(0);
   const reviewPath = JSON.parse(reviewResult.output).path;
   const reviewBody = await fs.readFile(reviewPath, "utf8");
-  assert.match(
-    reviewBody,
-    /^---\ndecision: approved\n---\n/,
-    "review-result with feature/phase absent still carries the canonical decision frontmatter (P1.3)"
-  );
+  expect(reviewBody, "review-result with feature/phase absent still carries the canonical decision frontmatter (P1.3)").toMatch(/^---\ndecision: approved\n---\n/);
 
   // review-result with only feature emits frontmatter without phase line
   const reviewFeatResult = await runCrew([
@@ -256,15 +247,11 @@ test("write-* commands embed --feature and --phase in frontmatter", async () => 
     "FEAT-007",
     "--non-code"
   ]);
-  assert.equal(
-    reviewFeatResult.code,
-    0,
-    "write-review-result with feature should exit with code 0"
-  );
+  expect(reviewFeatResult.code, "write-review-result with feature should exit with code 0").toBe(0);
   const reviewFeatPath = JSON.parse(reviewFeatResult.output).path;
   const reviewFeatBody = await fs.readFile(reviewFeatPath, "utf8");
-  assert.match(reviewFeatBody, /^---\nfeature: FEAT-007\ndecision: approved\n---\n/);
-  assert.ok(!reviewFeatBody.includes("phase:"), "no phase key when phase omitted");
+  expect(reviewFeatBody).toMatch(/^---\nfeature: FEAT-007\ndecision: approved\n---\n/);
+  expect(!reviewFeatBody.includes("phase:"), "no phase key when phase omitted").toBeTruthy();
 });
 
 test("write-handoff --repo-context appends ## Repo Layout section", async () => {
@@ -282,12 +269,12 @@ test("write-handoff --repo-context appends ## Repo Layout section", async () => 
     "lead",
     "--repo-context"
   ]);
-  assert.equal(result.code, 0, "write-handoff should exit with code 0");
+  expect(result.code, "write-handoff should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
-  assert.ok(output.path, "should return artifact path");
+  expect(output.path, "should return artifact path").toBeTruthy();
   const content = await fs.readFile(output.path, "utf8");
-  assert.match(content, /## Repo Layout/);
-  assert.match(content, /npm scripts:/);
+  expect(content).toMatch(/## Repo Layout/);
+  expect(content).toMatch(/npm scripts:/);
 });
 
 test("write-handoff without --repo-context has no ## Repo Layout section", async () => {
@@ -304,10 +291,10 @@ test("write-handoff without --repo-context has no ## Repo Layout section", async
     "--to",
     "lead"
   ]);
-  assert.equal(result.code, 0, "write-handoff should exit with code 0");
+  expect(result.code, "write-handoff should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  assert.ok(!content.includes("## Repo Layout"), "should not contain Repo Layout without flag");
+  expect(!content.includes("## Repo Layout"), "should not contain Repo Layout without flag").toBeTruthy();
 });
 
 test("write-review-result with --validation-evidence emits frontmatter field and body section", async () => {
@@ -327,20 +314,12 @@ test("write-review-result with --validation-evidence emits frontmatter field and
     "--validation-evidence",
     evidenceText
   ]);
-  assert.equal(result.code, 0, "write-review-result should exit with code 0");
+  expect(result.code, "write-review-result should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  assert.match(
-    content,
-    /validation_evidence:/,
-    "frontmatter should contain validation_evidence key"
-  );
-  assert.ok(content.includes(evidenceText), "frontmatter or body should contain the evidence text");
-  assert.match(
-    content,
-    /## Validation Evidence/,
-    "body should contain ## Validation Evidence section"
-  );
+  expect(content, "frontmatter should contain validation_evidence key").toMatch(/validation_evidence:/);
+  expect(content.includes(evidenceText), "frontmatter or body should contain the evidence text").toBeTruthy();
+  expect(content, "body should contain ## Validation Evidence section").toMatch(/## Validation Evidence/);
 });
 
 test("write-review-result without --validation-evidence emits no frontmatter field and no body section", async () => {
@@ -356,17 +335,11 @@ test("write-review-result without --validation-evidence emits no frontmatter fie
     "approved",
     "--non-code"
   ]);
-  assert.equal(result.code, 0, "write-review-result should exit with code 0");
+  expect(result.code, "write-review-result should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  assert.ok(
-    !content.includes("validation_evidence"),
-    "artifact should have no validation_evidence field when flag omitted"
-  );
-  assert.ok(
-    !content.includes("## Validation Evidence"),
-    "artifact should have no Validation Evidence section when flag omitted"
-  );
+  expect(!content.includes("validation_evidence"), "artifact should have no validation_evidence field when flag omitted").toBeTruthy();
+  expect(!content.includes("## Validation Evidence"), "artifact should have no Validation Evidence section when flag omitted").toBeTruthy();
 });
 
 test("write-review-result with --validation-evidence empty string treats it as omitted", async () => {
@@ -384,17 +357,11 @@ test("write-review-result with --validation-evidence empty string treats it as o
     "--validation-evidence",
     ""
   ]);
-  assert.equal(result.code, 0, "write-review-result should exit with code 0");
+  expect(result.code, "write-review-result should exit with code 0").toBe(0);
   const output = JSON.parse(result.output);
   const content = await fs.readFile(output.path, "utf8");
-  assert.ok(
-    !content.includes("validation_evidence"),
-    "artifact should have no validation_evidence field when flag is empty string"
-  );
-  assert.ok(
-    !content.includes("## Validation Evidence"),
-    "artifact should have no Validation Evidence section when flag is empty string"
-  );
+  expect(!content.includes("validation_evidence"), "artifact should have no validation_evidence field when flag is empty string").toBeTruthy();
+  expect(!content.includes("## Validation Evidence"), "artifact should have no Validation Evidence section when flag is empty string").toBeTruthy();
 });
 
 test("write-validation-result: --findings persisted in frontmatter", async () => {
@@ -414,14 +381,13 @@ test("write-validation-result: --findings persisted in frontmatter", async () =>
       "--findings",
       "pass:2,partial:0,fail:1"
     ]);
-    assert.equal(result.code, 0, "write-validation-result should exit with code 0");
+    expect(result.code, "write-validation-result should exit with code 0").toBe(0);
     const output = JSON.parse(result.output);
     const body = await fs.readFile(output.path, "utf8");
-    assert.match(
+    expect(
       body,
-      /findings:.*pass:2,partial:0,fail:1/,
       "validation artifact must contain findings"
-    );
+    ).toMatch(/findings:.*pass:2,partial:0,fail:1/);
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }
@@ -446,14 +412,13 @@ test("write-deployment-check: --findings persisted in frontmatter", async () => 
       "--findings",
       "healthy:1,degraded:0,down:0"
     ]);
-    assert.equal(result.code, 0, "write-deployment-check should exit with code 0");
+    expect(result.code, "write-deployment-check should exit with code 0").toBe(0);
     const output = JSON.parse(result.output);
     const body = await fs.readFile(output.path, "utf8");
-    assert.match(
+    expect(
       body,
-      /findings:.*healthy:1,degraded:0,down:0/,
       "deployment artifact must contain findings"
-    );
+    ).toMatch(/findings:.*healthy:1,degraded:0,down:0/);
   } finally {
     await fs.rm(repoPath, { recursive: true, force: true });
   }

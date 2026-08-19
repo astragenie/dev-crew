@@ -1,5 +1,4 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -35,29 +34,27 @@ test("assembleBuildBundle: happy path writes bundle with frontmatter and four se
     filesRead: ["c.md"]
   });
 
-  assert.ok(
-    result.path.endsWith("SLICE-99/backend-dev-20260608T223000Z-build-bundle.md") ||
-      result.path.endsWith("SLICE-99\\backend-dev-20260608T223000Z-build-bundle.md")
-  );
-  assert.equal(result.truncated, false);
-  assert.deepEqual(result.filesReadSkipped, []);
+  expect(result.path.endsWith("SLICE-99/backend-dev-20260608T223000Z-build-bundle.md") ||
+      result.path.endsWith("SLICE-99\\backend-dev-20260608T223000Z-build-bundle.md")).toBeTruthy();
+  expect(result.truncated).toBe(false);
+  expect(result.filesReadSkipped).toEqual([]);
 
   const text = await fs.readFile(result.path, "utf8");
-  assert.match(text, /^---\nslice: SLICE-99\n/);
-  assert.match(text, /builder: backend-dev/);
-  assert.match(text, /run_id: 20260608T223000Z/);
-  assert.match(text, /feat: FEAT-999/);
-  assert.match(text, new RegExp(`schema_version: ${SCHEMA_VERSION}`));
-  assert.ok(text.includes("## Handoff"));
-  assert.ok(text.includes("## Diff"));
-  assert.ok(text.includes("## Files touched"));
-  assert.ok(text.includes("## Files read"));
+  expect(text).toMatch(/^---\nslice: SLICE-99\n/);
+  expect(text).toMatch(/builder: backend-dev/);
+  expect(text).toMatch(/run_id: 20260608T223000Z/);
+  expect(text).toMatch(/feat: FEAT-999/);
+  expect(text).toMatch(new RegExp(`schema_version: ${SCHEMA_VERSION}`));
+  expect(text.includes("## Handoff")).toBeTruthy();
+  expect(text.includes("## Diff")).toBeTruthy();
+  expect(text.includes("## Files touched")).toBeTruthy();
+  expect(text.includes("## Files read")).toBeTruthy();
   // Section ordering is fixed:
-  assert.ok(text.indexOf("## Handoff") < text.indexOf("## Diff"));
-  assert.ok(text.indexOf("## Diff") < text.indexOf("## Files touched"));
-  assert.ok(text.indexOf("## Files touched") < text.indexOf("## Files read"));
+  expect(text.indexOf("## Handoff") < text.indexOf("## Diff")).toBeTruthy();
+  expect(text.indexOf("## Diff") < text.indexOf("## Files touched")).toBeTruthy();
+  expect(text.indexOf("## Files touched") < text.indexOf("## Files read")).toBeTruthy();
   // INLINE_HEADER never appears in raw bundle (it is only added by inliner).
-  assert.ok(!text.includes(INLINE_HEADER));
+  expect(!text.includes(INLINE_HEADER)).toBeTruthy();
 });
 
 test("assembleBuildBundle: deleted file in files_read is recorded in files_read_skipped", async () => {
@@ -75,9 +72,9 @@ test("assembleBuildBundle: deleted file in files_read is recorded in files_read_
     filesRead: ["missing.md"]
   });
 
-  assert.deepEqual(result.filesReadSkipped, [{ path: "missing.md", reason: "deleted" }]);
+  expect(result.filesReadSkipped).toEqual([{ path: "missing.md", reason: "deleted" }]);
   const text = await fs.readFile(result.path, "utf8");
-  assert.match(text, /files_read_skipped:/);
+  expect(text).toMatch(/files_read_skipped:/);
 });
 
 test("assembleBuildBundle: outside-repo path in files_read is dropped", async () => {
@@ -94,9 +91,7 @@ test("assembleBuildBundle: outside-repo path in files_read is dropped", async ()
     filesRead: ["../outside.txt"]
   });
 
-  assert.ok(
-    result.filesReadSkipped.some((s) => s.path === "../outside.txt" && s.reason === "outside-repo")
-  );
+  expect(result.filesReadSkipped.some((s) => s.path === "../outside.txt" && s.reason === "outside-repo")).toBeTruthy();
 });
 
 test("assembleBuildBundle: binary file in files_touched is replaced with placeholder", async () => {
@@ -115,7 +110,7 @@ test("assembleBuildBundle: binary file in files_touched is replaced with placeho
   });
 
   const text = await fs.readFile(result.path, "utf8");
-  assert.match(text, /<binary file, 7 bytes, sha=[0-9a-f]{16}>/);
+  expect(text).toMatch(/<binary file, 7 bytes, sha=[0-9a-f]{16}>/);
 });
 
 test("assembleBuildBundle: soft cap drops files_read LRU first", async () => {
@@ -140,10 +135,10 @@ test("assembleBuildBundle: soft cap drops files_read LRU first", async () => {
     sizeCapBytes: 60_000
   });
 
-  assert.equal(result.truncated, true);
+  expect(result.truncated).toBe(true);
   const text = await fs.readFile(result.path, "utf8");
   // old.md (older) dropped first; new.md should still be present.
-  assert.ok(!text.includes("old.md\n\n```\n" + padding));
+  expect(!text.includes("old.md\n\n```\n" + padding)).toBeTruthy();
 });
 
 test("assembleBuildBundle: orphan bundle path when slice is 'unknown'", async () => {
@@ -160,7 +155,7 @@ test("assembleBuildBundle: orphan bundle path when slice is 'unknown'", async ()
     filesRead: []
   });
 
-  assert.ok(result.path.includes(`${path.sep}orphan${path.sep}`));
+  expect(result.path.includes(`${path.sep}orphan${path.sep}`)).toBeTruthy();
 });
 
 test("assembleBuildBundle: deterministic output across two identical runs", async () => {
@@ -180,5 +175,5 @@ test("assembleBuildBundle: deterministic output across two identical runs", asyn
   const first = await fs.readFile(r1.path, "utf8");
   const r2 = await assembleBuildBundle(inputs);
   const second = await fs.readFile(r2.path, "utf8");
-  assert.equal(first, second);
+  expect(first).toBe(second);
 });

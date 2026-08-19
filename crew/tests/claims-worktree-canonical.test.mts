@@ -22,8 +22,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 
 import { claimFiles, releaseFiles, listClaims, checkDisjoint } from "../scripts/lib/claims.mjs";
 import { startWorkflowRun, loadWorkflowState } from "../scripts/lib/workflow-state.mjs";
@@ -71,17 +70,17 @@ test("claiming the same file from the wave worktree and a concurrent chore-branc
   const { wave, chore } = await setupWaveAndChoreLane("conflict");
 
   const waveClaim = await claimFiles(wave, ["src/shared.ts"], { owner: "wave-builder" });
-  assert.equal(waveClaim.ok, true);
-  assert.deepEqual(waveClaim.ok ? waveClaim.value.claimed : [], ["src/shared.ts"]);
+  expect(waveClaim.ok).toBe(true);
+  expect(waveClaim.ok ? waveClaim.value.claimed : []).toEqual(["src/shared.ts"]);
 
   // Same file, claimed from the OTHER worktree by a different owner — this
   // is exactly the "file-claim check between lanes" the issue asks for.
   const choreClaim = await claimFiles(chore, ["src/shared.ts"], { owner: "chore-lane" });
-  assert.equal(choreClaim.ok, true);
+  expect(choreClaim.ok).toBe(true);
   if (!choreClaim.ok) return;
-  assert.deepEqual(choreClaim.value.claimed, [], "conflicting file must not be re-claimed");
-  assert.equal(choreClaim.value.conflicts.length, 1);
-  assert.equal(choreClaim.value.conflicts[0]?.owner, "wave-builder");
+  expect(choreClaim.value.claimed, "conflicting file must not be re-claimed").toEqual([]);
+  expect(choreClaim.value.conflicts.length).toBe(1);
+  expect(choreClaim.value.conflicts[0]?.owner).toBe("wave-builder");
 });
 
 test("disjoint files claimed from each worktree are both visible via listClaims from either worktree (clean cross-lane listing)", async () => {
@@ -95,7 +94,7 @@ test("disjoint files claimed from each worktree are both visible via listClaims 
 
   for (const claims of [fromWave, fromChore]) {
     const paths = claims.map((c) => c.path).sort();
-    assert.deepEqual(paths, ["docs/quickwin.md", "src/wave-only.ts"]);
+    expect(paths).toEqual(["docs/quickwin.md", "src/wave-only.ts"]);
   }
 });
 
@@ -104,12 +103,12 @@ test("releasing a claim from the chore-branch worktree is visible from the wave 
 
   await claimFiles(wave, ["src/temp.ts"], { owner: "wave-builder" });
   const release = await releaseFiles(chore, ["src/temp.ts"], { owner: "wave-builder" });
-  assert.equal(release.ok, true);
+  expect(release.ok).toBe(true);
   if (!release.ok) return;
-  assert.deepEqual(release.value.released, ["src/temp.ts"]);
+  expect(release.value.released).toEqual(["src/temp.ts"]);
 
   const remaining = await listClaims(wave);
-  assert.deepEqual(remaining, []);
+  expect(remaining).toEqual([]);
 });
 
 test("starting a workflow run in the wave worktree does not create or touch workflow-state in the chore-branch worktree (currentRun stays per-worktree)", async () => {
@@ -118,18 +117,18 @@ test("starting a workflow run in the wave worktree does not create or touch work
   await startWorkflowRun(wave, { title: "Wave slice run" });
 
   const waveState = await loadWorkflowState(wave);
-  assert.equal(waveState.currentRun?.title, "Wave slice run");
+  expect(waveState.currentRun?.title).toBe("Wave slice run");
 
   // The chore worktree must not see the wave's currentRun, and must not
   // even have a workflow-state.json written by the wave's run.
   const choreStateFile = path.join(chore, ".claude", "state", "crew", "workflow-state.json");
-  await assert.rejects(
+  await expect(
     fs.access(choreStateFile),
     "chore worktree must have no workflow-state.json yet"
-  );
+  ).rejects.toThrow();
 
   const choreState = await loadWorkflowState(chore, { createIfMissing: false });
-  assert.equal(choreState.currentRun, null);
+  expect(choreState.currentRun).toBe(null);
 });
 
 test("checkDisjoint flags a quick-win candidate that overlaps the active wave lane, and passes a disjoint set (#163 S2)", async () => {
@@ -143,21 +142,18 @@ test("checkDisjoint flags a quick-win candidate that overlaps the active wave la
   const overlapping = await checkDisjoint(chore, ["docs/readme.md", "src/wave-a.ts"], {
     owner: "quickwin-lane"
   });
-  assert.equal(overlapping.disjoint, false);
-  assert.deepEqual(
-    overlapping.overlaps.map((o) => o.path),
-    ["src/wave-a.ts"]
-  );
-  assert.equal(overlapping.overlaps[0]?.owner, "wave-builder");
-  assert.deepEqual(overlapping.available, ["docs/readme.md"]);
+  expect(overlapping.disjoint).toBe(false);
+  expect(overlapping.overlaps.map((o) => o.path)).toEqual(["src/wave-a.ts"]);
+  expect(overlapping.overlaps[0]?.owner).toBe("wave-builder");
+  expect(overlapping.available).toEqual(["docs/readme.md"]);
 
   // A fully disjoint candidate set passes.
   const clean = await checkDisjoint(chore, ["docs/readme.md", "docs/guide.md"], {
     owner: "quickwin-lane"
   });
-  assert.equal(clean.disjoint, true);
-  assert.deepEqual(clean.overlaps, []);
-  assert.deepEqual(clean.available, ["docs/guide.md", "docs/readme.md"]);
+  expect(clean.disjoint).toBe(true);
+  expect(clean.overlaps).toEqual([]);
+  expect(clean.available).toEqual(["docs/guide.md", "docs/readme.md"]);
 });
 
 test("checkDisjoint does not count the quick-win lane's own prior claims as overlaps (idempotent re-check)", async () => {
@@ -168,33 +164,36 @@ test("checkDisjoint does not count the quick-win lane's own prior claims as over
   const recheck = await checkDisjoint(chore, ["docs/quickwin.md", "docs/new.md"], {
     owner: "quickwin-lane"
   });
-  assert.equal(recheck.disjoint, true);
-  assert.deepEqual(recheck.available, ["docs/new.md", "docs/quickwin.md"]);
+  expect(recheck.disjoint).toBe(true);
+  expect(recheck.available).toEqual(["docs/new.md", "docs/quickwin.md"]);
 });
 
 test("claiming from the main repo path itself (no active worktree) is unaffected — regression guard", async () => {
   const { repo } = await setupWaveAndChoreLane("main-direct");
 
   const result = await claimFiles(repo, ["src/main-direct.ts"], { owner: "solo" });
-  assert.equal(result.ok, true);
+  expect(result.ok).toBe(true);
   if (!result.ok) return;
-  assert.deepEqual(result.value.claimed, ["src/main-direct.ts"]);
+  expect(result.value.claimed).toEqual(["src/main-direct.ts"]);
 
   const claims = await listClaims(repo);
-  assert.deepEqual(
-    claims.map((c) => c.path),
-    ["src/main-direct.ts"]
-  );
+  expect(claims.map((c) => c.path)).toEqual(["src/main-direct.ts"]);
 });
 
 test("claiming against a plain non-git directory falls back to repoPath unchanged (test-fixture safety)", async () => {
   const plain = await makeTempDir("claims-plain-");
 
   const result = await claimFiles(plain, ["a.ts"], { owner: "solo" });
-  assert.equal(result.ok, true);
+  expect(result.ok).toBe(true);
   if (!result.ok) return;
-  assert.deepEqual(result.value.claimed, ["a.ts"]);
+  expect(result.value.claimed).toEqual(["a.ts"]);
 
   const claimsPath = path.join(plain, ".claude", "state", "crew", "claims.json");
-  await assert.doesNotReject(fs.access(claimsPath));
+  let accessErr: unknown;
+  try {
+    await fs.access(claimsPath);
+  } catch (e) {
+    accessErr = e;
+  }
+  expect(accessErr).toBeUndefined();
 });

@@ -1,11 +1,10 @@
 // tests/bun-preflight.test.ts
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { assertBunPresent } from "../scripts/lib/installer/bun-preflight.mjs";
 
 test("assertBunPresent: returns the detected bun version when bun is on PATH", () => {
   const got = assertBunPresent({ env: process.env });
-  assert.match(got.version, /^\d+\.\d+\.\d+/);
+  expect(got.version).toMatch(/^\d+\.\d+\.\d+/);
 });
 
 test("assertBunPresent: throws with an install URL when bun is missing", () => {
@@ -16,9 +15,6 @@ test("assertBunPresent: throws with an install URL when bun is missing", () => {
   } catch (e) {
     err = e;
   }
-  assert.ok(err instanceof Error, "expected an Error to be thrown");
-  assert.ok(
-    String(err).includes("https://bun.sh"),
-    `error message should reference bun.sh: ${String(err)}`
-  );
+  expect(err instanceof Error, "expected an Error to be thrown").toBeTruthy();
+  expect(String(err).includes("https://bun.sh"), `error message should reference bun.sh: ${String(err)}`).toBeTruthy();
 });

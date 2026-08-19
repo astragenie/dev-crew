@@ -16,7 +16,7 @@ const analyzeScript = path.join(
   "workflow",
   "test-quality",
   "scripts",
-  "analyze.ts"
+  "analyze.mts"
 );
 const fixtureDir = path.join(repoRoot, "tests", "fixtures", "test-quality");
 

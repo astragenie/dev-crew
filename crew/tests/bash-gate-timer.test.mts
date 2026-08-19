@@ -1,68 +1,67 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { classifyBashGate, startGateTimer, endGateTimer } from "../scripts/lib/bash-gate-timer.mjs";
 
 test("classifyBashGate returns correct gate for bun run typecheck", () => {
-  assert.equal(classifyBashGate("bun run typecheck"), "typecheck");
+  expect(classifyBashGate("bun run typecheck")).toBe("typecheck");
 });
 
 test("classifyBashGate returns correct gate for bun run lint", () => {
-  assert.equal(classifyBashGate("bun run lint"), "lint");
+  expect(classifyBashGate("bun run lint")).toBe("lint");
 });
 
 test("classifyBashGate returns correct gate for bun run format:check", () => {
-  assert.equal(classifyBashGate("bun run format:check"), "format:check");
+  expect(classifyBashGate("bun run format:check")).toBe("format:check");
 });
 
 test("classifyBashGate returns correct gate for bun audit", () => {
-  assert.equal(classifyBashGate("bun audit"), "audit");
+  expect(classifyBashGate("bun audit")).toBe("audit");
 });
 
 test("classifyBashGate returns correct gate for bun run verify:all", () => {
-  assert.equal(classifyBashGate("bun run verify:all"), "verify:all");
+  expect(classifyBashGate("bun run verify:all")).toBe("verify:all");
 });
 
 test("classifyBashGate returns test for bun test", () => {
-  assert.equal(classifyBashGate("bun test"), "test");
+  expect(classifyBashGate("bun test")).toBe("test");
 });
 
 test("classifyBashGate returns test for bun run test", () => {
-  assert.equal(classifyBashGate("bun run test"), "test");
+  expect(classifyBashGate("bun run test")).toBe("test");
 });
 
 test("classifyBashGate returns npm-ci for npm ci", () => {
-  assert.equal(classifyBashGate("npm ci"), "npm-ci");
+  expect(classifyBashGate("npm ci")).toBe("npm-ci");
 });
 
 test("classifyBashGate returns null for ls -la", () => {
-  assert.equal(classifyBashGate("ls -la"), null);
+  expect(classifyBashGate("ls -la")).toBe(null);
 });
 
 test("classifyBashGate returns null for bun run test:node (Node fallback — must not contaminate test bucket)", () => {
-  assert.equal(classifyBashGate("bun run test:node"), null);
+  expect(classifyBashGate("bun run test:node")).toBe(null);
 });
 
 test("classifyBashGate returns null for bun audit-fix (colon-suffixed variant)", () => {
-  assert.equal(classifyBashGate("bun audit-fix"), null);
+  expect(classifyBashGate("bun audit-fix")).toBe(null);
 });
 
 test("classifyBashGate returns null for bun run typecheck:strict (colon-suffixed variant)", () => {
-  assert.equal(classifyBashGate("bun run typecheck:strict"), null);
+  expect(classifyBashGate("bun run typecheck:strict")).toBe(null);
 });
 
 test("classifyBashGate returns test for bun run test (regression — still classifies correctly)", () => {
-  assert.equal(classifyBashGate("bun run test"), "test");
+  expect(classifyBashGate("bun run test")).toBe("test");
 });
 
 test("classifyBashGate returns audit for bun audit (regression — still classifies correctly)", () => {
-  assert.equal(classifyBashGate("bun audit"), "audit");
+  expect(classifyBashGate("bun audit")).toBe("audit");
 });
 
 test("startGateTimer returns null for unknown command", () => {
-  assert.equal(startGateTimer("ls -la"), null);
+  expect(startGateTimer("ls -la")).toBe(null);
 });
 
 test("end-to-end: startGateTimer + endGateTimer writes JSONL row with correct fields", async () => {
@@ -71,7 +70,7 @@ test("end-to-end: startGateTimer + endGateTimer writes JSONL row with correct fi
   process.env["CREW_BASH_GATE_LOG"] = logPath;
   try {
     const handle = startGateTimer("bun run lint");
-    assert.ok(handle !== null, "startGateTimer should return a handle for known command");
+    expect(handle !== null, "startGateTimer should return a handle for known command").toBeTruthy();
     // Sleep 15ms
     await new Promise<void>((r) => setTimeout(r, 15));
     endGateTimer(handle, 0);
@@ -79,12 +78,9 @@ test("end-to-end: startGateTimer + endGateTimer writes JSONL row with correct fi
     await new Promise<void>((r) => setTimeout(r, 50));
     const raw = await fs.readFile(logPath, "utf-8");
     const row = JSON.parse(raw.trim()) as Record<string, unknown>;
-    assert.equal(row["gate"], "lint");
-    assert.equal(row["exitCode"], 0);
-    assert.ok(
-      typeof row["durationMs"] === "number" && row["durationMs"] >= 10,
-      `durationMs ${row["durationMs"]} below floor`
-    );
+    expect(row["gate"]).toBe("lint");
+    expect(row["exitCode"]).toBe(0);
+    expect(typeof row["durationMs"] === "number" && row["durationMs"] >= 10, `durationMs ${row["durationMs"]} below floor`).toBeTruthy();
   } finally {
     delete process.env["CREW_BASH_GATE_LOG"];
     await fs.rm(tmp, { recursive: true, force: true });

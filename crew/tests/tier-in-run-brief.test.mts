@@ -1,8 +1,7 @@
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { execFile as execFileCallback } from "node:child_process";
@@ -14,7 +13,7 @@ const cliPath = path.join(repoRoot, "scripts", "crew.mts");
 
 async function makeTempRepo(prefix: string) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", dir]);
+  await execFile("bun", [cliPath, "init", "--repo", dir]);
   return dir;
 }
 
@@ -23,7 +22,7 @@ async function cleanup(dir: string) {
 }
 
 function runCli(args: string[]) {
-  const result = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, ...args], {
+  const result = spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
     timeout: 30_000
   });
@@ -47,10 +46,10 @@ test("write-run-brief --tier full renders tier field", async () => {
       "--tier",
       "full"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
-    assert.match(body, /Tier: full/, "artifact must contain 'Tier: full'");
+    expect(body, "artifact must contain 'Tier: full'").toMatch(/Tier: full/);
   } finally {
     await cleanup(repoPath);
   }
@@ -69,10 +68,10 @@ test("write-run-brief --tier light renders tier field", async () => {
       "--tier",
       "light"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
-    assert.match(body, /Tier: light/, "artifact must contain 'Tier: light'");
+    expect(body, "artifact must contain 'Tier: light'").toMatch(/Tier: light/);
   } finally {
     await cleanup(repoPath);
   }
@@ -89,10 +88,12 @@ test("write-run-brief without --tier defaults to 'full'", async () => {
       "--title",
       "Default tier run"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
-    assert.match(body, /Tier: full/, "artifact should default to 'Tier: full' when not specified");
+    expect(body, "artifact should default to 'Tier: full' when not specified").toMatch(
+      /Tier: full/
+    );
   } finally {
     await cleanup(repoPath);
   }

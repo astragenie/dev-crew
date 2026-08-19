@@ -24,7 +24,7 @@ import {
 
 const REPO_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const FIXTURES_DIR = path.join(REPO_ROOT, "tests", "fixtures", "universals");
-const SCRIPT_PATH = path.join(REPO_ROOT, "scripts", "render-universal-skills.ts");
+const SCRIPT_PATH = path.join(REPO_ROOT, "scripts", "render-universal-skills.mts");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

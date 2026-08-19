@@ -17,8 +17,7 @@
  * Symlink type='junction' is used for cross-platform compatibility — Windows
  * needs junction for directory symlinks without admin rights.
  */
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { spawn } from "node:child_process";
 import { mkdtemp, rm, mkdir, cp, symlink, readdir, copyFile } from "node:fs/promises";
 import { tmpdir, platform } from "node:os";
@@ -140,10 +139,10 @@ async function spawnHook(opts: {
 function assertNoOtelLeak(stderr: string, hookName: string): void {
   const banned = ["@opentelemetry", "ENOENT", "MODULE_NOT_FOUND"];
   for (const needle of banned) {
-    assert.ok(
+    expect(
       !stderr.includes(needle),
       `${hookName}: disabled-path stderr must not contain "${needle}" — got:\n${stderr}`
-    );
+    ).toBeTruthy();
   }
 }
 
@@ -151,7 +150,7 @@ function assertNoOtelLeak(stderr: string, hookName: string): void {
 // Cases — one per hook entry. Each spawns in an isolated plugin-cache temp dir.
 // ---------------------------------------------------------------------------
 
-test("otel-post-tool-use.ts: disabled path resolves without @opentelemetry/*", async () => {
+test("otel-post-tool-use.mts: disabled path resolves without @opentelemetry/*", async () => {
   const cacheRoot = await buildPluginCacheTemp();
   try {
     const payload = JSON.stringify({
@@ -163,17 +162,17 @@ test("otel-post-tool-use.ts: disabled path resolves without @opentelemetry/*", a
     });
     const result = await spawnHook({
       cacheRoot,
-      hookRelPath: join("hooks", "otel-post-tool-use.ts"),
+      hookRelPath: join("hooks", "otel-post-tool-use.mts"),
       stdinPayload: payload
     });
-    assert.equal(result.exitCode, 0, `hook must exit 0, stderr:\n${result.stderr}`);
+    expect(result.exitCode, `hook must exit 0, stderr:\n${result.stderr}`).toBe(0);
     assertNoOtelLeak(result.stderr, "otel-post-tool-use");
   } finally {
     await rm(cacheRoot, { recursive: true, force: true });
   }
 });
 
-test("otel-stop.ts: disabled path resolves without @opentelemetry/*", async () => {
+test("otel-stop.mts: disabled path resolves without @opentelemetry/*", async () => {
   const cacheRoot = await buildPluginCacheTemp();
   try {
     const payload = JSON.stringify({
@@ -183,17 +182,17 @@ test("otel-stop.ts: disabled path resolves without @opentelemetry/*", async () =
     });
     const result = await spawnHook({
       cacheRoot,
-      hookRelPath: join("hooks", "otel-stop.ts"),
+      hookRelPath: join("hooks", "otel-stop.mts"),
       stdinPayload: payload
     });
-    assert.equal(result.exitCode, 0, `hook must exit 0, stderr:\n${result.stderr}`);
+    expect(result.exitCode, `hook must exit 0, stderr:\n${result.stderr}`).toBe(0);
     assertNoOtelLeak(result.stderr, "otel-stop");
   } finally {
     await rm(cacheRoot, { recursive: true, force: true });
   }
 });
 
-test("otel-subagent-stop.ts: disabled path resolves without @opentelemetry/*", async () => {
+test("otel-subagent-stop.mts: disabled path resolves without @opentelemetry/*", async () => {
   const cacheRoot = await buildPluginCacheTemp();
   try {
     const payload = JSON.stringify({
@@ -203,10 +202,10 @@ test("otel-subagent-stop.ts: disabled path resolves without @opentelemetry/*", a
     });
     const result = await spawnHook({
       cacheRoot,
-      hookRelPath: join("hooks", "otel-subagent-stop.ts"),
+      hookRelPath: join("hooks", "otel-subagent-stop.mts"),
       stdinPayload: payload
     });
-    assert.equal(result.exitCode, 0, `hook must exit 0, stderr:\n${result.stderr}`);
+    expect(result.exitCode, `hook must exit 0, stderr:\n${result.stderr}`).toBe(0);
     assertNoOtelLeak(result.stderr, "otel-subagent-stop");
   } finally {
     await rm(cacheRoot, { recursive: true, force: true });

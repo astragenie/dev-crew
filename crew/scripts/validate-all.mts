@@ -25,7 +25,7 @@ interface ValidatorResult {
 
 function runValidator(script: string): Promise<ValidatorResult> {
   return new Promise((resolve) => {
-    const proc = spawn(process.execPath, ["--experimental-strip-types", join(__dirname, script)], {
+    const proc = spawn("bun", [join(__dirname, script)], {
       stdio: "pipe"
     });
     let output = "";

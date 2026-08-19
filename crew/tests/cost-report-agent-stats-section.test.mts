@@ -2,8 +2,7 @@
  * Tests for the ## Agent stats (rolling) cost-report section (FEAT-159 SLICE-B).
  * Covers renderCostReportAgentStats + the regex extension in decisionSet.
  */
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { writeArtifact } from "../scripts/lib/artifacts/write.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -34,9 +33,9 @@ test("AC-T1: empty agentStats omits the section entirely", async () => {
     outcome: null,
     agentStats: []
   });
-  assert.ok(r.ok, "write should succeed");
+  expect(r.ok).toBeTruthy();
   const md = await fs.readFile((r.value as { path: string }).path, "utf-8");
-  assert.ok(!md.includes("## Agent stats (rolling)"), "section must not appear when rows empty");
+  expect(!md.includes("## Agent stats (rolling)")).toBeTruthy();
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
@@ -58,23 +57,23 @@ test("AC-T2: 7 agents → table shows top-5 by sample_count desc with header + s
     outcome: null,
     agentStats: rows
   });
-  assert.ok(r.ok);
+  expect(r.ok).toBeTruthy();
   const md = await fs.readFile((r.value as { path: string }).path, "utf-8");
-  assert.ok(md.includes("## Agent stats (rolling)"), "section header present");
-  assert.ok(md.includes("Window: `last_n_slices_10`"), "window slug present");
-  assert.ok(md.includes("| Agent | N |"), "table header present");
-  assert.ok(md.includes("|---|---:|"), "alignment row present");
+  expect(md.includes("## Agent stats (rolling)")).toBeTruthy();
+  expect(md.includes("Window: `last_n_slices_10`")).toBeTruthy();
+  expect(md.includes("| Agent | N |")).toBeTruthy();
+  expect(md.includes("|---|---:|")).toBeTruthy();
 
   // Top 5 by sample_count desc: 12, 9, 8, 7, 4 → fullstack-dev, document-writer, reviewer, verifier, backend-dev
-  assert.ok(md.includes("| crew:fullstack-dev | 12 |"), "rank 1");
-  assert.ok(md.includes("| crew:document-writer | 9 |"), "rank 2");
-  assert.ok(md.includes("| crew:reviewer | 8 |"), "rank 3");
-  assert.ok(md.includes("| crew:verifier | 7 |"), "rank 4");
-  assert.ok(md.includes("| crew:backend-dev | 4 |"), "rank 5");
+  expect(md.includes("| crew:fullstack-dev | 12 |")).toBeTruthy();
+  expect(md.includes("| crew:document-writer | 9 |")).toBeTruthy();
+  expect(md.includes("| crew:reviewer | 8 |")).toBeTruthy();
+  expect(md.includes("| crew:verifier | 7 |")).toBeTruthy();
+  expect(md.includes("| crew:backend-dev | 4 |")).toBeTruthy();
 
   // Below top-5 → must NOT appear
-  assert.ok(!md.includes("| crew:frontend-dev |"), "rank 6 excluded");
-  assert.ok(!md.includes("| crew:architect |"), "rank 7 excluded");
+  expect(!md.includes("| crew:frontend-dev |")).toBeTruthy();
+  expect(!md.includes("| crew:architect |")).toBeTruthy();
 
   await fs.rm(tmp, { recursive: true, force: true });
 });
@@ -93,13 +92,13 @@ test("AC-T3: section ordering — agent-stats appears AFTER Per-dispatch breakdo
     },
     agentStats: [mkRow("crew:builder", 5)]
   });
-  assert.ok(r.ok);
+  expect(r.ok).toBeTruthy();
   const md = await fs.readFile((r.value as { path: string }).path, "utf-8");
   const dispatchIdx = md.indexOf("## Per-dispatch breakdown");
   const statsIdx = md.indexOf("## Agent stats (rolling)");
-  assert.ok(dispatchIdx > 0, "Per-dispatch breakdown section present");
-  assert.ok(statsIdx > 0, "Agent stats section present");
-  assert.ok(statsIdx > dispatchIdx, "agent-stats MUST follow Per-dispatch");
+  expect(dispatchIdx > 0).toBeTruthy();
+  expect(statsIdx > 0).toBeTruthy();
+  expect(statsIdx > dispatchIdx).toBeTruthy();
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
@@ -139,7 +138,7 @@ test("AC-T4: regex extension — `rejected` review decision counts toward rework
     validationsDir: path.join(tmp, "validations-empty")
   });
   const builder = rows.find((r) => r.agent === "crew:builder");
-  assert.ok(builder, "builder row present");
-  assert.equal(builder.review_rework_rate, 1, "rejected counts toward rework (1 of 1)");
+  expect(builder).toBeTruthy();
+  expect(builder!.review_rework_rate).toBe(1);
   await fs.rm(tmp, { recursive: true, force: true });
 });

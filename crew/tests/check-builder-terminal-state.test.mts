@@ -4,8 +4,7 @@
 // tests/check-task-update-burst.test.ts; the runCheckXHook(raw) contract
 // mirrors hooks/lib/check-reviewer-decision.ts's runCheckReviewerDecisionHook
 // (dev-team#199 precedent this guard generalizes to builder tier).
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -65,10 +64,10 @@ test("builder-tier stop with no STATUS marker and no artifact path → block", a
       last_assistant_message: "Now let's open the PR."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.ok(out !== null);
+    expect(out !== null).toBeTruthy();
     const parsed = JSON.parse(out as string);
-    assert.equal(parsed.decision, "block");
-    assert.match(parsed.reason, /STATUS/);
+    expect(parsed.decision).toBe("block");
+    expect(parsed.reason).toMatch(/STATUS/);
   } finally {
     await cleanup(repo);
   }
@@ -84,7 +83,7 @@ test("builder-tier stop with a BLOCKED: line → pass (blocked is itself a valid
       last_assistant_message: "BLOCKED: waiting on external API credentials."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -101,7 +100,7 @@ test("builder-tier stop with only an artifact path (no STATUS line) → pass", a
         "Wrote the handoff: .claude/artifacts/crew/handoffs/20260712T000000Z-handoff-slice.md"
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -117,7 +116,7 @@ test("non-builder-tier agent (reviewer) → pass, untouched (scope check only)",
       last_assistant_message: "Now let's open the PR."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -134,7 +133,7 @@ test("stop_hook_active true → pass regardless of content", async () => {
       stop_hook_active: true
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -143,7 +142,7 @@ test("stop_hook_active true → pass regardless of content", async () => {
 // (f) malformed / missing last_assistant_message → pass + logged, never guess
 test("malformed JSON → pass, no throw", async () => {
   const out = await runCheckBuilderTerminalStateHook("not json");
-  assert.equal(out, null);
+  expect(out).toBe(null);
 });
 
 test("missing agent_name → pass (fail-open, untyped payload)", async () => {
@@ -151,7 +150,7 @@ test("missing agent_name → pass (fail-open, untyped payload)", async () => {
   try {
     const raw = JSON.stringify({ session_id: "s1", cwd: repo });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -162,16 +161,16 @@ test("missing last_assistant_message → pass + logged, never guess", async () =
   try {
     const raw = payload({ cwd: repo, agent_name: "crew:fullstack-dev" });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
     const events = await readEvents(repo);
-    assert.ok(
+    expect(
       events.some(
         (e) =>
           typeof e.event === "string" &&
           e.event.includes("builder-terminal-state-guard") &&
           e.event.includes("no-message")
       )
-    );
+    ).toBeTruthy();
   } finally {
     await cleanup(repo);
   }
@@ -194,7 +193,7 @@ test("builder-terminal-state-guard feature disabled → pass unconditionally", a
       last_assistant_message: "Now let's open the PR."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -209,9 +208,9 @@ test("missing crew.json → builder-terminal-state-guard defaults enabled, still
       last_assistant_message: "Done editing."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.ok(out !== null);
+    expect(out !== null).toBeTruthy();
     const parsed = JSON.parse(out as string);
-    assert.equal(parsed.decision, "block");
+    expect(parsed.decision).toBe("block");
   } finally {
     await cleanup(repo);
   }
@@ -227,7 +226,7 @@ test("builder-tier stop with a DONE: line → pass", async () => {
       last_assistant_message: "DONE: shipped the guard.\nFiles: hooks/foo.ts"
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -244,12 +243,11 @@ test("builder-tier stop with a DONE: line → pass", async () => {
 // ──────────────────────────────────────────────────────────────────────────
 
 test("dev-lite is excluded from TERMINAL_STATE_GUARD_AGENTS", () => {
-  assert.deepEqual(
-    [...TERMINAL_STATE_GUARD_AGENTS].sort(),
+  expect([...TERMINAL_STATE_GUARD_AGENTS].sort()).toEqual(
     ["aiplugin-dev", "backend-dev", "frontend-dev", "fullstack-dev"].sort()
   );
-  assert.equal(isInTerminalStateGuardScope("crew:dev-lite"), false);
-  assert.equal(isInTerminalStateGuardScope("dev-lite"), false);
+  expect(isInTerminalStateGuardScope("crew:dev-lite")).toBe(false);
+  expect(isInTerminalStateGuardScope("dev-lite")).toBe(false);
 });
 
 test("dev-lite's REAL success receipt (agents/dev-lite.md:90-94 shape) → pass, not blocked", async () => {
@@ -261,7 +259,7 @@ test("dev-lite's REAL success receipt (agents/dev-lite.md:90-94 shape) → pass,
       last_assistant_message: "hooks/lib/foo.ts:12-14 — fix null check.\nverified: re-read OK."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -277,7 +275,7 @@ test("dev-lite's REAL refusal line (too-big.) → pass, not blocked", async () =
       last_assistant_message: "too-big. split: 3 one-line tasks."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }
@@ -292,7 +290,7 @@ test("dev-lite's REAL refusal line (escalate:) → pass, not blocked", async () 
       last_assistant_message: "escalate: public-surface. needs full builder."
     });
     const out = await runCheckBuilderTerminalStateHook(raw);
-    assert.equal(out, null);
+    expect(out).toBe(null);
   } finally {
     await cleanup(repo);
   }

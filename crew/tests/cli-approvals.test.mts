@@ -1,12 +1,11 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { runCrew } from "../scripts/crew.mjs";
 import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 
 test("CLI approval requests can be listed and resolved", async () => {
   const repoPath = await makeTempDir("crew-cli-approvals-");
   const initResult = await runCrew(["init", "--repo", repoPath]);
-  assert.equal(initResult.code, 0, "init should exit with code 0");
+  expect(initResult.code, "init should exit with code 0").toBe(0);
 
   const requestResult = await runCrew([
     "request-approval",
@@ -19,16 +18,16 @@ test("CLI approval requests can be listed and resolved", async () => {
     "--requester",
     "fullstack-dev"
   ]);
-  assert.equal(requestResult.code, 0, "request-approval should exit with code 0");
+  expect(requestResult.code, "request-approval should exit with code 0").toBe(0);
   const requestOutput = JSON.parse(requestResult.output);
-  assert.equal(requestOutput.status, "open");
-  assert.equal(requestOutput.approver, "user");
+  expect(requestOutput.status).toBe("open");
+  expect(requestOutput.approver).toBe("user");
 
   const openResult = await runCrew(["show-approvals", "--repo", repoPath]);
-  assert.equal(openResult.code, 0, "show-approvals should exit with code 0");
+  expect(openResult.code, "show-approvals should exit with code 0").toBe(0);
   const openOutput = JSON.parse(openResult.output);
-  assert.equal(openOutput.approvals.length, 1);
-  assert.equal(openOutput.approvals[0].id, requestOutput.id);
+  expect(openOutput.approvals.length).toBe(1);
+  expect(openOutput.approvals[0].id).toBe(requestOutput.id);
 
   const resolveResult = await runCrew([
     "resolve-approval",
@@ -41,9 +40,9 @@ test("CLI approval requests can be listed and resolved", async () => {
     "--resolver",
     "user"
   ]);
-  assert.equal(resolveResult.code, 0, "resolve-approval should exit with code 0");
+  expect(resolveResult.code, "resolve-approval should exit with code 0").toBe(0);
   const resolveOutput = JSON.parse(resolveResult.output);
-  assert.equal(resolveOutput.status, "approved");
+  expect(resolveOutput.status).toBe("approved");
 
   const resolvedResult = await runCrew([
     "show-approvals",
@@ -52,8 +51,8 @@ test("CLI approval requests can be listed and resolved", async () => {
     "--status",
     "resolved"
   ]);
-  assert.equal(resolvedResult.code, 0, "show-approvals with --status should exit with code 0");
+  expect(resolvedResult.code, "show-approvals with --status should exit with code 0").toBe(0);
   const resolvedOutput = JSON.parse(resolvedResult.output);
-  assert.equal(resolvedOutput.approvals.length, 1);
-  assert.equal(resolvedOutput.approvals[0].status, "approved");
+  expect(resolvedOutput.approvals.length).toBe(1);
+  expect(resolvedOutput.approvals[0].status).toBe("approved");
 });

@@ -12,7 +12,7 @@ import * as path from "node:path";
 type Sev = "HIGH" | "MEDIUM" | "ADVISORY";
 interface Finding { severity: Sev; file: string; line: number; description: string; }
 
-const TEST_FILE_RE = /\.(test|spec|fixture)\.[jt]sx?$|_test\.py$|^test_.*\.py$/;
+const TEST_FILE_RE = /\.(test|spec|fixture)\.m?[jt]sx?$|_test\.py$|^test_.*\.py$/;
 
 // Lens 1 — hard flaky patterns → HIGH
 const FLAKY_HARD: Array<{ label: string; re: RegExp }> = [

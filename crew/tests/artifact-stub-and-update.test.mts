@@ -1,8 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { execFile as execFileCallback } from "node:child_process";
@@ -14,7 +13,7 @@ const cliPath = path.join(repoRoot, "scripts", "crew.mts");
 
 async function makeTempRepo(prefix: string) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", dir]);
+  await execFile("bun", [cliPath, "init", "--repo", dir]);
   return dir;
 }
 
@@ -24,7 +23,7 @@ async function cleanup(dir: string) {
 
 // Helper: invoke CLI synchronously and return { status, stdout, stderr }
 function runCli(args: string[]) {
-  const result = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, ...args], {
+  const result = spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
     timeout: 30_000
   });
@@ -50,10 +49,10 @@ test("artifact status renders in output when --status is set", async () => {
       "--summary",
       "test status field"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
-    assert.match(body, /Status: in-progress/, "artifact must contain 'Status: in-progress'");
+    expect(body, "artifact must contain 'Status: in-progress'").toMatch(/Status: in-progress/);
   } finally {
     await cleanup(repoPath);
   }
@@ -72,13 +71,13 @@ test("artifact status omitted when --status is not set", async () => {
       "--summary",
       "no status field"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
     // Should not have "Status:" line (but may have other fields)
     const lines = body.split("\n");
     const statusLines = lines.filter((l) => l.startsWith("- Status:"));
-    assert.equal(statusLines.length, 0, "artifact should not contain '- Status:' when not set");
+    expect(statusLines.length, "artifact should not contain '- Status:' when not set").toBe(0);
   } finally {
     await cleanup(repoPath);
   }
@@ -100,13 +99,13 @@ test("write-handoff with --update overwrites stub in place, no second file creat
       "--summary",
       "initial stub"
     ]);
-    assert.equal(stubResult.status, 0);
+    expect(stubResult.status).toBe(0);
     const stubArtifact = JSON.parse(stubResult.stdout);
     const stubPath = stubArtifact.path;
 
     // Verify stub exists and contains in-progress
     let stubBody = await fs.readFile(stubPath, "utf8");
-    assert.match(stubBody, /Status: in-progress/, "stub should contain 'Status: in-progress'");
+    expect(stubBody, "stub should contain 'Status: in-progress'").toMatch(/Status: in-progress/);
 
     // List files before update
     const dirBefore = path.dirname(stubPath);
@@ -129,24 +128,20 @@ test("write-handoff with --update overwrites stub in place, no second file creat
       "--deliverable",
       "completed work"
     ]);
-    assert.equal(finalResult.status, 0);
+    expect(finalResult.status).toBe(0);
 
     // List files after update
     const filesAfter = await fs.readdir(dirBefore);
     const handoffCountAfter = filesAfter.filter((f) => f.includes("handoff")).length;
 
     // Verify only ONE handoff file exists (no second file created)
-    assert.equal(
-      handoffCountAfter,
-      handoffCountBefore,
-      "should not create a second file; update should overwrite"
-    );
+    expect(handoffCountAfter, "should not create a second file; update should overwrite").toBe(handoffCountBefore);
 
     // Verify the file was updated with new content
     stubBody = await fs.readFile(stubPath, "utf8");
-    assert.match(stubBody, /Status: completed/, "updated stub should contain 'Status: completed'");
-    assert.match(stubBody, /final artifact/, "updated stub should contain 'final artifact'");
-    assert.match(stubBody, /completed work/, "updated stub should contain 'completed work'");
+    expect(stubBody, "updated stub should contain 'Status: completed'").toMatch(/Status: completed/);
+    expect(stubBody, "updated stub should contain 'final artifact'").toMatch(/final artifact/);
+    expect(stubBody, "updated stub should contain 'completed work'").toMatch(/completed work/);
   } finally {
     await cleanup(repoPath);
   }
@@ -168,7 +163,7 @@ test("write-review-result with --update overwrites stub in place", async () => {
       "--summary",
       "initial review"
     ]);
-    assert.equal(stubResult.status, 0);
+    expect(stubResult.status).toBe(0);
     const stubArtifact = JSON.parse(stubResult.stdout);
     const stubPath = stubArtifact.path;
 
@@ -190,13 +185,13 @@ test("write-review-result with --update overwrites stub in place", async () => {
       "--test-summary",
       "all pass"
     ]);
-    assert.equal(finalResult.status, 0);
+    expect(finalResult.status).toBe(0);
 
     // Verify content
     const body = await fs.readFile(stubPath, "utf8");
-    assert.match(body, /Status: completed/, "should have updated status");
-    assert.match(body, /final review/, "should have updated summary");
-    assert.match(body, /Decision: approved/, "should have decision");
+    expect(body, "should have updated status").toMatch(/Status: completed/);
+    expect(body, "should have updated summary").toMatch(/final review/);
+    expect(body, "should have decision").toMatch(/Decision: approved/);
   } finally {
     await cleanup(repoPath);
   }
@@ -218,7 +213,7 @@ test("write-validation-result with --update overwrites stub in place", async () 
       "--summary",
       "initial validation"
     ]);
-    assert.equal(stubResult.status, 0);
+    expect(stubResult.status).toBe(0);
     const stubArtifact = JSON.parse(stubResult.stdout);
     const stubPath = stubArtifact.path;
 
@@ -240,13 +235,13 @@ test("write-validation-result with --update overwrites stub in place", async () 
       "--environment",
       "prod"
     ]);
-    assert.equal(finalResult.status, 0);
+    expect(finalResult.status).toBe(0);
 
     // Verify content
     const body = await fs.readFile(stubPath, "utf8");
-    assert.match(body, /Status: completed/, "should have updated status");
-    assert.match(body, /final validation/, "should have updated summary");
-    assert.match(body, /Decision: passed_with_notes/, "should have decision");
+    expect(body, "should have updated status").toMatch(/Status: completed/);
+    expect(body, "should have updated summary").toMatch(/final validation/);
+    expect(body, "should have decision").toMatch(/Decision: passed_with_notes/);
   } finally {
     await cleanup(repoPath);
   }
@@ -281,15 +276,11 @@ test("artifact write without --update creates new timestamped file (backward com
     const artifact2 = JSON.parse(result2.stdout);
 
     // Verify two different files exist
-    assert.notEqual(
-      artifact1.path,
-      artifact2.path,
-      "should create two separate files without --update"
-    );
+    expect(artifact1.path, "should create two separate files without --update").not.toBe(artifact2.path);
     const exists1 = await fs.stat(artifact1.path);
     const exists2 = await fs.stat(artifact2.path);
-    assert.ok(exists1, "first artifact should exist");
-    assert.ok(exists2, "second artifact should exist");
+    expect(exists1, "first artifact should exist").toBeTruthy();
+    expect(exists2, "second artifact should exist").toBeTruthy();
   } finally {
     await cleanup(repoPath);
   }
@@ -307,21 +298,21 @@ test("write-review-result --scaffold emits skeleton with empty judgment fields",
       "Scaffold test",
       "--scaffold"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
-    assert.match(body, /## Verdict/, "must have Verdict section");
-    assert.match(body, /decision:/, "must have decision field");
-    assert.match(body, /## Test Summary/, "must have Test Summary section");
-    assert.match(body, /## Changed Files/, "must have Changed Files section");
-    assert.match(body, /## Findings/, "must have Findings section");
+    expect(body, "must have Verdict section").toMatch(/## Verdict/);
+    expect(body, "must have decision field").toMatch(/decision:/);
+    expect(body, "must have Test Summary section").toMatch(/## Test Summary/);
+    expect(body, "must have Changed Files section").toMatch(/## Changed Files/);
+    expect(body, "must have Findings section").toMatch(/## Findings/);
     // dev-team#247 / FEAT-180: scaffold always prompts a Not-checked
     // declaration, unconditionally (scaffold mode never receives CLI flags,
     // so there's nothing to gate on) — locking the intended behavior so a
     // future diff to renderReviewResultScaffold can't drop it silently.
-    assert.match(body, /## Not checked/, "must have Not checked section");
-    assert.match(body, /## Risks/, "must have Risks section");
-    assert.match(body, /## Notes/, "must have Notes section");
+    expect(body, "must have Not checked section").toMatch(/## Not checked/);
+    expect(body, "must have Risks section").toMatch(/## Risks/);
+    expect(body, "must have Notes section").toMatch(/## Notes/);
   } finally {
     await cleanup(repoPath);
   }
@@ -339,16 +330,16 @@ test("write-validation-result --scaffold emits skeleton with empty judgment fiel
       "Scaffold validation",
       "--scaffold"
     ]);
-    assert.equal(status, 0, "expected exit 0");
+    expect(status, "expected exit 0").toBe(0);
     const result = JSON.parse(stdout);
     const body = await fs.readFile(result.path, "utf8");
-    assert.match(body, /## Environment/, "must have Environment section");
-    assert.match(body, /## Scenario/, "must have Scenario section");
-    assert.match(body, /## Gates/, "must have Gates section");
-    assert.match(body, /## Evidence/, "must have Evidence section");
-    assert.match(body, /## Findings/, "must have Findings section");
-    assert.match(body, /## Risks/, "must have Risks section");
-    assert.match(body, /## Decision/, "must have Decision section");
+    expect(body, "must have Environment section").toMatch(/## Environment/);
+    expect(body, "must have Scenario section").toMatch(/## Scenario/);
+    expect(body, "must have Gates section").toMatch(/## Gates/);
+    expect(body, "must have Evidence section").toMatch(/## Evidence/);
+    expect(body, "must have Findings section").toMatch(/## Findings/);
+    expect(body, "must have Risks section").toMatch(/## Risks/);
+    expect(body, "must have Decision section").toMatch(/## Decision/);
   } finally {
     await cleanup(repoPath);
   }
@@ -367,13 +358,13 @@ test("scaffold-then-update: scaffold review, then update with decision, finalize
       "Review scaffold-update",
       "--scaffold"
     ]);
-    assert.equal(scaffoldResult.status, 0);
+    expect(scaffoldResult.status).toBe(0);
     const scaffoldArtifact = JSON.parse(scaffoldResult.stdout);
     const scaffoldPath = scaffoldArtifact.path;
 
     // Verify scaffold has skeleton
     let body = await fs.readFile(scaffoldPath, "utf8");
-    assert.match(body, /decision:/, "scaffold must have empty decision field");
+    expect(body, "scaffold must have empty decision field").toMatch(/decision:/);
 
     // Second: finalize with --update
     const finalResult = runCli([
@@ -395,14 +386,14 @@ test("scaffold-then-update: scaffold review, then update with decision, finalize
       "--files",
       "src/foo.ts,src/bar.ts"
     ]);
-    assert.equal(finalResult.status, 0);
+    expect(finalResult.status).toBe(0);
 
     // Verify finalized artifact has the update
     body = await fs.readFile(scaffoldPath, "utf8");
-    assert.match(body, /Status: completed/, "finalized must have completed status");
-    assert.match(body, /Decision: approved/, "finalized must have decision");
-    assert.match(body, /All checks pass/, "finalized must have summary");
-    assert.match(body, /100% coverage/, "finalized must have test summary");
+    expect(body, "finalized must have completed status").toMatch(/Status: completed/);
+    expect(body, "finalized must have decision").toMatch(/Decision: approved/);
+    expect(body, "finalized must have summary").toMatch(/All checks pass/);
+    expect(body, "finalized must have test summary").toMatch(/100% coverage/);
   } finally {
     await cleanup(repoPath);
   }

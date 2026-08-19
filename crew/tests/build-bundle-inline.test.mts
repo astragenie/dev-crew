@@ -1,5 +1,4 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -60,8 +59,8 @@ test("inlineLatestBundle: returns header + body when bundle present", async () =
     sliceId: "SLICE-99",
     bundlesRoot: root
   });
-  assert.ok(result.startsWith(INLINE_HEADER));
-  assert.ok(result.includes("body"));
+  expect(result.startsWith(INLINE_HEADER)).toBeTruthy();
+  expect(result.includes("body")).toBeTruthy();
 });
 
 test("inlineLatestBundle: empty string when no bundle present", async () => {
@@ -71,7 +70,7 @@ test("inlineLatestBundle: empty string when no bundle present", async () => {
     sliceId: "SLICE-99",
     bundlesRoot: root
   });
-  assert.equal(result, "");
+  expect(result).toBe("");
 });
 
 test("inlineLatestBundle: empty when frontmatter unparseable", async () => {
@@ -86,7 +85,7 @@ test("inlineLatestBundle: empty when frontmatter unparseable", async () => {
     sliceId: "SLICE-99",
     bundlesRoot: root
   });
-  assert.equal(result, "");
+  expect(result).toBe("");
 });
 
 test("inlineLatestBundle: empty when schema_version too high", async () => {
@@ -98,7 +97,7 @@ test("inlineLatestBundle: empty when schema_version too high", async () => {
     bundlesRoot: root,
     supportedSchemaVersion: 1
   });
-  assert.equal(result, "");
+  expect(result).toBe("");
 });
 
 test("inlineLatestBundle: alphabetically-last filename wins on identical mtime tiebreak", async () => {
@@ -124,8 +123,8 @@ test("inlineLatestBundle: alphabetically-last filename wins on identical mtime t
     sliceId: "SLICE-99",
     bundlesRoot: root
   });
-  assert.ok(result.includes("second"));
-  assert.ok(!result.includes("first"));
+  expect(result.includes("second")).toBeTruthy();
+  expect(!result.includes("first")).toBeTruthy();
 });
 
 test("inlineLatestBundle: truncation warning appended when bundle is size-capped", async () => {
@@ -139,5 +138,5 @@ test("inlineLatestBundle: truncation warning appended when bundle is size-capped
     sliceId: "SLICE-99",
     bundlesRoot: root
   });
-  assert.ok(result.includes(INLINE_TRUNCATION_WARNING));
+  expect(result.includes(INLINE_TRUNCATION_WARNING)).toBeTruthy();
 });

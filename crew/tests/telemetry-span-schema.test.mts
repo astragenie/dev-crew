@@ -2,8 +2,7 @@
  * Tests for scripts/lib/telemetry/span.ts
  * AC-2: Zod span schema validates real spans end-to-end.
  */
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { SpanRecordSchema, newTraceId, newSpanId } from "../scripts/lib/telemetry/span.mjs";
 
 // ---------------------------------------------------------------------------
@@ -22,11 +21,11 @@ test("SpanRecordSchema: valid span passes parse", () => {
     events: [],
     status: { code: "OK" }
   });
-  assert.equal(span.traceId, "a".repeat(32));
-  assert.equal(span.spanId, "b".repeat(16));
-  assert.equal(span.name, "slice.run");
-  assert.equal(span.kind, "INTERNAL");
-  assert.equal(span.status.code, "OK");
+  expect(span.traceId).toBe("a".repeat(32));
+  expect(span.spanId).toBe("b".repeat(16));
+  expect(span.name).toBe("slice.run");
+  expect(span.kind).toBe("INTERNAL");
+  expect(span.status.code).toBe("OK");
 });
 
 // ---------------------------------------------------------------------------
@@ -34,28 +33,19 @@ test("SpanRecordSchema: valid span passes parse", () => {
 // ---------------------------------------------------------------------------
 
 test("SpanRecordSchema: invalid traceId (31 chars) is rejected", () => {
-  assert.throws(
-    () =>
-      SpanRecordSchema.parse({
-        traceId: "a".repeat(31), // one short
-        spanId: "b".repeat(16),
-        name: "slice.run",
-        kind: "INTERNAL",
-        startTimeUnixNano: "1717754000000000000",
-        endTimeUnixNano: "1717754100000000000",
-        attributes: {},
-        events: [],
-        status: { code: "UNSET" }
-      }),
-    (err: unknown) => {
-      assert.ok(err instanceof Error, "expected Error");
-      assert.ok(
-        err.message.includes("traceId"),
-        `error message should mention traceId: ${err.message}`
-      );
-      return true;
-    }
-  );
+  expect(() =>
+    SpanRecordSchema.parse({
+      traceId: "a".repeat(31), // one short
+      spanId: "b".repeat(16),
+      name: "slice.run",
+      kind: "INTERNAL",
+      startTimeUnixNano: "1717754000000000000",
+      endTimeUnixNano: "1717754100000000000",
+      attributes: {},
+      events: [],
+      status: { code: "UNSET" }
+    })
+  ).toThrow(/traceId/);
 });
 
 // ---------------------------------------------------------------------------
@@ -76,22 +66,20 @@ test("SpanRecordSchema: passthrough keeps unknown fields like traceState", () =>
     traceState: "vendor=x",
     droppedAttributesCount: 0
   }) as Record<string, unknown>;
-  assert.equal(span["traceState"], "vendor=x", "traceState must survive passthrough");
-  assert.equal(
-    span["droppedAttributesCount"],
-    0,
-    "droppedAttributesCount must survive passthrough"
+  expect(span["traceState"], "traceState must survive passthrough").toBe("vendor=x");
+  expect(span["droppedAttributesCount"], "droppedAttributesCount must survive passthrough").toBe(
+    0
   );
 });
 
 test("newTraceId and newSpanId are deterministic", () => {
   const t1 = newTraceId("run-x");
   const t2 = newTraceId("run-x");
-  assert.equal(t1, t2, "newTraceId must return same value for same seed");
-  assert.match(t1, /^[0-9a-f]{32}$/, "newTraceId must return 32-hex string");
+  expect(t1, "newTraceId must return same value for same seed").toBe(t2);
+  expect(t1, "newTraceId must return 32-hex string").toMatch(/^[0-9a-f]{32}$/);
 
   const s1 = newSpanId("run-x.root");
   const s2 = newSpanId("run-x.root");
-  assert.equal(s1, s2, "newSpanId must return same value for same seed");
-  assert.match(s1, /^[0-9a-f]{16}$/, "newSpanId must return 16-hex string");
+  expect(s1, "newSpanId must return same value for same seed").toBe(s2);
+  expect(s1, "newSpanId must return 16-hex string").toMatch(/^[0-9a-f]{16}$/);
 });

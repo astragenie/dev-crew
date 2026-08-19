@@ -7,13 +7,12 @@
 // git diff <branch> <base> --stat (two-dot, reversed) is empty, so
 // isBranchMerged correctly returns true.
 
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
-import test from "node:test";
-import assert from "node:assert/strict";
 
 import { isStandardMerged, isSquashMerged, isBranchMerged } from "../scripts/lib/branch-cleanup.mjs";
 
@@ -85,7 +84,7 @@ test("isStandardMerged: returns false for squash-merged branch", async () => {
 
   const result = await isStandardMerged(dir, "feat/squash", "main");
   // Squash merge does NOT make the branch appear in `git branch --merged`
-  assert.equal(result, false, "squash-merged branch should NOT appear in standard merged check");
+  expect(result, "squash-merged branch should NOT appear in standard merged check").toBe(false);
 });
 
 test("isSquashMerged: returns true for squash-merged branch (empty two-dot diff)", async () => {
@@ -93,7 +92,7 @@ test("isSquashMerged: returns true for squash-merged branch (empty two-dot diff)
   await createSquashMergedBranch(dir, "feat/squash");
 
   const result = await isSquashMerged(dir, "feat/squash", "main");
-  assert.equal(result, true, "squash-merged branch should have empty diff vs main");
+  expect(result, "squash-merged branch should have empty diff vs main").toBe(true);
 });
 
 test("isBranchMerged: returns true for squash-merged branch", async () => {
@@ -101,7 +100,7 @@ test("isBranchMerged: returns true for squash-merged branch", async () => {
   await createSquashMergedBranch(dir, "feat/squash");
 
   const result = await isBranchMerged(dir, "feat/squash", "main");
-  assert.equal(result, true, "isBranchMerged should detect squash-merged branch as merged");
+  expect(result, "isBranchMerged should detect squash-merged branch as merged").toBe(true);
 });
 
 test("isStandardMerged: returns true for standard-merged branch", async () => {
@@ -109,7 +108,7 @@ test("isStandardMerged: returns true for standard-merged branch", async () => {
   await createStandardMergedBranch(dir, "feat/standard");
 
   const result = await isStandardMerged(dir, "feat/standard", "main");
-  assert.equal(result, true, "standard-merged branch should appear in git branch --merged");
+  expect(result, "standard-merged branch should appear in git branch --merged").toBe(true);
 });
 
 test("isSquashMerged: returns true for standard-merged branch (diff also empty)", async () => {
@@ -121,7 +120,7 @@ test("isSquashMerged: returns true for standard-merged branch (diff also empty)"
 
   const result = await isSquashMerged(dir, "feat/standard", "main");
   // After standard merge, two-dot diff is empty (branch already in main).
-  assert.equal(result, true, "standard-merged branch also has empty three-dot diff");
+  expect(result, "standard-merged branch also has empty three-dot diff").toBe(true);
 });
 
 test("isBranchMerged: returns true for standard-merged branch", async () => {
@@ -129,7 +128,7 @@ test("isBranchMerged: returns true for standard-merged branch", async () => {
   await createStandardMergedBranch(dir, "feat/standard");
 
   const result = await isBranchMerged(dir, "feat/standard", "main");
-  assert.equal(result, true, "standard-merged branch should be detected as merged");
+  expect(result, "standard-merged branch should be detected as merged").toBe(true);
 });
 
 test("isStandardMerged: returns false for unmerged branch", async () => {
@@ -137,7 +136,7 @@ test("isStandardMerged: returns false for unmerged branch", async () => {
   await createUnmergedBranch(dir, "feat/wip");
 
   const result = await isStandardMerged(dir, "feat/wip", "main");
-  assert.equal(result, false, "unmerged branch should NOT appear in git branch --merged");
+  expect(result, "unmerged branch should NOT appear in git branch --merged").toBe(false);
 });
 
 test("isSquashMerged: returns false for unmerged branch", async () => {
@@ -145,7 +144,7 @@ test("isSquashMerged: returns false for unmerged branch", async () => {
   await createUnmergedBranch(dir, "feat/wip");
 
   const result = await isSquashMerged(dir, "feat/wip", "main");
-  assert.equal(result, false, "unmerged branch should have non-empty diff vs main");
+  expect(result, "unmerged branch should have non-empty diff vs main").toBe(false);
 });
 
 test("isBranchMerged: returns false for unmerged branch", async () => {
@@ -153,19 +152,19 @@ test("isBranchMerged: returns false for unmerged branch", async () => {
   await createUnmergedBranch(dir, "feat/wip");
 
   const result = await isBranchMerged(dir, "feat/wip", "main");
-  assert.equal(result, false, "unmerged branch should not be detected as merged");
+  expect(result, "unmerged branch should not be detected as merged").toBe(false);
 });
 
 test("isSquashMerged: returns false for unknown branch ref", async () => {
   const dir = await initRepo();
 
   const result = await isSquashMerged(dir, "nonexistent/branch", "main");
-  assert.equal(result, false, "unknown branch ref should not be detected as squash-merged");
+  expect(result, "unknown branch ref should not be detected as squash-merged").toBe(false);
 });
 
 test("isBranchMerged: returns false for unknown branch ref", async () => {
   const dir = await initRepo();
 
   const result = await isBranchMerged(dir, "nonexistent/branch", "main");
-  assert.equal(result, false, "unknown branch ref should not be detected as merged");
+  expect(result, "unknown branch ref should not be detected as merged").toBe(false);
 });

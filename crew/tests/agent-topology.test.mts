@@ -1,8 +1,7 @@
 // tests/agent-topology.test.mjs — pin the exact set of first-party agents.
 // Fails if an agent is added without updating EXPECTED_AGENTS,
 // or if any expected agent is removed or renamed.
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,26 +62,16 @@ test("agents/ root contains exactly the expected first-party agents", async () =
 
   // Every expected agent must exist
   for (const expected of EXPECTED_AGENTS) {
-    assert.ok(
-      foundSet.has(expected),
-      `Expected agent "${expected}" is missing from agents/ root. Add it or update EXPECTED_AGENTS.`
-    );
+    expect(foundSet.has(expected), `Expected agent "${expected}" is missing from agents/ root. Add it or update EXPECTED_AGENTS.`).toBeTruthy();
   }
 
   // No unexpected agents allowed
   for (const found of foundSet) {
-    assert.ok(
-      EXPECTED_AGENTS.has(found),
-      `Unexpected agent "${found}" found in agents/ root. Add it to EXPECTED_AGENTS if intentional.`
-    );
+    expect(EXPECTED_AGENTS.has(found), `Unexpected agent "${found}" found in agents/ root. Add it to EXPECTED_AGENTS if intentional.`).toBeTruthy();
   }
 
   // Exact count
-  assert.equal(
-    names.length,
-    EXPECTED_AGENTS.size,
-    `Expected ${EXPECTED_AGENTS.size} agents, found ${names.length}: [${names.join(", ")}]`
-  );
+  expect(names.length, `Expected ${EXPECTED_AGENTS.size} agents, found ${names.length}: [${names.join(", ")}]`).toBe(EXPECTED_AGENTS.size);
 });
 
 test("no .md files at agents/ root belong to 3rdparty/ subdirectory", async () => {
@@ -96,11 +85,8 @@ test("no .md files at agents/ root belong to 3rdparty/ subdirectory", async () =
   for (const name of rootMdFiles) {
     const agentName = await readAgentName(path.join(AGENTS_ROOT, `${name}.md`));
     if (agentName) {
-      assert.ok(
-        EXPECTED_AGENTS.has(agentName),
-        `Root-level agent "${agentName}" is not in the expected topology. ` +
-          "3rdparty agents must live under agents/3rdparty/, not agents/ root."
-      );
+      expect(EXPECTED_AGENTS.has(agentName), `Root-level agent "${agentName}" is not in the expected topology. ` +
+          "3rdparty agents must live under agents/3rdparty/, not agents/ root.").toBeTruthy();
     }
   }
 });

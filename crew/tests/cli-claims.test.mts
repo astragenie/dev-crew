@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { runCrew } from "../scripts/crew.mjs";
 import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 
@@ -9,16 +8,16 @@ test("CLI init creates a harnessed repo", async () => {
   const rootPath = await makeTempDir("crew-cli-init-");
   const repoPath = path.join(rootPath, "app");
   const { code, output } = await runCrew(["init", "--repo", repoPath]);
-  assert.equal(code, 0, "init should exit with code 0");
+  expect(code, "init should exit with code 0").toBe(0);
   const result = JSON.parse(output);
 
-  assert.equal(result.mode, "init");
-  assert.equal(result.audit.hasHarnessLayer, true);
-  assert.match(result.welcome.headline, /Crew/);
-  assert.ok(result.welcome.commands.includes("/crew:brief-me"));
+  expect(result.mode).toBe("init");
+  expect(result.audit.hasHarnessLayer).toBe(true);
+  expect(result.welcome.headline).toMatch(/Crew/);
+  expect(result.welcome.commands.includes("/crew:brief-me")).toBeTruthy();
 
   const claudeMd = await fs.readFile(path.join(repoPath, "CLAUDE.md"), "utf8");
-  assert.match(claudeMd, /crew:start/);
+  expect(claudeMd).toMatch(/crew:start/);
 });
 
 test("CLI bootstrap preserves existing CLAUDE.md content", async () => {
@@ -26,15 +25,15 @@ test("CLI bootstrap preserves existing CLAUDE.md content", async () => {
   await fs.writeFile(path.join(repoPath, "CLAUDE.md"), "# Existing\n");
 
   const { code, output } = await runCrew(["bootstrap", "--repo", repoPath]);
-  assert.equal(code, 0, "bootstrap should exit with code 0");
+  expect(code, "bootstrap should exit with code 0").toBe(0);
   const result = JSON.parse(output);
   const claudeMd = await fs.readFile(path.join(repoPath, "CLAUDE.md"), "utf8");
 
-  assert.equal(result.mode, "bootstrap");
-  assert.match(result.welcome.headline, /Crew/);
-  assert.ok(result.welcome.commands.includes("/crew:build"));
-  assert.match(claudeMd, /# Existing/);
-  assert.match(claudeMd, /crew:start/);
+  expect(result.mode).toBe("bootstrap");
+  expect(result.welcome.headline).toMatch(/Crew/);
+  expect(result.welcome.commands.includes("/crew:build")).toBeTruthy();
+  expect(claudeMd).toMatch(/# Existing/);
+  expect(claudeMd).toMatch(/crew:start/);
 });
 
 test("CLI claim and release manage repo-local claims", async () => {
@@ -49,9 +48,9 @@ test("CLI claim and release manage repo-local claims", async () => {
     "fullstack-dev",
     "src/example.ts"
   ]);
-  assert.equal(claimResponse.code, 0, "claim should exit with code 0");
+  expect(claimResponse.code, "claim should exit with code 0").toBe(0);
   const claimResult = JSON.parse(claimResponse.output);
-  assert.deepEqual(claimResult.claimed, ["src/example.ts"]);
+  expect(claimResult.claimed).toEqual(["src/example.ts"]);
 
   const conflictsResponse = await runCrew([
     "show-conflicts",
@@ -61,12 +60,12 @@ test("CLI claim and release manage repo-local claims", async () => {
     "lead-session",
     "src/example.ts"
   ]);
-  assert.equal(conflictsResponse.code, 0, "show-conflicts should exit with code 0");
+  expect(conflictsResponse.code, "show-conflicts should exit with code 0").toBe(0);
   const conflictsResult = JSON.parse(conflictsResponse.output);
-  assert.equal(conflictsResult.conflicts.length, 1);
-  assert.equal(conflictsResult.conflicts[0].owner, "fullstack-dev");
-  assert.equal(conflictsResult.owned.length, 0);
-  assert.equal(conflictsResult.available.length, 0);
+  expect(conflictsResult.conflicts.length).toBe(1);
+  expect(conflictsResult.conflicts[0].owner).toBe("fullstack-dev");
+  expect(conflictsResult.owned.length).toBe(0);
+  expect(conflictsResult.available.length).toBe(0);
 
   const ownedResponse = await runCrew([
     "show-conflicts",
@@ -77,15 +76,15 @@ test("CLI claim and release manage repo-local claims", async () => {
     "src/example.ts",
     "src/free.ts"
   ]);
-  assert.equal(ownedResponse.code, 0, "show-conflicts should exit with code 0");
+  expect(ownedResponse.code, "show-conflicts should exit with code 0").toBe(0);
   const ownedResult = JSON.parse(ownedResponse.output);
-  assert.equal(ownedResult.owned.length, 1);
-  assert.equal(ownedResult.owned[0].path, "src/example.ts");
-  assert.equal(ownedResult.conflicts.length, 0);
-  assert.deepEqual(ownedResult.available, [{ path: "src/free.ts" }]);
+  expect(ownedResult.owned.length).toBe(1);
+  expect(ownedResult.owned[0].path).toBe("src/example.ts");
+  expect(ownedResult.conflicts.length).toBe(0);
+  expect(ownedResult.available).toEqual([{ path: "src/free.ts" }]);
 
   const releaseResponse = await runCrew(["release", "--repo", repoPath, "src/example.ts"]);
-  assert.equal(releaseResponse.code, 0, "release should exit with code 0");
+  expect(releaseResponse.code, "release should exit with code 0").toBe(0);
   const releaseResult = JSON.parse(releaseResponse.output);
-  assert.deepEqual(releaseResult.released, ["src/example.ts"]);
+  expect(releaseResult.released).toEqual(["src/example.ts"]);
 });

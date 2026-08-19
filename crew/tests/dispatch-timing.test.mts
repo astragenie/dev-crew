@@ -1,5 +1,4 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -31,13 +30,13 @@ test("records start + end as single JSONL row with wallMs", async () => {
       .trim()
       .split("\n")
       .map((l) => JSON.parse(l) as Record<string, unknown>);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]!["agent"], "crew:fullstack-dev");
-    assert.ok(
+    expect(rows.length).toBe(1);
+    expect(rows[0]!["agent"]).toBe("crew:fullstack-dev");
+    expect(
       typeof rows[0]!["wallMs"] === "number" && rows[0]!["wallMs"] >= 25,
       `Expected wallMs >= 25, got ${String(rows[0]!["wallMs"])}`
-    );
-    assert.deepEqual(rows[0]!["toolCalls"], { Read: 3, Edit: 1, Bash: 2 });
+    ).toBeTruthy();
+    expect(rows[0]!["toolCalls"]).toEqual({ Read: 3, Edit: 1, Bash: 2 });
   } finally {
     delete process.env.CREW_DISPATCH_TIMING_LOG;
     await fs.rm(tmp, { recursive: true, force: true });

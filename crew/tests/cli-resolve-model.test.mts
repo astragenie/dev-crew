@@ -7,8 +7,7 @@
 // itself lives in tests/resolve-model.test.ts.
 import fs from "node:fs/promises";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { runCrew } from "../scripts/crew.mjs";
 import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 
@@ -37,8 +36,8 @@ test("CLI resolve-model: toggle absent (no crew.json) defaults to routing-on —
   await writeLoopModelRouting(repoPath);
 
   const { code, output } = await runCrew(["resolve-model", "--repo", repoPath, "--phase", "build"]);
-  assert.equal(code, 0);
-  assert.equal(output, "sonnet");
+  expect(code).toBe(0);
+  expect(output).toBe("sonnet");
 });
 
 test("CLI resolve-model: toggle explicitly enabled — behaves as today, build resolves to sonnet", async () => {
@@ -47,8 +46,8 @@ test("CLI resolve-model: toggle explicitly enabled — behaves as today, build r
   await writeCrewFeatureToggle(repoPath, true);
 
   const { code, output } = await runCrew(["resolve-model", "--repo", repoPath, "--phase", "build"]);
-  assert.equal(code, 0);
-  assert.equal(output, "sonnet");
+  expect(code).toBe(0);
+  expect(output).toBe("sonnet");
 });
 
 test("CLI resolve-model: toggle disabled — prints the inherit sentinel (omit model:, agent frontmatter governs)", async () => {
@@ -57,8 +56,8 @@ test("CLI resolve-model: toggle disabled — prints the inherit sentinel (omit m
   await writeCrewFeatureToggle(repoPath, false);
 
   const { code, output } = await runCrew(["resolve-model", "--repo", repoPath, "--phase", "build"]);
-  assert.equal(code, 0);
-  assert.equal(output, "inherit");
+  expect(code).toBe(0);
+  expect(output).toBe("inherit");
 });
 
 test("CLI resolve-model: toggle disabled also bypasses the trivial-shape override", async () => {
@@ -75,14 +74,14 @@ test("CLI resolve-model: toggle disabled also bypasses the trivial-shape overrid
     "--shape",
     "doc-update"
   ]);
-  assert.equal(code, 0);
-  assert.equal(output, "inherit");
+  expect(code).toBe(0);
+  expect(output).toBe("inherit");
 });
 
 test("CLI resolve-model: no loop.json and no crew.json — default-on routing falls back to opus (no routing configured)", async () => {
   const repoPath = await makeTempDir("crew-cli-resolve-model-none-");
 
   const { code, output } = await runCrew(["resolve-model", "--repo", repoPath, "--phase", "build"]);
-  assert.equal(code, 0);
-  assert.equal(output, "opus");
+  expect(code).toBe(0);
+  expect(output).toBe("opus");
 });

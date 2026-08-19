@@ -2,8 +2,7 @@
  * Tests for scripts/lib/agent-registry.ts (FEAT-160 partial — registry layer only,
  * lead.md slim deferred to a separate autonomous_safe=false slice).
  */
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -36,16 +35,16 @@ test("loadAgentRegistry: parses capabilities frontmatter from each agent file", 
       `---\ncapabilities:\n  role: [reviewer]\n  concerns: [security, refactor]\n  lens: [correctness, regressions]\n  priority: 8\n---\n# reviewer\n`
     );
     const reg = await loadAgentRegistry(repo);
-    assert.equal(reg.length, 2, "should load 2 agents");
+    expect(reg.length, "should load 2 agents").toBe(2);
     const be = reg.find((e) => e.name === "backend-dev");
-    assert.ok(be);
-    assert.deepEqual(be.capabilities.role, ["implementer"]);
-    assert.deepEqual(be.capabilities.surfaces, ["api", "schema"]);
-    assert.deepEqual(be.capabilities.stacks, ["typescript", "python"]);
-    assert.equal(be.priority, 10);
+    expect(be).toBeTruthy();
+    expect(be.capabilities.role).toEqual(["implementer"]);
+    expect(be.capabilities.surfaces).toEqual(["api", "schema"]);
+    expect(be.capabilities.stacks).toEqual(["typescript", "python"]);
+    expect(be.priority).toBe(10);
     const ins = reg.find((e) => e.name === "reviewer");
-    assert.ok(ins);
-    assert.deepEqual(ins.capabilities.concerns, ["security", "refactor"]);
+    expect(ins).toBeTruthy();
+    expect(ins.capabilities.concerns).toEqual(["security", "refactor"]);
   } finally {
     await cleanup();
   }
@@ -63,8 +62,8 @@ test("loadAgentRegistry: skips files without capabilities frontmatter", async ()
       `---\ncapabilities:\n  role: [implementer]\n---\n# has-caps\n`
     );
     const reg = await loadAgentRegistry(repo);
-    assert.equal(reg.length, 1, "only agent with capabilities is loaded");
-    assert.equal(reg[0]?.name, "has-caps");
+    expect(reg.length, "only agent with capabilities is loaded").toBe(1);
+    expect(reg[0]?.name).toBe("has-caps");
   } finally {
     await cleanup();
   }
@@ -82,10 +81,10 @@ test("loadAgentRegistry: walks nested directories (e.g. 3rdparty/)", async () =>
       `---\ncapabilities:\n  role: [reviewer]\n---\n`
     );
     const reg = await loadAgentRegistry(repo);
-    assert.equal(reg.length, 2);
+    expect(reg.length).toBe(2);
     const nested = reg.find((e) => e.name === "nested");
-    assert.ok(nested);
-    assert.ok(nested.path.includes("3rdparty"), "path should preserve nested dir");
+    expect(nested).toBeTruthy();
+    expect(nested.path.includes("3rdparty"), "path should preserve nested dir").toBeTruthy();
   } finally {
     await cleanup();
   }
@@ -108,10 +107,10 @@ test("routeByTags: single-dimension query returns matches sorted by score desc",
     );
     const reg = await loadAgentRegistry(repo);
     const matches = routeByTags(reg, { role: "implementer" });
-    assert.equal(matches.length, 2, "only 2 implementers");
-    assert.equal(matches[0]?.entry.name, "a", "priority 10 ranks above priority 5");
-    assert.equal(matches[1]?.entry.name, "b");
-    assert.ok(matches[0]?.matched.includes("role:implementer"));
+    expect(matches.length, "only 2 implementers").toBe(2);
+    expect(matches[0]?.entry.name, "priority 10 ranks above priority 5").toBe("a");
+    expect(matches[1]?.entry.name).toBe("b");
+    expect(matches[0]?.matched.includes("role:implementer")).toBeTruthy();
   } finally {
     await cleanup();
   }
@@ -130,9 +129,9 @@ test("routeByTags: multi-dimension query requires ALL filters match", async () =
     );
     const reg = await loadAgentRegistry(repo);
     const matches = routeByTags(reg, { role: "implementer", stack: "typescript" });
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.entry.name, "fullstack-ts");
-    assert.equal(matches[0]?.matched.length, 2, "both dimensions matched");
+    expect(matches.length).toBe(1);
+    expect(matches[0]?.entry.name).toBe("fullstack-ts");
+    expect(matches[0]?.matched.length, "both dimensions matched").toBe(2);
   } finally {
     await cleanup();
   }
@@ -147,7 +146,7 @@ test("routeByTags: empty query returns empty list (no filters → no matches)", 
     );
     const reg = await loadAgentRegistry(repo);
     const matches = routeByTags(reg, {});
-    assert.equal(matches.length, 1, "empty query returns all (no filter to reject)");
+    expect(matches.length, "empty query returns all (no filter to reject)").toBe(1);
   } finally {
     await cleanup();
   }
@@ -170,8 +169,8 @@ test("routeByTags: ranking uses matched-count * 10 + priority", async () => {
     // high-prio with 1 match  = 1*10+99 = 109 — but only if it matched; it didn't
     // because high-prio doesn't have stacks. So only low-prio matches.
     // Adjust: filter requires BOTH match. high-prio fails stack filter → not in result.
-    assert.equal(matches.length, 1, "only low-prio matches BOTH filters");
-    assert.equal(matches[0]?.entry.name, "low-prio-2-match");
+    expect(matches.length, "only low-prio matches BOTH filters").toBe(1);
+    expect(matches[0]?.entry.name).toBe("low-prio-2-match");
   } finally {
     await cleanup();
   }

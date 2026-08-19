@@ -1,8 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { before, after } from "node:test";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect, beforeAll, afterAll } from "bun:test";
 import { runCrew } from "../scripts/crew.mjs";
 import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 
@@ -14,7 +12,7 @@ import { makeTempDir } from "./helpers/cli-fixtures.mjs";
 let fixtureRoot: string;
 let savedProjectsRoot: string | undefined;
 
-before(async () => {
+beforeAll(async () => {
   savedProjectsRoot = process.env.CREW_PROJECTS_ROOT;
   fixtureRoot = await makeTempDir("crew-cost-fixture-");
   // Create a minimal fixture project with a session.jsonl that the cost scanner will find
@@ -36,7 +34,7 @@ before(async () => {
   process.env.CREW_PROJECTS_ROOT = fixtureRoot;
 });
 
-after(async () => {
+afterAll(async () => {
   if (savedProjectsRoot === undefined) delete process.env.CREW_PROJECTS_ROOT;
   else process.env.CREW_PROJECTS_ROOT = savedProjectsRoot;
   await fs.rm(fixtureRoot, { recursive: true, force: true });
@@ -73,8 +71,8 @@ test("CLI blocks final synthesis when workflow badges are still pending", async 
     "--external-deltas",
     "none"
   ]);
-  assert.notEqual(rejectResult.code, 0, "should reject when review_required is pending");
-  assert.match(rejectResult.output, /pending: review_required/);
+  expect(rejectResult.code).not.toBe(0);
+  expect(rejectResult.output).toMatch(/pending: review_required/);
 
   await runCrew([
     "mark-badge",
@@ -97,10 +95,10 @@ test("CLI blocks final synthesis when workflow badges are still pending", async 
     "--external-deltas",
     "none"
   ]);
-  assert.equal(allowResult.code, 0, "should allow when review is skipped with reason");
+  expect(allowResult.code).toBe(0);
   const finalResult = JSON.parse(allowResult.output);
   const finalBody = await fs.readFile(finalResult.path, "utf8");
-  assert.match(finalBody, /Allowed final synthesis/);
+  expect(finalBody).toMatch(/Allowed final synthesis/);
 });
 
 test("write-final-synthesis rejects when --external-deltas is missing", async () => {
@@ -127,8 +125,8 @@ test("write-final-synthesis rejects when --external-deltas is missing", async ()
     "--summary",
     "Should reject because --external-deltas absent"
   ]);
-  assert.notEqual(result.code, 0, "should reject when --external-deltas is missing");
-  assert.match(result.output, /requires --external-deltas/);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toMatch(/requires --external-deltas/);
 });
 
 test("write-final-synthesis accepts --external-deltas none and renders the section", async () => {
@@ -166,11 +164,11 @@ test("write-final-synthesis accepts --external-deltas none and renders the secti
     "--external-deltas",
     "none"
   ]);
-  assert.equal(result.code, 0, "should succeed with --external-deltas none");
+  expect(result.code).toBe(0);
   const parsed = JSON.parse(result.output);
   const body = await fs.readFile(parsed.path, "utf8");
-  assert.match(body, /External Deltas/);
-  assert.match(body, /none/);
+  expect(body).toMatch(/External Deltas/);
+  expect(body).toMatch(/none/);
 });
 
 test("final-synthesis blocked when escalated_to_lead set; --force overrides", async () => {
@@ -207,8 +205,8 @@ test("final-synthesis blocked when escalated_to_lead set; --force overrides", as
     "--external-deltas",
     "none"
   ]);
-  assert.notEqual(blockResult.code, 0, "should reject when escalated_to_lead");
-  assert.match(blockResult.output, /escalated_to_lead|pending|escalated to lead/i);
+  expect(blockResult.code).not.toBe(0);
+  expect(blockResult.output).toMatch(/escalated_to_lead|pending|escalated to lead/i);
 
   const forceResult = await runCrew([
     "write-final-synthesis",
@@ -222,9 +220,9 @@ test("final-synthesis blocked when escalated_to_lead set; --force overrides", as
     "none",
     "--force"
   ]);
-  assert.equal(forceResult.code, 0, "should allow with --force flag");
+  expect(forceResult.code).toBe(0);
   const result = JSON.parse(forceResult.output);
-  assert.ok(result.path);
+  expect(result.path).toBeTruthy();
 });
 
 test("cost-advise accepts --title --feature --phase and slugs filename + emits frontmatter", async () => {
@@ -255,20 +253,12 @@ test("cost-advise accepts --title --feature --phase and slugs filename + emits f
     "--phase",
     "3"
   ]);
-  assert.equal(adviseResult.code, 0, "cost-advise should succeed");
+  expect(adviseResult.code).toBe(0);
   const adviseOutput = JSON.parse(adviseResult.output);
-  assert.ok(adviseOutput.artifactPath);
-  assert.match(
-    path.basename(adviseOutput.artifactPath),
-    /-cost-advise-phase3-feat021-slice36\.md$/,
-    "cost-advise filename includes the --title slug"
-  );
+  expect(adviseOutput.artifactPath).toBeTruthy();
+  expect(path.basename(adviseOutput.artifactPath)).toMatch(/-cost-advise-phase3-feat021-slice36\.md$/);
   const body = await fs.readFile(adviseOutput.artifactPath, "utf8");
-  assert.match(
-    body,
-    /^---\nphase: "3"\nfeature: FEAT-021\n---\n/,
-    "cost-advise body starts with phase/feature frontmatter"
-  );
+  expect(body).toMatch(/^---\nphase: "3"\nfeature: FEAT-021\n---\n/);
 });
 
 test("cost-slice embeds --feature and --phase in cost-report frontmatter", async () => {
@@ -290,11 +280,11 @@ test("cost-slice embeds --feature and --phase in cost-report frontmatter", async
     "beta",
     "--aggregate-all"
   ]);
-  assert.equal(result.code, 0, "cost-slice should succeed");
+  expect(result.code).toBe(0);
   const costResult = JSON.parse(result.output);
   const body = await fs.readFile(costResult.path, "utf8");
-  assert.match(body, /\nfeature: FEAT-100\n/);
-  assert.match(body, /\nphase: "beta"\n/);
+  expect(body).toMatch(/\nfeature: FEAT-100\n/);
+  expect(body).toMatch(/\nphase: "beta"\n/);
 });
 
 // ── FEAT-151: Per-dispatch breakdown section ──────────────────────────────
@@ -363,19 +353,15 @@ test("cost-slice renders ## Per-dispatch breakdown when dispatch log has matchin
       "--run-title",
       "dispatch-breakdown-test"
     ]);
-    assert.equal(result.code, 0, "cost-slice should succeed");
+    expect(result.code).toBe(0);
     const costResult = JSON.parse(result.output);
     const body = await fs.readFile(costResult.path, "utf8");
-    assert.match(body, /## Per-dispatch breakdown/, "should include dispatch section header");
-    assert.match(body, /crew:reviewer/, "should include the slower dispatch (crew:reviewer)");
-    assert.match(body, /13000ms/, "should show total wall-clock (5000 + 8000)");
-    assert.match(body, /typecheck/, "should include bash gate breakdown");
-    assert.match(body, /\| Skills \|/, "dispatch table should include Skills column header");
-    assert.match(
-      body,
-      /\| 2 \|/,
-      "dispatch table should include non-zero skill-count value (skillLoadCount=2)"
-    );
+    expect(body).toMatch(/## Per-dispatch breakdown/);
+    expect(body).toMatch(/crew:reviewer/);
+    expect(body).toMatch(/13000ms/);
+    expect(body).toMatch(/typecheck/);
+    expect(body).toMatch(/\| Skills \|/);
+    expect(body).toMatch(/\| 2 \|/);
   } finally {
     if (savedDispatchLog === undefined) delete process.env["CREW_DISPATCH_TIMING_LOG"];
     else process.env["CREW_DISPATCH_TIMING_LOG"] = savedDispatchLog;

@@ -12,8 +12,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "bun:test";
 import { execFile as execFileCallback } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -28,7 +27,7 @@ async function makeTempDir(prefix: string) {
 
 async function initRepo(prefix: string) {
   const repoPath = await makeTempDir(prefix);
-  await execFile("node", ["--experimental-strip-types", cliPath, "init", "--repo", repoPath]);
+  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
   return repoPath;
 }
 
@@ -45,7 +44,7 @@ test("BUG-A: concurrent claims on disjoint files do not lose data (5-way paralle
   const promises = [];
   for (let i = 0; i < parallelCount; i += 1) {
     promises.push(
-      execFile("node", [
+      execFile("bun", [
         cliPath,
         "claim",
         "--repo",
@@ -58,22 +57,20 @@ test("BUG-A: concurrent claims on disjoint files do not lose data (5-way paralle
   }
   await Promise.all(promises);
 
-  const showOutput = await execFile("node", [
-    "--experimental-strip-types",
+  const showOutput = await execFile("bun", [
     cliPath,
     "show-claims",
     "--repo",
     repoPath
   ]);
   const showResult = JSON.parse(showOutput.stdout);
-  assert.equal(
+  expect(
     showResult.claims.length,
-    parallelCount,
     `expected ${parallelCount} claims after parallel acquire, got ${showResult.claims.length} (race regression)`
-  );
+  ).toBe(parallelCount);
 
   const owners = new Set(showResult.claims.map((c: { owner: string }) => c.owner));
-  assert.equal(owners.size, parallelCount, "each parallel claim should have a distinct owner");
+  expect(owners.size, "each parallel claim should have a distinct owner").toBe(parallelCount);
 });
 
 test("BUG-A: concurrent releases do not corrupt claims state", async () => {
@@ -85,7 +82,7 @@ test("BUG-A: concurrent releases do not corrupt claims state", async () => {
 
   // Pre-populate sequentially (no race exposure during setup).
   for (let i = 0; i < count; i += 1) {
-    await execFile("node", [
+    await execFile("bun", [
       cliPath,
       "claim",
       "--repo",
@@ -100,8 +97,7 @@ test("BUG-A: concurrent releases do not corrupt claims state", async () => {
   const promises = [];
   for (let i = 0; i < count; i += 1) {
     promises.push(
-      execFile("node", [
-        "--experimental-strip-types",
+      execFile("bun", [
         cliPath,
         "release",
         "--repo",
@@ -114,19 +110,17 @@ test("BUG-A: concurrent releases do not corrupt claims state", async () => {
   }
   await Promise.all(promises);
 
-  const showOutput = await execFile("node", [
-    "--experimental-strip-types",
+  const showOutput = await execFile("bun", [
     cliPath,
     "show-claims",
     "--repo",
     repoPath
   ]);
   const showResult = JSON.parse(showOutput.stdout);
-  assert.equal(
+  expect(
     showResult.claims.length,
-    0,
     `expected 0 claims after parallel release, got ${showResult.claims.length}`
-  );
+  ).toBe(0);
 });
 
 test("BUG-B: write-run-brief archives the previous run instead of destroying it", async () => {
@@ -139,7 +133,7 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
   // preserving its title, status, and gate state for retrieval.
   const repoPath = await initRepo("crew-bug-b-run-brief-archive-");
 
-  await execFile("node", [
+  await execFile("bun", [
     cliPath,
     "write-run-brief",
     "--repo",
@@ -152,7 +146,7 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
     "single-session"
   ]);
 
-  await execFile("node", [
+  await execFile("bun", [
     cliPath,
     "mark-badge",
     "--repo",
@@ -164,24 +158,22 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
   ]);
 
   // Sanity: pending gate exists on the first run.
-  let stateOutput = await execFile("node", [
-    "--experimental-strip-types",
+  let stateOutput = await execFile("bun", [
     cliPath,
     "show-workflow-state",
     "--repo",
     repoPath
   ]);
   let state = JSON.parse(stateOutput.stdout);
-  assert.equal(state.workflowState.currentRun.title, "First run");
-  assert.equal(state.workflowState.currentRun.gates.review.status, "required");
-  assert.equal(
+  expect(state.workflowState.currentRun.title).toBe("First run");
+  expect(state.workflowState.currentRun.gates.review.status).toBe("required");
+  expect(
     state.workflowState.recentRuns.length,
-    0,
     "archive should be empty before second brief"
-  );
+  ).toBe(0);
 
   // Write a second run brief. The first run must be archived, not destroyed.
-  await execFile("node", [
+  await execFile("bun", [
     cliPath,
     "write-run-brief",
     "--repo",
@@ -194,8 +186,7 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
     "assisted single-session"
   ]);
 
-  stateOutput = await execFile("node", [
-    "--experimental-strip-types",
+  stateOutput = await execFile("bun", [
     cliPath,
     "show-workflow-state",
     "--repo",
@@ -203,23 +194,21 @@ test("BUG-B: write-run-brief archives the previous run instead of destroying it"
   ]);
   state = JSON.parse(stateOutput.stdout);
 
-  assert.equal(state.workflowState.currentRun.title, "Second run");
-  assert.equal(state.workflowState.currentRun.goal, "Second goal");
-  assert.equal(
+  expect(state.workflowState.currentRun.title).toBe("Second run");
+  expect(state.workflowState.currentRun.goal).toBe("Second goal");
+  expect(
     state.workflowState.recentRuns.length,
-    1,
     "first run should be archived to recentRuns"
-  );
+  ).toBe(1);
 
   const archived = state.workflowState.recentRuns[0];
-  assert.equal(archived.title, "First run");
-  assert.equal(archived.goal, "First goal");
+  expect(archived.title).toBe("First run");
+  expect(archived.goal).toBe("First goal");
   // The pending gate state on the first run must survive the archive.
-  assert.equal(
+  expect(
     archived.gates.review.status,
-    "required",
     "pending review_required gate must be preserved in archive"
-  );
+  ).toBe("required");
 });
 
 test("BUG-B: multiple sequential run briefs cap at MAX_RECENT_RUNS without dropping the current run", async () => {
@@ -229,7 +218,7 @@ test("BUG-B: multiple sequential run briefs cap at MAX_RECENT_RUNS without dropp
   const repoPath = await initRepo("crew-bug-b-archive-cap-");
 
   for (let i = 0; i < 7; i += 1) {
-    await execFile("node", [
+    await execFile("bun", [
       cliPath,
       "write-run-brief",
       "--repo",
@@ -241,8 +230,7 @@ test("BUG-B: multiple sequential run briefs cap at MAX_RECENT_RUNS without dropp
     ]);
   }
 
-  const stateOutput = await execFile("node", [
-    "--experimental-strip-types",
+  const stateOutput = await execFile("bun", [
     cliPath,
     "show-workflow-state",
     "--repo",
@@ -250,13 +238,13 @@ test("BUG-B: multiple sequential run briefs cap at MAX_RECENT_RUNS without dropp
   ]);
   const state = JSON.parse(stateOutput.stdout);
 
-  assert.equal(state.workflowState.currentRun.title, "Run 7");
+  expect(state.workflowState.currentRun.title).toBe("Run 7");
   // MAX_RECENT_RUNS is 5 in workflow-state.mjs; the archive ring should hold
   // the 5 most recent prior runs (Run 6, Run 5, Run 4, Run 3, Run 2). Run 1
   // falls off the cold edge.
-  assert.equal(state.workflowState.recentRuns.length, 5);
-  assert.equal(state.workflowState.recentRuns[0].title, "Run 6");
-  assert.equal(state.workflowState.recentRuns[4].title, "Run 2");
+  expect(state.workflowState.recentRuns.length).toBe(5);
+  expect(state.workflowState.recentRuns[0].title).toBe("Run 6");
+  expect(state.workflowState.recentRuns[4].title).toBe("Run 2");
 });
 
 test("BUG-C: validation-result artifact uses the single reachable schema only", async () => {
@@ -277,7 +265,7 @@ test("BUG-C: validation-result artifact uses the single reachable schema only", 
   // output, something went wrong.
   const repoPath = await initRepo("crew-bug-c-validation-result-schema-");
 
-  const output = await execFile("node", [
+  const output = await execFile("bun", [
     cliPath,
     "write-validation-result",
     "--repo",
@@ -293,13 +281,13 @@ test("BUG-C: validation-result artifact uses the single reachable schema only", 
   const body = await fs.readFile(result.path, "utf8");
 
   // Reachable schema fields (from the first, active branch in artifacts.mjs):
-  assert.match(body, /# Validation Result: Schema check/);
-  assert.match(body, /Files \/ Surfaces Checked/);
-  assert.match(body, /Evidence Collected/);
+  expect(body).toMatch(/# Validation Result: Schema check/);
+  expect(body).toMatch(/Files \/ Surfaces Checked/);
+  expect(body).toMatch(/Evidence Collected/);
 
   // Dead-branch fields that should never appear in real output:
-  assert.doesNotMatch(body, /Executed Evidence/);
-  assert.doesNotMatch(body, /Inferred Confidence/);
+  expect(body).not.toMatch(/Executed Evidence/);
+  expect(body).not.toMatch(/Inferred Confidence/);
 });
 
 test("BUG-C: deployment-result is no longer a supported artifact kind (dead branch removed)", async () => {
@@ -313,8 +301,8 @@ test("BUG-C: deployment-result is no longer a supported artifact kind (dead bran
   const repoPath = await initRepo("crew-bug-c-deployment-result-removed-");
 
   const result = await writeArtifact(repoPath, "deployment-result", { title: "Should fail" });
-  assert.strictEqual(result.ok, false);
-  assert.match(result.error.message, /Unsupported artifact kind: deployment-result/);
+  expect(result.ok).toBe(false);
+  expect(result.error.message).toMatch(/Unsupported artifact kind: deployment-result/);
 });
 
 test("BUG-E: discover-deployment uses POSIX separators in clue paths on all platforms", async () => {
@@ -350,8 +338,7 @@ test("BUG-E: discover-deployment uses POSIX separators in clue paths on all plat
   await fs.mkdir(path.join(repoPath, "terraform"), { recursive: true });
   await fs.writeFile(path.join(repoPath, "terraform", "main.tf"), "// terraform\n");
 
-  const output = await execFile("node", [
-    "--experimental-strip-types",
+  const output = await execFile("bun", [
     cliPath,
     "discover-deployment",
     "--repo",
@@ -360,22 +347,25 @@ test("BUG-E: discover-deployment uses POSIX separators in clue paths on all plat
   const result = JSON.parse(output.stdout);
 
   // Each classifier branch should produce its expected clue:
-  assert.ok(
+  expect(
     result.clues.includes(".github/workflows/deploy.yml"),
     "github workflow not discovered"
-  );
-  assert.ok(result.clues.includes(".circleci/config.yml"), "circleci config not discovered");
-  assert.ok(result.clues.includes("Dockerfile"), "Dockerfile not discovered");
-  assert.ok(result.clues.includes("infra/k8s/deploy.yaml"), "infra k8s manifest not discovered");
-  assert.ok(result.clues.includes("terraform/main.tf"), "terraform config not discovered");
+  ).toBeTruthy();
+  expect(result.clues.includes(".circleci/config.yml"), "circleci config not discovered").toBeTruthy();
+  expect(result.clues.includes("Dockerfile"), "Dockerfile not discovered").toBeTruthy();
+  expect(
+    result.clues.includes("infra/k8s/deploy.yaml"),
+    "infra k8s manifest not discovered"
+  ).toBeTruthy();
+  expect(result.clues.includes("terraform/main.tf"), "terraform config not discovered").toBeTruthy();
 
   // No clue should contain a backslash. This is the regression catcher:
   // on Windows pre-fix, every nested-path clue contained backslashes.
   for (const clue of result.clues) {
-    assert.ok(
+    expect(
       !clue.includes("\\"),
       `clue contains backslash separator, expected POSIX forward slash: ${clue}`
-    );
+    ).toBeTruthy();
   }
 });
 
@@ -400,8 +390,7 @@ test("BUG-E: file fixtures with directory paths under deployment hints are disco
     await fs.writeFile(path.join(repoPath, dir, file), "content\n");
   }
 
-  const output = await execFile("node", [
-    "--experimental-strip-types",
+  const output = await execFile("bun", [
     cliPath,
     "discover-deployment",
     "--repo",
@@ -411,10 +400,10 @@ test("BUG-E: file fixtures with directory paths under deployment hints are disco
 
   for (const [dir, file] of hints) {
     const expected = `${dir}/${file}`;
-    assert.ok(
+    expect(
       result.clues.includes(expected),
       `deployment-hint clue not discovered: ${expected} (got: ${JSON.stringify(result.clues)})`
-    );
+    ).toBeTruthy();
   }
 });
 
@@ -425,7 +414,7 @@ test("BUG-E: file fixtures with directory paths under deployment hints are disco
 test("CLI: -- terminates flag parsing and preserves dash-prefixed positionals", async () => {
   const repoPath = await initRepo("crew-cli-double-dash-");
 
-  const output = await execFile("node", [
+  const output = await execFile("bun", [
     cliPath,
     "claim",
     "--repo",
@@ -436,8 +425,8 @@ test("CLI: -- terminates flag parsing and preserves dash-prefixed positionals", 
   ]);
   const result = JSON.parse(output.stdout);
 
-  assert.deepEqual(result.claimed, ["-tricky.md", "normal.md"]);
-  assert.deepEqual(result.conflicts, []);
+  expect(result.claimed).toEqual(["-tricky.md", "normal.md"]);
+  expect(result.conflicts).toEqual([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -453,9 +442,9 @@ test("AC-6: claimFiles returns err() when repo path escapes repo boundary", asyn
   const repoPath = await makeTempDir("crew-ac6-claimfiles-err-");
   // "../../outside" resolves outside the repo root → toRepoRelative throws
   const result = await claimFiles(repoPath, ["../../outside.txt"], { owner: "test" });
-  assert.equal(result.ok, false, "expected err() for out-of-repo path");
-  assert.ok(result.error instanceof Error, "error should be an Error instance");
-  assert.match(result.error.message, /repo/i, "error should mention repo boundary");
+  expect(result.ok, "expected err() for out-of-repo path").toBe(false);
+  expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
+  expect(result.error.message, "error should mention repo boundary").toMatch(/repo/i);
 });
 
 test("AC-6: releaseFiles returns err() when repo path escapes repo boundary", async () => {
@@ -465,8 +454,8 @@ test("AC-6: releaseFiles returns err() when repo path escapes repo boundary", as
   const repoPath = await makeTempDir("crew-ac6-releasefiles-err-");
   // releaseFiles calls toRepoRelative on explicit paths, so same boundary guard
   const result = await releaseFiles(repoPath, ["../../outside.txt"], { owner: "test" });
-  assert.equal(result.ok, false, "expected err() for out-of-repo path");
-  assert.ok(result.error instanceof Error, "error should be an Error instance");
+  expect(result.ok, "expected err() for out-of-repo path").toBe(false);
+  expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
 });
 
 test("AC-6: resolveApproval returns err() for unknown approval id", async () => {
@@ -479,9 +468,9 @@ test("AC-6: resolveApproval returns err() for unknown approval id", async () => 
     decision: "approved",
     resolver: "test"
   });
-  assert.equal(result.ok, false, "expected err() for unknown approval id");
-  assert.ok(result.error instanceof Error, "error should be an Error instance");
-  assert.match(result.error.message, /unknown approval id/i);
+  expect(result.ok, "expected err() for unknown approval id").toBe(false);
+  expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
+  expect(result.error.message).toMatch(/unknown approval id/i);
 });
 
 test("AC-6: markWorkflowBadge returns err() when badge option is missing", async () => {
@@ -491,7 +480,7 @@ test("AC-6: markWorkflowBadge returns err() when badge option is missing", async
   const repoPath = await makeTempDir("crew-ac6-markbadge-err-");
   // badge is required; omitting it triggers the validation throw
   const result = await markWorkflowBadge(repoPath, {});
-  assert.equal(result.ok, false, "expected err() when badge is missing");
-  assert.ok(result.error instanceof Error, "error should be an Error instance");
-  assert.match(result.error.message, /badge/i);
+  expect(result.ok, "expected err() when badge is missing").toBe(false);
+  expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
+  expect(result.error.message).toMatch(/badge/i);
 });
