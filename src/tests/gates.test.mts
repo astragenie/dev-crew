@@ -14,7 +14,7 @@ import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { recordGradeScore } from "../scripts/lib/grade-trend.mjs";
-import { AC_SECTION_BODY, AC_PLACEHOLDER_BODY, initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { AC_SECTION_BODY, AC_PLACEHOLDER_BODY, initGitRepo } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -39,8 +39,6 @@ async function tmpRepo(prefix: string): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 async function writeWorkflowState(repo: string, currentRun: unknown): Promise<void> {
   const dir = path.join(repo, ".claude", "state", "crew");

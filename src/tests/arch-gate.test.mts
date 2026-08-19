@@ -95,19 +95,14 @@ function baseInput(overrides: Partial<Parameters<typeof shouldRunArchGate>[0]> =
     isFirstSlice: true,
     contractsExist: false,
     archStatus: null,
-    crewAvailable: true,
     ...overrides
   };
 }
 
-test("shouldRunArchGate: fires when all conditions hold (P0/P1 + positive fullstack + missing artifact + crew present + first slice)", () => {
+test("shouldRunArchGate: fires when all conditions hold (P0/P1 + positive fullstack + missing artifact + first slice)", () => {
   assert.equal(shouldRunArchGate(baseInput()), true);
   assert.equal(shouldRunArchGate(baseInput({ priority: "P1" })), true);
   assert.equal(shouldRunArchGate(baseInput({ variant: "parallel-fe-be" })), true);
-});
-
-test("shouldRunArchGate: false when crew is absent", () => {
-  assert.equal(shouldRunArchGate(baseInput({ crewAvailable: false })), false);
 });
 
 test("shouldRunArchGate: false when not the first slice", () => {
@@ -501,23 +496,16 @@ async function makeGateFeature(
   return feat;
 }
 
-test("maybeBuildArchGatePreflight: null when crew is unavailable (soft skip)", async () => {
-  const repo = await tmpRepo("arch-gate-preflight-nocrew-");
-  const feat = await makeGateFeature(repo);
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-01", featureId: feat.id, variant: "fullstack", config: null },
-    { checkCrewAvailable: async () => false }
-  );
-  assert.equal(result, null);
-});
-
-test("maybeBuildArchGatePreflight: non-null when all conditions hold and crew is available", async () => {
+test("maybeBuildArchGatePreflight: non-null when all conditions hold", async () => {
   const repo = await tmpRepo("arch-gate-preflight-fire-");
   const feat = await makeGateFeature(repo);
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-01", featureId: feat.id, variant: "fullstack", config: null },
-    { checkCrewAvailable: async () => true }
-  );
+  const result = await maybeBuildArchGatePreflight({
+    repoPath: repo,
+    sliceId: "SLICE-01",
+    featureId: feat.id,
+    variant: "fullstack",
+    config: null
+  });
   assert.ok(typeof result === "string");
   assert.match(result as string, new RegExp(feat.id));
 });
@@ -525,49 +513,64 @@ test("maybeBuildArchGatePreflight: non-null when all conditions hold and crew is
 test("maybeBuildArchGatePreflight: null when not the first slice", async () => {
   const repo = await tmpRepo("arch-gate-preflight-notfirst-");
   const feat = await makeGateFeature(repo, { sliceId: "SLICE-01" });
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-02", featureId: feat.id, variant: "fullstack", config: null },
-    { checkCrewAvailable: async () => true }
-  );
+  const result = await maybeBuildArchGatePreflight({
+    repoPath: repo,
+    sliceId: "SLICE-02",
+    featureId: feat.id,
+    variant: "fullstack",
+    config: null
+  });
   assert.equal(result, null);
 });
 
 test("maybeBuildArchGatePreflight: null when priority is P2", async () => {
   const repo = await tmpRepo("arch-gate-preflight-p2-");
   const feat = await makeGateFeature(repo, { priority: "P2" });
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-01", featureId: feat.id, variant: "fullstack", config: null },
-    { checkCrewAvailable: async () => true }
-  );
+  const result = await maybeBuildArchGatePreflight({
+    repoPath: repo,
+    sliceId: "SLICE-01",
+    featureId: feat.id,
+    variant: "fullstack",
+    config: null
+  });
   assert.equal(result, null);
 });
 
 test("maybeBuildArchGatePreflight: null when variant is not a positive fullstack signal", async () => {
   const repo = await tmpRepo("arch-gate-preflight-variant-");
   const feat = await makeGateFeature(repo);
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-01", featureId: feat.id, variant: "backend", config: null },
-    { checkCrewAvailable: async () => true }
-  );
+  const result = await maybeBuildArchGatePreflight({
+    repoPath: repo,
+    sliceId: "SLICE-01",
+    featureId: feat.id,
+    variant: "backend",
+    config: null
+  });
   assert.equal(result, null);
 });
 
 test("maybeBuildArchGatePreflight: null when arch_status is deferred_design (idempotent)", async () => {
   const repo = await tmpRepo("arch-gate-preflight-deferred-");
   const feat = await makeGateFeature(repo, { archStatus: "deferred_design" });
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-01", featureId: feat.id, variant: "fullstack", config: null },
-    { checkCrewAvailable: async () => true }
-  );
+  const result = await maybeBuildArchGatePreflight({
+    repoPath: repo,
+    sliceId: "SLICE-01",
+    featureId: feat.id,
+    variant: "fullstack",
+    config: null
+  });
   assert.equal(result, null);
 });
 
 test("maybeBuildArchGatePreflight: null when featureId is absent", async () => {
   const repo = await tmpRepo("arch-gate-preflight-nofeat-");
-  const result = await maybeBuildArchGatePreflight(
-    { repoPath: repo, sliceId: "SLICE-01", featureId: null, variant: "fullstack", config: null },
-    { checkCrewAvailable: async () => true }
-  );
+  const result = await maybeBuildArchGatePreflight({
+    repoPath: repo,
+    sliceId: "SLICE-01",
+    featureId: null,
+    variant: "fullstack",
+    config: null
+  });
   assert.equal(result, null);
 });
 

@@ -8,13 +8,7 @@ import {
   applyLightLadder,
   retrofitLightLadder
 } from "./config-resolver.mjs";
-import {
-  findCrewCli,
-  getCrewVersion,
-  compareSemver,
-  MIN_CREW_VERSION,
-  checkBunVersion
-} from "./plugin-identity.mjs";
+import { checkBunVersion } from "./plugin-identity.mjs";
 import { initializeIterationCounter } from "./loop-iteration.mjs";
 import { pathExists } from "./paths.mjs";
 import { buildTokens, buildSkillActivationBlock } from "./loop-installer-tokens.mjs";
@@ -92,30 +86,12 @@ export async function installLoop(
     );
   }
 
-  // Hard dependency: crew CLI must be discoverable.
-  // Test seam: options.crewCliOverride / options.crewVersionOverride let tests
-  // pin the discovered CLI path and installed version deterministically
-  // (mirrors the bunVersionOverride seam above). Both are undefined in
-  // production, so real discovery still runs and behavior is unchanged.
-  const crewCli =
-    options.crewCliOverride !== undefined ? options.crewCliOverride : await findCrewCli();
-  if (!crewCli) {
-    throw new Error(
-      "Hard dependency missing: the `crew` plugin is not installed in the Claude Code plugin cache. " +
-        "Install `crew` first (it lives in the astra marketplace), then re-run /loop:install."
-    );
-  }
-  const installedCrewVersion =
-    options.crewVersionOverride !== undefined
-      ? options.crewVersionOverride
-      : await getCrewVersion(crewCli);
-  if (installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) < 0) {
-    throw new Error(
-      `Incompatible crew plugin: found v${installedCrewVersion}, need >= v${MIN_CREW_VERSION}. ` +
-        `Update crew (\`/plugin install crew@astra\`) and retry.`
-    );
-  }
-
+  // P2 seam-elimination (SLICE-13): crew is a same-repo subtree now, not an
+  // installed plugin — the old "is crew installed / is it new enough" hard
+  // dependency guard (findCrewCli/getCrewVersion/MIN_CREW_VERSION) no longer
+  // applies. There is nothing to discover or version-gate: crew always
+  // ships with this repo, at whatever version this repo's `crew/` tree is
+  // pinned to.
   const writes: any[] = [];
 
   // FEAT-218 (Phase 2): presets are install-time templates only, and
@@ -183,7 +159,6 @@ export async function installLoop(
     mode: "install-loop",
     preset: config.preset,
     repoPath,
-    crewCli,
     writes
   };
 }
@@ -213,7 +188,6 @@ export async function reportStatus(repoPath: string): Promise<Record<string, any
     hasMasterPrompt: await pathExists(
       path.join(repoPath, tokens.aiLoopRoot!, "00-entry", "MASTER_PROMPT.md")
     ),
-    crewCli: await findCrewCli(),
     bun: await checkBunVersion(),
     memory: memoryStatus,
     memoryBlock

@@ -19,7 +19,7 @@ import { addFeature, updateFeatureFrontmatter } from "../scripts/lib/backlog-wri
 import { deriveReviewGate } from "../scripts/lib/review-gate.mjs";
 import { deriveValidationGate } from "../scripts/lib/validation-gate.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
-import { AC_SECTION_BODY, initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { AC_SECTION_BODY, initGitRepo } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -40,8 +40,6 @@ async function tmpRepo(prefix: string): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 async function setupSlice(repo: string): Promise<{ sliceId: string; featureId: string }> {
   const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });

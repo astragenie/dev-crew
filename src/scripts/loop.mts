@@ -644,6 +644,31 @@ async function runConfigGetSubcommand(argv: string[]): Promise<void> {
   if (value !== undefined) console.log(String(value));
 }
 
+// devcrew.json schemaVersion 2 migrator (FEAT-003 / SLICE-13, contract §5).
+// `bun loop.mts config migrate-devcrew [--repo PATH]` — in-place, idempotent;
+// see src/scripts/lib/devcrew-config.mts for the merge/backup contract.
+async function runConfigMigrateDevcrewSubcommand(argv: string[]): Promise<void> {
+  const repoIdx = argv.indexOf("--repo");
+  const repoRoot = repoIdx >= 0 && argv[repoIdx + 1] ? argv[repoIdx + 1]! : process.cwd();
+  const { migrateToDevcrewConfig } = await import("./lib/devcrew-config.mjs");
+  const result = await migrateToDevcrewConfig(repoRoot);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function runConfigSubcommand(argv: string[]): Promise<void> {
+  const [sub, ...rest] = argv;
+  if (sub === "get") {
+    await runConfigGetSubcommand(argv);
+    return;
+  }
+  if (sub === "migrate-devcrew") {
+    await runConfigMigrateDevcrewSubcommand(rest);
+    return;
+  }
+  console.error("usage: loop.mts config <get <dotted.path>|migrate-devcrew> [--repo PATH]");
+  process.exitCode = 1;
+}
+
 async function main() {
   // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
   // --depth, --dry-run, --json, --run-id, --config) are not registered in
@@ -676,7 +701,7 @@ async function main() {
   }
 
   if (rawArgv[0] === "config") {
-    await runConfigGetSubcommand(rawArgv.slice(1));
+    await runConfigSubcommand(rawArgv.slice(1));
     return;
   }
 

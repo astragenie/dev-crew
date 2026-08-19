@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 
 import { completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { closeSlice } from "../scripts/lib/slice-linker/close-slice.mjs";
-import { initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { initGitRepo } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,8 +41,6 @@ async function tmpRepo(prefix: string): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 async function createFeat(
   repo: string,

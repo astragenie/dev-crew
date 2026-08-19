@@ -11,7 +11,7 @@ import { startSlice, completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { addFeature } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature } from "../scripts/lib/slice-linker.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
-import { AC_SECTION_BODY, initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { AC_SECTION_BODY, initGitRepo } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,8 +36,6 @@ async function tmpRepo(prefix: string): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 /** Replace template placeholder ACs so startSlice AC linter passes. */
 async function fillPlaceholderACs(slicePath: string): Promise<void> {

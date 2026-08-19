@@ -1,0 +1,44 @@
+# Task Handoff: SLICE-13: devcrew.json schema v2 + migrator, plugin-identity/arch-gate/loop-installer crew-CLI deletions
+
+- Created: 2026-08-19T02:55:05.253Z
+- From: fullstack-dev
+- To: lead
+- Objective: Final P2 seam-elimination slice. Deleted findCrewCli/crewCliRuntime/MIN_CREW_VERSION/getCrewVersion/CREW_CLI_FILENAMES/CREW_MARKETPLACE_NAME from plugin-identity.mts (kept compareSemver + Bun-version floor). Deleted isCrewAvailable + the checkCrewAvailable injectable dep from arch-gate.mts; shouldRunArchGate no longer takes a crewAvailable precondition. Stripped the crew-CLI hard-dependency block (discover+version-gate) from loop-installer.mts installLoop, dropped the display-only crewCli field from installLoop's return and reportStatus. Added src/scripts/lib/devcrew-config.mts (migrateToDevcrewConfig, readDevcrewConfigIfPresent) implementing contract section 5's field table: loop.json's top-level keys carry over verbatim, its own schemaVersion:1 is renamed presetSchemaVersion to disambiguate from devcrew.json's own schemaVersion:2, crew.json's features block merges in verbatim, .bak copies of both sources are left in place (originals never deleted). Wired config-resolver.mts resolveConfig's non-preset runtime path to read devcrew.json first when present, falling back to loop.json otherwise -- the preset-install branch is untouched to avoid feeding a stale schemaVersion into a fresh scaffold. Added bun loop.mts config migrate-devcrew CLI subcommand and ran it against this repo as the live proof (.claude/devcrew.json + .claude/loop.json.bak + .claude/crew.json.bak now on disk, idempotent re-run verified written:false). Updated every test that referenced the deleted seam honestly: plugin-identity.test.mts, arch-gate.test.mts, loop-installer.test.mts (dropped the two MIN_CREW_VERSION-boundary tests plus all crewAvailable env-gating), start-slice-arch-gate.test.mts (gate now fires unconditionally, no more environment-aware skip), phase-gate.test.mts (crew-init helper now shells out to the same-repo crew/scripts/crew.mts CLI directly instead of findCrewCli-discovering a plugin-cache install), and deleted the now-vestigial isolateCrewCli() fixture from _fixtures.mts plus its 12 call sites (auto-merge, close-refusal, gates, integration, integrations, qa-grade-gate, slice-complete*, synergy) since CREW_MARKETPLACE_NAME stopped being read by anything once findCrewCli was deleted -- it was already inert since SLICE-11 moved crew-bridge.mts off the CLI-discovery path, this just removes the dead code honestly. Added new src/tests/devcrew-config.test.mts (10 tests: migrate merge shape, .bak byte-identity, idempotent no-op, no-source-config, loop-only-no-features, readDevcrewConfigIfPresent null/stale/ok, resolveConfig devcrew-wins-over-loop.json, resolveConfig falls back pre-migration).
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - src/scripts/lib/plugin-identity.mts
+  - src/scripts/lib/arch-gate.mts
+  - src/scripts/lib/loop-installer.mts
+  - src/scripts/lib/devcrew-config.mts
+  - src/scripts/lib/config-resolver.mts
+  - src/scripts/loop.mts
+  - src/tests/devcrew-config.test.mts
+  - src/tests/plugin-identity.test.mts
+  - src/tests/arch-gate.test.mts
+  - src/tests/loop-installer.test.mts
+  - src/tests/start-slice-arch-gate.test.mts
+  - src/tests/phase-gate.test.mts
+  - src/tests/slice-start.test.mts
+  - src/tests/_fixtures.mts
+  - src/tests/auto-merge.test.mts
+  - src/tests/close-refusal.test.mts
+  - src/tests/gates.test.mts
+  - src/tests/integration.test.mts
+  - src/tests/integrations.test.mts
+  - src/tests/qa-grade-gate.test.mts
+  - src/tests/slice-complete-ceremony.test.mts
+  - src/tests/slice-complete-docwriter.test.mts
+  - src/tests/slice-complete-multi-slice.test.mts
+  - src/tests/slice-complete-tracker-close.test.mts
+  - src/tests/slice-complete.test.mts
+  - src/tests/synergy.test.mts
+  - .claude/artifacts/loop/ai-loop/slices/pending/SLICE_13_DEVCREW-JSON-SCHEMAVERSION-2-MERGE-MIGRATOR.md
+  - .claude/devcrew.json
+  - .claude/loop.json.bak
+  - .claude/crew.json.bak
+- Confidence: high
+- Risks: readCrewConfig inside crew/scripts/lib/features-service.mts (the crew.json reader gating hooks) is untouched -- out of touches_files, deferred to the crew/-side cutover; installLoop's config WRITE path still only ever emits .claude/loop.json for fresh installs (P2 is read-side/additive only, adopters migrate in P5); two pre-existing unrelated test failures (DEC-070/FEAT-229, DEC-068/FEAT-222 contract-record checks) present before and after this slice, not caused by it.
+- Suggested Next Handoff: PM/architect close-out for FEAT-003 (all three P2 slices SLICE-11/12/13 now landed); P3 (FEAT-004 surface merge) is next in the backlog per loop-snapshot.md.
+

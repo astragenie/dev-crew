@@ -1,0 +1,125 @@
+{
+  "preset": "typescript-plugin-dev",
+  "presetName": "typescript-plugin-dev",
+  "schemaVersion": 1,
+  "projectType": "claude-plugin",
+  "split": false,
+  "frontend": {
+    "framework": "none",
+    "language": "typescript"
+  },
+  "backend": {
+    "framework": "node",
+    "language": "typescript",
+    "storage": "none"
+  },
+  "contract": "none",
+  "deployment": "none",
+  "loop": {
+    "aiLoopRoot": ".claude/artifacts/loop/ai-loop",
+    "backlogPath": ".claude/artifacts/loop/ai-loop/backlog",
+    "slicesRoot": ".claude/artifacts/loop/ai-loop/slices",
+    "backlogRoot": ".claude/artifacts/loop/backlog",
+    "specsRoot": ".claude/artifacts/loop/specs",
+    "gradesRoot": ".claude/artifacts/loop/grades",
+    "decisionsRoot": ".claude/artifacts/loop/decisions",
+    "phaseGateArtifactDir": ".claude/artifacts/crew/validations",
+    "maxIterations": 25,
+    "marathonMode": true
+  },
+  "stack": {
+    "build": [
+      {
+        "cmd": "bun",
+        "args": [
+          "run",
+          "lint"
+        ]
+      }
+    ],
+    "test": [
+      {
+        "cmd": "bun",
+        "args": [
+          "test",
+          "--parallel"
+        ]
+      },
+      {
+        "cmd": "node",
+        "args": [
+          "./scripts/validate-manifests.mjs"
+        ]
+      },
+      {
+        "cmd": "node",
+        "args": [
+          "./scripts/validate-content-length.mjs"
+        ]
+      }
+    ],
+    "frontendBuild": null,
+    "infraPlan": null,
+    "aspireBoot": null,
+    "healthchecks": []
+  },
+  "reviewers": {
+    "ladder": [
+      "A",
+      "B"
+    ]
+  },
+  "mandatoryDocs": [
+    "README.md",
+    "CHANGELOG.md",
+    "docs/code-conventions.md"
+  ],
+  "productName": "dev-crew",
+  "productDescription": "Override productName and productDescription in .claude/loop.json after install.",
+  "stackDescription": "- TypeScript source (`src/scripts/**/*.mts`) run directly under Bun \u00e2\u20ac\u201d no emitted `scripts/*.mjs` tree; relative imports keep the `.mjs` specifier extension and `tsc --noEmit` is typecheck-only\n- Bun runtime (NodeNext module resolution, ES2022 target)\n- `bun test --parallel` for tests, colocated in `src/tests/*.mts`\n- Biome for lint/format (cap: cognitive complexity \u00e2\u2030\u00a415)\n- Manifest validators: `src/scripts/validate-manifests.mts` (plugin.json + marketplace registry sync) and `src/scripts/validate-content-length.mts` (agents \u00e2\u2030\u00a4300, skills \u00e2\u2030\u00a4200 lines)",
+  "skills": [
+    "typescript-pro",
+    "frontend-advisory"
+  ],
+  "roles": {
+    "pm": {
+      "skills": [
+        "superpowers:verification-before-completion",
+        "runner:loop-discipline"
+      ]
+    },
+    "researcher": {
+      "skills": [
+        "superpowers:verification-before-completion",
+        "runner:loop-discipline"
+      ]
+    },
+    "architect": {
+      "skills": [
+        "runner:loop-discipline"
+      ]
+    },
+    "document-writer": {
+      "skills": [
+        "runner:loop-discipline"
+      ]
+    }
+  },
+  "memory": {
+    "enabled": true,
+    "project": "dev-crew",
+    "profile": {
+      "enabled": true,
+      "topLessons": 10,
+      "timeoutMs": 20000
+    },
+    "feedback": {
+      "enabled": true,
+      "timeoutMs": 20000,
+      "creditLoop": {
+        "enabled": true,
+        "k": 5
+      }
+    }
+  }
+}

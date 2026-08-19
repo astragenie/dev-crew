@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 
 import { completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
-import { initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { initGitRepo } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,8 +40,6 @@ async function tmpRepo(prefix: string): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 function auditLogPath(repoRoot: string): string {
   return path.join(repoRoot, ".claude/artifacts/loop/auto-dispatch.jsonl");

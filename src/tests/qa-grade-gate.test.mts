@@ -23,7 +23,7 @@ import {
   extractTestConfidenceFromGradeYaml
 } from "../scripts/lib/slice-linker/close-slice.mjs";
 import { addFeature, updateFeatureFrontmatter } from "../scripts/lib/backlog-writer.mjs";
-import { AC_SECTION_BODY, initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { AC_SECTION_BODY, initGitRepo } from "./_fixtures.mjs";
 
 type QaGateMode = "pre-build" | "post-build" | "off";
 
@@ -44,8 +44,6 @@ async function tmpRepo(prefix: string, qaGate?: QaGateMode): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 async function setupSlice(repo: string): Promise<{ sliceId: string; featureId: string }> {
   const feat = await addFeature(repo, { title: "Test feature", body: AC_SECTION_BODY });

@@ -8,7 +8,6 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 import { runPhaseGate } from "../scripts/lib/phase-gate.mjs";
-import { findCrewCli, crewCliRuntime } from "../scripts/lib/plugin-identity.mjs";
 
 function execFile(file, args, opts) {
   return promisify(execFileCallback)(file, args, { timeout: 10000, ...opts });
@@ -18,6 +17,12 @@ async function tmpRepo(prefix: string) {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
+// P2 seam-elimination (SLICE-13): crew is a same-repo subtree now, not an
+// installed plugin discovered via findCrewCli() — its CLI entry point lives
+// at a fixed, always-present path in this checkout, run directly under bun
+// (no more findCrewCli/crewCliRuntime discovery + runtime-picker dance).
+const CREW_CLI = path.resolve("crew/scripts/crew.mts");
+
 async function initRepoWithCrewState(prefix: string) {
   const repo = await tmpRepo(prefix);
   await execFile("git", ["init", "--quiet"], { cwd: repo });
@@ -26,10 +31,7 @@ async function initRepoWithCrewState(prefix: string) {
   await execFile("git", ["config", "commit.gpgsign", "false"], { cwd: repo });
 
   // Seed minimal crew state so write-validation-result has somewhere to write.
-  const crewCli = await findCrewCli();
-  if (crewCli) {
-    await execFile(crewCliRuntime(crewCli), [crewCli, "init", "--repo", repo, "--allow-existing"]);
-  }
+  await execFile("bun", [CREW_CLI, "init", "--repo", repo, "--allow-existing"]);
   return repo;
 }
 
@@ -53,10 +55,7 @@ async function writeConfig(repo: string, stack: Record<string, any>) {
   );
 }
 
-const crewAvailable = await findCrewCli();
-
 test("runPhaseGate runs configured commands and reports PASS", async () => {
-  if (!crewAvailable) return;
   const repo = await initRepoWithCrewState("al-pg-pass-");
   await writeConfig(repo, {
     build: [{ cmd: "node", args: ["-e", "console.log('build ok'); process.exit(0)"] }],
@@ -79,7 +78,6 @@ test("runPhaseGate runs configured commands and reports PASS", async () => {
 });
 
 test("runPhaseGate captures FAIL when a stage exits non-zero", async () => {
-  if (!crewAvailable) return;
   const repo = await initRepoWithCrewState("al-pg-fail-");
   await writeConfig(repo, {
     build: [{ cmd: "node", args: ["-e", "console.error('build broke'); process.exit(2)"] }]
@@ -93,7 +91,6 @@ test("runPhaseGate captures FAIL when a stage exits non-zero", async () => {
 });
 
 test("runPhaseGate skips unconfigured stages cleanly", async () => {
-  if (!crewAvailable) return;
   const repo = await initRepoWithCrewState("al-pg-skip-");
   await writeConfig(repo, {
     build: [{ cmd: "node", args: ["-e", "process.exit(0)"] }]
@@ -113,7 +110,6 @@ test("runPhaseGate skips unconfigured stages cleanly", async () => {
 // zero effect on control flow), a writer failure must abort runPhaseGate
 // entirely and never let a validation-result artifact land.
 test("runPhaseGate fail-hard: a write-validation-result failure aborts the run and claims no artifact", async () => {
-  if (!crewAvailable) return;
   const repo = await initRepoWithCrewState("al-pg-failhard-");
   await writeConfig(repo, {
     build: [{ cmd: "node", args: ["-e", "process.exit(0)"] }]
@@ -157,7 +153,6 @@ test("runPhaseGate fail-hard: a write-validation-result failure aborts the run a
 // locally) — proving the direct-import path, not merely that the old
 // execFile-based subprocess call was removed.
 test("runPhaseGate direct-import happy path: crew validation-result artifact lands on disk", async () => {
-  if (!crewAvailable) return;
   const repo = await initRepoWithCrewState("al-pg-directimport-");
   await writeConfig(repo, {
     build: [{ cmd: "node", args: ["-e", "console.log('build ok'); process.exit(0)"] }]

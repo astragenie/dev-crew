@@ -3,6 +3,8 @@ import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readDevcrewConfigIfPresent } from "./devcrew-config.mjs";
+
 // Resolves the per-repo config from .claude/loop.json.
 //
 // Post-FEAT-218 (Phase 2): presets are install-time templates only.
@@ -130,10 +132,18 @@ export async function resolveConfig(repoPath: string, options: Record<string, un
     return merged;
   }
 
-  // Normal runtime path: .claude/loop.json is the sole source of truth.
-  // No preset merge, no hardcoded stack default (AC-5) — a repo that hasn't
+  // Normal runtime path: .claude/devcrew.json (schemaVersion 2) wins when
+  // present — the merged config from the P2 devcrew.json migration
+  // (contract §5) — falling back to the legacy .claude/loop.json otherwise.
+  // Adopter repos migrate to devcrew.json in P5; until then both shapes are
+  // valid and the newer file always takes precedence when it exists. No
+  // preset merge, no hardcoded stack default (AC-5) — a repo that hasn't
   // been installed yet must fail clearly rather than silently inherit
   // whatever stack happened to be the default.
+  const devcrewConfig = await readDevcrewConfigIfPresent(repoPath);
+  if (devcrewConfig) {
+    return devcrewConfig;
+  }
   if (!userConfig) {
     throw new Error(
       `No ${CONFIG_FILENAME} found in ${repoPath}. Run \`/runner:install --preset <name>\` first ` +

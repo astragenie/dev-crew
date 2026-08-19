@@ -4,14 +4,11 @@
 // this file only proves startSlice actually splices the preflight block into
 // dispatchInstruction when the gate fires, and leaves it out otherwise.
 //
-// The positive-fire case is environment-aware: whether the real hero-crew
-// CLI is installed on the machine running this suite determines whether the
-// gate can fire at all (crew-presence is a hard prerequisite — see
-// arch-gate.mts shouldRunArchGate). Rather than mocking that dependency
-// (start-slice.mts wires the real isCrewAvailable(), not an injectable
-// stub), this test asks the same real signal the production code path uses
-// and asserts consistently with it — deterministic on any machine, crew
-// installed or not.
+// P2 seam-elimination (SLICE-13): crew presence used to be a hard
+// prerequisite for the gate (crew was an installed plugin that could be
+// absent from a given machine's plugin cache) — that check is gone now that
+// crew is a same-repo subtree, always available. The positive-fire case
+// below is therefore deterministic on every machine, not environment-aware.
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -22,7 +19,6 @@ import assert from "node:assert/strict";
 import { addFeature, updateFeatureFrontmatter } from "../scripts/lib/backlog-writer.mjs";
 import { sliceFromFeature, startSlice } from "../scripts/lib/slice-linker.mjs";
 import { mergeFrontmatter } from "../scripts/lib/frontmatter.mjs";
-import { isCrewAvailable } from "../scripts/lib/arch-gate.mjs";
 import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 async function tmpRepo(prefix: string): Promise<string> {
@@ -124,7 +120,7 @@ test("ARCHITECT GATE wiring: idempotent — a deferred_design FEAT never re-show
   assert.doesNotMatch(result.dispatchInstruction, /ARCHITECT GATE/);
 });
 
-test("ARCHITECT GATE wiring: fires for an eligible P0 fullstack FEAT exactly when crew is available on this machine", async () => {
+test("ARCHITECT GATE wiring: fires for an eligible P0 fullstack FEAT", async () => {
   const repo = await tmpRepo("al-arch-gate-fire-");
   const config = await baseConfig(repo);
   const { slice, feat } = await makeFeatureAndSlice(repo, {
@@ -134,16 +130,6 @@ test("ARCHITECT GATE wiring: fires for an eligible P0 fullstack FEAT exactly whe
 
   const result = await startSlice(repo, slice.id, { config });
   assert.ok(result.dispatchInstruction);
-
-  const crewAvailable = await isCrewAvailable();
-  if (crewAvailable) {
-    assert.match(result.dispatchInstruction, /ARCHITECT GATE/);
-    assert.match(result.dispatchInstruction, new RegExp(feat.id));
-  } else {
-    assert.doesNotMatch(
-      result.dispatchInstruction,
-      /ARCHITECT GATE/,
-      "crew absent — gate must soft-skip, never block the dispatch"
-    );
-  }
+  assert.match(result.dispatchInstruction, /ARCHITECT GATE/);
+  assert.match(result.dispatchInstruction, new RegExp(feat.id));
 });

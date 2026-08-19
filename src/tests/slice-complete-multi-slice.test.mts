@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 
 import { completeSlice } from "../scripts/lib/slice-linker.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
-import { initGitRepo, isolateCrewCli } from "./_fixtures.mjs";
+import { initGitRepo } from "./_fixtures.mjs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,8 +44,6 @@ async function tmpRepo(prefix: string): Promise<string> {
   await initGitRepo(repo);
   return repo;
 }
-
-isolateCrewCli();
 
 /**
  * Create a FEAT file in the given state with the specified frontmatter.

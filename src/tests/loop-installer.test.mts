@@ -14,12 +14,6 @@ import {
   MARKER_END,
   buildContextRulesList
 } from "../scripts/lib/loop-installer.mjs";
-import {
-  findCrewCli,
-  getCrewVersion,
-  compareSemver,
-  MIN_CREW_VERSION
-} from "../scripts/lib/plugin-identity.mjs";
 import { resolveSkills } from "../scripts/lib/skill-resolver.mjs";
 
 function execFile(file, args, opts) {
@@ -39,12 +33,6 @@ async function initGitRepo(prefix: string) {
   return repo;
 }
 
-const crewCliPath = await findCrewCli();
-const installedCrewVersion = await getCrewVersion(crewCliPath);
-const crewAvailable = Boolean(
-  crewCliPath && installedCrewVersion && compareSemver(installedCrewVersion, MIN_CREW_VERSION) >= 0
-);
-
 test("installLoop errors when target is not a git repo", async () => {
   const repo = await tmpRepo("al-install-no-git-");
   await assert.rejects(
@@ -58,70 +46,6 @@ test("installLoop refuses when bun below minimum", async () => {
   await assert.rejects(
     () => installLoop(repo, { migrateAdhoc: false, bunVersionOverride: "0.0.1" }),
     /bun >= /
-  );
-});
-
-// Regression coverage for the MIN_CREW_VERSION refusal boundary
-// (flagged by reviewer + verifier on FEAT-176/SLICE-134 — the guard at
-// loop-installer.mts had no injectable seam so it was never exercised
-// deterministically). crewCliOverride / crewVersionOverride let these
-// tests pin the discovered CLI + version without touching the real
-// plugin cache, independent of whatever crew build happens to be
-// installed in the environment running the suite.
-const fakeCrewCliPath = path.join(os.tmpdir(), "fake-crew-cli", "scripts", "crew.ts");
-// One release below MIN_CREW_VERSION under compareSemver's component-wise
-// ordering (MIN_CREW_VERSION's patch component is 0, so "one patch below"
-// is expressed as the previous minor line — compareSemver short-circuits
-// on the first differing component, so any patch value here compares below).
-const belowMinCrewVersion = "0.46.9";
-
-test("installLoop installs when crew version is exactly at MIN_CREW_VERSION", async () => {
-  const repo = await initGitRepo("al-install-crew-min-");
-  const result = await installLoop(repo, {
-    migrateAdhoc: false,
-    preset: "dotnet-python",
-    crewCliOverride: fakeCrewCliPath,
-    crewVersionOverride: MIN_CREW_VERSION
-  });
-
-  assert.equal(result.mode, "install-loop");
-  assert.equal(result.crewCli, fakeCrewCliPath);
-
-  const claudeMd = await fs.readFile(path.join(repo, "CLAUDE.md"), "utf8");
-  assert.ok(claudeMd.includes(MARKER_START), "install must proceed at exactly MIN_CREW_VERSION");
-});
-
-test("installLoop refuses when crew version is one release below MIN_CREW_VERSION", async () => {
-  const repo = await initGitRepo("al-install-crew-old-");
-
-  await assert.rejects(
-    () =>
-      installLoop(repo, {
-        migrateAdhoc: false,
-        crewCliOverride: fakeCrewCliPath,
-        crewVersionOverride: belowMinCrewVersion
-      }),
-    /Incompatible crew plugin/
-  );
-
-  const claudeMdExists = await fs
-    .access(path.join(repo, "CLAUDE.md"))
-    .then(() => true)
-    .catch(() => false);
-  assert.equal(
-    claudeMdExists,
-    false,
-    "installLoop must not write CLAUDE.md when the crew version gate rejects"
-  );
-
-  const loopJsonExists = await fs
-    .access(path.join(repo, ".claude", "loop.json"))
-    .then(() => true)
-    .catch(() => false);
-  assert.equal(
-    loopJsonExists,
-    false,
-    "installLoop must not write .claude/loop.json when the crew version gate rejects"
   );
 });
 
@@ -141,7 +65,6 @@ test("installLoop errors when target dir does not exist", async () => {
 // .claude/loop.json) must fail with an actionable error instead of silently
 // picking a stack.
 test("installLoop errors on a fresh repo when no --preset is given and no config exists", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-no-preset-");
   await assert.rejects(
     () => installLoop(repo, { migrateAdhoc: false }),
@@ -150,7 +73,6 @@ test("installLoop errors on a fresh repo when no --preset is given and no config
 });
 
 test("installLoop writes marker block, loop-control files, backlog scaffold, config", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-happy-");
   const result = await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
@@ -220,7 +142,6 @@ test("installLoop writes marker block, loop-control files, backlog scaffold, con
 // enough to drive builder skill injection with no scripts/presets/ file
 // involved — resolveSkills validates and resolves directly against it.
 test("installLoop's .claude/loop.json alone satisfies resolve-skills (AC-3)", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-skill-injection-");
   await installLoop(repo, { migrateAdhoc: false, preset: "typescript-plugin-dev" });
   const loopJsonPath = path.join(repo, ".claude", "loop.json");
@@ -230,7 +151,6 @@ test("installLoop's .claude/loop.json alone satisfies resolve-skills (AC-3)", as
 });
 
 test("installLoop is idempotent: re-running does not duplicate marker block", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-idempotent-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
@@ -242,7 +162,6 @@ test("installLoop is idempotent: re-running does not duplicate marker block", as
 });
 
 test("installLoop collapses stacked orphan start markers (regression: < 0.1.12 stacking bug)", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-orphans-");
   // Simulate a CLAUDE.md that was corrupted by repeated installs from an
   // earlier plugin version: many start markers stacked, no end marker.
@@ -269,7 +188,6 @@ test("installLoop collapses stacked orphan start markers (regression: < 0.1.12 s
 });
 
 test("installLoop is convergent: second run after orphan-collapse is a no-op", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-convergence-");
   const orphans = Array(5)
     .fill(`${MARKER_START}\n<!-- Installed by /loop:install. -->\n`)
@@ -289,7 +207,6 @@ test("installLoop is convergent: second run after orphan-collapse is a no-op", a
 });
 
 test("installLoop preserves user content outside the marker block", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-preserve-");
   await fs.writeFile(
     path.join(repo, "CLAUDE.md"),
@@ -308,7 +225,6 @@ test("installLoop preserves user content outside the marker block", async () => 
 // that lived here (register / idempotent / preserve-user-hooks) covered
 // only that removed code path and are removed with it.
 test("installLoop does not create or modify .claude/settings.json", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-no-settings-");
   const settingsDir = path.join(repo, ".claude");
   await fs.mkdir(settingsDir, { recursive: true });
@@ -361,7 +277,6 @@ test("buildContextRulesList output contains in_scope_globs instruction prose", (
 
 // FEAT-271 / SLICE-168: --light selection flag.
 test("installLoop --light seeds the trimmed reviewer ladder + satisfiedByReview (AC-1)", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-light-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python", light: true });
 
@@ -373,7 +288,6 @@ test("installLoop --light seeds the trimmed reviewer ladder + satisfiedByReview 
 });
 
 test("installLoop without --light keeps the default two-reviewer ladder (AC-2, backward compat)", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-no-light-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
@@ -383,7 +297,6 @@ test("installLoop without --light keeps the default two-reviewer ladder (AC-2, b
 });
 
 test("installLoop --light is idempotent across repeated runs (AC-4)", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-light-idempotent-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python", light: true });
   const afterFirst = await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8");
@@ -408,7 +321,6 @@ test("installLoop --light is idempotent across repeated runs (AC-4)", async () =
 // silently computed the merge in memory but never wrote it (writeConfigIfMissing
 // no-ops once the file exists).
 test("installLoop --light retrofits an already-installed repo with no --preset on the refresh call", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-light-retrofit-no-preset-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
@@ -449,7 +361,6 @@ test("installLoop --light retrofits an already-installed repo with no --preset o
 });
 
 test("installLoop --light retrofits an already-installed repo when --preset is also given", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-light-retrofit-with-preset-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
 
@@ -460,7 +371,6 @@ test("installLoop --light retrofits an already-installed repo when --preset is a
 });
 
 test("installLoop without --light on an already-installed repo leaves the config untouched", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-install-no-light-existing-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const before = await fs.readFile(path.join(repo, ".claude", "loop.json"), "utf8");
@@ -471,7 +381,6 @@ test("installLoop without --light on an already-installed repo leaves the config
 });
 
 test("reportStatus reflects install state", async () => {
-  if (!crewAvailable) return;
   const repo = await initGitRepo("al-status-");
   await installLoop(repo, { migrateAdhoc: false, preset: "dotnet-python" });
   const status = await reportStatus(repo);
@@ -479,5 +388,4 @@ test("reportStatus reflects install state", async () => {
   assert.equal(status.hasMarkerBlock, true);
   assert.equal(status.hasApprovedSlices, true);
   assert.equal(status.hasMasterPrompt, true);
-  assert.ok(status.crewCli);
 });

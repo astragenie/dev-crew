@@ -14,9 +14,7 @@ import { decomposeSpec } from "../scripts/lib/spec-decomposer.mjs";
 import { listBacklog } from "../scripts/lib/backlog-parser.mjs";
 import { parseFrontmatter } from "../scripts/lib/frontmatter.mjs";
 import { writeFeatureEndCeremony, featureEnd } from "../scripts/lib/ceremonies.mjs";
-import { AC_SECTION_BODY, isolateCrewCli } from "./_fixtures.mjs";
-
-isolateCrewCli();
+import { AC_SECTION_BODY } from "./_fixtures.mjs";
 
 function execFile(file, args, opts) {
   return promisify(execFileCb)(file, args, { timeout: 10000, ...opts });

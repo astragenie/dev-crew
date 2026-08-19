@@ -35,9 +35,6 @@ import {
   isValidationGateSatisfied
 } from "../scripts/lib/auto-merge.mjs";
 import { flushAuditLog } from "../scripts/lib/auto-dispatch.mjs";
-import { isolateCrewCli } from "./_fixtures.mjs";
-
-isolateCrewCli();
 
 function exec(cmd, opts) {
   return promisify(execCb)(cmd, { timeout: 10000, ...opts });

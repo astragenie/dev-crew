@@ -1,6 +1,7 @@
 ---
 id: FEAT-003
-status: in-progress
+status: done
+completed_at: 2026-08-19
 priority: P2
 category: feature
 target_release: null
@@ -39,6 +40,7 @@ arch_attempt: 0
 arch_status: approved
 arch_review: approved
 started_at: 2026-08-19
+slices_complete: [SLICE-13]
 ---
 ## Description
 

@@ -1,17 +1,21 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T02:26:03.468Z",
+  "updatedAt": "2026-08-19T03:07:30.030Z",
   "currentRun": {
-    "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
+    "title": "FEAT003 SLICE13: devcrew.json schemaVersion 2 merge + migrator",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T02:05:27.578Z",
-    "updatedAt": "2026-08-19T02:26:03.468Z",
-    "next": "SLICE-13: devcrew.json schemaVersion 2 migrator + plugin-identity.mts/arch-gate.mts/loop-installer.mts findCrewCli/MIN_CREW_VERSION deletions (AC-2/AC-5).",
+    "startedAt": "2026-08-19T02:32:45.400Z",
+    "updatedAt": "2026-08-19T03:07:30.030Z",
+    "next": "PM/architect close-out for FEAT-003 (all three P2 slices SLICE-11/12/13 now landed); P3 (FEAT-004 surface merge) is next in the backlog per loop-snapshot.md.",
     "gates": {
       "review": null,
-      "validation": null,
+      "validation": {
+        "status": "failed",
+        "updatedAt": "2026-08-19T03:07:30.030Z",
+        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+      },
       "deployment": {
         "dev": null,
         "prod": null
@@ -22,13 +26,13 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T020527Z-run-brief-feat003-slice12-fail-hard-write-validation-result-direct-imp.md",
+      "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T023245Z-run-brief-feat003-slice13-devcrew-json-schemaversion-2-merge-migrator.md",
       "handoffs": [
-        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
+        "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T025505Z-handoff-slice-13-devcrew-json-schema-v2-migrator-plugin-identity-arc.md"
       ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": null,
+      "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T030730Z-validation-result-phase-unspecified-gate.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -37,6 +41,42 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T02:05:27.578Z",
+      "updatedAt": "2026-08-19T02:26:03.468Z",
+      "completedAt": "2026-08-19T02:26:03.468Z",
+      "next": "SLICE-13: devcrew.json schemaVersion 2 migrator + plugin-identity.mts/arch-gate.mts/loop-installer.mts findCrewCli/MIN_CREW_VERSION deletions (AC-2/AC-5).",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T020527Z-run-brief-feat003-slice12-fail-hard-write-validation-result-direct-imp.md",
+        "handoffs": [
+          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
+        ],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
       "goal": "",
@@ -171,43 +211,6 @@
         "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T004032Z-run-brief-feat002-slice09-single-tsconfig-tsconfig-test-biome-config-m.md",
         "handoffs": [
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T004757Z-handoff-slice-09-tsconfig-biome-config-unification.md"
-        ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT002 SLICE08: Wiggin -> dev-crew branding scrub (27 files)",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T00:24:10.407Z",
-      "updatedAt": "2026-08-19T00:34:32.222Z",
-      "completedAt": "2026-08-19T00:34:32.222Z",
-      "next": "SLICE-09 (tsconfig/biome config merge) and SLICE-10 (N=20 green parallel verification + typecheck gate) are next in the pending queue. A later slice should flatten/normalize the crew/ subtree import and its own wiggin references once dev-crew's own DEC numbering stabilizes (also flagged in the SLICE-04 handoff for the 2 self-referential decision-log test failures).",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T002410Z-run-brief-feat002-slice08-wiggin-dev-crew-branding-scrub-27-files.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003416Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md",
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T003432Z-handoff-slice-08-wiggin-dev-crew-branding-scrub.md"
         ],
         "reviewResult": null,
         "validationPlan": null,

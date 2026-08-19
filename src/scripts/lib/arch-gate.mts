@@ -30,7 +30,6 @@ import path from "node:path";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { findFeatureById, updateFeatureFrontmatter } from "./backlog-writer.mjs";
-import { findCrewCli } from "./plugin-identity.mjs";
 import { contractsArtifactExists } from "./contracts-artifact.mjs";
 
 // ---------------------------------------------------------------------------
@@ -85,16 +84,16 @@ export interface ArchGateConditionInput {
   isFirstSlice: boolean;
   contractsExist: boolean;
   archStatus: string | null | undefined;
-  crewAvailable: boolean;
 }
 
 /**
  * Pure decision function for whether `runner:start` should prepend the
  * ARCHITECT GATE preflight instruction to a slice-build dispatch. See the
- * module docstring for the re-entry precedence rule.
+ * module docstring for the re-entry precedence rule. Crew presence is no
+ * longer a precondition (P2 seam-elimination, SLICE-13) — crew is a
+ * same-repo subtree now, not an installed plugin that could be absent.
  */
 export function shouldRunArchGate(input: ArchGateConditionInput): boolean {
-  if (!input.crewAvailable) return false;
   if (!input.isFirstSlice) return false;
   if (!input.priority || !GATE_PRIORITIES.has(input.priority)) return false;
   if (!isPositiveFullstackVariant(input.variant)) return false;
@@ -457,14 +456,8 @@ export async function applyArchGateVerdict(
 }
 
 // ---------------------------------------------------------------------------
-// Crew-presence check + async orchestrator (Part 2 wiring).
+// Async orchestrator (Part 2 wiring).
 // ---------------------------------------------------------------------------
-
-/** True when the hero-crew CLI is discoverable in the plugin cache. Reuses the crew-bridge findHeroCrewCli lookup pattern (plugin-identity.mjs findCrewCli) rather than re-implementing cache-dir discovery. */
-export async function isCrewAvailable(): Promise<boolean> {
-  const cli = await findCrewCli();
-  return Boolean(cli);
-}
 
 export interface ArchGatePreflightParams {
   repoPath: string;
@@ -474,33 +467,19 @@ export interface ArchGatePreflightParams {
   config: Record<string, any> | null;
 }
 
-export interface ArchGatePreflightDeps {
-  checkCrewAvailable?: () => Promise<boolean>;
-}
-
 /**
- * Async orchestrator for Part 2 — resolves crew presence FIRST (crew
- * absence is a soft skip: log.warn, proceed without the gate — never a
- * hard failure), then FEAT frontmatter + contracts-artifact existence, and
- * returns the preflight instruction block (or null when the gate doesn't
- * apply). `deps.checkCrewAvailable` is injectable for tests; defaults to
- * the real plugin-cache lookup.
+ * Async orchestrator for Part 2 — resolves FEAT frontmatter +
+ * contracts-artifact existence, and returns the preflight instruction block
+ * (or null when the gate doesn't apply). Crew presence is no longer checked
+ * here (P2 seam-elimination, SLICE-13) — crew is a same-repo subtree now,
+ * always available, so the prior soft-skip-when-crew-absent branch no
+ * longer has a real trigger.
  */
 export async function maybeBuildArchGatePreflight(
-  params: ArchGatePreflightParams,
-  deps: ArchGatePreflightDeps = {}
+  params: ArchGatePreflightParams
 ): Promise<string | null> {
   const { repoPath, sliceId, featureId, variant, config } = params;
   if (!featureId) return null;
-
-  const checkCrewAvailable = deps.checkCrewAvailable ?? isCrewAvailable;
-  const crewAvailable = await checkCrewAvailable();
-  if (!crewAvailable) {
-    console.warn(
-      `[arch-gate] crew CLI not found — skipping pre-slice-1 architect gate for ${featureId}; proceeding without risk gate.`
-    );
-    return null;
-  }
 
   const entry = await findFeatureById(repoPath, featureId, config);
   if (!entry) return null;
@@ -511,8 +490,7 @@ export async function maybeBuildArchGatePreflight(
     variant,
     isFirstSlice: isFirstSliceOfFeature(fm, sliceId),
     contractsExist: await contractsArtifactExists(repoPath, featureId),
-    archStatus: fm.arch_status ?? null,
-    crewAvailable
+    archStatus: fm.arch_status ?? null
   });
   if (!decision) return null;
 

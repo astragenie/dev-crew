@@ -259,29 +259,14 @@ test("completeSlice also refreshes slice-progress", async () => {
   const feat = await addFeature(repo, { title: "Done feature", body: AC_SECTION_BODY });
   const { slice } = await sliceFromFeature(repo, feat.id);
 
-  // Root cause of this test's flakiness/timeout: completeSlice's
-  // crew-bridge best-effort calls (tryWriteCostReport, markValidationSkippedBadge)
-  // resolve the REAL hero-crew CLI via findCrewCli() (plugin-identity.mts),
-  // which scans ~/.claude/plugins/cache/<marketplace>/crew. On any machine
-  // that actually has the crew plugin installed (e.g. a developer box),
-  // this shells out to the real `crew cost-slice --aggregate-all` — a real,
-  // unmocked subprocess that does cross-repo cost aggregation and can run
-  // far longer than this unit test's timeout budget. Point
-  // CREW_MARKETPLACE_NAME at a marketplace name that can't resolve to a
-  // real cache dir so findCrewCli() short-circuits to null (all crew-bridge
-  // calls become instant `{ skipped }` no-ops) — deterministic and fast
-  // regardless of what's installed on the host running the test.
-  const savedMarketplace = process.env.CREW_MARKETPLACE_NAME;
-  process.env.CREW_MARKETPLACE_NAME = "al-test-isolated-no-such-marketplace";
-  let result;
-  try {
-    result = await completeSlice(repo, slice.id, {
-      skipValidationCheck: "test-fixture: gate not under test"
-    });
-  } finally {
-    if (savedMarketplace === undefined) delete process.env.CREW_MARKETPLACE_NAME;
-    else process.env.CREW_MARKETPLACE_NAME = savedMarketplace;
-  }
+  // P2 seam-elimination (SLICE-11/13): completeSlice's crew-bridge
+  // best-effort calls (tryWriteCostReport, markValidationSkippedBadge) are
+  // direct in-process imports of crew/scripts/lib/** now, not a
+  // findCrewCli()-discovered subprocess — no more real, unmocked `crew`
+  // CLI shell-out to isolate against here.
+  const result = await completeSlice(repo, slice.id, {
+    skipValidationCheck: "test-fixture: gate not under test"
+  });
   assert.ok(result.sliceProgress && !result.sliceProgress.error);
   const dashboard = path.join(repo, ".claude/state/crew/slice-progress.md");
   const text = await fs.readFile(dashboard, "utf8");

@@ -10,7 +10,6 @@ import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { beforeEach, afterEach } from "bun:test";
 import { PATH_DEFAULTS } from "../scripts/lib/paths.mjs";
 
 const run = promisify(execFile);
@@ -103,32 +102,4 @@ export async function initGitRepo(repo: string): Promise<void> {
   await run("git", ["config", "user.name", "Test"], { cwd: repo });
   await run("git", ["config", "commit.gpgsign", "false"], { cwd: repo });
   await run("git", ["commit", "--allow-empty", "-m", "init"], { cwd: repo });
-}
-
-/**
- * Registers bun:test `beforeEach`/`afterEach` hooks that point
- * `CREW_MARKETPLACE_NAME` at a marketplace name that cannot resolve to a real
- * plugin cache dir, for the duration of every test in the calling file. This
- * makes `findCrewCli()` (plugin-identity.mts) short-circuit to null, so every
- * crew-bridge call inside `completeSlice` (tryWriteCostReport,
- * markValidationSkippedBadge, etc.) becomes an instant `{ skipped }` no-op
- * instead of shelling out to a real, unmocked crew CLI on the host machine.
- * On a dev box that actually has the crew plugin cached, that real subprocess
- * call can run far longer than a unit test's timeout budget — deterministic
- * and fast regardless of what's installed on the host running the test.
- *
- * Call once at module scope in any `*.test.mts` file whose tests call
- * `completeSlice()`. Save/restore is scoped per-test (not per-file) so it
- * can't leak into other test files' assertions about the real env var.
- */
-export function isolateCrewCli(): void {
-  let saved: string | undefined;
-  beforeEach(() => {
-    saved = process.env.CREW_MARKETPLACE_NAME;
-    process.env.CREW_MARKETPLACE_NAME = "al-test-isolated-no-such-marketplace";
-  });
-  afterEach(() => {
-    if (saved === undefined) delete process.env.CREW_MARKETPLACE_NAME;
-    else process.env.CREW_MARKETPLACE_NAME = saved;
-  });
 }
