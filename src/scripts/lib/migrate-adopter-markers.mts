@@ -164,7 +164,10 @@ export function replaceMarkerBlocks(content: string, renderedBlock: string): str
     .map((segment) => segment.trim())
     .filter((segment) => segment.length > 0);
 
-  const parts = [before, renderedBlock, ...rest];
+  // Drop an empty `before` too (span at file position 0) — keeping it would
+  // prefix the joined output with two leading blank lines (SLICE-31 review,
+  // LOW finding; cosmetic + idempotent, but free to fix here).
+  const parts = [before, renderedBlock, ...rest].filter((part) => part.length > 0);
   return `${parts.join("\n\n")}\n`;
 }
 
