@@ -36,7 +36,29 @@ const SCAN_TARGETS = [
   "commands",
   "skills",
   "agents",
-  ".claude-plugin"
+  ".claude-plugin",
+  // crew/ surfaces (devcrew unification, SLICE-20). commands/skills/agents
+  // were already fully merged out of crew/ and git-auto-pruned (SLICE-14/15/
+  // 16/17), so only the remaining authored crew-side surfaces are added here.
+  // crew/.claude-plugin/plugin.json (the marketplace/version surface) is
+  // deliberately NOT added to validate-manifests.mts's scope alongside this —
+  // that stays untouched until Phase 5 per unification-plan.md SS6, but this
+  // org-ref sweep is a different, lower-risk concern (banned-string sweep,
+  // not a version/marketplace contract) so it is safe to widen now.
+  "crew/docs",
+  "crew/scripts",
+  "crew/CLAUDE.md",
+  "crew/README.md",
+  "crew/.claude-plugin",
+  "crew/crew-architecture-analysis.md",
+  "crew/crew-optimization.md",
+  // crew/.claude/crew — authored methodology docs (constitution.md,
+  // deployment.md, plugin-marketplace.md, protocol.md,
+  // telemetry.example.yaml, workflow.md), confirmed present as of SLICE-20.
+  // The crew-side validator this widening supersedes scanned this target;
+  // not in the original disposition-plan list, but required for functional
+  // parity before deleting that copy (see DEDUPE TRIO precondition).
+  "crew/.claude/crew"
 ];
 
 // Within a scanned dir, skip these (vendored / generated / frozen).
@@ -46,9 +68,20 @@ const SCAN_EXTENSIONS = new Set([".md", ".mts", ".mjs", ".json", ".ts", ".js", "
 // Files that MUST name the banned token to do their job — this guard's own
 // source (the literal it bans) and its test (fixtures + assertions). Named
 // allowlist with rationale, mirroring validate-backlog-writes.mts's pattern.
+//
+// docs/parents/runner-plugin-{AGENTS,CLAUDE}.md are a frozen, byte-verified
+// snapshot of runner-plugin's own docs at import time (SLICE-04 subtree
+// import; verified byte-identical to origin via `git hash-object` per that
+// slice's review artifact). Same "frozen historical record, resolves via
+// GitHub's redirect" rationale as the CHANGELOG.md/.claude/artifacts
+// exemption described above, and already treated this way by the SLICE-08
+// branding scrub (`grep -vE ... docs/parents/ ...`) — this validator was
+// just missing the matching exemption.
 const ALLOWLIST = new Set([
   path.join("src", "scripts", "validate-org-refs.mts"),
-  path.join("src", "tests", "marketplace-drift-guards.test.mts")
+  path.join("src", "tests", "marketplace-drift-guards.test.mts"),
+  path.join("docs", "parents", "runner-plugin-AGENTS.md"),
+  path.join("docs", "parents", "runner-plugin-CLAUDE.md")
 ]);
 
 export interface OrgRefFinding {

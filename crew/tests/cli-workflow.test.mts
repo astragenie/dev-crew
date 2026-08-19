@@ -57,14 +57,6 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
   await runCrew(["claim", "--repo", repoPath, "--owner", "fullstack-dev", "src/example.ts"]);
 
   await runCrew([
-    "request-approval",
-    "--repo",
-    repoPath,
-    "--summary",
-    "Expand scope for wake-up test"
-  ]);
-
-  await runCrew([
     "write-validation-plan",
     "--repo",
     repoPath,
@@ -132,7 +124,6 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
 
   expect(wakeUp.summary.memoryPolicy).toBe("bounded-v1");
   expect(wakeUp.summary.activeClaims).toBe(1);
-  expect(wakeUp.summary.openApprovals).toBe(1);
   expect(wakeUp.summary.hasActiveWorkflow).toBe(true);
   expect(wakeUp.summary.pendingWorkflowBadges).toEqual(["review_required"]);
   expect(wakeUp.summary.hasDeploymentGuidance).toBe(true);
@@ -151,14 +142,12 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
   expect(wakeUp.memory.hot.latestArtifacts.deploymentCheck.title).toMatch(/Wake-up deployment check/);
   expect(wakeUp.memory.warm.validation.title).toMatch(/Wake-up validation result/);
   expect(wakeUp.memory.hot.claims.length).toBe(1);
-  expect(wakeUp.memory.hot.openApprovals.length).toBe(1);
   expect(wakeUp.memory.hot.workflow.currentRun.gates.review.status).toBe("required");
   expect(wakeUp.memory.cold.archiveCounts.runs >= 1).toBeTruthy();
   expect(wakeUp.memory.cold.archiveCounts.validations >= 2).toBeTruthy();
   expect(wakeUp.memory.cold.archiveCounts.deployments >= 1).toBeTruthy();
   expect(wakeUp.memory.cold.omittedByDefault).toEqual([
     "older_artifacts",
-    "resolved_approvals",
     "full_event_log",
     "full_history_log"
   ]);
@@ -204,14 +193,6 @@ test("CLI brief-me synthesizes workflow state, git activity, and next step", asy
     "review_required",
     "--note",
     "Implementation changed code and needs review"
-  ]);
-
-  await runCrew([
-    "request-approval",
-    "--repo",
-    repoPath,
-    "--summary",
-    "Approve broadening the brief"
   ]);
 
   await runCrew([

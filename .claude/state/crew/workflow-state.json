@@ -1,21 +1,17 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T07:11:04.600Z",
+  "updatedAt": "2026-08-19T08:15:18.956Z",
   "currentRun": {
-    "title": "FEAT004 SLICE19: Greenfield spikes + full /devcrew:* ceremony smoke test",
+    "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
     "goal": "",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T06:34:51.719Z",
-    "updatedAt": "2026-08-19T07:11:04.600Z",
-    "next": "Safe to merge/land SLICE-19 and FEAT-004's remaining wave. Supersedes and reverses the decision of 20260819T064902Z-validation-result-slice-19-full-ceremony-smoke-test-blank-page-command-audit.md (that artifact's command-audit table findings remain valid as P4 input, only its defect-driven fail verdict is superseded).",
+    "startedAt": "2026-08-19T07:11:37.889Z",
+    "updatedAt": "2026-08-19T08:15:18.955Z",
+    "next": "Lead decision needed on each of the 3 blockers before re-attempting: (a) quickwin.md redesign or plan revision for claims; (b) either scope a larger auto-dispatch rewrite slice (cover loop.mts + cost-by-skill.mts + failure-classifier.mts together) or close this cut as wont-fix; (c) sequence preset-retrofit deletion AFTER migrate-adopter.mts ships. Gates all green on the executed approvals.mts deletion: 3x tsc 0 errors, crew tests 1683 pass 18 pre-existing-unrelated fail (before/after identical, none of the 18 touch approvals/claims/wakeup/briefing), src tests 3316 pass 2 pre-existing-unrelated fail, 15 of 16 validators clean (learnings-schema exempted per instruction, marketplace-sync WARN is expected-during-release), ceremony smoke (loop.mts status) exit 0, biome lint+format clean on all touched files.",
     "gates": {
       "review": null,
-      "validation": {
-        "status": "failed",
-        "updatedAt": "2026-08-19T07:11:04.600Z",
-        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -26,11 +22,15 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T063451Z-run-brief-feat004-slice19-greenfield-spikes-full-devcrew-ceremony-smok.md",
-      "handoffs": [],
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T071137Z-run-brief-feat005-slice20-validator-dedupe-dead-path-purge-ai-loop-bac.md",
+      "handoffs": [
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T073424Z-handoff-slice-22-gepa-disposition-table-deletion-executed.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081453Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081518Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md"
+      ],
       "reviewResult": null,
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T071104Z-validation-result-phase-unspecified-gate.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -39,6 +39,78 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T07:11:31.392Z",
+      "updatedAt": "2026-08-19T07:11:31.392Z",
+      "completedAt": "2026-08-19T07:11:31.392Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T071131Z-run-brief-feat005-slice20-validator-dedupe-dead-path-purge-ai-loop-bac.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT004 SLICE19: Greenfield spikes + full /devcrew:* ceremony smoke test",
+      "goal": "",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T06:34:51.719Z",
+      "updatedAt": "2026-08-19T07:11:04.600Z",
+      "completedAt": "2026-08-19T07:11:04.600Z",
+      "next": "Safe to merge/land SLICE-19 and FEAT-004's remaining wave. Supersedes and reverses the decision of 20260819T064902Z-validation-result-slice-19-full-ceremony-smoke-test-blank-page-command-audit.md (that artifact's command-audit table findings remain valid as P4 input, only its defect-driven fail verdict is superseded).",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "failed",
+          "updatedAt": "2026-08-19T07:11:04.600Z",
+          "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T063451Z-run-brief-feat004-slice19-greenfield-spikes-full-devcrew-ceremony-smok.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T071104Z-validation-result-phase-unspecified-gate.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT004 SLICE14: Command map application + dispatch-token rewrite",
       "goal": "",
@@ -146,77 +218,6 @@
         "handoffs": [
           "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
         ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T01:20:30.629Z",
-      "updatedAt": "2026-08-19T01:52:11.737Z",
-      "completedAt": "2026-08-19T01:52:11.737Z",
-      "next": "SLICE-12: write-validation-result fail-hard direct import + phase-gate call-site updates. Watch for the same strictNullChecks narrowing issue on the extracted ValidationArtifactSchema/resolveValidationVerdict module.",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012030Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
-        "handoffs": [
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015200Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md",
-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015211Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md"
-        ],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
-      "goal": "",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T01:20:24.411Z",
-      "updatedAt": "2026-08-19T01:20:24.411Z",
-      "completedAt": "2026-08-19T01:20:24.411Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012024Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
-        "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": null,

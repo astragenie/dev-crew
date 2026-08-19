@@ -103,7 +103,7 @@ gh pr edit --add-reviewer <username>  # re-request review
 
 - CI gate (`.github/workflows/test.yml`) must be green before re-request. Eight gates: `validate-manifests`, `validate-skills`, `lint`, `format:check`, `typecheck`, `bun test --parallel`, `e2e-smoke`, `npm ci`.
 - Pair with the [commit skill](../commit/SKILL.md) for per-fix commit messages.
-- For substantial scope changes flagged by the reviewer, escalate via `/devcrew:request-approval` rather than absorbing silently.
+- For substantial scope changes flagged by the reviewer, escalate via `crew.mts mark-badge --badge help_request` rather than absorbing silently.
 
 ## Done / Stop-when
 

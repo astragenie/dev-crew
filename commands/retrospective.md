@@ -6,7 +6,7 @@ auto_execute_steps: false
 
 # Retrospective
 
-Reads `docs/grades/`, `docs/decisions/`, `docs/backlog/`, `docs/specs/` and
+Reads `docs/grades/`, `docs/decisions/`, `.claude/artifacts/loop/backlog/`, `docs/specs/` and
 generates a markdown summary capturing:
 
 - Slices graded in window

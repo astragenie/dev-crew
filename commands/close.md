@@ -38,7 +38,7 @@ devcrew:close SLICE-NN [--grade-yaml <path>] [--force-close] ...
    `04-implementation-slices/`), updates frontmatter in place — no move.
 2. **Feature file** — finds the slice's `feature: FEAT-NNN` back-ref,
    locates the feature in any backlog state, moves it to
-   `docs/backlog/done/`. backlog-writer auto-stamps `completed_at`.
+   `.claude/artifacts/loop/backlog/done/`. backlog-writer auto-stamps `completed_at`.
 3. **Spec reconcile** — runs `reconcileSpecStatus` so any parent SPEC
    whose derived features are all `done` auto-rolls to `satisfied`.
 4. **Grade scaffold** — creates a grade template file. When `--grade-yaml`

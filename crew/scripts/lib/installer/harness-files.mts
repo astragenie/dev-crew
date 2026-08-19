@@ -1,5 +1,5 @@
 // Writes the per-repo harness scaffolding: artifact + state README files,
-// hook shell scripts, state seed files (claims, history, approvals,
+// hook shell scripts, state seed files (claims, history,
 // workflow-state, sprint), and the artifact / log directory tree.
 //
 // Refresh files are rewritten on every run so template upgrades land.
@@ -48,7 +48,6 @@ export async function writeHarnessFiles(repoPath: string, writes: string[]): Pro
       `${JSON.stringify(CLAIMS_TEMPLATE, null, 2)}\n`
     ],
     [path.join(repoPath, ".claude", "state", "crew", "history.jsonl"), ""],
-    [path.join(repoPath, ".claude", "state", "crew", "approvals.jsonl"), ""],
     [
       path.join(repoPath, ".claude", "state", "crew", "workflow-state.json"),
       `${JSON.stringify(

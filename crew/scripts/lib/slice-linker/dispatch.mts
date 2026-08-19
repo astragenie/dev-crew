@@ -42,28 +42,17 @@ import {
 } from "../workflow-config.mjs";
 import { parseMemoryConfig, resolveEffectiveConfig } from "@astragenie/memory-provider";
 
-// ── Soak dispatcher hook (FEAT-183 S7 / SLICE-104) ────────────────────────────
+// ── Soak dispatcher hook ─────────────────────────────────────────────────────
 //
-// Re-exported so the loop orchestrator can import the soak hook from the same
-// module that produces the dispatch plan. The loop orchestrator calls
-// evaluateSoakHook(opts) BEFORE invoking the builder subagent for a slice phase.
-// If the result is "early_revert" or "insufficient_traffic", the orchestrator
-// deletes the soak pointer and falls back to the main champion path.
-// If the result is "soak_use", the orchestrator steers the builder's
-// --prompt flag to champion_path.
+// The `evaluateSoakHook` re-export (FEAT-183 S7 / SLICE-104) was removed
+// along with scripts/lib/gepa/soak-dispatcher-hook.mts and the rest of the
+// GEPA optimize/eval pipeline (SLICE-22, FEAT-005 P4). Nothing in this repo
+// called it through this module (only its own test imported the gepa file
+// directly) — but the loop plugin's own dispatch.mts is documented to vendor
+// this file by import path and may still expect the re-export; if so, that
+// is a cross-repo follow-up for the loop plugin (runner-plugin), out of
+// scope for this deletion.
 //
-// The hook is intentionally synchronous (no async I/O) so it adds <1ms to
-// the hot dispatch path. File reads are bounded to a single readFileSync on
-// soak.json; malformed files fall back to { status: "error" } silently.
-export {
-  evaluateSoakHook,
-  type SoakDispatchOpts,
-  type SoakHookResult,
-  type SoakHookStatus,
-  type SoakEntry,
-  type SoakMap
-} from "../gepa/soak-dispatcher-hook.mjs";
-
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type GatePolicy = "all_pass" | "blocking" | "advisory" | "none" | "skipped";

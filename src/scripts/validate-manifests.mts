@@ -2,6 +2,17 @@
 
 // Lightweight manifest sanity check. See hero-crew's validator for rationale.
 // validateManifests() is exported so tests can call it without spawning.
+//
+// Scope note (SLICE-20, devcrew unification dedupe pass): this validator
+// operates only on repoRoot/.claude-plugin/plugin.json (+ package.json,
+// marketplace.json when present) — it has no crew/-tree awareness and none
+// is being added here. crew/.claude-plugin/plugin.json still exists as its
+// own separate manifest and is intentionally OUT of scope: per
+// unification-plan.md SS6, the marketplace/manifest merge is a Phase-5-only
+// change. crew/scripts/validate-manifests.mts (the crew-side copy) is
+// therefore NOT a dedupe-delete candidate yet either — it stays wired into
+// crew/scripts/validate-all.mts and crew/package.json's "validate:manifests"
+// script until Phase 5 actually merges the two manifests.
 
 import fs from "node:fs/promises";
 import { readdirSync, readFileSync, existsSync } from "node:fs";

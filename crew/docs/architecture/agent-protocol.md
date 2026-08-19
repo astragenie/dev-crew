@@ -187,7 +187,7 @@ Crew should implement this model through:
 1. Strong agent definitions with explicit team-structure awareness
 2. Strong communication protocol in agent definitions
 3. Strong communication protocol in run/task prompts
-4. The repo-local approval queue (already implemented; see `scripts/lib/approvals.mjs`)
+4. The repo-local `help_request`/`help_resolved` workflow badge (see `scripts/lib/workflow-state.mjs`)
 5. The artifact and state layers documented in `./memory-system.md`
 
 ## Near-Term Product Implications

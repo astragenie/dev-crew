@@ -1,13 +1,21 @@
 /**
  * tests/gepa/optimize-no-winner-streak.test.ts — SLICE-99
  *
- * Covers AC-7 (streak increments on no-winner, blocks at 3),
- * AC-8 (gepa-resume clears streak), and
- * AC-9 (winner resets streak to 0).
+ * Covers AC-7 (streak increments on no-winner, blocks at 3) and
+ * AC-9 (winner resets streak to 0) — pure no-winner-streak-tracker.mts unit
+ * coverage only.
+ *
+ * SLICE-22 (FEAT-005 P4, GEPA optimize/eval pipeline deletion) removed the
+ * AC-8 (`gepa-resume`/`gepa-optimize` CLI integration) cases from this file
+ * — they exercised gepa-optimize-cmd.mts, which was deleted along with the
+ * rest of the optimize pipeline. The KEPT `gepa-resume` command
+ * (runGepaResumeCmdExtended in gepa-killswitch-cmds.mts) has its own
+ * coverage in gepa-resume-global.test.mts; resetStreak's plain streak-clear
+ * behavior stays covered below (AC-8's non-CLI half).
  */
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -17,7 +25,6 @@ import {
   resetStreak,
   NO_WINNER_STREAK_HALT
 } from "../../scripts/lib/gepa/no-winner-streak-tracker.mjs";
-import { runGepaOptimizeCmd, runGepaResumeCmd } from "../../scripts/lib/gepa/gepa-optimize-cmd.mjs";
 
 function tmpStreakPath(): { repoPath: string; streakPath: string } {
   const repoPath = mkdtempSync(join(tmpdir(), "gepa-streak-"));
@@ -25,12 +32,6 @@ function tmpStreakPath(): { repoPath: string; streakPath: string } {
   mkdirSync(streakDir, { recursive: true });
   const streakPath = join(streakDir, "no-winner-streak.json");
   return { repoPath, streakPath };
-}
-
-function setupRepoWithAgent(repoPath: string): void {
-  const agentsDir = join(repoPath, "agents");
-  mkdirSync(agentsDir, { recursive: true });
-  writeFileSync(join(agentsDir, "fullstack-dev.md"), "# Champion\n" + "line\n".repeat(5), "utf8");
 }
 
 // ── Unit tests for streak tracker ──────────────────────────────────────────
@@ -97,52 +98,6 @@ describe("SLICE-99 AC-8 — gepa-resume clears streak", () => {
     expect(getStreakCount("fullstack-dev", { repoPath, streakPath })).toBe(0);
     expect(checkStreakHalt("fullstack-dev", { repoPath, streakPath }).halted).toBe(false);
   });
-
-  test("runGepaResumeCmd clears streak and subsequent optimize proceeds", async () => {
-    const { repoPath } = tmpStreakPath();
-    setupRepoWithAgent(repoPath);
-
-    // Manually set streak to 3 via incrementStreak.
-    incrementStreak("fullstack-dev", { repoPath });
-    incrementStreak("fullstack-dev", { repoPath });
-    incrementStreak("fullstack-dev", { repoPath });
-
-    // Verify optimize is blocked.
-    const blockedResult = await runGepaOptimizeCmd(repoPath, [
-      "fullstack-dev",
-      "--budget",
-      "10",
-      "--k",
-      "2",
-      "--artifact-only"
-    ]);
-    expect(blockedResult.exitCode).toBe(3);
-    expect(blockedResult.stderr).toContain("no_winner_streak: 3");
-    expect(blockedResult.stderr).toContain("gepa-resume");
-
-    // Run resume.
-    const resumeResult = await runGepaResumeCmd(repoPath, ["fullstack-dev"]);
-    expect(resumeResult.exitCode).toBe(0);
-    expect(resumeResult.stdout).toContain("cleared");
-
-    // Now optimize proceeds.
-    const afterResult = await runGepaOptimizeCmd(repoPath, [
-      "fullstack-dev",
-      "--budget",
-      "10",
-      "--k",
-      "2",
-      "--artifact-only"
-    ]);
-    expect(afterResult.exitCode).toBe(0);
-  });
-
-  test("runGepaResumeCmd without agent → exit 2", async () => {
-    const { repoPath } = tmpStreakPath();
-    const result = await runGepaResumeCmd(repoPath, []);
-    expect(result.exitCode).toBe(2);
-    expect(result.stderr).toContain("usage:");
-  });
 });
 
 // ── AC-9: winner resets streak ─────────────────────────────────────────────
@@ -178,47 +133,5 @@ describe("SLICE-99 AC-9 — winner resets streak to 0", () => {
     expect(() => JSON.parse(raw)).not.toThrow();
     const parsed = JSON.parse(raw);
     expect(parsed["fullstack-dev"]).toBe(1);
-  });
-});
-
-// ── AC-7 integration: optimize blocked at streak=3 ─────────────────────────
-
-describe("SLICE-99 AC-7 — optimize blocked when streak >= 3", () => {
-  test("optimize exits 3 with descriptive message when streak = 3", async () => {
-    const { repoPath } = tmpStreakPath();
-    setupRepoWithAgent(repoPath);
-
-    // Pre-populate streak to 3.
-    incrementStreak("fullstack-dev", { repoPath });
-    incrementStreak("fullstack-dev", { repoPath });
-    incrementStreak("fullstack-dev", { repoPath });
-
-    const result = await runGepaOptimizeCmd(repoPath, [
-      "fullstack-dev",
-      "--budget",
-      "10",
-      "--artifact-only"
-    ]);
-    expect(result.exitCode).toBe(3);
-    expect(result.stderr).toContain("no_winner_streak: 3");
-    expect(result.stderr).toContain("gepa-resume fullstack-dev");
-  });
-
-  test("optimize with streak=2 proceeds normally", async () => {
-    const { repoPath } = tmpStreakPath();
-    setupRepoWithAgent(repoPath);
-
-    incrementStreak("fullstack-dev", { repoPath });
-    incrementStreak("fullstack-dev", { repoPath });
-
-    const result = await runGepaOptimizeCmd(repoPath, [
-      "fullstack-dev",
-      "--budget",
-      "10",
-      "--k",
-      "2",
-      "--artifact-only"
-    ]);
-    expect(result.exitCode).toBe(0);
   });
 });

@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parseFrontmatter } from "@astragenie/plugin-std";
-import { listApprovals } from "./approvals.mjs";
 import { listClaims } from "./claims.mjs";
 import { readDeploymentGuidanceSummary } from "./deployment-guidance/read.mjs";
 import { readFileIfExists, pathExists } from "./fs-utils.mjs";
@@ -193,7 +192,7 @@ async function countArchive(repoPath) {
 }
 
 /**
- * @param {{ claims: object[], openApprovals: object[], sprint: object | null,
+ * @param {{ claims: object[], sprint: object | null,
  *           workflow: object, latestDeploymentGuidance: object | null,
  *           latestRunBrief: object | null, latestFinalSynthesis: object | null,
  *           latestHandoff: object | null, latestReview: object | null,
@@ -206,7 +205,6 @@ async function countArchive(repoPath) {
 // eslint-disable-next-line max-lines-per-function -- linear accumulator over heterogeneous entry types — no meaningful split boundary
 function buildMemoryBuckets({
   claims,
-  openApprovals,
   sprint,
   workflow,
   latestDeploymentGuidance,
@@ -226,7 +224,6 @@ function buildMemoryBuckets({
     policy: "bounded-v1",
     hot: {
       claims,
-      openApprovals,
       sprint,
       workflow,
       repoGuidance: {
@@ -249,12 +246,7 @@ function buildMemoryBuckets({
     },
     cold: {
       archiveCounts,
-      omittedByDefault: [
-        "older_artifacts",
-        "resolved_approvals",
-        "full_event_log",
-        "full_history_log"
-      ]
+      omittedByDefault: ["older_artifacts", "full_event_log", "full_history_log"]
     }
   };
 }
@@ -267,7 +259,6 @@ function buildMemoryBuckets({
 export async function buildWakeUpBrief(repoPath, options = {}) {
   const readOnly = options.readOnly === true;
   const [
-    openApprovals,
     claims,
     sprint,
     workflowState,
@@ -281,7 +272,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
     latestDeploymentCheck,
     hookHealth
   ] = await Promise.all([
-    listApprovals(repoPath, { status: "open", createIfMissing: !readOnly }),
     listClaims(repoPath, { createIfMissing: !readOnly }),
     readJson(
       (await pathExists(path.join(repoPath, ...SPRINT_PATH)))
@@ -331,7 +321,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
 
   const memory = buildMemoryBuckets({
     claims,
-    openApprovals,
     sprint,
     workflow,
     latestDeploymentGuidance,
@@ -353,7 +342,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
     hasClaudeMd: await pathExists(path.join(repoPath, "CLAUDE.md")),
     sprint,
     claims,
-    openApprovals,
     workflow,
     repoGuidance: { deployment: latestDeploymentGuidance },
     repoMemory,
@@ -366,7 +354,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
     summary: buildWakeUpSummary({
       memory,
       claims,
-      openApprovals,
       workflow,
       latestDeploymentGuidance,
       repoMemory,
@@ -377,7 +364,7 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
 }
 
 /**
- * @param {{ memory: Record<string, unknown>, claims: object[], openApprovals: object[],
+ * @param {{ memory: Record<string, unknown>, claims: object[],
  *           workflow: { hasActiveRun: boolean, pendingBadges: string[] },
  *           latestDeploymentGuidance: object | null, repoMemory: object[],
  *           latestArtifacts: object, archiveCounts: object }} _
@@ -386,7 +373,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
 function buildWakeUpSummary({
   memory,
   claims,
-  openApprovals,
   workflow,
   latestDeploymentGuidance,
   repoMemory,
@@ -401,7 +387,6 @@ function buildWakeUpSummary({
   return {
     memoryPolicy: /** @type {string} */ (memory["policy"]),
     activeClaims: claims.length,
-    openApprovals: openApprovals.length,
     hasActiveWorkflow: workflow.hasActiveRun,
     pendingWorkflowBadges: workflow.pendingBadges,
     hasDeploymentGuidance: Boolean(latestDeploymentGuidance),

@@ -25,6 +25,14 @@
 //     vendored, out of scope), commands/<name>.md, or a skills/**/<name>/
 //     directory containing SKILL.md. `runner:3rdparty:<name>` resolves
 //     against agents/3rdparty/<name>.md.
+//   - `devcrew:<name>` (SLICE-20, devcrew unification) is the emerging
+//     UNIFIED namespace post SLICE-14..17 merge — commands/, skills/, and
+//     agents/ at the repo root now house both the former runner: surface
+//     AND the former crew: surface in one tree. It resolves exactly like
+//     `runner:<name>` (same live-tree lookup, same 3rdparty carve-out).
+//     Kept as a distinct namespace token (not silently aliased to runner:
+//     in the regex) so a future rename of the resolution rule itself stays
+//     a one-line change here rather than a semantic guess at match time.
 //   - `crew:<name>` (a SIBLING plugin's namespace — crew/dev-team lives in
 //     a different repo, not available at CI runtime here) resolves against
 //     a hardcoded allowlist curated from crew's current agents/ + commands/
@@ -121,11 +129,8 @@ const CREW_KNOWN_TOKENS = new Set([
   "parallel-review",
   "prune-artifacts",
   "release-files",
-  "request-approval",
-  "resolve-approval",
   "review",
   "ship",
-  "show-approvals",
   "show-claims",
   "show-conflicts",
   "validate",
@@ -159,9 +164,12 @@ const SCAN_TARGETS = [
   path.join("docs", "integrations")
 ] as const;
 
-const SCAN_FILES = ["CLAUDE.md"] as const;
+// crew/CLAUDE.md is the pre-Phase-5 legacy crew doc — still live-read
+// (references `/crew:build`, `/crew:install`, etc.) until the Phase-5
+// docs cutover, so it stays in scope here too (SLICE-20).
+const SCAN_FILES = ["CLAUDE.md", "crew/CLAUDE.md"] as const;
 
-const TOKEN_RE = /\b(crew|runner):(3rdparty:)?([A-Za-z][\w-]*)\b/g;
+const TOKEN_RE = /\b(crew|runner|devcrew):(3rdparty:)?([A-Za-z][\w-]*)\b/g;
 // Prefix/suffix signals are intentionally narrow and proximity-bounded (not
 // whole-line) so that: (a) a fix's own explanatory aside on the same line
 // ("... subagent — `crew:fullstack-dev` ... there is no agent literally
@@ -262,7 +270,9 @@ function resolveToken(
       : `no known crew:${name} agent or command — not in the curated crew allowlist ` +
           "(see this file's header for the real dispatch ids; if crew shipped a new one, add it here)";
   }
-  // namespace === "runner"
+  // namespace === "runner" or "devcrew" — both resolve against this repo's
+  // own live tree (devcrew is the unified post-merge namespace; see this
+  // file's header "Namespace resolution" note).
   if (is3rdparty) {
     return known.runnerAgent3rdpartyNames.has(name)
       ? null

@@ -13,10 +13,8 @@ Run this after `/devcrew:slice start --id SLICE-NN`. It reads the slice file, cl
 ### Step 0 — Read and classify slice
 
 1. Find the slice file. Try these globs in order until a match is found:
-   - `docs/ai-loop/slices/pending/*SLICE-NN*.md`
-   - `docs/ai-loop/slices/completed/*SLICE-NN*.md`
    - `.claude/artifacts/loop/ai-loop/slices/**/*SLICE-NN*.md`
-   - `docs/ai-loop/backlog/approved-slices.md` (inline slice entry)
+   - `.claude/artifacts/loop/ai-loop/backlog/approved-slices.md` (inline slice entry)
 
 2. Read the slice file. Extract:
    - `frontmatter.tags` — YAML array

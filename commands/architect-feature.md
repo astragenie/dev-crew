@@ -21,10 +21,10 @@ plugin propagates them to slices at creation time.
 
 Parse the argument to extract FEAT-ID (format: `FEAT-NNN`). Find the FEAT file in
 order:
-- `docs/backlog/triaged/<FEAT-ID>.md`
-- `docs/backlog/in-progress/<FEAT-ID>.md`
-- `docs/backlog/pending/<FEAT-ID>.md`
-- `docs/backlog/done/<FEAT-ID>.md`
+- `.claude/artifacts/loop/backlog/triaged/<FEAT-ID>.md`
+- `.claude/artifacts/loop/backlog/in-progress/<FEAT-ID>.md`
+- `.claude/artifacts/loop/backlog/pending/<FEAT-ID>.md`
+- `.claude/artifacts/loop/backlog/done/<FEAT-ID>.md`
 
 If not found: halt and print the four paths tried.
 
@@ -33,9 +33,9 @@ Read the FEAT file. Extract:
 - `frontmatter.tags` — current tags array (may be absent; treat as `[]`)
 
 Find existing slice files for this FEAT:
-1. Glob `docs/ai-loop/slices/pending/*` — keep files where frontmatter `feat:` equals
+1. Glob `.claude/artifacts/loop/ai-loop/slices/pending/*` — keep files where frontmatter `feat:` equals
    `<FEAT-ID>` OR filename contains `<FEAT-ID>`
-2. Glob `docs/ai-loop/slices/completed/*` — same filter
+2. Glob `.claude/artifacts/loop/ai-loop/slices/completed/*` — same filter
 3. Collect all matches as `SLICE_FILES` (may be empty — continue regardless)
 
 ---
@@ -156,9 +156,9 @@ Store the returned path as `CONTRACT_PATH`.
 **Skip when `--auto-start` flag is absent.**
 
 Find the first pending slice for this FEAT:
-1. Glob `docs/ai-loop/slices/pending/*` — return first file (alphabetical) where
+1. Glob `.claude/artifacts/loop/ai-loop/slices/pending/*` — return first file (alphabetical) where
    frontmatter `feat:` equals `<FEAT-ID>`
-2. Fallback: glob `docs/ai-loop/slices/pending/*<FEAT-ID>*` — take first match
+2. Fallback: glob `.claude/artifacts/loop/ai-loop/slices/pending/*<FEAT-ID>*` — take first match
 3. If still none: print
    `"No pending slices for <FEAT-ID> — create slices first, then re-run with --auto-start"`
    and exit 0.

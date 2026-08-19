@@ -70,7 +70,6 @@ interface WakeUpBrief {
   repoGuidance?: RepoGuidance;
   workflow?: WorkflowShape;
   latestArtifacts?: LatestArtifacts;
-  openApprovals: unknown[];
   hasClaudeMd?: boolean;
   claims: unknown[];
   summary: SummaryShape;
@@ -268,9 +267,6 @@ function collectRepoStateMessages(
   gitActivity: GitActivity
 ): string[] {
   const out: string[] = [];
-  if (wakeUpBrief.openApprovals.length > 0) {
-    out.push(`${wakeUpBrief.openApprovals.length} open approval(s) still need a decision.`);
-  }
   if (!wakeUpBrief.hasClaudeMd) {
     out.push("This repo is not fully adopted into Crew yet.");
   }
@@ -376,10 +372,6 @@ function repoStateNextStep(
     {
       cond: !wakeUpBrief.hasClaudeMd,
       msg: "Run /crew:adopt so the repo has the Crew harness, repo guidance, and local workflow state."
-    },
-    {
-      cond: wakeUpBrief.openApprovals.length > 0,
-      msg: "Resolve the open approval queue before pushing the workflow forward."
     },
     {
       cond: !wakeUpBrief.repoGuidance?.deployment && deploymentClues.clues.length > 0,

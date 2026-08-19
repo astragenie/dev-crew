@@ -18,29 +18,6 @@ test("smoke: claims family (init)", async () => {
   expect(result.mode, "result should have mode=init").toBe("init");
 });
 
-test("smoke: approvals family (request-approval)", async () => {
-  const rootPath = await makeTempDir("crew-smoke-approvals-");
-  const repoPath = path.join(rootPath, "app");
-
-  // Init first
-  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
-
-  const { stdout, stderr } = await execFile("bun", [
-    cliPath,
-    "request-approval",
-    "--repo",
-    repoPath,
-    "--summary",
-    "smoke",
-    "--requester",
-    "smoke"
-  ]);
-
-  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
-  const result = JSON.parse(stdout);
-  expect(result.id, "result should have an id field").toBeTruthy();
-});
-
 test("smoke: artifacts family (write-handoff)", async () => {
   const rootPath = await makeTempDir("crew-smoke-artifacts-");
   const repoPath = path.join(rootPath, "app");

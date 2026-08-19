@@ -5,8 +5,9 @@
 //
 // Plan source priority:
 //   1. docs/superpowers/plans/*.md — picked by mtime when multiple exist.
-//   2. docs/ai-loop/backlog/approved-slices.md — fallback when no
-//      superpowers plan is present.
+//   2. <backlogRoot>/approved-slices.md (resolveBacklogPath; live root is
+//      .claude/artifacts/loop/backlog/, not the deleted docs/ai-loop/ tree) —
+//      fallback when no superpowers plan is present.
 //
 // Task heading shapes tolerated: `## Task 1: SLICE_18 — Title`,
 // `## Task 12: SLICE-18 - Title`. Mixed underscore/hyphen and em-dash /

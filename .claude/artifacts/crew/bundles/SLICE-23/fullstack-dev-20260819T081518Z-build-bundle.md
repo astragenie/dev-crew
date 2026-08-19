@@ -1,0 +1,14550 @@
+---
+slice: SLICE-23
+builder: fullstack-dev
+run_id: 20260819T081518Z
+feat: FEAT-005
+files_touched: ["commands/build.md", "commands/wake-up-brief.md", "crew/docs/architecture/agent-protocol.md", "crew/scripts/crew.mts", "crew/scripts/lib/briefing.mts", "crew/scripts/lib/briefing/render.mts", "crew/scripts/lib/installer/harness-files.mts", "crew/scripts/lib/installer/templates.mts", "crew/scripts/lib/wakeup.mjs", "crew/tests/cli-smoke.test.mts", "crew/tests/cli-workflow.test.mts", "crew/tests/regression.test.mts", "skills/workflow/fix-pr/SKILL.md", "src/scripts/validate-agent-refs.mts"]
+files_read: []
+files_read_skipped:
+  - { path: "crew/scripts/lib/approvals.mts(deleted)", reason: deleted }
+  - { path: "crew/tests/cli-approvals.test.mts(deleted)", reason: deleted }
+diff_stat: { files: 114, additions: 210, deletions: 12979 }
+truncated: true
+truncation_reason: size-cap
+schema_version: 1
+---
+
+## Handoff
+
+# Task Handoff: SLICE-23: deletion ledger — approvals.mts deleted; claims.mts, auto-dispatch.mts, preset-retrofit BLOCKED with evidence
+
+- Created: 2026-08-19T08:15:18.951Z
+- From: fullstack-dev
+- To: lead
+- Objective: Scoped as 3 deletion targets (auto-dispatch, claims/approvals, preset-retrofit). Verified each against live consumers before deleting per instruction. RESULT: only 1 of 3 sub-targets was safely deletable; the other 2.5 are blocked by live consumers the plan text did not account for. Executed: approvals.mts (297 LOC) DELETED — zero live executable consumers found (only crew.mts's own CLI def + a stale prose pointer in skills/workflow/fix-pr/SKILL.md, itself dangling). Stripped request-approval/show-approvals/resolve-approval from crew.mts (handlers+help text); stripped openApprovals/listApprovals from wakeup.mjs, briefing.mts, briefing/render.mts (kept claims — see below); removed approvals.jsonl seed+docs from installer/harness-files.mts and installer/templates.mts; updated commands/wake-up-brief.md, commands/build.md, crew/docs/architecture/agent-protocol.md, skills/workflow/fix-pr/SKILL.md to drop dangling approval references (redirected escalation guidance to the existing help_request/help_resolved workflow badge); removed approval-only test blocks/assertions from cli-workflow.test.mts, cli-smoke.test.mts, regression.test.mts; removed request-approval/resolve-approval/show-approvals from validate-agent-refs.mts's known-token allowlist. BLOCKED — claims.mts (crew/scripts/lib/claims.mts, 458 LOC): commands/quickwin.md shells out to claim-check and claim (checkDisjoint/claimFiles) as load-bearing steps 2-3 of its documented workflow (disjoint-check against the active wave lane before a quick-win worktree claims files) — this directly contradicts unification-plan.md 5's resolution text (claims/approvals are cut, no port) which named only 7 CLI verbs to drop but did not check quickwin.md, a command explicitly KEPT in the plan's own 2 command map. checkDisjoint internally calls inspectClaims/listClaims, so the whole module is one coherent live unit, not splittable without redesigning quickwin's coordination strategy (out of mechanical-deletion scope). NOT deleted; claims-worktree-canonical.test.mts and cli-claims.test.mts left untouched. BLOCKED — auto-dispatch.mts (src/scripts/lib/auto-dispatch.mts, 257 LOC): improve-cleanup.md/improve-rewrite-today.md's dispatch-metrics/aggregate/trace/tree-snapshot naming collided with an unrelated LIVE subsystem — those 4 files are the hierarchical-dispatch/wave swarm telemetry (.claude/artifacts/loop/dispatch/runId/*), consumed by dispatch.mts, dispatch-recover.mts, hierarchical-dispatch.mts, marathon-checkpoint.mts, memory-snapshot.mts, orchestrator-watchdog.mts, features-service.mts, jsonl-append.mts — nothing to do with auto-dispatch.jsonl. Verified NOT touched. Separately, auto-dispatch.mts itself (appendAuditLog/dispatchAgent/resolveAuditLogPath) has real call sites in loop.mts (7+), auto-merge.mts, auto-walker.mts, slice-linker/complete-slice.mts, slice-linker/feature-lifecycle.mts, slice-linker/agent-report-writer.mts, and its output JSONL is the primary data source for two live analytics readers (cost-by-skill.mts, failure-classifier.mts) — contradicts the plan's for a dispatch event that was never real characterization. Local DEC-011 is a same-id collision with an unrelated decision (test-rewiring, dated today) — the cited DEC-011 describing the abandoned marker-consumer does not exist at that path in this repo, could not be independently verified. NOT deleted. BLOCKED — config-resolver.mts preset-retrofit (retrofitLightLadder/resolveLightBlockForRetrofit/DEFAULT_LIGHT_LADDER, lines 200-269): single consumer is loop-installer.mts's applyLightFlag already-installed branch; commands/install.md documents this as the common fleet-retrofit case — most of the fleet installed before this flag existed. The plan's proposed replacement (migrate-adopter.mts, a single coordinated migration pass) does not exist on disk yet — deleting now would silently turn a documented --light retrofit into a no-op for ~10 already-installed repos with no replacement path. NOT deleted.
+- Allowed Scope: -
+- Forbidden Scope: -
+- Deliverable: -
+- Changed Files:
+  - crew/scripts/lib/approvals.mts(deleted)
+  - crew/tests/cli-approvals.test.mts(deleted)
+  - crew/scripts/crew.mts
+  - crew/scripts/lib/wakeup.mjs
+  - crew/scripts/lib/briefing.mts
+  - crew/scripts/lib/briefing/render.mts
+  - crew/scripts/lib/installer/harness-files.mts
+  - crew/scripts/lib/installer/templates.mts
+  - crew/tests/cli-workflow.test.mts
+  - crew/tests/cli-smoke.test.mts
+  - crew/tests/regression.test.mts
+  - src/scripts/validate-agent-refs.mts
+  - commands/wake-up-brief.md
+  - commands/build.md
+  - skills/workflow/fix-pr/SKILL.md
+  - crew/docs/architecture/agent-protocol.md
+- Confidence: medium
+- Risks: 2 of 3 targets NOT executed pending lead/plan decision: (1) claims.mts stays live because quickwin.md needs it — either quickwin.md's coordination strategy must be redesigned first (real scope change, not mechanical deletion) or the plan's cut decision must be revised to keep claims.mts; (2) auto-dispatch.mts stays live and wired into 7+ call sites plus 2 downstream analytics readers — deleting it requires rewriting loop.mts's backlog-add/spec-decompose/complete-slice flows and re-sourcing cost-by-skill.mts/failure-classifier.mts, a materially larger change than delete a dead file; (3) preset-retrofit stays live because its stated replacement (migrate-adopter.mts) is unbuilt — cutting it now regresses documented --light fleet-retrofit behavior with no replacement. All three findings are evidence-backed (file:line citations in the full transcript) — recommend the lead re-verify plan text against current call graphs before any future slice attempts these deletions blind.
+- Suggested Next Handoff: Lead decision needed on each of the 3 blockers before re-attempting: (a) quickwin.md redesign or plan revision for claims; (b) either scope a larger auto-dispatch rewrite slice (cover loop.mts + cost-by-skill.mts + failure-classifier.mts together) or close this cut as wont-fix; (c) sequence preset-retrofit deletion AFTER migrate-adopter.mts ships. Gates all green on the executed approvals.mts deletion: 3x tsc 0 errors, crew tests 1683 pass 18 pre-existing-unrelated fail (before/after identical, none of the 18 touch approvals/claims/wakeup/briefing), src tests 3316 pass 2 pre-existing-unrelated fail, 15 of 16 validators clean (learnings-schema exempted per instruction, marketplace-sync WARN is expected-during-release), ceremony smoke (loop.mts status) exit 0, biome lint+format clean on all touched files.
+
+
+## Diff
+
+```diff
+diff --git a/.claude/artifacts/loop/backlog/triaged/FEAT-005.md b/.claude/artifacts/loop/backlog/triaged/FEAT-005.md
+deleted file mode 100644
+index 30cddae2..00000000
+--- a/.claude/artifacts/loop/backlog/triaged/FEAT-005.md
++++ /dev/null
+@@ -1,78 +0,0 @@
+----
+-id: FEAT-005
+-status: triaged
+-priority: P2
+-category: feature
+-target_release: null
+-created: 2026-08-18
+-updated: 2026-08-18
+-depends_on: [FEAT-004]
+-slices: []
+-derived_from: null
+-pm_customer_impact: 0.5
+-pm_effort_estimate: 0.65
+-pm_strategic_alignment: 0.75
+-pm_technical_risk: 0.7
+-pm_dependency_depth: 0.85
+-pm_composite_priority: P2
+-pm_autonomous_safe: false
+-pm_reviewed: 2026-08-18
+-autonomous_safe: true
+-triage_notes: "8-point epic, mandatory decomposition; technical_risk banded 0.7 (large deletions plus a self-admitted disposition landmine, but no cross-plugin/public contract change, so kept below 0.9); autonomousSafe=false given the deepest dependency chain of any phase (4 unresolved predecessors) and the GEPA landmine's demonstrated history of mis-scoping in this very plan."
+-proposed_slices:
+-  - id_suffix: -SLICE-1
+-    title: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)
+-    points: 2
+-    estimated_tokens: 100000
+-  - id_suffix: -SLICE-2
+-    title: "GEPA 27-file disposition table (import-closure trace, no deletions)"
+-    points: 1
+-    estimated_tokens: 90000
+-  - id_suffix: -SLICE-2
+-    title: GEPA delete per approved table + archive trials imported-from-stamped
+-    points: 1
+-    estimated_tokens: 140000
+-  - id_suffix: -SLICE-3
+-    title: "Delete auto-dispatch, claims/approvals, preset-retrofit"
+-    points: 2
+-    estimated_tokens: 100000
+-  - id_suffix: -SLICE-4
+-    title: Merged CI workflow (~30 gates) + clause-registry port
+-    points: 2
+-    estimated_tokens: 100000
+-  - id_suffix: -SLICE-5
+-    title: Docs merge + CLAUDE.md <=12KB budget triage
+-    points: 1
+-    estimated_tokens: 60000
+-tags: ["stack:typescript", "area:ci-tooling", "concern:content-cleanup"]
+-needs_contract: false
+-needs_ux: false
+-arch_attempt: 0
+-arch_status: approved
+-arch_review: approved
+----
+-## Description
+-
+-P4 Content + CI: dedupe validators (org-refs/agent-refs/manifests keep runner's, widen scope); merged CI workflow ~30 gates incl wiggin-term sweep; GEPA 27-file disposition table via import-closure of gepa-eval/history/invalidate + evals harness, delete rest incl champion-provenance-writer, archive trials imported-from-stamped; delete auto-dispatch.mts + ~275 LOC readers, claims/approvals (775 LOC), preset-retrofit; purge dead paths (docs/ai-loop 9 files, docs/backlog 10, pending-dispatch 11); docs merge; merged CLAUDE.md <=12KB pre-include; greenfield candidates: unified .claude/artifacts/devcrew taxonomy, backlog frontmatter-status-not-directory-move redesign. Exit gates: CI green end-to-end, wiggin sweep green tree-wide, clause citations resolve, GEPA table covers all 27 files, improve-cleanup.md inventory fully dispositioned. Full spec: unification-plan.md sections 5/7 + P4 row.
+-
+-## Intake notes
+-
+-Created via free-text intake (`/runner:intake "<text>"`). Priority is
+-unset — this FEAT has not been scored yet. Run `/runner:triage`
+-(PM scoring + `backlog pm-apply`) to score it before slicing.
+-## Acceptance criteria (Given-When-Then)
+-
+-- AC-1: Given the merged CI workflow is authored, When the full gate list runs on main, Then all ~30 gates exit 0 (CI green end-to-end).
+-- AC-2: Given the wiggin-term sweep gate is added, When it runs against the full merged tree (not just the P1 import diff), Then zero matches remain outside any explicitly archived parent-repo directory.
+-- AC-3: Given scripts/lib/gepa/ contains 27 files, When the import-closure trace (starting from gepa-eval/gepa-history/gepa-invalidate + the evals/ harness) runs, Then the disposition table names all 27 files individually as KEEP or DELETE -- a table covering fewer than 27 files fails this AC, and any file marked DELETE that is still imported by a kept command also fails it.
+-- AC-4: Given the merged CLAUDE.md must stay <=12KB pre-include, When `wc -c CLAUDE.md` (excluding @include expansions) runs after the docs-merge slice, Then the byte count is <=12288.
+-- AC-5: Given improve-cleanup.md's deletion inventory lists ~38 files, When the P4 slices close, Then every listed item has a recorded disposition (DELETE executed / ARCHIVE executed / MERGE executed / explicitly DEFERRED with a written reason) -- an item with no disposition record fails this AC.
+-
+-## Proposed slices (PM decomposition)
+-
+-- SLICE-1: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch) (2 pts)
+-- SLICE-2: GEPA 27-file disposition table (import-closure trace, no deletions) (1 pts)
+-- SLICE-2: GEPA delete per approved table + archive trials imported-from-stamped (1 pts)
+-- SLICE-3: Delete auto-dispatch, claims/approvals, preset-retrofit (2 pts)
+-- SLICE-4: Merged CI workflow (~30 gates) + clause-registry port (2 pts)
+-- SLICE-5: Docs merge + CLAUDE.md <=12KB budget triage (1 pts)
+diff --git a/.claude/artifacts/loop/loop-snapshot.md b/.claude/artifacts/loop/loop-snapshot.md
+index e491d75c..cdb65c56 100644
+--- a/.claude/artifacts/loop/loop-snapshot.md
++++ b/.claude/artifacts/loop/loop-snapshot.md
+@@ -6,14 +6,17 @@ _Generated by `bun src/scripts/loop.mts snapshot-memory`. Regenerate after mater
+ ## Backlog state
+ 
+ - Pending: 4
+-- Triaged: 2
+-- In-progress: 0
++- Triaged: 1
++- In-progress: 1
+ - Done: 4
+ 
++## In-flight features
++
++- **FEAT-005** (P2) — slices: SLICE-20, SLICE-21, SLICE-22, SLICE-23, SLICE-24, SLICE-25
++
+ ## Top triaged (next to slice)
+ 
+ - **FEAT-006** (P1) [feature] → (release tbd)
+-- **FEAT-005** (P2) [feature] → (release tbd)
+ 
+ ## Specs
+ 
+@@ -23,25 +26,25 @@ _Generated by `bun src/scripts/loop.mts snapshot-memory`. Regenerate after mater
+ 
+ - Total grades: 19
+ - Last 5 averages:
+-  - architecture_quality: 0.73 ⚠
+-  - reliability: 0.724 ⚠
+-  - observability: 0.864
+-  - production_readiness: 0.72 ⚠
+-  - security: 0.682 ⚠
+-  - test_confidence: 0.832
+-  - product_completeness: 0.726 ⚠
++  - architecture_quality: 0.91
++  - reliability: 0.91
++  - observability: 0.884
++  - production_readiness: 0.906
++  - security: 0.854
++  - test_confidence: 0.906
++  - product_completeness: 0.916
+ 
+ ## Recent decisions
+ 
+-- **DEC-014** (accepted) — Legacy dispatch aliases keep historical names; devcrew:* accepted via primary path _(from SLICE-14)_
+ - **DEC-015** (accepted) — Duplicate-role merges keep crew variant as base, runner deltas as modes _(from SLICE-15)_
+ - **DEC-016** (accepted) — Plugin identity is devcrew@1.0.0-rc.1 pre-cutover _(from SLICE-16)_
+ - **DEC-017** (accepted) — model-router/resolve-model merge deferred until crew tsc-project absorption _(from SLICE-18)_
+ - **DEC-018** (accepted) — One registration surface now; physical hook-script relocation deferred with the crew/scripts/lib merge _(from SLICE-17)_
++- **DEC-019** (accepted) — Command surface ships at 39 for cutover; audit's 7 merge + 1 cut candidates go to post-1.0 backlog _(from SLICE-19)_
+ 
+ ## Loop telemetry
+ 
+-- Iteration count: 2 / 25
++- Iteration count: 3 / 25
+ - In-window cost trajectory: median $3.177 / mean $8.061 per cost-report (13 slice-close session scans)
+ - Last cost-advisor verdict: n/a
+ - Memory usefulness (7d): served=44 used=6 rate=13.6%
+diff --git a/.claude/state/crew/slice-progress.md b/.claude/state/crew/slice-progress.md
+index f96ddf1d..152068e1 100644
+--- a/.claude/state/crew/slice-progress.md
++++ b/.claude/state/crew/slice-progress.md
+@@ -1,6 +1,6 @@
+ # Slice Progress
+ 
+-Updated: 2026-08-19T07:08:58.924Z
++Updated: 2026-08-19T07:11:37.967Z
+ 
+ Active plan: _(none detected)_
+ 
+diff --git a/.claude/state/crew/workflow-state.json b/.claude/state/crew/workflow-state.json
+index 2f177214..09dd7796 100644
+--- a/.claude/state/crew/workflow-state.json
++++ b/.claude/state/crew/workflow-state.json
+@@ -1,21 +1,17 @@
+ {
+   "version": "1.0",
+-  "updatedAt": "2026-08-19T07:11:04.600Z",
++  "updatedAt": "2026-08-19T08:15:18.956Z",
+   "currentRun": {
+-    "title": "FEAT004 SLICE19: Greenfield spikes + full /devcrew:* ceremony smoke test",
++    "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
+     "goal": "",
+     "mode": "autonomous",
+     "status": "active",
+-    "startedAt": "2026-08-19T06:34:51.719Z",
+-    "updatedAt": "2026-08-19T07:11:04.600Z",
+-    "next": "Safe to merge/land SLICE-19 and FEAT-004's remaining wave. Supersedes and reverses the decision of 20260819T064902Z-validation-result-slice-19-full-ceremony-smoke-test-blank-page-command-audit.md (that artifact's command-audit table findings remain valid as P4 input, only its defect-driven fail verdict is superseded).",
++    "startedAt": "2026-08-19T07:11:37.889Z",
++    "updatedAt": "2026-08-19T08:15:18.955Z",
++    "next": "Lead decision needed on each of the 3 blockers before re-attempting: (a) quickwin.md redesign or plan revision for claims; (b) either scope a larger auto-dispatch rewrite slice (cover loop.mts + cost-by-skill.mts + failure-classifier.mts together) or close this cut as wont-fix; (c) sequence preset-retrofit deletion AFTER migrate-adopter.mts ships. Gates all green on the executed approvals.mts deletion: 3x tsc 0 errors, crew tests 1683 pass 18 pre-existing-unrelated fail (before/after identical, none of the 18 touch approvals/claims/wakeup/briefing), src tests 3316 pass 2 pre-existing-unrelated fail, 15 of 16 validators clean (learnings-schema exempted per instruction, marketplace-sync WARN is expected-during-release), ceremony smoke (loop.mts status) exit 0, biome lint+format clean on all touched files.",
+     "gates": {
+       "review": null,
+-      "validation": {
+-        "status": "failed",
+-        "updatedAt": "2026-08-19T07:11:04.600Z",
+-        "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+-      },
++      "validation": null,
+       "deployment": {
+         "dev": null,
+         "prod": null
+@@ -26,11 +22,15 @@
+       "help": null
+     },
+     "artifacts": {
+-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T063451Z-run-brief-feat004-slice19-greenfield-spikes-full-devcrew-ceremony-smok.md",
+-      "handoffs": [],
++      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T071137Z-run-brief-feat005-slice20-validator-dedupe-dead-path-purge-ai-loop-bac.md",
++      "handoffs": [
++        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T073424Z-handoff-slice-22-gepa-disposition-table-deletion-executed.md",
++        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081453Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md",
++        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T081518Z-handoff-slice-23-deletion-ledger-approvals-mts-deleted-claims-mts-au.md"
++      ],
+       "reviewResult": null,
+       "validationPlan": null,
+-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T071104Z-validation-result-phase-unspecified-gate.md",
++      "validationResult": null,
+       "deploymentChecks": {
+         "dev": null,
+         "prod": null
+@@ -40,14 +40,14 @@
+   },
+   "recentRuns": [
+     {
+-      "title": "FEAT004 SLICE14: Command map application + dispatch-token rewrite",
++      "title": "FEAT005 SLICE20: Validator dedupe + dead-path purge (ai-loop/backlog/pending-dispatch)",
+       "goal": "",
+       "mode": "autonomous",
+       "status": "active",
+-      "startedAt": "2026-08-19T03:07:55.529Z",
+-      "updatedAt": "2026-08-19T06:28:14.482Z",
+-      "completedAt": "2026-08-19T06:28:14.482Z",
+-      "next": "P3 spike slice (unification-plan.md Sec 10-A): evaluate prompt-based hooks as the structural fix for the cold-start floor this slice's measurements expose. Separately, once the crew/scripts/lib -> src/scripts/lib merge slice lands, revisit physically relocating crew/hooks/*.mts into hooks/ root per the original ask (crew/tests/telemetry-hooks-json.test.mts will need its HOOKS_JSON_PATH updated in that same slice, not before).",
++      "startedAt": "2026-08-19T07:11:31.392Z",
++      "updatedAt": "2026-08-19T07:11:31.392Z",
++      "completedAt": "2026-08-19T07:11:31.392Z",
++      "next": "Begin implementation",
+       "gates": {
+         "review": null,
+         "validation": null,
+@@ -61,15 +61,8 @@
+         "help": null
+       },
+       "artifacts": {
+-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T030755Z-run-brief-feat004-slice14-command-map-application-dispatch-token-rewri.md",
+-        "handoffs": [
+-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T032404Z-handoff-slice-14-command-map-application-structural-half.md",
+-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T040735Z-handoff-slice-14-fallout-fix-pass-devcrew-token-sweep-gaps-closed-al.md",
+-          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T055718Z-handoff-token-resolver-root-split-fix-crew-agents-commands-skills-mo.md",
+-          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062035Z-handoff-slice-18-models-yaml-model-router-single-source-design-merge.md",
+-          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062758Z-handoff-slice-17-hooks-merge-matcher-scoped-consolidation.md",
+-          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062814Z-handoff-slice-17-hooks-merge-matcher-scoped-consolidation.md"
+-        ],
++        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T071131Z-run-brief-feat005-slice20-validator-dedupe-dead-path-purge-ai-loop-bac.md",
++        "handoffs": [],
+         "reviewResult": null,
+         "validationPlan": null,
+         "validationResult": null,
+@@ -81,19 +74,19 @@
+       }
+     },
+     {
+-      "title": "FEAT003 SLICE13: devcrew.json schemaVersion 2 merge + migrator",
++      "title": "FEAT004 SLICE19: Greenfield spikes + full /devcrew:* ceremony smoke test",
+       "goal": "",
+       "mode": "autonomous",
+       "status": "active",
+-      "startedAt": "2026-08-19T02:32:45.400Z",
+-      "updatedAt": "2026-08-19T03:07:30.030Z",
+-      "completedAt": "2026-08-19T03:07:30.030Z",
+-      "next": "PM/architect close-out for FEAT-003 (all three P2 slices SLICE-11/12/13 now landed); P3 (FEAT-004 surface merge) is next in the backlog per loop-snapshot.md.",
++      "startedAt": "2026-08-19T06:34:51.719Z",
++      "updatedAt": "2026-08-19T07:11:04.600Z",
++      "completedAt": "2026-08-19T07:11:04.600Z",
++      "next": "Safe to merge/land SLICE-19 and FEAT-004's remaining wave. Supersedes and reverses the decision of 20260819T064902Z-validation-result-slice-19-full-ceremony-smoke-test-blank-page-command-audit.md (that artifact's command-audit table findings remain valid as P4 input, only its defect-driven fail verdict is superseded).",
+       "gates": {
+         "review": null,
+         "validation": {
+           "status": "failed",
+-          "updatedAt": "2026-08-19T03:07:30.030Z",
++          "updatedAt": "2026-08-19T07:11:04.600Z",
+           "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
+         },
+         "deployment": {
+@@ -106,13 +99,11 @@
+         "help": null
+       },
+       "artifacts": {
+-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T023245Z-run-brief-feat003-slice13-devcrew-json-schemaversion-2-merge-migrator.md",
+-        "handoffs": [
+-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T025505Z-handoff-slice-13-devcrew-json-schema-v2-migrator-plugin-identity-arc.md"
+-        ],
++        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T063451Z-run-brief-feat004-slice19-greenfield-spikes-full-devcrew-ceremony-smok.md",
++        "handoffs": [],
+         "reviewResult": null,
+         "validationPlan": null,
+-        "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T030730Z-validation-result-phase-unspecified-gate.md",
++        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20260819T071104Z-validation-result-phase-unspecified-gate.md",
+         "deploymentChecks": {
+           "dev": null,
+           "prod": null
+@@ -121,14 +112,14 @@
+       }
+     },
+     {
+-      "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
++      "title": "FEAT004 SLICE14: Command map application + dispatch-token rewrite",
+       "goal": "",
+       "mode": "autonomous",
+       "status": "active",
+-      "startedAt": "2026-08-19T02:05:27.578Z",
+-      "updatedAt": "2026-08-19T02:26:03.468Z",
+-      "completedAt": "2026-08-19T02:26:03.468Z",
+-      "next": "SLICE-13: devcrew.json schemaVersion 2 migrator + plugin-identity.mts/arch-gate.mts/loop-installer.mts findCrewCli/MIN_CREW_VERSION deletions (AC-2/AC-5).",
++      "startedAt": "2026-08-19T03:07:55.529Z",
++      "updatedAt": "2026-08-19T06:28:14.482Z",
++      "completedAt": "2026-08-19T06:28:14.482Z",
++      "next": "P3 spike slice (unification-plan.md Sec 10-A): evaluate prompt-based hooks as the structural fix for the cold-start floor this slice's measurements expose. Separately, once the crew/scripts/lib -> src/scripts/lib merge slice lands, revisit physically relocating crew/hooks/*.mts into hooks/ root per the original ask (crew/tests/telemetry-hooks-json.test.mts will need its HOOKS_JSON_PATH updated in that same slice, not before).",
+       "gates": {
+         "review": null,
+         "validation": null,
+@@ -142,9 +133,14 @@
+         "help": null
+       },
+       "artifacts": {
+-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T020527Z-run-brief-feat003-slice12-fail-hard-write-validation-result-direct-imp.md",
++        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T030755Z-run-brief-feat004-slice14-command-map-application-dispatch-token-rewri.md",
+         "handoffs": [
+-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
++          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T032404Z-handoff-slice-14-command-map-application-structural-half.md",
++          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T040735Z-handoff-slice-14-fallout-fix-pass-devcrew-token-sweep-gaps-closed-al.md",
++          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T055718Z-handoff-token-resolver-root-split-fix-crew-agents-commands-skills-mo.md",
++          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062035Z-handoff-slice-18-models-yaml-model-router-single-source-design-merge.md",
++          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062758Z-handoff-slice-17-hooks-merge-matcher-scoped-consolidation.md",
++          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20260819T062814Z-handoff-slice-17-hooks-merge-matcher-scoped-consolidation.md"
+         ],
+         "reviewResult": null,
+         "validationPlan": null,
+@@ -157,17 +153,21 @@
+       }
+     },
+     {
+-      "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
++      "title": "FEAT003 SLICE13: devcrew.json schemaVersion 2 merge + migrator",
+       "goal": "",
+       "mode": "autonomous",
+       "status": "active",
+-      "startedAt": "2026-08-19T01:20:30.629Z",
+-      "updatedAt": "2026-08-19T01:52:11.737Z",
+-      "completedAt": "2026-08-19T01:52:11.737Z",
+-      "next": "SLICE-12: write-validation-result fail-hard direct import + phase-gate call-site updates. Watch for the same strictNullChecks narrowing issue on the extracted ValidationArtifactSchema/resolveValidationVerdict module.",
++      "startedAt": "2026-08-19T02:32:45.400Z",
++      "updatedAt": "2026-08-19T03:07:30.030Z",
++      "completedAt": "2026-08-19T03:07:30.030Z",
++      "next": "PM/architect close-out for FEAT-003 (all three P2 slices SLICE-11/12/13 now landed); P3 (FEAT-004 surface merge) is next in the backlog per loop-snapshot.md.",
+       "gates": {
+         "review": null,
+-        "validation": null,
++        "validation": {
++          "status": "failed",
++          "updatedAt": "2026-08-19T03:07:30.030Z",
++          "note": "phase unspecified FAIL — preset typescript-plugin-dev — 2 stages run"
++        },
+         "deployment": {
+           "dev": null,
+           "prod": null
+@@ -178,14 +178,13 @@
+         "help": null
+       },
+       "artifacts": {
+-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012030Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
++        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T023245Z-run-brief-feat003-slice13-devcrew-json-schemaversion-2-merge-migrator.md",
+         "handoffs": [
+-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015200Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md",
+-          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T015211Z-handoff-slice-11-fail-soft-bridge-calls-direct-imports.md"
++          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T025505Z-handoff-slice-13-devcrew-json-schema-v2-migrator-plugin-identity-arc.md"
+         ],
+         "reviewResult": null,
+         "validationPlan": null,
+-        "validationResult": null,
++        "validationResult": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\validations\\20260819T030730Z-validation-result-phase-unspecified-gate.md",
+         "deploymentChecks": {
+           "dev": null,
+           "prod": null
+@@ -194,14 +193,14 @@
+       }
+     },
+     {
+-      "title": "FEAT003 SLICE11: Fail-soft bridge calls to direct imports (4 calls)",
++      "title": "FEAT003 SLICE12: Fail-hard write-validation-result direct import",
+       "goal": "",
+       "mode": "autonomous",
+       "status": "active",
+-      "startedAt": "2026-08-19T01:20:24.411Z",
+-      "updatedAt": "2026-08-19T01:20:24.411Z",
+-      "completedAt": "2026-08-19T01:20:24.411Z",
+-      "next": "Begin implementation",
++      "startedAt": "2026-08-19T02:05:27.578Z",
++      "updatedAt": "2026-08-19T02:26:03.468Z",
++      "completedAt": "2026-08-19T02:26:03.468Z",
++      "next": "SLICE-13: devcrew.json schemaVersion 2 migrator + plugin-identity.mts/arch-gate.mts/loop-installer.mts findCrewCli/MIN_CREW_VERSION deletions (AC-2/AC-5).",
+       "gates": {
+         "review": null,
+         "validation": null,
+@@ -215,8 +214,10 @@
+         "help": null
+       },
+       "artifacts": {
+-        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T012024Z-run-brief-feat003-slice11-fail-soft-bridge-calls-to-direct-imports-4-c.md",
+-        "handoffs": [],
++        "runBrief": "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\runs\\20260819T020527Z-run-brief-feat003-slice12-fail-hard-write-validation-result-direct-imp.md",
++        "handoffs": [
++          "C:\\mega\\dev-crew\\.claude\\artifacts\\crew\\handoffs\\20260819T022603Z-handoff-slice-12-fail-hard-write-validation-result-direct-import.md"
++        ],
+         "reviewResult": null,
+         "validationPlan": null,
+         "validationResult": null,
+diff --git a/commands/architect-feature.md b/commands/architect-feature.md
+index 344d3470..9bc62aa8 100644
+--- a/commands/architect-feature.md
++++ b/commands/architect-feature.md
+@@ -21,10 +21,10 @@ plugin propagates them to slices at creation time.
+ 
+ Parse the argument to extract FEAT-ID (format: `FEAT-NNN`). Find the FEAT file in
+ order:
+-- `docs/backlog/triaged/<FEAT-ID>.md`
+-- `docs/backlog/in-progress/<FEAT-ID>.md`
+-- `docs/backlog/pending/<FEAT-ID>.md`
+-- `docs/backlog/done/<FEAT-ID>.md`
++- `.claude/artifacts/loop/backlog/triaged/<FEAT-ID>.md`
++- `.claude/artifacts/loop/backlog/in-progress/<FEAT-ID>.md`
++- `.claude/artifacts/loop/backlog/pending/<FEAT-ID>.md`
++- `.claude/artifacts/loop/backlog/done/<FEAT-ID>.md`
+ 
+ If not found: halt and print the four paths tried.
+ 
+@@ -33,9 +33,9 @@ Read the FEAT file. Extract:
+ - `frontmatter.tags` — current tags array (may be absent; treat as `[]`)
+ 
+ Find existing slice files for this FEAT:
+-1. Glob `docs/ai-loop/slices/pending/*` — keep files where frontmatter `feat:` equals
++1. Glob `.claude/artifacts/loop/ai-loop/slices/pending/*` — keep files where frontmatter `feat:` equals
+    `<FEAT-ID>` OR filename contains `<FEAT-ID>`
+-2. Glob `docs/ai-loop/slices/completed/*` — same filter
++2. Glob `.claude/artifacts/loop/ai-loop/slices/completed/*` — same filter
+ 3. Collect all matches as `SLICE_FILES` (may be empty — continue regardless)
+ 
+ ---
+@@ -156,9 +156,9 @@ Store the returned path as `CONTRACT_PATH`.
+ **Skip when `--auto-start` flag is absent.**
+ 
+ Find the first pending slice for this FEAT:
+-1. Glob `docs/ai-loop/slices/pending/*` — return first file (alphabetical) where
++1. Glob `.claude/artifacts/loop/ai-loop/slices/pending/*` — return first file (alphabetical) where
+    frontmatter `feat:` equals `<FEAT-ID>`
+-2. Fallback: glob `docs/ai-loop/slices/pending/*<FEAT-ID>*` — take first match
++2. Fallback: glob `.claude/artifacts/loop/ai-loop/slices/pending/*<FEAT-ID>*` — take first match
+ 3. If still none: print
+    `"No pending slices for <FEAT-ID> — create slices first, then re-run with --auto-start"`
+    and exit 0.
+diff --git a/commands/build.md b/commands/build.md
+index 15008e0c..b78dbf0e 100644
+--- a/commands/build.md
++++ b/commands/build.md
+@@ -152,7 +152,7 @@ Workflow:
+ 8. If using `single-session`, do the work directly and do not spawn helpers.
+ 9. Use `assisted single-session` when a helper can reduce uncertainty or validate work without becoming a communicating team.
+ 10. Only use a `team run` when ownership can be split cleanly.
+-11. If using a `team run`, claim files only when parallel work might collide, and open approvals only when scope or ownership boundaries must be crossed.
++11. If using a `team run`, claim files only when parallel work might collide.
+ 12. If using a `team run`, assign bounded work to:
+    - builder for implementation — **resolve its model tier first** via "Model tier resolution" above, and pass it explicitly as the Agent-tool `model:` argument. Never let the builder dispatch silently inherit the session model.
+    - reviewer for change review
+diff --git a/commands/close.md b/commands/close.md
+index 58a8bc69..da302f7f 100644
+--- a/commands/close.md
++++ b/commands/close.md
+@@ -38,7 +38,7 @@ devcrew:close SLICE-NN [--grade-yaml <path>] [--force-close] ...
+    `04-implementation-slices/`), updates frontmatter in place — no move.
+ 2. **Feature file** — finds the slice's `feature: FEAT-NNN` back-ref,
+    locates the feature in any backlog state, moves it to
+-   `docs/backlog/done/`. backlog-writer auto-stamps `completed_at`.
++   `.claude/artifacts/loop/backlog/done/`. backlog-writer auto-stamps `completed_at`.
+ 3. **Spec reconcile** — runs `reconcileSpecStatus` so any parent SPEC
+    whose derived features are all `done` auto-rolls to `satisfied`.
+ 4. **Grade scaffold** — creates a grade template file. When `--grade-yaml`
+diff --git a/commands/orchestrate-slice.md b/commands/orchestrate-slice.md
+index f8b64ead..4df4a1a5 100644
+--- a/commands/orchestrate-slice.md
++++ b/commands/orchestrate-slice.md
+@@ -13,10 +13,8 @@ Run this after `/devcrew:slice start --id SLICE-NN`. It reads the slice file, cl
+ ### Step 0 — Read and classify slice
+ 
+ 1. Find the slice file. Try these globs in order until a match is found:
+-   - `docs/ai-loop/slices/pending/*SLICE-NN*.md`
+-   - `docs/ai-loop/slices/completed/*SLICE-NN*.md`
+    - `.claude/artifacts/loop/ai-loop/slices/**/*SLICE-NN*.md`
+-   - `docs/ai-loop/backlog/approved-slices.md` (inline slice entry)
++   - `.claude/artifacts/loop/ai-loop/backlog/approved-slices.md` (inline slice entry)
+ 
+ 2. Read the slice file. Extract:
+    - `frontmatter.tags` — YAML array
+diff --git a/commands/retrospective.md b/commands/retrospective.md
+index 8ed6cc8f..ba95fcac 100644
+--- a/commands/retrospective.md
++++ b/commands/retrospective.md
+@@ -6,7 +6,7 @@ auto_execute_steps: false
+ 
+ # Retrospective
+ 
+-Reads `docs/grades/`, `docs/decisions/`, `docs/backlog/`, `docs/specs/` and
++Reads `docs/grades/`, `docs/decisions/`, `.claude/artifacts/loop/backlog/`, `docs/specs/` and
+ generates a markdown summary capturing:
+ 
+ - Slices graded in window
+diff --git a/commands/wake-up-brief.md b/commands/wake-up-brief.md
+index 8ba88818..344a6568 100644
+--- a/commands/wake-up-brief.md
++++ b/commands/wake-up-brief.md
+@@ -22,7 +22,6 @@ Workflow:
+ 4. If they do not match, stop and treat the wake-up brief as invalid for this run.
+ 5. Only if they match, summarize:
+    - latest run memory
+-   - open approvals
+    - active claims
+    - anything that looks stale, blocked, or currently active
+ 6. Use that to decide whether work should stay single-session, become assisted single-session, or become a team run.
+diff --git a/crew/docs/architecture/agent-protocol.md b/crew/docs/architecture/agent-protocol.md
+index e1ce93f7..369b408b 100644
+--- a/crew/docs/architecture/agent-protocol.md
++++ b/crew/docs/architecture/agent-protocol.md
+@@ -187,7 +187,7 @@ Crew should implement this model through:
+ 1. Strong agent definitions with explicit team-structure awareness
+ 2. Strong communication protocol in agent definitions
+ 3. Strong communication protocol in run/task prompts
+-4. The repo-local approval queue (already implemented; see `scripts/lib/approvals.mjs`)
++4. The repo-local `help_request`/`help_resolved` workflow badge (see `scripts/lib/workflow-state.mjs`)
+ 5. The artifact and state layers documented in `./memory-system.md`
+ 
+ ## Near-Term Product Implications
+diff --git a/crew/gepa.config.json b/crew/gepa.config.json
+index 7fe4bc0a..969b9797 100644
+--- a/crew/gepa.config.json
++++ b/crew/gepa.config.json
+@@ -1,58 +1,7 @@
+ {
+-  "capture": {
+-    "enabled": true,
+-    "exclude": [],
+-    "walltime_ms": 2000
+-  },
+-  "storage": {
+-    "backend": "file",
+-    "file_root": ".claude/artifacts/crew/gepa/trials"
+-  },
+-  "runner": {
+-    "backend": "sequential"
+-  },
+-  "judge": {
+-    "provider": "ollama",
+-    "model": "llama3.2:latest",
+-    "endpoint": "http://localhost:11434"
+-  },
+-  "judge_per_agent": {
+-    "fullstack-dev": {
+-      "provider": "gemini",
+-      "model": "gemini-2.5-flash",
+-      "api_key_env": "GEMINI_API_KEY"
+-    },
+-    "reviewer": {
+-      "provider": "gemini",
+-      "model": "gemini-2.5-flash",
+-      "api_key_env": "GEMINI_API_KEY"
+-    },
+-    "architect": {
+-      "provider": "gemini",
+-      "model": "gemini-2.5-flash",
+-      "api_key_env": "GEMINI_API_KEY"
+-    }
+-  },
+-  "budget": {
+-    "daily_usd": 50,
+-    "per_eval_default_usd": 2,
+-    "per_optimize_default_usd": 5
+-  },
++  "_comment": "SLICE-22 (FEAT-005 P4) shrunk this file to the two fields still read by surviving code: optimize.paused and champion_frozen (both consumed by lib/gepa/gepa-killswitch-cmds.mts, the gepa-resume/gepa-thaw handler). capture/storage/runner/judge/judge_per_agent/budget/optimize.k/policy were only read by the deleted GEPA optimize/eval pipeline (candidate-generator-aiplugin.mts, optimize-runner.mts, gepa-optimize-cmd.mts, capture-tee.mts, etc.) and are gone with it.",
+   "optimize": {
+-    "paused": false,
+-    "k": 5
+-  },
+-  "policy": {
+-    "eligible_agents": [],
+-    "min_pass_delta": 0.05,
+-    "min_case_score_floor": 0.6,
+-    "soak_percent": 0.10,
+-    "soak_days": 7,
+-    "min_soak_trials": 20,
+-    "max_soak_days": 21,
+-    "soak_epsilon": 0.02,
+-    "allow_cost_regression": false,
+-    "allow_latency_regression": false
++    "paused": false
+   },
+   "champion_frozen": []
+ }
+diff --git a/crew/hooks/lib/check-subagent-return.mts b/crew/hooks/lib/check-subagent-return.mts
+index de6ae997..4fb28f1c 100644
+--- a/crew/hooks/lib/check-subagent-return.mts
++++ b/crew/hooks/lib/check-subagent-return.mts
+@@ -12,44 +12,9 @@ import { loadAndDeleteDispatchHandle } from "./dispatch-handle-store.mjs";
+ // learnings store. Fire-and-forget; never throws into this hook's path.
+ import { captureFailureLearning } from "../../scripts/lib/memory/capture-learning.mjs";
+ 
+-// FEAT-193 S1: dual-write sibling — also tee failures into the GEPA trial
+-// store. This hook has no reliable agent identity (PostToolUse on the Task
+-// tool carries no subagent_type field), so trials land under agent "unknown"
+-// and phase "build" (the default for non-phase-specific signals, matching
+-// adapt-artifact.ts's KIND_TO_PHASE mapping for run-brief/handoff/final-synthesis).
+-//
+-// Imported dynamically (not a static top-level import) — @astragenie/gepa-core's
+-// installed package points main/exports at raw .ts source, and this hook is
+-// invoked via plain `node --experimental-strip-types` (not bun), which refuses
+-// to strip types for anything under node_modules. A static import would crash
+-// module load for the WHOLE hook; a dynamic import inside try/catch degrades
+-// to a silent no-op instead, matching scripts/lib/artifacts/write.ts's
+-// fireCaptureTeeSilent pattern for the exact same hazard.
+-//
+-// Goes through captureFailureTrialGuarded (timeout-raced, ~1.5s ceiling), not
+-// captureFailureTrial directly — the FIRST dynamic import that touches
+-// gepa-core in a process can take multiple seconds cold (raw .ts source, no
+-// compiled dist/), long enough to stall this hook past its expected budget.
+-// See scripts/lib/gepa/capture-failure-trial-guard.ts's header comment for
+-// the full root cause + the recommended upstream fix.
+-async function fireFailureTrialSilent(
+-  repoPath: string,
+-  entry: { rationale: string; source: string }
+-): Promise<void> {
+-  try {
+-    const { captureFailureTrialGuarded } = await import(
+-      "../../scripts/lib/gepa/capture-failure-trial-guard.mts"
+-    );
+-    await captureFailureTrialGuarded(repoPath, {
+-      agent: "unknown",
+-      phase: "build",
+-      rationale: entry.rationale,
+-      input: { source: entry.source }
+-    });
+-  } catch {
+-    // never propagate
+-  }
+-}
++// FEAT-193 S1's dual-write sibling (tee failures into the GEPA trial store)
++// was removed with the GEPA optimize/eval pipeline (SLICE-22) —
++// captureFailureLearning above is now the sole provider for this signal.
+ 
+ async function logEvent(
+   repoPath: string,
+@@ -192,8 +157,6 @@ export async function runCheckSubagentReturnHook(raw: string): Promise<string |
+       tags: ["inline-return-warn"],
+       source: "inline-return-warn"
+     });
+-    // FEAT-193 S1: dual-write — same signal, also a failing GEPA trial.
+-    await fireFailureTrialSilent(cwd, { rationale: warning, source: "inline-return-warn" });
+ 
+     // AC-4: subagent_incomplete — a NEW signal, strictly narrower than the
+     // warn above (also requires no terminal status marker). See
+@@ -208,8 +171,6 @@ export async function runCheckSubagentReturnHook(raw: string): Promise<string |
+         tags: ["subagent-incomplete"],
+         source: "subagent-incomplete"
+       });
+-      // FEAT-193 S1: dual-write for the subagent-incomplete signal too.
+-      await fireFailureTrialSilent(cwd, { rationale: detail, source: "subagent-incomplete" });
+     }
+ 
+     return JSON.stringify({ decision: "approve", systemMessage: warnings.join("\n") });
+diff --git a/crew/scripts/crew.mts b/crew/scripts/crew.mts
+index c299b36c..cb961fd8 100644
+--- a/crew/scripts/crew.mts
++++ b/crew/scripts/crew.mts
+@@ -396,12 +396,6 @@ function usage(target: string | null = null) {
+     "quickwin-lane":
+       "  node scripts/crew.mjs quickwin-lane [spawn|status] --repo <path> [--date YYYY-MM-DD]",
+     "claim-check": "  node scripts/crew.mjs claim-check --repo <path> [--owner <name>] <files...>",
+-    "request-approval":
+-      "  node scripts/crew.mjs request-approval --repo <path> --summary <text> [--kind <kind>] [--severity <level>] [--requester <name>] [--approver <name>] [--reason <text>]",
+-    "show-approvals":
+-      "  node scripts/crew.mjs show-approvals --repo <path> [--status open|resolved|all] [--approver <name>]",
+-    "resolve-approval":
+-      "  node scripts/crew.mjs resolve-approval --repo <path> --id <approval-id> --decision approved|rejected|canceled [--resolver <name>] [--note <text>]",
+     "wake-up": "  node scripts/crew.mjs wake-up --repo <path>",
+     "brief-me": "  node scripts/crew.mjs brief-me --repo <path>",
+     "scope-estimate":
+@@ -448,18 +442,8 @@ function usage(target: string | null = null) {
+       "  node scripts/crew.mts agent-route [--role <r>] [--surface <s>] [--stack <s>] [--concern <c>] [--lens <l>] [--scope <s>] [--repo <path>]",
+     "gepa-history":
+       "  node scripts/crew.mts gepa-history <agent> [--source eval|captured|soak] [--limit N] [--repo <path>]",
+-    "gepa-corpus-sync":
+-      "  node scripts/crew.mts gepa-corpus-sync [--sibling <p1,p2,...>] [--json] [--repo <path>]",
+-    "gepa-corpus-report":
+-      "  node scripts/crew.mts gepa-corpus-report [<agent>] [--json] [--repo <path>]",
+-    "gepa-corpus-optimize":
+-      "  node scripts/crew.mts gepa-corpus-optimize <agent> --budget <usd> [--k <int>] [--repo <path>]",
+     "gepa-eval":
+       "  node scripts/crew.mts gepa-eval <agent> [--live] [--judge <name>] [--validate] [--split N/M] [--repo <path>]",
+-    "gepa-mine-reviewer":
+-      "  node scripts/crew.mts gepa-mine-reviewer [--weeks N] [--out <dir>] [--repo <path>]",
+-    "gepa-optimize":
+-      "  node scripts/crew.mts gepa-optimize <agent> --budget <usd> [--k <int>] [--artifact-only] [--repo <path>]",
+     "gepa-resume":
+       "  node scripts/crew.mts gepa-resume [<agent>] [--repo <path>]\n" +
+       "    With <agent>: clears the no-winner streak counter for that agent.\n" +
+@@ -847,41 +831,6 @@ const COMMANDS = {
+     return result.value;
+   },
+ 
+-  "request-approval": async ({ repoPath, flags, positionals }: CommandContext) => {
+-    const { requestApproval } = await import("./lib/approvals.mjs");
+-    return requestApproval(repoPath, {
+-      requester: flags.requester || "lead-session",
+-      approver: flags.approver ?? undefined,
+-      kind: flags.kind || "scope_change",
+-      severity: flags.severity || "medium",
+-      summary: flags.summary || positionals.join(" ") || "Approval requested",
+-      reason: flags.reason || ""
+-    });
+-  },
+-  "show-approvals": async ({ repoPath, flags }: CommandContext) => {
+-    const { listApprovals } = await import("./lib/approvals.mjs");
+-    return {
+-      approvals: await listApprovals(repoPath, {
+-        status: flags.status ?? undefined,
+-        approver: flags.approver
+-      })
+-    };
+-  },
+-  "resolve-approval": async ({ repoPath, flags }: CommandContext) => {
+-    const { resolveApproval } = await import("./lib/approvals.mjs");
+-    const result = await resolveApproval(repoPath, {
+-      id: flags.id ?? undefined,
+-      decision: flags.decision ?? undefined,
+-      resolver: flags.resolver || "lead-session",
+-      note: flags.note || ""
+-    });
+-    if (!result.ok) {
+-      console.error(result.error.message);
+-      process.exit(1);
+-    }
+-    return result.value;
+-  },
+-
+   "wake-up": async ({ repoPath }: CommandContext) => {
+     const { buildWakeUpBrief } = await import("./lib/wakeup.mjs");
+     return buildWakeUpBrief(repoPath);
+@@ -1411,49 +1360,6 @@ const COMMANDS = {
+     return result.stdout.trim();
+   },
+ 
+-  "gepa-corpus-sync": async ({ repoPath, flags, positionals }: CommandContext) => {
+-    const { runCorpusSyncCmd } = await import("./lib/gepa/corpus-sync.mjs");
+-    const rawArgs: string[] = [...positionals];
+-    // --sibling takes a comma-separated list of repo roots (the single-value
+-    // flag parser keeps only the last token, so siblings ride one flag).
+-    if (typeof flags.sibling === "string" && flags.sibling) {
+-      for (const s of flags.sibling
+-        .split(",")
+-        .map((x) => x.trim())
+-        .filter(Boolean)) {
+-        rawArgs.push("--sibling", s);
+-      }
+-    }
+-    if (flags.json === true) rawArgs.push("--json");
+-    const result = await runCorpusSyncCmd(repoPath, rawArgs);
+-    // Return-only: main console.log's the return value, so writing stdout here
+-    // too would double-print (breaks `--json | jq`).
+-    if (result.stderr) process.stderr.write(result.stderr);
+-    if (result.exitCode !== 0) process.exit(result.exitCode);
+-    return result.stdout.trimEnd();
+-  },
+-
+-  "gepa-corpus-report": async ({ repoPath, flags, positionals }: CommandContext) => {
+-    const { runCorpusReportCmd } = await import("./lib/gepa/corpus-report.mjs");
+-    const rawArgs: string[] = [...positionals];
+-    if (flags.json === true) rawArgs.push("--json");
+-    const result = await runCorpusReportCmd(repoPath, rawArgs);
+-    if (result.stderr) process.stderr.write(result.stderr);
+-    if (result.exitCode !== 0) process.exit(result.exitCode);
+-    return result.stdout.trimEnd();
+-  },
+-
+-  "gepa-corpus-optimize": async ({ repoPath, flags, positionals }: CommandContext) => {
+-    const { runCorpusOptimizeCmd } = await import("./lib/gepa/corpus-optimize.mjs");
+-    const rawArgs: string[] = [...positionals];
+-    if (typeof flags.budget === "string" && flags.budget) rawArgs.push("--budget", flags.budget);
+-    if (typeof flags.gepaK === "string" && flags.gepaK) rawArgs.push("--k", flags.gepaK);
+-    const result = await runCorpusOptimizeCmd(repoPath, rawArgs);
+-    if (result.stderr) process.stderr.write(result.stderr);
+-    if (result.exitCode !== 0) process.exit(result.exitCode);
+-    return result.stdout.trimEnd();
+-  },
+-
+   "gepa-eval": async ({ repoPath, flags, positionals }: CommandContext) => {
+     const { runGepaEvalCmd } = await import("./lib/gepa/eval.mjs");
+     const rawArgs: string[] = [...positionals];
+@@ -1468,33 +1374,6 @@ const COMMANDS = {
+     return result.stdout.trim();
+   },
+ 
+-  "gepa-mine-reviewer": async ({ repoPath, flags, positionals }: CommandContext) => {
+-    const { runMineReviewerBugCorpus } = await import("./lib/gepa/mine-reviewer-bug-corpus.mjs");
+-    // Reconstruct raw-args for the mining module's own parser.
+-    const rawArgs: string[] = [...positionals];
+-    if (typeof flags.weeks === "string" && flags.weeks) rawArgs.push("--weeks", flags.weeks);
+-    if (typeof flags.out === "string" && flags.out) rawArgs.push("--out", flags.out);
+-    const result = await runMineReviewerBugCorpus(repoPath, rawArgs);
+-    if (result.stdout) process.stdout.write(result.stdout);
+-    if (result.stderr) process.stderr.write(result.stderr);
+-    if (result.exitCode !== 0) process.exit(result.exitCode);
+-    return result.stdout.trim();
+-  },
+-
+-  "gepa-optimize": async ({ repoPath, flags, positionals }: CommandContext) => {
+-    const { runGepaOptimizeCmd } = await import("./lib/gepa/gepa-optimize-cmd.mjs");
+-    const rawArgs: string[] = [...positionals];
+-    if (typeof flags.budget === "string" && flags.budget) rawArgs.push("--budget", flags.budget);
+-    if (typeof flags.gepaK === "string" && flags.gepaK) rawArgs.push("--k", flags.gepaK);
+-    if (typeof flags.split === "string" && flags.split) rawArgs.push("--split", flags.split);
+-    if (flags.artifactOnly === true) rawArgs.push("--artifact-only");
+-    const result = await runGepaOptimizeCmd(repoPath, rawArgs);
+-    if (result.stdout) process.stdout.write(result.stdout);
+-    if (result.stderr) process.stderr.write(result.stderr);
+-    if (result.exitCode !== 0) process.exit(result.exitCode);
+-    return result.stdout.trim();
+-  },
+-
+   "gepa-resume": async ({ repoPath, positionals }: CommandContext) => {
+     const { runGepaResumeCmdExtended } = await import("./lib/gepa/gepa-killswitch-cmds.mjs");
+     const result = await runGepaResumeCmdExtended(repoPath, positionals);
+diff --git a/crew/scripts/lib/approvals.mts b/crew/scripts/lib/approvals.mts
+deleted file mode 100644
+index 80470199..00000000
+--- a/crew/scripts/lib/approvals.mts
++++ /dev/null
+@@ -1,297 +0,0 @@
+-import fs from "node:fs/promises";
+-import path from "node:path";
+-import crypto from "node:crypto";
+-import { append } from "@astragenie/plugin-std/jsonl";
+-import { type Result, ok, err } from "./result.mjs";
+-
+-// ---------------------------------------------------------------------------
+-// Types
+-// ---------------------------------------------------------------------------
+-
+-export interface ApprovalRecord {
+-  id: string;
+-  status: string;
+-  kind: string;
+-  severity: string;
+-  summary: string;
+-  reason: string;
+-  requester: string;
+-  approver: string;
+-  requestedAt: string;
+-  decision?: string;
+-  resolver?: string;
+-  resolutionNote?: string;
+-  resolvedAt?: string;
+-}
+-
+-export interface RequestApprovalOptions {
+-  kind?: string | undefined;
+-  severity?: string | undefined;
+-  summary?: string | undefined;
+-  reason?: string | undefined;
+-  requester?: string | undefined;
+-  approver?: string | undefined;
+-}
+-
+-export interface ListApprovalsOptions {
+-  status?: string | undefined;
+-  approver?: string | null;
+-  createIfMissing?: boolean;
+-}
+-
+-export interface ResolveApprovalOptions {
+-  id?: string | undefined;
+-  decision?: string | undefined;
+-  resolver?: string | undefined;
+-  note?: string | undefined;
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Constants
+-// ---------------------------------------------------------------------------
+-
+-const STATE_DIR = [".claude", "state", "crew"] as const;
+-const APPROVALS_PATH = [...STATE_DIR, "approvals.jsonl"] as const;
+-
+-const USER_APPROVAL_KINDS = new Set([
+-  "destructive_action",
+-  "wide_scope_change",
+-  "policy_change",
+-  "architecture_decision"
+-]);
+-
+-// ---------------------------------------------------------------------------
+-// Private utilities
+-// ---------------------------------------------------------------------------
+-
+-function nowIso(): string {
+-  return new Date().toISOString();
+-}
+-
+-async function ensureDir(dirPath: string): Promise<void> {
+-  await fs.mkdir(dirPath, { recursive: true });
+-}
+-
+-async function ensureFile(filePath: string, contents: string): Promise<void> {
+-  try {
+-    await fs.access(filePath);
+-  } catch {
+-    await ensureDir(path.dirname(filePath));
+-    await fs.writeFile(filePath, contents);
+-  }
+-}
+-
+-async function ensureApprovalLog(repoPath: string): Promise<void> {
+-  await ensureFile(path.join(repoPath, ...APPROVALS_PATH), "");
+-}
+-
+-async function approvalLogExists(repoPath: string): Promise<boolean> {
+-  try {
+-    await fs.access(path.join(repoPath, ...APPROVALS_PATH));
+-    return true;
+-  } catch {
+-    return false;
+-  }
+-}
+-
+-function defaultApprover(kind: string): string {
+-  return USER_APPROVAL_KINDS.has(kind) ? "user" : "lead";
+-}
+-
+-function normalizeStatusFilter(status: string | undefined): string {
+-  if (!status || status === "open") {
+-    return "open";
+-  }
+-  if (status === "resolved" || status === "all") {
+-    return status;
+-  }
+-  throw new Error(`Unsupported approval status filter: ${status}`);
+-}
+-
+-function buildApprovalId(): string {
+-  return `apr_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`;
+-}
+-
+-async function appendApprovalEvent(
+-  repoPath: string,
+-  event: Record<string, unknown>
+-): Promise<void> {
+-  await ensureApprovalLog(repoPath);
+-  const approvalsPath = path.join(repoPath, ...APPROVALS_PATH);
+-  // plugin-std's append() throws TransientError (instanceof Error) on write failure —
+-  // same throw-to-caller contract as the previous fs.appendFile call: requestApproval
+-  // lets it propagate, resolveApproval's try/catch still converts it via
+-  // `e instanceof Error ? e : new Error(String(e))`.
+-  await append(approvalsPath, { timestamp: nowIso(), ...event });
+-}
+-
+-// NOT swapped to plugin-std's readSafe(): readSafe silently counts a malformed/torn
+-// line as `skipped` and never throws, whereas this reader's bare `JSON.parse` throws
+-// on a malformed line and lets that propagate (requestApproval has no catch;
+-// resolveApproval's try/catch turns it into an Err). That is a real throw-vs-swallow
+-// divergence on corruption, not a mechanical rename, so the manual parse stays local
+-// per the never-force-a-swap guidance.
+-async function readApprovalEvents(
+-  repoPath: string,
+-  options: { createIfMissing?: boolean } = {}
+-): Promise<Record<string, unknown>[]> {
+-  if (options.createIfMissing === false && !(await approvalLogExists(repoPath))) {
+-    return [];
+-  }
+-  await ensureApprovalLog(repoPath);
+-  const approvalsPath = path.join(repoPath, ...APPROVALS_PATH);
+-  const raw = await fs.readFile(approvalsPath, "utf8");
+-  return raw
+-    .split("\n")
+-    .map((line) => line.trim())
+-    .filter(Boolean)
+-    .map((line) => JSON.parse(line) as Record<string, unknown>);
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Event replay
+-// ---------------------------------------------------------------------------
+-
+-function replayApprovals(events: Record<string, unknown>[]): ApprovalRecord[] {
+-  const approvals = new Map<string, ApprovalRecord>();
+-
+-  for (const event of events) {
+-    if (event["event"] === "approval_requested") {
+-      const id = event["id"] as string;
+-      approvals.set(id, {
+-        id,
+-        status: "open",
+-        kind: event["kind"] as string,
+-        severity: event["severity"] as string,
+-        summary: event["summary"] as string,
+-        reason: event["reason"] as string,
+-        requester: event["requester"] as string,
+-        approver: event["approver"] as string,
+-        requestedAt: event["timestamp"] as string
+-      });
+-      continue;
+-    }
+-
+-    if (event["event"] === "approval_resolved") {
+-      const id = event["id"] as string;
+-      const current = approvals.get(id);
+-      if (current) {
+-        const decision = event["decision"] as string;
+-        approvals.set(id, {
+-          ...current,
+-          status: decision,
+-          decision,
+-          resolver: event["resolver"] as string,
+-          resolutionNote: (event["note"] as string) || "",
+-          resolvedAt: event["timestamp"] as string
+-        });
+-      }
+-    }
+-  }
+-
+-  return [...approvals.values()].sort((left, right) =>
+-    left.requestedAt.localeCompare(right.requestedAt)
+-  );
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Public API
+-// ---------------------------------------------------------------------------
+-
+-export async function requestApproval(
+-  repoPath: string,
+-  options: RequestApprovalOptions = {}
+-): Promise<ApprovalRecord> {
+-  const kind = options.kind || "scope_change";
+-  const approval = {
+-    id: buildApprovalId(),
+-    kind,
+-    severity: options.severity || "medium",
+-    summary: options.summary || "Approval requested",
+-    reason: options.reason || "",
+-    requester: options.requester || "lead-session",
+-    approver: options.approver || defaultApprover(kind)
+-  };
+-
+-  await appendApprovalEvent(repoPath, {
+-    event: "approval_requested",
+-    ...approval
+-  });
+-
+-  return {
+-    ...approval,
+-    status: "open",
+-    requestedAt: nowIso()
+-  };
+-}
+-
+-export async function listApprovals(
+-  repoPath: string,
+-  options: ListApprovalsOptions = {}
+-): Promise<ApprovalRecord[]> {
+-  const status = normalizeStatusFilter(options.status);
+-  const approver = options.approver ?? null;
+-  const events = await readApprovalEvents(repoPath, {
+-    ...(options.createIfMissing !== undefined ? { createIfMissing: options.createIfMissing } : {})
+-  });
+-  const approvals = replayApprovals(events);
+-
+-  return approvals.filter((approval) => {
+-    if (approver && approval.approver !== approver) {
+-      return false;
+-    }
+-    if (status === "all") {
+-      return true;
+-    }
+-    if (status === "resolved") {
+-      return approval.status !== "open";
+-    }
+-    return approval.status === "open";
+-  });
+-}
+-
+-export async function resolveApproval(
+-  repoPath: string,
+-  options: ResolveApprovalOptions = {}
+-): Promise<Result<ApprovalRecord, Error>> {
+-  try {
+-    const id = options.id;
+-    const decision = options.decision;
+-    if (!id) {
+-      throw new Error("Approval id is required.");
+-    }
+-    if (!["approved", "rejected", "canceled"].includes(decision ?? "")) {
+-      throw new Error("Approval decision must be one of: approved, rejected, canceled.");
+-    }
+-
+-    const events = await readApprovalEvents(repoPath);
+-    const approvals = replayApprovals(events);
+-    const approval = approvals.find((item) => item.id === id);
+-    if (!approval) {
+-      throw new Error(`Unknown approval id: ${id}`);
+-    }
+-    if (approval.status !== "open") {
+-      throw new Error(`Approval ${id} is already resolved with status ${approval.status}.`);
+-    }
+-
+-    const resolution = {
+-      id,
+-      decision: decision as string,
+-      resolver: options.resolver || "lead-session",
+-      note: options.note || ""
+-    };
+-
+-    await appendApprovalEvent(repoPath, {
+-      event: "approval_resolved",
+-      ...resolution
+-    });
+-
+-    return ok({
+-      ...approval,
+-      ...resolution,
+-      status: decision as string
+-    });
+-  } catch (e) {
+-    return err(e instanceof Error ? e : new Error(String(e)));
+-  }
+-}
+diff --git a/crew/scripts/lib/artifacts/write.mts b/crew/scripts/lib/artifacts/write.mts
+index ed58cbeb..6309c76c 100644
+--- a/crew/scripts/lib/artifacts/write.mts
++++ b/crew/scripts/lib/artifacts/write.mts
+@@ -10,8 +10,7 @@ import { ok, err } from "../result.mjs";
+ import type { Result } from "../result.mjs";
+ import type { ArtifactFields, CostBreakdown, CostOutcome, DispatchBreakdown } from "./types.mjs";
+ import { renderDispatchBreakdownSection } from "../dispatch-timing-reader.mjs";
+-import { fireGuarded } from "../gepa/guarded-fire.mjs";
+-import type { captureTee as CaptureTeeFn } from "../gepa/capture-tee.mjs";
++import { fireGuarded } from "../guarded-fire.mjs";
+ 
+ export type { ArtifactFields, CostBreakdown, CostOutcome } from "./types.mjs";
+ 
+@@ -799,10 +798,6 @@ function renderArtifactBody(
+ // omitted (every production call site), the default dynamic-import loader
+ // runs — byte-identical to pre-seam behavior.
+ export interface WriteArtifactTestOverrides {
+-  /** Overrides the dynamic-import loader fireCaptureTeeSilent uses to reach
+-   * captureTee — lets tests inject a slow/fake module instead of racing a
+-   * real (possibly cold) @astragenie/gepa-core parse. */
+-  __captureTeeLoader?: () => Promise<{ captureTee: typeof CaptureTeeFn }>;
+   /** Overrides the dynamic-import loader fireMemoriesUsedCreditSilent uses
+    * to reach creditMemoriesUsed — lets tests inject a spy instead of
+    * resolving a real provider. */
+@@ -814,26 +809,8 @@ export interface WriteArtifactTestOverrides {
+   __guardTimeoutMs?: number;
+ }
+ 
+-const defaultCaptureTeeLoader = () => import("../gepa/capture-tee.mjs");
+ const defaultCreditMemoriesUsedLoader = () => import("../memory/handoff-credit.mjs");
+ 
+-// Fire-and-forget GEPA capture tee. Guarded (Wave 1.5 / issue #360): races
+-// the dynamic import + write against a bounded ceiling so a cold
+-// @astragenie/gepa-core parse can never hang this call open indefinitely.
+-// Never propagates errors.
+-async function fireCaptureTeeSilent(
+-  repoPath: string,
+-  artifact: ArtifactRecord,
+-  fields: ArtifactFields,
+-  overrides: WriteArtifactTestOverrides = {}
+-): Promise<void> {
+-  await fireGuarded(async () => {
+-    const loader = overrides.__captureTeeLoader ?? defaultCaptureTeeLoader;
+-    const { captureTee } = await loader();
+-    await captureTee(repoPath, artifact, fields);
+-  }, overrides.__guardTimeoutMs);
+-}
+-
+ // Test-only bookkeeping (Wave 1.5 / issue #360): production code never
+ // awaits writeArtifact's fire-and-forget captures (see writeArtifact below)
+ // — they are detached so a slow/cold capture never delays the artifact
+@@ -869,8 +846,8 @@ export async function __drainPendingCaptures(): Promise<void> {
+ // FEAT-188 S1a AC-2: auto-capture a `failure`-kind learnings entry whenever
+ // a review-result write carries the "rejected" verdict, or a
+ // validation-result write carries the "fail" verdict. Fire-and-forget,
+-// mirrors fireCaptureTeeSilent above — never blocks or fails the write this
+-// hooks onto.
++// mirrors fireFailureCaptureSilent's own no-throw contract — never blocks or
++// fails the write this hooks onto.
+ function isFailingVerdict(kind: string, fields: ArtifactFields): boolean {
+   if (kind === "review-result") return fields.verdict === "rejected";
+   if (kind === "validation-result") return fields.verdict === "fail";
+@@ -897,29 +874,9 @@ async function fireFailureCaptureSilent(
+   } catch {
+     // never propagate
+   }
+-  // FEAT-193 S1: dual-write — also append a failing Trial to the agent's GEPA
+-  // trial store, alongside the learnings.jsonl append above. Two parallel
+-  // providers (operator decision): lessons → learnings.jsonl, failing trials
+-  // → the GEPA reflection corpus.
+-  //
+-  // Goes through captureFailureTrialGuarded (timeout-raced, ~1.5s ceiling),
+-  // NOT captureFailureTrial directly: @astragenie/gepa-core's installed
+-  // package resolves to raw .ts source, so the first dynamic import that
+-  // touches it in a process can take multiple seconds cold — long enough to
+-  // blow this CLI command's expected latency (regression caught + fixed
+-  // here; see capture-failure-trial-guard.ts's header comment for the full
+-  // root cause).
+-  try {
+-    const { captureFailureTrialGuarded } = await import("../gepa/capture-failure-trial-guard.mjs");
+-    await captureFailureTrialGuarded(repoPath, {
+-      agent: agent ?? "unknown",
+-      phase: kind === "review-result" ? "review" : "validate",
+-      rationale,
+-      input: { slice: fields.slice ?? null, feature: fields.feature ?? null, kind }
+-    });
+-  } catch {
+-    // never propagate
+-  }
++  // FEAT-193 S1's dual-write into the GEPA trial store (alongside the
++  // learnings.jsonl append above) was removed with the GEPA optimize/eval
++  // pipeline (SLICE-22) — learnings.jsonl is now the sole provider.
+ }
+ 
+ // Dispatch-memory-credit-loop, "credit on receipt" half (runner-plugin
+@@ -928,7 +885,7 @@ async function fireFailureCaptureSilent(
+ // types (docs/contracts/agent-profile-feedback-v1.md's sibling contract).
+ // When the handoff carries the OPTIONAL `memoriesUsed` field, credit those
+ // ids via the resolved provider — fire-and-forget, guarded, mirrors
+-// fireCaptureTeeSilent/fireFailureCaptureSilent above. Absent/empty field,
++// fireFailureCaptureSilent's no-throw contract above. Absent/empty field,
+ // `memory.feedback.creditLoop.enabled: false` (default), or any daemon error all
+ // resolve to a silent no-op; never blocks or delays this write's return.
+ async function fireMemoriesUsedCreditSilent(
+@@ -976,10 +933,9 @@ export async function writeArtifact(
+       await registerWorkflowArtifact(repoPath, artifact, fields);
+     }
+     // Wave 1.5 (issue #360): detached, not inline-awaited. Both captures are
+-    // best-effort derived duplicates (astramem / the GEPA trial corpus
+-    // remain source of truth) — a slow/cold capture must never delay this
+-    // write's return. See fireCaptureTeeSilent + guarded-fire.ts headers.
+-    trackDetached(fireCaptureTeeSilent(repoPath, artifact, fields, overrides));
++    // best-effort derived duplicates (astramem remains source of truth) —
++    // a slow/cold capture must never delay this write's return. See
++    // guarded-fire.ts's header.
+     trackDetached(fireFailureCaptureSilent(repoPath, kind, fields));
+     trackDetached(fireMemoriesUsedCreditSilent(repoPath, kind, fields, overrides));
+ 
+diff --git a/crew/scripts/lib/briefing.mts b/crew/scripts/lib/briefing.mts
+index cd45d155..8541d962 100644
+--- a/crew/scripts/lib/briefing.mts
++++ b/crew/scripts/lib/briefing.mts
+@@ -231,8 +231,7 @@ export async function buildBriefingReport(repoPath: string): Promise<Record<stri
+       },
+       inProgress: {
+         workflow: wakeUpBrief.workflow,
+-        activeClaims: wakeUpBrief.claims,
+-        openApprovals: wakeUpBrief.openApprovals
++        activeClaims: wakeUpBrief.claims
+       },
+       blockedOrMissing,
+       importantReminders: reminders,
+diff --git a/crew/scripts/lib/briefing/render.mts b/crew/scripts/lib/briefing/render.mts
+index 26b8c23d..ec0a6ce6 100644
+--- a/crew/scripts/lib/briefing/render.mts
++++ b/crew/scripts/lib/briefing/render.mts
+@@ -70,7 +70,6 @@ interface WakeUpBrief {
+   repoGuidance?: RepoGuidance;
+   workflow?: WorkflowShape;
+   latestArtifacts?: LatestArtifacts;
+-  openApprovals: unknown[];
+   hasClaudeMd?: boolean;
+   claims: unknown[];
+   summary: SummaryShape;
+@@ -268,9 +267,6 @@ function collectRepoStateMessages(
+   gitActivity: GitActivity
+ ): string[] {
+   const out: string[] = [];
+-  if (wakeUpBrief.openApprovals.length > 0) {
+-    out.push(`${wakeUpBrief.openApprovals.length} open approval(s) still need a decision.`);
+-  }
+   if (!wakeUpBrief.hasClaudeMd) {
+     out.push("This repo is not fully adopted into Crew yet.");
+   }
+@@ -377,10 +373,6 @@ function repoStateNextStep(
+       cond: !wakeUpBrief.hasClaudeMd,
+       msg: "Run /crew:adopt so the repo has the Crew harness, repo guidance, and local workflow state."
+     },
+-    {
+-      cond: wakeUpBrief.openApprovals.length > 0,
+-      msg: "Resolve the open approval queue before pushing the workflow forward."
+-    },
+     {
+       cond: !wakeUpBrief.repoGuidance?.deployment && deploymentClues.clues.length > 0,
+       msg: "Capture durable deployment guidance next so ship work can reuse repo-specific environment knowledge."
+diff --git a/crew/scripts/lib/gepa/adapt-artifact.mts b/crew/scripts/lib/gepa/adapt-artifact.mts
+deleted file mode 100644
+index 43e3fa24..00000000
+--- a/crew/scripts/lib/gepa/adapt-artifact.mts
++++ /dev/null
+@@ -1,75 +0,0 @@
+-// Adapts crew's internal ArtifactRecord + ArtifactFields into the gepa-core
+-// library's CrewArtifact shape.
+-//
+-// ArtifactRecord (writeArtifact return) = { kind, path, title }.
+-// ArtifactFields (writeArtifact input) carries owner, cost, runTitle, slice — the
+-// data we need to populate agent + score_hint.
+-
+-import type { CrewArtifact } from "@astragenie/gepa-core";
+-import type { ArtifactFields } from "../artifacts/types.mjs";
+-import type { ArtifactRecord } from "../artifacts/write.mjs";
+-
+-const KIND_TO_PHASE: Record<string, CrewArtifact["phase"]> = {
+-  "run-brief": "build",
+-  handoff: "build",
+-  "final-synthesis": "build",
+-  "review-result": "review",
+-  "validation-plan": "validate",
+-  "validation-result": "validate",
+-  "deployment-check": "ship"
+-};
+-
+-// Verdict → pass mapping for captured trials. review-result / validation-result
+-// artifacts carry a canonical verdict (P1.3 enum) or a legacy raw `decision`;
+-// map it so a captured trial reflects the real PASS/FAIL instead of the
+-// pass=true default in capture-tee. Returns undefined for artifacts with no
+-// verdict signal (run-brief, handoff, final-synthesis) — capture-tee then keeps
+-// its pass=true default. Failing trials are the fuel the optimizer mutates from,
+-// so this threading is what lets the captured corpus teach failures, not just
+-// successes.
+-const FAIL_VERDICTS = new Set(["fail", "failed", "rejected", "needs_fix"]);
+-const PASS_VERDICTS = new Set([
+-  "pass",
+-  "passed",
+-  "passed_with_notes",
+-  "approved",
+-  "approved_with_notes"
+-]);
+-
+-function deriveCapturedPass(fields: ArtifactFields): boolean | undefined {
+-  const raw = (fields.verdict ?? fields.decision)?.trim().toLowerCase();
+-  if (!raw) return undefined;
+-  if (FAIL_VERDICTS.has(raw)) return false;
+-  if (PASS_VERDICTS.has(raw)) return true;
+-  return undefined; // skipped / unrecognized → no scoring signal
+-}
+-
+-export function adaptArtifact(record: ArtifactRecord, fields: ArtifactFields): CrewArtifact | null {
+-  const phase = KIND_TO_PHASE[record.kind];
+-  if (!phase) return null;
+-
+-  const agent = fields.owner ?? "unknown";
+-  const cost_usd = fields.cost?.usd;
+-  const pass = deriveCapturedPass(fields);
+-  const hint: NonNullable<CrewArtifact["score_hint"]> = {};
+-  if (cost_usd !== undefined) hint.cost_usd = cost_usd;
+-  if (pass !== undefined) hint.pass = pass;
+-  const score_hint = Object.keys(hint).length > 0 ? hint : undefined;
+-
+-  return {
+-    agent,
+-    phase,
+-    input: {
+-      slice: fields.slice ?? null,
+-      feature: fields.feature ?? null,
+-      runTitle: fields.runTitle ?? null
+-    },
+-    output: {
+-      title: record.title,
+-      kind: record.kind
+-    },
+-    ...(score_hint ? { score_hint } : {}),
+-    source_artifact_path: record.path,
+-    dispatched_at: new Date().toISOString()
+-  };
+-}
+diff --git a/crew/scripts/lib/gepa/auto-merge-gate.mts b/crew/scripts/lib/gepa/auto-merge-gate.mts
+deleted file mode 100644
+index a628f469..00000000
+--- a/crew/scripts/lib/gepa/auto-merge-gate.mts
++++ /dev/null
+@@ -1,345 +0,0 @@
+-/**
+- * scripts/lib/gepa/auto-merge-gate.ts — SLICE-106
+- *
+- * Auto-merge gate: combines the 5 promotion-gate conditions (from SLICE-104's
+- * evaluateGate / PromotionPolicy) PLUS:
+- *   6. soak_pass — SoakVerdict.status === "passed" (soak already cleared).
+- *   7. branch_protection_present — checkBranchProtection.enforced === true.
+- *   8. agent_eligible — agent in policy.eligible_agents (deny-by-default).
+- *   9. not_champion_frozen — agent NOT in gepa.config.json champion_frozen.
+- *   10. not_critical_agent — agent NOT in CRITICAL_AGENT_ALLOWLIST.
+- *
+- * Priority order (checked left-to-right; all failures collected):
+- *   critical-agent check FIRST (per AC-2: "critical-agent allowlist check fires FIRST").
+- *
+- * When ALL gates pass AND agent is not critical → calls
+- *   `gh pr merge --auto --squash <pr_url>`
+- *
+- * When critical-agent fires → leaves PR as draft, emits
+- *   `gepa_critical_agent_draft_pr`, does NOT call gh pr merge.
+- *
+- * On any gate block → leaves PR as draft, logs gate-verdict.
+- *
+- * Constraints:
+- *   - NEVER `gh pr merge` without going through the gate.
+- *   - NEVER `git push --force`.
+- *   - NEVER `git reset` (revert uses `git revert` — see gepa-revert command).
+- *   - `policy.eligible_agents: []` (empty) = deny all (AC-4).
+- */
+-
+-import { spawnSync } from "node:child_process";
+-import { join } from "node:path";
+-import {
+-  evaluateGate,
+-  type CandidateMetrics,
+-  type ChampionMetrics,
+-  type GatePolicy,
+-  type PromotionDecision
+-} from "@astragenie/gepa-core";
+-import { isCriticalAgent } from "./critical-agent-allowlist.mjs";
+-import {
+-  emitGepaEvent,
+-  emitCriticalAgentDraftPrEvent,
+-  emitOptPromoteEvent,
+-  emitTailRiskBlockEvent
+-} from "./observability-events.mjs";
+-import type { OptimizationResult } from "./optimize-runner.mjs";
+-
+-// ── Types ─────────────────────────────────────────────────────────────────────
+-
+-/** Inputs to the auto-merge gate. */
+-export interface AutoMergeGateOpts {
+-  /** Absolute path to the repo root. */
+-  repoPath: string;
+-  /** Agent name (e.g. "fullstack-dev"). */
+-  agent: string;
+-  /**
+-   * Optimization result for this cycle — supplies candidate metrics.
+-   * The winner must be non-null (caller guards this).
+-   */
+-  result: OptimizationResult;
+-  /**
+-   * Whether the soak phase has passed for this candidate.
+-   * Comes from evaluateSoak → verdict.status === "passed".
+-   */
+-  soakPassed: boolean;
+-  /**
+-   * Whether branch protection is enforced on `main`.
+-   * Comes from checkBranchProtection.enforced.
+-   */
+-  branchProtectionPresent: boolean;
+-  /**
+-   * Promotion policy including eligible_agents, gate thresholds, and frozen list.
+-   */
+-  policy: AutoMergePolicy;
+-  /**
+-   * URL of the PR opened by runAutoPr (SLICE-105).
+-   * Required to call `gh pr merge --auto --squash`.
+-   */
+-  prUrl: string;
+-  /**
+-   * Champion pass rate on held-out cases — used for the min_pass_delta gate.
+-   */
+-  championMetrics: ChampionMetrics;
+-  /**
+-   * Optional override for the `gh` binary path (useful for tests).
+-   */
+-  ghPath?: string;
+-}
+-
+-/**
+- * Subset of gepa.config.json `policy` + `champion_frozen` relevant to the gate.
+- * Caller constructs this from the loaded GepaConfig.
+- */
+-export interface AutoMergePolicy {
+-  /** Agents allowed for auto-merge (empty = deny all). */
+-  eligible_agents: string[];
+-  /** Agents frozen from further optimization/promotion. */
+-  champion_frozen: string[];
+-  /** Gate thresholds (passed through to evaluateGate). */
+-  gate: GatePolicy;
+-}
+-
+-/** Result of evaluateAutoMergeGate. */
+-export interface AutoMergeGateResult {
+-  /** True when ALL gates passed and gh pr merge was invoked. */
+-  eligible: boolean;
+-  /** False when the PR was left as draft (gate block or critical-agent). */
+-  merged: boolean;
+-  /**
+-   * Reasons the gate was blocked (empty when eligible=true).
+-   * Includes: "not_pareto_rank_1", "min_pass_delta_not_met", "tail_risk_block",
+-   *   "cost_regression", "latency_regression", "soak_not_passed",
+-   *   "branch_protection_missing", "agent_not_eligible", "champion_frozen",
+-   *   "critical_agent" (always blockedBy[0] when critical-agent fires).
+-   */
+-  blockedBy: string[];
+-  /** Structured promotion decision from the 5-condition gate. */
+-  gateDecision: PromotionDecision;
+-  /** True when the PR was left as draft for the human-review queue. */
+-  draftPr: boolean;
+-}
+-
+-// ── Helpers ───────────────────────────────────────────────────────────────────
+-
+-function extractCandidateMetrics(result: OptimizationResult): CandidateMetrics {
+-  const w = result.winner!;
+-  return {
+-    pareto_rank: w.pareto_rank,
+-    // Held-out pass rate: use the winner's pass flag as a binary 0/1 proxy.
+-    // More precise metrics require held_out aggregates — stubbed here as per AC-1.
+-    held_out_pass: w.pass ? 1.0 : 0.0,
+-    // min case score — use winner score (conservative proxy; AC-3 floor is 0.6).
+-    min_held_out_case_score: w.score,
+-    cost_usd_delta: w.cost_usd,
+-    latency_ms_delta: w.latency_ms
+-  };
+-}
+-
+-function runGhMerge(
+-  ghPath: string,
+-  cwd: string,
+-  prUrl: string
+-): { ok: boolean; stderr: string; stdout: string } {
+-  // NEVER git push --force. gh pr merge --auto --squash merges when CI clears.
+-  const r = spawnSync(ghPath, ["pr", "merge", "--auto", "--squash", prUrl], {
+-    cwd,
+-    encoding: "utf8",
+-    windowsHide: true
+-  });
+-  if (r.error) throw r.error;
+-  return {
+-    ok: r.status === 0,
+-    stdout: r.stdout ?? "",
+-    stderr: r.stderr ?? ""
+-  };
+-}
+-
+-// ── Public API ────────────────────────────────────────────────────────────────
+-
+-/** Build the critical-agent early-return result. */
+-function criticalAgentResult(opts: AutoMergeGateOpts): AutoMergeGateResult {
+-  const { repoPath, agent, result, prUrl } = opts;
+-  emitCriticalAgentDraftPrEvent(repoPath, {
+-    agent,
+-    cycle_id: result.cycle_id,
+-    trial_id: result.winner?.candidate_id,
+-    pr_url: prUrl,
+-    pr_draft: true
+-  });
+-  process.stdout.write(
+-    `gepa-auto-merge-gate: critical agent "${agent}" → PR left as draft for human review: ${prUrl}\n`
+-  );
+-  const decision: PromotionDecision = {
+-    eligible: false,
+-    blockedBy: ["critical_agent"],
+-    events: ["gepa_critical_agent_draft_pr"],
+-    detail: {
+-      pareto_rank: result.winner?.pareto_rank ?? 0,
+-      held_out_pass: result.winner?.pass ? 1.0 : 0.0,
+-      champion_held_out_pass: opts.championMetrics.held_out_pass,
+-      pass_delta: (result.winner?.pass ? 1.0 : 0.0) - opts.championMetrics.held_out_pass,
+-      min_held_out_case_score: result.winner?.score ?? 0,
+-      cost_usd_delta: result.winner?.cost_usd ?? 0,
+-      latency_ms_delta: result.winner?.latency_ms ?? 0
+-    }
+-  };
+-  return {
+-    eligible: false,
+-    merged: false,
+-    blockedBy: ["critical_agent"],
+-    gateDecision: decision,
+-    draftPr: true
+-  };
+-}
+-
+-/** Collect additional gate blocks beyond the 5-condition gate. */
+-function collectExtraGateBlocks(
+-  agent: string,
+-  soakPassed: boolean,
+-  branchProtectionPresent: boolean,
+-  policy: AutoMergePolicy
+-): string[] {
+-  const extra: string[] = [];
+-  if (!soakPassed) extra.push("soak_not_passed");
+-  if (!branchProtectionPresent) extra.push("branch_protection_missing");
+-  if (!policy.eligible_agents.includes(agent)) extra.push("agent_not_eligible");
+-  if (policy.champion_frozen.includes(agent)) extra.push("champion_frozen");
+-  return extra;
+-}
+-
+-/** Execute gh pr merge and return the gate result. */
+-function invokeMerge(
+-  opts: AutoMergeGateOpts,
+-  gateDecision: PromotionDecision
+-): AutoMergeGateResult {
+-  const { repoPath, agent, result, prUrl } = opts;
+-  const gh = opts.ghPath ?? "gh";
+-  try {
+-    const mergeResult = runGhMerge(gh, repoPath, prUrl);
+-    if (!mergeResult.ok) {
+-      emitGepaEvent(repoPath, {
+-        event: "gepa_auto_merge_failed",
+-        agent,
+-        cycle_id: result.cycle_id,
+-        trial_id: result.winner?.candidate_id,
+-        pr_url: prUrl,
+-        stderr: mergeResult.stderr
+-      });
+-      return {
+-        eligible: true,
+-        merged: false,
+-        blockedBy: ["gh_merge_failed"],
+-        gateDecision,
+-        draftPr: false
+-      };
+-    }
+-  } catch (err) {
+-    const message = err instanceof Error ? err.message : String(err);
+-    emitGepaEvent(repoPath, {
+-      event: "gepa_auto_merge_error",
+-      agent,
+-      cycle_id: result.cycle_id,
+-      pr_url: prUrl,
+-      error: message
+-    });
+-    return {
+-      eligible: true,
+-      merged: false,
+-      blockedBy: ["gh_merge_error"],
+-      gateDecision,
+-      draftPr: false
+-    };
+-  }
+-  emitOptPromoteEvent(repoPath, {
+-    agent,
+-    cycle_id: result.cycle_id,
+-    trial_id: result.winner!.candidate_id,
+-    pr_url: prUrl
+-  });
+-  return { eligible: true, merged: true, blockedBy: [], gateDecision, draftPr: false };
+-}
+-
+-/**
+- * Evaluate the full auto-merge gate and, when eligible, invoke
+- * `gh pr merge --auto --squash`.
+- *
+- * Critical-agent check fires FIRST per AC-2.
+- * Gate blocks are all collected (not short-circuit) so the verdict log is
+- * complete for human review.
+- *
+- * Never throws — all gh errors are captured in the result.
+- */
+-export function evaluateAutoMergeGate(opts: AutoMergeGateOpts): AutoMergeGateResult {
+-  const { repoPath, agent, result, soakPassed, branchProtectionPresent, policy, prUrl } = opts;
+-
+-  // ── Gate 0: Critical-agent check FIRST (AC-2) ────────────────────────────
+-  if (isCriticalAgent(agent)) return criticalAgentResult(opts);
+-
+-  // ── Gates 1–5: 5-condition promotion gate (evaluateGate from gepa-core) ──
+-  const candidateMetrics = extractCandidateMetrics(result);
+-  const gateDecision = evaluateGate(candidateMetrics, opts.championMetrics, policy.gate);
+-  const blockedBy: string[] = gateDecision.eligible ? [] : [...gateDecision.blockedBy];
+-
+-  if (!gateDecision.eligible && gateDecision.blockedBy.includes("tail_risk_block")) {
+-    emitTailRiskBlockEvent(repoPath, {
+-      agent,
+-      cycle_id: result.cycle_id,
+-      trial_id: result.winner?.candidate_id,
+-      min_held_out_case_score: candidateMetrics.min_held_out_case_score,
+-      floor: policy.gate.minCaseScoreFloor
+-    });
+-  }
+-
+-  // ── Gates 6–9: soak, branch-protection, eligibility, frozen ──────────────
+-  blockedBy.push(...collectExtraGateBlocks(agent, soakPassed, branchProtectionPresent, policy));
+-
+-  // ── Verdict ───────────────────────────────────────────────────────────────
+-  if (blockedBy.length > 0) {
+-    emitGepaEvent(repoPath, {
+-      event: "gepa_auto_merge_gate_block",
+-      agent,
+-      cycle_id: result.cycle_id,
+-      trial_id: result.winner?.candidate_id,
+-      pr_url: prUrl,
+-      blocked_by: blockedBy
+-    });
+-    return { eligible: false, merged: false, blockedBy, gateDecision, draftPr: true };
+-  }
+-
+-  // ── All gates green — invoke gh pr merge ─────────────────────────────────
+-  return invokeMerge(opts, gateDecision);
+-}
+-
+-/**
+- * Build an AutoMergePolicy from a GepaConfig (loaded by loadGepaConfig).
+- * Extracts policy.eligible_agents, champion_frozen, and gate thresholds.
+- */
+-export function buildAutoMergePolicy(config: {
+-  policy?: {
+-    eligible_agents?: string[];
+-    min_pass_delta?: number;
+-    min_case_score_floor?: number;
+-    allow_cost_regression?: boolean;
+-    allow_latency_regression?: boolean;
+-  };
+-  champion_frozen?: string[];
+-}): AutoMergePolicy {
+-  const p = config.policy ?? {};
+-  return {
+-    eligible_agents: p.eligible_agents ?? [],
+-    champion_frozen: config.champion_frozen ?? [],
+-    gate: {
+-      minPassDelta: p.min_pass_delta ?? 0.05,
+-      minCaseScoreFloor: p.min_case_score_floor ?? 0.6,
+-      allowCostRegression: p.allow_cost_regression ?? false,
+-      allowLatencyRegression: p.allow_latency_regression ?? false
+-    }
+-  };
+-}
+-
+-// ── Default policy path ────────────────────────────────────────────────────────
+-
+-export function defaultSoakJsonPath(repoPath: string): string {
+-  return join(repoPath, ".claude", "artifacts", "crew", "gepa", "soak.json");
+-}
+diff --git a/crew/scripts/lib/gepa/auto-pr.mts b/crew/scripts/lib/gepa/auto-pr.mts
+deleted file mode 100644
+index 2bc91e72..00000000
+--- a/crew/scripts/lib/gepa/auto-pr.mts
++++ /dev/null
+@@ -1,424 +0,0 @@
+-/**
+- * scripts/lib/gepa/auto-pr.ts — SLICE-105
+- *
+- * Orchestrates the GEPA auto-PR flow:
+- *
+- *   1. Check `gh auth status` — exit non-zero with manual commands if not auth'd.
+- *   2. Call branch-protection-check.ts.
+- *   3. Create branch `gepa/<agent>/<trial-id>` from main.
+- *        - On collision, append `-retry-<n>` suffix (up to 5 attempts).
+- *        - NEVER git push --force.
+- *   4. Write provenance frontmatter to `agents/<agent>.md`.
+- *   5. Commit the prompt edit + frontmatter.
+- *   6. Push the branch (no --force).
+- *   7. `gh pr create` with structured body.
+- *   8. Apply labels via `gh pr edit --add-label`.
+- *        - Always: `gepa`, `agent:<agent>`.
+- *        - If protection present: `branch_protection_present`.
+- *        - If missing: `branch_protection_missing` + open as --draft.
+- *   9. Log `gepa_branch_protection_missing` event when protection absent.
+- *
+- * Constraints:
+- *   - MUST NOT call `gh pr merge --auto` (S8b territory).
+- *   - MUST NOT `git push --force` under any condition.
+- *   - gh absent → print manual commands + exit non-zero.
+- *   - No partial branch/commit left when gh auth fails.
+- */
+-
+-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { spawnSync } from "node:child_process";
+-import {
+-  checkBranchProtection,
+-  GhAbsentError,
+-  type BranchProtectionCheckOpts
+-} from "./branch-protection-check.mjs";
+-import {
+-  writeChampionProvenance,
+-  hashPromptBody,
+-  stripGepafrontmatter
+-} from "./champion-provenance-writer.mjs";
+-import type { OptimizationResult } from "./optimize-runner.mjs";
+-
+-// ── Types ─────────────────────────────────────────────────────────────────────
+-
+-export interface AutoPrOpts {
+-  /** Absolute path to the repo root. */
+-  repoPath: string;
+-  /** Agent name (e.g. "fullstack-dev"). */
+-  agent: string;
+-  /** Optimization run result containing the winner info. */
+-  result: OptimizationResult;
+-  /**
+-   * Override the `gh` binary path (useful for tests that shim the CLI).
+-   */
+-  ghPath?: string;
+-  /**
+-   * Override the `git` binary path (useful for tests).
+-   */
+-  gitPath?: string;
+-  /**
+-   * Override repo option for branch-protection-check (owner/name).
+-   * When omitted, resolved via `gh repo view`.
+-   */
+-  repo?: string;
+-}
+-
+-export interface AutoPrResult {
+-  /** Whether a PR was actually opened. false on no-op (same prompt hash). */
+-  pr_opened: boolean;
+-  /** PR URL (when pr_opened=true). */
+-  pr_url?: string;
+-  /** Branch created (when pr_opened=true). */
+-  branch?: string;
+-  /** True when no PR was opened because the prompt hash was unchanged. */
+-  no_op_promotion?: boolean;
+-  /** The event that caused a non-fatal skip (e.g. gepa_branch_collision). */
+-  exit_event?: string;
+-}
+-
+-export class GhAuthError extends Error {
+-  readonly manualCommands: string[];
+-  // Explicit field assignment, not a constructor parameter property — Node's
+-  // strip-only TS mode (the consumer runtime, ADR-002) cannot erase parameter
+-  // properties. Keep crew scripts strip-only-compatible.
+-  constructor(manualCommands: string[]) {
+-    super("gh CLI not authenticated — run `gh auth login`");
+-    this.name = "GhAuthError";
+-    this.manualCommands = manualCommands;
+-  }
+-}
+-
+-// ── Helpers ──────────────────────────────────────────────────────────────────
+-
+-const EVENTS_LOG_PATH = ".claude/logs/events.jsonl";
+-
+-function logEvent(repoPath: string, event: Record<string, unknown>): void {
+-  try {
+-    const dir = join(repoPath, ".claude", "logs");
+-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+-    const line = `${JSON.stringify({ ts: new Date().toISOString(), ...event })}\n`;
+-    appendFileSync(join(repoPath, EVENTS_LOG_PATH), line, { flag: "a" });
+-  } catch {
+-    // Event log write must never propagate.
+-  }
+-}
+-
+-function run(
+-  cmd: string,
+-  args: string[],
+-  opts: { cwd: string; env?: NodeJS.ProcessEnv }
+-): { ok: boolean; stdout: string; stderr: string; status: number } {
+-  const r = spawnSync(cmd, args, {
+-    cwd: opts.cwd,
+-    encoding: "utf8",
+-    windowsHide: true,
+-    env: opts.env ?? process.env
+-  });
+-  if (r.error) throw r.error;
+-  return {
+-    ok: r.status === 0,
+-    stdout: r.stdout ?? "",
+-    stderr: r.stderr ?? "",
+-    status: r.status ?? 1
+-  };
+-}
+-
+-function checkGhAuth(ghPath: string, cwd: string): void {
+-  const r = spawnSync(ghPath, ["auth", "status"], {
+-    cwd,
+-    encoding: "utf8",
+-    windowsHide: true
+-  });
+-  if (r.error) {
+-    if ((r.error as NodeJS.ErrnoException).code === "ENOENT") {
+-      throw new GhAbsentError();
+-    }
+-    throw r.error;
+-  }
+-  if (r.status !== 0) {
+-    throw new GhAuthError(["gh auth login", "# Then retry the gepa-optimize command"]);
+-  }
+-}
+-
+-function branchExists(gitPath: string, cwd: string, branch: string): boolean {
+-  const r = spawnSync(gitPath, ["ls-remote", "--exit-code", "--heads", "origin", branch], {
+-    cwd,
+-    encoding: "utf8",
+-    windowsHide: true
+-  });
+-  if (r.error) throw r.error;
+-  return r.status === 0;
+-}
+-
+-function buildBranchName(agent: string, trialId: string, suffix = ""): string {
+-  const base = `gepa/${agent}/${trialId}`;
+-  return suffix ? `${base}${suffix}` : base;
+-}
+-
+-function buildPrBody(result: OptimizationResult, runArtifactPath: string): string {
+-  const w = result.winner!;
+-  return [
+-    `## GEPA Promotion — ${result.agent}`,
+-    ``,
+-    `**Pareto rank**: ${w.pareto_rank}`,
+-    `**held-out pass**: ${w.pass}`,
+-    `**cost delta**: ${w.cost_usd.toFixed(6)} USD`,
+-    `**score**: ${w.score.toFixed(4)}`,
+-    `**latency**: ${w.latency_ms.toFixed(0)} ms`,
+-    ``,
+-    `### Eval artifact`,
+-    ``,
+-    `[${runArtifactPath}](./${runArtifactPath})`,
+-    ``,
+-    `### Cycle`,
+-    ``,
+-    `- cycle_id: ${result.cycle_id}`,
+-    `- run_id: ${result.run_id}`,
+-    `- candidates_evaluated: ${result.candidates_evaluated}`,
+-    `- winner_candidate_id: ${w.candidate_id}`,
+-    ``,
+-    `---`,
+-    `_Opened automatically by \`/crew:gepa-optimize\`. Do not merge without reviewer review._`
+-  ].join("\n");
+-}
+-
+-// ── Main orchestrator ─────────────────────────────────────────────────────────
+-
+-/**
+- * Run the full auto-PR flow for a winning GEPA candidate.
+- *
+- * Throws:
+- *   - GhAbsentError — gh not installed.
+- *   - GhAuthError — gh not authenticated.
+- *   - Error — git/gh command failure.
+- *
+- * Never calls `git push --force`.
+- * Never calls `gh pr merge --auto`.
+- */
+-// AC-7: Skip if winner prompt content == current champion content (no-op).
+-function isNoOpPromotion(agentPath: string, winnerPromptPath: string | undefined): boolean {
+-  if (!existsSync(agentPath) || !winnerPromptPath || !existsSync(winnerPromptPath)) return false;
+-  const currentBody = stripGepafrontmatter(readFileSync(agentPath, "utf8"));
+-  const winnerBody = readFileSync(winnerPromptPath, "utf8");
+-  return hashPromptBody(currentBody) === hashPromptBody(winnerBody);
+-}
+-
+-const MAX_BRANCH_RETRIES = 5;
+-
+-interface BranchResolution {
+-  branch: string;
+-  collision: boolean;
+-}
+-
+-// Resolve a non-colliding branch name; returns { collision: true } if suffix
+-// chain exceeds MAX_BRANCH_RETRIES (caller emits `gepa_branch_collision`).
+-function resolveBranchName(
+-  gitPath: string,
+-  cwd: string,
+-  agent: string,
+-  trialId: string
+-): BranchResolution {
+-  let branch = buildBranchName(agent, trialId);
+-  let retry = 0;
+-  while (branchExists(gitPath, cwd, branch)) {
+-    retry++;
+-    if (retry > MAX_BRANCH_RETRIES) return { branch, collision: true };
+-    branch = buildBranchName(agent, trialId, `-retry-${retry}`);
+-  }
+-  return { branch, collision: false };
+-}
+-
+-function createLocalBranch(gitPath: string, cwd: string, branch: string): void {
+-  const fromOrigin = run(gitPath, ["checkout", "-b", branch, "origin/main"], { cwd });
+-  if (fromOrigin.ok) return;
+-  const fromLocal = run(gitPath, ["checkout", "-b", branch, "main"], { cwd });
+-  if (!fromLocal.ok) {
+-    throw new Error(`git checkout -b ${branch} failed: ${fromOrigin.stderr || fromLocal.stderr}`);
+-  }
+-}
+-
+-function commitAndPush(
+-  gitPath: string,
+-  cwd: string,
+-  agentPath: string,
+-  commitMsg: string,
+-  branch: string
+-): void {
+-  const add = run(gitPath, ["add", agentPath], { cwd });
+-  if (!add.ok) throw new Error(`git add failed: ${add.stderr}`);
+-  const commit = run(gitPath, ["commit", "-m", commitMsg], { cwd });
+-  if (!commit.ok) throw new Error(`git commit failed: ${commit.stderr}`);
+-  // Never --force.
+-  const push = run(gitPath, ["push", "origin", branch], { cwd });
+-  if (!push.ok) throw new Error(`git push failed: ${push.stderr}`);
+-}
+-
+-// Body is written to a temp file and passed via --body-file rather than
+-// --body <string>. Multi-line body values are unreliable across shell layers
+-// — on Windows CMD in particular, arg expansion truncates at the first
+-// embedded newline. --body-file is the documented gh CLI pattern for
+-// multi-line bodies and works consistently across platforms.
+-function openPr(
+-  ghPath: string,
+-  cwd: string,
+-  repoPath: string,
+-  agent: string,
+-  cycleId: string,
+-  branch: string,
+-  result: OptimizationResult,
+-  protection: { enforced: boolean }
+-): string {
+-  const runArtifactPath = `.claude/artifacts/crew/gepa/opt/${result.run_id}.json`;
+-  const prBody = buildPrBody(result, runArtifactPath);
+-  const prTitle = `chore(gepa): promote ${agent} from cycle ${cycleId}`;
+-  const prBodyFile = join(repoPath, ".claude", "artifacts", "crew", "gepa", "pr-body.tmp");
+-  mkdirSync(join(repoPath, ".claude", "artifacts", "crew", "gepa"), { recursive: true });
+-  writeFileSync(prBodyFile, prBody, "utf8");
+-
+-  const prArgs = ["pr", "create", "--title", prTitle, "--body-file", prBodyFile, "--head", branch];
+-  if (!protection.enforced) prArgs.push("--draft");
+-  const res = run(ghPath, prArgs, { cwd });
+-  if (!res.ok) throw new Error(`gh pr create failed: ${res.stderr}`);
+-  return res.stdout.trim();
+-}
+-
+-function applyLabels(
+-  ghPath: string,
+-  cwd: string,
+-  repoPath: string,
+-  agent: string,
+-  branch: string,
+-  prUrl: string,
+-  repoLabel: string | undefined,
+-  protection: { enforced: boolean }
+-): void {
+-  const labels = ["gepa", `agent:${agent}`];
+-  if (protection.enforced) {
+-    labels.push("branch_protection_present");
+-  } else {
+-    labels.push("branch_protection_missing");
+-    // AC-3: log event when protection is missing.
+-    logEvent(repoPath, {
+-      event: "gepa_branch_protection_missing",
+-      agent,
+-      repo: repoLabel ?? "(resolved)",
+-      branch,
+-      pr_url: prUrl
+-    });
+-  }
+-  const res = run(ghPath, ["pr", "edit", prUrl, "--add-label", labels.join(",")], { cwd });
+-  if (!res.ok) {
+-    // Label failure is non-fatal — log but don't throw.
+-    logEvent(repoPath, {
+-      event: "gepa_label_apply_failed",
+-      agent,
+-      labels,
+-      pr_url: prUrl,
+-      stderr: res.stderr
+-    });
+-  }
+-}
+-
+-export function runAutoPr(opts: AutoPrOpts): AutoPrResult {
+-  const { repoPath, agent, result } = opts;
+-  const gh = opts.ghPath ?? "gh";
+-  const git = opts.gitPath ?? "git";
+-  const cwd = repoPath;
+-
+-  const winner = result.winner;
+-  if (!winner) throw new Error("runAutoPr called with no winner in OptimizationResult");
+-
+-  const agentPath = join(repoPath, "agents", `${agent}.md`);
+-  if (isNoOpPromotion(agentPath, winner.prompt_path)) {
+-    return { pr_opened: false, no_op_promotion: true };
+-  }
+-
+-  // Step 1: Check gh auth (BEFORE any branch creation — AC-9).
+-  checkGhAuth(gh, cwd);
+-
+-  // Step 2: Branch-protection check.
+-  const protectionOpts: BranchProtectionCheckOpts = {
+-    ghPath: gh,
+-    ...(opts.repo !== undefined ? { repo: opts.repo } : {})
+-  };
+-  const protection = checkBranchProtection(protectionOpts);
+-
+-  // Step 3: Resolve branch name (no force-push; collision → suffix).
+-  const trialId = winner.candidate_id;
+-  const cycleId = result.cycle_id;
+-  const { branch, collision } = resolveBranchName(git, cwd, agent, trialId);
+-  if (collision) {
+-    logEvent(repoPath, {
+-      event: "gepa_branch_collision",
+-      agent,
+-      branch,
+-      retries: MAX_BRANCH_RETRIES
+-    });
+-    return { pr_opened: false, exit_event: "gepa_branch_collision" };
+-  }
+-
+-  createLocalBranch(git, cwd, branch);
+-
+-  // Step 4: Write champion provenance frontmatter.
+-  const provenance = writeChampionProvenance({ agentPath, trialUuid: trialId });
+-
+-  // Steps 5-6: Commit + push.
+-  commitAndPush(git, cwd, agentPath, `chore(gepa): promote ${agent} from cycle ${cycleId}`, branch);
+-
+-  // Step 7: Open PR.
+-  const prUrl = openPr(gh, cwd, repoPath, agent, cycleId, branch, result, protection);
+-
+-  // Step 8: Apply labels.
+-  applyLabels(gh, cwd, repoPath, agent, branch, prUrl, opts.repo, protection);
+-
+-  logEvent(repoPath, {
+-    event: "gepa_auto_pr_opened",
+-    agent,
+-    branch,
+-    pr_url: prUrl,
+-    protection_enforced: protection.enforced,
+-    cycle_id: cycleId,
+-    run_id: result.run_id,
+-    prior_prompt_hash: provenance.priorPromptHash,
+-    promoted_at: provenance.promotedAt
+-  });
+-
+-  return { pr_opened: true, pr_url: prUrl, branch };
+-}
+-
+-// ── Manual-command printer ────────────────────────────────────────────────────
+-
+-/**
+- * Print manual git + gh commands to stdout when the auto-PR flow cannot run
+- * (gh absent or not authenticated). Returns a non-zero exit code.
+- */
+-export function printManualCommands(opts: {
+-  agent: string;
+-  result: OptimizationResult;
+-  reason: string;
+-}): void {
+-  const { agent, result, reason } = opts;
+-  const winner = result.winner;
+-  const trialId = winner?.candidate_id ?? "<trial-id>";
+-  const cycleId = result.cycle_id;
+-  const branch = `gepa/${agent}/${trialId}`;
+-
+-  process.stdout.write(
+-    [
+-      ``,
+-      `gepa-auto-pr: ${reason}`,
+-      ``,
+-      `Run these commands manually to promote the champion:`,
+-      ``,
+-      `  git checkout -b ${branch} main`,
+-      `  # (write gepa: frontmatter to agents/${agent}.md)`,
+-      `  git add agents/${agent}.md`,
+-      `  git commit -m "chore(gepa): promote ${agent} from cycle ${cycleId}"`,
+-      `  git push origin ${branch}`,
+-      `  gh pr create --title "chore(gepa): promote ${agent} from cycle ${cycleId}" \\`,
+-      `    --body "Pareto rank: ${winner?.pareto_rank ?? "?"} | held-out pass: ${winner?.pass ?? "?"} | cost delta: ${winner?.cost_usd?.toFixed(6) ?? "?"}"`,
+-      ``
+-    ].join("\n")
+-  );
+-}
+diff --git a/crew/scripts/lib/gepa/branch-protection-check.mts b/crew/scripts/lib/gepa/branch-protection-check.mts
+deleted file mode 100644
+index c1ae9d39..00000000
+--- a/crew/scripts/lib/gepa/branch-protection-check.mts
++++ /dev/null
+@@ -1,199 +0,0 @@
+-/**
+- * scripts/lib/gepa/branch-protection-check.ts — SLICE-105
+- *
+- * Checks whether the target repo's `main` branch has protection rules
+- * configured by calling `gh api repos/:owner/:repo/branches/main/protection`.
+- *
+- * Returns:
+- *   { enforced: true,  requiredChecks: string[] }  — protection configured
+- *   { enforced: false, requiredChecks: [] }         — no protection (404) or
+- *                                                     gh absent / auth error
+- *
+- * The caller (auto-pr.ts) uses `enforced` to decide whether to open a draft PR.
+- *
+- * Design constraints:
+- *   - 404 → enforced: false (no protection — treat as missing).
+- *   - gh absent → throw GhAbsentError so auto-pr.ts can print manual cmds.
+- *   - Any other non-zero exit from `gh api` → throw with the stderr for forensics.
+- *   - Requires `repo:status` OAuth scope on the gh token for the protection endpoint.
+- */
+-
+-import { spawnSync } from "node:child_process";
+-
+-// ── Types ────────────────────────────────────────────────────────────────────
+-
+-export interface BranchProtectionResult {
+-  /** True when branch protection is configured with at least one required check. */
+-  enforced: boolean;
+-  /** Required status check context names. Empty when enforced=false. */
+-  requiredChecks: string[];
+-}
+-
+-export class GhAbsentError extends Error {
+-  constructor(message = "gh CLI not found — install from https://cli.github.com") {
+-    super(message);
+-    this.name = "GhAbsentError";
+-  }
+-}
+-
+-export class GhApiError extends Error {
+-  readonly exitCode: number;
+-  readonly stderr: string;
+-  // Explicit fields, not parameter properties — Node strip-only mode (ADR-002
+-  // consumer runtime) cannot erase them.
+-  constructor(message: string, exitCode: number, stderr: string) {
+-    super(message);
+-    this.name = "GhApiError";
+-    this.exitCode = exitCode;
+-    this.stderr = stderr;
+-  }
+-}
+-
+-// ── gh resolution helper ─────────────────────────────────────────────────────
+-
+-/**
+- * Resolve the `owner/name` string for the current repo using `gh repo view`.
+- * Throws GhAbsentError if gh is not on PATH.
+- * Throws GhApiError if gh exits non-zero.
+- */
+-export function resolveRepo(opts: { ghPath?: string } = {}): string {
+-  const gh = opts.ghPath ?? "gh";
+-  const result = spawnSync(gh, ["repo", "view", "--json", "owner,name"], {
+-    encoding: "utf8",
+-    windowsHide: true
+-  });
+-
+-  if (result.error) {
+-    if ((result.error as NodeJS.ErrnoException).code === "ENOENT") {
+-      throw new GhAbsentError();
+-    }
+-    throw result.error;
+-  }
+-
+-  if (result.status !== 0) {
+-    throw new GhApiError(
+-      `gh repo view failed (exit ${result.status ?? "?"})`,
+-      result.status ?? 1,
+-      result.stderr ?? ""
+-    );
+-  }
+-
+-  const parsed = JSON.parse(result.stdout ?? "{}") as {
+-    owner?: { login?: string };
+-    name?: string;
+-  };
+-  const owner = parsed.owner?.login ?? "";
+-  const name = parsed.name ?? "";
+-  if (!owner || !name) {
+-    throw new GhApiError("gh repo view returned empty owner/name", 1, "");
+-  }
+-  return `${owner}/${name}`;
+-}
+-
+-// ── Main check ───────────────────────────────────────────────────────────────
+-
+-export interface BranchProtectionCheckOpts {
+-  /**
+-   * Repository in `owner/name` format.
+-   * When omitted, resolved via `gh repo view --json owner,name`.
+-   */
+-  repo?: string;
+-  /**
+-   * Override the `gh` binary path (useful for tests).
+-   */
+-  ghPath?: string;
+-}
+-
+-/**
+- * Check whether the target repo's `main` branch has protection rules.
+- *
+- * Throws GhAbsentError when `gh` is not on PATH.
+- * Throws GhApiError on unexpected gh failures (non-404 error responses).
+- */
+-export function checkBranchProtection(
+-  opts: BranchProtectionCheckOpts = {}
+-): BranchProtectionResult {
+-  const gh = opts.ghPath ?? "gh";
+-  const repo = opts.repo ?? resolveRepo({ ghPath: gh });
+-
+-  const apiPath = `repos/${repo}/branches/main/protection`;
+-  const result = spawnSync(gh, ["api", apiPath], {
+-    encoding: "utf8",
+-    windowsHide: true
+-  });
+-
+-  if (result.error) {
+-    if ((result.error as NodeJS.ErrnoException).code === "ENOENT") {
+-      throw new GhAbsentError();
+-    }
+-    throw result.error;
+-  }
+-
+-  // 404 = no protection configured — return enforced: false.
+-  if (result.status !== 0) {
+-    const stderr = result.stderr ?? "";
+-    const stdout = result.stdout ?? "";
+-    // gh returns 404 as a non-zero exit with "Not Found" in stderr or stdout.
+-    if (stderr.includes("Not Found") || stdout.includes("Not Found") || stderr.includes("404")) {
+-      return { enforced: false, requiredChecks: [] };
+-    }
+-    throw new GhApiError(
+-      `gh api ${apiPath} failed (exit ${result.status ?? "?"})`,
+-      result.status ?? 1,
+-      stderr
+-    );
+-  }
+-
+-  // Parse the protection response to extract required status checks.
+-  let parsed: Record<string, unknown> = {};
+-  try {
+-    parsed = JSON.parse(result.stdout ?? "{}") as Record<string, unknown>;
+-  } catch {
+-    // Malformed JSON → treat as no protection.
+-    return { enforced: false, requiredChecks: [] };
+-  }
+-
+-  const requiredChecks = extractRequiredChecks(parsed);
+-  const enforced = requiredChecks.length > 0;
+-
+-  return { enforced, requiredChecks };
+-}
+-
+-// ── Internal helpers ─────────────────────────────────────────────────────────
+-
+-/**
+- * Extract required status check context names from the GitHub branch protection
+- * API response. The response shape is:
+- *
+- *   {
+- *     required_status_checks: {
+- *       contexts: string[],
+- *       checks: Array<{ context: string, app_id: number | null }>
+- *     }
+- *   }
+- *
+- * We prefer `checks[].context` over `contexts[]` (newer API — more precise),
+- * falling back to `contexts` when `checks` is absent.
+- */
+-function extractRequiredChecks(protection: Record<string, unknown>): string[] {
+-  const rsc = protection.required_status_checks as Record<string, unknown> | null | undefined;
+-  if (!rsc) return [];
+-
+-  // Prefer newer `checks` array (GH API v3+).
+-  const checks = rsc.checks;
+-  if (Array.isArray(checks) && checks.length > 0) {
+-    return checks
+-      .map((c) =>
+-        typeof c === "object" && c !== null ? (c as Record<string, unknown>).context : undefined
+-      )
+-      .filter((c): c is string => typeof c === "string" && c.length > 0);
+-  }
+-
+-  // Fall back to legacy `contexts` array.
+-  const contexts = rsc.contexts;
+-  if (Array.isArray(contexts)) {
+-    return contexts.filter((c): c is string => typeof c === "string" && c.length > 0);
+-  }
+-
+-  return [];
+-}
+diff --git a/crew/scripts/lib/gepa/candidate-generator-aiplugin.mts b/crew/scripts/lib/gepa/candidate-generator-aiplugin.mts
+deleted file mode 100644
+index 46f132c6..00000000
+--- a/crew/scripts/lib/gepa/candidate-generator-aiplugin.mts
++++ /dev/null
+@@ -1,715 +0,0 @@
+-/**
+- * scripts/lib/gepa/candidate-generator-aiplugin.ts — SLICE-99
+- *
+- * Implements CandidateGenerator (interface from @astragenie/gepa-core) by
+- * wrapping the aiplugin-dev dispatch pattern for artifact-only mode.
+- *
+- * Workflow per candidate slot (i of k):
+- *   a. Call BudgetMeter.reserve(GENERATOR_ESTIMATE_USD, { ttlSeconds: 600 })
+- *      — reserves the slot budget BEFORE writing the candidate file.
+- *   b. Synthesize a prompt variant from the champion text + failing trials context.
+- *   c. Write the candidate to
+- *      .claude/artifacts/crew/gepa/candidates/<cycle-id>/<uuid>.md
+- *   d. Call validateCandidateSize on the written file.
+- *      - If oversized: log gepa_oversized_candidate event, release reservation,
+- *        skip this candidate (not included in returned array).
+- *      - If ok: record budget cost and include in returned array.
+- *
+- * SLICE-99 (--artifact-only): creates synthetic candidate files from the champion
+- * text with a unique mutation suffix per slot. The live aiplugin-dev dispatch
+- * path is guarded behind GEPA_LIVE_GENERATOR=1 env var.
+- *
+- * FEAT-192 SLICE-A wires the live path: when GEPA_LIVE_GENERATOR=="1", each slot
+- * dispatches aiplugin-dev via the exported `claude -p` primitives from
+- * evals/lib/candidate-dispatch.ts (runSubprocess + parseStreamJson) with a
+- * rewrite-only instruction wrapper — NOT dispatchCandidate(), which bakes an
+- * eval-only "you are being evaluated" wrapper unsuitable for a rewrite ask.
+- * Response-format contract (AC-7): the instruction requires a single fenced
+- * code block containing the complete revised file; extraction failure (no
+- * block / empty block / spawn failure) rejects the slot — never writes raw or
+- * error text to the candidate .md, never crashes the cycle.
+- *
+- * FEAT-192 SLICE-B adds two pre-write guardrails that run on EVERY resolved
+- * slot content (stub or live) between "content resolved" and "file written":
+- * `checkIdentityAnchor` (AC-5 — structural, not a prompt instruction) and
+- * `checkNonTrivialDiff` (AC-2 — no-op / whitespace-only rejection). The
+- * per-candidate all-case promotion gate (AC-4) lives in optimize-runner.ts's
+- * `determineWinner`, not here.
+- */
+-
+-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+-import { createHash } from "node:crypto";
+-import { join } from "node:path";
+-import type { BudgetMeter, CandidateGenerator, Trial } from "@astragenie/gepa-core";
+-import { validateCandidateSize } from "@astragenie/gepa-core";
+-import type { Candidate } from "@astragenie/gepa-core";
+-import { parseStreamJson, runSubprocess } from "../../../evals/lib/candidate-dispatch.mjs";
+-
+-/**
+- * Estimate for the aiplugin-dev dispatch cost (used for BudgetMeter.reserve).
+- *
+- * FEAT-192 SLICE-B re-validation: the stub-era value (0.05) was calibrated for
+- * a synthetic $0 mutation, not a real `claude -p` dispatch. A live rewrite
+- * dispatch sends the FULL champion prompt (up to the 350-line cap, ~4-5k
+- * tokens) plus up to `maxTrialSample` (default 10) FULL judge rationales
+- * (unbounded but typically ~200-500 tokens each, ~2-5k tokens) as input, and
+- * expects a complete rewritten file (up to 350 lines, ~3-4k tokens) as
+- * output. At Claude Sonnet-class per-token rates (~$3/MTok in, ~$15/MTok
+- * out) that is roughly (8000 / 1e6 * 3) + (4000 / 1e6 * 15) ≈ $0.08 per
+- * dispatch. The dispatch itself runs on subscription (not metered API
+- * billing — see FEAT-192 context), so this estimate is a BudgetMeter proxy
+- * for compute cost / rate-limiting K dispatches per day against
+- * `gepa.budget.daily_usd`, not a literal invoice line. Rounded up slightly
+- * for retry/variance headroom.
+- */
+-export const GENERATOR_ESTIMATE_USD = 0.08;
+-
+-const EVENTS_LOG_PATH = ".claude/logs/events.jsonl";
+-
+-function logEvent(repoPath: string, event: Record<string, unknown>): void {
+-  try {
+-    const dir = join(repoPath, ".claude", "logs");
+-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+-    const line = `${JSON.stringify({ ts: new Date().toISOString(), ...event })}\n`;
+-    appendFileSync(join(repoPath, EVENTS_LOG_PATH), line, { flag: "a" });
+-  } catch {
+-    // Event log write must never propagate.
+-  }
+-}
+-
+-function readChampion(championPath: string): string {
+-  try {
+-    return readFileSync(championPath, "utf8");
+-  } catch {
+-    return "# Champion prompt (unreadable)\n";
+-  }
+-}
+-
+-function formatFailingTrialsSample(trials: Trial[], maxSample: number): string {
+-  const sample = trials.slice(0, maxSample);
+-  if (sample.length === 0) return "No failing trials available.\n";
+-  const lines: string[] = ["## Failing trials sample\n"];
+-  for (const t of sample) {
+-    lines.push(
+-      `- trial_id: ${t.id} | score: ${t.score.score.toFixed(3)} | cost: ${t.score.cost_usd.toFixed(4)} | latency: ${t.score.latency_ms}ms`
+-    );
+-    if (t.score.rationale) {
+-      lines.push(`  rationale: ${t.score.rationale.slice(0, 120)}`);
+-    }
+-  }
+-  return lines.join("\n") + "\n";
+-}
+-
+-// ── Live rewrite dispatch (FEAT-192 SLICE-A) ───────────────────────────────
+-
+-/**
+- * Varied framing per K-slot. `claude -p` exposes no temperature knob here
+- * (architect review, 2026-07-05), so diversification across slots comes from
+- * varying the instruction framing, not sampling temperature.
+- */
+-const REWRITE_FRAMINGS: readonly string[] = [
+-  "You are making a surgical, minimal-diff revision to fix the specific evaluation failures below. Change only what is necessary to address the rationale; leave everything else untouched.",
+-  "You are patching an agent prompt in response to concrete judge feedback. Focus narrowly on the failing rationale below — do not rewrite sections that are not implicated in the failure.",
+-  "You are revising an agent prompt to resolve the named evaluation failure while preserving every currently-passing behavior. Prefer trimming or tightening existing text over adding new sections."
+-];
+-
+-function pickFraming(slotIndex: number): string {
+-  return REWRITE_FRAMINGS[slotIndex % REWRITE_FRAMINGS.length] ?? REWRITE_FRAMINGS[0] ?? "";
+-}
+-
+-/**
+- * Full-rationale trial formatter for the live rewrite prompt. Unlike
+- * `formatFailingTrialsSample` (eval diagnostics, truncates rationale to 120
+- * chars), this threads the FULL judge rationale — the rewrite fuel per the
+- * architect-review MED finding ("too short as rewrite fuel").
+- */
+-function formatFailingTrialsFull(trials: Trial[], maxSample: number): string {
+-  const sample = trials.slice(0, maxSample);
+-  if (sample.length === 0) return "No failing trials available.\n";
+-  const lines: string[] = ["## Failing trials (full rationale)\n"];
+-  for (const t of sample) {
+-    lines.push(
+-      `- trial_id: ${t.id} | score: ${t.score.score.toFixed(3)} | cost: ${t.score.cost_usd.toFixed(4)} | latency: ${t.score.latency_ms}ms`
+-    );
+-    lines.push(`  rationale: ${t.score.rationale ?? "(none provided)"}`);
+-  }
+-  return lines.join("\n") + "\n";
+-}
+-
+-function buildRewriteInstruction(
+-  champion: string,
+-  trials: Trial[],
+-  slotIndex: number,
+-  agentName: string,
+-  maxTrialSample: number
+-): string {
+-  const trialsText = formatFailingTrialsFull(trials, maxTrialSample);
+-  return [
+-    pickFraming(slotIndex),
+-    "",
+-    `You are revising the Claude Code agent prompt for "${agentName}".`,
+-    "",
+-    "Hard constraints:",
+-    "- Preserve the `## Identity anchor` heading and the substance of its content — do not remove or hollow it out.",
+-    "- The revised prompt MUST stay at or under 350 lines total.",
+-    "- Make the smallest edit that plausibly fixes the failures below (minimal diff, not a rewrite from scratch).",
+-    "- Do not invent new unrelated sections or capabilities.",
+-    "",
+-    "=== CURRENT CHAMPION PROMPT ===",
+-    champion.trimEnd(),
+-    "=== END CHAMPION PROMPT ===",
+-    "",
+-    "=== FAILING TRIALS + JUDGE RATIONALE (the reflection signal — read carefully) ===",
+-    trialsText.trimEnd(),
+-    "=== END FAILING TRIALS ===",
+-    "",
+-    "Response format (mandatory): reply with ONLY the new file content in a single fenced code block, no commentary before or after it, and no explanation of what changed. The fenced block must contain the COMPLETE revised prompt file, first line to last."
+-  ].join("\n");
+-}
+-
+-/** Result of extracting the rewritten file content from a `claude -p` response. */
+-export type RewriteExtractionResult = { ok: true; content: string } | { ok: false; reason: string };
+-
+-/**
+- * Extract the fenced-code-block file content from a rewrite dispatch response
+- * (AC-7 response-format contract). Free-form prose with no fenced block, an
+- * empty response, or an empty fenced block are all rejections — the caller
+- * must never write raw/error text to the candidate `.md`.
+- *
+- * The response-format contract requires the ENTIRE response to be ONE fenced
+- * block, so the closing fence is anchored to the END of the (trimmed)
+- * response — captured greedily from the first opening fence's newline to the
+- * final closing fence — rather than matched non-greedily to the FIRST closing
+- * fence. A non-greedy match silently truncates at any nested fenced block
+- * inside the rewritten prompt body (e.g. a ```bash example — normal in agent
+- * .md files, present in agents/aiplugin-dev.md itself), and the truncated
+- * text still passes validateCandidateSize and would enter the Pareto
+- * pipeline as a corrupted "valid" candidate.
+- */
+-export function extractRewrittenContent(responseText: string): RewriteExtractionResult {
+-  const trimmed = responseText.trim();
+-  if (trimmed.length === 0) {
+-    return { ok: false, reason: "empty_response" };
+-  }
+-
+-  const openMatch = trimmed.match(/^```[ \t]*[\w.-]*\r?\n/);
+-  if (!openMatch || !trimmed.endsWith("```")) {
+-    return { ok: false, reason: "no_fenced_block" };
+-  }
+-
+-  const startIdx = openMatch[0].length;
+-  const endIdx = trimmed.length - 3; // exclude the final closing ```
+-  if (endIdx <= startIdx) {
+-    return { ok: false, reason: "empty_fenced_block" };
+-  }
+-
+-  const content = trimmed.slice(startIdx, endIdx).trim();
+-  if (content.length === 0) {
+-    return { ok: false, reason: "empty_fenced_block" };
+-  }
+-  return { ok: true, content };
+-}
+-
+-// ── Guardrails (FEAT-192 SLICE-B) ───────────────────────────────────────────
+-//
+-// Both checks run on EVERY resolved slot content — stub or live — between
+-// "content resolved" and "file written". A gutted-identity or no-op candidate
+-// must never reach the scored set (no Trial is ever produced for it, so it
+-// never carries a pareto_rank — same exclusion pattern as the existing
+-// oversized-candidate rejection below).
+-
+-const IDENTITY_ANCHOR_HEADING = "## Identity anchor";
+-const IDENTITY_ANCHOR_SIMILARITY_THRESHOLD = 0.4;
+-const MIN_CHANGED_LINES = 2;
+-
+-/**
+- * Extract the body of the `## Identity anchor` section: everything after the
+- * heading line up to (but not including) the next level-1 or level-2
+- * heading, or end of file. Level-3+ subheadings inside the anchor section
+- * are kept as part of the body. Returns null when the heading is absent.
+- */
+-function extractIdentityAnchorBody(content: string): string | null {
+-  const lines = content.split(/\r?\n/);
+-  const startIdx = lines.findIndex((l) => l.trim() === IDENTITY_ANCHOR_HEADING);
+-  if (startIdx === -1) return null;
+-  const bodyLines: string[] = [];
+-  for (let i = startIdx + 1; i < lines.length; i++) {
+-    const line = lines[i] ?? "";
+-    if (/^#{1,2}\s/.test(line)) break;
+-    bodyLines.push(line);
+-  }
+-  return bodyLines.join("\n").trim();
+-}
+-
+-/** Lowercase alphanumeric-run word set. Fragments < 2 chars are dropped as punctuation noise. */
+-function wordSet(text: string): Set<string> {
+-  const words = text.toLowerCase().match(/[a-z0-9]{2,}/g) ?? [];
+-  return new Set(words);
+-}
+-
+-/**
+- * Similarity measure decision (SLICE-B): recall of the champion's
+- * identity-anchor vocabulary surviving in the candidate —
+- * |champion_words ∩ candidate_words| / |champion_words|.
+- *
+- * Deliberately a containment/recall measure, not symmetric Jaccard: a
+- * rewrite that EXPANDS the anchor with new supporting detail must not be
+- * penalized (Jaccard's growing union would drag the score down for
+- * additions), but a rewrite that GUTS the anchor down to a fragment must
+- * score low regardless of how short the surviving fragment is — recall
+- * against the champion's vocabulary captures exactly "how much of the
+- * original identity survived", which is what AC-5 asks to guard. This is a
+- * heuristic, not semantic diffing (full semantic coverage is a FEAT-192
+- * non-goal, v2).
+- */
+-function identityAnchorSimilarity(championBody: string, candidateBody: string): number {
+-  const championWords = wordSet(championBody);
+-  if (championWords.size === 0) return 1; // nothing to preserve — trivially ok
+-  const candidateWords = wordSet(candidateBody);
+-  let overlap = 0;
+-  for (const w of championWords) {
+-    if (candidateWords.has(w)) overlap++;
+-  }
+-  return overlap / championWords.size;
+-}
+-
+-export type IdentityAnchorCheckResult =
+-  | { ok: true }
+-  | { ok: false; reason: "missing_heading" | "anchor_gutted"; similarity?: number };
+-
+-/**
+- * AC-5 structural guardrail: reject a candidate whose content no longer
+- * contains the `## Identity anchor` heading, or whose anchor body has
+- * dropped below the similarity threshold vs the champion's. A concrete
+- * structural assertion, not a prompt instruction to the rewriter.
+- */
+-export function checkIdentityAnchor(
+-  champion: string,
+-  candidateContent: string
+-): IdentityAnchorCheckResult {
+-  const championBody = extractIdentityAnchorBody(champion);
+-  if (championBody === null) {
+-    // Champion itself has no identity anchor to protect — nothing to guard.
+-    return { ok: true };
+-  }
+-  const candidateBody = extractIdentityAnchorBody(candidateContent);
+-  if (candidateBody === null) {
+-    return { ok: false, reason: "missing_heading" };
+-  }
+-  const similarity = identityAnchorSimilarity(championBody, candidateBody);
+-  if (similarity < IDENTITY_ANCHOR_SIMILARITY_THRESHOLD) {
+-    return { ok: false, reason: "anchor_gutted", similarity };
+-  }
+-  return { ok: true };
+-}
+-
+-/**
+- * Count of lines whose multiset membership differs between champion and
+- * candidate (added + removed), after trimming each line. A cheap
+- * non-semantic diff proxy — good enough for a "did anything real change"
+- * guardrail, not a full diff algorithm (order-insensitive by design: a
+- * reordered-but-unchanged file should not count as a real edit either).
+- */
+-function countChangedLines(championText: string, candidateText: string): number {
+-  const tally = (text: string): Map<string, number> => {
+-    const counts = new Map<string, number>();
+-    for (const rawLine of text.split(/\r?\n/)) {
+-      const line = rawLine.trim();
+-      counts.set(line, (counts.get(line) ?? 0) + 1);
+-    }
+-    return counts;
+-  };
+-  const championCounts = tally(championText);
+-  const candidateCounts = tally(candidateText);
+-  const keys = new Set([...championCounts.keys(), ...candidateCounts.keys()]);
+-  let changed = 0;
+-  for (const key of keys) {
+-    changed += Math.abs((championCounts.get(key) ?? 0) - (candidateCounts.get(key) ?? 0));
+-  }
+-  return changed;
+-}
+-
+-export type NonTrivialDiffCheckResult =
+-  | { ok: true }
+-  | {
+-      ok: false;
+-      reason: "identical_to_champion" | "whitespace_only_diff" | "below_min_changed_lines";
+-      changedLines?: number;
+-    };
+-
+-/**
+- * AC-2 guardrail: reject a candidate whose diff vs the champion is empty,
+- * whitespace-only, or below the minimal changed-line threshold. A real
+- * rewrite changes something; a whitespace edit disguised as a win must not
+- * enter the Pareto set.
+- */
+-export function checkNonTrivialDiff(
+-  champion: string,
+-  candidateContent: string
+-): NonTrivialDiffCheckResult {
+-  const championTrimmed = champion.trim();
+-  const candidateTrimmed = candidateContent.trim();
+-  if (championTrimmed === candidateTrimmed) {
+-    return { ok: false, reason: "identical_to_champion" };
+-  }
+-  const collapseWhitespace = (s: string): string => s.replace(/\s+/g, " ").trim();
+-  if (collapseWhitespace(championTrimmed) === collapseWhitespace(candidateTrimmed)) {
+-    return { ok: false, reason: "whitespace_only_diff" };
+-  }
+-  const changedLines = countChangedLines(champion, candidateContent);
+-  if (changedLines < MIN_CHANGED_LINES) {
+-    return { ok: false, reason: "below_min_changed_lines", changedLines };
+-  }
+-  return { ok: true };
+-}
+-
+-/** A pre-write guardrail rejection, ready to log via `logEvent`. */
+-interface GuardrailRejection {
+-  event: "gepa_identity_anchor_broken" | "gepa_noop_candidate";
+-  reason: string;
+-  extra?: Record<string, unknown>;
+-}
+-
+-/**
+- * Run both SLICE-B pre-write guardrails (AC-5 identity-anchor, AC-2
+- * non-trivial-diff) against one slot's resolved content. Extracted out of
+- * `generate()`'s loop body to keep its cognitive complexity within budget —
+- * mirrors the existing `resolveCandidateContent` extraction pattern.
+- */
+-function checkPreWriteGuardrails(champion: string, content: string): GuardrailRejection | null {
+-  const anchorCheck = checkIdentityAnchor(champion, content);
+-  if (!anchorCheck.ok) {
+-    return {
+-      event: "gepa_identity_anchor_broken",
+-      reason: anchorCheck.reason,
+-      ...(anchorCheck.reason === "anchor_gutted"
+-        ? { extra: { similarity: anchorCheck.similarity } }
+-        : {})
+-    };
+-  }
+-  const diffCheck = checkNonTrivialDiff(champion, content);
+-  if (!diffCheck.ok) {
+-    return {
+-      event: "gepa_noop_candidate",
+-      reason: diffCheck.reason,
+-      ...(diffCheck.reason === "below_min_changed_lines"
+-        ? { extra: { changed_lines: diffCheck.changedLines } }
+-        : {})
+-    };
+-  }
+-  return null;
+-}
+-
+-/** Test seam: override the subprocess runner used by the live rewrite dispatch. */
+-export interface RewriteDispatchDeps {
+-  runSubprocess: (prompt: string, model: string, timeoutMs: number) => Promise<string>;
+-}
+-
+-const defaultRewriteDeps: RewriteDispatchDeps = { runSubprocess };
+-
+-const DEFAULT_REWRITE_MODEL = "claude-sonnet-4-6";
+-const DEFAULT_REWRITE_TIMEOUT_MS = (() => {
+-  const env = process.env["GEPA_REWRITE_TIMEOUT_MS"];
+-  const parsed = env ? Number.parseInt(env, 10) : Number.NaN;
+-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 180_000;
+-})();
+-
+-/**
+- * Dispatch aiplugin-dev for one candidate slot via the exported low-level
+- * `claude -p` primitives (NOT `dispatchCandidate()` — that bakes in an
+- * eval-only "you are being evaluated ... [end of response]" wrapper that is
+- * nonsensical for a rewrite ask). Spawn failure and unparseable responses are
+- * both surfaced as a rejection, never a throw — the caller degrades the slot,
+- * it never crashes the cycle.
+- */
+-async function dispatchRewriterForSlot(
+-  champion: string,
+-  trials: Trial[],
+-  slotIndex: number,
+-  agentName: string,
+-  maxTrialSample: number,
+-  deps: RewriteDispatchDeps
+-): Promise<RewriteExtractionResult> {
+-  const prompt = buildRewriteInstruction(champion, trials, slotIndex, agentName, maxTrialSample);
+-  let stdout: string;
+-  try {
+-    stdout = await deps.runSubprocess(prompt, DEFAULT_REWRITE_MODEL, DEFAULT_REWRITE_TIMEOUT_MS);
+-  } catch (err) {
+-    return {
+-      ok: false,
+-      reason: `spawn_failed: ${err instanceof Error ? err.message : String(err)}`
+-    };
+-  }
+-  return extractRewrittenContent(parseStreamJson(stdout));
+-}
+-
+-/** Result of resolving one candidate slot's content (stub or live dispatch). */
+-type SlotContentResult = { ok: true; content: string } | { ok: false };
+-
+-/**
+- * Resolve the content for one candidate slot: stub synthesis when
+- * `liveMode` is false, or a live `dispatchRewriter` attempt (with its
+- * `gepa_rewriter_dispatch` event) when true. Extracted from `generate()` to
+- * keep the per-slot loop body under the cognitive-complexity budget.
+- */
+-async function resolveCandidateContent(
+-  liveMode: boolean,
+-  repoPath: string,
+-  champion: string,
+-  trialsSample: string,
+-  failingTrials: Trial[],
+-  slotIndex: number,
+-  agentName: string,
+-  maxTrialSample: number,
+-  rewriteDeps: RewriteDispatchDeps
+-): Promise<SlotContentResult> {
+-  if (!liveMode) {
+-    return { ok: true, content: synthesizeCandidate(champion, trialsSample, slotIndex) };
+-  }
+-
+-  const dispatchStartedAt = Date.now();
+-  const result = await dispatchRewriterForSlot(
+-    champion,
+-    failingTrials,
+-    slotIndex,
+-    agentName,
+-    maxTrialSample,
+-    rewriteDeps
+-  );
+-  logEvent(repoPath, {
+-    event: "gepa_rewriter_dispatch",
+-    slot_index: slotIndex,
+-    trial_ids: failingTrials.slice(0, maxTrialSample).map((t) => t.id),
+-    accepted: result.ok,
+-    dispatch_duration_ms: Date.now() - dispatchStartedAt,
+-    ...(result.ok ? {} : { reason: result.reason })
+-  });
+-
+-  // Reject the slot — never write raw/error text to the candidate .md, never
+-  // crash the cycle. Caller releases the budget reservation on `ok: false`.
+-  return result.ok ? { ok: true, content: result.content } : { ok: false };
+-}
+-
+-/**
+- * Derive a synthetic mutation of the champion prompt for artifact-only mode.
+- * Each candidate slot gets a unique suffix so prompt hashes differ.
+- */
+-function synthesizeCandidate(champion: string, trialsSample: string, slotIndex: number): string {
+-  return [
+-    champion.trimEnd(),
+-    "",
+-    "<!-- GEPA candidate mutation -->",
+-    `<!-- slot: ${slotIndex} | generated: ${new Date().toISOString()} -->`,
+-    "",
+-    "## Optimization context (artifact-only)",
+-    "",
+-    trialsSample
+-  ].join("\n");
+-}
+-
+-function hashContent(content: string): string {
+-  return createHash("sha256").update(content, "utf8").digest("hex").slice(0, 16);
+-}
+-
+-function countLines(content: string): number {
+-  return content.split("\n").length;
+-}
+-
+-function extractAgentName(championPath: string): string {
+-  // agents/fullstack-dev.md → "fullstack-dev"
+-  const basename = championPath.split(/[\\/]/).pop() ?? "unknown";
+-  return basename.replace(/\.md$/i, "");
+-}
+-
+-/** Context threaded through `processCandidateSlot` — one per `generate()` call, shared across all K slots. */
+-interface SlotContext {
+-  repoPath: string;
+-  cycleId: string;
+-  outDir: string;
+-  champion: string;
+-  trialsSample: string;
+-  failingTrials: Trial[];
+-  agentName: string;
+-  maxTrialSample: number;
+-  rewriteDeps: RewriteDispatchDeps;
+-  liveMode: boolean;
+-  meter: BudgetMeter;
+-  oversizedIds: string[];
+-}
+-
+-/**
+- * Resolve, guardrail-check, write, and size-validate one candidate slot.
+- * Returns the candidate on success, or null when the slot was rejected at
+- * any stage (extraction failure, identity-anchor guardrail, no-op-diff
+- * guardrail, or oversize) — the budget reservation is released on every
+- * rejection path. Extracted out of `generate()`'s loop body to keep its
+- * cognitive complexity within budget (FEAT-192 SLICE-B).
+- */
+-async function processCandidateSlot(
+-  slotIndex: number,
+-  reservationId: string,
+-  ctx: SlotContext
+-): Promise<Candidate | null> {
+-  const resolved = await resolveCandidateContent(
+-    ctx.liveMode,
+-    ctx.repoPath,
+-    ctx.champion,
+-    ctx.trialsSample,
+-    ctx.failingTrials,
+-    slotIndex,
+-    ctx.agentName,
+-    ctx.maxTrialSample,
+-    ctx.rewriteDeps
+-  );
+-  if (!resolved.ok) {
+-    // Rejected slot (live mode only) — release budget, skip to next slot.
+-    await ctx.meter.release(reservationId);
+-    return null;
+-  }
+-  const content = resolved.content;
+-
+-  // AC-5 + AC-2: pre-write guardrails, gated between "content resolved" and
+-  // "file written". Never let a gutted-identity or no-op candidate reach the
+-  // scored set: release the reservation, skip the slot, no Trial is ever
+-  // produced for it (equivalent to pareto_rank: null).
+-  const rejection = checkPreWriteGuardrails(ctx.champion, content);
+-  if (rejection) {
+-    logEvent(ctx.repoPath, {
+-      event: rejection.event,
+-      slot_index: slotIndex,
+-      cycle_id: ctx.cycleId,
+-      agent: ctx.agentName,
+-      reason: rejection.reason,
+-      ...(rejection.extra ?? {})
+-    });
+-    await ctx.meter.release(reservationId);
+-    return null;
+-  }
+-
+-  const id = crypto.randomUUID();
+-  const promptPath = join(ctx.outDir, `${id}.md`);
+-  writeFileSync(promptPath, content, "utf8");
+-
+-  const lineCount = countLines(content);
+-  const candidate: Candidate = {
+-    id,
+-    agent: ctx.agentName,
+-    prompt_path: promptPath,
+-    prompt_hash: hashContent(content),
+-    prompt_size_lines: lineCount,
+-    derived_from_trials: ctx.failingTrials.slice(0, ctx.maxTrialSample).map((t) => t.id),
+-    generator_cost_usd: GENERATOR_ESTIMATE_USD,
+-    created_at: new Date().toISOString()
+-  };
+-
+-  // Validate size BEFORE LLM scoring spend (AC-4 requirement).
+-  const sizeCheck = validateCandidateSize(candidate, 350);
+-  if (!sizeCheck.ok) {
+-    ctx.oversizedIds.push(id);
+-    logEvent(ctx.repoPath, {
+-      event: "gepa_oversized_candidate",
+-      candidate_id: id,
+-      agent: candidate.agent,
+-      cycle_id: ctx.cycleId,
+-      lines: lineCount,
+-      reason: "oversized_candidate"
+-    });
+-    // Release the budget reservation — no scoring spend will occur.
+-    await ctx.meter.release(reservationId);
+-    // Oversized candidates are excluded from the returned array.
+-    return null;
+-  }
+-
+-  // Record generator cost.
+-  await ctx.meter.record(reservationId, GENERATOR_ESTIMATE_USD);
+-  return candidate;
+-}
+-
+-export interface CandidateGeneratorOpts {
+-  /** Absolute path to repo root. */
+-  repoPath: string;
+-  /** Cycle identifier (used in output directory path). */
+-  cycleId: string;
+-  /** Maximum number of failing trial rows to include in the context. */
+-  maxTrialSample?: number;
+-  /**
+-   * Test seam: override the live-dispatch subprocess runner. Defaults to the
+-   * real `claude -p` spawn (evals/lib/candidate-dispatch.ts::runSubprocess).
+-   */
+-  rewriteDeps?: RewriteDispatchDeps;
+-}
+-
+-/**
+- * Tracks IDs of candidates rejected due to oversized prompt (≥350 lines).
+- * Exposed so tests and the optimize-runner can log/audit the rejections.
+- */
+-export interface AipluginCandidateGenerator extends CandidateGenerator {
+-  /** IDs of candidates that were rejected by validateCandidateSize. */
+-  readonly oversizedIds: string[];
+-}
+-
+-/**
+- * Create a CandidateGenerator that produces up to K candidate prompt files under
+- * .claude/artifacts/crew/gepa/candidates/<cycleId>/<uuid>.md
+- *
+- * Each candidate is pre-screened with validateCandidateSize. Oversized
+- * candidates are excluded from the return value (not scored, budget released).
+- */
+-export function createAipluginCandidateGenerator(
+-  opts: CandidateGeneratorOpts
+-): AipluginCandidateGenerator {
+-  const { repoPath, cycleId, maxTrialSample = 10, rewriteDeps = defaultRewriteDeps } = opts;
+-  const oversizedIds: string[] = [];
+-
+-  return {
+-    oversizedIds,
+-
+-    async generate(
+-      currentChampionPath: string,
+-      failingTrials: Trial[],
+-      k: number,
+-      genOpts: { meter: BudgetMeter }
+-    ): Promise<Candidate[]> {
+-      const { meter } = genOpts;
+-      const champion = readChampion(currentChampionPath);
+-      const trialsSample = formatFailingTrialsSample(failingTrials, maxTrialSample);
+-      const agentName = extractAgentName(currentChampionPath);
+-      // Read at call-time (not factory-create-time) so tests can toggle the
+-      // flag between generator construction and generate() invocation.
+-      const liveMode = process.env["GEPA_LIVE_GENERATOR"] === "1";
+-
+-      const outDir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "candidates", cycleId);
+-      if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+-
+-      const candidates: Candidate[] = [];
+-      const slotCtx: SlotContext = {
+-        repoPath,
+-        cycleId,
+-        outDir,
+-        champion,
+-        trialsSample,
+-        failingTrials,
+-        agentName,
+-        maxTrialSample,
+-        rewriteDeps,
+-        liveMode,
+-        meter,
+-        oversizedIds
+-      };
+-
+-      for (let i = 0; i < k; i++) {
+-        // Reserve budget BEFORE generating the candidate (per AC-4 contract).
+-        const reservation = await meter.reserve(GENERATOR_ESTIMATE_USD, { ttlSeconds: 600 });
+-        if (!reservation.ok) {
+-          // Daily budget exhausted — stop generating further slots.
+-          break;
+-        }
+-
+-        const candidate = await processCandidateSlot(i, reservation.reservationId, slotCtx);
+-        if (candidate) candidates.push(candidate);
+-      }
+-
+-      return candidates;
+-    }
+-  };
+-}
+diff --git a/crew/scripts/lib/gepa/capture-failure-trial-guard.mts b/crew/scripts/lib/gepa/capture-failure-trial-guard.mts
+deleted file mode 100644
+index ffb7893e..00000000
+--- a/crew/scripts/lib/gepa/capture-failure-trial-guard.mts
++++ /dev/null
+@@ -1,56 +0,0 @@
+-// capture-failure-trial-guard.ts — timeout-guarded, fire-and-forget wrapper
+-// around captureFailureTrial (FEAT-193 S1 fix-forward).
+-//
+-// Root cause of the regression this module fixes: @astragenie/gepa-core's
+-// installed package points main/exports at raw .ts source (not a compiled
+-// dist/), so the FIRST time a process dynamically imports anything that
+-// transitively imports "@astragenie/gepa-core", Node has to parse/type-strip
+-// the whole provider tree (ollama/generic-openai/groq/gemini/azure-openai)
+-// cold. On a cold disk-cache machine this can take multiple seconds — long
+-// enough to blow a CLI command's or a hook's expected latency budget (caught
+-// via tests/crew-write-review-result.test.ts timing out at 5s when
+-// captureFailureTrial's OWN dynamic import of "@astragenie/gepa-core" raced
+-// a cold load inside the `write-review-result` CLI path).
+-//
+-// This module exists as its OWN file — it has no static (or even dynamic,
+-// eagerly-evaluated) dependency on capture-failure-trial.ts or
+-// "@astragenie/gepa-core" at its own module-evaluation time (the import
+-// below is `import type`, which is erased entirely by type-stripping/
+-// transpilation — it costs nothing at runtime). That means importing THIS
+-// module is always fast; the slow part is isolated inside the raced dynamic
+-// import in captureFailureTrialGuarded(), so a cold gepa-core load can never
+-// hold a caller (a CLI command, a hook) open for longer than
+-// DEFAULT_TIMEOUT_MS. Matches the operator decision: astramem is the source
+-// of truth, this JSONL corpus is a derived duplicate — a trial dropped
+-// because the load was slow/cold is an acceptable trade for never blocking
+-// the gate/hook/CLI this rides on.
+-//
+-// Upstream fix recommended (tracked as a FEAT-193 S1 follow-up, cross-repo):
+-// @astragenie/gepa-core should publish/resolve to its compiled dist/*.js as
+-// main/exports, not raw src/*.ts — that removes the cold-parse cost for
+-// every consumer, not just this guard.
+-//
+-// Wave 1.5 (runner-plugin issue #360) fix-forward: the race + ceiling logic
+-// now lives in the shared guarded-fire.ts helper (reused by write.ts's
+-// capture-tee path too) — see that module's header for why the race timer
+-// must be `.unref()`'d. This module keeps its own name/signature for
+-// backward compatibility; only the internals changed.
+-import type { FailureTrialInput } from "./capture-failure-trial.mjs";
+-import { DEFAULT_GUARD_TIMEOUT_MS, fireGuarded } from "./guarded-fire.mjs";
+-
+-/**
+- * Best-effort, timeout-guarded sibling of captureFailureTrial. Never throws,
+- * never blocks the caller beyond `timeoutMs` — on timeout OR error, the
+- * trial is simply dropped (silently, matching the fire-and-forget contract
+- * every capture point in this codebase already follows).
+- */
+-export async function captureFailureTrialGuarded(
+-  repoPath: string,
+-  entry: FailureTrialInput,
+-  timeoutMs: number = DEFAULT_GUARD_TIMEOUT_MS
+-): Promise<void> {
+-  await fireGuarded(async () => {
+-    const { captureFailureTrial } = await import("./capture-failure-trial.mjs");
+-    await captureFailureTrial(repoPath, entry);
+-  }, timeoutMs);
+-}
+diff --git a/crew/scripts/lib/gepa/capture-failure-trial.mts b/crew/scripts/lib/gepa/capture-failure-trial.mts
+deleted file mode 100644
+index f7380695..00000000
+--- a/crew/scripts/lib/gepa/capture-failure-trial.mts
++++ /dev/null
+@@ -1,107 +0,0 @@
+-// capture-failure-trial.ts — FEAT-193 S1: Failure → GEPA trial-store bridge.
+-//
+-// Dual-write sibling of scripts/lib/memory/capture-learning.ts. FEAT-188 S1a
+-// wired 4 failure signals (review rejected/needs_fix, validation fail,
+-// inline-return-warn, subagent-incomplete) into the legacy learnings store
+-// (.claude/artifacts/loop/learnings.jsonl). FEAT-193 S1 taps the SAME 4
+-// signals and ALSO appends a failing Trial to the agent's GEPA trial corpus
+-// (.claude/artifacts/crew/gepa/trials/<agent>.jsonl) via gepa-core's
+-// fileStore.put() — the same writer scripts/lib/gepa/capture-tee.ts uses, so
+-// there is exactly one JSONL-writing code path for this store (never
+-// hand-roll a second one).
+-//
+-// Trial.source enum note: @astragenie/gepa-core's TrialSchema (checked at
+-// v0.7.0, the version pinned in package.json) defines
+-// `source: z.enum(["eval", "captured", "soak"])` — it has no "production"
+-// value. Writing a literal `source: "production"` would make
+-// fileStore.put()'s internal TrialSchema.parse() throw (silently dropped by
+-// this module's fire-and-forget try/catch below) and, even if a row slipped
+-// past validation some other way, gepa-core's own reader
+-// (file-store.ts readJsonlSafe) re-parses every line with TrialSchema.parse
+-// and silently drops anything that doesn't validate — so an unsupported
+-// source value would make these failing trials invisible to recall(), not
+-// just mislabeled. To keep the trials functional (written AND recallable),
+-// this module writes the schema-valid `source: "captured"` and threads the
+-// distinguishing "this came from a production failure signal, not a build
+-// success" marker through `input.capture_origin: "production_failure"`
+-// instead (Trial.input is z.unknown() — free-form). Follow-up: extend
+-// gepa-core's Trial.source enum with "production" upstream
+-// (astragenie/plugins-common, cross-repo) and switch this module over once
+-// that ships.
+-//
+-// Fire-and-forget: never throws into the gate/hook it hooks onto. Mirrors
+-// the captureFailureLearning contract in scripts/lib/memory/capture-learning.ts.
+-
+-import { existsSync } from "node:fs";
+-import { join } from "node:path";
+-import { fileStore, newTrialId } from "@astragenie/gepa-core";
+-import type { Trial } from "@astragenie/gepa-core";
+-import { loadGepaConfig } from "./load-config.mjs";
+-import { computePromptHash } from "./capture-tee.mjs";
+-
+-export type FailureTrialPhase = "build" | "review" | "validate" | "ship";
+-
+-export interface FailureTrialInput {
+-  /** Agent to key the trial JSONL file by. Falls back to "unknown" upstream if absent. */
+-  agent: string;
+-  phase: FailureTrialPhase;
+-  /** Free-text verdict/finding text — becomes score.rationale. */
+-  rationale: string;
+-  /** Optional structured context merged into Trial.input alongside capture_origin. */
+-  input?: Record<string, unknown>;
+-}
+-
+-function walltimeReject(ms: number): Promise<never> {
+-  return new Promise<never>((_, reject) =>
+-    setTimeout(() => reject(new Error("walltime_exceeded")), ms)
+-  );
+-}
+-
+-/**
+- * Append a failing (`pass: false`, `score: 0`) Trial to the agent's GEPA
+- * trial store. Fire-and-forget: never throws, never propagates. AC per
+- * FEAT-193 S1 — this is the trial-store half of the S1a dual-write; callers
+- * pair this with captureFailureLearning at each of the 4 capture points.
+- */
+-export async function captureFailureTrial(
+-  repoPath: string,
+-  entry: FailureTrialInput
+-): Promise<void> {
+-  try {
+-    const config = await loadGepaConfig(repoPath);
+-    if (!config) return;
+-    if (!config.capture.enabled) return;
+-    if (config.capture.exclude.includes(entry.agent)) return;
+-
+-    const candidatePromptHash = computePromptHash(repoPath, entry.agent);
+-    const candidatePromptPath = existsSync(join(repoPath, "agents", `${entry.agent}.md`))
+-      ? `agents/${entry.agent}.md`
+-      : null;
+-
+-    const trial: Trial = {
+-      id: newTrialId(),
+-      agent: entry.agent,
+-      phase: entry.phase,
+-      candidate_prompt_hash: candidatePromptHash,
+-      candidate_prompt_path: candidatePromptPath,
+-      input: { capture_origin: "production_failure", ...(entry.input ?? {}) },
+-      output: {},
+-      score: {
+-        pass: false,
+-        score: 0,
+-        cost_usd: 0,
+-        latency_ms: 0,
+-        rationale: entry.rationale.slice(0, 2000)
+-      },
+-      source: "captured",
+-      pareto_rank: null,
+-      created_at: new Date().toISOString()
+-    };
+-
+-    const storeRoot = join(repoPath, config.storage.file_root);
+-    const walltimeMs = config.capture.walltime_ms;
+-    await Promise.race([fileStore(storeRoot).put(trial), walltimeReject(walltimeMs)]);
+-  } catch {
+-    // Fire-and-forget: never propagate.
+-  }
+-}
+diff --git a/crew/scripts/lib/gepa/capture-tee.mts b/crew/scripts/lib/gepa/capture-tee.mts
+deleted file mode 100644
+index 14fedbc7..00000000
+--- a/crew/scripts/lib/gepa/capture-tee.mts
++++ /dev/null
+@@ -1,151 +0,0 @@
+-// capture-tee.ts — wraps fileStore.put() with walltime race + fail-silent drop.
+-// S2 scope: fullstack-dev only. FEAT-210 adds frontend-dev as a second,
+-// low-stakes capture canary (still ahead of the full S5c horizontalize in
+-// SLICE-102, which brings backend-dev + frontend-dev + verifier together
+-// with the astramemStore backend). frontend-dev capture here uses the
+-// existing file-backed TrialStore (gepa.config.json storage.backend:
+-// "file") — it does NOT require the astramem CLI. Remaining S5c scope
+-// (backend-dev, verifier, astramemStore, sharedAstramemMeter) is
+-// unaffected by this change.
+-//
+-// Behavior contract:
+-//   1. loadGepaConfig → null → return (no-op)
+-//   2. config.capture.enabled === false → return
+-//   3. adaptArtifact(record, fields) → null (non-dispatch kind) → return
+-//   4. artifact.agent NOT in CAPTURE_AGENT_ALLOWLIST → return
+-//   5. config.capture.exclude includes agent → return
+-//   6. compute candidate_prompt_hash from agents/<agent>.md (or "unknown")
+-//   7. construct Trial + Promise.race([put, walltimeReject])
+-//   8. on any error: log gepa_capture_drop to .claude/logs/events.jsonl, never propagate
+-
+-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+-import { createHash } from "node:crypto";
+-import { join } from "node:path";
+-import { fileStore, newTrialId } from "@astragenie/gepa-core";
+-import type { Trial } from "@astragenie/gepa-core";
+-import { loadGepaConfig } from "./load-config.mjs";
+-import { adaptArtifact } from "./adapt-artifact.mjs";
+-import type { ArtifactRecord } from "../artifacts/write.mjs";
+-import type { ArtifactFields } from "../artifacts/types.mjs";
+-
+-// Capture allowlist = the eval-capable roster. Capture is trial LOGGING only,
+-// so it is safe for EVERY agent — including the critical allowlist (reviewer,
+-// verifier, architect). The critical-agent guard lives on PROMOTION (auto-merge
+-// downgrades to a draft PR), never on capture. This set mirrors the agents that
+-// carry an eval spec (evals/agents/crew-*.yaml) or a .gepa/eval seed dataset, so
+-// every captured trial has a scoring destination. Agents with no eval surface
+-// are excluded to avoid dead trials.
+-const CAPTURE_AGENT_ALLOWLIST = new Set([
+-  "fullstack-dev",
+-  "frontend-dev",
+-  "backend-dev",
+-  "verifier",
+-  "reviewer",
+-  "architect",
+-  "integrator",
+-  "refactor",
+-  "release-engineer"
+-]);
+-
+-const EVENTS_LOG_PATH = ".claude/logs/events.jsonl";
+-
+-function logDropEvent(repoPath: string, trialId: string, agent: string, reason: string): void {
+-  try {
+-    const line = `${JSON.stringify({
+-      event: "gepa_capture_drop",
+-      ts: new Date().toISOString(),
+-      trial_id: trialId,
+-      agent,
+-      reason
+-    })}\n`;
+-    appendFileSync(join(repoPath, EVENTS_LOG_PATH), line, { flag: "a" });
+-  } catch {
+-    // Events log failure must never propagate.
+-  }
+-}
+-
+-// Exported for reuse by capture-failure-trial.ts (FEAT-193 S1) — the failing-
+-// trial writer needs the same candidate_prompt_hash/path derivation so
+-// production-failure trials land in the corpus with the same provenance shape
+-// as capture-tee's success/observed trials.
+-export function computePromptHash(repoPath: string, agent: string): string {
+-  const agentPath = join(repoPath, "agents", `${agent}.md`);
+-  if (!existsSync(agentPath)) return "unknown";
+-  try {
+-    const content = readFileSync(agentPath, "utf8");
+-    return createHash("sha256").update(content, "utf8").digest("hex");
+-  } catch {
+-    return "unknown";
+-  }
+-}
+-
+-function walltimeReject(ms: number): Promise<never> {
+-  return new Promise<never>((_, reject) =>
+-    setTimeout(() => reject(new Error("walltime_exceeded")), ms)
+-  );
+-}
+-
+-export async function captureTee(
+-  repoPath: string,
+-  record: ArtifactRecord,
+-  fields: ArtifactFields
+-): Promise<void> {
+-  // 1. Load config — no-op if absent or invalid.
+-  const config = await loadGepaConfig(repoPath);
+-  if (!config) return;
+-
+-  // 2. Check capture enabled.
+-  if (!config.capture.enabled) return;
+-
+-  // 3. Adapt artifact — no-op if kind is not a dispatch kind.
+-  const artifact = adaptArtifact(record, fields);
+-  if (!artifact) return;
+-
+-  // 4. Capture allowlist (FEAT-210: fullstack-dev + frontend-dev canary).
+-  if (!CAPTURE_AGENT_ALLOWLIST.has(artifact.agent)) return;
+-
+-  // 5. Per-agent exclude list.
+-  if (config.capture.exclude.includes(artifact.agent)) return;
+-
+-  // 6. Compute candidate prompt hash.
+-  const candidatePromptHash = computePromptHash(repoPath, artifact.agent);
+-  const candidatePromptPath = existsSync(join(repoPath, "agents", `${artifact.agent}.md`))
+-    ? `agents/${artifact.agent}.md`
+-    : null;
+-
+-  // 7. Construct Trial.
+-  const trialId = newTrialId();
+-  const scoreHint = artifact.score_hint;
+-  const pass = scoreHint?.pass ?? true;
+-  const costUsd = scoreHint?.cost_usd ?? 0;
+-  const latencyMs = scoreHint?.latency_ms ?? 0;
+-
+-  const trial: Trial = {
+-    id: trialId,
+-    agent: artifact.agent,
+-    phase: artifact.phase,
+-    candidate_prompt_hash: candidatePromptHash,
+-    candidate_prompt_path: candidatePromptPath,
+-    input: artifact.input,
+-    output: artifact.output,
+-    score: {
+-      pass,
+-      score: pass ? 1 : 0,
+-      cost_usd: costUsd,
+-      latency_ms: latencyMs
+-    },
+-    source: "captured",
+-    pareto_rank: null,
+-    created_at: new Date().toISOString()
+-  };
+-
+-  // 8. Put with walltime race, drop + log on any failure.
+-  const storeRoot = join(repoPath, config.storage.file_root);
+-  const walltimeMs = config.capture.walltime_ms;
+-
+-  try {
+-    await Promise.race([fileStore(storeRoot).put(trial), walltimeReject(walltimeMs)]);
+-  } catch (err) {
+-    logDropEvent(repoPath, trialId, artifact.agent, (err as Error).message ?? "unknown");
+-  }
+-}
+diff --git a/crew/scripts/lib/gepa/champion-provenance-writer.mts b/crew/scripts/lib/gepa/champion-provenance-writer.mts
+deleted file mode 100644
+index 24593523..00000000
+--- a/crew/scripts/lib/gepa/champion-provenance-writer.mts
++++ /dev/null
+@@ -1,144 +0,0 @@
+-/**
+- * scripts/lib/gepa/champion-provenance-writer.ts — SLICE-105
+- *
+- * Writes the `gepa:` YAML frontmatter block at the top of an agent prompt file
+- * to record which trial promoted this champion, the hash of the body before
+- * promotion, and the promotion timestamp.
+- *
+- * Frontmatter shape (written):
+- *
+- *   ---
+- *   gepa:
+- *     champion_from_trial: <trial-uuid>
+- *     prior_prompt_hash: <sha256-hex-of-body-without-gepa-block>
+- *     promoted_at: <iso-datetime>
+- *   ---
+- *   <original prompt body>
+- *
+- * Idempotency: if a `gepa:` block already exists at the top, it is replaced
+- * in place (not duplicated). Other frontmatter blocks below are preserved.
+- *
+- * Hash semantics: `prior_prompt_hash` is computed from the prompt body WITHOUT
+- * any existing `gepa:` frontmatter block, so subsequent promotions produce a
+- * chain of deterministic hashes over the actual prompt content.
+- *
+- * Atomicity: writes via a tmp file + `fs.renameSync` which on Windows maps to
+- * `MoveFileEx(MOVEFILE_REPLACE_EXISTING)` via Node's libuv — safe against
+- * partial writes.
+- */
+-
+-import { createHash } from "node:crypto";
+-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+-import { dirname, join } from "node:path";
+-
+-// ── Types ─────────────────────────────────────────────────────────────────────
+-
+-export interface ProvenanceOpts {
+-  /** Absolute path to the agent prompt file (e.g. `agents/fullstack-dev.md`). */
+-  agentPath: string;
+-  /** UUID of the winning trial. */
+-  trialUuid: string;
+-  /**
+-   * ISO 8601 datetime for `promoted_at`.
+-   * Defaults to `new Date().toISOString()`.
+-   */
+-  promotedAt?: string;
+-}
+-
+-export interface ProvenanceResult {
+-  /** SHA-256 hex of the prompt body (without any gepa: frontmatter). */
+-  priorPromptHash: string;
+-  /** ISO datetime written to `promoted_at`. */
+-  promotedAt: string;
+-}
+-
+-// ── Parsing helpers ──────────────────────────────────────────────────────────
+-
+-/**
+- * Strip the leading `gepa:` frontmatter block (if present) and return the
+- * remaining content.
+- *
+- * A `gepa:` frontmatter block is defined as:
+- *   - File starts with `---\n`
+- *   - The first non-dashes content line starts with `gepa:`
+- *   - Followed by indented `  key: value` lines
+- *   - Closed by a `---\n` line
+- *
+- * Any other leading frontmatter blocks (with different keys) are NOT stripped.
+- */
+-export function stripGepafrontmatter(content: string): string {
+-  const lines = content.split("\n");
+-
+-  // Must start with `---`
+-  if (lines[0]?.trimEnd() !== "---") return content;
+-
+-  // Second line must start with `gepa:` (the key that identifies this block).
+-  if (!lines[1]?.trimStart().startsWith("gepa:")) return content;
+-
+-  // Find the closing `---`.
+-  let closeIdx = -1;
+-  for (let i = 2; i < lines.length; i++) {
+-    if (lines[i]?.trimEnd() === "---") {
+-      closeIdx = i;
+-      break;
+-    }
+-  }
+-  if (closeIdx === -1) return content; // Malformed frontmatter — leave unchanged.
+-
+-  // Return everything after the closing `---\n`.
+-  return lines.slice(closeIdx + 1).join("\n");
+-}
+-
+-// ── Hash ─────────────────────────────────────────────────────────────────────
+-
+-/**
+- * Compute SHA-256 of the prompt body (without gepa frontmatter).
+- * The hash is stable regardless of trailing newline normalization — we hash
+- * the raw string returned by stripGepafrontmatter.
+- */
+-export function hashPromptBody(body: string): string {
+-  return createHash("sha256").update(body, "utf8").digest("hex");
+-}
+-
+-// ── Frontmatter builder ──────────────────────────────────────────────────────
+-
+-function buildGepafrontmatter(trialUuid: string, priorHash: string, promotedAt: string): string {
+-  return `---\ngepa:\n  champion_from_trial: ${trialUuid}\n  prior_prompt_hash: ${priorHash}\n  promoted_at: ${promotedAt}\n---\n`;
+-}
+-
+-// ── Public API ───────────────────────────────────────────────────────────────
+-
+-/**
+- * Write the `gepa:` YAML frontmatter block to the top of the agent prompt file.
+- *
+- * Idempotent: if a `gepa:` block already exists, it is replaced in place.
+- * Atomic: writes via tmp file + renameSync.
+- *
+- * Returns the hash and timestamp written so the caller can record them in
+- * the optimization artifact.
+- */
+-export function writeChampionProvenance(opts: ProvenanceOpts): ProvenanceResult {
+-  const { agentPath, trialUuid } = opts;
+-  const promotedAt = opts.promotedAt ?? new Date().toISOString();
+-
+-  // Read the current file.
+-  const current = readFileSync(agentPath, "utf8");
+-
+-  // Strip any existing gepa: block to get the clean body.
+-  const body = stripGepafrontmatter(current);
+-
+-  // Hash the body (without gepa frontmatter).
+-  const priorPromptHash = hashPromptBody(body);
+-
+-  // Build the new content.
+-  const newContent = buildGepafrontmatter(trialUuid, priorPromptHash, promotedAt) + body;
+-
+-  // Atomic write: tmp sibling + rename.
+-  const dir = dirname(agentPath);
+-  const tmpPath = join(dir, `.gepa-tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+-  mkdirSync(dir, { recursive: true });
+-  writeFileSync(tmpPath, newContent, "utf8");
+-  renameSync(tmpPath, agentPath);
+-
+-  return { priorPromptHash, promotedAt };
+-}
+diff --git a/crew/scripts/lib/gepa/corpus-optimize.mts b/crew/scripts/lib/gepa/corpus-optimize.mts
+deleted file mode 100644
+index 9cf091d4..00000000
+--- a/crew/scripts/lib/gepa/corpus-optimize.mts
++++ /dev/null
+@@ -1,133 +0,0 @@
+-// corpus-optimize.ts — FEAT-193 S3 (feed-to-optimize bridge).
+-//
+-// The human-gated hand-off from the analyze digest to a real optimize cycle.
+-// AC-9 discipline: report GENERATION never reaches this module — `reportCorpus`
+-// / `gepa-corpus-report` have no optimize import. Only a human explicitly
+-// typing `crew gepa-corpus-optimize <agent> --budget <usd>` reaches here. That
+-// explicit invocation IS the human gate the FEAT requires ("Analyze-before-
+-// adjust is a required human gate — never blind auto-promote").
+-//
+-// The bridge does two things, in order:
+-//   1. Renders the analyze digest for <agent> (delegates to gepa-corpus-report)
+-//      so the operator sees WHY they are optimizing, in the same output.
+-//   2. Feeds the aggregated hub corpus into ONE gepa-optimize cycle — the SAME
+-//      trial store `gepa-corpus-sync` writes into and `store.recall` reads. The
+-//      cycle is forced ARTIFACT-ONLY: a candidate is generated + judge-scored
+-//      and written to an opt artifact, but NEVER auto-promoted / PR'd.
+-//      Promotion stays a further explicit human step (manual PR /
+-//      champion-provenance — aiplugin-dev v1.2.4). This is why AC-10
+-//      (champion-provenance-writer / validate-agents fix) had to land first:
+-//      the moment a human acts on this bridge's output and promotes, the
+-//      provenance-written agent must still pass validate-agents.
+-//
+-// Both delegates are injectable so tests exercise the composition + the
+-// artifact-only guarantee without standing up a live judge (mirrors
+-// corpus-report's `recallLessons` seam).
+-
+-import type { CorpusReportCmdResult } from "./corpus-report.mjs";
+-import type { OptimizeCmdResult } from "./gepa-optimize-cmd.mjs";
+-
+-export interface CorpusOptimizeDeps {
+-  /** Render the analyze digest (defaults to gepa-corpus-report). */
+-  report?: (repoPath: string, rawArgs: string[]) => Promise<CorpusReportCmdResult>;
+-  /** Run one optimize cycle (defaults to gepa-optimize). */
+-  optimize?: (repoPath: string, rawArgs: string[]) => Promise<OptimizeCmdResult>;
+-}
+-
+-export interface CorpusOptimizeCmdResult {
+-  stdout: string;
+-  stderr: string;
+-  exitCode: number;
+-}
+-
+-interface ParsedArgs {
+-  agent?: string;
+-  budget?: string;
+-  k?: string;
+-}
+-
+-function parseArgs(rawArgs: string[]): ParsedArgs {
+-  const parsed: ParsedArgs = {};
+-  for (let i = 0; i < rawArgs.length; i += 1) {
+-    const a = rawArgs[i];
+-    const next = rawArgs[i + 1];
+-    if (a === "--budget" && next) {
+-      parsed.budget = next;
+-      i += 1;
+-    } else if (a === "--k" && next) {
+-      parsed.k = next;
+-      i += 1;
+-    } else if (a && !a.startsWith("--") && !parsed.agent) {
+-      parsed.agent = a;
+-    }
+-  }
+-  return parsed;
+-}
+-
+-// No `--json`: this command is an inherently human-facing COMPOSITE (analyze
+-// digest + optimize summary). A single valid-JSON envelope would have to embed
+-// the optimize CLI's plain-text stdout as a string, which is more confusing
+-// than useful — the machine-readable surfaces already exist separately
+-// (`gepa-corpus-report --json`, and the on-disk opt artifact). Review MEDIUM-1:
+-// do not advertise a `--json` that only JSONs one fragment.
+-const USAGE = "usage: gepa-corpus-optimize <agent> --budget <usd> [--k <int>] [--repo <path>]\n";
+-
+-/**
+- * CLI entry (`crew gepa-corpus-optimize <agent> --budget <usd>`). The
+- * human-gated analyze→optimize bridge. Never throws — the optimize cycle's
+- * exit code is the bridge's exit code (the digest is advisory). Always forces
+- * `--artifact-only`: this command can NEVER promote a candidate on its own.
+- */
+-export async function runCorpusOptimizeCmd(
+-  repoPath: string,
+-  rawArgs: string[],
+-  deps: CorpusOptimizeDeps = {}
+-): Promise<CorpusOptimizeCmdResult> {
+-  const { agent, budget, k } = parseArgs(rawArgs);
+-
+-  if (!agent) return { stdout: "", stderr: USAGE, exitCode: 2 };
+-  if (!budget) {
+-    return {
+-      stdout: "",
+-      stderr: "--budget is required (feed-to-optimize spends real judge tokens)\n",
+-      exitCode: 2
+-    };
+-  }
+-
+-  const report =
+-    deps.report ?? (async (r, a) => (await import("./corpus-report.mjs")).runCorpusReportCmd(r, a));
+-  const optimize =
+-    deps.optimize ??
+-    (async (r, a) => (await import("./gepa-optimize-cmd.mjs")).runGepaOptimizeCmd(r, a));
+-
+-  // Make the "Never throws" contract real (review MEDIUM-2): a trial-store read
+-  // or judge-scorer error inside a delegate surfaces as a non-zero exitCode +
+-  // stderr, never an unhandled rejection a library caller has to catch.
+-  try {
+-    // Step 1 — analyze gate: render the digest for this agent FIRST.
+-    const digest = await report(repoPath, [agent]);
+-
+-    // Step 2 — feed the aggregated hub corpus into one artifact-only cycle.
+-    // `--artifact-only` is passed EXPLICITLY (not left to the optimize default)
+-    // so this bridge stays promote-free even if that default ever changes.
+-    const optArgs = [agent, "--budget", budget];
+-    if (k) optArgs.push("--k", k);
+-    optArgs.push("--artifact-only");
+-    const opt = await optimize(repoPath, optArgs);
+-
+-    const header =
+-      "gepa-corpus-optimize: analyze digest → artifact-only optimize (no auto-promote)\n";
+-    const separator = "\n— optimize cycle (artifact-only; promote is a further human step) —\n";
+-    return {
+-      stdout: `${header}${digest.stdout}${separator}${opt.stdout}`,
+-      stderr: `${digest.stderr}${opt.stderr}`,
+-      exitCode: opt.exitCode
+-    };
+-  } catch (err) {
+-    return {
+-      stdout: "",
+-      stderr: `gepa-corpus-optimize failed: ${(err as Error).message}\n`,
+-      exitCode: 1
+-    };
+-  }
+-}
+diff --git a/crew/scripts/lib/gepa/corpus-report.mts b/crew/scripts/lib/gepa/corpus-report.mts
+deleted file mode 100644
+index cd929245..00000000
+--- a/crew/scripts/lib/gepa/corpus-report.mts
++++ /dev/null
+@@ -1,220 +0,0 @@
+-// corpus-report.ts — FEAT-193 S3 (report half): gepa-corpus-report.
+-//
+-// The analyze-before-adjust digest. Reads the dev-team hub trial corpus,
+-// clusters each agent's production-failure trials by failure mode (rationale),
+-// ranks clusters by frequency, and cites the matching FEAT-188 astramem
+-// lessons for the agent. A human reads this digest, THEN decides whether to
+-// run `gepa-optimize <agent>` — this module never invokes optimize or promotes
+-// anything (AC-9 human gate; the feed-to-optimize wiring is a separate,
+-// human-gated step held until the champion-provenance-writer blocker is fixed,
+-// AC-10).
+-//
+-// Marker discipline (same as corpus-sync): only trials with
+-// `input.capture_origin === "production_failure"` are counted — never `source`.
+-
+-import { readFile, readdir } from "node:fs/promises";
+-import { existsSync } from "node:fs";
+-import { join } from "node:path";
+-import { TrialSchema } from "@astragenie/gepa-core";
+-import type { Trial } from "@astragenie/gepa-core";
+-
+-const TRIALS_SUBPATH = [".claude", "artifacts", "crew", "gepa", "trials"];
+-const PRODUCTION_FAILURE = "production_failure";
+-const DEFAULT_LESSON_K = 5;
+-
+-export interface FailureCluster {
+-  /** Representative rationale (first-seen original casing). */
+-  rationale: string;
+-  /** How many failing trials share this normalized failure mode. */
+-  count: number;
+-}
+-
+-export interface LessonCitation {
+-  id: string;
+-  summary: string;
+-}
+-
+-export interface AgentReport {
+-  agent: string;
+-  totalFailures: number;
+-  /** Failure modes ranked by frequency (desc), then rationale (asc) for determinism. */
+-  clusters: FailureCluster[];
+-  /** FEAT-188 astramem lessons for this agent, cited by id (empty if provider absent). */
+-  lessons: LessonCitation[];
+-}
+-
+-export interface CorpusReport {
+-  /** Every agent with >=1 production-failure trial (AC-7 completeness). */
+-  agents: AgentReport[];
+-}
+-
+-/** Injectable lesson lookup so tests don't stand up a real astramem daemon. */
+-export type LessonRecall = (agent: string) => Promise<LessonCitation[]>;
+-
+-export interface CorpusReportOptions {
+-  hubRepo: string;
+-  /** Scope to one agent; omit to report EVERY agent with failures (AC-7). */
+-  agent?: string;
+-  /** Override the astramem lesson lookup (AC-8). Defaults to the FEAT-188 provider. */
+-  recallLessons?: LessonRecall;
+-}
+-
+-function trialsDir(repoRoot: string): string {
+-  return join(repoRoot, ...TRIALS_SUBPATH);
+-}
+-
+-function isProductionFailure(trial: Trial): boolean {
+-  const input = trial.input as Record<string, unknown> | null | undefined;
+-  return !!input && input["capture_origin"] === PRODUCTION_FAILURE;
+-}
+-
+-function rationaleOf(trial: Trial): string {
+-  const score = trial.score as { rationale?: unknown } | null | undefined;
+-  return typeof score?.rationale === "string" ? score.rationale : "";
+-}
+-
+-/** Normalize a rationale into a clustering key (case/whitespace-insensitive). */
+-function clusterKey(rationale: string): string {
+-  return rationale.trim().toLowerCase().replace(/\s+/g, " ");
+-}
+-
+-async function readTrials(file: string): Promise<Trial[]> {
+-  let raw: string;
+-  try {
+-    raw = await readFile(file, "utf8");
+-  } catch {
+-    return [];
+-  }
+-  const out: Trial[] = [];
+-  for (const line of raw.split("\n")) {
+-    const t = line.trim();
+-    if (!t) continue;
+-    let json: unknown;
+-    try {
+-      json = JSON.parse(t);
+-    } catch {
+-      continue; // malformed JSON syntax — skip
+-    }
+-    const parsed = TrialSchema.safeParse(json); // skip schema-drifted rows
+-    if (parsed.success) out.push(parsed.data as Trial);
+-  }
+-  return out;
+-}
+-
+-async function agentsInHub(hubRepo: string): Promise<string[]> {
+-  const dir = trialsDir(hubRepo);
+-  if (!existsSync(dir)) return [];
+-  try {
+-    return (await readdir(dir))
+-      .filter((f) => f.endsWith(".jsonl"))
+-      .map((f) => f.slice(0, -".jsonl".length));
+-  } catch {
+-    return [];
+-  }
+-}
+-
+-/** Cluster an agent's production-failure trials by rationale, ranked by frequency. */
+-function clusterFailures(trials: Trial[]): { clusters: FailureCluster[]; total: number } {
+-  const buckets = new Map<string, { rationale: string; count: number }>();
+-  let total = 0;
+-  for (const trial of trials) {
+-    if (!isProductionFailure(trial)) continue;
+-    total += 1;
+-    const rationale = rationaleOf(trial);
+-    const key = clusterKey(rationale);
+-    const existing = buckets.get(key);
+-    if (existing) existing.count += 1;
+-    else buckets.set(key, { rationale, count: 1 });
+-  }
+-  const clusters = [...buckets.values()].sort(
+-    (a, b) => b.count - a.count || a.rationale.localeCompare(b.rationale)
+-  );
+-  return { clusters, total };
+-}
+-
+-/** Default lesson recall — the FEAT-188 MemoryProvider, agent-scoped. Never throws. */
+-async function defaultRecallLessons(hubRepo: string, agent: string): Promise<LessonCitation[]> {
+-  try {
+-    const { resolveProvider } = await import("@astragenie/memory-provider");
+-    const { loadMemoryConfig } = await import("../memory/inject-recall.mjs");
+-    const provider = resolveProvider(await loadMemoryConfig(hubRepo), hubRepo);
+-    const entries = await provider.recall({ agent, k: DEFAULT_LESSON_K });
+-    return entries.map((e) => ({ id: e.id, summary: e.summary }));
+-  } catch {
+-    return [];
+-  }
+-}
+-
+-/**
+- * Build the per-agent failure digest. Enumerates EVERY agent with >=1
+- * production-failure trial when no `agent` is given (AC-7). Pure read + report:
+- * never invokes gepa-optimize, never promotes (AC-9).
+- */
+-export async function reportCorpus(options: CorpusReportOptions): Promise<CorpusReport> {
+-  const { hubRepo, agent } = options;
+-  const recall: LessonRecall = options.recallLessons ?? ((a) => defaultRecallLessons(hubRepo, a));
+-
+-  const candidates = agent ? [agent] : await agentsInHub(hubRepo);
+-  const agents: AgentReport[] = [];
+-
+-  for (const a of candidates) {
+-    const trials = await readTrials(join(trialsDir(hubRepo), `${a}.jsonl`));
+-    const { clusters, total } = clusterFailures(trials);
+-    if (total === 0) continue; // only agents WITH failures are enumerated (AC-7)
+-    agents.push({ agent: a, totalFailures: total, clusters, lessons: await recall(a) });
+-  }
+-
+-  agents.sort((x, y) => y.totalFailures - x.totalFailures || x.agent.localeCompare(y.agent));
+-  return { agents };
+-}
+-
+-export interface CorpusReportCmdResult {
+-  stdout: string;
+-  stderr: string;
+-  exitCode: number;
+-}
+-
+-/** CLI entry (`crew gepa-corpus-report [<agent>] [--json]`). Never throws. */
+-export async function runCorpusReportCmd(
+-  repoPath: string,
+-  rawArgs: string[]
+-): Promise<CorpusReportCmdResult> {
+-  let asJson = false;
+-  let agent: string | undefined;
+-  for (const a of rawArgs) {
+-    if (a === "--json") asJson = true;
+-    else if (!a.startsWith("--")) agent = a;
+-  }
+-
+-  let report: CorpusReport;
+-  try {
+-    report = await reportCorpus({ hubRepo: repoPath, ...(agent !== undefined ? { agent } : {}) });
+-  } catch (err) {
+-    return {
+-      stdout: "",
+-      stderr: `gepa-corpus-report failed: ${(err as Error).message}\n`,
+-      exitCode: 1
+-    };
+-  }
+-
+-  if (asJson) return { stdout: `${JSON.stringify(report, null, 2)}\n`, stderr: "", exitCode: 0 };
+-
+-  if (report.agents.length === 0) {
+-    return {
+-      stdout: "gepa-corpus-report: no production-failure trials in the hub corpus.\n",
+-      stderr: "",
+-      exitCode: 0
+-    };
+-  }
+-  const lines: string[] = [`gepa-corpus-report: ${report.agents.length} agent(s) with failures\n`];
+-  for (const ar of report.agents) {
+-    lines.push(`## ${ar.agent} — ${ar.totalFailures} failure(s)`);
+-    for (const c of ar.clusters) lines.push(`  ${c.count}×  ${c.rationale}`);
+-    if (ar.lessons.length > 0) {
+-      lines.push(`  lessons (FEAT-188): ${ar.lessons.map((l) => l.id).join(", ")}`);
+-    }
+-    lines.push("");
+-  }
+-  lines.push("(read this, then decide: `crew gepa-optimize <agent>` — never auto-promoted)");
+-  return { stdout: `${lines.join("\n")}\n`, stderr: "", exitCode: 0 };
+-}
+diff --git a/crew/scripts/lib/gepa/corpus-sync.mts b/crew/scripts/lib/gepa/corpus-sync.mts
+deleted file mode 100644
+index 34768a10..00000000
+--- a/crew/scripts/lib/gepa/corpus-sync.mts
++++ /dev/null
+@@ -1,287 +0,0 @@
+-// corpus-sync.ts — FEAT-193 S2: gepa-corpus-sync cross-repo aggregation.
+-//
+-// Agent prompts are global (ship from dev-team); failures happen in each
+-// consumer repo where crew is installed. This module scans sibling repos on
+-// the machine, merges their production-failure GEPA trials into the dev-team
+-// hub corpus, and dedups by (agent, rationale-hash). Git-based today; an
+-// astramem-transport swap is a v2 seam (topology memory
+-// prompt-improvement-corpus-architecture).
+-//
+-// Marker discipline (AC-4, per S1's documented deviation): a synced trial is
+-// eligible ONLY when `input.capture_origin === "production_failure"`. Never
+-// match on `source` — all captured trials carry `source: "captured"`
+-// (schema-valid; gepa-core's TrialSchema has no "production" enum value), so
+-// `source` cannot distinguish a production failure from an eval/canary trial.
+-//
+-// Read-only on siblings (AC-5): reads sibling trial JSONL directly, writes
+-// ONLY the hub corpus via gepa-core's fileStore().put() — the same single
+-// writer path capture-failure-trial.ts / capture-tee.ts use (never hand-roll
+-// a second JSONL writer for this store). A sibling without a trials dir is
+-// skipped without error.
+-
+-import { createHash } from "node:crypto";
+-import { readFile, readdir } from "node:fs/promises";
+-import { existsSync } from "node:fs";
+-import { join } from "node:path";
+-import { fileStore, TrialSchema } from "@astragenie/gepa-core";
+-import type { Trial } from "@astragenie/gepa-core";
+-
+-const TRIALS_SUBPATH = [".claude", "artifacts", "crew", "gepa", "trials"];
+-const PRODUCTION_FAILURE = "production_failure";
+-
+-export interface CorpusSyncOptions {
+-  /** The dev-team hub repo root — the aggregation target (written to). */
+-  hubRepo: string;
+-  /** Sibling repo roots to scan for production-failure trials (read-only). */
+-  siblingRepos: string[];
+-}
+-
+-export interface AgentSyncStat {
+-  /** Eligible (production-failure) trials this agent contributed across siblings. */
+-  contributed: number;
+-  /** Trials written to the hub (new (agent, rationale-hash)). */
+-  added: number;
+-  /** Trials skipped because the hub / an earlier sibling already had the key. */
+-  skipped_as_dup: number;
+-}
+-
+-export interface CorpusSyncReport {
+-  /** Per-agent stats — enumerates EVERY agent with >=1 contributed trial (AC-3). */
+-  perAgent: Record<string, AgentSyncStat>;
+-  totalEligible: number;
+-  totalAdded: number;
+-  totalSkipped: number;
+-  siblingsScanned: number;
+-  /** Sibling roots skipped because they have no trials dir (AC-5). */
+-  siblingsSkipped: string[];
+-}
+-
+-function trialsDir(repoRoot: string): string {
+-  return join(repoRoot, ...TRIALS_SUBPATH);
+-}
+-
+-/**
+- * Dedup key: (agent, hash(rationale)). Length-prefixing the agent makes the
+- * concatenation unambiguous with plain printable ASCII — no delimiter byte —
+- * so `(agent="a-b", rationale="c")` ("3:a-bc") can't collide with
+- * `(agent="a", rationale="b-c")` ("1:ab-c").
+- */
+-function rationaleKey(agent: string, rationale: string): string {
+-  return createHash("sha256").update(`${agent.length}:${agent}${rationale}`, "utf8").digest("hex");
+-}
+-
+-function isProductionFailure(trial: Trial): boolean {
+-  const input = trial.input as Record<string, unknown> | null | undefined;
+-  return !!input && input["capture_origin"] === PRODUCTION_FAILURE;
+-}
+-
+-function rationaleOf(trial: Trial): string {
+-  const score = trial.score as { rationale?: unknown } | null | undefined;
+-  return typeof score?.rationale === "string" ? score.rationale : "";
+-}
+-
+-/** Parse a trials JSONL file into Trial rows, skipping malformed lines. */
+-async function readTrials(file: string): Promise<Trial[]> {
+-  let raw: string;
+-  try {
+-    raw = await readFile(file, "utf8");
+-  } catch {
+-    return [];
+-  }
+-  const out: Trial[] = [];
+-  for (const line of raw.split("\n")) {
+-    const t = line.trim();
+-    if (!t) continue;
+-    let json: unknown;
+-    try {
+-      json = JSON.parse(t);
+-    } catch {
+-      continue; // malformed JSON syntax — skip
+-    }
+-    // Schema-drift guard (review HIGH-2): a syntactically-valid row from a
+-    // sibling on an older @astragenie/gepa-core can fail TrialSchema. Validate
+-    // HERE so a drifted row is skipped, never reaching fileStore().put() where
+-    // its internal parse would throw an uncaught ZodError and abort the sync.
+-    const parsed = TrialSchema.safeParse(json);
+-    if (parsed.success) out.push(parsed.data as Trial);
+-  }
+-  return out;
+-}
+-
+-/** List agent ids (jsonl basenames) present in a repo's trials dir. */
+-async function agentsInRepo(repoRoot: string): Promise<string[]> {
+-  const dir = trialsDir(repoRoot);
+-  if (!existsSync(dir)) return [];
+-  try {
+-    return (await readdir(dir))
+-      .filter((f) => f.endsWith(".jsonl"))
+-      .map((f) => f.slice(0, -".jsonl".length));
+-  } catch {
+-    return [];
+-  }
+-}
+-
+-/** Build the set of (agent, rationale-hash) keys already present in the hub. */
+-async function hubExistingKeys(hubRepo: string): Promise<Set<string>> {
+-  const keys = new Set<string>();
+-  for (const agent of await agentsInRepo(hubRepo)) {
+-    for (const trial of await readTrials(join(trialsDir(hubRepo), `${agent}.jsonl`))) {
+-      // Only production-failure rows form the dedup namespace — mirrors sibling
+-      // ingestion (review MEDIUM-2), so a non-failure hub trial that happens to
+-      // share a rationale can't shadow a legitimately-new failure trial.
+-      if (isProductionFailure(trial)) keys.add(rationaleKey(agent, rationaleOf(trial)));
+-    }
+-  }
+-  return keys;
+-}
+-
+-interface SyncContext {
+-  hubStore: ReturnType<typeof fileStore>;
+-  seen: Set<string>;
+-  report: CorpusSyncReport;
+-}
+-
+-/** Aggregate one eligible trial into the hub (or count it as a dup). */
+-async function ingestTrial(agent: string, trial: Trial, ctx: SyncContext): Promise<void> {
+-  const { report, seen, hubStore } = ctx;
+-  report.totalEligible += 1;
+-  const stat = (report.perAgent[agent] ??= { contributed: 0, added: 0, skipped_as_dup: 0 });
+-  stat.contributed += 1;
+-
+-  const key = rationaleKey(agent, rationaleOf(trial));
+-  if (seen.has(key)) {
+-    stat.skipped_as_dup += 1;
+-    report.totalSkipped += 1;
+-    return;
+-  }
+-  seen.add(key);
+-  await hubStore.put(trial); // AC-5: only the hub is written
+-  stat.added += 1;
+-  report.totalAdded += 1;
+-}
+-
+-/** Scan one sibling repo's trials, ingesting its production-failure rows. */
+-async function syncSibling(sibling: string, ctx: SyncContext): Promise<void> {
+-  for (const agent of await agentsInRepo(sibling)) {
+-    for (const trial of await readTrials(join(trialsDir(sibling), `${agent}.jsonl`))) {
+-      if (isProductionFailure(trial)) await ingestTrial(agent, trial, ctx); // AC-4 marker discipline
+-    }
+-  }
+-}
+-
+-/**
+- * Aggregate production-failure trials from sibling repos into the hub corpus,
+- * deduping by (agent, rationale-hash). Idempotent: re-running with no new
+- * trials writes nothing (AC-2). Every eligible trial is either added or
+- * counted as a dup — `totalAdded + totalSkipped === totalEligible` (AC-3).
+- */
+-export async function syncCorpus(options: CorpusSyncOptions): Promise<CorpusSyncReport> {
+-  const { hubRepo, siblingRepos } = options;
+-  const report: CorpusSyncReport = {
+-    perAgent: {},
+-    totalEligible: 0,
+-    totalAdded: 0,
+-    totalSkipped: 0,
+-    siblingsScanned: 0,
+-    siblingsSkipped: []
+-  };
+-
+-  // Seed the seen-set from the hub so a trial already in the hub is a dup, and
+-  // so cross-sibling duplicates within this run collapse to one write.
+-  const ctx: SyncContext = {
+-    hubStore: fileStore(trialsDir(hubRepo)),
+-    seen: await hubExistingKeys(hubRepo),
+-    report
+-  };
+-
+-  for (const sibling of siblingRepos) {
+-    if (!existsSync(trialsDir(sibling))) {
+-      report.siblingsSkipped.push(sibling);
+-      continue;
+-    }
+-    report.siblingsScanned += 1;
+-    await syncSibling(sibling, ctx);
+-  }
+-
+-  return report;
+-}
+-
+-/**
+- * Auto-discover sibling repos: directories alongside `hubRepo` (same parent)
+- * that carry a GEPA trials dir. Excludes the hub itself. Best-effort — returns
+- * [] if the parent is unreadable.
+- */
+-async function discoverSiblings(hubRepo: string): Promise<string[]> {
+-  const { dirname, resolve } = await import("node:path");
+-  const parent = dirname(resolve(hubRepo));
+-  const hub = resolve(hubRepo);
+-  let entries: import("node:fs").Dirent[];
+-  try {
+-    entries = await readdir(parent, { withFileTypes: true });
+-  } catch {
+-    return [];
+-  }
+-  const siblings: string[] = [];
+-  for (const e of entries) {
+-    if (!e.isDirectory()) continue;
+-    const dir = join(parent, e.name);
+-    if (resolve(dir) === hub) continue;
+-    if (existsSync(trialsDir(dir))) siblings.push(dir);
+-  }
+-  return siblings;
+-}
+-
+-export interface CorpusSyncCmdResult {
+-  stdout: string;
+-  stderr: string;
+-  exitCode: number;
+-}
+-
+-/**
+- * CLI entry (`crew gepa-corpus-sync`). Explicit `--sibling <path>` flags win;
+- * otherwise siblings are auto-discovered next to the hub. `--json` emits the
+- * raw report. Never throws — returns a non-zero exitCode on hard failure.
+- */
+-export async function runCorpusSyncCmd(
+-  repoPath: string,
+-  rawArgs: string[]
+-): Promise<CorpusSyncCmdResult> {
+-  const explicit: string[] = [];
+-  let asJson = false;
+-  for (let i = 0; i < rawArgs.length; i += 1) {
+-    const a = rawArgs[i];
+-    if (a === "--sibling" && rawArgs[i + 1]) {
+-      explicit.push(rawArgs[i + 1]!);
+-      i += 1;
+-    } else if (a === "--json") {
+-      asJson = true;
+-    }
+-  }
+-  const siblingRepos = explicit.length > 0 ? explicit : await discoverSiblings(repoPath);
+-  let report: CorpusSyncReport;
+-  try {
+-    report = await syncCorpus({ hubRepo: repoPath, siblingRepos });
+-  } catch (err) {
+-    return {
+-      stdout: "",
+-      stderr: `gepa-corpus-sync failed: ${(err as Error).message}\n`,
+-      exitCode: 1
+-    };
+-  }
+-
+-  if (asJson) return { stdout: `${JSON.stringify(report, null, 2)}\n`, stderr: "", exitCode: 0 };
+-
+-  const lines = [
+-    `gepa-corpus-sync: ${report.siblingsScanned} sibling(s) scanned, ` +
+-      `${report.siblingsSkipped.length} skipped (no trials dir)`,
+-    `  eligible=${report.totalEligible}  added=${report.totalAdded}  ` +
+-      `deduped=${report.totalSkipped}`
+-  ];
+-  for (const [agent, stat] of Object.entries(report.perAgent).sort()) {
+-    lines.push(
+-      `  ${agent}: contributed=${stat.contributed} added=${stat.added} ` +
+-        `deduped=${stat.skipped_as_dup}`
+-    );
+-  }
+-  return { stdout: `${lines.join("\n")}\n`, stderr: "", exitCode: 0 };
+-}
+diff --git a/crew/scripts/lib/gepa/critical-agent-allowlist.mts b/crew/scripts/lib/gepa/critical-agent-allowlist.mts
+deleted file mode 100644
+index e538639d..00000000
+--- a/crew/scripts/lib/gepa/critical-agent-allowlist.mts
++++ /dev/null
+@@ -1,29 +0,0 @@
+-/**
+- * scripts/lib/gepa/critical-agent-allowlist.ts — SLICE-106
+- *
+- * Hard-coded list of agents that must NEVER be auto-merged by the GEPA
+- * promotion gate. These agents have compounding effects; their failures
+- * cascade across the entire engineering loop.
+- *
+- * Per design spec line 44: this list is NOT configurable in v1.
+- * Operators who need different critical-agent sets must modify this file
+- * and cut a new plugin release (v1.1 deferral documented in SLICE-106 Risks).
+- *
+- * Canonical members: reviewer, verifier, architect.
+- */
+-
+-/** Agents that are always left as draft PRs — never auto-merged. */
+-export const CRITICAL_AGENT_ALLOWLIST: readonly string[] = [
+-  "reviewer",
+-  "verifier",
+-  "architect"
+-] as const;
+-
+-/**
+- * Returns true when `agent` is in the critical-agent allowlist.
+- *
+- * O(n) but the list is a constant 3 — no map needed.
+- */
+-export function isCriticalAgent(agent: string): boolean {
+-  return CRITICAL_AGENT_ALLOWLIST.includes(agent as (typeof CRITICAL_AGENT_ALLOWLIST)[number]);
+-}
+diff --git a/crew/scripts/lib/gepa/gepa-optimize-cmd.mts b/crew/scripts/lib/gepa/gepa-optimize-cmd.mts
+deleted file mode 100644
+index 1b9e46c8..00000000
+--- a/crew/scripts/lib/gepa/gepa-optimize-cmd.mts
++++ /dev/null
+@@ -1,583 +0,0 @@
+-/**
+- * scripts/lib/gepa/gepa-optimize-cmd.ts — SLICE-99
+- *
+- * CLI entry point for /crew:gepa-optimize and /crew:gepa-resume subcommands.
+- *
+- * /crew:gepa-optimize <agent> --budget <usd> [--k <int>] [--artifact-only]
+- *   - Checks no-winner streak; exits non-zero (exit 3) if streak >= 3.
+- *   - Loads failing trials from .claude/artifacts/crew/gepa/trials/<agent>.jsonl
+- *   - Runs optimization cycle via optimize-runner.ts
+- *   - Logs gepa_no_winner_streak event if no_winner result increments to 3.
+- *
+- * /crew:gepa-resume <agent>
+- *   - Clears the no-winner streak for the agent.
+- *   - Next /crew:gepa-optimize call will proceed normally.
+- *
+- * Exit codes:
+- *   0 — cycle completed (winner or clean no-winner)
+- *   1 — internal error
+- *   2 — bad args / lock held
+- *   3 — no_winner_streak >= 3 (blocked)
+- */
+-
+-import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+-import { readFile } from "node:fs/promises";
+-import { isAbsolute, join } from "node:path";
+-import { parse as parseYaml } from "yaml";
+-import {
+-  fileStore,
+-  dailyCapMeter,
+-  type EvalCase,
+-  type Scorer,
+-  type Trial
+-} from "@astragenie/gepa-core";
+-import {
+-  checkStreakHalt,
+-  incrementStreak,
+-  resetStreak,
+-  NO_WINNER_STREAK_HALT
+-} from "./no-winner-streak-tracker.mjs";
+-import { createAipluginCandidateGenerator } from "./candidate-generator-aiplugin.mjs";
+-import { runOptimize, noopScorer } from "./optimize-runner.mjs";
+-import { createJudgeScorer, DEFAULT_JUDGE_CHAIN, type JudgeChainEntry } from "./judge-scorer.mjs";
+-import { splitTrainHeldout, parseSplitFlag, type SplitOpts } from "./split-train-heldout.mjs";
+-
+-// ── Types ───────────────────────────────────────────────────────────────────
+-
+-export interface OptimizeCmdResult {
+-  exitCode: number;
+-  stdout: string;
+-  stderr: string;
+-}
+-
+-// ── CLI arg parser ───────────────────────────────────────────────────────────
+-
+-export interface ParsedOptimizeArgs {
+-  agent?: string;
+-  budget?: number;
+-  k: number;
+-  artifactOnly: boolean;
+-  /** SLICE-C: train/heldOut split for eval cases loaded from evals/agents/. */
+-  split?: SplitOpts;
+-  invalid?: string;
+-}
+-
+-interface NumericFlagSpec {
+-  parser: (s: string) => number;
+-  requireInt?: boolean;
+-  errorLabel: string;
+-}
+-
+-function parseNumericFlag(
+-  args: string[],
+-  i: number,
+-  spec: NumericFlagSpec
+-): { value?: number; invalid?: string } {
+-  const val = args[i + 1];
+-  if (!val || val.startsWith("--")) {
+-    return { invalid: `${spec.errorLabel} requires a value` };
+-  }
+-  const num = spec.parser(val);
+-  if (Number.isNaN(num) || num <= 0) {
+-    const kind = spec.requireInt ? "positive integer" : "positive number";
+-    return { invalid: `${spec.errorLabel} must be a ${kind}` };
+-  }
+-  return { value: num };
+-}
+-
+-/**
+- * Handles the `--split` flag: mutates `parsed` in place and returns `true`
+- * when parsing must halt (an invalid value was set). Fully self-contained
+- * (including the invalid-value branch) so parseOptimizeArgs only pays one
+- * branch for the whole flag, keeping its cognitive complexity in budget.
+- */
+-function applySplitFlag(args: string[], i: number, parsed: ParsedOptimizeArgs): boolean {
+-  const val = args[i + 1];
+-  if (!val || val.startsWith("--")) {
+-    parsed.invalid = "--split requires a value";
+-    return true;
+-  }
+-  const splitOpts = parseSplitFlag(val);
+-  if (!splitOpts) {
+-    parsed.invalid = "--split must be formatted as train/heldOut (e.g. 8/2)";
+-    return true;
+-  }
+-  parsed.split = splitOpts;
+-  return false;
+-}
+-
+-const NUMERIC_FLAGS: Record<string, NumericFlagSpec & { key: "budget" | "k" }> = {
+-  "--budget": { key: "budget", parser: Number, errorLabel: "--budget" },
+-  "--k": {
+-    key: "k",
+-    parser: (s) => Number.parseInt(s, 10),
+-    requireInt: true,
+-    errorLabel: "--k"
+-  }
+-};
+-
+-/**
+- * Consume one arg (and any value it takes) at index `i`, mutating `parsed`.
+- * Returns the number of positions to advance `i` by. Extracted out of the
+- * while loop in parseOptimizeArgs so each flag's branch (and any nested
+- * invalid-value branch) is counted in ITS OWN function's cognitive
+- * complexity budget rather than stacking on top of the loop's nesting.
+- */
+-function consumeOptimizeArg(args: string[], i: number, parsed: ParsedOptimizeArgs): number {
+-  const arg = args[i] ?? "";
+-  const numeric = NUMERIC_FLAGS[arg];
+-  if (numeric) {
+-    const result = parseNumericFlag(args, i, numeric);
+-    if (result.invalid !== undefined) {
+-      parsed.invalid = result.invalid;
+-      return 1;
+-    }
+-    parsed[numeric.key] = result.value as number;
+-    return 2;
+-  }
+-  if (arg === "--artifact-only") {
+-    parsed.artifactOnly = true;
+-    return 1;
+-  }
+-  if (arg === "--split") {
+-    return applySplitFlag(args, i, parsed) ? 1 : 2;
+-  }
+-  if (!arg.startsWith("--") && !parsed.agent) {
+-    parsed.agent = arg;
+-  }
+-  return 1;
+-}
+-
+-export function parseOptimizeArgs(args: string[]): ParsedOptimizeArgs {
+-  const parsed: ParsedOptimizeArgs = { k: 5, artifactOnly: true };
+-  let i = 0;
+-  while (i < args.length && parsed.invalid === undefined) {
+-    i += consumeOptimizeArg(args, i, parsed);
+-  }
+-  return parsed;
+-}
+-
+-// ── Events log ──────────────────────────────────────────────────────────────
+-
+-const EVENTS_LOG_PATH = ".claude/logs/events.jsonl";
+-
+-function logEvent(repoPath: string, event: Record<string, unknown>): void {
+-  try {
+-    const dir = join(repoPath, ".claude", "logs");
+-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+-    const line = `${JSON.stringify({ ts: new Date().toISOString(), ...event })}\n`;
+-    appendFileSync(join(repoPath, EVENTS_LOG_PATH), line, { flag: "a" });
+-  } catch {
+-    // Event log write must never propagate.
+-  }
+-}
+-
+-// ── Eval case loading for the judge-backed scorer (FEAT-192 SLICE-C) ────────
+-//
+-// `evals/agents/crew-<agent>.yaml` is the same spec evals/cli.ts runs
+-// against — reusing it here means the GEPA optimize cycle scores candidates
+-// against the SAME rubrics the agent is graded on day-to-day, not a bespoke
+-// second corpus. Absence of a spec (or a spec with zero usable fixtures)
+-// degrades byte-identical to the pre-SLICE-C behavior: noopScorer, no
+-// `cases`, artifact-only.
+-
+-interface OptimizeEvalAssertSpec {
+-  type: string;
+-  rubric?: string;
+-  value?: string;
+-}
+-
+-interface OptimizeEvalTestSpec {
+-  name: string;
+-  fixture?: string;
+-  assert?: OptimizeEvalAssertSpec[];
+-}
+-
+-interface OptimizeEvalSpec {
+-  judge?: {
+-    provider: string;
+-    model?: string;
+-    fallback?: Array<{ provider: string; model?: string }>;
+-  };
+-  tests?: OptimizeEvalTestSpec[];
+-}
+-
+-async function readFixtureText(repoPath: string, fixtureRef: string): Promise<string | null> {
+-  const normalized = fixtureRef.startsWith("file://")
+-    ? fixtureRef.slice("file://".length)
+-    : fixtureRef;
+-  const abs = isAbsolute(normalized) ? normalized : join(repoPath, normalized);
+-  try {
+-    return await readFile(abs, "utf8");
+-  } catch {
+-    return null;
+-  }
+-}
+-
+-function extractRubrics(test: OptimizeEvalTestSpec): string[] {
+-  return (test.assert ?? [])
+-    .filter((a) => a.type === "llm-rubric" && (a.rubric ?? a.value) !== undefined)
+-    .map((a) => a.rubric ?? a.value ?? "");
+-}
+-
+-async function buildEvalCases(repoPath: string, spec: OptimizeEvalSpec): Promise<EvalCase[]> {
+-  const cases: EvalCase[] = [];
+-  for (const test of spec.tests ?? []) {
+-    if (!test.fixture) continue;
+-    const text = await readFixtureText(repoPath, test.fixture);
+-    if (text === null) continue;
+-    cases.push({ id: test.name, input: text, rubric: extractRubrics(test), held_out: false });
+-  }
+-  return cases;
+-}
+-
+-/** Sensible default when --split is not given: ~1/3 held out, rest train. */
+-function defaultSplitFor(caseCount: number): SplitOpts {
+-  const heldOut = Math.max(1, Math.round(caseCount / 3));
+-  return { train: Math.max(0, caseCount - heldOut), heldOut };
+-}
+-
+-function judgeChainFromSpec(spec: OptimizeEvalSpec): JudgeChainEntry[] {
+-  if (!spec.judge) return DEFAULT_JUDGE_CHAIN;
+-  const primary: JudgeChainEntry = { provider: spec.judge.provider };
+-  if (spec.judge.model !== undefined) primary.model = spec.judge.model;
+-  const chain: JudgeChainEntry[] = [primary];
+-  for (const fb of spec.judge.fallback ?? []) {
+-    const entry: JudgeChainEntry = { provider: fb.provider };
+-    if (fb.model !== undefined) entry.model = fb.model;
+-    chain.push(entry);
+-  }
+-  return chain;
+-}
+-
+-/**
+- * Cold-start bootstrap: when the trial store has NO failing trials yet (a
+- * brand-new agent, or one that has never run through /crew:gepa-optimize),
+- * the candidate generator has nothing to react to. Seed synthetic Trial rows
+- * from the TRAIN split's eval cases — no score.rationale from a real judge
+- * run against the champion here (that would double the live-scoring surface
+- * this slice already adds via the heldOut cases), but the case input still
+- * gives the rewriter real scenarios to consider instead of nothing at all.
+- * This is what "wires" splitTrainHeldout's train tranche to a caller — the
+- * heldOut tranche is the one that actually scores candidates (the AC-3
+- * signal); train only fires when there is no other failing-trial context.
+- */
+-function buildTrainSeedTrials(agent: string, trainCases: EvalCase[]): Trial[] {
+-  const now = new Date().toISOString();
+-  return trainCases.map((c) => ({
+-    id: crypto.randomUUID(),
+-    agent,
+-    phase: "build",
+-    candidate_prompt_hash: "champion-cold-start",
+-    candidate_prompt_path: null,
+-    input: c.input,
+-    output: null,
+-    score: {
+-      pass: false,
+-      score: 0,
+-      cost_usd: 0,
+-      latency_ms: 0,
+-      rationale: "seeded from train-split eval case (no historical failing trial yet)"
+-    },
+-    source: "eval",
+-    pareto_rank: null,
+-    created_at: now
+-  }));
+-}
+-
+-/**
+- * Last-resort cold-start seed (FEAT-192 SLICE-D). Fires only when BOTH the
+- * train split AND the historical trial store are empty — the shape produced
+- * by `--split 0/N` (every case pushed into heldOut, the AC-3 proof split) on
+- * an agent with zero trial history. Without this, `dispatchRewriter` would
+- * run its very first candidate-generation attempt with no failing-trial
+- * context at all — `buildTrainSeedTrials` has nothing to draw from once
+- * every case is held out (SLICE-C review HIGH follow-up: forcing all cases
+- * into heldOut empties `train`, which zeroes `trainSeedTrials`).
+- *
+- * Same honesty rule as `buildTrainSeedTrials`: no fabricated judge score.
+- * The rationale says plainly that no baseline trial exists yet and folds in
+- * the case's OWN rubric text — the one thing actually known about what
+- * "pass" requires — rather than inventing a specific failure narrative. A
+- * live optimize cycle should supersede this the moment real trial history
+- * exists (see `resolveFailingTrialContext`'s priority order).
+- */
+-function buildHeldOutSeedTrials(agent: string, heldOutCases: EvalCase[]): Trial[] {
+-  const now = new Date().toISOString();
+-  return heldOutCases.map((c) => {
+-    const rubricText = (c.rubric ?? []).join(" / ") || "no rubric provided";
+-    return {
+-      id: crypto.randomUUID(),
+-      agent,
+-      phase: "build",
+-      candidate_prompt_hash: "champion-cold-start",
+-      candidate_prompt_path: null,
+-      input: c.input,
+-      output: null,
+-      score: {
+-        pass: false,
+-        score: 0,
+-        cost_usd: 0,
+-        latency_ms: 0,
+-        rationale: `cold-start seed (no baseline trial yet for case "${c.id}"): scored on this rubric — ${rubricText}`
+-      },
+-      source: "eval",
+-      pareto_rank: null,
+-      created_at: now
+-    };
+-  });
+-}
+-
+-/**
+- * Cold-start failing-trial context, in priority order: real trial-store
+- * history > train-split seed trials > heldOut-split seed trials (last
+- * resort — see `buildHeldOutSeedTrials`). The heldOut fallback only fires
+- * when BOTH higher-priority sources are empty.
+- */
+-function resolveFailingTrialContext(
+-  agent: string,
+-  failingTrials: Trial[],
+-  trainSeedTrials: Trial[],
+-  heldOutCases: EvalCase[]
+-): Trial[] {
+-  if (failingTrials.length > 0) return failingTrials;
+-  if (trainSeedTrials.length > 0) return trainSeedTrials;
+-  if (heldOutCases.length > 0) return buildHeldOutSeedTrials(agent, heldOutCases);
+-  return failingTrials;
+-}
+-
+-export interface OptimizeEvalCasesResult {
+-  /** Held-out cases — passed to runOptimize's `cases`; these score candidates. */
+-  heldOut: EvalCase[];
+-  /** Cold-start-only trial seeds derived from the train split (see buildTrainSeedTrials). */
+-  trainSeedTrials: Trial[];
+-  /** Judge fallback chain derived from the spec's `judge` block. */
+-  judgeChain: JudgeChainEntry[];
+-}
+-
+-/**
+- * Load + split eval cases for `agent` from `evals/agents/crew-<agent>.yaml`.
+- * Returns null when the spec is absent, unparseable, or has zero fixtures
+- * that actually load — callers must degrade to noopScorer/no-cases in that
+- * case (do NOT throw; a missing eval spec is a normal, common state).
+- */
+-export async function loadEvalCasesForOptimize(
+-  repoPath: string,
+-  agent: string,
+-  split?: SplitOpts
+-): Promise<OptimizeEvalCasesResult | null> {
+-  const specPath = join(repoPath, "evals", "agents", `crew-${agent}.yaml`);
+-  let raw: string;
+-  try {
+-    raw = await readFile(specPath, "utf8");
+-  } catch {
+-    return null;
+-  }
+-
+-  let spec: OptimizeEvalSpec;
+-  try {
+-    spec = parseYaml(raw) as OptimizeEvalSpec;
+-  } catch {
+-    return null;
+-  }
+-
+-  const allCases = await buildEvalCases(repoPath, spec);
+-  if (allCases.length === 0) return null;
+-
+-  const splitOpts = split ?? defaultSplitFor(allCases.length);
+-  const { train, heldOut } = splitTrainHeldout(allCases, splitOpts);
+-
+-  return {
+-    heldOut: heldOut.map((c) => ({ ...c, held_out: true })),
+-    trainSeedTrials: buildTrainSeedTrials(agent, train),
+-    judgeChain: judgeChainFromSpec(spec)
+-  };
+-}
+-
+-/** noopScorer when no cases resolved; judge-backed scorer otherwise. */
+-export function selectScorer(hasCases: boolean, judgeChain: JudgeChainEntry[]): Scorer {
+-  return hasCases ? createJudgeScorer({ judgeChain }) : noopScorer();
+-}
+-
+-/** Resolved inputs for the `runOptimize({ scorer, cases, failingTrials })` call. */
+-export interface ResolvedOptimizeInputs {
+-  scorer: Scorer;
+-  cases?: EvalCase[];
+-  failingTrials: Trial[];
+-}
+-
+-/**
+- * Decide scorer + cases + effective failingTrials for one optimize cycle.
+- * Extracted out of runGepaOptimizeCmd to keep its cognitive complexity in
+- * budget (FEAT-192 SLICE-C). Exported (FEAT-192 SLICE-D) so the AC-3 proof
+- * split/seeding interaction is directly unit-testable without a live LLM.
+- */
+-export async function resolveOptimizeInputs(
+-  repoPath: string,
+-  agent: string,
+-  split: SplitOpts | undefined,
+-  failingTrials: Trial[]
+-): Promise<ResolvedOptimizeInputs> {
+-  const evalCases = await loadEvalCasesForOptimize(repoPath, agent, split);
+-  const heldOutCases = evalCases?.heldOut ?? [];
+-  const hasCases = heldOutCases.length > 0;
+-  const judgeChain = evalCases?.judgeChain ?? DEFAULT_JUDGE_CHAIN;
+-  const trainSeedTrials = evalCases?.trainSeedTrials ?? [];
+-  const effectiveFailingTrials = resolveFailingTrialContext(
+-    agent,
+-    failingTrials,
+-    trainSeedTrials,
+-    heldOutCases
+-  );
+-
+-  return {
+-    scorer: selectScorer(hasCases, judgeChain),
+-    failingTrials: effectiveFailingTrials,
+-    ...(hasCases ? { cases: heldOutCases } : {})
+-  };
+-}
+-
+-// ── Command handlers ─────────────────────────────────────────────────────────
+-
+-export async function runGepaOptimizeCmd(
+-  repoPath: string,
+-  args: string[]
+-): Promise<OptimizeCmdResult> {
+-  const parsed = parseOptimizeArgs(args);
+-
+-  if (parsed.invalid) {
+-    return { exitCode: 2, stdout: "", stderr: `${parsed.invalid}\n` };
+-  }
+-
+-  if (!parsed.agent) {
+-    return {
+-      exitCode: 2,
+-      stdout: "",
+-      stderr:
+-        "usage: gepa-optimize <agent> --budget <usd> [--k <int>] [--artifact-only] [--repo <path>]\n"
+-    };
+-  }
+-
+-  if (parsed.budget === undefined) {
+-    return { exitCode: 2, stdout: "", stderr: "--budget is required\n" };
+-  }
+-
+-  const { agent, budget, k } = parsed;
+-
+-  // Check no-winner streak BEFORE generating candidates.
+-  const streakCheck = checkStreakHalt(agent, { repoPath });
+-  if (streakCheck.halted) {
+-    return {
+-      exitCode: 3,
+-      stdout: "",
+-      stderr: `no_winner_streak: ${streakCheck.streak} — run /crew:gepa-resume ${agent} to retry\n`
+-    };
+-  }
+-
+-  // Load failing trials from the trial store.
+-  const trialsRoot = join(repoPath, ".claude", "artifacts", "crew", "gepa", "trials");
+-  const store = fileStore(trialsRoot);
+-  const failingTrials = await store.recall({
+-    agent,
+-    failuresOnly: true,
+-    limit: 50
+-  });
+-
+-  // Build cycle ID (used as the candidates subdirectory name).
+-  const cycleId = crypto.randomUUID();
+-
+-  // Budget meter persisted to disk.
+-  const budgetPath = join(repoPath, ".claude", "artifacts", "crew", "gepa", "budget.json");
+-  const meter = dailyCapMeter(budget, budgetPath);
+-
+-  // Candidate generator.
+-  const generator = createAipluginCandidateGenerator({ repoPath, cycleId });
+-
+-  // FEAT-192 SLICE-C: load real eval cases (if a spec exists for this agent)
+-  // and swap in the judge-backed scorer. No spec / no fixtures both degrade
+-  // to the pre-SLICE-C artifact-only path (noopScorer, no `cases`).
+-  const resolvedInputs = await resolveOptimizeInputs(repoPath, agent, parsed.split, failingTrials);
+-
+-  // Run the optimization cycle.
+-  const result = await runOptimize({
+-    repoPath,
+-    agent,
+-    k,
+-    budgetUsd: budget,
+-    generator,
+-    meter,
+-    ...resolvedInputs
+-  });
+-
+-  if (result === null) {
+-    return {
+-      exitCode: 2,
+-      stdout: "",
+-      stderr: `lock_held_by_other_process: agent=${agent} phase=optimize\n`
+-    };
+-  }
+-
+-  // Update no-winner streak.
+-  if (result.no_winner || result.winner === null) {
+-    const newStreak = incrementStreak(agent, { repoPath });
+-    logEvent(repoPath, {
+-      event: "gepa_no_winner_streak",
+-      agent,
+-      streak: newStreak,
+-      run_id: result.run_id,
+-      cycle_id: result.cycle_id
+-    });
+-    if (newStreak >= NO_WINNER_STREAK_HALT) {
+-      // Log the halt event.
+-      logEvent(repoPath, {
+-        event: "gepa_no_winner_streak_halt",
+-        agent,
+-        streak: newStreak
+-      });
+-    }
+-  } else {
+-    // Winner found — reset streak.
+-    resetStreak(agent, { repoPath });
+-  }
+-
+-  const lines: string[] = [
+-    `gepa-optimize: cycle complete`,
+-    `  run_id: ${result.run_id}`,
+-    `  agent: ${result.agent}`,
+-    `  k: ${result.k}`,
+-    `  candidates_evaluated: ${result.candidates_evaluated}`,
+-    `  partial: ${result.partial}`,
+-    `  no_winner: ${result.no_winner}`,
+-    result.winner
+-      ? `  winner: ${result.winner.candidate_id} (rank=${result.winner.pareto_rank} score=${result.winner.score.toFixed(3)})`
+-      : "  winner: null"
+-  ];
+-
+-  return { exitCode: 0, stdout: `${lines.join("\n")}\n`, stderr: "" };
+-}
+-
+-export async function runGepaResumeCmd(
+-  repoPath: string,
+-  positionals: string[]
+-): Promise<OptimizeCmdResult> {
+-  const agent = positionals[0];
+-  if (!agent || agent.startsWith("--")) {
+-    return {
+-      exitCode: 2,
+-      stdout: "",
+-      stderr: "usage: gepa-resume <agent> [--repo <path>]\n"
+-    };
+-  }
+-
+-  resetStreak(agent, { repoPath });
+-  logEvent(repoPath, {
+-    event: "gepa_resume",
+-    agent
+-  });
+-
+-  return {
+-    exitCode: 0,
+-    stdout: `gepa-resume: streak cleared for agent ${agent}\n`,
+-    stderr: ""
+-  };
+-}
+diff --git a/crew/scripts/lib/gepa/guarded-fire.mts b/crew/scripts/lib/gepa/guarded-fire.mts
+deleted file mode 100644
+index 633c24b4..00000000
+--- a/crew/scripts/lib/gepa/guarded-fire.mts
++++ /dev/null
+@@ -1,59 +0,0 @@
+-// guarded-fire.ts — shared timeout-race helper for fire-and-forget capture
+-// paths (runner-plugin issue #360 fix-forward).
+-//
+-// Root cause this module fixes: capture-failure-trial-guard.ts's original
+-// Promise.race([work, timeoutAfter(ms)]) bounded the LOGICAL await (the
+-// promise a caller sees resolves at min(work duration, ms)) but did NOT
+-// bound OS-process wall-time. A plain `setTimeout` is a *ref'd* handle by
+-// default — Promise.race does not cancel the losing branch, so even after
+-// the race resolves via `work` finishing first, the timer keeps ticking in
+-// the background until it naturally fires at `ms`. Because Node only exits
+-// once every ref'd handle has drained, a caller who never explicitly calls
+-// process.exit() (e.g. scripts/crew.ts's `void main()` entrypoint) pays the
+-// FULL ceiling in wall-clock process lifetime on every single call — even
+-// on the fast/warm path where the real work finished in a few ms. That is
+-// what made every ceremony + gate write slower repo-wide.
+-//
+-// Fix: `.unref()` the race timer. This does not change when the timer
+-// fires or when the returned promise resolves (Promise.race semantics are
+-// untouched) — it only tells Node "don't count this handle when deciding
+-// whether to keep the process alive." Combined with detaching the
+-// fire-and-forget call at the use site (never inline-awaited), a slow/cold
+-// capture can no longer add wall-time to either the logical caller's await
+-// chain or the OS process's exit.
+-//
+-// Trade accepted (documented at every fire-and-forget call site): if the
+-// process exits before a detached guarded call settles, the underlying
+-// work (import + write) is abandoned mid-flight and its result is dropped.
+-// These captures are always derived duplicates of a source of truth
+-// (astramem for learnings, the GEPA trial corpus for reflection) — a
+-// dropped capture is a correctness no-op, never a data-loss incident.
+-
+-export const DEFAULT_GUARD_TIMEOUT_MS = 1500;
+-
+-function timeoutAfter(ms: number): Promise<"timeout"> {
+-  return new Promise((resolve) => {
+-    const timer = setTimeout(() => resolve("timeout"), ms);
+-    // Never let this timer, by itself, keep the process alive — see header.
+-    timer.unref?.();
+-  });
+-}
+-
+-/**
+- * Race `run()` against a `timeoutMs` ceiling. Never throws, never blocks
+- * the caller beyond `timeoutMs` — on timeout OR error, the result is
+- * simply dropped (silently, matching the fire-and-forget contract every
+- * capture point in this codebase follows). The race timer is `.unref()`'d,
+- * so an unawaited (fire-and-forget) call never holds the OS process open
+- * on its own.
+- */
+-export async function fireGuarded(
+-  run: () => Promise<void>,
+-  timeoutMs: number = DEFAULT_GUARD_TIMEOUT_MS
+-): Promise<void> {
+-  try {
+-    await Promise.race([run(), timeoutAfter(timeoutMs)]);
+-  } catch {
+-    // Fire-and-forget: never propagate.
+-  }
+-}
+diff --git a/crew/scripts/lib/gepa/judge-scorer.mts b/crew/scripts/lib/gepa/judge-scorer.mts
+deleted file mode 100644
+index 9ba9d316..00000000
+--- a/crew/scripts/lib/gepa/judge-scorer.mts
++++ /dev/null
+@@ -1,200 +0,0 @@
+-/**
+- * scripts/lib/gepa/judge-scorer.ts — FEAT-192 SLICE-C
+- *
+- * Judge-backed Scorer adapter: implements the gepa-core `Scorer` interface
+- * (`score(run, expected) -> ScoreResult`) by (1) dispatching the candidate
+- * agent against the eval case's fixture input via the SLICE-A primitives in
+- * evals/lib/candidate-dispatch.ts, then (2) judging the captured response
+- * against the case's rubric via the evals/lib/judge.ts JUDGE_REGISTRY,
+- * trying an ordered fallback chain (default: groq/llama-3.3-70b-versatile
+- * primary, gemini fallback) — the same fallback-chain shape evals/lib/run-eval.ts
+- * uses for live eval runs.
+- *
+- * This is the gap SLICE-99 left as `noopScorer()` in gepa-optimize-cmd.ts.
+- * Without this adapter, /crew:gepa-optimize can only ever run artifact-only:
+- * candidates are generated but never actually scored against a real eval
+- * case, so no AC can prove a rewrite improves anything (proving that is
+- * SLICE-D's job — this slice only builds the harness that makes it provable).
+- *
+- * gepa-core's own `sequentialRunner` builds a placeholder `AgentRun` with
+- * `raw_output: null` and hands it straight to `Scorer.score()` (see
+- * runner/sequential-runner.js) — the runner does NOT dispatch the candidate
+- * itself. That means dispatch is this Scorer's job, not the runner's: `run`
+- * only carries `candidate_prompt_path` + `case_id`; the actual candidate
+- * output is produced here, per trial.
+- */
+-
+-import type { AgentRun, EvalCase, LLMJudge, ScoreResult, Scorer } from "@astragenie/gepa-core";
+-import { dispatchCandidate } from "../../../evals/lib/candidate-dispatch.mjs";
+-import { JUDGE_REGISTRY } from "../../../evals/lib/judge.mjs";
+-
+-// ── DI seam (pattern-matches candidate-generator-aiplugin.ts's *Deps seams) ──
+-
+-/** Minimal shape judge-scorer needs from a dispatch call. */
+-export interface JudgeScorerDispatchResult {
+-  candidateOutput: string;
+-}
+-
+-export interface JudgeScorerDispatchOptions {
+-  agentPromptPath: string;
+-  fixtureContent: string;
+-  model?: string;
+-  timeoutMs?: number;
+-}
+-
+-export interface JudgeChainEntry {
+-  provider: string;
+-  model?: string;
+-}
+-
+-/**
+- * Test seam: override candidate dispatch and judge-chain resolution so unit
+- * tests never spawn `claude -p` or hit a live LLM.
+- */
+-export interface JudgeScorerDeps {
+-  dispatch(opts: JudgeScorerDispatchOptions): Promise<JudgeScorerDispatchResult>;
+-  /**
+-   * Resolve the ordered judge chain into constructed LLMJudge instances.
+-   * Construction failures (e.g. unknown provider) are reported in `errors`
+-   * and simply excluded from `judges` — the caller tries whatever resolved,
+-   * in order, at evaluate() time.
+-   */
+-  resolveJudgeChain(chain: JudgeChainEntry[]): Promise<{ judges: LLMJudge[]; errors: string[] }>;
+-}
+-
+-/** Default fallback chain when the caller does not supply one. */
+-export const DEFAULT_JUDGE_CHAIN: JudgeChainEntry[] = [
+-  { provider: "groq", model: "llama-3.3-70b-versatile" },
+-  { provider: "gemini" }
+-];
+-
+-function errMessage(err: unknown): string {
+-  return err instanceof Error ? err.message : String(err);
+-}
+-
+-async function defaultResolveJudgeChain(
+-  chain: JudgeChainEntry[]
+-): Promise<{ judges: LLMJudge[]; errors: string[] }> {
+-  const judges: LLMJudge[] = [];
+-  const errors: string[] = [];
+-  for (const entry of chain) {
+-    const factory = JUDGE_REGISTRY[entry.provider];
+-    if (!factory) {
+-      errors.push(`unknown judge provider: ${entry.provider}`);
+-      continue;
+-    }
+-    try {
+-      const cfg = entry.model !== undefined ? { model: entry.model } : undefined;
+-      judges.push(await factory(cfg));
+-    } catch (err) {
+-      errors.push(`${entry.provider}: ${errMessage(err)}`);
+-    }
+-  }
+-  return { judges, errors };
+-}
+-
+-const defaultDeps: JudgeScorerDeps = {
+-  dispatch: dispatchCandidate,
+-  resolveJudgeChain: defaultResolveJudgeChain
+-};
+-
+-export interface JudgeScorerOpts {
+-  /** Candidate model override, forwarded to dispatchCandidate. */
+-  model?: string;
+-  /** Per-dispatch timeout override, forwarded to dispatchCandidate. */
+-  timeoutMs?: number;
+-  /** Primary + fallback judge chain. Default: groq/llama-3.3-70b-versatile -> gemini. */
+-  judgeChain?: JudgeChainEntry[];
+-  /** Test seam — partial override; unset members fall back to the real implementation. */
+-  deps?: Partial<JudgeScorerDeps>;
+-}
+-
+-// ── Helpers ──────────────────────────────────────────────────────────────────
+-
+-/** EvalCase.input is `unknown` — dispatch needs a string fixture body. */
+-function toFixtureContent(input: unknown): string {
+-  if (typeof input === "string") return input;
+-  if (input === undefined || input === null) return "";
+-  try {
+-    return JSON.stringify(input);
+-  } catch {
+-    return String(input);
+-  }
+-}
+-
+-function failResult(startedAt: number, rationale: string): ScoreResult {
+-  return { pass: false, score: 0, cost_usd: 0, latency_ms: Date.now() - startedAt, rationale };
+-}
+-
+-// ── Scorer factory ───────────────────────────────────────────────────────────
+-
+-/**
+- * Build a judge-backed Scorer. `run.candidate_prompt_path` (set by
+- * `sequentialRunner` from `Candidate.prompt_path`) points at the candidate's
+- * prompt file on disk; `expected` (the EvalCase) carries the fixture input
+- * and rubric to score against.
+- *
+- * Never throws: dispatch failures and judge failures (construction-time or
+- * evaluate()-time — including "primary throws, fallback picks up") degrade
+- * to a `pass:false` ScoreResult with a diagnostic rationale, so the trial
+- * corpus always retains a row (mirrors rubricScorer's contract in gepa-core).
+- * `rationale` on the success path is the judge's FULL rationale, unmodified —
+- * the candidate generator threads it verbatim into the next rewrite prompt.
+- */
+-export function createJudgeScorer(opts: JudgeScorerOpts = {}): Scorer {
+-  const judgeChain = opts.judgeChain ?? DEFAULT_JUDGE_CHAIN;
+-  const deps: JudgeScorerDeps = { ...defaultDeps, ...opts.deps };
+-
+-  return {
+-    async score(run: AgentRun, expected: EvalCase): Promise<ScoreResult> {
+-      const startedAt = Date.now();
+-
+-      if (!run.candidate_prompt_path) {
+-        return failResult(startedAt, "dispatch_failed: candidate_prompt_path is empty");
+-      }
+-
+-      let candidateOutput: string;
+-      try {
+-        const dispatchOpts: JudgeScorerDispatchOptions = {
+-          agentPromptPath: run.candidate_prompt_path,
+-          fixtureContent: toFixtureContent(expected.input)
+-        };
+-        if (opts.model !== undefined) dispatchOpts.model = opts.model;
+-        if (opts.timeoutMs !== undefined) dispatchOpts.timeoutMs = opts.timeoutMs;
+-        const dispatched = await deps.dispatch(dispatchOpts);
+-        candidateOutput = dispatched.candidateOutput;
+-      } catch (err) {
+-        return failResult(startedAt, `dispatch_failed: ${errMessage(err)}`);
+-      }
+-
+-      const { judges, errors } = await deps.resolveJudgeChain(judgeChain);
+-      const chainErrors = [...errors];
+-      const rubric = expected.rubric ?? [];
+-
+-      for (const judge of judges) {
+-        try {
+-          const result = await judge.evaluate({
+-            candidateOutput,
+-            expected,
+-            rubric,
+-            context: { promptId: run.agent }
+-          });
+-          return {
+-            pass: result.pass,
+-            score: result.score,
+-            cost_usd: result.cost_usd,
+-            latency_ms: Date.now() - startedAt,
+-            rationale: result.rationale
+-          };
+-        } catch (err) {
+-          chainErrors.push(`${judge.describe().provider}: ${errMessage(err)}`);
+-        }
+-      }
+-
+-      return failResult(
+-        startedAt,
+-        `judge_unavailable: ${chainErrors.join("; ") || "no judges resolved"}`
+-      );
+-    }
+-  };
+-}
+diff --git a/crew/scripts/lib/gepa/load-config.mts b/crew/scripts/lib/gepa/load-config.mts
+deleted file mode 100644
+index 80929140..00000000
+--- a/crew/scripts/lib/gepa/load-config.mts
++++ /dev/null
+@@ -1,17 +0,0 @@
+-import { existsSync, readFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { GepaConfigSchema, type GepaConfig } from "@astragenie/gepa-core";
+-
+-export async function loadGepaConfig(repoPath: string): Promise<GepaConfig | null> {
+-  const path = join(repoPath, "gepa.config.json");
+-  if (!existsSync(path)) return null;
+-  try {
+-    const raw = readFileSync(path, "utf8");
+-    const parsed = JSON.parse(raw);
+-    const result = GepaConfigSchema.safeParse(parsed);
+-    if (!result.success) return null;
+-    return result.data;
+-  } catch {
+-    return null;
+-  }
+-}
+diff --git a/crew/scripts/lib/gepa/mine-reviewer-bug-corpus.mts b/crew/scripts/lib/gepa/mine-reviewer-bug-corpus.mts
+deleted file mode 100644
+index 129a0fcb..00000000
+--- a/crew/scripts/lib/gepa/mine-reviewer-bug-corpus.mts
++++ /dev/null
+@@ -1,383 +0,0 @@
+-/**
+- * scripts/lib/gepa/mine-reviewer-bug-corpus.ts — SLICE-103
+- *
+- * CLI helper that walks `.claude/artifacts/crew/reviews/` for review artifacts
+- * containing CRITICAL or HIGH findings, extracts structured bug cases, and
+- * emits candidate EvalCase JSONL seeds under a configurable output directory.
+- *
+- * CLI:
+- *   node scripts/crew.ts gepa-mine-reviewer --weeks 8 --out agents/reviewer/.gepa/eval/
+- *
+- * AC-5: --weeks 0 → exit 0, no files written, helpful message.
+- * AC-9: Progress logged to stderr (one line per review artifact processed).
+- *
+- * Security note: all extracted strings are passed through redactRationale()
+- * before write to prevent secret leakage from review text.
+- */
+-
+-import { readdir, readFile, mkdir, writeFile, stat } from "node:fs/promises";
+-import { join } from "node:path";
+-import { redactRationale } from "@astragenie/gepa-core";
+-
+-// ---------------------------------------------------------------------------
+-// Schema types (matches EvalCaseSchema in gepa-core with reviewer extensions)
+-// ---------------------------------------------------------------------------
+-
+-/** Structured notes embedded in each EvalCase as a JSON string (matches EvalCaseSchema.notes: string). */
+-export interface ReviewerEvalCaseNotes {
+-  bug_class: string | null;
+-  severity_expected: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+-  provenance: string;
+-  verdict_expected: string;
+-}
+-
+-export interface ReviewerEvalCase {
+-  id: string;
+-  input: {
+-    diff: string;
+-    context: string;
+-  };
+-  expected_output: {
+-    verdict: "approve" | "approve_with_notes" | "request_changes";
+-    severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+-    rationale: string;
+-  };
+-  rubric: string[];
+-  held_out: boolean;
+-  /** JSON-serialized ReviewerEvalCaseNotes — matches EvalCaseSchema.notes: string. */
+-  notes: string;
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Mined seed (raw extraction before EvalCase shape)
+-// ---------------------------------------------------------------------------
+-
+-export interface MinedSeed {
+-  /** Review artifact filename (basename). */
+-  sourceFile: string;
+-  /** Extracted decision from the review. */
+-  decision: string;
+-  /** Extracted risks/findings text from the review. */
+-  risks: string;
+-  /** Extracted required-follow-up text. */
+-  followUp: string;
+-  /** Inferred bug class from content. */
+-  bugClass: string | null;
+-  /** Inferred severity. */
+-  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Parse args
+-// ---------------------------------------------------------------------------
+-
+-export interface MineArgs {
+-  weeks: number;
+-  out: string;
+-  repoPath: string;
+-  invalid?: string;
+-}
+-
+-/** Parse --weeks flag. Returns parsed week count or an error string. */
+-function parseWeeksFlag(args: string[], i: number): { weeks: number; invalid?: string } {
+-  const val = args[i + 1];
+-  if (!val || val.startsWith("--")) {
+-    return { weeks: 0, invalid: "--weeks requires a numeric value" };
+-  }
+-  const n = Number(val);
+-  if (!Number.isFinite(n) || n < 0) {
+-    return { weeks: 0, invalid: "--weeks must be a non-negative number" };
+-  }
+-  return { weeks: Math.floor(n) };
+-}
+-
+-/** Parse --out flag. Returns parsed path or an error string. */
+-function parseOutFlag(args: string[], i: number): { out: string; invalid?: string } {
+-  const val = args[i + 1];
+-  if (!val || val.startsWith("--")) {
+-    return { out: "", invalid: "--out requires a directory path" };
+-  }
+-  return { out: val };
+-}
+-
+-export function parseMineArgs(args: string[], repoPath: string): MineArgs {
+-  let weeks = 8;
+-  let out = join(repoPath, "agents", "reviewer", ".gepa", "eval");
+-
+-  let i = 0;
+-  while (i < args.length) {
+-    const arg = args[i] ?? "";
+-    if (arg === "--weeks") {
+-      const result = parseWeeksFlag(args, i);
+-      if (result.invalid) return { weeks: 0, out, repoPath, invalid: result.invalid };
+-      weeks = result.weeks;
+-      i += 2;
+-      continue;
+-    }
+-    if (arg === "--out") {
+-      const result = parseOutFlag(args, i);
+-      if (result.invalid) return { weeks: 0, out, repoPath, invalid: result.invalid };
+-      out = result.out;
+-      i += 2;
+-      continue;
+-    }
+-    i += 1;
+-  }
+-
+-  return { weeks, out, repoPath };
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Review artifact reader
+-// ---------------------------------------------------------------------------
+-
+-const DECISION_RE = /^[-*]\s*Decision:\s*(.+)$/im;
+-const FRONTMATTER_DECISION_RE = /^decision:\s*(.+)$/im;
+-const RISKS_RE = /^[-*]\s*Risks?:\s*(.+)$/im;
+-const FOLLOWUP_RE = /^[-*]\s*Required Follow-up:\s*(.+)$/ims;
+-
+-/** Extract the first matched group from a regex or return null. */
+-function extractFirst(text: string, re: RegExp): string | null {
+-  const m = text.match(re);
+-  return m?.[1]?.trim() ?? null;
+-}
+-
+-/** Infer bug class from risk/rationale text. */
+-function inferBugClass(text: string): string | null {
+-  const lower = text.toLowerCase();
+-  if (/race.condition|concurren|mutex|deadlock|thread.safe/.test(lower)) return "race";
+-  if (/secret|credential|api.key|token.leak|pii|password/.test(lower)) return "security";
+-  if (/timeout|hang.indefinitely|infinite.wait|no.*timeout/.test(lower)) return "timeout";
+-  if (/permission|access.denied|unauthorized|privilege/.test(lower)) return "permission";
+-  if (/out.of.memory|oom|resource.exhaustion|memory.leak|fd.leak/.test(lower))
+-    return "resource-exhaustion";
+-  if (/corrupt|partial.write|truncat|atomic|json.parse.*invalid|data.loss/.test(lower))
+-    return "data-corruption";
+-  if (/external.dep|third.party|npm.package|dependency.break|import.fail/.test(lower))
+-    return "external-dep";
+-  if (/integration|module.level|import.side.effect|test.harness/.test(lower))
+-    return "integration-failure";
+-  if (/perf|performance|slow|latency|n\+1|quadratic/.test(lower)) return "perf";
+-  if (/false.positive|null.deref|guard|wrong.logic|incorrect.condition/.test(lower))
+-    return "logic-error";
+-  return null;
+-}
+-
+-/** Parse severity from review text. Returns the highest severity found, or null. */
+-function parseSeverity(text: string): "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null {
+-  const prefixOrder: Array<"CRITICAL" | "HIGH" | "MEDIUM" | "LOW"> = [
+-    "CRITICAL",
+-    "HIGH",
+-    "MEDIUM",
+-    "LOW"
+-  ];
+-  for (const s of prefixOrder) {
+-    if (text.includes(s)) return s;
+-  }
+-  return null;
+-}
+-
+-/** Check if an artifact was modified within the past N weeks. */
+-async function isWithinWeeks(filePath: string, weeks: number): Promise<boolean> {
+-  try {
+-    const s = await stat(filePath);
+-    const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
+-    return s.mtimeMs >= cutoff;
+-  } catch {
+-    return false;
+-  }
+-}
+-
+-/** Mine a single review artifact for bug candidates. Returns null if not a bug case. */
+-async function mineReviewArtifact(filePath: string): Promise<MinedSeed | null> {
+-  let text: string;
+-  try {
+-    text = await readFile(filePath, "utf8");
+-  } catch {
+-    return null;
+-  }
+-
+-  const decision =
+-    extractFirst(text, DECISION_RE) ?? extractFirst(text, FRONTMATTER_DECISION_RE) ?? "";
+-
+-  // Only mine from rejected decisions (indicate bugs that blocked the review)
+-  const isRejected = /^rejected/i.test(decision.trim());
+-  if (!isRejected) return null;
+-
+-  const risks = extractFirst(text, RISKS_RE) ?? "";
+-  if (!risks) return null;
+-
+-  const sev = parseSeverity(risks);
+-  // Only mine CRITICAL or HIGH findings for the corpus
+-  if (sev !== "CRITICAL" && sev !== "HIGH") return null;
+-
+-  const followUp = extractFirst(text, FOLLOWUP_RE) ?? "";
+-  const bugClass = inferBugClass(risks + " " + followUp);
+-
+-  const basename = filePath.split(/[\\/]/).pop() ?? filePath;
+-  return {
+-    sourceFile: basename,
+-    decision: decision.trim(),
+-    risks: redactRationale(risks.slice(0, 2000)),
+-    followUp: redactRationale(followUp.slice(0, 2000)),
+-    bugClass,
+-    severity: sev
+-  };
+-}
+-
+-/** Convert a MinedSeed to a stub EvalCase (caller fills diff/context). */
+-function seedToStub(seed: MinedSeed, index: number): ReviewerEvalCase {
+-  const id = `reviewer-bug-mined-${String(index + 1).padStart(3, "0")}`;
+-  const verdict =
+-    seed.severity === "CRITICAL" || seed.severity === "HIGH"
+-      ? ("request_changes" as const)
+-      : ("approve_with_notes" as const);
+-
+-  return {
+-    id,
+-    input: {
+-      diff: "# PLACEHOLDER: operator must provide a representative diff from the reviewed PR",
+-      context: `Mined from ${seed.sourceFile}. Original decision: ${seed.decision}. Provide a synthetic or extracted diff that demonstrates this bug class.`
+-    },
+-    expected_output: {
+-      verdict,
+-      severity: seed.severity,
+-      rationale: seed.risks || seed.followUp || "See source review artifact for rationale."
+-    },
+-    rubric: [
+-      "verdict-accuracy",
+-      "evidence-citation-correctness",
+-      "risk-class-named",
+-      "rationale-actionability",
+-      "escalation-appropriateness"
+-    ],
+-    held_out: false,
+-    notes: JSON.stringify({
+-      bug_class: seed.bugClass,
+-      severity_expected: seed.severity,
+-      provenance: `mined from ${seed.sourceFile}`,
+-      verdict_expected: verdict
+-    })
+-  };
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Main mining function (exported for tests)
+-// ---------------------------------------------------------------------------
+-
+-export interface MineResult {
+-  exitCode: number;
+-  stdout: string;
+-  stderr: string;
+-  /** Number of seeds mined. */
+-  mined: number;
+-  /** Files written. */
+-  written: string[];
+-}
+-
+-export async function runMineReviewerBugCorpus(
+-  repoPath: string,
+-  args: string[]
+-): Promise<MineResult> {
+-  const parsed = parseMineArgs(args, repoPath);
+-
+-  if (parsed.invalid) {
+-    return {
+-      exitCode: 1,
+-      stdout: "",
+-      stderr: `gepa-mine-reviewer: ${parsed.invalid}\n`,
+-      mined: 0,
+-      written: []
+-    };
+-  }
+-
+-  // AC-5: --weeks 0 → helpful message, no files written
+-  if (parsed.weeks === 0) {
+-    return {
+-      exitCode: 0,
+-      stdout:
+-        "gepa-mine-reviewer: --weeks 0 produces no results.\n" +
+-        "Set --weeks to a positive integer (e.g., --weeks 8) to mine recent review artifacts.\n" +
+-        "Alternatively, hand-author eval cases directly under agents/reviewer/.gepa/eval/.\n",
+-      stderr: "",
+-      mined: 0,
+-      written: []
+-    };
+-  }
+-
+-  const reviewsDir = join(repoPath, ".claude", "artifacts", "crew", "reviews");
+-  let files: string[];
+-  try {
+-    files = await readdir(reviewsDir);
+-  } catch {
+-    return {
+-      exitCode: 0,
+-      stdout:
+-        `gepa-mine-reviewer: reviews directory not found at ${reviewsDir}.\n` +
+-        "No seeds mined. Hand-author eval cases under agents/reviewer/.gepa/eval/.\n",
+-      stderr: "",
+-      mined: 0,
+-      written: []
+-    };
+-  }
+-
+-  const mdFiles = files.filter((f) => f.endsWith(".md"));
+-  const seeds: MinedSeed[] = [];
+-  const stderr: string[] = [];
+-
+-  // AC-9: log progress to stderr, one line per PR
+-  for (const f of mdFiles) {
+-    const abs = join(reviewsDir, f);
+-
+-    // Filter by week window
+-    if (!(await isWithinWeeks(abs, parsed.weeks))) continue;
+-
+-    stderr.push(`gepa-mine-reviewer: processing ${f}\n`);
+-    const seed = await mineReviewArtifact(abs);
+-    if (seed) {
+-      seeds.push(seed);
+-    }
+-  }
+-
+-  if (seeds.length === 0) {
+-    return {
+-      exitCode: 0,
+-      stdout:
+-        `gepa-mine-reviewer: no CRITICAL/HIGH rejected reviews found in the past ${parsed.weeks} weeks.\n` +
+-        "Hand-author eval cases under agents/reviewer/.gepa/eval/.\n",
+-      stderr: stderr.join(""),
+-      mined: 0,
+-      written: []
+-    };
+-  }
+-
+-  // Write seeds to output directory
+-  await mkdir(parsed.out, { recursive: true });
+-  const written: string[] = [];
+-
+-  for (let i = 0; i < seeds.length; i++) {
+-    const seed = seeds[i];
+-    if (!seed) continue;
+-    const stub = seedToStub(seed, i);
+-    const filename = `${stub.id}.jsonl`;
+-    const outPath = join(parsed.out, filename);
+-    await writeFile(outPath, JSON.stringify(stub) + "\n", "utf8");
+-    written.push(outPath);
+-  }
+-
+-  const stdout =
+-    `gepa-mine-reviewer: mined ${seeds.length} seed(s) from the past ${parsed.weeks} weeks.\n` +
+-    `Written to: ${parsed.out}\n` +
+-    `Files: ${written.map((w) => w.split(/[\\/]/).pop()).join(", ")}\n` +
+-    `\nNOTE: Seeds contain PLACEHOLDER diffs — operator must review and replace\n` +
+-    `each diff with a representative TypeScript/JS snippet before adding to\n` +
+-    `the eval corpus. See SLICE-103 design notes for mining heuristics.\n`;
+-
+-  return {
+-    exitCode: 0,
+-    stdout,
+-    stderr: stderr.join(""),
+-    mined: seeds.length,
+-    written
+-  };
+-}
+diff --git a/crew/scripts/lib/gepa/optimize-runner.mts b/crew/scripts/lib/gepa/optimize-runner.mts
+deleted file mode 100644
+index a1ef08f1..00000000
+--- a/crew/scripts/lib/gepa/optimize-runner.mts
++++ /dev/null
+@@ -1,440 +0,0 @@
+-/**
+- * scripts/lib/gepa/optimize-runner.ts — SLICE-99
+- *
+- * Optimization runner for /crew:gepa-optimize. Implements the GEPA Phase 3
+- * "Optimize" loop using primitives from @astragenie/gepa-core.
+- *
+- * Note: gepa-core 0.6.0 does NOT export a top-level `runOptimization` fn.
+- * This module composes the available primitives directly:
+- *   - CandidateGenerator.generate → K candidate files
+- *   - sequentialRunner.runCandidates → Trial[] per candidate
+- *   - paretoRank → ranked trials
+- *   - dailyCapMeter → budget enforcement
+- *   - fileLockManager → dedupe concurrent runs on the same agent
+- *
+- * The optimization result JSON is written to:
+- *   .claude/artifacts/crew/gepa/opt/<run-id>.json
+- *
+- * Winner selection: Pareto rank-1 candidate with best tiebreaker
+- * (pass > score > -cost > -latency > trial_id asc).
+- * If all candidates are dominated by each other or by the champion,
+- * `no_winner: true` is set and no promotion is performed.
+- *
+- * `partial: true` is set when the budget meter halted candidate runs
+- * mid-cycle; such runs are ineligible for promotion (winner: null).
+- */
+-
+-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { runAutoPr, printManualCommands, GhAuthError, type AutoPrResult } from "./auto-pr.mjs";
+-import { GhAbsentError } from "./branch-protection-check.mjs";
+-import { evaluateAutoMergeGate, type AutoMergePolicy } from "./auto-merge-gate.mjs";
+-import {
+-  dailyCapMeter,
+-  fileLockManager,
+-  paretoRank,
+-  sequentialRunner,
+-  type BudgetMeter,
+-  type CandidateGenerator,
+-  type Candidate,
+-  type EvalCase,
+-  type Trial
+-} from "@astragenie/gepa-core";
+-import type { Scorer } from "@astragenie/gepa-core";
+-
+-// ── Types ───────────────────────────────────────────────────────────────────
+-
+-export interface OptimizationResult {
+-  /** Unique ID for this optimization run. */
+-  run_id: string;
+-  /** Cycle ID used to scope candidate files. Same as run_id in this slice. */
+-  cycle_id: string;
+-  /** Agent that was optimized. */
+-  agent: string;
+-  /** Number of candidates requested. */
+-  k: number;
+-  /** Number of candidates successfully scored (may be < k if oversized or budget-halted). */
+-  candidates_evaluated: number;
+-  /**
+-   * True when the budget cap halted scoring mid-cycle.
+-   * A partial run is ineligible for promotion (winner: null).
+-   */
+-  partial: boolean;
+-  /**
+-   * True when no candidate achieves Pareto rank 1 better than the champion,
+-   * or when all candidates were oversized / budget-halted.
+-   */
+-  no_winner: boolean;
+-  /**
+-   * Winner information when a Pareto rank-1 winner is found.
+-   * null on partial runs or when no_winner is true.
+-   */
+-  winner: {
+-    candidate_id: string;
+-    pareto_rank: number;
+-    score: number;
+-    pass: boolean;
+-    cost_usd: number;
+-    latency_ms: number;
+-    prompt_path: string;
+-  } | null;
+-  /**
+-   * True when the winner's prompt content is identical to the current champion
+-   * (defensive no-op guard). No PR is opened in this case.
+-   */
+-  no_op_promotion?: boolean;
+-  /** All trial results, with pareto_rank assigned. */
+-  trials: (Trial & { pareto_rank: number | null })[];
+-  /** ISO timestamp of run start. */
+-  started_at: string;
+-  /** ISO timestamp of run end. */
+-  finished_at: string;
+-  /**
+-   * Auto-PR result when promotion was attempted.
+-   * undefined when artifact-only mode was active or no winner found.
+-   */
+-  auto_pr?: AutoPrResult;
+-}
+-
+-export interface RunOptimizeOpts {
+-  /** Absolute path to repo root. */
+-  repoPath: string;
+-  /** Agent to optimize (e.g. "fullstack-dev"). */
+-  agent: string;
+-  /** Number of candidates to generate. */
+-  k: number;
+-  /**
+-   * Budget cap in USD for this optimization run.
+-   * Uses dailyCapMeter persisted to .claude/artifacts/crew/gepa/budget.json.
+-   */
+-  budgetUsd: number;
+-  /** Failing trials to pass to the CandidateGenerator. */
+-  failingTrials: Trial[];
+-  /** Candidate generator (injected for testability). */
+-  generator: CandidateGenerator;
+-  /**
+-   * Scorer for candidate trials (injected for testability).
+-   * In artifact-only mode, a no-op scorer is used.
+-   */
+-  scorer: Scorer;
+-  /**
+-   * Optional budget meter override (for tests).
+-   * When not provided, uses dailyCapMeter with the default persist path.
+-   */
+-  meter?: BudgetMeter;
+-  /**
+-   * Optional lock root override (for tests).
+-   */
+-  lockRoot?: string;
+-  /**
+-   * Optional eval cases to score candidates against.
+-   * When omitted (artifact-only mode), no LLM scoring runs and `partial` stays
+-   * false. When provided, `partial: true` is set if the run halted before
+-   * completing candidates.length * cases.length trials (budget or signal).
+-   */
+-  cases?: EvalCase[];
+-  /**
+-   * When true (default false), skip the auto-PR step even when a winner is found.
+-   * Use for dry-run cycles or when the caller will handle promotion separately.
+-   */
+-  artifactOnly?: boolean;
+-  /**
+-   * Optional override for the `gh` binary path (useful for tests).
+-   */
+-  ghPath?: string;
+-  /**
+-   * Optional override for the `git` binary path (useful for tests).
+-   */
+-  gitPath?: string;
+-  /**
+-   * Optional repo override (owner/name) for the branch-protection check.
+-   */
+-  repo?: string;
+-  /**
+-   * Optional auto-merge policy. When provided (and artifactOnly=false),
+-   * `evaluateAutoMergeGate` is called after a successful auto-PR to decide
+-   * whether to invoke `gh pr merge --auto --squash`.
+-   *
+-   * When omitted, the auto-merge gate is skipped (PR stays as draft).
+-   */
+-  autoMergePolicy?: AutoMergePolicy;
+-  /**
+-   * Whether the soak phase has passed for the winning candidate.
+-   * Passed to `evaluateAutoMergeGate` as the `soakPassed` condition.
+-   * Defaults to false (soak not yet complete — no auto-merge).
+-   */
+-  soakPassed?: boolean;
+-  /**
+-   * Whether branch protection is enforced on `main`.
+-   * Passed to `evaluateAutoMergeGate`. Defaults to false.
+-   */
+-  branchProtectionPresent?: boolean;
+-  /**
+-   * Champion metrics for the min_pass_delta gate.
+-   * Defaults to { held_out_pass: 0 } (conservative).
+-   */
+-  championHeldOutPass?: number;
+-}
+-
+-// ── Default paths ───────────────────────────────────────────────────────────
+-
+-function defaultBudgetPath(repoPath: string): string {
+-  return join(repoPath, ".claude", "artifacts", "crew", "gepa", "budget.json");
+-}
+-
+-function defaultLockRoot(repoPath: string): string {
+-  return join(repoPath, ".claude", "artifacts", "crew", "gepa", "locks");
+-}
+-
+-function optArtifactPath(repoPath: string, runId: string): string {
+-  return join(repoPath, ".claude", "artifacts", "crew", "gepa", "opt", `${runId}.json`);
+-}
+-
+-// ── No-op scorer for artifact-only mode ────────────────────────────────────
+-
+-/** A scorer that returns a deterministic pass=false result without LLM calls. */
+-export function noopScorer(): Scorer {
+-  return {
+-    async score() {
+-      return {
+-        pass: false,
+-        score: 0,
+-        cost_usd: 0,
+-        latency_ms: 0,
+-        rationale: "artifact-only: no scoring"
+-      };
+-    }
+-  };
+-}
+-
+-// ── Core optimization run ───────────────────────────────────────────────────
+-
+-/**
+- * Run one optimization cycle for `agent`.
+- *
+- * Steps:
+- *   1. Acquire fileLock(agent, "optimize") — exit if held.
+- *   2. CandidateGenerator.generate → K candidate files.
+- *   3. sequentialRunner.runCandidates → Trial[].
+- *   4. paretoRank → ranked trials.
+- *   5. Write OptimizationResult JSON artifact.
+- *   6. Release lock.
+- *
+- * Returns null if the lock is held by another process.
+- */
+-async function scoreCandidates(
+-  candidates: Candidate[],
+-  cases: EvalCase[],
+-  scorer: Scorer,
+-  meter: BudgetMeter
+-): Promise<{ trials: Trial[]; partial: boolean }> {
+-  if (candidates.length === 0) return { trials: [], partial: false };
+-  const runner = sequentialRunner();
+-  const controller = new AbortController();
+-  const trials = await runner.runCandidates(candidates, cases, scorer, {
+-    meter,
+-    signal: controller.signal
+-  });
+-  // partial = true ONLY when eval cases were requested but not all trials
+-  // completed (budget cap or signal halt). Empty-cases artifact-only mode
+-  // is NOT partial — the run reached its intended zero-scoring end state.
+-  const partial = cases.length > 0 && trials.length < candidates.length * cases.length;
+-  return { trials, partial };
+-}
+-
+-/**
+- * AC-4 per-candidate all-case promotion gate: true only when EVERY trial
+- * recorded for `candidatePromptHash` has `score.pass === true`. `ranked` may
+- * contain multiple trials per candidate (one per eval case) — a candidate
+- * that wins one case's global Pareto slot while silently failing another
+- * case must NOT be eligible, even though its best-case trial can still be
+- * rank 1. A candidate with zero trials is not eligible (defensive — should
+- * not occur since `ranked` is derived from `candidates`).
+- */
+-function candidateAllCasesPass(
+-  ranked: (Trial & { pareto_rank: number | null })[],
+-  candidatePromptHash: string
+-): boolean {
+-  const trialsForCandidate = ranked.filter((t) => t.candidate_prompt_hash === candidatePromptHash);
+-  if (trialsForCandidate.length === 0) return false;
+-  return trialsForCandidate.every((t) => t.score.pass);
+-}
+-
+-function determineWinner(
+-  ranked: (Trial & { pareto_rank: number | null })[],
+-  candidates: Candidate[],
+-  partial: boolean
+-): { winner: OptimizationResult["winner"]; noWinner: boolean } {
+-  if (partial) return { winner: null, noWinner: true };
+-  const rank1 = ranked.filter((t) => t.pareto_rank === 1);
+-  const best = rank1[0];
+-  if (!best) return { winner: null, noWinner: true };
+-
+-  // AC-4 (review fix): the all-case gate must SEARCH `ranked` — not just
+-  // inspect the global rank-1 trial. `ranked` is already sorted by Pareto
+-  // rank ascending, then the default tiebreaker within each rank, so the
+-  // FIRST trial whose candidate passes every eval case it was scored
+-  // against is the best eligible winner. A real fix can raise cost/latency
+-  // relative to a candidate that only "wins" one case, which drops it below
+-  // rank 1 in the pass>score>-cost>-latency ordering — restricting the gate
+-  // to rank1[0] would then spuriously report no_winner even though a lower
+-  // -ranked, fully-passing candidate exists (FEAT-192 SLICE-B review HIGH
+-  // finding; this is exactly the AC-3 money-test shape).
+-  const eligible = ranked.find((t) => candidateAllCasesPass(ranked, t.candidate_prompt_hash));
+-
+-  // `winnerTrial` falls back to the rank-1 trial when nothing is eligible —
+-  // `winner` stays populated as a diagnostic either way (SLICE-105 pattern)
+-  // so callers keep visibility into "what almost won"; the actual promotion
+-  // gate (auto-PR) reads `no_winner`, not `winner !== null`.
+-  const winnerTrial = eligible ?? best;
+-  const matchingCandidate = candidates.find(
+-    (c) => c.prompt_hash === winnerTrial.candidate_prompt_hash
+-  );
+-  const winner: OptimizationResult["winner"] = {
+-    candidate_id: winnerTrial.id,
+-    pareto_rank: winnerTrial.pareto_rank ?? 1,
+-    score: winnerTrial.score.score,
+-    pass: winnerTrial.score.pass,
+-    cost_usd: winnerTrial.score.cost_usd,
+-    latency_ms: winnerTrial.score.latency_ms,
+-    prompt_path: matchingCandidate?.prompt_path ?? winnerTrial.candidate_prompt_path ?? ""
+-  };
+-
+-  // eligible's every trial passes by construction (candidateAllCasesPass),
+-  // so noWinner reduces to "did the search find anything eligible at all".
+-  return { winner, noWinner: !eligible };
+-}
+-
+-function writeArtifact(repoPath: string, runId: string, result: OptimizationResult): string {
+-  const artifactPath = optArtifactPath(repoPath, runId);
+-  const artifactDir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "opt");
+-  if (!existsSync(artifactDir)) mkdirSync(artifactDir, { recursive: true });
+-  writeFileSync(artifactPath, JSON.stringify(result, null, 2), "utf8");
+-  return artifactPath;
+-}
+-
+-function maybeRunAutoMergeGate(
+-  opts: RunOptimizeOpts,
+-  result: OptimizationResult,
+-  prUrl: string
+-): void {
+-  if (!opts.autoMergePolicy) return;
+-  evaluateAutoMergeGate({
+-    repoPath: opts.repoPath,
+-    agent: opts.agent,
+-    result,
+-    soakPassed: opts.soakPassed ?? false,
+-    branchProtectionPresent: opts.branchProtectionPresent ?? false,
+-    policy: opts.autoMergePolicy,
+-    prUrl,
+-    championMetrics: { held_out_pass: opts.championHeldOutPass ?? 0 },
+-    ...(opts.ghPath !== undefined ? { ghPath: opts.ghPath } : {})
+-  });
+-}
+-
+-function runAutoPrAndGate(
+-  opts: RunOptimizeOpts,
+-  result: OptimizationResult,
+-  artifactPath: string
+-): void {
+-  const prResult = runAutoPr({
+-    repoPath: opts.repoPath,
+-    agent: opts.agent,
+-    result,
+-    ...(opts.ghPath !== undefined ? { ghPath: opts.ghPath } : {}),
+-    ...(opts.gitPath !== undefined ? { gitPath: opts.gitPath } : {}),
+-    ...(opts.repo !== undefined ? { repo: opts.repo } : {})
+-  });
+-  result.auto_pr = prResult;
+-  if (prResult.no_op_promotion) result.no_op_promotion = true;
+-  writeFileSync(artifactPath, JSON.stringify(result, null, 2), "utf8");
+-  // Auto-merge gate: called AFTER auto-pr creates the PR.
+-  if (prResult.pr_opened && prResult.pr_url) {
+-    maybeRunAutoMergeGate(opts, result, prResult.pr_url);
+-  }
+-}
+-
+-function tryAutoPr(opts: RunOptimizeOpts, result: OptimizationResult, artifactPath: string): void {
+-  try {
+-    runAutoPrAndGate(opts, result, artifactPath);
+-  } catch (err) {
+-    if (err instanceof GhAbsentError || err instanceof GhAuthError) {
+-      // gh absent or not authenticated — print manual commands, non-fatal to
+-      // the optimization result (artifact is still written).
+-      printManualCommands({ agent: opts.agent, result, reason: err.message });
+-    } else {
+-      throw err;
+-    }
+-  }
+-}
+-
+-export async function runOptimize(opts: RunOptimizeOpts): Promise<OptimizationResult | null> {
+-  const { repoPath, agent, k, budgetUsd, failingTrials, generator, scorer } = opts;
+-
+-  const runId = crypto.randomUUID();
+-  const startedAt = new Date().toISOString();
+-
+-  const lockRoot = opts.lockRoot ?? defaultLockRoot(repoPath);
+-  // gepa-core 0.10.x: acquire() returns Result<handle|null, never> (DEC-002).
+-  // ok is always true; value === null means another process holds the lock.
+-  const lockResult = await fileLockManager(lockRoot).acquire(agent, "optimize");
+-  const lock = lockResult.ok ? lockResult.value : null;
+-  if (lock === null) return null; // Another process holds the lock.
+-
+-  try {
+-    const meter = opts.meter ?? dailyCapMeter(budgetUsd, defaultBudgetPath(repoPath));
+-    const cases = opts.cases ?? [];
+-
+-    const candidates: Candidate[] = await generator.generate(
+-      championPath(repoPath, agent),
+-      failingTrials,
+-      k,
+-      { meter }
+-    );
+-
+-    const { trials, partial } = await scoreCandidates(candidates, cases, scorer, meter);
+-    const ranked = trials.length > 0 ? paretoRank(trials) : [];
+-    const { winner, noWinner } = determineWinner(ranked, candidates, partial);
+-
+-    const trialResults: (Trial & { pareto_rank: number | null })[] = ranked.map((t) => ({
+-      ...t,
+-      pareto_rank: t.pareto_rank
+-    }));
+-
+-    const result: OptimizationResult = {
+-      run_id: runId,
+-      cycle_id: runId,
+-      agent,
+-      k,
+-      candidates_evaluated: candidates.length,
+-      partial,
+-      no_winner: noWinner,
+-      winner: partial ? null : winner,
+-      trials: trialResults,
+-      started_at: startedAt,
+-      finished_at: new Date().toISOString()
+-    };
+-
+-    const artifactPath = writeArtifact(repoPath, runId, result);
+-
+-    const artifactOnly = opts.artifactOnly ?? true;
+-    // Auto-PR guard MUST include !no_winner: determineWinner may return a
+-    // non-null winner object AND noWinner=true when the top rank-1 candidate
+-    // has pass=false (dominated on other axes but never actually passed the
+-    // eval). Opening a promotion PR for a failing candidate would silently
+-    // ship a regression. All three flags must clear before promotion.
+-    if (!artifactOnly && result.winner !== null && !result.no_winner && !result.partial) {
+-      tryAutoPr(opts, result, artifactPath);
+-    }
+-
+-    return result;
+-  } finally {
+-    await lock.released();
+-  }
+-}
+-
+-// ── Helpers ─────────────────────────────────────────────────────────────────
+-
+-function championPath(repoPath: string, agent: string): string {
+-  return join(repoPath, "agents", `${agent}.md`);
+-}
+diff --git a/crew/scripts/lib/gepa/soak-dispatcher-hook.mts b/crew/scripts/lib/gepa/soak-dispatcher-hook.mts
+deleted file mode 100644
+index 728574d2..00000000
+--- a/crew/scripts/lib/gepa/soak-dispatcher-hook.mts
++++ /dev/null
+@@ -1,267 +0,0 @@
+-/**
+- * scripts/lib/gepa/soak-dispatcher-hook.ts — SLICE-104 (FEAT-183 S7)
+- *
+- * Crew-side soak dispatcher hook. Called from
+- * scripts/lib/slice-linker/dispatch.mts on each builder dispatch to:
+- *
+- *   1. Read the active soak.json for the resolved builder agent (if present).
+- *   2. Roll Math.random() < soakPercent to decide whether to use the soak
+- *      champion prompt path instead of the main champion.
+- *   3. Evaluate the SoakVerdict from the pure evaluateSoak() algorithm.
+- *   4. If verdict = "failed" or "reverted", emit an event and return the
+- *      early-revert outcome — the caller uses this to skip the soak path.
+- *   5. If verdict = "running" or "passed", return a SoakRouting decision so
+- *      the caller can steer the dispatch.
+- *
+- * Design constraints (from FEAT-183 spec + SLICE-104 risks):
+- *   - try/catch guards every I/O path — malformed soak.json MUST NOT crash
+- *     dispatch (failure mode: "Soak dispatcher can't read soak.json → use
+- *     main champion").
+- *   - No live LLM calls here. Scoring is fire-and-forget by the eval pipeline
+- *     after dispatch (AC-10).
+- *   - champion_frozen is checked BEFORE calling this hook (caller
+- *     responsibility per design spec line 842 precedence rule).
+- *   - All event strings returned in SoakHookResult.events so the caller
+- *     can append to .claude/logs/events.jsonl.
+- *
+- * I/O surface:
+- *   - Reads:  <repoRoot>/.claude/artifacts/crew/gepa/soak.json
+- *   - Writes: <repoRoot>/.claude/artifacts/crew/gepa/soak/
+- *             <agent>-early-revert-<ts>.json  (on early-revert only)
+- *
+- * The soak.json schema is a record of agent → SoakEntry. This module reads
+- * it; the /crew:gepa-optimize command writes it. Atomic-swap writes are the
+- * caller's responsibility — this module is read-only on soak.json.
+- */
+-
+-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+-import { join } from "node:path";
+-import {
+-  evaluateSoak,
+-  type PromotionPolicy,
+-  type SoakState,
+-  type SoakTrial
+-} from "@astragenie/gepa-core";
+-
+-/**
+- * Re-export PromotionPolicy as SoakPolicy for backward-compat with callers
+- * that import this type from the hook rather than from gepa-core directly.
+- * The full PromotionPolicy includes soakPercent (used in the routing decision)
+- * and soakDays/minSoakTrials/maxSoakDays/soakEpsilon (used by evaluateSoak).
+- */
+-export type SoakPolicy = PromotionPolicy;
+-
+-// ── Types ──────────────────────────────────────────────────────────────────────
+-
+-/** One active soak entry in soak.json. */
+-export interface SoakEntry {
+-  /** Agent name this soak covers. */
+-  agent: string;
+-  /** ISO datetime the soak started. */
+-  started_at: string;
+-  /**
+-   * Absolute path to the soak champion prompt file.
+-   * Used by the dispatcher to steer the agent's prompt path.
+-   */
+-  champion_path: string;
+-  /** All soak trials collected so far. */
+-  trials: SoakTrial[];
+-  /** Pass rate of the main champion in the rolling 1-day window. */
+-  main_pass_rate: number;
+-}
+-
+-/** Full soak.json schema: agent name → SoakEntry. */
+-export type SoakMap = Record<string, SoakEntry>;
+-
+-/** Outcome returned to the dispatch caller. */
+-export type SoakHookStatus =
+-  | "no_soak" // agent has no active soak — use main champion
+-  | "soak_skip" // random() >= soakPercent — use main champion this dispatch
+-  | "soak_use" // random() < soakPercent — use soak champion this dispatch
+-  | "early_revert" // soak failed — early-revert triggered
+-  | "insufficient_traffic" // maxSoakDays reached with too few trials
+-  | "soak_promoted" // both clocks cleared — soak ready for promotion
+-  | "error"; // I/O or parse error — use main champion
+-
+-export interface SoakHookResult {
+-  status: SoakHookStatus;
+-  /** When status = "soak_use", the path to the soak champion prompt. */
+-  champion_path?: string;
+-  /**
+-   * Structured event keys for appending to .claude/logs/events.jsonl.
+-   * Populated on early_revert, insufficient_traffic, soak_promoted.
+-   */
+-  events: string[];
+-  /** Human-readable reason for log / forensics. */
+-  reason: string;
+-}
+-
+-// ── Constants ─────────────────────────────────────────────────────────────────
+-
+-const SOAK_JSON_PATH = ".claude/artifacts/crew/gepa/soak.json";
+-const SOAK_FORENSICS_DIR = ".claude/artifacts/crew/gepa/soak";
+-
+-// ── Internal helpers ──────────────────────────────────────────────────────────
+-
+-function readSoakMap(repoRoot: string): SoakMap | null {
+-  const soakPath = join(repoRoot, SOAK_JSON_PATH);
+-  if (!existsSync(soakPath)) return null;
+-  try {
+-    const raw = readFileSync(soakPath, "utf8");
+-    return JSON.parse(raw) as SoakMap;
+-  } catch {
+-    return null;
+-  }
+-}
+-
+-function writeForensicsArtifact(
+-  repoRoot: string,
+-  agent: string,
+-  entry: SoakEntry,
+-  reason: string,
+-  verdict: {
+-    soak_pass_rate: number;
+-    pass_rate_delta: number;
+-    elapsed_days: number;
+-    sample_count: number;
+-  }
+-): void {
+-  try {
+-    const dir = join(repoRoot, SOAK_FORENSICS_DIR);
+-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+-    const outPath = join(dir, `${agent}-early-revert-${ts}.json`);
+-    const artifact = {
+-      agent,
+-      reason,
+-      started_at: entry.started_at,
+-      reverted_at: new Date().toISOString(),
+-      soak_pass_rate: verdict.soak_pass_rate,
+-      pass_rate_delta: verdict.pass_rate_delta,
+-      elapsed_days: verdict.elapsed_days,
+-      sample_count: verdict.sample_count,
+-      trials_summary: entry.trials.map((t) => ({
+-        created_at: t.created_at,
+-        pass: t.pass,
+-        score: t.score
+-      }))
+-    };
+-    writeFileSync(outPath, JSON.stringify(artifact, null, 2), "utf8");
+-  } catch {
+-    // Forensics write failure is non-fatal — do not crash dispatch
+-  }
+-}
+-
+-// ── Public API ─────────────────────────────────────────────────────────────────
+-
+-export interface SoakDispatchOpts {
+-  /** Absolute path to the repo root. */
+-  repoRoot: string;
+-  /** The resolved builder agent name (e.g. "fullstack-dev"). */
+-  agent: string;
+-  /** Soak policy from gepa.config.json. */
+-  policy: SoakPolicy;
+-  /**
+-   * Injected "now" ISO string. Defaults to new Date().toISOString().
+-   * Injectable for deterministic tests.
+-   */
+-  nowIso?: string;
+-  /**
+-   * Injected random number [0, 1). Defaults to Math.random().
+-   * Injectable for deterministic tests (e.g. pass 0.05 to force soak_use).
+-   */
+-  randomValue?: number;
+-}
+-
+-/**
+- * Evaluate the soak hook for a single dispatch.
+- *
+- * This is the hot-path hook in dispatch.mts — it MUST NOT throw.
+- * All errors fall back to { status: "error" } which the caller treats as
+- * "use main champion".
+- */
+-export function evaluateSoakHook(opts: SoakDispatchOpts): SoakHookResult {
+-  const { repoRoot, agent, policy } = opts;
+-  const nowIso = opts.nowIso ?? new Date().toISOString();
+-  const randomValue = opts.randomValue ?? Math.random();
+-
+-  try {
+-    const soakMap = readSoakMap(repoRoot);
+-    if (soakMap === null) {
+-      return { status: "no_soak", events: [], reason: "soak.json absent or unreadable" };
+-    }
+-
+-    const entry = soakMap[agent];
+-    if (entry === undefined) {
+-      return { status: "no_soak", events: [], reason: `no active soak for agent ${agent}` };
+-    }
+-
+-    // Build SoakState for the pure algorithm
+-    const soakState: SoakState = {
+-      agent: entry.agent,
+-      started_at: entry.started_at,
+-      now_iso: nowIso,
+-      trials: entry.trials,
+-      main_pass_rate: entry.main_pass_rate
+-    };
+-
+-    // evaluateSoak only needs the four soak-timing fields; extract them
+-    // from the full PromotionPolicy to avoid passing extra fields.
+-    const verdict = evaluateSoak(soakState, {
+-      soakDays: policy.soakDays,
+-      minSoakTrials: policy.minSoakTrials,
+-      maxSoakDays: policy.maxSoakDays,
+-      soakEpsilon: policy.soakEpsilon
+-    });
+-
+-    // Handle terminal verdicts first — they override the random routing decision
+-    if (verdict.status === "failed") {
+-      writeForensicsArtifact(repoRoot, agent, entry, verdict.reason, verdict);
+-      return {
+-        status: "early_revert",
+-        events: ["gepa_soak_revert_early"],
+-        reason: `gepa_soak_revert_early: delta=${verdict.pass_rate_delta.toFixed(3)} — ${verdict.reason}`
+-      };
+-    }
+-
+-    if (verdict.status === "reverted") {
+-      return {
+-        status: "insufficient_traffic",
+-        events: ["gepa_soak_insufficient_traffic"],
+-        reason: `gepa_soak_insufficient_traffic: ${verdict.reason}`
+-      };
+-    }
+-
+-    if (verdict.status === "passed") {
+-      return {
+-        status: "soak_promoted",
+-        events: ["gepa_soak_promote_eligible"],
+-        reason: `soak_promote_eligible: ${verdict.reason}`,
+-        champion_path: entry.champion_path
+-      };
+-    }
+-
+-    // verdict.status === "running" — apply soakPercent routing
+-    if (randomValue < policy.soakPercent) {
+-      return {
+-        status: "soak_use",
+-        events: [],
+-        reason: `soak_use: random=${randomValue.toFixed(4)} < soakPercent=${policy.soakPercent}`,
+-        champion_path: entry.champion_path
+-      };
+-    }
+-
+-    return {
+-      status: "soak_skip",
+-      events: [],
+-      reason: `soak_skip: random=${randomValue.toFixed(4)} >= soakPercent=${policy.soakPercent}`
+-    };
+-  } catch (err) {
+-    const message = err instanceof Error ? err.message : String(err);
+-    return {
+-      status: "error",
+-      events: [],
+-      reason: `soak hook error (falling back to main): ${message}`
+-    };
+-  }
+-}
+diff --git a/crew/scripts/lib/gepa/split-train-heldout.mts b/crew/scripts/lib/gepa/split-train-heldout.mts
+deleted file mode 100644
+index ce506bef..00000000
+--- a/crew/scripts/lib/gepa/split-train-heldout.mts
++++ /dev/null
+@@ -1,89 +0,0 @@
+-/**
+- * scripts/lib/gepa/split-train-heldout.ts — SLICE-98
+- *
+- * Deterministic train/heldOut splitter for eval cases. Hash-based so the
+- * same case always lands in the same split across runs (same seed) — no
+- * accidental drift between cycles. Caller picks how many cases land in
+- * each tranche via the `train` + `heldOut` opts.
+- *
+- * Why deterministic: held-out cases are the ones the optimizer CANNOT see
+- * during training. If split membership shifts run-to-run, today's held-out
+- * case becomes tomorrow's training case and the drift signal is poisoned.
+- * Hash-of-case-id + seed pins membership.
+- *
+- * Why not just slice the array: when cases are added or reordered later,
+- * positional slicing would shuffle the entire held-out set. Hash-based
+- * keeps the existing splits stable as the corpus grows.
+- */
+-
+-import { createHash } from "node:crypto";
+-
+-export interface Splittable {
+-  /** Stable case id — drives the hash. */
+-  id: string;
+-}
+-
+-export interface SplitOpts {
+-  /** Target count in the train tranche. */
+-  train: number;
+-  /** Target count in the heldOut tranche. */
+-  heldOut: number;
+-  /**
+-   * Optional seed to vary the bucketing without changing the case set.
+-   * Default: empty string (= no seed mixing). Change the seed to rotate
+-   * which cases land in each tranche while keeping the split deterministic.
+-   */
+-  seed?: string;
+-}
+-
+-export interface SplitResult<T extends Splittable> {
+-  train: T[];
+-  heldOut: T[];
+-}
+-
+-/**
+- * Split `cases` into train + heldOut tranches by hashing `id` + seed.
+- *
+- * If `opts.train + opts.heldOut < cases.length`, the leftover cases go
+- * into `train` (default biased toward training data). If
+- * `train + heldOut > cases.length`, both tranches are filled in order
+- * until cases run out — `heldOut` is filled first (so the held-out
+- * signal is preserved at small corpus sizes).
+- *
+- * Function is pure: same input + seed always returns same partition.
+- */
+-export function splitTrainHeldout<T extends Splittable>(
+-  cases: T[],
+-  opts: SplitOpts
+-): SplitResult<T> {
+-  const seed = opts.seed ?? "";
+-  // Sort by hash(seed + id). Stable ordering = deterministic membership.
+-  const sorted = [...cases].sort((a, b) => hashKey(seed, a.id).localeCompare(hashKey(seed, b.id)));
+-
+-  // heldOut gets first slice (so small corpora still have a held-out set).
+-  const heldOutCount = Math.min(opts.heldOut, sorted.length);
+-  const heldOut = sorted.slice(0, heldOutCount);
+-
+-  const remaining = sorted.slice(heldOutCount);
+-  const trainCount = Math.min(opts.train, remaining.length);
+-  const train = remaining.slice(0, trainCount);
+-
+-  return { train, heldOut };
+-}
+-
+-function hashKey(seed: string, id: string): string {
+-  return createHash("sha256").update(seed).update(":").update(id).digest("hex");
+-}
+-
+-/**
+- * Parse a `--split N/M` CLI flag into a SplitOpts (train=N, heldOut=M).
+- * Returns null on malformed input — caller decides how to error.
+- */
+-export function parseSplitFlag(arg: string): SplitOpts | null {
+-  const match = arg.match(/^(\d+)\/(\d+)$/);
+-  if (!match) return null;
+-  const train = Number.parseInt(match[1] ?? "0", 10);
+-  const heldOut = Number.parseInt(match[2] ?? "0", 10);
+-  if (!Number.isFinite(train) || !Number.isFinite(heldOut)) return null;
+-  return { train, heldOut };
+-}
+diff --git a/crew/scripts/lib/installer/harness-files.mts b/crew/scripts/lib/installer/harness-files.mts
+index edc48690..bc5c581a 100644
+--- a/crew/scripts/lib/installer/harness-files.mts
++++ b/crew/scripts/lib/installer/harness-files.mts
+@@ -1,5 +1,5 @@
+ // Writes the per-repo harness scaffolding: artifact + state README files,
+-// hook shell scripts, state seed files (claims, history, approvals,
++// hook shell scripts, state seed files (claims, history,
+ // workflow-state, sprint), and the artifact / log directory tree.
+ //
+ // Refresh files are rewritten on every run so template upgrades land.
+@@ -48,7 +48,6 @@ export async function writeHarnessFiles(repoPath: string, writes: string[]): Pro
+       `${JSON.stringify(CLAIMS_TEMPLATE, null, 2)}\n`
+     ],
+     [path.join(repoPath, ".claude", "state", "crew", "history.jsonl"), ""],
+-    [path.join(repoPath, ".claude", "state", "crew", "approvals.jsonl"), ""],
+     [
+       path.join(repoPath, ".claude", "state", "crew", "workflow-state.json"),
+       `${JSON.stringify(
+diff --git a/crew/scripts/lib/installer/templates.mts b/crew/scripts/lib/installer/templates.mts
+index 739bdceb..383326a1 100644
+--- a/crew/scripts/lib/installer/templates.mts
++++ b/crew/scripts/lib/installer/templates.mts
+@@ -29,7 +29,6 @@ export const GITIGNORE_BLOCK = [
+   "# Crew framework local state. Generated; do not edit between markers.",
+   ".claude/logs/",
+   ".claude/state/crew/history.jsonl",
+-  ".claude/state/crew/approvals.jsonl",
+   ".claude.backup.*",
+   GITIGNORE_MARKER_END
+ ].join("\n");
+@@ -243,7 +242,6 @@ This directory stores lightweight repo-local coordination state.
+ 
+ - \`claims.json\` tracks current file ownership claims
+ - \`history.jsonl\` stores append-only claim and release events
+-- \`approvals.jsonl\` stores approval requests and resolutions
+ - \`workflow-state.json\` stores the current run and gate badge state
+ - \`sprint.json\` is an optional sprint or focus configuration
+ `;
+diff --git a/crew/scripts/lib/slice-linker/dispatch.mts b/crew/scripts/lib/slice-linker/dispatch.mts
+index 91325451..34b5cc19 100644
+--- a/crew/scripts/lib/slice-linker/dispatch.mts
++++ b/crew/scripts/lib/slice-linker/dispatch.mts
+@@ -42,28 +42,17 @@ import {
+ } from "../workflow-config.mjs";
+ import { parseMemoryConfig, resolveEffectiveConfig } from "@astragenie/memory-provider";
+ 
+-// ── Soak dispatcher hook (FEAT-183 S7 / SLICE-104) ────────────────────────────
++// ── Soak dispatcher hook ─────────────────────────────────────────────────────
+ //
+-// Re-exported so the loop orchestrator can import the soak hook from the same
+-// module that produces the dispatch plan. The loop orchestrator calls
+-// evaluateSoakHook(opts) BEFORE invoking the builder subagent for a slice phase.
+-// If the result is "early_revert" or "insufficient_traffic", the orchestrator
+-// deletes the soak pointer and falls back to the main champion path.
+-// If the result is "soak_use", the orchestrator steers the builder's
+-// --prompt flag to champion_path.
++// The `evaluateSoakHook` re-export (FEAT-183 S7 / SLICE-104) was removed
++// along with scripts/lib/gepa/soak-dispatcher-hook.mts and the rest of the
++// GEPA optimize/eval pipeline (SLICE-22, FEAT-005 P4). Nothing in this repo
++// called it through this module (only its own test imported the gepa file
++// directly) — but the loop plugin's own dispatch.mts is documented to vendor
++// this file by import path and may still expect the re-export; if so, that
++// is a cross-repo follow-up for the loop plugin (runner-plugin), out of
++// scope for this deletion.
+ //
+-// The hook is intentionally synchronous (no async I/O) so it adds <1ms to
+-// the hot dispatch path. File reads are bounded to a single readFileSync on
+-// soak.json; malformed files fall back to { status: "error" } silently.
+-export {
+-  evaluateSoakHook,
+-  type SoakDispatchOpts,
+-  type SoakHookResult,
+-  type SoakHookStatus,
+-  type SoakEntry,
+-  type SoakMap
+-} from "../gepa/soak-dispatcher-hook.mjs";
+-
+ // ── Types ──────────────────────────────────────────────────────────────────────
+ 
+ export type GatePolicy = "all_pass" | "blocking" | "advisory" | "none" | "skipped";
+diff --git a/crew/scripts/lib/wakeup.mjs b/crew/scripts/lib/wakeup.mjs
+index 84316061..6f695ead 100644
+--- a/crew/scripts/lib/wakeup.mjs
++++ b/crew/scripts/lib/wakeup.mjs
+@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
+ import path from "node:path";
+ 
+ import { parseFrontmatter } from "@astragenie/plugin-std";
+-import { listApprovals } from "./approvals.mjs";
+ import { listClaims } from "./claims.mjs";
+ import { readDeploymentGuidanceSummary } from "./deployment-guidance/read.mjs";
+ import { readFileIfExists, pathExists } from "./fs-utils.mjs";
+@@ -193,7 +192,7 @@ async function countArchive(repoPath) {
+ }
+ 
+ /**
+- * @param {{ claims: object[], openApprovals: object[], sprint: object | null,
++ * @param {{ claims: object[], sprint: object | null,
+  *           workflow: object, latestDeploymentGuidance: object | null,
+  *           latestRunBrief: object | null, latestFinalSynthesis: object | null,
+  *           latestHandoff: object | null, latestReview: object | null,
+@@ -206,7 +205,6 @@ async function countArchive(repoPath) {
+ // eslint-disable-next-line max-lines-per-function -- linear accumulator over heterogeneous entry types — no meaningful split boundary
+ function buildMemoryBuckets({
+   claims,
+-  openApprovals,
+   sprint,
+   workflow,
+   latestDeploymentGuidance,
+@@ -226,7 +224,6 @@ function buildMemoryBuckets({
+     policy: "bounded-v1",
+     hot: {
+       claims,
+-      openApprovals,
+       sprint,
+       workflow,
+       repoGuidance: {
+@@ -249,12 +246,7 @@ function buildMemoryBuckets({
+     },
+     cold: {
+       archiveCounts,
+-      omittedByDefault: [
+-        "older_artifacts",
+-        "resolved_approvals",
+-        "full_event_log",
+-        "full_history_log"
+-      ]
++      omittedByDefault: ["older_artifacts", "full_event_log", "full_history_log"]
+     }
+   };
+ }
+@@ -267,7 +259,6 @@ function buildMemoryBuckets({
+ export async function buildWakeUpBrief(repoPath, options = {}) {
+   const readOnly = options.readOnly === true;
+   const [
+-    openApprovals,
+     claims,
+     sprint,
+     workflowState,
+@@ -281,7 +272,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
+     latestDeploymentCheck,
+     hookHealth
+   ] = await Promise.all([
+-    listApprovals(repoPath, { status: "open", createIfMissing: !readOnly }),
+     listClaims(repoPath, { createIfMissing: !readOnly }),
+     readJson(
+       (await pathExists(path.join(repoPath, ...SPRINT_PATH)))
+@@ -331,7 +321,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
+ 
+   const memory = buildMemoryBuckets({
+     claims,
+-    openApprovals,
+     sprint,
+     workflow,
+     latestDeploymentGuidance,
+@@ -353,7 +342,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
+     hasClaudeMd: await pathExists(path.join(repoPath, "CLAUDE.md")),
+     sprint,
+     claims,
+-    openApprovals,
+     workflow,
+     repoGuidance: { deployment: latestDeploymentGuidance },
+     repoMemory,
+@@ -366,7 +354,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
+     summary: buildWakeUpSummary({
+       memory,
+       claims,
+-      openApprovals,
+       workflow,
+       latestDeploymentGuidance,
+       repoMemory,
+@@ -377,7 +364,7 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
+ }
+ 
+ /**
+- * @param {{ memory: Record<string, unknown>, claims: object[], openApprovals: object[],
++ * @param {{ memory: Record<string, unknown>, claims: object[],
+  *           workflow: { hasActiveRun: boolean, pendingBadges: string[] },
+  *           latestDeploymentGuidance: object | null, repoMemory: object[],
+  *           latestArtifacts: object, archiveCounts: object }} _
+@@ -386,7 +373,6 @@ export async function buildWakeUpBrief(repoPath, options = {}) {
+ function buildWakeUpSummary({
+   memory,
+   claims,
+-  openApprovals,
+   workflow,
+   latestDeploymentGuidance,
+   repoMemory,
+@@ -401,7 +387,6 @@ function buildWakeUpSummary({
+   return {
+     memoryPolicy: /** @type {string} */ (memory["policy"]),
+     activeClaims: claims.length,
+-    openApprovals: openApprovals.length,
+     hasActiveWorkflow: workflow.hasActiveRun,
+     pendingWorkflowBadges: workflow.pendingBadges,
+     hasDeploymentGuidance: Boolean(latestDeploymentGuidance),
+diff --git a/crew/scripts/report-to-pr.mts b/crew/scripts/report-to-pr.mts
+index 1cd8a6a2..0fb53b82 100644
+--- a/crew/scripts/report-to-pr.mts
++++ b/crew/scripts/report-to-pr.mts
+@@ -31,7 +31,7 @@
+ import process from "node:process";
+ import { pathToFileURL } from "node:url";
+ import { postReportToPr, type ReportStatus } from "./lib/report-to-pr.mjs";
+-import { fireGuarded } from "./lib/gepa/guarded-fire.mjs";
++import { fireGuarded } from "./lib/guarded-fire.mjs";
+ 
+ const VALID_STATUSES: readonly ReportStatus[] = ["DONE", "BLOCKED", "HELP", "IN-PROGRESS"];
+ 
+diff --git a/crew/scripts/validate-agents.mts b/crew/scripts/validate-agents.mts
+index 4c4f894b..c6500ff2 100644
+--- a/crew/scripts/validate-agents.mts
++++ b/crew/scripts/validate-agents.mts
+@@ -19,18 +19,12 @@ import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
+ import path from "node:path";
+ import { fileURLToPath } from "node:url";
+ import { PEER_DISPATCH_ALLOWLIST } from "./lib/dispatch/peer-dispatch-allowlist.mjs";
+-import { stripGepafrontmatter } from "./lib/gepa/champion-provenance-writer.mjs";
+ 
+ const AGENTS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "agents");
+ const MAX_LINES = 350;
+ 
+ function parseFrontmatter(text: string): Record<string, string> | null {
+-  // FEAT-193 AC-10: champion-provenance-writer prepends a leading `gepa:`
+-  // frontmatter block above the agent's own `name:`/`description:` block. The
+-  // field-read must skip that block or it reads {gepa:…} (no name) and fails a
+-  // legitimately-promoted agent. stripGepafrontmatter is a no-op when absent.
+-  const body = stripGepafrontmatter(text);
+-  const match = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
++  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+   if (!match || match[1] === undefined) return null;
+   const fm: Record<string, string> = {};
+   for (const line of match[1].split(/\r?\n/)) {
+diff --git a/crew/tests/cli-approvals.test.mts b/crew/tests/cli-approvals.test.mts
+deleted file mode 100644
+index c1c67f28..00000000
+--- a/crew/tests/cli-approvals.test.mts
++++ /dev/null
+@@ -1,58 +0,0 @@
+-import { test, expect } from "bun:test";
+-import { runCrew } from "../scripts/crew.mjs";
+-import { makeTempDir } from "./helpers/cli-fixtures.mjs";
+-
+-test("CLI approval requests can be listed and resolved", async () => {
+-  const repoPath = await makeTempDir("crew-cli-approvals-");
+-  const initResult = await runCrew(["init", "--repo", repoPath]);
+-  expect(initResult.code, "init should exit with code 0").toBe(0);
+-
+-  const requestResult = await runCrew([
+-    "request-approval",
+-    "--repo",
+-    repoPath,
+-    "--kind",
+-    "destructive_action",
+-    "--summary",
+-    "Delete legacy generated assets",
+-    "--requester",
+-    "fullstack-dev"
+-  ]);
+-  expect(requestResult.code, "request-approval should exit with code 0").toBe(0);
+-  const requestOutput = JSON.parse(requestResult.output);
+-  expect(requestOutput.status).toBe("open");
+-  expect(requestOutput.approver).toBe("user");
+-
+-  const openResult = await runCrew(["show-approvals", "--repo", repoPath]);
+-  expect(openResult.code, "show-approvals should exit with code 0").toBe(0);
+-  const openOutput = JSON.parse(openResult.output);
+-  expect(openOutput.approvals.length).toBe(1);
+-  expect(openOutput.approvals[0].id).toBe(requestOutput.id);
+-
+-  const resolveResult = await runCrew([
+-    "resolve-approval",
+-    "--repo",
+-    repoPath,
+-    "--id",
+-    requestOutput.id,
+-    "--decision",
+-    "approved",
+-    "--resolver",
+-    "user"
+-  ]);
+-  expect(resolveResult.code, "resolve-approval should exit with code 0").toBe(0);
+-  const resolveOutput = JSON.parse(resolveResult.output);
+-  expect(resolveOutput.status).toBe("approved");
+-
+-  const resolvedResult = await runCrew([
+-    "show-approvals",
+-    "--repo",
+-    repoPath,
+-    "--status",
+-    "resolved"
+-  ]);
+-  expect(resolvedResult.code, "show-approvals with --status should exit with code 0").toBe(0);
+-  const resolvedOutput = JSON.parse(resolvedResult.output);
+-  expect(resolvedOutput.approvals.length).toBe(1);
+-  expect(resolvedOutput.approvals[0].status).toBe("approved");
+-});
+diff --git a/crew/tests/cli-smoke.test.mts b/crew/tests/cli-smoke.test.mts
+index 59f35ff0..39b7b810 100644
+--- a/crew/tests/cli-smoke.test.mts
++++ b/crew/tests/cli-smoke.test.mts
+@@ -18,29 +18,6 @@ test("smoke: claims family (init)", async () => {
+   expect(result.mode, "result should have mode=init").toBe("init");
+ });
+ 
+-test("smoke: approvals family (request-approval)", async () => {
+-  const rootPath = await makeTempDir("crew-smoke-approvals-");
+-  const repoPath = path.join(rootPath, "app");
+-
+-  // Init first
+-  await execFile("bun", [cliPath, "init", "--repo", repoPath]);
+-
+-  const { stdout, stderr } = await execFile("bun", [
+-    cliPath,
+-    "request-approval",
+-    "--repo",
+-    repoPath,
+-    "--summary",
+-    "smoke",
+-    "--requester",
+-    "smoke"
+-  ]);
+-
+-  expect(stderr, "stderr should be empty on success").toMatch(/^(\s*)$/);
+-  const result = JSON.parse(stdout);
+-  expect(result.id, "result should have an id field").toBeTruthy();
+-});
+-
+ test("smoke: artifacts family (write-handoff)", async () => {
+   const rootPath = await makeTempDir("crew-smoke-artifacts-");
+   const repoPath = path.join(rootPath, "app");
+diff --git a/crew/tests/cli-workflow.test.mts b/crew/tests/cli-workflow.test.mts
+index 87f37fa9..a90f025c 100644
+--- a/crew/tests/cli-workflow.test.mts
++++ b/crew/tests/cli-workflow.test.mts
+@@ -56,14 +56,6 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
+ 
+   await runCrew(["claim", "--repo", repoPath, "--owner", "fullstack-dev", "src/example.ts"]);
+ 
+-  await runCrew([
+-    "request-approval",
+-    "--repo",
+-    repoPath,
+-    "--summary",
+-    "Expand scope for wake-up test"
+-  ]);
+-
+   await runCrew([
+     "write-validation-plan",
+     "--repo",
+@@ -132,7 +124,6 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
+ 
+   expect(wakeUp.summary.memoryPolicy).toBe("bounded-v1");
+   expect(wakeUp.summary.activeClaims).toBe(1);
+-  expect(wakeUp.summary.openApprovals).toBe(1);
+   expect(wakeUp.summary.hasActiveWorkflow).toBe(true);
+   expect(wakeUp.summary.pendingWorkflowBadges).toEqual(["review_required"]);
+   expect(wakeUp.summary.hasDeploymentGuidance).toBe(true);
+@@ -151,14 +142,12 @@ test("CLI wake-up brief summarizes repo memory and state", async () => {
+   expect(wakeUp.memory.hot.latestArtifacts.deploymentCheck.title).toMatch(/Wake-up deployment check/);
+   expect(wakeUp.memory.warm.validation.title).toMatch(/Wake-up validation result/);
+   expect(wakeUp.memory.hot.claims.length).toBe(1);
+-  expect(wakeUp.memory.hot.openApprovals.length).toBe(1);
+   expect(wakeUp.memory.hot.workflow.currentRun.gates.review.status).toBe("required");
+   expect(wakeUp.memory.cold.archiveCounts.runs >= 1).toBeTruthy();
+   expect(wakeUp.memory.cold.archiveCounts.validations >= 2).toBeTruthy();
+   expect(wakeUp.memory.cold.archiveCounts.deployments >= 1).toBeTruthy();
+   expect(wakeUp.memory.cold.omittedByDefault).toEqual([
+     "older_artifacts",
+-    "resolved_approvals",
+     "full_event_log",
+     "full_history_log"
+   ]);
+@@ -206,14 +195,6 @@ test("CLI brief-me synthesizes workflow state, git activity, and next step", asy
+     "Implementation changed code and needs review"
+   ]);
+ 
+-  await runCrew([
+-    "request-approval",
+-    "--repo",
+-    repoPath,
+-    "--summary",
+-    "Approve broadening the brief"
+-  ]);
+-
+   await runCrew([
+     "write-deployment-guidance",
+     "--repo",
+diff --git a/crew/tests/gepa-corpus-optimize.test.mts b/crew/tests/gepa-corpus-optimize.test.mts
+deleted file mode 100644
+index a66a91fe..00000000
+--- a/crew/tests/gepa-corpus-optimize.test.mts
++++ /dev/null
+@@ -1,125 +0,0 @@
+-// FEAT-193 S3 — gepa-corpus-optimize feed-to-optimize bridge (AC-9 human gate).
+-import { test, expect } from "bun:test";
+-import os from "node:os";
+-import path from "node:path";
+-import { spawnSync } from "node:child_process";
+-import { fileURLToPath } from "node:url";
+-import {
+-  runCorpusOptimizeCmd,
+-  type CorpusOptimizeDeps
+-} from "../scripts/lib/gepa/corpus-optimize.mjs";
+-
+-const cliPath = path.join(
+-  path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+-  "scripts",
+-  "crew.mts"
+-);
+-
+-/** Records every delegate call so tests can assert composition + arg threading. */
+-function spyDeps(): {
+-  deps: CorpusOptimizeDeps;
+-  reportCalls: string[][];
+-  optimizeCalls: string[][];
+-} {
+-  const reportCalls: string[][] = [];
+-  const optimizeCalls: string[][] = [];
+-  const deps: CorpusOptimizeDeps = {
+-    report: async (_repo, args) => {
+-      reportCalls.push(args);
+-      return { stdout: "DIGEST-BODY\n", stderr: "", exitCode: 0 };
+-    },
+-    optimize: async (_repo, args) => {
+-      optimizeCalls.push(args);
+-      return { stdout: "OPTIMIZE-BODY\n", stderr: "", exitCode: 0 };
+-    }
+-  };
+-  return { deps, reportCalls, optimizeCalls };
+-}
+-
+-test("missing agent → exit 2, never touches delegates", async () => {
+-  const { deps, reportCalls, optimizeCalls } = spyDeps();
+-  const res = await runCorpusOptimizeCmd("/tmp", ["--budget", "5"], deps);
+-  expect(res.exitCode).toBe(2);
+-  expect(res.stderr).toMatch(/usage: gepa-corpus-optimize/);
+-  expect(reportCalls.length).toBe(0);
+-  expect(optimizeCalls.length).toBe(0);
+-});
+-
+-test("missing --budget → exit 2 (spends real judge tokens); neither delegate runs", async () => {
+-  const { deps, reportCalls, optimizeCalls } = spyDeps();
+-  const res = await runCorpusOptimizeCmd("/tmp", ["fullstack-dev"], deps);
+-  expect(res.exitCode).toBe(2);
+-  expect(res.stderr).toMatch(/--budget is required/);
+-  expect(reportCalls.length, "no analyze/digest before the budget guard").toBe(0);
+-  expect(optimizeCalls.length).toBe(0);
+-});
+-
+-test("happy path: renders digest THEN optimizes the aggregated corpus", async () => {
+-  const { deps, reportCalls, optimizeCalls } = spyDeps();
+-  const res = await runCorpusOptimizeCmd(
+-    "/tmp",
+-    ["backend-dev", "--budget", "5", "--k", "3"],
+-    deps
+-  );
+-  expect(res.exitCode).toBe(0);
+-  // Digest rendered first, optimize body after — analyze-before-adjust order.
+-  const digestIdx = res.stdout.indexOf("DIGEST-BODY");
+-  const optIdx = res.stdout.indexOf("OPTIMIZE-BODY");
+-  expect(digestIdx >= 0 && optIdx >= 0, "both sections present").toBeTruthy();
+-  expect(digestIdx < optIdx, "digest must render before the optimize cycle").toBeTruthy();
+-  // Report scoped to the one agent; optimize got agent + budget + k.
+-  expect(reportCalls[0]).toEqual(["backend-dev"]);
+-  expect(optimizeCalls[0]?.slice(0, 4)).toEqual(["backend-dev", "--budget", "5", "--k"]);
+-});
+-
+-test("AC-9 gate: bridge ALWAYS forces --artifact-only, never a promote flag", async () => {
+-  const { deps, optimizeCalls } = spyDeps();
+-  await runCorpusOptimizeCmd("/tmp", ["frontend-dev", "--budget", "2"], deps);
+-  const args = optimizeCalls[0] ?? [];
+-  expect(args.includes("--artifact-only"), "artifact-only must be forced").toBeTruthy();
+-  expect(
+-    !args.some((a) => /promote|no-artifact-only/.test(a)),
+-    "no promote / no-artifact-only flag may ever be threaded"
+-  ).toBeTruthy();
+-});
+-
+-test("optimize exit code propagates; digest is advisory", async () => {
+-  const deps: CorpusOptimizeDeps = {
+-    report: async () => ({ stdout: "D\n", stderr: "", exitCode: 0 }),
+-    optimize: async () => ({ stdout: "", stderr: "boom\n", exitCode: 3 })
+-  };
+-  const res = await runCorpusOptimizeCmd("/tmp", ["a", "--budget", "5"], deps);
+-  expect(res.exitCode, "bridge exit == optimize exit").toBe(3);
+-  expect(res.stderr).toMatch(/boom/);
+-});
+-
+-test("never throws: a delegate that rejects surfaces as exit 1 + stderr", async () => {
+-  const deps: CorpusOptimizeDeps = {
+-    report: async () => {
+-      throw new Error("trial store unreadable");
+-    },
+-    optimize: async () => ({ stdout: "", stderr: "", exitCode: 0 })
+-  };
+-  const res = await runCorpusOptimizeCmd("/tmp", ["a", "--budget", "5"], deps);
+-  expect(res.exitCode, "rejection must not propagate as an unhandled error").toBe(1);
+-  expect(res.stderr).toMatch(/gepa-corpus-optimize failed: trial store unreadable/);
+-});
+-
+-test("CLI: gepa-corpus-optimize is wired (no 'Unknown argument'); guards budget", async () => {
+-  // No --budget → the bridge's arg guard fires (exit 2) BEFORE any judge call,
+-  // so this stays hermetic. CLI runs on bun per the unification plan.
+-  const res = spawnSync(
+-    "bun",
+-    [
+-      cliPath,
+-      "gepa-corpus-optimize",
+-      "somebody",
+-      "--repo",
+-      os.tmpdir()
+-    ],
+-    { encoding: "utf8", timeout: 60_000 }
+-  );
+-  expect(res.stderr ?? "", "flags must be registered").not.toMatch(/Unknown argument/);
+-  expect(res.stderr ?? "", "budget guard reached via CLI").toMatch(/--budget is required/);
+-  expect(res.status).toBe(2);
+-});
+diff --git a/crew/tests/gepa-corpus-report.test.mts b/crew/tests/gepa-corpus-report.test.mts
+deleted file mode 100644
+index f59e9373..00000000
+--- a/crew/tests/gepa-corpus-report.test.mts
++++ /dev/null
+@@ -1,112 +0,0 @@
+-// FEAT-193 S3 (report half) — gepa-corpus-report AC coverage (AC-6/7/8).
+-import { test, expect } from "bun:test";
+-import fs from "node:fs/promises";
+-import os from "node:os";
+-import path from "node:path";
+-import { randomUUID } from "node:crypto";
+-import { reportCorpus, type LessonCitation } from "../scripts/lib/gepa/corpus-report.mjs";
+-
+-const TRIALS = [".claude", "artifacts", "crew", "gepa", "trials"];
+-
+-async function makeRepo() {
+-  return fs.mkdtemp(path.join(os.tmpdir(), "corpus-report-"));
+-}
+-async function cleanup(dir: string) {
+-  await fs.rm(dir, { recursive: true, force: true });
+-}
+-
+-function trial(rationale: string, productionFailure = true) {
+-  return {
+-    id: randomUUID(),
+-    agent: "x",
+-    phase: "build",
+-    candidate_prompt_hash: "h",
+-    candidate_prompt_path: null,
+-    input: productionFailure ? { capture_origin: "production_failure" } : { slice: null },
+-    output: {},
+-    score: { pass: false, score: 0, cost_usd: 0, latency_ms: 0, rationale },
+-    source: "captured",
+-    pareto_rank: null,
+-    created_at: "2026-07-07T00:00:00.000Z"
+-  };
+-}
+-
+-async function writeTrials(repo: string, agent: string, trials: unknown[]) {
+-  const dir = path.join(repo, ...TRIALS);
+-  await fs.mkdir(dir, { recursive: true });
+-  await fs.writeFile(
+-    path.join(dir, `${agent}.jsonl`),
+-    trials.map((t) => JSON.stringify(t)).join("\n") + "\n",
+-    "utf8"
+-  );
+-}
+-
+-const noLessons = async () => [] as LessonCitation[];
+-
+-test("AC-6: clusters failure modes and ranks by frequency", async () => {
+-  const repo = await makeRepo();
+-  try {
+-    await writeTrials(repo, "fullstack-dev", [
+-      trial("dropped opts.context"),
+-      trial("Dropped   opts.context"), // same mode, different casing/spacing
+-      trial("async race in EF query")
+-    ]);
+-    const report = await reportCorpus({
+-      hubRepo: repo,
+-      agent: "fullstack-dev",
+-      recallLessons: noLessons
+-    });
+-
+-    const ar = report.agents[0]!;
+-    expect(ar.totalFailures).toBe(3);
+-    expect(ar.clusters.length).toBe(2);
+-    expect(ar.clusters[0]!.count).toBe(2);
+-    expect(ar.clusters[1]!.count).toBe(1);
+-  } finally {
+-    await cleanup(repo);
+-  }
+-});
+-
+-test("AC-7: with no agent arg, enumerates EVERY agent with >=1 failure (and only those)", async () => {
+-  const repo = await makeRepo();
+-  try {
+-    await writeTrials(repo, "fullstack-dev", [trial("a")]);
+-    await writeTrials(repo, "backend-dev", [trial("b"), trial("c")]);
+-    await writeTrials(repo, "frontend-dev", [trial("canary", false)]); // no failures → excluded
+-    const report = await reportCorpus({ hubRepo: repo, recallLessons: noLessons });
+-
+-    expect(report.agents.map((a) => a.agent).sort()).toEqual(["backend-dev", "fullstack-dev"]);
+-    // Ranked by failure count desc.
+-    expect(report.agents[0]!.agent).toBe("backend-dev");
+-  } finally {
+-    await cleanup(repo);
+-  }
+-});
+-
+-test("AC-8: cites the agent's FEAT-188 astramem lessons by id", async () => {
+-  const repo = await makeRepo();
+-  try {
+-    await writeTrials(repo, "fullstack-dev", [trial("x")]);
+-    const fakeRecall = async (agent: string): Promise<LessonCitation[]> =>
+-      agent === "fullstack-dev" ? [{ id: "lesson-42", summary: "dropped context lesson" }] : [];
+-    const report = await reportCorpus({
+-      hubRepo: repo,
+-      agent: "fullstack-dev",
+-      recallLessons: fakeRecall
+-    });
+-
+-    expect(report.agents[0]!.lessons.map((l) => l.id)).toEqual(["lesson-42"]);
+-  } finally {
+-    await cleanup(repo);
+-  }
+-});
+-
+-test("empty hub → no agents, no throw", async () => {
+-  const repo = await makeRepo();
+-  try {
+-    const report = await reportCorpus({ hubRepo: repo, recallLessons: noLessons });
+-    expect(report.agents).toEqual([]);
+-  } finally {
+-    await cleanup(repo);
+-  }
+-});
+diff --git a/crew/tests/gepa-corpus-sync.test.mts b/crew/tests/gepa-corpus-sync.test.mts
+deleted file mode 100644
+index 325c89c6..00000000
+--- a/crew/tests/gepa-corpus-sync.test.mts
++++ /dev/null
+@@ -1,207 +0,0 @@
+-// FEAT-193 S2 — gepa-corpus-sync AC coverage (AC-1..5).
+-import { test, expect } from "bun:test";
+-import fs from "node:fs/promises";
+-import os from "node:os";
+-import path from "node:path";
+-import { randomUUID } from "node:crypto";
+-import { spawnSync } from "node:child_process";
+-import { fileURLToPath } from "node:url";
+-import { syncCorpus } from "../scripts/lib/gepa/corpus-sync.mjs";
+-
+-const cliPath = path.join(
+-  path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+-  "scripts",
+-  "crew.mts"
+-);
+-
+-const TRIALS = [".claude", "artifacts", "crew", "gepa", "trials"];
+-
+-async function makeRepo(prefix: string): Promise<string> {
+-  return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+-}
+-async function cleanup(...dirs: string[]) {
+-  await Promise.all(dirs.map((d) => fs.rm(d, { recursive: true, force: true })));
+-}
+-
+-function makeTrial(agent: string, rationale: string, opts: { productionFailure?: boolean } = {}) {
+-  return {
+-    id: randomUUID(),
+-    agent,
+-    phase: "build",
+-    candidate_prompt_hash: "deadbeef",
+-    candidate_prompt_path: `agents/${agent}.md`,
+-    input:
+-      opts.productionFailure === false ? { slice: null } : { capture_origin: "production_failure" },
+-    output: {},
+-    score: { pass: false, score: 0, cost_usd: 0, latency_ms: 0, rationale },
+-    source: "captured",
+-    pareto_rank: null,
+-    created_at: "2026-07-07T00:00:00.000Z"
+-  };
+-}
+-
+-async function writeTrials(repo: string, agent: string, trials: unknown[]) {
+-  const dir = path.join(repo, ...TRIALS);
+-  await fs.mkdir(dir, { recursive: true });
+-  const body = trials.map((t) => JSON.stringify(t)).join("\n") + "\n";
+-  await fs.writeFile(path.join(dir, `${agent}.jsonl`), body, "utf8");
+-}
+-
+-async function readHubTrials(hub: string, agent: string): Promise<string[]> {
+-  try {
+-    const raw = await fs.readFile(path.join(hub, ...TRIALS, `${agent}.jsonl`), "utf8");
+-    return raw.split("\n").filter((l) => l.trim());
+-  } catch {
+-    return [];
+-  }
+-}
+-
+-test("AC-1: production-failure trials from a sibling are merged into the hub per-agent", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sib = await makeRepo("corpus-sib-");
+-  try {
+-    await writeTrials(sib, "fullstack-dev", [
+-      makeTrial("fullstack-dev", "dropped opts.context in adapter"),
+-      makeTrial("fullstack-dev", "async race in EF query")
+-    ]);
+-    const report = await syncCorpus({ hubRepo: hub, siblingRepos: [sib] });
+-
+-    expect(report.totalEligible).toBe(2);
+-    expect(report.totalAdded).toBe(2);
+-    expect(report.perAgent["fullstack-dev"]?.added).toBe(2);
+-    expect((await readHubTrials(hub, "fullstack-dev")).length).toBe(2);
+-  } finally {
+-    await cleanup(hub, sib);
+-  }
+-});
+-
+-test("AC-2: dedup by (agent, rationale-hash) across siblings + idempotent re-run", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sibA = await makeRepo("corpus-sibA-");
+-  const sibB = await makeRepo("corpus-sibB-");
+-  try {
+-    // Same rationale in two siblings → must land once.
+-    await writeTrials(sibA, "backend-dev", [makeTrial("backend-dev", "null deref in mapper")]);
+-    await writeTrials(sibB, "backend-dev", [makeTrial("backend-dev", "null deref in mapper")]);
+-
+-    const first = await syncCorpus({ hubRepo: hub, siblingRepos: [sibA, sibB] });
+-    expect(first.totalEligible).toBe(2);
+-    expect(first.totalAdded).toBe(1);
+-    expect(first.totalSkipped).toBe(1);
+-    expect((await readHubTrials(hub, "backend-dev")).length).toBe(1);
+-
+-    // Idempotent: re-run adds nothing.
+-    const second = await syncCorpus({ hubRepo: hub, siblingRepos: [sibA, sibB] });
+-    expect(second.totalAdded).toBe(0);
+-    expect(second.totalSkipped).toBe(2);
+-    expect((await readHubTrials(hub, "backend-dev")).length).toBe(1);
+-  } finally {
+-    await cleanup(hub, sibA, sibB);
+-  }
+-});
+-
+-test("AC-3: completeness — added+skipped===eligible AND every contributing agent enumerated", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sib = await makeRepo("corpus-sib-");
+-  try {
+-    await writeTrials(sib, "fullstack-dev", [
+-      makeTrial("fullstack-dev", "a"),
+-      makeTrial("fullstack-dev", "a") // intra-file dup
+-    ]);
+-    await writeTrials(sib, "frontend-dev", [makeTrial("frontend-dev", "b")]);
+-    const report = await syncCorpus({ hubRepo: hub, siblingRepos: [sib] });
+-
+-    expect(report.totalAdded + report.totalSkipped).toBe(report.totalEligible);
+-    expect(Object.keys(report.perAgent).sort()).toEqual(["frontend-dev", "fullstack-dev"]);
+-    expect(report.perAgent["fullstack-dev"]?.contributed).toBe(2);
+-  } finally {
+-    await cleanup(hub, sib);
+-  }
+-});
+-
+-test("AC-4: non-production-failure trials are NOT aggregated", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sib = await makeRepo("corpus-sib-");
+-  try {
+-    await writeTrials(sib, "fullstack-dev", [
+-      makeTrial("fullstack-dev", "eval canary", { productionFailure: false })
+-    ]);
+-    const report = await syncCorpus({ hubRepo: hub, siblingRepos: [sib] });
+-
+-    expect(report.totalEligible).toBe(0);
+-    expect(report.totalAdded).toBe(0);
+-    expect((await readHubTrials(hub, "fullstack-dev")).length).toBe(0);
+-  } finally {
+-    await cleanup(hub, sib);
+-  }
+-});
+-
+-test("AC-5: read-only on siblings; missing trials dir skipped without error", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sibWith = await makeRepo("corpus-sibWith-");
+-  const sibBare = await makeRepo("corpus-sibBare-"); // no trials dir
+-  try {
+-    await writeTrials(sibWith, "fullstack-dev", [makeTrial("fullstack-dev", "x")]);
+-    const before = await fs.readFile(path.join(sibWith, ...TRIALS, "fullstack-dev.jsonl"), "utf8");
+-
+-    const report = await syncCorpus({ hubRepo: hub, siblingRepos: [sibWith, sibBare] });
+-
+-    expect(report.siblingsScanned).toBe(1);
+-    expect(report.siblingsSkipped).toEqual([sibBare]);
+-    // Sibling file untouched.
+-    const after = await fs.readFile(path.join(sibWith, ...TRIALS, "fullstack-dev.jsonl"), "utf8");
+-    expect(after).toBe(before);
+-  } finally {
+-    await cleanup(hub, sibWith, sibBare);
+-  }
+-});
+-
+-test("corrupt + schema-drifted rows are skipped, valid ones still aggregate (no throw)", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sib = await makeRepo("corpus-sib-");
+-  try {
+-    const dir = path.join(sib, ...TRIALS);
+-    await fs.mkdir(dir, { recursive: true });
+-    const lines = [
+-      "{ not valid json", // malformed syntax
+-      JSON.stringify({ id: "x", agent: "backend-dev" }), // valid JSON, invalid TrialSchema
+-      JSON.stringify(makeTrial("backend-dev", "real failure")) // valid production-failure trial
+-    ];
+-    await fs.writeFile(path.join(dir, "backend-dev.jsonl"), lines.join("\n") + "\n", "utf8");
+-
+-    const report = await syncCorpus({ hubRepo: hub, siblingRepos: [sib] });
+-    expect(report.totalEligible).toBe(1);
+-    expect(report.totalAdded).toBe(1);
+-    expect((await readHubTrials(hub, "backend-dev")).length).toBe(1);
+-  } finally {
+-    await cleanup(hub, sib);
+-  }
+-});
+-
+-test("CLI: --sibling + --json flags are wired (no 'Unknown argument')", async () => {
+-  const hub = await makeRepo("corpus-hub-");
+-  const sib = await makeRepo("corpus-sib-");
+-  try {
+-    await writeTrials(sib, "fullstack-dev", [makeTrial("fullstack-dev", "cli path")]);
+-    // CLI scripts run on bun per the unification plan.
+-    const res = spawnSync(
+-      "bun",
+-      [
+-        cliPath,
+-        "gepa-corpus-sync",
+-        "--sibling",
+-        sib,
+-        "--json",
+-        "--repo",
+-        hub
+-      ],
+-      { encoding: "utf8", timeout: 60_000 }
+-    );
+-    expect(res.status).toBe(0);
+-    expect(res.stderr ?? "").not.toMatch(/Unknown argument/);
+-    const report = JSON.parse(res.stdout);
+-    expect(report.totalAdded).toBe(1);
+-  } finally {
+-    await cleanup(hub, sib);
+-  }
+-});
+diff --git a/crew/tests/gepa-provenance-validate.test.mts b/crew/tests/gepa-provenance-validate.test.mts
+deleted file mode 100644
+index 53513985..00000000
+--- a/crew/tests/gepa-provenance-validate.test.mts
++++ /dev/null
+@@ -1,68 +0,0 @@
+-// FEAT-193 AC-10 — a champion-provenance-written agent must still pass
+-// validate-agents (the leading `gepa:` block must not hide name/description).
+-import { test, expect } from "bun:test";
+-import fs from "node:fs/promises";
+-import os from "node:os";
+-import path from "node:path";
+-import { randomUUID } from "node:crypto";
+-import { validateAgents } from "../scripts/validate-agents.mjs";
+-import {
+-  writeChampionProvenance,
+-  stripGepafrontmatter
+-} from "../scripts/lib/gepa/champion-provenance-writer.mjs";
+-
+-const WELL_FORMED = `---
+-name: foo
+-prompt_id: foo
+-version: 1.0.0
+-description: A test agent.
+-model: sonnet
+----
+-
+-You are a foo agent on a Claude Code engineering team.
+-
+-## Report contract
+-
+-Write your handoff via write-handoff.
+-`;
+-
+-test("AC-10: validate-agents passes on a champion-provenance-written agent", async () => {
+-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "gepa-provenance-"));
+-  try {
+-    const agentPath = path.join(root, "foo.md");
+-    await fs.writeFile(agentPath, WELL_FORMED, "utf8");
+-
+-    // Baseline: clean file validates.
+-    const before = await validateAgents(root);
+-    expect(before.ok).toBe(true);
+-
+-    // Promote: prepends a leading `gepa:` frontmatter block.
+-    writeChampionProvenance({ agentPath, trialUuid: randomUUID() });
+-    const promoted = await fs.readFile(agentPath, "utf8");
+-    expect(promoted.startsWith("---\ngepa:\n")).toBeTruthy();
+-
+-    // The provenance-written agent must STILL validate — no missing name/description.
+-    const after = await validateAgents(root);
+-    expect(after.ok).toBe(true);
+-  } finally {
+-    await fs.rm(root, { recursive: true, force: true });
+-  }
+-});
+-
+-test("AC-10: idempotent — re-promoting replaces the block, still validates", async () => {
+-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "gepa-provenance-"));
+-  try {
+-    const agentPath = path.join(root, "foo.md");
+-    await fs.writeFile(agentPath, WELL_FORMED, "utf8");
+-    writeChampionProvenance({ agentPath, trialUuid: randomUUID() });
+-    writeChampionProvenance({ agentPath, trialUuid: randomUUID() });
+-
+-    const twice = await fs.readFile(agentPath, "utf8");
+-    // Exactly one gepa block: stripping it once yields a body with no `gepa:` left.
+-    expect(stripGepafrontmatter(twice).includes("gepa:")).toBeFalsy();
+-    const after = await validateAgents(root);
+-    expect(after.ok).toBe(true);
+-  } finally {
+-    await fs.rm(root, { recursive: true, force: true });
+-  }
+-});
+diff --git a/crew/tests/gepa/ac3-proof-harness.test.mts b/crew/tests/gepa/ac3-proof-harness.test.mts
+deleted file mode 100644
+index 2d80eccc..00000000
+--- a/crew/tests/gepa/ac3-proof-harness.test.mts
++++ /dev/null
+@@ -1,320 +0,0 @@
+-/**
+- * tests/gepa/ac3-proof-harness.test.ts — FEAT-192 SLICE-D
+- *
+- * Closes the HIGH provability gap the SLICE-C review surfaced
+- * (.claude/artifacts/crew/reviews/20260705T133940Z-review-result-feat-192-slice-c-review.md):
+- * against the REAL `evals/agents/crew-aiplugin-dev.yaml`, the default split
+- * drops the AC-3 money case (`respects-350-line-cap`) into `train`, where it
+- * is never scored — so a naive `/crew:gepa-optimize aiplugin-dev` can never
+- * prove AC-3. Fixing the split alone (`--split 0/3`, all 3 cases heldOut)
+- * creates a SECOND gap: it empties `train`, zeroing the cold-start
+- * `trainSeedTrials`, so on the true cold start that exists today (no
+- * aiplugin-dev trial history) `dispatchRewriter` gets zero failing-trial
+- * context for its first candidate.
+- *
+- * This file proves, entirely offline (no live LLM, no live `claude -p`):
+- *  1. `--split 0/3` against the REAL yaml routes every case — including
+- *     `respects-350-line-cap` — into `heldOut`/`cases` (the regression test
+- *     the SLICE-C review said was missing; SLICE-C's own tests used a
+- *     synthetic case-a/b/c fixture and never checked real case placement).
+- *  2. `resolveOptimizeInputs`'s cold-start heldOut-seed fallback gives
+- *     `dispatchRewriter` real failing-trial context (incl. a rationale
+- *     carrying the `respects-350-line-cap` rubric) when both `train` and
+- *     trial history are empty — and does NOT fire when either already has
+- *     content, so no existing agent's default-split behavior regresses.
+- *  3. End-to-end plumbing (generate -> dispatch -> judge -> score -> rank ->
+- *     determineWinner) with INJECTED mock dispatch + mock judge: a champion
+- *     failing `respects-350-line-cap`, given that failing trial as context,
+- *     produces (via the mocked `dispatchRewriter`) a candidate that the
+- *     mocked judge scores as passing all 3 cases, and `determineWinner`
+- *     selects it as winner via the SLICE-B all-case gate.
+- *
+- * The live AC-3 run (real Groq/Gemini judge, real `claude -p` dispatch) is
+- * the operator's gated next step once GROQ_API_KEY is available — see the
+- * SLICE-D handoff for the exact command.
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import type {
+-  Candidate,
+-  CandidateGenerator,
+-  EvalCase,
+-  LLMJudge,
+-  Trial
+-} from "@astragenie/gepa-core";
+-import {
+-  loadEvalCasesForOptimize,
+-  resolveOptimizeInputs
+-} from "../../scripts/lib/gepa/gepa-optimize-cmd.mjs";
+-import {
+-  createAipluginCandidateGenerator,
+-  type RewriteDispatchDeps
+-} from "../../scripts/lib/gepa/candidate-generator-aiplugin.mjs";
+-import { createJudgeScorer } from "../../scripts/lib/gepa/judge-scorer.mjs";
+-import { runOptimize } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-// Real repo root — the yaml + fixtures under test are the ACTUAL AC-3 spec,
+-// not a synthetic fixture (that substitution is exactly what the SLICE-C
+-// review flagged as the missing regression test).
+-const REPO_ROOT = join(import.meta.dir, "../..");
+-const AC3_AGENT = "aiplugin-dev";
+-const AC3_MONEY_CASE = "respects-350-line-cap";
+-const AC3_ALL_CASE_IDS = [
+-  "identity-anchor-holds",
+-  "refuses-orchestrator-role",
+-  "respects-350-line-cap"
+-].sort();
+-
+-describe("FEAT-192 SLICE-D — score-all-cases split against the REAL aiplugin-dev eval yaml", () => {
+-  test("--split 0/3 routes every real case (incl. respects-350-line-cap) into heldOut/cases", async () => {
+-    const result = await loadEvalCasesForOptimize(REPO_ROOT, AC3_AGENT, { train: 0, heldOut: 3 });
+-
+-    expect(result).not.toBeNull();
+-    if (!result) return;
+-
+-    const ids = result.heldOut.map((c) => c.id).sort();
+-    expect(ids).toEqual(AC3_ALL_CASE_IDS);
+-    expect(result.heldOut.every((c) => c.held_out)).toBe(true);
+-    // Forcing all 3 into heldOut empties train — this is the second-order
+-    // interaction the seeding fallback (below) exists to solve.
+-    expect(result.trainSeedTrials).toHaveLength(0);
+-  });
+-
+-  test("sanity regression: default split (no --split) still drops the money case into train", async () => {
+-    // Documents WHY SLICE-D standardizes on --split 0/3 for the AC-3 proof —
+-    // if this ever stops being true (e.g. a 4th case is added and rebalances
+-    // defaultSplitFor), the naive invocation might start working and this
+-    // assertion should be revisited, not silently left stale.
+-    const result = await loadEvalCasesForOptimize(REPO_ROOT, AC3_AGENT);
+-
+-    expect(result).not.toBeNull();
+-    if (!result) return;
+-
+-    const heldOutIds = result.heldOut.map((c) => c.id);
+-    expect(heldOutIds).not.toContain(AC3_MONEY_CASE);
+-  });
+-});
+-
+-describe("FEAT-192 SLICE-D — cold-start heldOut-seed fallback (resolveOptimizeInputs)", () => {
+-  test("train:0 + no trial history -> seeds failing-trial context from heldOut cases", async () => {
+-    const resolved = await resolveOptimizeInputs(
+-      REPO_ROOT,
+-      AC3_AGENT,
+-      { train: 0, heldOut: 3 },
+-      []
+-    );
+-
+-    expect(resolved.cases).toHaveLength(3);
+-    // One seeded trial per heldOut case — dispatchRewriter never sees zero
+-    // failing-trial context on this cold start.
+-    expect(resolved.failingTrials).toHaveLength(3);
+-
+-    const capTrial = resolved.failingTrials.find((t) =>
+-      t.score.rationale?.includes(AC3_MONEY_CASE)
+-    );
+-    expect(capTrial).toBeDefined();
+-    expect(capTrial?.score.pass).toBe(false);
+-    // The seeded rationale carries the case's own rubric — for the money
+-    // case that rubric names the 350-line cap and the push-to-skill fix —
+-    // real reflection fuel, not a fabricated failure narrative.
+-    expect(capTrial?.score.rationale).toContain("350");
+-  });
+-
+-  test("real trial history takes priority over the heldOut-seed fallback", async () => {
+-    const historicalTrial: Trial = {
+-      id: "historical-trial-1",
+-      agent: AC3_AGENT,
+-      phase: "build",
+-      candidate_prompt_hash: "champion-real",
+-      candidate_prompt_path: null,
+-      input: "real captured input",
+-      output: "real captured output",
+-      score: {
+-        pass: false,
+-        score: 0.1,
+-        cost_usd: 0.01,
+-        latency_ms: 500,
+-        rationale: "real failure"
+-      },
+-      source: "eval",
+-      pareto_rank: null,
+-      created_at: new Date().toISOString()
+-    };
+-
+-    const resolved = await resolveOptimizeInputs(REPO_ROOT, AC3_AGENT, { train: 0, heldOut: 3 }, [
+-      historicalTrial
+-    ]);
+-
+-    expect(resolved.failingTrials).toEqual([historicalTrial]);
+-  });
+-
+-  test("regression guard: default split (non-empty train) never triggers the heldOut-seed fallback", async () => {
+-    const resolved = await resolveOptimizeInputs(REPO_ROOT, AC3_AGENT, undefined, []);
+-
+-    expect(resolved.failingTrials.length).toBeGreaterThan(0);
+-    // Every seed trial should carry the pre-existing SLICE-C train-seed
+-    // marker, never the SLICE-D heldOut-seed marker — proves this slice adds
+-    // a fallback tier without altering the SLICE-C default-path behavior.
+-    expect(
+-      resolved.failingTrials.every((t) => t.score.rationale?.includes("seeded from train-split"))
+-    ).toBe(true);
+-  });
+-});
+-
+-describe("FEAT-192 SLICE-D — offline end-to-end proof (mock judge + mock dispatch, zero live LLM)", () => {
+-  test(
+-    "champion fails respects-350-line-cap -> dispatchRewriter (mocked) candidate passes all 3 " +
+-      "mock-scored cases -> determineWinner selects it via the all-case gate",
+-    async () => {
+-      const repoPath = mkdtempSync(join(tmpdir(), "gepa-d-e2e-"));
+-      const agentsDir = join(repoPath, "agents");
+-      mkdirSync(agentsDir, { recursive: true });
+-
+-      const championContent = [
+-        "# aiplugin-dev (test champion)",
+-        "",
+-        "## Identity anchor",
+-        "You are aiplugin-dev, a Claude Code plugin specialist. You author agents, skills, and commands.",
+-        "",
+-        "## Scope",
+-        "Builder only. No orchestration."
+-      ].join("\n");
+-      writeFileSync(join(agentsDir, `${AC3_AGENT}.md`), championContent, "utf8");
+-
+-      const cases: EvalCase[] = [
+-        { id: "identity-anchor-holds", held_out: true, input: "scenario 1", rubric: ["r1"] },
+-        { id: "refuses-orchestrator-role", held_out: true, input: "scenario 2", rubric: ["r2"] },
+-        {
+-          id: AC3_MONEY_CASE,
+-          held_out: true,
+-          input: "scenario 3",
+-          rubric: ["flag the 350-line cap and push detail to a skill"]
+-        }
+-      ];
+-
+-      // Seed the champion's known failure on the money case — what a real
+-      // champion baseline eval would produce; here supplied directly as
+-      // `failingTrials` so the test proves the generator/scorer wiring
+-      // without depending on the cold-start seed fallback above.
+-      const failingTrial: Trial = {
+-        id: "trial-baseline-350-cap",
+-        agent: AC3_AGENT,
+-        phase: "build",
+-        candidate_prompt_hash: "champion-baseline",
+-        candidate_prompt_path: null,
+-        input: "scenario 3",
+-        output: "champion inlined everything instead of pushing detail to a skill",
+-        score: {
+-          pass: false,
+-          score: 0,
+-          cost_usd: 0,
+-          latency_ms: 0,
+-          rationale:
+-            "champion did not flag the 350-line cap and inlined all procedural detail instead of pushing it to a skill"
+-        },
+-        source: "eval",
+-        pareto_rank: null,
+-        created_at: new Date().toISOString()
+-      };
+-
+-      // SLICE-A DI seam: mocked rewrite dispatch. Never spawns `claude -p`.
+-      // Returns a fenced-block response (AC-7 contract) containing a
+-      // minimally-revised champion that keeps the identity anchor intact.
+-      const rewriteDeps: RewriteDispatchDeps = {
+-        async runSubprocess() {
+-          const revised = [
+-            championContent,
+-            "",
+-            "## Scope note",
+-            "Prompts over 350 lines push procedural detail into a skill instead of inlining it."
+-          ].join("\n");
+-          return JSON.stringify({ type: "result", result: `\`\`\`\n${revised}\n\`\`\`` });
+-        }
+-      };
+-
+-      const capturedCandidates: Candidate[] = [];
+-      const cycleId = "e2e-cycle";
+-      process.env["GEPA_LIVE_GENERATOR"] = "1";
+-      try {
+-        const realGenerator = createAipluginCandidateGenerator({ repoPath, cycleId, rewriteDeps });
+-        // Spy wrapper — captures the generator's own Candidate output (for the
+-        // derived_from_trials provenance assertion) without altering behavior.
+-        const generator: CandidateGenerator = {
+-          async generate(championPath, trials, k, genOpts) {
+-            const produced = await realGenerator.generate(championPath, trials, k, genOpts);
+-            capturedCandidates.push(...produced);
+-            return produced;
+-          }
+-        };
+-
+-        // SLICE-C DI seam: mocked judge chain + mocked candidate dispatch.
+-        // Never hits Groq/Gemini. Judge passes every case, proving that once
+-        // scored, a fixed rewrite clears the all-case promotion gate.
+-        const dispatchedPaths: string[] = [];
+-        const mockJudge: LLMJudge = {
+-          describe: () => ({ provider: "mock", model: "mock-judge" }),
+-          async evaluate({ expected }) {
+-            return {
+-              pass: true,
+-              score: 0.95,
+-              rubricScores: {},
+-              rationale: `${expected.id}: mock pass`,
+-              cost_usd: 0,
+-              latency_ms: 5
+-            };
+-          }
+-        };
+-        const scorer = createJudgeScorer({
+-          deps: {
+-            async dispatch(opts) {
+-              dispatchedPaths.push(opts.agentPromptPath);
+-              return { candidateOutput: "mock candidate output" };
+-            },
+-            async resolveJudgeChain() {
+-              return { judges: [mockJudge], errors: [] };
+-            }
+-          }
+-        });
+-
+-        const result = await runOptimize({
+-          repoPath,
+-          agent: AC3_AGENT,
+-          k: 1,
+-          budgetUsd: 1,
+-          failingTrials: [failingTrial],
+-          generator,
+-          scorer,
+-          cases,
+-          artifactOnly: true
+-        });
+-
+-        expect(result).not.toBeNull();
+-        if (!result) return;
+-
+-        expect(result.candidates_evaluated).toBe(1);
+-        expect(result.trials).toHaveLength(3);
+-        expect(dispatchedPaths).toHaveLength(3);
+-        // The all-case gate (SLICE-B): every one of the 3 cases passed for
+-        // the single candidate -> selected as winner, no_winner:false.
+-        expect(result.no_winner).toBe(false);
+-        expect(result.winner).not.toBeNull();
+-        expect(result.winner?.pass).toBe(true);
+-
+-        // Provenance (AC-3 requirement): the produced candidate traces back
+-        // to the input failing trial.
+-        expect(capturedCandidates).toHaveLength(1);
+-        expect(capturedCandidates[0]?.derived_from_trials).toEqual([failingTrial.id]);
+-
+-        const candidateFiles = readdirSync(
+-          join(repoPath, ".claude", "artifacts", "crew", "gepa", "candidates", cycleId)
+-        );
+-        expect(candidateFiles).toHaveLength(1);
+-      } finally {
+-        delete process.env["GEPA_LIVE_GENERATOR"];
+-      }
+-    }
+-  );
+-});
+diff --git a/crew/tests/gepa/adapt-artifact.test.mts b/crew/tests/gepa/adapt-artifact.test.mts
+deleted file mode 100644
+index 46330a1a..00000000
+--- a/crew/tests/gepa/adapt-artifact.test.mts
++++ /dev/null
+@@ -1,99 +0,0 @@
+-import { describe, expect, test } from "bun:test";
+-import { adaptArtifact } from "../../scripts/lib/gepa/adapt-artifact.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-import type { ArtifactRecord } from "../../scripts/lib/artifacts/write.mjs";
+-
+-describe("adaptArtifact", () => {
+-  test("maps handoff + fields with owner into CrewArtifact for fullstack-dev", () => {
+-    const record: ArtifactRecord = {
+-      kind: "handoff",
+-      path: ".claude/artifacts/crew/handoffs/2026-06-27T12-00-00Z-some-run.md",
+-      title: "some-run"
+-    };
+-    const fields: ArtifactFields = {
+-      owner: "fullstack-dev",
+-      runTitle: "S2",
+-      slice: "SLICE-97"
+-    };
+-    const adapted = adaptArtifact(record, fields);
+-    expect(adapted).not.toBeNull();
+-    expect(adapted?.agent).toBe("fullstack-dev");
+-    expect(adapted?.phase).toBe("build");
+-    expect(adapted?.source_artifact_path).toBe(record.path);
+-    expect((adapted?.input as Record<string, unknown>)?.slice).toBe("SLICE-97");
+-    expect((adapted?.output as Record<string, unknown>)?.title).toBe("some-run");
+-  });
+-
+-  test("populates score_hint when fields.cost.usd is present", () => {
+-    const record: ArtifactRecord = {
+-      kind: "review-result",
+-      path: ".claude/artifacts/crew/reviews/x.md",
+-      title: "review"
+-    };
+-    const fields: ArtifactFields = {
+-      owner: "reviewer",
+-      cost: { usd: 0.0123 }
+-    };
+-    const adapted = adaptArtifact(record, fields);
+-    expect(adapted?.score_hint?.cost_usd).toBeCloseTo(0.0123);
+-    expect(adapted?.phase).toBe("review");
+-  });
+-
+-  test("threads a failing verdict into score_hint.pass=false", () => {
+-    const record: ArtifactRecord = {
+-      kind: "review-result",
+-      path: ".claude/artifacts/crew/reviews/x.md",
+-      title: "review"
+-    };
+-    const rejected = adaptArtifact(record, { owner: "reviewer", verdict: "rejected" });
+-    expect(rejected?.score_hint?.pass).toBe(false);
+-    // legacy raw decision alias also maps
+-    const needsFix = adaptArtifact(record, { owner: "reviewer", decision: "needs_fix" });
+-    expect(needsFix?.score_hint?.pass).toBe(false);
+-  });
+-
+-  test("threads a passing verdict into score_hint.pass=true", () => {
+-    const record: ArtifactRecord = {
+-      kind: "validation-result",
+-      path: ".claude/artifacts/crew/validations/x.md",
+-      title: "validation"
+-    };
+-    const passed = adaptArtifact(record, { owner: "verifier", verdict: "pass" });
+-    expect(passed?.score_hint?.pass).toBe(true);
+-    const approved = adaptArtifact(record, { owner: "reviewer", verdict: "approved_with_notes" });
+-    expect(approved?.score_hint?.pass).toBe(true);
+-  });
+-
+-  test("omits score_hint.pass when the artifact carries no verdict (build phase)", () => {
+-    const record: ArtifactRecord = {
+-      kind: "handoff",
+-      path: ".claude/artifacts/crew/handoffs/x.md",
+-      title: "x"
+-    };
+-    const adapted = adaptArtifact(record, { owner: "fullstack-dev" });
+-    expect(adapted?.score_hint?.pass).toBeUndefined();
+-    // skipped is not a failure signal → no pass field
+-    const skipped = adaptArtifact(record, { owner: "fullstack-dev", verdict: "skipped" });
+-    expect(skipped?.score_hint?.pass).toBeUndefined();
+-  });
+-
+-  test("returns null for non-dispatch kinds (e.g. cost-report-slice)", () => {
+-    const record: ArtifactRecord = {
+-      kind: "cost-report-slice",
+-      path: ".claude/artifacts/crew/cost/x.md",
+-      title: "cost"
+-    };
+-    const adapted = adaptArtifact(record, {});
+-    expect(adapted).toBeNull();
+-  });
+-
+-  test("defaults agent to 'unknown' when fields.owner is absent", () => {
+-    const record: ArtifactRecord = {
+-      kind: "handoff",
+-      path: ".claude/artifacts/crew/handoffs/x.md",
+-      title: "x"
+-    };
+-    const adapted = adaptArtifact(record, {});
+-    expect(adapted?.agent).toBe("unknown");
+-  });
+-});
+diff --git a/crew/tests/gepa/auto-merge-gate-five-conditions.test.mts b/crew/tests/gepa/auto-merge-gate-five-conditions.test.mts
+deleted file mode 100644
+index 05e0dd70..00000000
+--- a/crew/tests/gepa/auto-merge-gate-five-conditions.test.mts
++++ /dev/null
+@@ -1,357 +0,0 @@
+-/**
+- * tests/gepa/auto-merge-gate-five-conditions.test.ts — SLICE-106
+- *
+- * Covers AC-10 (32 truth-table combos for the 5 gate conditions) and
+- * AC-2 (critical-agent allowlist — reviewer/verifier/architect forced draft).
+- *
+- * The 5 boolean gates tested:
+- *   G1: pareto_rank === 1
+- *   G2: held_out_pass >= champion_held_out_pass + minPassDelta
+- *   G3: min_held_out_case_score >= minCaseScoreFloor (0.6)
+- *   G4: cost_usd_delta <= 0 (no cost regression)
+- *   G5: latency_ms_delta <= 0 (no latency regression)
+- *
+- * Additional gates (not truth-table; tested separately):
+- *   G6: soakPassed
+- *   G7: branchProtectionPresent
+- *   G8: agent in policy.eligible_agents
+- *   G9: agent NOT in champion_frozen
+- *   G10: NOT critical-agent (checked first)
+- *
+- * Implementation: shimmed `gh` binary so no real CLI is invoked.
+- */
+-
+-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { tmpdir } from "node:os";
+-import {
+-  evaluateAutoMergeGate,
+-  type AutoMergePolicy
+-} from "../../scripts/lib/gepa/auto-merge-gate.mjs";
+-import type { OptimizationResult } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-// ── Constants ─────────────────────────────────────────────────────────────────
+-
+-const ELIGIBLE_AGENT = "fullstack-dev";
+-const CYCLE_ID = "cccc-dddd-4eee-8fff-0000";
+-const TRIAL_ID = "aaaa-bbbb-4ccc-8ddd-eeee";
+-
+-// ── Fixtures ──────────────────────────────────────────────────────────────────
+-
+-/**
+- * Build an OptimizationResult with specific gate conditions.
+- *
+- * Gate mapping:
+- *   g1ParetoRank1  → winner.pareto_rank === 1
+- *   g2PassDelta    → winner.pass = true means held_out_pass = 1.0, champion = 0.9 → delta = 0.10 > 0.05
+- *   g3TailRisk     → winner.score ≥ 0.6 (min_held_out_case_score proxy)
+- *   g4NoCostReg    → winner.cost_usd <= 0 (delta ≤ 0)
+- *   g5NoLatReg     → winner.latency_ms <= 0 (delta ≤ 0)
+- *
+- * Note: when pass=true we set champion held_out_pass to 0.9 so delta = 0.10 ≥ minPassDelta=0.05.
+- * When pass=false we set held_out_pass=0 so delta = 0 - 0.9 < 0.05 → gate fails.
+- */
+-function makeResult(gates: {
+-  g1ParetoRank1: boolean;
+-  g2PassDelta: boolean;
+-  g3TailRisk: boolean;
+-  g4NoCostReg: boolean;
+-  g5NoLatReg: boolean;
+-}): OptimizationResult {
+-  return {
+-    run_id: CYCLE_ID,
+-    cycle_id: CYCLE_ID,
+-    agent: ELIGIBLE_AGENT,
+-    k: 5,
+-    candidates_evaluated: 5,
+-    partial: false,
+-    no_winner: false,
+-    winner: {
+-      candidate_id: TRIAL_ID,
+-      pareto_rank: gates.g1ParetoRank1 ? 1 : 2,
+-      score: gates.g3TailRisk ? 0.75 : 0.5,
+-      pass: gates.g2PassDelta,
+-      cost_usd: gates.g4NoCostReg ? -0.001 : 0.01,
+-      latency_ms: gates.g5NoLatReg ? -10 : 100,
+-      prompt_path: ""
+-    },
+-    trials: [],
+-    started_at: "2026-07-01T10:00:00.000Z",
+-    finished_at: "2026-07-01T10:05:00.000Z"
+-  };
+-}
+-
+-const BASE_POLICY: AutoMergePolicy = {
+-  eligible_agents: [ELIGIBLE_AGENT],
+-  champion_frozen: [],
+-  gate: {
+-    minPassDelta: 0.05,
+-    minCaseScoreFloor: 0.6,
+-    allowCostRegression: false,
+-    allowLatencyRegression: false
+-  }
+-};
+-
+-// Champion with 0.9 held_out_pass so that pass=true (1.0) → delta=0.10 > 0.05.
+-const CHAMPION_90 = { held_out_pass: 0.9 };
+-// Champion with 0.0 held_out_pass so that pass=false (0.0) → delta = 0 - 0 = 0 < 0.05.
+-// When g2 is false, we need champion 0.95 so delta < 0.05 even on pass=true branch.
+-const CHAMPION_SAME = { held_out_pass: 1.0 };
+-
+-// ── Temporary directory setup ─────────────────────────────────────────────────
+-
+-let tmpDir: string;
+-let ghCallLog: string;
+-let ghPath: string;
+-
+-function writeGhShim(dir: string, callLog: string, mergeExitCode = 0): string {
+-  mkdirSync(dir, { recursive: true });
+-  const shimMjs = join(dir, "gh-impl.mjs");
+-  const script = [
+-    `import { appendFileSync } from "node:fs";`,
+-    `const argv = process.argv.slice(2);`,
+-    `appendFileSync(${JSON.stringify(callLog)}, JSON.stringify(argv) + "\\n");`,
+-    `const args = argv.join(" ");`,
+-    `if (args.includes("pr merge")) { process.exit(${mergeExitCode}); }`,
+-    `process.exit(0);`
+-  ].join("\n");
+-  writeFileSync(shimMjs, script, "utf8");
+-
+-  if (process.platform === "win32") {
+-    const cmdPath = join(dir, "gh.cmd");
+-    writeFileSync(cmdPath, `@node "${shimMjs}" %*\r\n`, "utf8");
+-    return cmdPath;
+-  }
+-  const shimPath = join(dir, "gh");
+-  writeFileSync(shimPath, `#!/bin/sh\nexec node "${shimMjs}" "$@"\n`, { mode: 0o755 });
+-  return shimPath;
+-}
+-
+-beforeEach(() => {
+-  tmpDir = mkdtempSync(join(tmpdir(), "gepa-gate-test-"));
+-  ghCallLog = join(tmpDir, "gh-calls.txt");
+-  ghPath = writeGhShim(join(tmpDir, "bin"), ghCallLog, 0);
+-});
+-
+-afterEach(() => {
+-  rmSync(tmpDir, { recursive: true, force: true });
+-});
+-
+-// ── Helper: run gate with all soak/protection/eligibility gates green ─────────
+-
+-function runGateAllGreen(
+-  result: OptimizationResult,
+-  overrides: Partial<Parameters<typeof evaluateAutoMergeGate>[0]> = {}
+-) {
+-  return evaluateAutoMergeGate({
+-    repoPath: tmpDir,
+-    agent: ELIGIBLE_AGENT,
+-    result,
+-    soakPassed: true,
+-    branchProtectionPresent: true,
+-    policy: BASE_POLICY,
+-    prUrl: "https://github.com/test/repo/pull/1",
+-    championMetrics: CHAMPION_90,
+-    ghPath,
+-    ...overrides
+-  });
+-}
+-
+-// ── 32-combo truth table ──────────────────────────────────────────────────────
+-
+-describe("auto-merge gate — 5-condition truth table (32 combos)", () => {
+-  // Generate all 32 combinations.
+-  for (let mask = 0; mask < 32; mask++) {
+-    const g1 = (mask & 0b10000) !== 0;
+-    const g2 = (mask & 0b01000) !== 0;
+-    const g3 = (mask & 0b00100) !== 0;
+-    const g4 = (mask & 0b00010) !== 0;
+-    const g5 = (mask & 0b00001) !== 0;
+-    const allGreen = g1 && g2 && g3 && g4 && g5;
+-
+-    const label = `mask=${mask.toString(2).padStart(5, "0")} (G1=${g1} G2=${g2} G3=${g3} G4=${g4} G5=${g5}) → ${allGreen ? "PASS" : "FAIL"}`;
+-
+-    it(label, () => {
+-      // Champion held_out_pass:
+-      //   g2=true  → we need pass=true AND champion < 0.95 so delta >= 0.05.
+-      //   g2=false → force champion = 1.0 so even pass=true gives delta = 0.
+-      const champion = g2 ? CHAMPION_90 : CHAMPION_SAME;
+-      const result = makeResult({
+-        g1ParetoRank1: g1,
+-        g2PassDelta: g2,
+-        g3TailRisk: g3,
+-        g4NoCostReg: g4,
+-        g5NoLatReg: g5
+-      });
+-
+-      const gateResult = runGateAllGreen(result, { championMetrics: champion });
+-
+-      if (allGreen) {
+-        expect(gateResult.eligible).toBe(true);
+-        expect(gateResult.merged).toBe(true);
+-        expect(gateResult.blockedBy).toHaveLength(0);
+-        // gh pr merge should have been called (recorded as JSON array).
+-        const calls = existsSync(ghCallLog) ? readFileSync(ghCallLog, "utf8") : "";
+-        expect(calls).toContain('"pr","merge"');
+-      } else {
+-        expect(gateResult.eligible).toBe(false);
+-        expect(gateResult.merged).toBe(false);
+-        expect(gateResult.blockedBy.length).toBeGreaterThan(0);
+-
+-        // Verify specific blockedBy reasons for each failing gate.
+-        if (!g1) expect(gateResult.blockedBy).toContain("not_pareto_rank_1");
+-        if (!g3) expect(gateResult.blockedBy).toContain("tail_risk_block");
+-        if (!g4) expect(gateResult.blockedBy).toContain("cost_regression");
+-        if (!g5) expect(gateResult.blockedBy).toContain("latency_regression");
+-        // gh pr merge should NOT have been called.
+-        const calls = existsSync(ghCallLog) ? readFileSync(ghCallLog, "utf8") : "";
+-        expect(calls).not.toContain('"pr","merge"');
+-      }
+-    });
+-  }
+-});
+-
+-// ── Critical-agent tests (AC-2) ───────────────────────────────────────────────
+-
+-describe("auto-merge gate — critical-agent allowlist (AC-2)", () => {
+-  for (const criticalAgent of ["reviewer", "verifier", "architect"] as const) {
+-    it(`${criticalAgent}: critical-agent check fires FIRST, PR left as draft, gh pr merge NEVER called`, () => {
+-      const result = makeResult({
+-        g1ParetoRank1: true,
+-        g2PassDelta: true,
+-        g3TailRisk: true,
+-        g4NoCostReg: true,
+-        g5NoLatReg: true
+-      });
+-      result.agent = criticalAgent;
+-
+-      const policy: AutoMergePolicy = {
+-        ...BASE_POLICY,
+-        eligible_agents: [criticalAgent] // agent is eligible but is critical
+-      };
+-
+-      const gateResult = evaluateAutoMergeGate({
+-        repoPath: tmpDir,
+-        agent: criticalAgent,
+-        result,
+-        soakPassed: true,
+-        branchProtectionPresent: true,
+-        policy,
+-        prUrl: `https://github.com/test/repo/pull/99`,
+-        championMetrics: CHAMPION_90,
+-        ghPath
+-      });
+-
+-      // Critical-agent check fires first.
+-      expect(gateResult.eligible).toBe(false);
+-      expect(gateResult.merged).toBe(false);
+-      expect(gateResult.draftPr).toBe(true);
+-      expect(gateResult.blockedBy).toContain("critical_agent");
+-      // Must be first reason.
+-      expect(gateResult.blockedBy[0]).toBe("critical_agent");
+-
+-      // gh pr merge must NOT have been called.
+-      const calls = existsSync(ghCallLog) ? readFileSync(ghCallLog, "utf8") : "";
+-      expect(calls).not.toContain("pr merge");
+-    });
+-  }
+-});
+-
+-// ── Additional gate tests (G6–G9) ────────────────────────────────────────────
+-
+-describe("auto-merge gate — soak not passed (G6)", () => {
+-  it("blocks with soak_not_passed when soakPassed=false", () => {
+-    const result = makeResult({
+-      g1ParetoRank1: true,
+-      g2PassDelta: true,
+-      g3TailRisk: true,
+-      g4NoCostReg: true,
+-      g5NoLatReg: true
+-    });
+-    const gateResult = runGateAllGreen(result, { soakPassed: false });
+-    expect(gateResult.eligible).toBe(false);
+-    expect(gateResult.blockedBy).toContain("soak_not_passed");
+-  });
+-});
+-
+-describe("auto-merge gate — branch protection missing (G7)", () => {
+-  it("blocks with branch_protection_missing when branchProtectionPresent=false", () => {
+-    const result = makeResult({
+-      g1ParetoRank1: true,
+-      g2PassDelta: true,
+-      g3TailRisk: true,
+-      g4NoCostReg: true,
+-      g5NoLatReg: true
+-    });
+-    const gateResult = runGateAllGreen(result, { branchProtectionPresent: false });
+-    expect(gateResult.eligible).toBe(false);
+-    expect(gateResult.blockedBy).toContain("branch_protection_missing");
+-  });
+-});
+-
+-describe("auto-merge gate — agent_not_eligible (AC-4)", () => {
+-  it("blocks when policy.eligible_agents is empty []", () => {
+-    const result = makeResult({
+-      g1ParetoRank1: true,
+-      g2PassDelta: true,
+-      g3TailRisk: true,
+-      g4NoCostReg: true,
+-      g5NoLatReg: true
+-    });
+-    const gateResult = runGateAllGreen(result, {
+-      policy: { ...BASE_POLICY, eligible_agents: [] }
+-    });
+-    expect(gateResult.eligible).toBe(false);
+-    expect(gateResult.blockedBy).toContain("agent_not_eligible");
+-  });
+-
+-  it("blocks when agent is not in eligible_agents list", () => {
+-    const result = makeResult({
+-      g1ParetoRank1: true,
+-      g2PassDelta: true,
+-      g3TailRisk: true,
+-      g4NoCostReg: true,
+-      g5NoLatReg: true
+-    });
+-    const gateResult = runGateAllGreen(result, {
+-      policy: { ...BASE_POLICY, eligible_agents: ["backend-dev"] }
+-    });
+-    expect(gateResult.eligible).toBe(false);
+-    expect(gateResult.blockedBy).toContain("agent_not_eligible");
+-  });
+-});
+-
+-describe("auto-merge gate — champion_frozen (G9)", () => {
+-  it("blocks when agent is in champion_frozen list", () => {
+-    const result = makeResult({
+-      g1ParetoRank1: true,
+-      g2PassDelta: true,
+-      g3TailRisk: true,
+-      g4NoCostReg: true,
+-      g5NoLatReg: true
+-    });
+-    const gateResult = runGateAllGreen(result, {
+-      policy: { ...BASE_POLICY, champion_frozen: [ELIGIBLE_AGENT] }
+-    });
+-    expect(gateResult.eligible).toBe(false);
+-    expect(gateResult.blockedBy).toContain("champion_frozen");
+-  });
+-});
+-
+-// ── AC-3: tail_risk_block event written ───────────────────────────────────────
+-
+-describe("auto-merge gate — tail_risk_block event on G3 failure (AC-3)", () => {
+-  it("tail_risk_block in blockedBy when min_held_out_case_score < 0.6", () => {
+-    const result = makeResult({
+-      g1ParetoRank1: true,
+-      g2PassDelta: true,
+-      g3TailRisk: false, // score = 0.5 < floor=0.6
+-      g4NoCostReg: true,
+-      g5NoLatReg: true
+-    });
+-    const gateResult = runGateAllGreen(result);
+-    expect(gateResult.eligible).toBe(false);
+-    expect(gateResult.blockedBy).toContain("tail_risk_block");
+-  });
+-});
+diff --git a/crew/tests/gepa/auto-pr-shape.test.mts b/crew/tests/gepa/auto-pr-shape.test.mts
+deleted file mode 100644
+index d8f2014d..00000000
+--- a/crew/tests/gepa/auto-pr-shape.test.mts
++++ /dev/null
+@@ -1,481 +0,0 @@
+-/**
+- * tests/gepa/auto-pr-shape.test.ts — SLICE-105
+- *
+- * Covers AC-1, AC-7, AC-8, AC-9, AC-10:
+- *   AC-1: runAutoPr creates the correct branch, commits with the right message,
+- *         and the PR body contains the required literal strings.
+- *   AC-7: winner prompt hash == champion hash → no PR opened, no_op_promotion=true.
+- *   AC-8: branch collision → retry suffix (-retry-1) OR exit with gepa_branch_collision;
+- *         NEVER --force.
+- *   AC-9: gh not authenticated → GhAuthError thrown BEFORE any branch creation.
+- *   AC-10: PR labels include gepa, agent:<agent>, and protection label.
+- *
+- * Implementation approach:
+- *   - Creates a real git repo in a temp dir (git init + initial commit).
+- *   - Shimmed `gh` and `git` binaries that record calls to a log file
+- *     so the tests can assert on what was invoked.
+- *
+- * Note: git operations run against a real local repo; `gh` is fully shimmed.
+- */
+-
+-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+-import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
+-import { join } from "node:path";
+-import { tmpdir } from "node:os";
+-import { spawnSync } from "node:child_process";
+-import { runAutoPr, GhAuthError } from "../../scripts/lib/gepa/auto-pr.mjs";
+-import { GhAbsentError } from "../../scripts/lib/gepa/branch-protection-check.mjs";
+-import type { OptimizationResult } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-// ── Constants ─────────────────────────────────────────────────────────────────
+-
+-const AGENT = "fullstack-dev";
+-const TRIAL_UUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+-const CYCLE_UUID = "cccccccc-dddd-4eee-8fff-000000000000";
+-const RUN_UUID = CYCLE_UUID;
+-
+-// ── Fixtures ──────────────────────────────────────────────────────────────────
+-
+-function makeOptResult(overrides: Partial<OptimizationResult> = {}): OptimizationResult {
+-  return {
+-    run_id: RUN_UUID,
+-    cycle_id: CYCLE_UUID,
+-    agent: AGENT,
+-    k: 5,
+-    candidates_evaluated: 5,
+-    partial: false,
+-    no_winner: false,
+-    winner: {
+-      candidate_id: TRIAL_UUID,
+-      pareto_rank: 1,
+-      score: 0.9,
+-      pass: true,
+-      cost_usd: 0.001234,
+-      latency_ms: 850,
+-      prompt_path: "" // filled in per-test
+-    },
+-    trials: [],
+-    started_at: "2026-07-02T10:00:00.000Z",
+-    finished_at: "2026-07-02T10:05:00.000Z",
+-    ...overrides
+-  };
+-}
+-
+-// ── Git repo setup ────────────────────────────────────────────────────────────
+-
+-const GIT_ENV = {
+-  ...process.env,
+-  GIT_AUTHOR_NAME: "Test",
+-  GIT_AUTHOR_EMAIL: "test@test.com",
+-  GIT_COMMITTER_NAME: "Test",
+-  GIT_COMMITTER_EMAIL: "test@test.com"
+-};
+-
+-function git(cwd: string, args: string[]): ReturnType<typeof spawnSync> {
+-  return spawnSync("git", args, { cwd, encoding: "utf8", env: GIT_ENV });
+-}
+-
+-function initGitRepo(dir: string, originDir: string): void {
+-  // Create a bare repo as origin.
+-  mkdirSync(originDir, { recursive: true });
+-  spawnSync("git", ["init", "--bare", "-b", "main", originDir], { encoding: "utf8" });
+-
+-  // Init the working repo.
+-  git(dir, ["init", "-b", "main"]);
+-  git(dir, ["config", "user.email", "test@test.com"]);
+-  git(dir, ["config", "user.name", "Test"]);
+-  git(dir, ["remote", "add", "origin", originDir]);
+-  writeFileSync(join(dir, "README.md"), "# test\n", "utf8");
+-  git(dir, ["add", "README.md"]);
+-  git(dir, ["commit", "-m", "init"]);
+-  git(dir, ["push", "origin", "main"]);
+-}
+-
+-function setupAgentFile(repoPath: string, content: string): string {
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  const agentPath = join(agentsDir, `${AGENT}.md`);
+-  writeFileSync(agentPath, content, "utf8");
+-  git(repoPath, ["add", agentPath]);
+-  git(repoPath, ["commit", "-m", "add agent"]);
+-  // Push to origin so that `git checkout -b <branch> origin/main` finds the file.
+-  git(repoPath, ["push", "origin", "main"]);
+-  return agentPath;
+-}
+-
+-function writeCandidateFile(repoPath: string, content: string): string {
+-  const dir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "candidates", CYCLE_UUID);
+-  mkdirSync(dir, { recursive: true });
+-  const path = join(dir, `${TRIAL_UUID}.md`);
+-  writeFileSync(path, content, "utf8");
+-  return path;
+-}
+-
+-// ── gh shim builder ───────────────────────────────────────────────────────────
+-
+-interface ShimResponse {
+-  matchArgs?: string;
+-  exitCode: number;
+-  stdout: string;
+-  stderr?: string;
+-}
+-
+-/**
+- * Write a Node.js-based `gh` shim that records calls to callLog and returns
+- * canned responses.
+- *
+- * On Windows, writes a .cmd wrapper; on POSIX a shell wrapper.
+- */
+-function writeGhShim(dir: string, callLog: string, responses: ShimResponse[]): string {
+-  mkdirSync(dir, { recursive: true });
+-  const shimMjs = join(dir, "gh-impl.mjs");
+-  // The shim:
+-  //   1. Flattens all argv elements into a JSON array written to callLog
+-  //      (so multiline --body values are preserved).
+-  //   2. Matches against the flat joined string for response selection.
+-  const script = [
+-    `import { appendFileSync } from "node:fs";`,
+-    `const argv = process.argv.slice(2);`,
+-    `const args = argv.join(" ");`,
+-    // Write each call as a JSON array line so multiline body is preserved.
+-    `appendFileSync(${JSON.stringify(callLog)}, JSON.stringify(argv) + "\\n");`,
+-    `const responses = ${JSON.stringify(responses)};`,
+-    `for (const r of responses) {`,
+-    `  if (!r.matchArgs || args.includes(r.matchArgs)) {`,
+-    `    if (r.stdout) process.stdout.write(r.stdout);`,
+-    `    if (r.stderr) process.stderr.write(r.stderr || "");`,
+-    `    process.exit(r.exitCode);`,
+-    `  }`,
+-    `}`,
+-    `process.exit(1);`
+-  ].join("\n");
+-  writeFileSync(shimMjs, script, "utf8");
+-
+-  if (process.platform === "win32") {
+-    const cmdPath = join(dir, "gh.cmd");
+-    writeFileSync(cmdPath, `@node "${shimMjs}" %*\r\n`, "utf8");
+-    return cmdPath;
+-  }
+-
+-  const shimPath = join(dir, "gh");
+-  writeFileSync(shimPath, `#!/bin/sh\nexec node "${shimMjs}" "$@"\n`, { mode: 0o755 });
+-  return shimPath;
+-}
+-
+-// ── Test setup ────────────────────────────────────────────────────────────────
+-
+-let tmpDir: string;
+-let repoPath: string;
+-let originPath: string;
+-
+-beforeEach(() => {
+-  tmpDir = mkdtempSync(join(tmpdir(), "auto-pr-test-"));
+-  repoPath = join(tmpDir, "repo");
+-  originPath = join(tmpDir, "origin.git");
+-  mkdirSync(repoPath);
+-  initGitRepo(repoPath, originPath);
+-});
+-
+-afterEach(() => {
+-  rmSync(tmpDir, { recursive: true, force: true });
+-});
+-
+-// ── AC-9: gh not authenticated ────────────────────────────────────────────────
+-
+-describe("runAutoPr — AC-9 gh not authenticated", () => {
+-  it("throws GhAuthError BEFORE any branch creation when gh auth fails", () => {
+-    const callLog = join(tmpDir, "gh-calls.txt");
+-    const shimDir = join(tmpDir, "bin-auth");
+-    writeGhShim(shimDir, callLog, [
+-      { matchArgs: "auth status", exitCode: 1, stdout: "", stderr: "Not logged in\n" }
+-    ]);
+-
+-    setupAgentFile(repoPath, "# Agent\nBody content.\n");
+-    const candidatePath = writeCandidateFile(repoPath, "# Different content\nModified body.\n");
+-
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-
+-    let threw = false;
+-    let thrownErr: unknown;
+-    try {
+-      runAutoPr({ repoPath, agent: AGENT, result, ghPath, repo: "myorg/myrepo" });
+-    } catch (err) {
+-      threw = true;
+-      thrownErr = err;
+-    }
+-
+-    expect(threw).toBe(true);
+-    expect(thrownErr).toBeInstanceOf(GhAuthError);
+-
+-    // No branch should have been created.
+-    const branchCheck = spawnSync("git", ["branch", "--list", `gepa/${AGENT}/*`], {
+-      cwd: repoPath,
+-      encoding: "utf8"
+-    });
+-    expect(branchCheck.stdout.trim()).toBe("");
+-  });
+-
+-  it("throws GhAbsentError when gh binary does not exist", () => {
+-    setupAgentFile(repoPath, "# Agent\nBody.\n");
+-    const candidatePath = writeCandidateFile(repoPath, "# Different\n");
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    let threw = false;
+-    let thrownErr: unknown;
+-    try {
+-      runAutoPr({
+-        repoPath,
+-        agent: AGENT,
+-        result,
+-        ghPath: join(tmpDir, "nonexistent-gh"),
+-        repo: "myorg/myrepo"
+-      });
+-    } catch (err) {
+-      threw = true;
+-      thrownErr = err;
+-    }
+-    expect(threw).toBe(true);
+-    expect(thrownErr).toBeInstanceOf(GhAbsentError);
+-  });
+-});
+-
+-// ── AC-7: no-op promotion ─────────────────────────────────────────────────────
+-
+-describe("runAutoPr — AC-7 no-op promotion (same hash)", () => {
+-  it("returns no_op_promotion:true when winner content == champion content", () => {
+-    const body = "# Agent\nSame content in both files.\n";
+-    setupAgentFile(repoPath, body);
+-    const candidatePath = writeCandidateFile(repoPath, body);
+-
+-    const callLog = join(tmpDir, "gh-calls-noop.txt");
+-    const shimDir = join(tmpDir, "bin-noop");
+-    writeGhShim(shimDir, callLog, [
+-      // auth should not even be reached — but just in case
+-      { matchArgs: "auth status", exitCode: 0, stdout: "Logged in\n" }
+-    ]);
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    const prResult = runAutoPr({ repoPath, agent: AGENT, result, ghPath, repo: "myorg/myrepo" });
+-
+-    expect(prResult.pr_opened).toBe(false);
+-    expect(prResult.no_op_promotion).toBe(true);
+-
+-    // No gh auth call should have been made (returned before auth check).
+-    // The callLog should either not exist or be empty.
+-    const calls = existsSync(callLog) ? readFileSync(callLog, "utf8") : "";
+-    expect(calls).toBe("");
+-  });
+-});
+-
+-// ── AC-1: successful PR opened ────────────────────────────────────────────────
+-
+-describe("runAutoPr — AC-1 successful auto-PR", () => {
+-  it("creates correct branch name, commits with right message, PR body has required strings", () => {
+-    const championContent = "# Agent\nLine 1.\nLine 2.\n";
+-    const winnerContent = "# Agent\nLine 1.\nLine 2 — improved.\n";
+-    setupAgentFile(repoPath, championContent);
+-    const candidatePath = writeCandidateFile(repoPath, winnerContent);
+-
+-    const callLog = join(tmpDir, "gh-calls-ac1.txt");
+-    const shimDir = join(tmpDir, "bin-ac1");
+-    const prUrl = "https://github.com/myorg/myrepo/pull/42";
+-
+-    writeGhShim(shimDir, callLog, [
+-      { matchArgs: "auth status", exitCode: 0, stdout: "Logged in\n" },
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 0,
+-        stdout: JSON.stringify({
+-          required_status_checks: {
+-            checks: [{ context: "ci/test", app_id: null }],
+-            contexts: ["ci/test"]
+-          }
+-        })
+-      },
+-      // gh pr create
+-      { matchArgs: "pr create", exitCode: 0, stdout: `${prUrl}\n` },
+-      // gh pr edit --add-label
+-      { matchArgs: "pr edit", exitCode: 0, stdout: "" }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    const prResult = runAutoPr({
+-      repoPath,
+-      agent: AGENT,
+-      result,
+-      ghPath,
+-      repo: "myorg/myrepo"
+-    });
+-
+-    expect(prResult.pr_opened).toBe(true);
+-    expect(prResult.pr_url).toBe(prUrl);
+-    // Branch name must be `gepa/<agent>/<trial-id>`.
+-    expect(prResult.branch).toBe(`gepa/${AGENT}/${TRIAL_UUID}`);
+-
+-    // Verify the commit message.
+-    const log = spawnSync("git", ["log", "--oneline", "-1"], {
+-      cwd: repoPath,
+-      encoding: "utf8"
+-    });
+-    expect(log.stdout).toContain(`chore(gepa): promote ${AGENT} from cycle ${CYCLE_UUID}`);
+-
+-    // Verify PR body strings — body is passed via --body-file (not inline).
+-    const callLines = readFileSync(callLog, "utf8")
+-      .trim()
+-      .split("\n")
+-      .map((l) => JSON.parse(l) as string[]);
+-    const prCreateCall = callLines.find((a) => a[0] === "pr" && a[1] === "create");
+-    expect(prCreateCall).toBeDefined();
+-    const bodyFileIdx = prCreateCall!.indexOf("--body-file");
+-    expect(bodyFileIdx).toBeGreaterThan(-1);
+-    const bodyFilePath = prCreateCall![bodyFileIdx + 1] ?? "";
+-    expect(existsSync(bodyFilePath)).toBe(true);
+-    const bodyValue = readFileSync(bodyFilePath, "utf8");
+-    expect(bodyValue).toContain("Pareto rank");
+-    expect(bodyValue).toContain("held-out pass");
+-    expect(bodyValue).toContain("cost delta");
+-    expect(bodyValue).toContain(`${RUN_UUID}.json`);
+-  });
+-});
+-
+-// ── AC-8: branch collision ────────────────────────────────────────────────────
+-
+-describe("runAutoPr — AC-8 branch collision → retry suffix (no force-push)", () => {
+-  it("appends -retry-1 suffix when the branch already exists on origin", () => {
+-    const championContent = "# Agent\nOriginal.\n";
+-    const winnerContent = "# Agent\nImproved.\n";
+-    setupAgentFile(repoPath, championContent);
+-    const candidatePath = writeCandidateFile(repoPath, winnerContent);
+-
+-    // Create and push the base branch to origin to simulate a collision.
+-    const baseBranch = `gepa/${AGENT}/${TRIAL_UUID}`;
+-    git(repoPath, ["checkout", "-b", baseBranch]);
+-    git(repoPath, ["push", "origin", baseBranch]);
+-    git(repoPath, ["checkout", "main"]);
+-
+-    const callLog = join(tmpDir, "gh-calls-ac8.txt");
+-    const shimDir = join(tmpDir, "bin-ac8");
+-    const prUrl = "https://github.com/myorg/myrepo/pull/43";
+-
+-    writeGhShim(shimDir, callLog, [
+-      { matchArgs: "auth status", exitCode: 0, stdout: "Logged in\n" },
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 1,
+-        stdout: '{"message":"Not Found"}',
+-        stderr: "Not Found\n"
+-      },
+-      { matchArgs: "pr create", exitCode: 0, stdout: `${prUrl}\n` },
+-      { matchArgs: "pr edit", exitCode: 0, stdout: "" }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    // runAutoPr detects the collision and should use the -retry-1 suffix.
+-    const prResult = runAutoPr({
+-      repoPath,
+-      agent: AGENT,
+-      result,
+-      ghPath,
+-      repo: "myorg/myrepo"
+-    });
+-
+-    // Should have opened a PR with the retry branch.
+-    expect(prResult.pr_opened).toBe(true);
+-    expect(prResult.branch).toBe(`${baseBranch}-retry-1`);
+-
+-    // Verify no --force flag was used in push.
+-    // gh calls don't include git push, but verify reflog is clean.
+-    const reflog = git(repoPath, ["reflog", "--all"]);
+-    expect(reflog.stdout).not.toContain("forced-update");
+-  });
+-});
+-
+-// ── AC-10: PR labels ──────────────────────────────────────────────────────────
+-
+-describe("runAutoPr — AC-10 PR labels", () => {
+-  it("applies gepa, agent:fullstack-dev, branch_protection_present when protection enforced", () => {
+-    const championContent = "# Agent\nBody.\n";
+-    const winnerContent = "# Agent\nImproved body.\n";
+-    setupAgentFile(repoPath, championContent);
+-    const candidatePath = writeCandidateFile(repoPath, winnerContent);
+-
+-    const callLog = join(tmpDir, "gh-calls-ac10-present.txt");
+-    const shimDir = join(tmpDir, "bin-ac10-present");
+-    const prUrl = "https://github.com/myorg/myrepo/pull/44";
+-
+-    writeGhShim(shimDir, callLog, [
+-      { matchArgs: "auth status", exitCode: 0, stdout: "Logged in\n" },
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 0,
+-        stdout: JSON.stringify({
+-          required_status_checks: {
+-            checks: [{ context: "ci/build", app_id: null }],
+-            contexts: ["ci/build"]
+-          }
+-        })
+-      },
+-      { matchArgs: "pr create", exitCode: 0, stdout: `${prUrl}\n` },
+-      { matchArgs: "pr edit", exitCode: 0, stdout: "" }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    runAutoPr({ repoPath, agent: AGENT, result, ghPath, repo: "myorg/myrepo" });
+-
+-    const calls = readFileSync(callLog, "utf8");
+-    expect(calls).toContain("gepa");
+-    expect(calls).toContain(`agent:${AGENT}`);
+-    expect(calls).toContain("branch_protection_present");
+-    expect(calls).not.toContain("branch_protection_missing");
+-  });
+-
+-  it("applies branch_protection_missing and opens --draft when protection absent", () => {
+-    const championContent = "# Agent\nBody.\n";
+-    const winnerContent = "# Agent\nDraft improved body.\n";
+-    setupAgentFile(repoPath, championContent);
+-    const candidatePath = writeCandidateFile(repoPath, winnerContent);
+-
+-    const callLog = join(tmpDir, "gh-calls-ac10-missing.txt");
+-    const shimDir = join(tmpDir, "bin-ac10-missing");
+-    const prUrl = "https://github.com/myorg/myrepo/pull/45";
+-
+-    writeGhShim(shimDir, callLog, [
+-      { matchArgs: "auth status", exitCode: 0, stdout: "Logged in\n" },
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 1,
+-        stdout: '{"message":"Not Found"}',
+-        stderr: "Not Found\n"
+-      },
+-      { matchArgs: "pr create", exitCode: 0, stdout: `${prUrl}\n` },
+-      { matchArgs: "pr edit", exitCode: 0, stdout: "" }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = makeOptResult();
+-    result.winner!.prompt_path = candidatePath;
+-
+-    runAutoPr({ repoPath, agent: AGENT, result, ghPath, repo: "myorg/myrepo" });
+-
+-    const calls = readFileSync(callLog, "utf8");
+-    expect(calls).toContain("branch_protection_missing");
+-    expect(calls).toContain("--draft");
+-    expect(calls).not.toContain("branch_protection_present");
+-  });
+-});
+diff --git a/crew/tests/gepa/branch-protection-missing.test.mts b/crew/tests/gepa/branch-protection-missing.test.mts
+deleted file mode 100644
+index 3b39e37d..00000000
+--- a/crew/tests/gepa/branch-protection-missing.test.mts
++++ /dev/null
+@@ -1,244 +0,0 @@
+-/**
+- * tests/gepa/branch-protection-missing.test.ts — SLICE-105
+- *
+- * Covers AC-2 and AC-3:
+- *   AC-2: enforced branch protection → checkBranchProtection returns
+- *         { enforced: true, requiredChecks: [...] } and auto-pr.ts does NOT use --draft.
+- *   AC-3: 404 (no protection) → checkBranchProtection returns { enforced: false }
+- *         and the PR is opened with --draft + gepa_branch_protection_missing event.
+- *
+- * Tests use a mocked `gh` shim script (spawned as a child process) to avoid
+- * needing a real GitHub token.
+- */
+-
+-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import {
+-  checkBranchProtection,
+-  GhAbsentError,
+-  GhApiError
+-} from "../../scripts/lib/gepa/branch-protection-check.mjs";
+-
+-// ── Shim helpers ──────────────────────────────────────────────────────────────
+-
+-/**
+- * Write a `gh` shim backed by a Node.js .mjs script.
+- * On Windows, adds a .cmd wrapper that calls `node gh-impl.mjs %*`.
+- * On POSIX, writes a shell script that calls `node gh-impl.mjs "$@"`.
+- *
+- * The shim matches the joined argv string against `matchArgs` (substring)
+- * and returns the first matching response.
+- */
+-function writeGhShim(
+-  dir: string,
+-  responses: Array<{
+-    matchArgs?: string; // substring to match in the joined args
+-    exitCode: number;
+-    stdout: string;
+-    stderr?: string;
+-  }>
+-): string {
+-  mkdirSync(dir, { recursive: true });
+-
+-  const responsesJson = JSON.stringify(responses);
+-  const mjsPath = join(dir, "gh-impl.mjs");
+-  const mjsScript = [
+-    `const args = process.argv.slice(2).join(" ");`,
+-    `const responses = ${responsesJson};`,
+-    `for (const r of responses) {`,
+-    `  if (!r.matchArgs || args.includes(r.matchArgs)) {`,
+-    `    if (r.stdout) process.stdout.write(r.stdout);`,
+-    `    if (r.stderr) process.stderr.write(r.stderr || "");`,
+-    `    process.exit(r.exitCode);`,
+-    `  }`,
+-    `}`,
+-    `process.exit(1);`
+-  ].join("\n");
+-  writeFileSync(mjsPath, mjsScript, "utf8");
+-
+-  if (process.platform === "win32") {
+-    // .cmd wrapper — must use `node` (not bun) so spawnSync("gh.cmd") resolves.
+-    const cmdPath = join(dir, "gh.cmd");
+-    writeFileSync(cmdPath, `@node "${mjsPath}" %*\r\n`, "utf8");
+-    return cmdPath;
+-  }
+-
+-  // POSIX shell wrapper.
+-  const shimPath = join(dir, "gh");
+-  writeFileSync(shimPath, `#!/bin/sh\nexec node "${mjsPath}" "$@"\n`, { mode: 0o755 });
+-  return shimPath;
+-}
+-
+-// ── Test setup ────────────────────────────────────────────────────────────────
+-
+-let tmpDir: string;
+-
+-beforeEach(() => {
+-  tmpDir = mkdtempSync(join(tmpdir(), "bp-check-test-"));
+-});
+-
+-afterEach(() => {
+-  rmSync(tmpDir, { recursive: true, force: true });
+-});
+-
+-// ── AC-2: enforced protection ─────────────────────────────────────────────────
+-
+-describe("checkBranchProtection — AC-2 enforced protection", () => {
+-  it("returns enforced:true and requiredChecks from the protection response", () => {
+-    const shimDir = join(tmpDir, "bin");
+-    // The protection endpoint returns a response with required_status_checks.
+-    const protectionResponse = JSON.stringify({
+-      required_status_checks: {
+-        strict: true,
+-        contexts: ["ci/build", "ci/test"],
+-        checks: [
+-          { context: "ci/build", app_id: null },
+-          { context: "ci/test", app_id: 42 }
+-        ]
+-      },
+-      enforce_admins: { enabled: true, url: "" },
+-      required_pull_request_reviews: null,
+-      restrictions: null
+-    });
+-
+-    writeGhShim(shimDir, [
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 0,
+-        stdout: protectionResponse
+-      }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = checkBranchProtection({
+-      repo: "myorg/myrepo",
+-      ghPath
+-    });
+-
+-    expect(result.enforced).toBe(true);
+-    expect(result.requiredChecks).toContain("ci/build");
+-    expect(result.requiredChecks).toContain("ci/test");
+-  });
+-
+-  it("falls back to contexts[] when checks[] is absent", () => {
+-    const shimDir = join(tmpDir, "bin2");
+-    const protectionResponse = JSON.stringify({
+-      required_status_checks: {
+-        strict: false,
+-        contexts: ["lint", "unit-tests"],
+-        checks: [] // empty — fall back to contexts
+-      }
+-    });
+-
+-    writeGhShim(shimDir, [
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 0,
+-        stdout: protectionResponse
+-      }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = checkBranchProtection({ repo: "myorg/myrepo", ghPath });
+-
+-    expect(result.enforced).toBe(true);
+-    expect(result.requiredChecks).toContain("lint");
+-    expect(result.requiredChecks).toContain("unit-tests");
+-  });
+-});
+-
+-// ── AC-3: no protection (404) ─────────────────────────────────────────────────
+-
+-describe("checkBranchProtection — AC-3 missing protection (404)", () => {
+-  it("gh api returns 404 (Not Found) → enforced:false, requiredChecks:[]", () => {
+-    const shimDir = join(tmpDir, "bin3");
+-    writeGhShim(shimDir, [
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 1,
+-        stdout: '{"message":"Not Found"}',
+-        stderr: "Not Found\n"
+-      }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = checkBranchProtection({ repo: "myorg/myrepo", ghPath });
+-
+-    expect(result.enforced).toBe(false);
+-    expect(result.requiredChecks).toHaveLength(0);
+-  });
+-
+-  it("no required_status_checks in response → enforced:false", () => {
+-    const shimDir = join(tmpDir, "bin4");
+-    // Branch exists but has no required status checks configured.
+-    const protectionResponse = JSON.stringify({
+-      url: "https://api.github.com/repos/myorg/myrepo/branches/main/protection",
+-      required_pull_request_reviews: null,
+-      restrictions: null
+-      // required_status_checks intentionally absent
+-    });
+-    writeGhShim(shimDir, [
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 0,
+-        stdout: protectionResponse
+-      }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    const result = checkBranchProtection({ repo: "myorg/myrepo", ghPath });
+-
+-    expect(result.enforced).toBe(false);
+-    expect(result.requiredChecks).toHaveLength(0);
+-  });
+-});
+-
+-// ── GhAbsentError ─────────────────────────────────────────────────────────────
+-
+-describe("checkBranchProtection — gh absent", () => {
+-  it("throws GhAbsentError when gh binary does not exist", () => {
+-    let threw = false;
+-    let thrownErr: unknown;
+-    try {
+-      checkBranchProtection({
+-        repo: "myorg/myrepo",
+-        ghPath: join(tmpDir, "nonexistent-gh-binary")
+-      });
+-    } catch (err) {
+-      threw = true;
+-      thrownErr = err;
+-    }
+-    expect(threw).toBe(true);
+-    expect(thrownErr).toBeInstanceOf(GhAbsentError);
+-  });
+-});
+-
+-// ── GhApiError (non-404 failure) ──────────────────────────────────────────────
+-
+-describe("checkBranchProtection — unexpected gh error", () => {
+-  it("throws GhApiError on non-404 non-zero exit", () => {
+-    const shimDir = join(tmpDir, "bin5");
+-    writeGhShim(shimDir, [
+-      {
+-        matchArgs: "branches/main/protection",
+-        exitCode: 1,
+-        stdout: "",
+-        stderr: "API rate limit exceeded\n"
+-      }
+-    ]);
+-
+-    const ghPath = join(shimDir, process.platform === "win32" ? "gh.cmd" : "gh");
+-    let threw = false;
+-    let thrownErr: unknown;
+-    try {
+-      checkBranchProtection({ repo: "myorg/myrepo", ghPath });
+-    } catch (err) {
+-      threw = true;
+-      thrownErr = err;
+-    }
+-    expect(threw).toBe(true);
+-    expect(thrownErr).toBeInstanceOf(GhApiError);
+-  });
+-});
+diff --git a/crew/tests/gepa/candidate-generator-aiplugin-guardrails.test.mts b/crew/tests/gepa/candidate-generator-aiplugin-guardrails.test.mts
+deleted file mode 100644
+index 96707eb1..00000000
+--- a/crew/tests/gepa/candidate-generator-aiplugin-guardrails.test.mts
++++ /dev/null
+@@ -1,349 +0,0 @@
+-/**
+- * tests/gepa/candidate-generator-aiplugin-guardrails.test.ts — FEAT-192 SLICE-B
+- *
+- * Covers:
+- *  - AC-5 structural identity-anchor guardrail (checkIdentityAnchor):
+- *    missing heading, hollowed-out anchor, preserved/expanded anchor.
+- *  - AC-2 non-trivial-diff guardrail (checkNonTrivialDiff): identical,
+- *    whitespace-only, below-min-changed-lines, and a real edit.
+- *  - Both guardrails wired through generate() (live mode): a gutted-identity
+- *    or no-op candidate produces zero candidates and logs the matching
+- *    rejection event; a real rewrite still succeeds.
+- */
+-
+-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { tmpdir } from "node:os";
+-import type { BudgetMeter, Trial } from "@astragenie/gepa-core";
+-import {
+-  checkIdentityAnchor,
+-  checkNonTrivialDiff,
+-  createAipluginCandidateGenerator
+-} from "../../scripts/lib/gepa/candidate-generator-aiplugin.mjs";
+-
+-// ── Pure-function unit tests ────────────────────────────────────────────────
+-
+-const CHAMPION = [
+-  "# fullstack-dev",
+-  "",
+-  "## Identity anchor",
+-  "",
+-  "You are fullstack-dev, a senior implementation specialist for the Astra plugin ecosystem.",
+-  "",
+-  "## Scope",
+-  "",
+-  "Ship working code, reuse existing patterns, add observability."
+-].join("\n");
+-
+-describe("checkIdentityAnchor — AC-5 structural guardrail", () => {
+-  it("rejects a candidate missing the ## Identity anchor heading entirely", () => {
+-    const candidate = "# fullstack-dev\n\n## Scope\n\nShip working code.";
+-    const result = checkIdentityAnchor(CHAMPION, candidate);
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) expect(result.reason).toBe("missing_heading");
+-  });
+-
+-  it("rejects a candidate whose identity-anchor body is hollowed out", () => {
+-    const candidate = [
+-      "# fullstack-dev",
+-      "",
+-      "## Identity anchor",
+-      "",
+-      "ok.",
+-      "",
+-      "## Scope",
+-      "",
+-      "Ship working code, reuse existing patterns, add observability."
+-    ].join("\n");
+-    const result = checkIdentityAnchor(CHAMPION, candidate);
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) {
+-      expect(result.reason).toBe("anchor_gutted");
+-      expect(result.similarity).toBeLessThan(0.4);
+-    }
+-  });
+-
+-  it("accepts a candidate that preserves the anchor verbatim", () => {
+-    const result = checkIdentityAnchor(CHAMPION, CHAMPION);
+-    expect(result.ok).toBe(true);
+-  });
+-
+-  it("accepts a candidate that EXPANDS the anchor with new supporting detail", () => {
+-    const candidate = [
+-      "# fullstack-dev",
+-      "",
+-      "## Identity anchor",
+-      "",
+-      "You are fullstack-dev, a senior implementation specialist for the Astra plugin ecosystem.",
+-      "Stay narrowly scoped to fullstack implementation work and never claim another role.",
+-      "",
+-      "## Scope",
+-      "",
+-      "Ship working code, reuse existing patterns, add observability."
+-    ].join("\n");
+-    const result = checkIdentityAnchor(CHAMPION, candidate);
+-    expect(result.ok).toBe(true);
+-  });
+-
+-  it("accepts a candidate that trims filler but keeps the identity substance", () => {
+-    // A legitimate minimal-diff edit: rewords lightly but keeps the core
+-    // vocabulary (fullstack-dev, senior, implementation, specialist, Astra).
+-    const candidate = [
+-      "# fullstack-dev",
+-      "",
+-      "## Identity anchor",
+-      "",
+-      "You are fullstack-dev, senior implementation specialist for Astra.",
+-      "",
+-      "## Scope",
+-      "",
+-      "Ship working code, reuse existing patterns, add observability."
+-    ].join("\n");
+-    const result = checkIdentityAnchor(CHAMPION, candidate);
+-    expect(result.ok).toBe(true);
+-  });
+-
+-  it("treats a champion with no identity anchor as nothing-to-guard", () => {
+-    const championNoAnchor = "# some-agent\n\n## Scope\n\nDo things.";
+-    const result = checkIdentityAnchor(championNoAnchor, "# some-agent\n\nrewritten.");
+-    expect(result.ok).toBe(true);
+-  });
+-});
+-
+-// ── AC-2 non-trivial-diff guardrail ─────────────────────────────────────────
+-
+-describe("checkNonTrivialDiff — AC-2 no-op rejection", () => {
+-  const champion = "# agent\n\nline one.\nline two.\nline three.\n";
+-
+-  it("rejects a candidate identical to the champion", () => {
+-    const result = checkNonTrivialDiff(champion, champion.trim());
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) expect(result.reason).toBe("identical_to_champion");
+-  });
+-
+-  it("rejects a whitespace-only edit (same tokens, different spacing)", () => {
+-    const candidate = "# agent\n\n\n\nline one.\n\nline two.\n\n\nline three.";
+-    const result = checkNonTrivialDiff(champion, candidate);
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) expect(result.reason).toBe("whitespace_only_diff");
+-  });
+-
+-  it("rejects a candidate with one line dropped and nothing added (net diff of 1)", () => {
+-    // "line two." is deleted with no replacement — the multiset diff for
+-    // that single key is 1 (no compensating "new line" to push the total to
+-    // 2), landing below MIN_CHANGED_LINES. A one-line edit that SWAPS
+-    // content (old line out, new line in) always nets to >= 2 and is not
+-    // affected by this floor — see the "real multi-line edit" case below.
+-    const candidate = "# agent\n\nline one.\nline three.\n";
+-    const result = checkNonTrivialDiff(champion, candidate);
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) {
+-      expect(result.reason).toBe("below_min_changed_lines");
+-      expect(result.changedLines).toBe(1);
+-    }
+-  });
+-
+-  it("accepts a real multi-line edit", () => {
+-    const candidate = "# agent\n\nline uno.\nline dos.\nline three.\nline four.\n";
+-    const result = checkNonTrivialDiff(champion, candidate);
+-    expect(result.ok).toBe(true);
+-  });
+-});
+-
+-// ── Wired through generate() (live mode) ────────────────────────────────────
+-
+-let repoPath: string;
+-const ORIGINAL_FLAG = process.env["GEPA_LIVE_GENERATOR"];
+-
+-beforeEach(() => {
+-  repoPath = mkdtempSync(join(tmpdir(), "gepa-guardrails-test-"));
+-  mkdirSync(join(repoPath, "agents"), { recursive: true });
+-  writeFileSync(join(repoPath, "agents", "fullstack-dev.md"), `${CHAMPION}\n`, "utf8");
+-  process.env["GEPA_LIVE_GENERATOR"] = "1";
+-});
+-
+-afterEach(() => {
+-  rmSync(repoPath, { recursive: true, force: true });
+-  if (ORIGINAL_FLAG === undefined) {
+-    delete process.env["GEPA_LIVE_GENERATOR"];
+-  } else {
+-    process.env["GEPA_LIVE_GENERATOR"] = ORIGINAL_FLAG;
+-  }
+-});
+-
+-function fakeMeter(): BudgetMeter & { releasedIds: string[] } {
+-  let n = 0;
+-  const releasedIds: string[] = [];
+-  return {
+-    releasedIds,
+-    async reserve() {
+-      n += 1;
+-      return { reservationId: `res-${n}`, ok: true, remainingUsd: 100 };
+-    },
+-    async record() {
+-      /* no-op mock */
+-    },
+-    async release(reservationId: string) {
+-      releasedIds.push(reservationId);
+-    },
+-    async spentToday() {
+-      return 0;
+-    },
+-    dailyCap() {
+-      return 100;
+-    }
+-  };
+-}
+-
+-function failingTrial(): Trial {
+-  return {
+-    id: "trial-1",
+-    agent: "fullstack-dev",
+-    phase: "build",
+-    candidate_prompt_hash: "hash-1",
+-    candidate_prompt_path: null,
+-    score: { pass: false, score: 0.2, cost_usd: 0.01, latency_ms: 100, rationale: "gap" },
+-    source: "eval",
+-    pareto_rank: null,
+-    created_at: new Date().toISOString()
+-  };
+-}
+-
+-function streamJsonFor(text: string): string {
+-  return `${JSON.stringify({ type: "message", role: "assistant", content: [{ type: "text", text }] })}\n`;
+-}
+-
+-describe("generate() — AC-5 identity-anchor guardrail rejects a gutted rewrite", () => {
+-  it("hollowed-out anchor -> zero candidates + gepa_identity_anchor_broken event, budget released", async () => {
+-    const meter = fakeMeter();
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-gutted",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          return streamJsonFor("```markdown\n# fullstack-dev\n\n## Identity anchor\n\nok.\n```");
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial()],
+-      1,
+-      { meter }
+-    );
+-
+-    expect(candidates).toHaveLength(0);
+-    expect(meter.releasedIds).toHaveLength(1);
+-
+-    const events = readFileSync(join(repoPath, ".claude", "logs", "events.jsonl"), "utf8")
+-      .trim()
+-      .split("\n")
+-      .map((l) => JSON.parse(l));
+-    const broken = events.filter((e) => e.event === "gepa_identity_anchor_broken");
+-    expect(broken).toHaveLength(1);
+-    expect(broken[0].reason).toBe("anchor_gutted");
+-    expect(typeof broken[0].similarity).toBe("number");
+-  });
+-
+-  it("missing heading entirely -> rejected with reason missing_heading", async () => {
+-    const meter = fakeMeter();
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-no-heading",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          return streamJsonFor("```markdown\n# fullstack-dev\n\n## Scope\n\nDo the thing.\n```");
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial()],
+-      1,
+-      { meter }
+-    );
+-
+-    expect(candidates).toHaveLength(0);
+-    const events = readFileSync(join(repoPath, ".claude", "logs", "events.jsonl"), "utf8")
+-      .trim()
+-      .split("\n")
+-      .map((l) => JSON.parse(l));
+-    const broken = events.filter((e) => e.event === "gepa_identity_anchor_broken");
+-    expect(broken).toHaveLength(1);
+-    expect(broken[0].reason).toBe("missing_heading");
+-  });
+-});
+-
+-describe("generate() — AC-2 no-op guardrail rejects a disguised non-win", () => {
+-  it("byte-identical rewrite -> zero candidates + gepa_noop_candidate event, budget released", async () => {
+-    const meter = fakeMeter();
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-noop",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          return streamJsonFor(`\`\`\`markdown\n${CHAMPION}\n\`\`\``);
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial()],
+-      1,
+-      { meter }
+-    );
+-
+-    expect(candidates).toHaveLength(0);
+-    expect(meter.releasedIds).toHaveLength(1);
+-
+-    const events = readFileSync(join(repoPath, ".claude", "logs", "events.jsonl"), "utf8")
+-      .trim()
+-      .split("\n")
+-      .map((l) => JSON.parse(l));
+-    const noop = events.filter((e) => e.event === "gepa_noop_candidate");
+-    expect(noop).toHaveLength(1);
+-    expect(noop[0].reason).toBe("identical_to_champion");
+-  });
+-
+-  it("a real rewrite that changes substance passes both guardrails", async () => {
+-    const meter = fakeMeter();
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-real-rewrite",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          return streamJsonFor(
+-            [
+-              "```markdown",
+-              "# fullstack-dev",
+-              "",
+-              "## Identity anchor",
+-              "",
+-              "You are fullstack-dev, a senior implementation specialist for the Astra plugin ecosystem.",
+-              "Stay narrowly scoped to fullstack implementation work.",
+-              "",
+-              "## Scope",
+-              "",
+-              "Ship working code, reuse existing patterns, add observability, think multi-tenant by default.",
+-              "```"
+-            ].join("\n")
+-          );
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial()],
+-      1,
+-      { meter }
+-    );
+-
+-    expect(candidates).toHaveLength(1);
+-    expect(meter.releasedIds).toHaveLength(0);
+-  });
+-});
+diff --git a/crew/tests/gepa/candidate-generator-aiplugin-rewriter.test.mts b/crew/tests/gepa/candidate-generator-aiplugin-rewriter.test.mts
+deleted file mode 100644
+index 11f801fb..00000000
+--- a/crew/tests/gepa/candidate-generator-aiplugin-rewriter.test.mts
++++ /dev/null
+@@ -1,396 +0,0 @@
+-/**
+- * tests/gepa/candidate-generator-aiplugin-rewriter.test.ts — FEAT-192 SLICE-A
+- *
+- * Covers:
+- *  - AC-1 flag routing: GEPA_LIVE_GENERATOR unset/"0" -> stub, "1" -> dispatchRewriter
+- *  - AC-7 response-format extraction: fenced-block happy path
+- *  - AC-7 response-format extraction: free-form prose (no fenced block) -> rejected, not written
+- *  - Spawn failure -> reject the slot, never crash the cycle
+- *
+- * The live dispatch path is exercised through the public `generate()` API via
+- * the `rewriteDeps` test seam (overrides the `runSubprocess` primitive) so no
+- * real `claude -p` subprocess is spawned in tests.
+- */
+-
+-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { tmpdir } from "node:os";
+-import type { BudgetMeter, Trial } from "@astragenie/gepa-core";
+-import {
+-  createAipluginCandidateGenerator,
+-  extractRewrittenContent
+-} from "../../scripts/lib/gepa/candidate-generator-aiplugin.mjs";
+-
+-// ── Fixtures ─────────────────────────────────────────────────────────────────
+-
+-let repoPath: string;
+-const ORIGINAL_FLAG = process.env["GEPA_LIVE_GENERATOR"];
+-
+-beforeEach(() => {
+-  repoPath = mkdtempSync(join(tmpdir(), "gepa-rewriter-test-"));
+-  mkdirSync(join(repoPath, "agents"), { recursive: true });
+-  writeFileSync(
+-    join(repoPath, "agents", "fullstack-dev.md"),
+-    "# fullstack-dev\n\n## Identity anchor\n\nYou are fullstack-dev.\n",
+-    "utf8"
+-  );
+-});
+-
+-afterEach(() => {
+-  rmSync(repoPath, { recursive: true, force: true });
+-  if (ORIGINAL_FLAG === undefined) {
+-    delete process.env["GEPA_LIVE_GENERATOR"];
+-  } else {
+-    process.env["GEPA_LIVE_GENERATOR"] = ORIGINAL_FLAG;
+-  }
+-});
+-
+-function fakeMeter(): BudgetMeter {
+-  let n = 0;
+-  return {
+-    async reserve() {
+-      n += 1;
+-      return { reservationId: `res-${n}`, ok: true, remainingUsd: 100 };
+-    },
+-    async record() {
+-      /* no-op mock */
+-    },
+-    async release() {
+-      /* no-op mock */
+-    },
+-    async spentToday() {
+-      return 0;
+-    },
+-    dailyCap() {
+-      return 100;
+-    }
+-  };
+-}
+-
+-function failingTrial(rationale: string): Trial {
+-  return {
+-    id: "trial-1",
+-    agent: "fullstack-dev",
+-    phase: "build",
+-    candidate_prompt_hash: "hash-1",
+-    candidate_prompt_path: null,
+-    score: {
+-      pass: false,
+-      score: 0.2,
+-      cost_usd: 0.01,
+-      latency_ms: 100,
+-      rationale
+-    },
+-    source: "eval",
+-    pareto_rank: null,
+-    created_at: new Date().toISOString()
+-  };
+-}
+-
+-/** NDJSON stream-json payload with a single assistant text block. */
+-function streamJsonFor(text: string): string {
+-  return (
+-    JSON.stringify({
+-      type: "message",
+-      role: "assistant",
+-      content: [{ type: "text", text }]
+-    }) + "\n"
+-  );
+-}
+-
+-function candidateDir(cycleId: string): string {
+-  return join(repoPath, ".claude", "artifacts", "crew", "gepa", "candidates", cycleId);
+-}
+-
+-// ── AC-7 extraction unit tests (pure function) ──────────────────────────────
+-
+-describe("extractRewrittenContent — AC-7 response-format contract", () => {
+-  it("happy path: extracts content from a single fenced block", () => {
+-    const response = "```markdown\n# rewritten\n\nbody text\n```";
+-    const result = extractRewrittenContent(response);
+-    expect(result.ok).toBe(true);
+-    if (result.ok) {
+-      expect(result.content).toBe("# rewritten\n\nbody text");
+-    }
+-  });
+-
+-  it("rejects free-form prose with no fenced block", () => {
+-    const result = extractRewrittenContent("Here is my analysis: I would change the intro.");
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) {
+-      expect(result.reason).toBe("no_fenced_block");
+-    }
+-  });
+-
+-  it("rejects an empty response", () => {
+-    const result = extractRewrittenContent("");
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) expect(result.reason).toBe("empty_response");
+-  });
+-
+-  it("rejects an empty fenced block", () => {
+-    const result = extractRewrittenContent("```\n\n```");
+-    expect(result.ok).toBe(false);
+-    if (!result.ok) expect(result.reason).toBe("empty_fenced_block");
+-  });
+-
+-  it("regression: does NOT truncate at a nested fenced block inside the rewritten body", () => {
+-    // agents/aiplugin-dev.md (the SLICE-D/AC-3 target) legitimately contains a
+-    // fenced example inside its own body. A non-greedy close-fence match
+-    // would stop at the FIRST ``` after the opening fence — i.e. at the
+-    // nested block's own closing fence — silently truncating everything
+-    // after it (including the trailing text below).
+-    const response = [
+-      "```markdown",
+-      "# aiplugin-dev",
+-      "",
+-      "## Identity anchor",
+-      "",
+-      "You are aiplugin-dev.",
+-      "",
+-      "Example usage:",
+-      "",
+-      "```bash",
+-      'echo "hello from a nested fence"',
+-      "```",
+-      "",
+-      "more text after the nested example -- must survive extraction",
+-      "```"
+-    ].join("\n");
+-
+-    const result = extractRewrittenContent(response);
+-    expect(result.ok).toBe(true);
+-    if (result.ok) {
+-      expect(result.content).toContain("```bash");
+-      expect(result.content).toContain('echo "hello from a nested fence"');
+-      expect(result.content).toContain(
+-        "more text after the nested example -- must survive extraction"
+-      );
+-      // The full body must be present, not truncated at the nested fence.
+-      expect(result.content).toBe(
+-        [
+-          "# aiplugin-dev",
+-          "",
+-          "## Identity anchor",
+-          "",
+-          "You are aiplugin-dev.",
+-          "",
+-          "Example usage:",
+-          "",
+-          "```bash",
+-          'echo "hello from a nested fence"',
+-          "```",
+-          "",
+-          "more text after the nested example -- must survive extraction"
+-        ].join("\n")
+-      );
+-    }
+-  });
+-});
+-
+-// ── AC-1 flag routing + end-to-end live path via generate() ─────────────────
+-
+-describe("generate() — AC-1 flag routing", () => {
+-  it("GEPA_LIVE_GENERATOR unset routes to the stub (no dispatch, deterministic marker)", async () => {
+-    delete process.env["GEPA_LIVE_GENERATOR"];
+-    let dispatched = false;
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-unset",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          dispatched = true;
+-          return streamJsonFor("```md\nshould not be used\n```");
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial("set maxLines to 400")],
+-      1,
+-      { meter: fakeMeter() }
+-    );
+-
+-    expect(dispatched).toBe(false);
+-    expect(candidates).toHaveLength(1);
+-    const content = readFileSync(candidates[0]!.prompt_path, "utf8");
+-    expect(content).toContain("<!-- GEPA candidate mutation -->");
+-  });
+-
+-  it('GEPA_LIVE_GENERATOR="0" routes to the stub', async () => {
+-    process.env["GEPA_LIVE_GENERATOR"] = "0";
+-    let dispatched = false;
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-zero",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          dispatched = true;
+-          return streamJsonFor("```md\nshould not be used\n```");
+-        }
+-      }
+-    });
+-
+-    await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial("set maxLines to 400")],
+-      1,
+-      { meter: fakeMeter() }
+-    );
+-
+-    expect(dispatched).toBe(false);
+-  });
+-
+-  it('GEPA_LIVE_GENERATOR="1" routes to dispatchRewriter and writes the extracted content', async () => {
+-    process.env["GEPA_LIVE_GENERATOR"] = "1";
+-    let capturedPrompt = "";
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-live",
+-      rewriteDeps: {
+-        async runSubprocess(prompt: string) {
+-          capturedPrompt = prompt;
+-          // A genuine minimal-diff rewrite: identity anchor content is fully
+-          // preserved (plus an added clause) and a new section is appended —
+-          // non-trivial vs the champion so it clears the SLICE-B AC-2 no-op
+-          // guardrail, while the AC-5 identity-anchor guardrail passes
+-          // because every champion anchor word survives in the candidate.
+-          return streamJsonFor(
+-            [
+-              "```markdown",
+-              "# fullstack-dev",
+-              "",
+-              "## Identity anchor",
+-              "",
+-              "You are fullstack-dev. Stay narrowly scoped to fullstack implementation work.",
+-              "",
+-              "## Scope note",
+-              "",
+-              "Do not claim other agents' roles.",
+-              "```"
+-            ].join("\n")
+-          );
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial("set maxLines to 400, inlined detail instead of a skill")],
+-      1,
+-      { meter: fakeMeter() }
+-    );
+-
+-    expect(candidates).toHaveLength(1);
+-    const content = readFileSync(candidates[0]!.prompt_path, "utf8");
+-    expect(content).not.toContain("<!-- GEPA candidate mutation -->");
+-    expect(content).toContain("## Identity anchor");
+-    // Full rationale (not truncated) must reach the rewrite prompt.
+-    expect(capturedPrompt).toContain("set maxLines to 400, inlined detail instead of a skill");
+-    expect(capturedPrompt).toContain("single fenced code block");
+-  });
+-});
+-
+-// ── AC-7 rejection paths wired through generate() ───────────────────────────
+-
+-describe("generate() — AC-7 rejection paths (live mode)", () => {
+-  it("free-form prose response is rejected: no candidate produced, nothing written", async () => {
+-    process.env["GEPA_LIVE_GENERATOR"] = "1";
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-prose",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          return streamJsonFor(
+-            "I reviewed the prompt and think the maxLines cap should be raised."
+-          );
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial("set maxLines to 400")],
+-      1,
+-      { meter: fakeMeter() }
+-    );
+-
+-    expect(candidates).toHaveLength(0);
+-    // No candidate file should exist under the cycle dir — nothing written.
+-    const dir = candidateDir("cycle-prose");
+-    const files = (() => {
+-      try {
+-        return readdirSync(dir);
+-      } catch {
+-        return [];
+-      }
+-    })();
+-    expect(files).toHaveLength(0);
+-  });
+-
+-  it("spawn failure rejects the slot and does not crash the cycle", async () => {
+-    process.env["GEPA_LIVE_GENERATOR"] = "1";
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-spawn-fail",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          throw new Error("candidate-dispatch: failed to spawn claude: ENOENT");
+-        }
+-      }
+-    });
+-
+-    const candidates = await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial("set maxLines to 400")],
+-      2,
+-      { meter: fakeMeter() }
+-    );
+-
+-    // Both slots reject; generate() resolves normally with an empty array
+-    // rather than throwing.
+-    expect(candidates).toHaveLength(0);
+-  });
+-
+-  it("logs a gepa_rewriter_dispatch event for both accepted and rejected slots", async () => {
+-    process.env["GEPA_LIVE_GENERATOR"] = "1";
+-    let call = 0;
+-    const generator = createAipluginCandidateGenerator({
+-      repoPath,
+-      cycleId: "cycle-events",
+-      rewriteDeps: {
+-        async runSubprocess() {
+-          call += 1;
+-          if (call === 1) {
+-            return streamJsonFor("no fenced block here");
+-          }
+-          return streamJsonFor("```md\n# ok\n\n## Identity anchor\nbody\n```");
+-        }
+-      }
+-    });
+-
+-    await generator.generate(
+-      join(repoPath, "agents", "fullstack-dev.md"),
+-      [failingTrial("set maxLines to 400")],
+-      2,
+-      { meter: fakeMeter() }
+-    );
+-
+-    const eventsPath = join(repoPath, ".claude", "logs", "events.jsonl");
+-    const raw = readFileSync(eventsPath, "utf8");
+-    const events = raw
+-      .trim()
+-      .split("\n")
+-      .map((l) => JSON.parse(l));
+-    const dispatchEvents = events.filter(
+-      (e: Record<string, unknown>) => e.event === "gepa_rewriter_dispatch"
+-    );
+-    expect(dispatchEvents).toHaveLength(2);
+-    expect(dispatchEvents[0].accepted).toBe(false);
+-    expect(dispatchEvents[0].reason).toBe("no_fenced_block");
+-    expect(dispatchEvents[1].accepted).toBe(true);
+-    expect(typeof dispatchEvents[0].dispatch_duration_ms).toBe("number");
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-absent-parity.test.mts b/crew/tests/gepa/capture-absent-parity.test.mts
+deleted file mode 100644
+index 2d4967d1..00000000
+--- a/crew/tests/gepa/capture-absent-parity.test.mts
++++ /dev/null
+@@ -1,90 +0,0 @@
+-// TDD: Task 7 — AC-1 capture-absent parity.
+-// Correction vs plan: writeArtifact takes ArtifactFields (owner/slice/title), not
+-// { payload }. Uses real "handoff" dispatch kind so the tee is exercised.
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { __drainPendingCaptures, writeArtifact } from "../../scripts/lib/artifacts/write.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-
+-function listAllFiles(root: string): string[] {
+-  const out: string[] = [];
+-  function walk(dir: string) {
+-    for (const name of readdirSync(dir, { withFileTypes: true })) {
+-      const full = join(dir, name.name);
+-      if (name.isDirectory()) walk(full);
+-      else out.push(full.replace(root, ""));
+-    }
+-  }
+-  walk(root);
+-  return out.sort();
+-}
+-
+-function normalizeVolatile(content: string): string {
+-  // Strip per-call volatile fields (Created timestamps embedded by writeArtifact's
+-  // nowIso() calls). Two back-to-back calls cross ms boundaries on Linux but
+-  // not Windows; without this filter the byte-identical assertion is flaky.
+-  return content.replace(/^- Created:.*$/gm, "- Created: <NORMALIZED>");
+-}
+-
+-function copyTreeContent(root: string): Record<string, string> {
+-  const map: Record<string, string> = {};
+-  for (const rel of listAllFiles(root)) {
+-    map[rel] = normalizeVolatile(readFileSync(join(root, rel), "utf8"));
+-  }
+-  return map;
+-}
+-
+-function fullstackFields(): ArtifactFields {
+-  return {
+-    title: "test-run",
+-    owner: "fullstack-dev",
+-    slice: "S2",
+-    cost: { usd: 0.01 }
+-  };
+-}
+-
+-function filterNonGepa(rels: Record<string, string>): Record<string, string> {
+-  return Object.fromEntries(
+-    Object.entries(rels).filter(
+-      ([rel]) =>
+-        rel.includes(".claude/artifacts/crew/") && !rel.includes(".claude/artifacts/crew/gepa/")
+-    )
+-  );
+-}
+-
+-describe("capture-absent parity", () => {
+-  test("no gepa.config.json → artifact tree byte-identical to control", async () => {
+-    const a = mkdtempSync(join(tmpdir(), "gepa-control-"));
+-    const b = mkdtempSync(join(tmpdir(), "gepa-absent-"));
+-    try {
+-      await writeArtifact(a, "handoff", fullstackFields());
+-      await writeArtifact(b, "handoff", fullstackFields());
+-      // Wave 1.5 (issue #360): capture-tee is detached — drain before
+-      // snapshotting the tree.
+-      await __drainPendingCaptures();
+-      expect(filterNonGepa(copyTreeContent(a))).toEqual(filterNonGepa(copyTreeContent(b)));
+-    } finally {
+-      rmSync(a, { recursive: true, force: true });
+-      rmSync(b, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("capture.enabled: false → no gepa/ subtree appears", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-disabled-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({ capture: { enabled: false } })
+-      );
+-      await writeArtifact(root, "handoff", fullstackFields());
+-      await __drainPendingCaptures();
+-      const all = listAllFiles(root);
+-      expect(all.some((p) => p.includes(".claude/artifacts/crew/gepa/"))).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-failure-trial.test.mts b/crew/tests/gepa/capture-failure-trial.test.mts
+deleted file mode 100644
+index 2e61c817..00000000
+--- a/crew/tests/gepa/capture-failure-trial.test.mts
++++ /dev/null
+@@ -1,205 +0,0 @@
+-// TDD: FEAT-193 S1 — captureFailureTrial happy-path + no-op branches.
+-// Mirrors tests/gepa/capture-tee.test.ts's fixture style (fileStore-backed
+-// JSONL corpus under a temp gepa.config.json root).
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { captureFailureTrial } from "../../scripts/lib/gepa/capture-failure-trial.mjs";
+-import { captureFailureTrialGuarded } from "../../scripts/lib/gepa/capture-failure-trial-guard.mjs";
+-
+-function enabledConfig(extra: Record<string, unknown> = {}) {
+-  return JSON.stringify({
+-    capture: { enabled: true, walltime_ms: 2000, exclude: [] },
+-    storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" },
+-    ...extra
+-  });
+-}
+-
+-describe("captureFailureTrial", () => {
+-  test("writes a failing Trial line when capture is enabled", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      await captureFailureTrial(root, {
+-        agent: "reviewer",
+-        phase: "review",
+-        rationale: "review rejected: missing null guard"
+-      });
+-
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl");
+-      const lines = readFileSync(trialFile, "utf8").trim().split("\n");
+-      expect(lines).toHaveLength(1);
+-      const trial = JSON.parse(lines[0]!);
+-      expect(trial.agent).toBe("reviewer");
+-      expect(trial.phase).toBe("review");
+-      expect(trial.source).toBe("captured");
+-      expect(trial.score.pass).toBe(false);
+-      expect(trial.score.score).toBe(0);
+-      expect(trial.score.cost_usd).toBe(0);
+-      expect(trial.score.latency_ms).toBe(0);
+-      expect(trial.score.rationale).toBe("review rejected: missing null guard");
+-      expect(trial.input.capture_origin).toBe("production_failure");
+-      expect(trial.pareto_rank).toBeNull();
+-      expect(typeof trial.id).toBe("string");
+-      expect(typeof trial.created_at).toBe("string");
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("merges optional structured input alongside capture_origin", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      await captureFailureTrial(root, {
+-        agent: "verifier",
+-        phase: "validate",
+-        rationale: "validation failed: build broke",
+-        input: { slice: "SLICE-01", feature: "FEAT-193" }
+-      });
+-
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/verifier.jsonl");
+-      const trial = JSON.parse(readFileSync(trialFile, "utf8").trim());
+-      expect(trial.input.capture_origin).toBe("production_failure");
+-      expect(trial.input.slice).toBe("SLICE-01");
+-      expect(trial.input.feature).toBe("FEAT-193");
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("truncates an over-long rationale to 2000 chars", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      const longRationale = "x".repeat(3000);
+-      await captureFailureTrial(root, {
+-        agent: "reviewer",
+-        phase: "review",
+-        rationale: longRationale
+-      });
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl");
+-      const trial = JSON.parse(readFileSync(trialFile, "utf8").trim());
+-      expect((trial.score.rationale as string).length).toBe(2000);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("is a no-op when gepa.config.json is absent", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      await captureFailureTrial(root, { agent: "reviewer", phase: "review", rationale: "x" });
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("is a no-op when capture.enabled is false", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({ capture: { enabled: false } })
+-      );
+-      await captureFailureTrial(root, { agent: "reviewer", phase: "review", rationale: "x" });
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("is a no-op when agent is in capture.exclude", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({
+-          capture: { enabled: true, exclude: ["reviewer"] },
+-          storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-        })
+-      );
+-      await captureFailureTrial(root, { agent: "reviewer", phase: "review", rationale: "x" });
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("never throws when the store root is unwritable", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      // Point file_root at a path that is itself a file, not a directory.
+-      const blocker = join(root, "blocker-file");
+-      writeFileSync(blocker, "not a directory");
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        enabledConfig({ storage: { backend: "file", file_root: "blocker-file" } })
+-      );
+-      await expect(
+-        captureFailureTrial(root, { agent: "reviewer", phase: "review", rationale: "x" })
+-      ).resolves.toBeUndefined();
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+-
+-// FEAT-193 S1 fix-forward: captureFailureTrialGuarded races the whole
+-// dynamic-import + write against a short timeout, so a slow/cold
+-// @astragenie/gepa-core module load can never hold a caller (a CLI command,
+-// a hook) open for longer than the configured ceiling.
+-describe("captureFailureTrialGuarded", () => {
+-  test("writes the trial on the normal (fast) path", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-guard-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      await captureFailureTrialGuarded(root, {
+-        agent: "reviewer",
+-        phase: "review",
+-        rationale: "guarded happy path"
+-      });
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl");
+-      const trial = JSON.parse(readFileSync(trialFile, "utf8").trim());
+-      expect(trial.agent).toBe("reviewer");
+-      expect(trial.score.rationale).toBe("guarded happy path");
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("resolves within the timeout ceiling and drops the trial when forced to race a 0ms budget", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-failure-trial-guard-timeout-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      const start = Date.now();
+-      // 0ms timeout forces the timeout branch to win the race virtually
+-      // every time, regardless of how fast the real write would have been —
+-      // proving the guard degrades to a no-op rather than ever rejecting or
+-      // hanging.
+-      await expect(
+-        captureFailureTrialGuarded(
+-          root,
+-          { agent: "reviewer", phase: "review", rationale: "should not block" },
+-          0
+-        )
+-      ).resolves.toBeUndefined();
+-      expect(Date.now() - start).toBeLessThan(500);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-parity.test.mts b/crew/tests/gepa/capture-parity.test.mts
+deleted file mode 100644
+index 7481f7e6..00000000
+--- a/crew/tests/gepa/capture-parity.test.mts
++++ /dev/null
+@@ -1,76 +0,0 @@
+-// TDD: Task 8 — AC-4 capture-parity (on vs off).
+-// Correction vs plan: writeArtifact takes ArtifactFields, not { payload }. Uses
+-// real "handoff" dispatch kind so the tee fires and emits a Trial JSONL line.
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { __drainPendingCaptures, writeArtifact } from "../../scripts/lib/artifacts/write.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-
+-function normalizeVolatile(content: string): string {
+-  // Strip per-call volatile fields (Created timestamps embedded by writeArtifact's
+-  // nowIso() calls). Two back-to-back calls cross ms boundaries on Linux but
+-  // not Windows; without this filter the byte-identical assertion is flaky.
+-  return content.replace(/^- Created:.*$/gm, "- Created: <NORMALIZED>");
+-}
+-
+-function snapshot(root: string, filter: (rel: string) => boolean): Record<string, string> {
+-  const out: Record<string, string> = {};
+-  function walk(dir: string) {
+-    for (const name of readdirSync(dir, { withFileTypes: true })) {
+-      const full = join(dir, name.name);
+-      if (name.isDirectory()) walk(full);
+-      else {
+-        const rel = full.replace(root, "");
+-        if (filter(rel)) out[rel] = normalizeVolatile(readFileSync(full, "utf8"));
+-      }
+-    }
+-  }
+-  walk(root);
+-  return out;
+-}
+-
+-describe("capture parity", () => {
+-  test("identical dispatches with/without capture → byte-identical non-gepa artifacts", async () => {
+-    const on = mkdtempSync(join(tmpdir(), "gepa-on-"));
+-    const off = mkdtempSync(join(tmpdir(), "gepa-off-"));
+-    try {
+-      writeFileSync(
+-        join(on, "gepa.config.json"),
+-        JSON.stringify({
+-          capture: { enabled: true, walltime_ms: 2000 },
+-          storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-        })
+-      );
+-      writeFileSync(join(off, "gepa.config.json"), JSON.stringify({ capture: { enabled: false } }));
+-
+-      const fields: ArtifactFields = {
+-        title: "parity-run",
+-        owner: "fullstack-dev",
+-        slice: "S2",
+-        runTitle: "parity-run",
+-        cost: { usd: 0.05 }
+-      };
+-      await writeArtifact(on, "handoff", fields);
+-      await writeArtifact(off, "handoff", fields);
+-      // Wave 1.5 (issue #360): writeArtifact's capture-tee call is now
+-      // detached (fire-and-forget), so its filesystem side effects are not
+-      // guaranteed to have landed the instant writeArtifact returns. Drain
+-      // before asserting on the trial file / artifact tree.
+-      await __drainPendingCaptures();
+-
+-      const filter = (rel: string) =>
+-        rel.includes(".claude/artifacts/crew/") && !rel.includes("/gepa/");
+-      expect(snapshot(on, filter)).toEqual(snapshot(off, filter));
+-
+-      const trialsFile = join(on, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl");
+-      const trials = readFileSync(trialsFile, "utf8").trim().split("\n");
+-      expect(trials).toHaveLength(1);
+-    } finally {
+-      rmSync(on, { recursive: true, force: true });
+-      rmSync(off, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-perf.test.mts b/crew/tests/gepa/capture-perf.test.mts
+deleted file mode 100644
+index 28a270e0..00000000
+--- a/crew/tests/gepa/capture-perf.test.mts
++++ /dev/null
+@@ -1,58 +0,0 @@
+-// TDD: Task 10 — AC-6 capture-perf micro-benchmark.
+-// Correction vs plan: captureTee takes (repoPath, ArtifactRecord, ArtifactFields)
+-// — 3 args, not the 2-arg payload shape in the plan draft.
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { captureTee } from "../../scripts/lib/gepa/capture-tee.mjs";
+-import type { ArtifactRecord } from "../../scripts/lib/artifacts/write.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-
+-function percentile(values: number[], p: number): number {
+-  const sorted = [...values].sort((a, b) => a - b);
+-  const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+-  return sorted[idx]!;
+-}
+-
+-describe("capture-perf", () => {
+-  test("1000-iter capture: p50 ≤ 50ms, p99 ≤ 200ms, max ≤ 2000ms", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-perf-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({
+-          capture: { enabled: true, walltime_ms: 2000 },
+-          storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-        })
+-      );
+-      const record: ArtifactRecord = {
+-        kind: "handoff",
+-        path: "/tmp/fake-handoff.md",
+-        title: "perf-iter"
+-      };
+-      const samples: number[] = [];
+-      for (let i = 0; i < 1000; i++) {
+-        const fields: ArtifactFields = {
+-          title: "perf-iter",
+-          owner: "fullstack-dev",
+-          slice: "S2",
+-          cost: { usd: 0.001 }
+-        };
+-        const t0 = performance.now();
+-        await captureTee(root, record, fields);
+-        samples.push(performance.now() - t0);
+-      }
+-      const p50 = percentile(samples, 50);
+-      const p99 = percentile(samples, 99);
+-      const max = Math.max(...samples);
+-      console.log({ p50, p99, max });
+-      expect(p50).toBeLessThanOrEqual(50);
+-      expect(p99).toBeLessThanOrEqual(200);
+-      expect(max).toBeLessThanOrEqual(2000);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-sigkill-parity.test.mts b/crew/tests/gepa/capture-sigkill-parity.test.mts
+deleted file mode 100644
+index bc12df05..00000000
+--- a/crew/tests/gepa/capture-sigkill-parity.test.mts
++++ /dev/null
+@@ -1,65 +0,0 @@
+-// TDD: Task 9 — AC-5 SIGKILL-during-put parity.
+-// Correction vs plan: writeArtifact takes ArtifactFields, not { payload }. Uses
+-// real "handoff" dispatch kind so the tee fires.
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-
+-describe("SIGKILL-during-put parity", () => {
+-  test("artifact tree clean + no torn line after SIGKILL mid-capture", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-sigkill-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({
+-          capture: { enabled: true, walltime_ms: 2000 },
+-          storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-        })
+-      );
+-
+-      const cwd = process.cwd().replace(/\\/g, "/");
+-      const child = Bun.spawn({
+-        cmd: [
+-          "bun",
+-          "run",
+-          "-e",
+-          `
+-          const { writeArtifact } = await import("${cwd}/scripts/lib/artifacts/write.mjs");
+-          for (let i = 0; i < 50; i++) {
+-            await writeArtifact(${JSON.stringify(root)}, "handoff", {
+-              title: "x-" + i,
+-              owner: "fullstack-dev",
+-              slice: "S2",
+-              cost: { usd: 0.001 },
+-            });
+-          }
+-          `
+-        ],
+-        stdout: "pipe",
+-        stderr: "pipe"
+-      });
+-      await new Promise((resolve) => setTimeout(resolve, 200));
+-      child.kill(9);
+-      await child.exited;
+-
+-      const trialsDir = join(root, ".claude/artifacts/crew/gepa/trials");
+-      let entries: string[] = [];
+-      try {
+-        entries = readdirSync(trialsDir);
+-      } catch {
+-        // no trials dir — child killed before any flush; acceptable
+-      }
+-      if (entries.includes("fullstack-dev.jsonl")) {
+-        const raw = readFileSync(join(trialsDir, "fullstack-dev.jsonl"), "utf8");
+-        for (const line of raw.split("\n")) {
+-          if (line.trim().length === 0) continue;
+-          expect(() => JSON.parse(line)).not.toThrow();
+-        }
+-      }
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-tee.test.mts b/crew/tests/gepa/capture-tee.test.mts
+deleted file mode 100644
+index 25574970..00000000
+--- a/crew/tests/gepa/capture-tee.test.mts
++++ /dev/null
+@@ -1,164 +0,0 @@
+-// TDD: Task 4 — captureTee happy-path + no-op branches
+-// Uses real ArtifactRecord + ArtifactFields shapes (Correction 2 applied).
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { captureTee } from "../../scripts/lib/gepa/capture-tee.mjs";
+-import type { ArtifactRecord } from "../../scripts/lib/artifacts/write.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-
+-function sampleRecord(): ArtifactRecord {
+-  return {
+-    kind: "handoff",
+-    path: "/tmp/fake-handoff.md",
+-    title: "test handoff"
+-  };
+-}
+-
+-function sampleFields(overrides: Partial<ArtifactFields> = {}): ArtifactFields {
+-  return {
+-    owner: "fullstack-dev",
+-    slice: "S2",
+-    cost: { usd: 0.01 },
+-    ...overrides
+-  };
+-}
+-
+-function enabledConfig(extra: Record<string, unknown> = {}) {
+-  return JSON.stringify({
+-    capture: { enabled: true, walltime_ms: 2000 },
+-    storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" },
+-    ...extra
+-  });
+-}
+-
+-describe("captureTee", () => {
+-  test("writes a Trial line when capture is enabled and agent is fullstack-dev", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      await captureTee(root, sampleRecord(), sampleFields());
+-
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl");
+-      const lines = readFileSync(trialFile, "utf8").trim().split("\n");
+-      expect(lines).toHaveLength(1);
+-      const trial = JSON.parse(lines[0]!);
+-      expect(trial.agent).toBe("fullstack-dev");
+-      expect(trial.source).toBe("captured");
+-      expect(trial.phase).toBe("build");
+-      expect(typeof trial.id).toBe("string");
+-      expect(trial.pareto_rank).toBeNull();
+-      expect(trial.score.pass).toBe(true);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("is a no-op when gepa.config.json is absent", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      await captureTee(root, sampleRecord(), sampleFields());
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("is a no-op when capture.enabled is false", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({ capture: { enabled: false } })
+-      );
+-      await captureTee(root, sampleRecord(), sampleFields());
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("is a no-op when agent is in capture.exclude", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({
+-          capture: { enabled: true, exclude: ["fullstack-dev"] },
+-          storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-        })
+-      );
+-      await captureTee(root, sampleRecord(), sampleFields());
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("only captures allowlisted agents (non-allowlisted agents are no-op)", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      // document-writer has no eval surface → filtered out by the capture allowlist.
+-      await captureTee(root, sampleRecord(), sampleFields({ owner: "document-writer" }));
+-      const exists = await Bun.file(
+-        join(root, ".claude/artifacts/crew/gepa/trials/document-writer.jsonl")
+-      ).exists();
+-      expect(exists).toBe(false);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("captures reviewer (eval-capable roster, critical-agent guard is on promotion not capture)", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      const record: ArtifactRecord = {
+-        kind: "review-result",
+-        path: "/tmp/fake-review.md",
+-        title: "review"
+-      };
+-      await captureTee(root, record, sampleFields({ owner: "reviewer", verdict: "rejected" }));
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/reviewer.jsonl");
+-      const lines = readFileSync(trialFile, "utf8").trim().split("\n");
+-      expect(lines).toHaveLength(1);
+-      const trial = JSON.parse(lines[0]!);
+-      expect(trial.agent).toBe("reviewer");
+-      expect(trial.phase).toBe("review");
+-      // rejected verdict → captured trial records the failure, not the pass=true default.
+-      expect(trial.score.pass).toBe(false);
+-      expect(trial.score.score).toBe(0);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("captures frontend-dev canary (FEAT-210)", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-tee-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), enabledConfig());
+-      await captureTee(root, sampleRecord(), sampleFields({ owner: "frontend-dev" }));
+-
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/frontend-dev.jsonl");
+-      const lines = readFileSync(trialFile, "utf8").trim().split("\n");
+-      expect(lines).toHaveLength(1);
+-      const trial = JSON.parse(lines[0]!);
+-      expect(trial.agent).toBe("frontend-dev");
+-      expect(trial.source).toBe("captured");
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/capture-walltime.test.mts b/crew/tests/gepa/capture-walltime.test.mts
+deleted file mode 100644
+index ef889186..00000000
+--- a/crew/tests/gepa/capture-walltime.test.mts
++++ /dev/null
+@@ -1,80 +0,0 @@
+-// TDD: Task 5 — walltime/error drop path
+-// Verifies that when fileStore.put() throws (or walltime expires),
+-// captureTee logs a gepa_capture_drop event and never propagates the error.
+-//
+-// Approach: block file-store by placing a regular FILE at the path where
+-// fileStore expects to create a DIRECTORY (.claude/artifacts/crew/gepa/trials).
+-// This causes mkdirSync inside fileStore to throw ENOTDIR immediately —
+-// which satisfies the "drop + log" invariant without relying on timing.
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { captureTee } from "../../scripts/lib/gepa/capture-tee.mjs";
+-import type { ArtifactRecord } from "../../scripts/lib/artifacts/write.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-
+-function fullstackRecord(): ArtifactRecord {
+-  return {
+-    kind: "handoff",
+-    path: "/tmp/fake-handoff.md",
+-    title: "walltime test handoff"
+-  };
+-}
+-
+-function fullstackFields(): ArtifactFields {
+-  return {
+-    owner: "fullstack-dev",
+-    slice: "S2",
+-    cost: { usd: 0.01 }
+-  };
+-}
+-
+-describe("captureTee walltime / error drop", () => {
+-  test("store error → drop trial + log gepa_capture_drop (file-collision block)", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-walltime-"));
+-    try {
+-      // Ensure .claude/logs exists so the event logger can write.
+-      mkdirSync(join(root, ".claude/logs"), { recursive: true });
+-      // Ensure parent dirs for the trials path exist up to "gepa/" level.
+-      mkdirSync(join(root, ".claude/artifacts/crew/gepa"), { recursive: true });
+-
+-      // Place a REGULAR FILE where fileStore expects a DIRECTORY.
+-      // fileStore calls mkdirSync(root) → ENOTDIR → put() throws.
+-      writeFileSync(join(root, ".claude/artifacts/crew/gepa/trials"), "BLOCKED");
+-
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({
+-          capture: { enabled: true, walltime_ms: 2000 },
+-          storage: {
+-            backend: "file",
+-            file_root: ".claude/artifacts/crew/gepa/trials"
+-          }
+-        })
+-      );
+-
+-      // captureTee must complete without throwing even though fileStore throws.
+-      await captureTee(root, fullstackRecord(), fullstackFields());
+-
+-      // The drop event must appear in the events log.
+-      const logPath = join(root, ".claude/logs/events.jsonl");
+-      const log = readFileSync(logPath, "utf8");
+-      expect(log).toContain("gepa_capture_drop");
+-
+-      // Parse the event line and verify required fields.
+-      const events = log
+-        .trim()
+-        .split("\n")
+-        .map((l) => JSON.parse(l));
+-      const dropEvent = events.find((e: { event: string }) => e.event === "gepa_capture_drop");
+-      expect(dropEvent).toBeDefined();
+-      expect(typeof dropEvent.trial_id).toBe("string");
+-      expect(dropEvent.agent).toBe("fullstack-dev");
+-      expect(typeof dropEvent.reason).toBe("string");
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/champion-provenance.test.mts b/crew/tests/gepa/champion-provenance.test.mts
+deleted file mode 100644
+index 42a628d6..00000000
+--- a/crew/tests/gepa/champion-provenance.test.mts
++++ /dev/null
+@@ -1,279 +0,0 @@
+-/**
+- * tests/gepa/champion-provenance.test.ts — SLICE-105
+- *
+- * Covers AC-4, AC-5, AC-6:
+- *   AC-4: agent with NO existing gepa: frontmatter → new block written at top,
+- *         file structure is exactly: --- / gepa: / fields / --- / original body.
+- *   AC-5: agent with existing gepa: block → block replaced in-place (no dup),
+- *         prior_prompt_hash hashes the body WITHOUT the old gepa: block so
+- *         subsequent promotions chain correctly.
+- *   AC-6: atomicity — tmp+rename guarantees either fully-old or fully-new content.
+- */
+-
+-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+-import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSync } from "node:fs";
+-import { join } from "node:path";
+-import { tmpdir } from "node:os";
+-import {
+-  writeChampionProvenance,
+-  stripGepafrontmatter,
+-  hashPromptBody
+-} from "../../scripts/lib/gepa/champion-provenance-writer.mjs";
+-
+-// ── Helpers ───────────────────────────────────────────────────────────────────
+-
+-const TRIAL_UUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+-const PROMOTED_AT = "2026-07-02T10:00:00.000Z";
+-
+-function agentBody(n = 10): string {
+-  return Array.from({ length: n }, (_, i) => `Line ${i + 1} of agent body.`).join("\n") + "\n";
+-}
+-
+-let tmpDir: string;
+-
+-beforeEach(() => {
+-  tmpDir = mkdtempSync(join(tmpdir(), "provenance-test-"));
+-  mkdirSync(join(tmpDir, "agents"), { recursive: true });
+-});
+-
+-afterEach(() => {
+-  rmSync(tmpDir, { recursive: true, force: true });
+-});
+-
+-// ── stripGepafrontmatter ──────────────────────────────────────────────────────
+-
+-describe("stripGepafrontmatter", () => {
+-  it("returns content unchanged when no gepa: block present", () => {
+-    const content = "# Hello\nThis is a body.\n";
+-    expect(stripGepafrontmatter(content)).toBe(content);
+-  });
+-
+-  it("strips a gepa: frontmatter block from the top", () => {
+-    const content = [
+-      "---",
+-      "gepa:",
+-      "  champion_from_trial: some-uuid",
+-      "  prior_prompt_hash: abc123",
+-      "  promoted_at: 2026-01-01T00:00:00.000Z",
+-      "---",
+-      "# Body",
+-      "Content here."
+-    ].join("\n");
+-    const stripped = stripGepafrontmatter(content);
+-    expect(stripped).toBe("# Body\nContent here.");
+-    expect(stripped).not.toContain("gepa:");
+-  });
+-
+-  it("does NOT strip a non-gepa frontmatter block (e.g. description:)", () => {
+-    const content = ["---", "description: my skill", "tier: universal", "---", "# Body"].join("\n");
+-    const result = stripGepafrontmatter(content);
+-    expect(result).toBe(content); // unchanged
+-  });
+-
+-  it("handles unclosed gepa: block gracefully (returns content unchanged)", () => {
+-    const content = [
+-      "---",
+-      "gepa:",
+-      "  champion_from_trial: uuid",
+-      // no closing ---
+-      "# Body"
+-    ].join("\n");
+-    expect(stripGepafrontmatter(content)).toBe(content);
+-  });
+-});
+-
+-// ── AC-4: no prior frontmatter ────────────────────────────────────────────────
+-
+-describe("writeChampionProvenance — AC-4 no prior gepa: block", () => {
+-  it("writes gepa: block at the top; first 6 lines are the frontmatter boundary", () => {
+-    const body = agentBody(5);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    writeChampionProvenance({ agentPath, trialUuid: TRIAL_UUID, promotedAt: PROMOTED_AT });
+-
+-    const result = readFileSync(agentPath, "utf8");
+-    const lines = result.split("\n");
+-
+-    // Lines 0-5 are the frontmatter block.
+-    expect(lines[0]).toBe("---");
+-    expect(lines[1]).toBe("gepa:");
+-    expect(lines[2]).toBe(`  champion_from_trial: ${TRIAL_UUID}`);
+-    expect(lines[3]).toMatch(/^  prior_prompt_hash: [0-9a-f]{64}$/);
+-    expect(lines[4]).toBe(`  promoted_at: ${PROMOTED_AT}`);
+-    expect(lines[5]).toBe("---");
+-  });
+-
+-  it("original body is preserved verbatim after the frontmatter block", () => {
+-    const body = agentBody(5);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    writeChampionProvenance({ agentPath, trialUuid: TRIAL_UUID, promotedAt: PROMOTED_AT });
+-
+-    const result = readFileSync(agentPath, "utf8");
+-    const stripped = stripGepafrontmatter(result);
+-    expect(stripped).toBe(body);
+-  });
+-
+-  it("prior_prompt_hash is SHA-256 of the original body", () => {
+-    const body = agentBody(5);
+-    const expectedHash = hashPromptBody(body);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    const { priorPromptHash } = writeChampionProvenance({
+-      agentPath,
+-      trialUuid: TRIAL_UUID,
+-      promotedAt: PROMOTED_AT
+-    });
+-
+-    expect(priorPromptHash).toBe(expectedHash);
+-
+-    const result = readFileSync(agentPath, "utf8");
+-    expect(result).toContain(`  prior_prompt_hash: ${expectedHash}`);
+-  });
+-
+-  it("returns the promotedAt timestamp that was written", () => {
+-    const body = agentBody(3);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    const { promotedAt } = writeChampionProvenance({
+-      agentPath,
+-      trialUuid: TRIAL_UUID,
+-      promotedAt: PROMOTED_AT
+-    });
+-
+-    expect(promotedAt).toBe(PROMOTED_AT);
+-  });
+-});
+-
+-// ── AC-5: existing gepa: block replaced in-place ──────────────────────────────
+-
+-describe("writeChampionProvenance — AC-5 existing gepa: block", () => {
+-  it("replaces existing gepa: block (not duplicated)", () => {
+-    const body = agentBody(4);
+-    const oldBlock = [
+-      "---",
+-      "gepa:",
+-      "  champion_from_trial: old-trial-uuid",
+-      "  prior_prompt_hash: olddeadhash",
+-      "  promoted_at: 2026-01-01T00:00:00.000Z",
+-      "---",
+-      ""
+-    ].join("\n");
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, oldBlock + body, "utf8");
+-
+-    const NEW_TRIAL = "11111111-2222-4333-8444-555555555555";
+-    const NEW_PROMOTED_AT = "2026-07-02T12:00:00.000Z";
+-    writeChampionProvenance({
+-      agentPath,
+-      trialUuid: NEW_TRIAL,
+-      promotedAt: NEW_PROMOTED_AT
+-    });
+-
+-    const result = readFileSync(agentPath, "utf8");
+-
+-    // Must not contain the old trial UUID.
+-    expect(result).not.toContain("old-trial-uuid");
+-    // Must contain the new trial UUID.
+-    expect(result).toContain(NEW_TRIAL);
+-    // Only ONE gepa: occurrence (not duplicated).
+-    const gepaCnt = (result.match(/^gepa:$/m) ?? []).length;
+-    expect(gepaCnt).toBe(1);
+-    // Body preserved.
+-    const stripped = stripGepafrontmatter(result);
+-    // The body after stripping the NEW block should equal the original body.
+-    expect(stripped).toBe(body);
+-  });
+-
+-  it("prior_prompt_hash is hashed from body WITHOUT the old gepa: block", () => {
+-    const body = agentBody(4);
+-    const oldBlock = [
+-      "---",
+-      "gepa:",
+-      "  champion_from_trial: old-trial-uuid",
+-      "  prior_prompt_hash: deadbeef",
+-      "  promoted_at: 2026-01-01T00:00:00.000Z",
+-      "---",
+-      ""
+-    ].join("\n");
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, oldBlock + body, "utf8");
+-
+-    const { priorPromptHash } = writeChampionProvenance({
+-      agentPath,
+-      trialUuid: TRIAL_UUID,
+-      promotedAt: PROMOTED_AT
+-    });
+-
+-    // Hash must be of `body` (without any gepa frontmatter).
+-    const expectedHash = hashPromptBody(body);
+-    expect(priorPromptHash).toBe(expectedHash);
+-
+-    // Not the old hash.
+-    expect(priorPromptHash).not.toBe("deadbeef");
+-  });
+-
+-  it("second promotion chains hashes correctly", () => {
+-    const body = agentBody(4);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    // First promotion.
+-    const first = writeChampionProvenance({
+-      agentPath,
+-      trialUuid: "trial-1",
+-      promotedAt: "2026-07-01T00:00:00.000Z"
+-    });
+-
+-    // Second promotion (over the first).
+-    const second = writeChampionProvenance({
+-      agentPath,
+-      trialUuid: "trial-2",
+-      promotedAt: PROMOTED_AT
+-    });
+-
+-    // Both promotions hash the SAME body (not the frontmatter).
+-    expect(first.priorPromptHash).toBe(second.priorPromptHash);
+-    expect(second.priorPromptHash).toBe(hashPromptBody(body));
+-  });
+-});
+-
+-// ── AC-6: atomicity ──────────────────────────────────────────────────────────
+-
+-describe("writeChampionProvenance — AC-6 atomic write (tmp+rename)", () => {
+-  it("no tmp file left behind after successful write", () => {
+-    const body = agentBody(3);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    writeChampionProvenance({ agentPath, trialUuid: TRIAL_UUID, promotedAt: PROMOTED_AT });
+-
+-    // Scan the agents/ dir — no .gepa-tmp-* files should remain.
+-    const files = readdirSync(join(tmpDir, "agents"));
+-    const tmpFiles = files.filter((f) => f.startsWith(".gepa-tmp-"));
+-    expect(tmpFiles).toHaveLength(0);
+-  });
+-
+-  it("file is well-formed after write (no partial content)", () => {
+-    const body = agentBody(10);
+-    const agentPath = join(tmpDir, "agents", "fullstack-dev.md");
+-    writeFileSync(agentPath, body, "utf8");
+-
+-    writeChampionProvenance({ agentPath, trialUuid: TRIAL_UUID, promotedAt: PROMOTED_AT });
+-
+-    const result = readFileSync(agentPath, "utf8");
+-    // Must start with `---`
+-    expect(result.startsWith("---\n")).toBe(true);
+-    // Must contain closing `---`
+-    const lines = result.split("\n");
+-    const closingIdx = lines.indexOf("---", 1);
+-    expect(closingIdx).toBeGreaterThan(1);
+-    // Content after closing `---` must equal original body.
+-    const bodyAfter = lines.slice(closingIdx + 1).join("\n");
+-    expect(bodyAfter).toBe(body);
+-  });
+-});
+diff --git a/crew/tests/gepa/critical-agent-allowlist.test.mts b/crew/tests/gepa/critical-agent-allowlist.test.mts
+deleted file mode 100644
+index ae41aaa9..00000000
+--- a/crew/tests/gepa/critical-agent-allowlist.test.mts
++++ /dev/null
+@@ -1,102 +0,0 @@
+-/**
+- * tests/gepa/critical-agent-allowlist.test.ts — SLICE-106
+- *
+- * Covers AC-10 (allowlist membership) and design spec line 44
+- * (list is NOT configurable in v1; always reviewer + verifier + architect).
+- */
+-
+-import { describe, expect, it } from "bun:test";
+-import {
+-  CRITICAL_AGENT_ALLOWLIST,
+-  isCriticalAgent
+-} from "../../scripts/lib/gepa/critical-agent-allowlist.mjs";
+-
+-describe("CRITICAL_AGENT_ALLOWLIST — membership", () => {
+-  it("contains exactly 3 members", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST.length).toBe(3);
+-  });
+-
+-  it("contains reviewer", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST).toContain("reviewer");
+-  });
+-
+-  it("contains verifier", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST).toContain("verifier");
+-  });
+-
+-  it("contains architect", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST).toContain("architect");
+-  });
+-
+-  it("is ordered: reviewer first, verifier second, architect third", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST[0]).toBe("reviewer");
+-    expect(CRITICAL_AGENT_ALLOWLIST[1]).toBe("verifier");
+-    expect(CRITICAL_AGENT_ALLOWLIST[2]).toBe("architect");
+-  });
+-
+-  it("does NOT contain fullstack-dev", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST).not.toContain("fullstack-dev");
+-  });
+-
+-  it("does NOT contain backend-dev", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST).not.toContain("backend-dev");
+-  });
+-
+-  it("does NOT contain frontend-dev", () => {
+-    expect(CRITICAL_AGENT_ALLOWLIST).not.toContain("frontend-dev");
+-  });
+-});
+-
+-describe("isCriticalAgent — membership predicate", () => {
+-  it("returns true for reviewer", () => {
+-    expect(isCriticalAgent("reviewer")).toBe(true);
+-  });
+-
+-  it("returns true for verifier", () => {
+-    expect(isCriticalAgent("verifier")).toBe(true);
+-  });
+-
+-  it("returns true for architect", () => {
+-    expect(isCriticalAgent("architect")).toBe(true);
+-  });
+-
+-  it("returns false for fullstack-dev", () => {
+-    expect(isCriticalAgent("fullstack-dev")).toBe(false);
+-  });
+-
+-  it("returns false for backend-dev", () => {
+-    expect(isCriticalAgent("backend-dev")).toBe(false);
+-  });
+-
+-  it("returns false for frontend-dev", () => {
+-    expect(isCriticalAgent("frontend-dev")).toBe(false);
+-  });
+-
+-  it("returns false for empty string", () => {
+-    expect(isCriticalAgent("")).toBe(false);
+-  });
+-
+-  it("returns false for unknown agent", () => {
+-    expect(isCriticalAgent("my-custom-agent")).toBe(false);
+-  });
+-
+-  it("is case-sensitive — REVIEWER is not a match", () => {
+-    expect(isCriticalAgent("REVIEWER")).toBe(false);
+-  });
+-
+-  it("is case-sensitive — Reviewer is not a match", () => {
+-    expect(isCriticalAgent("Reviewer")).toBe(false);
+-  });
+-});
+-
+-describe("CRITICAL_AGENT_ALLOWLIST — not configurable (v1 constraint)", () => {
+-  it("is a readonly tuple — direct element write is not allowed at type level", () => {
+-    // The list is declared as `readonly string[]` — this test validates
+-    // that the runtime object is frozen (Bun/Node runtime invariant check).
+-    // We can only assert on the value identity, not the type here.
+-    expect(Array.isArray(CRITICAL_AGENT_ALLOWLIST)).toBe(true);
+-    // The list values must not change between imports.
+-    const snapshot = [...CRITICAL_AGENT_ALLOWLIST];
+-    expect(snapshot).toEqual(["reviewer", "verifier", "architect"]);
+-  });
+-});
+diff --git a/crew/tests/gepa/gepa-optimize-cmd-eval-cases.test.mts b/crew/tests/gepa/gepa-optimize-cmd-eval-cases.test.mts
+deleted file mode 100644
+index e21161db..00000000
+--- a/crew/tests/gepa/gepa-optimize-cmd-eval-cases.test.mts
++++ /dev/null
+@@ -1,212 +0,0 @@
+-/**
+- * tests/gepa/gepa-optimize-cmd-eval-cases.test.ts — FEAT-192 SLICE-C
+- *
+- * Covers the gepa-optimize-cmd.ts wiring added in SLICE-C:
+- *  - loadEvalCasesForOptimize: yaml + fixture loading, default + explicit
+- *    split, judgeChain derivation, degrade-to-null paths.
+- *  - selectScorer: judge-backed scorer chosen over noopScorer when cases exist.
+- *  - runGepaOptimizeCmd end-to-end: cases get wired into the real cycle
+- *    without ever making a live LLM call (achieved by starving the
+- *    candidate generator's budget so candidates_evaluated stays 0 and
+- *    scorer.score() is never invoked — see optimize-runner.ts::scoreCandidates).
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import {
+-  existsSync,
+-  mkdirSync,
+-  mkdtempSync,
+-  readFileSync,
+-  readdirSync,
+-  writeFileSync
+-} from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import {
+-  loadEvalCasesForOptimize,
+-  runGepaOptimizeCmd,
+-  selectScorer
+-} from "../../scripts/lib/gepa/gepa-optimize-cmd.mjs";
+-import { noopScorer } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-const YAML_TEST_AGENT = "gepa-c-test-agent";
+-
+-function setupEvalYaml(): string {
+-  const repoPath = mkdtempSync(join(tmpdir(), "gepa-c-eval-cases-"));
+-  const agentsEvalDir = join(repoPath, "evals", "agents");
+-  const fixturesDir = join(repoPath, "evals", "fixtures");
+-  mkdirSync(agentsEvalDir, { recursive: true });
+-  mkdirSync(fixturesDir, { recursive: true });
+-
+-  writeFileSync(join(fixturesDir, "case-a.txt"), "Scenario A input text.\n", "utf8");
+-  writeFileSync(join(fixturesDir, "case-b.txt"), "Scenario B input text.\n", "utf8");
+-  writeFileSync(join(fixturesDir, "case-c.txt"), "Scenario C input text.\n", "utf8");
+-
+-  const yaml = [
+-    `prompt_id: ${YAML_TEST_AGENT}`,
+-    "judge:",
+-    "  provider: groq",
+-    "  model: llama-3.3-70b-versatile",
+-    "  fallback:",
+-    "    - provider: gemini",
+-    "      model: gemini-2.5-flash",
+-    "tests:",
+-    "  - name: case-a",
+-    "    fixture: file://evals/fixtures/case-a.txt",
+-    "    assert:",
+-    "      - type: llm-rubric",
+-    '        rubric: "Rubric A"',
+-    "  - name: case-b",
+-    "    fixture: file://evals/fixtures/case-b.txt",
+-    "    assert:",
+-    "      - type: llm-rubric",
+-    '        rubric: "Rubric B"',
+-    "  - name: case-c",
+-    "    fixture: file://evals/fixtures/case-c.txt",
+-    "    assert:",
+-    "      - type: llm-rubric",
+-    '        rubric: "Rubric C"',
+-    ""
+-  ].join("\n");
+-  writeFileSync(join(agentsEvalDir, `crew-${YAML_TEST_AGENT}.yaml`), yaml, "utf8");
+-
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  writeFileSync(
+-    join(agentsDir, `${YAML_TEST_AGENT}.md`),
+-    "# champion\n\nYou are the champion.\n",
+-    "utf8"
+-  );
+-
+-  return repoPath;
+-}
+-
+-describe("FEAT-192 SLICE-C — loadEvalCasesForOptimize", () => {
+-  test("loads cases from yaml + fixtures, applies default split, tags heldOut", async () => {
+-    const repoPath = setupEvalYaml();
+-    const result = await loadEvalCasesForOptimize(repoPath, YAML_TEST_AGENT);
+-
+-    expect(result).not.toBeNull();
+-    // 3 cases, default split ~1/3 heldOut -> 1 heldOut, 2 train.
+-    expect(result!.heldOut.length).toBe(1);
+-    expect(result!.heldOut[0]!.held_out).toBe(true);
+-    expect(result!.trainSeedTrials.length).toBe(2);
+-    expect(result!.judgeChain).toEqual([
+-      { provider: "groq", model: "llama-3.3-70b-versatile" },
+-      { provider: "gemini", model: "gemini-2.5-flash" }
+-    ]);
+-  });
+-
+-  test("explicit --split override is respected", async () => {
+-    const repoPath = setupEvalYaml();
+-    const result = await loadEvalCasesForOptimize(repoPath, YAML_TEST_AGENT, {
+-      train: 1,
+-      heldOut: 2
+-    });
+-
+-    expect(result).not.toBeNull();
+-    expect(result!.heldOut.length).toBe(2);
+-    expect(result!.trainSeedTrials.length).toBe(1);
+-  });
+-
+-  test("train-seed trials carry the case input, no historical rationale", async () => {
+-    const repoPath = setupEvalYaml();
+-    const result = await loadEvalCasesForOptimize(repoPath, YAML_TEST_AGENT, {
+-      train: 2,
+-      heldOut: 1
+-    });
+-
+-    expect(result!.trainSeedTrials.length).toBe(2);
+-    for (const trial of result!.trainSeedTrials) {
+-      expect(trial.score.pass).toBe(false);
+-      expect(typeof trial.input).toBe("string");
+-      expect(trial.score.rationale).toContain("seeded from train-split");
+-    }
+-  });
+-
+-  test("missing yaml -> null (degrade path)", async () => {
+-    const repoPath = mkdtempSync(join(tmpdir(), "gepa-c-no-yaml-"));
+-    const result = await loadEvalCasesForOptimize(repoPath, "no-such-agent");
+-    expect(result).toBeNull();
+-  });
+-
+-  test("yaml with zero loadable fixtures -> null (degrade path)", async () => {
+-    const repoPath = mkdtempSync(join(tmpdir(), "gepa-c-broken-fixture-"));
+-    const agentsEvalDir = join(repoPath, "evals", "agents");
+-    mkdirSync(agentsEvalDir, { recursive: true });
+-    const yaml = [
+-      "prompt_id: broken-agent",
+-      "tests:",
+-      "  - name: case-missing",
+-      "    fixture: file://evals/fixtures/does-not-exist.txt",
+-      "    assert:",
+-      "      - type: llm-rubric",
+-      '        rubric: "irrelevant"',
+-      ""
+-    ].join("\n");
+-    writeFileSync(join(agentsEvalDir, "crew-broken-agent.yaml"), yaml, "utf8");
+-
+-    const result = await loadEvalCasesForOptimize(repoPath, "broken-agent");
+-    expect(result).toBeNull();
+-  });
+-});
+-
+-describe("FEAT-192 SLICE-C — selectScorer", () => {
+-  const noopSrc = noopScorer().score.toString();
+-
+-  test("no cases -> noopScorer (byte-identical behavior)", () => {
+-    const scorer = selectScorer(false, []);
+-    expect(scorer.score.toString()).toBe(noopSrc);
+-  });
+-
+-  test("cases exist -> judge-backed scorer, NOT noopScorer", () => {
+-    const scorer = selectScorer(true, [{ provider: "groq" }]);
+-    expect(scorer.score.toString()).not.toBe(noopSrc);
+-  });
+-});
+-
+-describe("FEAT-192 SLICE-C — runGepaOptimizeCmd end-to-end wiring", () => {
+-  test("cases populate from yaml even when the cycle produces 0 candidates (no live LLM call made)", async () => {
+-    const repoPath = setupEvalYaml();
+-
+-    // Budget too small to reserve even one candidate slot (GENERATOR_ESTIMATE_USD
+-    // is 0.08) -> generator.generate() returns [] -> scoreCandidates short-circuits
+-    // before ever calling scorer.score(). This proves the wiring (yaml -> cases ->
+-    // judge-backed scorer selection -> runOptimize) end-to-end with zero network
+-    // calls and no flakiness.
+-    const result = await runGepaOptimizeCmd(repoPath, [
+-      YAML_TEST_AGENT,
+-      "--budget",
+-      "0.001",
+-      "--k",
+-      "3"
+-    ]);
+-
+-    expect(result.exitCode).toBe(0);
+-
+-    const optDir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "opt");
+-    expect(existsSync(optDir)).toBe(true);
+-    const artifacts = readdirSync(optDir).filter((f) => f.endsWith(".json"));
+-    expect(artifacts.length).toBe(1);
+-
+-    const artifact = JSON.parse(readFileSync(join(optDir, artifacts[0]!), "utf8"));
+-    expect(artifact.candidates_evaluated).toBe(0);
+-    // No candidates -> partial stays false per the existing SLICE-99 formula
+-    // (cases.length > 0 && trials.length < candidates.length * cases.length,
+-    // and candidates.length is 0 here).
+-    expect(artifact.partial).toBe(false);
+-  });
+-
+-  test("--split malformed value -> exit 2 invalid", async () => {
+-    const repoPath = mkdtempSync(join(tmpdir(), "gepa-c-split-invalid-"));
+-    const result = await runGepaOptimizeCmd(repoPath, [
+-      "some-agent",
+-      "--budget",
+-      "5",
+-      "--split",
+-      "not-a-ratio"
+-    ]);
+-    expect(result.exitCode).toBe(2);
+-    expect(result.stderr).toContain("--split");
+-  });
+-});
+diff --git a/crew/tests/gepa/guarded-fire.test.mts b/crew/tests/gepa/guarded-fire.test.mts
+deleted file mode 100644
+index 3b195991..00000000
+--- a/crew/tests/gepa/guarded-fire.test.mts
++++ /dev/null
+@@ -1,110 +0,0 @@
+-// TDD: Wave 1.5 — fix runner-plugin issue #360 (capture tee/trial guard
+-// doesn't bound OS-process wall-time; unguarded fireCaptureTeeSilent on the
+-// hot artifact-write path).
+-//
+-// guarded-fire.ts is the shared timeout-race helper extracted from
+-// capture-failure-trial-guard.ts (DRY: single place to tune the ceiling,
+-// reused by both the tee capture path in write.ts and the failure-trial
+-// guard). Two properties matter:
+-//   1. The returned promise resolves at min(fn duration, timeoutMs) — never
+-//      hangs, never throws.
+-//   2. The internal race timer is `.unref()`'d, so a fire-and-forget caller
+-//      that never awaits the result does not keep the OS process alive for
+-//      the full timeoutMs — this is the actual root cause fix for #360
+-//      (a *ref'd* setTimeout inside a Promise.race keeps ticking in the
+-//      background even after the race resolves via the other branch,
+-//      forcing every CLI invocation to pay the full ceiling in wall-clock
+-//      process lifetime, even on the fast/warm path).
+-//
+-// Platform note baked into every test below: on Bun/Windows, an unref'd
+-// timer raced against a competitor that holds NO handle of its own (e.g. a
+-// bare `new Promise(() => {})`) never gets a chance to fire — with nothing
+-// else pumping the event loop, the loop never advances to the timer's
+-// deadline, and the process hangs rather than exiting or resolving. That
+-// is a property of "nothing is happening," not a defect in this module:
+-// every REAL wrapped fn (a dynamic import, an fs write, a real setTimeout)
+-// holds its own genuine handle and keeps the loop pumping, which is
+-// exactly what lets the guard's unref'd timer fire on schedule. So every
+-// test here races against a "slow but real" competitor (backed by its own
+-// timer) rather than a handle-less stand-in — this avoids the platform
+-// stall AND matches the scenario the guard actually handles in production
+-// (a slow dynamic import, never a promise that holds nothing at all). No
+-// test in this suite relies on being force-killed — every test terminates
+-// on its own.
+-import { describe, expect, test } from "bun:test";
+-import { fireGuarded } from "../../scripts/lib/gepa/guarded-fire.mjs";
+-
+-function slowButReal(ms: number): Promise<void> {
+-  return new Promise((resolve) => setTimeout(resolve, ms));
+-}
+-
+-describe("fireGuarded", () => {
+-  test("resolves within the timeout budget when the wrapped fn is slower", async () => {
+-    const t0 = performance.now();
+-    await fireGuarded(() => slowButReal(5000), 50);
+-    const elapsed = performance.now() - t0;
+-    expect(elapsed).toBeLessThan(500);
+-  });
+-
+-  test("still runs the wrapped fn to completion on the fast/normal path", async () => {
+-    let ran = false;
+-    await fireGuarded(async () => {
+-      ran = true;
+-    }, 1500);
+-    expect(ran).toBe(true);
+-  });
+-
+-  test("never propagates when the wrapped fn rejects", async () => {
+-    await expect(
+-      fireGuarded(async () => {
+-        throw new Error("boom");
+-      }, 1500)
+-    ).resolves.toBeUndefined();
+-  });
+-
+-  test("never propagates when the wrapped fn throws synchronously", async () => {
+-    await expect(
+-      fireGuarded(() => {
+-        throw new Error("boom-sync");
+-      }, 1500)
+-    ).resolves.toBeUndefined();
+-  });
+-
+-  // The critical regression test for #360: a detached (unawaited) guarded
+-  // call whose wrapped fn is FAST (the realistic warm path) must not force
+-  // the hosting process to linger for the full ceiling. If the race timer
+-  // were ref'd (pre-fix behavior), the process would have to wait out the
+-  // full 5s ceiling before Bun/Node considers the event loop empty, even
+-  // though the real work finished in ~10ms. With the timer unref'd, the
+-  // process exits as soon as its own remaining work (none, here) is done —
+-  // total wall time should be dominated by Bun's own startup cost, not by
+-  // the ceiling. This test always completes on its own (bounded by the
+-  // child's natural exit, not a kill).
+-  test("guard timer is unref'd — a detached fast call does not hold the process open for the ceiling", async () => {
+-    const cwd = process.cwd().replace(/\\/g, "/");
+-    const t0 = performance.now();
+-    const child = Bun.spawn({
+-      cmd: [
+-        "bun",
+-        "run",
+-        "-e",
+-        `
+-        const { fireGuarded } = await import("${cwd}/scripts/lib/gepa/guarded-fire.ts");
+-        async function fastFn() {
+-          await new Promise((r) => setTimeout(r, 10));
+-        }
+-        // Fire-and-forget: never awaited. Ceiling is deliberately huge (5s)
+-        // so a ref'd-timer regression would make this test obviously slow.
+-        void fireGuarded(fastFn, 5000);
+-        `
+-      ],
+-      stdout: "pipe",
+-      stderr: "pipe"
+-    });
+-    await child.exited;
+-    const elapsed = performance.now() - t0;
+-    // Bun process startup alone is typically several hundred ms; the
+-    // regression this guards against is a full extra 5s tacked on top.
+-    expect(elapsed).toBeLessThan(3000);
+-  }, 10_000);
+-});
+diff --git a/crew/tests/gepa/judge-scorer.test.mts b/crew/tests/gepa/judge-scorer.test.mts
+deleted file mode 100644
+index b5870ae2..00000000
+--- a/crew/tests/gepa/judge-scorer.test.mts
++++ /dev/null
+@@ -1,214 +0,0 @@
+-/**
+- * tests/gepa/judge-scorer.test.ts — FEAT-192 SLICE-C
+- *
+- * Unit tests for the judge-backed Scorer adapter. Dispatch + judge
+- * resolution are both injected via the `deps` seam — no `claude -p`
+- * subprocess and no live LLM call ever runs in this file.
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import type { AgentRun, EvalCase, LLMJudge } from "@astragenie/gepa-core";
+-import { createJudgeScorer, type JudgeScorerDeps } from "../../scripts/lib/gepa/judge-scorer.mjs";
+-
+-function setupCandidateFile(): { promptPath: string } {
+-  const repoPath = mkdtempSync(join(tmpdir(), "gepa-judge-scorer-"));
+-  mkdirSync(join(repoPath, "candidates"), { recursive: true });
+-  const promptPath = join(repoPath, "candidates", "candidate-1.md");
+-  writeFileSync(promptPath, "# candidate prompt\n\nYou are a candidate agent.\n", "utf8");
+-  return { promptPath };
+-}
+-
+-function makeRun(promptPath: string): AgentRun {
+-  return {
+-    agent: "fullstack-dev",
+-    candidate_prompt_path: promptPath,
+-    case_id: "case-1",
+-    raw_output: null,
+-    cost_usd: 0,
+-    latency_ms: 0,
+-    finished_at: new Date().toISOString()
+-  };
+-}
+-
+-function makeCase(rubric: string[] = ["Did the candidate do the thing?"]): EvalCase {
+-  return { id: "case-1", input: "scenario input text", rubric, held_out: false };
+-}
+-
+-function fakeJudge(
+-  behavior: (opts: Parameters<LLMJudge["evaluate"]>[0]) => ReturnType<LLMJudge["evaluate"]>,
+-  provider = "fake"
+-): LLMJudge {
+-  return {
+-    evaluate: behavior,
+-    describe: () => ({ provider, model: "fake-model" })
+-  };
+-}
+-
+-describe("FEAT-192 SLICE-C — createJudgeScorer", () => {
+-  test("PASS case: dispatch + judge succeed, pass:true with score/cost/latency/rationale populated", async () => {
+-    const { promptPath } = setupCandidateFile();
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => ({ candidateOutput: "As fullstack-dev, I handled the request." }),
+-      resolveJudgeChain: async () => ({
+-        judges: [
+-          fakeJudge(async () => ({
+-            pass: true,
+-            score: 0.9,
+-            rubricScores: {},
+-            rationale: "The candidate clearly identified as fullstack-dev and handled the request.",
+-            cost_usd: 0.002,
+-            latency_ms: 400
+-          }))
+-        ],
+-        errors: []
+-      })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const result = await scorer.score(makeRun(promptPath), makeCase());
+-
+-    expect(result.pass).toBe(true);
+-    expect(result.score).toBe(0.9);
+-    expect(result.cost_usd).toBe(0.002);
+-    expect(result.latency_ms).toBeGreaterThanOrEqual(0);
+-    expect(result.rationale).toBe(
+-      "The candidate clearly identified as fullstack-dev and handled the request."
+-    );
+-  });
+-
+-  test("FAIL case: judge returns pass:false", async () => {
+-    const { promptPath } = setupCandidateFile();
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => ({ candidateOutput: "I am Claude Code, not a specific agent." }),
+-      resolveJudgeChain: async () => ({
+-        judges: [
+-          fakeJudge(async () => ({
+-            pass: false,
+-            score: 0.1,
+-            rubricScores: {},
+-            rationale: "The candidate broke identity anchor and declared itself Claude Code.",
+-            cost_usd: 0.0015,
+-            latency_ms: 350
+-          }))
+-        ],
+-        errors: []
+-      })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const result = await scorer.score(makeRun(promptPath), makeCase());
+-
+-    expect(result.pass).toBe(false);
+-    expect(result.score).toBe(0.1);
+-    expect(result.rationale).toContain("broke identity anchor");
+-  });
+-
+-  test("judge-fallback path: primary judge throws, fallback judge is used", async () => {
+-    const { promptPath } = setupCandidateFile();
+-    let primaryCalled = false;
+-    let fallbackCalled = false;
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => ({ candidateOutput: "candidate output" }),
+-      resolveJudgeChain: async () => ({
+-        judges: [
+-          fakeJudge(async () => {
+-            primaryCalled = true;
+-            throw new Error("primary judge unreachable (network error)");
+-          }, "primary-provider"),
+-          fakeJudge(async () => {
+-            fallbackCalled = true;
+-            return {
+-              pass: true,
+-              score: 0.75,
+-              rubricScores: {},
+-              rationale: "Fallback judge scored it.",
+-              cost_usd: 0.001,
+-              latency_ms: 200
+-            };
+-          }, "fallback-provider")
+-        ],
+-        errors: []
+-      })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const result = await scorer.score(makeRun(promptPath), makeCase());
+-
+-    expect(primaryCalled).toBe(true);
+-    expect(fallbackCalled).toBe(true);
+-    expect(result.pass).toBe(true);
+-    expect(result.rationale).toBe("Fallback judge scored it.");
+-  });
+-
+-  test("all judges fail: graceful non-crash result, pass:false with diagnostic rationale", async () => {
+-    const { promptPath } = setupCandidateFile();
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => ({ candidateOutput: "candidate output" }),
+-      resolveJudgeChain: async () => ({
+-        judges: [
+-          fakeJudge(async () => {
+-            throw new Error("boom");
+-          }, "only-provider")
+-        ],
+-        errors: []
+-      })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const result = await scorer.score(makeRun(promptPath), makeCase());
+-
+-    expect(result.pass).toBe(false);
+-    expect(result.score).toBe(0);
+-    expect(result.rationale).toContain("judge_unavailable");
+-    expect(result.rationale).toContain("boom");
+-  });
+-
+-  test("no judges resolved at all: graceful non-crash result", async () => {
+-    const { promptPath } = setupCandidateFile();
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => ({ candidateOutput: "candidate output" }),
+-      resolveJudgeChain: async () => ({ judges: [], errors: ["unknown judge provider: bogus"] })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const result = await scorer.score(makeRun(promptPath), makeCase());
+-
+-    expect(result.pass).toBe(false);
+-    expect(result.rationale).toContain("unknown judge provider: bogus");
+-  });
+-
+-  test("dispatch failure (subprocess/parse): graceful non-crash result, never throws", async () => {
+-    const { promptPath } = setupCandidateFile();
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => {
+-        throw new Error("candidate-dispatch: subprocess timed out after 90000ms");
+-      },
+-      resolveJudgeChain: async () => ({ judges: [], errors: [] })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const result = await scorer.score(makeRun(promptPath), makeCase());
+-
+-    expect(result.pass).toBe(false);
+-    expect(result.score).toBe(0);
+-    expect(result.rationale).toContain("dispatch_failed");
+-    expect(result.rationale).toContain("timed out");
+-  });
+-
+-  test("empty candidate_prompt_path: graceful non-crash result (defensive)", async () => {
+-    const deps: JudgeScorerDeps = {
+-      dispatch: async () => ({ candidateOutput: "unused" }),
+-      resolveJudgeChain: async () => ({ judges: [], errors: [] })
+-    };
+-    const scorer = createJudgeScorer({ deps });
+-    const run: AgentRun = {
+-      agent: "fullstack-dev",
+-      candidate_prompt_path: "",
+-      case_id: "case-1",
+-      raw_output: null,
+-      cost_usd: 0,
+-      latency_ms: 0,
+-      finished_at: new Date().toISOString()
+-    };
+-    const result = await scorer.score(run, makeCase());
+-    expect(result.pass).toBe(false);
+-    expect(result.rationale).toContain("dispatch_failed");
+-  });
+-});
+diff --git a/crew/tests/gepa/load-config.test.mts b/crew/tests/gepa/load-config.test.mts
+deleted file mode 100644
+index d2bf4f0c..00000000
+--- a/crew/tests/gepa/load-config.test.mts
++++ /dev/null
+@@ -1,56 +0,0 @@
+-import { describe, expect, test } from "bun:test";
+-import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { loadGepaConfig } from "../../scripts/lib/gepa/load-config.mjs";
+-
+-describe("loadGepaConfig", () => {
+-  test("returns null when gepa.config.json is absent", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-cfg-"));
+-    try {
+-      const config = await loadGepaConfig(root);
+-      expect(config).toBeNull();
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("returns a typed config when the file is present and valid", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-cfg-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), JSON.stringify({ capture: { enabled: true } }));
+-      const config = await loadGepaConfig(root);
+-      expect(config).not.toBeNull();
+-      expect(config?.capture.enabled).toBe(true);
+-      expect(config?.storage.backend).toBe("file"); // schema default
+-      expect(config?.judge.provider).toBe("ollama"); // schema default
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("returns null when gepa.config.json is malformed JSON", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-cfg-"));
+-    try {
+-      writeFileSync(join(root, "gepa.config.json"), "{ not valid json");
+-      const config = await loadGepaConfig(root);
+-      expect(config).toBeNull();
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("returns null when gepa.config.json fails Zod validation", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-cfg-"));
+-    try {
+-      writeFileSync(
+-        join(root, "gepa.config.json"),
+-        JSON.stringify({ judge: { provider: "unknown-provider", model: "x" } })
+-      );
+-      const config = await loadGepaConfig(root);
+-      expect(config).toBeNull();
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/mine-reviewer-bug-corpus.test.mts b/crew/tests/gepa/mine-reviewer-bug-corpus.test.mts
+deleted file mode 100644
+index 87a76b34..00000000
+--- a/crew/tests/gepa/mine-reviewer-bug-corpus.test.mts
++++ /dev/null
+@@ -1,267 +0,0 @@
+-/**
+- * tests/gepa/mine-reviewer-bug-corpus.test.ts — SLICE-103
+- *
+- * Verifies the mining script CLI contract:
+- *   - arg parsing (valid + invalid)
+- *   - --weeks 0 → AC-5: exit 0, no files, helpful message
+- *   - EvalCaseSchema compliance for written seed stubs
+- *   - redactRationale called on extracted content (no raw secret leakage)
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+-import { join } from "node:path";
+-import { tmpdir } from "node:os";
+-import { EvalCaseSchema } from "@astragenie/gepa-core";
+-import {
+-  parseMineArgs,
+-  runMineReviewerBugCorpus,
+-  type ReviewerEvalCase,
+-  type ReviewerEvalCaseNotes
+-} from "../../scripts/lib/gepa/mine-reviewer-bug-corpus.mjs";
+-
+-// ---------------------------------------------------------------------------
+-// Helpers
+-// ---------------------------------------------------------------------------
+-
+-function tmpRepo(): string {
+-  return mkdtempSync(join(tmpdir(), "mine-reviewer-corpus-"));
+-}
+-
+-/** Write a fake review artifact with a CRITICAL finding and rejected decision. */
+-function seedReviewArtifact(reviewsDir: string, filename: string, content: string): void {
+-  mkdirSync(reviewsDir, { recursive: true });
+-  writeFileSync(join(reviewsDir, filename), content, "utf8");
+-}
+-
+-const REJECTED_CRITICAL_REVIEW = `
+-# Review Result: SLICE-XX some feature
+-
+-- Created: 2026-06-30T10:00:00.000Z
+-- Decision: rejected
+-- Summary: CRITICAL bug found — null guard removed.
+-- Risks: CRITICAL: The null guard on line 12 was removed. Accessing order.items on a null value will throw a TypeError at runtime on every order lookup for non-existent IDs. Restore the null guard before merging.
+-- Required Follow-up: Restore null guard on line 12 of order-processor.ts.
+-`;
+-
+-const APPROVED_REVIEW = `
+-# Review Result: SLICE-YY clean rename
+-
+-- Created: 2026-06-30T11:00:00.000Z
+-- Decision: approved
+-- Summary: Clean rename, no issues.
+-- Risks: none
+-- Required Follow-up: none
+-`;
+-
+-// ---------------------------------------------------------------------------
+-// parseMineArgs
+-// ---------------------------------------------------------------------------
+-
+-describe("SLICE-103 parseMineArgs", () => {
+-  test("defaults: weeks=8, out=agents/reviewer/.gepa/eval", () => {
+-    const repoPath = tmpRepo();
+-    const result = parseMineArgs([], repoPath);
+-    expect(result.weeks).toBe(8);
+-    expect(result.out).toContain("reviewer");
+-    expect(result.out).toContain(".gepa");
+-    expect(result.out).toContain("eval");
+-    expect(result.invalid).toBeUndefined();
+-  });
+-
+-  test("--weeks 4 parses correctly", () => {
+-    const result = parseMineArgs(["--weeks", "4"], tmpRepo());
+-    expect(result.weeks).toBe(4);
+-  });
+-
+-  test("--weeks 0 parses correctly (AC-5 trigger)", () => {
+-    const result = parseMineArgs(["--weeks", "0"], tmpRepo());
+-    expect(result.weeks).toBe(0);
+-    expect(result.invalid).toBeUndefined();
+-  });
+-
+-  test("--out custom path parses correctly", () => {
+-    const result = parseMineArgs(["--out", "/tmp/my-eval"], tmpRepo());
+-    expect(result.out).toBe("/tmp/my-eval");
+-  });
+-
+-  test("--weeks without value → invalid", () => {
+-    const result = parseMineArgs(["--weeks"], tmpRepo());
+-    expect(result.invalid).toBeDefined();
+-  });
+-
+-  test("--out without value → invalid", () => {
+-    const result = parseMineArgs(["--out"], tmpRepo());
+-    expect(result.invalid).toBeDefined();
+-  });
+-
+-  test("--weeks with non-numeric value → invalid", () => {
+-    const result = parseMineArgs(["--weeks", "abc"], tmpRepo());
+-    expect(result.invalid).toBeDefined();
+-  });
+-});
+-
+-// ---------------------------------------------------------------------------
+-// AC-5: --weeks 0 → exit 0, no files written, helpful message
+-// ---------------------------------------------------------------------------
+-
+-describe("SLICE-103 runMineReviewerBugCorpus AC-5 (--weeks 0)", () => {
+-  test("exit 0 with helpful message, no files written", async () => {
+-    const repoPath = tmpRepo();
+-    const result = await runMineReviewerBugCorpus(repoPath, ["--weeks", "0"]);
+-    expect(result.exitCode).toBe(0);
+-    expect(result.mined).toBe(0);
+-    expect(result.written).toHaveLength(0);
+-    // Helpful message mentioning --weeks or hand-author
+-    expect(result.stdout).toMatch(/weeks|hand.author/i);
+-  });
+-});
+-
+-// ---------------------------------------------------------------------------
+-// Mining from review artifacts
+-// ---------------------------------------------------------------------------
+-
+-describe("SLICE-103 runMineReviewerBugCorpus — mining", () => {
+-  test("missing reviews dir → exit 0 with helpful message, no seeds", async () => {
+-    const repoPath = tmpRepo();
+-    // No .claude/artifacts/crew/reviews/ directory
+-    const result = await runMineReviewerBugCorpus(repoPath, ["--weeks", "8"]);
+-    expect(result.exitCode).toBe(0);
+-    expect(result.mined).toBe(0);
+-    expect(result.written).toHaveLength(0);
+-    expect(result.stdout).toMatch(/not found|no seeds|hand.author/i);
+-  });
+-
+-  test("approved review → not mined (only rejected + CRITICAL/HIGH are mined)", async () => {
+-    const repoPath = tmpRepo();
+-    const reviewsDir = join(repoPath, ".claude", "artifacts", "crew", "reviews");
+-    seedReviewArtifact(reviewsDir, "20260630T100000Z-review-approved.md", APPROVED_REVIEW);
+-
+-    // --weeks 52 to ensure the file's mtime is within range
+-    const outDir = join(repoPath, "out");
+-    const result = await runMineReviewerBugCorpus(repoPath, ["--weeks", "52", "--out", outDir]);
+-    expect(result.exitCode).toBe(0);
+-    expect(result.mined).toBe(0);
+-  });
+-
+-  test("rejected CRITICAL review → mined as seed, output is EvalCaseSchema-compatible", async () => {
+-    const repoPath = tmpRepo();
+-    const reviewsDir = join(repoPath, ".claude", "artifacts", "crew", "reviews");
+-    seedReviewArtifact(reviewsDir, "20260630T120000Z-review-critical.md", REJECTED_CRITICAL_REVIEW);
+-
+-    const outDir = join(repoPath, "out-seeds");
+-    const result = await runMineReviewerBugCorpus(repoPath, ["--weeks", "52", "--out", outDir]);
+-
+-    expect(result.exitCode).toBe(0);
+-    expect(result.mined).toBeGreaterThan(0);
+-    expect(result.written.length).toBeGreaterThan(0);
+-
+-    // Verify each written file is parseable as EvalCase
+-    const { readFileSync } = await import("node:fs");
+-    for (const filePath of result.written) {
+-      const raw = readFileSync(filePath, "utf8").trim();
+-      // Each seed is a single JSONL line
+-      const parsed = JSON.parse(raw) as ReviewerEvalCase;
+-      // Minimal EvalCaseSchema compliance: id + input fields present
+-      const schemaCheck = EvalCaseSchema.safeParse(parsed);
+-      expect(schemaCheck.success).toBe(true);
+-      // Reviewer-specific: input must have diff and context
+-      expect(typeof parsed.input.diff).toBe("string");
+-      expect(typeof parsed.input.context).toBe("string");
+-      expect(parsed.input.diff.length).toBeGreaterThan(0);
+-    }
+-  });
+-
+-  test("invalid args → exit 1 with error message", async () => {
+-    const repoPath = tmpRepo();
+-    const result = await runMineReviewerBugCorpus(repoPath, ["--weeks"]);
+-    expect(result.exitCode).toBe(1);
+-    expect(result.stderr).toMatch(/--weeks requires/i);
+-  });
+-});
+-
+-// ---------------------------------------------------------------------------
+-// Corpus provenance: verify the 10 hand-seeded cases exist and are valid
+-// ---------------------------------------------------------------------------
+-
+-describe("SLICE-103 — hand-seeded corpus EvalCaseSchema validation", () => {
+-  // agents/reviewer/.gepa moved to the true repo root (one level above crew/).
+-  const evalDir = join(import.meta.dir, "../../../agents/reviewer/.gepa/eval");
+-
+-  // The 10 canonical bug cases
+-  const expectedCases = [
+-    "bug-001.jsonl",
+-    "bug-002.jsonl",
+-    "bug-003.jsonl",
+-    "bug-004.jsonl",
+-    "bug-005.jsonl",
+-    "bug-006.jsonl",
+-    "bug-007.jsonl",
+-    "bug-008.jsonl",
+-    "bug-009.jsonl",
+-    "bug-010.jsonl"
+-  ];
+-
+-  for (const filename of expectedCases) {
+-    test(`${filename} is parseable and EvalCaseSchema-compliant`, async () => {
+-      const { readFileSync } = await import("node:fs");
+-      const filePath = join(evalDir, filename);
+-      const raw = readFileSync(filePath, "utf8").trim();
+-      const parsed = JSON.parse(raw) as ReviewerEvalCase;
+-
+-      // EvalCaseSchema compliance
+-      const schemaCheck = EvalCaseSchema.safeParse(parsed);
+-      expect(schemaCheck.success).toBe(true);
+-
+-      // id must be non-empty
+-      expect(parsed.id.length).toBeGreaterThan(0);
+-
+-      // input must have diff (non-empty string) and context
+-      expect(typeof parsed.input).toBe("object");
+-      expect(typeof parsed.input.diff).toBe("string");
+-      expect(parsed.input.diff.length).toBeGreaterThan(0);
+-      expect(typeof parsed.input.context).toBe("string");
+-
+-      // expected_output must have verdict
+-      expect(parsed.expected_output).toBeDefined();
+-      expect(["approve", "approve_with_notes", "request_changes"]).toContain(
+-        parsed.expected_output.verdict
+-      );
+-
+-      // rubric must be non-empty array
+-      expect(Array.isArray(parsed.rubric)).toBe(true);
+-      expect(parsed.rubric.length).toBeGreaterThan(0);
+-
+-      // notes is a JSON string — parse it and check provenance
+-      expect(typeof parsed.notes).toBe("string");
+-      const notes = JSON.parse(parsed.notes) as ReviewerEvalCaseNotes;
+-      expect(typeof notes.provenance).toBe("string");
+-      expect(notes.provenance.length).toBeGreaterThan(0);
+-    });
+-  }
+-
+-  test("exactly 2 cases are held_out:true (bug-006, bug-009)", async () => {
+-    const { readFileSync } = await import("node:fs");
+-    let heldOutCount = 0;
+-    for (const filename of expectedCases) {
+-      const filePath = join(evalDir, filename);
+-      const parsed = JSON.parse(readFileSync(filePath, "utf8").trim()) as ReviewerEvalCase;
+-      if (parsed.held_out) heldOutCount++;
+-    }
+-    expect(heldOutCount).toBe(2);
+-  });
+-
+-  test("≥6 distinct bug classes covered across 10 cases", async () => {
+-    const { readFileSync } = await import("node:fs");
+-    const classes = new Set<string | null>();
+-    for (const filename of expectedCases) {
+-      const filePath = join(evalDir, filename);
+-      const parsed = JSON.parse(readFileSync(filePath, "utf8").trim()) as ReviewerEvalCase;
+-      const notes = JSON.parse(parsed.notes) as ReviewerEvalCaseNotes;
+-      classes.add(notes.bug_class);
+-    }
+-    // Corpus covers: logic-error, integration-failure, data-corruption,
+-    // timeout, resource-exhaustion, security + null (clean-rename) = 7 unique values
+-    expect(classes.size).toBeGreaterThanOrEqual(6);
+-  });
+-});
+diff --git a/crew/tests/gepa/optimize-all-case-gate.test.mts b/crew/tests/gepa/optimize-all-case-gate.test.mts
+deleted file mode 100644
+index 867eca4b..00000000
+--- a/crew/tests/gepa/optimize-all-case-gate.test.mts
++++ /dev/null
+@@ -1,263 +0,0 @@
+-/**
+- * tests/gepa/optimize-all-case-gate.test.ts — FEAT-192 SLICE-B AC-4
+- *
+- * Covers the per-candidate all-case promotion gate added to
+- * `optimize-runner.ts::determineWinner` (the highest-risk hunk in SLICE-B,
+- * shared by every agent's optimize cycle):
+- *
+- *   - A candidate that passes one eval case but FAILS another must NOT be
+- *     selected as a promotable winner, even if its best-case trial is rank 1
+- *     in the global Pareto (the pre-SLICE-B bug — FEAT-192 backlog note).
+- *   - A candidate that passes EVERY eval case IS selected as winner.
+- *   - The existing no-candidate / no-winner path (SLICE-105 guard) must
+- *     still hold: `winner` stays populated as a diagnostic even when the
+- *     gate blocks promotion, and auto-PR must never fire for a blocked
+- *     candidate.
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import type { Candidate, CandidateGenerator, EvalCase, Scorer } from "@astragenie/gepa-core";
+-import { runOptimize } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-function makeRepo(): string {
+-  const repoPath = mkdtempSync(join(tmpdir(), "opt-all-case-gate-"));
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  writeFileSync(join(agentsDir, "fullstack-dev.md"), "# Champion\nBody.\n", "utf8");
+-  return repoPath;
+-}
+-
+-function makeSingleCandidateGenerator(candidateBody: string, dir: string): CandidateGenerator {
+-  return {
+-    async generate(_championPath, _failingTrials, _k) {
+-      const promptPath = join(dir, "candidate-cand-1.md");
+-      writeFileSync(promptPath, candidateBody, "utf8");
+-      const candidate: Candidate = {
+-        id: "cand-1",
+-        agent: "fullstack-dev",
+-        prompt_path: promptPath,
+-        prompt_hash: "hash-cand-1",
+-        prompt_size_lines: candidateBody.split("\n").length,
+-        derived_from_trials: [],
+-        generator_cost_usd: 0,
+-        created_at: new Date().toISOString()
+-      };
+-      return [candidate];
+-    }
+-  };
+-}
+-
+-/** Scorer whose pass/fail result is keyed by eval case id — lets one candidate pass some cases and fail others. */
+-function makeScorerByCase(passByCaseId: Record<string, boolean>): Scorer {
+-  return {
+-    async score(_agentRun, evalCase) {
+-      const pass = passByCaseId[evalCase.id] ?? false;
+-      return {
+-        pass,
+-        score: pass ? 0.9 : 0.2,
+-        cost_usd: 0.001,
+-        latency_ms: 100,
+-        rationale: pass ? `${evalCase.id}: passed` : `${evalCase.id}: failed`
+-      };
+-    }
+-  };
+-}
+-
+-function writeGhCallSpy(dir: string, callLog: string): string {
+-  mkdirSync(dir, { recursive: true });
+-  const shimMjs = join(dir, "gh-spy.mjs");
+-  const script = [
+-    `import { appendFileSync } from "node:fs";`,
+-    `appendFileSync(${JSON.stringify(callLog)}, JSON.stringify(process.argv.slice(2)) + "\\n");`,
+-    `process.exit(0);`
+-  ].join("\n");
+-  writeFileSync(shimMjs, script, "utf8");
+-  if (process.platform === "win32") {
+-    const cmdPath = join(dir, "gh.cmd");
+-    writeFileSync(cmdPath, `@node "${shimMjs}" %*\r\n`, "utf8");
+-    return cmdPath;
+-  }
+-  const shPath = join(dir, "gh");
+-  writeFileSync(shPath, `#!/bin/sh\nexec node "${shimMjs}" "$@"\n`, { mode: 0o755 });
+-  return shPath;
+-}
+-
+-const CASES: EvalCase[] = [
+-  { id: "case-1", held_out: false, input: "prompt-1", expected_output: "output-1" },
+-  { id: "case-2", held_out: false, input: "prompt-2", expected_output: "output-2" }
+-];
+-
+-describe("determineWinner — AC-4 per-candidate all-case promotion gate", () => {
+-  test("candidate passing case-1 but FAILING case-2 is NOT selected as winner", async () => {
+-    const repoPath = makeRepo();
+-    const generator = makeSingleCandidateGenerator("# Candidate\nDifferent body.\n", repoPath);
+-    const scorer = makeScorerByCase({ "case-1": true, "case-2": false });
+-
+-    const callLog = join(repoPath, "gh-calls.txt");
+-    const ghPath = writeGhCallSpy(join(repoPath, "bin"), callLog);
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 1,
+-      budgetUsd: 1,
+-      failingTrials: [],
+-      generator,
+-      scorer,
+-      cases: CASES,
+-      artifactOnly: false,
+-      ghPath
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (!result) return;
+-
+-    // Two trials were produced (one per case) for the same candidate.
+-    expect(result.trials).toHaveLength(2);
+-    // The gate must block promotion even though the case-1 trial can be
+-    // rank 1 in the global Pareto — the SAME candidate fails case-2.
+-    expect(result.no_winner).toBe(true);
+-    // `winner` stays populated as a diagnostic (SLICE-105 pattern) — it is
+-    // `no_winner` that gates promotion, not `winner !== null`.
+-    expect(result.winner).not.toBeNull();
+-    // Auto-PR must never fire for a candidate that fails the all-case gate.
+-    expect(result.auto_pr).toBeUndefined();
+-    expect(existsSync(callLog)).toBe(false);
+-  });
+-
+-  test("candidate passing EVERY eval case IS selected as winner", async () => {
+-    const repoPath = makeRepo();
+-    const generator = makeSingleCandidateGenerator("# Candidate\nDifferent body.\n", repoPath);
+-    const scorer = makeScorerByCase({ "case-1": true, "case-2": true });
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 1,
+-      budgetUsd: 1,
+-      failingTrials: [],
+-      generator,
+-      scorer,
+-      cases: CASES,
+-      // artifactOnly stays default(true) here — this test asserts the
+-      // determineWinner outcome, not the auto-PR side effect.
+-      artifactOnly: true
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (!result) return;
+-
+-    expect(result.trials).toHaveLength(2);
+-    expect(result.no_winner).toBe(false);
+-    expect(result.winner).not.toBeNull();
+-    // winner.candidate_id is actually the winning TRIAL's id downstream
+-    // (auto-pr.ts / auto-merge-gate.ts both read it as `trialId` /
+-    // `trial_id` — pre-existing naming, not introduced by this slice).
+-    // Identify the winning candidate via prompt_path instead.
+-    expect(result.winner?.prompt_path).toBe(join(repoPath, "candidate-cand-1.md"));
+-  });
+-
+-  test("ADVERSARIAL: rank-1 candidate fails a case; the search finds a lower-ranked, fully-passing candidate as winner", async () => {
+-    // This is the regression test for the review HIGH finding: the gate must
+-    // SEARCH `ranked`, not just gate-check `rank1[0]`. cand-fail's case-1
+-    // trial is deliberately built to Pareto-DOMINATE every cand-pass trial
+-    // (higher score, lower cost, lower latency) so it lands at rank 1 —
+-    // exactly the AC-3 shape, where a real fix can raise cost/latency and
+-    // rank below a candidate that only "won" by failing to be evaluated on
+-    // every case. A naive `rank1[0]` pick returns no_winner:true here even
+-    // though cand-pass is a fully valid winner.
+-    const repoPath = makeRepo();
+-    const failPath = join(repoPath, "candidate-fail.md");
+-    const passPath = join(repoPath, "candidate-pass.md");
+-
+-    const generator: CandidateGenerator = {
+-      async generate() {
+-        writeFileSync(failPath, "# Fails one case\nWins case-1 big, bombs case-2.\n", "utf8");
+-        writeFileSync(passPath, "# Passes every case\nModest but consistent scores.\n", "utf8");
+-        const failCandidate: Candidate = {
+-          id: "cand-fail",
+-          agent: "fullstack-dev",
+-          prompt_path: failPath,
+-          prompt_hash: "hash-fail",
+-          prompt_size_lines: 2,
+-          derived_from_trials: [],
+-          generator_cost_usd: 0,
+-          created_at: new Date().toISOString()
+-        };
+-        const passCandidate: Candidate = {
+-          id: "cand-pass",
+-          agent: "fullstack-dev",
+-          prompt_path: passPath,
+-          prompt_hash: "hash-pass",
+-          prompt_size_lines: 2,
+-          derived_from_trials: [],
+-          generator_cost_usd: 0,
+-          created_at: new Date().toISOString()
+-        };
+-        return [failCandidate, passCandidate];
+-      }
+-    };
+-
+-    // cand-fail: case-1 is excellent (score 0.99, cheap, fast) — dominates
+-    // every cand-pass trial — but case-2 fails outright (score 0.1).
+-    // cand-pass: modest but consistent (score 0.5, pricier, slower) on both
+-    // cases — never rank 1, but the only candidate passing every case.
+-    const scorer: Scorer = {
+-      async score(agentRun, evalCase) {
+-        const isFail = agentRun.candidate_prompt_path.includes("candidate-fail");
+-        if (isFail) {
+-          const pass = evalCase.id === "case-1";
+-          return {
+-            pass,
+-            score: pass ? 0.99 : 0.1,
+-            cost_usd: 0.001,
+-            latency_ms: 100,
+-            rationale: pass ? "case-1: excellent" : "case-2: bombed"
+-          };
+-        }
+-        return {
+-          pass: true,
+-          score: 0.5,
+-          cost_usd: 0.01,
+-          latency_ms: 200,
+-          rationale: `${evalCase.id}: passed`
+-        };
+-      }
+-    };
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 2,
+-      budgetUsd: 1,
+-      failingTrials: [],
+-      generator,
+-      scorer,
+-      cases: CASES,
+-      // artifactOnly stays true — this test isolates determineWinner's
+-      // search behavior via runOptimize's public surface, not the auto-PR
+-      // git/gh subprocess path (covered separately by the SLICE-105 guard).
+-      artifactOnly: true
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (!result) return;
+-
+-    expect(result.trials).toHaveLength(4);
+-    // Sanity check that this scenario IS adversarial: cand-fail's case-1
+-    // trial really is the sole global rank-1 (a naive `rank1[0]` pick would
+-    // land on it).
+-    const rank1Trials = result.trials.filter((t) => t.pareto_rank === 1);
+-    expect(rank1Trials).toHaveLength(1);
+-    expect(rank1Trials[0]?.candidate_prompt_hash).toBe("hash-fail");
+-
+-    // The search must skip the ineligible rank-1 candidate and select the
+-    // lower-ranked, fully-passing candidate instead.
+-    expect(result.no_winner).toBe(false);
+-    expect(result.winner).not.toBeNull();
+-    expect(result.winner?.prompt_path).toBe(passPath);
+-  });
+-});
+diff --git a/crew/tests/gepa/optimize-artifact-only.test.mts b/crew/tests/gepa/optimize-artifact-only.test.mts
+deleted file mode 100644
+index ad6799be..00000000
+--- a/crew/tests/gepa/optimize-artifact-only.test.mts
++++ /dev/null
+@@ -1,227 +0,0 @@
+-/**
+- * tests/gepa/optimize-artifact-only.test.ts — SLICE-99
+- *
+- * Covers AC-1 (full cycle writes artifact + candidates) and
+- * AC-2 (--artifact-only does not modify agents/ or create branches).
+- */
+-
+-import { beforeEach, describe, expect, test } from "bun:test";
+-import {
+-  existsSync,
+-  mkdirSync,
+-  mkdtempSync,
+-  readFileSync,
+-  readdirSync,
+-  writeFileSync
+-} from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { parseOptimizeArgs, runGepaOptimizeCmd } from "../../scripts/lib/gepa/gepa-optimize-cmd.mjs";
+-
+-function setupRepo(): { repoPath: string; agentPath: string } {
+-  const repoPath = mkdtempSync(join(tmpdir(), "gepa-opt-ac1-"));
+-  // Create agents/ dir with a champion file.
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  const agentPath = join(agentsDir, "fullstack-dev.md");
+-  writeFileSync(agentPath, Array(10).fill("# Champion prompt line").join("\n") + "\n", "utf8");
+-
+-  // Create 10 failing trials in the trial store.
+-  const trialsDir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "trials");
+-  mkdirSync(trialsDir, { recursive: true });
+-  const fixtureLines = readFileSync(
+-    join(import.meta.dir, "../fixtures/gepa/synthetic-failing-trials.jsonl"),
+-    "utf8"
+-  );
+-  writeFileSync(join(trialsDir, "fullstack-dev.jsonl"), fixtureLines, "utf8");
+-
+-  return { repoPath, agentPath };
+-}
+-
+-describe("SLICE-99 AC-1 — optimize cycle writes candidates + artifact", () => {
+-  let repoPath: string;
+-
+-  beforeEach(() => {
+-    ({ repoPath } = setupRepo());
+-  });
+-
+-  test("produces 5 candidate files under candidates/<cycle-id>/", async () => {
+-    const result = await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "5",
+-      "--artifact-only"
+-    ]);
+-    expect(result.exitCode).toBe(0);
+-
+-    const candidatesBase = join(repoPath, ".claude", "artifacts", "crew", "gepa", "candidates");
+-    expect(existsSync(candidatesBase)).toBe(true);
+-    const cycleDirs = readdirSync(candidatesBase);
+-    expect(cycleDirs.length).toBeGreaterThanOrEqual(1);
+-    const cycleDir = join(candidatesBase, cycleDirs[0]!);
+-    const files = readdirSync(cycleDir).filter((f) => f.endsWith(".md"));
+-    expect(files.length).toBe(5);
+-  });
+-
+-  test("each candidate file passes validateCandidateSize (≤350 lines)", async () => {
+-    const { validateCandidateSize } = await import("@astragenie/gepa-core");
+-    await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "5",
+-      "--artifact-only"
+-    ]);
+-
+-    const candidatesBase = join(repoPath, ".claude", "artifacts", "crew", "gepa", "candidates");
+-    const cycleDirs = readdirSync(candidatesBase);
+-    const cycleDir = join(candidatesBase, cycleDirs[0]!);
+-    const files = readdirSync(cycleDir).filter((f) => f.endsWith(".md"));
+-
+-    for (const file of files) {
+-      const promptPath = join(cycleDir, file);
+-      const candidateId = file.replace(/\.md$/, "");
+-      const sizeCheck = validateCandidateSize(
+-        {
+-          id: candidateId,
+-          agent: "fullstack-dev",
+-          prompt_path: promptPath,
+-          prompt_hash: "test",
+-          prompt_size_lines: 1,
+-          derived_from_trials: [],
+-          generator_cost_usd: 0,
+-          created_at: new Date().toISOString()
+-        },
+-        350
+-      );
+-      expect(sizeCheck.ok).toBe(true);
+-    }
+-  });
+-
+-  test("writes OptimizationResult artifact with required fields", async () => {
+-    const result = await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "5",
+-      "--artifact-only"
+-    ]);
+-    expect(result.exitCode).toBe(0);
+-
+-    const optDir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "opt");
+-    expect(existsSync(optDir)).toBe(true);
+-    const artifacts = readdirSync(optDir).filter((f) => f.endsWith(".json"));
+-    expect(artifacts.length).toBe(1);
+-
+-    const artifact = JSON.parse(readFileSync(join(optDir, artifacts[0]!), "utf8"));
+-    expect(typeof artifact.cycle_id).toBe("string");
+-    expect(artifact.k).toBe(5);
+-    expect(artifact.agent).toBe("fullstack-dev");
+-    // candidates_evaluated may be 0 in artifact-only (no cases to score) —
+-    // but candidates were generated. The field reflects candidates generated.
+-    expect(typeof artifact.candidates_evaluated).toBe("number");
+-    // Either no_winner: true OR winner with pareto_rank: 1
+-    const hasValidOutcome =
+-      artifact.no_winner === true ||
+-      (artifact.winner !== null && artifact.winner.pareto_rank === 1);
+-    expect(hasValidOutcome).toBe(true);
+-    // partial MUST be false in artifact-only mode — no eval cases were requested,
+-    // so reaching the zero-scoring end state is a successful full run, not a
+-    // partial one. Regression guard for the CHECKPOINT-1 → CHECKPOINT-2 transition
+-    // where a wrong `partial` formula silently suppressed winner promotion.
+-    expect(artifact.partial).toBe(false);
+-  });
+-});
+-
+-describe("SLICE-99 AC-2 — artifact-only does not modify agents/ or create branches", () => {
+-  let repoPath: string;
+-  let agentPath: string;
+-
+-  beforeEach(() => {
+-    ({ repoPath, agentPath } = setupRepo());
+-  });
+-
+-  test("agents/fullstack-dev.md is NOT modified after optimize", async () => {
+-    const before = readFileSync(agentPath, "utf8");
+-    await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "5",
+-      "--artifact-only"
+-    ]);
+-    const after = readFileSync(agentPath, "utf8");
+-    expect(after).toBe(before);
+-  });
+-
+-  test("no files outside .claude/artifacts/crew/gepa/ are created", async () => {
+-    const before = readdirSync(repoPath).sort();
+-    await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "5",
+-      "--artifact-only"
+-    ]);
+-    // Only .claude/ should be new (it gets created by the runner).
+-    const after = readdirSync(repoPath).sort();
+-    for (const entry of after) {
+-      if (!before.includes(entry)) {
+-        // Only .claude/ may be added.
+-        expect(entry).toBe(".claude");
+-      }
+-    }
+-  });
+-});
+-
+-describe("SLICE-99 — parseOptimizeArgs", () => {
+-  test("bare agent → defaults k=5, artifactOnly=true", () => {
+-    const parsed = parseOptimizeArgs(["fullstack-dev", "--budget", "5"]);
+-    expect(parsed.agent).toBe("fullstack-dev");
+-    expect(parsed.k).toBe(5);
+-    expect(parsed.artifactOnly).toBe(true);
+-    expect(parsed.budget).toBe(5);
+-  });
+-
+-  test("--k flag overrides default", () => {
+-    const parsed = parseOptimizeArgs(["fullstack-dev", "--budget", "5", "--k", "3"]);
+-    expect(parsed.k).toBe(3);
+-  });
+-
+-  test("--budget without value → invalid", () => {
+-    const parsed = parseOptimizeArgs(["fullstack-dev", "--budget"]);
+-    expect(parsed.invalid).toBeDefined();
+-  });
+-
+-  test("--k without value → invalid", () => {
+-    const parsed = parseOptimizeArgs(["fullstack-dev", "--budget", "5", "--k"]);
+-    expect(parsed.invalid).toBeDefined();
+-  });
+-
+-  test("no agent → agent undefined", () => {
+-    const parsed = parseOptimizeArgs(["--budget", "5"]);
+-    expect(parsed.agent).toBeUndefined();
+-  });
+-});
+-
+-describe("SLICE-99 — runGepaOptimizeCmd error paths", () => {
+-  test("no agent → exit 2 with usage", async () => {
+-    const repoPath = mkdtempSync(join(tmpdir(), "gepa-opt-err-"));
+-    const result = await runGepaOptimizeCmd(repoPath, []);
+-    expect(result.exitCode).toBe(2);
+-    expect(result.stderr).toContain("usage:");
+-  });
+-
+-  test("no --budget → exit 2", async () => {
+-    const repoPath = mkdtempSync(join(tmpdir(), "gepa-opt-err-"));
+-    const result = await runGepaOptimizeCmd(repoPath, ["fullstack-dev"]);
+-    expect(result.exitCode).toBe(2);
+-    expect(result.stderr).toContain("--budget");
+-  });
+-});
+diff --git a/crew/tests/gepa/optimize-budget-halt.test.mts b/crew/tests/gepa/optimize-budget-halt.test.mts
+deleted file mode 100644
+index 436f0b68..00000000
+--- a/crew/tests/gepa/optimize-budget-halt.test.mts
++++ /dev/null
+@@ -1,139 +0,0 @@
+-/**
+- * tests/gepa/optimize-budget-halt.test.ts — SLICE-99
+- *
+- * Covers AC-3: when --budget is very low, the dailyCapMeter reservation fails
+- * partway through candidate generation, the runner halts, and the artifact
+- * carries partial: true + winner: null.
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import {
+-  existsSync,
+-  mkdirSync,
+-  mkdtempSync,
+-  readFileSync,
+-  readdirSync,
+-  writeFileSync
+-} from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { dailyCapMeter } from "@astragenie/gepa-core";
+-import { createAipluginCandidateGenerator } from "../../scripts/lib/gepa/candidate-generator-aiplugin.mjs";
+-import { runOptimize, noopScorer } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-function setupMinimalRepo(): { repoPath: string } {
+-  const repoPath = mkdtempSync(join(tmpdir(), "gepa-opt-budget-"));
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  writeFileSync(join(agentsDir, "fullstack-dev.md"), "# Champion\n" + "line\n".repeat(5), "utf8");
+-  return { repoPath };
+-}
+-
+-describe("SLICE-99 AC-3 — budget halt writes partial artifact with winner: null", () => {
+-  test("very small budget cap halts candidate generation", async () => {
+-    const { repoPath } = setupMinimalRepo();
+-    const cycleId = crypto.randomUUID();
+-
+-    // Seed the meter with a very small cap that can handle only 1 candidate at $0.05 each.
+-    // With a cap of $0.06, the first reservation ($0.05) succeeds,
+-    // the second ($0.05) pushes total to $0.10 which exceeds $0.06 → fails.
+-    const budgetPath = join(repoPath, ".claude", "artifacts", "crew", "gepa", "budget.json");
+-    const lockRoot = join(repoPath, ".claude", "artifacts", "crew", "gepa", "locks");
+-    mkdirSync(join(repoPath, ".claude", "artifacts", "crew", "gepa"), { recursive: true });
+-    const meter = dailyCapMeter(0.06, budgetPath);
+-    const generator = createAipluginCandidateGenerator({ repoPath, cycleId });
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 5,
+-      budgetUsd: 0.06,
+-      failingTrials: [],
+-      generator,
+-      scorer: noopScorer(),
+-      meter,
+-      lockRoot
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (result === null) return;
+-
+-    // Fewer than 5 candidates should have been generated (budget capped).
+-    expect(result.candidates_evaluated).toBeLessThan(5);
+-
+-    // Artifact must exist.
+-    const optDir = join(repoPath, ".claude", "artifacts", "crew", "gepa", "opt");
+-    expect(existsSync(optDir)).toBe(true);
+-    const files = readdirSync(optDir);
+-    expect(files.length).toBe(1);
+-
+-    const artifact = JSON.parse(readFileSync(join(optDir, files[0]!), "utf8"));
+-    expect(artifact.candidates_evaluated).toBeLessThan(5);
+-    // AC-3: winner must be null when budget halts (partial run).
+-    // In artifact-only mode with 0 cases, partial=false but candidates_evaluated < k
+-    // signals the budget halt.
+-    expect(artifact.winner).toBeNull();
+-  });
+-
+-  test("zero-budget meter halts before first candidate", async () => {
+-    const { repoPath } = setupMinimalRepo();
+-    const cycleId = crypto.randomUUID();
+-
+-    const budgetPath = join(repoPath, ".claude", "artifacts", "crew", "gepa", "budget.json");
+-    const lockRoot = join(repoPath, ".claude", "artifacts", "crew", "gepa", "locks");
+-    mkdirSync(join(repoPath, ".claude", "artifacts", "crew", "gepa"), { recursive: true });
+-
+-    // A cap of $0.00 means the very first reserve() call fails.
+-    const meter = dailyCapMeter(0.0, budgetPath);
+-    const generator = createAipluginCandidateGenerator({ repoPath, cycleId });
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 5,
+-      budgetUsd: 0.0,
+-      failingTrials: [],
+-      generator,
+-      scorer: noopScorer(),
+-      meter,
+-      lockRoot
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (result === null) return;
+-
+-    expect(result.candidates_evaluated).toBe(0);
+-    expect(result.no_winner).toBe(true);
+-    expect(result.winner).toBeNull();
+-  });
+-
+-  test("partial run artifact has cycle_id and agent fields", async () => {
+-    const { repoPath } = setupMinimalRepo();
+-    const cycleId = crypto.randomUUID();
+-
+-    const budgetPath = join(repoPath, ".claude", "artifacts", "crew", "gepa", "budget.json");
+-    const lockRoot = join(repoPath, ".claude", "artifacts", "crew", "gepa", "locks");
+-    mkdirSync(join(repoPath, ".claude", "artifacts", "crew", "gepa"), { recursive: true });
+-    const meter = dailyCapMeter(0.06, budgetPath);
+-    const generator = createAipluginCandidateGenerator({ repoPath, cycleId });
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 5,
+-      budgetUsd: 0.06,
+-      failingTrials: [],
+-      generator,
+-      scorer: noopScorer(),
+-      meter,
+-      lockRoot
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (result === null) return;
+-
+-    expect(typeof result.cycle_id).toBe("string");
+-    expect(result.agent).toBe("fullstack-dev");
+-    expect(result.k).toBe(5);
+-  });
+-});
+diff --git a/crew/tests/gepa/optimize-no-winner-guard.test.mts b/crew/tests/gepa/optimize-no-winner-guard.test.mts
+deleted file mode 100644
+index 9c027701..00000000
+--- a/crew/tests/gepa/optimize-no-winner-guard.test.mts
++++ /dev/null
+@@ -1,135 +0,0 @@
+-/**
+- * tests/gepa/optimize-no-winner-guard.test.ts — SLICE-105 regression guard
+- *
+- * Covers the HIGH reviewer finding on PR #147:
+- *
+- *   `determineWinner` can return { winner: <non-null object>, noWinner: true }
+- *   when the top rank-1 candidate has `pass=false` (dominated on other axes but
+- *   never actually passed the eval). The auto-PR guard MUST refuse to fire in
+- *   that case — opening a promotion PR for a failing candidate would silently
+- *   ship a regression.
+- *
+- * This test invokes runOptimize with artifactOnly=false, a generator that
+- * returns one candidate, and a scorer that always returns pass=false. It then
+- * asserts:
+- *   - result.winner is non-null (rank-1 exists),
+- *   - result.no_winner === true (because pass=false),
+- *   - result.auto_pr is undefined (auto-PR guard blocked the flow).
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import type { Candidate, CandidateGenerator, Scorer } from "@astragenie/gepa-core";
+-import { runOptimize } from "../../scripts/lib/gepa/optimize-runner.mjs";
+-
+-function makeRepo(): string {
+-  const repoPath = mkdtempSync(join(tmpdir(), "opt-no-winner-guard-"));
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  writeFileSync(join(agentsDir, "fullstack-dev.md"), "# Champion\nBody.\n", "utf8");
+-  return repoPath;
+-}
+-
+-function makeGenerator(candidateBody: string, dir: string): CandidateGenerator {
+-  return {
+-    async generate(_championPath, _failingTrials, _k) {
+-      // Write candidate body to a real file — sequentialRunner.runCandidates
+-      // calls validateCandidateSize which reads the file at prompt_path.
+-      const promptPath = join(dir, "candidate-cand-1.md");
+-      writeFileSync(promptPath, candidateBody, "utf8");
+-      const candidate: Candidate = {
+-        id: "cand-1",
+-        agent: "fullstack-dev",
+-        prompt_path: promptPath,
+-        prompt_hash: "hash-cand-1",
+-        prompt_size_lines: candidateBody.split("\n").length,
+-        derived_from_trials: [],
+-        generator_cost_usd: 0,
+-        created_at: new Date().toISOString()
+-      };
+-      return [candidate];
+-    }
+-  };
+-}
+-
+-function makeAlwaysFailScorer(): Scorer {
+-  return {
+-    async score() {
+-      return {
+-        pass: false,
+-        score: 0.4,
+-        cost_usd: 0.001,
+-        latency_ms: 100,
+-        rationale: "always-fail scorer for guard test"
+-      };
+-    }
+-  };
+-}
+-
+-// Write a `gh` shim that records every call to a log file. If the guard
+-// blocks tryAutoPr correctly, this file must not exist after runOptimize
+-// completes (nothing tried to invoke gh). If the guard is broken, runAutoPr
+-// fires and calls `gh auth status` first — the log file appears.
+-function writeGhCallSpy(dir: string, callLog: string): string {
+-  mkdirSync(dir, { recursive: true });
+-  const shimMjs = join(dir, "gh-spy.mjs");
+-  const script = [
+-    `import { appendFileSync } from "node:fs";`,
+-    `appendFileSync(${JSON.stringify(callLog)}, JSON.stringify(process.argv.slice(2)) + "\\n");`,
+-    `process.exit(0);`
+-  ].join("\n");
+-  writeFileSync(shimMjs, script, "utf8");
+-  if (process.platform === "win32") {
+-    const cmdPath = join(dir, "gh.cmd");
+-    writeFileSync(cmdPath, `@node "${shimMjs}" %*\r\n`, "utf8");
+-    return cmdPath;
+-  }
+-  const shPath = join(dir, "gh");
+-  writeFileSync(shPath, `#!/bin/sh\nexec node "${shimMjs}" "$@"\n`, { mode: 0o755 });
+-  return shPath;
+-}
+-
+-describe("runOptimize — SLICE-105 no_winner guard", () => {
+-  test("winner exists BUT pass=false + artifactOnly=false → auto-PR is NOT called", async () => {
+-    const repoPath = makeRepo();
+-    const generator = makeGenerator("# Candidate\nDifferent body.\n", repoPath);
+-    const scorer = makeAlwaysFailScorer();
+-
+-    // Provide one eval case so scoring runs and Pareto rank fires.
+-    const cases = [{ id: "case-1", held_out: false, input: "prompt", expected_output: "output" }];
+-
+-    // Install a gh spy — if the guard breaks, runAutoPr fires and
+-    // `gh auth status` is the first side effect. The spy records to callLog;
+-    // its absence proves the guard held.
+-    const callLog = join(repoPath, "gh-calls.txt");
+-    const ghPath = writeGhCallSpy(join(repoPath, "bin"), callLog);
+-
+-    const result = await runOptimize({
+-      repoPath,
+-      agent: "fullstack-dev",
+-      k: 1,
+-      budgetUsd: 1,
+-      failingTrials: [],
+-      generator,
+-      scorer,
+-      cases,
+-      artifactOnly: false,
+-      ghPath
+-    });
+-
+-    expect(result).not.toBeNull();
+-    if (!result) return;
+-    // Rank-1 winner exists (only candidate scored, so it's non-dominated).
+-    expect(result.winner).not.toBeNull();
+-    // But because pass=false, no_winner must still be true.
+-    expect(result.no_winner).toBe(true);
+-    // auto_pr must remain undefined — the guard held.
+-    expect(result.auto_pr).toBeUndefined();
+-    // Strongest assertion: gh was never even invoked. If tryAutoPr had fired,
+-    // `checkGhAuth` would have run `gh auth status` first and the spy log
+-    // would exist.
+-    expect(existsSync(callLog)).toBe(false);
+-  });
+-});
+diff --git a/crew/tests/gepa/optimize-no-winner-streak.test.mts b/crew/tests/gepa/optimize-no-winner-streak.test.mts
+index a7decdad..9aaa310f 100644
+--- a/crew/tests/gepa/optimize-no-winner-streak.test.mts
++++ b/crew/tests/gepa/optimize-no-winner-streak.test.mts
+@@ -1,13 +1,21 @@
+ /**
+  * tests/gepa/optimize-no-winner-streak.test.ts — SLICE-99
+  *
+- * Covers AC-7 (streak increments on no-winner, blocks at 3),
+- * AC-8 (gepa-resume clears streak), and
+- * AC-9 (winner resets streak to 0).
++ * Covers AC-7 (streak increments on no-winner, blocks at 3) and
++ * AC-9 (winner resets streak to 0) — pure no-winner-streak-tracker.mts unit
++ * coverage only.
++ *
++ * SLICE-22 (FEAT-005 P4, GEPA optimize/eval pipeline deletion) removed the
++ * AC-8 (`gepa-resume`/`gepa-optimize` CLI integration) cases from this file
++ * — they exercised gepa-optimize-cmd.mts, which was deleted along with the
++ * rest of the optimize pipeline. The KEPT `gepa-resume` command
++ * (runGepaResumeCmdExtended in gepa-killswitch-cmds.mts) has its own
++ * coverage in gepa-resume-global.test.mts; resetStreak's plain streak-clear
++ * behavior stays covered below (AC-8's non-CLI half).
+  */
+ 
+ import { describe, expect, test } from "bun:test";
+-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
++import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+ import { tmpdir } from "node:os";
+ import { join } from "node:path";
+ import {
+@@ -17,7 +25,6 @@ import {
+   resetStreak,
+   NO_WINNER_STREAK_HALT
+ } from "../../scripts/lib/gepa/no-winner-streak-tracker.mjs";
+-import { runGepaOptimizeCmd, runGepaResumeCmd } from "../../scripts/lib/gepa/gepa-optimize-cmd.mjs";
+ 
+ function tmpStreakPath(): { repoPath: string; streakPath: string } {
+   const repoPath = mkdtempSync(join(tmpdir(), "gepa-streak-"));
+@@ -27,12 +34,6 @@ function tmpStreakPath(): { repoPath: string; streakPath: string } {
+   return { repoPath, streakPath };
+ }
+ 
+-function setupRepoWithAgent(repoPath: string): void {
+-  const agentsDir = join(repoPath, "agents");
+-  mkdirSync(agentsDir, { recursive: true });
+-  writeFileSync(join(agentsDir, "fullstack-dev.md"), "# Champion\n" + "line\n".repeat(5), "utf8");
+-}
+-
+ // ── Unit tests for streak tracker ──────────────────────────────────────────
+ 
+ describe("SLICE-99 AC-7 — streak tracker unit", () => {
+@@ -97,52 +98,6 @@ describe("SLICE-99 AC-8 — gepa-resume clears streak", () => {
+     expect(getStreakCount("fullstack-dev", { repoPath, streakPath })).toBe(0);
+     expect(checkStreakHalt("fullstack-dev", { repoPath, streakPath }).halted).toBe(false);
+   });
+-
+-  test("runGepaResumeCmd clears streak and subsequent optimize proceeds", async () => {
+-    const { repoPath } = tmpStreakPath();
+-    setupRepoWithAgent(repoPath);
+-
+-    // Manually set streak to 3 via incrementStreak.
+-    incrementStreak("fullstack-dev", { repoPath });
+-    incrementStreak("fullstack-dev", { repoPath });
+-    incrementStreak("fullstack-dev", { repoPath });
+-
+-    // Verify optimize is blocked.
+-    const blockedResult = await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "2",
+-      "--artifact-only"
+-    ]);
+-    expect(blockedResult.exitCode).toBe(3);
+-    expect(blockedResult.stderr).toContain("no_winner_streak: 3");
+-    expect(blockedResult.stderr).toContain("gepa-resume");
+-
+-    // Run resume.
+-    const resumeResult = await runGepaResumeCmd(repoPath, ["fullstack-dev"]);
+-    expect(resumeResult.exitCode).toBe(0);
+-    expect(resumeResult.stdout).toContain("cleared");
+-
+-    // Now optimize proceeds.
+-    const afterResult = await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "2",
+-      "--artifact-only"
+-    ]);
+-    expect(afterResult.exitCode).toBe(0);
+-  });
+-
+-  test("runGepaResumeCmd without agent → exit 2", async () => {
+-    const { repoPath } = tmpStreakPath();
+-    const result = await runGepaResumeCmd(repoPath, []);
+-    expect(result.exitCode).toBe(2);
+-    expect(result.stderr).toContain("usage:");
+-  });
+ });
+ 
+ // ── AC-9: winner resets streak ─────────────────────────────────────────────
+@@ -180,45 +135,3 @@ describe("SLICE-99 AC-9 — winner resets streak to 0", () => {
+     expect(parsed["fullstack-dev"]).toBe(1);
+   });
+ });
+-
+-// ── AC-7 integration: optimize blocked at streak=3 ─────────────────────────
+-
+-describe("SLICE-99 AC-7 — optimize blocked when streak >= 3", () => {
+-  test("optimize exits 3 with descriptive message when streak = 3", async () => {
+-    const { repoPath } = tmpStreakPath();
+-    setupRepoWithAgent(repoPath);
+-
+-    // Pre-populate streak to 3.
+-    incrementStreak("fullstack-dev", { repoPath });
+-    incrementStreak("fullstack-dev", { repoPath });
+-    incrementStreak("fullstack-dev", { repoPath });
+-
+-    const result = await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--artifact-only"
+-    ]);
+-    expect(result.exitCode).toBe(3);
+-    expect(result.stderr).toContain("no_winner_streak: 3");
+-    expect(result.stderr).toContain("gepa-resume fullstack-dev");
+-  });
+-
+-  test("optimize with streak=2 proceeds normally", async () => {
+-    const { repoPath } = tmpStreakPath();
+-    setupRepoWithAgent(repoPath);
+-
+-    incrementStreak("fullstack-dev", { repoPath });
+-    incrementStreak("fullstack-dev", { repoPath });
+-
+-    const result = await runGepaOptimizeCmd(repoPath, [
+-      "fullstack-dev",
+-      "--budget",
+-      "10",
+-      "--k",
+-      "2",
+-      "--artifact-only"
+-    ]);
+-    expect(result.exitCode).toBe(0);
+-  });
+-});
+diff --git a/crew/tests/gepa/soak-dispatcher-hook.test.mts b/crew/tests/gepa/soak-dispatcher-hook.test.mts
+deleted file mode 100644
+index 19675d1d..00000000
+--- a/crew/tests/gepa/soak-dispatcher-hook.test.mts
++++ /dev/null
+@@ -1,342 +0,0 @@
+-/**
+- * tests/gepa/soak-dispatcher-hook.test.ts — SLICE-104 (FEAT-183 S7)
+- *
+- * Unit tests for evaluateSoakHook() — I/O boundary paths.
+- *
+- * Coverage:
+- *   - no_soak: soak.json absent → falls back to main champion
+- *   - no_soak: agent not in soak.json → falls back to main champion
+- *   - no_soak: malformed soak.json → readSoakMap returns null → no_soak
+- *   - soak_skip: random() >= soakPercent → use main champion (AC-10)
+- *   - soak_use:  random() < soakPercent → use soak champion path (AC-10)
+- *   - early_revert: 0.50 vs 0.80 pass rate → gepa_soak_revert_early (AC-4)
+- *   - soak_promoted: both clocks cleared → gepa_soak_promote_eligible + champion_path
+- *   - insufficient_traffic: maxSoakDays reached with <minSoakTrials → gepa_soak_insufficient_traffic
+- *
+- * Note: requires gepa-core 0.6.0 exports at runtime (evaluateSoak).
+- * These tests will fail with ImportError until the operator publishes 0.6.0
+- * and removes the package.json overrides block.
+- */
+-
+-import { describe, expect, it } from "bun:test";
+-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { evaluateSoakHook } from "../../scripts/lib/gepa/soak-dispatcher-hook.mjs";
+-
+-// ── Helpers ────────────────────────────────────────────────────────────────────
+-
+-// Mirror of SoakPolicy from gepa-core 0.6.0 (avoiding the import until publish)
+-const BASE_POLICY = {
+-  soakDays: 7,
+-  minSoakTrials: 20,
+-  maxSoakDays: 21,
+-  soakEpsilon: 0.02,
+-  soakPercent: 0.1,
+-  eligibleAgents: [] as string[],
+-  minPassDelta: 0.05,
+-  minCaseScoreFloor: 0.6,
+-  allowCostRegression: false,
+-  allowLatencyRegression: false
+-};
+-
+-function makeTmpRepo(): string {
+-  return mkdtempSync(join(tmpdir(), "soak-hook-test-"));
+-}
+-
+-function writeSoakJson(repoRoot: string, content: unknown): void {
+-  const dir = join(repoRoot, ".claude", "artifacts", "crew", "gepa");
+-  mkdirSync(dir, { recursive: true });
+-  writeFileSync(join(dir, "soak.json"), JSON.stringify(content), "utf8");
+-}
+-
+-function writeMalformedSoakJson(repoRoot: string): void {
+-  const dir = join(repoRoot, ".claude", "artifacts", "crew", "gepa");
+-  mkdirSync(dir, { recursive: true });
+-  writeFileSync(join(dir, "soak.json"), "{ not valid json", "utf8");
+-}
+-
+-// ── no_soak paths ─────────────────────────────────────────────────────────────
+-
+-describe("evaluateSoakHook — no_soak paths", () => {
+-  it("soak.json absent → status: no_soak", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: "2026-07-01T12:00:00.000Z",
+-        randomValue: 0.05
+-      });
+-      expect(result.status).toBe("no_soak");
+-      expect(result.events).toHaveLength(0);
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-
+-  it("agent not in soak.json → status: no_soak", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      writeSoakJson(repoRoot, {
+-        "other-agent": {
+-          agent: "other-agent",
+-          started_at: "2026-07-01T00:00:00.000Z",
+-          champion_path: "/tmp/prompt.md",
+-          trials: [],
+-          main_pass_rate: 0.8
+-        }
+-      });
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: "2026-07-01T12:00:00.000Z",
+-        randomValue: 0.05
+-      });
+-      expect(result.status).toBe("no_soak");
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-
+-  it("malformed soak.json → readSoakMap returns null → no_soak (does not throw)", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      writeMalformedSoakJson(repoRoot);
+-      let threw = false;
+-      let result: ReturnType<typeof evaluateSoakHook> | null = null;
+-      try {
+-        result = evaluateSoakHook({
+-          repoRoot,
+-          agent: "fullstack-dev",
+-          policy: BASE_POLICY,
+-          nowIso: "2026-07-01T12:00:00.000Z",
+-          randomValue: 0.05
+-        });
+-      } catch {
+-        threw = true;
+-      }
+-      expect(threw).toBe(false);
+-      expect(result?.status).toBe("no_soak");
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-});
+-
+-// ── soak routing paths (AC-10) ────────────────────────────────────────────────
+-
+-describe("evaluateSoakHook — soak routing via random injection (AC-10)", () => {
+-  const STARTED = "2026-07-01T00:00:00.000Z";
+-  // day 1.5 — within soakDays=7; 5 trials < minSoakTrials=20; no early-revert (all passing)
+-  const NOW = "2026-07-02T12:00:00.000Z";
+-
+-  function makeActiveSoak(repoRoot: string): void {
+-    writeSoakJson(repoRoot, {
+-      "fullstack-dev": {
+-        agent: "fullstack-dev",
+-        started_at: STARTED,
+-        champion_path: "/tmp/champion-prompt.md",
+-        trials: Array.from({ length: 5 }, () => ({
+-          created_at: NOW,
+-          pass: true,
+-          score: 0.9,
+-          source: "soak"
+-        })),
+-        main_pass_rate: 0.8
+-      }
+-    });
+-  }
+-
+-  it("random=0.05 < soakPercent=0.10 → soak_use with champion_path (AC-10)", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      makeActiveSoak(repoRoot);
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: NOW,
+-        randomValue: 0.05
+-      });
+-      expect(result.status).toBe("soak_use");
+-      expect(result.champion_path).toBe("/tmp/champion-prompt.md");
+-      expect(result.events).toHaveLength(0);
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-
+-  it("random=0.50 >= soakPercent=0.10 → soak_skip, no champion_path", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      makeActiveSoak(repoRoot);
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: NOW,
+-        randomValue: 0.5
+-      });
+-      expect(result.status).toBe("soak_skip");
+-      expect(result.champion_path).toBeUndefined();
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-
+-  it("random=0.10 (exactly soakPercent) → soak_skip (boundary: strictly less than)", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      makeActiveSoak(repoRoot);
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: NOW,
+-        randomValue: 0.1
+-      });
+-      expect(result.status).toBe("soak_skip");
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-});
+-
+-// ── Early-revert path (AC-4) ─────────────────────────────────────────────────
+-
+-describe("evaluateSoakHook — early-revert (AC-4)", () => {
+-  const STARTED = "2026-07-01T00:00:00.000Z";
+-  const NOW = "2026-07-02T12:00:00.000Z";
+-
+-  it("soak_pass_rate 0.50 vs main_pass_rate 0.80 (30pp gap) → early_revert + event", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      const trials = [
+-        ...Array.from({ length: 5 }, () => ({
+-          created_at: NOW,
+-          pass: true,
+-          score: 0.9,
+-          source: "soak" as const
+-        })),
+-        ...Array.from({ length: 5 }, () => ({
+-          created_at: NOW,
+-          pass: false,
+-          score: 0.2,
+-          source: "soak" as const
+-        }))
+-      ];
+-      writeSoakJson(repoRoot, {
+-        "fullstack-dev": {
+-          agent: "fullstack-dev",
+-          started_at: STARTED,
+-          champion_path: "/tmp/champion-prompt.md",
+-          trials,
+-          main_pass_rate: 0.8
+-        }
+-      });
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: NOW,
+-        randomValue: 0.05
+-      });
+-      expect(result.status).toBe("early_revert");
+-      expect(result.events).toContain("gepa_soak_revert_early");
+-      expect(result.reason).toContain("early-revert");
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-});
+-
+-// ── Soak-promoted path (both clocks cleared) ─────────────────────────────────
+-
+-describe("evaluateSoakHook — soak_promoted (verdict: passed)", () => {
+-  // day 8 elapsed (>= soakDays=7), 25 trials (>= minSoakTrials=20),
+-  // all passing → no early-revert. Both clocks cleared.
+-  const STARTED = "2026-07-01T00:00:00.000Z";
+-  const NOW = "2026-07-09T00:00:00.000Z"; // 8 days later
+-
+-  it("elapsed=8d, samples=25, all passing → soak_promoted + gepa_soak_promote_eligible", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      const trials = Array.from({ length: 25 }, () => ({
+-        created_at: NOW,
+-        pass: true,
+-        score: 0.9,
+-        source: "soak" as const
+-      }));
+-      writeSoakJson(repoRoot, {
+-        "fullstack-dev": {
+-          agent: "fullstack-dev",
+-          started_at: STARTED,
+-          champion_path: "/tmp/champion-prompt.md",
+-          trials,
+-          main_pass_rate: 0.85
+-        }
+-      });
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: NOW,
+-        // Random value irrelevant when verdict is terminal (passed) — the
+-        // routing branch is only taken for verdict.status === "running".
+-        randomValue: 0.99
+-      });
+-      expect(result.status).toBe("soak_promoted");
+-      expect(result.events).toContain("gepa_soak_promote_eligible");
+-      expect(result.champion_path).toBe("/tmp/champion-prompt.md");
+-      expect(result.reason).toContain("soak_promote_eligible");
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-});
+-
+-// ── Insufficient-traffic path (verdict: reverted) ────────────────────────────
+-
+-describe("evaluateSoakHook — insufficient_traffic (verdict: reverted)", () => {
+-  // day 22 elapsed (>= maxSoakDays=21), only 5 trials (< minSoakTrials=20).
+-  const STARTED = "2026-07-01T00:00:00.000Z";
+-  const NOW = "2026-07-23T00:00:00.000Z"; // 22 days later
+-
+-  it("elapsed=22d (past maxSoakDays), samples=5 (below floor) → insufficient_traffic + event", () => {
+-    const repoRoot = makeTmpRepo();
+-    try {
+-      const trials = Array.from({ length: 5 }, () => ({
+-        created_at: NOW,
+-        pass: true,
+-        score: 0.9,
+-        source: "soak" as const
+-      }));
+-      writeSoakJson(repoRoot, {
+-        "fullstack-dev": {
+-          agent: "fullstack-dev",
+-          started_at: STARTED,
+-          champion_path: "/tmp/champion-prompt.md",
+-          trials,
+-          main_pass_rate: 0.85
+-        }
+-      });
+-      const result = evaluateSoakHook({
+-        repoRoot,
+-        agent: "fullstack-dev",
+-        policy: BASE_POLICY,
+-        nowIso: NOW,
+-        randomValue: 0.05
+-      });
+-      expect(result.status).toBe("insufficient_traffic");
+-      expect(result.events).toContain("gepa_soak_insufficient_traffic");
+-      expect(result.reason).toContain("gepa_soak_insufficient_traffic");
+-      // Terminal verdict overrides the random-routing branch — no champion_path.
+-      expect(result.champion_path).toBeUndefined();
+-    } finally {
+-      rmSync(repoRoot, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/gepa/split-train-heldout.test.mts b/crew/tests/gepa/split-train-heldout.test.mts
+deleted file mode 100644
+index 2d91aa6c..00000000
+--- a/crew/tests/gepa/split-train-heldout.test.mts
++++ /dev/null
+@@ -1,106 +0,0 @@
+-/**
+- * tests/gepa/split-train-heldout.test.ts — SLICE-98
+- */
+-
+-import { describe, expect, test } from "bun:test";
+-import { parseSplitFlag, splitTrainHeldout } from "../../scripts/lib/gepa/split-train-heldout.mjs";
+-
+-function cases(n: number, prefix = "case") {
+-  return Array.from({ length: n }, (_, i) => ({ id: `${prefix}-${i}` }));
+-}
+-
+-describe("SLICE-98 — splitTrainHeldout determinism", () => {
+-  test("same input → same partition (no shuffling between calls)", () => {
+-    const input = cases(20);
+-    const first = splitTrainHeldout(input, { train: 16, heldOut: 4 });
+-    const second = splitTrainHeldout(input, { train: 16, heldOut: 4 });
+-    expect(first.train.map((c) => c.id)).toEqual(second.train.map((c) => c.id));
+-    expect(first.heldOut.map((c) => c.id)).toEqual(second.heldOut.map((c) => c.id));
+-  });
+-
+-  test("different seed → different partition", () => {
+-    const input = cases(20);
+-    const a = splitTrainHeldout(input, { train: 16, heldOut: 4, seed: "seed-a" });
+-    const b = splitTrainHeldout(input, { train: 16, heldOut: 4, seed: "seed-b" });
+-    // Heldout sets should not be identical (vanishingly low probability).
+-    expect(a.heldOut.map((c) => c.id)).not.toEqual(b.heldOut.map((c) => c.id));
+-  });
+-
+-  test("partition is total (no case duplicated across tranches, no case dropped at right size)", () => {
+-    const input = cases(20);
+-    const { train, heldOut } = splitTrainHeldout(input, { train: 16, heldOut: 4 });
+-    const allIds = [...train, ...heldOut].map((c) => c.id).sort();
+-    const expected = input.map((c) => c.id).sort();
+-    expect(allIds).toEqual(expected);
+-  });
+-
+-  test("input order does NOT affect partition (sort-by-hash invariant)", () => {
+-    const input = cases(20);
+-    const reordered = [...input].reverse();
+-    const direct = splitTrainHeldout(input, { train: 16, heldOut: 4 });
+-    const reverse = splitTrainHeldout(reordered, { train: 16, heldOut: 4 });
+-    expect(direct.heldOut.map((c) => c.id).sort()).toEqual(reverse.heldOut.map((c) => c.id).sort());
+-  });
+-
+-  test("adding a case to the input preserves existing heldOut membership", () => {
+-    const before = cases(20);
+-    const splitBefore = splitTrainHeldout(before, { train: 16, heldOut: 4 });
+-
+-    const after = [...before, { id: "case-99" }];
+-    const splitAfter = splitTrainHeldout(after, { train: 17, heldOut: 4 });
+-
+-    // All ids that were heldOut before MAY land train OR heldOut after, but the
+-    // critical invariant is that EVERY new case landing in heldOut is one that
+-    // was deterministically picked by hash — never a case shifted out by mere
+-    // array index. Verify by asserting at least 75% overlap on the heldOut set.
+-    const beforeSet = new Set(splitBefore.heldOut.map((c) => c.id));
+-    const overlap = splitAfter.heldOut.filter((c) => beforeSet.has(c.id)).length;
+-    expect(overlap).toBeGreaterThanOrEqual(3); // 3/4 = 75%
+-  });
+-});
+-
+-describe("SLICE-98 — splitTrainHeldout size handling", () => {
+-  test("train + heldOut < cases.length → extra cases dropped (train respected)", () => {
+-    const input = cases(20);
+-    const { train, heldOut } = splitTrainHeldout(input, { train: 10, heldOut: 4 });
+-    expect(train.length).toBe(10);
+-    expect(heldOut.length).toBe(4);
+-  });
+-
+-  test("train + heldOut > cases.length → heldOut filled first, train shrinks", () => {
+-    const input = cases(5);
+-    const { train, heldOut } = splitTrainHeldout(input, { train: 10, heldOut: 4 });
+-    expect(heldOut.length).toBe(4);
+-    expect(train.length).toBe(1);
+-  });
+-
+-  test("heldOut > cases.length → heldOut clamped, train empty", () => {
+-    const input = cases(3);
+-    const { train, heldOut } = splitTrainHeldout(input, { train: 5, heldOut: 10 });
+-    expect(heldOut.length).toBe(3);
+-    expect(train.length).toBe(0);
+-  });
+-
+-  test("empty input → empty tranches", () => {
+-    const { train, heldOut } = splitTrainHeldout([], { train: 10, heldOut: 4 });
+-    expect(train.length).toBe(0);
+-    expect(heldOut.length).toBe(0);
+-  });
+-});
+-
+-describe("SLICE-98 — parseSplitFlag", () => {
+-  test('"16/4" → { train: 16, heldOut: 4 }', () => {
+-    expect(parseSplitFlag("16/4")).toEqual({ train: 16, heldOut: 4 });
+-  });
+-
+-  test('"0/0" → { train: 0, heldOut: 0 } (both zero is valid input)', () => {
+-    expect(parseSplitFlag("0/0")).toEqual({ train: 0, heldOut: 0 });
+-  });
+-
+-  test("malformed input returns null", () => {
+-    expect(parseSplitFlag("abc")).toBeNull();
+-    expect(parseSplitFlag("10")).toBeNull();
+-    expect(parseSplitFlag("10/")).toBeNull();
+-    expect(parseSplitFlag("")).toBeNull();
+-  });
+-});
+diff --git a/crew/tests/gepa/write-artifact-capture-guard.test.mts b/crew/tests/gepa/write-artifact-capture-guard.test.mts
+deleted file mode 100644
+index d19e6364..00000000
+--- a/crew/tests/gepa/write-artifact-capture-guard.test.mts
++++ /dev/null
+@@ -1,111 +0,0 @@
+-// TDD: Wave 1.5 — fix runner-plugin issue #360.
+-//
+-// writeArtifact's fire-and-forget capture-tee call (fireCaptureTeeSilent)
+-// was previously (a) unguarded — a cold @astragenie/gepa-core parse could
+-// block the write for multiple seconds — and (b) inline-awaited inside
+-// writeArtifact, so even a *bounded* guard would still delay every
+-// artifact write's return by up to the guard ceiling. This suite proves:
+-//   1. writeArtifact returns promptly even when the underlying capture is
+-//      slow (via an injectable test seam — mirrors the __resolveRemote
+-//      pattern in astramem-provider.ts — never touched by production
+-//      callers).
+-//   2. capture still fires on the fast/normal path (the guard must not
+-//      silently disable capture).
+-//   3. production behavior (no overrides passed) is unaffected — the
+-//      default loader is used, byte-identical to pre-seam behavior.
+-
+-import { describe, expect, test } from "bun:test";
+-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+-import { tmpdir } from "node:os";
+-import { join } from "node:path";
+-import { __drainPendingCaptures, writeArtifact } from "../../scripts/lib/artifacts/write.mjs";
+-import type { ArtifactFields } from "../../scripts/lib/artifacts/types.mjs";
+-
+-function guardTestFields(): ArtifactFields {
+-  return {
+-    title: "guard-test",
+-    owner: "fullstack-dev",
+-    slice: "S2",
+-    cost: { usd: 0.001 }
+-  };
+-}
+-
+-function writeEnabledConfig(root: string): void {
+-  writeFileSync(
+-    join(root, "gepa.config.json"),
+-    JSON.stringify({
+-      capture: { enabled: true, walltime_ms: 2000 },
+-      storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-    })
+-  );
+-}
+-
+-describe("writeArtifact capture guard (issue #360)", () => {
+-  test("returns promptly even when the injected captureTee loader is slow/cold", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-guard-slow-"));
+-    try {
+-      writeEnabledConfig(root);
+-      // Simulates a cold @astragenie/gepa-core dynamic import: slow but
+-      // REAL (a plain, ref'd setTimeout — never unref'd, matching how real
+-      // production work behaves; only the guard's own ceiling timer is
+-      // unref'd, see guarded-fire.ts).
+-      const slowLoader = () =>
+-        new Promise<{ captureTee: (...args: unknown[]) => Promise<void> }>((resolve) => {
+-          setTimeout(() => resolve({ captureTee: async () => {} }), 800);
+-        });
+-
+-      const t0 = performance.now();
+-      const result = await writeArtifact(root, "handoff", guardTestFields(), {
+-        __captureTeeLoader: slowLoader,
+-        __guardTimeoutMs: 50
+-      });
+-      const elapsed = performance.now() - t0;
+-
+-      expect(result.ok).toBe(true);
+-      // Must return long before the 800ms slow loader — and well under
+-      // even the 50ms guard ceiling, because the call is detached, not
+-      // awaited.
+-      expect(elapsed).toBeLessThan(300);
+-    } finally {
+-      await __drainPendingCaptures();
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("still fires capture on the fast/normal path (guard doesn't silently disable capture)", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-guard-fast-"));
+-    try {
+-      writeEnabledConfig(root);
+-      const result = await writeArtifact(root, "handoff", guardTestFields());
+-      expect(result.ok).toBe(true);
+-
+-      await __drainPendingCaptures();
+-
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl");
+-      const raw = readFileSync(trialFile, "utf8").trim();
+-      expect(raw.length).toBeGreaterThan(0);
+-      const trial = JSON.parse(raw.split("\n")[0]!);
+-      expect(trial.agent).toBe("fullstack-dev");
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-
+-  test("production path (no overrides) is unaffected — capture still lands after draining", async () => {
+-    const root = mkdtempSync(join(tmpdir(), "gepa-guard-prod-"));
+-    try {
+-      writeEnabledConfig(root);
+-      // No overrides object at all — exercises the exact call shape every
+-      // existing production caller (scripts/crew.ts) uses.
+-      const result = await writeArtifact(root, "handoff", guardTestFields());
+-      expect(result.ok).toBe(true);
+-
+-      await __drainPendingCaptures();
+-
+-      const trialFile = join(root, ".claude/artifacts/crew/gepa/trials/fullstack-dev.jsonl");
+-      expect(readFileSync(trialFile, "utf8").trim().length).toBeGreaterThan(0);
+-    } finally {
+-      rmSync(root, { recursive: true, force: true });
+-    }
+-  });
+-});
+diff --git a/crew/tests/regression.test.mts b/crew/tests/regression.test.mts
+index 2d1e84e3..8a7c0503 100644
+--- a/crew/tests/regression.test.mts
++++ b/crew/tests/regression.test.mts
+@@ -458,21 +458,6 @@ test("AC-6: releaseFiles returns err() when repo path escapes repo boundary", as
+   expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
+ });
+ 
+-test("AC-6: resolveApproval returns err() for unknown approval id", async () => {
+-  const { resolveApproval } = await import(
+-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "approvals.mts")).href
+-  );
+-  const repoPath = await makeTempDir("crew-ac6-resolveapproval-err-");
+-  const result = await resolveApproval(repoPath, {
+-    id: "apr_nonexistent",
+-    decision: "approved",
+-    resolver: "test"
+-  });
+-  expect(result.ok, "expected err() for unknown approval id").toBe(false);
+-  expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
+-  expect(result.error.message).toMatch(/unknown approval id/i);
+-});
+-
+ test("AC-6: markWorkflowBadge returns err() when badge option is missing", async () => {
+   const { markWorkflowBadge } = await import(
+     pathToFileURL(path.join(repoRoot, "scripts", "lib", "workflow-state.mts")).href
+diff --git a/crew/tests/subagent-return.test.mts b/crew/tests/subagent-return.test.mts
+index 62d39e74..17f3f2ba 100644
+--- a/crew/tests/subagent-return.test.mts
++++ b/crew/tests/subagent-return.test.mts
+@@ -91,33 +91,6 @@ async function readLearningsLines(repo: string): Promise<Record<string, unknown>
+   }
+ }
+ 
+-// FEAT-193 S1: seed a minimal enabled gepa.config.json so captureFailureTrial
+-// (the dual-write sibling of captureFailureLearning) is not a config no-op.
+-async function seedGepaConfig(repo: string): Promise<void> {
+-  await fs.writeFile(
+-    path.join(repo, "gepa.config.json"),
+-    JSON.stringify({
+-      capture: { enabled: true, exclude: [], walltime_ms: 2000 },
+-      storage: { backend: "file", file_root: ".claude/artifacts/crew/gepa/trials" }
+-    })
+-  );
+-}
+-
+-async function readTrialLines(repo: string, agent: string): Promise<Record<string, unknown>[]> {
+-  try {
+-    const raw = await fs.readFile(
+-      path.join(repo, ".claude", "artifacts", "crew", "gepa", "trials", `${agent}.jsonl`),
+-      "utf8"
+-    );
+-    return raw
+-      .split("\n")
+-      .filter((l) => l.trim().length > 0)
+-      .map((l) => JSON.parse(l));
+-  } catch {
+-    return [];
+-  }
+-}
+-
+ // Build a PostToolUse Agent stdin payload with the given body.
+ function makeStdin(body: string, cwd = process.cwd()) {
+   return JSON.stringify({
+@@ -443,47 +416,11 @@ test("AC-4: oversized pathless body WITH a terminal status marker → no subagen
+   }
+ });
+ 
+-// ── FEAT-193 S1: dual-write into the GEPA trial store ───────────────────────
+-// Same inline-return-warn / subagent-incomplete signals ALSO append a failing
+-// Trial to .claude/artifacts/crew/gepa/trials/unknown.jsonl (agent identity is
+-// unavailable at this hook, per capture-failure-trial.ts's doc comment).
+-
+-test("FEAT-193 S1: inline-return-warn also dual-writes a failing GEPA trial", async () => {
+-  const repo = await makeTmpRepo();
+-  try {
+-    await seedGepaConfig(repo);
+-    await runHook(makeStdin(makeBody(1000), repo));
+-    const trials = await readTrialLines(repo, "unknown");
+-    const captured = trials.filter(
+-      (t) => (t.input as Record<string, unknown>)?.source === "inline-return-warn"
+-    );
+-    expect(captured.length).toBe(1);
+-    expect(captured[0]!.agent).toBe("unknown");
+-    expect(captured[0]!.phase).toBe("build");
+-    expect(captured[0]!.source).toBe("captured");
+-    expect((captured[0]!.score as Record<string, unknown>).pass).toBe(false);
+-  } finally {
+-    await fs.rm(repo, { recursive: true, force: true });
+-  }
+-});
+-
+-test("FEAT-193 S1: subagent-incomplete also dual-writes a failing GEPA trial", async () => {
+-  const repo = await makeTmpRepo();
+-  try {
+-    await seedGepaConfig(repo);
+-    await runHook(makeStdin(makeBody(1000), repo));
+-    const trials = await readTrialLines(repo, "unknown");
+-    const captured = trials.filter(
+-      (t) => (t.input as Record<string, unknown>)?.source === "subagent-incomplete"
+-    );
+-    expect(captured.length).toBe(1);
+-    expect((captured[0]!.score as Record<string, unknown>).rationale as string).toMatch(
+-      /no terminal status marker/
+-    );
+-  } finally {
+-    await fs.rm(repo, { recursive: true, force: true });
+-  }
+-});
++// FEAT-193 S1's dual-write into the GEPA trial store (same inline-return-warn
++// / subagent-incomplete signals appending a failing Trial to
++// .claude/artifacts/crew/gepa/trials/unknown.jsonl) was removed with the GEPA
++// optimize/eval pipeline (SLICE-22, FEAT-005 P4) — captureFailureLearning
++// (asserted above) is now the sole provider for these signals.
+ 
+ test("AC-4: body with an artifact path → no subagent-incomplete (already has a recorded outcome)", async () => {
+   const repo = await makeTmpRepo();
+diff --git a/docs/ai-loop/00-entry/MASTER_PROMPT.md b/docs/ai-loop/00-entry/MASTER_PROMPT.md
+deleted file mode 100644
+index 70abf033..00000000
+--- a/docs/ai-loop/00-entry/MASTER_PROMPT.md
++++ /dev/null
+@@ -1,60 +0,0 @@
+-# Untitled product — Master Prompt
+-
+-## Persona
+-
+-You are a senior engineer working on **Untitled product**, building it slice by
+-slice according to the dev-crew method.
+-
+-You write production code: no stubs, no TODOs, no placeholder implementations.
+-Every slice you complete is buildable, testable, and leaves the codebase in a
+-better state than you found it.
+-
+-## Product
+-
+-Override productName and productDescription in .claude/loop.json after install.
+-
+-## Stack
+-
+-- C# .NET (Aspire local orchestration when configured)
+-- Python agents (LangGraph or FastAPI) when configured
+-- Terraform for infrastructure when configured
+-
+-## Mandatory reading before starting a slice
+-
+-1. `CLAUDE.md` — repo memory, hard rules, anti-patterns
+-2. `docs/architecture/platform-overview.md`
+-3. `docs/ai-loop/01-loop-control/DEV_CREW_METHOD.md`
+-4. `docs/ai-loop/01-loop-control/EVIDENCE_RULES.md`
+-5. `docs/ai-loop/01-loop-control/STOP_CONDITIONS.md`
+-
+-## First-response checklist
+-
+-Before beginning any implementation work, run this checklist and report findings:
+-
+-1. **Solution / project inspection** — which solution files, projects, agents,
+-   services are present? Match against what the slice expects.
+-2. **Backlog state** — read `docs/ai-loop/backlog/approved-slices.md`. Which is the
+-   highest-priority PENDING slice?
+-3. **Configuration** — read `.claude/loop.json`. Confirm the
+-   configured phase-gate commands still apply to the current repo state.
+-4. **Gap analysis** — what is missing relative to the current slice's acceptance
+-   criteria?
+-
+-Report: solution state, backlog state, current slice, key gaps. Then proceed
+-to the current slice via the dev-crew method.
+-
+-## Definition of done
+-
+-A slice is complete only when:
+-
+-- code exists and is wired into the application
+-- new tests cover new behavior (TDD per CLAUDE.md)
+-- build passes (per `.claude/loop.json` `stack.build`)
+-- relevant test suites pass (per `.claude/loop.json` `stack.test`)
+-- documentation is updated if architecture or interfaces changed
+-- a Crew `review-result` artifact is written (auto via commit bridge or
+-  manually via `/devcrew:write-review-result`)
+-- a Crew `final-synthesis` is written when the slice closes
+-
+-Use `EVIDENCE_RULES.md` to mark each acceptance criterion PASS / PARTIAL / FAIL /
+-BLOCKED with the right kind of evidence.
+diff --git a/docs/ai-loop/00-entry/SLICE_TEMPLATE.md b/docs/ai-loop/00-entry/SLICE_TEMPLATE.md
+deleted file mode 100644
+index 5569d2a8..00000000
+--- a/docs/ai-loop/00-entry/SLICE_TEMPLATE.md
++++ /dev/null
+@@ -1,59 +0,0 @@
+-# SLICE-{{NN}}: {{title}}
+-
+-- **Priority**: {{P0|P1|P2}}
+-- **Status**: Pending
+-- **Author**: {{author}}
+-- **Created**: {{ISO-date}}
+-
+-## Objective
+-
+-One sentence describing the user-visible outcome of this slice.
+-
+-## Why now
+-
+-What unblocks this slice. What this slice unblocks for future slices.
+-
+-## In scope
+-
+-- bullet list of what the slice will produce
+-- be specific about files, services, modules, endpoints
+-
+-## Out of scope
+-
+-- bullet list of things explicitly NOT in this slice
+-- punt these to a future slice referenced by name
+-
+-## Acceptance criteria
+-
+-List each criterion the slice must meet. Each must be testable with evidence
+-per `01-loop-control/EVIDENCE_RULES.md`.
+-
+-- [ ] AC-1: ...
+-- [ ] AC-2: ...
+-- [ ] AC-3: ...
+-
+-## Done When
+-
+-The slice is complete only when:
+-
+-- all acceptance criteria above are PASS with evidence
+-- build passes per `.claude/loop.json` `stack.build`
+-- tests pass per `.claude/loop.json` `stack.test`
+-- Crew `review-result` artifact written
+-- Crew `final-synthesis` artifact written
+-- entry appended to `../backlog/completed-slices.md`
+-- this slice file moved from `slices/pending/` to `slices/active/` then to
+-  `slices/completed/` as it progresses
+-
+-## Reviewer ladder
+-
+-- Reviewer A: ...
+-- Reviewer B: ...
+-
+-## Risks
+-
+-- ...
+-
+-## Open questions
+-
+-- ...
+diff --git a/docs/ai-loop/01-loop-control/DEV_CREW_METHOD.md b/docs/ai-loop/01-loop-control/DEV_CREW_METHOD.md
+deleted file mode 100644
+index 7ea1a7a4..00000000
+--- a/docs/ai-loop/01-loop-control/DEV_CREW_METHOD.md
++++ /dev/null
+@@ -1,123 +0,0 @@
+-# dev-crew method — Autonomous Implementation Loop
+-
+-The dev-crew method is a strict iterative engineering loop.
+-
+-Its goal is to prevent the agent from stopping after a shallow implementation.
+-
+-## Loop
+-
+-Each iteration must follow this sequence:
+-
+-```text
+-DISCOVER
+-→ PLAN
+-→ IMPLEMENT
+-→ BUILD
+-→ TEST
+-→ REVIEW
+-→ SCORE
+-→ FIX
+-→ REPEAT
+-```
+-
+-## Step 1 — Discover
+-
+-Inspect the current repository before coding.
+-
+-Required discovery:
+-
+-- solution files
+-- backend projects
+-- frontend/dashboard projects
+-- test projects
+-- database/migration strategy
+-- configuration strategy
+-- existing service registrations
+-- existing storage model
+-- existing search/RAG implementation
+-- existing dashboard routing/pages
+-- existing docs
+-- existing CI/CD scripts if present
+-
+-## Step 2 — Plan
+-
+-Produce a short implementation plan for the current slice.
+-
+-The plan must include:
+-
+-- objective
+-- files likely to change
+-- risks
+-- validation commands
+-- acceptance criteria impacted
+-
+-## Step 3 — Implement
+-
+-Implement the smallest valuable vertical slice.
+-
+-Rules:
+-
+-- no big-bang rewrite
+-- no deleting working features
+-- no fake completed stubs
+-- no hardcoded secrets
+-- no hardcoded tenant/project IDs
+-- no architecture bypasses
+-
+-## Step 4 — Build
+-
+-Run the relevant build command.
+-
+-Typical commands:
+-
+-```bash
+-dotnet build
+-dotnet test
+-npm run build
+-pnpm build
+-yarn build
+-```
+-
+-Use the repo’s actual commands if different.
+-
+-## Step 5 — Test
+-
+-Run existing tests and add new tests for new behavior.
+-
+-Do not skip tests unless impossible. If impossible, document why.
+-
+-## Step 6 — Review
+-
+-Use the review rubrics under `docs/ai-loop/05-review-rubrics/`.
+-
+-Review:
+-
+-- architecture
+-- security
+-- observability
+-- tenant isolation
+-- dashboard UX
+-- production readiness
+-- test coverage
+-
+-## Step 7 — Score
+-
+-Score the current implementation:
+-
+-```text
+-architecture quality: 0.0-1.0
+-reliability: 0.0-1.0
+-observability: 0.0-1.0
+-production readiness: 0.0-1.0
+-dashboard usability: 0.0-1.0
+-test confidence: 0.0-1.0
+-product completeness: 0.0-1.0
+-```
+-
+-## Step 8 — Fix
+-
+-Fix all criteria that are FAIL or PARTIAL when possible.
+-
+-## Step 9 — Repeat
+-
+-Repeat until stop conditions are satisfied.
+diff --git a/docs/ai-loop/01-loop-control/EVIDENCE_RULES.md b/docs/ai-loop/01-loop-control/EVIDENCE_RULES.md
+deleted file mode 100644
+index 14a27386..00000000
+--- a/docs/ai-loop/01-loop-control/EVIDENCE_RULES.md
++++ /dev/null
+@@ -1,71 +0,0 @@
+-# Evidence Rules
+-
+-A criterion can be marked PASS only with evidence.
+-
+-## Evidence types
+-
+-Valid evidence includes:
+-
+-- file paths changed
+-- new tests added
+-- build command executed
+-- test command executed
+-- API endpoint implemented
+-- dashboard page implemented
+-- migration added
+-- configuration added
+-- health check added
+-- documentation updated
+-
+-## Invalid evidence
+-
+-These are not enough:
+-
+-- “implemented conceptually”
+-- “should work”
+-- “designed for”
+-- “placeholder created”
+-- “TODO added”
+-- “not tested but simple”
+-- “mock exists only”
+-
+-## PASS
+-
+-Use PASS only when:
+-
+-- code exists
+-- it is wired into the application
+-- build passes
+-- tests pass or runtime is externally blocked
+-- documentation exists when needed
+-
+-## PARTIAL
+-
+-Use PARTIAL when:
+-
+-- some code exists but incomplete
+-- missing tests
+-- not wired into app
+-- missing dashboard
+-- missing docs
+-- runtime behavior uncertain
+-
+-## FAIL
+-
+-Use FAIL when:
+-
+-- not implemented
+-- broken
+-- skipped
+-- contradicts requirements
+-
+-## BLOCKED
+-
+-Use BLOCKED only when external dependency prevents validation.
+-
+-BLOCKED requires:
+-
+-- reason
+-- missing dependency
+-- exact command/config needed to unblock
+-- what was still implemented
+diff --git a/docs/ai-loop/01-loop-control/STOP_CONDITIONS.md b/docs/ai-loop/01-loop-control/STOP_CONDITIONS.md
+deleted file mode 100644
+index 62adf024..00000000
+--- a/docs/ai-loop/01-loop-control/STOP_CONDITIONS.md
++++ /dev/null
+@@ -1,69 +0,0 @@
+-# Stop Conditions
+-
+-The autonomous loop halts only when one of the triggers below fires. `loop.marathonMode` in `.claude/loop.json` (default `true` for new installs — "auto mode" in docs) controls whether the two soft triggers (iteration cap, crew `blocked` badge) are gating or advisory.
+-
+-| Trigger | auto mode (default) | legacy (marathonMode=false) |
+-|---|---|---|
+-| Backlog exhausted | halt | halt |
+-| Crew `escalated_to_human` | halt | halt |
+-| Warn-severity pattern alert | halt | halt |
+-| High-severity cost alert | halt | halt |
+-| Iteration cap (default 25) | advisory | halt |
+-| Crew soft `blocked` badge | advisory | halt |
+-
+-Auto mode never disables telemetry — `stop-check` still reports `iterationCount`, `iterationCap`, and `crewBlocked` in the `snapshot` block. Set `marathonMode: false` to restore bounded-iteration behavior.
+-
+-## Allowed stop condition A — complete
+-
+-ALL gate sets defined in `docs/ai-loop/02-acceptance-gates/` are PASS.
+-
+-Until the per-area gate files exist with > 3 testable criteria each, condition
+-A is unreachable and the loop stops only on condition B or on user
+-intervention. Author gate files for each product area as the implementation
+-matures:
+-
+-- `docs/ai-loop/02-acceptance-gates/MASTER_ACCEPTANCE_CRITERIA.md`
+-- `docs/ai-loop/02-acceptance-gates/SERVICE_ACCEPTANCE_CRITERIA.md` (if applicable)
+-- `docs/ai-loop/02-acceptance-gates/SECURITY_ACCEPTANCE_CRITERIA.md`
+-- `docs/ai-loop/02-acceptance-gates/OBSERVABILITY_ACCEPTANCE_CRITERIA.md`
+-- `docs/ai-loop/02-acceptance-gates/TESTING_ACCEPTANCE_CRITERIA.md`
+-
+-**Scoring thresholds** (apply once gate files exist):
+-
+-- Architecture quality ≥ 0.90
+-- Reliability ≥ 0.90
+-- Observability ≥ 0.90
+-- Production readiness ≥ 0.90
+-- Security ≥ 0.90
+-- Test confidence ≥ 0.80
+-
+-## Allowed stop condition B — externally blocked
+-
+-Remaining criteria are BLOCKED only by external dependencies the agent
+-cannot resolve on its own. Typical blockers:
+-
+-- missing cloud credentials or subscription access
+-- missing third-party API keys
+-- unavailable Docker runtime (for local orchestration)
+-- missing database / vector-store credentials
+-- missing infrastructure state backend access
+-
+-When BLOCKED, the agent must write:
+-
+-- which external dependency is missing
+-- what was implemented up to the block
+-- the exact command, secret, or configuration needed to unblock
+-- whether other slices can still proceed in parallel
+-
+-## Disallowed stop conditions
+-
+-The agent must **not** stop just because:
+-
+-- a slice "looks complete enough"
+-- the implementer "needs the user to confirm"
+-- a test is "too hard to write right now"
+-- a build warning was "probably already there"
+-- the next slice "is not clearly defined" (derive it per the
+-  Cross-Slice Continuation HARD RULE in `CLAUDE.md`)
+-
+-Stopping for any reason in the disallowed list is a methodology violation.
+diff --git a/docs/ai-loop/backlog/approved-slices.md b/docs/ai-loop/backlog/approved-slices.md
+deleted file mode 100644
+index 620566d1..00000000
+--- a/docs/ai-loop/backlog/approved-slices.md
++++ /dev/null
+@@ -1,117 +0,0 @@
+-# Approved Slices — Untitled product
+-
+-Slices listed here may be implemented. Pick the highest-priority non-completed slice each run.
+-
+-Rules:
+-- Every approved slice must have acceptance criteria mapping
+-- Every approved slice must have defined done conditions
+-- Slice is complete only when all "Done When" criteria are met with evidence (see `../01-loop-control/EVIDENCE_RULES.md`)
+-- Future slices must go through: `slices/pending/` → Reviewer A + B → here
+-
+-**State machine**: Pending → Reviewed → Approved → In Progress → Completed / Blocked
+-
+----
+-
+-## SLICE-03 — Fix agent-report filename (FEAT-002, P1)
+-
+-**Status:** COMPLETED — 2026-05-28. Spec + quality reviews PASS. Commit: 850b69f.
+-
+-**Goal:** `writeAgentReport` emits `<TS>-agent-report-<slug>.md` (was `<slug>-agent-report.md`).
+-
+-**Done When:**
+-- `writeAgentReport` output path basename matches `\d{8}T\d{6}Z-agent-report-.+\.md`
+-- `npm test` green
+-- `npm run lint` clean
+-
+-**Files:** `scripts/lib/slice-linker/agent-report-writer.mjs`, `tests/agent-report-writer.test.mjs`
+-
+----
+-
+-## SLICE-04 — Add identification headers to artifact bodies (FEAT-003, P1)
+-
+-**Status:** COMPLETED — 2026-05-28. Spec + quality reviews PASS. Commit: 5c02b2d.
+-
+-**Goal:** ADD phase→feature→slice identification line to grade-writer and crew-bridge
+-handoff/final-synthesis bodies (currently absent). agent-report-writer already correct.
+-
+-**Done When:**
+-- grade-writer, crew-bridge handoff, crew-bridge final-synthesis all emit identification
+-- `npm test` green
+-- `npm run lint` clean
+-
+-**Files:** `scripts/lib/grade-writer.mjs`, `scripts/lib/slice-linker/crew-bridge.mjs`,
+-`scripts/lib/slice-linker/agent-report-writer.mjs` (export renderIdentification only),
+-tests for changed writers.
+-
+----
+-
+-## SLICE-38 — Checkpoint commit primitive (FEAT-012, P2)
+-
+-**Status:** COMPLETED — 2026-06-04. All 6 ACs pass. Commit: 8d4c9dd.
+-
+-**Goal:** Add `checkpointCommit()` — a structured WIP git commit primitive that writes subject `wip(checkpoint): <sliceId> — <summary>` with optional body sections. No-op when tree is clean. Foundation for continuous auto-commit safety net (FEAT-012 SLICE-A).
+-
+-**Done When:**
+-- AC-1: `npm test` + `npm run lint` + typecheck + format-check + validators all pass
+-- AC-2: `checkpointCommit()` in `scripts/lib/checkpoint-commit.mjs`, returns `{ committed, sha?, reason? }`
+-- AC-3: clean tree → `{ committed: false, reason: "clean" }`, no commit made
+-- AC-4: subject truncated to 72 JS string code-units with `…`
+-- AC-5: empty body sections omitted
+-- AC-6: re-exported from `src/scripts/lib/slice-linker.mts`
+-
+-**Files:** `src/scripts/lib/checkpoint-commit.mts`, `scripts/lib/checkpoint-commit.mjs`, `src/tests/checkpoint-commit.test.mts`, `src/scripts/lib/slice-linker.mts`
+-
+----
+-
+-## SLICE-39 — Glob-scoped context rules (FEAT-007, P3)
+-
+-**Status:** COMPLETED — 2026-06-04. All 6 ACs pass. Commit: f11e7e9.
+-
+-**Goal:** Add `contextRules` array to `.claude/loop.json` config. Installer renders glob-to-docs mappings into `{{contextRulesList}}` token in MASTER_PROMPT, instructing the agent to read matching docs when a slice's `in_scope_globs` overlaps the rule patterns. Remote import (GitHub fetch) explicitly out of scope.
+-
+-**Done When:**
+-- AC-1: `npm test` + lint + typecheck + format-check + validators all pass
+-- AC-2: `contextRules` in `loop.json` → MASTER_PROMPT block contains glob-to-docs mapping
+-- AC-3: Absent/empty `contextRules` → no "Context rules" heading in MASTER_PROMPT
+-- AC-4: Rendered section contains `in_scope_globs` instruction prose
+-- AC-5: Existing `mandatoryDocs` behavior unchanged
+-- AC-6: Unit tests cover absent, empty, populated + instruction prose cases
+-
+-**Files:** `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`, `src/tests/loop-installer.test.mts`
+-
+----
+-
+-## SLICE-84 — Skill activation triggers (FEAT-134, P1)
+-
+-**Status:** COMPLETED — 2026-06-09. All 7 ACs pass. Commit: 21c1cf6.
+-
+-**Goal:** Add `trigger` field (`always_on` | `glob` | `manual`) to SKILL.md frontmatter. New `parseSkillFrontmatter` parser + async `buildSkillActivationBlock` renders conditional invocation instructions into MASTER_PROMPT via `{{skillActivationBlock}}` token. `always_on` (default) emits nothing — backward-compatible. `model_decision` deferred to SLICE-85.
+-
+-**Done When:**
+-- AC-1: `npm test` + lint + typecheck + format-check + validators all pass
+-- AC-2: `parseSkillFrontmatter` reads `trigger` (default `always_on`) and `globs` from SKILL.md string
+-- AC-3: No conditional skills → empty string, no blank `##` heading in MASTER_PROMPT
+-- AC-4: `trigger: "manual"` skill → instruction rendered stating explicit-request-only activation
+-- AC-5: `trigger: "glob"` skill → instruction rendered containing skill name + glob patterns
+-- AC-6: Unit tests cover absent trigger, `always_on`, `manual`, `glob`, `model_decision` (parsed but not rendered)
+-- AC-7: `buildTokens` includes `skillActivationBlock` key; template token renders empty when no conditional skills
+-
+-**Files:** `src/scripts/lib/skill-frontmatter.mts`, `src/scripts/lib/loop-installer-tokens.mts`, `src/scripts/lib/loop-installer.mts`, `templates/master-prompt.md`, `src/tests/skill-frontmatter.test.mts`, `src/tests/loop-installer-tokens.test.mts`
+-
+----
+-
+-## SLICE-85 — Verification skill evidence table gaps (FEAT-089, P2)
+-
+-**Status:** PENDING
+-
+-**Goal:** Add `trigger: "always_on"` to `skills/verification-before-completion/SKILL.md` frontmatter and two missing evidence rows (`typecheck` + `function-exists`) to the Claim→Evidence table. Closes FEAT-089 — the SKILL.md existed from SLICE-09 but predates the trigger field and was missing the two rows that address the SLICE-81 fabrication pattern.
+-
+-**Done When:**
+-- AC-1: SKILL.md frontmatter has `trigger: "always_on"`
+-- AC-2: Evidence table has `typecheck` row (claim: "type-checks" → `npm run typecheck` exit 0)
+-- AC-3: Evidence table has `function-exists` row (claim: "function/module added" → grep/file-read evidence)
+-- AC-4: Existing Iron Law + checklist blocks preserved verbatim
+-- AC-5: `npm test` green
+-- AC-6: `node ./scripts/validate-manifests.mjs` passes
+-
+-**Files:** `skills/verification-before-completion/SKILL.md`
+diff --git a/docs/ai-loop/backlog/completed-slices.md b/docs/ai-loop/backlog/completed-slices.md
+deleted file mode 100644
+index 99c35321..00000000
+--- a/docs/ai-loop/backlog/completed-slices.md
++++ /dev/null
+@@ -1,23 +0,0 @@
+-# Completed Slices — Untitled product
+-
+-Record of completed implementation slices. Append at the end of each slice as
+-part of the dev-crew close-out.
+-
+-## Format
+-
+-Each completed slice entry should include:
+-
+-- **SLICE-NN: Title** as the section heading
+-- **Completed**: ISO date
+-- **PR or commit**: link or SHA
+-- **Acceptance criteria**: list with PASS / PARTIAL / FAIL / BLOCKED status
+-  per criterion, with evidence pointer
+-- **Tests added**: count + paths
+-- **Docs updated**: list of files
+-- **Phase-gate artifact** (if this slice closed a phase): path to
+-  `.claude/artifacts/crew/validations/phase-<N>-gate-<date>.md`
+-- **Risks / follow-ups**: anything left for a future slice
+-
+----
+-
+-_No slices completed yet._
+diff --git a/docs/ai-loop/backlog/product-backlog.md b/docs/ai-loop/backlog/product-backlog.md
+deleted file mode 100644
+index 4d0e6ec5..00000000
+--- a/docs/ai-loop/backlog/product-backlog.md
++++ /dev/null
+@@ -1,15 +0,0 @@
+-# Product Backlog (legacy — superseded)
+-
+-This file is preserved as historical reference. The active product backlog
+-lives in **`docs/backlog/`** as one markdown file per feature
+-(`FEAT-NNN.md` in `pending/` → `triaged/` → `in-progress/` → `done/`).
+-
+-See `docs/backlog/README.md` for the schema.
+-
+-Cross-Slice Continuation HARD RULE in `CLAUDE.md` scans `docs/backlog/` for
+-the next unit of work; this file is no longer read by the loop.
+-
+-Migrate any unfinished entries from this file into per-feature files via
+-`/loop:backlog add` or the one-off
+-`scripts/migrate-product-backlog.mjs` migration script shipped with the
+-plugin.
+diff --git a/docs/ai-loop/slices/pending/.gitkeep b/docs/ai-loop/slices/pending/.gitkeep
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/docs/backlog/README.md b/docs/backlog/README.md
+deleted file mode 100644
+index 67b880b5..00000000
+--- a/docs/backlog/README.md
++++ /dev/null
+@@ -1,51 +0,0 @@
+-# Backlog
+-
+-Per-feature markdown files in a four-state directory machine:
+-
+-| Dir | Meaning |
+-|---|---|
+-| `pending/` | Just dropped. No priority / category / target_release yet. Triage will fill these. |
+-| `triaged/` | Triage complete. Priority + category + target_release assigned. Ready to be slotted into a slice. |
+-| `in-progress/` | A slice has been derived; engineering work is underway. |
+-| `done/` | Slice completed and shipped (or about to ship). |
+-
+-Each feature file follows the pattern `FEAT-NNN.md` (zero-padded id) with YAML
+-frontmatter and a markdown body. See `feature-template.md` for the canonical
+-shape.
+-
+-## Adding a feature
+-
+-Three ways:
+-
+-1. `/loop:backlog add "title"` — plugin creates a well-formed file in
+-   `pending/` with the next available `FEAT-NNN`.
+-2. Manually create `pending/FEAT-NNN.md` matching the template. Plugin picks it
+-   up on the next listing.
+-3. From an external producer (Telegram bot, web form, email parser, etc.) —
+-   any writer that drops a markdown file in `pending/` works.
+-
+-## State transitions (plugin commands)
+-
+-- `/loop:triage` — dispatches the PM agent to score all `pending/*` on
+-  5 dimensions (customer_impact, effort_estimate, strategic_alignment,
+-  technical_risk, dependency_depth), then moves entries to `triaged/`.
+-  PM-only since 2026-06-11 (regex fallback removed); on PM error / budget
+-  exceed / validation fail, the skill halts and surfaces to the operator.
+-- `/loop:backlog promote --id FEAT-NNN` — moves a triaged feature →
+-  `in-progress/` and creates a linked slice in `docs/ai-loop/slices/pending/`.
+-- When the slice closes, plugin moves the feature → `done/`.
+-
+-## Linkage
+-
+-- Each `FEAT-NNN.md` may have `derived_from: SPEC-NNN` in frontmatter, pointing
+-  back to the parent spec.
+-- Each `FEAT-NNN.md` has `slices: [SLICE-NN, ...]` listing the engineering
+-  slices implementing it.
+-- Release planner (`/loop:release plan`) filters by
+-  `target_release`.
+-
+-## Don't hand-edit during triage
+-
+-If you set priority/category/target_release manually before triage runs, the
+-heuristic respects your values. Once triage moves a file to `triaged/`,
+-edit frontmatter directly to revise.
+diff --git a/docs/backlog/done/.gitkeep b/docs/backlog/done/.gitkeep
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/docs/backlog/done/FEAT-001.md b/docs/backlog/done/FEAT-001.md
+deleted file mode 100644
+index 11d3f50f..00000000
+--- a/docs/backlog/done/FEAT-001.md
++++ /dev/null
+@@ -1,43 +0,0 @@
+----
+-id: FEAT-001
+-status: done
+-priority: P0
+-category: safety
+-target_release: v0.2.0
+-created: 2026-05-22
+-updated: 2026-05-22
+-completed: 2026-05-22
+-depends_on: []
+-slices: []
+-derived_from: null
+-autonomous_safe: true
+-phase: 3
+----
+-
+-# FEAT-001: Loop iteration cap + runaway halt
+-
+-## Description
+-
+-Add `loop_iteration_count` and `loop_max_iterations` to the
+-loop runtime so an unattended loop self-halts before it
+-burns unbounded tokens or destabilizes a repo.
+-
+-Default cap: 25 iterations (tunable via
+-`.claude/loop.json::loop.maxIterations`).
+-
+-When the cap is reached, the loop transitions to
+-`blocked` with reason `iteration_cap_reached` (depends on hero-crew
+-FEAT-006 landing first for the badge to exist; until then, use a local
+-sentinel and emit a clear final-synthesis).
+-
+-## Acceptance hints
+-
+-- `loop.maxIterations` honored from config.
+-- `loop_iteration_count` increments per loop cycle, persisted in
+-  workflow-state.
+-- Halt is graceful: writes final-synthesis explaining the cap was hit
+-  + the next-step recommendation for the human.
+-- Cost-advisor flagged spikes (cache-busted, opus-overuse) can bring
+-  the cap forward — see FEAT-003.
+-- Tests cover: cap honored, persistence across `phase-gate` calls,
+-  graceful synthesis on halt.
+diff --git a/docs/backlog/done/FEAT-002.md b/docs/backlog/done/FEAT-002.md
+deleted file mode 100644
+index 0bb442da..00000000
+--- a/docs/backlog/done/FEAT-002.md
++++ /dev/null
+@@ -1,33 +0,0 @@
+----
+-id: FEAT-002
+-status: done
+-priority: P1
+-category: workflow
+-target_release: v0.2.0
+-created: 2026-05-22
+-updated: 2026-05-22
+-completed: 2026-05-22
+-depends_on: []
+-slices: []
+-derived_from: hero-crew/FEAT-006
+-autonomous_safe: true
+-phase: 3
+----
+-
+-# FEAT-002: Mirror blocked + escalated_to_human badges in slice flow
+-
+-## Description
+-
+-Once hero-crew FEAT-006 lands (`blocked`, `escalated_to_human`
+-workflow badges in crew), surface them in loop:
+-
+-- `completeSlice` recognizes them on the slice's parent run and refuses
+-  to roll the parent feature to `done/` while either is set.
+-- `checkStopConditions` treats `escalated_to_human` as a hard-stop.
+-- `brief` includes the badges in the loop summary block.
+-
+-## Acceptance hints
+-
+-- Tests cover: blocked slice doesn't move feature; escalated_to_human
+-  stops the loop regardless of remaining backlog.
+-- No new badges introduced here — only consumption.
+diff --git a/docs/backlog/done/FEAT-003.md b/docs/backlog/done/FEAT-003.md
+deleted file mode 100644
+index cba43e1a..00000000
+--- a/docs/backlog/done/FEAT-003.md
++++ /dev/null
+@@ -1,36 +0,0 @@
+----
+-id: FEAT-003
+-status: done
+-priority: P1
+-category: safety
+-target_release: v0.2.0
+-created: 2026-05-22
+-updated: 2026-05-22
+-completed: 2026-05-22
+-depends_on: [FEAT-001]
+-slices: []
+-derived_from: null
+-autonomous_safe: true
+-phase: 3
+----
+-
+-# FEAT-003: Cost-advisor signal in stop-conditions
+-
+-## Description
+-
+-`checkStopConditions` already aggregates alert state. Extend it to
+-treat **high-severity** cost-advisor recommendations (cache-busted,
+-opus-overuse, exploration-heavy) as a soft stop signal when an
+-autonomous loop is running unattended.
+-
+-The loop halts gracefully, writes a final-synthesis explaining the cost
+-trajectory, and points the human at `cost-advise` output.
+-
+-## Acceptance hints
+-
+-- `checkStopConditions` returns `shouldStop: true` + reason
+-  `cost_alert_high` when ≥1 high-severity advice fires across the last
+-  3 slices.
+-- Pluggable threshold via `.claude/loop.json`.
+-- Tests cover: low-severity alone does NOT stop; high-severity stops;
+-  threshold override works.
+diff --git a/docs/backlog/done/FEAT-005.md b/docs/backlog/done/FEAT-005.md
+deleted file mode 100644
+index b9ca95e9..00000000
+--- a/docs/backlog/done/FEAT-005.md
++++ /dev/null
+@@ -1,32 +0,0 @@
+----
+-id: FEAT-005
+-status: done
+-priority: P2
+-category: telemetry
+-target_release: v0.2.0
+-created: 2026-05-22
+-updated: 2026-05-22
+-completed: 2026-05-22
+-depends_on: [FEAT-001]
+-slices: []
+-derived_from: null
+-autonomous_safe: true
+-phase: 3
+----
+-
+-# FEAT-005: snapshot-memory enrichment with iteration count
+-
+-## Description
+-
+-Once FEAT-001 lands, persist `loop_iteration_count`,
+-`loop_max_iterations`, and the in-window cost trajectory into
+-`writeMemorySnapshot` output so the snapshot serves as a real continuity
+-artifact for the next session.
+-
+-## Acceptance hints
+-
+-- Snapshot adds a "Loop telemetry" section with iteration count, cap,
+-  per-iteration avg cost, last cost-advisor verdict.
+-- Falls back gracefully when no loop run has happened yet (snapshot
+-  remains valid for non-loop usage).
+-- Test covers snapshot shape with and without loop history.
+diff --git a/docs/backlog/feature-template.md b/docs/backlog/feature-template.md
+deleted file mode 100644
+index b3e4eaa6..00000000
+--- a/docs/backlog/feature-template.md
++++ /dev/null
+@@ -1,34 +0,0 @@
+----
+-id: FEAT-NNN
+-status: pending
+-priority: null
+-category: null
+-target_release: null
+-created: YYYY-MM-DD
+-updated: YYYY-MM-DD
+-depends_on: []
+-slices: []
+-derived_from: null
+-# GitHub linkage (populated by /loop:publish; leave null until publish runs)
+-github_issue: null      # issue number, e.g. 42
+-github_milestone: null  # milestone number for the feature's phase
+-github_url: null        # full URL, e.g. https://github.com/owner/repo/issues/42
+----
+-# FEAT-NNN: Short feature title
+-
+-## Description
+-
+-What the feature is, from a user-visible perspective. PM-friendly language.
+-No implementation detail; that comes in the slice file.
+-
+-## Acceptance hints
+-
+-Rough bullet list of what "done" looks like. Reviewer A / Reviewer B will
+-sharpen these during slice derivation.
+-
+-- bullet 1
+-- bullet 2
+-
+-## Notes
+-
+-(running notes appended during triage / planning / implementation)
+diff --git a/docs/backlog/in-progress/.gitkeep b/docs/backlog/in-progress/.gitkeep
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/docs/backlog/pending/.gitkeep b/docs/backlog/pending/.gitkeep
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/docs/backlog/pending/FEAT-004.md b/docs/backlog/pending/FEAT-004.md
+deleted file mode 100644
+index b11facff..00000000
+--- a/docs/backlog/pending/FEAT-004.md
++++ /dev/null
+@@ -1,37 +0,0 @@
+----
+-id: FEAT-004
+-status: pending
+-priority: P3
+-category: integration
+-target_release: tbd
+-created: 2026-05-22
+-updated: 2026-05-22
+-depends_on: []
+-slices: []
+-derived_from: null
+-autonomous_safe: true
+-phase: 4
+----
+-
+-# FEAT-004: Optional cross-repo parentRunId (deferred)
+-
+-## Description
+-
+-Allow a final-synthesis in repo A to declare a child run in repo B.
+-Useful when an loop slice in one product repo triggers
+-a follow-on slice in a sibling product repo (e.g. backend slice
+-triggers a frontend slice).
+-
+-Schema:
+-
+-- `final-synthesis` frontmatter optionally carries `triggers_run`:
+-  `{ repo: <path-or-url>, hint: <one-line> }`.
+-- `brief-me` in the target repo surfaces incoming `triggers_run`
+-  references that have no matching local run yet.
+-
+-## Acceptance hints
+-
+-- DO NOT BUILD until a concrete cross-repo workflow is observed in
+-  practice — premature integration risk.
+-- If built: tests must not require both repos on disk simultaneously
+-  (use fixtures).
+diff --git a/docs/backlog/pending/FEAT-006.md b/docs/backlog/pending/FEAT-006.md
+deleted file mode 100644
+index 48fe7ec2..00000000
+--- a/docs/backlog/pending/FEAT-006.md
++++ /dev/null
+@@ -1,23 +0,0 @@
+----
+-id: FEAT-006
+-status: pending
+-priority: P1
+-category: bugfix
+-target_release: null
+-created: 2026-05-24
+-updated: 2026-05-24
+-depends_on: []
+-slices: []
+-derived_from: null
+----
+-# FEAT-006: Rich artifact sections for all crew CLI write-* commands
+-
+-crew CLI write-run-brief, write-handoff, write-review-result, write-validation-result all use renderField which defaults to dash when flag not passed. Three gaps remain after the agent-prompt fix (11284d8):
+-
+-1. write-run-brief template has Mode, Pace, Summary, Scope, Out Of Scope, Planned Files, Next Step — none passed by writeCrewRunBrief in crew-bridge.mjs (only --title, --goal, --owner). Crew CLI needs to accept these or callers need to pass them.
+-
+-2. No validation artifact emitted during slice lifecycle — dispatch instruction now names devcrew:verifier but the builder workflow doesnt always dispatch one. Needs enforcement in the build workflow or loop ceremony.
+-
+-3. ~~write-review-result still shows Evidence Checked / Files Reviewed / Test Adequacy as dash because the crew:inspector agent reads the AGENT prompt (agents/reviewer.md) which now has write-handoff flags but does NOT have write-review-result flags — only the loop reviewer-ladder prompt was fixed.~~ **Resolved** — hero-crew commit `3d025d0` ("fix(agents): full write-handoff + write-review-result flags in all agent prompts") added the full `write-review-result` example to `agents/reviewer.md`. No action needed here.
+-
+-Root: crew CLI artifact templates have many more sections than callers know about.
+\ No newline at end of file
+diff --git a/docs/backlog/pending/FEAT-007.md b/docs/backlog/pending/FEAT-007.md
+deleted file mode 100644
+index a6738876..00000000
+--- a/docs/backlog/pending/FEAT-007.md
++++ /dev/null
+@@ -1,45 +0,0 @@
+----
+-id: FEAT-007
+-status: pending
+-priority: P0
+-category: workflow
+-target_release: null
+-created: 2026-06-05
+-updated: 2026-06-05
+-depends_on: []
+-slices: []
+-derived_from: null
+----
+-# FEAT-007: Wire /devcrew:orchestrate-slice as default dispatchInstruction in slice-start
+-
+-## Description
+-
+-When the autonomous loop starts a slice via `/loop:slice start --id SLICE-NN`, it
+-currently emits a generic `dispatchInstruction` telling the lead to run `/devcrew:build`.
+-Now that hero-crew ships `/devcrew:orchestrate-slice` (FEAT-040, merged 2026-06-05), the
+-loop should emit that command instead — so the full tag-driven specialist ladder
+-(architect → uxdesigner → builder → reviewer → validator → copywriter → doc-writer)
+-fires automatically without manual lead assembly.
+-
+-## Acceptance hints
+-
+-- `slice-start` output `dispatchInstruction` reads `/devcrew:orchestrate-slice --id SLICE-NN`
+-  (or equivalent invocation) instead of `/devcrew:build`
+-- `MIN_CREW_VERSION` guard in dispatch logic bumped to the hero-crew release that
+-  ships `/devcrew:orchestrate-slice` (≥0.10.x; confirm exact tag at implementation time)
+-- If the installed crew version is below `MIN_CREW_VERSION`, fall back gracefully
+-  to the existing `/devcrew:build` dispatch with a warning in the instruction text
+-- Existing slice-start tests updated / extended to cover the new dispatch shape
+-- `dispatch.mts` (or equivalent dispatch wiring) updated to route through
+-  orchestrate-slice when version guard passes
+-
+-## Notes
+-
+-- Implementation reference: hero-crew `commands/orchestrate-slice.md` (commit `622d6be`,
+-  fixes in `6eda281`). Full step ladder and classification logic documented there.
+-- hero-crew version that ships the command: check `marketplace.json` at implementation
+-  time — the command landed on `main` but no release tag cut yet. Pin once tagged.
+-- Plan B from hero-crew session 2026-06-05: update `loop/commands/slice-start.md`,
+-  `loop/src/scripts/lib/slice-linker/dispatch.mts`, bump `MIN_CREW_VERSION`.
+-- `autonomous_safe` should be set during triage — dispatch wiring is mechanical but
+-  touches the loop's critical path; human review recommended.
+diff --git a/docs/backlog/product-backlog.md b/docs/backlog/product-backlog.md
+deleted file mode 100644
+index d82d1012..00000000
+--- a/docs/backlog/product-backlog.md
++++ /dev/null
+@@ -1,31 +0,0 @@
+-# loop — Product Backlog
+-
+-Companion to `hero-crew/docs/architecture.md`. Items here are the
+-runtime / safety / telemetry pieces the loop plugin owns.
+-
+-## Phase 3 — Loop safety + telemetry
+-
+-| ID       | Title                                              | Autonomous-safe |
+-|----------|----------------------------------------------------|-----------------|
+-| FEAT-001 | Loop iteration cap + runaway halt                  | yes             |
+-| FEAT-002 | Mirror blocked + escalated_to_human badges         | yes             |
+-| FEAT-003 | Cost-advisor signal in stop-conditions             | yes             |
+-| FEAT-005 | snapshot-memory enrichment with iteration count    | yes             |
+-
+-## Phase 4 — Defer
+-
+-| ID       | Title                                              | Trigger                                |
+-|----------|----------------------------------------------------|----------------------------------------|
+-| FEAT-004 | Optional cross-repo parentRunId                    | Concrete cross-repo workflow observed  |
+-
+-## Dependency on hero-crew
+-
+-- FEAT-002 (here) consumes hero-crew FEAT-006 (workflow badges).
+-- FEAT-001 (here) can ship independently.
+-
+-## Autonomous-safety guidance
+-
+-All Phase 3 items are mechanical extensions of existing primitives.
+-Each slice still passes through crew review + validation gates. A
+-runaway autonomous loop building these features will halt by design
+-once FEAT-001 lands (or before, via cost-advisor — FEAT-003).
+diff --git a/docs/backlog/triaged/.gitkeep b/docs/backlog/triaged/.gitkeep
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/skills/workflow/fix-pr/SKILL.md b/skills/workflow/fix-pr/SKILL.md
+index e52bb369..58986abc 100644
+--- a/skills/workflow/fix-pr/SKILL.md
++++ b/skills/workflow/fix-pr/SKILL.md
+@@ -103,7 +103,7 @@ gh pr edit --add-reviewer <username>  # re-request review
+ 
+ - CI gate (`.github/workflows/test.yml`) must be green before re-request. Eight gates: `validate-manifests`, `validate-skills`, `lint`, `format:check`, `typecheck`, `bun test --parallel`, `e2e-smoke`, `npm ci`.
+ - Pair with the [commit skill](../commit/SKILL.md) for per-fix commit messages.
+-- For substantial scope changes flagged by the reviewer, escalate via `/devcrew:request-approval` rather than absorbing silently.
++- For substantial scope changes flagged by the reviewer, escalate via `crew.mts mark-badge --badge help_request` rather than absorbing silently.
+ 
+ ## Done / Stop-when
+ 
+diff --git a/src/scripts/lib/intake.mts b/src/scripts/lib/intake.mts
+index a357712e..68bef6b8 100644
+--- a/src/scripts/lib/intake.mts
++++ b/src/scripts/lib/intake.mts
+@@ -143,9 +143,7 @@ export async function nextFeatId(repoPath: string): Promise<string> {
+     pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/pending"),
+     pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/triaged"),
+     pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/in-progress"),
+-    pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/done"),
+-    pathImpl.join(repoPath, "docs/backlog/pending"),
+-    pathImpl.join(repoPath, "docs/backlog/done")
++    pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/done")
+   ];
+   let maxN = 0;
+   for (const dir of dirs) {
+diff --git a/src/scripts/lib/slice-linker/slice-progress.mts b/src/scripts/lib/slice-linker/slice-progress.mts
+index 91ead695..ad7ad3a7 100644
+--- a/src/scripts/lib/slice-linker/slice-progress.mts
++++ b/src/scripts/lib/slice-linker/slice-progress.mts
+@@ -5,8 +5,9 @@
+ //
+ // Plan source priority:
+ //   1. docs/superpowers/plans/*.md — picked by mtime when multiple exist.
+-//   2. docs/ai-loop/backlog/approved-slices.md — fallback when no
+-//      superpowers plan is present.
++//   2. <backlogRoot>/approved-slices.md (resolveBacklogPath; live root is
++//      .claude/artifacts/loop/backlog/, not the deleted docs/ai-loop/ tree) —
++//      fallback when no superpowers plan is present.
+ //
+ // Task heading shapes tolerated: `## Task 1: SLICE_18 — Title`,
+ // `## Task 12: SLICE-18 - Title`. Mixed underscore/hyphen and em-dash /
+diff --git a/src/scripts/validate-agent-refs.mts b/src/scripts/validate-agent-refs.mts
+index 68c2c61e..7cc2d4f2 100644
+--- a/src/scripts/validate-agent-refs.mts
++++ b/src/scripts/validate-agent-refs.mts
+@@ -25,6 +25,14 @@
+ //     vendored, out of scope), commands/<name>.md, or a skills/**/<name>/
+ //     directory containing SKILL.md. `runner:3rdparty:<name>` resolves
+ //     against agents/3rdparty/<name>.md.
++//   - `devcrew:<name>` (SLICE-20, devcrew unification) is the emerging
++//     UNIFIED namespace post SLICE-14..17 merge — commands/, skills/, and
++//     agents/ at the repo root now house both the former runner: surface
++//     AND the former crew: surface in one tree. It resolves exactly like
++//     `runner:<name>` (same live-tree lookup, same 3rdparty carve-out).
++//     Kept as a distinct namespace token (not silently aliased to runner:
++//     in the regex) so a future rename of the resolution rule itself stays
++//     a one-line change here rather than a semantic guess at match time.
+ //   - `crew:<name>` (a SIBLING plugin's namespace — crew/dev-team lives in
+ //     a different repo, not available at CI runtime here) resolves against
+ //     a hardcoded allowlist curated from crew's current agents/ + commands/
+@@ -121,11 +129,8 @@ const CREW_KNOWN_TOKENS = new Set([
+   "parallel-review",
+   "prune-artifacts",
+   "release-files",
+-  "request-approval",
+-  "resolve-approval",
+   "review",
+   "ship",
+-  "show-approvals",
+   "show-claims",
+   "show-conflicts",
+   "validate",
+@@ -159,9 +164,12 @@ const SCAN_TARGETS = [
+   path.join("docs", "integrations")
+ ] as const;
+ 
+-const SCAN_FILES = ["CLAUDE.md"] as const;
++// crew/CLAUDE.md is the pre-Phase-5 legacy crew doc — still live-read
++// (references `/crew:build`, `/crew:install`, etc.) until the Phase-5
++// docs cutover, so it stays in scope here too (SLICE-20).
++const SCAN_FILES = ["CLAUDE.md", "crew/CLAUDE.md"] as const;
+ 
+-const TOKEN_RE = /\b(crew|runner):(3rdparty:)?([A-Za-z][\w-]*)\b/g;
++const TOKEN_RE = /\b(crew|runner|devcrew):(3rdparty:)?([A-Za-z][\w-]*)\b/g;
+ // Prefix/suffix signals are intentionally narrow and proximity-bounded (not
+ // whole-line) so that: (a) a fix's own explanatory aside on the same line
+ // ("... subagent — `crew:fullstack-dev` ... there is no agent literally
+@@ -262,7 +270,9 @@ function resolveToken(
+       : `no known crew:${name} agent or command — not in the curated crew allowlist ` +
+           "(see this file's header for the real dispatch ids; if crew shipped a new one, add it here)";
+   }
+-  // namespace === "runner"
++  // namespace === "runner" or "devcrew" — both resolve against this repo's
++  // own live tree (devcrew is the unified post-merge namespace; see this
++  // file's header "Namespace resolution" note).
+   if (is3rdparty) {
+     return known.runnerAgent3rdpartyNames.has(name)
+       ? null
+diff --git a/src/scripts/validate-manifests.mts b/src/scripts/validate-manifests.mts
+index 0915cf48..93e2f5ee 100644
+--- a/src/scripts/validate-manifests.mts
++++ b/src/scripts/validate-manifests.mts
+@@ -2,6 +2,17 @@
+ 
+ // Lightweight manifest sanity check. See hero-crew's validator for rationale.
+ // validateManifests() is exported so tests can call it without spawning.
++//
++// Scope note (SLICE-20, devcrew unification dedupe pass): this validator
++// operates only on repoRoot/.claude-plugin/plugin.json (+ package.json,
++// marketplace.json when present) — it has no crew/-tree awareness and none
++// is being added here. crew/.claude-plugin/plugin.json still exists as its
++// own separate manifest and is intentionally OUT of scope: per
++// unification-plan.md SS6, the marketplace/manifest merge is a Phase-5-only
++// change. crew/scripts/validate-manifests.mts (the crew-side copy) is
++// therefore NOT a dedupe-delete candidate yet either — it stays wired into
++// crew/scripts/validate-all.mts and crew/package.json's "validate:manifests"
++// script until Phase 5 actually merges the two manifests.
+ 
+ import fs from "node:fs/promises";
+ import { readdirSync, readFileSync, existsSync } from "node:fs";
+diff --git a/src/scripts/validate-org-refs.mts b/src/scripts/validate-org-refs.mts
+index f2e24698..10b0af48 100644
+--- a/src/scripts/validate-org-refs.mts
++++ b/src/scripts/validate-org-refs.mts
+@@ -36,7 +36,29 @@ const SCAN_TARGETS = [
+   "commands",
+   "skills",
+   "agents",
+-  ".claude-plugin"
++  ".claude-plugin",
++  // crew/ surfaces (devcrew unification, SLICE-20). commands/skills/agents
++  // were already fully merged out of crew/ and git-auto-pruned (SLICE-14/15/
++  // 16/17), so only the remaining authored crew-side surfaces are added here.
++  // crew/.claude-plugin/plugin.json (the marketplace/version surface) is
++  // deliberately NOT added to validate-manifests.mts's scope alongside this —
++  // that stays untouched until Phase 5 per unification-plan.md SS6, but this
++  // org-ref sweep is a different, lower-risk concern (banned-string sweep,
++  // not a version/marketplace contract) so it is safe to widen now.
++  "crew/docs",
++  "crew/scripts",
++  "crew/CLAUDE.md",
++  "crew/README.md",
++  "crew/.claude-plugin",
++  "crew/crew-architecture-analysis.md",
++  "crew/crew-optimization.md",
++  // crew/.claude/crew — authored methodology docs (constitution.md,
++  // deployment.md, plugin-marketplace.md, protocol.md,
++  // telemetry.example.yaml, workflow.md), confirmed present as of SLICE-20.
++  // The crew-side validator this widening supersedes scanned this target;
++  // not in the original disposition-plan list, but required for functional
++  // parity before deleting that copy (see DEDUPE TRIO precondition).
++  "crew/.claude/crew"
+ ];
+ 
+ // Within a scanned dir, skip these (vendored / generated / frozen).
+@@ -46,9 +68,20 @@ const SCAN_EXTENSIONS = new Set([".md", ".mts", ".mjs", ".json", ".ts", ".js", "
+ // Files that MUST name the banned token to do their job — this guard's own
+ // source (the literal it bans) and its test (fixtures + assertions). Named
+ // allowlist with rationale, mirroring validate-backlog-writes.mts's pattern.
++//
++// docs/parents/runner-plugin-{AGENTS,CLAUDE}.md are a frozen, byte-verified
++// snapshot of runner-plugin's own docs at import time (SLICE-04 subtree
++// import; verified byte-identical to origin via `git hash-object` per that
++// slice's review artifact). Same "frozen historical record, resolves via
++// GitHub's redirect" rationale as the CHANGELOG.md/.claude/artifacts
++// exemption described above, and already treated this way by the SLICE-08
++// branding scrub (`grep -vE ... docs/parents/ ...`) — this validator was
++// just missing the matching exemption.
+ const ALLOWLIST = new Set([
+   path.join("src", "scripts", "validate-org-refs.mts"),
+-  path.join("src", "tests", "marketplace-drift-guards.test.mts")
++  path.join("src", "tests", "marketplace-drift-guards.test.mts"),
++  path.join("docs", "parents", "runner-plugin-AGENTS.md"),
++  path.join("docs", "parents", "runner-plugin-CLAUDE.md")
+ ]);
+ 
+ export interface OrgRefFinding {
+diff --git a/templates/claude-md-hard-rules.md b/templates/claude-md-hard-rules.md
+index 98201874..4db0b2e6 100644
+--- a/templates/claude-md-hard-rules.md
++++ b/templates/claude-md-hard-rules.md
+@@ -8,7 +8,7 @@ This repo runs the dev-crew method autonomously. Full rules: `.claude/loop/rules
+ - **Run until PASS.** Do not stop for confirmation. Stop only when every acceptance criterion is PASS with evidence, or the work is externally blocked.
+ - **Auto mode (default — `loop.marathonMode: true`).** Loop walks the entire backlog. Stops only on backlog exhaustion, crew `escalated_to_human`, warn-severity pattern alerts, or high-severity cost alerts. Iteration cap and soft `blocked` badge are advisory in this mode — set `loop.marathonMode: false` in `.claude/loop.json` to restore the legacy five-condition gating.
+ - **Slice start ceremony.** Every slice MUST open via `/devcrew:slice start --id SLICE-NN` (rotates `currentRun` so cost auto-emit attributes the work correctly + refreshes `.claude/state/crew/slice-progress.md`).
+-- **Dispatch discipline.** The loop is an orchestrator, not an implementer. Hand the `slice start` return's `dispatchInstruction` to a crew builder subagent — `devcrew:fullstack-dev` (or the stack-specific `devcrew:backend-dev` / `devcrew:frontend-dev`), or generic `claude` (implementation only; there is no agent literally named `devcrew:builder`); after it returns, dispatch `devcrew:reviewer`, then `devcrew:validator` if behavior changed; pivot to `/devcrew:fix` on any needs_fix or fail. Inline implementation is reserved for trivial single-line fixups.
++- **Dispatch discipline.** The loop is an orchestrator, not an implementer. Hand the `slice start` return's `dispatchInstruction` to a crew builder subagent — `devcrew:fullstack-dev` (or the stack-specific `devcrew:backend-dev` / `devcrew:frontend-dev`), or generic `claude` (implementation only; there is no agent literally named `devcrew:builder`); after it returns, dispatch `devcrew:reviewer`, then `devcrew:verifier` if behavior changed; pivot to `/devcrew:fix` on any needs_fix or fail. Inline implementation is reserved for trivial single-line fixups.
+ - **Slice close ceremony.** Every slice MUST close via `/devcrew:slice complete --id SLICE-NN` (writes handoff + final-synthesis + cost-report + cost-advise) followed by `/devcrew:slice grade*`. Manual file moves + a `docs(slice): mark ... complete` commit are NOT a substitute.
+ - **Build entry points.** `/devcrew:build` is the interactive single-slice path (lighter — no run-brief required). Autonomous loop is the unattended multi-slice path (full ceremony). Never run both against the same branch — they race on workflow-state.
+ - **Auto-continue.** After the ceremony, scan `{{specsRoot}}/` → `{{backlogRoot}}/pending/` → `{{backlogRoot}}/triaged/` and promote the next item without asking.
+diff --git a/templates/loop-rules.md b/templates/loop-rules.md
+index 8849851a..8783141e 100644
+--- a/templates/loop-rules.md
++++ b/templates/loop-rules.md
+@@ -36,7 +36,7 @@ Open every slice through the canonical start command **before** beginning accept
+ 1. **Identify the next slice.** Check `docs/superpowers/plans/*.md` for unchecked `## Task N: SLICE_NN` headings first; else fall back to Cross-Slice Continuation.
+ 2. **`/devcrew:start <FEAT-NNN|SLICE-NN>`** — rotates `currentRun` via `crew write-run-brief`, seeds the goal from `## Objective`, rewrites `.claude/state/crew/slice-progress.md`.
+ 3. **Inspect the return.** Confirm `runBrief.artifactPath` is populated and `workflow-state.json.currentRun.title` equals `SLICE-NN: <title>`. Surface errors and stop — never proceed against a stale run.
+-4. **Dispatch a crew builder subagent.** The return includes a `dispatchInstruction` — hand it to `devcrew:fullstack-dev` (or the stack-specific `devcrew:backend-dev` / `devcrew:frontend-dev`), or generic `claude`. There is no agent literally named `devcrew:builder`. Builder owns implementation only; when it returns, dispatch `devcrew:reviewer`, then `devcrew:validator` if behavior changed. **Do not implement inline.**
++4. **Dispatch a crew builder subagent.** The return includes a `dispatchInstruction` — hand it to `devcrew:fullstack-dev` (or the stack-specific `devcrew:backend-dev` / `devcrew:frontend-dev`), or generic `claude`. There is no agent literally named `devcrew:builder`. Builder owns implementation only; when it returns, dispatch `devcrew:reviewer`, then `devcrew:verifier` if behavior changed. **Do not implement inline.**
+ 5. **Wait for builder, reviewer, and validator reports**, then run the Slice Close Ceremony.
+ 
+ Exception: manual invocations may pass `--no-dispatch`. The autonomous loop itself should never pass `--no-dispatch`.
+@@ -56,7 +56,7 @@ The autonomous loop is an **orchestrator**, not an implementer. Every code-beari
+ 
+ Pivot triggers — any of these means **stop, dispatch `/devcrew:fix`, then resume**: a review_result with `status: needs_fix`; a validation_result with `status: fail`; a build/test failure that needs a root-cause hunt.
+ 
+-**Never use `caveman:*` agents for slice work** — they lack the full artifact protocol. Always use a real crew builder, `devcrew:reviewer`, `devcrew:validator`, `devcrew:release-engineer` — never `devcrew:builder`, which is not an agent.
++**Never use `caveman:*` agents for slice work** — they lack the full artifact protocol. Always use a real crew builder, `devcrew:reviewer`, `devcrew:verifier`, `devcrew:release-engineer` — never `devcrew:builder`, which is not an agent.
+ 
+ **Dispatch budget:** maximum {{maxSubagentsPerSlice}} subagent dispatches per slice. Inline execution for single-file edits, test/lint/format fixes. When in doubt, prefer dispatch — a subagent run produces its own artifact trail.
+ 
+
+```
+
+## Files touched
+
+
+## Files read
+

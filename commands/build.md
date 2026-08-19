@@ -152,7 +152,7 @@ Workflow:
 8. If using `single-session`, do the work directly and do not spawn helpers.
 9. Use `assisted single-session` when a helper can reduce uncertainty or validate work without becoming a communicating team.
 10. Only use a `team run` when ownership can be split cleanly.
-11. If using a `team run`, claim files only when parallel work might collide, and open approvals only when scope or ownership boundaries must be crossed.
+11. If using a `team run`, claim files only when parallel work might collide.
 12. If using a `team run`, assign bounded work to:
    - builder for implementation — **resolve its model tier first** via "Model tier resolution" above, and pass it explicitly as the Agent-tool `model:` argument. Never let the builder dispatch silently inherit the session model.
    - reviewer for change review

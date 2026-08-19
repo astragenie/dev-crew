@@ -396,12 +396,6 @@ function usage(target: string | null = null) {
     "quickwin-lane":
       "  node scripts/crew.mjs quickwin-lane [spawn|status] --repo <path> [--date YYYY-MM-DD]",
     "claim-check": "  node scripts/crew.mjs claim-check --repo <path> [--owner <name>] <files...>",
-    "request-approval":
-      "  node scripts/crew.mjs request-approval --repo <path> --summary <text> [--kind <kind>] [--severity <level>] [--requester <name>] [--approver <name>] [--reason <text>]",
-    "show-approvals":
-      "  node scripts/crew.mjs show-approvals --repo <path> [--status open|resolved|all] [--approver <name>]",
-    "resolve-approval":
-      "  node scripts/crew.mjs resolve-approval --repo <path> --id <approval-id> --decision approved|rejected|canceled [--resolver <name>] [--note <text>]",
     "wake-up": "  node scripts/crew.mjs wake-up --repo <path>",
     "brief-me": "  node scripts/crew.mjs brief-me --repo <path>",
     "scope-estimate":
@@ -448,18 +442,8 @@ function usage(target: string | null = null) {
       "  node scripts/crew.mts agent-route [--role <r>] [--surface <s>] [--stack <s>] [--concern <c>] [--lens <l>] [--scope <s>] [--repo <path>]",
     "gepa-history":
       "  node scripts/crew.mts gepa-history <agent> [--source eval|captured|soak] [--limit N] [--repo <path>]",
-    "gepa-corpus-sync":
-      "  node scripts/crew.mts gepa-corpus-sync [--sibling <p1,p2,...>] [--json] [--repo <path>]",
-    "gepa-corpus-report":
-      "  node scripts/crew.mts gepa-corpus-report [<agent>] [--json] [--repo <path>]",
-    "gepa-corpus-optimize":
-      "  node scripts/crew.mts gepa-corpus-optimize <agent> --budget <usd> [--k <int>] [--repo <path>]",
     "gepa-eval":
       "  node scripts/crew.mts gepa-eval <agent> [--live] [--judge <name>] [--validate] [--split N/M] [--repo <path>]",
-    "gepa-mine-reviewer":
-      "  node scripts/crew.mts gepa-mine-reviewer [--weeks N] [--out <dir>] [--repo <path>]",
-    "gepa-optimize":
-      "  node scripts/crew.mts gepa-optimize <agent> --budget <usd> [--k <int>] [--artifact-only] [--repo <path>]",
     "gepa-resume":
       "  node scripts/crew.mts gepa-resume [<agent>] [--repo <path>]\n" +
       "    With <agent>: clears the no-winner streak counter for that agent.\n" +
@@ -840,41 +824,6 @@ const COMMANDS = {
       process.exit(1);
     }
     const result = await spawnChoreLane(repoPath, dateOpt);
-    if (!result.ok) {
-      console.error(result.error.message);
-      process.exit(1);
-    }
-    return result.value;
-  },
-
-  "request-approval": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const { requestApproval } = await import("./lib/approvals.mjs");
-    return requestApproval(repoPath, {
-      requester: flags.requester || "lead-session",
-      approver: flags.approver ?? undefined,
-      kind: flags.kind || "scope_change",
-      severity: flags.severity || "medium",
-      summary: flags.summary || positionals.join(" ") || "Approval requested",
-      reason: flags.reason || ""
-    });
-  },
-  "show-approvals": async ({ repoPath, flags }: CommandContext) => {
-    const { listApprovals } = await import("./lib/approvals.mjs");
-    return {
-      approvals: await listApprovals(repoPath, {
-        status: flags.status ?? undefined,
-        approver: flags.approver
-      })
-    };
-  },
-  "resolve-approval": async ({ repoPath, flags }: CommandContext) => {
-    const { resolveApproval } = await import("./lib/approvals.mjs");
-    const result = await resolveApproval(repoPath, {
-      id: flags.id ?? undefined,
-      decision: flags.decision ?? undefined,
-      resolver: flags.resolver || "lead-session",
-      note: flags.note || ""
-    });
     if (!result.ok) {
       console.error(result.error.message);
       process.exit(1);
@@ -1411,49 +1360,6 @@ const COMMANDS = {
     return result.stdout.trim();
   },
 
-  "gepa-corpus-sync": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const { runCorpusSyncCmd } = await import("./lib/gepa/corpus-sync.mjs");
-    const rawArgs: string[] = [...positionals];
-    // --sibling takes a comma-separated list of repo roots (the single-value
-    // flag parser keeps only the last token, so siblings ride one flag).
-    if (typeof flags.sibling === "string" && flags.sibling) {
-      for (const s of flags.sibling
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean)) {
-        rawArgs.push("--sibling", s);
-      }
-    }
-    if (flags.json === true) rawArgs.push("--json");
-    const result = await runCorpusSyncCmd(repoPath, rawArgs);
-    // Return-only: main console.log's the return value, so writing stdout here
-    // too would double-print (breaks `--json | jq`).
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.exitCode !== 0) process.exit(result.exitCode);
-    return result.stdout.trimEnd();
-  },
-
-  "gepa-corpus-report": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const { runCorpusReportCmd } = await import("./lib/gepa/corpus-report.mjs");
-    const rawArgs: string[] = [...positionals];
-    if (flags.json === true) rawArgs.push("--json");
-    const result = await runCorpusReportCmd(repoPath, rawArgs);
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.exitCode !== 0) process.exit(result.exitCode);
-    return result.stdout.trimEnd();
-  },
-
-  "gepa-corpus-optimize": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const { runCorpusOptimizeCmd } = await import("./lib/gepa/corpus-optimize.mjs");
-    const rawArgs: string[] = [...positionals];
-    if (typeof flags.budget === "string" && flags.budget) rawArgs.push("--budget", flags.budget);
-    if (typeof flags.gepaK === "string" && flags.gepaK) rawArgs.push("--k", flags.gepaK);
-    const result = await runCorpusOptimizeCmd(repoPath, rawArgs);
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.exitCode !== 0) process.exit(result.exitCode);
-    return result.stdout.trimEnd();
-  },
-
   "gepa-eval": async ({ repoPath, flags, positionals }: CommandContext) => {
     const { runGepaEvalCmd } = await import("./lib/gepa/eval.mjs");
     const rawArgs: string[] = [...positionals];
@@ -1462,33 +1368,6 @@ const COMMANDS = {
     if (typeof flags.judge === "string" && flags.judge) rawArgs.push("--judge", flags.judge);
     if (typeof flags.split === "string" && flags.split) rawArgs.push("--split", flags.split);
     const result = await runGepaEvalCmd(repoPath, rawArgs);
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.exitCode !== 0) process.exit(result.exitCode);
-    return result.stdout.trim();
-  },
-
-  "gepa-mine-reviewer": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const { runMineReviewerBugCorpus } = await import("./lib/gepa/mine-reviewer-bug-corpus.mjs");
-    // Reconstruct raw-args for the mining module's own parser.
-    const rawArgs: string[] = [...positionals];
-    if (typeof flags.weeks === "string" && flags.weeks) rawArgs.push("--weeks", flags.weeks);
-    if (typeof flags.out === "string" && flags.out) rawArgs.push("--out", flags.out);
-    const result = await runMineReviewerBugCorpus(repoPath, rawArgs);
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.exitCode !== 0) process.exit(result.exitCode);
-    return result.stdout.trim();
-  },
-
-  "gepa-optimize": async ({ repoPath, flags, positionals }: CommandContext) => {
-    const { runGepaOptimizeCmd } = await import("./lib/gepa/gepa-optimize-cmd.mjs");
-    const rawArgs: string[] = [...positionals];
-    if (typeof flags.budget === "string" && flags.budget) rawArgs.push("--budget", flags.budget);
-    if (typeof flags.gepaK === "string" && flags.gepaK) rawArgs.push("--k", flags.gepaK);
-    if (typeof flags.split === "string" && flags.split) rawArgs.push("--split", flags.split);
-    if (flags.artifactOnly === true) rawArgs.push("--artifact-only");
-    const result = await runGepaOptimizeCmd(repoPath, rawArgs);
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);
     if (result.exitCode !== 0) process.exit(result.exitCode);

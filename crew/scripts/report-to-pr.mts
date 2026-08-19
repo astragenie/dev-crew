@@ -31,7 +31,7 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { postReportToPr, type ReportStatus } from "./lib/report-to-pr.mjs";
-import { fireGuarded } from "./lib/gepa/guarded-fire.mjs";
+import { fireGuarded } from "./lib/guarded-fire.mjs";
 
 const VALID_STATUSES: readonly ReportStatus[] = ["DONE", "BLOCKED", "HELP", "IN-PROGRESS"];
 

@@ -22,7 +22,6 @@ Workflow:
 4. If they do not match, stop and treat the wake-up brief as invalid for this run.
 5. Only if they match, summarize:
    - latest run memory
-   - open approvals
    - active claims
    - anything that looks stale, blocked, or currently active
 6. Use that to decide whether work should stay single-session, become assisted single-session, or become a team run.

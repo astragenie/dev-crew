@@ -143,9 +143,7 @@ export async function nextFeatId(repoPath: string): Promise<string> {
     pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/pending"),
     pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/triaged"),
     pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/in-progress"),
-    pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/done"),
-    pathImpl.join(repoPath, "docs/backlog/pending"),
-    pathImpl.join(repoPath, "docs/backlog/done")
+    pathImpl.join(repoPath, ".claude/artifacts/loop/backlog/done")
   ];
   let maxN = 0;
   for (const dir of dirs) {

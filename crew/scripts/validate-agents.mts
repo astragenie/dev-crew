@@ -19,18 +19,12 @@ import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PEER_DISPATCH_ALLOWLIST } from "./lib/dispatch/peer-dispatch-allowlist.mjs";
-import { stripGepafrontmatter } from "./lib/gepa/champion-provenance-writer.mjs";
 
 const AGENTS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "agents");
 const MAX_LINES = 350;
 
 function parseFrontmatter(text: string): Record<string, string> | null {
-  // FEAT-193 AC-10: champion-provenance-writer prepends a leading `gepa:`
-  // frontmatter block above the agent's own `name:`/`description:` block. The
-  // field-read must skip that block or it reads {gepa:…} (no name) and fails a
-  // legitimately-promoted agent. stripGepafrontmatter is a no-op when absent.
-  const body = stripGepafrontmatter(text);
-  const match = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match || match[1] === undefined) return null;
   const fm: Record<string, string> = {};
   for (const line of match[1].split(/\r?\n/)) {

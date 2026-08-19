@@ -10,8 +10,7 @@ import { ok, err } from "../result.mjs";
 import type { Result } from "../result.mjs";
 import type { ArtifactFields, CostBreakdown, CostOutcome, DispatchBreakdown } from "./types.mjs";
 import { renderDispatchBreakdownSection } from "../dispatch-timing-reader.mjs";
-import { fireGuarded } from "../gepa/guarded-fire.mjs";
-import type { captureTee as CaptureTeeFn } from "../gepa/capture-tee.mjs";
+import { fireGuarded } from "../guarded-fire.mjs";
 
 export type { ArtifactFields, CostBreakdown, CostOutcome } from "./types.mjs";
 
@@ -799,10 +798,6 @@ function renderArtifactBody(
 // omitted (every production call site), the default dynamic-import loader
 // runs — byte-identical to pre-seam behavior.
 export interface WriteArtifactTestOverrides {
-  /** Overrides the dynamic-import loader fireCaptureTeeSilent uses to reach
-   * captureTee — lets tests inject a slow/fake module instead of racing a
-   * real (possibly cold) @astragenie/gepa-core parse. */
-  __captureTeeLoader?: () => Promise<{ captureTee: typeof CaptureTeeFn }>;
   /** Overrides the dynamic-import loader fireMemoriesUsedCreditSilent uses
    * to reach creditMemoriesUsed — lets tests inject a spy instead of
    * resolving a real provider. */
@@ -814,25 +809,7 @@ export interface WriteArtifactTestOverrides {
   __guardTimeoutMs?: number;
 }
 
-const defaultCaptureTeeLoader = () => import("../gepa/capture-tee.mjs");
 const defaultCreditMemoriesUsedLoader = () => import("../memory/handoff-credit.mjs");
-
-// Fire-and-forget GEPA capture tee. Guarded (Wave 1.5 / issue #360): races
-// the dynamic import + write against a bounded ceiling so a cold
-// @astragenie/gepa-core parse can never hang this call open indefinitely.
-// Never propagates errors.
-async function fireCaptureTeeSilent(
-  repoPath: string,
-  artifact: ArtifactRecord,
-  fields: ArtifactFields,
-  overrides: WriteArtifactTestOverrides = {}
-): Promise<void> {
-  await fireGuarded(async () => {
-    const loader = overrides.__captureTeeLoader ?? defaultCaptureTeeLoader;
-    const { captureTee } = await loader();
-    await captureTee(repoPath, artifact, fields);
-  }, overrides.__guardTimeoutMs);
-}
 
 // Test-only bookkeeping (Wave 1.5 / issue #360): production code never
 // awaits writeArtifact's fire-and-forget captures (see writeArtifact below)
@@ -869,8 +846,8 @@ export async function __drainPendingCaptures(): Promise<void> {
 // FEAT-188 S1a AC-2: auto-capture a `failure`-kind learnings entry whenever
 // a review-result write carries the "rejected" verdict, or a
 // validation-result write carries the "fail" verdict. Fire-and-forget,
-// mirrors fireCaptureTeeSilent above — never blocks or fails the write this
-// hooks onto.
+// mirrors fireFailureCaptureSilent's own no-throw contract — never blocks or
+// fails the write this hooks onto.
 function isFailingVerdict(kind: string, fields: ArtifactFields): boolean {
   if (kind === "review-result") return fields.verdict === "rejected";
   if (kind === "validation-result") return fields.verdict === "fail";
@@ -897,29 +874,9 @@ async function fireFailureCaptureSilent(
   } catch {
     // never propagate
   }
-  // FEAT-193 S1: dual-write — also append a failing Trial to the agent's GEPA
-  // trial store, alongside the learnings.jsonl append above. Two parallel
-  // providers (operator decision): lessons → learnings.jsonl, failing trials
-  // → the GEPA reflection corpus.
-  //
-  // Goes through captureFailureTrialGuarded (timeout-raced, ~1.5s ceiling),
-  // NOT captureFailureTrial directly: @astragenie/gepa-core's installed
-  // package resolves to raw .ts source, so the first dynamic import that
-  // touches it in a process can take multiple seconds cold — long enough to
-  // blow this CLI command's expected latency (regression caught + fixed
-  // here; see capture-failure-trial-guard.ts's header comment for the full
-  // root cause).
-  try {
-    const { captureFailureTrialGuarded } = await import("../gepa/capture-failure-trial-guard.mjs");
-    await captureFailureTrialGuarded(repoPath, {
-      agent: agent ?? "unknown",
-      phase: kind === "review-result" ? "review" : "validate",
-      rationale,
-      input: { slice: fields.slice ?? null, feature: fields.feature ?? null, kind }
-    });
-  } catch {
-    // never propagate
-  }
+  // FEAT-193 S1's dual-write into the GEPA trial store (alongside the
+  // learnings.jsonl append above) was removed with the GEPA optimize/eval
+  // pipeline (SLICE-22) — learnings.jsonl is now the sole provider.
 }
 
 // Dispatch-memory-credit-loop, "credit on receipt" half (runner-plugin
@@ -928,7 +885,7 @@ async function fireFailureCaptureSilent(
 // types (docs/contracts/agent-profile-feedback-v1.md's sibling contract).
 // When the handoff carries the OPTIONAL `memoriesUsed` field, credit those
 // ids via the resolved provider — fire-and-forget, guarded, mirrors
-// fireCaptureTeeSilent/fireFailureCaptureSilent above. Absent/empty field,
+// fireFailureCaptureSilent's no-throw contract above. Absent/empty field,
 // `memory.feedback.creditLoop.enabled: false` (default), or any daemon error all
 // resolve to a silent no-op; never blocks or delays this write's return.
 async function fireMemoriesUsedCreditSilent(
@@ -976,10 +933,9 @@ export async function writeArtifact(
       await registerWorkflowArtifact(repoPath, artifact, fields);
     }
     // Wave 1.5 (issue #360): detached, not inline-awaited. Both captures are
-    // best-effort derived duplicates (astramem / the GEPA trial corpus
-    // remain source of truth) — a slow/cold capture must never delay this
-    // write's return. See fireCaptureTeeSilent + guarded-fire.ts headers.
-    trackDetached(fireCaptureTeeSilent(repoPath, artifact, fields, overrides));
+    // best-effort derived duplicates (astramem remains source of truth) —
+    // a slow/cold capture must never delay this write's return. See
+    // guarded-fire.ts's header.
     trackDetached(fireFailureCaptureSilent(repoPath, kind, fields));
     trackDetached(fireMemoriesUsedCreditSilent(repoPath, kind, fields, overrides));
 

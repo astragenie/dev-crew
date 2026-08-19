@@ -458,21 +458,6 @@ test("AC-6: releaseFiles returns err() when repo path escapes repo boundary", as
   expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
 });
 
-test("AC-6: resolveApproval returns err() for unknown approval id", async () => {
-  const { resolveApproval } = await import(
-    pathToFileURL(path.join(repoRoot, "scripts", "lib", "approvals.mts")).href
-  );
-  const repoPath = await makeTempDir("crew-ac6-resolveapproval-err-");
-  const result = await resolveApproval(repoPath, {
-    id: "apr_nonexistent",
-    decision: "approved",
-    resolver: "test"
-  });
-  expect(result.ok, "expected err() for unknown approval id").toBe(false);
-  expect(result.error instanceof Error, "error should be an Error instance").toBeTruthy();
-  expect(result.error.message).toMatch(/unknown approval id/i);
-});
-
 test("AC-6: markWorkflowBadge returns err() when badge option is missing", async () => {
   const { markWorkflowBadge } = await import(
     pathToFileURL(path.join(repoRoot, "scripts", "lib", "workflow-state.mts")).href

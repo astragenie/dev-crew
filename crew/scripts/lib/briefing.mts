@@ -231,8 +231,7 @@ export async function buildBriefingReport(repoPath: string): Promise<Record<stri
       },
       inProgress: {
         workflow: wakeUpBrief.workflow,
-        activeClaims: wakeUpBrief.claims,
-        openApprovals: wakeUpBrief.openApprovals
+        activeClaims: wakeUpBrief.claims
       },
       blockedOrMissing,
       importantReminders: reminders,
