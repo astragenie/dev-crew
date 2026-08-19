@@ -180,7 +180,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: self-hosted
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -202,8 +202,15 @@ jobs:
           run_suite() {
             local log_file
             log_file="$(mktemp)"
-            timeout --signal=KILL 480 bun test src/tests/ \
-              --parallel --timeout 60000 --no-orphans \
+            # SERIAL on CI (no --parallel): same bun#5090-class scheduler
+            # starvation as crew-tests — roaming exact-60000ms hangs
+            # (guard-feat-dispatch on run cb67f6dd, others before) plus
+            # "EEXIST: file already exists, epoll_ctl" storms, on the Linux
+            # self-hosted runner only, each hung test green solo. The retry
+            # wrapper re-hit the same starvation on retry, so retrying does
+            # not compensate. Local dev keeps `bun run test` (--parallel).
+            timeout --signal=KILL 720 bun test src/tests/ \
+              --timeout 60000 --no-orphans \
               --path-ignore-patterns="**/auto-merge.test.mts" \
               --path-ignore-patterns="**/synergy.test.mts" \
               --path-ignore-patterns="**/integration.test.mts" \
