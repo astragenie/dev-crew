@@ -20,5 +20,5 @@ _(no decisions captured)_
 - Next slice selection follows Cross-Slice Continuation HARD RULE
 - Researcher planning next slice should read this synthesis + recent grades for lessons-feed-forward
 ## References
-- Grade missing — synthesis is incomplete
-- Slice handoff: `.claude/artifacts/crew/handoffs/<timestamp>-slice-37-complete.md`
+- Grade: 225000.816 average (grades/, slice 37)
+- Slice handoff: `.claude/artifacts/crew/handoffs/feat020-slice37-complete.md`

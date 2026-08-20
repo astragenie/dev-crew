@@ -26,4 +26,4 @@ _(no decisions captured)_
 - Researcher planning next slice should read this synthesis + recent grades for lessons-feed-forward
 ## References
 - Grade file: `.claude/artifacts/loop/grades/SLICE-13-grade.md`
-- Slice handoff: `.claude/artifacts/crew/handoffs/<timestamp>-slice-13-complete.md`
+- Slice handoff: `.claude/artifacts/crew/handoffs/feat003-slice13-complete.md`

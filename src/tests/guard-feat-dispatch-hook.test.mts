@@ -149,7 +149,10 @@ test("guard-feat-dispatch: old loop:architect hard-fails as of v1.1.0, names dev
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /^BLOCKED/);
-  assert.match(result.stderr, /Legacy token 'loop:architect' is retired as of devcrew v1\.1\.0 — use devcrew:architect\./);
+  assert.match(
+    result.stderr,
+    /Legacy token 'loop:architect' is retired as of devcrew v1\.1\.0 — use devcrew:architect\./
+  );
 });
 
 test("guard-feat-dispatch: devcrew:dev-lite and devcrew:investigator pass (newly added ceremony participants)", async () => {
@@ -202,7 +205,10 @@ test("guard-feat-dispatch: retired crew:reviewer-validator and crew:validator ha
   });
   assert.equal(rvResult.status, 2);
   assert.match(rvResult.stderr, /^BLOCKED/);
-  assert.match(rvResult.stderr, /Legacy token 'crew:reviewer-validator' is retired as of devcrew v1\.1\.0/);
+  assert.match(
+    rvResult.stderr,
+    /Legacy token 'crew:reviewer-validator' is retired as of devcrew v1\.1\.0/
+  );
   assert.match(rvResult.stderr, /devcrew:verifier/);
 
   const repoValidator = await tmpRepo("gfd-validator-");
@@ -212,7 +218,10 @@ test("guard-feat-dispatch: retired crew:reviewer-validator and crew:validator ha
   });
   assert.equal(validatorResult.status, 2);
   assert.match(validatorResult.stderr, /^BLOCKED/);
-  assert.match(validatorResult.stderr, /Legacy token 'crew:validator' is retired as of devcrew v1\.1\.0 — use devcrew:verifier\./);
+  assert.match(
+    validatorResult.stderr,
+    /Legacy token 'crew:validator' is retired as of devcrew v1\.1\.0 — use devcrew:verifier\./
+  );
 });
 
 test("guard-feat-dispatch: retired crew:reviewer, crew:deployer, crew:copywriter, crew:builder-be/-fe hard-fail with successor guidance", async () => {
@@ -230,7 +239,10 @@ test("guard-feat-dispatch: retired crew:reviewer, crew:deployer, crew:copywriter
       tool_input: { subagent_type: token, prompt: "implement FEAT-999" }
     });
     assert.equal(result.status, 2, `${token} should hard-fail`);
-    assert.match(result.stderr, new RegExp(`Legacy token '${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}' is retired`));
+    assert.match(
+      result.stderr,
+      new RegExp(`Legacy token '${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}' is retired`)
+    );
     assert.match(result.stderr, successorPattern, `${token} message should name its successor`);
   }
 });
@@ -250,7 +262,9 @@ test("guard-feat-dispatch: retired loop:document-writer, loop:pm, loop:researche
     assert.equal(result.status, 2, `${token} should hard-fail`);
     assert.match(
       result.stderr,
-      new RegExp(`Legacy token '${token}' is retired as of devcrew v1\\.1\\.0 — use ${successor}\\.`)
+      new RegExp(
+        `Legacy token '${token}' is retired as of devcrew v1\\.1\\.0 — use ${successor}\\.`
+      )
     );
   }
 });
@@ -277,10 +291,16 @@ test("guard-feat-dispatch: every devcrew:* successor named in legacySuccessors g
   // entry naming an unreachable devcrew:* token fails this test red.
   const source = await fs.readFile(hookPath, "utf8");
   const objMatch = source.match(/const legacySuccessors = \{([\s\S]*?)\n\};/);
-  assert.ok(objMatch, "legacySuccessors object literal not found in hook source — did it get renamed?");
+  assert.ok(
+    objMatch,
+    "legacySuccessors object literal not found in hook source — did it get renamed?"
+  );
   const body = objMatch![1];
   const successorTokens = [...new Set(body.match(/devcrew:[a-z][a-z-]*/g) ?? [])];
-  assert.ok(successorTokens.length > 0, "expected at least one devcrew:* successor token in legacySuccessors guidance");
+  assert.ok(
+    successorTokens.length > 0,
+    "expected at least one devcrew:* successor token in legacySuccessors guidance"
+  );
 
   for (const token of successorTokens) {
     const repo = await tmpRepo("gfd-successor-reachable-");
