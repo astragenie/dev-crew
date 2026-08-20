@@ -1,13 +1,13 @@
 ---
 id: FEAT-017
-status: triaged
+status: done
 priority: P2
 category: feature
 target_release: null
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-20
 depends_on: []
-slices: []
+slices: [SLICE-45]
 derived_from: null
 pm_customer_impact: 0.4
 pm_effort_estimate: 0.2
@@ -22,6 +22,9 @@ triage_notes: "Trivial code change but genuinely blocked on an external, time-ba
 tags: ["stack:typescript", "area:dispatch-routing", "concern:deprecation-cutover"]
 needs_contract: false
 needs_ux: false
+started_at: 2026-08-20
+slices_complete: [SLICE-45]
+completed_at: 2026-08-20
 ---
 ## Description
 

@@ -1,20 +1,20 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-08-19T22:40:39.522Z",
+  "updatedAt": "2026-08-20T10:34:42.617Z",
   "currentRun": {
-    "title": "FEAT021 SLICE44: Implement FEAT-021",
-    "goal": "Vue skill gap: dotnet-typescript-vue preset's fe block lost its only Vue-framework skill when dead id vue-engineering was deleted (SLICE-35 AC-3 preset repair — no successor skill exists in the catalog). Decide: author a real vue-engineering skill under skills/domain/ui/ (mirroring react-engineering's shape) OR deprecate the dotnet-typescript-vue preset if Vue is no longer a supported stack. Evidence: src/tests/preset-skill-ids.test.mts guards presets against dead ids; the preset currently ships",
+    "title": "FEAT017 SLICE45: Implement FEAT-017",
+    "goal": "Empty the legacy dispatch allowlist in guard-feat-dispatch: the allowlist of legacy /crew: and /runner: dispatch tokens was kept functional through the cutover; one release after devcrew 1.0.0 goes live, empty it so legacy tokens hard-fail, and update its tests accordingly.",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-08-19T22:18:21.184Z",
-    "updatedAt": "2026-08-19T22:40:39.522Z",
+    "startedAt": "2026-08-20T10:18:56.797Z",
+    "updatedAt": "2026-08-20T10:34:42.617Z",
     "next": "Begin implementation",
     "gates": {
       "review": null,
       "validation": {
         "status": "skipped",
-        "updatedAt": "2026-08-19T22:40:39.522Z",
-        "note": "reviewer piped identical edge receipts through both validator runtimes (exact parity 4/4), fail-soft proven on corrupt/missing/no-receipt inputs, lane-table upsert verified live; artifact 20260819T223854Z approved"
+        "updatedAt": "2026-08-20T10:34:42.617Z",
+        "note": "reviewer live-fired the hook both rounds: 4 legacy payloads blocked with successor text, all recommended successors proven reachable via the systemic test; artifacts needs_fix->approved"
       },
       "deployment": {
         "dev": null,
@@ -26,7 +26,7 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T221821Z-run-brief-feat021-slice44-implement-feat-021.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260820T101856Z-run-brief-feat017-slice45-implement-feat-017.md",
       "handoffs": [],
       "reviewResult": null,
       "validationPlan": null,
@@ -39,6 +39,44 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT021 SLICE44: Implement FEAT-021",
+      "goal": "Vue skill gap: dotnet-typescript-vue preset's fe block lost its only Vue-framework skill when dead id vue-engineering was deleted (SLICE-35 AC-3 preset repair — no successor skill exists in the catalog). Decide: author a real vue-engineering skill under skills/domain/ui/ (mirroring react-engineering's shape) OR deprecate the dotnet-typescript-vue preset if Vue is no longer a supported stack. Evidence: src/tests/preset-skill-ids.test.mts guards presets against dead ids; the preset currently ships",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-08-19T22:18:21.184Z",
+      "updatedAt": "2026-08-19T22:40:39.522Z",
+      "completedAt": "2026-08-19T22:40:39.522Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": null,
+        "validation": {
+          "status": "skipped",
+          "updatedAt": "2026-08-19T22:40:39.522Z",
+          "note": "reviewer piped identical edge receipts through both validator runtimes (exact parity 4/4), fail-soft proven on corrupt/missing/no-receipt inputs, lane-table upsert verified live; artifact 20260819T223854Z approved"
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T221821Z-run-brief-feat021-slice44-implement-feat-021.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT008 SLICE43: Implement FEAT-008",
       "goal": "Carried from runner-plugin FEAT-259 (agent SendMessage report-back enforcement) after P0 parent-estate settlement. Three of five slices already shipped in runner-plugin: SLICE-187 (SubagentStop report-gate hook, hooks/report-gate.mjs, shipped default-off with a known prompt-text-proximity false-positive risk documented in FEAT-259.md), SLICE-184 (mandatory final-act SendMessage line across owned agent templates), and SLICE-185 (orchestrator-watchdog decision logic in src/scripts/lib/orchestrator",
@@ -176,40 +214,6 @@
       },
       "artifacts": {
         "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T211647Z-run-brief-feat020-slice37-implement-feat-020.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT016 SLICE36: Implement FEAT-016",
-      "goal": "Command surface audit execution: merge the 7 near-duplicate command pairs and cut the 1 dead command identified in the P3 command audit (see docs/planning/unification-plan.md section 2 command map); each merged command keeps one canonical name + a hard-break stub note in CHANGELOG; validate-agent-refs stays green.",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-08-19T21:01:31.001Z",
-      "updatedAt": "2026-08-19T21:01:31.001Z",
-      "completedAt": "2026-08-19T21:01:31.001Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20260819T210130Z-run-brief-feat016-slice36-implement-feat-016.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,

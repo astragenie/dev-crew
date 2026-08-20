@@ -5,7 +5,7 @@ prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
 `crew`+`runner` plugin ships under the name `devcrew`.
 
-## [Unreleased]
+## [1.1.0] — 2026-08-20 — legacy dispatch tokens retired
 
 - **Hard break**: `guard-feat-dispatch` no longer allowlists the
   pre-unification `crew:builder*`/`crew:reviewer*`/`crew:validator`/
