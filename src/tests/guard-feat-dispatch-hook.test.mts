@@ -268,6 +268,34 @@ test("guard-feat-dispatch: override guidance text lists the current runner:* ids
   assert.match(result.stderr, /\/devcrew:close/);
 });
 
+test("guard-feat-dispatch: every devcrew:* successor named in legacySuccessors guidance is itself allowlisted (no dead-end remediation)", async () => {
+  // Systemic guard against the class of bug fixed by FEAT-017 review round 2:
+  // a legacySuccessors message pointed at devcrew:release-engineer while that
+  // very token was still missing from `allowed`, so following the hook's own
+  // remediation advice would hit the same block again. Parse the source
+  // rather than hardcoding the token list, so any future legacySuccessors
+  // entry naming an unreachable devcrew:* token fails this test red.
+  const source = await fs.readFile(hookPath, "utf8");
+  const objMatch = source.match(/const legacySuccessors = \{([\s\S]*?)\n\};/);
+  assert.ok(objMatch, "legacySuccessors object literal not found in hook source — did it get renamed?");
+  const body = objMatch![1];
+  const successorTokens = [...new Set(body.match(/devcrew:[a-z][a-z-]*/g) ?? [])];
+  assert.ok(successorTokens.length > 0, "expected at least one devcrew:* successor token in legacySuccessors guidance");
+
+  for (const token of successorTokens) {
+    const repo = await tmpRepo("gfd-successor-reachable-");
+    const result = runHook(repo, {
+      tool_name: "Agent",
+      tool_input: { subagent_type: token, prompt: "implement FEAT-999" }
+    });
+    assert.equal(
+      result.status,
+      0,
+      `successor token '${token}' is recommended by legacySuccessors guidance but is not itself allowlisted — dead-end remediation`
+    );
+  }
+});
+
 test("guard-feat-dispatch: non-FEAT prompts pass through regardless of flag state", async () => {
   const repo = await tmpRepo("gfd-no-feat-");
   await writeLoopConfig(repo, { features: { "dispatch-guard-block": { enabled: false } } });

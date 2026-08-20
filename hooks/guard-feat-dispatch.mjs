@@ -86,6 +86,7 @@ const allowed = [
   "devcrew:typescript-reviewer",
   "devcrew:reviewer-lite",
   "devcrew:pm",
+  "devcrew:release-engineer",
   "Explore"
 ];
 
