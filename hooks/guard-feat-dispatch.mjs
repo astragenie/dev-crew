@@ -18,14 +18,17 @@
 // renamed from crew:*/runner:* in the devcrew unification) and Explore
 // (read-only).
 //
-// Legacy aliases: the pre-unification ids below (`crew:builder*`, `crew:
+// Legacy aliases: the pre-unification ids (`crew:builder*`, `crew:
 // reviewer`, `crew:reviewer-validator`, `crew:validator`, `crew:deployer`,
 // `crew:copywriter`, `loop:*`) are retired — agents/*.md no longer defines
 // builder/reviewer/reviewer-validator/validator/deployer/copywriter as
 // standalone roles, and the devcrew:* stack-specific names (devcrew:
-// fullstack-dev etc.) are current. Kept allowlisted ONE more release so
-// in-flight dispatches using the old names don't false-block; remove in
-// the next minor.
+// fullstack-dev etc.) are current. They were kept allowlisted for one
+// release after the devcrew 1.0.0 cutover so in-flight dispatches using
+// the old names didn't false-block. That grace period elapsed at v1.1.0
+// (FEAT-017 / SLICE-45): the allowlist below no longer includes them, so
+// any dispatch still using a `crew:*`/`loop:*` id now hard-fails via the
+// LEGACY_SUCCESSORS lookup below instead of silently passing through.
 //
 // Exit codes:
 //   0  allow (or warn-only mode — see features.dispatch-guard-block below)
@@ -83,30 +86,45 @@ const allowed = [
   "devcrew:typescript-reviewer",
   "devcrew:reviewer-lite",
   "devcrew:pm",
-  "Explore",
-  // legacy aliases, remove in next minor
-  "crew:builder",
-  "crew:builder-be",
-  "crew:builder-fe",
-  "crew:reviewer",
-  "crew:reviewer-validator",
-  "crew:validator",
-  "crew:deployer",
-  "crew:copywriter",
-  "loop:architect",
-  "loop:document-writer",
-  "loop:pm",
-  "loop:researcher"
+  "Explore"
 ];
+
+// FEAT-017 / SLICE-45: the pre-unification ids removed from `allowed` above
+// hard-fail as of v1.1.0. Where a 1:1 devcrew rename exists (the `loop:*`
+// ids), name it directly. The `crew:builder*`/`crew:reviewer*`/
+// `crew:validator`/`crew:deployer`/`crew:copywriter` ids named a role that
+// agents/*.md no longer defines standalone — those get closest-fit guidance
+// instead of a mechanical rename.
+const legacySuccessors = {
+  "crew:builder":
+    "devcrew:fullstack-dev (or devcrew:frontend-dev / devcrew:backend-dev for a stack-specific slice, devcrew:dev-lite for trivial scope) — 'builder' is no longer a standalone role",
+  "crew:builder-be": "devcrew:backend-dev",
+  "crew:builder-fe": "devcrew:frontend-dev",
+  "crew:reviewer":
+    "devcrew:reviewer-lite (light-tier) or the stack reviewers devcrew:architect-reviewer / devcrew:csharp-reviewer / devcrew:typescript-reviewer — 'reviewer' is no longer a standalone role",
+  "crew:reviewer-validator":
+    "devcrew:reviewer-lite for review plus devcrew:verifier for validation — the combined role no longer exists",
+  "crew:validator": "devcrew:verifier",
+  "crew:deployer": "devcrew:release-engineer",
+  "crew:copywriter": "devcrew:document-writer",
+  "loop:architect": "devcrew:architect",
+  "loop:document-writer": "devcrew:document-writer",
+  "loop:pm": "devcrew:pm",
+  "loop:researcher": "devcrew:researcher"
+};
 
 if (allowed.includes(subagent)) process.exit(0);
 
 const uniqueFeats = [...new Set(featMatches)].join(", ");
 const repoCwd = payload?.cwd || process.cwd();
 const blockEnabled = isFeatureEnabledLite("dispatch-guard-block", repoCwd);
+const legacyNote = legacySuccessors[subagent]
+  ? [`Legacy token '${subagent}' is retired as of devcrew v1.1.0 — use ${legacySuccessors[subagent]}.`]
+  : [];
 process.stderr.write(
   [
     `${blockEnabled ? "BLOCKED" : "WARN (features.dispatch-guard-block disabled — not blocking)"}: Agent dispatch with subagent_type='${subagent}' on FEAT work (${uniqueFeats}).`,
+    ...legacyNote,
     `Devcrew ceremony required:`,
     `  1. /devcrew:start --id <FEAT-ID or SLICE-NN>`,
     `  2. Dispatch the tag-routed devcrew builder (slice-build mode) returned by /devcrew:start`,

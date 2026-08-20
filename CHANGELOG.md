@@ -7,6 +7,20 @@ shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
 
 ## [Unreleased]
 
+- **Hard break**: `guard-feat-dispatch` no longer allowlists the
+  pre-unification `crew:builder*`/`crew:reviewer*`/`crew:validator`/
+  `crew:deployer`/`crew:copywriter`/`loop:*` dispatch tokens — they were
+  kept passing for one release after the devcrew 1.0.0 cutover so
+  in-flight dispatches wouldn't false-block; that grace period is over.
+  Any `Agent` dispatch on FEAT-NNN work using one of these ids now
+  hard-fails (exit 2) with an actionable message naming the exact token
+  and its devcrew successor (`loop:architect` → `devcrew:architect`,
+  `loop:document-writer`/`loop:pm`/`loop:researcher` → their 1:1
+  `devcrew:*` rename; the retired `crew:builder*`/`crew:reviewer*`/
+  `crew:validator`/`crew:deployer`/`crew:copywriter` role names get
+  closest-fit guidance since agents/*.md no longer defines them as
+  standalone roles). No shim or fallback is provided. (FEAT-017 /
+  SLICE-45)
 - **Hard break**: removed the `dotnet-typescript-vue` preset
   (`scripts/presets/dotnet-typescript-vue.json`). Evidence: zero adopter
   repos across the sole operator's estate referenced this preset (verified

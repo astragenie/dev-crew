@@ -7,10 +7,12 @@ import assert from "node:assert/strict";
 
 // Tests for hooks/guard-feat-dispatch.mjs. Covers the P1.0 feature-flag
 // envelope around the exit-2 block path (features.dispatch-guard-block.
-// enabled) plus the P1.8 allowlist rename: current runner:* ids pass,
-// retired loop:*/devcrew:builder* ids still pass this release as legacy
-// aliases, and general-purpose stays blocked (that's the entire point of
-// this hook).
+// enabled), the P1.8 allowlist rename (current devcrew:* ids pass), and the
+// FEAT-017/SLICE-45 hard-fail: the `crew:*`/`loop:*` legacy aliases that
+// were kept allowlisted for one release after the devcrew 1.0.0 cutover
+// now block like any other unrecognized subagent_type, with an actionable
+// successor pointer in the stderr message. general-purpose stays blocked
+// regardless (that's the entire point of this hook).
 
 // Dual-layout resolution: Bun runs .mts directly from src/tests/, Node's
 // compiled runner would resolve from tests/.
@@ -89,14 +91,16 @@ test("guard-feat-dispatch: explicit enabled=true behaves like default (blocks)",
   assert.match(result.stderr, /^BLOCKED/);
 });
 
-test("guard-feat-dispatch: legacy alias crew:builder still passes this release (exit 0)", async () => {
+test("guard-feat-dispatch: legacy alias crew:builder hard-fails as of v1.1.0 (FEAT-017/SLICE-45)", async () => {
   const repo = await tmpRepo("gfd-allowlist-");
   const result = runHook(repo, {
     tool_name: "Agent",
     tool_input: { subagent_type: "crew:builder", prompt: "implement FEAT-999" }
   });
-  assert.equal(result.status, 0);
-  assert.equal(result.stderr, "");
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /^BLOCKED/);
+  assert.match(result.stderr, /Legacy token 'crew:builder' is retired as of devcrew v1\.1\.0/);
+  assert.match(result.stderr, /devcrew:fullstack-dev/);
 });
 
 // P1.8 allowlist rename coverage.
@@ -137,14 +141,15 @@ test("guard-feat-dispatch: devcrew:pm and devcrew:researcher (renamed from loop:
   assert.equal(researcherResult.status, 0);
 });
 
-test("guard-feat-dispatch: old loop:architect still passes this release as a legacy alias", async () => {
+test("guard-feat-dispatch: old loop:architect hard-fails as of v1.1.0, names devcrew:architect as successor", async () => {
   const repo = await tmpRepo("gfd-legacy-loop-architect-");
   const result = runHook(repo, {
     tool_name: "Agent",
     tool_input: { subagent_type: "loop:architect", prompt: "implement FEAT-999" }
   });
-  assert.equal(result.status, 0);
-  assert.equal(result.stderr, "");
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /^BLOCKED/);
+  assert.match(result.stderr, /Legacy token 'loop:architect' is retired as of devcrew v1\.1\.0 — use devcrew:architect\./);
 });
 
 test("guard-feat-dispatch: devcrew:dev-lite and devcrew:investigator pass (newly added ceremony participants)", async () => {
@@ -189,20 +194,65 @@ test("guard-feat-dispatch: general-purpose stays blocked — never allowlisted, 
   assert.match(result.stderr, /^BLOCKED/);
 });
 
-test("guard-feat-dispatch: retired crew:reviewer-validator and crew:validator still pass this release", async () => {
+test("guard-feat-dispatch: retired crew:reviewer-validator and crew:validator hard-fail as of v1.1.0", async () => {
   const repoRV = await tmpRepo("gfd-reviewer-validator-");
   const rvResult = runHook(repoRV, {
     tool_name: "Agent",
     tool_input: { subagent_type: "crew:reviewer-validator", prompt: "implement FEAT-999" }
   });
-  assert.equal(rvResult.status, 0);
+  assert.equal(rvResult.status, 2);
+  assert.match(rvResult.stderr, /^BLOCKED/);
+  assert.match(rvResult.stderr, /Legacy token 'crew:reviewer-validator' is retired as of devcrew v1\.1\.0/);
+  assert.match(rvResult.stderr, /devcrew:verifier/);
 
   const repoValidator = await tmpRepo("gfd-validator-");
   const validatorResult = runHook(repoValidator, {
     tool_name: "Agent",
     tool_input: { subagent_type: "crew:validator", prompt: "implement FEAT-999" }
   });
-  assert.equal(validatorResult.status, 0);
+  assert.equal(validatorResult.status, 2);
+  assert.match(validatorResult.stderr, /^BLOCKED/);
+  assert.match(validatorResult.stderr, /Legacy token 'crew:validator' is retired as of devcrew v1\.1\.0 — use devcrew:verifier\./);
+});
+
+test("guard-feat-dispatch: retired crew:reviewer, crew:deployer, crew:copywriter, crew:builder-be/-fe hard-fail with successor guidance", async () => {
+  const cases: Array<[string, RegExp]> = [
+    ["crew:reviewer", /devcrew:reviewer-lite/],
+    ["crew:deployer", /devcrew:release-engineer/],
+    ["crew:copywriter", /devcrew:document-writer/],
+    ["crew:builder-be", /devcrew:backend-dev/],
+    ["crew:builder-fe", /devcrew:frontend-dev/]
+  ];
+  for (const [token, successorPattern] of cases) {
+    const repo = await tmpRepo("gfd-legacy-crew-");
+    const result = runHook(repo, {
+      tool_name: "Agent",
+      tool_input: { subagent_type: token, prompt: "implement FEAT-999" }
+    });
+    assert.equal(result.status, 2, `${token} should hard-fail`);
+    assert.match(result.stderr, new RegExp(`Legacy token '${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}' is retired`));
+    assert.match(result.stderr, successorPattern, `${token} message should name its successor`);
+  }
+});
+
+test("guard-feat-dispatch: retired loop:document-writer, loop:pm, loop:researcher hard-fail, naming their 1:1 devcrew rename", async () => {
+  const cases: Array<[string, string]> = [
+    ["loop:document-writer", "devcrew:document-writer"],
+    ["loop:pm", "devcrew:pm"],
+    ["loop:researcher", "devcrew:researcher"]
+  ];
+  for (const [token, successor] of cases) {
+    const repo = await tmpRepo("gfd-legacy-loop-");
+    const result = runHook(repo, {
+      tool_name: "Agent",
+      tool_input: { subagent_type: token, prompt: "implement FEAT-999" }
+    });
+    assert.equal(result.status, 2, `${token} should hard-fail`);
+    assert.match(
+      result.stderr,
+      new RegExp(`Legacy token '${token}' is retired as of devcrew v1\\.1\\.0 — use ${successor}\\.`)
+    );
+  }
 });
 
 test("guard-feat-dispatch: override guidance text lists the current runner:* ids, not stale loop:* only", async () => {
