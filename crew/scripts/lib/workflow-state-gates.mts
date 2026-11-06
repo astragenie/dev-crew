@@ -24,6 +24,19 @@ export interface GateEntry {
   updatedAt: string;
   note?: string;
   blockedBy?: string;
+  // FEAT-024: per-reviewer / per-validator aggregated verdicts. Keyed by the
+  // `--reviewer` / `--validator` value the write carried (role name such as
+  // "typescript-reviewer", or a bare ladder letter "A"/"B" when the caller
+  // passed one explicitly). Absent on gates that predate FEAT-024 or that
+  // never received a reviewer/validator-scoped write.
+  reviewers?: Record<string, string>;
+  validators?: Record<string, string>;
+  // Snapshot of the required reviewer/validator role set at run-brief time
+  // (reviewers.ladder in .claude/loop.json for review; absent/empty for
+  // validation today). Status is "passed"/"skipped" only once every entry
+  // here has a recorded verdict; empty/absent falls back to "whatever has
+  // been written so far", preserving pre-FEAT-024 single-write behavior.
+  required?: string[];
 }
 
 export interface DeploymentGates {

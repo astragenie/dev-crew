@@ -69,12 +69,20 @@ type RegisterFields = RunFields &
     decision?: string | undefined;
     // P1.3: canonical enum verdict (approved|approved_with_notes|rejected for
     // review, pass|fail|skipped for validation). Distinct from `decision`,
-    // which stays the raw legacy value. Absent = legacy pre-P1.3 artifact —
-    // handlers preserve today's default-approve behavior rather than throwing.
+    // which stays the raw legacy value. FEAT-024: absent now ALWAYS means a
+    // scaffold / --status in-progress write (crew.mts's write-review-result /
+    // write-validation-result handlers refuse any terminal write missing
+    // --decision before an artifact is ever written) — so a verdict-less
+    // call reaching the handlers below registers the artifact path only,
+    // never a badge.
     verdict?: string | undefined;
     skipReason?: string | undefined;
     environment?: string | undefined;
     status?: string | undefined;
+    // FEAT-024: the `--reviewer` / `--validator` value the write carried,
+    // used as the aggregation key in GateEntry.reviewers / .validators.
+    reviewer?: string | undefined;
+    validator?: string | undefined;
   };
 
 // ---------------------------------------------------------------------------
@@ -104,6 +112,41 @@ async function ensureFile(filePath: string, contents: string): Promise<void> {
   } catch {
     await ensureDir(path.dirname(filePath));
     await fs.writeFile(filePath, contents);
+  }
+}
+
+// FEAT-024: snapshot the required reviewer set from .claude/loop.json's
+// reviewers.ladder at write-run-brief time, so the gate's "every required
+// reviewer has written" check has a fixed target for the life of the run
+// (a mid-run config edit must not retroactively change what's required).
+// Mirrors cost-watch.mts's readLoopCostCeiling read pattern (try/catch,
+// null/default on any miss) — unlike src/scripts/lib/post-builder-fanout.mts's
+// resolveLadder, entries are kept verbatim rather than normalized to the
+// "A"/"B" letter subset, since `--reviewer` is also passed as a full role
+// name (typescript-reviewer, csharp-reviewer, reviewer-lite) by several
+// reviewer agents. Falls back to the two-entry ["A", "B"] default on any
+// missing/malformed config, matching post-builder-fanout.mts's fallback so
+// the review gate is never silently left unrequired.
+const DEFAULT_REVIEWER_LADDER = ["A", "B"] as const;
+
+async function resolveReviewerLadder(repoPath: string): Promise<string[]> {
+  try {
+    const raw = await fs.readFile(path.join(repoPath, ".claude", "loop.json"), "utf8");
+    const parsed = JSON.parse(raw) as { reviewers?: { ladder?: unknown } };
+    const ladder = parsed.reviewers?.ladder;
+    if (!Array.isArray(ladder)) return [...DEFAULT_REVIEWER_LADDER];
+    const seen = new Set<string>();
+    const resolved: string[] = [];
+    for (const entry of ladder) {
+      const role = typeof entry === "string" ? entry.trim() : "";
+      if (role && !seen.has(role)) {
+        seen.add(role);
+        resolved.push(role);
+      }
+    }
+    return resolved.length > 0 ? resolved : [...DEFAULT_REVIEWER_LADDER];
+  } catch {
+    return [...DEFAULT_REVIEWER_LADDER];
   }
 }
 
@@ -415,33 +458,69 @@ function handleHandoff(run: WorkflowRun, artifact: ArtifactRef): void {
   run.artifacts.handoffs = [...(run.artifacts.handoffs || []), artifact.path].slice(-10);
 }
 
-// P1.3: exhaustive switch over the canonical verdict — replaces the fail-open
-// ternary (`decision === "rejected" ? failed : passed`) that silently mapped
-// any unrecognized/typo'd value to review_passed. `fields.verdict` is absent
-// only for pre-P1.3 (legacy) artifacts / callers that never set --decision;
-// that path preserves the historical default-approve behavior unchanged. Once
-// a verdict IS present, it must be a recognized canonical value or this throws
-// — never falls through to passed.
+// FEAT-024: compute the aggregated review-gate status from the per-reviewer
+// verdict map. Any "rejected" dominates (gate fails outright, regardless of
+// how many required reviewers have or haven't written yet). Otherwise the
+// gate passes only once every entry in `required` carries an approving
+// verdict; an empty/absent `required` falls back to "whatever has been
+// written so far" so a direct (non-ladder) write still resolves to "passed"
+// on its first approval, matching pre-FEAT-024 single-reviewer behavior.
+function computeReviewGateStatus(
+  reviewers: Record<string, string>,
+  required: string[]
+): GateStatus {
+  const values = Object.values(reviewers);
+  if (values.includes("rejected")) return "failed";
+  const checklist = required.length > 0 ? required : Object.keys(reviewers);
+  const allApproved =
+    checklist.length > 0 &&
+    checklist.every((role) => {
+      const v = reviewers[role];
+      return v === "approved" || v === "approved_with_notes";
+    });
+  return allApproved ? "passed" : "required";
+}
+
+// Merges one reviewer's verdict into run.gates.review and recomputes status.
+// Only called with a defined, canonical verdict (approved/approved_with_notes
+// /rejected) — handleReviewResult below is the sole caller and only reaches
+// here once crew.mts's write-review-result handler has already refused any
+// terminal write missing --decision.
+function applyReviewVerdict(
+  run: WorkflowRun,
+  reviewerKey: string,
+  verdict: "approved" | "approved_with_notes" | "rejected",
+  note: string
+): void {
+  const existing = run.gates.review;
+  const reviewers = { ...(existing?.reviewers ?? {}), [reviewerKey]: verdict };
+  const required = existing?.required ?? [];
+  run.gates.review = {
+    status: computeReviewGateStatus(reviewers, required),
+    updatedAt: nowIso(),
+    note: note || existing?.note || "",
+    reviewers,
+    required
+  };
+}
+
+// FEAT-024: scaffolds / --status in-progress writes never flip the gate —
+// `fields.verdict` undefined at this point always means one of those (see
+// RegisterFields.verdict comment above); this handler only registers the
+// artifact path. Once a verdict IS present it must be a recognized canonical
+// value or this throws — never falls through to a passing badge.
 function handleReviewResult(run: WorkflowRun, artifact: ArtifactRef, fields: RegisterFields): void {
   run.artifacts.reviewResult = artifact.path;
   const verdict = fields.verdict;
   if (verdict === undefined) {
-    applyBadge(run, "review_passed", fields.summary || "");
     return;
   }
-  switch (verdict) {
-    case "approved":
-    case "approved_with_notes":
-      applyBadge(run, "review_passed", fields.summary || "");
-      break;
-    case "rejected":
-      applyBadge(run, "review_failed", fields.summary || "");
-      break;
-    default:
-      throw new Error(
-        `handleReviewResult: unrecognized review verdict "${verdict}" — refusing to fail open to review_passed.`
-      );
+  if (verdict !== "approved" && verdict !== "approved_with_notes" && verdict !== "rejected") {
+    throw new Error(
+      `handleReviewResult: unrecognized review verdict "${verdict}" — refusing to fail open to review_passed.`
+    );
   }
+  applyReviewVerdict(run, fields.reviewer || "reviewer", verdict, fields.summary || "");
 }
 
 function handleValidationPlan(
@@ -453,10 +532,48 @@ function handleValidationPlan(
   applyBadge(run, "validation_expected", fields.summary || fields.goal || "");
 }
 
-// P1.3: same exhaustive-switch treatment as handleReviewResult. `skipped` maps
-// to the pre-existing `validation_skipped` badge (BADGE_TABLE already has a
-// slot for it); skip_reason is folded into the gate note since GateEntry has
-// no dedicated field for it.
+// FEAT-024: validation-gate counterpart to computeReviewGateStatus. "fail"
+// dominates; otherwise the gate resolves only once every required validator
+// has written — "skipped" when every one of those verdicts is "skipped" (no
+// "pass" among them), else "passed". Empty/absent `required` falls back to
+// "whatever has been written so far", same single-validator backward-compat
+// fallback as the review side.
+function computeValidationGateStatus(
+  validators: Record<string, string>,
+  required: string[]
+): GateStatus {
+  const values = Object.values(validators);
+  if (values.includes("fail")) return "failed";
+  const checklist = required.length > 0 ? required : Object.keys(validators);
+  const allWritten =
+    checklist.length > 0 && checklist.every((role) => validators[role] !== undefined);
+  if (!allWritten) return "expected";
+  return values.every((v) => v === "skipped") ? "skipped" : "passed";
+}
+
+// Merges one validator's verdict into run.gates.validation and recomputes
+// status. Only called with a defined, canonical verdict (pass/fail/skipped).
+function applyValidationVerdict(
+  run: WorkflowRun,
+  validatorKey: string,
+  verdict: "pass" | "fail" | "skipped",
+  note: string
+): void {
+  const existing = run.gates.validation;
+  const validators = { ...(existing?.validators ?? {}), [validatorKey]: verdict };
+  const required = existing?.required ?? [];
+  run.gates.validation = {
+    status: computeValidationGateStatus(validators, required),
+    updatedAt: nowIso(),
+    note: note || existing?.note || "",
+    validators,
+    required
+  };
+}
+
+// FEAT-024: same scaffold/in-progress-never-flips-the-gate treatment as
+// handleReviewResult. `skipped` folds --skip-reason into the gate note since
+// GateEntry has no dedicated field for it.
 function handleValidationResult(
   run: WorkflowRun,
   artifact: ArtifactRef,
@@ -465,28 +582,18 @@ function handleValidationResult(
   run.artifacts.validationResult = artifact.path;
   const verdict = fields.verdict;
   if (verdict === undefined) {
-    applyBadge(run, "validation_passed", fields.summary || fields.goal || "");
     return;
   }
-  switch (verdict) {
-    case "pass":
-      applyBadge(run, "validation_passed", fields.summary || fields.goal || "");
-      break;
-    case "fail":
-      applyBadge(run, "validation_failed", fields.summary || fields.goal || "");
-      break;
-    case "skipped": {
-      const note = fields.skipReason
-        ? `skipped: ${fields.skipReason}`
-        : fields.summary || fields.goal || "";
-      applyBadge(run, "validation_skipped", note);
-      break;
-    }
-    default:
-      throw new Error(
-        `handleValidationResult: unrecognized validation verdict "${verdict}" — refusing to fail open to validation_passed.`
-      );
+  if (verdict !== "pass" && verdict !== "fail" && verdict !== "skipped") {
+    throw new Error(
+      `handleValidationResult: unrecognized validation verdict "${verdict}" — refusing to fail open to validation_passed.`
+    );
   }
+  const note =
+    verdict === "skipped" && fields.skipReason
+      ? `skipped: ${fields.skipReason}`
+      : fields.summary || fields.goal || "";
+  applyValidationVerdict(run, fields.validator || "verifier", verdict, note);
 }
 
 function handleDeploymentCheck(
@@ -577,6 +684,15 @@ export async function registerWorkflowArtifact(
         ...(fields.next !== undefined ? { next: fields.next } : {}),
         path: artifact.path
       });
+      // FEAT-024: snapshot the required reviewer set at run-brief time so
+      // the gate's "every required reviewer has written" check has a fixed
+      // target for this run's lifetime.
+      state.currentRun.gates.review = {
+        status: "required",
+        updatedAt: nowIso(),
+        reviewers: {},
+        required: await resolveReviewerLadder(repoPath)
+      };
       await saveWorkflowState(repoPath, state, true);
       return state.currentRun;
     }
