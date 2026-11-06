@@ -23,7 +23,7 @@
  * against .bun-version rather than silently producing a bundle nobody asked
  * for.
  */
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -64,22 +64,98 @@ interface RawHooksFile {
   hooks?: Record<string, RawHookGroup[]>;
 }
 
-const BUN_HOOK_RE = /^bun\s+"\$\{CLAUDE_PLUGIN_ROOT\}\/([^"]+\.mts)"/;
+// Pre-migration form: `bun "${CLAUDE_PLUGIN_ROOT}/<path>.mts"` (source path
+// directly). Post-migration form (this FEAT's own output, once applied to
+// hooks/hooks.json): `bun "${CLAUDE_PLUGIN_ROOT}/dist/hooks/<base>.js"` —
+// the committed-bundle path, not a source path. hooks/hooks.json is the only
+// enumeration of hook entries (DEC-040); once every bun command in it points
+// at dist/, this script must still recover the .mts source for each so a
+// rebuild doesn't drop entries it can no longer see as `.mts` — see
+// docs/memory.md "FEAT-026 dist-path entry recovery".
+const BUN_LEGACY_HOOK_RE = /^bun\s+"\$\{CLAUDE_PLUGIN_ROOT\}\/([^"]+\.mts)"/;
+const BUN_DIST_HOOK_RE = /^bun\s+"\$\{CLAUDE_PLUGIN_ROOT\}\/dist\/hooks\/([^"/]+)\.js"/;
 
-/** Every distinct `bun "${CLAUDE_PLUGIN_ROOT}/<path>.mts"` command in hooks/hooks.json. */
-export async function collectHookEntries(hooksJsonPath: string = HOOKS_JSON_PATH): Promise<string[]> {
-  const raw = await readFile(hooksJsonPath, "utf8");
-  const parsed = JSON.parse(raw) as RawHooksFile;
-  const events = parsed.hooks ?? {};
-  const seen = new Set<string>();
+// Every directory that has historically held a hook source .mts file,
+// checked in order; `resolveDistHookSource` errors loudly on zero or 2+
+// matches rather than guessing.
+const HOOK_SOURCE_DIRS: ReadonlyArray<string> = ["hooks", "crew/hooks"];
+
+async function pathExists(absPath: string): Promise<boolean> {
+  try {
+    await stat(absPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Recover the `.mts` source for a `dist/hooks/<base>.js` bundle output by basename. */
+async function resolveDistHookSource(base: string): Promise<string> {
+  const candidates = HOOK_SOURCE_DIRS.map((dir) => `${dir}/${base}.mts`);
+  const found: string[] = [];
+  for (const candidate of candidates) {
+    if (await pathExists(path.join(REPO_ROOT, candidate))) found.push(candidate);
+  }
+  if (found.length === 0) {
+    throw new Error(
+      `build-dist: no .mts source found for dist/hooks/${base}.js — looked in ${HOOK_SOURCE_DIRS.join(", ")}`
+    );
+  }
+  if (found.length > 1) {
+    throw new Error(
+      `build-dist: ambiguous source for dist/hooks/${base}.js — found at ${found.join(" and ")}`
+    );
+  }
+  return found[0] as string;
+}
+
+/** Every `hooks[event][].hooks[].command` string in a parsed hooks.json, flattened. */
+function flattenHookCommands(events: Record<string, RawHookGroup[]>): string[] {
+  const commands: string[] = [];
   for (const groups of Object.values(events)) {
     for (const group of groups) {
       for (const hook of group.hooks ?? []) {
-        if (typeof hook.command !== "string") continue;
-        const match = BUN_HOOK_RE.exec(hook.command.trim());
-        if (match?.[1]) seen.add(match[1]);
+        if (typeof hook.command === "string") commands.push(hook.command.trim());
       }
     }
+  }
+  return commands;
+}
+
+type HookCommandMatch =
+  | { kind: "legacy"; src: string }
+  | { kind: "dist"; base: string }
+  | undefined;
+
+/** Classify one hooks.json command as a pre- or post-migration bun-hook reference, or neither. */
+function classifyHookCommand(command: string): HookCommandMatch {
+  const legacyMatch = BUN_LEGACY_HOOK_RE.exec(command);
+  if (legacyMatch?.[1]) return { kind: "legacy", src: legacyMatch[1] };
+  const distMatch = BUN_DIST_HOOK_RE.exec(command);
+  if (distMatch?.[1]) return { kind: "dist", base: distMatch[1] };
+  return undefined;
+}
+
+/**
+ * Every distinct hook `.mts` source referenced (directly or, once migrated,
+ * indirectly via its dist/hooks/*.js output) by a `bun` command in
+ * hooks/hooks.json.
+ */
+export async function collectHookEntries(
+  hooksJsonPath: string = HOOKS_JSON_PATH
+): Promise<string[]> {
+  const raw = await readFile(hooksJsonPath, "utf8");
+  const parsed = JSON.parse(raw) as RawHooksFile;
+  const commands = flattenHookCommands(parsed.hooks ?? {});
+  const seen = new Set<string>();
+  const distBases = new Set<string>();
+  for (const command of commands) {
+    const match = classifyHookCommand(command);
+    if (match?.kind === "legacy") seen.add(match.src);
+    else if (match?.kind === "dist") distBases.add(match.base);
+  }
+  for (const base of distBases) {
+    seen.add(await resolveDistHookSource(base));
   }
   return [...seen].sort();
 }
@@ -170,7 +246,9 @@ async function writeBuildInfo(bunVersion: string, entries: BundleEntry[]): Promi
   const info = {
     bunVersion,
     builtAt: new Date().toISOString(),
-    entries: entries.map((e) => ({ src: e.src, out: e.out })).sort((a, b) => a.out.localeCompare(b.out))
+    entries: entries
+      .map((e) => ({ src: e.src, out: e.out }))
+      .sort((a, b) => a.out.localeCompare(b.out))
   };
   await writeFile(BUILD_INFO_PATH, `${JSON.stringify(info, null, 2)}\n`, "utf8");
 }
@@ -196,7 +274,11 @@ export async function check(): Promise<CheckResult> {
   try {
     onDiskInfo = JSON.parse(await readFile(BUILD_INFO_PATH, "utf8"));
   } catch {
-    return { ok: false, staleFiles: [], detail: "dist/.build-info.json is missing — run `bun run build:dist`" };
+    return {
+      ok: false,
+      staleFiles: [],
+      detail: "dist/.build-info.json is missing — run `bun run build:dist`"
+    };
   }
   if (onDiskInfo?.bunVersion !== bunVersion) {
     return {
