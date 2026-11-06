@@ -1,0 +1,11 @@
+{
+  "session_id": "install-smoke-session-0001",
+  "transcript_path": "/tmp/install-smoke/transcript.jsonl",
+  "cwd": "/tmp/install-smoke/consumer-repo",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "bun test src/tests/install/consumer-smoke.test.mts",
+    "description": "run the install smoke test"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "session_id": "install-smoke-session-0002",
+  "transcript_path": "/tmp/install-smoke/transcript.jsonl",
+  "cwd": "/tmp/install-smoke/consumer-repo",
+  "hook_event_name": "SubagentStop",
+  "agent_name": "devcrew:fullstack-dev",
+  "stop_hook_active": false,
+  "last_assistant_message": "DONE: consumer-install smoke fixture complete\nFILES: src/scripts/lib/install/shipped-entrypoints.mts\nTESTS: n/a"
+}

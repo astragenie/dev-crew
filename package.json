@@ -11,6 +11,7 @@
     "test": "bun test src/tests/ --parallel --timeout 60000",
     "test:crew": "cd crew && bun test --timeout 60000 tests/ --parallel",
     "test:all": "bun run test && bun run test:crew",
+    "test:install": "bun test src/tests/install/",
     "bench": "bun src/tests/perf/bench-runner.mts",
     "validate:event-schemas": "bun ./src/scripts/validate-event-schemas.mts",
     "validate:manifests": "bun ./src/scripts/validate-manifests.mts",
