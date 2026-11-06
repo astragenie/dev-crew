@@ -30,6 +30,16 @@ const MARKER_BLOCK_RE =
 
 const FORBIDDEN_SUBSTRINGS = ["report-to-pr", "gh pr create", "SendMessage", "git push"];
 
+// Review B (SLICE-54, 2026-11-06): frontend-dev.md and aiplugin-dev.md each
+// carried a SECOND, orphaned copy of the pre-FEAT-028 report paragraph
+// under "## Identity anchor" (distinct from the "## Report contract" /
+// "## HARD OUTPUT CONTRACT" sections the first pass rewrote) that still
+// described the retired PR-comment flow and contradicted the new
+// marker-first contract a few hundred lines later. These phrases are the
+// literal fingerprints of that retired contract -- lock all four builders
+// against every reintroduction, not just the sections touched so far.
+const LEGACY_CONTRACT_PHRASES = ["PR report", "posted PR report", "Narration without a posted"];
+
 for (const name of BUILDER_AGENTS) {
   test(`${name}: carries exactly one marker-first report block`, async () => {
     const text = await fs.readFile(path.join(AGENTS_ROOT, `${name}.md`), "utf8");
@@ -45,6 +55,16 @@ for (const name of BUILDER_AGENTS) {
     const text = await fs.readFile(path.join(AGENTS_ROOT, `${name}.md`), "utf8");
     for (const needle of FORBIDDEN_SUBSTRINGS) {
       expect(text.includes(needle), `${name}.md unexpectedly contains "${needle}"`).toBe(false);
+    }
+  });
+
+  test(`${name}: carries no orphaned reference to the retired PR-report contract`, async () => {
+    const text = await fs.readFile(path.join(AGENTS_ROOT, `${name}.md`), "utf8");
+    for (const phrase of LEGACY_CONTRACT_PHRASES) {
+      expect(
+        text.includes(phrase),
+        `${name}.md unexpectedly contains legacy phrase "${phrase}"`
+      ).toBe(false);
     }
   });
 

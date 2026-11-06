@@ -143,27 +143,23 @@ function checkRequiredSections(
   }
 }
 
-// FEAT-163 SLICE-71 + SLICE-73 + SLICE-75: agents that explicitly carry the Agent tool in
-// their frontmatter `tools:` list MUST also carry a `## Peer dispatch` section
+// FEAT-163 SLICE-71 + SLICE-73 + SLICE-75: agents with the Agent tool in
+// effect (see (b) below) MUST also carry a `## Peer dispatch` section
 // with whitelist, blacklist, and budget lines. SLICE-71 added document-writer
 // and refactor (SLICE-A). SLICE-73 adds the advisory tier (SLICE-B):
 // architect, uxdesigner, qa-expert, performance-engineer. SLICE-75 adds the
 // implementer + release-engineer tier (SLICE-C/D):
 // backend-dev, frontend-dev, fullstack-dev, release-engineer.
 //
-// Rule fires ONLY when:
+// Rule fires when:
 //   (a) agent name is in PEER_DISPATCH_ALLOWLIST, AND
-//   (b) the agent frontmatter `tools:` block explicitly includes "Agent"
-//
-// Rationale for (b): the rule parses the raw YAML tools list from frontmatter.
-// Agents that do not declare `tools:` explicitly (e.g. they inherit "All tools"
-// via subagent configuration) are not checked — avoids false-positives on
-// agents not yet scoped for peer dispatch. Only agents with explicit `tools:`
-// including `Agent` are caught.
-//
-// Note: backend-dev and frontend-dev carry `disallowedTools: Agent` (not `tools:`)
-// so the rule correctly does not fire for them at runtime. Their Peer dispatch
-// sections are forward-looking documentation for when the restriction is lifted.
+//   (b) the agent has the Agent tool in effect — see hasAgentToolEffective()
+//       below (FEAT-028 Codex #6 fix): an agent with no `tools:` field
+//       defaults to "all tools" (which includes Agent), so it IS checked
+//       unless its `disallowedTools:` explicitly names Agent. None of
+//       backend-dev / frontend-dev / fullstack-dev declare `disallowedTools:
+//       Agent` — all three are checked, and all three carry a compliant
+//       "## Peer dispatch" section (whitelist, blacklist, budget line).
 //
 // PEER_DISPATCH_ALLOWLIST itself now lives in ./lib/dispatch/peer-dispatch-allowlist.ts
 // (single source shared with validate-dispatch-graph.ts) — see that module for

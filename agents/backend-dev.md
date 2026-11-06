@@ -229,7 +229,7 @@ Net-new endpoint without an edge-case test = half-done.
 
 ## Report contract — commit, then return the marker-first block
 
-A report written only at your last turn dies with you if you're truncated — that is the whole bug this section exists to close. Your SubagentStop receipt IS your final message; there is no PR report and no cross-agent messaging step. Order:
+A report written only at your last turn dies with you if you're truncated — that is the whole bug this section exists to close. Your SubagentStop receipt IS your final message; there is no pull-request comment and no cross-agent messaging step. Order:
 
 1. **Commit** your work (Atomic commit rule above). Call `mark-badge --badge <kind>` first when a badge is required.
 2. **Return the report block as your final message** — exactly these 4 lines, marker first, nothing after:

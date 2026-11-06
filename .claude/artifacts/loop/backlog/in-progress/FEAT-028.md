@@ -50,6 +50,15 @@ Created via free-text intake; body revised 2026-11-05 after architect /
 reviewer / critical-thinking review (see .claude/artifacts/crew/reviews/
 20261105T22*-*.md). Re-scored by PM after revision.
 
+Review B (SLICE-54, 2026-11-06) flagged a spec mix-up: the Deliverable
+bullet's "src/scripts/validate-agent-refs.mts (gate 6) path rule aligned"
+does not describe a real change. `validate-agent-refs.mts` is the phantom
+`crew:`/`runner:`/`devcrew:` dispatch-token scanner for `CLAUDE.md` — it
+has no relative-script-path rule to align. The actual relative-path rule
+(`no-relative-script-path`) lives in `crew/scripts/validate-agents.mts`
+(gate 30), which is where it was implemented. No change to
+`validate-agent-refs.mts` was needed or made.
+
 ## Acceptance criteria (Given-When-Then)
 
 - AC-1: Given each of the four builder prompts, When `builder-report-contract.test.mts` runs, Then the marker-first block spec appears exactly once and none of them contain `report-to-pr`, `gh pr create`, `SendMessage`, or `git push`; every agent stays at or under 300 lines.
