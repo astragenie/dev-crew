@@ -1,0 +1,306 @@
+[
+  {
+    "featureId": "FEAT-022",
+    "scores": {
+      "customer_impact": 0.9,
+      "effort_estimate": 0.3,
+      "strategic_alignment": 0.9,
+      "technical_risk": 0.3,
+      "dependency_depth": 0.0
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "docs/audits/2026-11-05/smoke-baseline.md: 'subagent-gate-guard.mts (enforcement) FAIL rc=1 Cannot find module @astragenie/plugin-std' and 'crew.mts brief-me FAIL rc=1 Cannot find module @astragenie/plugin-std'. Codex review row #14 (audit #41) CONFIRMED the runtime-dependency-packaging defect independently.",
+    "scopeNotes": "Scope is new-files-only (src/tests/install/**, src/scripts/lib/install/shipped-entrypoints.mts) per the FEAT's own Scope line — does not fix the crash, only proves it exists and locks it red. AC clarity is high: concrete file names, concrete rc/stderr-match conditions, concrete entry count (>20). No overlap with done/ or in-progress FEATs (new area). No grade dimension is below the 0.80 weak-dimension threshold (lowest is security at 0.862 over last 5 grades), so no mandatory weak-dimension AC. No cost analog for an install-smoke-harness slice in the aggregate reports sampled (closest shape, SLICE-28 at $8.21/19min, was a small bounded fix+test slice) — effort_points=3 is conservative given the subprocess-staging logic (stageConsumerCopy, git init in temp dirs) is a genuinely new pattern in this repo.",
+    "risks": [
+      "Pre-mortem (1) most likely review/validation failure: stageConsumerCopy's temp-dir git init races or leaves stale temp dirs on Windows (path length / lock contention), making the test flaky rather than deterministically red/green.",
+      "Pre-mortem (2) rollback if this merged and broke the loop: revert-only — it is a new test file with no runtime behavior change, so git revert fully restores prior state; no migration needed.",
+      "Pre-mortem (3) coverage gap: no existing test exercises the plugin cache from a true consumer copy (minus node_modules/.git) today, so a regression that reintroduces a bare-specifier import would currently ship silently — this FEAT closes exactly that gap.",
+      "Injection check: FEAT body is a factual engineering spec quoting the audit; no embedded imperative attempting to steer scoring was found."
+    ],
+    "reasoning": "P1, technical_risk 0.3 (new pattern in one module, no contract change, clean rollback — band 0.3-0.5 low end since it only adds test infra). Confirmed defect with direct smoke-baseline + Codex evidence; foundational red test that FEAT-026 depends on.",
+    "acs": [
+      "AC-1: Given the current tree, When `bun test src/tests/install/consumer-smoke.test.mts` runs, Then it FAILS listing at least `crew/hooks/subagent-gate-guard.mts`, `hooks/pre-push-gate.mts`, `crew/hooks/pre-tool-use-agent.mts`, `crew/hooks/otel-post-tool-use.mts`, `crew.mts brief-me`, and `crew.mts show-workflow-state` with a \"Cannot find\" error.",
+      "AC-2: Given `.claude-plugin/hooks/hooks.json`, When `listShippedEntrypoints` runs, Then it returns more than 20 entries and every hook command path resolves under `pluginRoot`.",
+      "AC-3: Given `stageConsumerCopy` output, When inspected, Then `pluginCopy` has no `node_modules` directory and `consumerRepo` has exactly one git commit.",
+      "AC-4: Given the red test is committed, When the full suite runs on this tree, Then it is not skipped or quarantined, and it is expected to turn green only after FEAT-026 (T2 dist bundles) lands."
+    ]
+  },
+  {
+    "featureId": "FEAT-023",
+    "scores": {
+      "customer_impact": 0.85,
+      "effort_estimate": 0.2,
+      "strategic_alignment": 0.85,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.0
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md: 'CI docs-only exemption includes .md$ present ... agents/commands/skills changes skip validators' and 'CI changes job on empty diff fail-safe: ci.yml:106-109 sets code=true; but gate at ci.yml:348 passes on code != true, so a failed changes job (empty output) passes the gate.' Codex review rows #18 and #19 both rated MISSING/P1 independently, calling this 'the actual product' being skipped by CI.",
+    "scopeNotes": "Scope is tight (two shell scripts, one test file, two localized ci.yml edits, one docs update) per the FEAT's Scope line; explicitly excludes the dist-freshness step (T2/FEAT-026 owns it). AC clarity is high — exact stdin strings and exact exit codes are specified. No weak-grade-dimension AC needed (none below 0.80). No close cost analog for a two-bash-script-plus-ci-yaml slice in the sampled aggregates; closest shape is SLICE-30 ($3.50/3.5min, small bounded fix) which supports the low effort_points=2 estimate.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the exact exemption regex drifting from the one specified (`^(docs/|README\\.md$|CHANGELOG\\.md$|.*/backlog/|\\.github/backlog/)`), silently re-widening the fail-open hole it's meant to close.",
+      "Pre-mortem (2): rollback requires only a revert of the ci.yml diff plus the two new scripts — no migration, but GitHub Actions caches the workflow file per-run, so an in-flight PR started under the old gate may not get re-evaluated until a new push.",
+      "Pre-mortem (3): coverage gap — no existing test exercises `ci.yml`'s `changes`/`gate` job wiring end-to-end (only the new unit tests on the two scripts); a mismatch between the scripts' contract and how `ci.yml` actually invokes them (step output piping, quoting) would not be caught by the AC as written.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P1, technical_risk 0.35 (new repo pattern — testable shell scripts replacing inline YAML logic — but one localized workflow file, no contract change, clean revert). High customer_impact: this is the CI gate meant to prevent every other remediation FEAT from shipping silently broken.",
+    "acs": [
+      "AC-1: Given stdin `agents/reviewer.md` or `skills/workflow/x/SKILL.md`, When `docs-only.sh` runs, Then it prints `code=true`.",
+      "AC-2: Given stdin `docs/a.md` and `README.md`, When `docs-only.sh` runs, Then it prints `code=false`; Given empty stdin, Then it prints `code=true`.",
+      "AC-3: Given `gate.sh \"\" success`, Then exit code is `1`; Given `gate.sh \"true\" failure`, Then exit code is `1`; Given `gate.sh \"true\" success`, Then exit code is `0`; Given `gate.sh \"false\" skipped`, Then exit code is `0`.",
+      "AC-4: Given `ci.yml` after the change and a PR that only touches `commands/build.md`, When the `changes` job runs, Then `fast-gate` is not exempted and runs.",
+      "AC-5: Given `bun test src/tests/ci/`, Then both scripts' tests PASS, and `docs/ci-gates.md` is updated to describe the two scripts with the gate list order unchanged."
+    ]
+  },
+  {
+    "featureId": "FEAT-024",
+    "scores": {
+      "customer_impact": 0.85,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.9,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.1
+    },
+    "compositePriority": "P0",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md: 'write-review-result without --decision accepted: crew/scripts/crew.mts:566-567 returns undefined; workflow-state.mts:426-431 applies review_passed' and 'Two reviewers, reject then approve: last writer wins — workflow-state.mts:424-446 has one reviewResult slot.' Codex review rows #20 and #21 both CONFIRMED independently, #20 noting 'Omitting review decision also avoids the test-summary requirement' and #21 noting 'An approval arriving after rejection turns the gate green.'",
+    "scopeNotes": "Scope is crew/scripts/crew.mts (verdict resolution + two handlers) + crew/scripts/lib/workflow-state*.mts + crew/tests/ only — explicitly excludes command/agent prompt edits (FEAT-027 owns that policy text). AC clarity is high with concrete reviewer-map shapes and exit codes. No weak-grade-dimension gap applies. Effort calibration: no close analog for a typed-shape + aggregation-logic change of this size in sampled cost reports; SLICE-27 ($55.91, a large multi-file structural change) and SLICE-28/30 (small bounded fixes, $3.50-8.21) bracket this — effort_points=3 sits toward the smaller end since the change is confined to two closely-related files plus their shared type definitions, not a cross-cutting refactor.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is an existing test elsewhere in crew/tests/ that implicitly relied on the default-approve behavior (the 'legacy' comment at workflow-state.mts:418-423) and silently passed without ever setting --decision; the AC requires finding and fixing every such test, not just the ones named in the new test file.",
+      "Pre-mortem (2): rollback if this merged and broke the loop requires a plain git revert (no data migration), but any in-flight run whose workflow-state.json was already written under the new reviewers-map shape would need manual reconciliation if rolled back mid-run — document this in the slice's risk notes.",
+      "Pre-mortem (3): coverage gap — today nothing tests the three-or-more-reviewer case (reviewers.ladder could in principle list more than two); the AC as specified only covers the two-reviewer case explicitly, so a future ladder-size change could regress silently.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P0: this closes a fail-open security/quality gate (an omitted or conflicting review decision currently reads as approved) that FEAT-027 and FEAT-031 both depend on structurally. technical_risk 0.65 (band 0.6-0.8: schema/shape change to WorkflowRun's gates.review/validation record, cross-file reach crew.mts+workflow-state.mts+workflow-state-gates.mts, and existing tests may assume the old default-approve behavior) — rollback needs no migration but does need a test sweep.",
+    "acs": [
+      "AC-1: Given a run, When `write-review-result` is called without `--decision`, Then it exits `2` and stderr matches `/--decision is required/`.",
+      "AC-2: Given reviewer `a=rejected` then `b=approved` (and the mirror order), When state is loaded, Then `gates.review.status` is `failed` and `reviewers` equals `{a: rejected, b: approved}`.",
+      "AC-3: Given `--required-reviewers a,b` and only `a=approved`, When state is loaded, Then `gates.review.status` is `required`.",
+      "AC-4: Given `write-validation-result --decision skipped` without `--skip-reason`, Then it exits `2`; Given `--skip-reason` is provided, Then `validation_skipped` is recorded with that reason.",
+      "AC-5: Given the full crew test suite, When `cd crew && bun test tests/` runs, Then it is green, including any pre-existing test updated to pass `--decision approved` explicitly instead of relying on the removed default."
+    ]
+  },
+  {
+    "featureId": "FEAT-025",
+    "scores": {
+      "customer_impact": 0.6,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.7,
+      "technical_risk": 0.4,
+      "dependency_depth": 0.0
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md audit refs #16/#17/#42-#44 (cited in FEAT body) plus Codex review rows #15-#17: row #15 'current code ... lacks deduplication', row #16 'CONFIRMED: only three model-family prefixes exist; unmatched models silently use Sonnet-4 pricing', row #17 'CONFIRMED: URL pathname remains percent-encoded; shell logging inserts Windows paths without JSON escaping.'",
+    "scopeNotes": "Scope is crew/scripts/lib/cost-hygiene/, session-cost.mts, pricing.json, the grade writer, and crew/tests/ only — explicitly no src/ changes. AC clarity is high with concrete model ids and concrete byte/path conditions. No weak-grade-dimension AC gap (none of the 7 tracked dimensions is below 0.80). Effort calibration: this bundles four largely-independent fixes (refuse-on-zero-sessions, price-table/matched-field, path-with-space fix, grade-template-token check) into one FEAT; none individually resembles a large sampled slice, closest analog is SLICE-30 ($3.50/3.5min bounded fix) scaled up for the four-part bundle — effort_points=3 reflects breadth over depth.",
+    "risks": [
+      "Changing emitCostReport to refuse-write on zero-sessions-scanned could mask a genuinely idle-but-legitimate window if a caller's expectations aren't updated to check the `written` flag — name every caller before landing.",
+      "The new Claude 5 pricing keys (claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5) must be sourced from the cited spec section verbatim; a transposed digit here silently mis-costs every future session using those models.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P2: real, Codex-confirmed telemetry-honesty defects, but none are an enforcement gate a consumer hits directly (unlike FEAT-022/024/026) — this is operational hygiene for the loop's own cost/grade tooling. technical_risk 0.4 (new pattern within one well-bounded area, no contract break since run_id/matched are additive fields).",
+    "acs": [
+      "AC-1: Given zero sessions scanned, or a window exceeding 24 hours, or a repeated `run_id`, When `emitCostReport` runs, Then nothing is written and a `reason` is set (`\"duplicate run_id\"` for the repeat case).",
+      "AC-2: Given `priceFor(\"claude-sonnet-5-5\")`, Then `matched` equals `\"claude-sonnet-5-5\"`; Given `priceFor(\"claude-opus-4-9\")`, Then `matched` is `null` and the report carries `unpriced_models`.",
+      "AC-3: Given `pricing.json` copied under a temp directory whose path contains a space, with `PRICING_PATH` pointing at it, When the loader runs, Then it loads successfully.",
+      "AC-4: Given a grade file still containing the literal token `<fill title>`, When the grade writer runs, Then it exits `2` with `\"grade template unfilled\"`."
+    ]
+  },
+  {
+    "featureId": "FEAT-026",
+    "scores": {
+      "customer_impact": 0.95,
+      "effort_estimate": 0.55,
+      "strategic_alignment": 0.95,
+      "technical_risk": 0.7,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P0",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md: 'node_modules present in plugin cache: absent' and four of six crew hooks plus the two most-used CLI subcommands FAIL with 'Cannot find module/package'. Codex review row #14 CONFIRMED: 'Static runtime imports require plugin-std, zod and yaml; the latter two are devDependencies.' This is the headline defect the whole remediation plan exists to fix.",
+    "scopeNotes": "Scope matches the FEAT's own Scope line exactly (build-dist.mts, dist/, hooks.json, package.json, one ci.yml step, docs/ci-gates.md, CLAUDE.md gate list, dist-fresh test). Explicitly excludes the commands/agents path rewrite (deferred to FEAT-031 per the FEAT body, to avoid wave 2-3 file conflicts). AC clarity is high and testable (byte-identical check, hooks.json inspection). No weak-grade-dimension gap. Effort calibration: committing built dist/ output is a genuinely new repo pattern with no close analog in the sampled cost reports; SLICE-27 ($55.91/418min, large multi-file structural change) is the closest shape by novelty even though this FEAT's file count is smaller — effort_points=5 reflects that novelty, not just line count.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is a dynamic `import()` of a bare specifier inside an entry that Bun.build's static analysis misses, surfacing only when the bundled dist file runs in the consumer-smoke test — the FEAT body itself flags this as the expected failure mode in Task 2 Step 3.",
+      "Pre-mortem (2): rollback if this merged and broke the loop requires more than a plain revert — the committed dist/ files and the hooks.json path rewrite must be reverted together, or hooks.json will point at dist/ files that no longer exist; document this as a paired-revert, not a single-file revert.",
+      "Pre-mortem (3): coverage gap — the dist-fresh --check test only proves dist/ matches source at commit time; it does not test that a bundled file behaves identically to the unbundled source under every runtime code path (only the entry points exercised by consumer-smoke are proven equivalent).",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P0: this is the actual fix for the crash blocking every real consumer install — highest customer_impact and strategic_alignment of the batch. technical_risk 0.7 (band 0.6-0.8: new dependency/pattern — Bun.build bundling with committed artifacts — cross-module reach into hooks.json, package.json, ci.yml, and a sed rewrite of commands/agents references).",
+    "acs": [
+      "AC-1: Given the tree after this FEAT, When `bun test src/tests/install/` runs, Then `consumer-smoke` (FEAT-022) and `dist-fresh` both PASS.",
+      "AC-2: Given a source edit without a rebuild, When `bun run build:dist -- --check` runs, Then it exits `1` naming the stale file.",
+      "AC-3: Given `.claude-plugin/hooks/hooks.json`, When inspected, Then every `bun` command points at `dist/hooks/*.js` and every `node` command is unchanged.",
+      "AC-4: Given the full gate suite, When `bun run test:all && bun run typecheck && bun run lint && bun run validate:manifests` runs, Then all are green, and `validate-repo-boundary`/`validate-imports` still pass with `dist/` present."
+    ]
+  },
+  {
+    "featureId": "FEAT-027",
+    "scores": {
+      "customer_impact": 0.7,
+      "effort_estimate": 0.3,
+      "strategic_alignment": 0.75,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md audit #10: orchestrate-slice.md's RISK_GATE=false branch says 'Do not dispatch a dedicated verifier' while routing-table.md:64 says verifier is 'always required with no skip path.' Codex review row #23 CONFIRMED: 'The default verifier exemption relies on .github/workflows/test.yml without establishing that a consumer has an equivalent workflow.'",
+    "scopeNotes": "Scope is the four policy docs + crew/scripts/crew.mts (one subcommand) + crew/scripts/lib/ci/ + crew/tests/ — explicitly excludes commands/build.md and agents/ (FEAT-028/029 own those). AC clarity is high (exact present/workflows shape, exact forbidden phrases). No weak-grade-dimension gap. Effort calibration: closest analog is SLICE-30 ($3.50/3.5min bounded fix); effort_points=3 reflects the four-doc text sync plus one new isolated module.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the four-doc policy sentence drifting out of exact sync during the edit (one doc paraphrased instead of copied verbatim), which the command-gate-policy test is specifically designed to catch — the AC's exact-sentence match is strict by design.",
+      "Pre-mortem (2): rollback is a plain revert — hasConsumerCi is a pure read-only query with no state written, so no migration risk.",
+      "Pre-mortem (3): coverage gap — hasConsumerCi's heuristic (grep for bun test/npm test/dotnet test/pytest/go test in any workflow job) will false-positive on a workflow that runs those commands for an unrelated purpose (e.g. a smoke test in a different language); no AC covers this false-positive case."
+    ],
+    "reasoning": "P1: resolves a directly contradictory, Codex-confirmed policy defect that currently leaves it ambiguous whether a verifier is ever skippable. technical_risk 0.35 (new isolated module, no schema change, depends only on FEAT-024 for the sibling subcommand pattern).",
+    "acs": [
+      "AC-1: Given a temp repo without `.github`, When `hasConsumerCi` runs, Then `present` is `false`; Given a workflow file containing `bun test`, Then `present` is `true` and `workflows` equals `[\"ci.yml\"]`.",
+      "AC-2: Given the four policy docs (`commands/orchestrate-slice.md`, `commands/fix.md`, `docs/routing-table.md`, `skills/workflow/dispatcher-routing/SKILL.md`), When `command-gate-policy.test` runs, Then each contains the exact policy sentence and none contains \"No skip path\" or \"No verifier dispatch\".",
+      "AC-3: Given a LOW-risk slice in a repo without consumer CI, When the dispatcher follows `orchestrate-slice.md`, Then it dispatches `devcrew:verifier` with no skip.",
+      "AC-4: Given the real tree, When `validate-agent-refs`, `validate-skills`, and the content-length gates run, Then all are green."
+    ]
+  },
+  {
+    "featureId": "FEAT-028",
+    "scores": {
+      "customer_impact": 0.75,
+      "effort_estimate": 0.3,
+      "strategic_alignment": 0.8,
+      "technical_risk": 0.35,
+      "dependency_depth": 0.0
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md / audit #7: fullstack-dev.md:213 mandates push + draft PR + report-to-pr before reporting. Codex review row #22 CONFIRMED: 'Fullstack-dev mandates pushing and opening a draft PR before reporting. This bypasses the dispatcher's explicit-approval ship boundary.'",
+    "scopeNotes": "Scope is the four builder agent prompts + one sentence in commands/build.md + builder-ceremony SKILL.md + two validator files + crew/tests/ — explicitly excludes commands/fix.md, parallel.md, orchestrate-slice.md (FEAT-027/029 own those). AC clarity is high (exact forbidden strings per builder, exact validator rule name). No weak-grade-dimension gap. Effort calibration: four near-identical prompt edits plus two validator-rule additions is comparable in shape to SLICE-30 ($3.50/3.5min); effort_points=3 accounts for the four-file repetition plus new validator logic.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is one of the four builders retaining a stray reference to the deleted publish step in a section not caught by the no-prereview-publish regex (e.g. inside a code comment or example block) — the test only checks for the literal forbidden strings, not intent.",
+      "Pre-mortem (2): rollback is a plain revert of the four agent prompts and two validator files — no runtime state changes, so no migration risk.",
+      "Pre-mortem (3): coverage gap named explicitly in the FEAT's own AC-5 — the SubagentStop completion-receipt detector (FEAT-008/SLICE-43) must still recognize the new STATUS block as terminal; if its test isn't actually adjusted, a builder could report DONE and the dispatcher would never notice."
+    ],
+    "reasoning": "P1: removes a Codex-confirmed bypass of the dispatcher's explicit-approval ship boundary (builders currently push + open PRs before any review happens). technical_risk 0.35 (prompt edits plus validator-rule additions, no schema change, clean revert) — independent of the other waves per the conflict table, though it shares files with FEAT-029 downstream.",
+    "acs": [
+      "AC-1: Given each of the four builder prompts (`fullstack-dev.md`, `backend-dev.md`, `frontend-dev.md`, `aiplugin-dev.md`), When `builder-report-contract.test.mts` runs, Then the `STATUS:` block spec appears exactly once and none of them contain `report-to-pr`, `gh pr create`, `SendMessage`, or `git push`.",
+      "AC-2: Given `commands/build.md`, When inspected, Then it no longer contains the sentence \"REQUIRE a `write-handoff`\".",
+      "AC-3: Given a fixture agent file containing `node ./scripts/x.mts`, When `validate-agents.mts` runs, Then it exits `1` naming the `no-relative-script-path` rule.",
+      "AC-4: Given the real tree, When `validate-agents.mts` and `validate-agent-refs.mts` run, Then both exit `0` and the 300-line agent content-length cap still holds.",
+      "AC-5: Given the SubagentStop completion-receipt detection (FEAT-008/SLICE-43), When a builder returns the new `STATUS:` block, Then it is still recognized as a terminal report, with that detector's test adjusted if needed."
+    ]
+  },
+  {
+    "featureId": "FEAT-029",
+    "scores": {
+      "customer_impact": 0.8,
+      "effort_estimate": 0.5,
+      "strategic_alignment": 0.8,
+      "technical_risk": 0.5,
+      "dependency_depth": 0.3
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md lists five distinct broken-reference/fake-analyzer findings directly (parallel.md nonexistent agent, fix.md invalid badge, reviewer.md missing path, 6 stub analyzers, light path eligible on a clean tree). Codex review rows #1, #2, #4, #5, #6, #8, #9 independently CONFIRMED six of these seven findings (row #5 corrected the count from 8 to 9 missing scripts).",
+    "scopeNotes": "Scope matches the FEAT body's own list exactly: reference edits in four command/agent files, deletion of 6 stub .py analyzers plus their SKILL.md advertising blocks, three new validate-agent-refs.mts rules, and a new light-path.mts classifier module. Explicitly depends on FEAT-027 and FEAT-028 landing first due to shared files (commands/fix.md, orchestrate-slice.md, build.md, validate-agent-refs.mts). AC clarity is high (concrete fixtures, concrete classifyLight input/output pairs). No weak-grade-dimension gap. Effort calibration: this is the widest-surface-area single FEAT in the batch after FEAT-031 — no exact cost analog sampled, bracketed between SLICE-30 (small, $3.50) and SLICE-27 (large, $55.91); effort_points=5 reflects breadth (many small edits + 3 validator rules + 1 new module) without single-site depth.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the new repo-path-exists validator rule false-positiving on a legitimate backticked path that is a pattern/glob rather than a literal file (e.g. `skills/**/SKILL.md` in prose) — the real-tree pass requirement in AC-1/AC-4 is the safety net, but a new false positive on an unrelated file would block merge noisily.",
+      "Pre-mortem (2): rollback if merged and broke the loop is mostly a plain revert, except the 6 deleted stub .py scripts and their SKILL.md blocks — if anything downstream still references them by path, deletion needs to be re-verified as safe (the FEAT's deliverable already treats this as a batch, but a partial revert could leave dangling SKILL.md text pointing at now-deleted scripts).",
+      "Pre-mortem (3): coverage gap — classifyLight's keyword regex (`/\\b(typo|rename|format|comment|lint|whitespace|bump)\\b/i`) can be satisfied by task text that merely mentions one of those words without the change actually being mechanical (e.g. 'fix the typo-detection feature'), and no AC tests that false-eligible case."
+    ],
+    "reasoning": "P1: fixes multiple independently Codex-confirmed broken dispatch targets and fake analyzers that currently misrepresent capability to the loop and to the operator. technical_risk 0.5 (band 0.3-0.5 upper end: new validator rules touch the whole repo's surface and a new classifier module, but no schema/data-shape change and a largely mechanical rollback).",
+    "acs": [
+      "AC-1: Given fixtures (an agent naming `devcrew:nope`, a reviewer citing `docs/workflow/x/`, a SKILL.md citing `scripts/ghost.py`), When `validate-agent-refs.mts` runs, Then it exits `1` with the matching rule name in stderr; Given the real tree, Then it exits `0`.",
+      "AC-2: Given `classifyLight({task:\"add OAuth login flow\"})`, Then it is not eligible with reason `\"no files named\"`; Given `{task:\"fix typo in README\", files:[\"README.md\"]}`, Then it is eligible; Given `{task:\"fix typo\", files:[\"a\",\"b\",\"c\"]}`, Then it is not eligible.",
+      "AC-3: Given `/devcrew:build` on a clean tree with a task naming no files, When the light-path classifier runs, Then the standard ladder is taken, never `dev-lite`.",
+      "AC-4: Given the real tree, When `validate-agent-refs`, `validate-skills`, `validate-agents`, and the content-length gates run, Then all are green."
+    ]
+  },
+  {
+    "featureId": "FEAT-030",
+    "scores": {
+      "customer_impact": 0.55,
+      "effort_estimate": 0.35,
+      "strategic_alignment": 0.65,
+      "technical_risk": 0.65,
+      "dependency_depth": 0.2
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "FEAT body audit #15/#18, Codex review row #29 (telemetry/session-start adjacent): session start was '~30.5 KB via includes on dev-team.' CLAUDE.md here explicitly carries `@.claude/artifacts/loop/loop-snapshot.md` and `.claude/crew/constitution.md` is near-duplicate of `~/.claude/crew/constitution.md` (verified directly in this session's own system context — both constitution copies are near-identical multi-hundred-line documents).",
+    "scopeNotes": "Scope matches the FEAT body exactly: CLAUDE.md, .claude/crew/constitution.md, skills/loop-discipline/SKILL.md, package.json, crew/tests/perf/, ci.yml e2e step, src/tests/context/, docs/audits/2026-11-05/README.md. This FEAT edits the repo's own governance file (CLAUDE.md) and its clause-marker-bearing constitution delta, both explicitly flagged in CLAUDE.md itself as machine-read load-bearing contracts (clause: ... markers cited by declined_per, the ## CI gates list counted by generate-metrics-band.mts) — this warrants the mandatory pre-mortem below regardless of the technical_risk band. No weak-grade-dimension gap applies. Effort calibration: no close cost analog for a doc-diet-plus-test-harness slice; closest shape is SLICE-25 (doc-sync slice, avg grade 0.899, flagged a stale-gate-list lesson directly relevant here) — effort_points=3.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is removing the `@.claude/artifacts/loop/loop-snapshot.md` include breaking a currently-undocumented reader that expects it at session start (e.g. a skill or hook that greps CLAUDE.md's rendered content rather than reading the snapshot file directly) — the FEAT's own AC requires validate-snapshot-freshness to stay green, which is the primary safety net for this.",
+      "Pre-mortem (2): rollback if merged and broke the loop requires more than a plain revert of CLAUDE.md — if skills/loop-discipline/SKILL.md absorbed the 'read rules.md then MASTER_PROMPT.md' instruction that moved out of CLAUDE.md, a partial revert (CLAUDE.md reverted, SKILL.md not) would silently drop that instruction entirely; the two files must be reverted together.",
+      "Pre-mortem (3): coverage gap — SLICE-25's own lesson ('the stale 19-gate list shipped with a handoff CLAIMING sync; the reviewer's parse caught it') names exactly this failure mode: a machine-read doc section (the `## CI gates` list, or the `clause:` markers) silently drifting out of sync with validators during an edit meant to be purely byte-budget-driven; no automated AC directly re-parses the clause-marker set for completeness beyond validate-decline-citations' existing scope.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P1: addresses a real, Codex/audit-cited session-start bloat problem and a stale CI-retry-without-diagnosis pattern, but the customer_impact is lower (token-cost hygiene, not a crash or fail-open gate) than FEAT-022/024/026. technical_risk 0.65 (band 0.6-0.8: this FEAT edits CLAUDE.md and .claude/crew/constitution.md, both explicitly machine-read with clause markers and a gate-count contract that CI validators enforce — any slip breaks validate-agent-refs/validate-decline-citations/validate-snapshot-freshness, which is exactly why those three gates are named as required ACs here).",
+    "acs": [
+      "AC-1: Given the tree before the edit, When `session-start-budget.test` runs, Then it FAILS with the measured byte count; Given the tree after the edit, Then it PASSES at `12,288` bytes or fewer with no duplicate file in the resolved `@` include chain.",
+      "AC-2: Given `bun run test` and `bun run test:crew`, Then neither runs `hook-cold-start-bench.test.mts` or `capture-perf.test.mts`; Given `bun run bench`, Then it does.",
+      "AC-3: Given `docs/audits/2026-11-05/README.md`, When inspected, Then it records the 5-run `e2e-smoke.mts` result and the retry-count decision with evidence (the first error line per failure, if any).",
+      "AC-4: Given the edited `CLAUDE.md` and `.claude/crew/constitution.md`, When `validate-agent-refs`, `validate-snapshot-freshness`, and `validate-decline-citations` run, Then all are green, and `docs/memory.md`'s \"Load-bearing CLAUDE.md contracts\" section is updated to reflect any moved include."
+    ]
+  },
+  {
+    "featureId": "FEAT-031",
+    "scores": {
+      "customer_impact": 0.85,
+      "effort_estimate": 0.75,
+      "strategic_alignment": 0.85,
+      "technical_risk": 0.8,
+      "dependency_depth": 0.4
+    },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "smoke-baseline.md: hook timeout fields present but 'onFailure still absent'; FEAT body cites 'p50 ~214ms per cold spawn on dev-team' with up to 6 Bun launches per Bash call. Codex review row #3 rated 'OVERSTATED' on the specific fan-out-count claim but confirmed hooks.json has no onFailure/timeout discipline (row #12 CONFIRMED), and row #11 CONFIRMED the dead cross-process timer-tap Map. Row #26 CONFIRMED model-routing-enforce must be preserved, not deleted, inside the new dispatcher.",
+    "scopeNotes": "Scope spans 20+ hooks per the FEAT body's own framing ('runs alone: touches 20+ hooks, regenerates hooks.json, rewrites command paths'). Per the team-lead's explicit guidance this FEAT is scored autonomousSafe:false regardless of composite score, given medium confidence on the perf claim and the breadth of the blast radius. effort_estimate 0.75 maps to effort_points=8, which trips the FEAT-168 decomposition gate — decomposed below into 5 slices of 2 points each (sum=10 >= 8), each isolating one of the FEAT's named landmines per runner#393 (b): registry wrapping is mechanical/uniform (one slice), the dispatcher's blocking/exit-code/timeout logic is the one genuine design-sensitive landmine (its own slice), the hooks.json/path-rewrite renderer is a second landmine (path rewrite touches 85+37 refs across commands/agents, its own slice), the telemetry-port-and-delete work is mechanical (its own slice), and the hyperfine perf measurement + doc record is evidence-gathering, not implementation (its own slice) — no slice bundles a flagged landmine with routine mechanical work. No weak-grade-dimension gap applies (observability is 0.894, above threshold, but the new otel-spool/flush path is still worth the dedicated slice's own test coverage). No cost analog in the sampled aggregates approaches this blast radius; SLICE-27 ($55.91/418min, the largest sampled multi-file structural change) is the nearest shape and this FEAT is judged comparable-or-larger.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is a check wrapped into the registry changing its block/pass semantics subtly during the port (e.g. an enforce:true check whose original hook exited 0 on a condition the new dispatcher now treats as enforce-failure) — the AC's PreToolUse/SubagentStop/Agent-dispatch scenario tests are the direct mitigation, but they cover 4 scenarios against 20+ ported hooks.",
+      "Pre-mortem (2): rollback if this merged and broke the loop is NOT a plain revert — hooks.json is generated output, dist/hooks/dispatch.js is a committed bundle, and commands/agents path strings are rewritten in the same wave; a partial revert (dispatcher reverted, path rewrite not) would leave commands pointing at a dispatcher file that no longer exists. This is the most cross-plugin-contract-like change in the whole remediation batch.",
+      "Pre-mortem (3): coverage gap — no existing test measures hook-dispatch latency under real Claude Code session load (only hyperfine from a scratch consumer repo, a synthetic benchmark); a latency regression that only appears under concurrent tool calls in a live session would not be caught by any AC here.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P1 despite the depth of the fix (consolidating 20+ hooks, fixing fail-closed enforcement and dead cross-process state) because it is gated behind three other FEATs and explicitly flagged medium-confidence by the operator's own wave plan. technical_risk 0.8 (band 0.6-0.8 top end, bordering 0.9: cross-module reach across every hook plus a generated hooks.json plus a command-path rewrite touching 85+37 references — hard to reverse as a unit). autonomousSafe forced false per explicit team-lead instruction and independently justified by the blast radius and medium-confidence framing in the wave plan itself.",
+    "acs": [
+      "AC-1: Given `.claude-plugin/hooks/hooks.json`, When `hooks-json-shape.test.mts` runs, Then at most one `bun` command exists per `(event, matcher)` pair, every entry has a `timeout`, and every enforcement group has `onFailure: \"block\"`.",
+      "AC-2: Given a PreToolUse Bash payload with a stub registry where one check throws and another blocks, When `dispatch.mts` runs, Then it exits `2` and the reason lists the blocker; Given only a telemetry (`enforce: false`) check throws, Then it exits `0` and a line is written to `.claude/logs/events.jsonl`.",
+      "AC-3: Given a SubagentStop payload with a `DONE:` marker and a red review gate, When `dispatch.mts` runs, Then it exits `2` (gate-guard enforcement survives through the dispatcher).",
+      "AC-4: Given an Agent dispatch with `loop.modelRouting.enabled: true` and no `model` set, When `dispatch.mts` runs, Then `updatedInput.model` is set (model-routing-enforce preserved per Codex #26).",
+      "AC-5: Given the consumer smoke test (FEAT-022) running through `dist/hooks/dispatch.js` with repointed CLI paths, Then it PASSES, and the hyperfine p50 measurement is under 250ms for one spawn, recorded in `docs/audits/2026-11-05/README.md`."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "Registry: wrap existing hook checks into CHECKS array", "points": 2, "touches_files": ["crew/hooks/registry.mts"] },
+      { "id_suffix": "-SLICE-2", "title": "Dispatcher core: stdin read, filter, allSettled, exit-code/fail-closed logic", "points": 2, "touches_files": ["crew/hooks/dispatch.mts"] },
+      { "id_suffix": "-SLICE-3", "title": "render-hooks-json + command/agent path rewrite to dist/", "points": 2, "touches_files": ["src/scripts/render-hooks-json.mts", ".claude-plugin/hooks/hooks.json", "commands", "agents"] },
+      { "id_suffix": "-SLICE-4", "title": "Telemetry port: log-event check, otel spool/flush, delete bash-gate hooks", "points": 2, "touches_files": ["crew/hooks/otel-flush.mts", "crew/hooks/pre-tool-use-bash-gate.mts", "crew/hooks/post-tool-use-bash-gate.mts", "crew/hooks/lib/bash-gate-timer-tap.mts", "crew/scripts/log_event.sh"] },
+      { "id_suffix": "-SLICE-5", "title": "Dispatcher/hooks-json tests + hyperfine perf record", "points": 2, "touches_files": ["crew/tests/hooks/dispatch.test.mts", "crew/tests/hooks/hooks-json-shape.test.mts", "docs/audits/2026-11-05/README.md"] }
+    ]
+  },
+  {
+    "featureId": "FEAT-032",
+    "scores": {
+      "customer_impact": 0.7,
+      "effort_estimate": 0.45,
+      "strategic_alignment": 0.75,
+      "technical_risk": 0.5,
+      "dependency_depth": 0.9
+    },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "FEAT body itself is the closing gate of docs/superpowers/plans/2026-11-05-devcrew-audit-remediation.md Task 11, whose own self-review notes list 'Not covered here, by design: skill-discovery verification (#19) beyond claude plugin validate --strict in Task 11 Step 1' as an acknowledged gap — this FEAT is the designated place that evidence trail closes.",
+    "scopeNotes": "Scope is docs/audits/2026-11-05/smoke-after.md, a CHANGELOG draft entry, and one review artifact — explicitly 'No source edits; defects found here become new FEATs via /devcrew:intake' per its own Scope line. dependency_depth is maximal: it depends on all 10 other FEATs in this batch (FEAT-022 through FEAT-031), the single highest blocking chain in the whole audit-remediation effort, which is why compositePriority is held at P2 despite high strategic value — it is not executable until wave 5 regardless of its own merits. No weak-grade-dimension gap applies. No cost analog fits an interactive-claude-session-plus-local-plugin-install slice shape; nothing sampled resembles it.",
+    "risks": [
+      "The FEAT body's own fallback language ('claude plugin install --from <path>; if unavailable on CLI 2.1.x fall back to the add-local-path flow') flags a genuine CLI-version unknown that could require a spike if the installed CLI version lacks --from.",
+      "This FEAT explicitly requires live interactive `claude -p`/`claude` invocations with budget caps inside a scratch consumer repo, and a throwaway local plugin install — both are process/environment-dependent steps outside the normal file-edit-and-test loop, which is why autonomousSafe is false here independent of the composite score.",
+      "The FEAT's own repo-rule carve-out note ('the repo rule never register a local plugin marketplace is about the shipped marketplace, this is a throwaway smoke install, record the deviation') must actually be recorded as a deviation in the operator summary, or this FEAT's own AC-3 (nothing pushed, no tag, no marketplace change) is unverifiable.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P2: this is the release sign-off gate for devcrew 1.2.0 and has real strategic value, but it cannot be dispatched before all ten other FEATs in this batch merge (dependency_depth 0.9, the ceiling case the scoring rubric describes as 'blocked by 3+ unresolved items'), and it needs interactive sessions plus a local plugin install rather than a bounded file edit — both reasons it is scored autonomousSafe:false per the team-lead's explicit instruction and independently on its own merits.",
+    "acs": [
+      "AC-1: Given `docs/audits/2026-11-05/smoke-after.md`, When compared row-by-row to `smoke-baseline.md`, Then every baseline FAIL row is now PASS with the command and observed output quoted.",
+      "AC-2: Given the whole-branch review artifact, When inspected, Then each of the listed audit findings (#1-#5, #7-#13, #15-#18, #25, #41-#44, #48-#53) maps to a test file or a smoke row, and the review decision is written via `write-review-result --decision`.",
+      "AC-3: Given the operator-facing summary, When read, Then it explicitly states that nothing was pushed, no tag was cut, and no marketplace change was made.",
+      "AC-4: Given the installed scratch-repo plugin cache, When inspected after install, Then it has no `node_modules` directory, and the hook smoke run shows zero `hook_error` rows in `.claude/logs/events.jsonl`."
+    ]
+  }
+]

@@ -1,0 +1,277 @@
+[
+  {
+    "featureId": "FEAT-022",
+    "scores": { "customer_impact": 0.9, "effort_estimate": 0.3, "strategic_alignment": 0.9, "technical_risk": 0.3, "dependency_depth": 0.1 },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Rewritten body: devcrew is ineligible for marketplace auto-install (root bun.lock declares workspaces; crew/ carries a git dependency) — confirmed independently by the assumption-attack review's lockfile reading. The 2026-11-05 baseline invoked hooks by hand with bun and never tested discovery; this FEAT now explicitly depends on FEAT-033 so the entry list reads hooks/hooks.json, the real discoverable path.",
+    "scopeNotes": "Scope unchanged (new files only: src/tests/install/**, src/scripts/lib/install/shipped-entrypoints.mts). The rewrite adds two reviewer-driven fixes: (1) listShippedEntrypoints now also parses commands/*.md and agents/*.md for `bun \"${CLAUDE_PLUGIN_ROOT}/<path>\"` strings so the CLI entry list tracks the later dist/ rewrite automatically, closing the OBJ-2 CLI-list staleness the architect flagged; (2) stageConsumerCopy now excludes node_modules at ANY depth, closing the crew/node_modules (272MB local) false-pass the architect flagged in OBJ-12. An EXPECTED_FAIL ratchet replaces the old fixed six-name assertion so the test self-maintains as FEAT-026/W2.5 clear entries. AC clarity is high (exact counts, not \">20\"). No weak-grade-dimension gap. effort_estimate held at 3 points per instruction — the added depth-aware exclusion and command-parsing logic are still test-infra, not product code.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the command/agent-prompt-parsing regex for `bun \"${CLAUDE_PLUGIN_ROOT}/<path>\" <args>` missing a variant (e.g. a path with an escaped quote, or an arg list spanning a line break in a markdown table), silently under-counting the CLI entry set rather than over-counting.",
+      "Pre-mortem (2): rollback is a plain revert — new test files only, no runtime behavior change.",
+      "Pre-mortem (3): coverage gap — the EXPECTED_FAIL ratchet proves an entry stops crashing, but nothing asserts WHY it stopped crashing (e.g. a hook could pass by silently no-op'ing rather than by actually resolving its real dependencies); that distinction is out of this FEAT's scope by design.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds. technical_risk 0.3 (band 0.3-0.5 low end — still mechanical test-infra, no schema change). dependency_depth bumped slightly to 0.1 to reflect the new explicit depends_on: [FEAT-033] (the file this test enumerates must sit at the real discoverable path first, or the entry list itself is built on the wrong file)."
+    ,
+    "acs": [
+      "AC-1: Given today's tree, When `bun test src/tests/install/consumer-smoke.test.mts` runs, Then it FAILS naming at least `crew/hooks/subagent-gate-guard.mts`, `hooks/pre-push-gate.mts`, `crew/hooks/pre-tool-use-agent.mts`, `crew/hooks/otel-post-tool-use.mts`, `crew/scripts/crew.mts brief-me`, and `crew/scripts/crew.mts show-workflow-state` with \"Cannot find\".",
+      "AC-2: Given `hooks/hooks.json` plus `commands/*.md` plus `agents/*.md`, When `listShippedEntrypoints` runs, Then the distinct file set contains the exact-counted 17 bun `.mts` hooks, the node `.mjs` hooks, `log_event.sh`, `crew/scripts/crew.mts`, and `src/scripts/loop.mts` (exact counts asserted, not \">20\").",
+      "AC-3: Given `stageConsumerCopy` output, When inspected, Then no `node_modules` directory exists at ANY depth under `pluginCopy`, and `consumerRepo` has exactly one git commit.",
+      "AC-4: Given an entry listed in `EXPECTED_FAIL` that now passes, When the test runs, Then it FAILS with \"remove from EXPECTED_FAIL\" (ratchet)."
+    ]
+  },
+  {
+    "featureId": "FEAT-023",
+    "scores": { "customer_impact": 0.85, "effort_estimate": 0.2, "strategic_alignment": 0.85, "technical_risk": 0.35, "dependency_depth": 0.0 },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Rewritten body resolves architect OBJ-16 directly: backlog paths under `.claude/artifacts/loop/backlog/**` are reclassified as CODE (they feed validate-effort-points, validate-decline-citations, validate-loop-state, validate-backlog-drift — gates this repo already runs), dropping the old blanket `.*/backlog/` docs-only exemption that would have silently skipped those validators.",
+    "scopeNotes": "Scope unchanged. The exempt pattern is now tighter (`^(docs/|README\\.md$|CHANGELOG\\.md$)` — no backlog carve-out). AC set gained a concrete backlog-path test case and a literal-string check that `docs/ci-gates.md` names the two new scripts, plus a gate-count freeze check (`generate-metrics-band.mts --check` stays at 42, consistent with this repo's current CLAUDE.md gate list before FEAT-026 renumbers it to 43). No weak-grade-dimension gap. effort_estimate held at 2 points — the backlog-reclassification is a one-line regex change, not new scope.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is a legitimate docs-only backlog edit (e.g. fixing a typo in a FEAT body) now tripping the full fast-gate unnecessarily, since backlog paths are no longer exempt — this is an intentional severity trade (false-negative prevention over false-positive friction) per architect OBJ-16, worth flagging to the operator as an accepted cost.",
+      "Pre-mortem (2): rollback is a plain revert of the two scripts and the ci.yml diff — no migration risk.",
+      "Pre-mortem (3): coverage gap — no test exercises the real `ci.yml` wiring end-to-end (step output piping through GitHub Actions' `needs.changes.outputs.code`), only the two scripts' unit behavior in isolation.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds. technical_risk 0.35 (hold — same banding as before). This remains the CI gate meant to prevent every other remediation FEAT in this batch from shipping silently broken; the backlog reclassification closes a gap the first-round scoring missed before the architect caught it.",
+    "acs": [
+      "AC-1: Given stdin `agents/reviewer.md`, `skills/workflow/x/SKILL.md`, or `commands/build.md`, When `docs-only.sh` runs, Then it prints `code=true`; given `docs/a.md\\nREADME.md\\n`, Then `code=false`; given empty stdin, Then `code=true`; given `.claude/artifacts/loop/backlog/triaged/FEAT-001.md`, Then `code=true`.",
+      "AC-2: Given `gate.sh \"\" success`, Then exit `1`; `gate.sh \"true\" failure`, Then exit `1`; `gate.sh \"true\" success`, Then exit `0`; `gate.sh \"false\" skipped`, Then exit `0`.",
+      "AC-3: Given `docs/ci-gates.md`, When inspected, Then it contains the literal strings `src/scripts/ci/docs-only.sh` and `src/scripts/ci/gate.sh`, and `bun src/scripts/generate-metrics-band.mts --check` is green with the gate list order unchanged."
+    ]
+  },
+  {
+    "featureId": "FEAT-024",
+    "scores": { "customer_impact": 0.9, "effort_estimate": 0.45, "strategic_alignment": 0.9, "technical_risk": 0.7, "dependency_depth": 0.0 },
+    "compositePriority": "P0",
+    "autonomousSafe": true,
+    "demandEvidence": "Assumption-attack review item 2 upgraded this from latent to live: 'Every reviewer's mandatory FIRST action is write-review-result --scaffold --status in-progress with no decision... Scaffold registers the artifact... workflow-state.mts stamps review_passed before the review starts... Live on every dispatch → P0 stands.' The rewritten body names six agent prompts that would break under a naive unconditional --decision requirement (reviewer.md, architect-reviewer.md, csharp-reviewer.md, typescript-reviewer.md, reviewer-lite.md, verifier.md).",
+    "scopeNotes": "Scope expanded materially per architect OBJ-5: --decision is now required only on TERMINAL writes (no --status, or --status completed, and no --scaffold); scaffold/in-progress writes register the artifact path but apply no badge, preserving DEC-019 idempotency and the six reviewer prompts' existing scaffold-first behavior. --required-reviewers is deleted (architect's one-source-of-truth call over the reviewer's keep-as-override suggestion, recorded in the synthesis); the required reviewer set is instead snapshotted from reviewers.ladder into gates.review.required[] at run-brief time, keyed by role name (not letters). customer_impact raised to 0.9 (from 0.85) reflecting the assumption-attack's 'live on every dispatch' finding — this is not a theoretical edge case, it is the default path every reviewer takes today. No weak-grade-dimension gap. Effort calibration: bumped to 5 points per instruction — the scaffold-exemption branch, the ladder-snapshot plumbing, and the GateEntry type extension are three separable pieces of real logic beyond the original verdict-resolution fix.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the scaffold-exemption condition being too broad or too narrow — too broad lets a reviewer skip --decision entirely by always passing --scaffold; too narrow re-breaks the six prompts this FEAT is explicitly designed not to break. The AC's explicit scaffold+in-progress-is-exempt / everything-else-is-terminal test pair is the direct mitigation.",
+      "Pre-mortem (2): rollback is a plain git revert with no data migration, but any in-flight run whose workflow-state.json was already written under the new gates.review.reviewers/required shape would need manual reconciliation if rolled back mid-run.",
+      "Pre-mortem (3): coverage gap — no AC covers a THIRD reviewer role being added to reviewers.ladder after a run-brief snapshot is taken; the required[] set is frozen at run-brief time by design, so a mid-run ladder config change would not retroactively apply, and nothing tests that this is the intended (not accidental) behavior.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P0, holds and strengthened: this closes a fail-open gate now confirmed LIVE (not latent) on every single reviewer dispatch in the repo today, via a path (--scaffold --status in-progress) that is every reviewer prompt's mandatory first action. technical_risk raised to 0.7 (band 0.6-0.8, upper-middle: cross-file reach now spans crew.mts + workflow-state.mts + workflow-state-gates.mts + artifacts/write.mts passthrough + the run-brief writer, and six live agent prompts' existing behavior must survive unchanged)."
+    ,
+    "acs": [
+      "AC-1: Given a run, When `write-review-result` is called with no `--status` (or `--status completed`) and no `--decision`, Then it exits `2` and stderr matches `/--decision is required/`.",
+      "AC-2: Given `--scaffold --status in-progress` with no `--decision`, Then it exits `0`, the artifact path is recorded, and `gates.review` is unchanged (no `review_passed`).",
+      "AC-3: Given reviewer `a=rejected` then `b=approved` (and the mirror order), Then `gates.review.status` is `failed` and `reviewers` equals `{a: rejected, b: approved}`.",
+      "AC-4: Given a run brief under ladder `[\"A\",\"B\"]` (roles resolved) and only one reviewer has written `approved`, Then status is `required`; after both have written `approved`, Then status is `passed`.",
+      "AC-5: Given `write-validation-result --decision skipped` without `--skip-reason`, Then it exits `2`; with `--skip-reason`, Then `validation_skipped` carries the reason, and `cd crew && bun test tests/` plus `validate-badges` are both green."
+    ]
+  },
+  {
+    "featureId": "FEAT-025",
+    "scores": { "customer_impact": 0.6, "effort_estimate": 0.45, "strategic_alignment": 0.7, "technical_risk": 0.45, "dependency_depth": 0.0 },
+    "compositePriority": "P2",
+    "autonomousSafe": true,
+    "demandEvidence": "Assumption-attack item B and architect OBJ-15 both independently flagged the previously-drafted `-5-5` model-id keys as unverified and the prefix-match semantics as wrong ('adding claude-opus-5-5 leaves claude-opus-5, claude-haiku-4-5-20251001 on fallback'). The rewritten body corrects this: keys must be sourced from real transcript `model` values, matching is exact-key-or-date-suffix only (no bare prefix), and `claude-opus-4-5` is added so `claude-opus-4` stops catching 4.5+.",
+    "scopeNotes": "Scope expanded per architect OBJ-7 (bundling breaks the import.meta.url sibling read for pricing.json) and OBJ-15 (grade writer's `<fill title>` producer is actually inside src/, contradicting the original 'no src/ changes' claim — now corrected in scope to include src/scripts/lib/grade-writer.mts and src/tests/). pricing.json becomes a statically-imported JSON module so Bun's bundler inlines it rather than reading a sibling file that won't exist under dist/crew.js — this is the FEAT-026-dependency fix the architect's OBJ-7 called for. decide.mts's verdict enum gains `unknown` for the unpriced-model case. No weak-grade-dimension gap. Effort calibration: bumped to 5 points per instruction — the real-transcript key verification, the exact/date-suffix match rewrite, the JSON-module conversion, and the decide.mts/writer enum extension are four separable pieces beyond the original three fixes.",
+    "risks": [
+      "The exact-or-date-suffix match change is itself a behavior change for every currently-fallback-priced model, not just newly-added ones — a model id that previously silently matched a prefix and now matches nothing will show up in `unpriced_models` for the first time; this is the intended fix, but it will visibly change historical-looking cost reports going forward and should be called out in the CHANGELOG, not just the test suite.",
+      "pricing.json's conversion to a static JSON import changes its runtime shape from 'read fresh from disk, PRICING_PATH-overridable' to 'inlined at build time, override only for tests' — confirm the FEAT-026 bundler audit (OBJ-7) actually reaches session-cost.mts as a bundled-entry dependency, not just a standalone module, or the inlining has no effect for the paths that matter.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P2, holds. technical_risk raised slightly to 0.45 (band 0.4-0.6: the JSON-static-import conversion and the decide.mts enum extension are additive, not breaking, but now span two test directories and a cost-advisor rendering path, not one isolated module as originally scoped).",
+    "acs": [
+      "AC-1: Given zero sessions scanned, or a 30-hour window, or a repeated `run_id`, When `emitCostReport` runs, Then nothing is written and a `reason` is set.",
+      "AC-2: Given `priceFor(\"claude-fable-5-1\")`, Then `matched` equals `\"claude-fable-5-1\"`; given `priceFor(\"claude-sonnet-5\")`, Then `\"claude-sonnet-5\"`; given `priceFor(\"claude-haiku-4-5-20251001\")`, Then `\"claude-haiku-4-5\"`; given `priceFor(\"claude-opus-9\")`, Then `matched` is `null`, `unpriced_models` contains it, and the cost-advisor verdict is `unknown`.",
+      "AC-3: Given `pricing.json` copied under a temp directory whose path contains a space with `PRICING_PATH` pointing at it, Then it loads; given no `PRICING_PATH`, Then the inlined table is used with no filesystem read.",
+      "AC-4: Given a grade file still containing the literal token `<fill title>`, When the grade writer runs, Then it exits `2` with `\"grade template unfilled\"`."
+    ]
+  },
+  {
+    "featureId": "FEAT-026",
+    "scores": { "customer_impact": 0.95, "effort_estimate": 0.65, "strategic_alignment": 0.95, "technical_risk": 0.75, "dependency_depth": 0.3 },
+    "compositePriority": "P0",
+    "autonomousSafe": true,
+    "demandEvidence": "Architect-reviewer OBJ-1 verified the design live from a fresh node_modules-free consumer: `bun --no-install dist/crew.js brief-me`/`show-workflow-state` exit 0, and the five baseline-crashing hooks all exit 0. Assumption-attack item 1 independently confirmed devcrew is genuinely ineligible for marketplace auto-install (root bun.lock declares workspaces; crew/ depends on a git URL) — the lead's own decision log records bundling as the chosen fix over fixing lockfile eligibility, since eligibility would still need @astragenie registry auth on every consumer machine.",
+    "scopeNotes": "Scope expanded materially per architect OBJ-1/OBJ-11: remove `dist/` from `.gitignore` (it was silently gitignored in rev 1 — the bundle would never actually have been committed); regenerate the hooksjson-crew-path-inventory (gate 9) and the README metrics band (gate 20) in the same commit as the gate-list renumbering (21→42 becomes 21→43, synced across docs/ci-gates.md AND CLAUDE.md in one commit per OBJ-13's coverage finding); pin `.bun-version` and normalise the `--check` byte-compare (strip the `// @bun` banner, normalise CRLF) to stop Bun-version flakes (OBJ-11). The commands/agents path rewrite is now explicitly deferred to a serial W2.5 step rather than silently absent from this FEAT's own AC-1, resolving the architect's OBJ-2 smoke-test/bundle contradiction (FEAT-022's CLI entries stay in EXPECTED_FAIL until W2.5, not claimed PASS here). dependency_depth raised to 0.3 reflecting the now-3-item depends_on (FEAT-022, FEAT-033, FEAT-034) with the FEAT-023 edge explicitly dropped as unnecessary serialization. No weak-grade-dimension gap. Effort bumped to 8 points per instruction.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is a bundled entry's import.meta.url-based sibling read (65 modules identified, 14 of them crew/scripts/*.mts computing REPO_ROOT from their own location) not actually being caught by the stated 'audit every module reachable from a bundled entry' step — AC-2 (cost-report/init/install-global dry-runs with no ENOENT) is the direct test, but it only samples three subcommands, not all 65 modules.",
+      "Pre-mortem (2): rollback requires reverting the .gitignore change, dist/, the hooks.json path rewrite, the renumbered gate lists, AND the regenerated inventory/metrics-band together — a partial revert leaves hooks.json pointing at dist/ files that no longer exist, or the gate-count lists disagreeing with each other (which is itself one of this FEAT's own validators).",
+      "Pre-mortem (3): coverage gap — the dist-fresh --check test proves byte-for-byte reproducibility on the SAME machine/Bun version; cross-platform (Windows vs Linux CI) reproducibility is asserted in AC-4 but only after the CRLF-normalisation fix, which is itself new and unproven against a real CI run at the time of writing.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P0, holds as the batch's single highest-impact fix — now explicitly verified live by the architect-reviewer rather than only designed on paper. technical_risk raised to 0.75 (band 0.6-0.8 upper end: the scope now includes a cross-module gate-list renumbering synced across two machine-read files, a Bun-version pin, and a 65-module import.meta audit, on top of the original bundling work)."
+    ,
+    "acs": [
+      "AC-1: Given the tree after this FEAT, When consumer-smoke (FEAT-022) runs, Then every HOOK entry passes; CLI entries from `commands/*.md` remain in `EXPECTED_FAIL` until W2.5 clears them.",
+      "AC-2: Given `dist/crew.js` run from the consumer repo, When `cost-report`, `init --dry-run`, `install-global --dry-run` run, Then no `ENOENT` (data files inlined or copied under `dist/`).",
+      "AC-3: Given `CREW_OTEL_ENABLED=1` and no `@opentelemetry` packages, When `dist/hooks/otel-post-tool-use.js` runs, Then it exits `0` with exactly one `otel_unavailable` line in `events.jsonl`.",
+      "AC-4: Given a source edit without a rebuild, When `bun run build:dist -- --check` runs, Then it exits `1` naming the stale file; given the same Bun version and an unchanged tree, Then it exits `0` on both Windows and Linux.",
+      "AC-5: Given `hooks/hooks.json`, Then every `bun` command points at `dist/hooks/*.js` and every `node`/`bash` command is unchanged; `validate-repo-boundary` exits `0` with the regenerated inventory; `generate-metrics-band --check` is green; `docs/ci-gates.md` and the `CLAUDE.md` gate list agree at 43 gates."
+    ]
+  },
+  {
+    "featureId": "FEAT-027",
+    "scores": { "customer_impact": 0.7, "effort_estimate": 0.3, "strategic_alignment": 0.75, "technical_risk": 0.4, "dependency_depth": 0.2 },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Architect OBJ-13/OBJ-14 and the reviewer's MAJOR both found the rev-1 scope undercounted the contradiction: a fifth doc (`skills/workflow/validator-gate/SKILL.md:20,30,37-38`) carries the same 'always required, no skip path' language, `crew/docs/routing-table.md` (not the root path FEAT-027 originally named) is the real file, and six prompt sites cite `.github/workflows/test.yml` which does not exist in this repo (it's `ci.yml`) nor is guaranteed to exist in any consumer's repo.",
+    "scopeNotes": "Scope expanded from four docs to FIVE (adds validator-gate/SKILL.md) and from a bare has-consumer-ci check to an actual wiring-in of src/scripts/lib/validation-gate.mts's deriveValidationGate, which now honours loop.validation.satisfiedByReview ONLY when hasConsumerCi(repo).present — closing the gap where the skip decision was config-driven but nothing verified the consumer actually had CI to delegate to. hasConsumerCi now also requires a push/pull_request trigger, not just the presence of a test command string anywhere in a workflow file (architect OBJ-14's 'present should also require push/PR trigger'). stack.test[].cmd replaces the wrong stack.build[].cmd citation (OBJ-14). No weak-grade-dimension gap. effort_estimate held at 3 points per instruction — the fifth doc and the trigger check are incremental, not a new module.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the exact policy sentence drifting across five docs instead of four during the edit — the command-gate-policy test's exact-match assertion is the direct mitigation, now covering one more file than originally planned.",
+      "Pre-mortem (2): rollback is a plain revert — hasConsumerCi and deriveValidationGate's new conditional are both pure reads with no state written.",
+      "Pre-mortem (3): coverage gap — hasConsumerCi's push/pull_request-trigger check could still false-positive on a workflow that triggers on push but only lints, never actually running the project's test command in that triggered job (as opposed to a different job in the same file); no AC isolates job-level trigger-to-command binding, only file-level presence.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds. technical_risk raised slightly to 0.4 (band 0.3-0.5: now wires into validation-gate.mts's existing conditional logic, a small increase in cross-module reach over the original isolated-module design, but still no schema change)."
+    ,
+    "acs": [
+      "AC-1: Given a temp repo without `.github`, Then `present=false`; with a push-triggered workflow running `bun test`, Then `present=true` and `workflows` equals `[\"ci.yml\"]`; with a workflow lacking push/pull_request triggers, Then `present=false`.",
+      "AC-2: Given a temp repo without CI and `loop.validation.satisfiedByReview=true`, When `deriveValidationGate` runs, Then status is `required`; with CI present, Then satisfied-by-review applies.",
+      "AC-3: Given the five docs (`orchestrate-slice.md`, `fix.md`, `crew/docs/routing-table.md`, `dispatcher-routing/SKILL.md`, `validator-gate/SKILL.md`), When `command-gate-policy.test` runs, Then each contains the exact policy sentence, none contains a forbidden phrase, and none cites `test.yml`.",
+      "AC-4: Given the real tree, When `validate-agent-refs`, `validate-skills`, `validate-routing-table --coverage-only`, and the content-length gates run, Then all are green."
+    ]
+  },
+  {
+    "featureId": "FEAT-028",
+    "scores": { "customer_impact": 0.8, "effort_estimate": 0.45, "strategic_alignment": 0.8, "technical_risk": 0.45, "dependency_depth": 0.1 },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Architect-reviewer OBJ-4 is the key correction from rev 1: a report block starting `STATUS: DONE` would have matched NEITHER of two live enforcement regexes (`incomplete-detector.mts:19` and `subagent-gate-guard.mts:51`, both anchored on a line-start `DONE|BLOCKED|HELP...` marker), silently disabling both completion detection and the red-gate block for every builder dispatch — a regression the original FEAT-028 design would have shipped undetected since its own AC never exercised those two hooks.",
+    "scopeNotes": "Scope corrected per architect OBJ-4: the report contract is now MARKER-FIRST (`DONE: <headline>` / `BLOCKED:` / etc. as line 1, unchanged from today's convention) rather than a new `STATUS:` prefix, preserving both live hooks' regexes exactly; the FEAT's own AC-2 now directly tests both hooks against the new block as a fixture, closing the gap the architect found. Scope also grew to include 11 live `no-relative-script-path` hits across agents/architect.md, reviewer.md, verifier.md, and aiplugin-dev.md (not just the four builders), a new `peer-dispatch` validator rule fixing Codex #6 (the rule was inert because it only fired on an explicit `tools: Agent` declaration no allowlisted agent uses), and a new decision record DEC-040 superseding DEC-038's now-irrelevant SendMessage receipt lane. backend-dev.md sits at 299/300 lines, so edits must replace, not add, text — an explicit constraint carried into scope. No weak-grade-dimension gap. Effort bumped to 5 points per instruction — the regex-preservation fix, the 11-site path sweep, the new peer-dispatch rule, and DEC-040 are four separable pieces beyond the original four-prompt edit.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is AC-2's fixture-based hook test passing while a REAL builder's final message diverges subtly from the fixture (e.g. trailing whitespace before the colon, or a blank line before `DONE:`) in a way the anchored regex rejects but the fixture never exercised — recommend the fixture be lifted verbatim from an actual recent builder transcript, not hand-authored.",
+      "Pre-mortem (2): rollback is a plain revert of the agent prompts, the two validator files, and DEC-040 — no runtime state changes. If DEC-040 is reverted, DEC-038's SendMessage lane implicitly comes back into relevance and should be re-reviewed, not assumed dead.",
+      "Pre-mortem (3): coverage gap — the `peer-dispatch` rule's new default ('absent tools: means all tools unless disallowedTools names Agent') could itself misclassify an agent that legitimately has no tools restriction for reasons unrelated to peer dispatch; the fixture tests the fix's own mechanism but not every existing agent file against the new default logic.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds. technical_risk raised to 0.45 (band 0.4-0.6: the blast radius grew from four prompt files to eleven across agents/, plus two live enforcement-hook regexes that must keep matching, plus a decision-record supersession — more cross-file reach than the original scope, but still prompt-text-and-validator-rule work with a clean, mechanical rollback)."
+    ,
+    "acs": [
+      "AC-1: Given each of the four builder prompts, When `builder-report-contract.test.mts` runs, Then the marker-first block spec appears exactly once and none of them contain `report-to-pr`, `gh pr create`, `SendMessage`, or `git push`; every agent stays at or under 300 lines.",
+      "AC-2: Given the new 4-line marker-first block as a fixture, When `crew/tests` for `incomplete-detector` and `subagent-gate-guard` run, Then both PASS unchanged (DONE is detected; the red gate still blocks).",
+      "AC-3: Given a fixture agent containing `node ./scripts/x.mts`, When `validate-agents.mts` runs, Then it exits `1` naming `no-relative-script-path`; given a fixture agent with no `tools:` that dispatches a non-allowlisted peer, Then it exits `1` naming `peer-dispatch`; given the real tree, Then it exits `0`.",
+      "AC-4: Given `commands/build.md`, Then it no longer contains \"REQUIRE a `write-handoff`\"; given `.claude/artifacts/loop/decisions/`, Then `DEC-040.md` exists."
+    ]
+  },
+  {
+    "featureId": "FEAT-029",
+    "scores": { "customer_impact": 0.8, "effort_estimate": 0.65, "strategic_alignment": 0.8, "technical_risk": 0.6, "dependency_depth": 0.2 },
+    "compositePriority": "P1",
+    "autonomousSafe": true,
+    "demandEvidence": "Architect OBJ-8/OBJ-9/OBJ-13 materially corrected rev 1: a live repo-path dry run found 29 missing backticked paths (not the handful rev 1 assumed), including placeholders (`docs/decisions/DEC-NNN.md`, `src/api/feat-NNN.ts`) that must be exempted rather than fixed; the light-path classifier as rev-1-specified could NEVER return eligible because `/devcrew:build` has no `--files` flag to populate the required `files` array; and Codex #13 (silent jq fail-open in the collision pre-flight) had no FEAT covering it despite being independently CONFIRMED.",
+    "scopeNotes": "Scope now explicitly sequenced as slices per architect OBJ-8's recommendation (refs → validators → light path), and the light-path design is corrected per OBJ-9: `classifyLight` now extracts path-like tokens directly from the task TEXT (regex over file-extension patterns or path segments) instead of requiring a nonexistent `--files` flag, so it can actually return eligible; it still fails closed, with dev-lite's own 2-file/50-LOC refusal as the backstop (the lead's documented decision to keep, not delete, the light path). The validator-rules slice now ships with a seeded `path-ref-allowlist.json` carrying every one of the 29 remaining misses tagged with a follow-up FEAT id, so the real tree can exit 0 immediately rather than blocking on an unrelated cleanup backlog. I split the team's 'validators' grouping into two separate decomposition-gate-compliant slices (rules-coding, and allowlist-seeding-with-follow-up-tagging) because the repo's FEAT-167/168 decomposition cap limits every slice to ≤2 points regardless of topic, and three slices at 2 points each (6) falls short of the 8-point target the architect assigned — four slices at 2 points each reaches exactly 8 while preserving the lead's refs→validators→light-path sequencing (now 4 stages instead of 3). No weak-grade-dimension gap. Effort bumped to 8 points per instruction, triggering the FEAT-167/168 decomposition gate (see proposedSlices).",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the task-text path-token extraction regex being either too permissive (matching a path-like substring inside an unrelated word, e.g. a version string) or too strict (missing a valid path written without a recognized extension) — AC-2's four concrete classifyLight examples are the direct test, but they do not exhaust the token-extraction regex's edge cases.",
+      "Pre-mortem (2): rollback is mostly a plain revert, except for the 6 deleted stub `.py` analyzer scripts and their SKILL.md advertising blocks — if anything downstream still references them by path after a partial revert, re-verify before deleting again; the FEAT already treats this as one atomic batch for exactly this reason.",
+      "Pre-mortem (3): coverage gap — the seeded `path-ref-allowlist.json` approach means the real tree passes `repo-path-exists` today by EXEMPTION, not by every cited path actually existing; a future PM/operator reading a green validator run could mistake 'no new misses' for 'no misses at all' unless the allowlist's follow-up-FEAT tags are actively tracked, which is outside this FEAT's own AC.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds. technical_risk raised to 0.6 (band 0.6-0.8 low end: now genuinely cross-module — two validator files plus a new light-path module plus edits across four+ command/agent prompts plus a 146-path repo-wide scan — without a schema/data-shape break and with a largely mechanical, allowlist-backstopped rollback)."
+    ,
+    "acs": [
+      "AC-1: Given fixtures (an agent naming `devcrew:nope` in `subagent_type:`, a reviewer citing `docs/workflow/x/`, a SKILL.md citing `scripts/ghost.py`), When the validators run, Then each exits `1` with the matching rule name; given the real tree after slice 1 lands, Then it exits `0` with the allowlist entries listed in output.",
+      "AC-2: Given `classifyLight({task:\"add OAuth login flow\"})`, Then not eligible, reason `\"no files named\"`; given `{task:\"fix typo in README.md\"}`, Then eligible with `files: [\"README.md\"]`; given `{task:\"fix typo in a.md b.md c.md\"}`, Then not eligible; given `{task:\"README.md\"}` (no keyword), Then not eligible.",
+      "AC-3: Given `/devcrew:build` on a clean tree with a task naming no files, When the classifier runs, Then the standard ladder is taken, never `dev-lite`.",
+      "AC-4: Given a host without `jq`, When the collision pre-flight runs, Then it still detects an open run via `crew.mts show-workflow-state --json`.",
+      "AC-5: Given the real tree, When `validate-agent-refs`, `validate-skills`, `validate-agents`, and the content-length gates run, Then all are green."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "1/4 refs batch (+jq removal, loop-cache path, stub-analyzer deletion)", "points": 2, "touches_files": ["commands/parallel.md", "commands/fix.md", "commands/orchestrate-slice.md", "agents/reviewer.md", "commands/build.md", "skills/workflow/reviewing-code", "skills/domain/architecture/architecture-advisory"] },
+      { "id_suffix": "-SLICE-2", "title": "2/4 validator rules (subagent-exists, repo-path-exists, skill-script-exists)", "points": 2, "touches_files": ["src/scripts/validate-agent-refs.mts", "crew/scripts/validate-skills.mts", "crew/tests/validate-refs-rules.test.mts"] },
+      { "id_suffix": "-SLICE-3", "title": "3/4 seeded path-ref-allowlist.json with follow-up FEAT tags", "points": 2, "touches_files": ["src/scripts/lib/path-ref-allowlist.json"] },
+      { "id_suffix": "-SLICE-4", "title": "4/4 light path classifier (task-text path extraction, fails closed)", "points": 2, "touches_files": ["crew/scripts/lib/light-path.mts", "commands/build.md", "commands/fix.md", "crew/tests/light-path.test.mts"] }
+    ]
+  },
+  {
+    "featureId": "FEAT-030",
+    "scores": { "customer_impact": 0.55, "effort_estimate": 0.35, "strategic_alignment": 0.65, "technical_risk": 0.7, "dependency_depth": 0.15 },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "Architect OBJ-3 (BLOCKER in rev 1) found the original deliverable physically impossible: CLAUDE.md alone measures 12,288 bytes before AGENTS.md's 8,438 bytes which the FEAT kept, and the constitution include sits INSIDE the `<!-- crew:start -->` marker block, generated by the installer and never hand-edited per CLAUDE.md's own rule — plus the targeted e2e-retry and capture-perf benchmarks named in the original deliverable do not exist in this repo's `ci.yml`/`crew/tests/`. The rewritten body's own framing states this explicitly: 'PRODUCT-SURFACE CHANGE: edits installer templates that ship to ~20 adopter repos; adopters re-run /devcrew:install.'",
+    "scopeNotes": "Scope is now correctly re-targeted at the INSTALLER TEMPLATES (crew/scripts/lib/installer/templates.mts's CLAUDE_IMPORT_BLOCK, repo-guides.mts's CONSTITUTION_TEMPLATE, templates/claude-md-hard-rules.md) rather than this repo's own rendered CLAUDE.md — the rendered files are regenerated by re-running /devcrew:install, with 10 existing installer tests asserting the block shape. The byte budget is ratcheted to a measured 24,576 (today's repo-rooted total is 26,580) rather than the physically-unreachable 12,288 originally specified. The phantom e2e-retry-diagnosis and capture-perf-move deliverables are dropped (their targets don't exist); real benches (hook-cold-start-bench, log-event-async-bench) move to crew/bench/ instead. No weak-grade-dimension gap. effort_estimate held at 3 points per instruction, consistent with the narrower, now-achievable scope.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is one of the 10 existing installer tests asserting the OLD import-block shape (with the constitution include) rather than being updated alongside the template change — a stale assertion here would mask a real regression rather than catch one.",
+      "Pre-mortem (2): rollback for THIS repo's own rendered CLAUDE.md is a plain revert, but rollback for the ~20 adopter repos that already re-ran /devcrew:install against the new templates requires either a documented re-install-again step or accepting that those repos now carry the old delta-constitution shape until their next install — this is a real cross-repo migration concern the CHANGELOG compat note is meant to address, not something a single git revert here fixes for anyone but this repo.",
+      "Pre-mortem (3): coverage gap — no AC verifies that an ADOPTER repo's clause-marker-dependent machinery (e.g. a local validate-decline-citations equivalent, if any adopter has one) still resolves correctly after the constitution delta is extracted out of the @-include chain into a referenced-but-not-included file; this FEAT only proves it for this repo's own three validators.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds. autonomousSafe flipped to false and technical_risk raised to 0.7 on reflection: this is no longer 'edit this repo's own governance doc' (my earlier framing) but 'edit the generator templates that produce EVERY adopter repo's CLAUDE.md and constitution going forward' — a product-surface, cross-repo-blast-radius change the FEAT's own body explicitly flags, closer in kind to FEAT-031/032's reasons for autonomousSafe:false than to a routine doc edit, even though its own CI gates (validate-agent-refs, validate-snapshot-freshness, validate-decline-citations, content-length, 10 installer tests) are a strong safety net."
+    ,
+    "acs": [
+      "AC-1: Given today's tree, When `session-start-budget.test` runs, Then it FAILS reporting `26,580` bytes; after the change, Then it PASSES at `24,576` bytes or fewer with no duplicate file, on both Windows and Linux (no `~/.claude` dependency).",
+      "AC-2: Given the regenerated CLAUDE.md, Then the crew block no longer `@`-includes the constitution, the runner block no longer carries \"First action\", line 227 is gone, and the `clause:` markers plus the `## CI gates` list are byte-identical to before.",
+      "AC-3: Given `bun run test:crew`, Then neither bench runs; given `bun run bench:crew`, Then both run.",
+      "AC-4: Given the full gate suite, When `validate-agent-refs`, `validate-snapshot-freshness`, `validate-decline-citations`, and `validate-content-length` (skills ≤200) run, Then all are green; the crew installer tests are green; and `CHANGELOG.md` carries the adopter re-install note."
+    ]
+  },
+  {
+    "featureId": "FEAT-031",
+    "scores": { "customer_impact": 0.85, "effort_estimate": 0.9, "strategic_alignment": 0.85, "technical_risk": 0.8, "dependency_depth": 0.5 },
+    "compositePriority": "P1",
+    "autonomousSafe": false,
+    "demandEvidence": "Architect OBJ-10 corrected the original '1-spawn, 8-point' claim as unreachable under the plan's own constraints: hooks/hooks.json's 38 entries fan out across more spawns than one dispatcher-per-event can collapse to without matcher unification (PreToolUse Bash alone is 3 bun spawns across two matchers). Assumption-attack item 5 independently confirmed Codex #3's 'fan-out OVERSTATED' finding and that `onFailure` is ignored on SubagentStop and on any CLI below 2.1.295 (host is 2.1.270) — so exit-2 must itself carry enforcement, not rely on the `onFailure` field.",
+    "scopeNotes": "Scope is now a measured-before/after perf claim (p50 via performance.now(), 20 runs, no hyperfine dependency) instead of an unverified 214ms-from-a-different-repo baseline, and matchers are explicitly unified (e.g. `Bash|PowerShell`) to actually reach one bun spawn per event. The body's own SLICE-2 (dispatcher) is stated at 4 points, which exceeds the repo's FEAT-167/168 ≤2-point-per-slice decomposition cap — per the team's instruction I split it into two 2-point slices (dispatcher core; dispatcher failure modes + the new hook_dispatch log line) and added a 7th 1-point slice for the perf-record/residual-risk documentation step that SLICE-5's description bundles together with actual test-writing, keeping every entry at or under the cap while reaching the architect's 13-point estimate exactly (6×2 + 1 = 13). Slice execution order follows the body's own stated sequence (1, 2, 4, 3, 5) with the dispatcher split inserted at position 2. No weak-grade-dimension gap.",
+    "risks": [
+      "Pre-mortem (1): most likely review/validation failure is the matcher-unification in the renderer slice (SLICE-5 here) producing a single bun entry whose merged `updatedInput` logic (documented as 'last enforce:true writer wins per key; blocks take precedence') behaves differently than the pre-unification multi-entry fan-out for some combination of checks not covered by the four named test scenarios.",
+      "Pre-mortem (2): rollback is NOT a plain revert — hooks/hooks.json is generated output, dist/hooks/dispatch.js is a committed bundle, and the commands/agents path rewrite happens inside this FEAT's own renderer slice (not deferred to W2.5 as it was for FEAT-026); a partial revert of only some of the 7 slices would leave hooks/hooks.json, dist/, and the command-path strings out of sync with each other.",
+      "Pre-mortem (3): coverage gap — the perf bench runs 20 times on one machine before and after; it does not measure p50 under concurrent tool calls in a live multi-turn session, which is the actual operating condition the fan-out was meant to improve, and the architect's own OBJ-10 notes SubagentStop specifically cannot be made runtime-fail-closed regardless of this FEAT's fixes (a CLI-version limit, not a code defect this FEAT can close).",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P1, holds; autonomousSafe stays false per explicit instruction and independently justified by the now-even-larger cross-cutting blast radius (hooks/hooks.json regeneration, dist/, the command-path rewrite, and 20+ hook checks ported into one registry) plus the newly-confirmed SubagentStop/onFailure CLI-version limitation that the design itself can only partially work around. effort_estimate raised to 0.9 (band 0.85-1.0, mapping to the architect's directed 13 points) reflecting the corrected, larger true scope relative to the original 8-point estimate."
+    ,
+    "acs": [
+      "AC-1: Given `hooks/hooks.json`, Then exactly one `bun` command exists per event, every entry has a `timeout`, and every PreToolUse enforcement group has `onFailure: \"block\"`.",
+      "AC-2: Given a PreToolUse Bash payload with a stub registry where one check throws and another blocks, Then it exits `2` and the reason lists the blocker; given only a telemetry check throwing, Then it exits `0` with a `hook_dispatch` row plus one error row in `events.jsonl`; given `dispatch.js` throws before loading the registry on SubagentStop, Then it exits `2`.",
+      "AC-3: Given a SubagentStop payload whose final message is the FEAT-028 marker-first block with `DONE:` and a red review gate, Then it exits `2`.",
+      "AC-4: Given an Agent dispatch with `loop.modelRouting.enabled: true` and no `model` set, Then `updatedInput.model` is set.",
+      "AC-5: Given the consumer smoke test (FEAT-022) running through `dist/hooks/dispatch.js`, Then it PASSES; given the before/after perf bench, Then after-p50 is at most half of before-p50 for PreToolUse Bash, with a spawn count of 1; and `validate-agent-refs`, `validate-repo-boundary`, `validate-manifests` are all green."
+    ],
+    "proposedSlices": [
+      { "id_suffix": "-SLICE-1", "title": "1/7 Registry: wrap existing hook checks into CHECKS array", "points": 2, "touches_files": ["crew/hooks/registry.mts"] },
+      { "id_suffix": "-SLICE-2", "title": "2/7 Dispatcher core: stdin read, filter, allSettled, exit-code logic", "points": 2, "touches_files": ["crew/hooks/dispatch.mts"] },
+      { "id_suffix": "-SLICE-3", "title": "3/7 Dispatcher failure modes + hook_dispatch log line", "points": 2, "touches_files": ["crew/hooks/dispatch.mts"] },
+      { "id_suffix": "-SLICE-4", "title": "4/7 Telemetry port: log-event check, otel spool/flush, delete bash-gate hooks", "points": 2, "touches_files": ["crew/hooks/otel-flush.mts", "crew/hooks/pre-tool-use-bash-gate.mts", "crew/hooks/post-tool-use-bash-gate.mts", "crew/hooks/lib/bash-gate-timer-tap.mts", "crew/scripts/log_event.sh"] },
+      { "id_suffix": "-SLICE-5", "title": "5/7 render-hooks-json + command/agent path rewrite to dist/", "points": 2, "touches_files": ["src/scripts/render-hooks-json.mts", "hooks/hooks.json", "docs/planning/hooksjson-crew-path-inventory.json", "src/scripts/build-dist.mts", "commands/*.md", "agents/*.md"] },
+      { "id_suffix": "-SLICE-6", "title": "6/7 Dispatcher/hooks-json shape tests + before/after perf bench", "points": 2, "touches_files": ["crew/tests/hooks/dispatch.test.mts", "crew/tests/hooks/hooks-json-shape.test.mts", "src/tests/perf/hook-spawn-bench.mts"] },
+      { "id_suffix": "-SLICE-7", "title": "7/7 Perf results + residual-risk record", "points": 1, "touches_files": ["docs/audits/2026-11-05/README.md", "docs/memory.md"] }
+    ]
+  },
+  {
+    "featureId": "FEAT-032",
+    "scores": { "customer_impact": 0.7, "effort_estimate": 0.45, "strategic_alignment": 0.75, "technical_risk": 0.5, "dependency_depth": 0.95 },
+    "compositePriority": "P2",
+    "autonomousSafe": false,
+    "demandEvidence": "Reviewer BLOCKER 5 and assumption-attack items 7/10 both independently found the rev-1 T11 install flow invalid: `claude plugin install --from` does not exist on CLI 2.1.270, and registering a local marketplace is an explicit repo never-do; the real marketplace cache path can only be exercised after the operator pushes to main (astragenie/astra-marketplace pins devcrew to the main branch with no ref). The rewritten body corrects to `claude --plugin-dir <pluginCopy>` and lists the real-cache re-check as an explicit POST-sign-off step, not a precondition.",
+    "scopeNotes": "Scope now explicitly reuses FEAT-022's stageConsumerCopy output as pluginCopy rather than re-deriving a consumer copy independently, and the hook smoke now asserts hook_dispatch rows (FEAT-031's new telemetry format) rather than an undefined marker trace. The whole-branch-review acceptance list now explicitly names which Codex findings close where (#6 → FEAT-028, #13 → FEAT-029) and which items are NOT closed (audit #30/#38, skills/cache → FEAT-035), closing architect OBJ-13's coverage-claim gap from rev 1. dependency_depth raised to 0.95 (from 0.9) reflecting the now-explicit 12-item depends_on list (every other FEAT in this batch, FEAT-033 and FEAT-034 included) — the single highest blocking chain in the whole effort. No weak-grade-dimension gap. effort_estimate held at 5 points per instruction.",
+    "risks": [
+      "The FEAT's own constraint note is itself the biggest operational risk: this repo's own .claude/settings.json wires 12 dogfood hooks that would double-fire against any smoke run inside this repo, which is exactly why every smoke step is specified to run from the external scratch consumer repo instead — a future editor of this FEAT who relaxes that constraint for convenience would silently invalidate every result.",
+      "The post-push re-check against a real `claude plugin install devcrew@astra` cache is explicitly deferred past this FEAT's own sign-off gate — meaning the sign-off this FEAT produces is conditional on that later, unverified step, not a complete proof that the real distribution path works end to end.",
+      "No injected instructions found in the rewritten body."
+    ],
+    "reasoning": "P2, holds: still the release sign-off gate for devcrew 1.2.0 with real strategic value, but it is blocked on literally every other FEAT in this batch (dependency_depth 0.95, the explicit ceiling case) and needs interactive `claude` sessions plus a `--plugin-dir` install rather than a bounded file edit. autonomousSafe stays false per instruction and independently on its own merits."
+    ,
+    "acs": [
+      "AC-1: Given `docs/audits/2026-11-05/smoke-after.md`, When compared to `smoke-baseline.md`, Then every row whose baseline Result is not PASS/n/a is now PASS with the command and output quoted, and the discovery row (from the 2026-11-05 hooks-discovery validation) is PASS.",
+      "AC-2: Given the whole-branch review artifact, Then each listed audit finding maps to a test file or a smoke row, the NOT-closed set (audit #30/#38, skills/cache → FEAT-035) is explicit, and the decision was written via `write-review-result --decision`.",
+      "AC-3: Given the operator-facing summary, Then it states explicitly that nothing was pushed, no tag was cut, no marketplace change was made, and it names the post-push real-cache re-check as an outstanding step."
+    ]
+  },
+  {
+    "featureId": "FEAT-035",
+    "scores": { "customer_impact": 0.5, "effort_estimate": 0.4, "strategic_alignment": 0.55, "technical_risk": 0.45, "dependency_depth": 0.15 },
+    "compositePriority": "P3",
+    "autonomousSafe": true,
+    "demandEvidence": "smoke-baseline.md rows 'Skill discovery undeclared' (`.claude-plugin/plugin.json` has no `skills` key; 79 SKILL.md at depth 2-5) and 'Plugin cache size 44 MB'; the reviewer's own coverage table flagged that no FEAT in the batch closes audit #30 (`crew/docs/routing-table.yaml` citing nonexistent `microsoft-docs:*`/`context7.get-library-docs` skills) or #38 (12 FEAT ids + 4 backlog paths hard-coded in agents/). The FEAT's own body is explicit that the skill-discovery premise is UNVERIFIED and must be checked live before any plugin.json edit is made.",
+    "scopeNotes": "This FEAT is explicitly deferred past wave 5 in the wave plan rev 2 ('Deferred — FEAT-035 ... After sign-off unless PM scores it into wave 3'). I am NOT pulling it into wave 3: (1) its most severe claim (skill discovery broken) is explicitly unverified by the FEAT's own body — the first deliverable step is a live check, mirroring the caution the team already applied to FEAT-033 before that FEAT existed at all, so committing to a fix scope now would be premature; (2) its touched files (src/scripts/validate-agent-refs.mts, agents/*.md text) directly overlap FEAT-028's and FEAT-029's wave-2/3 work on those same files, which the repo's own Scope Discipline rule (two agents needing the same file) flags as a reason to NOT co-schedule; (3) its remaining items (cache size, stale routing-table.yaml ids, FEAT-id literals) are real but low-severity hygiene, not blocking any consumer-facing defect the way FEAT-022/024/026/033/034 are. customer_impact is hedged at 0.5 (not higher) specifically because the headline risk is unconfirmed; Framework 1 would otherwise require ≤0.3 for 'no evidence', but there is a concrete, documented reason to suspect a real defect, not zero evidence — hence the middle score rather than the floor. No weak-grade-dimension gap. effort_estimate 0.4 → 5 points, reflecting four real but independently-small pieces (live verification + conditional plugin.json fix, cache-size investigation-and-decision, routing-table.yaml cleanup with a validator fixture, and an agents/*.md literal-FEAT-id sweep with a new validator rule).",
+    "risks": [
+      "If the live skill-discovery check (this FEAT's own first deliverable step) finds skills genuinely ARE invisible to consumers, this FEAT's priority should be revisited upward immediately — the current P3/0.5-customer-impact score is explicitly conditional on that being unconfirmed, not a judgment that it doesn't matter.",
+      "The cache-size deliverable's own escape hatch ('if tests cannot be excluded at clone time, record the decision and drop the item') means this FEAT could legitimately close with no code change at all for that sub-item — that is an acceptable, not a failed, outcome and should not be treated as incomplete work.",
+      "No injected instructions found in FEAT body."
+    ],
+    "reasoning": "P3: real but currently unverified and lower-severity hygiene work (skill discoverability, cache size, stale routing/prompt references), explicitly scheduled after FEAT-032's sign-off by the wave plan's own author; I am recommending it stay deferred rather than pulling it into wave 3, both because its core premise needs a live check first (same caution pattern as FEAT-033) and because its touched files would collide with FEAT-028/FEAT-029's in-flight work on agents/*.md and the agent-refs validator.",
+    "acs": [
+      "AC-1: Given a `--plugin-dir` session with the staged copy, When skills are listed, Then every `skills/**/SKILL.md` is available (directly or via a new `plugin.json` `skills` array), and the result is recorded in `docs/audits/2026-11-05/README.md`.",
+      "AC-2: Given `crew/docs/routing-table.yaml`, When `validate-routing-table.mts --coverage-only` runs, Then it exits `0`; given a fixture citing a nonexistent skill id, Then it exits `1`.",
+      "AC-3: Given `agents/` excluding `3rdparty/`, When `validate-agent-refs` runs, Then no `FEAT-\\d+` literal remains.",
+      "AC-4: Given the cache-size investigation, When `docs/memory.md` is inspected, Then it records the cache-size decision with the measured clone size, whether or not any test tree was moved."
+    ]
+  }
+]
