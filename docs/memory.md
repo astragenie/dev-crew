@@ -85,6 +85,17 @@ programmatically:
 
 Full per-gate rationale: `docs/ci-gates.md`.
 
+**Gate 41 is red by design on `fix/audit-2026-11` (2026-11-06).**
+`src/tests/install/consumer-smoke.test.mts` (FEAT-022 / SLICE-47) runs every
+shipped hook and CLI entry from a `node_modules`-free consumer copy and stays
+RED while its `EXPECTED_FAIL` ratchet holds entries — 49 today, cleared when
+FEAT-026 lands the committed `dist/` bundles. Do not quarantine it: the same
+ratchet fails loudly when a listed entry starts passing or an unlisted one
+breaks. The merge-blocking `gate` job depends only on `fast-gate`, so this
+does not block merges. Verified 2026-11-06 (validation artifact
+`20261106T040313Z-validation-result-slice-47-…`): the failure is the designed
+assertion only, and the staged copy contains no `node_modules` at any depth.
+
 ## Marathon checkpoint
 
 `checkMarathonCheckpoint` counts grade files written after the newest

@@ -220,6 +220,16 @@ every push/PR):**
     mode) — matches `crew/package.json`'s own `format:check` script.
 41. `bun test src/tests/ --parallel --timeout 60000` (root suite, minus the
     six known git-worktree-hanging suites — see "Job structure" below).
+    **Designed-red exception (FEAT-022 → FEAT-026):**
+    `src/tests/install/consumer-smoke.test.mts` asserts that every shipped
+    hook and CLI entry runs from a `node_modules`-free consumer copy. It is
+    deliberately RED while its `EXPECTED_FAIL` ratchet is non-empty (49
+    entries as of SLICE-47) and goes green when FEAT-026 ships the
+    self-contained `dist/` bundles. So gate 41 (and CI's `slow-tests`) are
+    expected red on `fix/audit-2026-11` until then; the required `gate` job
+    depends only on `fast-gate`, so merges are unaffected. The test is NOT
+    quarantined on purpose — the ratchet also fails loudly if a listed
+    entry starts passing (remove it from the set) or an unlisted one breaks.
 42. `cd crew && bun test --timeout 60000 tests/ --parallel` (crew suite).
     SLICE-10 (FEAT-004 P1) already proved N≥20 consecutive green
     `--parallel` runs on this tree, so this runs unsharded and
