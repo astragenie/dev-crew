@@ -30,7 +30,12 @@ export const SCORE_DIMENSIONS = [
 export const GRADE_PLACEHOLDER_PATTERNS = [
   /^\s*-\s+bullet\s*$/i, // Plain "- bullet" (standalone)
   /^\s*-\s+bullet\s+\d+\s*$/i, // "- bullet 1", "- bullet 2", etc.
-  /^\s*###\s+DEC-TBD\s*:\s*Short\s+decision\s+title\s*$/i // "### DEC-TBD: Short decision title"
+  /^\s*###\s+DEC-TBD\s*:\s*Short\s+decision\s+title\s*$/i, // "### DEC-TBD: Short decision title"
+  // FEAT-025: any unreplaced `<fill ...>` scaffold token (e.g. the H1
+  // `<fill title>` stub createGradeFile injects) — audit #44, grade writer
+  // previously accepted these as real content. Unanchored: the token can
+  // appear mid-line (e.g. `# SLICE-NN: <fill title> — Grade`).
+  /<fill\s+[^>]+>/i
 ];
 
 // Parse the "## Scores" section out of the markdown body. Returns

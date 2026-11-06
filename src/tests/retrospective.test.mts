@@ -47,6 +47,7 @@ async function seedGradedSlice(repo, scores, lessons = []) {
     /## Lessons\n\n- bullet 1\n- bullet 2/,
     `## Lessons\n\n${lessonsBlock}`
   );
+  content = content.replace("<fill title>", "Real Title");
   // Remove the placeholder DEC-TBD section so grade-write doesn't reject it
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   // Replace placeholder Surprises and Followups bullets

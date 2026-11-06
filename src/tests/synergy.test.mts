@@ -54,6 +54,7 @@ async function seedGrade(
     /## Lessons\n\n- bullet 1\n- bullet 2/,
     `## Lessons\n\n${lessonsBlock}`
   );
+  content = content.replace("<fill title>", "Real Title");
   // Replace Surprises: use provided surprises or default value
   const surprisesBlock = (surprises.length > 0 ? surprises : ["Surprise"])
     .map((s) => `- ${s}`)

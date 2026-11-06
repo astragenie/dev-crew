@@ -354,7 +354,33 @@ async function writeWorkflowState(
   );
 }
 
-async function withIsolatedProjectsRoot<T>(tmpDir: string, fn: () => Promise<T>): Promise<T> {
+// FEAT-025 AC-1: emitCostReport now refuses to write when sessionsScanned
+// is 0, so the "normal/fresh" happy-path test needs at least one real
+// in-window session fixture to still exercise "mints exactly one report."
+async function seedFixtureSession(
+  projectsRoot: string,
+  repoPath: string,
+  timestampIso: string
+): Promise<void> {
+  const { slugifyRepoPath } = await import("../scripts/lib/session-cost.mjs");
+  const projectDir = path.join(projectsRoot, slugifyRepoPath(repoPath));
+  await fs.mkdir(projectDir, { recursive: true });
+  const line = JSON.stringify({
+    type: "assistant",
+    timestamp: timestampIso,
+    message: {
+      model: "claude-sonnet-5",
+      usage: { input_tokens: 100, output_tokens: 50 },
+      content: []
+    }
+  });
+  await fs.writeFile(path.join(projectDir, "session-1.jsonl"), line + "\n", "utf8");
+}
+
+async function withIsolatedProjectsRoot<T>(
+  tmpDir: string,
+  fn: (projectsRoot: string) => Promise<T>
+): Promise<T> {
   const original = process.env["CREW_PROJECTS_ROOT"];
   try {
     // Point session scanning at an empty, isolated directory so a wide
@@ -363,7 +389,7 @@ async function withIsolatedProjectsRoot<T>(tmpDir: string, fn: () => Promise<T>)
     const emptyProjectsRoot = path.join(tmpDir, "isolated-projects-root");
     await fs.mkdir(emptyProjectsRoot, { recursive: true });
     process.env["CREW_PROJECTS_ROOT"] = emptyProjectsRoot;
-    return await fn();
+    return await fn(emptyProjectsRoot);
   } finally {
     if (original === undefined) delete process.env["CREW_PROJECTS_ROOT"];
     else process.env["CREW_PROJECTS_ROOT"] = original;
@@ -410,28 +436,31 @@ test("maybeEmitCostReport: stale/wide currentRun does not touch historical cost-
       );
       const result = await maybeEmitCostReport(tmpDir, { runTitle: "stale-currentrun-emit" });
 
+      // FEAT-025 AC-1: an 8-day-wide window with zero sessions scanned is
+      // exactly the dishonest-report shape this gate exists to catch — the
+      // emitter now refuses instead of minting a report over a stale
+      // currentRun. {written:false, reason} replaces the old "errorless
+      // success" assertion below.
       expect(
         result,
         "emitter should return a result for a stale-but-present currentRun"
       ).toBeTruthy();
-      expect(
-        !("error" in (result as Record<string, unknown>)),
-        `emitter errored: ${JSON.stringify(result)}`
-      ).toBeTruthy();
+      expect((result as Record<string, unknown>)["written"]).toBe(false);
+      expect(typeof (result as Record<string, unknown>)["reason"]).toBe("string");
 
-      // Both historical files are byte-preserved — the stale/wide window
-      // never rewrote them, and never rewrote them into lossy stubs.
+      // Both historical files are byte-preserved — refusing to write means
+      // they were never touched in the first place.
       for (const [i, p] of historicalPaths.entries()) {
         const after = await fs.readFile(p, "utf8");
         expect(after, `historical file ${p} must be preserved intact`).toBe(sentinels[i]!);
       }
 
-      // The emit landed as a fresh file alongside the historical set, not by
-      // touching it.
+      // No fresh file was minted — the refusal means the historical set is
+      // the only thing on disk.
       const filesAfter = await listCostDir(tmpDir);
       expect(
-        filesAfter.length > historicalPaths.length,
-        `expected at least one fresh file alongside the ${historicalPaths.length} historical files, got: ${filesAfter.join(", ")}`
+        filesAfter.length === historicalPaths.length,
+        `expected no fresh file alongside the ${historicalPaths.length} historical files (refused), got: ${filesAfter.join(", ")}`
       ).toBeTruthy();
     });
   } finally {
@@ -442,26 +471,33 @@ test("maybeEmitCostReport: stale/wide currentRun does not touch historical cost-
 test("maybeEmitCostReport: normal (fresh) currentRun emission preserves historical files and mints exactly one report", async () => {
   const tmpDir = await makeTempDir();
   try {
-    await withIsolatedProjectsRoot(tmpDir, async () => {
+    await withIsolatedProjectsRoot(tmpDir, async (projectsRoot) => {
       const costDir = path.join(tmpDir, ".claude", "artifacts", "crew", "cost");
       await fs.mkdir(costDir, { recursive: true });
       const historicalPath = path.join(costDir, "20260101T000000Z-cost-report-slice-unrelated.md");
       const sentinel = "# Historical report — must NOT be rewritten\nusd: 42.0\n";
       await fs.writeFile(historicalPath, sentinel);
 
-      // Freshly rotated currentRun, as `/loop:slice start` produces.
-      const now = new Date().toISOString();
+      // Freshly rotated currentRun, as `/loop:slice start` produces. Started
+      // 5 minutes ago (well under FEAT-025's 24h maxWindowHours) rather than
+      // literally "now" so the fixture session below has room to land inside
+      // [startedAt, completedAt] once resolved at call time.
+      const now = new Date();
+      const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
       await writeWorkflowState(tmpDir, {
         title: "fresh-currentrun-emit",
         goal: "normal slice close",
         mode: "single-session",
         status: "in-progress",
-        startedAt: now,
-        updatedAt: now,
+        startedAt: fiveMinAgo,
+        updatedAt: fiveMinAgo,
         next: "",
         gates: {},
         artifacts: {}
       });
+      // FEAT-025 AC-1: emitCostReport refuses when sessionsScanned === 0, so
+      // the happy path needs at least one real in-window session now.
+      await seedFixtureSession(projectsRoot, tmpDir, now.toISOString());
 
       const { maybeEmitCostReport } = await import(
         "../scripts/lib/cost-hygiene/emit-cost-report.mjs"

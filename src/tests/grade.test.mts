@@ -169,6 +169,9 @@ test("writeGrade accepts a grade with some (not all) zero scores", async () => {
   content = content.replace(`- ${SCORE_DIMENSIONS[0]}: 0.85`, `- ${SCORE_DIMENSIONS[0]}: 0`);
   // Replace placeholder lessons/decisions/surprises/followups.
   content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  // FEAT-025: clear the H1 title scaffold token — writeGrade now rejects any
+  // unreplaced `<fill ...>` token (grade-parser.mts GRADE_PLACEHOLDER_PATTERNS).
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
@@ -244,6 +247,9 @@ test("writeGrade accepts genuinely filled grades with real scores and content", 
   }
   // Replace placeholder lessons
   content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  // FEAT-025: clear the H1 title scaffold token — writeGrade now rejects any
+  // unreplaced `<fill ...>` token (grade-parser.mts GRADE_PLACEHOLDER_PATTERNS).
+  content = content.replace("<fill title>", "Real Title");
   // Remove the placeholder DEC-TBD section entirely
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   // Replace placeholder Surprises and Followups
@@ -266,6 +272,9 @@ test("writeGrade extracts DEC-TBD blocks into .claude/artifacts/loop/decisions/"
   }
   // Replace placeholder bullet lessons with real ones
   content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  // FEAT-025: clear the H1 title scaffold token — writeGrade now rejects any
+  // unreplaced `<fill ...>` token (grade-parser.mts GRADE_PLACEHOLDER_PATTERNS).
+  content = content.replace("<fill title>", "Real Title");
   // Replace placeholder DEC-TBD title with a real title (but keep DEC-TBD id for extraction)
   content = content.replace(
     /### DEC-TBD: Short decision title/,
@@ -300,6 +309,9 @@ test("writeGrade emits a grade event with ts equal to recordedAt (dual-emit)", a
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
   }
   content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  // FEAT-025: clear the H1 title scaffold token — writeGrade now rejects any
+  // unreplaced `<fill ...>` token (grade-parser.mts GRADE_PLACEHOLDER_PATTERNS).
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
@@ -397,6 +409,10 @@ test("writeGrade mirrors an extracted decision into astramem when memory enabled
       content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
     }
     content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+    content = content.replace("<fill title>", "Real Title");
+    // FEAT-025: clear the H1 title scaffold token — writeGrade now rejects any
+    // unreplaced `<fill ...>` token (grade-parser.mts GRADE_PLACEHOLDER_PATTERNS).
+    content = content.replace("<fill title>", "Real Title");
     content = content.replace(
       /### DEC-TBD: Short decision title/,
       "### DEC-TBD: Mirrored architectural decision"

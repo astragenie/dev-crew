@@ -59,6 +59,7 @@ async function seedGradeRepo(): Promise<string> {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.85`);
   }
   content = content.replace(/- bullet 1\n- bullet 2/, "- A real lesson");
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Prod config drifted");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Add a regression test");

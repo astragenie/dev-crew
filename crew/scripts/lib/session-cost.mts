@@ -1,5 +1,12 @@
 import fs from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+// FEAT-025: static JSON import so a bundler (dist/crew.js) inlines the
+// pricing table instead of resolving a sibling file via import.meta.url --
+// the latter broke on any profile path containing a space and had no
+// fallback once bundled (session-cost.mts:21-23 bug, audit #16/#17).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import inlinedPricing from "./pricing.json" with { type: "json" };
 import {
   scanSessions,
   percentile,
@@ -12,26 +19,86 @@ export function slugifyRepoPath(repoPath: string): string {
   return repoPath.replace(/[^A-Za-z0-9]/g, "-");
 }
 
+interface ModelRates {
+  input: number;
+  output: number;
+  cache_read: number;
+  cache_create_5m: number;
+  cache_create_1h: number;
+  source?: string;
+}
+
 interface Pricing {
   fallback: string;
-  models: Record<string, Record<string, number>>;
+  models: Record<string, ModelRates>;
 }
 
-export async function loadPricing(): Promise<Pricing> {
-  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
-  const file = path.join(here, "pricing.json");
-  const raw = await fs.readFile(file, "utf8");
-  return JSON.parse(raw) as Pricing;
-}
-
-function matchModelKey(model: string, pricing: Pricing): string {
-  if (!model) return pricing.fallback;
-  const keys = Object.keys(pricing.models);
-  const sorted = [...keys].sort((a, b) => b.length - a.length);
-  for (const k of sorted) {
-    if (model.startsWith(k)) return k;
+// FEAT-025: PRICING_PATH is read HERE (at call time), not at module load --
+// lets tests point at an alternate table (e.g. a temp dir whose path
+// contains a space) without needing module-mock machinery. No env var set ->
+// the statically-imported inlined table is used with zero filesystem reads
+// (AC-3).
+function loadPricingTable(): Pricing {
+  const override = process.env["PRICING_PATH"];
+  if (override) {
+    const raw = readFileSync(override, "utf8");
+    return JSON.parse(raw) as Pricing;
   }
-  return pricing.fallback;
+  return inlinedPricing as unknown as Pricing;
+}
+
+// Back-compat named export some callers/tests may still resolve by name.
+export async function loadPricing(): Promise<Pricing> {
+  return loadPricingTable();
+}
+
+export interface PriceForResult {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite5m: number;
+  cacheWrite1h: number;
+  /** The exact pricing.json key that matched, or null when unmatched. */
+  matched: string | null;
+}
+
+// FEAT-025: exact match, or exact-key + "-YYYYMMDD" date-suffix match. No
+// more bare-prefix matching (the bug: claude-opus-4-9 silently priced as
+// claude-opus-4 / unknown models silently fell back to Sonnet-4 rates).
+// Unmatched models now return matched: null instead of a fallback rate.
+function matchPricingKey(model: string, models: Record<string, ModelRates>): string | null {
+  if (!model) return null;
+  if (models[model]) return model;
+  const dateSuffixed = /^(.+)-\d{8}$/.exec(model);
+  if (dateSuffixed) {
+    const base = dateSuffixed[1] as string;
+    if (models[base]) return base;
+  }
+  return null;
+}
+
+export function priceFor(model: string): PriceForResult {
+  const table = loadPricingTable();
+  const matched = matchPricingKey(model, table.models);
+  const rates = matched ? table.models[matched] : undefined;
+  return {
+    input: rates?.input ?? 0,
+    output: rates?.output ?? 0,
+    cacheRead: rates?.cache_read ?? 0,
+    cacheWrite5m: rates?.cache_create_5m ?? 0,
+    cacheWrite1h: rates?.cache_create_1h ?? 0,
+    matched
+  };
+}
+
+function ratesAsTokenKeys(rates: PriceForResult): Record<string, number> {
+  return {
+    input: rates.input,
+    output: rates.output,
+    cache_read: rates.cacheRead,
+    cache_create_5m: rates.cacheWrite5m,
+    cache_create_1h: rates.cacheWrite1h
+  };
 }
 
 function priceTokens(tokens: Record<string, number>, modelRates: Record<string, number>): number {
@@ -243,22 +310,27 @@ async function resolveScanSources({
 
 type ByModel = Record<
   string,
-  { tokens: Record<string, number>; usd: number; messages: number; pricedAs?: string }
+  { tokens: Record<string, number>; usd: number; messages: number; pricedAs?: string | null }
 >;
 
-function priceByModel(byModel: ByModel, pricing: Pricing): number {
+// FEAT-025: returns unpricedModels alongside totalUsd so the caller can
+// surface them in the cost-report frontmatter + flip the cost-advisor
+// verdict to "unknown" (AC-2) instead of silently blending in a fallback
+// rate for a model this table has never seen.
+function priceByModel(byModel: ByModel): { totalUsd: number; unpricedModels: string[] } {
   let totalUsd = 0;
+  const unpriced = new Set<string>();
   for (const model of Object.keys(byModel)) {
-    const key = matchModelKey(model, pricing);
-    const rates = pricing.models[key] ?? pricing.models[pricing.fallback] ?? {};
     const entry = byModel[model];
     if (entry == null) continue;
-    const usd = priceTokens(entry.tokens, rates);
+    const rates = priceFor(model);
+    const usd = priceTokens(entry.tokens, ratesAsTokenKeys(rates));
     entry.usd = Number(usd.toFixed(4));
-    entry.pricedAs = key;
+    entry.pricedAs = rates.matched;
+    if (rates.matched == null) unpriced.add(model);
     totalUsd += usd;
   }
-  return totalUsd;
+  return { totalUsd, unpricedModels: [...unpriced] };
 }
 
 type PerSourceState = Map<
@@ -277,18 +349,14 @@ interface SourceBreakdownEntry {
   usd: number;
 }
 
-function computeSourceBreakdown(
-  perSourceState: PerSourceState,
-  pricing: Pricing
-): SourceBreakdownEntry[] {
+function computeSourceBreakdown(perSourceState: PerSourceState): SourceBreakdownEntry[] {
   const out: SourceBreakdownEntry[] = [];
   for (const [slug, s] of perSourceState.entries()) {
     if (!s.touched) continue;
     let usd = 0;
     for (const [model, tokens] of Object.entries(s.modelTokens)) {
-      const key = matchModelKey(model, pricing);
-      const rates = pricing.models[key] ?? pricing.models[pricing.fallback] ?? {};
-      usd += priceTokens(tokens, rates);
+      const rates = priceFor(model);
+      usd += priceTokens(tokens, ratesAsTokenKeys(rates));
     }
     out.push({ slug, messages: s.messages, usd: Number(usd.toFixed(4)) });
   }
@@ -301,7 +369,7 @@ function buildModelMix(
   totalUsd: number
 ): Array<{
   model: string;
-  pricedAs: string | undefined;
+  pricedAs: string | null | undefined;
   messages: number;
   msgPct: number;
   usd: number;
@@ -371,7 +439,6 @@ type ScanResult = Awaited<ReturnType<typeof scanSessions>>;
 
 function assembleCostResult(
   scan: ScanResult,
-  pricing: Pricing,
   sessions: string[],
   effectiveSlug: string,
   autoDetected: boolean,
@@ -399,8 +466,8 @@ function assembleCostResult(
     perSourceState,
     toolCachePrime
   } = scan;
-  const totalUsd = priceByModel(byModel, pricing);
-  const sources = computeSourceBreakdown(perSourceState, pricing);
+  const { totalUsd, unpricedModels } = priceByModel(byModel);
+  const sources = computeSourceBreakdown(perSourceState);
   const modelMix = buildModelMix(byModel, messagesCounted, totalUsd);
   const sizeStats = computeSizeStats(toolResultSizes);
   const fileReReadEntries = collectFileReReadEntries(filesRead);
@@ -440,7 +507,10 @@ function assembleCostResult(
     autoDetected,
     aggregateAll,
     sources,
-    pricingFallback: pricing.fallback,
+    // FEAT-025: models that never matched a pricing.json key (exact or
+    // date-suffixed) -- surfaced in the cost-report frontmatter + flips the
+    // cost-advisor verdict to "unknown" instead of a silent fallback price.
+    unpriced_models: unpricedModels,
     toolUsage,
     toolResultSizes: sizeStats,
     fileReReadCount,
@@ -473,7 +543,6 @@ export async function computeSessionCost(
   if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
     throw new Error(`Invalid window: startedAt=${startedAt} completedAt=${endIso}`);
   }
-  const pricing = await loadPricing();
   const { sessionsBySource, effectiveSlug, autoDetected } = await resolveScanSources({
     aggregateAll,
     sourceProject,
@@ -488,7 +557,6 @@ export async function computeSessionCost(
   const scan = await scanSessions({ sessions, fileToSlug, startMs, endMs });
   return assembleCostResult(
     scan,
-    pricing,
     sessions,
     effectiveSlug,
     autoDetected,

@@ -54,6 +54,7 @@ async function fillGrade(gradePath: string): Promise<void> {
     content = content.replace(new RegExp(`- ${dim}: 0\\.00`), `- ${dim}: 0.90`);
   }
   content = content.replace(/- bullet 1\n- bullet 2/, "- Real lesson 1\n- Real lesson 2");
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");

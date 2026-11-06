@@ -2,6 +2,7 @@
 // Kept in cost-hygiene/ because it formats cost-report YAML frontmatter.
 
 import type { ArtifactFields, CostBreakdown, CostOutcome } from "../artifacts/types.mjs";
+import { decideCostVerdict } from "./decide.mjs";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -57,7 +58,17 @@ function buildOptionalLines(
     [breakdown?.sourceProject, () => `source_project: ${breakdown!.sourceProject}`],
     [breakdown?.autoDetected, () => `auto_detected: true`],
     [aggregateAllPredicate, () => aggregateAllLine],
-    [sourceCountPredicate, () => sourceCountLine]
+    [sourceCountPredicate, () => sourceCountLine],
+    // FEAT-025: telemetry honesty -- list every model that never matched a
+    // pricing.json key, and flip the verdict to "unknown" so a cost report
+    // with an understated USD total is never indistinguishable from a clean
+    // one.
+    [
+      (breakdown?.unpriced_models?.length ?? 0) > 0,
+      () => `unpriced_models: ${JSON.stringify(breakdown!.unpriced_models)}`
+    ],
+    [decideCostVerdict(breakdown?.unpriced_models) === "unknown", () => `verdict: unknown`],
+    [fields.runId, () => `run_id: ${JSON.stringify(String(fields.runId))}`]
   ];
 }
 
