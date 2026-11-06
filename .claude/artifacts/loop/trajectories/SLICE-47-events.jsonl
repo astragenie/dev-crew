@@ -2,3 +2,11 @@
 {"type":"workflow_state_changed","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T02:58:42.730Z","from":null,"to":"building","ts":"2026-11-06T02:58:42.730Z"}
 {"type":"shape_classified","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T03:44:47.852Z","shape":"none","rationale":"no files","inlinePathUsed":false,"ts":"2026-11-06T03:44:47.852Z"}
 {"type":"workflow_state_changed","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T03:44:47.954Z","from":null,"to":"building","ts":"2026-11-06T03:44:47.954Z"}
+{"type":"shape_classified","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T03:55:01.920Z","shape":"none","rationale":"no files","inlinePathUsed":false,"ts":"2026-11-06T03:55:01.920Z"}
+{"type":"workflow_state_changed","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T03:55:02.006Z","from":null,"to":"building","ts":"2026-11-06T03:55:02.006Z"}
+{"type":"gate_transition","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T04:11:48.789Z","gate":"review","from":null,"to":"passed","ts":"2026-11-06T04:11:48.789Z"}
+{"type":"gate_transition","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T04:11:48.789Z","gate":"blocked","from":null,"to":"passed","ts":"2026-11-06T04:11:48.789Z"}
+{"type":"gate_transition","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T04:11:48.789Z","gate":"validation","from":null,"to":"passed","ts":"2026-11-06T04:11:48.789Z"}
+{"type":"gate_transition","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T04:11:48.789Z","gate":"test-adequacy","from":null,"to":"passed","ts":"2026-11-06T04:11:48.789Z"}
+{"type":"gate_transition","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T04:11:48.789Z","gate":"simplify","from":null,"to":"passed","ts":"2026-11-06T04:11:48.789Z"}
+{"type":"workflow_state_changed","sliceId":"SLICE-47","featureId":"FEAT-022","timestamp":"2026-11-06T04:11:49.226Z","from":"building","to":"done","ts":"2026-11-06T04:11:49.226Z"}

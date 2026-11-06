@@ -1,7 +1,7 @@
 ---
 id: SLICE-47
 title: Implement FEAT-022
-status: pending
+status: completed
 feature: FEAT-022
 phase: null
 priority: P1
@@ -10,6 +10,8 @@ requires_validation: true
 risk: high
 created: 2026-11-06
 updated: 2026-11-06
+completed_at: 2026-11-06
+badges: [serial-reviewer-warning]
 ---
 # SLICE-47: Implement FEAT-022
 
