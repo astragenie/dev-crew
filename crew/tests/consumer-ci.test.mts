@@ -19,11 +19,18 @@ async function writeWorkflow(repo: string, filename: string, body: string): Prom
   await fs.writeFile(path.join(dir, filename), body);
 }
 
-async function writeLoopJsonStackTest(repo: string, entries: Array<{ cmd: string; args?: string[] }>) {
+async function writeLoopJsonStackTest(
+  repo: string,
+  entries: Array<{ cmd: string; args?: string[] }>
+) {
   await fs.mkdir(path.join(repo, ".claude"), { recursive: true });
   await fs.writeFile(
     path.join(repo, ".claude", "loop.json"),
-    JSON.stringify({ stack: { test: entries, build: [{ cmd: "bun", args: ["run", "lint"] }] } }, null, 2)
+    JSON.stringify(
+      { stack: { test: entries, build: [{ cmd: "bun", args: ["run", "lint"] }] } },
+      null,
+      2
+    )
   );
 }
 

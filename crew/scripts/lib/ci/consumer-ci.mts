@@ -59,9 +59,13 @@ async function readConfiguredTestCommands(repoPath: string): Promise<string[]> {
     const entries = parsed.stack?.test;
     if (!Array.isArray(entries)) return [];
     return entries
-      .filter((entry): entry is LoopJsonStackTestEntry => Boolean(entry) && typeof entry.cmd === "string")
+      .filter(
+        (entry): entry is LoopJsonStackTestEntry => Boolean(entry) && typeof entry.cmd === "string"
+      )
       .map((entry) => {
-        const args = Array.isArray(entry.args) ? entry.args.filter((a) => typeof a === "string") : [];
+        const args = Array.isArray(entry.args)
+          ? entry.args.filter((a) => typeof a === "string")
+          : [];
         return [entry.cmd as string, ...args].join(" ").trim();
       })
       .filter(Boolean);
@@ -86,7 +90,10 @@ function hasPushOrPullRequestTrigger(doc: unknown): boolean {
   if (typeof trigger === "string") return trigger === "push" || trigger === "pull_request";
   if (Array.isArray(trigger)) return trigger.includes("push") || trigger.includes("pull_request");
   if (typeof trigger === "object") {
-    return "push" in (trigger as Record<string, unknown>) || "pull_request" in (trigger as Record<string, unknown>);
+    return (
+      "push" in (trigger as Record<string, unknown>) ||
+      "pull_request" in (trigger as Record<string, unknown>)
+    );
   }
   return false;
 }

@@ -522,7 +522,7 @@ LOW-risk slices: one reviewer; verifier is replaced by `write-validation-result 
 
 **Parallel-dispatch telemetry (FEAT-203 / SLICE-113).** `.claude/loop.json` sets `reviewers.strictParallel: true` and `reviewers.serialTimingThresholdMs: 90000`. If the reviewer artifacts for this slice land more than `serialTimingThresholdMs` apart (timestamps parsed from the `.claude/artifacts/crew/reviews/` filenames), runner-plugin's `complete-slice` ceremony (`recordSerialReviewerWarning` in `slice-linker/complete-slice.mts`, reading `config.reviewers.serialTimingThresholdMs`) stamps a `serial-reviewer-warning` badge on slice close and appends a grade observation — silent serialization of this single-message contract is flagged automatically, not just documented as an intent. `reviewers.strictParallel` is declared in the shared preset schema (`preset-schema.mts`) as a forward-compat flag but has no runtime consumer branching on it yet in the installed runner-plugin version — it does not currently change dispatch or gating behavior; only `serialTimingThresholdMs` is live today.
 
-(Historically both tiers always dispatched `devcrew:reviewer` + `devcrew:verifier` concurrently regardless of risk. FEAT-202 / SLICE-112 replaced that with the `RISK_GATE` switch above, ported from runner-plugin's lean post-builder-fanout model, which runs `reviewers.ladder: ["A"]` by default in production and delegates validation to `deriveValidationGate`'s `satisfiedByReview` path.)
+(Historically both tiers always dispatched a reviewer and a dedicated verifier together, regardless of risk. FEAT-202 / SLICE-112 replaced that with the `RISK_GATE` switch above, ported from runner-plugin's lean post-builder-fanout model, which runs `reviewers.ladder: ["A"]` by default in production and delegates validation to `deriveValidationGate`'s `satisfiedByReview` path — FEAT-027 / SLICE-53 further gated that delegation on `has-consumer-ci` reporting present.)
 
 #### Step 4 prompt — `devcrew:reviewer` (both tiers; parallel)
 
@@ -542,9 +542,9 @@ When SPLIT_BUILD=true:
 When SPLIT_BUILD=false:
   Builder handoff: <BUILDER_HANDOFF_PATH>
 
-Review the implementation diff(s) for correctness, test coverage, regressions, and contract/UX/integration conformance per the rules in your agent prompt. Re-run the builder's affected-class test set (named in the handoff's `## Deferred to validator` line) to confirm it is green and covers the changed classes; the full suite runs at the CI gate (`.github/workflows/test.yml`) (or, when `RISK_GATE=true`, also at the dedicated verifier).
+Review the implementation diff(s) for correctness, test coverage, regressions, and contract/UX/integration conformance per the rules in your agent prompt. Re-run the builder's affected-class test set (named in the handoff's `## Deferred to validator` line) to confirm it is green and covers the changed classes; the full suite runs at the CI gate (`.github/workflows/ci.yml`) (or, when `RISK_GATE=true` or `has-consumer-ci` reports absent, also at the dedicated verifier).
 
-When `RISK_GATE=true` a dedicated `devcrew:verifier` is running concurrently and may provide evidence you can reference. When `RISK_GATE=false` (the default), your approval is the evidenced artifact the close-time validation gate delegates to (`loop.validation.satisfiedByReview: true`) — write it so it stands alone as proof of behavior, not just style.
+When `RISK_GATE=true`, or when `RISK_GATE=false` and `has-consumer-ci` reports `present: false`, a dedicated `devcrew:verifier` is running concurrently and may provide evidence you can reference. When `RISK_GATE=false` and `has-consumer-ci` reports `present: true`, your approval is the evidenced artifact the close-time validation gate delegates to (`loop.validation.satisfiedByReview: true`) — write it so it stands alone as proof of behavior, not just style.
 
 Return the review-result artifact path.
 ```
@@ -553,7 +553,7 @@ Store the returned path(s) as `REVIEW_RESULT_PATH` (or the aggregated set when f
 
 #### Step 5 prompt — `devcrew:verifier` (RISK_GATE=true only)
 
-**Dispatch only when `RISK_GATE = true`** (Step 4.5: HIGH risk, OR `concern:security` / `concern:performance` tags, OR `SPLIT_BUILD = true`). On the `RISK_GATE = false` default, skip this dispatch entirely — the mandatory full gate (whole-repo lint, `format:check`, the complete test suite, `verify:all`) is owned by CI (`.github/workflows/test.yml`) instead of a per-slice dedicated agent; see `skills/workflow/validator-gate/SKILL.md`.
+**Dispatch when `RISK_GATE = true`, or when `RISK_GATE = false` and `has-consumer-ci` reports `present: false`** (Step 4.5: HIGH risk, OR `concern:security` / `concern:performance` tags, OR `SPLIT_BUILD = true` triggers the heavy path unconditionally). On the `RISK_GATE = false` default with `has-consumer-ci` reporting `present: true`, skip this dispatch entirely — the mandatory full gate (whole-repo lint, `format:check`, the complete test suite, `verify:all`) is owned by CI (`.github/workflows/ci.yml`) instead of a per-slice dedicated agent; see `skills/workflow/validator-gate/SKILL.md`.
 
 Dispatch with this prompt:
 
@@ -584,7 +584,7 @@ Store the returned path as `VALIDATION_PATH`.
 
 If any dispatched reviewer returns `needs_fix`:
 
-1. If `RISK_GATE = true` and a `VALIDATION_PATH` was produced: mark it stale — `bun crew/scripts/crew.mts mark-badge --repo "$PWD" --badge validation_stale --note "invalidated by review needs_fix"`. When `RISK_GATE = false` (no dedicated verifier ran), skip this sub-step — there is no separate validation artifact to invalidate; the reviewer's own `needs_fix` result is the signal.
+1. If a `VALIDATION_PATH` was produced (`RISK_GATE = true`, or `RISK_GATE = false` with `has-consumer-ci` reporting absent): mark it stale — `bun crew/scripts/crew.mts mark-badge --repo "$PWD" --badge validation_stale --note "invalidated by review needs_fix"`. When no dedicated verifier ran (`RISK_GATE = false` and `has-consumer-ci` reported present), skip this sub-step — there is no separate validation artifact to invalidate; the reviewer's own `needs_fix` result is the signal.
 2. **Profile feedback (agent-profile-load-feedback):** record the fail outcome for the builder(s) profile-blocked in Step 2.7a, best-effort, using the SAME `<SLICE-NN>` run-id:
    `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id "<SLICE-NN>" --outcome fail`
 3. Re-dispatch builder with review findings (run `/devcrew:fix` flow).

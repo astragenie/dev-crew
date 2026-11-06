@@ -33,12 +33,12 @@ For most slices, pick from the main crew:
 | Deployment + environment evidence | `devcrew:release-engineer` | agnostic |
 | Read-only investigation (persistent findings) | `devcrew:researcher` | agnostic |
 | Cheap file:line lookup (no findings persist) | `devcrew:investigator` | agnostic |
-| LOW-tier review+validate | `devcrew:reviewer` + `devcrew:verifier` (concurrent) | agnostic |
+| LOW-tier review+validate | `devcrew:reviewer` alone when `has-consumer-ci` reports present, else also `devcrew:verifier` | agnostic |
 | Code quality sweep (stale refs, drift) | `devcrew:refactor` | TypeScript |
 | Performance audit (latency, N+1, benchmarks) | `devcrew:performance-engineer` | agnostic |
 | QA / test coverage gap analysis | `devcrew:qa-expert` | agnostic |
 
-For specialist work (3rdparty agents, fan-out lenses, arbitration, scope-specific picks) rely on the Agent quick reference table above + the examples listed here; dispatch `devcrew:investigator` if you need a specific capability lookup. Specialist routing examples: LOW-tier slices run `devcrew:reviewer` + `devcrew:verifier` concurrently (there is no combined agent), `devcrew:csharp-reviewer` (stack:csharp lens), `devcrew:3rdparty:refactoring-specialist` (concern:refactor + scope:wide), `devcrew:test-automator` (concern:test-infra), `devcrew:3rdparty:critical-thinking` (ambiguity disambiguator), `devcrew:architect-reviewer` (reviewer disagreement tiebreaker). External caveman plugin agents (`caveman:cavecrew-builder` etc.) are NOT first-class crew specialists — do not route to them; they're owned by the caveman plugin and shipped with their own discipline.
+For specialist work (3rdparty agents, fan-out lenses, arbitration, scope-specific picks) rely on the Agent quick reference table above + the examples listed here; dispatch `devcrew:investigator` if you need a specific capability lookup. LOW-risk slices: one reviewer; verifier is replaced by `write-validation-result --decision skipped --skip-reason "delegated to CI: <workflow file>"` only when `has-consumer-ci` reports present; otherwise dispatch `devcrew:verifier`. (There is no combined reviewer+verifier agent.) Other specialist routing examples: `devcrew:csharp-reviewer` (stack:csharp lens), `devcrew:3rdparty:refactoring-specialist` (concern:refactor + scope:wide), `devcrew:test-automator` (concern:test-infra), `devcrew:3rdparty:critical-thinking` (ambiguity disambiguator), `devcrew:architect-reviewer` (reviewer disagreement tiebreaker). External caveman plugin agents (`caveman:cavecrew-builder` etc.) are NOT first-class crew specialists — do not route to them; they're owned by the caveman plugin and shipped with their own discipline.
 
 **Architect-mandatory:** `surface:schema`, `concern:governance` (enforcement / process / methodology) MUST route to architect, never to fullstack-dev. `concern:governance` (customer-facing docs) routes to `devcrew:document-writer`; (in-prompt policy edits) routes to architect.
 
