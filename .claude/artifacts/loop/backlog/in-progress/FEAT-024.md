@@ -1,13 +1,13 @@
 ---
 id: FEAT-024
-status: triaged
+status: in-progress
 priority: P0
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: []
-slices: []
+slices: [SLICE-49]
 derived_from: null
 pm_customer_impact: 0.9
 pm_effort_estimate: 0.45
@@ -19,6 +19,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P0, holds and strengthened: this closes a fail-open gate now confirmed LIVE (not latent) on every single reviewer dispatch in the repo today, via a path (--scaffold --status in-progress) that is every reviewer prompt's mandatory first action. technical_risk raised to 0.7 (band 0.6-0.8, upper-middle: cross-file reach now spans crew.mts + workflow-state.mts + workflow-state-gates.mts + artifacts/write.mts passthrough + the run-brief writer, and six live agent prompts' existing behavior must survive unchanged)."
+started_at: 2026-11-06
 ---
 ## Description
 

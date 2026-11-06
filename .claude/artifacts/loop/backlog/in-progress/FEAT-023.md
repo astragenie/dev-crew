@@ -1,13 +1,13 @@
 ---
 id: FEAT-023
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: []
-slices: []
+slices: [SLICE-48]
 derived_from: null
 pm_customer_impact: 0.85
 pm_effort_estimate: 0.2
@@ -19,6 +19,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P1, holds. technical_risk 0.35 (hold — same banding as before). This remains the CI gate meant to prevent every other remediation FEAT in this batch from shipping silently broken; the backlog reclassification closes a gap the first-round scoring missed before the architect caught it."
+started_at: 2026-11-06
 ---
 ## Description
 

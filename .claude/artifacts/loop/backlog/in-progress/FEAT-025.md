@@ -1,13 +1,13 @@
 ---
 id: FEAT-025
-status: triaged
+status: in-progress
 priority: P2
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: []
-slices: []
+slices: [SLICE-50]
 derived_from: null
 pm_customer_impact: 0.6
 pm_effort_estimate: 0.45
@@ -19,6 +19,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P2, holds. technical_risk raised slightly to 0.45 (band 0.4-0.6: the JSON-static-import conversion and the decide.mts enum extension are additive, not breaking, but now span two test directories and a cost-advisor rendering path, not one isolated module as originally scoped)."
+started_at: 2026-11-06
 ---
 ## Description
 

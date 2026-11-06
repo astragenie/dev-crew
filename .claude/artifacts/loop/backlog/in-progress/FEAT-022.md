@@ -1,13 +1,13 @@
 ---
 id: FEAT-022
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: [FEAT-033]
-slices: []
+slices: [SLICE-47]
 derived_from: null
 pm_customer_impact: 0.9
 pm_effort_estimate: 0.3
@@ -19,6 +19,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P1, holds. technical_risk 0.3 (band 0.3-0.5 low end — still mechanical test-infra, no schema change). dependency_depth bumped slightly to 0.1 to reflect the new explicit depends_on: [FEAT-033] (the file this test enumerates must sit at the real discoverable path first, or the entry list itself is built on the wrong file)."
+started_at: 2026-11-06
 ---
 ## Description
 

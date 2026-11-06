@@ -1,13 +1,13 @@
 ---
 id: FEAT-034
-status: triaged
+status: in-progress
 priority: P0
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: []
-slices: []
+slices: [SLICE-51]
 derived_from: null
 pm_customer_impact: 0.75
 pm_effort_estimate: 0.4
@@ -19,6 +19,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P0: this is a correctness bug in the loop's own safety mechanism — the autonomous_safe/pm_risk_level pre-flight gate that is supposed to prevent exactly the kind of unsafe, high-risk slice this very batch contains (FEAT-031) from being packed without review is dead code today due to a field-name mismatch, independently verified by reading both planner.mts and pm-apply.mts directly. It is also a precondition for wave 2 even starting to order and gate the rest of this batch correctly. technical_risk 0.5 (band 0.3-0.5 top end: the field-name fix itself is low-risk with fallbacks, but the sequential-slice-ordering addition touches feature-lifecycle.mts's shared materialization path used by every future decomposed FEAT, and the regex widening affects touches-files inference repo-wide)."
+started_at: 2026-11-06
 ---
 ## Description
 
