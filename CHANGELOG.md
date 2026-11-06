@@ -5,6 +5,15 @@ prior to v0.3.0 shipped under the name `autonomous-loop`; v0.3.0 – v0.50.1
 shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
 `crew`+`runner` plugin ships under the name `devcrew`.
 
+## [Unreleased]
+
+- **fix(hooks)**: ship `hooks.json` at `hooks/hooks.json` — the documented
+  discovery path; `.claude-plugin/hooks/` was never loaded. A live
+  two-plugin marker test (2026-11-05, CLI 2.1.270) proved Claude Code's
+  plugin loader only discovers `hooks/hooks.json`, meaning no devcrew hook
+  ran for any consumer on 1.1.0 (gate guard, pre-push gate,
+  guard-feat-dispatch, telemetry — all 38 entries). FEAT-033/SLICE-46.
+
 ## [1.1.0] — 2026-08-20 — legacy dispatch tokens retired
 
 - **Hard break**: `guard-feat-dispatch` no longer allowlists the

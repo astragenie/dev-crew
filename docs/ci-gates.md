@@ -63,9 +63,12 @@ this file).
    slice's own repo-wide grep and kept, not removed). Forbids the reverse
    direction (`crew/**` importing outside `crew/`) entirely — zero-entry
    allowlist, confirmed empty by the same grep. Also fails on drift between
-   `.claude-plugin/hooks/hooks.json`'s `crew/` path census and the
-   generated `docs/planning/hooksjson-crew-path-inventory.json` (prerequisite
-   map for the later hooks-relocation FEAT).
+   `hooks/hooks.json`'s `crew/` path census and the generated
+   `docs/planning/hooksjson-crew-path-inventory.json`. (The hooks file
+   itself relocated from `.claude-plugin/hooks/hooks.json` to this path in
+   FEAT-033/SLICE-46 — the old location was never discovered by Claude
+   Code's plugin loader; see `docs/memory.md` § "Load-bearing CLAUDE.md
+   contracts".)
 10. `bun ./src/scripts/validate-backlog-writes.mts` — explicit-allowlist
     guard: fails when a file outside `backlog-store.mts` raw-writes a
     backlog-shaped FEAT/SLICE path.

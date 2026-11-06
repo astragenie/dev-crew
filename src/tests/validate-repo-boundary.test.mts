@@ -210,7 +210,7 @@ test("inventory --check drift fails when the on-disk file is stale, and passes a
       ]
     }
   };
-  await writeFileAt(root, ".claude-plugin/hooks/hooks.json", JSON.stringify(hooksJson, null, 2));
+  await writeFileAt(root, "hooks/hooks.json", JSON.stringify(hooksJson, null, 2));
 
   const missing = await checkInventoryDrift(root);
   assert.equal(missing.ok, false);

@@ -69,7 +69,11 @@ Post-cutover, this is one command — paste into the Claude Code prompt:
 /plugin install devcrew@astra
 ```
 
-See [ADOPTION.md](ADOPTION.md) for new-repo onboarding.
+See [ADOPTION.md](ADOPTION.md) for new-repo onboarding. Hooks require `bun`
+on `PATH` on the consumer's machine — they always have, since every hook
+command is a `bun`/Bun-shebang script, but this went unnoticed until
+FEAT-033 found the hooks file was shipping at a path Claude Code never
+loads in the first place.
 
 > **Marketplace history:**
 >

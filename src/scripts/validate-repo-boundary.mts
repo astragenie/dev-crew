@@ -39,10 +39,19 @@
  *
  * hooks.json crew-path inventory: `checkInventoryDrift`/`writeInventory`
  * below regenerate docs/planning/hooksjson-crew-path-inventory.json from
- * .claude-plugin/hooks/hooks.json via a structural JSON walk (not regex —
- * the contract doc's own note: regex over the raw file undercounts). The
- * default CLI invocation runs both the boundary check and the inventory
- * drift check; `--write-inventory` regenerates the inventory file instead.
+ * hooks/hooks.json via a structural JSON walk (not regex — the contract
+ * doc's own note: regex over the raw file undercounts). The default CLI
+ * invocation runs both the boundary check and the inventory drift check;
+ * `--write-inventory` regenerates the inventory file instead.
+ *
+ * hooks.json LOCATION (FEAT-033, SLICE-46, 2026-11-06): the file lives at
+ * `hooks/hooks.json` at the plugin root — the only path Claude Code's
+ * plugin loader discovers (confirmed by a live two-plugin marker test,
+ * `.claude/artifacts/crew/validations/20261105T223500Z-validation-plugin-hooks-json-discovery.md`).
+ * It previously shipped at `.claude-plugin/hooks/hooks.json`, which is
+ * never loaded — every devcrew hook was dead for every consumer until this
+ * move. Do not relocate it back, and do not add a manifest `hooks` key
+ * pointing elsewhere — either would cause a double-fire or a silent no-op.
  */
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import type { Dirent } from "node:fs";
@@ -98,7 +107,7 @@ export const ALLOWED_CROSS_IMPORTS: ReadonlyArray<AllowedCrossImport> = [
 
 const SCAN_ROOTS_OUTSIDE_CREW = ["src", "hooks"];
 const CREW_ROOT = "crew";
-const HOOKS_JSON_REL = ".claude-plugin/hooks/hooks.json";
+const HOOKS_JSON_REL = "hooks/hooks.json";
 const INVENTORY_OUTPUT_REL = "docs/planning/hooksjson-crew-path-inventory.json";
 
 async function collectSourceFiles(dir: string): Promise<string[]> {
