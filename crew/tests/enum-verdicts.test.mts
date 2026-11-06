@@ -1,9 +1,11 @@
 // P1.3 — enum verdict frontmatter + fail-open badge fix.
 // Covers: writer rejects invalid enum, needs_fix normalizes to rejected,
 // skipped without skip_reason throws, handler throws on unknown verdict
-// (not just the CLI refusal), approved_with_notes -> review_passed, legacy
-// artifacts (no verdict) keep the old default-pass behavior, and the
-// artifact-schemas.ts schemas round-trip real writer output.
+// (not just the CLI refusal), approved_with_notes -> review_passed, a
+// verdict-less write (scaffold / --status in-progress) applies no badge
+// (FEAT-024 — supersedes the old default-pass fallback this file used to
+// assert), and the artifact-schemas.ts schemas round-trip real writer
+// output.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -427,16 +429,22 @@ test("registerWorkflowArtifact: unrecognized validation verdict throws instead o
   }
 });
 
-test("registerWorkflowArtifact: absent verdict (legacy artifact / caller never set --decision) preserves the old default-pass behavior", async () => {
+test("registerWorkflowArtifact: absent verdict (scaffold / in-progress write) registers the artifact path but applies no badge (FEAT-024)", async () => {
   const repoPath = await makeTempDir("enum-verdicts-legacy-absent-");
   try {
     const artifact: ArtifactRef = { kind: "review-result", path: "fake-path.md", title: "t" };
-    // No `verdict` field at all — must NOT throw, must default to review_passed
-    // exactly like it did before P1.3 (this is the documented back-compat path).
+    // No `verdict` field at all. FEAT-024 deletes the old default-pass
+    // fallback this test used to assert (any write missing --decision used
+    // to silently flip the gate to review_passed) — a verdict-less write
+    // reaching this handler is now always a scaffold / --status in-progress
+    // write (crew.mts's write-review-result refuses any TERMINAL write
+    // missing --decision before an artifact is ever written), so it must
+    // register the artifact path and leave the gate untouched.
     const run = await registerWorkflowArtifact(repoPath, artifact, {
       summary: "no decision given"
     });
-    expect(run?.gates.review?.status).toBe("passed");
+    expect(run?.artifacts.reviewResult).toBe("fake-path.md");
+    expect(run?.gates.review).toBeNull();
   } finally {
     await cleanup(repoPath);
   }

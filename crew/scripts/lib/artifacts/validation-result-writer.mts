@@ -73,6 +73,24 @@ export function resolveValidationVerdict(
   return normalized.canonical;
 }
 
+// FEAT-024: throws (never process.exit — this module is cross-tree-imported
+// by library code, same fail-hard contract as the rest of this file) on a
+// terminal write-validation-result call with no --decision. Terminal = not
+// --scaffold and resolved status is anything other than "in-progress"
+// (absent/"completed"/etc all count as terminal) — mirrors crew.mts's
+// refuseIfReviewDecisionMissing for write-review-result. --scaffold and
+// --status in-progress writes register the artifact path only and never
+// carry a verdict, so they must never reach this refusal.
+function assertDecisionProvided(
+  rawDecision: string | null,
+  scaffold: boolean,
+  status: string | undefined
+): void {
+  if (scaffold || status === "in-progress") return;
+  if (rawDecision) return;
+  throw new Error("write-validation-result refused: --decision is required (pass|fail|skipped).");
+}
+
 // Throws (never process.exit) when ValidationArtifactSchema rejects the
 // assembled fields — same message text crew.mts's CLI has always produced
 // on stderr before exit(2), now surfaced as a thrown Error instead.
@@ -186,6 +204,7 @@ export async function writeValidationResultArtifact(
   input: ValidationResultInput
 ): Promise<ArtifactRecord> {
   const rawDecision = input.decision ?? null;
+  assertDecisionProvided(rawDecision, input.scaffold === true, input.status ?? undefined);
   const verdict = resolveValidationVerdict(rawDecision);
   const phase = resolvePhase(input.phase);
 

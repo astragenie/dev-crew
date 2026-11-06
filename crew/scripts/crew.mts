@@ -576,6 +576,27 @@ function resolveReviewVerdict(rawDecision: string | null): string | undefined {
   return normalized.canonical;
 }
 
+// FEAT-024: refuses (exit 2) a terminal write-review-result call with no
+// --decision. Terminal = not --scaffold and resolved --status is anything
+// other than "in-progress" (absent/"completed"/etc all count as terminal).
+// --scaffold and --status in-progress writes register the artifact path
+// only and never carry a verdict, so they must never reach this refusal —
+// that's exactly the fail-open gap FEAT-024 closes (every reviewer's
+// mandatory first action is a decision-less --scaffold write, which used to
+// flow straight into the default-approve badge).
+function refuseIfReviewDecisionMissing(
+  rawDecision: string | null,
+  scaffold: boolean,
+  status: string | undefined
+): void {
+  if (scaffold || status === "in-progress") return;
+  if (rawDecision) return;
+  process.stderr.write(
+    "[crew] write-review-result refused: --decision is required (approved|approved_with_notes|rejected).\n"
+  );
+  process.exit(2);
+}
+
 // Refuses (exit 2) an approved/approved_with_notes review of a code-bearing
 // diff that carries neither --test-summary nor --test-summary-skip-reason.
 // Hoisted out of write-review-result to stay under the complexity cap.
@@ -1034,11 +1055,12 @@ const COMMANDS = {
     writeHandoffAndBundle({ repoPath, flags, positionals }),
   "write-review-result": async ({ repoPath, flags, positionals }: CommandContext) => {
     const rawDecision = flags.decision;
+    const status = flags.status !== "open" ? (flags.status ?? undefined) : undefined;
+    refuseIfReviewDecisionMissing(rawDecision, flags.scaffold, status);
     // verdict is the canonical enum written to frontmatter; `decision` (below)
     // stays the raw value for body-prose back-compat.
     const verdict = resolveReviewVerdict(rawDecision);
     refuseIfTestAdequacyMissing(verdict, flags);
-    const status = flags.status !== "open" ? (flags.status ?? undefined) : undefined;
     const { notChecked, authorId, judgeId, selfApproval } = deriveReviewMetadataFields(flags);
     refuseIfSchemaInvalid(
       "write-review-result",
