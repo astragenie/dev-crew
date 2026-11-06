@@ -1,13 +1,13 @@
 ---
 id: FEAT-033
-status: triaged
+status: done
 priority: P0
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: []
-slices: []
+slices: [SLICE-46]
 derived_from: null
 pm_customer_impact: 1
 pm_effort_estimate: 0.3
@@ -19,6 +19,9 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P0, outranking FEAT-026: this is the single highest-severity finding in the whole remediation effort — not a crash under certain conditions but total non-execution of every devcrew hook (gate guard, pre-push gate, telemetry, guard-feat-dispatch) for every consumer today, confirmed by a live two-plugin marker test rather than static analysis. FEAT-026's node_modules fix is moot until this lands, since the file sitting under `.claude-plugin/hooks/` never loads regardless of whether its contents crash. technical_risk 0.4 (band 0.3-0.5: a mechanical, scoped file move with an explicit no-double-fire constraint and an acknowledged CLI-version unknown in its own AC, not a schema/logic change)."
+started_at: 2026-11-06
+slices_complete: [SLICE-46]
+completed_at: 2026-11-06
 ---
 ## Description
 
