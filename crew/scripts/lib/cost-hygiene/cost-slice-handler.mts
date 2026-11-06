@@ -7,6 +7,12 @@ import {
   getLatestRunId
 } from "../dispatch-timing-reader.mjs";
 import type { DispatchBreakdown } from "../artifacts/types.mjs";
+// FEAT-025 AC-1 (SLICE-50 review B blocker): this handler is the autonomous
+// loop's actual close path (src/scripts/lib/slice-linker/crew-bridge.mts ->
+// costSliceHandler) — the honesty refusal + run_id contract was previously
+// wired only into emit-cost-report.mts's maybeEmitCostReport, which this
+// path never calls. Shares the guard logic rather than re-implementing it.
+import { evaluateCostReportGuard } from "./cost-report-guard.mjs";
 
 interface MaybeEmitAggregateSliceOpts {
   repoPath: string;
@@ -133,6 +139,31 @@ async function collectDispatchBreakdown(
   }
 }
 
+// Extracted to keep costSliceHandler's cognitive complexity under the
+// repo's cap (AGENTS.md § Style) — builds the guard-evaluation params from
+// the handler's locals (biome flags this as a bundle, not individually).
+function buildGuardParams(
+  repoPath: string,
+  run: Record<string, unknown> | null,
+  flags: Record<string, unknown>,
+  startedAt: string,
+  completedAt: string | null,
+  sliceCost: Record<string, unknown>
+): Parameters<typeof evaluateCostReportGuard>[0] {
+  const scanWindow = (sliceCost["window"] as { start?: string; end?: string } | undefined) ?? {};
+  return {
+    repoPath,
+    run,
+    startedAt: scanWindow.start ?? startedAt,
+    completedAt: scanWindow.end ?? completedAt ?? new Date().toISOString(),
+    sessionsScanned: Number(sliceCost["sessionsScanned"] ?? 0),
+    usd: Number((sliceCost["usd"] as number | undefined) ?? 0),
+    allowWideWindow: flags["allowWideWindow"] === true,
+    maxWindowHours:
+      typeof flags["maxWindowHours"] === "number" ? (flags["maxWindowHours"] as number) : undefined
+  };
+}
+
 /**
  * Handler for the "cost-slice" CLI command.
  */
@@ -172,11 +203,38 @@ export async function costSliceHandler({
     string,
     unknown
   >;
+
+  // FEAT-025 AC-1: refuse to write a cost report that cannot be honest about
+  // what it measured. Uses the actual resolved scan window
+  // (sliceCost.window) rather than the raw startedAt/completedAt params,
+  // since completedAt may be null (computeSessionCost defaults it to
+  // "now" internally) — window.start/end reflect what was really scanned.
+  const guard = await evaluateCostReportGuard(
+    buildGuardParams(
+      repoPath,
+      run as unknown as Record<string, unknown> | null,
+      flags,
+      startedAt,
+      completedAt,
+      sliceCost
+    )
+  );
+  // `=== true` (not a bare `if (guard.refused)`) because the root repo's
+  // lenient tsconfig.test.json (strict: false) sweeps this file in
+  // transitively via crew-bridge.mts and fails to narrow a discriminated
+  // union returned from an awaited call on a bare boolean-property check —
+  // confirmed via a minimal repro against both tsconfigs. The explicit
+  // equality check narrows correctly under both.
+  if (guard.refused === true) {
+    return { written: false, reason: guard.reason };
+  }
+
   const writeResult = await writeArt(repoPath, "cost-report-slice", {
     title: runTitle,
     runTitle,
     cost: sliceCost,
     outcome,
+    runId: guard.runId,
     ...(notes != null ? { notes } : {}),
     ...(feature != null ? { feature } : {}),
     ...(phase != null ? { phase } : {}),

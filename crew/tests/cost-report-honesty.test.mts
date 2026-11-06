@@ -201,6 +201,126 @@ test("AC-1: a repeated run_id with identical totals is refused as a duplicate", 
 });
 
 // ---------------------------------------------------------------------------
+// AC-1, loop path: costSliceHandler (src/scripts/lib/slice-linker/
+// crew-bridge.mts -> costSliceHandler) is the autonomous loop's actual
+// slice-close route and historically had none of the AC-1 guards (SLICE-50
+// review B blocker). These cases drive costSliceHandler directly to prove
+// the shared guard (cost-report-guard.mjs) now applies there too.
+// ---------------------------------------------------------------------------
+
+test("AC-1 loop path: costSliceHandler refuses when sessionsScanned === 0", async () => {
+  const tmpDir = await makeTempDir();
+  try {
+    await withIsolatedProjectsRoot(tmpDir, async () => {
+      const { costSliceHandler } = await import(
+        "../scripts/lib/cost-hygiene/cost-slice-handler.mjs"
+      );
+      const now = new Date().toISOString();
+      const result = (await costSliceHandler({
+        repoPath: tmpDir,
+        flags: { startedAt: now, completedAt: now, runTitle: "loop-zero-sessions" }
+      })) as Record<string, unknown>;
+      expect(result.written).toBe(false);
+      expect(result.reason).toBe("sessions_scanned_zero");
+      expect(await listCostDir(tmpDir)).toEqual([]);
+    });
+  } finally {
+    await cleanup(tmpDir);
+  }
+});
+
+test("AC-1 loop path: costSliceHandler refuses a window wider than maxWindowHours without --allow-wide-window", async () => {
+  const tmpDir = await makeTempDir();
+  try {
+    await withIsolatedProjectsRoot(tmpDir, async (projectsRoot) => {
+      const { costSliceHandler } = await import(
+        "../scripts/lib/cost-hygiene/cost-slice-handler.mjs"
+      );
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+      const now = new Date().toISOString();
+      await seedFixtureSession(projectsRoot, tmpDir, eightDaysAgo);
+      const result = (await costSliceHandler({
+        repoPath: tmpDir,
+        flags: { startedAt: eightDaysAgo, completedAt: now, runTitle: "loop-wide-window" }
+      })) as Record<string, unknown>;
+      expect(result.written).toBe(false);
+      expect(result.reason).toBe("window_too_wide");
+      expect(await listCostDir(tmpDir)).toEqual([]);
+    });
+  } finally {
+    await cleanup(tmpDir);
+  }
+});
+
+test("AC-1 loop path: costSliceHandler stamps run_id into the written frontmatter on a normal emit", async () => {
+  const tmpDir = await makeTempDir();
+  try {
+    await withIsolatedProjectsRoot(tmpDir, async (projectsRoot) => {
+      const { costSliceHandler } = await import(
+        "../scripts/lib/cost-hygiene/cost-slice-handler.mjs"
+      );
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const now = new Date().toISOString();
+      await seedFixtureSession(projectsRoot, tmpDir, now);
+      const result = (await costSliceHandler({
+        repoPath: tmpDir,
+        flags: { startedAt: fiveMinAgo, completedAt: now, runTitle: "loop-normal-emit" }
+      })) as Record<string, unknown>;
+      expect(result.written).not.toBe(false);
+      const files = await listCostDir(tmpDir);
+      expect(files.length).toBe(1);
+      const content = await fs.readFile(
+        path.join(tmpDir, ".claude", "artifacts", "crew", "cost", files[0]!),
+        "utf8"
+      );
+      expect(content).toContain("run_id:");
+    });
+  } finally {
+    await cleanup(tmpDir);
+  }
+});
+
+test("AC-1 loop path: costSliceHandler refuses a repeated run_id with identical totals as a duplicate", async () => {
+  const tmpDir = await makeTempDir();
+  try {
+    await withIsolatedProjectsRoot(tmpDir, async (projectsRoot) => {
+      const { costSliceHandler } = await import(
+        "../scripts/lib/cost-hygiene/cost-slice-handler.mjs"
+      );
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      await writeWorkflowState(tmpDir, {
+        title: "loop-dup-run-id",
+        runId: "fixed-loop-run-id-456",
+        startedAt: fiveMinAgo,
+        updatedAt: fiveMinAgo
+      });
+      await seedFixtureSession(projectsRoot, tmpDir, new Date().toISOString());
+
+      // No explicit startedAt/completedAt flags — falls back to
+      // currentRun.startedAt, same as the real crew-bridge call shape.
+      const first = (await costSliceHandler({
+        repoPath: tmpDir,
+        flags: { runTitle: "loop-dup-run-id" }
+      })) as Record<string, unknown>;
+      expect(first.written).not.toBe(false);
+      const filesAfterFirst = await listCostDir(tmpDir);
+      expect(filesAfterFirst.length).toBeGreaterThan(0);
+
+      const second = (await costSliceHandler({
+        repoPath: tmpDir,
+        flags: { runTitle: "loop-dup-run-id" }
+      })) as Record<string, unknown>;
+      expect(second.written).toBe(false);
+      expect(second.reason).toBe("duplicate run_id");
+      const filesAfterSecond = await listCostDir(tmpDir);
+      expect(filesAfterSecond.length).toBe(filesAfterFirst.length);
+    });
+  } finally {
+    await cleanup(tmpDir);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // AC-2: cost-advisor verdict
 // ---------------------------------------------------------------------------
 

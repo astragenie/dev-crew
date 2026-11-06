@@ -1,7 +1,6 @@
 // Extracted from scripts/crew.mjs — maybeEmitCostReport.
 // Auto-emits cost-report artifacts after write-final-synthesis.
 // Non-fatal: returns null / { error } on failure so the synthesis result still surfaces.
-import fs from "node:fs/promises";
 import path from "node:path";
 import {
   aggregateDispatchTiming,
@@ -10,59 +9,12 @@ import {
 } from "../dispatch-timing-reader.mjs";
 import type { DispatchBreakdown } from "../artifacts/types.mjs";
 import type { AgentStatsRow } from "../agent-stats-aggregator.mjs";
-
-// FEAT-025: a cost report with zero sessions scanned, or a window wider than
-// this, is more likely to be lying (stale/un-rotated currentRun, FEAT-188 S5
-// / #178 incident shape) than to be real signal. Overridable via
-// options.maxWindowHours; the refusal itself is overridable via
-// options.allowWideWindow (CLI surface: --allow-wide-window).
-const DEFAULT_MAX_WINDOW_HOURS = 24;
-
-function windowHoursBetween(startedAt: string, completedAt: string): number {
-  const ms = Date.parse(completedAt) - Date.parse(startedAt);
-  if (Number.isNaN(ms)) return 0;
-  return ms / (1000 * 60 * 60);
-}
-
-// run_id resolution: prefer the workflow-state run's own runId (set by
-// `/runner:slice start` / dispatch-timing correlation); fall back to a
-// deterministic id derived from the window itself so older workflow states
-// (no runId field) still get a stable, dedup-able identifier.
-function resolveRunId(
-  run: Record<string, unknown>,
-  startedAt: string,
-  completedAt: string
-): string {
-  const explicit = run["runId"];
-  if (typeof explicit === "string" && explicit.length > 0) return explicit;
-  return `${startedAt}_${completedAt}`;
-}
-
-// Best-effort scan of existing cost-report files in the cost dir for one
-// already carrying this exact run_id + usd total — "identical totals" per
-// AC-1. A plain string scan (not a full frontmatter parse) keeps this
-// change scoped to this module; false negatives just mean an extra (still
-// honest) report gets written, never data loss.
-async function findDuplicateRunId(repoPath: string, runId: string, usd: number): Promise<boolean> {
-  const costDir = path.join(repoPath, ".claude", "artifacts", "crew", "cost");
-  let files: string[];
-  try {
-    files = (await fs.readdir(costDir)).filter((f) => f.endsWith(".md"));
-  } catch {
-    return false;
-  }
-  const needleRunId = `run_id: ${JSON.stringify(runId)}`;
-  const needleUsd = `usd: ${usd}`;
-  for (const f of files) {
-    try {
-      const content = await fs.readFile(path.join(costDir, f), "utf8");
-      if (content.includes(needleRunId) && content.includes(needleUsd)) return true;
-    } catch {
-      // unreadable file — skip, never block emission on a read error
-    }
-  }
-  return false;
-}
+// FEAT-025 AC-1 (SLICE-50 review B): the three refusal guards + run_id
+// resolution now live in one shared helper so costSliceHandler (the
+// autonomous loop's close path) can apply the identical contract instead
+// of a second, independently-evolving copy. See cost-report-guard.mjs for
+// the full rationale.
+import { evaluateCostReportGuard } from "./cost-report-guard.mjs";
 
 async function collectAgentStatsForRun(repoPath: string): Promise<AgentStatsRow[] | undefined> {
   if (process.env["CREW_COST_REPORT_AGENT_STATS"] === "0") return undefined;
@@ -208,22 +160,27 @@ async function emitCostReportInner(
   // FEAT-025 AC-1: refuse to write a cost report that cannot be honest about
   // what it measured -- zero sessions scanned, or a window wide enough to be
   // a stale/un-rotated currentRun (the exact #178 incident shape) rather than
-  // this slice's real work.
+  // this slice's real work -- or a duplicate of an already-written run_id.
   const sessionsScanned = Number(sliceCost["sessionsScanned"] ?? 0);
-  const maxWindowHours = options.maxWindowHours ?? DEFAULT_MAX_WINDOW_HOURS;
-  const windowHours = windowHoursBetween(run.startedAt, completedAt);
-  if (sessionsScanned === 0) {
-    return { written: false, reason: "sessions_scanned_zero" };
-  }
-  if (windowHours > maxWindowHours && !options.allowWideWindow) {
-    return { written: false, reason: "window_too_wide" };
-  }
-
-  const runId = resolveRunId(run as unknown as Record<string, unknown>, run.startedAt, completedAt);
   const usd = Number((sliceCost["usd"] as number | undefined) ?? 0);
-  if (await findDuplicateRunId(repoPath, runId, usd)) {
-    return { written: false, reason: "duplicate run_id" };
+  const guard = await evaluateCostReportGuard({
+    repoPath,
+    run: run as unknown as Record<string, unknown>,
+    startedAt: run.startedAt,
+    completedAt,
+    sessionsScanned,
+    usd,
+    allowWideWindow: options.allowWideWindow,
+    maxWindowHours: options.maxWindowHours
+  });
+  // `=== true` (not a bare `if (guard.refused)`): see the matching note in
+  // cost-slice-handler.mts — the root repo's lenient tsconfig.test.json
+  // fails to narrow this discriminated union on a bare boolean check when
+  // the value comes from an awaited call.
+  if (guard.refused === true) {
+    return { written: false, reason: guard.reason };
   }
+  const runId = guard.runId;
 
   const sliceArtifact = await writeArtifact(repoPath, "cost-report-slice", {
     title,
