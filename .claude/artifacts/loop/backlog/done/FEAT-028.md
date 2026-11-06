@@ -1,6 +1,6 @@
 ---
 id: FEAT-028
-status: in-progress
+status: done
 priority: P1
 category: feature
 target_release: null
@@ -20,6 +20,8 @@ pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P1, holds. technical_risk raised to 0.45 (band 0.4-0.6: the blast radius grew from four prompt files to eleven across agents/, plus two live enforcement-hook regexes that must keep matching, plus a decision-record supersession — more cross-file reach than the original scope, but still prompt-text-and-validator-rule work with a clean, mechanical rollback)."
 started_at: 2026-11-06
+slices_complete: [SLICE-54]
+completed_at: 2026-11-06
 ---
 ## Description
 
