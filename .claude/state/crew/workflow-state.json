@@ -1,21 +1,21 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-06T04:05:04.385Z",
+  "updatedAt": "2026-11-06T04:33:16.967Z",
   "currentRun": {
-    "title": "FEAT022 SLICE47: Implement FEAT-022",
-    "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
+    "title": "FEAT025 SLICE50: Implement FEAT-025",
+    "goal": "Audit T9: telemetry honesty for cost reports, pricing, grades, and bundle-safe data files",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-06T03:55:01.810Z",
-    "updatedAt": "2026-11-06T04:05:04.385Z",
+    "startedAt": "2026-11-06T04:12:02.256Z",
+    "updatedAt": "2026-11-06T04:33:16.967Z",
     "next": "Begin implementation",
     "gates": {
       "review": {
         "status": "passed",
-        "updatedAt": "2026-11-06T04:05:04.385Z",
-        "note": "SLICE-47 / FEAT-022 (merged 3da06c82, diff a32f4f76..3da06c82) implements the consumer-install\nsmoke-test harness (`shipped-entrypoints.mts`, `consumer-smoke.test.mts`, 3 fixtures, one\n`package.json` script line). Both deviations the builder flagged were independently verified and\nare judged acceptable, not defects:\n\n1. AC-2's \"17 bun hooks\" is confirmed stale. Running `listShippedEntrypoints` against the real\n   `hooks/hooks.json` + `commands/*.md` + `agents/*.md` today gives exactly 25 bun / 6 node / 1\n   bash distinct entrypoints, matching the test's asserted counts exactly. Asserting the real,\n   freshly-measured count (with the drift explicitly called out in the AC's own evidence text,\n   citing the SLICE-46 \"never trust a hand-curated count\" lesson) is correct test design, not a\n   silent relitigation of the AC.\n\n2. `crew/scripts/crew.mts show-workflow-state` is confirmed absent from every `commands/*.md` and\n   `agents/*.md` file (recursive grep, zero hits); `commands/build.md`'s collision pre-flight reads\n   `workflow-state.json` directly via `jq` instead. Since `listMarkdownCliEntrypoints` only sources\n   CLI entries from literal `bun \"${CLAUDE_PLUGIN_ROOT}/...\"` lines in those two globs (by design,\n   so the list self-tracks a future dist/ path rewrite), that invocation structurally cannot appear\n   in the entry/observed-failure set today. Documenting the gap instead of hand-injecting a fake\n   entry is the right call; no AC-1 amendment required.\n\nTest run confirmed red for the designed reason: 2 pass / 1 fail, failing at the final \"EXPECTED_FAIL\nis non-empty\" ratchet assertion (consumer-smoke.test.mts:146), not a harness error. Spot-checked 3\nEXPECTED_FAIL entries (`crew/hooks/otel-post-tool-use.mts`, `crew/scripts/crew.mts brief-me`,\n`src/scripts/loop.mts list-presets`) by hand against a freshly staged node_modules-free copy built\nvia `stageConsumerCopy` — all 3 are genuine `Cannot find package/module` crashes, matching the\ntest's own failure regex.\n\nConfirmed gate 41 (`slow-tests` job, `.github/workflows/ci.yml`) runs `bun test src/tests/` with\n`--path-ignore-patterns` only for the 6 named worktree suites — this new test is NOT excluded, so it\nruns and fails there permanently (by design) until FEAT-026 lands. `slow-tests` is not part of the\nrequired `gate` check (confirmed in `docs/ci-gates.md` \"Job structure and gating\" — `gate` depends\nonly on `fast-gate`), so this does not block merges, matching the slice's own claim. The permanently-\nred status is recorded in the test file's own header comment, the slice AC-1 evidence text, and the\nFEAT-022 body's \"Note in the wave plan\" bullet — sufficient for a CI-job investigator, though neither\n`docs/ci-gates.md` nor `CLAUDE.md`'s gate list calls it out by name (optional follow-up, not\nrequired — gate 41's blocking/advisory status itself did not change, so the \"update both files\"\nsync rule doesn't trigger).\n\n`package.json` diff is exactly the one new `\"test:install\"` script line, nothing else changed.\n`bun run test` (gate 41) already picks up `src/tests/install/consumer-smoke.test.mts` automatically\nvia `bun test`'s recursive directory discovery — confirmed directly against the real CI step's\ncommand. `test:install` is a convenience subset-runner, not a wiring requirement.\n\nOne non-blocking finding below: `prepush-bash.json` is dead code.\n\nDecision: approved_with_notes.",
+        "updatedAt": "2026-11-06T04:33:16.967Z",
+        "note": "SLICE-50 / FEAT-025 review B (correctness) — re-verification after commit\n58dcfb62 — APPROVED WITH NOTES.\n\nThe prior BLOCKER is fixed. 58dcfb62 extracts\n`crew/scripts/lib/cost-hygiene/cost-report-guard.mts`\n(`evaluateCostReportGuard`: the three AC-1 refusals + run_id resolution in\none call) and wires it into both `emit-cost-report.mts`'s\n`maybeEmitCostReport` and `cost-slice-handler.mts`'s `costSliceHandler` —\nthe latter is what `src/scripts/lib/slice-linker/crew-bridge.mts` actually\ncalls for this repo's own autonomous-loop slice closes. Four new tests\ndrive `costSliceHandler` directly (zero sessions, wide window, run_id\nstamped, duplicate refusal) and all pass; 33/33 tests green across the\nthree crew cost-report test files (up from 29); both `crew/tsconfig.json`\nand root `tsconfig.test.json` typecheck clean.\n\nThe `guard.refused === true` explicit-equality check (instead of a bare\n`if (guard.refused)`) is the right fix, not a workaround. I reproduced the\nnarrowing failure in isolation: under `strictNullChecks: false` (what\n`tsconfig.test.json` sets, and which sweeps in `cost-slice-handler.mts`\ntransitively via `crew-bridge.mts`), a bare boolean-property check on a\n`{refused:false;runId}|{refused:true;reason}` union does NOT narrow —\n`guard.runId` is a compile error afterward — while `=== true` narrows\ncorrectly under both the strict and loose configs. Confirmed empirically,\nnot just asserted.\n\nAC-2/AC-3 (pricing honesty) and AC-4 (grade-template-unfilled rejection),\napproved in my prior review, are untouched by this commit (it only touches\ncost-report-guard.mts, cost-slice-handler.mts, emit-cost-report.mts, and\nthe one test file) and remain correct. The FEAT-025 body's stale\n`crew/scripts/lib/cost-advise/decide.mts` path citation (real path:\n`crew/scripts/lib/cost-hygiene/decide.mts`) is still present and still\nworth a one-line fix next touch; `docs/memory.md` does not repeat it, so\nno memory fix is needed.\n\nOne new, real finding, raised as a note rather than a second blocker: in\n`src/scripts/lib/slice-linker/crew-bridge.mts`'s `tryWriteCostReport`\n(line 294), the per-slice scan cursor advances whenever\n`!report?.error` — and a `{written:false, reason}` refusal has no `.error`\nkey, so the cursor advances past a refused window exactly as if the report\nhad been written. For `duplicate run_id` this is harmless (idempotent —\nthe matching prior write already advanced the cursor correctly). For\n`sessions_scanned_zero` it's benign (nothing happened in that span, so\nthere is nothing to lose by moving past it). For `window_too_wide` it is\na real regression against the comment two lines above it (\"a failed\ninvocation leaves the window untouched so the next attempt retries...\ninstead of silently skipping it\") — the one case AC-1 built specifically\nto flag a suspect span for operator attention now gets silently and\npermanently skipped by the cursor instead. This is newly *reachable* only\nbecause of the fix just reviewed (before 58dcfb62, `costSliceHandler`\ncould never return `written:false` at all, so this line never saw a\nrefusal). My call: this is an in-scope defect, not a follow-up FEAT — it's\na direct, foreseeable side effect of the exact change under review, in a\nsibling file of the same cost-reporting flow, and the fix is small\n(gate the cursor advance on `report?.written !== false`, or narrowly on\n`report?.reason !== \"window_too_wide\"` if `sessions_scanned_zero`'s\nauto-retry-by-growing-window behavior is wanted deliberately). I'd want it\nfixed before calling FEAT-025 closed, but I'm not blocking THIS review on\nit since it sits outside the four stated ACs and outside the files this\nslice touched — approving with that note so it gets picked up explicitly\nrather than silently dropped.",
         "reviewers": {
-          "A": "approved_with_notes",
+          "A": "approved",
           "B": "approved_with_notes"
         },
         "required": [
@@ -25,8 +25,8 @@
       },
       "validation": {
         "status": "passed",
-        "updatedAt": "2026-11-06T04:03:13.947Z",
-        "note": "SLICE-47/FEAT-022 validation: consumer-smoke designed-red ratchet is red for exactly the documented reason, and stageConsumerCopy's staging is faithful to a real node_modules-free marketplace-cache install.\n\nScenario 1 (bun test src/tests/install/consumer-smoke.test.mts, rc=1, 2 pass/1 fail): the only failure is the intentional ratchet assertion at line 146 (\"EXPECTED_FAIL is non-empty (49 known-broken entries) -- see FEAT-022/FEAT-026. This test is designed to stay red until those land.\"). Both preceding assertions (newlyBroken==[] and nowPassing==[]) passed silently, proving the live-observed failing set matches the recorded EXPECTED_FAIL set exactly, in both directions.\n\nScenario 2 (staging fidelity, via a scratch script calling the real stageConsumerCopy/listShippedEntrypoints): zero node_modules directories anywhere in the staged copy at any depth. A repo-wide reparse-point sweep (cmd /c dir /s /a:l /b) found the only 10 existing junctions confined to .claude/worktrees/*/node_modules and .claude/worktrees/*/crew/node_modules -- doubly excluded by both the .claude/worktrees prefix rule and the node_modules path-segment rule in shouldExcludeFromStaging. Staged copy ~33.9 MiB; hooks/hooks.json, commands/, agents/, crew/scripts/crew.mts, src/scripts/loop.mts all present. 86 total entries: hook/bash=6, hook/node=11, hook/bun=21, cli/bun=48.\n\nScenario 3 (hand spot-checks against the staged copy via bun --no-install): crew/hooks/subagent-gate-guard.mts, crew.mts audit --repo <consumer>, and loop.mts list-presets all crash identically with \"Cannot find module '@astragenie/plugin-std...'\" -- a module-resolution failure, matching FEAT-022's documented root cause, not an assertion bug. The control case crew/hooks/check-redundant-read.mts (NOT in EXPECTED_FAIL) ran clean at exit 0 with no \"Cannot find\" in stderr, proving EXPECTED_FAIL discriminates rather than blanket-failing.\n\nScenario 4 (counts): hand-parsing hooks/hooks.json directly gives 21 distinct bun files, 6 node, 1 bash (hooks only). The full listShippedEntrypoints (hooks + markdown CLI) gives 25 bun / 6 node / 1 bash -- reconciling exactly: the 4 extra bun files are markdown-only CLI entries (crew.mts, prune-artifacts.mts, loop.mts, watch-tick.mts); node/bash counts are unaffected since every markdown CLI invocation is bun-runtime. Matches the builder's claimed 25/6/1 and the test's own groupDistinctFilesByRuntime assertions (already green).\n\nScenario 5 (CI impact): package.json's \"test\" script (gate 41) is \"bun test src/tests/ --parallel --timeout 60000\" with no exclusion for src/tests/install/, so gate 41 is now observably red on this branch (confirmed locally). CI's slow-tests job runs the equivalent with --path-ignore-patterns for 6 named quarantined suites (auto-merge, synergy, integration, integrations, slice-complete, slice-start) -- consumer-smoke.test.mts is not in that list, so slow-tests is also red in CI. However the merge-blocking required \"gate\" job in .github/workflows/ci.yml depends only on fast-gate (validators + tsc + biome), never on bun test src/tests/, so this red test does not block merges. package.json's \"test:install\" script (bun test src/tests/install/) is a separate, narrower convenience script, not wired into any CI job on its own.\n\nDecision: PASS. The test is red for exactly the documented reason, the ratchet is honest (exact set match both directions), and the staging has no node_modules leak and is discriminating rather than blanket-failing.",
+        "updatedAt": "2026-11-06T04:32:35.296Z",
+        "note": "SLICE-50 / FEAT-025 telemetry-honesty RE-VALIDATION, after commit\n58dcfb62 (\"fix(SLICE-50): cost-report honesty guards + run_id on the loop\nclose path (review B blocker)\").\n\nDecision: PASS.\n\nThe gap this validation and reviewer B both independently found in the\nfirst pass -- AC-1's three refusal checks (zero-sessions, wide-window,\nduplicate-run_id) and the run_id field existing only on the interactive\ncrew write-final-synthesis path, never on the real /runner:slice complete\nclose path (crew-bridge.mts -> costSliceHandler) -- is now closed. A\nshared crew/scripts/lib/cost-hygiene/cost-report-guard.mts module backs\nboth call sites. Re-driving the real costSliceHandler directly confirms\nall three refusals now fire correctly on the production path, and a\nsuccessful write now carries a run_id frontmatter line (confirmed by\nreading the written file directly: run_id: \"revalidate-3\").\n\nThe TypeScript narrowing regression flagged in the first pass (root\ntsconfig failing to narrow a bare \"if (guard.refused)\" discriminated\nunion under strict:false) is also resolved -- both call sites now use the\nexplicit \"guard.refused === true\" form. bun run typecheck and\nbunx tsc -p crew/tsconfig.json --noEmit both report rc 0 with zero\nerrors.\n\ncd crew && bun test tests/cost-report-honesty.test.mts\ntests/cost-report-emission.test.mts tests/pricing.test.mts -> 33 pass,\n0 fail, 87 expect() calls (up from 29/0/73 before this fix -- the four\nnew cases drive costSliceHandler directly).\n\nTwo things to flag, neither of which changes the PASS verdict for\nSLICE-50's four stated ACs:\n\n1. Aggregate-mode writes (cost-report-aggregate, written when\n   aggregateAll:true finds more than one active source project) are\n   confirmed STILL UNGATED -- no run_id, no zero-sessions check, no\n   duplicate check -- because evaluateCostReportGuard is only called once,\n   before the slice write, and the aggregate branch never calls it\n   independently. This only matters once the slice guard has already\n   passed (a refused slice guard returns early and the aggregate branch\n   is never reached), so the exposure is narrower than AC-1's wording\n   might suggest, but it is a real, confirmed gap worth a follow-up note\n   if aggregate honesty is ever in scope.\n\n2. A genuine data-loss bug, found while answering the cursor question:\n   crew-bridge.mts's tryWriteCostReport advances the per-slice scan\n   cursor whenever \"!report?.error\", and all three AC-1 refusals return\n   \"{written:false, reason}\" with no .error key -- so the cursor advances\n   on every refusal, not just real failures. For sessions_scanned_zero\n   and duplicate run_id this is harmless (nothing real was lost either\n   way). For window_too_wide it is NOT harmless: that refusal fires\n   specifically when real session cost activity (sessionsScanned > 0)\n   exists in a window too wide to trust, and advancing the cursor past it\n   anyway means that real, unreported activity is permanently skipped --\n   the next close starts scanning from \"now,\" not from the original\n   stale start, so the skipped span is never retried and never appears\n   in any cost report. This is a distinct bug from anything FEAT-025's\n   ACs cover (the cursor mechanism predates FEAT-025, via FEAT-268), and\n   is not something I am fixing as part of this validation, but it is a\n   real finding worth a follow-up ticket: skip the cursor advance\n   specifically when reason === \"window_too_wide\".",
         "validators": {
           "verifier": "pass"
         },
@@ -42,11 +42,11 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T035501Z-run-brief-feat022-slice47-implement-feat-022.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T041202Z-run-brief-feat025-slice50-implement-feat-025.md",
       "handoffs": [],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T040504Z-review-result-slice-47-review-b-correctness.md",
+      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T043316Z-review-result-slice-50-review-b-correctness.md",
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T040313Z-validation-result-slice-47-validation-consumer-smoke-red-for-right-reason-stag.md",
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T043235Z-validation-result-slice-50-re-validation-cost-guards-on-both-paths.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -55,6 +55,60 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT022 SLICE47: Implement FEAT-022",
+      "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T03:55:01.810Z",
+      "updatedAt": "2026-11-06T04:05:04.385Z",
+      "completedAt": "2026-11-06T04:05:04.385Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T04:05:04.385Z",
+          "note": "SLICE-47 / FEAT-022 (merged 3da06c82, diff a32f4f76..3da06c82) implements the consumer-install\nsmoke-test harness (`shipped-entrypoints.mts`, `consumer-smoke.test.mts`, 3 fixtures, one\n`package.json` script line). Both deviations the builder flagged were independently verified and\nare judged acceptable, not defects:\n\n1. AC-2's \"17 bun hooks\" is confirmed stale. Running `listShippedEntrypoints` against the real\n   `hooks/hooks.json` + `commands/*.md` + `agents/*.md` today gives exactly 25 bun / 6 node / 1\n   bash distinct entrypoints, matching the test's asserted counts exactly. Asserting the real,\n   freshly-measured count (with the drift explicitly called out in the AC's own evidence text,\n   citing the SLICE-46 \"never trust a hand-curated count\" lesson) is correct test design, not a\n   silent relitigation of the AC.\n\n2. `crew/scripts/crew.mts show-workflow-state` is confirmed absent from every `commands/*.md` and\n   `agents/*.md` file (recursive grep, zero hits); `commands/build.md`'s collision pre-flight reads\n   `workflow-state.json` directly via `jq` instead. Since `listMarkdownCliEntrypoints` only sources\n   CLI entries from literal `bun \"${CLAUDE_PLUGIN_ROOT}/...\"` lines in those two globs (by design,\n   so the list self-tracks a future dist/ path rewrite), that invocation structurally cannot appear\n   in the entry/observed-failure set today. Documenting the gap instead of hand-injecting a fake\n   entry is the right call; no AC-1 amendment required.\n\nTest run confirmed red for the designed reason: 2 pass / 1 fail, failing at the final \"EXPECTED_FAIL\nis non-empty\" ratchet assertion (consumer-smoke.test.mts:146), not a harness error. Spot-checked 3\nEXPECTED_FAIL entries (`crew/hooks/otel-post-tool-use.mts`, `crew/scripts/crew.mts brief-me`,\n`src/scripts/loop.mts list-presets`) by hand against a freshly staged node_modules-free copy built\nvia `stageConsumerCopy` — all 3 are genuine `Cannot find package/module` crashes, matching the\ntest's own failure regex.\n\nConfirmed gate 41 (`slow-tests` job, `.github/workflows/ci.yml`) runs `bun test src/tests/` with\n`--path-ignore-patterns` only for the 6 named worktree suites — this new test is NOT excluded, so it\nruns and fails there permanently (by design) until FEAT-026 lands. `slow-tests` is not part of the\nrequired `gate` check (confirmed in `docs/ci-gates.md` \"Job structure and gating\" — `gate` depends\nonly on `fast-gate`), so this does not block merges, matching the slice's own claim. The permanently-\nred status is recorded in the test file's own header comment, the slice AC-1 evidence text, and the\nFEAT-022 body's \"Note in the wave plan\" bullet — sufficient for a CI-job investigator, though neither\n`docs/ci-gates.md` nor `CLAUDE.md`'s gate list calls it out by name (optional follow-up, not\nrequired — gate 41's blocking/advisory status itself did not change, so the \"update both files\"\nsync rule doesn't trigger).\n\n`package.json` diff is exactly the one new `\"test:install\"` script line, nothing else changed.\n`bun run test` (gate 41) already picks up `src/tests/install/consumer-smoke.test.mts` automatically\nvia `bun test`'s recursive directory discovery — confirmed directly against the real CI step's\ncommand. `test:install` is a convenience subset-runner, not a wiring requirement.\n\nOne non-blocking finding below: `prepush-bash.json` is dead code.\n\nDecision: approved_with_notes.",
+          "reviewers": {
+            "A": "approved_with_notes",
+            "B": "approved_with_notes"
+          },
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T04:03:13.947Z",
+          "note": "SLICE-47/FEAT-022 validation: consumer-smoke designed-red ratchet is red for exactly the documented reason, and stageConsumerCopy's staging is faithful to a real node_modules-free marketplace-cache install.\n\nScenario 1 (bun test src/tests/install/consumer-smoke.test.mts, rc=1, 2 pass/1 fail): the only failure is the intentional ratchet assertion at line 146 (\"EXPECTED_FAIL is non-empty (49 known-broken entries) -- see FEAT-022/FEAT-026. This test is designed to stay red until those land.\"). Both preceding assertions (newlyBroken==[] and nowPassing==[]) passed silently, proving the live-observed failing set matches the recorded EXPECTED_FAIL set exactly, in both directions.\n\nScenario 2 (staging fidelity, via a scratch script calling the real stageConsumerCopy/listShippedEntrypoints): zero node_modules directories anywhere in the staged copy at any depth. A repo-wide reparse-point sweep (cmd /c dir /s /a:l /b) found the only 10 existing junctions confined to .claude/worktrees/*/node_modules and .claude/worktrees/*/crew/node_modules -- doubly excluded by both the .claude/worktrees prefix rule and the node_modules path-segment rule in shouldExcludeFromStaging. Staged copy ~33.9 MiB; hooks/hooks.json, commands/, agents/, crew/scripts/crew.mts, src/scripts/loop.mts all present. 86 total entries: hook/bash=6, hook/node=11, hook/bun=21, cli/bun=48.\n\nScenario 3 (hand spot-checks against the staged copy via bun --no-install): crew/hooks/subagent-gate-guard.mts, crew.mts audit --repo <consumer>, and loop.mts list-presets all crash identically with \"Cannot find module '@astragenie/plugin-std...'\" -- a module-resolution failure, matching FEAT-022's documented root cause, not an assertion bug. The control case crew/hooks/check-redundant-read.mts (NOT in EXPECTED_FAIL) ran clean at exit 0 with no \"Cannot find\" in stderr, proving EXPECTED_FAIL discriminates rather than blanket-failing.\n\nScenario 4 (counts): hand-parsing hooks/hooks.json directly gives 21 distinct bun files, 6 node, 1 bash (hooks only). The full listShippedEntrypoints (hooks + markdown CLI) gives 25 bun / 6 node / 1 bash -- reconciling exactly: the 4 extra bun files are markdown-only CLI entries (crew.mts, prune-artifacts.mts, loop.mts, watch-tick.mts); node/bash counts are unaffected since every markdown CLI invocation is bun-runtime. Matches the builder's claimed 25/6/1 and the test's own groupDistinctFilesByRuntime assertions (already green).\n\nScenario 5 (CI impact): package.json's \"test\" script (gate 41) is \"bun test src/tests/ --parallel --timeout 60000\" with no exclusion for src/tests/install/, so gate 41 is now observably red on this branch (confirmed locally). CI's slow-tests job runs the equivalent with --path-ignore-patterns for 6 named quarantined suites (auto-merge, synergy, integration, integrations, slice-complete, slice-start) -- consumer-smoke.test.mts is not in that list, so slow-tests is also red in CI. However the merge-blocking required \"gate\" job in .github/workflows/ci.yml depends only on fast-gate (validators + tsc + biome), never on bun test src/tests/, so this red test does not block merges. package.json's \"test:install\" script (bun test src/tests/install/) is a separate, narrower convenience script, not wired into any CI job on its own.\n\nDecision: PASS. The test is red for exactly the documented reason, the ratchet is honest (exact set match both directions), and the staging has no node_modules leak and is discriminating rather than blanket-failing.",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T035501Z-run-brief-feat022-slice47-implement-feat-022.md",
+        "handoffs": [],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T040504Z-review-result-slice-47-review-b-correctness.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T040313Z-validation-result-slice-47-validation-consumer-smoke-red-for-right-reason-stag.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT024 SLICE49: Implement FEAT-024",
       "goal": "Audit T4: explicit, per-reviewer aggregated review and validation verdicts; scaffolds never flip the gate",
@@ -237,48 +291,6 @@
         "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T032749Z-review-result-slice-51-review-a-typescript.md",
         "validationPlan": null,
         "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T032754Z-validation-result-slice-51-validation-wave-planner-pm-fields-sequential-infere.md",
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT023 SLICE48: Implement FEAT-023",
-      "goal": "Audit T3: CI docs-only exemption treats prompts as code; gate fails closed",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T03:09:53.184Z",
-      "updatedAt": "2026-11-06T03:14:45.439Z",
-      "completedAt": "2026-11-06T03:14:45.439Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T03:14:45.439Z",
-          "note": "SLICE-48 / FEAT-023 (merged 08717b9b) -- correctness review of `git diff 4b4f78d9..08717b9b` (7 files).\n\nVerdict: approved. The extraction of the `changes`/`gate` CI logic into `src/scripts/ci/docs-only.sh` and `src/scripts/ci/gate.sh` correctly fixes both audited bugs (Codex #18/#19): the docs-only exemption no longer matches `agents/`, `commands/`, `skills/` prompt files or backlog markdown (exempt pattern narrowed to exactly `^(docs/|README\\.md$|CHANGELOG\\.md$)`), and the `gate` job now fails closed when `needs.changes.outputs.code` is blank/unresolved instead of silently passing.\n\nVerified independently (not just re-reading builder evidence):\n- `bun test src/tests/ci/docs-only.test.mts` -> 12 pass, 0 fail (matches AC-1/AC-2 evidence exactly).\n- `gate` job keeps `needs: [changes, fast-gate]` + `if: always()` unchanged, so it still runs when `changes` fails; with a failed/skipped `changes` job, `code` is blank and `gate.sh \"\" \"<fastgate-result>\"` now exits 1 (previously exited 0). Confirmed by reading gate.sh's branch logic and the AC-2 test cases.\n- Job ids and `name:` fields are byte-identical between 4b4f78d9 and 08717b9b (diffed both revisions) -- branch-protection required-check names (\"fast-gate / test (self-hosted)\", \"gate\") are unaffected.\n- docs/ci-gates.md's numbered gate list is unchanged: still 42 items, same order (verified by grep count + spot-check of item text); the new content is an additive subsection, not a renumbered entry, so the generate-metrics-band contract (CLAUDE.md's \"## CI gates\" list / machine count) stays intact.\n- `bun src/scripts/generate-metrics-band.mts --check` -> \"README.md metrics band is up to date\" against current HEAD. The README diff is a single hunk confined to the metrics-band markers (6 lines changed each way: FEATs 21->22, slices 45->46, grade n=42->43, cost mean $5.476->$3.739) -- nothing else in README moved. This regenerates pre-existing drift from the base commit; necessary for AC-3's `--check` claim but is content churn unrelated to FEAT-023's own deliverable (see nit below).\n- CRLF-safety: tested docs-only.sh directly with \\r\\n-terminated stdin (README.md alone, docs+README mixed, a non-exempt code file, CHANGELOG.md alone) on this Windows/Git-Bash (Cygwin bash 5.3.9 + GNU grep 3.0) environment -- all four cases classified correctly. No bug reproduces here, and production CI runs on a Linux self-hosted runner where `git diff --name-only` only ever emits LF, so this is a non-issue in practice.\n- YAML parses cleanly; biome lint/format on the new test file both clean.\n\nOne process note (not a defect in the reviewed diff, flagged for the lead): the slice-close ceremony for SLICE-48 does not appear to have completed even though 08717b9b is already merged -- see findings.md."
-        },
-        "validation": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T03:12:18.399Z",
-          "note": "SLICE-48 / FEAT-023 CI docs-only + gate scripts validated directly from repo root (branch fix/audit-2026-11, HEAD 08717b9b, Bun 1.3.14, Git Bash on Windows). All 6 scenarios behaved exactly as specified: docs-only.sh correctly classifies agents/commands/skills/backlog/hooks/ci-script paths as code=true, classifies docs/README/CHANGELOG-only diffs as code=false, treats empty stdin and mixed diffs as code=true (fail-safe), and a CRLF-suffixed exempt path (docs/a.md\\r\\n) still resolves to code=false (no Windows-runner line-ending hazard observed). gate.sh's fail-closed matrix (7 CODE/FASTGATE_RESULT combinations) matched expected exit codes exactly, including the empty-code and garbage-code cases now failing closed (rc=1) instead of the prior silent-pass bug. The real merge diff (4b4f78d9..08717b9b) classifies as code=true as expected. Workflow wiring in .github/workflows/ci.yml confirmed: the `changes` job (line 91) pipes `git diff --name-only` into docs-only.sh and writes `code` to GITHUB_OUTPUT; the `gate` job (line 330) declares `needs: [changes, fast-gate]` with `if: always()` and invokes `gate.sh \"${{ needs.changes.outputs.code }}\" \"${{ needs.fast-gate.result }}\"` — the always()-gate is present, so a failed/skipped `changes` job still runs `gate` and gate.sh fails closed rather than the job being skipped entirely. `bun test src/tests/ci/` passed 12/12 assertions. No regressions or hazards found; decision is PASS."
-        },
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T030953Z-run-brief-feat023-slice48-implement-feat-023.md",
-        "handoffs": [],
-        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T031445Z-review-result-slice-48-review-b-correctness.md",
-        "validationPlan": null,
-        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T031218Z-validation-result-slice-48-validation-ci-docs-only-gate-scripts.md",
         "deploymentChecks": {
           "dev": null,
           "prod": null
