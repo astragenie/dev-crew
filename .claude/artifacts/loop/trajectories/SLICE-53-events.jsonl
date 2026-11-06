@@ -1,0 +1,2 @@
+{"type":"shape_classified","sliceId":"SLICE-53","featureId":"FEAT-027","timestamp":"2026-11-06T05:19:30.475Z","shape":"none","rationale":"no files","inlinePathUsed":false,"ts":"2026-11-06T05:19:30.475Z"}
+{"type":"workflow_state_changed","sliceId":"SLICE-53","featureId":"FEAT-027","timestamp":"2026-11-06T05:19:30.533Z","from":null,"to":"building","ts":"2026-11-06T05:19:30.533Z"}

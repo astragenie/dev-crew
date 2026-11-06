@@ -1,37 +1,25 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-06T04:33:16.967Z",
+  "updatedAt": "2026-11-06T05:19:31.430Z",
   "currentRun": {
-    "title": "FEAT025 SLICE50: Implement FEAT-025",
-    "goal": "Audit T9: telemetry honesty for cost reports, pricing, grades, and bundle-safe data files",
+    "title": "FEAT028 SLICE54: Implement FEAT-028",
+    "goal": "Audit T6: one builder report contract (marker-first block); no publishing before review; validator rules",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-06T04:12:02.256Z",
-    "updatedAt": "2026-11-06T04:33:16.967Z",
+    "startedAt": "2026-11-06T05:19:31.430Z",
+    "updatedAt": "2026-11-06T05:19:31.430Z",
     "next": "Begin implementation",
     "gates": {
       "review": {
-        "status": "passed",
-        "updatedAt": "2026-11-06T04:33:16.967Z",
-        "note": "SLICE-50 / FEAT-025 review B (correctness) — re-verification after commit\n58dcfb62 — APPROVED WITH NOTES.\n\nThe prior BLOCKER is fixed. 58dcfb62 extracts\n`crew/scripts/lib/cost-hygiene/cost-report-guard.mts`\n(`evaluateCostReportGuard`: the three AC-1 refusals + run_id resolution in\none call) and wires it into both `emit-cost-report.mts`'s\n`maybeEmitCostReport` and `cost-slice-handler.mts`'s `costSliceHandler` —\nthe latter is what `src/scripts/lib/slice-linker/crew-bridge.mts` actually\ncalls for this repo's own autonomous-loop slice closes. Four new tests\ndrive `costSliceHandler` directly (zero sessions, wide window, run_id\nstamped, duplicate refusal) and all pass; 33/33 tests green across the\nthree crew cost-report test files (up from 29); both `crew/tsconfig.json`\nand root `tsconfig.test.json` typecheck clean.\n\nThe `guard.refused === true` explicit-equality check (instead of a bare\n`if (guard.refused)`) is the right fix, not a workaround. I reproduced the\nnarrowing failure in isolation: under `strictNullChecks: false` (what\n`tsconfig.test.json` sets, and which sweeps in `cost-slice-handler.mts`\ntransitively via `crew-bridge.mts`), a bare boolean-property check on a\n`{refused:false;runId}|{refused:true;reason}` union does NOT narrow —\n`guard.runId` is a compile error afterward — while `=== true` narrows\ncorrectly under both the strict and loose configs. Confirmed empirically,\nnot just asserted.\n\nAC-2/AC-3 (pricing honesty) and AC-4 (grade-template-unfilled rejection),\napproved in my prior review, are untouched by this commit (it only touches\ncost-report-guard.mts, cost-slice-handler.mts, emit-cost-report.mts, and\nthe one test file) and remain correct. The FEAT-025 body's stale\n`crew/scripts/lib/cost-advise/decide.mts` path citation (real path:\n`crew/scripts/lib/cost-hygiene/decide.mts`) is still present and still\nworth a one-line fix next touch; `docs/memory.md` does not repeat it, so\nno memory fix is needed.\n\nOne new, real finding, raised as a note rather than a second blocker: in\n`src/scripts/lib/slice-linker/crew-bridge.mts`'s `tryWriteCostReport`\n(line 294), the per-slice scan cursor advances whenever\n`!report?.error` — and a `{written:false, reason}` refusal has no `.error`\nkey, so the cursor advances past a refused window exactly as if the report\nhad been written. For `duplicate run_id` this is harmless (idempotent —\nthe matching prior write already advanced the cursor correctly). For\n`sessions_scanned_zero` it's benign (nothing happened in that span, so\nthere is nothing to lose by moving past it). For `window_too_wide` it is\na real regression against the comment two lines above it (\"a failed\ninvocation leaves the window untouched so the next attempt retries...\ninstead of silently skipping it\") — the one case AC-1 built specifically\nto flag a suspect span for operator attention now gets silently and\npermanently skipped by the cursor instead. This is newly *reachable* only\nbecause of the fix just reviewed (before 58dcfb62, `costSliceHandler`\ncould never return `written:false` at all, so this line never saw a\nrefusal). My call: this is an in-scope defect, not a follow-up FEAT — it's\na direct, foreseeable side effect of the exact change under review, in a\nsibling file of the same cost-reporting flow, and the fix is small\n(gate the cursor advance on `report?.written !== false`, or narrowly on\n`report?.reason !== \"window_too_wide\"` if `sessions_scanned_zero`'s\nauto-retry-by-growing-window behavior is wanted deliberately). I'd want it\nfixed before calling FEAT-025 closed, but I'm not blocking THIS review on\nit since it sits outside the four stated ACs and outside the files this\nslice touched — approving with that note so it gets picked up explicitly\nrather than silently dropped.",
-        "reviewers": {
-          "A": "approved",
-          "B": "approved_with_notes"
-        },
+        "status": "required",
+        "updatedAt": "2026-11-06T05:19:31.430Z",
+        "reviewers": {},
         "required": [
           "A",
           "B"
         ]
       },
-      "validation": {
-        "status": "passed",
-        "updatedAt": "2026-11-06T04:32:35.296Z",
-        "note": "SLICE-50 / FEAT-025 telemetry-honesty RE-VALIDATION, after commit\n58dcfb62 (\"fix(SLICE-50): cost-report honesty guards + run_id on the loop\nclose path (review B blocker)\").\n\nDecision: PASS.\n\nThe gap this validation and reviewer B both independently found in the\nfirst pass -- AC-1's three refusal checks (zero-sessions, wide-window,\nduplicate-run_id) and the run_id field existing only on the interactive\ncrew write-final-synthesis path, never on the real /runner:slice complete\nclose path (crew-bridge.mts -> costSliceHandler) -- is now closed. A\nshared crew/scripts/lib/cost-hygiene/cost-report-guard.mts module backs\nboth call sites. Re-driving the real costSliceHandler directly confirms\nall three refusals now fire correctly on the production path, and a\nsuccessful write now carries a run_id frontmatter line (confirmed by\nreading the written file directly: run_id: \"revalidate-3\").\n\nThe TypeScript narrowing regression flagged in the first pass (root\ntsconfig failing to narrow a bare \"if (guard.refused)\" discriminated\nunion under strict:false) is also resolved -- both call sites now use the\nexplicit \"guard.refused === true\" form. bun run typecheck and\nbunx tsc -p crew/tsconfig.json --noEmit both report rc 0 with zero\nerrors.\n\ncd crew && bun test tests/cost-report-honesty.test.mts\ntests/cost-report-emission.test.mts tests/pricing.test.mts -> 33 pass,\n0 fail, 87 expect() calls (up from 29/0/73 before this fix -- the four\nnew cases drive costSliceHandler directly).\n\nTwo things to flag, neither of which changes the PASS verdict for\nSLICE-50's four stated ACs:\n\n1. Aggregate-mode writes (cost-report-aggregate, written when\n   aggregateAll:true finds more than one active source project) are\n   confirmed STILL UNGATED -- no run_id, no zero-sessions check, no\n   duplicate check -- because evaluateCostReportGuard is only called once,\n   before the slice write, and the aggregate branch never calls it\n   independently. This only matters once the slice guard has already\n   passed (a refused slice guard returns early and the aggregate branch\n   is never reached), so the exposure is narrower than AC-1's wording\n   might suggest, but it is a real, confirmed gap worth a follow-up note\n   if aggregate honesty is ever in scope.\n\n2. A genuine data-loss bug, found while answering the cursor question:\n   crew-bridge.mts's tryWriteCostReport advances the per-slice scan\n   cursor whenever \"!report?.error\", and all three AC-1 refusals return\n   \"{written:false, reason}\" with no .error key -- so the cursor advances\n   on every refusal, not just real failures. For sessions_scanned_zero\n   and duplicate run_id this is harmless (nothing real was lost either\n   way). For window_too_wide it is NOT harmless: that refusal fires\n   specifically when real session cost activity (sessionsScanned > 0)\n   exists in a window too wide to trust, and advancing the cursor past it\n   anyway means that real, unreported activity is permanently skipped --\n   the next close starts scanning from \"now,\" not from the original\n   stale start, so the skipped span is never retried and never appears\n   in any cost report. This is a distinct bug from anything FEAT-025's\n   ACs cover (the cursor mechanism predates FEAT-025, via FEAT-268), and\n   is not something I am fixing as part of this validation, but it is a\n   real finding worth a follow-up ticket: skip the cursor advance\n   specifically when reason === \"window_too_wide\".",
-        "validators": {
-          "verifier": "pass"
-        },
-        "required": []
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -42,11 +30,11 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T041202Z-run-brief-feat025-slice50-implement-feat-025.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T051931Z-run-brief-feat028-slice54-implement-feat-028.md",
       "handoffs": [],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T043316Z-review-result-slice-50-review-b-correctness.md",
+      "reviewResult": null,
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T043235Z-validation-result-slice-50-re-validation-cost-guards-on-both-paths.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -55,6 +43,144 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT027 SLICE53: Implement FEAT-027",
+      "goal": "Audit T5: validation-skip is a recorded, config-gated decision; verifier waived only with consumer CI",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T05:19:30.372Z",
+      "updatedAt": "2026-11-06T05:19:30.372Z",
+      "completedAt": "2026-11-06T05:19:30.372Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "required",
+          "updatedAt": "2026-11-06T05:19:30.372Z",
+          "reviewers": {},
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T051930Z-run-brief-feat027-slice53-implement-feat-027.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT026 SLICE52: Implement FEAT-026",
+      "goal": "Audit T2: self-contained dist bundles so hook entry points run without node_modules",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T05:19:29.334Z",
+      "updatedAt": "2026-11-06T05:19:29.334Z",
+      "completedAt": "2026-11-06T05:19:29.334Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "required",
+          "updatedAt": "2026-11-06T05:19:29.334Z",
+          "reviewers": {},
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T051929Z-run-brief-feat026-slice52-implement-feat-026.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT025 SLICE50: Implement FEAT-025",
+      "goal": "Audit T9: telemetry honesty for cost reports, pricing, grades, and bundle-safe data files",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T04:12:02.256Z",
+      "updatedAt": "2026-11-06T04:33:16.967Z",
+      "completedAt": "2026-11-06T04:33:16.967Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T04:33:16.967Z",
+          "note": "SLICE-50 / FEAT-025 review B (correctness) — re-verification after commit\n58dcfb62 — APPROVED WITH NOTES.\n\nThe prior BLOCKER is fixed. 58dcfb62 extracts\n`crew/scripts/lib/cost-hygiene/cost-report-guard.mts`\n(`evaluateCostReportGuard`: the three AC-1 refusals + run_id resolution in\none call) and wires it into both `emit-cost-report.mts`'s\n`maybeEmitCostReport` and `cost-slice-handler.mts`'s `costSliceHandler` —\nthe latter is what `src/scripts/lib/slice-linker/crew-bridge.mts` actually\ncalls for this repo's own autonomous-loop slice closes. Four new tests\ndrive `costSliceHandler` directly (zero sessions, wide window, run_id\nstamped, duplicate refusal) and all pass; 33/33 tests green across the\nthree crew cost-report test files (up from 29); both `crew/tsconfig.json`\nand root `tsconfig.test.json` typecheck clean.\n\nThe `guard.refused === true` explicit-equality check (instead of a bare\n`if (guard.refused)`) is the right fix, not a workaround. I reproduced the\nnarrowing failure in isolation: under `strictNullChecks: false` (what\n`tsconfig.test.json` sets, and which sweeps in `cost-slice-handler.mts`\ntransitively via `crew-bridge.mts`), a bare boolean-property check on a\n`{refused:false;runId}|{refused:true;reason}` union does NOT narrow —\n`guard.runId` is a compile error afterward — while `=== true` narrows\ncorrectly under both the strict and loose configs. Confirmed empirically,\nnot just asserted.\n\nAC-2/AC-3 (pricing honesty) and AC-4 (grade-template-unfilled rejection),\napproved in my prior review, are untouched by this commit (it only touches\ncost-report-guard.mts, cost-slice-handler.mts, emit-cost-report.mts, and\nthe one test file) and remain correct. The FEAT-025 body's stale\n`crew/scripts/lib/cost-advise/decide.mts` path citation (real path:\n`crew/scripts/lib/cost-hygiene/decide.mts`) is still present and still\nworth a one-line fix next touch; `docs/memory.md` does not repeat it, so\nno memory fix is needed.\n\nOne new, real finding, raised as a note rather than a second blocker: in\n`src/scripts/lib/slice-linker/crew-bridge.mts`'s `tryWriteCostReport`\n(line 294), the per-slice scan cursor advances whenever\n`!report?.error` — and a `{written:false, reason}` refusal has no `.error`\nkey, so the cursor advances past a refused window exactly as if the report\nhad been written. For `duplicate run_id` this is harmless (idempotent —\nthe matching prior write already advanced the cursor correctly). For\n`sessions_scanned_zero` it's benign (nothing happened in that span, so\nthere is nothing to lose by moving past it). For `window_too_wide` it is\na real regression against the comment two lines above it (\"a failed\ninvocation leaves the window untouched so the next attempt retries...\ninstead of silently skipping it\") — the one case AC-1 built specifically\nto flag a suspect span for operator attention now gets silently and\npermanently skipped by the cursor instead. This is newly *reachable* only\nbecause of the fix just reviewed (before 58dcfb62, `costSliceHandler`\ncould never return `written:false` at all, so this line never saw a\nrefusal). My call: this is an in-scope defect, not a follow-up FEAT — it's\na direct, foreseeable side effect of the exact change under review, in a\nsibling file of the same cost-reporting flow, and the fix is small\n(gate the cursor advance on `report?.written !== false`, or narrowly on\n`report?.reason !== \"window_too_wide\"` if `sessions_scanned_zero`'s\nauto-retry-by-growing-window behavior is wanted deliberately). I'd want it\nfixed before calling FEAT-025 closed, but I'm not blocking THIS review on\nit since it sits outside the four stated ACs and outside the files this\nslice touched — approving with that note so it gets picked up explicitly\nrather than silently dropped.",
+          "reviewers": {
+            "A": "approved",
+            "B": "approved_with_notes"
+          },
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T04:32:35.296Z",
+          "note": "SLICE-50 / FEAT-025 telemetry-honesty RE-VALIDATION, after commit\n58dcfb62 (\"fix(SLICE-50): cost-report honesty guards + run_id on the loop\nclose path (review B blocker)\").\n\nDecision: PASS.\n\nThe gap this validation and reviewer B both independently found in the\nfirst pass -- AC-1's three refusal checks (zero-sessions, wide-window,\nduplicate-run_id) and the run_id field existing only on the interactive\ncrew write-final-synthesis path, never on the real /runner:slice complete\nclose path (crew-bridge.mts -> costSliceHandler) -- is now closed. A\nshared crew/scripts/lib/cost-hygiene/cost-report-guard.mts module backs\nboth call sites. Re-driving the real costSliceHandler directly confirms\nall three refusals now fire correctly on the production path, and a\nsuccessful write now carries a run_id frontmatter line (confirmed by\nreading the written file directly: run_id: \"revalidate-3\").\n\nThe TypeScript narrowing regression flagged in the first pass (root\ntsconfig failing to narrow a bare \"if (guard.refused)\" discriminated\nunion under strict:false) is also resolved -- both call sites now use the\nexplicit \"guard.refused === true\" form. bun run typecheck and\nbunx tsc -p crew/tsconfig.json --noEmit both report rc 0 with zero\nerrors.\n\ncd crew && bun test tests/cost-report-honesty.test.mts\ntests/cost-report-emission.test.mts tests/pricing.test.mts -> 33 pass,\n0 fail, 87 expect() calls (up from 29/0/73 before this fix -- the four\nnew cases drive costSliceHandler directly).\n\nTwo things to flag, neither of which changes the PASS verdict for\nSLICE-50's four stated ACs:\n\n1. Aggregate-mode writes (cost-report-aggregate, written when\n   aggregateAll:true finds more than one active source project) are\n   confirmed STILL UNGATED -- no run_id, no zero-sessions check, no\n   duplicate check -- because evaluateCostReportGuard is only called once,\n   before the slice write, and the aggregate branch never calls it\n   independently. This only matters once the slice guard has already\n   passed (a refused slice guard returns early and the aggregate branch\n   is never reached), so the exposure is narrower than AC-1's wording\n   might suggest, but it is a real, confirmed gap worth a follow-up note\n   if aggregate honesty is ever in scope.\n\n2. A genuine data-loss bug, found while answering the cursor question:\n   crew-bridge.mts's tryWriteCostReport advances the per-slice scan\n   cursor whenever \"!report?.error\", and all three AC-1 refusals return\n   \"{written:false, reason}\" with no .error key -- so the cursor advances\n   on every refusal, not just real failures. For sessions_scanned_zero\n   and duplicate run_id this is harmless (nothing real was lost either\n   way). For window_too_wide it is NOT harmless: that refusal fires\n   specifically when real session cost activity (sessionsScanned > 0)\n   exists in a window too wide to trust, and advancing the cursor past it\n   anyway means that real, unreported activity is permanently skipped --\n   the next close starts scanning from \"now,\" not from the original\n   stale start, so the skipped span is never retried and never appears\n   in any cost report. This is a distinct bug from anything FEAT-025's\n   ACs cover (the cursor mechanism predates FEAT-025, via FEAT-268), and\n   is not something I am fixing as part of this validation, but it is a\n   real finding worth a follow-up ticket: skip the cursor advance\n   specifically when reason === \"window_too_wide\".",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T041202Z-run-brief-feat025-slice50-implement-feat-025.md",
+        "handoffs": [],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T043316Z-review-result-slice-50-review-b-correctness.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T043235Z-validation-result-slice-50-re-validation-cost-guards-on-both-paths.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT022 SLICE47: Implement FEAT-022",
       "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
@@ -144,153 +270,6 @@
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT022 SLICE47: Implement FEAT-022",
-      "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T03:44:47.734Z",
-      "updatedAt": "2026-11-06T03:44:47.734Z",
-      "completedAt": "2026-11-06T03:44:47.734Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "required",
-          "updatedAt": "2026-11-06T03:44:47.734Z",
-          "reviewers": {},
-          "required": [
-            "A",
-            "B"
-          ]
-        },
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T034447Z-run-brief-feat022-slice47-implement-feat-022.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT024 SLICE49: Implement FEAT-024",
-      "goal": "Audit T4: explicit, per-reviewer aggregated review and validation verdicts; scaffolds never flip the gate",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T03:30:12.000Z",
-      "updatedAt": "2026-11-06T03:44:15.529Z",
-      "completedAt": "2026-11-06T03:44:15.529Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T03:44:15.529Z",
-          "note": "Re-verification of SLICE-49 / FEAT-024 review B (correctness) after fix commits 95d5e140 and 5338fa5d on fix/audit-2026-11, scoped to `git diff b1c7f0e5..5338fa5d -- crew/scripts/lib/workflow-state.mts crew/tests/review-verdict-aggregation.test.mts src/scripts/lib/post-builder-fanout.mts agents/reviewer.md`.\n\nMy prior BLOCKER is resolved. computeReviewGateStatus / computeValidationGateStatus (crew/scripts/lib/workflow-state.mts:461-478, 536-551) now treat `required` as a SLOT COUNT rather than a set of name labels to match against: any \"rejected\" verdict still dominates immediately (checked first, unaffected by the fix), and otherwise the gate passes once the number of distinct approving reviewer keys is >= required.length, regardless of what those keys are named. This directly closes the gap I found: `.claude/loop.json`'s `reviewers.ladder: [\"A\",\"B\"]` no longer needs to be matched by literal \"A\"/\"B\" keys -- two distinct real-world keys like \"typescript-reviewer\" and \"reviewer\" now satisfy a two-slot ladder once both approve.\n\nThe companion fix (5338fa5d) makes the keys actually distinct in the real dispatch paths that matter: `src/scripts/lib/post-builder-fanout.mts`'s generated reviewer prompt now explicitly instructs `crew write-review-result --reviewer ${role} --decision ...` (role is literally \"A\" or \"B\" per ladder slot), with an explanatory line that omitting `--reviewer` collapses both ladder reviewers onto one key. `agents/reviewer.md`'s terminal-write example now also carries a `--reviewer <A|B as dispatched, else your role id>` hint. Combined with the stack-specific reviewers (`typescript-reviewer.md`, `csharp-reviewer.md`, `reviewer-lite.md`) which already passed fixed distinct role-name keys unconditionally, every shipped dispatch path that puts two reviewers on the same ladder now writes under two distinct keys.\n\nI re-ran the suite myself: `cd crew && bun test tests/review-verdict-aggregation.test.mts` -- 12 pass, 0 fail, 41 expect() calls, including the two new regression tests added in this fix round that use the exact real role names from this repo's shipped agents (`typescript-reviewer` + bare `reviewer`) against a `[\"A\",\"B\"]` ladder: one proves slot-count-fills-to-passed (first write -> status stays \"required\" with only `typescript-reviewer` recorded; second write under a different key -> status flips to \"passed\" with both keys recorded approved), the other proves rejection still dominates when the second of two non-ladder-named keys rejects (status \"failed\"). These are exactly the kind of realistic-role-name tests I said were missing from the original diff, and they now exist and pass.\n\nI also independently inspected this repo's own live `.claude/state/crew/workflow-state.json` before writing: `gates.review.required` is `[\"A\",\"B\"]` (slot count 2) and `gates.review.reviewers` already carried `typescript-reviewer: approved_with_notes` (reviewer A's verdict, recorded post-fix) plus my own earlier `reviewer: rejected` (written against the pre-fix code, now stale). My new write below updates that same `reviewer` key to my final verdict, giving two distinct keys -- if both are approving, count (2) >= required.length (2), so the gate should now resolve to `passed`.\n\nJudgment on the slot-count semantic: this is an acceptable, pragmatic resolution. It is weaker than true per-role matching (it does not verify that specifically \"the TypeScript reviewer\" and \"the C# reviewer\" each wrote -- only that N distinct keys wrote approvingly), but given this repo's `--reviewer` value is fundamentally caller-chosen free text with no central registry of valid role names, a slot-count check is the correct level of rigor: it still correctly blocks on any rejection regardless of key naming, still requires genuinely distinct writers (not the same key approving twice), and the one remaining soft spot -- the generic `agents/reviewer.md`'s hint being advisory rather than enforced -- is covered in practice because the only shipped dispatch path that puts two generic reviewers on one ladder (`post-builder-fanout.mts`) now injects the distinguishing `--reviewer A|B` unconditionally rather than leaving it to the dispatched agent's discretion. No further blocking issue found in this re-verification.",
-          "reviewers": {
-            "reviewer": "approved_with_notes",
-            "typescript-reviewer": "approved_with_notes"
-          },
-          "required": [
-            "A",
-            "B"
-          ]
-        },
-        "validation": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T03:35:07.039Z",
-          "note": "SLICE-49 / FEAT-024 validated in an isolated scratch repo against all 5 ACs: AC-1 through AC-5 PASS with evidence. write-review-result refuses (exit 2, matching stderr) a terminal call with no --decision; --scaffold --status in-progress writes register the artifact path without ever touching gates.review; a rejected verdict dominates regardless of write order, landing gates.review.status at failed with the raw reviewer keys preserved verbatim; write-validation-result --decision skipped requires --skip-reason (exit 2 without it, skipped with note containing the reason on success) and --decision pass resolves to passed. The targeted crew test suite (review-verdict-aggregation, artifact-stub-and-update, enum-verdicts) is green: 41/41 pass. One adjacent risk is flagged in findings: gates.review.required snapshots reviewers.ladder verbatim (case-sensitive), and only a literal --reviewer A / --reviewer B write reaches passed under the default [\"A\",\"B\"] ladder -- lowercase or role-named reviewer keys (e.g. \"a\"/\"b\", \"csharp-reviewer\") leave the gate stuck at required even after both approve. The live dispatch path (post-builder-fanout.mts + agents/reviewer.md) does not plumb a literal ladder-matching --reviewer value into the dispatched reviewer agent's instructions, so this is a real integration exposure, not just a theoretical one, though it predates and is outside SLICE-49's own ACs (which specify lowercase a/b in AC-3 and literal A/B in AC-4 as two different scenarios). Recommendation: PASS for SLICE-49/FEAT-024's own acceptance criteria; open a follow-up to make the --reviewer identity used by live dispatch match reviewers.ladder's case exactly, or normalize the comparison in computeReviewGateStatus.",
-          "validators": {
-            "verifier": "pass"
-          },
-          "required": []
-        },
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T033011Z-run-brief-feat024-slice49-implement-feat-024.md",
-        "handoffs": [],
-        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T034415Z-review-result-slice-49-review-b-correctness.md",
-        "validationPlan": null,
-        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T033507Z-validation-result-slice-49-validation-explicit-aggregated-verdicts.md",
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT034 SLICE51: Implement FEAT-034",
-      "goal": "Wave planner reads PM field names intake never writes — ranking flat, risk pre-flight dead",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T03:20:58.599Z",
-      "updatedAt": "2026-11-06T03:27:54.904Z",
-      "completedAt": "2026-11-06T03:27:54.904Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T03:27:49.486Z",
-          "note": "SLICE-51 / FEAT-034 (db77759f) -- TypeScript review, scoped to `git diff 58dab7bd..db77759f` on planner.mts, types.mts, touches-files.mts, feature-lifecycle.mts, commands/wave.md, and the three new test files.\n\nThe field-name fix is correct and well-verified: resolveCompositeScore/resolvePmNumeric read the real pm-apply.mts output fields (pm_composite_priority, pm_strategic_alignment, pm_technical_risk) with legacy fallbacks, no silent NaN/undefined propagation (every path bottoms out at a numeric fallback), and the exact pre-flight reason string (pre-flight: autonomous_safe=false AND pm_risk_level=0.80 >= 0.7) is verified against a real test fixture. The once-only stderr warning is a module-level flag (resets per test-file/process, confirmed by running `bun test src/tests/wave/` -- fires once per file even with two legacy-fallback triggers in the same file). sequentialGroup?: string and the spread-guard (...(sequentialGroup !== undefined ? {...} : {})) are the correct pattern under this repo's exactOptionalPropertyTypes: true. packWave's exclusion reason (sequential_group:<id> already packed this wave) is correctly surfaced in rejected[], confirmed by sequential-slices.test.mts. The widened touches-files.mts regex doesn't double-count docs/-prefixed root files (verified the dir-prefixed alternative consumes the match first, so the bare-file alternative never re-matches the same substring) and correctly rejects substring matches like mypackage.json (lookbehind holds). feature-lifecycle.mts's new call reuses an already-imported backlog-store.mjs function (updateSliceFrontmatter) with the correct (filePath, updates, repoPath, config) signature -- no new import, no slice-linker boundary change. All .mjs specifiers are correct. Ran the full src/tests/wave/ suite independently (145 pass, 0 fail) to confirm hermeticity -- all fixtures use mkdtempSync/fs.mkdtemp, no repo-cwd assumptions.\n\nTwo real issues found, both notes rather than blockers:\n\n1. packWave's cognitive complexity rose from un-flagged (<=15) to 19 (max 15) due to the new sequential-group early-continue branch added inline in the existing loop -- confirmed by diffing lint output of the pre-change file (git show 58dab7bd:...) against the current file: only parseFrontmatterPlanner (pre-existing, 18) was flagged before; packWave is a new violation. The repo's own AGENTS.md says complexity should be \"reduced via extracted helpers, not rule suppression\" and lint should be \"zero warnings\" -- this diff didn't follow that pattern here even though it did extract helpers for the PM-field logic a few lines away. The gate itself doesn't fail the build (the rule is configured \"level\": \"warn\" in biome.json, so bunx biome lint exits 0), which is why the builder's reported lint rc=0 is accurate -- but it's new debt against a documented convention.\n\n2. The slice file's own AC-5 evidence note claims lint is \"pre-existing repo-wide warnings only, no new error-level diagnostics\" -- the \"no new error-level diagnostics\" half is true, but \"pre-existing...only\" is not: the packWave complexity warning above is new, not pre-existing. Worth a correction to the evidence note, or (preferably) extracting the sequential-group check into a small helper (e.g. isSequentialGroupBlocked(cand, pickedSequentialGroups)) to bring packWave back under 15 and make the evidence note true again.\n\nOne minor test-coverage gap, info-only: no test in planner-pm-fields.test.mts exercises BOTH a primary field (e.g. pm_technical_risk) and its legacy counterpart (pm_risk_level) present simultaneously with different values, to prove primary wins over legacy by precedence rather than merely \"legacy works when primary is absent.\" The code is correct (primary checked first, returns before even reading legacy), but the test suite doesn't pin that precedence directly.\n\nOne design note, info-only, not a violation of the stated AC-3 (which only requires \"at most one of its slices appears per wave\"): sequential_group enforces mutual exclusion within a wave but not FIFO ordinal ordering across waves -- rankCandidates's tie-breaks (compositeScore/priority/strategicFit/retryCount) are typically identical across siblings of the same FEAT, so which sibling \"wins\" a given wave falls back to JS's stable-sort preservation of loadCandidates' readdirSync enumeration order, which Node does not guarantee is ordinal/creation order. commands/wave.md's framing (\"useful when later slices depend on an earlier sibling's output\") implies an ordering guarantee the code doesn't fully provide -- only non-co-packing. Not a bug against this FEAT's literal AC, but worth a documentation caveat if a future FEAT relies on strict ordering.\n\nAlso confirmed (pre-existing, not introduced by this diff, info-only): the widened inference regex has a pre-existing substring false-positive -- src/notREADME.md.bak infers src/notREADME.md as a touched path, because the extension-match backtracks to an earlier .md rather than requiring the match to reach the true end of the filename token. Verified this exact behavior exists identically against the pre-change regex (git show 58dab7bd:src/scripts/lib/wave/touches-files.mts), so it's not a regression from this slice, just an inherited quirk the widening makes slightly more reachable in surface area (more directory prefixes now active) but did not create.\n\nDecision: approved_with_notes. Correctness, type-safety, and test coverage are all solid and the stated ACs are genuinely met with real evidence; the complexity regression and the resulting inaccurate evidence-note claim are real but non-blocking (warn-level gate, no behavior change, isolated to one function) -- worth a quick follow-up extraction rather than a blocking re-review.",
-          "reviewers": {
-            "reviewer": "approved_with_notes",
-            "typescript-reviewer": "approved_with_notes"
-          },
-          "required": []
-        },
-        "validation": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T03:27:54.904Z",
-          "note": "Validated SLICE-51/FEAT-034 wave-planner changes against 5 isolated fixture repos plus the real repo. All 7 scenarios PASS: (1) pre-flight drops autonomous_safe=false + pm_technical_risk>=0.7 with the exact reason string; (2) pm_composite_priority P0 ranks ahead of P2 with disjoint touches_files; (3) legacy-only PM field names (pm_risk_level/pm_strategic_fit/composite_score) still trigger the pre-flight drop via fallback, warning goes to stderr only, stdout stays valid JSON; (4) a sequential:true FEAT never packs two sibling slices in the same wave, the loser is rejected naming the sequential_group; (5) widened touches_files inference picks up crew/, .github/, package.json, hooks/ paths from slice body text, confirmed both by the touches-files unit suite and by wave plan on a fixture; (6) wave plan --repo . --json on the real repo completes rc=0 with no error; (7) bun test src/tests/wave/ is 145 pass / 0 fail across 18 files.",
-          "validators": {
-            "verifier": "pass"
-          },
-          "required": []
-        },
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T032058Z-run-brief-feat034-slice51-implement-feat-034.md",
-        "handoffs": [],
-        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T032749Z-review-result-slice-51-review-a-typescript.md",
-        "validationPlan": null,
-        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T032754Z-validation-result-slice-51-validation-wave-planner-pm-fields-sequential-infere.md",
         "deploymentChecks": {
           "dev": null,
           "prod": null

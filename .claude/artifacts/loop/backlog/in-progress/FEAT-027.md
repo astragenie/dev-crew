@@ -1,13 +1,13 @@
 ---
 id: FEAT-027
-status: triaged
+status: in-progress
 priority: P1
 category: feature
 target_release: null
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 depends_on: [FEAT-024, FEAT-034]
-slices: []
+slices: [SLICE-53]
 derived_from: null
 pm_customer_impact: 0.7
 pm_effort_estimate: 0.3
@@ -19,6 +19,7 @@ pm_autonomous_safe: true
 pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P1, holds. technical_risk raised slightly to 0.4 (band 0.3-0.5: now wires into validation-gate.mts's existing conditional logic, a small increase in cross-module reach over the original isolated-module design, but still no schema change)."
+started_at: 2026-11-06
 ---
 ## Description
 
