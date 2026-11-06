@@ -726,6 +726,21 @@ async function materializeProposedSlices(opts: MaterializeMultiOpts) {
       ...resolveProposedSliceCreateExtras(item, ownAc, warnSharedAc, featureId, proposed.length),
       config
     });
+    // FEAT-034: a FEAT whose frontmatter declares `sequential: true` (a
+    // flag sitting next to `proposed_slices`, not a per-entry field) gets
+    // every materialized sibling slice stamped with the FEAT id as its
+    // `sequential_group` -- the wave planner reads this stamp so packWave
+    // never places two of this FEAT's slices in the same wave, even when
+    // their touches_files are disjoint. Default stays parallel: nothing is
+    // written when the flag is absent/false.
+    if (featureFM.sequential === true) {
+      await updateSliceFrontmatter(
+        created.filePath,
+        { sequential_group: featureId },
+        repoPath,
+        config
+      );
+    }
     newSlices.push({
       id: created.id,
       path: created.filePath,

@@ -144,6 +144,47 @@ cost proportionally.
 `marathonRunner: "wave"` opts `/devcrew:auto` and `/devcrew:start` into wave mode
 (wiring lands in T21). Default remains `"sequential"`.
 
+## Pre-flight gate, FEAT dependencies, and intra-FEAT sequencing (FEAT-034)
+
+- **Pre-flight drops run before ranking/packing** (`applyPreFlightDrops`,
+  `planner.mts`): a candidate whose parent FEAT has `autonomous_safe: false`
+  AND a technical-risk score `>= 0.7` is dropped with reason
+  `pre-flight: autonomous_safe=false AND pm_risk_level=<score> >= 0.7`. The
+  score reads `pm_technical_risk` (the field `pm-apply.mts`/`/devcrew:triage`
+  actually write), falling back to the legacy `pm_risk_level` name for
+  already-triaged backlogs that still carry it.
+- **`depends_on` is satisfied ONLY by `backlog/done/`** — a dependency FEAT
+  sitting in `pending/`, `triaged/`, or `in-progress/` still blocks the
+  dependent slice's candidate with
+  `pre-flight: depends_on unfinished [<ids>]`. There is no partial-credit
+  state short of fully `done/`.
+- **Ranking** (`rankCandidates`) reads `pm_composite_priority` (mapped
+  P0→1.0 / P1→0.75 / P2→0.5 / P3→0.25 / P4→0, falling back to a numeric
+  legacy `composite_score` when present) and `pm_strategic_alignment`
+  (falling back to legacy `pm_strategic_fit`) — the same fallback-then-warn
+  pattern as the risk score above.
+- **Intra-FEAT sequencing**: set `sequential: true` on a FEAT's frontmatter
+  (next to its `proposed_slices` array) to force its sibling slices to run
+  one wave at a time rather than in parallel — useful when later slices
+  depend on an earlier sibling's output even though their declared
+  `touches_files` are disjoint (so the ordinary path-conflict check alone
+  would let them pack together). `sliceFromFeature`'s multi-slice
+  materializer (`feature-lifecycle.mts`) stamps every sibling slice it
+  creates with `sequential_group: <FEAT id>`; `packWave` refuses to place a
+  second candidate sharing that group in the same wave (reason
+  `sequential_group:<id> already packed this wave`). Default stays
+  parallel — nothing is stamped when the flag is absent or `false`.
+- **Widened `touches_files` inference** (`touches-files.mts`, used only when
+  a slice has no declared `touches_files`): recognizes `crew/`, `.github/`,
+  `.claude-plugin/`, `hooks/`, `dist/`, `templates/` sub-paths in addition to
+  the original `src/docs/scripts/commands/agents/skills/` set, plus the bare
+  root files `package.json`, `CLAUDE.md`, `AGENTS.md`, `.gitignore`,
+  `README.md`, `CHANGELOG.md` cited without any directory prefix.
+- **`wave run` is slash-flow-only** — `realDispatch` (`real-deps.mts`) throws
+  on a headless CLI invocation; only the `/devcrew:wave` slash command runs
+  inside the Claude Code harness that can actually dispatch the parallel
+  agents. `wave plan`/`--dry-run` have no such restriction.
+
 ## Failure pivots
 
 A FAIL worktree from wave N:
@@ -188,9 +229,13 @@ Known limitations:
 - `realFinalize` cannot distinguish merge-conflict branches from cleanly-merged
   ones (always returns `conflicts: []`); merge-conflict failure pivots do not
   fire from CLI runs. Tracked as a follow-up.
-- Pre-flight drops (`autonomousSafe: false`, unfinished `dependsOn`,
-  `helpRequestOpen`) are not yet enforced by the planner. Audit the backlog
-  before enabling wave mode in CI.
+- Pre-flight drops (`autonomousSafe: false` + high risk, unfinished
+  `dependsOn`, `helpRequestOpen`) ARE enforced by the planner
+  (`applyPreFlightDrops`, wired into both `wave plan` and `wave run` — see
+  "Pre-flight gate, FEAT dependencies, and intra-FEAT sequencing" above).
+  `helpRequestOpen` itself is still hardcoded `false` at `loadCandidates`
+  time (no crew-side workflow badge lookup wired up yet) — audit the
+  backlog for open help-request badges before enabling wave mode in CI.
 - Escalated slices (`wave_attempts >= maxWaveAttempts`) get
   `status: needs-review` in frontmatter but are not file-moved to
   `needs-review/`. Operator must move manually.

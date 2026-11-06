@@ -40,9 +40,22 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
   const rejected: WaveRejection[] = [];
   const pickedPaths = new PathSet();
   const missingQueue: SliceCandidate[] = [];
+  // FEAT-034: tracks sequentialGroup keys already claimed by a picked
+  // candidate this wave, so a FEAT declared `sequential` never lands two
+  // sibling slices in the same wave even when their touches_files are
+  // disjoint (the path-conflict check alone would otherwise let both pack).
+  const pickedSequentialGroups = new Set<string>();
 
   for (const cand of ranked) {
     if (picked.length >= opts.waveSize) break;
+
+    if (cand.sequentialGroup !== undefined && pickedSequentialGroups.has(cand.sequentialGroup)) {
+      rejected.push({
+        sliceId: cand.sliceId,
+        reason: `sequential_group:${cand.sequentialGroup} already packed this wave`
+      });
+      continue;
+    }
 
     if (cand.touches.confidence === "missing") {
       // Defer: ranking position must never decide whether a missing-
@@ -63,6 +76,7 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
 
     picked.push(cand);
     pickedPaths.addAll(cand.touches.paths);
+    if (cand.sequentialGroup !== undefined) pickedSequentialGroups.add(cand.sequentialGroup);
   }
 
   if (picked.length === 0 && missingQueue.length > 0) {
@@ -168,6 +182,98 @@ function asBoolean(v: unknown, fallback: boolean): boolean {
   return fallback;
 }
 
+// FEAT-034: pm-apply.mts (the real triage writer) and intake.mts write
+// pm_composite_priority/pm_strategic_alignment/pm_technical_risk — the
+// planner previously read composite_score/pm_strategic_fit/pm_risk_level,
+// field names no writer in this repo ever produces, so every triaged FEAT
+// scored 0 on all three and the pre-flight risk gate below could never
+// fire. Legacy names are kept as a fallback (already-triaged adopter
+// backlogs may still carry them) with a one-time stderr notice.
+let legacyPmFieldWarningLogged = false;
+function warnLegacyPmFieldOnce(featureId: string): void {
+  if (legacyPmFieldWarningLogged) return;
+  legacyPmFieldWarningLogged = true;
+  console.error(
+    `[wave/planner] ${featureId}: falling back to legacy PM field names ` +
+      "(composite_score/pm_strategic_fit/pm_risk_level) -- pm-apply.mts now writes " +
+      "pm_composite_priority/pm_strategic_alignment/pm_technical_risk. Re-run " +
+      "/devcrew:triage to migrate this FEAT's frontmatter."
+  );
+}
+
+const PRIORITY_COMPOSITE_SCORE: Record<string, number> = {
+  P0: 1.0,
+  P1: 0.75,
+  P2: 0.5,
+  P3: 0.25,
+  P4: 0
+};
+
+// FEAT-034: composite ranking score. Primary signal is pm_composite_priority
+// (P0..P4, mapped to a numeric band) -- composite_score (never written by
+// any current writer) is a legacy numeric fallback only.
+function resolveCompositeScore(
+  feature: Record<string, string | string[]>,
+  featureId: string
+): number {
+  const pmComposite = feature["pm_composite_priority"];
+  if (typeof pmComposite === "string" && pmComposite in PRIORITY_COMPOSITE_SCORE) {
+    return PRIORITY_COMPOSITE_SCORE[pmComposite]!;
+  }
+  const legacy = feature["composite_score"];
+  if (legacy !== undefined) {
+    const n = Number(legacy);
+    if (Number.isFinite(n)) {
+      warnLegacyPmFieldOnce(featureId);
+      return n;
+    }
+  }
+  return 0;
+}
+
+// FEAT-034: shared primary-field/legacy-field-fallback resolver for the two
+// remaining PM-scored numeric fields (strategicFit <- pm_strategic_alignment,
+// pmRiskLevel <- pm_technical_risk).
+function resolvePmNumeric(
+  feature: Record<string, string | string[]>,
+  featureId: string,
+  primaryKey: string,
+  legacyKey: string,
+  fallback: number
+): number {
+  const primary = feature[primaryKey];
+  if (primary !== undefined) {
+    const n = Number(primary);
+    if (Number.isFinite(n)) return n;
+  }
+  const legacy = feature[legacyKey];
+  if (legacy !== undefined) {
+    const n = Number(legacy);
+    if (Number.isFinite(n)) {
+      warnLegacyPmFieldOnce(featureId);
+      return n;
+    }
+  }
+  return fallback;
+}
+
+// FEAT-034: a materialized slice's own `sequential_group` stamp (written by
+// feature-lifecycle.mts's materializeProposedSlices when the parent FEAT
+// declared `sequential: true`) takes precedence; falling back to deriving
+// the group live from the parent FEAT's `sequential` flag means the
+// planner still enforces sequencing even for pre-existing slices that were
+// materialized before the flag existed (or for hand-authored fixtures).
+function resolveSequentialGroup(
+  sliceFm: Record<string, string | string[]>,
+  feature: Record<string, string | string[]>,
+  featureId: string
+): string | undefined {
+  const stamped = sliceFm["sequential_group"];
+  if (typeof stamped === "string" && stamped.trim().length > 0) return stamped.trim();
+  if (asBoolean(feature["sequential"], false)) return featureId;
+  return undefined;
+}
+
 function loadDoneFeatureSet(repoRoot: string): Set<string> {
   const set = new Set<string>();
   const dir = join(repoRoot, ".claude/artifacts/loop/backlog/done");
@@ -250,21 +356,29 @@ export function loadCandidates(repoRoot: string): SliceCandidate[] {
     const touches = readTouchesFiles(slicePath, repoRoot);
     const dependsOnRaw = feature["depends_on"];
     const dependsOn = Array.isArray(dependsOnRaw) ? dependsOnRaw.map(String) : [];
+    const sequentialGroup = resolveSequentialGroup(fm, feature, featureId);
 
     out.push({
       sliceId,
       featureId,
       slicePath,
       priority: asPriority(fm["priority"] ?? feature["priority"]),
-      compositeScore: asNumber(feature["composite_score"], 0),
-      strategicFit: asNumber(feature["pm_strategic_fit"], 0),
+      compositeScore: resolveCompositeScore(feature, featureId),
+      strategicFit: resolvePmNumeric(
+        feature,
+        featureId,
+        "pm_strategic_alignment",
+        "pm_strategic_fit",
+        0
+      ),
       touches,
-      pmRiskLevel: asNumber(feature["pm_risk_level"], 0),
+      pmRiskLevel: resolvePmNumeric(feature, featureId, "pm_technical_risk", "pm_risk_level", 0),
       autonomousSafe: asBoolean(feature["autonomous_safe"], false),
       retryCount: asNumber(fm["wave_attempts"], 0),
       pendingFix: asBoolean(fm["pending_fix"], false),
       dependsOn,
-      helpRequestOpen: false
+      helpRequestOpen: false,
+      ...(sequentialGroup !== undefined ? { sequentialGroup } : {})
     });
   }
   return out;
