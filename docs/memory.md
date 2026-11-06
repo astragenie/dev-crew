@@ -88,13 +88,44 @@ Full per-gate rationale: `docs/ci-gates.md`.
 **Gate 41 is red by design on `fix/audit-2026-11` (2026-11-06).**
 `src/tests/install/consumer-smoke.test.mts` (FEAT-022 / SLICE-47) runs every
 shipped hook and CLI entry from a `node_modules`-free consumer copy and stays
-RED while its `EXPECTED_FAIL` ratchet holds entries — 49 today, cleared when
-FEAT-026 lands the committed `dist/` bundles. Do not quarantine it: the same
-ratchet fails loudly when a listed entry starts passing or an unlisted one
-breaks. The merge-blocking `gate` job depends only on `fast-gate`, so this
-does not block merges. Verified 2026-11-06 (validation artifact
+RED while its `EXPECTED_FAIL` ratchet holds entries — 49 at SLICE-47, 41 as
+of FEAT-026/SLICE-52 (every HOOK entry now passes from the committed
+`dist/` bundles; the remaining 41 are CLI entries sourced from
+`commands/*.md`/`agents/*.md` literal invocations, which still resolve
+`@astragenie/*`/`zod`/`yaml` from `node_modules` until the serial W2.5
+path-rewrite lands). Do not quarantine it: the same ratchet fails loudly
+when a listed entry starts passing or an unlisted one breaks. The
+merge-blocking `gate` job depends only on `fast-gate`, so this does not
+block merges. Verified 2026-11-06 (validation artifact
 `20261106T040313Z-validation-result-slice-47-…`): the failure is the designed
 assertion only, and the staged copy contains no `node_modules` at any depth.
+
+**FEAT-026 alternative rejected (dist/ bundling vs. auto-installed deps).**
+Claude Code auto-installs a plugin-root `dependencies` block for
+marketplace installs (see Claude Code's `loading.md`), which would have let
+hooks/CLI entries resolve `node_modules` normally with zero bundling work.
+Rejected: devcrew is ineligible for that path — the root `bun.lock`
+declares workspaces, `crew/`'s own `package.json` (its `zod`/`yaml` deps) is
+never installed by that mechanism, and `@astragenie/*` needs registry auth
+at install time regardless. `Bun.build({target:"bun", external:
+["@opentelemetry/*","@aws-sdk/*"]})` bundling was chosen instead — no
+network, no auth, no install step; `src/scripts/build-dist.mts` is the
+build/`--check` tool, `.bun-version` pins the Bun build used.
+
+**FEAT-026 dist-path entry-recovery (`build-dist.mts`).** Once
+`hooks/hooks.json` is migrated so every `bun` command points at
+`dist/hooks/<name>.js` (this FEAT's own deliverable), a naive "every `bun
+".../<path>.mts"` command in hooks.json" entry-discovery regex finds zero
+hook sources post-migration — a *subsequent* `bun run build:dist` then
+deletes every previously-built `dist/hooks/*.js` file, because `build()`
+rm -rf's `dist/` before rebuilding from whatever `resolveEntries()` found
+(hit live during SLICE-52: a resumed builder's working tree showed a
+54k-line dist/ deletion after it ran `build:dist` post-hooks.json-edit).
+Fix: `collectHookEntries` now also matches the post-migration
+`dist/hooks/<base>.js` form and recovers the `.mts` source by basename
+lookup across `hooks/` and `crew/hooks/` (erroring loudly on zero or 2+
+matches) — `hooks/hooks.json` stays the single enumeration of hook entries
+(DEC-040) in both the pre- and post-migration shape.
 
 ## Marathon checkpoint
 

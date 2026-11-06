@@ -62,13 +62,13 @@ afterAll(async () => {
 // doc examples (placeholder args included) — most crash at module-resolution
 // time before argument parsing even runs, which is exactly the bug audit #41
 // is proving.
+// FEAT-026/SLICE-52: dist/ bundles cleared every HOOK entry (hooks/hooks.json
+// now points `bun` commands at dist/hooks/*.js, self-contained -- no
+// node_modules needed). CLI entries sourced from commands/*.md literal
+// invocations are untouched by this slice (that path rewrite is a
+// deliberate serial follow-up, W2.5, on main) and still crash without
+// node_modules for @astragenie/plugin-std/zod/yaml -- they stay here.
 const EXPECTED_FAIL = new Set<string>([
-  "crew/hooks/check-subagent-return.mts",
-  "crew/hooks/otel-post-tool-use.mts",
-  "crew/hooks/otel-stop.mts",
-  "crew/hooks/otel-subagent-stop.mts",
-  "crew/hooks/pre-tool-use-agent.mts",
-  "crew/hooks/subagent-gate-guard.mts",
   'crew/scripts/crew.mts audit --repo "$PWD"',
   'crew/scripts/crew.mts bootstrap --repo "$PWD"',
   'crew/scripts/crew.mts brief-me --repo "$PWD"',
@@ -93,7 +93,6 @@ const EXPECTED_FAIL = new Set<string>([
   'crew/scripts/crew.mts write-validation-result --repo "$PWD" --title "<short title>" ...',
   'crew/scripts/prune-artifacts.mts --dry-run --older-than <days> --repo "$PWD"',
   'crew/scripts/prune-artifacts.mts --older-than <days> --repo "$PWD"',
-  "hooks/pre-push-gate.mts",
   "src/scripts/loop.mts auto",
   'src/scripts/loop.mts brief --repo "$PWD"',
   'src/scripts/loop.mts cost-setup --repo "$PWD"',
@@ -193,10 +192,10 @@ test("listShippedEntrypoints produces the exact distinct-file-set counts from th
   assert.ok(grouped.bash.includes("crew/scripts/log_event.sh"));
   assert.ok(grouped.bun.includes("crew/scripts/crew.mts"));
   assert.ok(grouped.bun.includes("src/scripts/loop.mts"));
-  assert.ok(grouped.bun.includes("hooks/pre-push-gate.mts"));
-  assert.ok(grouped.bun.includes("crew/hooks/subagent-gate-guard.mts"));
-  assert.ok(grouped.bun.includes("crew/hooks/pre-tool-use-agent.mts"));
-  assert.ok(grouped.bun.includes("crew/hooks/otel-post-tool-use.mts"));
+  assert.ok(grouped.bun.includes("dist/hooks/pre-push-gate.js"));
+  assert.ok(grouped.bun.includes("dist/hooks/subagent-gate-guard.js"));
+  assert.ok(grouped.bun.includes("dist/hooks/pre-tool-use-agent.js"));
+  assert.ok(grouped.bun.includes("dist/hooks/otel-post-tool-use.js"));
 });
 
 test("stageConsumerCopy excludes node_modules at every depth and leaves exactly one consumer commit", async () => {
