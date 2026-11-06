@@ -2,8 +2,16 @@ import { readFileSync } from "node:fs";
 import type { TouchesFilesResult } from "./types.mjs";
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---/;
+// FEAT-034: widened from the original src/docs/scripts/commands/agents/
+// skills prefix set to also recognize crew/, .github/, .claude-plugin/,
+// hooks/, dist/, templates/ sub-paths, plus a fixed allowlist of bare
+// root-level files (package.json, CLAUDE.md, AGENTS.md, .gitignore,
+// README.md, CHANGELOG.md) that slice bodies commonly cite without any
+// directory prefix at all. The negative lookbehind/lookahead around the
+// root-file alternative stops a longer token merely ending in one of these
+// names (e.g. "mypackage.json") from being misread as a real root file.
 const INFERENCE_RE =
-  /(?:src|docs|scripts|commands|agents|skills)\/[\w\-./]+\.(?:mts|md|json|yaml|yml|mjs|ts|js)/g;
+  /(?:src|docs|scripts|commands|agents|skills|crew|\.github|\.claude-plugin|hooks|dist|templates)\/[\w\-./]+\.(?:mts|md|json|yaml|yml|mjs|ts|js)|(?<![\w.-])(?:package\.json|CLAUDE\.md|AGENTS\.md|\.gitignore|README\.md|CHANGELOG\.md)(?![\w-])/g;
 
 function normalize(p: string): string {
   return p.replace(/\\/g, "/").replace(/^\.\//, "");

@@ -210,4 +210,80 @@ touches_files: [src/unterminated.mts
     expect(result.confidence).toBe("declared");
     expect(result.paths).toEqual(declaredTouches);
   });
+
+  // FEAT-034 AC-4: widened inference regex — crew/, .github/, .claude-plugin/,
+  // hooks/, dist/, templates/ sub-paths, plus bare root files cited with no
+  // directory prefix at all (package.json, CLAUDE.md, AGENTS.md, .gitignore,
+  // README.md, CHANGELOG.md).
+  test("AC-4: infers crew/, .github/, and a bare root file (package.json) from the body", () => {
+    const p = writeSlice(
+      "SLICE-10.md",
+      `---
+id: SLICE-10
+---
+## In scope
+- Update \`crew/scripts/crew.mts\`
+- Sync \`.github/workflows/ci.yml\`
+- Bump a dependency in \`package.json\`
+`
+    );
+    const r = readTouchesFiles(p, tmp);
+    expect(r.confidence).toBe("inferred");
+    expect(r.paths.sort()).toEqual([
+      ".github/workflows/ci.yml",
+      "crew/scripts/crew.mts",
+      "package.json"
+    ]);
+  });
+
+  test("widened regex also recognizes .claude-plugin/, hooks/, dist/, templates/ and the remaining root files", () => {
+    const p = writeSlice(
+      "SLICE-11.md",
+      `---
+id: SLICE-11
+---
+## In scope
+- \`.claude-plugin/plugin.json\`
+- \`hooks/hooks.json\`
+- \`dist/bundle.js\`
+- \`templates/claude-md-hard-rules.md\`
+- \`CLAUDE.md\`
+- \`AGENTS.md\`
+- \`.gitignore\`
+- \`README.md\`
+- \`CHANGELOG.md\`
+`
+    );
+    const r = readTouchesFiles(p, tmp);
+    expect(r.confidence).toBe("inferred");
+    expect(r.paths.sort()).toEqual(
+      [
+        ".claude-plugin/plugin.json",
+        "hooks/hooks.json",
+        "dist/bundle.js",
+        "templates/claude-md-hard-rules.md",
+        "CLAUDE.md",
+        "AGENTS.md",
+        ".gitignore",
+        "README.md",
+        "CHANGELOG.md"
+      ].sort()
+    );
+  });
+
+  test("a bare root filename is not matched when it is a substring of a longer token", () => {
+    const p = writeSlice(
+      "SLICE-12.md",
+      `---
+id: SLICE-12
+---
+## In scope
+- Edit \`mypackage.json\`, a config file unrelated to the real root manifest
+- Reference \`src/notREADME.md.bak\` style filenames
+`
+    );
+    const r = readTouchesFiles(p, tmp);
+    expect(r.paths).not.toContain("package.json");
+    expect(r.paths).not.toContain("README.md");
+  });
 });

@@ -24,6 +24,13 @@ export type SliceCandidate = {
   pendingFix: boolean;
   dependsOn: string[];
   helpRequestOpen: boolean;
+  // FEAT-034: group key shared by every sibling slice of a FEAT whose
+  // `proposed_slices` decomposition declared `sequential: true` (or whose
+  // materialized slice frontmatter carries a stamped `sequential_group` —
+  // see feature-lifecycle.mts). packWave never places two candidates
+  // sharing this key in the same wave. Optional/undefined means "no
+  // sequencing constraint" — the overwhelming majority of candidates.
+  sequentialGroup?: string;
 };
 
 export type WavePlanItem = {
