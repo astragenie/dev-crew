@@ -113,7 +113,11 @@ parallel fan-out — single Agent-tool message with N=2 invocations:
      if Reviewer B next field names a tests-adequacy gap → dispatch devcrew:qa-expert
 ```
 
-No verifier dispatch. Verifier defers to `/devcrew:ship`.
+Check consumer CI before closing out review:
+```bash
+bun crew/scripts/crew.mts has-consumer-ci --repo "$PWD" --json
+```
+LOW-risk slices: one reviewer; verifier is replaced by `write-validation-result --decision skipped --skip-reason "delegated to CI: <workflow file>"` only when `has-consumer-ci` reports present; otherwise dispatch `devcrew:verifier`. Verifier otherwise defers to `/devcrew:ship`.
 
 ## Auto-fix retry loop (when Reviewer rejects)
 

@@ -73,7 +73,10 @@ test("loop.json: loop.modelRouting is disabled — agent frontmatter governs dis
 test("validator-gate SKILL: documents the satisfiedByReview default delegation path", async () => {
   const text = await readText("skills/workflow/validator-gate/SKILL.md");
   expect(text).toMatch(/satisfiedByReview/);
-  expect(text).toMatch(/do not dispatch `devcrew:verifier`/i);
+  // FEAT-027 / SLICE-53: the delegation is no longer unconditional — it only
+  // applies when `has-consumer-ci` reports a real CI test gate behind it.
+  expect(text).toMatch(/has-consumer-ci/);
+  expect(text).toMatch(/otherwise dispatch `devcrew:verifier`/);
 });
 
 test("validator-gate SKILL: documents the risk-gated exception that still dispatches crew:verifier", async () => {
@@ -101,10 +104,13 @@ test("orchestrate-slice.md: RISK_GATE is computed from risk/tags/SPLIT_BUILD bef
   expect(text).toMatch(/SPLIT_BUILD = true/);
 });
 
-test("orchestrate-slice.md: RISK_GATE=false dispatches exactly one reviewer and no dedicated verifier", async () => {
+test("orchestrate-slice.md: RISK_GATE=false dispatches exactly one reviewer, verifier gated on has-consumer-ci", async () => {
   const text = await readText("commands/orchestrate-slice.md");
   expect(text).toMatch(/`RISK_GATE = false`.*dispatch exactly \*\*one\*\* `devcrew:reviewer`/s);
-  expect(text).toMatch(/Do \*\*not\*\* dispatch a dedicated `devcrew:verifier`/);
+  // FEAT-027 / SLICE-53: the dedicated verifier is skipped only when
+  // `has-consumer-ci` reports present; otherwise it still dispatches.
+  expect(text).toMatch(/has-consumer-ci/);
+  expect(text).toMatch(/`present: false`.*dispatch a dedicated `devcrew:verifier`/s);
 });
 
 test("orchestrate-slice.md: RISK_GATE=true still fires the heavy 2nd-reviewer/verifier path", async () => {
@@ -113,10 +119,13 @@ test("orchestrate-slice.md: RISK_GATE=true still fires the heavy 2nd-reviewer/ve
   expect(text).toMatch(/fan-out-review\/SKILL\.md.*AND\/OR a dedicated `devcrew:verifier`/s);
 });
 
-test("orchestrate-slice.md: full-suite ownership is documented as CI (test.yml), not dropped", async () => {
+test("orchestrate-slice.md: full-suite ownership is documented as CI (ci.yml), not dropped", async () => {
   const text = await readText("commands/orchestrate-slice.md");
-  // CI (`.github/workflows/test.yml`) is the actual full-suite runner.
-  expect(text).toMatch(/\.github\/workflows\/test\.yml/);
+  // CI (`.github/workflows/ci.yml`) is the actual full-suite runner — this
+  // repo's workflow file is `ci.yml`, not `test.yml` (FEAT-027 / SLICE-53
+  // corrected the stale citation; `test.yml` must not reappear here).
+  expect(text).toMatch(/\.github\/workflows\/ci\.yml/);
+  expect(text).not.toMatch(/\.github\/workflows\/test\.yml/);
   // Honest boundary (reviewer MEDIUM finding): the pre-push hook only checks
   // for a PASS artifact behind a default-off flag — it does NOT run the suite.
   // The prose must not overclaim that pre-push runs the full suite.

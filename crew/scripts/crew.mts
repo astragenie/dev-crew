@@ -405,6 +405,11 @@ function usage(target: string | null = null) {
     "scope-estimate":
       "  node scripts/crew.mjs scope-estimate --files <path:lines[:eslintDisable],...>",
     "discover-deployment": "  node scripts/crew.mjs discover-deployment --repo <path>",
+    "has-consumer-ci":
+      "  node scripts/crew.mts has-consumer-ci --repo <path> [--json]\n" +
+      "    Reports whether <path> has its own `.github/workflows/*.yml` CI gate that\n" +
+      "    triggers on push/pull_request and runs a test command — feeds the\n" +
+      "    deriveValidationGate satisfiedByReview decision (FEAT-027).",
     "write-deployment-guidance":
       "  node scripts/crew.mjs write-deployment-guidance --repo <path> --title <text> [--discovery-status repo-derived|partial|live-verified] [--verified-from <a,b>] [--missing <a,b>] [--summary <text>] [--build <text>] [--deploy <text>]",
     "show-workflow-state": "  node scripts/crew.mjs show-workflow-state --repo <path>",
@@ -894,6 +899,13 @@ const COMMANDS = {
   "discover-deployment": async ({ repoPath }: CommandContext) => {
     const { discoverDeploymentClues } = await import("./lib/deployment-guidance/read.mjs");
     return discoverDeploymentClues(repoPath);
+  },
+  "has-consumer-ci": async ({ repoPath }: CommandContext) => {
+    // FEAT-027 / SLICE-53: read-only consumer-CI detector. `--json` (already
+    // in FLAG_SPEC) is accepted but not branched on — runCrew() already
+    // JSON-stringifies every non-string command result by default.
+    const { hasConsumerCi } = await import("./lib/ci/consumer-ci.mjs");
+    return hasConsumerCi(repoPath);
   },
   "write-deployment-guidance": async ({ repoPath, flags, positionals }: CommandContext) => {
     const { writeDeploymentGuidance } = await import("./lib/deployment-guidance/write.mjs");

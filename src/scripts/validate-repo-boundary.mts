@@ -102,6 +102,10 @@ export const ALLOWED_CROSS_IMPORTS: ReadonlyArray<AllowedCrossImport> = [
   {
     file: "src/scripts/lib/phase-gate.mts",
     crewModule: "crew/scripts/lib/artifacts/validation-result-writer.mjs"
+  },
+  {
+    file: "src/scripts/lib/validation-gate.mts",
+    crewModule: "crew/scripts/lib/ci/consumer-ci.mjs"
   }
 ];
 
