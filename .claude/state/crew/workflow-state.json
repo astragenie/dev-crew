@@ -1,29 +1,32 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-06T03:27:54.904Z",
+  "updatedAt": "2026-11-06T03:44:15.529Z",
   "currentRun": {
-    "title": "FEAT034 SLICE51: Implement FEAT-034",
-    "goal": "Wave planner reads PM field names intake never writes — ranking flat, risk pre-flight dead",
+    "title": "FEAT024 SLICE49: Implement FEAT-024",
+    "goal": "Audit T4: explicit, per-reviewer aggregated review and validation verdicts; scaffolds never flip the gate",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-06T03:20:58.599Z",
-    "updatedAt": "2026-11-06T03:27:54.904Z",
+    "startedAt": "2026-11-06T03:30:12.000Z",
+    "updatedAt": "2026-11-06T03:44:15.529Z",
     "next": "Begin implementation",
     "gates": {
       "review": {
         "status": "passed",
-        "updatedAt": "2026-11-06T03:27:49.486Z",
-        "note": "SLICE-51 / FEAT-034 (db77759f) -- TypeScript review, scoped to `git diff 58dab7bd..db77759f` on planner.mts, types.mts, touches-files.mts, feature-lifecycle.mts, commands/wave.md, and the three new test files.\n\nThe field-name fix is correct and well-verified: resolveCompositeScore/resolvePmNumeric read the real pm-apply.mts output fields (pm_composite_priority, pm_strategic_alignment, pm_technical_risk) with legacy fallbacks, no silent NaN/undefined propagation (every path bottoms out at a numeric fallback), and the exact pre-flight reason string (pre-flight: autonomous_safe=false AND pm_risk_level=0.80 >= 0.7) is verified against a real test fixture. The once-only stderr warning is a module-level flag (resets per test-file/process, confirmed by running `bun test src/tests/wave/` -- fires once per file even with two legacy-fallback triggers in the same file). sequentialGroup?: string and the spread-guard (...(sequentialGroup !== undefined ? {...} : {})) are the correct pattern under this repo's exactOptionalPropertyTypes: true. packWave's exclusion reason (sequential_group:<id> already packed this wave) is correctly surfaced in rejected[], confirmed by sequential-slices.test.mts. The widened touches-files.mts regex doesn't double-count docs/-prefixed root files (verified the dir-prefixed alternative consumes the match first, so the bare-file alternative never re-matches the same substring) and correctly rejects substring matches like mypackage.json (lookbehind holds). feature-lifecycle.mts's new call reuses an already-imported backlog-store.mjs function (updateSliceFrontmatter) with the correct (filePath, updates, repoPath, config) signature -- no new import, no slice-linker boundary change. All .mjs specifiers are correct. Ran the full src/tests/wave/ suite independently (145 pass, 0 fail) to confirm hermeticity -- all fixtures use mkdtempSync/fs.mkdtemp, no repo-cwd assumptions.\n\nTwo real issues found, both notes rather than blockers:\n\n1. packWave's cognitive complexity rose from un-flagged (<=15) to 19 (max 15) due to the new sequential-group early-continue branch added inline in the existing loop -- confirmed by diffing lint output of the pre-change file (git show 58dab7bd:...) against the current file: only parseFrontmatterPlanner (pre-existing, 18) was flagged before; packWave is a new violation. The repo's own AGENTS.md says complexity should be \"reduced via extracted helpers, not rule suppression\" and lint should be \"zero warnings\" -- this diff didn't follow that pattern here even though it did extract helpers for the PM-field logic a few lines away. The gate itself doesn't fail the build (the rule is configured \"level\": \"warn\" in biome.json, so bunx biome lint exits 0), which is why the builder's reported lint rc=0 is accurate -- but it's new debt against a documented convention.\n\n2. The slice file's own AC-5 evidence note claims lint is \"pre-existing repo-wide warnings only, no new error-level diagnostics\" -- the \"no new error-level diagnostics\" half is true, but \"pre-existing...only\" is not: the packWave complexity warning above is new, not pre-existing. Worth a correction to the evidence note, or (preferably) extracting the sequential-group check into a small helper (e.g. isSequentialGroupBlocked(cand, pickedSequentialGroups)) to bring packWave back under 15 and make the evidence note true again.\n\nOne minor test-coverage gap, info-only: no test in planner-pm-fields.test.mts exercises BOTH a primary field (e.g. pm_technical_risk) and its legacy counterpart (pm_risk_level) present simultaneously with different values, to prove primary wins over legacy by precedence rather than merely \"legacy works when primary is absent.\" The code is correct (primary checked first, returns before even reading legacy), but the test suite doesn't pin that precedence directly.\n\nOne design note, info-only, not a violation of the stated AC-3 (which only requires \"at most one of its slices appears per wave\"): sequential_group enforces mutual exclusion within a wave but not FIFO ordinal ordering across waves -- rankCandidates's tie-breaks (compositeScore/priority/strategicFit/retryCount) are typically identical across siblings of the same FEAT, so which sibling \"wins\" a given wave falls back to JS's stable-sort preservation of loadCandidates' readdirSync enumeration order, which Node does not guarantee is ordinal/creation order. commands/wave.md's framing (\"useful when later slices depend on an earlier sibling's output\") implies an ordering guarantee the code doesn't fully provide -- only non-co-packing. Not a bug against this FEAT's literal AC, but worth a documentation caveat if a future FEAT relies on strict ordering.\n\nAlso confirmed (pre-existing, not introduced by this diff, info-only): the widened inference regex has a pre-existing substring false-positive -- src/notREADME.md.bak infers src/notREADME.md as a touched path, because the extension-match backtracks to an earlier .md rather than requiring the match to reach the true end of the filename token. Verified this exact behavior exists identically against the pre-change regex (git show 58dab7bd:src/scripts/lib/wave/touches-files.mts), so it's not a regression from this slice, just an inherited quirk the widening makes slightly more reachable in surface area (more directory prefixes now active) but did not create.\n\nDecision: approved_with_notes. Correctness, type-safety, and test coverage are all solid and the stated ACs are genuinely met with real evidence; the complexity regression and the resulting inaccurate evidence-note claim are real but non-blocking (warn-level gate, no behavior change, isolated to one function) -- worth a quick follow-up extraction rather than a blocking re-review.",
+        "updatedAt": "2026-11-06T03:44:15.529Z",
+        "note": "Re-verification of SLICE-49 / FEAT-024 review B (correctness) after fix commits 95d5e140 and 5338fa5d on fix/audit-2026-11, scoped to `git diff b1c7f0e5..5338fa5d -- crew/scripts/lib/workflow-state.mts crew/tests/review-verdict-aggregation.test.mts src/scripts/lib/post-builder-fanout.mts agents/reviewer.md`.\n\nMy prior BLOCKER is resolved. computeReviewGateStatus / computeValidationGateStatus (crew/scripts/lib/workflow-state.mts:461-478, 536-551) now treat `required` as a SLOT COUNT rather than a set of name labels to match against: any \"rejected\" verdict still dominates immediately (checked first, unaffected by the fix), and otherwise the gate passes once the number of distinct approving reviewer keys is >= required.length, regardless of what those keys are named. This directly closes the gap I found: `.claude/loop.json`'s `reviewers.ladder: [\"A\",\"B\"]` no longer needs to be matched by literal \"A\"/\"B\" keys -- two distinct real-world keys like \"typescript-reviewer\" and \"reviewer\" now satisfy a two-slot ladder once both approve.\n\nThe companion fix (5338fa5d) makes the keys actually distinct in the real dispatch paths that matter: `src/scripts/lib/post-builder-fanout.mts`'s generated reviewer prompt now explicitly instructs `crew write-review-result --reviewer ${role} --decision ...` (role is literally \"A\" or \"B\" per ladder slot), with an explanatory line that omitting `--reviewer` collapses both ladder reviewers onto one key. `agents/reviewer.md`'s terminal-write example now also carries a `--reviewer <A|B as dispatched, else your role id>` hint. Combined with the stack-specific reviewers (`typescript-reviewer.md`, `csharp-reviewer.md`, `reviewer-lite.md`) which already passed fixed distinct role-name keys unconditionally, every shipped dispatch path that puts two reviewers on the same ladder now writes under two distinct keys.\n\nI re-ran the suite myself: `cd crew && bun test tests/review-verdict-aggregation.test.mts` -- 12 pass, 0 fail, 41 expect() calls, including the two new regression tests added in this fix round that use the exact real role names from this repo's shipped agents (`typescript-reviewer` + bare `reviewer`) against a `[\"A\",\"B\"]` ladder: one proves slot-count-fills-to-passed (first write -> status stays \"required\" with only `typescript-reviewer` recorded; second write under a different key -> status flips to \"passed\" with both keys recorded approved), the other proves rejection still dominates when the second of two non-ladder-named keys rejects (status \"failed\"). These are exactly the kind of realistic-role-name tests I said were missing from the original diff, and they now exist and pass.\n\nI also independently inspected this repo's own live `.claude/state/crew/workflow-state.json` before writing: `gates.review.required` is `[\"A\",\"B\"]` (slot count 2) and `gates.review.reviewers` already carried `typescript-reviewer: approved_with_notes` (reviewer A's verdict, recorded post-fix) plus my own earlier `reviewer: rejected` (written against the pre-fix code, now stale). My new write below updates that same `reviewer` key to my final verdict, giving two distinct keys -- if both are approving, count (2) >= required.length (2), so the gate should now resolve to `passed`.\n\nJudgment on the slot-count semantic: this is an acceptable, pragmatic resolution. It is weaker than true per-role matching (it does not verify that specifically \"the TypeScript reviewer\" and \"the C# reviewer\" each wrote -- only that N distinct keys wrote approvingly), but given this repo's `--reviewer` value is fundamentally caller-chosen free text with no central registry of valid role names, a slot-count check is the correct level of rigor: it still correctly blocks on any rejection regardless of key naming, still requires genuinely distinct writers (not the same key approving twice), and the one remaining soft spot -- the generic `agents/reviewer.md`'s hint being advisory rather than enforced -- is covered in practice because the only shipped dispatch path that puts two generic reviewers on one ladder (`post-builder-fanout.mts`) now injects the distinguishing `--reviewer A|B` unconditionally rather than leaving it to the dispatched agent's discretion. No further blocking issue found in this re-verification.",
         "reviewers": {
           "reviewer": "approved_with_notes",
           "typescript-reviewer": "approved_with_notes"
         },
-        "required": []
+        "required": [
+          "A",
+          "B"
+        ]
       },
       "validation": {
         "status": "passed",
-        "updatedAt": "2026-11-06T03:27:54.904Z",
-        "note": "Validated SLICE-51/FEAT-034 wave-planner changes against 5 isolated fixture repos plus the real repo. All 7 scenarios PASS: (1) pre-flight drops autonomous_safe=false + pm_technical_risk>=0.7 with the exact reason string; (2) pm_composite_priority P0 ranks ahead of P2 with disjoint touches_files; (3) legacy-only PM field names (pm_risk_level/pm_strategic_fit/composite_score) still trigger the pre-flight drop via fallback, warning goes to stderr only, stdout stays valid JSON; (4) a sequential:true FEAT never packs two sibling slices in the same wave, the loser is rejected naming the sequential_group; (5) widened touches_files inference picks up crew/, .github/, package.json, hooks/ paths from slice body text, confirmed both by the touches-files unit suite and by wave plan on a fixture; (6) wave plan --repo . --json on the real repo completes rc=0 with no error; (7) bun test src/tests/wave/ is 145 pass / 0 fail across 18 files.",
+        "updatedAt": "2026-11-06T03:35:07.039Z",
+        "note": "SLICE-49 / FEAT-024 validated in an isolated scratch repo against all 5 ACs: AC-1 through AC-5 PASS with evidence. write-review-result refuses (exit 2, matching stderr) a terminal call with no --decision; --scaffold --status in-progress writes register the artifact path without ever touching gates.review; a rejected verdict dominates regardless of write order, landing gates.review.status at failed with the raw reviewer keys preserved verbatim; write-validation-result --decision skipped requires --skip-reason (exit 2 without it, skipped with note containing the reason on success) and --decision pass resolves to passed. The targeted crew test suite (review-verdict-aggregation, artifact-stub-and-update, enum-verdicts) is green: 41/41 pass. One adjacent risk is flagged in findings: gates.review.required snapshots reviewers.ladder verbatim (case-sensitive), and only a literal --reviewer A / --reviewer B write reaches passed under the default [\"A\",\"B\"] ladder -- lowercase or role-named reviewer keys (e.g. \"a\"/\"b\", \"csharp-reviewer\") leave the gate stuck at required even after both approve. The live dispatch path (post-builder-fanout.mts + agents/reviewer.md) does not plumb a literal ladder-matching --reviewer value into the dispatched reviewer agent's instructions, so this is a real integration exposure, not just a theoretical one, though it predates and is outside SLICE-49's own ACs (which specify lowercase a/b in AC-3 and literal A/B in AC-4 as two different scenarios). Recommendation: PASS for SLICE-49/FEAT-024's own acceptance criteria; open a follow-up to make the --reviewer identity used by live dispatch match reviewers.ladder's case exactly, or normalize the comparison in computeReviewGateStatus.",
         "validators": {
           "verifier": "pass"
         },
@@ -39,11 +42,11 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T032058Z-run-brief-feat034-slice51-implement-feat-034.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T033011Z-run-brief-feat024-slice49-implement-feat-024.md",
       "handoffs": [],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T032749Z-review-result-slice-51-review-a-typescript.md",
+      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T034415Z-review-result-slice-49-review-b-correctness.md",
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T032754Z-validation-result-slice-51-validation-wave-planner-pm-fields-sequential-infere.md",
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T033507Z-validation-result-slice-49-validation-explicit-aggregated-verdicts.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -52,6 +55,57 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT034 SLICE51: Implement FEAT-034",
+      "goal": "Wave planner reads PM field names intake never writes — ranking flat, risk pre-flight dead",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T03:20:58.599Z",
+      "updatedAt": "2026-11-06T03:27:54.904Z",
+      "completedAt": "2026-11-06T03:27:54.904Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T03:27:49.486Z",
+          "note": "SLICE-51 / FEAT-034 (db77759f) -- TypeScript review, scoped to `git diff 58dab7bd..db77759f` on planner.mts, types.mts, touches-files.mts, feature-lifecycle.mts, commands/wave.md, and the three new test files.\n\nThe field-name fix is correct and well-verified: resolveCompositeScore/resolvePmNumeric read the real pm-apply.mts output fields (pm_composite_priority, pm_strategic_alignment, pm_technical_risk) with legacy fallbacks, no silent NaN/undefined propagation (every path bottoms out at a numeric fallback), and the exact pre-flight reason string (pre-flight: autonomous_safe=false AND pm_risk_level=0.80 >= 0.7) is verified against a real test fixture. The once-only stderr warning is a module-level flag (resets per test-file/process, confirmed by running `bun test src/tests/wave/` -- fires once per file even with two legacy-fallback triggers in the same file). sequentialGroup?: string and the spread-guard (...(sequentialGroup !== undefined ? {...} : {})) are the correct pattern under this repo's exactOptionalPropertyTypes: true. packWave's exclusion reason (sequential_group:<id> already packed this wave) is correctly surfaced in rejected[], confirmed by sequential-slices.test.mts. The widened touches-files.mts regex doesn't double-count docs/-prefixed root files (verified the dir-prefixed alternative consumes the match first, so the bare-file alternative never re-matches the same substring) and correctly rejects substring matches like mypackage.json (lookbehind holds). feature-lifecycle.mts's new call reuses an already-imported backlog-store.mjs function (updateSliceFrontmatter) with the correct (filePath, updates, repoPath, config) signature -- no new import, no slice-linker boundary change. All .mjs specifiers are correct. Ran the full src/tests/wave/ suite independently (145 pass, 0 fail) to confirm hermeticity -- all fixtures use mkdtempSync/fs.mkdtemp, no repo-cwd assumptions.\n\nTwo real issues found, both notes rather than blockers:\n\n1. packWave's cognitive complexity rose from un-flagged (<=15) to 19 (max 15) due to the new sequential-group early-continue branch added inline in the existing loop -- confirmed by diffing lint output of the pre-change file (git show 58dab7bd:...) against the current file: only parseFrontmatterPlanner (pre-existing, 18) was flagged before; packWave is a new violation. The repo's own AGENTS.md says complexity should be \"reduced via extracted helpers, not rule suppression\" and lint should be \"zero warnings\" -- this diff didn't follow that pattern here even though it did extract helpers for the PM-field logic a few lines away. The gate itself doesn't fail the build (the rule is configured \"level\": \"warn\" in biome.json, so bunx biome lint exits 0), which is why the builder's reported lint rc=0 is accurate -- but it's new debt against a documented convention.\n\n2. The slice file's own AC-5 evidence note claims lint is \"pre-existing repo-wide warnings only, no new error-level diagnostics\" -- the \"no new error-level diagnostics\" half is true, but \"pre-existing...only\" is not: the packWave complexity warning above is new, not pre-existing. Worth a correction to the evidence note, or (preferably) extracting the sequential-group check into a small helper (e.g. isSequentialGroupBlocked(cand, pickedSequentialGroups)) to bring packWave back under 15 and make the evidence note true again.\n\nOne minor test-coverage gap, info-only: no test in planner-pm-fields.test.mts exercises BOTH a primary field (e.g. pm_technical_risk) and its legacy counterpart (pm_risk_level) present simultaneously with different values, to prove primary wins over legacy by precedence rather than merely \"legacy works when primary is absent.\" The code is correct (primary checked first, returns before even reading legacy), but the test suite doesn't pin that precedence directly.\n\nOne design note, info-only, not a violation of the stated AC-3 (which only requires \"at most one of its slices appears per wave\"): sequential_group enforces mutual exclusion within a wave but not FIFO ordinal ordering across waves -- rankCandidates's tie-breaks (compositeScore/priority/strategicFit/retryCount) are typically identical across siblings of the same FEAT, so which sibling \"wins\" a given wave falls back to JS's stable-sort preservation of loadCandidates' readdirSync enumeration order, which Node does not guarantee is ordinal/creation order. commands/wave.md's framing (\"useful when later slices depend on an earlier sibling's output\") implies an ordering guarantee the code doesn't fully provide -- only non-co-packing. Not a bug against this FEAT's literal AC, but worth a documentation caveat if a future FEAT relies on strict ordering.\n\nAlso confirmed (pre-existing, not introduced by this diff, info-only): the widened inference regex has a pre-existing substring false-positive -- src/notREADME.md.bak infers src/notREADME.md as a touched path, because the extension-match backtracks to an earlier .md rather than requiring the match to reach the true end of the filename token. Verified this exact behavior exists identically against the pre-change regex (git show 58dab7bd:src/scripts/lib/wave/touches-files.mts), so it's not a regression from this slice, just an inherited quirk the widening makes slightly more reachable in surface area (more directory prefixes now active) but did not create.\n\nDecision: approved_with_notes. Correctness, type-safety, and test coverage are all solid and the stated ACs are genuinely met with real evidence; the complexity regression and the resulting inaccurate evidence-note claim are real but non-blocking (warn-level gate, no behavior change, isolated to one function) -- worth a quick follow-up extraction rather than a blocking re-review.",
+          "reviewers": {
+            "reviewer": "approved_with_notes",
+            "typescript-reviewer": "approved_with_notes"
+          },
+          "required": []
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T03:27:54.904Z",
+          "note": "Validated SLICE-51/FEAT-034 wave-planner changes against 5 isolated fixture repos plus the real repo. All 7 scenarios PASS: (1) pre-flight drops autonomous_safe=false + pm_technical_risk>=0.7 with the exact reason string; (2) pm_composite_priority P0 ranks ahead of P2 with disjoint touches_files; (3) legacy-only PM field names (pm_risk_level/pm_strategic_fit/composite_score) still trigger the pre-flight drop via fallback, warning goes to stderr only, stdout stays valid JSON; (4) a sequential:true FEAT never packs two sibling slices in the same wave, the loser is rejected naming the sequential_group; (5) widened touches_files inference picks up crew/, .github/, package.json, hooks/ paths from slice body text, confirmed both by the touches-files unit suite and by wave plan on a fixture; (6) wave plan --repo . --json on the real repo completes rc=0 with no error; (7) bun test src/tests/wave/ is 145 pass / 0 fail across 18 files.",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T032058Z-run-brief-feat034-slice51-implement-feat-034.md",
+        "handoffs": [],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T032749Z-review-result-slice-51-review-a-typescript.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T032754Z-validation-result-slice-51-validation-wave-planner-pm-fields-sequential-infere.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT023 SLICE48: Implement FEAT-023",
       "goal": "Audit T3: CI docs-only exemption treats prompts as code; gate fails closed",
@@ -185,40 +239,6 @@
       },
       "artifacts": {
         "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025844Z-run-brief-feat024-slice49-implement-feat-024.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT023 SLICE48: Implement FEAT-023",
-      "goal": "Audit T3: CI docs-only exemption treats prompts as code; gate fails closed",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T02:58:43.408Z",
-      "updatedAt": "2026-11-06T02:58:43.408Z",
-      "completedAt": "2026-11-06T02:58:43.408Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025843Z-run-brief-feat023-slice48-implement-feat-023.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
