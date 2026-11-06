@@ -297,6 +297,17 @@ export async function deriveValidationGate(
   // (no separate loop-side validator is dispatched — see post-builder-fanout).
   // Placed last so real validation evidence (artifact/badge/waiver) still wins.
   //
+  // FEAT-027 / SLICE-53 (audit T5, Codex #23): the delegation above is only
+  // honest when there IS a CI test gate to delegate to. `satisfiedByReview`
+  // used to apply unconditionally — a repo with the flag set but no CI
+  // workflow at all would close "validated" on reviewer sign-off alone, with
+  // nothing ever running the test suite. `hasConsumerCi` (crew's own
+  // consumer-CI detector, see crew/scripts/lib/ci/consumer-ci.mts) must
+  // report `present: true` — a `.github/workflows/*.yml` that triggers on
+  // push/pull_request and runs a test command — before this branch is
+  // reachable at all; otherwise the gate falls through to the final
+  // `required` outcome below.
+  //
   // CRITICAL: require `!reviewGate.unproven`. deriveReviewGate treats the
   // ABSENCE of any matching review artifact as `satisfied: true, unproven: true`
   // (a tolerant fallthrough for filename-token variance). That tolerance must
@@ -305,14 +316,18 @@ export async function deriveValidationGate(
   // approval" reason. Only an artifact/badge/waiver-backed review (satisfied &&
   // !unproven) delegates validation here.
   if (config?.loop?.validation?.satisfiedByReview === true) {
-    const { deriveReviewGate } = await import("./review-gate.mjs");
-    const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
-    if (reviewGate.satisfied && !reviewGate.unproven) {
-      return {
-        satisfied: true,
-        reason: `review-badge: validation delegated to evidenced reviewer approval + CI test gate (${reviewGate.reason})`,
-        evidence: []
-      };
+    const { hasConsumerCi } = await import("../../../crew/scripts/lib/ci/consumer-ci.mjs");
+    const consumerCi = await hasConsumerCi(repoPath);
+    if (consumerCi.present) {
+      const { deriveReviewGate } = await import("./review-gate.mjs");
+      const reviewGate = await deriveReviewGate(repoPath, sliceId, { sliceFm });
+      if (reviewGate.satisfied && !reviewGate.unproven) {
+        return {
+          satisfied: true,
+          reason: `review-badge: validation delegated to evidenced reviewer approval + CI test gate (${reviewGate.reason}; consumer CI: ${consumerCi.workflows.join(", ")})`,
+          evidence: []
+        };
+      }
     }
   }
 

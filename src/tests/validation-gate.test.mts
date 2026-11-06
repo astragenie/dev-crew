@@ -111,14 +111,55 @@ async function writeReviewArtifact(repo: string, sliceId: string, decision: stri
   await fs.writeFile(path.join(dir, `20260705T120000Z-review-result-${token}-test.md`), body);
 }
 
+// FEAT-027 / SLICE-53 (audit T5): satisfiedByReview only applies when the
+// repo has its own consumer CI test gate (hasConsumerCi, crew/scripts/lib/
+// ci/consumer-ci.mts) — a push/pull_request-triggered workflow that runs a
+// test command.
+async function writeConsumerCiWorkflow(repo: string) {
+  const dir = path.join(repo, ".github", "workflows");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(
+    path.join(dir, "ci.yml"),
+    "name: CI\non:\n  push:\n  pull_request:\njobs:\n  test:\n    steps:\n      - run: bun test\n"
+  );
+}
+
 const REVIEW_BADGE_CONFIG = { loop: { validation: { satisfiedByReview: true } } };
 
-test("satisfiedByReview: approved review satisfies validation gate", async () => {
+test("satisfiedByReview: approved review + consumer CI present satisfies validation gate (AC-2)", async () => {
   const repo = await tmpRepo("al-vgate-review-ok-");
   await writeReviewArtifact(repo, "SLICE-01", "approved");
+  await writeConsumerCiWorkflow(repo);
   const result = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
   assert.equal(result.satisfied, true);
   assert.match(result.reason, /review-badge/);
+});
+
+// AC-2: no consumer CI -> satisfiedByReview must NOT apply even with an
+// approved review artifact; the gate stays required (satisfied: false).
+test("satisfiedByReview: approved review but NO consumer CI does NOT satisfy validation gate (AC-2)", async () => {
+  const repo = await tmpRepo("al-vgate-review-noci-");
+  await writeReviewArtifact(repo, "SLICE-01", "approved");
+  const result = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
+});
+
+// AC-2: a consumer CI workflow that exists but never triggers on
+// push/pull_request (e.g. workflow_dispatch only) must not count either —
+// hasConsumerCi's own trigger check, exercised end-to-end through the gate.
+test("satisfiedByReview: consumer CI workflow with no push/pull_request trigger does NOT satisfy", async () => {
+  const repo = await tmpRepo("al-vgate-review-ci-notrigger-");
+  await writeReviewArtifact(repo, "SLICE-01", "approved");
+  const dir = path.join(repo, ".github", "workflows");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(
+    path.join(dir, "ci.yml"),
+    "name: CI\non:\n  workflow_dispatch:\njobs:\n  test:\n    steps:\n      - run: bun test\n"
+  );
+  const result = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
+  assert.equal(result.satisfied, false);
+  assert.match(result.reason, /no validation artifact/);
 });
 
 test("satisfiedByReview: rejected review does NOT satisfy (review gate unsatisfied)", async () => {
@@ -156,6 +197,7 @@ test("satisfiedByReview: NO review artifact (unproven) does NOT satisfy validati
 test("satisfiedByReview: legacy no-decision review (unproven-ish) still requires real evidence", async () => {
   const repo = await tmpRepo("al-vgate-review-legacy-");
   await writeReviewArtifact(repo, "SLICE-01", "approved");
+  await writeConsumerCiWorkflow(repo);
   // A real approved artifact IS proven → should satisfy (positive control for the
   // fix so we don't over-correct into rejecting genuine approvals).
   const ok = await deriveValidationGate(repo, "SLICE-01", { config: REVIEW_BADGE_CONFIG });
