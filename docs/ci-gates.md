@@ -249,6 +249,39 @@ every push/PR):**
   + typecheck + lint/format layer is the actual merge gate). All jobs still
   run and report on every push/PR.
 
+### `changes`/`gate` classification scripts (FEAT-023, SLICE-48)
+
+The `changes` job's docs-only classification and the `gate` job's
+fail-closed evaluation are both extracted to standalone, independently
+tested shell scripts (portable bash — GitHub-hosted ubuntu and Git Bash on
+Windows) rather than inlined YAML, so they can be unit-tested outside CI:
+
+- **`src/scripts/ci/docs-only.sh`** — reads changed paths on stdin (one per
+  line, as from `git diff --name-only`), prints exactly `code=true` or
+  `code=false`. The exempt (docs-only) pattern is exactly
+  `^(docs/|README\.md$|CHANGELOG\.md$)` — nothing else is exempt. In
+  particular, **backlog markdown under `.claude/artifacts/loop/backlog/**`
+  is CODE, not docs** (architect decision OBJ-16): those files feed
+  `validate-effort-points`, `validate-decline-citations`,
+  `validate-loop-state`, and `validate-backlog-drift`, so a backlog-only
+  diff must still run the full validator suite. This replaces and narrows
+  the prior inline pattern, which exempted any path matching `/backlog/`
+  and let those four validators go unexercised on backlog-only PRs — the
+  bug this slice closes (audit T3: the old exemption also let `agents/`,
+  `commands/`, `skills/` prompt changes skip every validator and prompt
+  test, since the old pattern matched any `\.md$` path). Empty stdin prints
+  `code=true` (fail-safe).
+- **`src/scripts/ci/gate.sh CODE FASTGATE_RESULT`** — exits `0` only when
+  `CODE == "false"` or (`CODE == "true"` and `FASTGATE_RESULT ==
+  "success"`); every other combination exits `1` with a one-line stderr
+  reason. This closes the companion bug where a failed or skipped
+  `changes` job produced a blank `code` output, and the old inline gate
+  logic (`if code != "true": pass`) let that blank value pass the required
+  check without `fast-gate` ever running.
+
+Both scripts are covered by `src/tests/ci/docs-only.test.mts` (gate 41,
+`bun test src/tests/`), which spawns `bash` directly against each script.
+
 ## Named drops (retired, not silently — unification-plan.md §7)
 
 - crew's `hooks/check-redundant-read.mts` self-test (a hook smoke test, not

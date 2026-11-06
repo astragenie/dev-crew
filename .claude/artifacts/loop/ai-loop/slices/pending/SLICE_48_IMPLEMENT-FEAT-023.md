@@ -30,9 +30,12 @@ Audit T3: CI docs-only exemption treats prompts as code; gate fails closed
 
 ## Acceptance criteria
 
-- [ ] AC-1: Given stdin `agents/reviewer.md`, `skills/workflow/x/SKILL.md`, or `commands/build.md`, When `docs-only.sh` runs, Then it prints `code=true`; given `docs/a.md\nREADME.md\n`, Then `code=false`; given empty stdin, Then `code=true`; given `.claude/artifacts/loop/backlog/triaged/FEAT-001.md`, Then `code=true`.
-- [ ] AC-2: Given `gate.sh "" success`, Then exit `1`; `gate.sh "true" failure`, Then exit `1`; `gate.sh "true" success`, Then exit `0`; `gate.sh "false" skipped`, Then exit `0`.
-- [ ] AC-3: Given `docs/ci-gates.md`, When inspected, Then it contains the literal strings `src/scripts/ci/docs-only.sh` and `src/scripts/ci/gate.sh`, and `bun src/scripts/generate-metrics-band.mts --check` is green with the gate list order unchanged.
+- [x] AC-1: Given stdin `agents/reviewer.md`, `skills/workflow/x/SKILL.md`, or `commands/build.md`, When `docs-only.sh` runs, Then it prints `code=true`; given `docs/a.md\nREADME.md\n`, Then `code=false`; given empty stdin, Then `code=true`; given `.claude/artifacts/loop/backlog/triaged/FEAT-001.md`, Then `code=true`.
+  - Evidence: manual shell run against `src/scripts/ci/docs-only.sh` for all five inputs reproduced exactly `code=true`/`code=false` per case; codified in `src/tests/ci/docs-only.test.mts` (7 cases incl. backlog + mixed-diff); `bun test src/tests/ci/` → `12 pass, 0 fail`.
+- [x] AC-2: Given `gate.sh "" success`, Then exit `1`; `gate.sh "true" failure`, Then exit `1`; `gate.sh "true" success`, Then exit `0`; `gate.sh "false" skipped`, Then exit `0`.
+  - Evidence: manual shell run against `src/scripts/ci/gate.sh` for all four combinations reproduced the exact exit codes; codified in `src/tests/ci/docs-only.test.mts` (4 cases, part of the same 12-pass run).
+- [x] AC-3: Given `docs/ci-gates.md`, When inspected, Then it contains the literal strings `src/scripts/ci/docs-only.sh` and `src/scripts/ci/gate.sh`, and `bun src/scripts/generate-metrics-band.mts --check` is green with the gate list order unchanged.
+  - Evidence: `docs/ci-gates.md` § "`changes`/`gate` classification scripts (FEAT-023, SLICE-48)" contains both literal paths and records the backlog-is-code decision; `CLAUDE.md`'s 42-item numbered `## CI gates` list is unchanged (order + count). `bun src/scripts/generate-metrics-band.mts --check` → `README.md metrics band is up to date` (rc=0; required one `--write` first to clear pre-existing drift from base commit 4b4f78d9, unrelated to this slice's scope).
 
 ## Done When
 
