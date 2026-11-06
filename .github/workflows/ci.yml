@@ -105,16 +105,11 @@ jobs:
           if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null; then base="HEAD~1"; fi
           changed=$(git diff --name-only "$base" HEAD || echo "UNKNOWN")
           echo "changed files:"; echo "$changed"
-          # code=true if ANY changed path is not docs/markdown/backlog. Empty or
-          # unresolved diff → treat as code (fail safe: run the full gate).
-          if [ -z "$changed" ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          elif echo "$changed" | grep -qvE '(^docs/|\.md$|/backlog/|^\.github/backlog/)'; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "docs-only change detected — tests will be skipped"
-            echo "code=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Classification lives in src/scripts/ci/docs-only.sh (FEAT-023,
+          # SLICE-48) — exempt pattern `^(docs/|README\.md$|CHANGELOG\.md$)`
+          # only; backlog markdown is CODE (it feeds four validators). Empty
+          # or unresolved diff → docs-only.sh treats as code (fail safe).
+          echo "$changed" | bash src/scripts/ci/docs-only.sh >> "$GITHUB_OUTPUT"
 
   # Every validator (root + crew blocking + crew advisory) + 3 tsc projects +
   # 4 biome invocations, exactly once. Skipped on docs-only PRs (see
@@ -338,17 +333,12 @@ jobs:
     if: always()
     runs-on: self-hosted
     steps:
+      - uses: actions/checkout@v5
       - name: Evaluate gate
         shell: bash
         run: |
-          set -uo pipefail
-          code='${{ needs.changes.outputs.code }}'
-          fg='${{ needs.fast-gate.result }}'
-          echo "changes.code=$code  fast-gate.result=$fg"
-          if [ "$code" != "true" ]; then
-            echo "✅ docs-only change — gate passes without tests"; exit 0
-          fi
-          if [ "$fg" = "success" ]; then
-            echo "✅ fast-gate passed"; exit 0
-          fi
-          echo "❌ fast-gate did not pass (result=$fg)"; exit 1
+          # Fail-closed evaluation lives in src/scripts/ci/gate.sh (FEAT-023,
+          # SLICE-48) — a blank/unresolved `changes.outputs.code` (e.g. the
+          # `changes` job failed or was skipped) now exits 1 instead of
+          # silently passing.
+          bash src/scripts/ci/gate.sh "${{ needs.changes.outputs.code }}" "${{ needs.fast-gate.result }}"

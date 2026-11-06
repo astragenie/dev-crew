@@ -25,14 +25,14 @@ tracked as FEAT-006 (P5, operator-authorized).
 <!-- demo-recording: pending W4.1 asciinema asset -->
 
 <!-- metrics-band:start -->
-_Dogfood metrics — generated 2026-08-20. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
+_Dogfood metrics — generated 2026-11-06. Every number below is computed from this repo's own artifacts; regenerate with `bun src/scripts/generate-metrics-band.mts --write`._
 
 | Metric | Value |
 |---|---|
-| FEATs shipped (done) | 21 |
-| Slices closed, last 90 days | 45 |
-| Grade average, last 5 slice closes | 0.905 (n=42 total) |
-| median per slice-close session scan | $3.287 (mean $5.476, +66.6% divergence) |
+| FEATs shipped (done) | 22 |
+| Slices closed, last 90 days | 46 |
+| Grade average, last 5 slice closes | 0.905 (n=43 total) |
+| median per slice-close session scan | $3.287 (mean $3.739, +13.8% divergence) |
 | Halt badges documented | 16 |
 | CI gates enforced | 42 |
 
