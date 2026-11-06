@@ -7,7 +7,7 @@ import path from "node:path";
 // Resolve paths relative to the repo root (two levels up from src/tests/)
 const REPO_ROOT = path.resolve(import.meta.dirname, "../..");
 const HOOK_SCRIPT = path.join(REPO_ROOT, "hooks", "bootstrap-context.mjs");
-const HOOKS_JSON = path.join(REPO_ROOT, ".claude-plugin", "hooks", "hooks.json");
+const HOOKS_JSON = path.join(REPO_ROOT, "hooks", "hooks.json");
 
 // Test 1 — Happy path: exits 0 and writes non-empty stdout containing fencing
 test("bootstrap-context hook exits 0 and writes non-empty stdout", () => {
