@@ -31,12 +31,22 @@ import { readDevcrewConfigIfPresent } from "./devcrew-config.mjs";
 // - Missing keys fall back to the preset value.
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-// Support two execution layouts:
-// 1. Emitted (scripts/ tree): src/scripts/lib → scripts/presets
-// 2. Direct (src/ tree): src/scripts/lib → scripts/presets (fallback)
-let presetDir = path.resolve(scriptDir, "..", "presets");
-if (!fs.existsSync(presetDir)) {
-  presetDir = path.resolve(scriptDir, "..", "..", "..", "scripts", "presets");
+// Support three execution layouts:
+// 1. Bundled (dist/ tree, FEAT-026): resolve via CLAUDE_PLUGIN_ROOT, set by
+//    Claude Code for every hook/CLI invocation — under the dist/ bundle
+//    this module's own location (dist/) no longer has scripts/presets at a
+//    fixed depth (Bun.build flattens every source module's import.meta.url
+//    to the single output file's path). Same pattern as hooks/pre-push-gate.mts.
+// 2. Emitted (scripts/ tree): src/scripts/lib → scripts/presets
+// 3. Direct (src/ tree): src/scripts/lib → scripts/presets (fallback)
+let presetDir: string;
+if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+  presetDir = path.join(process.env["CLAUDE_PLUGIN_ROOT"], "scripts", "presets");
+} else {
+  presetDir = path.resolve(scriptDir, "..", "presets");
+  if (!fs.existsSync(presetDir)) {
+    presetDir = path.resolve(scriptDir, "..", "..", "..", "scripts", "presets");
+  }
 }
 
 export const CONFIG_FILENAME = ".claude/loop.json";

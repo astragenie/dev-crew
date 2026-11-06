@@ -1487,9 +1487,14 @@ import fs7 from "fs/promises";
 import path7 from "path";
 import { fileURLToPath } from "url";
 var scriptDir = path7.dirname(fileURLToPath(import.meta.url));
-var templateDir = path7.resolve(scriptDir, "..", "..", "templates");
-if (!existsSync(templateDir)) {
-  templateDir = path7.resolve(scriptDir, "..", "..", "..", "templates");
+var templateDir;
+if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+  templateDir = path7.join(process.env["CLAUDE_PLUGIN_ROOT"], "templates");
+} else {
+  templateDir = path7.resolve(scriptDir, "..", "..", "templates");
+  if (!existsSync(templateDir)) {
+    templateDir = path7.resolve(scriptDir, "..", "..", "..", "templates");
+  }
 }
 var DEC_FILE_RE = /^DEC-(\d+)\.md$/;
 async function listDecisions(repoPath, {

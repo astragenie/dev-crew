@@ -8,12 +8,22 @@ import { parseSkillFrontmatter } from "./skill-frontmatter.mjs";
 import type { Rule } from "./rule-loader.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-// Support two execution layouts:
-// 1. Emitted (scripts/ tree): scripts/lib/ → templates
-// 2. Direct (src/ tree): src/scripts/lib/ → templates (fallback)
-let templateDir = path.resolve(scriptDir, "..", "..", "templates");
-if (!existsSync(templateDir)) {
-  templateDir = path.resolve(scriptDir, "..", "..", "..", "templates");
+// Support three execution layouts:
+// 1. Bundled (dist/ tree, FEAT-026): resolve via CLAUDE_PLUGIN_ROOT, set by
+//    Claude Code for every hook/CLI invocation — under the dist/ bundle
+//    this module's own location (dist/) no longer has templates/ at a
+//    fixed depth (Bun.build flattens every source module's import.meta.url
+//    to the single output file's path). Same pattern as hooks/pre-push-gate.mts.
+// 2. Emitted (scripts/ tree): scripts/lib/ → templates
+// 3. Direct (src/ tree): src/scripts/lib/ → templates (fallback)
+let templateDir: string;
+if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+  templateDir = path.join(process.env["CLAUDE_PLUGIN_ROOT"], "templates");
+} else {
+  templateDir = path.resolve(scriptDir, "..", "..", "templates");
+  if (!existsSync(templateDir)) {
+    templateDir = path.resolve(scriptDir, "..", "..", "..", "templates");
+  }
 }
 
 export async function readTemplate(relativePath: string): Promise<string> {

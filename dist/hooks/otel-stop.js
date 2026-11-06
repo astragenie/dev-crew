@@ -11166,10 +11166,18 @@ async function initBridge(cfg, opts, repoPath = process.cwd()) {
   cachedOtelApi = api;
   let pkgVersion = "0.0.0";
   try {
-    const { createRequire } = await import("module");
-    const req = createRequire(import.meta.url);
-    const pkg = req("../../package.json");
-    pkgVersion = pkg.version;
+    const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"];
+    if (pluginRoot) {
+      const fs5 = await import("fs/promises");
+      const path5 = await import("path");
+      const raw = await fs5.readFile(path5.join(pluginRoot, "crew", "package.json"), "utf8");
+      pkgVersion = JSON.parse(raw).version;
+    } else {
+      const { createRequire } = await import("module");
+      const req = createRequire(import.meta.url);
+      const pkg = req("../../package.json");
+      pkgVersion = pkg.version;
+    }
   } catch {}
   const exporter = opts?.exporter ?? new OTLPTraceExporter({
     url: cfg.endpoint,

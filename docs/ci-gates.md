@@ -113,7 +113,7 @@ this file).
 20. `bun ./src/scripts/generate-metrics-band.mts --check` — README
     metrics-band freshness gate; regenerates in-memory and diffs against
     the committed README.
-21. `bun ./src/scripts/build-dist.mts -- --check` — **new gate** (SLICE-52,
+21. `bun ./src/scripts/build-dist.mts --check` — **new gate** (SLICE-52,
     FEAT-026): rebuilds every dist/ bundle to a temp dir and byte-compares
     (CRLF/banner-normalised) against the committed output; fails loudly on
     a Bun-version mismatch against `.bun-version` or a stale bundle.
@@ -228,14 +228,14 @@ every push/PR):**
     `src/tests/install/consumer-smoke.test.mts` asserts that every shipped
     hook and CLI entry runs from a `node_modules`-free consumer copy. It is
     deliberately RED while its `EXPECTED_FAIL` ratchet is non-empty. FEAT-026
-    (SLICE-52) shrinks the ratchet from 49 entries (SLICE-47) down to the 41
+    (SLICE-52) shrinks the ratchet from 49 entries (SLICE-47) down to the 42
     CLI entries sourced from `commands/*.md`/`agents/*.md` literal
     invocations — every HOOK entry now runs self-contained from `dist/`. It
     does not go fully green yet: the CLI entries still resolve
     `@astragenie/*`/`zod`/`yaml` from `node_modules` until W2.5 (the serial
     `crew.mts`/`loop.mts`/etc. path-to-`dist/` rewrite across `commands/*.md`
     + `agents/*.md`, scheduled right after wave 2) clears them too. So gate
-    41 (and CI's `slow-tests`) are expected red on `fix/audit-2026-11` until
+    42 (and CI's `slow-tests`) are expected red on `fix/audit-2026-11` until
     W2.5 lands; the required `gate` job depends only on `fast-gate`, so
     merges are unaffected. The test is NOT quarantined on purpose — the
     ratchet also fails loudly if a listed entry starts passing (remove it
@@ -248,15 +248,15 @@ every push/PR):**
 
 ## Job structure and gating
 
-- **`fast-gate`** runs gates 1–40 (installs, all validators, tsc, biome).
+- **`fast-gate`** runs gates 1–41 (installs, all validators, tsc, biome).
   This is the required status check.
-- **`slow-tests`** runs gate 41 (root suite, retried once on a 480s
+- **`slow-tests`** runs gate 42 (root suite, retried once on a 480s
   per-attempt timeout) — kept as its own job (not the reusable-workflow
   wrapper) because it needs a job-level timeout the reusable workflow's
   fixed 30-minute limit can't give it, mirroring runner-plugin's original
   design (astragenie/runner-plugin#355).
-- **`crew-tests`** runs gate 42.
-- **`worktree-quarantine`** runs the six suites gate 41 excludes
+- **`crew-tests`** runs gate 43.
+- **`worktree-quarantine`** runs the six suites gate 42 excludes
   (`auto-merge`, `synergy`, `integration`, `integrations`,
   `slice-complete`, `slice-start` — real `git worktree` operations known to
   hang the runner, PR #348), hard-killed via `timeout`, `continue-on-error:
@@ -299,7 +299,7 @@ Windows) rather than inlined YAML, so they can be unit-tested outside CI:
   logic (`if code != "true": pass`) let that blank value pass the required
   check without `fast-gate` ever running.
 
-Both scripts are covered by `src/tests/ci/docs-only.test.mts` (gate 41,
+Both scripts are covered by `src/tests/ci/docs-only.test.mts` (gate 42,
 `bun test src/tests/`), which spawns `bash` directly against each script.
 
 ## Named drops (retired, not silently — unification-plan.md §7)

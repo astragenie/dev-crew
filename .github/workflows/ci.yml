@@ -143,7 +143,7 @@ jobs:
         bun ./src/scripts/validate-effort-points.mts
         bun ./src/scripts/validate-branding-scrub.mts
         bun ./src/scripts/generate-metrics-band.mts --check
-        bun ./src/scripts/build-dist.mts -- --check
+        bun ./src/scripts/build-dist.mts --check
         bun ./crew/scripts/validate-manifests.mts
         bun ./crew/scripts/validate-dispatch-graph.mts
         bun ./crew/scripts/validate-workflows.mts

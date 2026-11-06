@@ -119,10 +119,27 @@ export async function initBridge(
 
   let pkgVersion = "0.0.0";
   try {
-    const { createRequire } = await import("node:module");
-    const req = createRequire(import.meta.url);
-    const pkg = req("../../package.json") as { version: string };
-    pkgVersion = pkg.version;
+    // Bundled (dist/ tree, FEAT-026): createRequire(import.meta.url) resolves
+    // relative to wherever Bun.build placed this bundle (e.g. dist/hooks/),
+    // so the old `"../../package.json"` traversal silently picks up the
+    // ROOT package.json (devcrew, 1.1.0) instead of crew's own
+    // (crew/package.json, 0.66.0) — a real, silent service.version drift
+    // caught in review (not yet reconciled: crew/ is still vendored with
+    // its own independent version during the merge window, AGENTS.md
+    // "Repo topology"). Pin explicitly via CLAUDE_PLUGIN_ROOT so the
+    // reported version doesn't depend on bundling at all.
+    const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"];
+    if (pluginRoot) {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      const raw = await fs.readFile(path.join(pluginRoot, "crew", "package.json"), "utf8");
+      pkgVersion = (JSON.parse(raw) as { version: string }).version;
+    } else {
+      const { createRequire } = await import("node:module");
+      const req = createRequire(import.meta.url);
+      const pkg = req("../../package.json") as { version: string };
+      pkgVersion = pkg.version;
+    }
   } catch {
     // ignore
   }

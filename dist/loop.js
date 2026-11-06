@@ -794,9 +794,13 @@ var scriptDir, presetDir, CONFIG_FILENAME = ".claude/loop.json", DEFAULT_LIGHT_L
 var init_config_resolver = __esm(() => {
   init_devcrew_config();
   scriptDir = path2.dirname(fileURLToPath2(import.meta.url));
-  presetDir = path2.resolve(scriptDir, "..", "presets");
-  if (!fs2.existsSync(presetDir)) {
-    presetDir = path2.resolve(scriptDir, "..", "..", "..", "scripts", "presets");
+  if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+    presetDir = path2.join(process.env["CLAUDE_PLUGIN_ROOT"], "scripts", "presets");
+  } else {
+    presetDir = path2.resolve(scriptDir, "..", "presets");
+    if (!fs2.existsSync(presetDir)) {
+      presetDir = path2.resolve(scriptDir, "..", "..", "..", "scripts", "presets");
+    }
   }
   DEFAULT_LIGHT_LADDER = {
     reviewers: { ladder: ["A"] },
@@ -1508,9 +1512,13 @@ var init_loop_installer_tokens = __esm(() => {
   init_paths();
   init_skill_frontmatter();
   scriptDir2 = path5.dirname(fileURLToPath3(import.meta.url));
-  templateDir = path5.resolve(scriptDir2, "..", "..", "templates");
-  if (!existsSync(templateDir)) {
-    templateDir = path5.resolve(scriptDir2, "..", "..", "..", "templates");
+  if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+    templateDir = path5.join(process.env["CLAUDE_PLUGIN_ROOT"], "templates");
+  } else {
+    templateDir = path5.resolve(scriptDir2, "..", "..", "templates");
+    if (!existsSync(templateDir)) {
+      templateDir = path5.resolve(scriptDir2, "..", "..", "..", "templates");
+    }
   }
 });
 
@@ -18562,9 +18570,13 @@ var init_decisions_store = __esm(() => {
   init_frontmatter();
   init_paths();
   scriptDir3 = path32.dirname(fileURLToPath4(import.meta.url));
-  templateDir2 = path32.resolve(scriptDir3, "..", "..", "templates");
-  if (!existsSync2(templateDir2)) {
-    templateDir2 = path32.resolve(scriptDir3, "..", "..", "..", "templates");
+  if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+    templateDir2 = path32.join(process.env["CLAUDE_PLUGIN_ROOT"], "templates");
+  } else {
+    templateDir2 = path32.resolve(scriptDir3, "..", "..", "templates");
+    if (!existsSync2(templateDir2)) {
+      templateDir2 = path32.resolve(scriptDir3, "..", "..", "..", "templates");
+    }
   }
   DEC_FILE_RE = /^DEC-(\d+)\.md$/;
 });
@@ -30810,7 +30822,12 @@ import path87 from "path";
 import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL3 } from "url";
 async function importGithubSyncModule(relPath) {
   const currentDir = path87.dirname(fileURLToPath5(import.meta.url));
+  const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"];
   const paths = [
+    ...pluginRoot ? [
+      path87.join(pluginRoot, "scripts", "lib", "github-sync", relPath),
+      path87.join(pluginRoot, "scripts", "lib", relPath)
+    ] : [],
     path87.resolve(currentDir, "..", "..", "github-sync", relPath),
     path87.resolve(currentDir, "..", "..", "..", "..", "..", "scripts", "lib", "github-sync", relPath),
     path87.resolve(currentDir, "..", "..", "..", "..", "..", "scripts", "lib", relPath)
@@ -33882,9 +33899,13 @@ var init_grade_writer = __esm(() => {
   init_features_service();
   init_lessons_feed();
   scriptDir4 = path98.dirname(fileURLToPath6(import.meta.url));
-  templateDir3 = path98.resolve(scriptDir4, "..", "..", "templates");
-  if (!existsSync7(templateDir3)) {
-    templateDir3 = path98.resolve(scriptDir4, "..", "..", "..", "templates");
+  if (process.env["CLAUDE_PLUGIN_ROOT"]) {
+    templateDir3 = path98.join(process.env["CLAUDE_PLUGIN_ROOT"], "templates");
+  } else {
+    templateDir3 = path98.resolve(scriptDir4, "..", "..", "templates");
+    if (!existsSync7(templateDir3)) {
+      templateDir3 = path98.resolve(scriptDir4, "..", "..", "..", "templates");
+    }
   }
 });
 
@@ -36313,6 +36334,7 @@ import { fileURLToPath as fileURLToPath7, pathToFileURL as pathToFileURL4 } from
 async function importGithubSync(rel) {
   const here = path106.dirname(fileURLToPath7(import.meta.url));
   const candidates = [
+    ...process.env["CLAUDE_PLUGIN_ROOT"] ? [path106.join(process.env["CLAUDE_PLUGIN_ROOT"], "scripts", "lib", rel)] : [],
     path106.resolve(here, rel),
     path106.resolve(here, "..", "..", "..", "scripts", "lib", rel)
   ];

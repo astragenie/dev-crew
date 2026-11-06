@@ -94,7 +94,7 @@ merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–32 blocking
 18. `validate-effort-points.mts` — FEAT `effort_points` Fibonacci check.
 19. `validate-branding-scrub.mts` — retired-name sweep, full merged tree.
 20. `generate-metrics-band.mts --check` — README metrics-band freshness.
-21. `build-dist.mts -- --check` — dist/ bundle freshness + Bun-version pin.
+21. `build-dist.mts --check` — dist/ bundle freshness + Bun-version pin.
 22. `crew/scripts/validate-manifests.mts` — crew's own manifest check.
 23. `crew/scripts/validate-dispatch-graph.mts` — peer-dispatch DAG check.
 24. `crew/scripts/validate-workflows.mts` — workflows.yaml schema/order.

@@ -30,13 +30,20 @@
 // reproduced the same false stale; deleting `NODE_ENV` from only the
 // child's env (not the in-process call, which Bun.build reads at a point
 // this test cannot reach) fixes it.
-import { test } from "bun:test";
+import { afterAll, setDefaultTimeout, test } from "bun:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { builtinModules } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectHookEntries, resolveEntries } from "../../scripts/build-dist.mjs";
+import {
+  stageConsumerCopy,
+  type ConsumerStage
+} from "../../scripts/lib/install/shipped-entrypoints.mjs";
+
+setDefaultTimeout(180_000);
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -241,7 +248,7 @@ test("dist/.build-info.json records the pinned Bun version and matches resolveEn
   assert.equal(buildInfo.entries.length, resolved.length);
 });
 
-test("dist/ is committed (not .gitignore'd) and dist/hooks/*.js bundles contain no bare node_modules import", async () => {
+test("dist/ is committed (not .gitignore'd)", async () => {
   const gitignore = await readFile(path.join(REPO_ROOT, ".gitignore"), "utf8");
   const distIgnored = gitignore
     .split("\n")
@@ -250,8 +257,129 @@ test("dist/ is committed (not .gitignore'd) and dist/hooks/*.js bundles contain 
   assert.equal(distIgnored, false, "dist/ is still in .gitignore — FEAT-026 requires it committed");
 });
 
+// Node builtins stay bare specifiers (node:fs, node:path, ...) even after
+// bundling — they're not node_modules. @opentelemetry/* and @aws-sdk/* are
+// the two prefixes build-dist.mts's `external` config deliberately leaves
+// un-inlined (see src/scripts/build-dist.mts's EXTERNAL const) so a
+// consumer without those packages gets a clean, catchable import failure
+// (FEAT-026 AC-3) instead of a silently wrong bundle. Anything else bare
+// would mean this entry's bundle still expects something from
+// node_modules at runtime — exactly what FEAT-026 exists to eliminate.
+const ALLOWED_BARE_PREFIXES = ["node:", "@opentelemetry/", "@aws-sdk/"];
+const BUILTIN_MODULE_NAMES = new Set(builtinModules);
+
+// Real ESM import/export-from statements only ever appear at the start of a
+// (post-bundle) line, e.g. `import fs from "fs/promises";` — anchoring on
+// `^` avoids matching the English word "from" followed by a quote inside
+// an arbitrary string literal elsewhere in the bundle (e.g. a log message
+// like `[normalized from '${verdict.decision}']`, which an unanchored
+// regex false-positived on while writing this test).
+const STATIC_IMPORT_RE = /^\s*(?:import|export)\b[^;\n]*?\bfrom\s*["']([^"']+)["']/gm;
+const BARE_IMPORT_STATEMENT_RE = /^\s*import\s*["']([^"']+)["']/gm;
+const REQUIRE_OR_DYNAMIC_IMPORT_RE = /\b(?:require|import)\(\s*["']([^"']+)["']\s*\)/g;
+
+function bareSpecifiersIn(source: string): string[] {
+  const found = new Set<string>();
+  for (const re of [STATIC_IMPORT_RE, BARE_IMPORT_STATEMENT_RE, REQUIRE_OR_DYNAMIC_IMPORT_RE]) {
+    for (const match of source.matchAll(re)) {
+      const specifier = match[1];
+      if (specifier === undefined || specifier.startsWith(".") || specifier.startsWith("/"))
+        continue;
+      if (ALLOWED_BARE_PREFIXES.some((prefix) => specifier.startsWith(prefix))) continue;
+      if (BUILTIN_MODULE_NAMES.has(specifier)) continue;
+      found.add(specifier);
+    }
+  }
+  return [...found].sort();
+}
+
+test("every committed dist/*.js and dist/hooks/*.js bundle has no bare node_modules import left un-inlined", async () => {
+  const entries = await resolveEntries();
+  assert.ok(entries.length > 0, "resolveEntries() returned nothing to check");
+  for (const entry of entries) {
+    const source = await readFile(path.join(REPO_ROOT, "dist", entry.out), "utf8");
+    const bare = bareSpecifiersIn(source);
+    assert.deepEqual(
+      bare,
+      [],
+      `dist/${entry.out} still imports from node_modules: ${bare.join(", ")}`
+    );
+  }
+});
+
 // `build()` itself is not exercised here: a destructive full rebuild of the
 // committed dist/ from a test would race any concurrently running --check
 // in CI. The CLI's `build()` and `--check` paths were proved directly
 // (rc=0 clean / rc=1 after a real stale-source edit, reverted) as part of
 // FEAT-026's own validation evidence instead.
+
+// Review A (SLICE-52) found config-resolver.mts/loop-installer-tokens.mts/
+// decisions-store.mts/grade-writer.mts (presets/templates) and
+// github-sync-loader.mts/github-provider.mts (runtime-only .mjs modules)
+// all resolved their data/sibling files relative to `import.meta.url`,
+// which under the bundle is dist/'s own location, not the source tree's —
+// `bun dist/loop.js list-presets` and `bun dist/loop.js install --repo
+// <dir> --preset dotnet-python` both threw ENOENT while `bun
+// src/scripts/loop.mts ...` succeeded. Fixed by resolving those dirs via
+// CLAUDE_PLUGIN_ROOT (set by Claude Code for every hook/CLI invocation)
+// when present, same pattern hooks/pre-push-gate.mts already used. This is
+// the real end-to-end regression lock for that fix: stages a full,
+// node_modules-free copy of this plugin tree (mirroring a real consumer
+// install) and runs the bundled dist/loop.js CLI directly out of it with
+// CLAUDE_PLUGIN_ROOT set, exactly as Claude Code would invoke it.
+const stagedBaseDirs: string[] = [];
+
+async function stageConsumerCopyTracked(pluginRoot: string): Promise<ConsumerStage> {
+  const stage = await stageConsumerCopy(pluginRoot);
+  stagedBaseDirs.push(stage.baseDir);
+  return stage;
+}
+
+afterAll(async () => {
+  await Promise.all(
+    stagedBaseDirs.map((dir) => rm(dir, { recursive: true, force: true }).catch(() => {}))
+  );
+});
+
+test("bun dist/loop.js list-presets runs clean from a node_modules-free consumer copy (review A repro)", async () => {
+  const { pluginCopy, consumerRepo } = await stageConsumerCopyTracked(REPO_ROOT);
+  const proc = Bun.spawnSync(["bun", path.join(pluginCopy, "dist", "loop.js"), "list-presets"], {
+    cwd: consumerRepo,
+    env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginCopy, CLAUDE_PROJECT_DIR: consumerRepo }
+  });
+  const stdout = proc.stdout ? Buffer.from(proc.stdout).toString("utf8") : "";
+  const stderr = proc.stderr ? Buffer.from(proc.stderr).toString("utf8") : "";
+  assert.equal(
+    proc.exitCode,
+    0,
+    `expected rc=0, got ${proc.exitCode}. stdout: ${stdout} stderr: ${stderr}`
+  );
+  assert.doesNotMatch(stderr, /ENOENT|Cannot find (package|module)/);
+});
+
+test("bun dist/loop.js install --preset dotnet-python runs clean from a node_modules-free consumer copy (review A repro)", async () => {
+  const { pluginCopy, consumerRepo } = await stageConsumerCopyTracked(REPO_ROOT);
+  const proc = Bun.spawnSync(
+    [
+      "bun",
+      path.join(pluginCopy, "dist", "loop.js"),
+      "install",
+      "--repo",
+      consumerRepo,
+      "--preset",
+      "dotnet-python"
+    ],
+    {
+      cwd: consumerRepo,
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginCopy, CLAUDE_PROJECT_DIR: consumerRepo }
+    }
+  );
+  const stdout = proc.stdout ? Buffer.from(proc.stdout).toString("utf8") : "";
+  const stderr = proc.stderr ? Buffer.from(proc.stderr).toString("utf8") : "";
+  assert.equal(
+    proc.exitCode,
+    0,
+    `expected rc=0, got ${proc.exitCode}. stdout: ${stdout} stderr: ${stderr}`
+  );
+  assert.doesNotMatch(stderr, /ENOENT|Cannot find (package|module)/);
+});

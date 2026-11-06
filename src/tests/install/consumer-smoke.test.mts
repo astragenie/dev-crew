@@ -3,7 +3,7 @@
 // actually installs ships no node_modules for crew/ (root bun.lock declares
 // workspaces; crew/ carries deps the root package.json doesn't), so every
 // crew/ entry importing @astragenie/plugin-std, zod, or yaml crashes. This
-// is the permanent gate that proves it, scoped to this file only (gate 41,
+// is the permanent gate that proves it, scoped to this file only (gate 42,
 // slow-tests) so it never blocks the fast merge gate.
 //
 // EXPECTED_FAIL below is a ratchet, not a todo list: it is seeded with
