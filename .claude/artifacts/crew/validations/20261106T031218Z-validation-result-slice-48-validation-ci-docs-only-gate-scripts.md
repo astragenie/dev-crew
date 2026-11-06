@@ -1,0 +1,17 @@
+---
+feature: FEAT-023
+findings: "1. docs-only.sh per-path classification (agents/reviewer.md, commands/build.md, skills/workflow/x/SKILL.md, .claude/artifacts/loop/backlog/triaged/FEAT-022.md, hooks/hooks.json, src/scripts/ci/gate.sh) -> all code=true. PASS.\n2. docs-only.sh matrix: {docs/a.md,README.md,CHANGELOG.md} -> code=false rc=0; empty stdin -> code=true rc=0; {docs/a.md,src/x.mts} mixed -> code=true rc=0; CRLF \"docs/a.md\\r\\n\" -> code=false rc=0 (no hazard; ^docs/ prefix match is unaffected by trailing \\r since the pattern has no end anchor on that branch). PASS, no finding.\n3. gate.sh matrix: (\"\" success)->rc=1; (true failure)->rc=1; (true success)->rc=0; (false skipped)->rc=0; (false failure)->rc=0; (true cancelled)->rc=1; (garbage success)->rc=1. All matched expected rc exactly. PASS.\n4. Real diff 4b4f78d9...08717b9b (7 files touching src/, .github/, src/tests/) piped through docs-only.sh -> code=true rc=0. PASS.\n5. .github/workflows/ci.yml wiring: `changes` job (id: filter, line ~100) runs `echo \"$changed\" | bash src/scripts/ci/docs-only.sh >> \"$GITHUB_OUTPUT\"` and exposes `outputs.code`. `fast-gate` job gated on `needs.changes.outputs.code == 'true'`. `gate` job (line 330) has `needs: [changes, fast-gate]` AND `if: always()`, then runs `bash src/scripts/ci/gate.sh \"${{ needs.changes.outputs.code }}\" \"${{ needs.fast-gate.result }}\"`. The always() condition IS present -> gate fails closed even if `changes` fails/is skipped, matching gate.sh's fail-closed design. No missing-always() hazard found.\n6. `bun test src/tests/ci/` -> 12 pass, 0 fail, 12 expect() calls, rc=0.\nOverall: no deviations from spec, no Windows-runner hazards, no fail-open gaps. Decision: PASS."
+decision: pass
+---
+# Validation Result: SLICE-48 validation: CI docs-only + gate scripts
+
+- Created: 2026-11-06T03:12:18.393Z
+- Validator: verifier
+- Environment: Windows 11, Git Bash, Bun 1.3.14, fix/audit-2026-11@08717b9b
+- Decision: pass
+- Scenario: SLICE-48 / FEAT-023 CI docs-only + gate scripts validated directly from repo root (branch fix/audit-2026-11, HEAD 08717b9b, Bun 1.3.14, Git Bash on Windows). All 6 scenarios behaved exactly as specified: docs-only.sh correctly classifies agents/commands/skills/backlog/hooks/ci-script paths as code=true, classifies docs/README/CHANGELOG-only diffs as code=false, treats empty stdin and mixed diffs as code=true (fail-safe), and a CRLF-suffixed exempt path (docs/a.md\r\n) still resolves to code=false (no Windows-runner line-ending hazard observed). gate.sh's fail-closed matrix (7 CODE/FASTGATE_RESULT combinations) matched expected exit codes exactly, including the empty-code and garbage-code cases now failing closed (rc=1) instead of the prior silent-pass bug. The real merge diff (4b4f78d9..08717b9b) classifies as code=true as expected. Workflow wiring in .github/workflows/ci.yml confirmed: the `changes` job (line 91) pipes `git diff --name-only` into docs-only.sh and writes `code` to GITHUB_OUTPUT; the `gate` job (line 330) declares `needs: [changes, fast-gate]` with `if: always()` and invokes `gate.sh "${{ needs.changes.outputs.code }}" "${{ needs.fast-gate.result }}"` — the always()-gate is present, so a failed/skipped `changes` job still runs `gate` and gate.sh fails closed rather than the job being skipped entirely. `bun test src/tests/ci/` passed 12/12 assertions. No regressions or hazards found; decision is PASS.
+- Evidence Collected: -
+- Files / Surfaces Checked: -
+- Risks: -
+- Required Follow-up: -
+
