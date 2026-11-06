@@ -40,8 +40,13 @@ function toPosixPath(value: string): string {
   return value.split(path.sep).join("/");
 }
 
-function fixtureForHookEvent(event: string): string | undefined {
-  if (event === "PreToolUse") return path.join(FIXTURES_DIR, "pretooluse-bash.json");
+function fixtureForHookEvent(event: string, file: string): string | undefined {
+  const basename = path.posix.basename(toPosixPath(file));
+  if (event === "PreToolUse") {
+    return basename.includes("pre-push")
+      ? path.join(FIXTURES_DIR, "prepush-bash.json")
+      : path.join(FIXTURES_DIR, "pretooluse-bash.json");
+  }
   if (event === "SubagentStop") return path.join(FIXTURES_DIR, "subagentstop-done.json");
   return undefined;
 }
@@ -78,7 +83,7 @@ function parseHookCommand(event: string, command: string): ShippedEntrypoint | n
           .split(/\s+/)
           .filter((token) => token.length > 0)
       : [];
-  const fixture = fixtureForHookEvent(event);
+  const fixture = fixtureForHookEvent(event, file);
   return {
     kind: "hook",
     runtime,
@@ -231,6 +236,8 @@ function shouldExcludeFromStaging(pluginRoot: string, candidate: string): boolea
 export interface ConsumerStage {
   pluginCopy: string;
   consumerRepo: string;
+  /** Parent temp dir holding both pluginCopy and consumerRepo — remove this to clean up. */
+  baseDir: string;
 }
 
 /**
@@ -275,5 +282,5 @@ export async function stageConsumerCopy(pluginRoot: string): Promise<ConsumerSta
     { cwd: consumerRepo }
   );
 
-  return { pluginCopy, consumerRepo };
+  return { pluginCopy, consumerRepo, baseDir: base };
 }

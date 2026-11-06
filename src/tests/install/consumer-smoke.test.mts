@@ -21,21 +21,40 @@
 // entries from those two markdown globs (by design — see
 // shipped-entrypoints.mts), that specific invocation is not in the entry
 // list and therefore cannot appear in the observed-failure set below.
-import { setDefaultTimeout, test } from "bun:test";
+import { afterAll, setDefaultTimeout, test } from "bun:test";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   groupDistinctFilesByRuntime,
   listShippedEntrypoints,
   stageConsumerCopy,
+  type ConsumerStage,
   type ShippedEntrypoint
 } from "../../scripts/lib/install/shipped-entrypoints.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 setDefaultTimeout(180_000);
+
+// Each stageConsumerCopy() call copies the ~269 MB plugin tree into a fresh
+// os.tmpdir() base dir that nothing else removes. Track every base dir this
+// file stages and clean them up once, after all tests, so repeated runs on
+// a persistent self-hosted CI runner don't leak unbounded disk.
+const stagedBaseDirs: string[] = [];
+
+async function stageConsumerCopyTracked(pluginRoot: string): Promise<ConsumerStage> {
+  const stage = await stageConsumerCopy(pluginRoot);
+  stagedBaseDirs.push(stage.baseDir);
+  return stage;
+}
+
+afterAll(async () => {
+  await Promise.all(
+    stagedBaseDirs.map((dir) => rm(dir, { recursive: true, force: true }).catch(() => {}))
+  );
+});
 
 // Observed by actually running every entry listShippedEntrypoints produces
 // against a staged, node_modules-free copy (2026-11-06). `crew/scripts/
@@ -100,7 +119,7 @@ function labelFor(entry: ShippedEntrypoint): string {
 }
 
 test("every shipped hook and CLI entry runs without node_modules (ratchet against EXPECTED_FAIL)", async () => {
-  const { pluginCopy, consumerRepo } = await stageConsumerCopy(REPO_ROOT);
+  const { pluginCopy, consumerRepo } = await stageConsumerCopyTracked(REPO_ROOT);
   const entries = await listShippedEntrypoints(pluginCopy);
   assert.ok(entries.length > 20, `expected >20 shipped entries, found ${entries.length}`);
 
@@ -181,7 +200,7 @@ test("listShippedEntrypoints produces the exact distinct-file-set counts from th
 });
 
 test("stageConsumerCopy excludes node_modules at every depth and leaves exactly one consumer commit", async () => {
-  const { pluginCopy, consumerRepo } = await stageConsumerCopy(REPO_ROOT);
+  const { pluginCopy, consumerRepo } = await stageConsumerCopyTracked(REPO_ROOT);
 
   async function findNodeModulesDirs(dir: string): Promise<string[]> {
     const found: string[] = [];
