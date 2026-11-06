@@ -87,20 +87,20 @@ afterAll(async () => {
 //      (verified by direct execution 2026-11-06) -- the same unfixed
 //      root cause, just newly visible. SLICE-56 (agents/*.md repoint) owns
 //      clearing these.
-//  (b) the new dist/*.js-labelled commands entries themselves: verified by
-//      direct execution (2026-11-06) that NONE of them hit a module-
-//      resolution error anymore -- every one now fails, if at all, on a
-//      clean CLI argument/precondition check (e.g. `repair-check refused:
-//      --failure-output <text> is required`, `No .claude/loop.json found`),
-//      which is exactly the "own argument-validation error, never a
-//      module-resolution error" outcome FEAT-037/AC-5 calls a pass. They
-//      are deliberately NOT added here: this ratchet's `failed` heuristic
-//      (any non-zero exit, not just a module-resolution crash) does not
-//      yet distinguish that case, which is why the first assertion below
-//      still reports them under `newlyBroken` -- a known, scoped gap left
-//      for SLICE-59 ("drain EXPECTED_FAIL to empty and assert the
-//      entry-count floor") to close by refining that heuristic, not by
-//      re-listing these as expected failures.
+//  (b) the new dist/*.js-labelled commands entries: verified by direct
+//      execution (2026-11-06) that none of them hit a module-resolution
+//      error anymore. Most fail, if at all, only on a clean CLI
+//      argument/precondition check against the doc examples' placeholder
+//      args (e.g. `repair-check refused: --failure-output <text> is
+//      required`, `No .claude/loop.json found`, or a raw-but-harmless
+//      `ENOENT ... mkdir '...."$PWD"...'` from the literal, never-shell-
+//      expanded `"$PWD"` token this harness passes as one argv entry) --
+//      exactly the "own argument-validation error, never a
+//      module-resolution error" outcome FEAT-037/AC-5 calls a pass. The
+//      classifyRunResult() below (pulled forward from SLICE-59 at the
+//      team lead's direction, 2026-11-06) makes that distinction
+//      explicit instead of treating every non-zero exit as a ratchet
+//      failure, so these are correctly absent from EXPECTED_FAIL.
 const EXPECTED_FAIL = new Set<string>([
   'crew/scripts/crew.mts mark-badge --repo "$PWD" --badge help_request --note "<setup problem>"',
   'crew/scripts/crew.mts write-deployment-check --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting investigation"',
@@ -113,6 +113,91 @@ const EXPECTED_FAIL = new Set<string>([
 function labelFor(entry: ShippedEntrypoint): string {
   return `${entry.file} ${entry.args.join(" ")}`.trim();
 }
+
+export type RunClassification = "ok" | "arg-error" | "crash";
+
+// FEAT-037/SLICE-55 (2026-11-06, pulled forward from SLICE-59 at the team
+// lead's direction): this ratchet's job is to prove "runs without
+// node_modules" (AC-5's bar: never a module-resolution error), not "every
+// doc example's placeholder args produce a clean result." A bare
+// `exitCode !== 0` check conflates those two things -- after the dist/
+// path rewrite, dozens of commands-origin entries fail only on their own
+// CLI argument/precondition checks (missing config, a literal
+// never-shell-expanded `"$PWD"` placeholder token, a required flag) with
+// no module-resolution signature anywhere in their output. Those are
+// passes for this suite's purpose. This list is the explicit, documented
+// set of signatures that DO indicate the self-containment promise was
+// broken; anything else with a real (non-empty) CLI-produced message is
+// an "arg-error", not a "crash".
+const MODULE_RESOLUTION_SIGNATURE_RE =
+  /Cannot find module|Module not found|Cannot find package|ERR_MODULE_NOT_FOUND|ENOENT.*node_modules|SyntaxError/;
+
+export function classifyRunResult(result: {
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+}): RunClassification {
+  if (result.exitCode === 0) return "ok";
+  const combined = `${result.stderr}${result.stdout}`;
+  if (MODULE_RESOLUTION_SIGNATURE_RE.test(combined)) return "crash";
+  // Non-zero exit, no module-resolution signature, but also no message of
+  // any kind: the process died some other way without reporting anything
+  // CLI-shaped (e.g. a signal kill, a silent segfault-style exit). Treat
+  // that as a crash too rather than silently passing it.
+  if (combined.trim().length === 0) return "crash";
+  return "arg-error";
+}
+
+/**
+ * The single point where a classified run result becomes (or doesn't
+ * become) a ratchet failure, factored out so the two unit tests below can
+ * exercise it directly with fixtures instead of spawning real processes.
+ */
+export function evaluateEntryResult(
+  label: string,
+  classification: RunClassification,
+  expectedFail: ReadonlySet<string>
+): { isObservedCrash: boolean; isNewlyBroken: boolean } {
+  const isObservedCrash = classification === "crash";
+  const isNewlyBroken = isObservedCrash && !expectedFail.has(label);
+  return { isObservedCrash, isNewlyBroken };
+}
+
+// Two unit-level proofs of the classifier's boundary behavior, independent
+// of the slow staged-copy integration test below.
+test("classifyRunResult: a module-resolution crash lands in newlyBroken when not in EXPECTED_FAIL", () => {
+  const classification = classifyRunResult({
+    exitCode: 1,
+    stdout: "",
+    stderr: "Cannot find module '@astragenie/plugin-std' from '/plugin/crew/scripts/lib/result.mts'"
+  });
+  assert.equal(classification, "crash");
+
+  const { isObservedCrash, isNewlyBroken } = evaluateEntryResult(
+    "crew/scripts/crew.mts some-newly-surfaced-subcommand",
+    classification,
+    EXPECTED_FAIL
+  );
+  assert.equal(isObservedCrash, true);
+  assert.equal(isNewlyBroken, true);
+});
+
+test("classifyRunResult: a clean CLI argument/precondition error does not land in newlyBroken", () => {
+  const classification = classifyRunResult({
+    exitCode: 1,
+    stdout: "",
+    stderr: "repair-check refused: --failure-output <text> is required."
+  });
+  assert.equal(classification, "arg-error");
+
+  const { isObservedCrash, isNewlyBroken } = evaluateEntryResult(
+    'dist/crew.js repair-check --repo "$PWD"',
+    classification,
+    EXPECTED_FAIL
+  );
+  assert.equal(isObservedCrash, false);
+  assert.equal(isNewlyBroken, false);
+});
 
 test("every shipped hook and CLI entry runs without node_modules (ratchet against EXPECTED_FAIL)", async () => {
   const { pluginCopy, consumerRepo } = await stageConsumerCopyTracked(REPO_ROOT);
@@ -138,7 +223,12 @@ test("every shipped hook and CLI entry runs without node_modules (ratchet agains
   );
 
   const hasBash = Bun.which("bash") !== null;
-  const observed = new Set<string>();
+  const observedCrashes = new Set<string>();
+  // Per-entry audit trail (printed below) so a reviewer can see exactly
+  // why each non-"ok" entry was or wasn't counted as a ratchet failure,
+  // rather than taking classifyRunResult()'s word for it on faith.
+  const argErrorAudit: string[] = [];
+  const crashAudit: string[] = [];
 
   for (const entry of entries) {
     const label = labelFor(entry);
@@ -163,12 +253,32 @@ test("every shipped hook and CLI entry runs without node_modules (ratchet agains
       timeout: 30_000
     });
     const stderrText = proc.stderr ? Buffer.from(proc.stderr).toString("utf8") : "";
-    const failed = proc.exitCode !== 0 || /Cannot find (package|module)/.test(stderrText);
-    if (failed) observed.add(label);
+    const stdoutText = proc.stdout ? Buffer.from(proc.stdout).toString("utf8") : "";
+    const classification = classifyRunResult({
+      exitCode: proc.exitCode,
+      stdout: stdoutText,
+      stderr: stderrText
+    });
+    const { isObservedCrash } = evaluateEntryResult(label, classification, EXPECTED_FAIL);
+    if (isObservedCrash) {
+      observedCrashes.add(label);
+      crashAudit.push(`[crash] ${label} :: ${(stderrText || stdoutText).slice(0, 160)}`);
+    } else if (classification === "arg-error") {
+      argErrorAudit.push(`[arg-error] ${label} :: ${(stderrText || stdoutText).slice(0, 160)}`);
+    }
   }
 
-  const newlyBroken = [...observed].filter((label) => !EXPECTED_FAIL.has(label)).sort();
-  const nowPassing = [...EXPECTED_FAIL].filter((label) => !observed.has(label)).sort();
+  // Printed unconditionally (not just on failure) so a reviewer auditing
+  // this suite's output can see the full classification, not just the
+  // entries that happened to trip an assertion.
+  console.log(
+    `consumer-smoke classification audit: ${crashAudit.length} crash, ${argErrorAudit.length} arg-error`
+  );
+  for (const line of crashAudit) console.log(line);
+  for (const line of argErrorAudit) console.log(line);
+
+  const newlyBroken = [...observedCrashes].filter((label) => !EXPECTED_FAIL.has(label)).sort();
+  const nowPassing = [...EXPECTED_FAIL].filter((label) => !observedCrashes.has(label)).sort();
 
   assert.deepEqual(newlyBroken, [], `newly broken: ${JSON.stringify(newlyBroken)}`);
   assert.deepEqual(nowPassing, [], `remove from EXPECTED_FAIL: ${JSON.stringify(nowPassing)}`);

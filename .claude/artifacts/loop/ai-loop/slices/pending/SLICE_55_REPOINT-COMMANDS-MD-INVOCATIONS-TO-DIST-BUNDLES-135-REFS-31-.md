@@ -62,22 +62,30 @@ W2.5 path rewrite: point every shipped slash-command and agent prompt at the dis
   copy, When `listShippedEntrypoints` runs, Then CLI entries stay >= 42
   (observed 63) and `dist/hooks/*.js` entries stay >= 11 (observed 21), now
   asserted explicitly in `consumer-smoke.test.mts`. PASS.
-- [~] AC-1 / ratchet newlyBroken=[] (this slice's scoped portion only):
+- [x] AC-1 / ratchet newlyBroken=[] (this slice's scoped portion; team-lead
+  decision 2026-11-06 pulled the classification fix forward from SLICE-59):
   Given the rewrite, When `bun test src/tests/install/consumer-smoke.test.mts`
-  runs, Then stale commands-origin `EXPECTED_FAIL` labels (42) are removed
-  and the 6 agents-origin labels the old file+firstArg dedup was hiding
-  behind them are added (confirmed real `Cannot find module
-  '@astragenie/plugin-std'` crashes by direct execution) — `nowPassing` is
-  now `[]`. **NOT fully PASS**: `newlyBroken` still lists the 40 new
-  `dist/*.js`-labelled commands entries. Verified by direct execution that
-  none of them hit a module-resolution error (AC-5's own bar) — every one
-  fails only on a clean CLI argument/precondition check (e.g. `repair-check
-  refused: --failure-output <text> is required`, `No .claude/loop.json
-  found`). The ratchet's `failed` heuristic (`exitCode !== 0 || /Cannot
-  find.../`) does not yet distinguish that from a real crash — closing that
-  gap is explicitly SLICE-59's job ("drain EXPECTED_FAIL to empty"), not
-  re-listable here per this slice's own "must not add dist-form entries"
-  constraint. Flagged, not silently worked around.
+  runs, Then stale commands-origin `EXPECTED_FAIL` labels (42) are removed,
+  the 6 agents-origin labels the old file+firstArg dedup was hiding behind
+  them are added (confirmed real `Cannot find module '@astragenie/plugin-std'`
+  crashes by direct execution), and `nowPassing` is `[]`. The ratchet's
+  pass/fail predicate now calls `classifyRunResult()` (exported, with two
+  dedicated unit tests using fixed crash/arg-error fixtures) instead of a
+  bare `exitCode !== 0` check: `ok` (rc 0), `arg-error` (rc != 0, no
+  module-resolution signature, non-empty CLI output), `crash` (matches
+  `/Cannot find module|Module not found|Cannot find package|
+  ERR_MODULE_NOT_FOUND|ENOENT.*node_modules|SyntaxError/`, or dies with
+  empty output). Verified by direct execution against all 52 dist-form
+  commands entries that every one classifies `ok` or `arg-error` (e.g.
+  `repair-check refused: --failure-output <text> is required`, `No
+  .claude/loop.json found`, the `watch-tick` registry-missing message,
+  the harness's own literal never-shell-expanded `"$PWD"` producing
+  `ENOENT ... mkdir '...."$PWD"...'`) — none hit the crash regex. PASS:
+  `newlyBroken = []` and `nowPassing = []` both assert clean; only the
+  designed-red "EXPECTED_FAIL non-empty" assertion still fails (6 real
+  agents-origin crashes remain, SLICE-56's job) and SLICE-59 still owns
+  draining `EXPECTED_FAIL` to empty + the AC-2 floor assertion (added
+  early, in this slice, per the note above).
 - [x] AC-5 (commands-only slice of FEAT AC-5): Given
   `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" audit --repo "$PWD"`,
   `.../dist/loop.js status ...` and `.../dist/crew.js brief-me ...`, When
