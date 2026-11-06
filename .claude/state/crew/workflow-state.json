@@ -1,24 +1,33 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-06T03:14:45.440Z",
+  "updatedAt": "2026-11-06T03:27:54.904Z",
   "currentRun": {
-    "title": "FEAT023 SLICE48: Implement FEAT-023",
-    "goal": "Audit T3: CI docs-only exemption treats prompts as code; gate fails closed",
+    "title": "FEAT034 SLICE51: Implement FEAT-034",
+    "goal": "Wave planner reads PM field names intake never writes — ranking flat, risk pre-flight dead",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-06T03:09:53.184Z",
-    "updatedAt": "2026-11-06T03:14:45.439Z",
+    "startedAt": "2026-11-06T03:20:58.599Z",
+    "updatedAt": "2026-11-06T03:27:54.904Z",
     "next": "Begin implementation",
     "gates": {
       "review": {
         "status": "passed",
-        "updatedAt": "2026-11-06T03:14:45.439Z",
-        "note": "SLICE-48 / FEAT-023 (merged 08717b9b) -- correctness review of `git diff 4b4f78d9..08717b9b` (7 files).\n\nVerdict: approved. The extraction of the `changes`/`gate` CI logic into `src/scripts/ci/docs-only.sh` and `src/scripts/ci/gate.sh` correctly fixes both audited bugs (Codex #18/#19): the docs-only exemption no longer matches `agents/`, `commands/`, `skills/` prompt files or backlog markdown (exempt pattern narrowed to exactly `^(docs/|README\\.md$|CHANGELOG\\.md$)`), and the `gate` job now fails closed when `needs.changes.outputs.code` is blank/unresolved instead of silently passing.\n\nVerified independently (not just re-reading builder evidence):\n- `bun test src/tests/ci/docs-only.test.mts` -> 12 pass, 0 fail (matches AC-1/AC-2 evidence exactly).\n- `gate` job keeps `needs: [changes, fast-gate]` + `if: always()` unchanged, so it still runs when `changes` fails; with a failed/skipped `changes` job, `code` is blank and `gate.sh \"\" \"<fastgate-result>\"` now exits 1 (previously exited 0). Confirmed by reading gate.sh's branch logic and the AC-2 test cases.\n- Job ids and `name:` fields are byte-identical between 4b4f78d9 and 08717b9b (diffed both revisions) -- branch-protection required-check names (\"fast-gate / test (self-hosted)\", \"gate\") are unaffected.\n- docs/ci-gates.md's numbered gate list is unchanged: still 42 items, same order (verified by grep count + spot-check of item text); the new content is an additive subsection, not a renumbered entry, so the generate-metrics-band contract (CLAUDE.md's \"## CI gates\" list / machine count) stays intact.\n- `bun src/scripts/generate-metrics-band.mts --check` -> \"README.md metrics band is up to date\" against current HEAD. The README diff is a single hunk confined to the metrics-band markers (6 lines changed each way: FEATs 21->22, slices 45->46, grade n=42->43, cost mean $5.476->$3.739) -- nothing else in README moved. This regenerates pre-existing drift from the base commit; necessary for AC-3's `--check` claim but is content churn unrelated to FEAT-023's own deliverable (see nit below).\n- CRLF-safety: tested docs-only.sh directly with \\r\\n-terminated stdin (README.md alone, docs+README mixed, a non-exempt code file, CHANGELOG.md alone) on this Windows/Git-Bash (Cygwin bash 5.3.9 + GNU grep 3.0) environment -- all four cases classified correctly. No bug reproduces here, and production CI runs on a Linux self-hosted runner where `git diff --name-only` only ever emits LF, so this is a non-issue in practice.\n- YAML parses cleanly; biome lint/format on the new test file both clean.\n\nOne process note (not a defect in the reviewed diff, flagged for the lead): the slice-close ceremony for SLICE-48 does not appear to have completed even though 08717b9b is already merged -- see findings.md."
+        "updatedAt": "2026-11-06T03:27:49.486Z",
+        "note": "SLICE-51 / FEAT-034 (db77759f) -- TypeScript review, scoped to `git diff 58dab7bd..db77759f` on planner.mts, types.mts, touches-files.mts, feature-lifecycle.mts, commands/wave.md, and the three new test files.\n\nThe field-name fix is correct and well-verified: resolveCompositeScore/resolvePmNumeric read the real pm-apply.mts output fields (pm_composite_priority, pm_strategic_alignment, pm_technical_risk) with legacy fallbacks, no silent NaN/undefined propagation (every path bottoms out at a numeric fallback), and the exact pre-flight reason string (pre-flight: autonomous_safe=false AND pm_risk_level=0.80 >= 0.7) is verified against a real test fixture. The once-only stderr warning is a module-level flag (resets per test-file/process, confirmed by running `bun test src/tests/wave/` -- fires once per file even with two legacy-fallback triggers in the same file). sequentialGroup?: string and the spread-guard (...(sequentialGroup !== undefined ? {...} : {})) are the correct pattern under this repo's exactOptionalPropertyTypes: true. packWave's exclusion reason (sequential_group:<id> already packed this wave) is correctly surfaced in rejected[], confirmed by sequential-slices.test.mts. The widened touches-files.mts regex doesn't double-count docs/-prefixed root files (verified the dir-prefixed alternative consumes the match first, so the bare-file alternative never re-matches the same substring) and correctly rejects substring matches like mypackage.json (lookbehind holds). feature-lifecycle.mts's new call reuses an already-imported backlog-store.mjs function (updateSliceFrontmatter) with the correct (filePath, updates, repoPath, config) signature -- no new import, no slice-linker boundary change. All .mjs specifiers are correct. Ran the full src/tests/wave/ suite independently (145 pass, 0 fail) to confirm hermeticity -- all fixtures use mkdtempSync/fs.mkdtemp, no repo-cwd assumptions.\n\nTwo real issues found, both notes rather than blockers:\n\n1. packWave's cognitive complexity rose from un-flagged (<=15) to 19 (max 15) due to the new sequential-group early-continue branch added inline in the existing loop -- confirmed by diffing lint output of the pre-change file (git show 58dab7bd:...) against the current file: only parseFrontmatterPlanner (pre-existing, 18) was flagged before; packWave is a new violation. The repo's own AGENTS.md says complexity should be \"reduced via extracted helpers, not rule suppression\" and lint should be \"zero warnings\" -- this diff didn't follow that pattern here even though it did extract helpers for the PM-field logic a few lines away. The gate itself doesn't fail the build (the rule is configured \"level\": \"warn\" in biome.json, so bunx biome lint exits 0), which is why the builder's reported lint rc=0 is accurate -- but it's new debt against a documented convention.\n\n2. The slice file's own AC-5 evidence note claims lint is \"pre-existing repo-wide warnings only, no new error-level diagnostics\" -- the \"no new error-level diagnostics\" half is true, but \"pre-existing...only\" is not: the packWave complexity warning above is new, not pre-existing. Worth a correction to the evidence note, or (preferably) extracting the sequential-group check into a small helper (e.g. isSequentialGroupBlocked(cand, pickedSequentialGroups)) to bring packWave back under 15 and make the evidence note true again.\n\nOne minor test-coverage gap, info-only: no test in planner-pm-fields.test.mts exercises BOTH a primary field (e.g. pm_technical_risk) and its legacy counterpart (pm_risk_level) present simultaneously with different values, to prove primary wins over legacy by precedence rather than merely \"legacy works when primary is absent.\" The code is correct (primary checked first, returns before even reading legacy), but the test suite doesn't pin that precedence directly.\n\nOne design note, info-only, not a violation of the stated AC-3 (which only requires \"at most one of its slices appears per wave\"): sequential_group enforces mutual exclusion within a wave but not FIFO ordinal ordering across waves -- rankCandidates's tie-breaks (compositeScore/priority/strategicFit/retryCount) are typically identical across siblings of the same FEAT, so which sibling \"wins\" a given wave falls back to JS's stable-sort preservation of loadCandidates' readdirSync enumeration order, which Node does not guarantee is ordinal/creation order. commands/wave.md's framing (\"useful when later slices depend on an earlier sibling's output\") implies an ordering guarantee the code doesn't fully provide -- only non-co-packing. Not a bug against this FEAT's literal AC, but worth a documentation caveat if a future FEAT relies on strict ordering.\n\nAlso confirmed (pre-existing, not introduced by this diff, info-only): the widened inference regex has a pre-existing substring false-positive -- src/notREADME.md.bak infers src/notREADME.md as a touched path, because the extension-match backtracks to an earlier .md rather than requiring the match to reach the true end of the filename token. Verified this exact behavior exists identically against the pre-change regex (git show 58dab7bd:src/scripts/lib/wave/touches-files.mts), so it's not a regression from this slice, just an inherited quirk the widening makes slightly more reachable in surface area (more directory prefixes now active) but did not create.\n\nDecision: approved_with_notes. Correctness, type-safety, and test coverage are all solid and the stated ACs are genuinely met with real evidence; the complexity regression and the resulting inaccurate evidence-note claim are real but non-blocking (warn-level gate, no behavior change, isolated to one function) -- worth a quick follow-up extraction rather than a blocking re-review.",
+        "reviewers": {
+          "reviewer": "approved_with_notes",
+          "typescript-reviewer": "approved_with_notes"
+        },
+        "required": []
       },
       "validation": {
         "status": "passed",
-        "updatedAt": "2026-11-06T03:12:18.399Z",
-        "note": "SLICE-48 / FEAT-023 CI docs-only + gate scripts validated directly from repo root (branch fix/audit-2026-11, HEAD 08717b9b, Bun 1.3.14, Git Bash on Windows). All 6 scenarios behaved exactly as specified: docs-only.sh correctly classifies agents/commands/skills/backlog/hooks/ci-script paths as code=true, classifies docs/README/CHANGELOG-only diffs as code=false, treats empty stdin and mixed diffs as code=true (fail-safe), and a CRLF-suffixed exempt path (docs/a.md\\r\\n) still resolves to code=false (no Windows-runner line-ending hazard observed). gate.sh's fail-closed matrix (7 CODE/FASTGATE_RESULT combinations) matched expected exit codes exactly, including the empty-code and garbage-code cases now failing closed (rc=1) instead of the prior silent-pass bug. The real merge diff (4b4f78d9..08717b9b) classifies as code=true as expected. Workflow wiring in .github/workflows/ci.yml confirmed: the `changes` job (line 91) pipes `git diff --name-only` into docs-only.sh and writes `code` to GITHUB_OUTPUT; the `gate` job (line 330) declares `needs: [changes, fast-gate]` with `if: always()` and invokes `gate.sh \"${{ needs.changes.outputs.code }}\" \"${{ needs.fast-gate.result }}\"` — the always()-gate is present, so a failed/skipped `changes` job still runs `gate` and gate.sh fails closed rather than the job being skipped entirely. `bun test src/tests/ci/` passed 12/12 assertions. No regressions or hazards found; decision is PASS."
+        "updatedAt": "2026-11-06T03:27:54.904Z",
+        "note": "Validated SLICE-51/FEAT-034 wave-planner changes against 5 isolated fixture repos plus the real repo. All 7 scenarios PASS: (1) pre-flight drops autonomous_safe=false + pm_technical_risk>=0.7 with the exact reason string; (2) pm_composite_priority P0 ranks ahead of P2 with disjoint touches_files; (3) legacy-only PM field names (pm_risk_level/pm_strategic_fit/composite_score) still trigger the pre-flight drop via fallback, warning goes to stderr only, stdout stays valid JSON; (4) a sequential:true FEAT never packs two sibling slices in the same wave, the loser is rejected naming the sequential_group; (5) widened touches_files inference picks up crew/, .github/, package.json, hooks/ paths from slice body text, confirmed both by the touches-files unit suite and by wave plan on a fixture; (6) wave plan --repo . --json on the real repo completes rc=0 with no error; (7) bun test src/tests/wave/ is 145 pass / 0 fail across 18 files.",
+        "validators": {
+          "verifier": "pass"
+        },
+        "required": []
       },
       "deployment": {
         "dev": null,
@@ -30,11 +39,11 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T030953Z-run-brief-feat023-slice48-implement-feat-023.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T032058Z-run-brief-feat034-slice51-implement-feat-034.md",
       "handoffs": [],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T031445Z-review-result-slice-48-review-b-correctness.md",
+      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T032749Z-review-result-slice-51-review-a-typescript.md",
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T031218Z-validation-result-slice-48-validation-ci-docs-only-gate-scripts.md",
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T032754Z-validation-result-slice-51-validation-wave-planner-pm-fields-sequential-infere.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -43,6 +52,48 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT023 SLICE48: Implement FEAT-023",
+      "goal": "Audit T3: CI docs-only exemption treats prompts as code; gate fails closed",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T03:09:53.184Z",
+      "updatedAt": "2026-11-06T03:14:45.439Z",
+      "completedAt": "2026-11-06T03:14:45.439Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T03:14:45.439Z",
+          "note": "SLICE-48 / FEAT-023 (merged 08717b9b) -- correctness review of `git diff 4b4f78d9..08717b9b` (7 files).\n\nVerdict: approved. The extraction of the `changes`/`gate` CI logic into `src/scripts/ci/docs-only.sh` and `src/scripts/ci/gate.sh` correctly fixes both audited bugs (Codex #18/#19): the docs-only exemption no longer matches `agents/`, `commands/`, `skills/` prompt files or backlog markdown (exempt pattern narrowed to exactly `^(docs/|README\\.md$|CHANGELOG\\.md$)`), and the `gate` job now fails closed when `needs.changes.outputs.code` is blank/unresolved instead of silently passing.\n\nVerified independently (not just re-reading builder evidence):\n- `bun test src/tests/ci/docs-only.test.mts` -> 12 pass, 0 fail (matches AC-1/AC-2 evidence exactly).\n- `gate` job keeps `needs: [changes, fast-gate]` + `if: always()` unchanged, so it still runs when `changes` fails; with a failed/skipped `changes` job, `code` is blank and `gate.sh \"\" \"<fastgate-result>\"` now exits 1 (previously exited 0). Confirmed by reading gate.sh's branch logic and the AC-2 test cases.\n- Job ids and `name:` fields are byte-identical between 4b4f78d9 and 08717b9b (diffed both revisions) -- branch-protection required-check names (\"fast-gate / test (self-hosted)\", \"gate\") are unaffected.\n- docs/ci-gates.md's numbered gate list is unchanged: still 42 items, same order (verified by grep count + spot-check of item text); the new content is an additive subsection, not a renumbered entry, so the generate-metrics-band contract (CLAUDE.md's \"## CI gates\" list / machine count) stays intact.\n- `bun src/scripts/generate-metrics-band.mts --check` -> \"README.md metrics band is up to date\" against current HEAD. The README diff is a single hunk confined to the metrics-band markers (6 lines changed each way: FEATs 21->22, slices 45->46, grade n=42->43, cost mean $5.476->$3.739) -- nothing else in README moved. This regenerates pre-existing drift from the base commit; necessary for AC-3's `--check` claim but is content churn unrelated to FEAT-023's own deliverable (see nit below).\n- CRLF-safety: tested docs-only.sh directly with \\r\\n-terminated stdin (README.md alone, docs+README mixed, a non-exempt code file, CHANGELOG.md alone) on this Windows/Git-Bash (Cygwin bash 5.3.9 + GNU grep 3.0) environment -- all four cases classified correctly. No bug reproduces here, and production CI runs on a Linux self-hosted runner where `git diff --name-only` only ever emits LF, so this is a non-issue in practice.\n- YAML parses cleanly; biome lint/format on the new test file both clean.\n\nOne process note (not a defect in the reviewed diff, flagged for the lead): the slice-close ceremony for SLICE-48 does not appear to have completed even though 08717b9b is already merged -- see findings.md."
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T03:12:18.399Z",
+          "note": "SLICE-48 / FEAT-023 CI docs-only + gate scripts validated directly from repo root (branch fix/audit-2026-11, HEAD 08717b9b, Bun 1.3.14, Git Bash on Windows). All 6 scenarios behaved exactly as specified: docs-only.sh correctly classifies agents/commands/skills/backlog/hooks/ci-script paths as code=true, classifies docs/README/CHANGELOG-only diffs as code=false, treats empty stdin and mixed diffs as code=true (fail-safe), and a CRLF-suffixed exempt path (docs/a.md\\r\\n) still resolves to code=false (no Windows-runner line-ending hazard observed). gate.sh's fail-closed matrix (7 CODE/FASTGATE_RESULT combinations) matched expected exit codes exactly, including the empty-code and garbage-code cases now failing closed (rc=1) instead of the prior silent-pass bug. The real merge diff (4b4f78d9..08717b9b) classifies as code=true as expected. Workflow wiring in .github/workflows/ci.yml confirmed: the `changes` job (line 91) pipes `git diff --name-only` into docs-only.sh and writes `code` to GITHUB_OUTPUT; the `gate` job (line 330) declares `needs: [changes, fast-gate]` with `if: always()` and invokes `gate.sh \"${{ needs.changes.outputs.code }}\" \"${{ needs.fast-gate.result }}\"` — the always()-gate is present, so a failed/skipped `changes` job still runs `gate` and gate.sh fails closed rather than the job being skipped entirely. `bun test src/tests/ci/` passed 12/12 assertions. No regressions or hazards found; decision is PASS."
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T030953Z-run-brief-feat023-slice48-implement-feat-023.md",
+        "handoffs": [],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T031445Z-review-result-slice-48-review-b-correctness.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T031218Z-validation-result-slice-48-validation-ci-docs-only-gate-scripts.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT034 SLICE51: Implement FEAT-034",
       "goal": "Wave planner reads PM field names intake never writes — ranking flat, risk pre-flight dead",
@@ -168,40 +219,6 @@
       },
       "artifacts": {
         "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025843Z-run-brief-feat023-slice48-implement-feat-023.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT022 SLICE47: Implement FEAT-022",
-      "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T02:58:42.618Z",
-      "updatedAt": "2026-11-06T02:58:42.618Z",
-      "completedAt": "2026-11-06T02:58:42.618Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025842Z-run-brief-feat022-slice47-implement-feat-022.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,

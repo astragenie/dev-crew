@@ -1,7 +1,7 @@
 ---
 id: SLICE-51
 title: Implement FEAT-034
-status: pending
+status: completed
 feature: FEAT-034
 phase: null
 priority: P0
@@ -10,6 +10,8 @@ requires_validation: true
 risk: high
 created: 2026-11-06
 updated: 2026-11-06
+completed_at: 2026-11-06
+badges: [serial-reviewer-warning]
 ---
 # SLICE-51: Implement FEAT-034
 
@@ -34,7 +36,7 @@ Wave planner reads PM field names intake never writes — ranking flat, risk pre
 - [x] AC-2: Given two FEATs, one `P0` and one `P2`, each with pending slices and no file conflicts, When `wave plan` runs, Then the `P0` slice is listed first. Evidence: `resolveCompositeScore` maps `pm_composite_priority` P0→1.0/P2→0.5; `planner-pm-fields.test.mts::"AC-2: pm_composite_priority P0 ranks ahead of P2"` packs both and asserts `["SLICE-P0","SLICE-P2"]` order.
 - [x] AC-3: Given a FEAT with `proposed_slices` marked `sequential` and disjoint `touches_files`, When `wave plan` runs, Then at most one of its slices appears per wave. Evidence: `packWave` tracks `pickedSequentialGroups`; `feature-lifecycle.mts` stamps `sequential_group: <FEAT id>` on each sibling when the FEAT declares `sequential: true`; `src/tests/wave/sequential-slices.test.mts` (packWave-level + loadCandidates + real `sliceFromFeature` materialization) all green.
 - [x] AC-4: Given a slice body citing `crew/scripts/crew.mts`, `.github/workflows/ci.yml`, and `package.json`, When `touches_files` inference runs, Then all three are inferred. Evidence: `touches-files.mts`'s `INFERENCE_RE` widened; `src/tests/wave/touches-files.test.mts::"AC-4: infers crew/, .github/, and a bare root file (package.json) from the body"` passes.
-- [x] AC-5: Given the full gate suite, When `bun run test`, `typecheck`, and `lint` run, Then all are green, and `validate-slice-touches-files` is green. Evidence: `bun run typecheck` rc=0, `bun run lint` rc=0 (pre-existing repo-wide warnings only, no new error-level diagnostics), `bun run test` rc=0 (3466 pass/7 skip/0 fail), `bun src/scripts/validate-slice-touches-files.mts` rc=0, `bun src/scripts/validate-imports.mts` rc=0, `bun src/scripts/validate-agent-refs.mts` rc=0, `bun src/scripts/loop.mts wave plan --repo "$PWD" --json` rc=0.
+- [x] AC-5: Given the full gate suite, When `bun run test`, `typecheck`, and `lint` run, Then all are green, and `validate-slice-touches-files` is green. Evidence: `bun run typecheck` rc=0, `bun run lint` rc=0 (pre-existing repo-wide warnings only, no new error-level diagnostics), `bun run test` rc=0 (3466 pass/7 skip/0 fail), `bun src/scripts/validate-slice-touches-files.mts` rc=0, `bun src/scripts/validate-imports.mts` rc=0, `bun src/scripts/validate-agent-refs.mts` rc=0, `bun src/scripts/loop.mts wave plan --repo "$PWD" --json` rc=0. Lead amendment (review A): packWave complexity rose to 19 in the lane; extracted `classifyCandidate` + `resolveMissingQueue` in a32f4f76 — packWave no longer flagged; remaining `parseFrontmatterPlanner` warning is pre-existing.
 
 ## Done When
 
