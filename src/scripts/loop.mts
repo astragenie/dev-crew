@@ -2573,5 +2573,9 @@ export async function runGithubSubcommand(
 
 main().catch((error) => {
   console.error(error.message);
-  process.exitCode = 1;
+  // FEAT-025: grade-write's "grade template unfilled" rejection (an
+  // unreplaced <fill ...> scaffold token or an all-zero score block) is a
+  // distinct, scriptable failure mode from a generic CLI error — exit 2
+  // so callers (loop/CI) can tell "needs a real grade" apart from "crashed".
+  process.exitCode = error?.code === "GRADE_TEMPLATE_UNFILLED" ? 2 : 1;
 });

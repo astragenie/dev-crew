@@ -40,6 +40,7 @@ async function fillGrade(repo: string, sliceId: string, lessons: string[]) {
   }
   const lessonsBlock = lessons.map((l) => `- ${l}`).join("\n");
   content = content.replace(/- bullet 1\n- bullet 2/, lessonsBlock);
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");
@@ -124,6 +125,7 @@ test("writeGrade with no ## Lessons bullets logs nothing", async () => {
   // Remove the placeholder lesson bullets entirely (empty section) instead
   // of supplying real ones.
   content = content.replace(/- bullet 1\n- bullet 2\n/, "");
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Real surprise");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Real followup");

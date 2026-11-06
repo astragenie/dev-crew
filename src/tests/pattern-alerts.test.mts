@@ -45,6 +45,7 @@ async function seedGrade(repo, sliceId, scores) {
     /## Lessons\n\n- bullet 1\n- bullet 2/,
     `## Lessons\n\n- Lesson 1\n- Lesson 2`
   );
+  content = content.replace("<fill title>", "Real Title");
   // Remove the placeholder DEC-TBD section
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   // Replace placeholder Surprises and Followups
@@ -71,6 +72,7 @@ async function seedGradeWithNotChecked(repo, sliceId, notChecked) {
     /## Lessons\n\n- bullet 1\n- bullet 2/,
     `## Lessons\n\n- Lesson 1\n- Lesson 2`
   );
+  content = content.replace("<fill title>", "Real Title");
   content = content.replace(/### DEC-TBD:[\s\S]*?(?=\n## Surprises)/, "");
   content = content.replace(/## Surprises\n\n- bullet/, "## Surprises\n\n- Surprise");
   content = content.replace(/## Followups\n\n- bullet/, "## Followups\n\n- Followup");

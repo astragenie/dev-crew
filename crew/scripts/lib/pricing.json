@@ -1,11 +1,12 @@
 {
-  "_comment": "USD per 1,000,000 tokens. Update when Anthropic prices change. Keys are matched as prefixes against the model field on assistant messages.",
+  "_comment": "USD per 1,000,000 tokens. Update when Anthropic prices change. FEAT-025: keys are matched EXACTLY (or exact-key + '-YYYYMMDD' date suffix) against the model field on assistant messages via priceFor() in session-cost.mts -- no more bare-prefix matching (that silently priced e.g. claude-opus-4-9 at claude-opus-4 rates).",
   "_keys": {
     "input": "Standard input tokens (non-cached prompt content).",
-    "cache_create_5m": "Tokens written to the ephemeral 5-minute prompt cache.",
-    "cache_create_1h": "Tokens written to the ephemeral 1-hour prompt cache.",
+    "cache_create_5m": "Tokens written to the ephemeral 5-minute prompt cache. Formula when not independently priced: 1.25x input.",
+    "cache_create_1h": "Tokens written to the ephemeral 1-hour prompt cache. Formula when not independently priced: 2x input.",
     "cache_read": "Tokens served from the prompt cache.",
-    "output": "Generated output tokens."
+    "output": "Generated output tokens.",
+    "source": "Optional per-model provenance: \"audit\" = taken directly from docs/audits/2026-11-05/audit-synthesis.md §3.7; \"assumed\" = no exact-name quote in that audit for this model id, same-family (Opus/Sonnet/Haiku) rate reused. Absent = legacy table entry predating this field."
   },
   "models": {
     "claude-opus-4": {
@@ -28,6 +29,38 @@
       "cache_create_1h": 2.0,
       "cache_read": 0.1,
       "output": 5.0
+    },
+    "claude-fable-5-1": {
+      "input": 10.0,
+      "cache_create_5m": 12.5,
+      "cache_create_1h": 20.0,
+      "cache_read": 0.25,
+      "output": 50.0,
+      "source": "audit"
+    },
+    "claude-sonnet-5": {
+      "input": 2.0,
+      "cache_create_5m": 2.5,
+      "cache_create_1h": 4.0,
+      "cache_read": 0.1,
+      "output": 10.0,
+      "source": "assumed"
+    },
+    "claude-opus-5": {
+      "input": 4.0,
+      "cache_create_5m": 5.0,
+      "cache_create_1h": 8.0,
+      "cache_read": 0.2,
+      "output": 20.0,
+      "source": "assumed"
+    },
+    "claude-haiku-4-5": {
+      "input": 0.1,
+      "cache_create_5m": 0.125,
+      "cache_create_1h": 0.2,
+      "cache_read": 0.01,
+      "output": 0.5,
+      "source": "assumed"
     }
   },
   "fallback": "claude-sonnet-4"

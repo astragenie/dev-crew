@@ -74,6 +74,8 @@ export interface ArtifactFields {
    * nothing. See docs/contracts/dispatch-memory-credit-loop-v1.md.
    */
   memoriesUsed?: string[] | undefined;
+  /** FEAT-025: cost-report dedup key, rendered to frontmatter `run_id`. */
+  runId?: string | undefined;
 }
 
 /** Aggregated telemetry for the ## Per-dispatch breakdown cost-report section (FEAT-151). */
@@ -92,17 +94,20 @@ export interface CostBreakdown {
       messages: number;
       usd: number;
       tokens: Record<string, number>;
-      pricedAs?: string;
+      /** FEAT-025: null when the model never matched a pricing.json key. */
+      pricedAs?: string | null;
     }
   >;
   modelMix?: Array<{
     model: string;
-    pricedAs: string;
+    pricedAs: string | null | undefined;
     messages: number;
     msgPct: number;
     usd: number;
     usdPct: number;
   }>;
+  /** FEAT-025: model ids with no pricing.json match (exact or date-suffixed). */
+  unpriced_models?: string[];
   conversation?: {
     userMsgCount?: number;
     userMsgAvgLen?: number;

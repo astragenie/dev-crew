@@ -28,8 +28,18 @@ export interface DecideInput {
 const EDIT_VERIFY_LOOP_WINDOW_MS = 30_000;
 
 export interface DecideResult {
-  action: "pass" | "warn";
+  action: "pass" | "warn" | "unknown";
   message: string | null;
+}
+
+// FEAT-025: cost-report telemetry honesty. A cost report that priced one or
+// more models via a silent fallback used to look indistinguishable from a
+// fully-priced one; this makes that case an explicit, renderable verdict
+// instead of a buried pricedAs value. "unknown" > "pass"/"warn" here: an
+// unpriced model means the USD total is understated, which is worse than
+// either a clean pass or a hygiene warning.
+export function decideCostVerdict(unpricedModels: string[] | undefined | null): "pass" | "unknown" {
+  return unpricedModels && unpricedModels.length > 0 ? "unknown" : "pass";
 }
 
 function formatWarning(entry: StoredEntry, path: string): string {
