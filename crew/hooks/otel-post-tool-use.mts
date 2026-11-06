@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   if (!sampleSpan(cfg)) return;
 
   if (cachedSdk === null) {
-    cachedSdk = await initBridge(cfg);
+    cachedSdk = await initBridge(cfg, undefined, payload.cwd ?? process.cwd());
   }
   if (cachedSdk === null) return;
 

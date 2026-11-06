@@ -10,7 +10,6 @@
 # (dev-crew's own rules above win where they overlap; these are the entries
 # runner-plugin had that dev-crew didn't yet).
 node_modules/
-dist/
 .claude/state/
 .claude/state/loop/paused.json
 .claude/state/loop/stuck-detector.json

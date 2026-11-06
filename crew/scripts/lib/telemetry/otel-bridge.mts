@@ -16,6 +16,8 @@
  *
  * Every emit* is wrapped in try/catch — telemetry crash must never propagate.
  */
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { SpanExporter } from "@opentelemetry/sdk-trace-base";
 import { bridgeEnabled, resolveAuthHeader, type TelemetryConfig } from "./config.mjs";
 import type { PostToolUseHookInput, StopHookInput, SubagentStopHookInput } from "./hook-input.mjs";
@@ -25,10 +27,30 @@ import { scrubAttrs } from "./scrub.mjs";
 // emit* functions read from this; null means bridge never initialized.
 let cachedOtelApi: typeof import("@opentelemetry/api") | null = null;
 
-// One-shot stderr guard so a missing-deps warning fires at most once per process.
+// One-shot guard so a missing-deps warning (stderr + events.jsonl) fires at
+// most once per process.
 let warnedMissingDeps = false;
 
-function warnMissingDeps(err: unknown): void {
+// FEAT-026 AC-3: a consumer install without @opentelemetry/* packages must
+// see exactly one "otel_unavailable" line in events.jsonl, not just a
+// stderr warning — the stderr line is invisible to a Claude-session
+// observer, events.jsonl is what brief-me / health tooling actually reads.
+async function logOtelUnavailable(repoPath: string, err: unknown): Promise<void> {
+  try {
+    const dir = path.join(repoPath, ".claude", "logs");
+    await fs.mkdir(dir, { recursive: true });
+    const line = JSON.stringify({
+      ts: new Date().toISOString(),
+      type: "otel_unavailable",
+      error: err instanceof Error ? err.message : String(err)
+    });
+    await fs.appendFile(path.join(dir, "events.jsonl"), `${line}\n`, "utf8");
+  } catch {
+    // give up silently — telemetry must never block the hook
+  }
+}
+
+function warnMissingDeps(repoPath: string, err: unknown): void {
   if (warnedMissingDeps) return;
   warnedMissingDeps = true;
   const msg = err instanceof Error ? err.message : String(err);
@@ -37,6 +59,7 @@ function warnMissingDeps(err: unknown): void {
       `Run \`npm i @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/sdk-trace-base @opentelemetry/resources\` ` +
       `in this repo to enable. (${msg})\n`
   );
+  void logOtelUnavailable(repoPath, err);
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +91,8 @@ export function sampleSpan(cfg: TelemetryConfig, rng: () => number = Math.random
 
 export async function initBridge(
   cfg: TelemetryConfig,
-  opts?: BridgeInitOptions
+  opts?: BridgeInitOptions,
+  repoPath: string = process.cwd()
 ): Promise<BridgeSdk | null> {
   if (!bridgeEnabled(cfg)) return null;
 
@@ -87,7 +111,7 @@ export async function initBridge(
     ({ BatchSpanProcessor } = await import("@opentelemetry/sdk-trace-base"));
     ({ Resource } = await import("@opentelemetry/resources"));
   } catch (err) {
-    warnMissingDeps(err);
+    warnMissingDeps(repoPath, err);
     return null;
   }
 

@@ -35,7 +35,7 @@ async function main(): Promise<void> {
 
   if (!sampleSpan(cfg)) return;
 
-  const sdk = await initBridge(cfg);
+  const sdk = await initBridge(cfg, undefined, payload.cwd ?? process.cwd());
   if (sdk === null) return;
 
   emitStopSpan(sdk, payload, cfg);
