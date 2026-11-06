@@ -79,7 +79,7 @@
 // operators must opt in explicitly once they've seen it behave correctly in
 // their own session.
 //
-// FEAT-028 / SLICE-54 / DEC-046 (2026-11-06): the block path below (the
+// FEAT-028 / SLICE-54 / DEC-047 (2026-11-06): the block path below (the
 // REPORT_BACK_CONTRACT_RE / hasSendMessageToolUse scan) now has a known
 // false-positive risk for the four builder-tier agents (fullstack-dev,
 // backend-dev, frontend-dev, aiplugin-dev) — their report contract was

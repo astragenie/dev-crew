@@ -200,12 +200,12 @@ test("builder.md points at builder-ceremony skill (which carries self-verify ref
 });
 
 // FEAT-170 SLICE-D follow-up, superseded by dev-team#227, superseded again
-// by FEAT-028/DEC-046: builders MUST NOT invoke write-handoff. #227's AC
+// by FEAT-028/DEC-047: builders MUST NOT invoke write-handoff. #227's AC
 // moved the report channel to a PR comment posted before the risky tail,
 // guarded by the "Narration without a posted PR report = contract
 // violation" phrase; FEAT-028 retired that PR-comment channel entirely in
 // favor of a marker-first final message (no PR, no SendMessage — see
-// DEC-046), so the guardrail phrase moved with it.
+// DEC-047), so the guardrail phrase moved with it.
 // "NEVER invoke write-handoff" stays as the protective guardrail unchanged.
 test("builder.md prohibits write-handoff CLI invocation (FEAT-170 SLICE-D / dev-team#227 / FEAT-028)", () => {
   expect(

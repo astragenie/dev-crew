@@ -7,7 +7,7 @@
 // SendMessage call precede the dispatcher's review gate — that bypass is
 // what audit #7 / Codex #22 / reviewer BLOCKER 1 flagged against the prior
 // contract (push + `gh pr create` + `node ./scripts/report-to-pr.ts` +
-// SendMessage, all mandated before reporting). DEC-046 records the full
+// SendMessage, all mandated before reporting). DEC-047 records the full
 // decision; crew/scripts/validate-agents.mts's `no-prereview-publish` rule
 // enforces the "no gh pr create / git push outside a ## Ship section" half
 // mechanically for these same four agents — this file is the companion
