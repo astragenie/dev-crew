@@ -10,7 +10,7 @@ Before executing the sequential walker, check `.claude/loop.json` for
 `loop.marathonRunner`:
 
 ```bash
-RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
+RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
 ```
 
 If `RUNNER === "wave"`, delegate to `/devcrew:wave loop` and exit. Do not run
@@ -29,7 +29,7 @@ and `autonomous_safe: false` FEATs (with risk gate). Respects cost cap and
 escalation thresholds from loop.json.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" auto \
   --repo "$PWD" \
   [--dry-run] \
   [--auto-mode] \
@@ -63,8 +63,8 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" auto \
     {
       "featureId": "FEAT-001",
       "suggestedSliceTitle": "Implement FEAT-001: My safe feature",
-      "fromFeatureCmd": "bun src/scripts/loop.mts slice from-feature --id FEAT-001",
-      "startCmd": "bun src/scripts/loop.mts slice start --id SLICE-<TBD>",
+      "fromFeatureCmd": "bun \"${CLAUDE_PLUGIN_ROOT}/dist/loop.js\" slice from-feature --id FEAT-001",
+      "startCmd": "bun \"${CLAUDE_PLUGIN_ROOT}/dist/loop.js\" slice start --id SLICE-<TBD>",
       "orchestratorMode": "slice-build",
       "dispatchPrompt": "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",
       "builderPrompt": "Implement FEAT-001: My safe feature (feature) — see feature file for full acceptance criteria.",

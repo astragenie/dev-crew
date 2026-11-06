@@ -17,9 +17,9 @@ Workflow:
 2. Sync remote state so the briefing reflects reality, not stale local refs:
    - `git fetch --prune`
 3. Run the underlying reports:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" brief-me --repo "$PWD"` — workflow-state / artifact-trail briefing.
-   - `bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" brief --repo "$PWD"` — backlog, specs, grades, decisions, pattern alerts.
-   - `bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" status --repo "$PWD"` — loop install health (preset, resolved paths, marker presence, crew dependency).
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" brief-me --repo "$PWD"` — workflow-state / artifact-trail briefing.
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" brief --repo "$PWD"` — backlog, specs, grades, decisions, pattern alerts.
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" status --repo "$PWD"` — loop install health (preset, resolved paths, marker presence, crew dependency).
 4. Explicitly compare each report's `repoPath` (or equivalent) with the current working directory. If any do not match, stop and treat the briefing as invalid for this run.
 5. If they match, present the briefing in this fixed order:
    - `Current Objective`

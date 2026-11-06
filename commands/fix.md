@@ -115,7 +115,7 @@ parallel fan-out — single Agent-tool message with N=2 invocations:
 
 Check consumer CI before closing out review:
 ```bash
-bun crew/scripts/crew.mts has-consumer-ci --repo "$PWD" --json
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" has-consumer-ci --repo "$PWD" --json
 ```
 LOW-risk slices: one reviewer; verifier is replaced by `write-validation-result --decision skipped --skip-reason "delegated to CI: <workflow file>"` only when `has-consumer-ci` reports present; otherwise dispatch `devcrew:verifier`. Verifier otherwise defers to `/devcrew:ship`.
 
@@ -126,7 +126,7 @@ Symmetric with `/devcrew:ship`'s auto-fix loop. When either Reviewer A or Review
 1. Read both review-result artifacts for the aggregated FAIL findings.
 2. **Repair-signature dedup check (ported from dev-team#257/#259):** before retrying, run `repair-check` with the aggregated FAIL findings as `--failure-output`, passing the previous iteration's `--prev-signature` (omit on the first iteration):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" repair-check --repo "$PWD" \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" repair-check --repo "$PWD" \
      --failure-output "<aggregated FAIL findings>" \
      --prev-signature "<signature from the previous iteration's repair-check call, if any>"
    ```
@@ -139,7 +139,7 @@ Symmetric with `/devcrew:ship`'s auto-fix loop. When either Reviewer A or Review
 On N exhausted:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge blocked \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge blocked \
   --note "<aggregated FAIL summary>"
 ```
 
@@ -154,7 +154,7 @@ See `docs/routing-table.md` → "Builder routing matrix" (generated from `docs/r
 **Do NOT inherit the session model for the builder dispatch.** Before invoking the `Agent` tool in step 7 below, resolve the builder's tier explicitly:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" resolve-model --repo "$PWD" --phase build
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" resolve-model --repo "$PWD" --phase build
 ```
 
 Pass the printed value (e.g. `sonnet`) as the Agent-tool dispatch's `model:` argument. **If it prints `inherit` (model routing disabled), OMIT the `model:` argument entirely** — the dispatched agent's own `model:` frontmatter (`agents/*.md`) then governs; do not substitute a model yourself. Add `--shape <shape>` when the fix classifies as a trivial shape (`doc-update` / `config-tweak` / `test-only` / `single-module-edit`) — it overrides the phase tier.
@@ -166,7 +166,7 @@ Pass the printed value (e.g. `sonnet`) as the Agent-tool dispatch's `model:` arg
 1. Verify the current workspace path:
    - `pwd`
 2. Read the repo wake-up brief:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" wake-up --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" wake-up --repo "$PWD"`
 3. Confirm the returned `repoPath` matches `$PWD`. If not, stop and correct repo context before proceeding.
    For substantial work, do not start implementation until this step is complete.
 4. Dispatch `devcrew:investigator` (read-only, no file changes):
@@ -178,21 +178,21 @@ Pass the printed value (e.g. `sonnet`) as the Agent-tool dispatch's `model:` arg
    - fix scope (in scope / out of scope)
    - whether the work should stay whole or be split into bounded sub-tasks
 6. If the task is substantial enough that future wake-up context will matter, write a run brief:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-run-brief --repo "$PWD" --title "<short title>" --goal "<goal>" --mode "team run"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-run-brief --repo "$PWD" --title "<short title>" --goal "<goal>" --mode "team run"`
 7. Pick the specialist builder from the routing table above and dispatch via the `Agent` tool.
    - **Resolve the model tier first** via "Model tier resolution" above (`crew resolve-model --phase build`) and pass the printed value as the Agent-tool `model:` argument — do NOT inherit the session model.
    - **Recall injection (FEAT-188 S3a):** before dispatching, fetch a recall block:
-     `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block --repo "$PWD" --agent <specialist-agent-name> --tags "<FEAT tags csv>"`
+     `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" recall-block --repo "$PWD" --agent <specialist-agent-name> --tags "<FEAT tags csv>"`
      If `.block` is non-empty, prepend it verbatim (it is already the `## Prior context (from astramem)` block) to the builder's dispatch instruction. If empty (memory not configured, or nothing recalled), omit — do not add any placeholder text.
    - **Profile injection (agent-profile-load-feedback):** immediately after the recall block, fetch the specialist's track record (best-effort, empty when disabled). Resolve `<runId>` from `.claude/state/crew/workflow-state.json` (`currentRun.slice`) — reuse this SAME value for the profile-feedback call in step 13a below:
-     `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block --repo "$PWD" --agent <specialist-agent-name> --run-id <runId>`
+     `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-block --repo "$PWD" --agent <specialist-agent-name> --run-id <runId>`
      If `.block` is non-empty, append it (it is already the `## Your track record (<agent>)` block) to the dispatch instruction, after the recall block. If empty (profile disabled, or no track record yet), omit — do not add any placeholder text.
      **Dispatch-memory-credit-loop (opt-in, `memory.feedback.creditLoop.enabled`):** when enabled, this block also carries a `## Recall (memory credit loop)` section with `<!--atom:id-->` markers — candidate ids for the specialist's OPTIONAL `memories_used` report at step 8. See `docs/contracts/dispatch-memory-credit-loop-v1.md`.
    - Set `size: standard` for substantive changes (requires `write-handoff` artifact).
    - Set `size: light` only for trivial one-line fixups (skips artifact, but builder still returns structured completion).
    - If this run references a design doc, pass the design doc path to the builder.
 8. After the builder returns PASS, write a handoff artifact if the run is substantial:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff --repo "$PWD" --title "<short title>" --from builder --to dispatcher --summary "<headline>" --scope "<in scope>" --deliverable "<what shipped>" --files "<changed files>" --confidence "<high|medium|low>" --risks "<risks or none>" --next "reviewer fan-out"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff --repo "$PWD" --title "<short title>" --from builder --to dispatcher --summary "<headline>" --scope "<in scope>" --deliverable "<what shipped>" --files "<changed files>" --confidence "<high|medium|low>" --risks "<risks or none>" --next "reviewer fan-out"`
    - Optional `--memories-used <id1,id2>` when the builder's report names ids it relied on — credits usefulness feedback best-effort; omit when none. See `docs/contracts/dispatch-memory-credit-loop-v1.md`.
 9. Fan out two reviewers in a **single Agent-tool message** (parallel dispatch):
    - **Reviewer A** — stack-specific reviewer (see phase order diagram above for routing; skip A if no stack match).
@@ -200,16 +200,16 @@ Pass the printed value (e.g. `sonnet`) as the Agent-tool dispatch's `model:` arg
    - Pass the builder handoff artifact path to both reviewers.
 9a. **Reviewer fan-out watchdog (dev-team#199).** If one reviewer of the parallel fan-out is idle with no artifact after the other reviewer has already returned, send one `SendMessage` status-check nudge to the idle reviewer. If it is still silent after that single nudge, mark `blocked` (`mark-badge --badge blocked --note "reviewer <name> idle with no artifact after nudge"`) and proceed under the single-reviewer policy (step 12) rather than waiting indefinitely. **Idle-ping guidance:** a `teammate_idle` notification (payload `{"type":"idle_notification"}`) from a reviewer that already delivered its artifact is noise, not a signal to act on — do not re-dispatch or nudge on it.
 10. After both reviewer artifacts land, write a review result for each:
-    - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --title "<short title>" --decision <approved|approved_with_notes|rejected> --author-id <builder-agent> --judge-id <reviewer-agent> --summary "<verdict>" --evidence "<files checked>" --files "<files in diff>" --test-summary "<test coverage>" --risks "<risks or none>" --next "<follow-up or none>"`
+    - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result --repo "$PWD" --title "<short title>" --decision <approved|approved_with_notes|rejected> --author-id <builder-agent> --judge-id <reviewer-agent> --summary "<verdict>" --evidence "<files checked>" --files "<files in diff>" --test-summary "<test coverage>" --risks "<risks or none>" --next "<follow-up or none>"`
     - If `--summary` (or any prose flag) contains apostrophes/backticks, shell argv quoting can mangle or drop it (dev-team#152). Write the body to a temp file and pass `--summary-file <path>` (or any `--<flag>-file <path>`) instead.
 11. If either reviewer returns `rejected`, stop. Surface the findings to the user. Do not emit `review_passed`.
     - **Profile feedback (agent-profile-load-feedback):** record the fail outcome, best-effort, using the SAME `<runId>` from step 7's profile injection:
-      `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id <runId> --outcome fail`
+      `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-feedback --repo "$PWD" --run-id <runId> --outcome fail`
 12. If Reviewer A is skipped, `review_passed` requires only Reviewer B to approve.
 13. If both approved (or `approved_with_notes`), emit the completion badge:
-    - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge review_passed`
+    - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge review_passed`
 13a. **Profile feedback (agent-profile-load-feedback):** record the pass outcome, best-effort, using the SAME `<runId>` from step 7's profile injection:
-    - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id <runId> --outcome pass`
+    - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-feedback --repo "$PWD" --run-id <runId> --outcome pass`
 14. Check Reviewer B's `next` field. If it names a tests-adequacy gap, dispatch `devcrew:qa-expert`:
     - Pass the finding artifact and the changed files list.
     - Wait for `devcrew:qa-expert` to return before closing the run.
@@ -224,6 +224,6 @@ Pass the printed value (e.g. `sonnet`) as the Agent-tool dispatch's `model:` arg
     - if yes, did both reviewers resolve (or A skipped + B approved)?
     - did the run leave the artifact trail it should?
 16. For substantial work, write a final synthesis artifact:
-    - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis --repo "$PWD" --title "<short title>" --summary "<summary>" --external-deltas "<off-repo changes required, or 'none'>"`
+    - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-final-synthesis --repo "$PWD" --title "<short title>" --summary "<summary>" --external-deltas "<off-repo changes required, or 'none'>"`
     - The CLI rejects missing `--external-deltas`. Enumerate sibling-config changes the fix depends on. Pass `--external-deltas none` explicitly if there are none.
     - For `--summary` prose with apostrophes/backticks, prefer `--summary-file <path>` over inlining it (dev-team#152).

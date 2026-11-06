@@ -27,7 +27,7 @@ Workflow:
 2. Run the gate:
    ```bash
    set -euo pipefail
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" phase-gate \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" phase-gate \
      --repo "$PWD" \
      --phase <N> \
      --note "<optional short context>"

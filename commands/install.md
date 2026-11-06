@@ -28,7 +28,7 @@ Run:
 
 ```bash
 set -euo pipefail
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" install-global
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" install-global
 ```
 
 Report which files changed, whether global memory is installed, the
@@ -65,7 +65,7 @@ Workflow:
 3. Run the installer:
    ```bash
    set -euo pipefail
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" install --repo "$PWD" --preset dotnet-python
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" install --repo "$PWD" --preset dotnet-python
    ```
    `--preset` is **required** for a first-time install (no `.claude/loop.json` on disk yet) — there is no hardcoded default stack. Omit `--preset` only to re-install/refresh an already-configured repo; the installer then reads the existing `.claude/loop.json` as-is (no re-merge). Add `--light` to seed the trimmed single-reviewer ladder instead of the default two-reviewer ladder (only on a repo with a CI test gate).
 4. Report which files were written and which preset is active.

@@ -37,7 +37,7 @@ devcrew:start
 ## Usage
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice start \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice start \
   --repo "$PWD" \
   --id FEAT-NNN \
   [--goal "<one-line goal override>"] \
@@ -96,7 +96,7 @@ Before entering the sequential walker, check `.claude/loop.json` for
 `loop.marathonRunner`:
 
 ```bash
-RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
+RUNNER=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" config get loop.marathonRunner --repo "$PWD" 2>/dev/null || echo "sequential")
 ```
 
 If `RUNNER === "wave"`, delegate to `/devcrew:wave loop` and exit.

@@ -151,16 +151,16 @@ preset file lookup or `--override` merge needed. Run, **per variant**:
 
 ```bash
 # SPLIT_BUILD = true
-FE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
+FE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" resolve-skills \
   --variant fe \
   --preset .claude/loop.json 2>/dev/null | jq -r '.dispatchInstructionBlock // empty')
 
-BE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
+BE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" resolve-skills \
   --variant be \
   --preset .claude/loop.json 2>/dev/null | jq -r '.dispatchInstructionBlock // empty')
 
 # SPLIT_BUILD = false
-SINGLE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
+SINGLE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" resolve-skills \
   --variant single \
   --preset .claude/loop.json 2>/dev/null | jq -r '.dispatchInstructionBlock // empty')
 ```
@@ -184,7 +184,7 @@ in Step 3 / 3a / 3b prepend the block when non-empty, omit it otherwise.
 **Do NOT let Step 3 / 3a / 3b's Agent-tool dispatch inherit the session model.** Resolve the tier explicitly, once per orchestrate-slice run:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" resolve-model --repo "$PWD" --phase build
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" resolve-model --repo "$PWD" --phase build
 ```
 
 Store the printed value (e.g. `sonnet`) as `BUILD_MODEL`. **If it prints `inherit` (model routing disabled), OMIT the `model:` argument on every builder dispatch** — each agent's own `model:` frontmatter (`agents/*.md`) then governs; do not substitute a model yourself. Otherwise pass `BUILD_MODEL` as the `model:` argument on every builder Agent-tool call in Steps 3 / 3a / 3b below (`devcrew:fullstack-dev`, `devcrew:frontend-dev`, `devcrew:backend-dev` — uxdesigner is not a builder and is unaffected). If a shape classifier is available for this slice (mechanical doc-only / config-only / test-only / single-module edit), pass `--shape <shape>` too — it overrides the phase tier and takes priority over `BUILD_MODEL`.
@@ -198,14 +198,14 @@ Fetch a recall block per builder variant BEFORE dispatching (same CLI surface
 
 ```bash
 # SPLIT_BUILD = true
-FE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block \
+FE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" recall-block \
   --repo "$PWD" --agent devcrew:frontend-dev --tags "<FEAT tags csv>" 2>/dev/null | jq -r '.block // empty')
 
-BE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block \
+BE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" recall-block \
   --repo "$PWD" --agent devcrew:backend-dev --tags "<FEAT tags csv>" 2>/dev/null | jq -r '.block // empty')
 
 # SPLIT_BUILD = false
-SINGLE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block \
+SINGLE_RECALL_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" recall-block \
   --repo "$PWD" --agent <resolved single-variant builder agent> --tags "<FEAT tags csv>" 2>/dev/null | jq -r '.block // empty')
 ```
 
@@ -228,14 +228,14 @@ to this run:
 
 ```bash
 # SPLIT_BUILD = true
-FE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block \
+FE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-block \
   --repo "$PWD" --agent devcrew:frontend-dev --run-id "<SLICE-NN>" 2>/dev/null | jq -r '.block // empty')
 
-BE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block \
+BE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-block \
   --repo "$PWD" --agent devcrew:backend-dev --run-id "<SLICE-NN>" 2>/dev/null | jq -r '.block // empty')
 
 # SPLIT_BUILD = false
-SINGLE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block \
+SINGLE_PROFILE_BLOCK=$(bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-block \
   --repo "$PWD" --agent <resolved single-variant builder agent> --run-id "<SLICE-NN>" 2>/dev/null | jq -r '.block // empty')
 ```
 
@@ -509,7 +509,7 @@ After builder PASS, dispatch the post-builder gate. Composition is governed by `
 Before dispatching, check whether this repo has its own consumer CI test gate:
 
 ```bash
-bun crew/scripts/crew.mts has-consumer-ci --repo "$PWD" --json
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" has-consumer-ci --repo "$PWD" --json
 ```
 
 LOW-risk slices: one reviewer; verifier is replaced by `write-validation-result --decision skipped --skip-reason "delegated to CI: <workflow file>"` only when `has-consumer-ci` reports present; otherwise dispatch `devcrew:verifier`.
@@ -584,9 +584,9 @@ Store the returned path as `VALIDATION_PATH`.
 
 If any dispatched reviewer returns `needs_fix`:
 
-1. If a `VALIDATION_PATH` was produced (`RISK_GATE = true`, or `RISK_GATE = false` with `has-consumer-ci` reporting absent): mark it stale — `bun crew/scripts/crew.mts mark-badge --repo "$PWD" --badge validation_stale --note "invalidated by review needs_fix"`. When no dedicated verifier ran (`RISK_GATE = false` and `has-consumer-ci` reported present), skip this sub-step — there is no separate validation artifact to invalidate; the reviewer's own `needs_fix` result is the signal.
+1. If a `VALIDATION_PATH` was produced (`RISK_GATE = true`, or `RISK_GATE = false` with `has-consumer-ci` reporting absent): mark it stale — `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge validation_stale --note "invalidated by review needs_fix"`. When no dedicated verifier ran (`RISK_GATE = false` and `has-consumer-ci` reported present), skip this sub-step — there is no separate validation artifact to invalidate; the reviewer's own `needs_fix` result is the signal.
 2. **Profile feedback (agent-profile-load-feedback):** record the fail outcome for the builder(s) profile-blocked in Step 2.7a, best-effort, using the SAME `<SLICE-NN>` run-id:
-   `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id "<SLICE-NN>" --outcome fail`
+   `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-feedback --repo "$PWD" --run-id "<SLICE-NN>" --outcome fail`
 3. Re-dispatch builder with review findings (run `/devcrew:fix` flow).
 4. After builder PASS on the fix bounce: re-dispatch the same gate composition selected in Step 4.5 (single reviewer on `RISK_GATE = false`; reviewer + 2nd reviewer/verifier on `RISK_GATE = true`).
 5. Proceed to Step 6 after all dispatched gates PASS.
@@ -636,7 +636,7 @@ Store the returned path as `DOCWRITER_PATH`.
 Run:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-final-synthesis \
   --repo "$PWD" \
   --title "orchestrate-slice: <SLICE-NN title>" \
   --summary "<one-paragraph summary of what shipped, which specialists ran, CONTRACT_YAML_PATH, CHANGELOG_WRITER_PATH, and DOCWRITER_PATH if set>" \

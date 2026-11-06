@@ -32,16 +32,16 @@ Validation should focus on behavior, not code style:
 
 When validation is expected, record that gate in workflow state:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_expected`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge validation_expected`
 
 If the scenario is substantial, write a validation plan:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-plan --repo "$PWD" --title "<short title>" ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-validation-plan --repo "$PWD" --title "<short title>" ...`
 
 When validation materially completes, write the validation result:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-validation-result --repo "$PWD" --title "<short title>" ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-validation-result --repo "$PWD" --title "<short title>" ...`
 
 If validation is intentionally skipped, record that explicitly in workflow state:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"`

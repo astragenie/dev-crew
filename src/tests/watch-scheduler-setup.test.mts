@@ -51,10 +51,19 @@ test("watch-tick.mts is never scheduler-invoked with platform branching in this 
   expect(scriptPath.replace(/\\/g, "/")).toMatch(/src\/scripts\/watch-tick\.mts$/);
 });
 
-// AC-8: /devcrew:watch and the scheduler registration must point at the same
-// entry-point script — no divergent code path.
-test("AC-8: commands/watch.md and the scheduler both reference watch-tick.mts", async () => {
+// AC-8: /devcrew:watch and the scheduler registration both ultimately run
+// watch-tick's logic, from one source (src/scripts/watch-tick.mts) built
+// into two entry files for two execution contexts — never a third,
+// divergent implementation. FEAT-037/SLICE-55 repointed commands/*.md
+// (shipped, node_modules-free consumer surface) at the committed
+// dist/watch-tick.js bundle; the scheduler's own registration runs
+// directly against this repo's source checkout (node_modules present
+// there), so it intentionally keeps the src/ path — see commands/watch.md's
+// own explanation of the split. The two are no longer byte-identical, so
+// this test checks each independently instead of asserting equality.
+test("AC-8: commands/watch.md documents the dist/ bundle; the scheduler keeps the source path", async () => {
   const watchMd = await fs.readFile(path.resolve("commands/watch.md"), "utf-8");
+  expect(watchMd).toContain('bun "${CLAUDE_PLUGIN_ROOT}/dist/watch-tick.js"');
   expect(watchMd).toContain("src/scripts/watch-tick.mts");
 
   const scriptPath = tickScriptPath(repoRoot()).replace(/\\/g, "/");

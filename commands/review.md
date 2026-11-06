@@ -16,7 +16,7 @@ Expected shape:
 
 1. verify the current workspace path with `pwd`
 2. read the repo wake-up brief:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" wake-up --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" wake-up --repo "$PWD"`
 3. explicitly confirm the returned `repoPath` matches the current working directory before trusting the brief
 4. read the most relevant run and handoff context for the work under review:
    - latest run brief
@@ -47,9 +47,9 @@ Review should be treated as a phase, not a courtesy:
 
 When review materially completes, write the review artifact:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result --repo "$PWD" --title "<short title>" --decision <approved|approved_with_notes|rejected> --author-id <builder-agent> --judge-id <reviewer-agent> --summary "<verdict>" --evidence "<files checked>" --files "<files in diff>" --test-summary "<test coverage>" --risks "<risks or none>" --next "<follow-up or none>"`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result --repo "$PWD" --title "<short title>" --decision <approved|approved_with_notes|rejected> --author-id <builder-agent> --judge-id <reviewer-agent> --summary "<verdict>" --evidence "<files checked>" --files "<files in diff>" --test-summary "<test coverage>" --risks "<risks or none>" --next "<follow-up or none>"`
 - If `--summary` (or any prose flag) contains apostrophes/backticks, shell argv quoting can mangle or drop it (dev-team#152). Write the body to a temp file and pass `--summary-file <path>` (or any `--<flag>-file <path>`) instead.
 
 If review is intentionally skipped, record that explicitly in workflow state:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge review_skipped --note "<reason>"`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge review_skipped --note "<reason>"`

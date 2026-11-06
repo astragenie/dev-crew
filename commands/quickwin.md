@@ -19,7 +19,7 @@ Workflow:
 
 1. **Spawn or reuse today's lane** (idempotent — safe to run repeatedly):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" quickwin-lane spawn --repo "$PWD" --json
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" quickwin-lane spawn --repo "$PWD" --json
    ```
    Returns `{ branch, worktreePath, base, reused }`. `reused: true` means today's
    lane already existed and you're joining it. Work happens in `worktreePath`.
@@ -30,7 +30,7 @@ Workflow:
    ```bash
    set -euo pipefail
    read -ra _args <<< "$ARGUMENTS"
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" claim-check --repo "<worktreePath>" --owner quickwin-lane -- "${_args[@]}"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" claim-check --repo "<worktreePath>" --owner quickwin-lane -- "${_args[@]}"
    ```
    Returns `{ disjoint, overlaps, available }`.
    - `disjoint: true` → all files are free; proceed to claim `available`.
@@ -40,7 +40,7 @@ Workflow:
 
 3. **Claim the disjoint file set** for the lane, from inside the lane worktree:
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" claim --repo "<worktreePath>" --owner quickwin-lane -- <available files>
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" claim --repo "<worktreePath>" --owner quickwin-lane -- <available files>
    ```
 
 4. **Do the work** in `worktreePath`. Keep it small — docs / comments / artifact
@@ -56,7 +56,7 @@ Workflow:
 
 Status check (is today's lane live?):
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" quickwin-lane status --repo "$PWD" --json
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" quickwin-lane status --repo "$PWD" --json
 ```
 
 Deliverable:

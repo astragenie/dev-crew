@@ -7,16 +7,20 @@ auto_execute_steps: false
 # Interactive Watch Tick
 
 Runs one watcher tick (FEAT-242 Track B1) against the local
-`~/.claude/watch/repos.json` registry. This is the SAME entry point the
-scheduled task registered by `scripts/setup-watch-scheduler.mjs` invokes —
-`/devcrew:watch` and the scheduler are two callers of one script, never two
-implementations (AC-8).
+`~/.claude/watch/repos.json` registry. Through FEAT-026/FEAT-037 (W2.5),
+this is the committed `dist/watch-tick.js` bundle built from the same
+`src/scripts/watch-tick.mts` source the scheduled task registered by
+`scripts/setup-watch-scheduler.mjs` invokes directly against this repo's
+checkout — one source, two entry files for two execution contexts:
+this command runs from a shipped, `${CLAUDE_PLUGIN_ROOT}`-relative,
+`node_modules`-free consumer install, while the scheduler's `schtasks`
+registration runs `bun` against the local dev-repo source tree (AC-8).
 
 Workflow:
 
 1. Run:
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/watch-tick.mts"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/watch-tick.js"
    ```
 2. The script:
    - resolves `watchHome` (`~/.claude/watch`, overridable via

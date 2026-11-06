@@ -19,7 +19,7 @@ generates a markdown summary capturing:
 Usage:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" retrospective \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" retrospective \
   --repo "$PWD" \
   --since 2026-05-01
 ```
@@ -27,7 +27,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" retrospective \
 Or use rolling-window syntax via `--span-days`:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" retrospective \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" retrospective \
   --repo "$PWD" \
   --span-days 7
 ```

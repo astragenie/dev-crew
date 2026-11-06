@@ -37,7 +37,7 @@ via `learn recent` (below).
 ### Usage
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings log \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" learnings log \
   --repo "$PWD" \
   --key "<short-key>" \
   --insight "<what you observed>" \
@@ -58,7 +58,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings log \
 ## Example
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings log \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" learnings log \
   --repo "$PWD" \
   --key "tsc-compile-drift" \
   --insight "Always recompile after TypeScript edits; CI drift guard will fail otherwise" \
@@ -74,7 +74,7 @@ View recent entries from the operational `learnings.jsonl` store logged via
 `learn log`.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" learnings recent \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" learnings recent \
   --repo "$PWD" \
   --limit 5
 ```
@@ -99,7 +99,7 @@ next slice. Prevents repeating known mistakes. Reads a different store than
 `recent` above — slice-grade files, not `learnings.jsonl`.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" lessons recent [N]
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" lessons recent [N]
 ```
 
 Default `N = 5`. Returns:

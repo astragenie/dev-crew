@@ -40,13 +40,13 @@ behind the 1.6% usefulness finding in runner-plugin#525).
 Run once (idempotent — safe to re-run):
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" memory-setup --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" memory-setup --repo "$PWD"
 ```
 
 Override one or more values at the same time:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" memory-setup --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" memory-setup --repo "$PWD" \
   --features "project=my-repo,topLessons=15,creditLoopK=7"
 ```
 
@@ -54,7 +54,7 @@ Opt a repo out explicitly (respected on every future re-run, never
 silently re-enabled):
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" memory-setup --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" memory-setup --repo "$PWD" \
   --features "enabled=false"
 ```
 

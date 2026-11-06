@@ -16,7 +16,7 @@ slices for `/devcrew:fix` next wave. Loops until `/devcrew:stop-check` fires.
 ### plan — emit the next wave plan without dispatching
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" wave plan \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" wave plan \
   --repo "$PWD" \
   [--size N] \
   [--json]
@@ -40,7 +40,7 @@ Output shape (`--json`):
 ### run — execute one wave end-to-end
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" wave run \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" wave run \
   --repo "$PWD" \
   [--dry-run] \
   [--size N]
@@ -93,7 +93,7 @@ PR so the `pr.merged` DORA envelope fires once GitHub merges it. See
 ### loop — repeat `run` until a stop condition fires
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" wave loop \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" wave loop \
   --repo "$PWD" \
   [--max-waves N] \
   [--auto-mode]

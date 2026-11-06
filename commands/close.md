@@ -49,7 +49,7 @@ Usage:
 
 ```bash
 # Scaffold-only path (fill grade template manually, then run grade-write)
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice close \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice close \
   --repo "$PWD" \
   --id SLICE-NN \
   [--keep-feature-open] \
@@ -59,7 +59,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice close \
   [--memories-used <path-to-ids.json>]
 
 # Full single-shot path (autonomous_safe features only)
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" slice close \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice close \
   --repo "$PWD" \
   --id SLICE-NN \
   --grade-yaml <path-to-grade.yaml> \
@@ -177,7 +177,7 @@ The `dispatchInstruction` emitted by `devcrew:start` (mode `lead`) directs
 the orchestrator to invoke the fanout CLI after builder PASS:
 
 ```bash
-bun src/scripts/loop.mts slice post-builder-fanout --id <slice-id>
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice post-builder-fanout --id <slice-id>
 ```
 
 This writes a marker file at `.claude/artifacts/loop/fanout-markers/<slice-id>.json`
@@ -201,7 +201,7 @@ should follow `devcrew:close` with a `pr-watch` call so the `pr.merged`
 DORA envelope actually fires once GitHub merges it:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" pr-watch <pr-url> \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" pr-watch <pr-url> \
   --repo "$PWD" \
   --wait-for-merge \
   --slice-id <slice-id> \

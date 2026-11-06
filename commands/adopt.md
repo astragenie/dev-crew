@@ -30,7 +30,7 @@ When you want to understand the current repo state before writing anything
 confirming whether the harness is already present — run the audit-only
 check first instead of jumping to step 1 below:
 
-1. `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" audit --repo "$PWD"`
+1. `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" audit --repo "$PWD"`
 2. Report whether the repo already has:
    - `CLAUDE.md`
    - `.claude/`
@@ -48,7 +48,7 @@ This pre-check overlaps with what step 1's `bootstrap` inspects on its own
 Workflow:
 
 1. Run the installer:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" bootstrap --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" bootstrap --repo "$PWD"`
 2. Inspect `CLAUDE.md`, `.claude/`, `.mcp.json`, and other repo guidance before making additional changes.
 3. If `CLAUDE.md` does not exist, create it.
 4. If `CLAUDE.md` already exists, improve it conservatively and prefer `@path` imports instead of rewriting large sections.
@@ -63,8 +63,8 @@ Workflow:
    - `.github/workflows/`
    - Docker / compose / infra files
 8. If the repo already reveals useful deployment clues, write initial deployment guidance:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" discover-deployment --repo "$PWD"`
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-guidance --repo "$PWD" --title "<short title>" --discovery-status repo-derived ...`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" discover-deployment --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-deployment-guidance --repo "$PWD" --title "<short title>" --discovery-status repo-derived ...`
 9. If deployment is only partly clear, record the known build/deploy path and what still needs live verification instead of guessing.
 10. If the installer reports missing or stale global memory, recommend `/devcrew:install`.
 11. Explain any assumptions before editing if the repo shape makes the bootstrap risky.

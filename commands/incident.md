@@ -69,7 +69,7 @@ Reviewer B returns `rejected`:
 1. Read both review-result artifacts for the aggregated FAIL findings.
 2. **Repair-signature dedup check (ported from dev-team#257/#259):** before retrying, run `repair-check` with the aggregated FAIL findings as `--failure-output`, passing the previous iteration's `--prev-signature` (omit on the first iteration):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" repair-check --repo "$PWD" \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" repair-check --repo "$PWD" \
      --failure-output "<aggregated FAIL findings>" \
      --prev-signature "<signature from the previous iteration's repair-check call, if any>"
    ```
@@ -82,7 +82,7 @@ Reviewer B returns `rejected`:
 On N exhausted:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge incident_blocked \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge incident_blocked \
   --note "<aggregated FAIL summary>"
 ```
 
@@ -106,7 +106,7 @@ Same table as `/devcrew:build` and `/devcrew:fix`:
 1. Verify the current workspace path:
    - `pwd`
 2. Read the repo wake-up brief:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" wake-up --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" wake-up --repo "$PWD"`
 3. Confirm the returned `repoPath` matches `$PWD`. If not, stop and correct repo context before proceeding.
 4. Classify the incident against the triage table above. State the chosen branch explicitly.
 5. Apply skills:
@@ -118,7 +118,7 @@ Same table as `/devcrew:build` and `/devcrew:fix`:
    - **Root cause known, fix needed**: specialist builder from routing table.
    - **Rollback needed**: `devcrew:release-engineer` with release-recovery skill loaded.
 7. After builder / release-engineer returns PASS, write a handoff artifact if substantial:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff --repo "$PWD" --title "<short title>" --from <builder|release-engineer> --to dispatcher --summary "<headline>" --scope "<in scope>" --deliverable "<what shipped>" --files "<changed files>" --confidence "<high|medium|low>" --risks "<risks or none>" --next "reviewer fan-out"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff --repo "$PWD" --title "<short title>" --from <builder|release-engineer> --to dispatcher --summary "<headline>" --scope "<in scope>" --deliverable "<what shipped>" --files "<changed files>" --confidence "<high|medium|low>" --risks "<risks or none>" --next "reviewer fan-out"`
 8. Fan out two reviewers in a **single Agent-tool message** (parallel dispatch), same routing as `/devcrew:fix`:
    - **Reviewer A** — stack-specific reviewer (skip if no stack match).
    - **Reviewer B** — `devcrew:reviewer` with lens from FEAT concern tag (default: `correctness`).
@@ -127,8 +127,8 @@ Same table as `/devcrew:build` and `/devcrew:fix`:
 11. After both approve (or A skipped + B approved), run verifier with environment overlay:
     - `devcrew:verifier` with `--environment staging` or `--environment prod-readonly`.
 12. If verifier PASS:
-    - Fix-forward path: `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge incident_resolved`
-    - Rollback path: `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge rollback_executed`
+    - Fix-forward path: `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge incident_resolved`
+    - Rollback path: `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge rollback_executed`
 13. Optional post-mortem: dispatch `devcrew:document-writer` to author `.claude/artifacts/crew/incidents/<timestamp>-postmortem.md` covering timeline, contributing factors, action items.
 14. End with synthesis for the user:
     - confirmed incident shape (which triage branch)

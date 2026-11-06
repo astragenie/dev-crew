@@ -44,20 +44,20 @@ Seed or migrate the cost-related config keys in `.claude/loop.json`.
 Run once (idempotent — safe to re-run):
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" cost-setup --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" cost-setup --repo "$PWD"
 ```
 
 Override one or more values at the same time:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" cost-setup --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" cost-setup --repo "$PWD" \
   --features "ceilingUsd=200,regressionMultiplier=2.5,regressionWindow=7"
 ```
 
 Project-scope cost evaluation (multi-project workstation):
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" cost-setup --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" cost-setup --repo "$PWD" \
   --features "project=astrarunner,projectAliases=runner-hardening|runner-feat-202"
 ```
 
@@ -86,17 +86,17 @@ gone — control is config-only now.
 
 1. Run the setup (idempotent — safe to re-run):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" cost-setup --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" cost-setup --repo "$PWD"
    ```
 
 2. To override one or more feature defaults at the same time:
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" cost-setup --repo "$PWD" --features "cost-hygiene=off,shell-preflight=off"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" cost-setup --repo "$PWD" --features "cost-hygiene=off,shell-preflight=off"
    ```
 
 3. To inspect the current registry without writing:
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" features-list
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" features-list
    ```
 
 ### Output

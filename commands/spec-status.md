@@ -22,7 +22,7 @@ repeatedly.
 Usage:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" spec status \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" spec status \
   --repo "$PWD"
 ```
 

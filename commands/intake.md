@@ -32,7 +32,7 @@ the CLI cannot perform on its own — dispatch `devcrew:pm --spec` directly
 from the skill instead, then persist its `specBody` via `spec add`:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" spec add \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" spec add \
   --repo "$PWD" \
   --type <prd|user-journey|sre|research|adr|other> \
   --title "<title>" \

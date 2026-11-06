@@ -19,7 +19,7 @@ Walks `docs/decisions/*.md` (or `.claude/artifacts/loop/decisions/`) and returns
 decisions sorted newest first.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" decisions list \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" decisions list \
   --repo "$PWD" \
   [--status accepted|superseded|reverted]
 ```
@@ -50,7 +50,7 @@ Filtering with `--status` is exact-match on the frontmatter field.
 Print the full body + frontmatter of a single decision by id.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" decisions show \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" decisions show \
   --repo "$PWD" \
   --id DEC-001
 ```
@@ -64,7 +64,7 @@ Find decisions whose `affects_files` frontmatter matches any of the supplied
 changed files. Match is literal path-suffix.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" decisions relevant \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" decisions relevant \
   --repo "$PWD" \
   --files "src/auth/middleware.cs,src/api/Controllers/AuthController.cs"
 ```
@@ -100,7 +100,7 @@ if you want prior-decision context for the changed files.
 Mark an existing decision as superseded by a newer one — updates both files atomically.
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" decisions supersede \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" decisions supersede \
   --repo "$PWD" \
   --id DEC-005 \
   --by DEC-009

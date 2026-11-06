@@ -14,9 +14,9 @@ Workflow:
 
 1. Identify the target repo and desired retention window (default: 90 days).
 2. Run a dry-run pass to preview files that would be deleted:
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/prune-artifacts.mts" --dry-run --older-than <days> --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/prune-artifacts.js" --dry-run --older-than <days> --repo "$PWD"`
 3. If the list looks correct, run the destructive pass (omit `--dry-run`):
-   - `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/prune-artifacts.mts" --older-than <days> --repo "$PWD"`
+   - `bun "${CLAUDE_PLUGIN_ROOT}/dist/prune-artifacts.js" --older-than <days> --repo "$PWD"`
 4. Report the count of deleted files and any errors.
 
 Flags:

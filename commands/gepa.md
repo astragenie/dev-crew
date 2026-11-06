@@ -14,7 +14,7 @@ Single command with subcommands. Replaces:
 - `devcrew:gepa-invalidate` → `devcrew:gepa invalidate`
 
 Also gives a slash-command entry point to three operations that were
-previously CLI-only (`bun crew/scripts/crew.mts gepa-resume|gepa-revert|gepa-thaw`,
+previously CLI-only (`bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" gepa-resume|gepa-revert|gepa-thaw`,
 no `.md` doc):
 
 - `devcrew:gepa resume`
@@ -62,7 +62,7 @@ JSONL log under `.claude/artifacts/crew/gepa/trials/`.
 /devcrew:gepa history <agent> [--source eval|captured|soak] [--limit N]
 ```
 
-Shells to `bun crew/scripts/crew.mts gepa-history` with the given args.
+Shells to `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" gepa-history` with the given args.
 Output is one tabular line per trial, sorted by `created_at` desc:
 
 ```
@@ -98,10 +98,10 @@ Exit codes: `0` — invalidation completed (count may be 0 if no rows matched). 
 
 ```bash
 # Invalidate all trials for fullstack-dev since June 25
-bun crew/scripts/crew.mts gepa-invalidate --agent fullstack-dev --since 2026-06-25T00:00:00Z
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" gepa-invalidate --agent fullstack-dev --since 2026-06-25T00:00:00Z
 
 # Invalidate all trials for fullstack-dev with tag "broken-judge"
-bun crew/scripts/crew.mts gepa-invalidate --agent fullstack-dev --tag broken-judge
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" gepa-invalidate --agent fullstack-dev --tag broken-judge
 ```
 
 Implementation: `crew/scripts/lib/gepa/gepa-killswitch-cmds.mts` (also backs

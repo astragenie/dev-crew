@@ -7,7 +7,7 @@ auto_execute_steps: false
 # List Autonomous Loop Presets
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" list-presets
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" list-presets
 ```
 
 Returns an array of `{ name, description }` for each `scripts/presets/*.json`

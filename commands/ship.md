@@ -14,7 +14,7 @@ deployer skill and require explicit user approval before any production promotio
 
 ```bash
 pwd
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" wake-up --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" wake-up --repo "$PWD"
 ```
 
 Verify the returned `repoPath` matches `$PWD` before trusting the brief.
@@ -24,13 +24,13 @@ Verify the returned `repoPath` matches `$PWD` before trusting the brief.
 Run discovery and surface what is already known:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" discover-deployment --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" discover-deployment --repo "$PWD"
 ```
 
 If guidance is absent, stale, or incomplete, inspect CI/CD + infra files and write durable guidance:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-guidance --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-deployment-guidance --repo "$PWD" \
   --title "<short title>" \
   --discovery-status repo-derived   # or partial / live-verified
 ```
@@ -73,11 +73,11 @@ qa_decision = passed AND verifier_decision = passed
 
 1. Emit badge (one validation gate covers both agents — mark only after BOTH pass):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_passed --note "qa-expert + verifier both passed"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge validation_passed --note "qa-expert + verifier both passed"
    ```
    **Profile feedback (agent-profile-load-feedback):** if a retry dispatch fetched a profile block in Step 3, record the pass outcome, best-effort, using the SAME `<runId>` (no-op — empty `credited` — when no retry occurred, since no atoms were injected under that run):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id <runId> --outcome pass
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-feedback --repo "$PWD" --run-id <runId> --outcome pass
    ```
 2. File PR:
    ```bash
@@ -85,7 +85,7 @@ qa_decision = passed AND verifier_decision = passed
    ```
 3. Write deployment check (this artifact is the PR-filed evidence — there is no `pr_filed` badge):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-check --repo "$PWD" \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-deployment-check --repo "$PWD" \
      --title "Ship: PR filed" --decision passed --url "<PR URL>"
    ```
 4. Exit — surface the PR URL to the user.
@@ -94,7 +94,7 @@ qa_decision = passed AND verifier_decision = passed
 
 1. **Repair-signature dedup check (ported from dev-team#257/#259):** before retrying, run `repair-check` with the aggregated qa-expert + verifier FAIL findings as `--failure-output`, passing the previous iteration's `--prev-signature` (omit on the first iteration):
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" repair-check --repo "$PWD" \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" repair-check --repo "$PWD" \
      --failure-output "<aggregated FAIL findings>" \
      --prev-signature "<signature from the previous iteration's repair-check call, if any>"
    ```
@@ -108,10 +108,10 @@ qa_decision = passed AND verifier_decision = passed
    - `.ts` + `surface:plugin` → `devcrew:aiplugin-dev`
    - no clear tag → `devcrew:fullstack-dev`
 4. **Recall injection (FEAT-188 S3a):** before dispatching, fetch a recall block:
-   `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" recall-block --repo "$PWD" --agent <specialist-builder-agent-name> --tags "<FEAT tags csv>"`
+   `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" recall-block --repo "$PWD" --agent <specialist-builder-agent-name> --tags "<FEAT tags csv>"`
    If `.block` is non-empty, prepend it verbatim (it is already the `## Prior context (from astramem)` block) to the retry dispatch instruction, ahead of the aggregated FAIL findings. If empty (memory not configured, or nothing recalled), omit — do not add any placeholder text.
 4a. **Profile injection (agent-profile-load-feedback):** immediately after the recall block, fetch the specialist builder's track record (best-effort, empty when disabled). Resolve `<runId>` from `.claude/state/crew/workflow-state.json` (`currentRun.slice`) — reuse this SAME value for the profile-feedback calls in Step 3 (Both PASS path) and Step 4 below:
-   `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-block --repo "$PWD" --agent <specialist-builder-agent-name> --run-id <runId>`
+   `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-block --repo "$PWD" --agent <specialist-builder-agent-name> --run-id <runId>`
    If `.block` is non-empty, append it (it is already the `## Your track record (<agent>)` block) to the retry dispatch instruction, after the recall block. If empty (profile disabled, or no track record yet), omit — do not add any placeholder text.
 5. Dispatch the specialist builder with the aggregated FAIL findings as fix scope. Builder produces
    a fix + handoff artifact.
@@ -130,18 +130,18 @@ retry_counter < ship.fix_retry_limit (default 2) AND repair-check did not report
 When retries are exhausted without both agents passing:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" \
   --badge blocked \
   --note "ship: <aggregated FAIL summary from qa-expert + verifier>"
 
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-deployment-check --repo "$PWD" \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-deployment-check --repo "$PWD" \
   --title "Ship: blocked after <N> retries" \
   --decision blocked
 ```
 
 **Profile feedback (agent-profile-load-feedback):** record the fail outcome for the last retry's profile block, best-effort, using the SAME `<runId>` from Step 3a:
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" profile-feedback --repo "$PWD" --run-id <runId> --outcome fail
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" profile-feedback --repo "$PWD" --run-id <runId> --outcome fail
 ```
 
 Halt and escalate to the user with:
@@ -163,10 +163,10 @@ for it.
 Use the deployer for any environment transition requiring live infrastructure access:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge prod_deploy_expected
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge dev_deploy_expected
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge dev_skipped --note "<reason>"
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge prod_skipped --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge prod_deploy_expected
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge dev_deploy_expected
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge dev_skipped --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge prod_skipped --note "<reason>"
 ```
 
 ## Badge reference
