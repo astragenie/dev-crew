@@ -16,7 +16,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// ../../../node_modules/@astragenie/astramem-client/dist/resolve.js
+// node_modules/@astragenie/astramem-client/dist/resolve.js
 import { spawn } from "child_process";
 import * as fs10 from "fs/promises";
 import * as path10 from "path";
@@ -160,7 +160,7 @@ var init_resolve = __esm(() => {
   PROVIDERS_SAAS_SPECIFIER = [PLUGIN_PKG, "providers/saas"].join("/");
 });
 
-// ../../../node_modules/@astragenie/astramem-client/dist/calls.js
+// node_modules/@astragenie/astramem-client/dist/calls.js
 async function withCap(p, fallback, capMs) {
   let timer;
   const capped = new Promise((resolve2) => {
@@ -207,7 +207,7 @@ var init_calls = __esm(() => {
   init_resolve();
 });
 
-// ../../../node_modules/@astragenie/astramem-client/dist/daemon-error.js
+// node_modules/@astragenie/astramem-client/dist/daemon-error.js
 var DaemonError;
 var init_daemon_error = __esm(() => {
   DaemonError = class DaemonError extends Error {
@@ -230,7 +230,7 @@ var init_daemon_error = __esm(() => {
   };
 });
 
-// ../../../node_modules/@astragenie/astramem-client/dist/daemon-client.js
+// node_modules/@astragenie/astramem-client/dist/daemon-client.js
 function joinList(value) {
   if (value === undefined)
     return;
@@ -444,7 +444,7 @@ var init_daemon_client = __esm(() => {
   init_daemon_error();
 });
 
-// ../../../node_modules/@astragenie/astramem-client/dist/profile-calls.js
+// node_modules/@astragenie/astramem-client/dist/profile-calls.js
 function resolveDaemonClient(capMs = DEFAULT_CAP_MS) {
   try {
     const baseUrl = process.env.ASTRAMEM_BASE_URL ?? DEFAULT_BASE_URL;
@@ -483,7 +483,7 @@ var init_profile_calls = __esm(() => {
   init_daemon_client();
 });
 
-// ../../../node_modules/@astragenie/astramem-client/dist/daemon-types.js
+// node_modules/@astragenie/astramem-client/dist/daemon-types.js
 var MEMORY_TYPES;
 var init_daemon_types = __esm(() => {
   MEMORY_TYPES = [
@@ -500,7 +500,7 @@ var init_daemon_types = __esm(() => {
   ];
 });
 
-// ../../../node_modules/@astragenie/astramem-client/dist/index.js
+// node_modules/@astragenie/astramem-client/dist/index.js
 var exports_dist = {};
 __export(exports_dist, {
   resolveWireProvider: () => resolveWireProvider,
@@ -816,10 +816,10 @@ function parseFrontmatterBlock(text) {
   return fm;
 }
 
-// ../../../crew/node_modules/@astragenie/plugin-std/dist/git.js
+// crew/node_modules/@astragenie/plugin-std/dist/git.js
 import { execFile } from "child_process";
 
-// ../../../crew/node_modules/@astragenie/plugin-std/dist/errors.js
+// crew/node_modules/@astragenie/plugin-std/dist/errors.js
 class PluginError extends Error {
   transient = false;
   status;
@@ -850,7 +850,7 @@ class TransientError extends PluginError {
   }
 }
 
-// ../../../crew/node_modules/@astragenie/plugin-std/dist/git.js
+// crew/node_modules/@astragenie/plugin-std/dist/git.js
 function chomp(s) {
   return s.replace(/\r?\n$/, "");
 }

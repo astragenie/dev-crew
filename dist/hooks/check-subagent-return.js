@@ -184,11 +184,11 @@ async function readCrewConfig(cwd) {
 // crew/scripts/lib/dispatch-timing.mts
 import path2 from "path";
 
-// ../../../crew/node_modules/@astragenie/plugin-std/dist/jsonl.js
+// crew/node_modules/@astragenie/plugin-std/dist/jsonl.js
 import { appendFile, mkdir, readFile, rename, stat } from "fs/promises";
 import { dirname } from "path";
 
-// ../../../crew/node_modules/@astragenie/plugin-std/dist/errors.js
+// crew/node_modules/@astragenie/plugin-std/dist/errors.js
 class PluginError extends Error {
   transient = false;
   status;
@@ -219,7 +219,7 @@ class TransientError extends PluginError {
   }
 }
 
-// ../../../crew/node_modules/@astragenie/plugin-std/dist/jsonl.js
+// crew/node_modules/@astragenie/plugin-std/dist/jsonl.js
 function serializeLines(records) {
   try {
     return records.map((record) => `${JSON.stringify(record)}

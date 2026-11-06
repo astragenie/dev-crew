@@ -16,7 +16,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// ../../../crew/node_modules/zod/v3/helpers/util.js
+// crew/node_modules/zod/v3/helpers/util.js
 var util, objectUtil, ZodParsedType, getParsedType = (data) => {
   const t = typeof data;
   switch (t) {
@@ -147,7 +147,7 @@ var init_util = __esm(() => {
   ]);
 });
 
-// ../../../crew/node_modules/zod/v3/ZodError.js
+// crew/node_modules/zod/v3/ZodError.js
 var ZodIssueCode, quotelessJson = (obj) => {
   const json = JSON.stringify(obj, null, 2);
   return json.replace(/"([^"]+)":/g, "$1:");
@@ -268,7 +268,7 @@ var init_ZodError = __esm(() => {
   };
 });
 
-// ../../../crew/node_modules/zod/v3/locales/en.js
+// crew/node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -375,7 +375,7 @@ var init_en = __esm(() => {
   en_default = errorMap;
 });
 
-// ../../../crew/node_modules/zod/v3/errors.js
+// crew/node_modules/zod/v3/errors.js
 function setErrorMap(map) {
   overrideErrorMap = map;
 }
@@ -388,7 +388,7 @@ var init_errors = __esm(() => {
   overrideErrorMap = en_default;
 });
 
-// ../../../crew/node_modules/zod/v3/helpers/parseUtil.js
+// crew/node_modules/zod/v3/helpers/parseUtil.js
 function addIssueToContext(ctx, issueData) {
   const overrideMap = getErrorMap();
   const issue = makeIssue({
@@ -493,10 +493,10 @@ var init_parseUtil = __esm(() => {
   });
 });
 
-// ../../../crew/node_modules/zod/v3/helpers/typeAliases.js
+// crew/node_modules/zod/v3/helpers/typeAliases.js
 var init_typeAliases = () => {};
 
-// ../../../crew/node_modules/zod/v3/helpers/errorUtil.js
+// crew/node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 var init_errorUtil = __esm(() => {
   (function(errorUtil2) {
@@ -505,7 +505,7 @@ var init_errorUtil = __esm(() => {
   })(errorUtil || (errorUtil = {}));
 });
 
-// ../../../crew/node_modules/zod/v3/types.js
+// crew/node_modules/zod/v3/types.js
 class ParseInputLazyPath {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -3856,7 +3856,7 @@ var init_types = __esm(() => {
   NEVER = INVALID;
 });
 
-// ../../../crew/node_modules/zod/v3/external.js
+// crew/node_modules/zod/v3/external.js
 var exports_external = {};
 __export(exports_external, {
   void: () => voidType,
@@ -3976,13 +3976,13 @@ var init_external = __esm(() => {
   init_ZodError();
 });
 
-// ../../../crew/node_modules/zod/index.js
+// crew/node_modules/zod/index.js
 var init_zod = __esm(() => {
   init_external();
   init_external();
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/schema.js
+// crew/node_modules/@astragenie/memory-provider/dist/schema.js
 var MAX_SUMMARY_LENGTH = 280, IsoTimestamp, MemorySeveritySchema, MemoryKindSchema, MemoryEntrySchema, MemoryEntryInputSchema, MemoryProviderKindSchema, MemoryEnabledModeSchema, RecallConfigSchema, DEFAULT_CAPTURE_EVENTS, CaptureConfigSchema, MemoryConfigSchema;
 var init_schema = __esm(() => {
   init_zod();
@@ -4036,7 +4036,7 @@ var init_schema = __esm(() => {
   }).strict();
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/config.js
+// crew/node_modules/@astragenie/memory-provider/dist/config.js
 function parseMemoryConfig(raw) {
   return MemoryConfigSchema.parse(raw ?? {});
 }
@@ -4061,7 +4061,7 @@ var init_config = __esm(() => {
   init_schema();
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/noop-provider.js
+// crew/node_modules/@astragenie/memory-provider/dist/noop-provider.js
 function noopProvider() {
   return {
     describe: () => ({ provider: "noop" }),
@@ -4080,7 +4080,7 @@ function noopProvider() {
   };
 }
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/ranking.js
+// crew/node_modules/@astragenie/memory-provider/dist/ranking.js
 function isDecayed(entry, now) {
   if (entry.severity === "critical")
     return false;
@@ -4140,7 +4140,7 @@ var init_ranking = __esm(() => {
   MS_PER_DAY = 24 * 60 * 60 * 1000;
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/jsonl.js
+// crew/node_modules/@astragenie/memory-provider/dist/jsonl.js
 import { appendFile, mkdir, open } from "fs/promises";
 import * as path from "path";
 async function appendJsonlEntry(repoPath, segments, entry) {
@@ -4192,7 +4192,7 @@ var init_jsonl = __esm(() => {
   DEFAULT_TAIL_BYTES = 64 * 1024;
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/legacy-adapter.js
+// crew/node_modules/@astragenie/memory-provider/dist/legacy-adapter.js
 function isValidKind(value) {
   return typeof value === "string" && VALID_KINDS.includes(value);
 }
@@ -4248,7 +4248,7 @@ var init_legacy_adapter = __esm(() => {
   VALID_KINDS = ["failure", "lesson", "decision", "standard_violation"];
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/file-provider.js
+// crew/node_modules/@astragenie/memory-provider/dist/file-provider.js
 import { randomUUID } from "crypto";
 import * as path2 from "path";
 function toStoredEntry(input, supersedesOverride) {
@@ -4328,7 +4328,7 @@ var init_file_provider = __esm(() => {
   DEFAULT_STORE_PATH = [".claude", "artifacts", "loop", "learnings.jsonl"];
 });
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/resolve.js
+// crew/node_modules/@astragenie/astramem-client/dist/resolve.js
 import { spawn } from "child_process";
 import * as fs from "fs/promises";
 import * as path3 from "path";
@@ -4458,13 +4458,13 @@ var init_resolve = __esm(() => {
   PROVIDERS_SAAS_SPECIFIER = [PLUGIN_PKG, "providers/saas"].join("/");
 });
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/calls.js
+// crew/node_modules/@astragenie/astramem-client/dist/calls.js
 var DEFAULT_CAP_MS = 2000;
 var init_calls = __esm(() => {
   init_resolve();
 });
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/daemon-error.js
+// crew/node_modules/@astragenie/astramem-client/dist/daemon-error.js
 var DaemonError;
 var init_daemon_error = __esm(() => {
   DaemonError = class DaemonError extends Error {
@@ -4487,7 +4487,7 @@ var init_daemon_error = __esm(() => {
   };
 });
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/daemon-client.js
+// crew/node_modules/@astragenie/astramem-client/dist/daemon-client.js
 function joinList(value) {
   if (value === undefined)
     return;
@@ -4698,7 +4698,7 @@ var init_daemon_client = __esm(() => {
   init_daemon_error();
 });
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/profile-calls.js
+// crew/node_modules/@astragenie/astramem-client/dist/profile-calls.js
 function resolveDaemonClient(capMs = DEFAULT_CAP_MS) {
   try {
     const baseUrl = process.env.ASTRAMEM_BASE_URL ?? DEFAULT_BASE_URL;
@@ -4737,10 +4737,10 @@ var init_profile_calls = __esm(() => {
   init_daemon_client();
 });
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/daemon-types.js
+// crew/node_modules/@astragenie/astramem-client/dist/daemon-types.js
 var init_daemon_types = () => {};
 
-// ../../../crew/node_modules/@astragenie/astramem-client/dist/index.js
+// crew/node_modules/@astragenie/astramem-client/dist/index.js
 var init_dist = __esm(() => {
   init_resolve();
   init_calls();
@@ -4750,7 +4750,7 @@ var init_dist = __esm(() => {
   init_daemon_types();
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/astramem-provider.js
+// crew/node_modules/@astragenie/memory-provider/dist/astramem-provider.js
 import { randomUUID as randomUUID2 } from "crypto";
 function toStoredEntry2(input, supersedesOverride) {
   return MemoryEntrySchema.parse({
@@ -4886,7 +4886,7 @@ var init_astramem_provider = __esm(() => {
   };
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/resolve-provider.js
+// crew/node_modules/@astragenie/memory-provider/dist/resolve-provider.js
 function resolveProvider(rawConfig, repoPath, options = {}) {
   const config = parseMemoryConfig(rawConfig);
   const effective = resolveEffectiveConfig(config);
@@ -4914,7 +4914,7 @@ var init_resolve_provider = __esm(() => {
   init_file_provider();
 });
 
-// ../../../crew/node_modules/@astragenie/memory-provider/dist/index.js
+// crew/node_modules/@astragenie/memory-provider/dist/index.js
 var exports_dist = {};
 __export(exports_dist, {
   tailReadJsonl: () => tailReadJsonl,
