@@ -277,6 +277,151 @@ test("write-run-brief snapshots reviewers.ladder into gates.review.required; gat
 });
 
 // ---------------------------------------------------------------------------
+// Review B BLOCKER fix: `required` entries are SLOTS, not reviewer-name
+// labels — live reviewers write under their own `--reviewer` key (e.g.
+// "typescript-reviewer", "reviewer"), which never matches a ladder label
+// like "A"/"B". The gate must resolve by COUNT of distinct approving
+// reviewers against the required slot count, not by name lookup.
+// ---------------------------------------------------------------------------
+
+test("write-review-result: ladder [A,B] slots filled by non-ladder-named reviewers -> required, then passed", async () => {
+  const repoPath = await makeTempDir("review-verdict-slots-approve-");
+  try {
+    await fs.mkdir(path.join(repoPath, ".claude"), { recursive: true });
+    await fs.writeFile(
+      path.join(repoPath, ".claude", "loop.json"),
+      JSON.stringify({ reviewers: { ladder: ["A", "B"] } })
+    );
+
+    const briefResult = await runCrew([
+      "write-run-brief",
+      "--repo",
+      repoPath,
+      "--title",
+      "Slot semantics test run"
+    ]);
+    expect(briefResult.code).toBe(0);
+
+    const first = runCli([
+      "write-review-result",
+      "--repo",
+      repoPath,
+      "--title",
+      "TS review",
+      "--reviewer",
+      "typescript-reviewer",
+      "--decision",
+      "approved",
+      "--summary",
+      "looks fine",
+      "--test-summary",
+      "covered"
+    ]);
+    expect(first.status).toBe(0);
+
+    let state = await loadState(repoPath);
+    expect(
+      state.currentRun.gates.review.status,
+      "only one of two required slots filled -> still required, even though the reviewer key doesn't match a ladder label"
+    ).toBe("required");
+    expect(state.currentRun.gates.review.reviewers).toEqual({ "typescript-reviewer": "approved" });
+
+    const second = runCli([
+      "write-review-result",
+      "--repo",
+      repoPath,
+      "--title",
+      "Generalist review",
+      "--reviewer",
+      "reviewer",
+      "--decision",
+      "approved",
+      "--summary",
+      "also fine",
+      "--test-summary",
+      "covered"
+    ]);
+    expect(second.status).toBe(0);
+
+    state = await loadState(repoPath);
+    expect(
+      state.currentRun.gates.review.status,
+      "second distinct approving reviewer fills the second slot -> passed"
+    ).toBe("passed");
+    expect(state.currentRun.gates.review.reviewers).toEqual({
+      "typescript-reviewer": "approved",
+      reviewer: "approved"
+    });
+  } finally {
+    await cleanup(repoPath);
+  }
+});
+
+test("write-review-result: ladder [A,B] slots filled by non-ladder-named reviewers, one rejects -> failed", async () => {
+  const repoPath = await makeTempDir("review-verdict-slots-reject-");
+  try {
+    await fs.mkdir(path.join(repoPath, ".claude"), { recursive: true });
+    await fs.writeFile(
+      path.join(repoPath, ".claude", "loop.json"),
+      JSON.stringify({ reviewers: { ladder: ["A", "B"] } })
+    );
+
+    const briefResult = await runCrew([
+      "write-run-brief",
+      "--repo",
+      repoPath,
+      "--title",
+      "Slot semantics reject test run"
+    ]);
+    expect(briefResult.code).toBe(0);
+
+    const first = runCli([
+      "write-review-result",
+      "--repo",
+      repoPath,
+      "--title",
+      "TS review",
+      "--reviewer",
+      "typescript-reviewer",
+      "--decision",
+      "approved",
+      "--summary",
+      "looks fine",
+      "--test-summary",
+      "covered"
+    ]);
+    expect(first.status).toBe(0);
+
+    const second = runCli([
+      "write-review-result",
+      "--repo",
+      repoPath,
+      "--title",
+      "Generalist review",
+      "--reviewer",
+      "reviewer",
+      "--decision",
+      "rejected",
+      "--summary",
+      "missing edge case handling"
+    ]);
+    expect(second.status).toBe(0);
+
+    const state = await loadState(repoPath);
+    expect(
+      state.currentRun.gates.review.status,
+      "a rejected verdict dominates regardless of reviewer key naming"
+    ).toBe("failed");
+    expect(state.currentRun.gates.review.reviewers).toEqual({
+      "typescript-reviewer": "approved",
+      reviewer: "rejected"
+    });
+  } finally {
+    await cleanup(repoPath);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // AC-5: write-validation-result --decision skipped requires --skip-reason
 // ---------------------------------------------------------------------------
 

@@ -460,25 +460,26 @@ function handleHandoff(run: WorkflowRun, artifact: ArtifactRef): void {
 
 // FEAT-024: compute the aggregated review-gate status from the per-reviewer
 // verdict map. Any "rejected" dominates (gate fails outright, regardless of
-// how many required reviewers have or haven't written yet). Otherwise the
-// gate passes only once every entry in `required` carries an approving
-// verdict; an empty/absent `required` falls back to "whatever has been
-// written so far" so a direct (non-ladder) write still resolves to "passed"
-// on its first approval, matching pre-FEAT-024 single-reviewer behavior.
+// how many required slots have or haven't written yet). Otherwise, `required`
+// entries are SLOTS (a count), not reviewer-name labels — live reviewers
+// write under their own `--reviewer` key (e.g. "typescript-reviewer",
+// "reviewer-lite"), which rarely matches a ladder label like "A"/"B". The
+// gate passes once at least as many distinct reviewers have written an
+// approving verdict as there are required slots; an empty/absent `required`
+// falls back to "whatever has been written so far" so a direct (non-ladder)
+// write still resolves to "passed" on its first approval, matching
+// pre-FEAT-024 single-reviewer behavior.
 function computeReviewGateStatus(
   reviewers: Record<string, string>,
   required: string[]
 ): GateStatus {
   const values = Object.values(reviewers);
   if (values.includes("rejected")) return "failed";
-  const checklist = required.length > 0 ? required : Object.keys(reviewers);
-  const allApproved =
-    checklist.length > 0 &&
-    checklist.every((role) => {
-      const v = reviewers[role];
-      return v === "approved" || v === "approved_with_notes";
-    });
-  return allApproved ? "passed" : "required";
+  const approving = values.filter((v) => v === "approved" || v === "approved_with_notes");
+  if (required.length > 0) {
+    return approving.length >= required.length ? "passed" : "required";
+  }
+  return values.length > 0 && approving.length === values.length ? "passed" : "required";
 }
 
 // Merges one reviewer's verdict into run.gates.review and recomputes status.
@@ -533,20 +534,21 @@ function handleValidationPlan(
 }
 
 // FEAT-024: validation-gate counterpart to computeReviewGateStatus. "fail"
-// dominates; otherwise the gate resolves only once every required validator
-// has written — "skipped" when every one of those verdicts is "skipped" (no
-// "pass" among them), else "passed". Empty/absent `required` falls back to
-// "whatever has been written so far", same single-validator backward-compat
-// fallback as the review side.
+// dominates; otherwise, `required` entries are SLOTS (a count), not
+// validator-name labels — live validators write under their own
+// `--validator` key, which rarely matches a ladder label. The gate resolves
+// once at least as many distinct validators have written as there are
+// required slots — "skipped" when every one of those verdicts is "skipped"
+// (no "pass" among them), else "passed". Empty/absent `required` falls back
+// to "whatever has been written so far", same single-validator
+// backward-compat fallback as the review side.
 function computeValidationGateStatus(
   validators: Record<string, string>,
   required: string[]
 ): GateStatus {
   const values = Object.values(validators);
   if (values.includes("fail")) return "failed";
-  const checklist = required.length > 0 ? required : Object.keys(validators);
-  const allWritten =
-    checklist.length > 0 && checklist.every((role) => validators[role] !== undefined);
+  const allWritten = required.length > 0 ? values.length >= required.length : values.length > 0;
   if (!allWritten) return "expected";
   return values.every((v) => v === "skipped") ? "skipped" : "passed";
 }
