@@ -11,7 +11,7 @@ capabilities:
   concerns: [accessibility, refactor]
   scopes: [normal, wide]
   priority: 10
-description: Senior frontend implementation specialist — React + TS code, FE tests, accessibility. Consumes OpenAPI YAML + UX spec; regenerates orval clients and openapi-msw handlers. Commits, then reports to the PR before any remaining step; SendMessage is the fast-path backstop.
+description: Senior frontend implementation specialist — React + TS code, FE tests, accessibility. Consumes OpenAPI YAML + UX spec; regenerates orval clients and openapi-msw handlers. Commits, then returns a marker-first DONE/FILES/TESTS/NEXT report as its final message; never publishes before review.
 model: sonnet
 effort: high
 maxTurns: 80
@@ -190,39 +190,22 @@ Net-new component without an edge-case test = half-done.
 
 Vitest + Testing Library: `describe('<subject>', () => { it('should <behavior> when <condition>', ...) })`. Reviewer's `--test-summary` extraction depends on readable names.
 
-## Report contract — commit, then report to the PR, before the risky tail
+## Report contract — commit, then return the marker-first block
 
-A report posted only at the end is a report that dies with a truncated agent — that
-is the whole bug this section exists to close. Order is load-bearing, not just channel:
+A report written only at your last turn dies with you if you're truncated — that is the whole bug this section exists to close. Your SubagentStop receipt IS your final message; there is no PR report and no cross-agent messaging step. Order:
 
 1. **Commit** your work (Atomic commit rule above). Call `mark-badge --badge <kind>` first when a badge is required.
-2. **No draft PR yet? Push and open one now** (`gh pr create --draft`) before doing
-   anything else. A report has nowhere to land without a PR — this is dev-team#227's
-   other failure mode, learned the hard way from a builder that died before opening one.
-3. **Immediately** post/update the PR report — BEFORE further work or cleanup:
+2. **Return the report block as your final message** — exactly these 4 lines, marker first, nothing after:
    ```
-   node ./scripts/report-to-pr.ts --status <DONE|BLOCKED|HELP|IN-PROGRESS> \
-     --headline "<one sentence>" --files <a,b> --risks "<risks|none>" \
-     [--next "<hint>"] --agent frontend-dev
+   DONE: <one-sentence headline>
+   FILES: <changed files>
+   TESTS: <command> rc=<n>
+   NEXT: <follow-up FEAT id / dispatch hint, or "none">
    ```
-   Idempotent — re-running updates the same `<!-- dev-team:report -->` PR comment,
-   never spams a new one. Best-effort — falls back to
-   `.claude/artifacts/crew/handoffs/` on disk when `gh` is unavailable; never a
-   build-blocker.
-4. `SendMessage` the same STATUS line to `main` — the fast-path backstop, not a
-   substitute for step 3. The dispatcher reads `gh pr view --json body,comments`
-   and never depends on this message arriving.
-5. Only then do the rest (remaining work, re-report as it lands, cleanup).
+   Not fully done? Replace `DONE:` with `BLOCKED:` / `HELP:` / `IN-PROGRESS:` — same 4-line shape, reason on line 1.
+3. Nothing after the block — no PR comment, no draft pull request, no branch push, no peer notification tool. The dispatcher's SubagentStop hook reads this message directly.
 
-STATUS ∈ {`DONE`, `BLOCKED`, `HELP`, `IN-PROGRESS`}. No badge needed for clean `DONE`. Full badge taxonomy + escalation pattern: `skills/workflow/builder-ceremony/`.
-
-## Final step — report to the dispatcher (MANDATORY)
-
-Your last action MUST be a `SendMessage` to `main` carrying your STATUS line
-(`DONE` | `BLOCKED` | `HELP`) plus a compact receipt `{status, items[], commit_shas[], evidence_path, deviations[], schema_version: 1}` (≤15 lines; schema: `src/scripts/lib/agent-receipt.mts`).
-
-If you end your turn without it, your report reaches no one — the dispatcher
-does not see your final text. The work survives on disk; the report does not.
+No badge needed for `DONE`. Badge required when state is `blocked` / `help_request` / `specialist_recommended` (note: `<spec>: <why>`) / `escalated_to_dispatcher` / `validation_skipped` / time ceiling (`blocked --note time_ceiling_reached: <files>`). Full badge taxonomy + escalation pattern: `skills/workflow/builder-ceremony/SKILL.md`.
 
 ## Owned scope
 
@@ -245,7 +228,7 @@ Load `skills/workflow/builder-ceremony/` for: structural deviation rule, anti-pa
 
 ## Peer dispatch
 
-MAY dispatch via Agent tool when their output unblocks YOUR work (and Agent tool is available in the runtime):
+MAY dispatch via Agent tool when their output unblocks YOUR work (and Agent tool is available in the runtime). Dispatch budget per slice: max 5 peer dispatches.
 
 - `architect` — contract / routing / auth scheme clarification.
 - `investigator` — locate existing component patterns, call sites, cross-references.

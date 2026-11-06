@@ -193,6 +193,41 @@ function parseFrontmatterTools(text: string): string[] {
     .filter(Boolean);
 }
 
+function getFrontmatterBlock(text: string): string {
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  return match && match[1] !== undefined ? match[1] : "";
+}
+
+/** True when the frontmatter has an explicit `tools:` key (inline or block-list), regardless of its contents. */
+function hasExplicitToolsField(fmBlock: string): boolean {
+  return /^tools:\s*/m.test(fmBlock);
+}
+
+/** True when `disallowedTools:` (inline scalar/list or block-list) names "Agent". */
+function disallowedToolsNamesAgent(fmBlock: string): boolean {
+  const inline = fmBlock.match(/^disallowedTools:\s*(.*)$/m);
+  if (inline && inline[1] !== undefined && /\bAgent\b/.test(inline[1])) return true;
+  const block = fmBlock.match(/^disallowedTools:\s*\n((?:[ \t]+-[^\n]*\n?)*)/m);
+  if (block && block[1] !== undefined && /\bAgent\b/.test(block[1])) return true;
+  return false;
+}
+
+// FEAT-028 Codex #6: the peer-dispatch rule previously fired ONLY when
+// frontmatter `tools:` explicitly listed "Agent" — but no allowlisted agent
+// declares `tools:` at all (they inherit "all tools" implicitly), so the
+// rule was permanently inert for every real agent (confirmed by audit: 0/10
+// PEER_DISPATCH_ALLOWLIST agents declared `tools: [...Agent...]`). Fix:
+// an ABSENT `tools:` field defaults to "all tools" (which includes Agent),
+// UNLESS `disallowedTools` explicitly names Agent (the documented opt-out
+// used by some implementer agents in other repos/versions).
+function hasAgentToolEffective(text: string): boolean {
+  const fmBlock = getFrontmatterBlock(text);
+  if (hasExplicitToolsField(fmBlock)) {
+    return parseFrontmatterTools(text).includes("Agent");
+  }
+  return !disallowedToolsNamesAgent(fmBlock);
+}
+
 function checkPeerDispatchSection(
   text: string,
   fm: Record<string, string>,
@@ -201,37 +236,40 @@ function checkPeerDispatchSection(
 ) {
   const name = fm["name"];
   if (name === undefined || !PEER_DISPATCH_ALLOWLIST.has(name)) return;
-  const tools = parseFrontmatterTools(text);
-  if (!tools.includes("Agent")) return;
-  // Agent tool present — enforce Peer dispatch section structure
+  if (!hasAgentToolEffective(text)) return;
+  // Agent tool present (explicit or by default) — enforce Peer dispatch section structure
   const hasPeerDispatchHeading = /##\s+Peer dispatch/i.test(text);
   if (!hasPeerDispatchHeading) {
     errors.push(
-      `${label}: has "Agent" in tools: but missing "## Peer dispatch" section (FEAT-163)`
+      `${label}: has "Agent" in tools: but missing "## Peer dispatch" section (FEAT-163) (peer-dispatch)`
     );
     return; // no point checking sub-structure if heading absent
   }
-  // Must have at least one whitelist entry (a bullet under the heading).
-  // Tightened (FEAT-163 SLICE-73 reviewer MEDIUM): split `afterPeerDispatch`
-  // at the "MUST NOT dispatch" boundary so that backtick-formatted blacklist
-  // entries do NOT satisfy the whitelist-entry check. Only the content BEFORE
-  // the blacklist region is tested for "- `peer`" bullets.
+  // Must have at least one whitelist entry — a backtick-quoted peer name in
+  // the region before any blacklist boundary. Tightened (FEAT-163 SLICE-73
+  // reviewer MEDIUM) to split `afterPeerDispatch` at the "MUST NOT dispatch"
+  // boundary so that backtick-formatted blacklist entries do NOT satisfy the
+  // whitelist-entry check. Broadened (FEAT-028): accepts either a bulleted
+  // "- `peer`" line OR an inline prose mention ("You MAY dispatch `peer`
+  // ...") — some agents (e.g. architect) document the whitelist in prose,
+  // not bullets; the blacklist-boundary split already guards against a
+  // false pass from blacklist-only backtick entries (see regression tests).
   const peerDispatchIdx = text.search(/##\s+Peer dispatch/i);
   const afterPeerDispatch = text.slice(peerDispatchIdx);
   const blacklistSplitIdx = afterPeerDispatch.search(/MUST NOT dispatch/i);
   const whitelistRegion =
     blacklistSplitIdx > -1 ? afterPeerDispatch.slice(0, blacklistSplitIdx) : afterPeerDispatch;
-  const hasWhitelistEntry = /\n- `[^`]+`/.test(whitelistRegion);
+  const hasWhitelistEntry = /`[^`\n]+`/.test(whitelistRegion);
   if (!hasWhitelistEntry) {
     errors.push(
-      `${label}: "## Peer dispatch" section missing whitelist entry (at least one "- \`peer\`" bullet) (FEAT-163)`
+      `${label}: "## Peer dispatch" section missing whitelist entry (at least one backtick-quoted peer name) (FEAT-163) (peer-dispatch)`
     );
   }
   // Must have explicit blacklist ("MUST NOT dispatch" or "You MUST NOT")
   const hasBlacklist = /MUST NOT dispatch/i.test(afterPeerDispatch);
   if (!hasBlacklist) {
     errors.push(
-      `${label}: "## Peer dispatch" section missing blacklist ("MUST NOT dispatch") (FEAT-163)`
+      `${label}: "## Peer dispatch" section missing blacklist ("MUST NOT dispatch") (FEAT-163) (peer-dispatch)`
     );
   }
   // Must have dispatch budget line
@@ -240,7 +278,7 @@ function checkPeerDispatchSection(
     /Dispatch budget per slice/i.test(afterPeerDispatch);
   if (!hasBudget) {
     errors.push(
-      `${label}: "## Peer dispatch" section missing dispatch budget line ("max N per slice") (FEAT-163)`
+      `${label}: "## Peer dispatch" section missing dispatch budget line ("max N per slice") (FEAT-163) (peer-dispatch)`
     );
   }
 }
@@ -532,6 +570,81 @@ async function checkUniversalsHash(
   }
 }
 
+// FEAT-028: agent prompts must invoke plugin scripts via
+// `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/<name>.mts"`, never a relative
+// path — a relative invocation only resolves when the dispatcher's cwd
+// happens to be the plugin root, which is not guaranteed for a dispatched
+// subagent. Catches the three drifted forms found by audit #7 / Codex #22:
+// `node ./scripts/...`, `bun ./scripts/...`, bare `node scripts/...`.
+const RELATIVE_SCRIPT_PATH_RE = /\b(?:node \.\/scripts\/|bun \.\/scripts\/|node scripts\/)\S*/g;
+
+function checkNoRelativeScriptPath(
+  text: string,
+  _fm: Record<string, string>,
+  label: string,
+  errors: string[]
+) {
+  const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---/, "");
+  const matches = body.match(RELATIVE_SCRIPT_PATH_RE);
+  if (matches && matches.length > 0) {
+    const uniq = [...new Set(matches)];
+    errors.push(
+      `${label}: relative script invocation(s) found — use bun "\${CLAUDE_PLUGIN_ROOT}/crew/scripts/<name>.mts" instead: ${uniq.join(", ")} (no-relative-script-path)`
+    );
+  }
+}
+
+// FEAT-028: the four builder-tier agents that ship their own Report
+// contract must never publish (open a PR / push) before the dispatcher's
+// explicit review gate — that bypassed the ship boundary (audit #7 /
+// Codex #22, reviewer BLOCKER 1). `gh pr create` / `git push` are allowed
+// ONLY inside a dedicated "## Ship" section (none of the four currently
+// have one; this rule exists to keep it that way).
+const BUILDER_REPORT_CONTRACT_AGENTS = new Set([
+  "fullstack-dev",
+  "backend-dev",
+  "frontend-dev",
+  "aiplugin-dev"
+]);
+
+const PREREVIEW_PUBLISH_RE = /\bgh pr create\b|\bgit push\b/g;
+
+/** Strips any "## Ship" section (heading through the next "## " heading or EOF). */
+function stripShipSection(body: string): string {
+  const lines = body.split("\n");
+  const out: string[] = [];
+  let inShip = false;
+  for (const line of lines) {
+    if (/^##\s+Ship\b/i.test(line)) {
+      inShip = true;
+      continue;
+    }
+    if (inShip && /^##\s+/.test(line)) {
+      inShip = false;
+    }
+    if (!inShip) out.push(line);
+  }
+  return out.join("\n");
+}
+
+function checkNoPrereviewPublish(
+  text: string,
+  fm: Record<string, string>,
+  label: string,
+  errors: string[]
+) {
+  const name = fm["name"];
+  if (name === undefined || !BUILDER_REPORT_CONTRACT_AGENTS.has(name)) return;
+  const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---/, "");
+  const scanned = stripShipSection(body);
+  const matches = scanned.match(PREREVIEW_PUBLISH_RE);
+  if (matches && matches.length > 0) {
+    errors.push(
+      `${label}: found ${[...new Set(matches)].join(", ")} outside a "## Ship" section — builders must not publish before review (no-prereview-publish)`
+    );
+  }
+}
+
 function checkDuplicateNames(
   agents: Array<{ label: string; fm: Record<string, string> | null }>,
   errors: string[]
@@ -646,6 +759,8 @@ export async function validateAgents(agentsRoot = AGENTS_ROOT) {
     checkBashCoalescing(text, fm, label, errors);
     checkNoBacklogIds(text, fm, label, errors);
     checkNoLeadRef(text, fm, label, errors);
+    checkNoRelativeScriptPath(text, fm, label, errors);
+    checkNoPrereviewPublish(text, fm, label, errors);
     checkPeerDispatchSection(text, fm, label, errors);
     await checkUniversalsHash(text, fm, label, errors);
   }

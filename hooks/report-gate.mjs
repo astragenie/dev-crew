@@ -79,6 +79,21 @@
 // operators must opt in explicitly once they've seen it behave correctly in
 // their own session.
 //
+// FEAT-028 / SLICE-54 / DEC-046 (2026-11-06): the block path below (the
+// REPORT_BACK_CONTRACT_RE / hasSendMessageToolUse scan) now has a known
+// false-positive risk for the four builder-tier agents (fullstack-dev,
+// backend-dev, frontend-dev, aiplugin-dev) — their report contract was
+// rewritten to a marker-first final message (DONE:/FILES:/TESTS:/NEXT:)
+// with NO SendMessage call at all, superseding DEC-038's SendMessage-based
+// receipt-delivery lane for those four. This feature stays opt-in and OFF
+// by default (features["report-gate"].enabled, unset in this repo's
+// .claude/loop.json) — do not flip it on in a repo that dispatches those
+// four agents without first updating REPORT_BACK_CONTRACT_RE or excluding
+// them, or the block path will fire a stale "call SendMessage" remediation
+// against an agent that correctly never calls it. The receipt-lane-table
+// write below (recordReceiptSighting) is unaffected by this — it stays
+// valid for any agent that still uses SendMessage.
+//
 // FEAT-008 / SLICE-43 addendum: this file also runs a second, independent
 // SubagentStop side effect — receipt detection + lane-table recording. See
 // the "Receipt detection + lane table" comment block below main(), and

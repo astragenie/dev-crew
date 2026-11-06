@@ -199,17 +199,18 @@ test("builder.md points at builder-ceremony skill (which carries self-verify ref
   ).toBeTruthy();
 });
 
-// FEAT-170 SLICE-D follow-up, superseded by dev-team#227: builders MUST NOT
-// invoke write-handoff. Originally guarded by the "Builders do NOT write
-// handoff artifacts" declaration; #227's AC explicitly REMOVES that exact
-// declaration (report channel moved to a PR comment posted before the risky
-// tail) and replaces it with the "report dies with you if truncated" framing
-// + "Narration without a posted PR report = contract violation" guardrail.
+// FEAT-170 SLICE-D follow-up, superseded by dev-team#227, superseded again
+// by FEAT-028/DEC-046: builders MUST NOT invoke write-handoff. #227's AC
+// moved the report channel to a PR comment posted before the risky tail,
+// guarded by the "Narration without a posted PR report = contract
+// violation" phrase; FEAT-028 retired that PR-comment channel entirely in
+// favor of a marker-first final message (no PR, no SendMessage — see
+// DEC-046), so the guardrail phrase moved with it.
 // "NEVER invoke write-handoff" stays as the protective guardrail unchanged.
-test("builder.md prohibits write-handoff CLI invocation (FEAT-170 SLICE-D / dev-team#227)", () => {
+test("builder.md prohibits write-handoff CLI invocation (FEAT-170 SLICE-D / dev-team#227 / FEAT-028)", () => {
   expect(
-    builder.includes("Narration without a posted PR report = contract violation"),
-    "fullstack-dev.md must contain the report-to-PR contract-violation guardrail"
+    builder.includes("Narration without the marker-first block = contract violation"),
+    "fullstack-dev.md must contain the marker-first-block contract-violation guardrail"
   ).toBeTruthy();
   expect(
     builder.includes("NEVER invoke `write-handoff`") ||

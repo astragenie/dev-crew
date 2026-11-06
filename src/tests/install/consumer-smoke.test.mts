@@ -170,14 +170,22 @@ test("every shipped hook and CLI entry runs without node_modules (ratchet agains
   );
 });
 
+// FEAT-028 (2026-11-06): the bun count rose 25 -> 29 — four agent prompts
+// (architect, reviewer, verifier, aiplugin-dev) had their dead relative-path
+// script invocations (`node ./scripts/x.ts`, invisible to the CLI_LINE_RE
+// scanner) rewritten to real `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/..."`
+// invocations, newly surfacing crew/scripts/validate-agents.mts,
+// validate-manifests.mts, validate-adr-template.mts, and
+// crew/scripts/lib/parallel-gates.mts as real, counted, executed CLI
+// entrypoints for the first time.
 test("listShippedEntrypoints produces the exact distinct-file-set counts from the real file", async () => {
   const entries = await listShippedEntrypoints(REPO_ROOT);
   const grouped = groupDistinctFilesByRuntime(entries);
 
   assert.equal(
     grouped.bun.length,
-    25,
-    `expected 25 distinct bun entrypoints, got ${grouped.bun.length}: ${JSON.stringify(grouped.bun)}`
+    29,
+    `expected 29 distinct bun entrypoints, got ${grouped.bun.length}: ${JSON.stringify(grouped.bun)}`
   );
   assert.equal(
     grouped.node.length,
