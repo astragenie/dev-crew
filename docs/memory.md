@@ -85,16 +85,119 @@ programmatically:
 
 Full per-gate rationale: `docs/ci-gates.md`.
 
-**Gate 41 is red by design on `fix/audit-2026-11` (2026-11-06).**
+**Gate 42 is red by design on `fix/audit-2026-11` (2026-11-06).** (Was gate
+41 before FEAT-026/SLICE-52 inserted gate 21, shifting every later gate +1.)
 `src/tests/install/consumer-smoke.test.mts` (FEAT-022 / SLICE-47) runs every
 shipped hook and CLI entry from a `node_modules`-free consumer copy and stays
-RED while its `EXPECTED_FAIL` ratchet holds entries — 49 today, cleared when
-FEAT-026 lands the committed `dist/` bundles. Do not quarantine it: the same
-ratchet fails loudly when a listed entry starts passing or an unlisted one
-breaks. The merge-blocking `gate` job depends only on `fast-gate`, so this
-does not block merges. Verified 2026-11-06 (validation artifact
+RED while its `EXPECTED_FAIL` ratchet holds entries — 49 at SLICE-47, 42 as
+of FEAT-026/SLICE-52 (every HOOK entry now passes from the committed
+`dist/` bundles; the remaining 42 are CLI entries sourced from
+`commands/*.md`/`agents/*.md` literal invocations, which still resolve
+`@astragenie/*`/`zod`/`yaml` from `node_modules` until the serial W2.5
+path-rewrite lands). Do not quarantine it: the same ratchet fails loudly
+when a listed entry starts passing or an unlisted one breaks. The
+merge-blocking `gate` job depends only on `fast-gate`, so this does not
+block merges. Verified 2026-11-06 (validation artifact
 `20261106T040313Z-validation-result-slice-47-…`): the failure is the designed
 assertion only, and the staged copy contains no `node_modules` at any depth.
+
+**FEAT-026 alternative rejected (dist/ bundling vs. auto-installed deps).**
+Claude Code auto-installs a plugin-root `dependencies` block for
+marketplace installs (see Claude Code's `loading.md`), which would have let
+hooks/CLI entries resolve `node_modules` normally with zero bundling work.
+Rejected: devcrew is ineligible for that path — the root `bun.lock`
+declares workspaces, `crew/`'s own `package.json` (its `zod`/`yaml` deps) is
+never installed by that mechanism, and `@astragenie/*` needs registry auth
+at install time regardless. `Bun.build({target:"bun", external:
+["@opentelemetry/*","@aws-sdk/*"]})` bundling was chosen instead — no
+network, no auth, no install step; `src/scripts/build-dist.mts` is the
+build/`--check` tool, `.bun-version` pins the Bun build used.
+
+**FEAT-026 dist-path entry-recovery (`build-dist.mts`).** Once
+`hooks/hooks.json` is migrated so every `bun` command points at
+`dist/hooks/<name>.js` (this FEAT's own deliverable), a naive "every `bun
+".../<path>.mts"` command in hooks.json" entry-discovery regex finds zero
+hook sources post-migration — a *subsequent* `bun run build:dist` then
+deletes every previously-built `dist/hooks/*.js` file, because `build()`
+rm -rf's `dist/` before rebuilding from whatever `resolveEntries()` found
+(hit live during SLICE-52: a resumed builder's working tree showed a
+54k-line dist/ deletion after it ran `build:dist` post-hooks.json-edit).
+Fix: `collectHookEntries` now also matches the post-migration
+`dist/hooks/<base>.js` form and recovers the `.mts` source by basename
+lookup across `hooks/` and `crew/hooks/` (erroring loudly on zero or 2+
+matches) — `hooks/hooks.json` stays the single enumeration of hook entries
+(DEC-040) in both the pre- and post-migration shape.
+
+**FEAT-026 `import.meta.url` audit (review A, SLICE-52).** Every module
+reachable from the 5 bundled CLI entries (found by grepping each dist
+bundle's own `// <path>` module-boundary comments, Bun.build's bundle
+output with `minify:false`) that also uses `import.meta.url`/
+`fileURLToPath` — 14 modules total. The entry files themselves
+(`crew.mts`, `loop.mts`, `prune-artifacts.mts`, `report-to-pr.mts`,
+`watch-tick.mts`) and `crew/scripts/lib/memory/drift-check.mts` only
+compare `import.meta.url` against `process.argv[1]` for an `isMainEntry()`
+check — no data resolution, safe under bundling (both sides are fresh
+runtime values). `crew/scripts/lib/session-cost.mts`'s pricing table is
+already inlined, not resolved via a sibling file (FEAT-025).
+`src/scripts/lib/node-bun-guard.mjs`'s `ensureBunRuntime()` only uses
+`fileURLToPath` to build a re-exec/diagnostic path string, not to resolve
+a sibling data file — safe.
+
+The remaining 7 modules DID resolve a sibling/data path relative to their
+own `import.meta.url`, which under the bundle is wherever Bun.build placed
+the single output file (`dist/`, or wherever a consumer's plugin cache
+puts it) — NOT these modules' original source location three-ish levels
+deep in `src/scripts/lib/` or `crew/scripts/lib/`. All 7 are fixed the
+same way: resolve via `CLAUDE_PLUGIN_ROOT` (set by Claude Code for every
+hook/CLI invocation) when present, same pattern `hooks/pre-push-gate.mts`
+already used pre-FEAT-026, falling back to the original relative-path
+logic when unset (direct dev execution, where `CLAUDE_PLUGIN_ROOT` isn't
+set and the old two-layout fallback still applies correctly):
+
+- `src/scripts/lib/config-resolver.mts` — `scripts/presets/*.json`. Fixed:
+  `path.join(CLAUDE_PLUGIN_ROOT, "scripts", "presets")`.
+- `src/scripts/lib/loop-installer-tokens.mts`,
+  `src/scripts/lib/decisions-store.mts`,
+  `src/scripts/lib/grade-writer.mts` — `templates/*` (three independent
+  copies of the same two-layout lookup, each fixed identically). Fixed:
+  `path.join(CLAUDE_PLUGIN_ROOT, "templates")`.
+- `src/scripts/lib/github-sync-loader.mts`,
+  `src/scripts/lib/task-store/providers/github-provider.mts` — the
+  runtime-only `scripts/lib/github-sync*.mjs` modules, reached via a
+  *computed* `import()` so Bun.build can't statically inline them (they
+  stay on disk, never bundled). Fixed: prepend a
+  `path.join(CLAUDE_PLUGIN_ROOT, "scripts", "lib", ...)` candidate ahead
+  of the existing relative-traversal candidates.
+- `crew/scripts/lib/telemetry/otel-bridge.mts` — not a missing-file bug,
+  a silent *wrong-file* bug: `createRequire(import.meta.url)` + `req("../
+  ../package.json")` resolved to crew's own `crew/package.json` (0.66.0)
+  pre-bundle, but to the ROOT `package.json` (devcrew, 1.1.0) once
+  bundled (two levels up from `dist/hooks/` lands at the plugin root, not
+  `crew/`) — silently changing the emitted `service.version` OTel
+  resource attribute. Fixed: when `CLAUDE_PLUGIN_ROOT` is set, read
+  `<CLAUDE_PLUGIN_ROOT>/crew/package.json` directly (`fs.readFile` +
+  `JSON.parse`, bypassing `createRequire` entirely) so the reported
+  version stays pinned to crew's own, independent version during the
+  merge window (`crew/` is still vendored with its own version — AGENTS.md
+  "Repo topology") regardless of bundling.
+
+None of the 7 needed their data copied *into* `dist/` (`dist/templates/`,
+`dist/presets/`, a second `dist/` copy of the github-sync `.mjs` tree) —
+`templates/`, `scripts/presets/`, `scripts/lib/github-sync*.mjs`, and
+`crew/package.json` are all real, committed plugin-root-level directories/
+files already; `CLAUDE_PLUGIN_ROOT` always points at the full plugin
+installation root (dist/, src/, crew/, templates/, scripts/ all as
+siblings), in every layout this repo's own consumer-install staging
+(`src/scripts/lib/install/shipped-entrypoints.mts`'s `stageConsumerCopy`,
+which copies the whole tree minus `node_modules`/`.git`) or a real
+marketplace cache produces — so resolving directly against the one real
+copy is simpler and avoids a second, driftable copy under `dist/`.
+
+Regression coverage: `src/tests/install/dist-fresh.test.mts` stages a
+real node_modules-free copy of this plugin tree and runs
+`bun dist/loop.js list-presets` / `bun dist/loop.js install --repo <dir>
+--preset dotnet-python` directly out of it with `CLAUDE_PLUGIN_ROOT` set,
+exactly as Claude Code would invoke it.
 
 ## Marathon checkpoint
 

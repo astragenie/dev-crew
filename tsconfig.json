@@ -10,7 +10,8 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "types": [
-      "node"
+      "node",
+      "bun-types"
     ],
     "noImplicitAny": true,
     "useUnknownInCatchVariables": true,

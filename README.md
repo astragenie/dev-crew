@@ -34,7 +34,7 @@ _Dogfood metrics — generated 2026-11-06. Every number below is computed from t
 | Grade average, last 5 slice closes | 0.898 (n=50 total) |
 | median per slice-close session scan | $4.455 (mean $5.666, +27.2% divergence) |
 | Halt badges documented | 16 |
-| CI gates enforced | 42 |
+| CI gates enforced | 43 |
 
 Sources:
 - FEATs shipped / slices closed: `.claude/artifacts/loop/backlog/done/*.md` frontmatter (`completed_at`, `slices`).

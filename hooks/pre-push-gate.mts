@@ -38,8 +38,16 @@ import { isDocsOnlyPush } from "../crew/scripts/lib/docs-only.mjs";
 import { validateSnapshotFreshness } from "../src/scripts/validate-snapshot-freshness.mjs";
 
 const CACHE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+// FEAT-026: resolve the PLUGIN's own src/scripts via CLAUDE_PLUGIN_ROOT (set
+// by Claude Code for every hook invocation) rather than import.meta.url --
+// under the dist/ bundle this file's own location (dist/hooks/) no longer
+// has a sibling src/scripts/ directory. Falls back to the pre-bundle
+// relative path for direct `.mts` dev execution where CLAUDE_PLUGIN_ROOT is
+// unset.
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const srcScriptsDir = path.join(scriptDir, "..", "src", "scripts");
+const srcScriptsDir = process.env["CLAUDE_PLUGIN_ROOT"]
+  ? path.join(process.env["CLAUDE_PLUGIN_ROOT"], "src", "scripts")
+  : path.join(scriptDir, "..", "src", "scripts");
 
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];

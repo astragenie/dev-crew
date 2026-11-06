@@ -39,7 +39,7 @@ Deliverable:
 
 Acceptance criteria (draft):
 - Given the tree after this FEAT, when consumer-smoke (FEAT-022) runs, then every HOOK entry passes; CLI entries from commands/*.md remain in EXPECTED_FAIL until W2.5 clears them.
-- Given dist/crew.js run from the consumer repo, when `cost-report`, `init --dry-run`, `install-global --dry-run` run, then no ENOENT (data files inlined or copied under dist/).
+- Given dist/crew.js run from the consumer repo, when `install-global`, `init --repo <tmp> --allow-existing`, `cost-setup --repo <tmp>` run, then no ENOENT (data files inlined or copied under dist/).
 - Given CREW_OTEL_ENABLED=1 and no @opentelemetry packages, when dist/hooks/otel-post-tool-use.js runs, then exit 0 and exactly one otel_unavailable line in events.jsonl.
 - Given a source edit without rebuild, when `bun run build:dist -- --check` runs, then exit 1 naming the stale file; given the same Bun version and unchanged tree, exit 0 on Windows and Linux.
 - Given hooks/hooks.json, then every bun command points at dist/hooks/*.js and every node/bash command is unchanged; validate-repo-boundary exits 0 with the regenerated inventory; generate-metrics-band --check green; docs/ci-gates.md and CLAUDE.md gate lists agree (43 gates).
@@ -52,10 +52,21 @@ Created via free-text intake; body revised 2026-11-05 after architect /
 reviewer / critical-thinking review (see .claude/artifacts/crew/reviews/
 20261105T22*-*.md). Re-scored by PM after revision.
 
+AC-2's literal command list was corrected at build time (SLICE-52, review
+B): the original draft named `cost-report`, `init --dry-run`,
+`install-global --dry-run`, none of which are real `crew.mts` CLI surface
+(`cost-report` is an internal artifact-emission concept, not a
+dispatchable subcommand; `--dry-run` is not a flag `init`/`install-global`
+accept). Corrected to the three real subcommands actually exercised by
+`src/tests/install/consumer-smoke.test.mts`'s shipped-entrypoint sweep —
+`install-global`, `init --repo <tmp> --allow-existing`,
+`cost-setup --repo <tmp>` — all three already run clean (not in
+`EXPECTED_FAIL`) against the committed `dist/crew.js`.
+
 ## Acceptance criteria (Given-When-Then)
 
 - AC-1: Given the tree after this FEAT, When consumer-smoke (FEAT-022) runs, Then every HOOK entry passes; CLI entries from `commands/*.md` remain in `EXPECTED_FAIL` until W2.5 clears them.
-- AC-2: Given `dist/crew.js` run from the consumer repo, When `cost-report`, `init --dry-run`, `install-global --dry-run` run, Then no `ENOENT` (data files inlined or copied under `dist/`).
+- AC-2: Given `dist/crew.js` run from the consumer repo, When `install-global`, `init --repo <tmp> --allow-existing`, `cost-setup --repo <tmp>` run, Then no `ENOENT` (data files inlined or copied under `dist/`).
 - AC-3: Given `CREW_OTEL_ENABLED=1` and no `@opentelemetry` packages, When `dist/hooks/otel-post-tool-use.js` runs, Then it exits `0` with exactly one `otel_unavailable` line in `events.jsonl`.
 - AC-4: Given a source edit without a rebuild, When `bun run build:dist -- --check` runs, Then it exits `1` naming the stale file; given the same Bun version and an unchanged tree, Then it exits `0` on both Windows and Linux.
 - AC-5: Given `hooks/hooks.json`, Then every `bun` command points at `dist/hooks/*.js` and every `node`/`bash` command is unchanged; `validate-repo-boundary` exits `0` with the regenerated inventory; `generate-metrics-band --check` is green; `docs/ci-gates.md` and the `CLAUDE.md` gate list agree at 43 gates.

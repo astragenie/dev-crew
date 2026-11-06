@@ -12,6 +12,13 @@ import type { TaskStoreProvider } from "../provider-interface.mjs";
 async function importGithubSyncModule(relPath: string): Promise<any> {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   // Try candidate paths in order:
+  // 0. Bundled (dist/ tree, FEAT-026): resolve via CLAUDE_PLUGIN_ROOT, set by
+  //    Claude Code for every hook/CLI invocation. These runtime-only .mjs
+  //    modules are never bundled (this import() target is computed, so
+  //    Bun.build can't statically inline it) — they stay on disk at
+  //    <pluginRoot>/scripts/lib/, reached directly rather than relative to
+  //    currentDir (which is dist/ under the bundle, with no fixed-depth
+  //    path back to scripts/lib/).
   // 1. Compiled/co-located layout: ../../github-sync/... (from scripts/lib/task-store/providers/)
   // 2. Src-direct layout, submodules: <repoRoot>/scripts/lib/github-sync/... (gh.mjs, issue-sync.mjs, ...)
   // 3. Src-direct layout, top-level file: <repoRoot>/scripts/lib/github-sync.mjs itself — it is a
@@ -19,7 +26,14 @@ async function importGithubSyncModule(relPath: string): Promise<any> {
   //    always 404s for relPath === "github-sync.mjs", silently swallowed by the catch below — masked
   //    pre-SLICE-155 because syncPull/bootstrap only reach this call after an _isInstalled() check
   //    that every existing test short-circuits via a throwing mock ghExec).
+  const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"];
   const paths = [
+    ...(pluginRoot
+      ? [
+          path.join(pluginRoot, "scripts", "lib", "github-sync", relPath),
+          path.join(pluginRoot, "scripts", "lib", relPath)
+        ]
+      : []),
     path.resolve(currentDir, "..", "..", "github-sync", relPath),
     path.resolve(
       currentDir,

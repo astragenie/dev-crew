@@ -113,7 +113,11 @@ this file).
 20. `bun ./src/scripts/generate-metrics-band.mts --check` — README
     metrics-band freshness gate; regenerates in-memory and diffs against
     the committed README.
-21. `bun ./crew/scripts/validate-manifests.mts` — crew's own manifest check
+21. `bun ./src/scripts/build-dist.mts --check` — **new gate** (SLICE-52,
+    FEAT-026): rebuilds every dist/ bundle to a temp dir and byte-compares
+    (CRLF/banner-normalised) against the committed output; fails loudly on
+    a Bun-version mismatch against `.bun-version` or a stale bundle.
+22. `bun ./crew/scripts/validate-manifests.mts` — crew's own manifest check
     (`crew/.claude-plugin/plugin.json` + `crew/package.json`). **Not**
     deduped with gate 2 despite `unification-plan.md` §7's general
     "dedupe manifests" text — `src/scripts/validate-manifests.mts`'s own
@@ -121,25 +125,25 @@ this file).
     manifest/marketplace merge is explicitly deferred to Phase 5; that
     more-recent, more-specific decision in the code overrides the plan's
     earlier general text. Both stay as two separate gates until Phase 5.
-22. `bun ./crew/scripts/validate-dispatch-graph.mts` — cycle detector over
+23. `bun ./crew/scripts/validate-dispatch-graph.mts` — cycle detector over
     the `## Peer dispatch` allowlist graph (must be a DAG).
-23. `bun ./crew/scripts/validate-workflows.mts` — `.claude/workflows.yaml`
+24. `bun ./crew/scripts/validate-workflows.mts` — `.claude/workflows.yaml`
     schema + phase-order + parallelism-cap + agent-existence checks.
-24. `bun ./crew/scripts/validate-slices.mts` — AC-placeholder + workflow-
+25. `bun ./crew/scripts/validate-slices.mts` — AC-placeholder + workflow-
     field linter over pending slice files.
-25. `bun ./crew/scripts/validate-badges.mts` — cross-checks `BADGE_TABLE`
+26. `bun ./crew/scripts/validate-badges.mts` — cross-checks `BADGE_TABLE`
     against the `mark-badge` CLI help text and the badge catalog doc.
-26. `bun ./crew/scripts/validate-loop-state.mts` — exactly one populated
+27. `bun ./crew/scripts/validate-loop-state.mts` — exactly one populated
     backlog tree, unique FEAT ids.
-27. `bun ./crew/scripts/validate-bundles.mts` — build-bundle schema/version
+28. `bun ./crew/scripts/validate-bundles.mts` — build-bundle schema/version
     checks.
-28. `bun ./crew/scripts/validate-configs.mts` — `docs/routing-table.yaml`
+29. `bun ./crew/scripts/validate-configs.mts` — `docs/routing-table.yaml`
     schema + drift-vs-rendered-`.md` + every `crew:<token>` reference
     resolves against the live merged surface.
-29. `bun ./crew/scripts/validate-routing-table.mts --coverage-only` —
+30. `bun ./crew/scripts/validate-routing-table.mts --coverage-only` —
     routing-table skill-id resolution (blocking, coverage-only mode; the
     full-coverage mode runs advisory below).
-30. `bun ./crew/scripts/validate-agents.mts` — agent prompt quality bar
+31. `bun ./crew/scripts/validate-agents.mts` — agent prompt quality bar
     (required frontmatter, "## Report contract" section, no duplicate
     names, universal-skill drift markers, evals-spec pointers). **Promoted
     to blocking** (FEAT-015/SLICE-33): the pre-existing content debt SLICE-24
@@ -153,7 +157,7 @@ this file).
     `crew/evals/agents/crew-*.yaml` (the P3 surface merge moved `agents/`
     to the monorepo root but never moved `evals/`, which still lives
     under `crew/`).
-31. `bun ./crew/scripts/validate-skills.mts` — skill quality bar. **Promoted
+32. `bun ./crew/scripts/validate-skills.mts` — skill quality bar. **Promoted
     to blocking** (FEAT-015/SLICE-33), same backfill treatment as gate 30.
     The open question SLICE-24 flagged — several skill directories carried
     a `devcrew:`-namespace-prefixed `name:` in frontmatter while their
@@ -189,48 +193,54 @@ render-routing-table.mts`).
 **Advisory (non-blocking within `fast-gate`, still run and reported on
 every push/PR):**
 
-32. `bun ./crew/scripts/validate-syntheses.mts` — flags placeholder-rotted
+33. `bun ./crew/scripts/validate-syntheses.mts` — flags placeholder-rotted
     final-synthesis/grade artifacts. Advisory by design (documented in the
     script's own header) — `runner:close`'s `grade_incomplete` badge is the
     hard gate at close time.
-33. `CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts`
+34. `CREW_VALIDATE_ROUTING_TABLE=1 bun ./crew/scripts/validate-routing-table.mts`
     — full-coverage cross-check of every agent's "### Skills you consult"
     block against `docs/routing-table.md`. Opt-in via env var by design;
     advisory because coverage gaps here are additive documentation debt,
     not correctness bugs (the blocking gate 29 already guards resolution).
-34. `bun ./crew/scripts/validate-adr-template.mts --strict` — ADR
+35. `bun ./crew/scripts/validate-adr-template.mts --strict` — ADR
     "Alternatives considered" section completeness.
-35. `bun ./crew/scripts/validate-backlog-drift.mts` — flags a `triaged/`
+36. `bun ./crew/scripts/validate-backlog-drift.mts` — flags a `triaged/`
     slice whose close ceremony already ran in git history but was never
     moved to `done/`. Advisory by the script's own design (flags for a
     human/loop to act on; never moves files itself).
-36. `bunx tsc --project tsconfig.json --noEmit` + `--project
+37. `bunx tsc --project tsconfig.json --noEmit` + `--project
     tsconfig.test.json --noEmit` (root) + `--project crew/tsconfig.json
     --noEmit` (crew — its own, deliberately divergent `strict`/`types`
     config per SLICE-09; not merged into root's tsconfig, per that slice's
     design).
-37. `bunx biome lint src/` (root scope — root's `biome.json` `files.includes`
+38. `bunx biome lint src/` (root scope — root's `biome.json` `files.includes`
     is `**/src/**`, so `crew/` paths are invisible to this invocation).
-38. `bunx biome format src/` (root, check mode).
-39. `cd crew && bunx biome lint scripts/ hooks/` — crew-scoped, invoked from
+39. `bunx biome format src/` (root, check mode).
+40. `cd crew && bunx biome lint scripts/ hooks/` — crew-scoped, invoked from
     within `crew/` so `crew/biome.json` (`root: false`, deliberately
     divergent rules per SLICE-09) resolves as the effective config rather
     than relying on ambiguous nested-config auto-discovery from root.
-40. `cd crew && bunx biome format scripts/ tests/` (crew-scoped, check
+41. `cd crew && bunx biome format scripts/ tests/` (crew-scoped, check
     mode) — matches `crew/package.json`'s own `format:check` script.
-41. `bun test src/tests/ --parallel --timeout 60000` (root suite, minus the
+42. `bun test src/tests/ --parallel --timeout 60000` (root suite, minus the
     six known git-worktree-hanging suites — see "Job structure" below).
-    **Designed-red exception (FEAT-022 → FEAT-026):**
+    **Designed-red exception (FEAT-022 → W2.5):**
     `src/tests/install/consumer-smoke.test.mts` asserts that every shipped
     hook and CLI entry runs from a `node_modules`-free consumer copy. It is
-    deliberately RED while its `EXPECTED_FAIL` ratchet is non-empty (49
-    entries as of SLICE-47) and goes green when FEAT-026 ships the
-    self-contained `dist/` bundles. So gate 41 (and CI's `slow-tests`) are
-    expected red on `fix/audit-2026-11` until then; the required `gate` job
-    depends only on `fast-gate`, so merges are unaffected. The test is NOT
-    quarantined on purpose — the ratchet also fails loudly if a listed
-    entry starts passing (remove it from the set) or an unlisted one breaks.
-42. `cd crew && bun test --timeout 60000 tests/ --parallel` (crew suite).
+    deliberately RED while its `EXPECTED_FAIL` ratchet is non-empty. FEAT-026
+    (SLICE-52) shrinks the ratchet from 49 entries (SLICE-47) down to the 42
+    CLI entries sourced from `commands/*.md`/`agents/*.md` literal
+    invocations — every HOOK entry now runs self-contained from `dist/`. It
+    does not go fully green yet: the CLI entries still resolve
+    `@astragenie/*`/`zod`/`yaml` from `node_modules` until W2.5 (the serial
+    `crew.mts`/`loop.mts`/etc. path-to-`dist/` rewrite across `commands/*.md`
+    + `agents/*.md`, scheduled right after wave 2) clears them too. So gate
+    42 (and CI's `slow-tests`) are expected red on `fix/audit-2026-11` until
+    W2.5 lands; the required `gate` job depends only on `fast-gate`, so
+    merges are unaffected. The test is NOT quarantined on purpose — the
+    ratchet also fails loudly if a listed entry starts passing (remove it
+    from the set) or an unlisted one breaks.
+43. `cd crew && bun test --timeout 60000 tests/ --parallel` (crew suite).
     SLICE-10 (FEAT-004 P1) already proved N≥20 consecutive green
     `--parallel` runs on this tree, so this runs unsharded and
     unquarantined, matching root `package.json`'s existing `test:crew`
@@ -238,15 +248,15 @@ every push/PR):**
 
 ## Job structure and gating
 
-- **`fast-gate`** runs gates 1–40 (installs, all validators, tsc, biome).
+- **`fast-gate`** runs gates 1–41 (installs, all validators, tsc, biome).
   This is the required status check.
-- **`slow-tests`** runs gate 41 (root suite, retried once on a 480s
+- **`slow-tests`** runs gate 42 (root suite, retried once on a 480s
   per-attempt timeout) — kept as its own job (not the reusable-workflow
   wrapper) because it needs a job-level timeout the reusable workflow's
   fixed 30-minute limit can't give it, mirroring runner-plugin's original
   design (astragenie/runner-plugin#355).
-- **`crew-tests`** runs gate 42.
-- **`worktree-quarantine`** runs the six suites gate 41 excludes
+- **`crew-tests`** runs gate 43.
+- **`worktree-quarantine`** runs the six suites gate 42 excludes
   (`auto-merge`, `synergy`, `integration`, `integrations`,
   `slice-complete`, `slice-start` — real `git worktree` operations known to
   hang the runner, PR #348), hard-killed via `timeout`, `continue-on-error:
@@ -289,7 +299,7 @@ Windows) rather than inlined YAML, so they can be unit-tested outside CI:
   logic (`if code != "true": pass`) let that blank value pass the required
   check without `fast-gate` ever running.
 
-Both scripts are covered by `src/tests/ci/docs-only.test.mts` (gate 41,
+Both scripts are covered by `src/tests/ci/docs-only.test.mts` (gate 42,
 `bun test src/tests/`), which spawns `bash` directly against each script.
 
 ## Named drops (retired, not silently — unification-plan.md §7)

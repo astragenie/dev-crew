@@ -71,8 +71,8 @@ cutover, FEAT-006 (P5).
 
 Full rationale: `docs/ci-gates.md` (source of truth for name + order —
 `generate-metrics-band.mts` counts this list; keep both in sync). One
-merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–31 blocking
-(`fast-gate`), 32–35 advisory, 36–40 tsc/biome, 41–42 both test suites:
+merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–32 blocking
+(`fast-gate`), 33–36 advisory, 37–41 tsc/biome, 42–43 both test suites:
 
 1. `bun install --frozen-lockfile` (root + `crew/`, two lockfiles).
 2. `validate-manifests.mts` — root manifest sanity.
@@ -94,28 +94,29 @@ merged workflow (`.github/workflows/ci.yml`, self-hosted). 1–31 blocking
 18. `validate-effort-points.mts` — FEAT `effort_points` Fibonacci check.
 19. `validate-branding-scrub.mts` — retired-name sweep, full merged tree.
 20. `generate-metrics-band.mts --check` — README metrics-band freshness.
-21. `crew/scripts/validate-manifests.mts` — crew's own manifest check.
-22. `crew/scripts/validate-dispatch-graph.mts` — peer-dispatch DAG check.
-23. `crew/scripts/validate-workflows.mts` — workflows.yaml schema/order.
-24. `crew/scripts/validate-slices.mts` — AC-placeholder/workflow linter.
-25. `crew/scripts/validate-badges.mts` — BADGE_TABLE cross-check.
-26. `crew/scripts/validate-loop-state.mts` — single backlog tree, unique ids.
-27. `crew/scripts/validate-bundles.mts` — build-bundle schema/version.
-28. `crew/scripts/validate-configs.mts` — routing-table schema + drift.
-29. `crew/scripts/validate-routing-table.mts --coverage-only` — skill-id resolution.
-30. `crew/scripts/validate-agents.mts` — agent prompt quality bar.
-31. `crew/scripts/validate-skills.mts` — skill quality bar.
-32. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag.
-33. `crew/scripts/validate-routing-table.mts` full-coverage mode.
-34. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness.
-35. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag.
-36. `bunx tsc --noEmit` — root, root test, and `crew/tsconfig.json` (3 projects).
-37. `bunx biome lint src/` (root scope).
-38. `bunx biome format src/` (root, check mode).
-39. `cd crew && bunx biome lint scripts/ hooks/` (crew's own config).
-40. `cd crew && bunx biome format scripts/ tests/` (crew, check mode).
-41. `bun test src/tests/ --parallel` (root, minus 6 quarantined suites).
-42. `cd crew && bun test tests/ --parallel` (crew).
+21. `build-dist.mts --check` — dist/ bundle freshness + Bun-version pin.
+22. `crew/scripts/validate-manifests.mts` — crew's own manifest check.
+23. `crew/scripts/validate-dispatch-graph.mts` — peer-dispatch DAG check.
+24. `crew/scripts/validate-workflows.mts` — workflows.yaml schema/order.
+25. `crew/scripts/validate-slices.mts` — AC-placeholder/workflow linter.
+26. `crew/scripts/validate-badges.mts` — BADGE_TABLE cross-check.
+27. `crew/scripts/validate-loop-state.mts` — single backlog tree, unique ids.
+28. `crew/scripts/validate-bundles.mts` — build-bundle schema/version.
+29. `crew/scripts/validate-configs.mts` — routing-table schema + drift.
+30. `crew/scripts/validate-routing-table.mts --coverage-only` — skill-id resolution.
+31. `crew/scripts/validate-agents.mts` — agent prompt quality bar.
+32. `crew/scripts/validate-skills.mts` — skill quality bar.
+33. `crew/scripts/validate-syntheses.mts` — placeholder-rotted synthesis flag.
+34. `crew/scripts/validate-routing-table.mts` full-coverage mode.
+35. `crew/scripts/validate-adr-template.mts --strict` — ADR completeness.
+36. `crew/scripts/validate-backlog-drift.mts` — unmoved-`done/` flag.
+37. `bunx tsc --noEmit` — root, root test, and `crew/tsconfig.json` (3 projects).
+38. `bunx biome lint src/` (root scope).
+39. `bunx biome format src/` (root, check mode).
+40. `cd crew && bunx biome lint scripts/ hooks/` (crew's own config).
+41. `cd crew && bunx biome format scripts/ tests/` (crew, check mode).
+42. `bun test src/tests/ --parallel` (root, minus 6 quarantined suites).
+43. `cd crew && bun test tests/ --parallel` (crew).
 
 Pre-push hook runs manifest + content-length + format-check locally.
 

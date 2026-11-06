@@ -1,0 +1,110 @@
+{
+  "bunVersion": "1.3.14",
+  "builtAt": "2026-11-06T17:17:08.865Z",
+  "entries": [
+    {
+      "src": "crew/scripts/crew.mts",
+      "out": "crew.js"
+    },
+    {
+      "src": "crew/hooks/check-builder-terminal-state.mts",
+      "out": "hooks/check-builder-terminal-state.js"
+    },
+    {
+      "src": "crew/hooks/check-redundant-read.mts",
+      "out": "hooks/check-redundant-read.js"
+    },
+    {
+      "src": "crew/hooks/check-reviewer-decision.mts",
+      "out": "hooks/check-reviewer-decision.js"
+    },
+    {
+      "src": "crew/hooks/check-subagent-return.mts",
+      "out": "hooks/check-subagent-return.js"
+    },
+    {
+      "src": "crew/hooks/check-task-update-burst.mts",
+      "out": "hooks/check-task-update-burst.js"
+    },
+    {
+      "src": "crew/hooks/checkpoint-cadence.mts",
+      "out": "hooks/checkpoint-cadence.js"
+    },
+    {
+      "src": "crew/hooks/otel-post-tool-use.mts",
+      "out": "hooks/otel-post-tool-use.js"
+    },
+    {
+      "src": "crew/hooks/otel-stop.mts",
+      "out": "hooks/otel-stop.js"
+    },
+    {
+      "src": "crew/hooks/otel-subagent-stop.mts",
+      "out": "hooks/otel-subagent-stop.js"
+    },
+    {
+      "src": "crew/hooks/post-tool-use-bash-gate.mts",
+      "out": "hooks/post-tool-use-bash-gate.js"
+    },
+    {
+      "src": "hooks/pre-push-gate.mts",
+      "out": "hooks/pre-push-gate.js"
+    },
+    {
+      "src": "crew/hooks/pre-tool-use-agent.mts",
+      "out": "hooks/pre-tool-use-agent.js"
+    },
+    {
+      "src": "crew/hooks/pre-tool-use-artifact-lock.mts",
+      "out": "hooks/pre-tool-use-artifact-lock.js"
+    },
+    {
+      "src": "crew/hooks/pre-tool-use-bash-gate.mts",
+      "out": "hooks/pre-tool-use-bash-gate.js"
+    },
+    {
+      "src": "crew/hooks/pre-tool-use-dispatch-size.mts",
+      "out": "hooks/pre-tool-use-dispatch-size.js"
+    },
+    {
+      "src": "crew/hooks/pre-tool-use-model-enforce.mts",
+      "out": "hooks/pre-tool-use-model-enforce.js"
+    },
+    {
+      "src": "crew/hooks/preflight-shell.mts",
+      "out": "hooks/preflight-shell.js"
+    },
+    {
+      "src": "crew/hooks/record-edit.mts",
+      "out": "hooks/record-edit.js"
+    },
+    {
+      "src": "crew/hooks/record-read-content.mts",
+      "out": "hooks/record-read-content.js"
+    },
+    {
+      "src": "crew/hooks/subagent-gate-guard.mts",
+      "out": "hooks/subagent-gate-guard.js"
+    },
+    {
+      "src": "crew/hooks/subagent-start-profile.mts",
+      "out": "hooks/subagent-start-profile.js"
+    },
+    {
+      "src": "src/scripts/loop.mts",
+      "out": "loop.js"
+    },
+    {
+      "src": "crew/scripts/prune-artifacts.mts",
+      "out": "prune-artifacts.js"
+    },
+    {
+      "src": "crew/scripts/report-to-pr.mts",
+      "out": "report-to-pr.js"
+    },
+    {
+      "src": "src/scripts/watch-tick.mts",
+      "out": "watch-tick.js"
+    }
+  ]
+}
