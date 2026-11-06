@@ -1,37 +1,25 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-06T03:44:15.529Z",
+  "updatedAt": "2026-11-06T03:54:15.166Z",
   "currentRun": {
     "title": "FEAT024 SLICE49: Implement FEAT-024",
     "goal": "Audit T4: explicit, per-reviewer aggregated review and validation verdicts; scaffolds never flip the gate",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-06T03:30:12.000Z",
-    "updatedAt": "2026-11-06T03:44:15.529Z",
+    "startedAt": "2026-11-06T03:54:15.165Z",
+    "updatedAt": "2026-11-06T03:54:15.165Z",
     "next": "Begin implementation",
     "gates": {
       "review": {
-        "status": "passed",
-        "updatedAt": "2026-11-06T03:44:15.529Z",
-        "note": "Re-verification of SLICE-49 / FEAT-024 review B (correctness) after fix commits 95d5e140 and 5338fa5d on fix/audit-2026-11, scoped to `git diff b1c7f0e5..5338fa5d -- crew/scripts/lib/workflow-state.mts crew/tests/review-verdict-aggregation.test.mts src/scripts/lib/post-builder-fanout.mts agents/reviewer.md`.\n\nMy prior BLOCKER is resolved. computeReviewGateStatus / computeValidationGateStatus (crew/scripts/lib/workflow-state.mts:461-478, 536-551) now treat `required` as a SLOT COUNT rather than a set of name labels to match against: any \"rejected\" verdict still dominates immediately (checked first, unaffected by the fix), and otherwise the gate passes once the number of distinct approving reviewer keys is >= required.length, regardless of what those keys are named. This directly closes the gap I found: `.claude/loop.json`'s `reviewers.ladder: [\"A\",\"B\"]` no longer needs to be matched by literal \"A\"/\"B\" keys -- two distinct real-world keys like \"typescript-reviewer\" and \"reviewer\" now satisfy a two-slot ladder once both approve.\n\nThe companion fix (5338fa5d) makes the keys actually distinct in the real dispatch paths that matter: `src/scripts/lib/post-builder-fanout.mts`'s generated reviewer prompt now explicitly instructs `crew write-review-result --reviewer ${role} --decision ...` (role is literally \"A\" or \"B\" per ladder slot), with an explanatory line that omitting `--reviewer` collapses both ladder reviewers onto one key. `agents/reviewer.md`'s terminal-write example now also carries a `--reviewer <A|B as dispatched, else your role id>` hint. Combined with the stack-specific reviewers (`typescript-reviewer.md`, `csharp-reviewer.md`, `reviewer-lite.md`) which already passed fixed distinct role-name keys unconditionally, every shipped dispatch path that puts two reviewers on the same ladder now writes under two distinct keys.\n\nI re-ran the suite myself: `cd crew && bun test tests/review-verdict-aggregation.test.mts` -- 12 pass, 0 fail, 41 expect() calls, including the two new regression tests added in this fix round that use the exact real role names from this repo's shipped agents (`typescript-reviewer` + bare `reviewer`) against a `[\"A\",\"B\"]` ladder: one proves slot-count-fills-to-passed (first write -> status stays \"required\" with only `typescript-reviewer` recorded; second write under a different key -> status flips to \"passed\" with both keys recorded approved), the other proves rejection still dominates when the second of two non-ladder-named keys rejects (status \"failed\"). These are exactly the kind of realistic-role-name tests I said were missing from the original diff, and they now exist and pass.\n\nI also independently inspected this repo's own live `.claude/state/crew/workflow-state.json` before writing: `gates.review.required` is `[\"A\",\"B\"]` (slot count 2) and `gates.review.reviewers` already carried `typescript-reviewer: approved_with_notes` (reviewer A's verdict, recorded post-fix) plus my own earlier `reviewer: rejected` (written against the pre-fix code, now stale). My new write below updates that same `reviewer` key to my final verdict, giving two distinct keys -- if both are approving, count (2) >= required.length (2), so the gate should now resolve to `passed`.\n\nJudgment on the slot-count semantic: this is an acceptable, pragmatic resolution. It is weaker than true per-role matching (it does not verify that specifically \"the TypeScript reviewer\" and \"the C# reviewer\" each wrote -- only that N distinct keys wrote approvingly), but given this repo's `--reviewer` value is fundamentally caller-chosen free text with no central registry of valid role names, a slot-count check is the correct level of rigor: it still correctly blocks on any rejection regardless of key naming, still requires genuinely distinct writers (not the same key approving twice), and the one remaining soft spot -- the generic `agents/reviewer.md`'s hint being advisory rather than enforced -- is covered in practice because the only shipped dispatch path that puts two generic reviewers on one ladder (`post-builder-fanout.mts`) now injects the distinguishing `--reviewer A|B` unconditionally rather than leaving it to the dispatched agent's discretion. No further blocking issue found in this re-verification.",
-        "reviewers": {
-          "reviewer": "approved_with_notes",
-          "typescript-reviewer": "approved_with_notes"
-        },
+        "status": "required",
+        "updatedAt": "2026-11-06T03:54:15.165Z",
+        "reviewers": {},
         "required": [
           "A",
           "B"
         ]
       },
-      "validation": {
-        "status": "passed",
-        "updatedAt": "2026-11-06T03:35:07.039Z",
-        "note": "SLICE-49 / FEAT-024 validated in an isolated scratch repo against all 5 ACs: AC-1 through AC-5 PASS with evidence. write-review-result refuses (exit 2, matching stderr) a terminal call with no --decision; --scaffold --status in-progress writes register the artifact path without ever touching gates.review; a rejected verdict dominates regardless of write order, landing gates.review.status at failed with the raw reviewer keys preserved verbatim; write-validation-result --decision skipped requires --skip-reason (exit 2 without it, skipped with note containing the reason on success) and --decision pass resolves to passed. The targeted crew test suite (review-verdict-aggregation, artifact-stub-and-update, enum-verdicts) is green: 41/41 pass. One adjacent risk is flagged in findings: gates.review.required snapshots reviewers.ladder verbatim (case-sensitive), and only a literal --reviewer A / --reviewer B write reaches passed under the default [\"A\",\"B\"] ladder -- lowercase or role-named reviewer keys (e.g. \"a\"/\"b\", \"csharp-reviewer\") leave the gate stuck at required even after both approve. The live dispatch path (post-builder-fanout.mts + agents/reviewer.md) does not plumb a literal ladder-matching --reviewer value into the dispatched reviewer agent's instructions, so this is a real integration exposure, not just a theoretical one, though it predates and is outside SLICE-49's own ACs (which specify lowercase a/b in AC-3 and literal A/B in AC-4 as two different scenarios). Recommendation: PASS for SLICE-49/FEAT-024's own acceptance criteria; open a follow-up to make the --reviewer identity used by live dispatch match reviewers.ladder's case exactly, or normalize the comparison in computeReviewGateStatus.",
-        "validators": {
-          "verifier": "pass"
-        },
-        "required": []
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -42,11 +30,11 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T033011Z-run-brief-feat024-slice49-implement-feat-024.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T035415Z-run-brief-feat024-slice49-implement-feat-024.md",
       "handoffs": [],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T034415Z-review-result-slice-49-review-b-correctness.md",
+      "reviewResult": null,
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T033507Z-validation-result-slice-49-validation-explicit-aggregated-verdicts.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -55,6 +43,102 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT022 SLICE47: Implement FEAT-022",
+      "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T03:44:47.734Z",
+      "updatedAt": "2026-11-06T03:44:47.734Z",
+      "completedAt": "2026-11-06T03:44:47.734Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "required",
+          "updatedAt": "2026-11-06T03:44:47.734Z",
+          "reviewers": {},
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": null,
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T034447Z-run-brief-feat022-slice47-implement-feat-022.md",
+        "handoffs": [],
+        "reviewResult": null,
+        "validationPlan": null,
+        "validationResult": null,
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
+    {
+      "title": "FEAT024 SLICE49: Implement FEAT-024",
+      "goal": "Audit T4: explicit, per-reviewer aggregated review and validation verdicts; scaffolds never flip the gate",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T03:30:12.000Z",
+      "updatedAt": "2026-11-06T03:44:15.529Z",
+      "completedAt": "2026-11-06T03:44:15.529Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T03:44:15.529Z",
+          "note": "Re-verification of SLICE-49 / FEAT-024 review B (correctness) after fix commits 95d5e140 and 5338fa5d on fix/audit-2026-11, scoped to `git diff b1c7f0e5..5338fa5d -- crew/scripts/lib/workflow-state.mts crew/tests/review-verdict-aggregation.test.mts src/scripts/lib/post-builder-fanout.mts agents/reviewer.md`.\n\nMy prior BLOCKER is resolved. computeReviewGateStatus / computeValidationGateStatus (crew/scripts/lib/workflow-state.mts:461-478, 536-551) now treat `required` as a SLOT COUNT rather than a set of name labels to match against: any \"rejected\" verdict still dominates immediately (checked first, unaffected by the fix), and otherwise the gate passes once the number of distinct approving reviewer keys is >= required.length, regardless of what those keys are named. This directly closes the gap I found: `.claude/loop.json`'s `reviewers.ladder: [\"A\",\"B\"]` no longer needs to be matched by literal \"A\"/\"B\" keys -- two distinct real-world keys like \"typescript-reviewer\" and \"reviewer\" now satisfy a two-slot ladder once both approve.\n\nThe companion fix (5338fa5d) makes the keys actually distinct in the real dispatch paths that matter: `src/scripts/lib/post-builder-fanout.mts`'s generated reviewer prompt now explicitly instructs `crew write-review-result --reviewer ${role} --decision ...` (role is literally \"A\" or \"B\" per ladder slot), with an explanatory line that omitting `--reviewer` collapses both ladder reviewers onto one key. `agents/reviewer.md`'s terminal-write example now also carries a `--reviewer <A|B as dispatched, else your role id>` hint. Combined with the stack-specific reviewers (`typescript-reviewer.md`, `csharp-reviewer.md`, `reviewer-lite.md`) which already passed fixed distinct role-name keys unconditionally, every shipped dispatch path that puts two reviewers on the same ladder now writes under two distinct keys.\n\nI re-ran the suite myself: `cd crew && bun test tests/review-verdict-aggregation.test.mts` -- 12 pass, 0 fail, 41 expect() calls, including the two new regression tests added in this fix round that use the exact real role names from this repo's shipped agents (`typescript-reviewer` + bare `reviewer`) against a `[\"A\",\"B\"]` ladder: one proves slot-count-fills-to-passed (first write -> status stays \"required\" with only `typescript-reviewer` recorded; second write under a different key -> status flips to \"passed\" with both keys recorded approved), the other proves rejection still dominates when the second of two non-ladder-named keys rejects (status \"failed\"). These are exactly the kind of realistic-role-name tests I said were missing from the original diff, and they now exist and pass.\n\nI also independently inspected this repo's own live `.claude/state/crew/workflow-state.json` before writing: `gates.review.required` is `[\"A\",\"B\"]` (slot count 2) and `gates.review.reviewers` already carried `typescript-reviewer: approved_with_notes` (reviewer A's verdict, recorded post-fix) plus my own earlier `reviewer: rejected` (written against the pre-fix code, now stale). My new write below updates that same `reviewer` key to my final verdict, giving two distinct keys -- if both are approving, count (2) >= required.length (2), so the gate should now resolve to `passed`.\n\nJudgment on the slot-count semantic: this is an acceptable, pragmatic resolution. It is weaker than true per-role matching (it does not verify that specifically \"the TypeScript reviewer\" and \"the C# reviewer\" each wrote -- only that N distinct keys wrote approvingly), but given this repo's `--reviewer` value is fundamentally caller-chosen free text with no central registry of valid role names, a slot-count check is the correct level of rigor: it still correctly blocks on any rejection regardless of key naming, still requires genuinely distinct writers (not the same key approving twice), and the one remaining soft spot -- the generic `agents/reviewer.md`'s hint being advisory rather than enforced -- is covered in practice because the only shipped dispatch path that puts two generic reviewers on one ladder (`post-builder-fanout.mts`) now injects the distinguishing `--reviewer A|B` unconditionally rather than leaving it to the dispatched agent's discretion. No further blocking issue found in this re-verification.",
+          "reviewers": {
+            "reviewer": "approved_with_notes",
+            "typescript-reviewer": "approved_with_notes"
+          },
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T03:35:07.039Z",
+          "note": "SLICE-49 / FEAT-024 validated in an isolated scratch repo against all 5 ACs: AC-1 through AC-5 PASS with evidence. write-review-result refuses (exit 2, matching stderr) a terminal call with no --decision; --scaffold --status in-progress writes register the artifact path without ever touching gates.review; a rejected verdict dominates regardless of write order, landing gates.review.status at failed with the raw reviewer keys preserved verbatim; write-validation-result --decision skipped requires --skip-reason (exit 2 without it, skipped with note containing the reason on success) and --decision pass resolves to passed. The targeted crew test suite (review-verdict-aggregation, artifact-stub-and-update, enum-verdicts) is green: 41/41 pass. One adjacent risk is flagged in findings: gates.review.required snapshots reviewers.ladder verbatim (case-sensitive), and only a literal --reviewer A / --reviewer B write reaches passed under the default [\"A\",\"B\"] ladder -- lowercase or role-named reviewer keys (e.g. \"a\"/\"b\", \"csharp-reviewer\") leave the gate stuck at required even after both approve. The live dispatch path (post-builder-fanout.mts + agents/reviewer.md) does not plumb a literal ladder-matching --reviewer value into the dispatched reviewer agent's instructions, so this is a real integration exposure, not just a theoretical one, though it predates and is outside SLICE-49's own ACs (which specify lowercase a/b in AC-3 and literal A/B in AC-4 as two different scenarios). Recommendation: PASS for SLICE-49/FEAT-024's own acceptance criteria; open a follow-up to make the --reviewer identity used by live dispatch match reviewers.ladder's case exactly, or normalize the comparison in computeReviewGateStatus.",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T033011Z-run-brief-feat024-slice49-implement-feat-024.md",
+        "handoffs": [],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T034415Z-review-result-slice-49-review-b-correctness.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T033507Z-validation-result-slice-49-validation-explicit-aggregated-verdicts.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT034 SLICE51: Implement FEAT-034",
       "goal": "Wave planner reads PM field names intake never writes — ranking flat, risk pre-flight dead",
@@ -171,74 +255,6 @@
       },
       "artifacts": {
         "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025845Z-run-brief-feat034-slice51-implement-feat-034.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT025 SLICE50: Implement FEAT-025",
-      "goal": "Audit T9: telemetry honesty for cost reports, pricing, grades, and bundle-safe data files",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T02:58:45.122Z",
-      "updatedAt": "2026-11-06T02:58:45.122Z",
-      "completedAt": "2026-11-06T02:58:45.122Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025845Z-run-brief-feat025-slice50-implement-feat-025.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT024 SLICE49: Implement FEAT-024",
-      "goal": "Audit T4: explicit, per-reviewer aggregated review and validation verdicts; scaffolds never flip the gate",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T02:58:44.273Z",
-      "updatedAt": "2026-11-06T02:58:44.273Z",
-      "completedAt": "2026-11-06T02:58:44.273Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": null,
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T025844Z-run-brief-feat024-slice49-implement-feat-024.md",
         "handoffs": [],
         "reviewResult": null,
         "validationPlan": null,
