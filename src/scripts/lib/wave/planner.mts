@@ -35,6 +35,48 @@ function shapeForPaths(paths: string[]): string {
   return classifySliceShape({ files }).shape;
 }
 
+type PackVerdict = { kind: "pick" } | { kind: "defer" } | { kind: "reject"; reason: string };
+
+// Per-candidate pack decision, extracted so packWave stays under the
+// cognitive-complexity cap (SLICE-51 review A). Order matters: a sequential
+// sibling is rejected before its touches_files are even considered.
+function classifyCandidate(
+  cand: SliceCandidate,
+  pickedPaths: PathSet,
+  pickedSequentialGroups: Set<string>
+): PackVerdict {
+  if (cand.sequentialGroup !== undefined && pickedSequentialGroups.has(cand.sequentialGroup)) {
+    return {
+      kind: "reject",
+      reason: `sequential_group:${cand.sequentialGroup} already packed this wave`
+    };
+  }
+  if (cand.touches.confidence === "missing") return { kind: "defer" };
+  const conflict = pickedPaths.conflictingPath(cand.touches.paths);
+  if (conflict !== null) return { kind: "reject", reason: `conflict_with_${conflict}` };
+  return { kind: "pick" };
+}
+
+// Nothing well-specified could be packed at all -> dispatch the top-ranked
+// missing-confidence candidate solo rather than starving the wave forever.
+// Every other missing-confidence candidate loses its slot with a visible
+// reason rather than silently.
+function resolveMissingQueue(
+  picked: SliceCandidate[],
+  missingQueue: SliceCandidate[],
+  rejected: WaveRejection[]
+): void {
+  let rest = missingQueue;
+  if (picked.length === 0 && missingQueue.length > 0) {
+    const [solo, ...others] = missingQueue as [SliceCandidate, ...SliceCandidate[]];
+    picked.push(solo);
+    rest = others;
+  }
+  for (const cand of rest) {
+    rejected.push({ sliceId: cand.sliceId, reason: "missing_touches_files_solo_only" });
+  }
+}
+
 export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
   const picked: SliceCandidate[] = [];
   const rejected: WaveRejection[] = [];
@@ -49,28 +91,16 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
   for (const cand of ranked) {
     if (picked.length >= opts.waveSize) break;
 
-    if (cand.sequentialGroup !== undefined && pickedSequentialGroups.has(cand.sequentialGroup)) {
-      rejected.push({
-        sliceId: cand.sliceId,
-        reason: `sequential_group:${cand.sequentialGroup} already packed this wave`
-      });
+    const verdict = classifyCandidate(cand, pickedPaths, pickedSequentialGroups);
+    if (verdict.kind === "reject") {
+      rejected.push({ sliceId: cand.sliceId, reason: verdict.reason });
       continue;
     }
-
-    if (cand.touches.confidence === "missing") {
+    if (verdict.kind === "defer") {
       // Defer: ranking position must never decide whether a missing-
       // confidence candidate poisons the whole pack. Resolved after the
       // full ranked list has been considered (see below).
       missingQueue.push(cand);
-      continue;
-    }
-
-    const conflict = pickedPaths.conflictingPath(cand.touches.paths);
-    if (conflict !== null) {
-      rejected.push({
-        sliceId: cand.sliceId,
-        reason: `conflict_with_${conflict}`
-      });
       continue;
     }
 
@@ -79,21 +109,7 @@ export function packWave(ranked: SliceCandidate[], opts: PackOpts): WavePlan {
     if (cand.sequentialGroup !== undefined) pickedSequentialGroups.add(cand.sequentialGroup);
   }
 
-  if (picked.length === 0 && missingQueue.length > 0) {
-    // Nothing well-specified could be packed at all -- dispatch the
-    // top-ranked missing-confidence candidate solo rather than starving
-    // the wave forever. Any other missing-confidence candidates still
-    // lose their slot, but with a visible reason rather than silently.
-    const [solo, ...rest] = missingQueue as [SliceCandidate, ...SliceCandidate[]];
-    picked.push(solo);
-    for (const cand of rest) {
-      rejected.push({ sliceId: cand.sliceId, reason: "missing_touches_files_solo_only" });
-    }
-  } else {
-    for (const cand of missingQueue) {
-      rejected.push({ sliceId: cand.sliceId, reason: "missing_touches_files_solo_only" });
-    }
-  }
+  resolveMissingQueue(picked, missingQueue, rejected);
 
   const items: WavePlanItem[] = picked.map((c) => ({
     sliceId: c.sliceId,
