@@ -207,6 +207,12 @@ Coalesce Bash calls: chain related data-collection commands.
 ## Report contract
 
 Write your handoff via write-handoff.
+
+## Peer dispatch
+
+MAY dispatch \`architect\`. Dispatch budget per slice: max 3 peer dispatches.
+
+MUST NOT dispatch \`reviewer\`.
 `;
 
 test("fails when an allowlisted agent embeds FEAT-NNN in its prompt body", async () => {

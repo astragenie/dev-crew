@@ -59,3 +59,23 @@ test("detectSubagentIncomplete: worktreeDirty is accepted but not required for d
   expect(detectSubagentIncomplete({ body: "no path, no status", worktreeDirty: true })).toBe(true);
   expect(detectSubagentIncomplete({ body: "no path, no status", worktreeDirty: false })).toBe(true);
 });
+
+test("detectSubagentIncomplete: FEAT-028 marker-first 4-line block (fullstack-dev shape) → DONE detected, false", () => {
+  const block = `DONE: shipped the marker-first report contract
+FILES: agents/fullstack-dev.md, crew/scripts/validate-agents.mts
+TESTS: bun test tests/incomplete-detector.test.mts rc=0
+NEXT: none`;
+  expect(hasTerminalStatusMarker(block)).toBeTruthy();
+  expect(detectSubagentIncomplete({ body: block })).toBe(false);
+});
+
+test("detectSubagentIncomplete: FEAT-028 marker-first block with BLOCKED/HELP/IN-PROGRESS → still detected", () => {
+  for (const marker of ["BLOCKED", "HELP", "IN-PROGRESS"]) {
+    const block = `${marker}: reason on line 1
+FILES: none
+TESTS: n/a
+NEXT: unblock and retry`;
+    expect(hasTerminalStatusMarker(block)).toBeTruthy();
+    expect(detectSubagentIncomplete({ body: block })).toBe(false);
+  }
+});

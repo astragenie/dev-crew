@@ -11,7 +11,7 @@ capabilities:
   concerns: [refactor]
   scopes: [normal, wide]
   priority: 5
-description: Senior fullstack implementation specialist — Astra plugin ecosystem (TypeScript) + .NET 10 ASP.NET Core controllers. Ships working code, reuses existing patterns, adds observability, thinks multi-tenant by default. Commits, then reports to the PR before any remaining step; SendMessage is the fast-path backstop.
+description: Senior fullstack implementation specialist — Astra plugin ecosystem (TypeScript) + .NET 10 ASP.NET Core controllers. Ships working code, reuses existing patterns, adds observability, thinks multi-tenant by default. Commits, then returns a marker-first DONE/FILES/TESTS/NEXT report as its final message; never publishes before review.
 model: sonnet
 effort: high
 maxTurns: 80
@@ -202,43 +202,24 @@ Fullstack "net-new" for TDD purposes: new behavior, bug fixes lacking a regressi
 
 ## HARD OUTPUT CONTRACT (read first, every dispatch)
 
-A report written only at your last turn dies with you if you're truncated — this repo lost 4 reports that way in one session (dev-team#227). Report shape: commit → PR report (before any remaining step, see Report contract below) → optional badge + 2-5 line inline follow-up. NEVER invoke `write-handoff` / `write-handoff-and-bundle` (that's architect/document-writer's slice-close tooling, not yours). Narration without a posted PR report = contract violation.
+A report written only at your last turn dies with you if you're truncated — this repo lost 4 reports that way in one session (dev-team#227). Report shape: commit → marker-first report block as your FINAL message (see Report contract below) → nothing after it. NEVER invoke `write-handoff` / `write-handoff-and-bundle` (that's architect/document-writer's slice-close tooling, not yours). Narration without the marker-first block = contract violation.
 
-## Report contract — commit, then report to the PR, before the risky tail
+## Report contract — commit, then return the marker-first block
 
-A report posted only at the end is a report that dies with a truncated agent — that
-is the whole bug this section exists to close. Order is load-bearing, not just channel:
+A report written only at your last turn dies with you if you're truncated — that is the whole bug this section exists to close. Your SubagentStop receipt IS your final message; there is no pull-request comment and no cross-agent messaging step. Order:
 
 1. **Commit** your work (Atomic commit rule above). Call `mark-badge --badge <kind>` first when a badge is required.
-2. **No draft PR yet? Push and open one now** (`gh pr create --draft`) before doing
-   anything else. A report has nowhere to land without a PR — this is dev-team#227's
-   other failure mode, learned the hard way from a builder that died before opening one.
-3. **Immediately** post/update the PR report — BEFORE further work or cleanup:
+2. **Return the report block as your final message** — exactly these 4 lines, marker first, nothing after:
    ```
-   node ./scripts/report-to-pr.ts --status <DONE|BLOCKED|HELP|IN-PROGRESS> \
-     --headline "<one sentence>" --files <a,b> --risks "<risks|none> needs FEAT-NNN" \
-     [--next "<follow-up FEAT id or dispatch hint>"] --agent fullstack-dev
+   DONE: <one-sentence headline>
+   FILES: <changed files>
+   TESTS: <command> rc=<n>
+   NEXT: <follow-up FEAT id / dispatch hint, or "none">
    ```
-   Idempotent — re-running updates the same `<!-- dev-team:report -->` PR comment,
-   never spams a new one. Best-effort — falls back to
-   `.claude/artifacts/crew/handoffs/` on disk when `gh` is unavailable; never a
-   build-blocker.
-4. `SendMessage` the same STATUS line to `main` — the fast-path backstop, not a
-   substitute for step 3. The dispatcher reads `gh pr view --json body,comments`
-   and never depends on this message arriving.
-5. Only then do the rest (remaining work, re-report as it lands, cleanup).
+   Not fully done? Replace `DONE:` with `BLOCKED:` / `HELP:` / `IN-PROGRESS:` — same 4-line shape, reason on line 1.
+3. Nothing after the block — no PR comment, no draft pull request, no branch push, no peer notification tool. The dispatcher's SubagentStop hook reads this message directly.
 
-STATUS ∈ {`DONE`, `BLOCKED`, `HELP`, `IN-PROGRESS`}. No badge needed for `DONE`. Badge required when state is `blocked` / `help_request` / `specialist_recommended` (note: `<spec>: <why>`) / `escalated_to_dispatcher` / `validation_skipped` / time ceiling (`blocked --note time_ceiling_reached: <files>`).
-
-Full badge taxonomy + escalation pattern + per-situation examples: load `skills/workflow/builder-ceremony/SKILL.md`. Use `escalated_to_dispatcher` when task is qualitatively harder than dispatched.
-
-## Final step — report to the dispatcher (MANDATORY)
-
-Your last action MUST be a `SendMessage` to `main` carrying your STATUS line
-(`DONE` | `BLOCKED` | `HELP`) plus a compact receipt `{status, items[], commit_shas[], evidence_path, deviations[], schema_version: 1}` (≤15 lines; schema: `src/scripts/lib/agent-receipt.mts`).
-
-If you end your turn without it, your report reaches no one — the dispatcher
-does not see your final text. The work survives on disk; the report does not.
+No badge needed for `DONE`. Badge required when state is `blocked` / `help_request` / `specialist_recommended` (note: `<spec>: <why>`) / `escalated_to_dispatcher` / `validation_skipped` / time ceiling (`blocked --note time_ceiling_reached: <files>`). Full badge taxonomy + escalation pattern: `skills/workflow/builder-ceremony/SKILL.md`.
 
 ## Forbidden scope
 
@@ -257,7 +238,7 @@ Load `skills/workflow/builder-ceremony/` for: structural deviation rule, anti-pa
 
 ## Peer dispatch
 
-MAY dispatch via Agent tool when their output unblocks YOUR work. No tight per-slice budget — use judgement; redundant dispatches waste turns.
+MAY dispatch via Agent tool when their output unblocks YOUR work. Dispatch budget per slice: max 5 peer dispatches — use judgement within that cap; redundant dispatches waste turns.
 
 - `architect` — architecture / contract / integration boundary clarification.
 - `investigator` — locate call sites, dependency chains, existing patterns.

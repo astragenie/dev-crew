@@ -167,7 +167,7 @@ Walk this list in order; use the first source that exists. Never improvise — w
 When the resolved gate set contains ≥2 commands that don't depend on each other (lint, format:check, typecheck, verify:all all qualify — the full test suite is its own concern), emit a parallel block via the helper instead of running them serially:
 
 ```bash
-bun scripts/lib/parallel-gates.ts --emit lint,format:check,typecheck,verify:all | bash
+bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/lib/parallel-gates.mts" --emit lint,format:check,typecheck,verify:all | bash
 ```
 
 The helper backgrounds each gate with `&`, writes per-gate `mktemp` logs, applies the `CREW_BASH_GATE_TIMEOUT_S` cap, and prints the failed-gate header + tail of its log on any non-zero exit. Cuts verifier gate wall-clock from ~33 s serial to ~12 s parallel (typecheck dominates). The full test suite stays serial after the parallel block lands — it is the slowest gate and rarely benefits from racing other I/O.

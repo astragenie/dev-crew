@@ -86,6 +86,29 @@ function payload(opts: {
   return JSON.stringify(obj);
 }
 
+// (a') red review gate + FEAT-028 marker-first DONE block (fullstack-dev shape) → warn
+test("red review gate + FEAT-028 marker-first DONE block → warn (fixture: builder report contract)", async () => {
+  const repo = await makeRepo();
+  try {
+    await writeWorkflowState(repo, makeRun("failed"));
+    const raw = payload({
+      cwd: repo,
+      agent_name: "crew:fullstack-dev",
+      last_assistant_message: `DONE: shipped the marker-first report contract
+FILES: agents/fullstack-dev.md
+TESTS: bun test rc=0
+NEXT: none`
+    });
+    const out = await runSubagentGateGuardHook(raw);
+    expect(out).not.toBeNull();
+    const parsed = JSON.parse(out as string);
+    expect(parsed.decision).toBeUndefined();
+    expect(parsed.systemMessage).toMatch(/review gate/);
+  } finally {
+    await cleanup(repo);
+  }
+});
+
 // (a) red review gate + DONE-shaped message + builder-tier agent → warn (default mode)
 test("red review gate + DONE-shaped message → warn (default warn-only mode)", async () => {
   const repo = await makeRepo();
