@@ -272,7 +272,7 @@ test("FEAT-219 golden: memory off/absent is byte-identical; memory on prepends w
       "Gate outputs, timings, file lists, verdict mechanics — everything else about this run.",
       "",
       "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
-      "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."
+      "Write your verdict via `crew write-review-result --reviewer A --decision <approved|approved_with_notes|rejected>`. The `--reviewer A` key is what the aggregated review gate counts; omitting it collapses both ladder reviewers onto one key. Do NOT pause without writing the artifact."
     ].join("\n");
 
     // Off/absent (today's default): byte-identical to the pre-FEAT-219 prompt.

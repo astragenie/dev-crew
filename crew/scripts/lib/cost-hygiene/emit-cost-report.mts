@@ -278,7 +278,10 @@ export async function maybeEmitCostReport(
       feature || null,
       phase || null,
       emitCostAdviseFn,
-      { allowWideWindow, maxWindowHours }
+      {
+        ...(allowWideWindow !== undefined ? { allowWideWindow } : {}),
+        ...(maxWindowHours !== undefined ? { maxWindowHours } : {})
+      }
     );
   } catch (err) {
     return { error: (err as Error).message };

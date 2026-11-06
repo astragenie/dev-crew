@@ -112,7 +112,7 @@ async function reviewerPrompt(
     "Gate outputs, timings, file lists, verdict mechanics — everything else about this run.",
     "",
     "Read the builder handoff (latest in .claude/artifacts/crew/handoffs/ for this slice).",
-    "Write your verdict via `crew write-review-result`. Do NOT pause without writing the artifact."
+    `Write your verdict via \`crew write-review-result --reviewer ${role} --decision <approved|approved_with_notes|rejected>\`. The \`--reviewer ${role}\` key is what the aggregated review gate counts; omitting it collapses both ladder reviewers onto one key. Do NOT pause without writing the artifact.`
   ].join("\n");
 
   const memoryBlock = await buildMemoryContext({

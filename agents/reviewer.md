@@ -54,6 +54,7 @@ Capture the returned `path` — that is `<scaffold-path>` everywhere below. The 
 bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
   --update <scaffold-path> --status completed \
   --decision <approved|approved_with_notes|rejected> \
+  --reviewer <A|B as dispatched, else your role id> \
   --author-id <builder-agent-from-dispatch> --judge-id <your-agent-id> \
   --summary "<one-sentence verdict>" \
   --evidence "<key evidence>" \
