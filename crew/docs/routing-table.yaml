@@ -142,8 +142,9 @@ rows:
     notes: reviewer must populate `--test-summary` for approved code-bearing diffs; CLI exits non-zero otherwise.
   - section: review-gates
     signal: "**Code-bearing slice completed (build → review → validate)**"
-    route_to: dispatcher → always `crew:verifier`
-    notes: Builders run only affected-class tests + typecheck (scoped fast inner loop); the verifier owns the mandatory full gate — whole-repo `npm run lint`, the format check, the complete test suite, and the full verifier suite (`scripts/validate-all.ts`). **No skip path, even for code-only diffs** (supersedes the former FEAT-030 reviewer-bundled-validation skip). Only an explicit environment-blocked `validation_skipped` is permitted.
+    route_to: dispatcher → `crew:verifier`, unless `has-consumer-ci` reports present
+    notes: >-
+      Builders run only affected-class tests + typecheck (scoped fast inner loop); the verifier owns the mandatory full gate — whole-repo `npm run lint`, the format check, the complete test suite, and the full verifier suite (`scripts/validate-all.ts`). LOW-risk slices: one reviewer; verifier is replaced by `write-validation-result --decision skipped --skip-reason "delegated to CI: <workflow file>"` only when `has-consumer-ci` reports present; otherwise dispatch `devcrew:verifier`. (FEAT-027 / SLICE-53, supersedes the former FEAT-030 reviewer-bundled-validation skip and this row's prior unconditional `crew:verifier` dispatch). An explicit environment-blocked `validation_skipped` remains permitted independent of the consumer-CI check.
   - section: review-gates
     signal: "**Slice opens (subagent dispatch ahead)**"
     route_to: dispatcher
