@@ -86,14 +86,45 @@ export interface CostReportGuardParams {
   maxWindowHours?: number | undefined;
 }
 
+export type CostReportGuardReason =
+  | "sessions_scanned_zero"
+  | "window_too_wide"
+  | "duplicate run_id";
+
 export type CostReportGuardResult =
   | { refused: false; runId: string }
-  | { refused: true; reason: "sessions_scanned_zero" | "window_too_wide" | "duplicate run_id" };
+  | { refused: true; reason: CostReportGuardReason; preserveCursor: boolean };
+
+// Whether a caller's scan-window cursor must be held (not advanced) on
+// refusal, keyed by reason. Reviewed on SLICE-50 (review B + the verifier):
+// only `window_too_wide` loses real, un-reported session activity if the
+// cursor advances past it -- the next scan would silently skip that span
+// forever. `sessions_scanned_zero` has nothing in the window to lose (an
+// empty window stays empty whether the cursor holds or advances), and
+// `duplicate run_id` means an identical report already exists on disk for
+// that exact window, so advancing just lets the NEXT window start fresh.
+// Holding the cursor for those two reasons would instead freeze a slice's
+// scan window forever on the first scoped-but-empty or duplicate call --
+// contradicting FEAT-268's documented "two consecutive scans must advance"
+// contract (pinned by cost-scan-window-regression.test.mts). An
+// unrecognized/future reason defaults to preserving the cursor (fail safe
+// toward not losing data over fail safe toward progress).
+const PRESERVE_CURSOR_BY_REASON: Record<CostReportGuardReason, boolean> = {
+  sessions_scanned_zero: false,
+  window_too_wide: true,
+  "duplicate run_id": false
+};
+
+export function shouldPreserveCursorForReason(reason: string): boolean {
+  return PRESERVE_CURSOR_BY_REASON[reason as CostReportGuardReason] ?? true;
+}
 
 /**
  * Evaluates all three AC-1 guards and resolves the run_id in one call.
  * Callers that get `{ refused: true }` must not write the slice cost-report
- * artifact; they should surface `{ written: false, reason }` instead.
+ * artifact; they should surface `{ written: false, reason }` instead, and
+ * consult `preserveCursor` to decide whether to hold or advance their own
+ * scan-window cursor.
  */
 export async function evaluateCostReportGuard(
   params: CostReportGuardParams
@@ -102,17 +133,29 @@ export async function evaluateCostReportGuard(
   const maxWindowHours = params.maxWindowHours ?? DEFAULT_MAX_WINDOW_HOURS;
 
   if (sessionsScanned === 0) {
-    return { refused: true, reason: "sessions_scanned_zero" };
+    return {
+      refused: true,
+      reason: "sessions_scanned_zero",
+      preserveCursor: shouldPreserveCursorForReason("sessions_scanned_zero")
+    };
   }
 
   const windowHours = windowHoursBetween(startedAt, completedAt);
   if (windowHours > maxWindowHours && !allowWideWindow) {
-    return { refused: true, reason: "window_too_wide" };
+    return {
+      refused: true,
+      reason: "window_too_wide",
+      preserveCursor: shouldPreserveCursorForReason("window_too_wide")
+    };
   }
 
   const runId = resolveRunId(run, startedAt, completedAt);
   if (await findDuplicateRunId(repoPath, runId, usd)) {
-    return { refused: true, reason: "duplicate run_id" };
+    return {
+      refused: true,
+      reason: "duplicate run_id",
+      preserveCursor: shouldPreserveCursorForReason("duplicate run_id")
+    };
   }
 
   return { refused: false, runId };

@@ -292,14 +292,17 @@ export async function tryWriteCostReport(
   // failed invocation leaves the window untouched so the next attempt
   // retries the same, still-valid span instead of silently skipping it.
   // FEAT-025's honesty guard (costSliceHandler -> evaluateCostReportGuard)
-  // can also REFUSE without throwing, returning `{ written: false, reason }`
-  // with no `.error` key (review B blocker on SLICE-50: this branch was
-  // unreachable before that guard existed, so the refusal case was never
-  // exercised here). Gate on `report?.written !== false` too — any refusal
-  // reason (today just `window_too_wide`, conservatively any future one as
-  // well) holds the cursor so real unreported session activity in that
-  // window is retried next time instead of being silently discarded.
-  if (sliceId && !report?.error && report?.written !== false) {
+  // can also REFUSE without throwing, returning
+  // `{ written: false, reason, preserveCursor, cost }` with no `.error`
+  // key. The cursor decision is data-driven per reason (see
+  // cost-report-guard.mts's PRESERVE_CURSOR_BY_REASON): only
+  // `window_too_wide` loses real unreported session activity if the
+  // cursor advances past it. `sessions_scanned_zero` and `duplicate run_id`
+  // have nothing to lose by advancing, and holding on every refusal would
+  // contradict FEAT-268's "two consecutive scans must advance" contract
+  // (cost-scan-window-regression.test.mts) — a review B / verifier
+  // follow-up on SLICE-50's first pass, which held on ANY refusal.
+  if (sliceId && !report?.error && report?.preserveCursor !== true) {
     await writeCostScanCursor(repoPath, sliceId, window.completedAt);
   }
 

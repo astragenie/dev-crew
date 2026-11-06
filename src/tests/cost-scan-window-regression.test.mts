@@ -105,20 +105,27 @@ test("AC-1 integration: two consecutive tryWriteCostReport calls for the same sl
     "the window must keep advancing, not repeat the same span"
   );
 
-  // Cross-check against the actual written report files -- proves the
-  // persisted cursor really drove what was scanned, end to end through the
-  // bridge function under test.
-  assert.equal(typeof firstResult.path, "string", "first result must carry a written report path");
-  assert.equal(
-    typeof secondResult.path,
-    "string",
-    "second result must carry a written report path"
-  );
+  // This fixture's `costProject` points at a project directory that never
+  // has any real session files, so both scans see `sessionsScanned === 0`.
+  // FEAT-025 AC-1's honesty guard (added after this test was first written
+  // -- SLICE-50, cost-report-guard.mts) now correctly REFUSES to write a
+  // cost-report artifact for an empty scan rather than writing a
+  // zero-session report as before; the original "must carry a written
+  // report path" assertions here are obsoleted by that contract, not by a
+  // bug in this fix. The refusal still reports what it measured (`.cost`,
+  // asserted on above) and -- because `sessions_scanned_zero` has nothing
+  // in an empty window to lose -- still advances the per-slice scan cursor,
+  // which is the actual regression this test exists to pin.
+  assert.equal(firstResult.written, false, "empty-session scan must be refused, not written");
+  assert.equal(firstResult.reason, "sessions_scanned_zero");
+  assert.equal(secondResult.written, false, "empty-session scan must be refused, not written");
+  assert.equal(secondResult.reason, "sessions_scanned_zero");
 
   // The persisted cursor must reflect the SECOND call's completedAt --
-  // ready to hand the next (third) invocation an even later window.
+  // ready to hand the next (third) invocation an even later window -- even
+  // though both calls were refused for honesty reasons.
   const cursor = await readCostScanCursor(repo, sliceId);
-  assert.ok(cursor, "cursor should exist after two successful scans");
+  assert.ok(cursor, "cursor should exist after two scans");
   assert.equal(cursor!.lastWindowEnd, secondCompletedAt);
 });
 

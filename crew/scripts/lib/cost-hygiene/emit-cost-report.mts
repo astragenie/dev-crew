@@ -178,7 +178,15 @@ async function emitCostReportInner(
   // fails to narrow this discriminated union on a bare boolean check when
   // the value comes from an awaited call.
   if (guard.refused === true) {
-    return { written: false, reason: guard.reason };
+    // SLICE-50 review B / verifier follow-up (symmetric with
+    // cost-slice-handler.mts): report what was measured even on refusal --
+    // only the misleading artifact write is withheld.
+    return {
+      written: false,
+      reason: guard.reason,
+      preserveCursor: guard.preserveCursor,
+      cost: sliceCost
+    };
   }
   const runId = guard.runId;
 

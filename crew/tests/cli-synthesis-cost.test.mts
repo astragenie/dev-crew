@@ -266,14 +266,22 @@ test("cost-advise accepts --title --feature --phase and slugs filename + emits f
 test("cost-slice embeds --feature and --phase in cost-report frontmatter", async () => {
   const repoPath = await makeTempDir("crew-cli-cost-tags-");
   await runCrew(["init", "--repo", repoPath]);
+  // FEAT-025 AC-1 honesty guard (SLICE-50): a window with zero in-window
+  // sessions is now refused rather than silently written. The beforeAll
+  // fixture's session.jsonl carries a real `new Date().toISOString()`
+  // timestamp, not the old hardcoded 2026-05-22 one this test used to pass
+  // -- so the window must actually bracket "now" for sessionsScanned to be
+  // >0. The test's own assertions (feature/phase frontmatter tagging) are
+  // unaffected by the window's absolute value.
+  const now = Date.now();
   const result = await runCrew([
     "cost-slice",
     "--repo",
     repoPath,
     "--started-at",
-    "2026-05-22T00:00:00Z",
+    new Date(now - 5 * 60_000).toISOString(),
     "--completed-at",
-    "2026-05-22T00:05:00Z",
+    new Date(now + 5 * 60_000).toISOString(),
     "--run-title",
     "tagged",
     "--feature",
@@ -344,16 +352,25 @@ test("cost-slice renders ## Per-dispatch breakdown when dispatch log has matchin
   process.env["CREW_BASH_GATE_LOG"] = bashLog;
 
   try {
+    // FEAT-025 AC-1 honesty guard (SLICE-50): this repoPath has no
+    // matching project dir under CREW_PROJECTS_ROOT for a single-source
+    // scan, so sessionsScanned would be 0 and the write refused. Use
+    // --aggregate-all to pick up the beforeAll fixture's session.jsonl,
+    // and bracket "now" (that fixture's real timestamp) instead of the
+    // old hardcoded 2026-05-22 window -- the dispatch/bash-gate breakdown
+    // under test is independent of the window's absolute value.
+    const now = Date.now();
     const result = await runCrew([
       "cost-slice",
       "--repo",
       repoPath,
       "--started-at",
-      "2026-05-22T00:00:00Z",
+      new Date(now - 5 * 60_000).toISOString(),
       "--completed-at",
-      "2026-05-22T00:05:00Z",
+      new Date(now + 5 * 60_000).toISOString(),
       "--run-title",
-      "dispatch-breakdown-test"
+      "dispatch-breakdown-test",
+      "--aggregate-all"
     ]);
     expect(result.code).toBe(0);
     const costResult = JSON.parse(result.output);

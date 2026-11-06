@@ -8,6 +8,17 @@
 // refused window. Real unreported session activity in that window would
 // then be permanently skipped on the next scan.
 //
+// Follow-up correction (same slice, review B / verifier round 2): holding
+// the cursor on EVERY refusal reason (the first-pass fix this suite
+// originally pinned) was itself over-broad -- it contradicts FEAT-268's
+// "two consecutive scans must advance" contract for the two reasons that
+// have nothing in an empty/duplicate window to lose
+// (`sessions_scanned_zero`, `duplicate run_id`; see
+// cost-scan-window-regression.test.mts). The cursor-hold decision is now
+// reason-gated via `preserveCursor` on the guard's refusal result
+// (crew/scripts/lib/cost-hygiene/cost-report-guard.mts). This suite is
+// scoped to `window_too_wide`, the one reason that still preserves.
+//
 // `window_too_wide` (the guard reason reviewer B and the verifier both
 // reproduced) only fires once `sessionsScanned > 0`, which requires a real
 // staged session transcript to trigger through the full stack. Rather than
@@ -56,7 +67,15 @@ let handlerMode: "refuse" | "succeed" = "refuse";
 mock.module(costSliceHandlerPath, () => ({
   costSliceHandler: async () =>
     handlerMode === "refuse"
-      ? { written: false, reason: "window_too_wide" }
+      ? // `preserveCursor: true` matches the real
+        // evaluateCostReportGuard's PRESERVE_CURSOR_BY_REASON for
+        // `window_too_wide` specifically (SLICE-50 review B / verifier
+        // follow-up): that reason loses real unreported session activity if
+        // the cursor advances past it, so it is the one reason that still
+        // holds. `sessions_scanned_zero` / `duplicate run_id` do not (see
+        // cost-scan-window-regression.test.mts) — this suite is scoped to
+        // the window_too_wide case only.
+        { written: false, reason: "window_too_wide", preserveCursor: true }
       : { path: "/irrelevant/fake-report.md", kind: "cost-report-slice" }
 }));
 

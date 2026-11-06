@@ -226,7 +226,18 @@ export async function costSliceHandler({
   // confirmed via a minimal repro against both tsconfigs. The explicit
   // equality check narrows correctly under both.
   if (guard.refused === true) {
-    return { written: false, reason: guard.reason };
+    // SLICE-50 review B / verifier follow-up: a refusal must still report
+    // what it measured -- `sliceCost` (window.start/end, sourceProject,
+    // sessionsScanned, etc.) is the honest, computed data; only the
+    // MISLEADING artifact write is withheld. `preserveCursor` lets
+    // crew-bridge.mts decide whether to hold or advance its own
+    // scan-window cursor for this reason (see cost-report-guard.mts).
+    return {
+      written: false,
+      reason: guard.reason,
+      preserveCursor: guard.preserveCursor,
+      cost: sliceCost
+    };
   }
 
   const writeResult = await writeArt(repoPath, "cost-report-slice", {
