@@ -291,7 +291,15 @@ export async function tryWriteCostReport(
   // Only advance the cursor when the direct call actually succeeded — a
   // failed invocation leaves the window untouched so the next attempt
   // retries the same, still-valid span instead of silently skipping it.
-  if (sliceId && !report?.error) {
+  // FEAT-025's honesty guard (costSliceHandler -> evaluateCostReportGuard)
+  // can also REFUSE without throwing, returning `{ written: false, reason }`
+  // with no `.error` key (review B blocker on SLICE-50: this branch was
+  // unreachable before that guard existed, so the refusal case was never
+  // exercised here). Gate on `report?.written !== false` too — any refusal
+  // reason (today just `window_too_wide`, conservatively any future one as
+  // well) holds the cursor so real unreported session activity in that
+  // window is retried next time instead of being silently discarded.
+  if (sliceId && !report?.error && report?.written !== false) {
     await writeCostScanCursor(repoPath, sliceId, window.completedAt);
   }
 
