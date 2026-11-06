@@ -1,0 +1,114 @@
+---
+kind: agent-report
+phase: null
+feature: FEAT-026
+slice: SLICE-52
+created_at: "2026-11-06T17:44:20.517Z"
+session_id: e4416929-c903-49a9-b9dd-721476545d3a
+agent_count: 75
+total_turns: 1820
+total_duration_ms: 5682000
+---
+**Feature:** FEAT-026 · **Slice:** SLICE-52
+
+> **Note:** 3 agent(s) have no `subagent_stop` event recorded. SubagentStop fires when the orchestrator returns to the user, which can land after slice-complete; duration and tool usage for these entries are partial.
+
+## Agents
+
+| Role | Model | Turns | Duration | Top tools | Skills |
+|------|-------|-------|----------|-----------|--------|
+| lane-a-slice52 | claude-sonnet-5 | 427 | 17m 27s | Bash×180, Edit×40, Read×14 | — |
+| lane-b-slice53 | claude-sonnet-5 | 103 | 9m 51s | Bash×48, Edit×3, ToolSearch×1 | — |
+| lane-c-slice54 | claude-sonnet-5 | 368 | 2m 57s | Bash×201, Read×1, Write×1 | — |
+| review-a-slice53 | claude-sonnet-5 | 59 | 3m 27s | Bash×31, Write×2, Read×1 | — |
+| review-b-slice53 | claude-sonnet-5 | 45 | 2m 13s | Bash×23, Read×1, ToolSearch×1 | — |
+| validate-slice53 | claude-sonnet-5 | 72 | 11m 18s | Bash×33, Write×3, Edit×2 | — |
+| review-a-slice52 | claude-sonnet-5 | 193 | 7m 9s | Bash×97, Write×4, SendMessage×2 | — |
+| review-b-slice52 | claude-sonnet-5 | 170 | 10m 25s | Bash×81, Read×6, Write×5 | — |
+| review-a-slice54 | claude-sonnet-5 | 63 | 1m 21s | Bash×33, Read×6 | — |
+| review-b-slice54 | claude-sonnet-5 | 85 | 2m 12s | Bash×44, Read×2, SendMessage×2 | — |
+| validate-slice54 | claude-sonnet-5 | 94 | 12m 43s | Bash×43, Read×4, Write×3 | — |
+| validate-slice52 | claude-sonnet-5 | 141 | 13m 39s | Bash×64, Write×4, Read×1 | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| unknown | n/a | 0 | n/a | — | — |
+| crew:release-engineer | n/a | 0 | n/a | — | — |
+| crew:fullstack-dev | n/a | 0 | n/a | — | — |
+| crew:aiplugin-dev | n/a | 0 | n/a | — | — |
+
+## Parallel groups
+
+**Group 1** (5 agents, concurrent): lane-a-slice52, lane-c-slice54, review-a-slice54, review-b-slice54, validate-slice54
+**Group 2** (2 agents, concurrent): review-a-slice53, review-b-slice53
+**Group 3** (3 agents, concurrent): review-a-slice52, review-b-slice52, validate-slice52
+
+## Tool summary
+
+| Tool | Total calls | Top agents |
+|------|-------------|-----------|
+| Bash | 878 | lane-a-slice52×180, lane-b-slice53×48, lane-c-slice54×201, review-a-slice53×31, review-b-slice53×23, validate-slice53×33, review-a-slice52×97, review-b-slice52×81, review-a-slice54×33, review-b-slice54×44, validate-slice54×43, validate-slice52×64 |
+| Edit | 48 | lane-a-slice52×40, lane-b-slice53×3, lane-c-slice54×1, validate-slice53×2, review-b-slice52×1, validate-slice52×1 |
+| Read | 38 | lane-a-slice52×14, lane-b-slice53×1, lane-c-slice54×1, review-a-slice53×1, review-b-slice53×1, validate-slice53×1, review-b-slice52×6, review-a-slice54×6, review-b-slice54×2, validate-slice54×4, validate-slice52×1 |
+| Write | 23 | lane-a-slice52×1, lane-c-slice54×1, review-a-slice53×2, validate-slice53×3, review-a-slice52×4, review-b-slice52×5, validate-slice54×3, validate-slice52×4 |
+| ToolSearch | 11 | lane-a-slice52×1, lane-b-slice53×1, lane-c-slice54×1, review-a-slice53×1, review-b-slice53×1, validate-slice53×1, review-a-slice52×1, review-b-slice52×1, review-b-slice54×1, validate-slice54×1, validate-slice52×1 |
+| SendMessage | 11 | review-a-slice53×1, review-b-slice53×1, validate-slice53×1, review-a-slice52×2, review-b-slice52×2, review-b-slice54×2, validate-slice54×1, validate-slice52×1 |
+| TaskStop | 1 | lane-a-slice52×1 |
+| Monitor | 1 | lane-b-slice53×1 |
+| Grep | 1 | lane-b-slice53×1 |

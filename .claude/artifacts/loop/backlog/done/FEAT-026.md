@@ -1,6 +1,6 @@
 ---
 id: FEAT-026
-status: in-progress
+status: done
 priority: P0
 category: feature
 target_release: null
@@ -20,6 +20,8 @@ pm_reviewed: 2026-11-05
 autonomous_safe: true
 triage_notes: "P0, holds as the batch's single highest-impact fix — now explicitly verified live by the architect-reviewer rather than only designed on paper. technical_risk raised to 0.75 (band 0.6-0.8 upper end: the scope now includes a cross-module gate-list renumbering synced across two machine-read files, a Bun-version pin, and a 65-module import.meta audit, on top of the original bundling work)."
 started_at: 2026-11-06
+slices_complete: [SLICE-52]
+completed_at: 2026-11-06
 ---
 ## Description
 
