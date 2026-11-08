@@ -67,3 +67,6 @@
 {"timestamp":"2026-11-06T17:26:10.095Z","agent":"devcrew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
 {"timestamp":"2026-11-06T17:44:20.638Z","agent":"devcrew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
 {"timestamp":"2026-11-06T19:27:13.199Z","agent":"devcrew:architect","parentCommand":"backlog enrich","ok":false,"skipped":true,"skipReason":"cli-refusal","durationMs":0}
+{"timestamp":"2026-11-08T23:09:38.489Z","agent":"devcrew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
+{"timestamp":"2026-11-08T23:09:52.854Z","agent":"devcrew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}
+{"timestamp":"2026-11-08T23:10:09.862Z","agent":"devcrew:document-writer","parentCommand":"slice-complete","ok":true,"skipped":true,"skipReason":"cli-refusal-cli-doc-writer-disabled","durationMs":0}

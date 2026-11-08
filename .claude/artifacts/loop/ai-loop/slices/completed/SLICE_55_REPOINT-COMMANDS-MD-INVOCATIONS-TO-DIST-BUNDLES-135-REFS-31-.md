@@ -1,7 +1,7 @@
 ---
 id: SLICE-55
 title: "Repoint commands/*.md invocations to dist/ bundles (135 refs, 31 files)"
-status: pending
+status: completed
 feature: FEAT-037
 phase: null
 priority: P0
@@ -9,11 +9,13 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 effort_points: 2
 proposed_slice_id_suffix: -SLICE-1
 estimated_tokens: 100000
 tags: ["stack:typescript"]
+completed_at: 2026-11-08
+badges: [serial-reviewer-warning]
 ---
 # SLICE-55: Repoint commands/*.md invocations to dist/ bundles (135 refs, 31 files)
 
