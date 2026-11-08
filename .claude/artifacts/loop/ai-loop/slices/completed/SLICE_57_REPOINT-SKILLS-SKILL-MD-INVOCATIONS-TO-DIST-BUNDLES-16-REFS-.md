@@ -1,7 +1,7 @@
 ---
 id: SLICE-57
 title: "Repoint skills/**/SKILL.md invocations to dist/ bundles (16 refs, 7 files)"
-status: pending
+status: completed
 feature: FEAT-037
 phase: null
 priority: P0
@@ -9,11 +9,13 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 effort_points: 1
 proposed_slice_id_suffix: -SLICE-3
 estimated_tokens: 60000
 tags: ["stack:typescript"]
+completed_at: 2026-11-08
+badges: [serial-reviewer-warning]
 ---
 # SLICE-57: Repoint skills/**/SKILL.md invocations to dist/ bundles (16 refs, 7 files)
 

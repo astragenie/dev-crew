@@ -51,7 +51,7 @@ tags: ["stack:typescript", "area:plugin-surface", "concern:dist-path-migration"]
 needs_contract: false
 needs_ux: false
 started_at: 2026-11-06
-slices_complete: [SLICE-55]
+slices_complete: [SLICE-55, SLICE-57]
 ---
 ## Description
 
