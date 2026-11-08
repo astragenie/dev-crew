@@ -1,35 +1,44 @@
-# Adoption Checklist — loop
+# Adoption Checklist — dev-crew
 
 Run through this before invoking `/devcrew:install` on a new repo or
 re-running it on a repo that already has hand-pasted HARD RULE blocks.
 
 ## Prerequisites
 
-- **Bun** installed and on `PATH` — the plugin's runtime. `bun --version`
-  to check.
-- **`crew` plugin** (>= v0.57.0, `src/scripts/lib/plugin-identity.mts::MIN_CREW_VERSION`)
-  installed in Claude Code's plugin cache. `crew` must go in first; `loop`
-  refuses to install against a missing or too-old crew. There's no separate
-  CLI check to hand-run before install — the installer itself does the
-  discovery and errors with a clear message if crew isn't found. If you want
-  to confirm crew is live before starting, run `/devcrew:brief` (or, once
-  `loop` is installed, `/devcrew:brief` — its `crewCli` field is `null` if
-  crew isn't discoverable).
+Per machine (see README § Install for the full table with check commands):
+
+- **Claude Code CLI >= 2.1.270** — the version on which `hooks/hooks.json`
+  discovery was verified live (FEAT-033).
+- **Bun** on `PATH` — runtime for every `/devcrew:*` command and most hooks.
+  `bun --version` to check.
+- **Node** on `PATH` — a handful of hooks (version-drift warning,
+  OpenTelemetry flush) run under `node`.
+- **POSIX `sh`** — event-log hooks are shell scripts; Git Bash is enough on
+  Windows.
+
+Per repo:
+
 - Repo has a `.git/` directory. Install fails fast on non-git targets.
 - Repo has a `CLAUDE.md` (created automatically if missing).
 
-## Step 0 — Install the plugins
+No `bun install` and no registry token are needed on the consumer machine —
+every shipped hook and CLI entry runs from self-contained `dist/` bundles.
+The former separate `crew` plugin prerequisite is gone: `crew` is vendored
+inside `devcrew` and `/devcrew:install` installs both layers itself.
 
-These are three separate commands. Paste one at a time into the Claude Code
-prompt and let each finish before pasting the next — pasting all three
-together as one block is a common failure mode and one of them will silently
-get swallowed.
+## Step 0 — Install the plugin
+
+Two separate commands. Paste one at a time into the Claude Code prompt and
+let each finish before pasting the next — pasting both together as one
+block is a common failure mode and one of them will silently get swallowed.
 
 ```
 /plugin marketplace add astragenie/astra-marketplace
-/plugin install crew@astra
-/plugin install loop@astra
+/plugin install devcrew@astra
 ```
+
+Then `/reload-plugins` and confirm with `/devcrew:list-presets` (needs no
+repo config).
 
 ## Step 1 — Back up `.claude/`
 

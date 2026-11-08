@@ -62,32 +62,105 @@ _Comparison reflects publicly documented positioning as of 2026-07-18._
 
 ## Install
 
-Post-cutover, this is one command — paste into the Claude Code prompt:
+Two layers: the **plugin** is installed once per machine; the **method
+layer** is installed once per repo.
+
+### Prerequisites (per machine)
+
+| Need | Why | Check |
+|---|---|---|
+| Claude Code CLI ≥ 2.1.270 | Loads `hooks/hooks.json` — the discovery path verified live on 2.1.270 (FEAT-033) | `claude --version` |
+| **Bun** on `PATH` | Runtime for every `/devcrew:*` command and most hooks (`dist/*.js` bundles) | `bun --version` |
+| **Node** on `PATH` | A handful of hooks (version-drift warning, OpenTelemetry flush) run under `node` | `node --version` |
+| POSIX `sh` | Event-log hooks are shell scripts; on Windows, Git Bash (what Claude Code already uses) is enough | `sh --version` |
+| `git` | Target repos must be git repositories; install fails fast otherwise | `git --version` |
+| `gh` (optional) | PR flows only: `/devcrew:ship`, `/devcrew:pr-fix`, report-to-PR | `gh auth status` |
+
+No `bun install` and no registry auth are needed on the consumer machine:
+every shipped hook and CLI entry runs from self-contained `dist/` bundles
+(FEAT-026 / DEC-048).
+
+### 1. Install the plugin (once per machine)
+
+Paste one line at a time into the Claude Code prompt and let each finish —
+pasting both as one block is a known way to get one silently swallowed:
 
 ```
 /plugin marketplace add astragenie/astra-marketplace
 /plugin install devcrew@astra
 ```
 
-See [ADOPTION.md](ADOPTION.md) for new-repo onboarding. Hooks require `bun`
-on `PATH` on the consumer's machine — they always have, since every hook
-command is a `bun`/Bun-shebang script, but this went unnoticed until
-FEAT-033 found the hooks file was shipping at a path Claude Code never
-loads in the first place.
+Then `/reload-plugins` (or restart Claude Code) and verify:
 
-> **Marketplace history:**
->
-> - Pre-v0.8.7: shipped via the `hero-crew` repo (paired releases).
-> - v0.8.7–v0.41.x: `loop` shipped from its own marketplace, decoupled
->   from `crew`.
-> - v0.41.0+: both `crew` and `loop` shipped from the central
->   `astragenie/astra-marketplace` registry as two separate installs
->   (`crew@astra` then `loop@astra`), each still its own repo/codebase.
-> - 2026-08-18+: `crew`/`dev-team` and `loop`/`runner-plugin` merge into
->   this single `astragenie/devcrew` repo (FEAT-002..006). Until the P5
->   cutover slice lands, the merge repo is a working build, not yet the
->   published `devcrew@astra` marketplace entry — check `CHANGELOG.md`
->   for the release that flips it over.
+```
+/devcrew:list-presets
+```
+
+It needs no repo config, so a preset table proves the plugin loaded and Bun
+is reachable.
+
+### 2. Install the method layer (once per repo)
+
+From inside the target repo:
+
+```
+/devcrew:install --preset <preset>
+```
+
+`--preset` is required on a first install (there is no default stack —
+pick from `/devcrew:list-presets`). Add `--light` on repos that already have
+a CI test gate to seed the single-reviewer ladder. The command does both
+layers in one pass:
+
+1. **Global framework memory** — `~/.claude/crew/{constitution,workflow,metadata}.md`
+   plus an import line in `~/.claude/CLAUDE.md`. Idempotent; skipped when
+   already at the current plugin version.
+2. **Repo method layer** — the marker-bracketed HARD RULE block in
+   `CLAUDE.md`, loop-control docs under `<aiLoopRoot>/`, the backlog
+   scaffold, and `.claude/loop.json` from the preset (written only if
+   missing).
+
+Afterwards edit `.claude/loop.json` (`productName`, `productDescription`,
+`stack.*` test commands), re-run `/devcrew:install` with no flags to
+regenerate `MASTER_PROMPT.md` from it, then commit `CLAUDE.md` and
+`.claude/`. Full checklist with backup, pre-flight and rollback steps:
+[ADOPTION.md](ADOPTION.md).
+
+### 3. Update
+
+Update the plugin through `/plugin` (marketplace refresh, then plugin
+update), `/reload-plugins`, then re-run `/devcrew:install` with no flags in
+each repo — it rewrites only the plugin-owned files and leaves
+`.claude/loop.json` and everything outside the marker block untouched.
+
+> **Known gap until FEAT-037 lands:** `commands/*.md` already invoke the
+> `dist/` bundles (SLICE-55), but six `agents/*.md` prompts still call
+> `crew/scripts/crew.mts` from source and fail in a `node_modules`-free
+> install with `Cannot find module '@astragenie/plugin-std'`. SLICE-56
+> repoints them; `src/tests/install/consumer-smoke.test.mts` tracks the
+> exact remaining set in `EXPECTED_FAIL` and stays deliberately red until
+> it is empty.
+
+### Developing this repo on another machine
+
+```bash
+git clone https://github.com/astragenie/dev-crew
+cd dev-crew
+bun install --frozen-lockfile && (cd crew && bun install --frozen-lockfile)
+bun run typecheck && bun run test:all
+```
+
+Bun is pinned to the version in `.bun-version`; `bun src/scripts/build-dist.mts --check`
+fails on a mismatch. `bun install` needs read access to the
+`@astragenie` registry — the token comes from the environment, never from
+`.npmrc` (see `AGENTS.md` § Credentials).
+
+> **Marketplace history:** pre-v0.8.7 shipped via `hero-crew`;
+> v0.8.7–v0.41.x `loop` had its own marketplace; v0.41.0+ `crew@astra` and
+> `loop@astra` were two installs from `astragenie/astra-marketplace`; since
+> the 2026-08-18 merge the single `devcrew@astra` entry (source
+> `astragenie/dev-crew`) replaces both. Current pinned version: the
+> registry's `marketplace.json`, cross-checked by CI gate 15.
 
 ## What it does
 
@@ -114,7 +187,7 @@ loads in the first place.
 
 ## Quickstart
 
-In a repo with `crew` already installed:
+In the target repo (plugin already installed per machine — see Install):
 
 ```bash
 /devcrew:install --preset dotnet-python
@@ -327,7 +400,7 @@ crew is not installed.
 Ships from the central `astragenie/astra-marketplace` registry (see
 "Marketplace history" above) — that registry's `marketplace.json` is the
 source of truth for the published entry, not this repo. Plugin code lives
-in this repo ([`astragenie/devcrew`](https://github.com/astragenie/devcrew)).
+in this repo ([`astragenie/dev-crew`](https://github.com/astragenie/dev-crew)).
 `bun ./src/scripts/validate-marketplace-sync.mts` is a CI gate that fails a
 push if the registry's pinned version drifts from `.claude-plugin/plugin.json`
 here.
