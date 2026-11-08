@@ -45,7 +45,7 @@ back — this agent does not name memory tools directly.
    - Parent branch (default: current `git branch --show-current`).
 2. Resolve loop CLI path:
    - Use `$LOOP_ROOT/scripts/loop.mjs` if set.
-   - Otherwise: `bun src/scripts/loop.mts` from repo root.
+   - Otherwise: `bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js"` from repo root.
 3. Write the plan to `/tmp/plan-<random>.json`:
    ```json
    { "plans": [ {"id":"FE","priority":0,"agentType":"devcrew:frontend-dev","prompt":"..."}, ... ] }
@@ -55,7 +55,7 @@ back — this agent does not name memory tools directly.
 
 Run:
 ```bash
-bun src/scripts/loop.mts dispatch prepare \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" dispatch prepare \
   --plan /tmp/plan-<random>.json \
   --parent-branch <branch> \
   --repo "$PWD" \
@@ -87,7 +87,7 @@ After all Agent calls return, do NOT trust their text output. The library reads 
 
 Run:
 ```bash
-bun src/scripts/loop.mts dispatch finalize \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" dispatch finalize \
   --run-id <runId> \
   --parent-branch <branch> \
   --plan /tmp/plan-<random>.json \

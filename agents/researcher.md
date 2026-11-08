@@ -136,7 +136,7 @@ Your completion report must include:
 Write your full completion report by calling:
 
 ```
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --from <role> --to dispatcher \
@@ -163,10 +163,10 @@ When you hit an external blocker or need to escalate before writing your handoff
 
 ```bash
 # External blocker (source unavailable, external system unreachable)
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge blocked --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge blocked --note "<reason>"
 
 # Escalate when the question requires human judgment to answer
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge escalated_to_dispatcher --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge escalated_to_dispatcher --note "<reason>"
 ```
 
 Emit the badge BEFORE writing the handoff. The badge surfaces in `brief-me` and `wake-up`; the handoff body carries the detail.

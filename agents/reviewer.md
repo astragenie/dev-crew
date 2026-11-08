@@ -40,7 +40,7 @@ Exactly one FIRST tool call, one LAST tool call. Both target the same artifact p
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --repo "$PWD" --title "<slice-id> review" \
   --scaffold --status in-progress --summary "starting investigation"
 ```
@@ -51,7 +51,7 @@ Capture the returned `path` — that is `<scaffold-path>` everywhere below. The 
 
 ```bash
 # success path — include all populated fields
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --update <scaffold-path> --status completed \
   --decision <approved|approved_with_notes|rejected> \
   --reviewer <A|B as dispatched, else your role id> \
@@ -65,7 +65,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
   --next "<required follow-up or 'none'>"
 
 # blocked path (insufficient context, missing artifact, etc.)
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --update <scaffold-path> --status blocked --decision rejected \
   --summary "<unblock-instruction>"
 ```
@@ -186,7 +186,7 @@ Plugin shape (`agents/`, `commands/`, `hooks/`, `.mcp.json`, `plugin.json`, `.cl
 
 ## Workflow badges
 
-Emit via `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge <badge> --note "<reason>"` BEFORE finalizing the review-result. Reviewer badges: `blocked` (add `--blocked-by <id>` when applicable) · `escalated_to_dispatcher` · `review_skipped` (concrete reason required).
+Emit via `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge <badge> --note "<reason>"` BEFORE finalizing the review-result. Reviewer badges: `blocked` (add `--blocked-by <id>` when applicable) · `escalated_to_dispatcher` · `review_skipped` (concrete reason required).
 
 ## Efficiency rules
 

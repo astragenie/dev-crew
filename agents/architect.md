@@ -112,7 +112,7 @@ Always-on: `skills/domain/architecture/architecture-advisory/` (procedure of rec
 | Diagram authoring (architecture, ERD, sequence, flowchart)          | `skills/domain/architecture/diagram-methodology/` + `skills/workflow/diagram-review/` |
 | SPEC authoring / large-scope FEAT decomposition                     | `skills/workflow/spec-decomposition/`              |
 
-For slice sizing before dispatch, consult `skills/workflow/slice-sizing/` and `bun crew/scripts/crew.mts scope-estimate --files <path:lines,...>` (heavy tier → split before designing).
+For slice sizing before dispatch, consult `skills/workflow/slice-sizing/` and `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" scope-estimate --files <path:lines,...>` (heavy tier → split before designing).
 
 ## Delegation map
 
@@ -235,7 +235,7 @@ Every termination path — completion, pause, blocker, context-budget end — wr
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --summary "<one-sentence headline>" \

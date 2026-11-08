@@ -119,7 +119,7 @@ Delegate to these sub-agents via the `Agent` tool for specialized sub-tasks. Kee
 You own the slice-close CLI sequence so `devcrew:build` can stay Bash-free (the dispatcher historically had no Bash — every Bash escape there became a rationalization surface). When the dispatcher dispatches you with a slice id + `Title:` + `Summary:` + `ExternalDeltas:` block, run exactly, in this order:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis --repo "$PWD" --title "<title>" --external-deltas "<deltas or 'none'>" --summary "<summary>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-final-synthesis --repo "$PWD" --title "<title>" --external-deltas "<deltas or 'none'>" --summary "<summary>"
 ```
 
 If the dispatched `Summary:` prose contains apostrophes, backticks, or code identifiers, inlining it as `--summary "<summary>"` can mangle or silently drop the write on shell quoting (dev-team#152). Write it to a temp file via a quoted heredoc and pass `--summary-file <path>` instead:
@@ -128,7 +128,7 @@ If the dispatched `Summary:` prose contains apostrophes, backticks, or code iden
 cat > /tmp/synthesis-summary.md <<'SUMMARY_EOF'
 <summary — apostrophes/backticks are safe inside a quoted heredoc>
 SUMMARY_EOF
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis --repo "$PWD" --title "<title>" --external-deltas "<deltas or 'none'>" --summary-file /tmp/synthesis-summary.md
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-final-synthesis --repo "$PWD" --title "<title>" --external-deltas "<deltas or 'none'>" --summary-file /tmp/synthesis-summary.md
 ```
 
 **Then capture a deliberate memory** — do not rely on the astramem auto-distiller,
@@ -143,17 +143,17 @@ This is the dev-team-side deliberate-capture path; the equivalent `devcrew:close
 ceremony lives in the runner-plugin repo and is out of scope here.
 
 ```bash
-bun src/scripts/loop.mts slice complete --id <SLICE-NN> --repo "$PWD"
-bun src/scripts/loop.mts slice grade --id <SLICE-NN> --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice complete --id <SLICE-NN> --repo "$PWD"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice grade --id <SLICE-NN> --repo "$PWD"
 ```
 
 Pass the strings VERBATIM from the dispatch prompt. Do not paraphrase the title, summary, or external-deltas — that's why the dispatcher crafted them. `--external-deltas` is required by the CLI; pass `none` if there are no off-repo deltas.
 
 **Allowed Bash:**
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-final-synthesis ...` (and other `crew.mts` write-* commands via the same canonical prefix)
-- `bun src/scripts/loop.mts slice complete ...`
-- `bun src/scripts/loop.mts slice grade ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-final-synthesis ...` (and other `crew.mts` write-* commands via the same canonical prefix)
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice complete ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" slice grade ...`
 - `git log` / `git diff --stat` / `git show --stat` (for release-notes + CHANGELOG context — read-only)
 - `cat`, `head`, `tail`, `ls`, `find` on `.claude/artifacts/...` (artifact discovery — read-only)
 

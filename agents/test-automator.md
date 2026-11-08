@@ -142,7 +142,7 @@ Run and capture output — a claim without pasted runner output is a contract vi
 ## Report contract
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --from test-automator --to dispatcher \

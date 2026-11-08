@@ -25,24 +25,44 @@ W2.5 path rewrite: point every shipped slash-command and agent prompt at the dis
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- Every `agents/*.md` file except `agents/3rdparty/**`: rewrite literal
+  `crew/scripts/crew.mts` invocations to `"${CLAUDE_PLUGIN_ROOT}/dist/crew.js"`
+  and `src/scripts/loop.mts` invocations to `"${CLAUDE_PLUGIN_ROOT}/dist/loop.js"`
+  (quoted and bare/relative forms alike), preserving every argument, flag and
+  quote exactly — 53 refs across 19 files.
+- `src/tests/install/consumer-smoke.test.mts`: drain the 6 agents-origin
+  `crew/scripts/crew.mts` labels from `EXPECTED_FAIL` (mark-badge,
+  write-deployment-check, write-final-synthesis, write-handoff,
+  write-review-result, write-validation-result) and keep the ratchet honest
+  about what else the rewrite newly surfaces.
+- Downstream test assertions in the same file that hardcode counts/membership
+  derived from the agents/*.md source-path set (`listShippedEntrypoints`
+  distinct-bun-file count, the `crew/scripts/crew.mts` membership check) —
+  updated to the post-rewrite state, not restructured.
 
 ## Out of scope
 
-- bullet 1
+- `commands/*.md` (SLICE-55, already landed), `skills/**` (SLICE-57),
+  the `no-source-script-path` validator rule (SLICE-58), `docs/ci-gates.md`
+  + `docs/memory.md` DEC-044 wording (SLICE-60), `templates/`, `CLAUDE.md`
+  marker blocks, `agents/3rdparty/`, `AGENTS.md`, `docs/`.
+- Fixing `loop.mts`'s `dispatch` subcommand dist-packaging gap (see
+  Evidence under AC-1) — found during this slice but requires changes to
+  `src/scripts/build-dist.mts` and `src/scripts/loop.mts` runtime
+  resolution, outside this slice's agents/*.md + EXPECTED_FAIL scope;
+  reported to the team lead rather than silently expanded into.
 
 ## Acceptance criteria
 
 > WARNING: ACs copied from FEAT-037 and shared across 6 sibling slices — scope per-slice before close
 
-- [ ] AC-1: Given a staged, node_modules-free consumer copy produced by `stageConsumerCopy` from src/scripts/lib/install/shipped-entrypoints.mjs, When `bun test src/tests/install/consumer-smoke.test.mts` runs, Then `EXPECTED_FAIL` is the empty set, the computed `newlyBroken` and `nowPassing` arrays are both `[]`, and the suite exits 0 -- gate 42 passes with no designed-red arm remaining.
-- [ ] AC-2: Given the same staged consumer copy, When `listShippedEntrypoints` runs against it, Then it returns no fewer than the 42 CLI entries plus 11 dist/hooks/*.js hook entries observed on 2026-11-06, and the suite asserts that floor explicitly, so a path rewrite cannot turn gate 42 green by shrinking the discovered entry list rather than by fixing the invocations.
-- [ ] AC-3: Given commands/, agents/ excluding agents/3rdparty/, skills/ and templates/, When each is grepped for `crew/scripts/crew.mts`, `src/scripts/loop.mts`, `crew/scripts/report-to-pr.mts`, `crew/scripts/prune-artifacts.mts` and `src/scripts/watch-tick.mts`, Then zero occurrences remain outside an explicit allowlist covering the build-dist.mts entry list, the validator sources and the test files -- measured against the roughly 207 occurrences across 57 files counted on 2026-11-06.
-- [ ] AC-4: Given an invalid product-surface file that reintroduces `bun crew/scripts/crew.mts audit --repo "$PWD"` into commands/ or agents/, When the new `no-source-script-path` rule runs via crew/scripts/validate-agents.mts and its commands/*.md sibling check, Then the validator exits non-zero and its output names the offending file and line number.
-- [ ] AC-5: Given `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" audit --repo "$PWD"` and the equivalent dist/loop.js invocation, When each is run from a working directory outside the plugin tree with CLAUDE_PLUGIN_ROOT set and no node_modules present anywhere on the resolution path, Then each exits 0 or with its own argument-validation error, and never with a module-resolution error -- pinning SLICE-52's lesson that a bundle is only self-contained once the shipped artifact has been run from a clean directory.
-- [ ] AC-6: Given docs/ci-gates.md and docs/memory.md, When gate 42 is described in each, Then both record it as blocking rather than designed-red, docs/ci-gates.md states the runner retry policy for the staged suite, and the DEC-044 note in docs/memory.md (currently at lines 92-93, recording 42 held entries as of FEAT-026/SLICE-52) is updated to record that the ratchet drained in FEAT-037.
-- [ ] AC-7: Given the branch after all slices land, When `bun run validate:manifests`, `bun ./src/scripts/validate-agent-refs.mts`, `bun ./src/scripts/validate-content-length.mts`, `bun ./src/scripts/validate-repo-boundary.mts`, `bun ./src/scripts/generate-metrics-band.mts --check`, `bun src/scripts/build-dist.mts --check`, `bun crew/scripts/validate-agents.mts` and both test suites run, Then all exit 0 apart from the six suites gate 42 already excludes by configuration.
+- [x] AC-1 (agents-origin portion only — commands-origin is SLICE-55's): Given a staged, node_modules-free consumer copy produced by `stageConsumerCopy`, When `bun test src/tests/install/consumer-smoke.test.mts` runs, Then the 6 agents-origin `crew/scripts/crew.mts` labels are drained from `EXPECTED_FAIL`, `newlyBroken` and `nowPassing` are both `[]`. **Evidence**: classification audit logged `1 crash, 38 arg-error`; the 1 crash (`dist/loop.js dispatch prepare`) was newly surfaced by this slice's rewrite (it used the bare, unquoted `bun src/scripts/loop.mts` form in `agents/swarm.md`, invisible to `CLI_LINE_RE` before this slice) and is a genuine, documented, out-of-scope dist-packaging bug (see Out of scope) — kept in `EXPECTED_FAIL` with a full root-cause comment per the team lead's explicit fallback instruction. `newlyBroken=[]` and `nowPassing=[]` both held; the suite's separate "(c) stay red while EXPECTED_FAIL non-empty" assertion fails by design because 1 entry remains — gate 42 stays red for this one documented reason, not a regression. Not a full AC-1 PASS (EXPECTED_FAIL is not the empty set); the remaining gap belongs to a follow-up slice.
+- [x] AC-2 (re-confirmed): Given the same staged consumer copy, When `listShippedEntrypoints` runs, Then CLI entries >= 42 and dist/hooks/*.js entries >= 11 both hold (test asserts these floors explicitly and both passed).
+- [x] AC-3 (agents-only; commands/skills/templates are other slices' scope): Given `agents/` excluding `agents/3rdparty/`, When grepped for `crew/scripts/crew\.mts|src/scripts/loop\.mts|crew/scripts/report-to-pr\.mts|crew/scripts/prune-artifacts\.mts|src/scripts/watch-tick\.mts`, Then zero occurrences remain. **Evidence**: `grep -rnE "..." agents/ --exclude-dir=3rdparty` returns no matches (rc=1); 53 of 53 pre-slice hits across 19 files rewritten to the dist/ form.
+- [ ] AC-4: not in scope for this slice (SLICE-58 owns the validator rule).
+- [x] AC-5 (re-confirmed for dist/crew.js and dist/loop.js): Given both dist bundles run from a directory outside the plugin tree with `CLAUDE_PLUGIN_ROOT` set, Then each exits 0 with no module-resolution error. **Evidence**: ran `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" audit --repo "$PWD"` (exit 0, valid JSON) and `bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" --help` (exit 0) from `/tmp/ac5-check`, a directory with no node_modules on its resolution path. Caveat: `dist/loop.js dispatch <sub>` specifically still hits a module-resolution error (see AC-1 evidence) — AC-5 holds for the two bundles' top-level invocation but not for the `dispatch` child-process subcommand; that gap is the same documented out-of-scope bug.
+- [ ] AC-6: not in scope for this slice (SLICE-60 owns docs/ci-gates.md + docs/memory.md).
+- [x] AC-7 (subset relevant to this slice's changed files): `bun ./crew/scripts/validate-agents.mts`, `bun ./src/scripts/validate-agent-refs.mts`, `bun ./src/scripts/validate-content-length.mts`, `bun ./src/scripts/validate-repo-boundary.mts`, `bun ./src/scripts/validate-dispatch-markers.mts`, `bun src/scripts/build-dist.mts --check` all exit 0 (evidence in builder handoff). `bun test src/tests/ --parallel` (with the 6 pre-agreed path-ignores): 3418 pass / 7 skip / 1 fail — the one fail is the same documented consumer-smoke "(c) stay red" assertion, not a new regression. `bunx tsc --noEmit -p tsconfig.json` and `bunx biome format src/` both clean.
 
 ## Done When
 

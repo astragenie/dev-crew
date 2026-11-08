@@ -154,7 +154,7 @@ The `contracts:` field must point at the FEAT's canonical OpenAPI YAML, relative
 Write your full completion report by calling:
 
 ```
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff \
   --repo "$PWD" \
   --title "<short title>" \
   --from uxdesigner --to dispatcher \

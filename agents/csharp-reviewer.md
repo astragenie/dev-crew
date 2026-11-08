@@ -41,7 +41,7 @@ Exactly one FIRST tool call, one LAST tool call. Both target the same artifact p
 
 ```bash
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --repo "$PWD" --title "<slice-id> .NET review" \
   --reviewer csharp-reviewer \
   --scaffold --status in-progress --summary "starting .NET review"
@@ -53,7 +53,7 @@ Capture the returned `path` — that is `<scaffold-path>` everywhere below.
 
 ```bash
 # success path
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --update <scaffold-path> --status completed \
   --decision <approved|approved_with_notes|rejected> \
   --reviewer csharp-reviewer \
@@ -63,7 +63,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
   --files "<files reviewed>"
 
 # blocked path (no .cs files in diff, dispatch context unclear)
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --update <scaffold-path> --status blocked --decision rejected \
   --reviewer csharp-reviewer \
   --summary "<reason>"

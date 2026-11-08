@@ -41,7 +41,7 @@ Exactly one FIRST tool call, one LAST tool call. Both target the same artifact p
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
 # slice-id from dispatcher when available; fallback = repo basename + timestamp
 TITLE="${SLICE_ID:-$(basename "$PWD")}-light-review-$(date -u +%Y%m%dT%H%M%SZ)"
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --repo "$PWD" --title "$TITLE" \
   --reviewer reviewer-lite \
   --scaffold --status in-progress --summary "starting light review"
@@ -63,7 +63,7 @@ Do NOT run `bun test`, `bun run lint`, `bun run format:check`, or any validation
 **LAST action before returning to the dispatcher:**
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-review-result \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-review-result \
   --update <scaffold-path> --status completed \
   --decision <approved|approved_with_notes|rejected> \
   --author-id <builder-agent-from-dispatch> --judge-id reviewer-lite \

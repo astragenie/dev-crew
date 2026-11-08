@@ -180,7 +180,7 @@ Return the architecture as a single Markdown document using the Output contract 
 Write the artifact to `.claude/artifacts/crew/designs/<slice-id>-cloud-architecture.md`, then register the handoff so the design surfaces in brief-me / wake-up:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff \
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff \
   --repo "$PWD" \
   --title "<slice-id> cloud architecture" \
   --from cloud-architect --to dispatcher \
