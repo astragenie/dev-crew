@@ -76,17 +76,17 @@ afterAll(async () => {
 // reinstated here.
 //
 // Two buckets replace them:
-//  (a) agents/*.md-origin crew.mts labels (6 entries, listed below) that
-//      the prior file+firstArg dedup in listMarkdownCliEntrypoints was
-//      silently collapsing behind the now-removed commands/*.md label for
-//      the same subcommand (e.g. both commands/build.md and an agents/*.md
-//      file called `mark-badge`, and only the commands/ one -- scanned
-//      first -- ever appeared in the entry list). With the commands/
-//      literal gone, these agents-origin labels surface for the first time
-//      and still crash with `Cannot find module '@astragenie/plugin-std'`
-//      (verified by direct execution 2026-11-06) -- the same unfixed
-//      root cause, just newly visible. SLICE-56 (agents/*.md repoint) owns
-//      clearing these.
+//  (a) agents/*.md-origin crew.mts labels (6 entries) that the prior
+//      file+firstArg dedup in listMarkdownCliEntrypoints was silently
+//      collapsing behind the now-removed commands/*.md label for the same
+//      subcommand (e.g. both commands/build.md and an agents/*.md file
+//      called `mark-badge`, and only the commands/ one -- scanned first --
+//      ever appeared in the entry list). FEAT-037/SLICE-56 (2026-11-08)
+//      repointed every agents/*.md invocation (53 refs, 19 files) from
+//      crew/scripts/crew.mts / src/scripts/loop.mts at dist/crew.js /
+//      dist/loop.js; all six of these labels are now observed PASSING
+//      (confirmed by direct execution 2026-11-08) and are correctly absent
+//      below.
 //  (b) the new dist/*.js-labelled commands entries: verified by direct
 //      execution (2026-11-06) that none of them hit a module-resolution
 //      error anymore. Most fail, if at all, only on a clean CLI
@@ -101,14 +101,32 @@ afterAll(async () => {
 //      team lead's direction, 2026-11-06) makes that distinction
 //      explicit instead of treating every non-zero exit as a ratchet
 //      failure, so these are correctly absent from EXPECTED_FAIL.
-const EXPECTED_FAIL = new Set<string>([
-  'crew/scripts/crew.mts mark-badge --repo "$PWD" --badge help_request --note "<setup problem>"',
-  'crew/scripts/crew.mts write-deployment-check --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting investigation"',
-  `crew/scripts/crew.mts write-final-synthesis --repo "$PWD" --title "<title>" --external-deltas "<deltas or 'none'>" --summary "<summary>"`,
-  "crew/scripts/crew.mts write-handoff",
-  'crew/scripts/crew.mts write-review-result --repo "$PWD" --scaffold --status in-progress --confidence low --title "<run title from dispatch>" --summary "starting architecture review"',
-  'crew/scripts/crew.mts write-validation-result --repo "$PWD" --scaffold --status in-progress --confidence low --title "<slice-id> validation" --summary "starting investigation"'
-]);
+//
+// FEAT-037/SLICE-56 (2026-11-08) found one new, real crash while repointing
+// agents/swarm.md: its "Resolve loop CLI path" prose and its `dispatch
+// prepare` / `dispatch finalize` bash blocks used the bare, unquoted
+// `bun src/scripts/loop.mts` form, which CLI_LINE_RE (only matches the
+// quoted `bun "${CLAUDE_PLUGIN_ROOT}/<path>"` form) never scanned -- so this
+// entry was invisible to the ratchet before this slice. Rewriting it to the
+// canonical quoted dist/loop.js form (required by AC-3's zero-occurrence
+// grep) makes it visible for the first time, and it genuinely crashes:
+// loop.mts's `dispatch` subcommand (src/scripts/loop.mts:916-926) resolves
+// its child-process target as the sibling file `dispatch.mts` next to
+// `import.meta.url` (`path.join(path.dirname(thisFile), "dispatch.mts")`).
+// In dev that sibling is `src/scripts/dispatch.mts`; in the dist bundle,
+// `dist/loop.js` has no `dist/dispatch.mts` (or `dispatch.js`) sibling --
+// `dispatch.mts` is not one of build-dist.mts's five bundled CLI entries --
+// so the spawned child fails with `error: Module not found
+// "<pluginRoot>/dist/dispatch.mts"` (verified by direct execution
+// 2026-11-08). Both `dispatch prepare` and `dispatch finalize` hit this;
+// listMarkdownCliEntrypoints' file+firstArg dedup (first arg is always
+// literally "dispatch") only surfaces one label for both call sites. Fixing
+// this needs a new bundled dist/dispatch.js entry in build-dist.mts plus a
+// runtime resolution change in loop.mts -- out of this slice's scope
+// (agents/*.md path strings + draining the agents-origin EXPECTED_FAIL
+// labels only); reported to the team lead rather than silently expanding
+// scope. Tracked for a follow-up FEAT-037 slice.
+const EXPECTED_FAIL = new Set<string>(["dist/loop.js dispatch prepare"]);
 
 function labelFor(entry: ShippedEntrypoint): string {
   return `${entry.file} ${entry.args.join(" ")}`.trim();
@@ -313,14 +331,23 @@ test("every shipped hook and CLI entry runs without node_modules (ratchet agains
 // for the first time as CLI (not hook) entries (net +4) -> 29 - 3 + 4 = 30.
 // crew/scripts/crew.mts itself stays in the set: agents/*.md still invokes
 // it directly pending SLICE-56's repoint.
+//
+// FEAT-037/SLICE-56 (2026-11-08): the bun count dropped 30 -> 29. All 53
+// literal agents/*.md invocations of crew/scripts/crew.mts /
+// src/scripts/loop.mts (19 files) were repointed at dist/crew.js /
+// dist/loop.js -- the source-path label `crew/scripts/crew.mts` had no
+// remaining commands/*.md OR agents/*.md reference keeping it alive (-1);
+// dist/crew.js and dist/loop.js were already in the set from SLICE-55's
+// commands/*.md rewrite, so no new dist/*.js file entered for the first
+// time here (net 0) -> 30 - 1 = 29.
 test("listShippedEntrypoints produces the exact distinct-file-set counts from the real file", async () => {
   const entries = await listShippedEntrypoints(REPO_ROOT);
   const grouped = groupDistinctFilesByRuntime(entries);
 
   assert.equal(
     grouped.bun.length,
-    30,
-    `expected 30 distinct bun entrypoints, got ${grouped.bun.length}: ${JSON.stringify(grouped.bun)}`
+    29,
+    `expected 29 distinct bun entrypoints, got ${grouped.bun.length}: ${JSON.stringify(grouped.bun)}`
   );
   assert.equal(
     grouped.node.length,
@@ -334,7 +361,10 @@ test("listShippedEntrypoints produces the exact distinct-file-set counts from th
   );
 
   assert.ok(grouped.bash.includes("crew/scripts/log_event.sh"));
-  assert.ok(grouped.bun.includes("crew/scripts/crew.mts"));
+  // FEAT-037/SLICE-56: crew/scripts/crew.mts has no remaining commands/*.md
+  // or agents/*.md literal invocation now that agents/*.md is repointed at
+  // dist/crew.js -- assert it is gone rather than present.
+  assert.ok(!grouped.bun.includes("crew/scripts/crew.mts"));
   assert.ok(grouped.bun.includes("dist/loop.js"));
   assert.ok(grouped.bun.includes("dist/crew.js"));
   assert.ok(grouped.bun.includes("dist/prune-artifacts.js"));
