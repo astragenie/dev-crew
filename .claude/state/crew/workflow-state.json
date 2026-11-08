@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-08T23:37:28.141Z",
+  "updatedAt": "2026-11-08T23:44:41.169Z",
   "currentRun": {
     "title": "FEAT037 SLICE56: Repoint agents/*.md invocations to dist/ bundles, excluding 3rdparty (53 refs, 19 files)",
     "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
     "mode": "autonomous",
     "status": "active",
     "startedAt": "2026-11-08T23:10:56.259Z",
-    "updatedAt": "2026-11-08T23:37:28.141Z",
+    "updatedAt": "2026-11-08T23:44:41.169Z",
     "next": "Follow-up slice (or SLICE-59/60) to: (1) add a bundled dist/dispatch.js entry in build-dist.mts and fix loop.mts's dispatch child-process path resolution so dist/loop.js dispatch stops crashing, then remove the remaining EXPECTED_FAIL entry; (2) SLICE-57 skills/, SLICE-58 validator rule, SLICE-60 docs proceed as planned.",
     "gates": {
       "review": {
@@ -23,7 +23,15 @@
           "B"
         ]
       },
-      "validation": null,
+      "validation": {
+        "status": "passed",
+        "updatedAt": "2026-11-08T23:44:41.169Z",
+        "note": "",
+        "validators": {
+          "verifier": "pass"
+        },
+        "required": []
+      },
       "deployment": {
         "dev": null,
         "prod": null
@@ -40,7 +48,7 @@
       ],
       "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261108T233728Z-review-result-slice-56-review-b-correctness-agents-repointed-to-dist-bundl.md",
       "validationPlan": null,
-      "validationResult": null,
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261108T234441Z-validation-result-slice-56-validation-agents-invoke-dist-bundles-from-a-clean-.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null

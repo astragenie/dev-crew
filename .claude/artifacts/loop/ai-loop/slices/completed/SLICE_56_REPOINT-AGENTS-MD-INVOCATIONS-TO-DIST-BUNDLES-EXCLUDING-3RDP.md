@@ -1,7 +1,7 @@
 ---
 id: SLICE-56
 title: "Repoint agents/*.md invocations to dist/ bundles, excluding 3rdparty (53 refs, 19 files)"
-status: pending
+status: completed
 feature: FEAT-037
 phase: null
 priority: P0
@@ -9,11 +9,12 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 effort_points: 2
 proposed_slice_id_suffix: -SLICE-2
 estimated_tokens: 100000
 tags: ["stack:typescript"]
+completed_at: 2026-11-08
 ---
 # SLICE-56: Repoint agents/*.md invocations to dist/ bundles, excluding 3rdparty (53 refs, 19 files)
 
