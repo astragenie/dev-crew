@@ -27,16 +27,16 @@ Emit BEFORE returning when an external blocker, escalation, or skipped gate appl
 : "${CLAUDE_PLUGIN_ROOT:?must be set}"
 
 # External blocker (missing decision, API down, scope boundary crossed)
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge blocked --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge blocked --note "<reason>"
 
 # Escalate when a decision is beyond agent judgment
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge escalated_to_dispatcher --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge escalated_to_dispatcher --note "<reason>"
 
 # Help when a peer dispatch can't unblock you
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge help_request --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge help_request --note "<reason>"
 
 # Skipped validation gate (when you own that decision)
-bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"
+bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" mark-badge --repo "$PWD" --badge validation_skipped --note "<reason>"
 ```
 
 No badge required when STATUS = `DONE` and no exceptions apply.
