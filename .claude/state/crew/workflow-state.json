@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-08T23:16:31.148Z",
+  "updatedAt": "2026-11-08T23:21:29.160Z",
   "currentRun": {
     "title": "FEAT037 SLICE57: Repoint skills/**/SKILL.md invocations to dist/ bundles (16 refs, 7 files)",
     "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
     "mode": "autonomous",
     "status": "active",
     "startedAt": "2026-11-08T23:16:31.147Z",
-    "updatedAt": "2026-11-08T23:16:31.147Z",
-    "next": "Begin implementation",
+    "updatedAt": "2026-11-08T23:21:29.160Z",
+    "next": "reviewer/validator dispatch per loop; SLICE-58 (validator rule) and SLICE-60 (docs/ci-gates.md) remain to close FEAT-037",
     "gates": {
       "review": {
         "status": "required",
@@ -31,7 +31,9 @@
     },
     "artifacts": {
       "runBrief": "C:\\work\\mega\\devcrew\\.claude\\worktrees\\agent-slice57\\.claude\\artifacts\\crew\\runs\\20261108T231631Z-run-brief-feat037-slice57-repoint-skills-skill-md-invocations-to-dist-.md",
-      "handoffs": [],
+      "handoffs": [
+        "C:\\work\\mega\\devcrew\\.claude\\worktrees\\agent-slice57\\.claude\\artifacts\\crew\\handoffs\\20261108T232129Z-handoff-slice-57-builder-handoff-skills-repointed-to-dist-bundles.md"
+      ],
       "reviewResult": null,
       "validationPlan": null,
       "validationResult": null,
