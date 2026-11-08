@@ -61,7 +61,7 @@ When persisting a handoff, prefer:
 
 Preferred command:
 
-- `bun "${CLAUDE_PLUGIN_ROOT}/crew/scripts/crew.mts" write-handoff --repo "$PWD" --title "<short title>" ...`
+- `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" write-handoff --repo "$PWD" --title "<short title>" ...`
 
 ## Done
 

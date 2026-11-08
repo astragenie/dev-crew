@@ -45,7 +45,7 @@ echo '["objection one","objection two"]' | /devcrew:pm-rescope --id FEAT-NNN
 
    ```bash
    PRESET_NAME=$(bun -e 'console.log(JSON.parse(require("node:fs").readFileSync(".claude/loop.json","utf8")).preset)')
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" resolve-skills \
      --variant pm \
      --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/${PRESET_NAME}.json" \
      --override .claude/loop.json
@@ -90,7 +90,7 @@ echo '["objection one","objection two"]' | /devcrew:pm-rescope --id FEAT-NNN
    the sole writer of the FEAT's AC section and rescope frontmatter):
 
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog pm-rescope \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" backlog pm-rescope \
      --file ".claude/artifacts/loop/pm-reviews/<ISO-timestamp>-rescope-results.json" \
      --ids FEAT-NNN
    ```

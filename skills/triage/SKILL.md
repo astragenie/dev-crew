@@ -23,14 +23,14 @@ PM-only triage. Single public command for the loop.
 
    Default (no flags): glob `pending/` only.
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" backlog list-pending-ids --repo "$PWD"
    ```
 
    When the operator invokes `/devcrew:triage --include-triaged` or
    `/devcrew:retriage --include-triaged`, append the flag to the CLI call:
 
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --include-triaged --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" backlog list-pending-ids --include-triaged --repo "$PWD"
    ```
 
    This adds FEATs from `triaged/` to the id list. PM overwrites the existing
@@ -40,7 +40,7 @@ PM-only triage. Single public command for the loop.
    (FEAT-201), pass the ids flag instead:
 
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog list-pending-ids --ids FEAT-166,FEAT-182,FEAT-186 --repo "$PWD"
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" backlog list-pending-ids --ids FEAT-166,FEAT-182,FEAT-186 --repo "$PWD"
    ```
 
    This returns ONLY those ids (all must exist in `triaged/`). On missing or
@@ -60,7 +60,7 @@ PM-only triage. Single public command for the loop.
 
    ```bash
    PRESET_NAME=$(bun -e 'console.log(JSON.parse(require("node:fs").readFileSync(".claude/loop.json","utf8")).preset)')
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" resolve-skills \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" resolve-skills \
      --variant pm \
      --preset "${CLAUDE_PLUGIN_ROOT}/scripts/presets/${PRESET_NAME}.json" \
      --override .claude/loop.json
@@ -106,7 +106,7 @@ PM-only triage. Single public command for the loop.
    subcommand is the sole writer of backlog frontmatter):
 
    ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/src/scripts/loop.mts" backlog pm-apply \
+   bun "${CLAUDE_PLUGIN_ROOT}/dist/loop.js" backlog pm-apply \
      --file ".claude/artifacts/loop/pm-reviews/<ISO-timestamp>-triage-results.json" \
      --ids FEAT-XXX,FEAT-YYY,...
    ```
