@@ -1,0 +1,48 @@
+---
+feature: FEAT-037
+---
+# Task Handoff: SLICE-56 builder handoff: agents/*.md repointed to dist/ bundles
+
+- Created: 2026-11-08T23:30:49.432Z
+- From: builder
+- To: dispatcher
+- Objective: Rewrote all 53 literal crew/scripts/crew.mts and src/scripts/loop.mts invocations across 19 agents/*.md files (excluding agents/3rdparty/) to dist/crew.js / dist/loop.js, preserving every arg/flag/quote. Drained the 6 agents-origin EXPECTED_FAIL labels in consumer-smoke.test.mts (confirmed passing). All targeted validators + build-dist --check green; full test suite 3418 pass / 7 skip / 1 documented fail. One new bug found and left out of scope: loop.mts's dispatch subcommand resolves a sibling dispatch.mts that is not bundled in dist/, so dist/loop.js dispatch prepare/finalize still crash with a module-resolution error -- kept in EXPECTED_FAIL with full root-cause comment, reported to team lead rather than silently fixed (needs build-dist.mts + loop.mts runtime changes, outside agents/*.md scope).
+- Allowed Scope:
+  - agents/*.md (excl. 3rdparty/)
+  - src/tests/install/consumer-smoke.test.mts EXPECTED_FAIL array + two dependent assertions
+- Forbidden Scope:
+  - commands/ (SLICE-55 done)
+  - skills/ (SLICE-57)
+  - no-source-script-path validator (SLICE-58)
+  - docs/ci-gates.md + docs/memory.md DEC-044 (SLICE-60)
+  - templates/
+  - CLAUDE.md markers
+  - agents/3rdparty/
+  - loop.mts dispatch subcommand dist-packaging fix
+- Deliverable: 2 commits on fix/audit-2026-11: 461bf617 (agents/*.md rewrite, 20 files), 5b186335 (consumer-smoke EXPECTED_FAIL drain, 1 file)
+- Changed Files:
+  - agents/architect-reviewer.md
+  - agents/architect.md
+  - agents/cloud-architect.md
+  - agents/csharp-reviewer.md
+  - agents/document-writer.md
+  - agents/integrator.md
+  - agents/performance-engineer.md
+  - agents/pm.md
+  - agents/qa-expert.md
+  - agents/refactor.md
+  - agents/release-engineer.md
+  - agents/researcher.md
+  - agents/reviewer-lite.md
+  - agents/reviewer.md
+  - agents/swarm.md
+  - agents/test-automator.md
+  - agents/typescript-reviewer.md
+  - agents/uxdesigner.md
+  - agents/verifier.md
+  - src/tests/install/consumer-smoke.test.mts
+  - .claude/artifacts/loop/ai-loop/slices/pending/SLICE_56_REPOINT-AGENTS-MD-INVOCATIONS-TO-DIST-BUNDLES-EXCLUDING-3RDP.md
+- Confidence: high
+- Risks: dist/loop.js dispatch prepare/finalize still crash with a module-resolution error (dispatch.mts not bundled); gate 42 (consumer-smoke) stays red for this one documented reason until a follow-up slice adds a dist/dispatch.js bundle entry + loop.mts runtime fix. Also saw a stray environment reminder mid-task redirecting cwd to the SLICE-57 worktree (unrelated branch) -- ignored it and continued in C:\work\mega\devcrew per the actual task assignment; flagged to team lead separately.
+- Suggested Next Handoff: Follow-up slice (or SLICE-59/60) to: (1) add a bundled dist/dispatch.js entry in build-dist.mts and fix loop.mts's dispatch child-process path resolution so dist/loop.js dispatch stops crashing, then remove the remaining EXPECTED_FAIL entry; (2) SLICE-57 skills/, SLICE-58 validator rule, SLICE-60 docs proceed as planned.
+

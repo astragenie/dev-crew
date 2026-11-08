@@ -1,21 +1,21 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-08T23:09:16.071Z",
+  "updatedAt": "2026-11-08T23:37:28.141Z",
   "currentRun": {
-    "title": "FEAT037 SLICE55: Repoint commands/*.md invocations to dist/ bundles (135 refs, 31 files)",
+    "title": "FEAT037 SLICE56: Repoint agents/*.md invocations to dist/ bundles, excluding 3rdparty (53 refs, 19 files)",
     "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-06T19:30:11.855Z",
-    "updatedAt": "2026-11-08T23:09:16.071Z",
-    "next": "Begin implementation",
+    "startedAt": "2026-11-08T23:10:56.259Z",
+    "updatedAt": "2026-11-08T23:37:28.141Z",
+    "next": "Follow-up slice (or SLICE-59/60) to: (1) add a bundled dist/dispatch.js entry in build-dist.mts and fix loop.mts's dispatch child-process path resolution so dist/loop.js dispatch stops crashing, then remove the remaining EXPECTED_FAIL entry; (2) SLICE-57 skills/, SLICE-58 validator rule, SLICE-60 docs proceed as planned.",
     "gates": {
       "review": {
         "status": "passed",
-        "updatedAt": "2026-11-06T20:23:07.245Z",
-        "note": "Independent correctness review (ladder slot B) of SLICE-55 / FEAT-037 (commits 0e3b28ca, 4ee113fb) against commands/*.md repointed to dist/ bundles plus consumer-smoke ratchet classification. Verified independently: all 135 of 138 baseline source-path invocations in commands/ are rewritten to the correct dist/*.js form with no argument, flag, or quoting drift; the 3 remaining raw-pattern hits (orchestrate-slice.md:145-146, triage.md:60) are genuine historical/explanatory prose, not live invocations. agents/, skills/, templates/, CLAUDE.md marker blocks, docs/, and crew/scripts/validate-agents.mts are untouched, matching the slice's declared boundary. The commands/watch.md prose fix plus watch-scheduler-setup.test.mts AC-8 update are explicitly in-scope collateral (documented in the slice file) because the dist rewrite legitimately splits the previously-identical consumer command path from the scheduler's local-checkout path; confirmed the test now checks each path independently and still passes. Ran the consumer-smoke suite myself: exactly one assertion fails, the designed-red \"EXPECTED_FAIL non-empty\" check; newlyBroken=[] and nowPassing=[] both pass; EXPECTED_FAIL holds exactly the 6 agents-origin crew.mts labels, each independently confirmed via direct execution to crash with \"Cannot find module '@astragenie/plugin-std'\" (real module-resolution crashes, not mislabeled). The AC-2 floor assertions (CLI entries >=42, dist/hooks >=11) pass. Reviewed all 38 arg-error-classified entries' raw messages: every one is a genuine CLI argument/precondition error (missing config, invalid repo path placeholder, required flag, mkdir ENOENT from a literal \"$PWD\" token) with no module-resolution signature; spot-verified dist/watch-tick.js's truncated message directly and confirmed it is a real ENOENT on a missing registry file, not a disguised crash. The classifier's own unit tests directly prove a module-resolution crash lands in newlyBroken when absent from EXPECTED_FAIL, closing the \"can the classifier hide a real crash\" question without needing a synthetic fixture. Ran AC-5 manually from a clean directory: dist/crew.js audit exits 0 with real JSON; dist/loop.js status exits 1 with its own \"No .claude/loop.json found\" message, no module-resolution error -- both satisfy AC-5. Gates: validate-agent-refs, validate-content-length, validate-repo-boundary, validate-manifests, validate-dispatch-markers, build-dist --check, generate-metrics-band --check, typecheck, format:check all rc=0. bun test src/tests/ --parallel: pass count varies 3502-3505 across repeated runs with 1-5 failures beyond the designed-red consumer-smoke test; traced the extra failures to auto-merge.test.mts / synergy.test.mts / slice-complete-tracker-close.test.mts (none touched by this diff) and confirmed they pass 100% (3/3 runs, 36/36 tests) both on this branch and on the pre-slice baseline (719beda8) when run in isolation -- genuine pre-existing parallel-execution flakiness, not a regression, though the builder's self-report named the wrong flaky family (\"slice-linker\" instead of the auto-merge/synergy/tracker group actually observed). crew test suite: 1834 pass, 1 fail (validate-contracts redocly timeout) -- matches the builder's reported numbers exactly. Overall: implementation is accurate, complete, and within scope; the only issues found are non-blocking documentation/cosmetic nits.",
+        "updatedAt": "2026-11-08T23:37:28.141Z",
+        "note": "SLICE-56 review B (correctness), commits 461bf617 + 5b186335 on ee8735a1.\n\nVerification performed independently (not trusting builder counts):\n- Baseline grep for crew/scripts/crew.mts|src/scripts/loop.mts|report-to-pr.mts|prune-artifacts.mts|watch-tick.mts in agents/ (excl. 3rdparty): 53 hits across 19 files at ee8735a1, 0 at HEAD. agents/3rdparty/ untouched (empty diff --stat).\n- Read full agents/ diff line by line: every changed line swaps only the script-path token (crew/scripts/crew.mts -> \"${CLAUDE_PLUGIN_ROOT}/dist/crew.js\", src/scripts/loop.mts -> \".../dist/loop.js\"); all flags/quoting/args byte-identical otherwise.\n- Scope: git diff --stat ee8735a1..HEAD touches only the 19 agents/*.md files, the consumer-smoke test, and crew artifacts/slice file. No commands/, skills/, templates/, docs/, CLAUDE.md, dist/, src/scripts/.\n- Ran src/tests/install/consumer-smoke.test.mts: 4 pass / 1 fail. EXPECTED_FAIL === [\"dist/loop.js dispatch prepare\"] exactly; newlyBroken=[] and nowPassing=[] both held (no assertion failure on those lines); failure is only the designed-red \"stay red while EXPECTED_FAIL non-empty\" assertion.\n- Reproduced independently from a clean temp dir with CLAUDE_PLUGIN_ROOT set: both `dispatch prepare` and `dispatch finalize` crash identically with `error: Module not found \".../dist/dispatch.mts\"` -- a genuine module-resolution error, not an argument error.\n- Investigated why only `prepare` appears in EXPECTED_FAIL: read src/scripts/lib/install/shipped-entrypoints.mts. listMarkdownCliEntrypoints dedups by `${file}::${firstArg}`; for agents/swarm.md both dispatch call sites have firstArg \"dispatch\" (prepare/finalize is args[1]), so the scanner silently drops the second occurrence (finalize) and only ever registers/runs \"dispatch prepare\". This dedup logic is pre-existing and untouched by this diff -- the slice's rewrite only made the quoted dist/loop.js dispatch line visible to CLI_LINE_RE for the first time (bare unquoted form was invisible before). The slice does not introduce or worsen any hiding of a crash; it is a pre-existing scanner blind spot that now also affects `finalize`, fully disclosed in the test's inline comment and in AC-1/AC-5 evidence and the builder handoff. Not a regression, but a real residual gap: `dispatch finalize`'s crash is currently untested and unratcheted.\n- The \"2 dependent assertion fixes\" (bun count 30->29, and asserting crew/scripts/crew.mts is now ABSENT from grouped.bun) are necessary consequences of the drain: independently confirmed commands/ has no remaining literal quoted invocations of the old paths (only two unrelated prose mentions), so crew.mts correctly has zero remaining producers of a bun entry.\n- Full suite: `bun test src/tests/ --parallel --timeout 60000` with the 6 agreed path-ignores: 3418 pass / 7 skip / 1 fail (the same designed-red consumer-smoke assertion). No other failures; did not need to rerun anything as a flake.\n- Slice file (SLICE_56_REPOINT-...) and handoff: ACs ticked with concrete evidence (grep counts, test run numbers, exact crash signature), no placeholder/\"bullet 1\" text, no leaked FORBIDDEN/RETURN task-scoped markers. Handoff explicitly reports an unrelated stray environment reminder it encountered and correctly ignored (matches what this review also observed independently).\n\nDecision: approved_with_notes.\nNote for follow-up (not a blocker for this slice's stated scope): `dist/loop.js dispatch finalize` crashes with the same module-resolution error as `prepare` but is invisible to the ratchet due to the pre-existing file+firstArg dedup in listMarkdownCliEntrypoints. Recommend the dedup key include the full args (or at minimum firstArg+secondArg) so finalize gets its own label and EXPECTED_FAIL entry when the follow-up dist/dispatch.js fix lands -- otherwise a future fix to `prepare` alone could leave `finalize` silently broken forever.",
         "reviewers": {
-          "A": "approved_with_notes",
+          "A": "approved",
           "B": "approved_with_notes"
         },
         "required": [
@@ -23,15 +23,7 @@
           "B"
         ]
       },
-      "validation": {
-        "status": "passed",
-        "updatedAt": "2026-11-08T23:09:16.071Z",
-        "note": "",
-        "validators": {
-          "verifier": "pass"
-        },
-        "required": []
-      },
+      "validation": null,
       "deployment": {
         "dev": null,
         "prod": null
@@ -42,11 +34,13 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T193011Z-run-brief-feat037-slice55-repoint-commands-md-invocations-to-dist-bund.md",
-      "handoffs": [],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T202307Z-review-result-slice-55-review-b-correctness.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261108T231056Z-run-brief-feat037-slice56-repoint-agents-md-invocations-to-dist-bundle.md",
+      "handoffs": [
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261108T233049Z-handoff-slice-56-builder-handoff-agents-md-repointed-to-dist-bundles.md"
+      ],
+      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261108T233728Z-review-result-slice-56-review-b-correctness-agents-repointed-to-dist-bundl.md",
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261108T230916Z-validation-result-slice-55-validation-commands-md-invoke-dist-bundles-consumer.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -55,6 +49,60 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT037 SLICE55: Repoint commands/*.md invocations to dist/ bundles (135 refs, 31 files)",
+      "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-06T19:30:11.855Z",
+      "updatedAt": "2026-11-08T23:09:16.071Z",
+      "completedAt": "2026-11-08T23:09:16.071Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-06T20:23:07.245Z",
+          "note": "Independent correctness review (ladder slot B) of SLICE-55 / FEAT-037 (commits 0e3b28ca, 4ee113fb) against commands/*.md repointed to dist/ bundles plus consumer-smoke ratchet classification. Verified independently: all 135 of 138 baseline source-path invocations in commands/ are rewritten to the correct dist/*.js form with no argument, flag, or quoting drift; the 3 remaining raw-pattern hits (orchestrate-slice.md:145-146, triage.md:60) are genuine historical/explanatory prose, not live invocations. agents/, skills/, templates/, CLAUDE.md marker blocks, docs/, and crew/scripts/validate-agents.mts are untouched, matching the slice's declared boundary. The commands/watch.md prose fix plus watch-scheduler-setup.test.mts AC-8 update are explicitly in-scope collateral (documented in the slice file) because the dist rewrite legitimately splits the previously-identical consumer command path from the scheduler's local-checkout path; confirmed the test now checks each path independently and still passes. Ran the consumer-smoke suite myself: exactly one assertion fails, the designed-red \"EXPECTED_FAIL non-empty\" check; newlyBroken=[] and nowPassing=[] both pass; EXPECTED_FAIL holds exactly the 6 agents-origin crew.mts labels, each independently confirmed via direct execution to crash with \"Cannot find module '@astragenie/plugin-std'\" (real module-resolution crashes, not mislabeled). The AC-2 floor assertions (CLI entries >=42, dist/hooks >=11) pass. Reviewed all 38 arg-error-classified entries' raw messages: every one is a genuine CLI argument/precondition error (missing config, invalid repo path placeholder, required flag, mkdir ENOENT from a literal \"$PWD\" token) with no module-resolution signature; spot-verified dist/watch-tick.js's truncated message directly and confirmed it is a real ENOENT on a missing registry file, not a disguised crash. The classifier's own unit tests directly prove a module-resolution crash lands in newlyBroken when absent from EXPECTED_FAIL, closing the \"can the classifier hide a real crash\" question without needing a synthetic fixture. Ran AC-5 manually from a clean directory: dist/crew.js audit exits 0 with real JSON; dist/loop.js status exits 1 with its own \"No .claude/loop.json found\" message, no module-resolution error -- both satisfy AC-5. Gates: validate-agent-refs, validate-content-length, validate-repo-boundary, validate-manifests, validate-dispatch-markers, build-dist --check, generate-metrics-band --check, typecheck, format:check all rc=0. bun test src/tests/ --parallel: pass count varies 3502-3505 across repeated runs with 1-5 failures beyond the designed-red consumer-smoke test; traced the extra failures to auto-merge.test.mts / synergy.test.mts / slice-complete-tracker-close.test.mts (none touched by this diff) and confirmed they pass 100% (3/3 runs, 36/36 tests) both on this branch and on the pre-slice baseline (719beda8) when run in isolation -- genuine pre-existing parallel-execution flakiness, not a regression, though the builder's self-report named the wrong flaky family (\"slice-linker\" instead of the auto-merge/synergy/tracker group actually observed). crew test suite: 1834 pass, 1 fail (validate-contracts redocly timeout) -- matches the builder's reported numbers exactly. Overall: implementation is accurate, complete, and within scope; the only issues found are non-blocking documentation/cosmetic nits.",
+          "reviewers": {
+            "A": "approved_with_notes",
+            "B": "approved_with_notes"
+          },
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-08T23:09:16.071Z",
+          "note": "",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T193011Z-run-brief-feat037-slice55-repoint-commands-md-invocations-to-dist-bund.md",
+        "handoffs": [],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T202307Z-review-result-slice-55-review-b-correctness.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261108T230916Z-validation-result-slice-55-validation-commands-md-invoke-dist-bundles-consumer.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT028 SLICE54: Implement FEAT-028",
       "goal": "Audit T6: one builder report contract (marker-first block); no publishing before review; validator rules",
@@ -240,60 +288,6 @@
         "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T043316Z-review-result-slice-50-review-b-correctness.md",
         "validationPlan": null,
         "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T043235Z-validation-result-slice-50-re-validation-cost-guards-on-both-paths.md",
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT022 SLICE47: Implement FEAT-022",
-      "goal": "Audit T1: consumer-install smoke test for every shipped hook/CLI entry (red first)",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T03:55:01.810Z",
-      "updatedAt": "2026-11-06T04:05:04.385Z",
-      "completedAt": "2026-11-06T04:05:04.385Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T04:05:04.385Z",
-          "note": "SLICE-47 / FEAT-022 (merged 3da06c82, diff a32f4f76..3da06c82) implements the consumer-install\nsmoke-test harness (`shipped-entrypoints.mts`, `consumer-smoke.test.mts`, 3 fixtures, one\n`package.json` script line). Both deviations the builder flagged were independently verified and\nare judged acceptable, not defects:\n\n1. AC-2's \"17 bun hooks\" is confirmed stale. Running `listShippedEntrypoints` against the real\n   `hooks/hooks.json` + `commands/*.md` + `agents/*.md` today gives exactly 25 bun / 6 node / 1\n   bash distinct entrypoints, matching the test's asserted counts exactly. Asserting the real,\n   freshly-measured count (with the drift explicitly called out in the AC's own evidence text,\n   citing the SLICE-46 \"never trust a hand-curated count\" lesson) is correct test design, not a\n   silent relitigation of the AC.\n\n2. `crew/scripts/crew.mts show-workflow-state` is confirmed absent from every `commands/*.md` and\n   `agents/*.md` file (recursive grep, zero hits); `commands/build.md`'s collision pre-flight reads\n   `workflow-state.json` directly via `jq` instead. Since `listMarkdownCliEntrypoints` only sources\n   CLI entries from literal `bun \"${CLAUDE_PLUGIN_ROOT}/...\"` lines in those two globs (by design,\n   so the list self-tracks a future dist/ path rewrite), that invocation structurally cannot appear\n   in the entry/observed-failure set today. Documenting the gap instead of hand-injecting a fake\n   entry is the right call; no AC-1 amendment required.\n\nTest run confirmed red for the designed reason: 2 pass / 1 fail, failing at the final \"EXPECTED_FAIL\nis non-empty\" ratchet assertion (consumer-smoke.test.mts:146), not a harness error. Spot-checked 3\nEXPECTED_FAIL entries (`crew/hooks/otel-post-tool-use.mts`, `crew/scripts/crew.mts brief-me`,\n`src/scripts/loop.mts list-presets`) by hand against a freshly staged node_modules-free copy built\nvia `stageConsumerCopy` — all 3 are genuine `Cannot find package/module` crashes, matching the\ntest's own failure regex.\n\nConfirmed gate 41 (`slow-tests` job, `.github/workflows/ci.yml`) runs `bun test src/tests/` with\n`--path-ignore-patterns` only for the 6 named worktree suites — this new test is NOT excluded, so it\nruns and fails there permanently (by design) until FEAT-026 lands. `slow-tests` is not part of the\nrequired `gate` check (confirmed in `docs/ci-gates.md` \"Job structure and gating\" — `gate` depends\nonly on `fast-gate`), so this does not block merges, matching the slice's own claim. The permanently-\nred status is recorded in the test file's own header comment, the slice AC-1 evidence text, and the\nFEAT-022 body's \"Note in the wave plan\" bullet — sufficient for a CI-job investigator, though neither\n`docs/ci-gates.md` nor `CLAUDE.md`'s gate list calls it out by name (optional follow-up, not\nrequired — gate 41's blocking/advisory status itself did not change, so the \"update both files\"\nsync rule doesn't trigger).\n\n`package.json` diff is exactly the one new `\"test:install\"` script line, nothing else changed.\n`bun run test` (gate 41) already picks up `src/tests/install/consumer-smoke.test.mts` automatically\nvia `bun test`'s recursive directory discovery — confirmed directly against the real CI step's\ncommand. `test:install` is a convenience subset-runner, not a wiring requirement.\n\nOne non-blocking finding below: `prepush-bash.json` is dead code.\n\nDecision: approved_with_notes.",
-          "reviewers": {
-            "A": "approved_with_notes",
-            "B": "approved_with_notes"
-          },
-          "required": [
-            "A",
-            "B"
-          ]
-        },
-        "validation": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T04:03:13.947Z",
-          "note": "SLICE-47/FEAT-022 validation: consumer-smoke designed-red ratchet is red for exactly the documented reason, and stageConsumerCopy's staging is faithful to a real node_modules-free marketplace-cache install.\n\nScenario 1 (bun test src/tests/install/consumer-smoke.test.mts, rc=1, 2 pass/1 fail): the only failure is the intentional ratchet assertion at line 146 (\"EXPECTED_FAIL is non-empty (49 known-broken entries) -- see FEAT-022/FEAT-026. This test is designed to stay red until those land.\"). Both preceding assertions (newlyBroken==[] and nowPassing==[]) passed silently, proving the live-observed failing set matches the recorded EXPECTED_FAIL set exactly, in both directions.\n\nScenario 2 (staging fidelity, via a scratch script calling the real stageConsumerCopy/listShippedEntrypoints): zero node_modules directories anywhere in the staged copy at any depth. A repo-wide reparse-point sweep (cmd /c dir /s /a:l /b) found the only 10 existing junctions confined to .claude/worktrees/*/node_modules and .claude/worktrees/*/crew/node_modules -- doubly excluded by both the .claude/worktrees prefix rule and the node_modules path-segment rule in shouldExcludeFromStaging. Staged copy ~33.9 MiB; hooks/hooks.json, commands/, agents/, crew/scripts/crew.mts, src/scripts/loop.mts all present. 86 total entries: hook/bash=6, hook/node=11, hook/bun=21, cli/bun=48.\n\nScenario 3 (hand spot-checks against the staged copy via bun --no-install): crew/hooks/subagent-gate-guard.mts, crew.mts audit --repo <consumer>, and loop.mts list-presets all crash identically with \"Cannot find module '@astragenie/plugin-std...'\" -- a module-resolution failure, matching FEAT-022's documented root cause, not an assertion bug. The control case crew/hooks/check-redundant-read.mts (NOT in EXPECTED_FAIL) ran clean at exit 0 with no \"Cannot find\" in stderr, proving EXPECTED_FAIL discriminates rather than blanket-failing.\n\nScenario 4 (counts): hand-parsing hooks/hooks.json directly gives 21 distinct bun files, 6 node, 1 bash (hooks only). The full listShippedEntrypoints (hooks + markdown CLI) gives 25 bun / 6 node / 1 bash -- reconciling exactly: the 4 extra bun files are markdown-only CLI entries (crew.mts, prune-artifacts.mts, loop.mts, watch-tick.mts); node/bash counts are unaffected since every markdown CLI invocation is bun-runtime. Matches the builder's claimed 25/6/1 and the test's own groupDistinctFilesByRuntime assertions (already green).\n\nScenario 5 (CI impact): package.json's \"test\" script (gate 41) is \"bun test src/tests/ --parallel --timeout 60000\" with no exclusion for src/tests/install/, so gate 41 is now observably red on this branch (confirmed locally). CI's slow-tests job runs the equivalent with --path-ignore-patterns for 6 named quarantined suites (auto-merge, synergy, integration, integrations, slice-complete, slice-start) -- consumer-smoke.test.mts is not in that list, so slow-tests is also red in CI. However the merge-blocking required \"gate\" job in .github/workflows/ci.yml depends only on fast-gate (validators + tsc + biome), never on bun test src/tests/, so this red test does not block merges. package.json's \"test:install\" script (bun test src/tests/install/) is a separate, narrower convenience script, not wired into any CI job on its own.\n\nDecision: PASS. The test is red for exactly the documented reason, the ratchet is honest (exact set match both directions), and the staging has no node_modules leak and is discriminating rather than blanket-failing.",
-          "validators": {
-            "verifier": "pass"
-          },
-          "required": []
-        },
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T035501Z-run-brief-feat022-slice47-implement-feat-022.md",
-        "handoffs": [],
-        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T040504Z-review-result-slice-47-review-b-correctness.md",
-        "validationPlan": null,
-        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T040313Z-validation-result-slice-47-validation-consumer-smoke-red-for-right-reason-stag.md",
         "deploymentChecks": {
           "dev": null,
           "prod": null
